@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { DlqService, InMemoryDlqRepository } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
@@ -86,6 +87,77 @@ test("durable event bus publish auto-fans out to active subscribers", async () =
 
     assert.deepEqual(seen, [event.id]);
     assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
+
+    bus.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test("durable event bus does not schedule tier2 fan-out after volatile dispatch", () => {
+  const { db, cleanup } = initHaCoordinatorForTests();
+
+  try {
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-tier2", executionId: "exec-tier2", traceId: "trace-tier2" });
+
+    let scheduleFanOutCalls = 0;
+    (bus as unknown as { scheduleFanOut: () => void }).scheduleFanOut = () => {
+      scheduleFanOutCalls += 1;
+    };
+
+    bus.publish({
+      eventType: "dispatch:ticket_created",
+      taskId: "task-tier2",
+      executionId: "exec-tier2",
+      traceId: "trace-tier2",
+      payload: {
+        taskId: "task-tier2",
+        ticketId: "ticket-tier2",
+        status: "created",
+      },
+    });
+
+    assert.equal(scheduleFanOutCalls, 0);
+    bus.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
+test("durable event bus dead-letters volatile tier2 delivery failures", async () => {
+  const { db, cleanup } = initHaCoordinatorForTests();
+
+  try {
+    const store = new AuthoritativeTaskStore(db);
+    const dlqService = new DlqService(new InMemoryDlqRepository());
+    const bus = new DurableEventBus(db, store, dlqService);
+    seedTaskAndExecution(db, store, { taskId: "task-volatile-dlq", executionId: "exec-volatile-dlq", traceId: "trace-volatile-dlq" });
+
+    bus.subscribe("inspect_projection", async () => {
+      throw new Error("volatile subscriber exploded");
+    });
+
+    const event = bus.publish({
+      eventType: "dispatch:ticket_created",
+      taskId: "task-volatile-dlq",
+      executionId: "exec-volatile-dlq",
+      traceId: "trace-volatile-dlq",
+      payload: {
+        taskId: "task-volatile-dlq",
+        ticketId: "ticket-volatile-dlq",
+        status: "created",
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const deadLetters = dlqService.listAll();
+    assert.equal(deadLetters.length, 1);
+    assert.equal(deadLetters[0]?.sourceEventId, event.id);
+    assert.equal(deadLetters[0]?.consumerId, "inspect_projection");
+    assert.equal(deadLetters[0]?.errorCode, "volatile_delivery_failed");
 
     bus.dispose();
   } finally {

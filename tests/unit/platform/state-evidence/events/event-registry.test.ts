@@ -26,10 +26,10 @@ test("EVENT_SCHEMA_REGISTRY contains known event types", () => {
   assert.ok(EVENT_SCHEMA_REGISTRY["platform.harness_run.status_changed"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["platform.node_run.status_changed"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["platform.side_effect.status_changed"]);
-  assert.ok(EVENT_SCHEMA_REGISTRY["platform.budget_ledger.status_changed"]);
-  assert.ok(EVENT_SCHEMA_REGISTRY["platform.budget_reservation.status_changed"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["platform.graph_scheduler.decision_recorded"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["oapeflir.view.run_lifecycle"]);
+  assert.equal(hasEventSchema("platform.budget_ledger.status_changed"), true);
+  assert.equal(hasEventSchema("platform.budget_reservation.status_changed"), true);
 });
 
 test("hasEventSchema returns true for known event types", () => {
@@ -206,6 +206,22 @@ test("validateEventPayload uses generic schema for events without specific valid
   const result = validateEventPayload("perf:test_event", { anyField: "anyValue", num: 123 });
   assert.equal(result.anyField, "anyValue");
   assert.equal(result.num, 123);
+});
+
+test("validateEventPayload uses family validators for tier_2 dispatch and worker events", () => {
+  const dispatchPayload = validateEventPayload("dispatch:ticket_claimed", {
+    ticketId: "ticket-claimed",
+    taskId: "task-dispatch",
+    status: "claimed",
+  });
+  const workerPayload = validateEventPayload("worker:claim_accepted", {
+    workerId: "worker-1",
+    claimId: "claim-1",
+    status: "accepted",
+  });
+
+  assert.equal(dispatchPayload.ticketId, "ticket-claimed");
+  assert.equal(workerPayload.workerId, "worker-1");
 });
 
 test("validateEventPayload rejects subtask payload missing both stepId and subtaskId", () => {

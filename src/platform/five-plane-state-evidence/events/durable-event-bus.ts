@@ -456,10 +456,11 @@ export class DurableEventBus {
       },
     );
 
-    if (eventRecord.eventTier !== "tier_1") {
+    if (eventRecord.eventTier === "tier_1") {
+      this.scheduleFanOut();
+    } else {
       this.dispatchVolatile(eventRecord);
     }
-    this.scheduleFanOut();
 
     // R12-30 fix: Record event published metric
     runtimeMetricsRegistry.recordEventPublished(eventRecord.eventType, eventRecord.eventTier, eventRecord.aggregateId ?? null);
@@ -551,11 +552,13 @@ export class DurableEventBus {
     );
 
     // Dispatch volatile events and schedule fan-out once for the batch
-    const nonTier1Records = eventRecords.filter((record) => record.eventTier !== "tier_1");
-    for (const eventRecord of nonTier1Records) {
-      this.dispatchVolatile(eventRecord);
+    const tier1Records = eventRecords.filter((record) => record.eventTier === "tier_1");
+    for (const eventRecord of eventRecords) {
+      if (eventRecord.eventTier !== "tier_1") {
+        this.dispatchVolatile(eventRecord);
+      }
     }
-    if (eventRecords.length > 0) {
+    if (tier1Records.length > 0) {
       this.scheduleFanOut();
     }
 
@@ -1076,12 +1079,14 @@ export class DurableEventBus {
         try {
           await handler(event);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           eventBusLogger.warn("event_bus.volatile_delivery_failed", {
             eventId: event.id,
             eventType: event.eventType,
             consumerId,
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage,
           });
+          this.enqueueVolatileDeadLetter(event, consumerId, errorMessage);
           // Re-throw so the delivery chain correctly reflects failure
           throw error;
         }
@@ -1103,6 +1108,22 @@ export class DurableEventBus {
         }
       });
     }
+  }
+
+  private enqueueVolatileDeadLetter(event: EventRecord, consumerId: string, errorMessage: string): void {
+    const failureCategory = this.categorizeFailure(new Error(errorMessage));
+    this.dlqService.enqueue({
+      sourceEventId: event.id,
+      eventType: event.eventType,
+      consumerId,
+      errorCode: "volatile_delivery_failed",
+      errorMessage,
+      payloadJson: event.payloadJson,
+      originalTimestamp: event.createdAt,
+      failureCategory,
+      reason: `Volatile delivery failed before durable ack fan-out: ${errorMessage}`,
+    });
+    runtimeMetricsRegistry.recordEventDeadLettered(event.eventType, consumerId, "volatile_delivery_failed");
   }
 
   /**

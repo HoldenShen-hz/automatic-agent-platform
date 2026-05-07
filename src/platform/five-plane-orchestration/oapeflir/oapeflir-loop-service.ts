@@ -66,6 +66,7 @@ import { createStageTransitionFSM, type StageTransitionFSM } from "./stage-trans
 import { HarnessLoopController } from "../harness/loop/index.js";
 import type { HarnessDecision, ConstraintPack, DecisionInputBundle as HarnessDecisionInputBundle } from "../harness/index.js";
 import type { RuntimeRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
+import { getDualChannelNodeRunId } from "./types/dual-channel-step-output.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -320,22 +321,35 @@ export class OapeflirLoopService {
     taskId: string,
   ): void {
     if (this.eventPublisher) {
-      const status = eventType === "oapeflir.view.run_lifecycle"
-        ? String(payload["stage"] ?? "unknown")
-        : eventType === "oapeflir.phase.transition"
-          ? `${String(payload["fromPhase"] ?? "unknown")}->${String(payload["toPhase"] ?? "unknown")}`
-          : `decision:${String(payload["decisionKind"] ?? "unknown")}:${String(payload["decision"] ?? "unknown")}`;
       this.eventPublisher.publish({
-        eventType: "platform.harness_run.status_changed",
+        eventType,
         taskId,
-        payload: {
-          status,
-          runId: `oapeflir_run_${taskId}`,
-          taskId,
-          occurredAt: typeof payload["occurredAt"] === "string" ? payload["occurredAt"] : nowIso(),
-        },
+        payload: payload as never,
       });
     }
+  }
+
+  private assertGuardAllowsStage(stage: "assess" | "plan" | "execute", taskId: string): void {
+    if (this.loopController == null) {
+      return;
+    }
+    const guardViolation = this.loopController.getGuardViolation();
+    if (guardViolation == null) {
+      return;
+    }
+    this.boundaryLogger.warn("[guardrail:stage_entry_blocked] Loop guard violated before stage entry", {
+      data: { taskId, stage, violation: guardViolation },
+    });
+    this.emitOapeflirEvent("oapeflir.decision.recorded", {
+      decisionKind: "guardrail_abort",
+      decision: "abort",
+      reasonCode: guardViolation,
+      deciderType: "system",
+      deciderRef: "harness.guardrails",
+      taskId,
+      occurredAt: nowIso(),
+    }, taskId);
+    throw new Error(`oapeflir.guard_blocked_before_${stage}: ${guardViolation}`);
   }
 
   /**
@@ -495,6 +509,7 @@ export class OapeflirLoopService {
         if (!assessTransition.allowed) {
           throw new Error(`fsm.transition_rejected: ${assessTransition.reasonCode}`);
         }
+        this.assertGuardAllowsStage("assess", currentInput.taskId);
         this.stageFsm.recordStageEntry("assess");
         this.currentFsmStage = "assess";
         // R5-41 §14.3: Emit observe→assess phase transition
@@ -576,6 +591,7 @@ export class OapeflirLoopService {
         if (!planTransition.allowed) {
           throw new Error(`fsm.transition_rejected: ${planTransition.reasonCode}`);
         }
+        this.assertGuardAllowsStage("plan", currentInput.taskId);
         this.stageFsm.recordStageEntry("plan");
         this.currentFsmStage = "plan";
         // R5-41 §14.3: Emit assess→plan phase transition
@@ -736,6 +752,7 @@ export class OapeflirLoopService {
         if (!executeTransition.allowed) {
           throw new Error(`fsm.transition_rejected: ${executeTransition.reasonCode}`);
         }
+        this.assertGuardAllowsStage("execute", currentInput.taskId);
         this.stageFsm.recordStageEntry("execute");
         this.currentFsmStage = "execute";
         // R5-41 §14.3: Emit plan→execute phase transition
@@ -830,7 +847,7 @@ export class OapeflirLoopService {
               }
             : {}),
         });
-        timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
+        timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1] != null ? getDualChannelNodeRunId(stepOutputs[stepOutputs.length - 1]!) : plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
         this.stageFsm.recordStageCompletion("execute");
 
         // R5-3: Validate transition execute→feedback
@@ -1564,7 +1581,7 @@ export class OapeflirLoopService {
       return {
         signalId: `signal_${index + 1}`,
         harnessRunId: taskId,
-        nodeRunId: output.stepId,
+        nodeRunId: getDualChannelNodeRunId(output),
         taskId,
         source: "execution",
         category,
@@ -1573,7 +1590,7 @@ export class OapeflirLoopService {
           summary: output.userFacingResult.summary,
           durationMs: output.systemTelemetry.durationMs,
         },
-        stepOutputRefs: [output.stepId],
+        stepOutputRefs: [getDualChannelNodeRunId(output)],
         timestamp: Date.now() + index,
         trustScore: {
           overallScore: 0.95,

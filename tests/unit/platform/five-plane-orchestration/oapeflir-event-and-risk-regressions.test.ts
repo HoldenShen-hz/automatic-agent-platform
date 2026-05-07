@@ -4,6 +4,8 @@ import test from "node:test";
 import { createPlanGraphBundle } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { OapeflirLoopService } from "../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { HarnessLoopController } from "../../../../src/platform/five-plane-orchestration/harness/loop/index.js";
+import type { ConstraintPack } from "../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createMinimalPlanGraphBundle() {
   return createPlanGraphBundle({
@@ -45,7 +47,7 @@ function createMinimalPlanGraphBundle() {
   });
 }
 
-test("emitOapeflirEvent publishes platform.harness_run.status_changed facts", () => {
+test("emitOapeflirEvent preserves canonical oapeflir eventType instead of overwriting it", () => {
   const published: Array<{ eventType: string; taskId: string | null | undefined; payload: Record<string, unknown> }> = [];
   const service = new OapeflirLoopService({
     eventPublisher: {
@@ -64,9 +66,10 @@ test("emitOapeflirEvent publishes platform.harness_run.status_changed facts", ()
   }, "task_event");
 
   assert.equal(published.length, 1);
-  assert.equal(published[0]?.eventType, "platform.harness_run.status_changed");
+  assert.equal(published[0]?.eventType, "oapeflir.phase.transition");
   assert.equal(published[0]?.taskId, "task_event");
-  assert.equal(published[0]?.payload.status, "observe->assess");
+  assert.equal(published[0]?.payload.fromPhase, "observe");
+  assert.equal(published[0]?.payload.toPhase, "assess");
 });
 
 test("buildDecisionInputBundle keeps high-risk downgrade score independent from evaluator confidence", () => {
@@ -105,4 +108,67 @@ test("buildDecisionInputBundle keeps high-risk downgrade score independent from 
   assert.equal(bundle.risk.currentScore, 0.85);
   assert.equal(bundle.risk.escalationThreshold, 0.8);
   assert.ok(bundle.risk.currentScore > bundle.risk.escalationThreshold);
+});
+
+test("assertGuardAllowsStage blocks assess before the loop enters a budget-exhausted stage", () => {
+  const published: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+  const service = new OapeflirLoopService({
+    eventPublisher: {
+      publish(input: { eventType: string; taskId?: string | null; payload: Record<string, unknown> }) {
+        published.push({ eventType: input.eventType, payload: input.payload });
+      },
+    } as never,
+  });
+
+  const constraintPack: ConstraintPack = {
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "semi_auto",
+    tool_policy: { allowedTools: [] },
+    budgetEnvelope: { maxSteps: 3, maxCost: 10, maxDurationMs: 0 },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 1000 },
+    approvalRequirement: { requiredForRiskClass: [], approverRoles: [], escalationTimeoutMs: 1000 },
+  };
+
+  (service as unknown as { loopController: HarnessLoopController | null }).loopController = new HarnessLoopController(
+    constraintPack,
+    {},
+    { startedAt: Date.now() - 10 },
+  );
+
+  assert.throws(
+    () =>
+      (service as unknown as {
+        assertGuardAllowsStage: (stage: "assess" | "plan" | "execute", taskId: string) => void;
+      }).assertGuardAllowsStage("assess", "task_guard"),
+    /oapeflir\.guard_blocked_before_assess: harness\.guard\.max_duration_exceeded/,
+  );
+  assert.equal(published.at(-1)?.eventType, "oapeflir.decision.recorded");
+  assert.equal(published.at(-1)?.payload.reasonCode, "harness.guard.max_duration_exceeded");
+});
+
+test("buildFeedbackSignals prefers canonical nodeRunId over legacy stepId", () => {
+  const service = new OapeflirLoopService();
+  const signals = (service as unknown as {
+    buildFeedbackSignals: (taskId: string, stepOutputs: Array<{
+      nodeRunId?: string;
+      stepId: string;
+      planRef: string;
+      status: "succeeded" | "failed" | "partial_success" | "skipped";
+      userFacingResult: { summary: string; artifacts: string[] };
+      systemTelemetry: { durationMs: number; tokensUsed: number; modelId: string; retryCount: number; validationPassed: boolean };
+    }>) => Array<{ nodeRunId: string; stepOutputRefs: string[] }>;
+  }).buildFeedbackSignals("task_node_run", [
+    {
+      nodeRunId: "node-run-42",
+      stepId: "legacy-step-42",
+      planRef: "plan-42",
+      status: "succeeded",
+      userFacingResult: { summary: "done", artifacts: [] },
+      systemTelemetry: { durationMs: 1, tokensUsed: 1, modelId: "test", retryCount: 0, validationPassed: true },
+    },
+  ]);
+
+  assert.equal(signals[0]?.nodeRunId, "node-run-42");
+  assert.deepEqual(signals[0]?.stepOutputRefs, ["node-run-42"]);
 });

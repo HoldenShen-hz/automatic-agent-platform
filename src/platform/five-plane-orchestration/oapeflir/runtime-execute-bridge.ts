@@ -20,7 +20,7 @@
  *
  * ## Key Mapping Decisions
  *
- * - `PlanNode.nodeId` → `stepId`
+ * - `PlanNode.nodeId` → `nodeRunId` (with legacy `stepId` alias preserved)
  * - `PlanNode.nodeType` → action type
  * - `PlanNode.timeoutMs` → timeout (used for per-step timeout in supervisor)
  * - `StepOutputRecord` → `DualChannelStepOutput` (status, telemetry, summary mapping)
@@ -139,6 +139,7 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
   }
 
   return {
+    nodeRunId: record.stepId,
     stepId: record.stepId,
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
     durationMs: record.durationMs,
@@ -173,7 +174,8 @@ export function mapToDualChannelStepOutputs(
   return records.map((record) => {
     const result = mapStepOutputRecord(record);
     return {
-      stepId: record.stepId,
+      nodeRunId: result.nodeRunId,
+      stepId: result.stepId ?? result.nodeRunId,
       planRef: planId,
       status: record.status,
       userFacingResult: {
@@ -436,6 +438,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     const singleStepResult = await this.executePlan(syntheticBundle, context);
     if (singleStepResult.results.length === 0) {
       return {
+        nodeRunId: step.stepId,
         stepId: step.stepId,
         status: "failed",
         durationMs: 0,
@@ -482,8 +485,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       totalDurationMs,
       totalTokenCost,
       allSucceeded: stepResults.every((r) => r.status === "succeeded"),
-      skippedStepIds: stepResults.filter((r) => r.status === "skipped").map((r) => r.stepId),
-      failedStepIds: stepResults.filter((r) => r.status === "failed").map((r) => r.stepId),
+      skippedNodeRunIds: stepResults.filter((r) => r.status === "skipped").map((r) => r.nodeRunId),
+      failedNodeRunIds: stepResults.filter((r) => r.status === "failed").map((r) => r.nodeRunId),
     };
   }
 
@@ -493,7 +496,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
    */
   toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
     return result.results.map((r) => ({
-      stepId: r.stepId,
+      nodeRunId: r.nodeRunId,
+      stepId: r.stepId ?? r.nodeRunId,
       planRef: result.planId,
       status: r.status === "failed" ? "failed" : r.status === "skipped" ? "skipped" : "succeeded",
       userFacingResult: {
@@ -518,6 +522,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
 export class MockExecuteBridge implements ExecuteBridge {
   async executeStep(step: PlanStep, _context: ExecutionContext): Promise<StepResult> {
     return {
+      nodeRunId: step.stepId,
       stepId: step.stepId,
       status: "succeeded",
       durationMs: 100,
@@ -535,6 +540,7 @@ export class MockExecuteBridge implements ExecuteBridge {
     // R16-76: Reject legacy Plan type at runtime - only PlanGraphBundle is accepted
     assertIsPlanGraphBundle(plan, "MockExecuteBridge.executePlan");
     const results = plan.graph.nodes.map((node, index) => ({
+      nodeRunId: node.nodeId,
       stepId: node.nodeId,
       status: "succeeded" as const,
       durationMs: 100 + index * 50,
@@ -553,14 +559,15 @@ export class MockExecuteBridge implements ExecuteBridge {
       totalDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
       totalTokenCost: results.reduce((s, r) => s + r.tokenCost, 0),
       allSucceeded: true,
-      skippedStepIds: [],
-      failedStepIds: [],
+      skippedNodeRunIds: [],
+      failedNodeRunIds: [],
     };
   }
 
   toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
     return result.results.map((r) => ({
-      stepId: r.stepId,
+      nodeRunId: r.nodeRunId,
+      stepId: r.stepId ?? r.nodeRunId,
       planRef: result.planId,
       status: r.status === "failed" ? "failed" : r.status === "skipped" ? "skipped" : "succeeded",
       userFacingResult: {

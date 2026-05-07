@@ -63,7 +63,9 @@ export interface ExecutionContext {
  * Result of executing a single plan step.
  */
 export interface StepResult {
-  stepId: string;
+  nodeRunId: string;
+  /** @deprecated Use nodeRunId for canonical correlation. */
+  stepId?: string;
   status: "succeeded" | "failed" | "skipped";
   /** Duration in milliseconds measured by the runtime */
   durationMs: number;
@@ -95,10 +97,10 @@ export interface ExecutionResult {
   totalTokenCost: number;
   /** True only if every step succeeded */
   allSucceeded: boolean;
-  /** Step IDs that the runtime chose to skip (e.g. dependency not met) */
-  skippedStepIds: string[];
-  /** Step IDs that failed */
-  failedStepIds: string[];
+  /** NodeRun IDs that the runtime chose to skip (e.g. dependency not met) */
+  skippedNodeRunIds: string[];
+  /** NodeRun IDs that failed */
+  failedNodeRunIds: string[];
 }
 
 /**

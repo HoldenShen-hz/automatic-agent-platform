@@ -824,6 +824,24 @@ const graphSchedulerDecisionPayloadSchema = z.object({
   emittedBy: z.string(),
 }).passthrough();
 
+const oapeflirPhaseTransitionPayloadSchema = z.object({
+  runId: z.string(),
+  fromPhase: z.string(),
+  toPhase: z.string(),
+  taskId: optionalNullableStringSchema,
+  occurredAt: optionalNullableStringSchema,
+}).passthrough();
+
+const oapeflirDecisionRecordedPayloadSchema = z.object({
+  decisionKind: z.string(),
+  decision: z.string(),
+  reasonCode: z.string().optional(),
+  deciderType: z.string(),
+  deciderRef: z.string(),
+  taskId: optionalNullableStringSchema,
+  occurredAt: optionalNullableStringSchema,
+}).passthrough();
+
 const oapeflirRunLifecyclePayloadSchema = z.object({
   stage: z.string(),
   runId: z.string(),
@@ -831,9 +849,88 @@ const oapeflirRunLifecyclePayloadSchema = z.object({
   occurredAt: optionalNullableStringSchema,
 }).passthrough();
 
+const dispatchEventPayloadSchema = z.object({
+  taskId: optionalStringSchema,
+  ticketId: optionalStringSchema,
+  executionId: optionalStringSchema,
+  decisionId: optionalStringSchema,
+  workerId: optionalStringSchema,
+  status: optionalStringSchema,
+  reasonCode: optionalStringSchema,
+}).passthrough().superRefine((payload, ctx) => {
+  if (
+    payload.taskId == null
+    && payload.ticketId == null
+    && payload.executionId == null
+    && payload.decisionId == null
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "dispatch payload must include at least one correlation identifier",
+      path: ["taskId"],
+    });
+  }
+});
+
+const workerEventPayloadSchema = z.object({
+  workerId: z.string(),
+  ticketId: optionalStringSchema,
+  claimId: optionalStringSchema,
+  executionId: optionalStringSchema,
+  leaseId: optionalStringSchema,
+  status: optionalStringSchema,
+  reasonCode: optionalStringSchema,
+}).passthrough();
+
+const takeoverEventPayloadSchema = z.object({
+  sessionId: z.string(),
+  taskId: optionalStringSchema,
+  action: optionalStringSchema,
+  principal: optionalStringSchema,
+  status: optionalStringSchema,
+  reasonCode: optionalStringSchema,
+}).passthrough();
+
+const recoveryEventPayloadSchema = z.object({
+  taskId: optionalStringSchema,
+  executionId: optionalStringSchema,
+  repairId: optionalStringSchema,
+  recoveryId: optionalStringSchema,
+  decisionId: optionalStringSchema,
+  reasonCode: optionalStringSchema,
+  status: optionalStringSchema,
+}).passthrough().superRefine((payload, ctx) => {
+  if (
+    payload.taskId == null
+    && payload.executionId == null
+    && payload.repairId == null
+    && payload.recoveryId == null
+    && payload.decisionId == null
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "recovery payload must include at least one recovery identifier",
+      path: ["taskId"],
+    });
+  }
+});
+
+const skillEventPayloadSchema = z.object({
+  skillId: z.string(),
+  version: optionalStringSchema,
+  stepId: optionalStringSchema,
+  cacheKey: optionalStringSchema,
+  toolName: optionalStringSchema,
+  attempt: z.number().int().nonnegative().optional(),
+  maxAttempts: z.number().int().nonnegative().optional(),
+  stepCount: z.number().int().nonnegative().optional(),
+  errorCode: optionalStringSchema,
+  status: optionalStringSchema,
+}).passthrough();
+
 const genericEventPayloadSchema = z.record(z.unknown());
 
-const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<string, unknown>>>> = {
+const EVENT_PAYLOAD_VALIDATORS: Partial<Record<string, z.ZodType<Record<string, unknown>>>> = {
   "task:status_changed": taskStatusChangedPayloadSchema,
   "workflow:step_completed": workflowStepCompletedPayloadSchema,
   "decision:requested": decisionRequestedPayloadSchema,
@@ -862,9 +959,32 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<
   "platform.budget.reserved": runtimeStatusChangedPayloadSchema,
   "platform.budget.actualized": runtimeStatusChangedPayloadSchema,
   "platform.budget.exceeded": runtimeStatusChangedPayloadSchema,
+  "platform.budget_ledger.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.budget_reservation.status_changed": runtimeStatusChangedPayloadSchema,
   "platform.graph_scheduler.decision_recorded": graphSchedulerDecisionPayloadSchema,
+  "oapeflir.phase.transition": oapeflirPhaseTransitionPayloadSchema,
+  "oapeflir.decision.recorded": oapeflirDecisionRecordedPayloadSchema,
   "oapeflir.view.run_lifecycle": oapeflirRunLifecyclePayloadSchema,
 };
+
+function getFamilyPayloadValidator(type: string): z.ZodType<Record<string, unknown>> {
+  if (type.startsWith("dispatch:")) {
+    return dispatchEventPayloadSchema;
+  }
+  if (type.startsWith("worker:")) {
+    return workerEventPayloadSchema;
+  }
+  if (type.startsWith("takeover:")) {
+    return takeoverEventPayloadSchema;
+  }
+  if (type.startsWith("recovery:")) {
+    return recoveryEventPayloadSchema;
+  }
+  if (type.startsWith("skill:")) {
+    return skillEventPayloadSchema;
+  }
+  return genericEventPayloadSchema;
+}
 
 /**
  * Processed event schema registry with defaults applied.
@@ -1345,7 +1465,7 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
  */
 export function validateEventPayload(type: string, payload: unknown): Record<string, unknown> {
   getEventSchema(type);
-  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType] ?? genericEventPayloadSchema;
+  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType] ?? getFamilyPayloadValidator(type);
   const result = validator.safeParse(payload);
 
   if (!result.success) {

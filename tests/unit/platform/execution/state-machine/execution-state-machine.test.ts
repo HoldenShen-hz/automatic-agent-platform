@@ -8,13 +8,15 @@ import { WorkflowStateError } from "../../../../../src/platform/contracts/errors
  * ExecutionStateMachine tests
  *
  * Tests the state machine that governs execution lifecycle transitions.
- * Executions represent individual work attempts with 13 states:
+ * Executions represent individual work attempts with 15 states (R9-04):
  * - created: initial state when execution is initialized
  * - queued: waiting to be dispatched
  * - dispatching: being assigned to a worker
  * - prechecking: validating resources and preconditions
+ * - ready: resources allocated, waiting to start
  * - executing: actual work being performed
  * - paused: execution paused
+ * - resuming: resuming from pause
  * - recovering: recovering from a failure
  * - timed_out: execution timed out
  * - blocked: awaiting approval or external input
@@ -25,16 +27,18 @@ import { WorkflowStateError } from "../../../../../src/platform/contracts/errors
  */
 
 // ---------------------------------------------------------------------------
-// Execution transitions map matching transition-service.ts (13 states)
+// Execution transitions map matching transition-service.ts (15 states)
 // ---------------------------------------------------------------------------
 
 const EXECUTION_TRANSITIONS: Record<string, readonly string[]> = {
-  created: ["queued", "prechecking", "executing", "dispatching", "cancelled", "failed"],
+  created: ["queued", "prechecking", "executing", "dispatching", "ready", "cancelled", "failed"],
   queued: ["dispatching", "prechecking", "executing", "cancelled", "failed"],
   dispatching: ["prechecking", "executing", "paused", "recovering", "cancelled", "failed"],
   prechecking: ["executing", "blocked", "paused", "recovering", "cancelled", "failed"],
   executing: ["blocked", "succeeded", "failed", "cancelled", "paused", "recovering"],
   paused: ["resuming", "recovering", "timed_out", "failed", "cancelled"],
+  resuming: ["executing", "failed", "cancelled"],
+  ready: ["executing", "failed", "cancelled"],
   recovering: ["ready", "executing", "failed", "cancelled", "timed_out"],
   timed_out: ["resuming", "failed", "cancelled"],
   blocked: ["prechecking", "executing", "cancelled", "failed", "superseded"],
@@ -44,14 +48,16 @@ const EXECUTION_TRANSITIONS: Record<string, readonly string[]> = {
   superseded: [],
 };
 
-// All 13 execution states
+// All 15 execution states
 const ALL_EXECUTION_STATES = [
   "created",
   "queued",
   "dispatching",
   "prechecking",
+  "ready",
   "executing",
   "paused",
+  "resuming",
   "recovering",
   "timed_out",
   "blocked",
@@ -146,6 +152,20 @@ test("assertTransition allows valid transitions from timed_out", () => {
   machine.assertTransition("timed_out", "cancelled");
 });
 
+test("assertTransition allows valid transitions from resuming", () => {
+  const machine = createExecutionStateMachine();
+  machine.assertTransition("resuming", "executing");
+  machine.assertTransition("resuming", "failed");
+  machine.assertTransition("resuming", "cancelled");
+});
+
+test("assertTransition allows valid transitions from ready", () => {
+  const machine = createExecutionStateMachine();
+  machine.assertTransition("ready", "executing");
+  machine.assertTransition("ready", "failed");
+  machine.assertTransition("ready", "cancelled");
+});
+
 test("assertTransition allows valid transitions from blocked", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "prechecking");
@@ -156,7 +176,7 @@ test("assertTransition allows valid transitions from blocked", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test: assertTransition rejects invalid transitions for all 13 states (R9-04)
+// Test: assertTransition rejects invalid transitions for all 15 states (R9-04)
 // ---------------------------------------------------------------------------
 
 test("assertTransition rejects invalid transitions from created", () => {
@@ -235,6 +255,28 @@ test("assertTransition rejects invalid transitions from timed_out", () => {
   assert.throws(() => machine.assertTransition("timed_out", "paused"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("timed_out", "prechecking"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("timed_out", "ready"), WorkflowStateError);
+});
+
+test("assertTransition rejects invalid transitions from resuming", () => {
+  const machine = createExecutionStateMachine();
+  assert.throws(() => machine.assertTransition("resuming", "succeeded"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "blocked"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "paused"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "queued"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "dispatching"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "prechecking"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("resuming", "ready"), WorkflowStateError);
+});
+
+test("assertTransition rejects invalid transitions from ready", () => {
+  const machine = createExecutionStateMachine();
+  assert.throws(() => machine.assertTransition("ready", "succeeded"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "blocked"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "paused"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "queued"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "dispatching"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "prechecking"), WorkflowStateError);
+  assert.throws(() => machine.assertTransition("ready", "resuming"), WorkflowStateError);
 });
 
 test("assertTransition rejects invalid transitions from blocked", () => {

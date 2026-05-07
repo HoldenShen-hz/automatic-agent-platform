@@ -413,7 +413,7 @@ export class AsyncOrganizationRepository {
            created_at AS "createdAt",
            updated_at AS "updatedAt"
          FROM deployment_bindings
-         WHERE tenant_id IS $1
+         WHERE tenant_id = $1
          ORDER BY updated_at DESC, binding_id ASC
          LIMIT $2`,
         options.tenantId,

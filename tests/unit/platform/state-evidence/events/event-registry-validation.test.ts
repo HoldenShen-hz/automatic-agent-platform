@@ -51,6 +51,24 @@ test("validateEventPayload accepts valid skill:execution_started payload", () =>
   assert.equal(result.stepCount, 5);
 });
 
+test("validateEventPayload accepts valid dispatch:ticket_created payload", () => {
+  const result = validateEventPayload("dispatch:ticket_created", {
+    taskId: "task-dispatch-1",
+    ticketId: "ticket-1",
+    status: "created",
+  });
+
+  assert.equal(result.ticketId, "ticket-1");
+});
+
+test("validateEventPayload rejects recovery payload without correlation identifiers", () => {
+  assert.throws(() => {
+    validateEventPayload("recovery:repair_applied", {
+      reasonCode: "repair.applied",
+    });
+  });
+});
+
 test("validateEventPayload accepts valid skill:step_failed payload", () => {
   const result = validateEventPayload("skill:step_failed", {
     skillId: "skill-coder-v2",
@@ -123,6 +141,19 @@ test("validateEventPayload accepts oapeflir.view.run_lifecycle payload", () => {
 
   assert.equal(result.stage, "executing");
   assert.equal(result.runId, "run-abc");
+});
+
+test("validateEventPayload accepts oapeflir.phase.transition payload", () => {
+  const result = validateEventPayload("oapeflir.phase.transition", {
+    runId: "run-transition",
+    fromPhase: "observe",
+    toPhase: "assess",
+    taskId: "task-transition",
+    occurredAt: "2026-04-20T15:30:00.000Z",
+  });
+
+  assert.equal(result.fromPhase, "observe");
+  assert.equal(result.toPhase, "assess");
 });
 
 test("validateEventPayload accepts plugin:invocation_started payload", () => {
