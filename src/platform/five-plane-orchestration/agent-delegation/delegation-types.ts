@@ -177,6 +177,7 @@ export interface DelegationChainNode {
   depth: number;
   createdAt: string;
   parentDelegationId: string | null;
+  status: DelegationStatus;
 }
 
 export interface DelegationChain {

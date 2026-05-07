@@ -148,7 +148,7 @@ const LEGACY_WORKFLOW_TRANSITIONS: TransitionTable<WorkflowStatus> = {
 const LEGACY_SESSION_TRANSITIONS: TransitionTable<SessionStatus> = {
   open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
   streaming: ["awaiting_user", "completed", "failed", "cancelled", "open", "paused"],
-  awaiting_user: ["streaming", "completed", "failed", "cancelled"],
+  awaiting_user: ["streaming", "completed", "failed", "cancelled", "paused"],
   paused: ["streaming", "open", "completed", "failed", "cancelled"],
   completed: [],
   failed: [],

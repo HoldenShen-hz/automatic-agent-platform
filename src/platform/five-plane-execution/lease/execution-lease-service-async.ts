@@ -396,7 +396,7 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
-    if (activeLease.expiresAt <= occurredAt) {
+    if (new Date(activeLease.expiresAt) <= new Date(occurredAt)) {
       this.store.worker.closeExecutionLease({
         leaseId: activeLease.id,
         status: "expired",
@@ -433,7 +433,7 @@ export class ExecutionLeaseServiceAsync {
 
     // R17-09 fix: Final expiration check to prevent TOCTOU race condition
     // Lease could expire between the check at line 389 and reaching here
-    if (activeLease.expiresAt <= occurredAt) {
+    if (new Date(activeLease.expiresAt) <= new Date(occurredAt)) {
       this.store.worker.closeExecutionLease({
         leaseId: activeLease.id,
         status: "expired",
@@ -542,7 +542,7 @@ export class ExecutionLeaseServiceAsync {
 
     // R17-09 fix: Check if previous lease has expired before handover
     // Cannot create a new active lease from a dead/expired lease
-    if (previousLease.expiresAt <= occurredAt) {
+    if (new Date(previousLease.expiresAt) <= new Date(occurredAt)) {
       return {
         outcome: "blocked",
         reasonCode: "lease_expired",
@@ -599,7 +599,7 @@ export class ExecutionLeaseServiceAsync {
 
   private expireActiveLeaseIfNeeded(executionId: string, occurredAt: string, reasonCode: string): void {
     const activeLease = this.store.worker.getActiveExecutionLease(executionId);
-    if (activeLease && activeLease.expiresAt <= occurredAt) {
+    if (activeLease && new Date(activeLease.expiresAt) <= new Date(occurredAt)) {
       this.store.worker.closeExecutionLease({
         leaseId: activeLease.id,
         status: "expired",

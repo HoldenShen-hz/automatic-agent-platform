@@ -135,6 +135,7 @@ export class DelegationTracker {
       depth: delegation.depth,
       createdAt: delegation.createdAt,
       parentDelegationId: this.findParentDelegationId(parentAgentId, delegation.depth),
+      status: delegation.status,
     };
 
     chain.nodes = [...chain.nodes, node];
@@ -276,14 +277,22 @@ export class DelegationTracker {
     let totalDuration = 0;
     let durationCount = 0;
 
-    // This would normally come from delegation store
-    // R16-16 FIX: activeCount was always equal to total nodes (placeholder bug).
-    // The chain nodes don't have status - need to query delegation store for actual status.
-    // Proper fix requires DelegationChainNode to include status field from delegation record.
+    // Count nodes by status
     for (const node of chain.nodes) {
-      // TODO: Query delegation store for node.delegationId status
-      // For now, all nodes appear active until we track status in chain nodes
-      activeCount++;
+      switch (node.status) {
+        case "completed":
+          completedCount++;
+          break;
+        case "failed":
+        case "cancelled":
+        case "expired":
+        case "timed_out":
+          failedCount++;
+          break;
+        default:
+          activeCount++;
+          break;
+      }
     }
 
     return {

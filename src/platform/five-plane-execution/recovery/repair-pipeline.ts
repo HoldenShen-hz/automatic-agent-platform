@@ -38,6 +38,8 @@ export interface PipelineState {
   stageHistory: readonly PipelineStage[];
   startedAt: string;
   updatedAt: string;
+  escalateReason?: string;
+  failReason?: string;
 }
 
 export interface PipelineOptions {
@@ -265,6 +267,7 @@ export class RepairPipeline {
       ...this.state,
       escalated: true,
       currentStage: 'escalated',
+      escalateReason: reason,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -281,6 +284,7 @@ export class RepairPipeline {
     this.state = {
       ...this.state,
       currentStage: 'failed',
+      failReason: reason,
       updatedAt: new Date().toISOString(),
     };
   }

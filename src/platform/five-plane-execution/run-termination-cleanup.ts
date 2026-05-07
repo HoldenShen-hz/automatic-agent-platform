@@ -225,9 +225,13 @@ export class RunTerminationCleanup {
     },
     completedAt = request.requestedAt,
   ): Promise<RunTerminationCleanupResult> {
-    const ordered = [...request.resources].sort((left, right) => (
-      CLEANUP_ORDER.indexOf(left.resourceKind) - CLEANUP_ORDER.indexOf(right.resourceKind)
-    ));
+    const ordered = [...request.resources].sort((left, right) => {
+      const leftIndex = CLEANUP_ORDER.indexOf(left.resourceKind);
+      const rightIndex = CLEANUP_ORDER.indexOf(right.resourceKind);
+      // Unknown resourceKind (indexOf=-1) sorts last to preserve dependency order
+      return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex) -
+             (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex);
+    });
 
     const cleanedResourceIds: string[] = [];
     const skippedResourceIds: string[] = [];
@@ -540,9 +544,13 @@ export class RunTerminationCleanup {
     },
     completedAt = request.requestedAt,
   ): RunTerminationCleanupResult {
-    const ordered = [...request.resources].sort((left, right) => (
-      CLEANUP_ORDER.indexOf(left.resourceKind) - CLEANUP_ORDER.indexOf(right.resourceKind)
-    ));
+    const ordered = [...request.resources].sort((left, right) => {
+      const leftIndex = CLEANUP_ORDER.indexOf(left.resourceKind);
+      const rightIndex = CLEANUP_ORDER.indexOf(right.resourceKind);
+      // Unknown resourceKind (indexOf=-1) sorts last to preserve dependency order
+      return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex) -
+             (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex);
+    });
 
     const cleanedResourceIds: string[] = [];
     const skippedResourceIds: string[] = [];

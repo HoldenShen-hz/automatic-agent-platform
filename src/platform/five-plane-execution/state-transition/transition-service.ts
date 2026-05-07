@@ -190,7 +190,7 @@ const WORKFLOW_TRANSITIONS: Record<WorkflowStatus, readonly WorkflowStatus[]> = 
 const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
   open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
   streaming: ["awaiting_user", "completed", "failed", "cancelled", "open", "paused"],
-  awaiting_user: ["streaming", "completed", "failed", "cancelled"],
+  awaiting_user: ["streaming", "completed", "failed", "cancelled", "paused"],
   paused: ["streaming", "open", "completed", "failed", "cancelled"],
   completed: [],
   failed: [],
@@ -382,8 +382,16 @@ export class TaskTransitionService {
   public apply(command: TaskStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "task");
-    // Read current state to check if already in target status (noop case)
+    // Read current state to detect concurrent modification and self-transition
     const current = this.repository.getTask(command.entityId);
+    // R9-02 + R2161: Check fromStatus mismatch BEFORE noop check to catch:
+    // - Concurrent modifications (CAS failure)
+    // - Self-transitions (fromStatus === toStatus) which may hide idempotency bugs
+    if (current != null && current.status !== command.fromStatus) {
+      throw new Error(
+        `task.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
+      );
+    }
     if (current != null && current.status === command.toStatus) {
       // Task already in target status - treat as noop success
       return;
@@ -429,7 +437,7 @@ export class TaskTransitionService {
     // Legacy tier-1 event still emitted for backward compatibility with existing consumers
     this.repository.createTier1StatusEvent({
       taskId: command.entityId,
-      executionId: resolveExistingExecutionId(this.db, command.executionId),
+      executionId: resolveExistingExecutionId(this.repository, command.executionId),
       eventType: "task:status_changed",
       traceId: command.traceId,
       payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
@@ -567,6 +575,14 @@ export class WorkflowTransitionService {
       const current = this.repository.getWorkflowState(command.entityId);
       if (current == null) {
         throw new Error(`workflow.not_found:${command.entityId}`);
+      }
+      // R9-02 + R2161: Check fromStatus mismatch BEFORE noop check to catch:
+      // - Concurrent modifications (CAS failure)
+      // - Self-transitions (fromStatus === toStatus) which may hide idempotency bugs
+      if (current.status !== command.fromStatus) {
+        throw new Error(
+          `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
+        );
       }
       // If workflow is already in the target status, treat as noop success
       if (current.status === command.toStatus) {
@@ -1580,17 +1596,12 @@ function buildLegacyTransitionPlatformFactEvent(input: {
   }).event;
 }
 
-function resolveExistingExecutionId(db: AuthoritativeSqlDatabase, executionId: string | null): string | null {
+function resolveExistingExecutionId(repository: RuntimeLifecycleRepository, executionId: string | null): string | null {
   if (executionId == null) {
     return null;
   }
-  if (typeof db.connection.prepare !== "function") {
-    return executionId;
-  }
-  const row = db.connection.prepare("SELECT 1 FROM executions WHERE id = ? LIMIT 1").get(executionId) as
-    | Record<string, unknown>
-    | undefined;
-  return row == null ? null : executionId;
+  const execution = repository.getExecution(executionId);
+  return execution == null ? null : executionId;
 }
 
 /**
