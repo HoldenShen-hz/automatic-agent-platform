@@ -22,12 +22,20 @@ function createTestContext(overrides: Partial<{
   emittedBy: string;
   tier: BudgetTier;
   tierLimit: number;
+  watermarkAlert: { warningThreshold: number; criticalThreshold: number; hardCapThreshold: number };
+  autoThrottle: { enabled: boolean; throttleRatio: number; recoveryRatio: number };
+  crossRunPriority: { priority: number; weightFactor: number };
+  streamingSettle: { enabled: boolean; tokenInterval: number; timeIntervalMs: number };
 }> = {}): {
   tenantId: string;
   traceId: string;
   emittedBy: string;
   tier: BudgetTier;
   tierLimit: number;
+  watermarkAlert: { warningThreshold: number; criticalThreshold: number; hardCapThreshold: number };
+  autoThrottle: { enabled: boolean; throttleRatio: number; recoveryRatio: number };
+  crossRunPriority: { priority: number; weightFactor: number };
+  streamingSettle: { enabled: boolean; tokenInterval: number; timeIntervalMs: number };
 } {
   return {
     tenantId: "tenant-1",
@@ -35,6 +43,25 @@ function createTestContext(overrides: Partial<{
     emittedBy: "test",
     tier: BudgetTier.STEP,
     tierLimit: 1000,
+    watermarkAlert: {
+      warningThreshold: 0.8,
+      criticalThreshold: 0.95,
+      hardCapThreshold: 1.0,
+    },
+    autoThrottle: {
+      enabled: false,
+      throttleRatio: 1,
+      recoveryRatio: 1,
+    },
+    crossRunPriority: {
+      priority: 1,
+      weightFactor: 1,
+    },
+    streamingSettle: {
+      enabled: false,
+      tokenInterval: Number.MAX_SAFE_INTEGER,
+      timeIntervalMs: Number.MAX_SAFE_INTEGER,
+    },
     ...overrides,
   };
 }
@@ -224,6 +251,7 @@ test("BudgetAllocator.settle transitions reservation to settled status", () => {
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -245,6 +273,7 @@ test("BudgetAllocator.release transitions reservation to released status", () =>
   const released = allocator.release({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -270,6 +299,7 @@ test("BudgetAllocator.settle updates ledger accounting correctly with exact amou
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -295,6 +325,7 @@ test("BudgetAllocator.settle releases unused budget when actualAmount is less", 
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 45,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -325,6 +356,7 @@ test("BudgetAllocator.settle with evidence refs includes them in settlement", ()
     reservation: reserved.reservation,
     actualAmount: 30,
     evidenceRefs: [evidenceRef],
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -348,6 +380,7 @@ test("BudgetAllocator.settle creates settlement with final kind", () => {
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 20,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -420,6 +453,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     ledger,
     reservation: res1.reservation,
     actualAmount: 25,
+    expectedVersion: ledger.version,
     context: createTestContext(),
   });
   ledger = settled1.ledger;
@@ -429,6 +463,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     ledger,
     reservation: res2.reservation,
     actualAmount: 30,
+    expectedVersion: ledger.version,
     context: createTestContext(),
   });
 

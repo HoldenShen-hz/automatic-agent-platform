@@ -123,6 +123,45 @@ function createMockRepository(): MockRepository {
       };
     },
 
+    getTask(taskId: string): import("../../../../../src/platform/contracts/types/domain.js").TaskRecord | null {
+      const state = mockState.taskStatuses.get(taskId);
+      if (!state) return null;
+      return {
+        id: taskId,
+        divisionId: "division-1",
+        status: state.status,
+        createdAt: state.updatedAt,
+        updatedAt: state.updatedAt,
+      };
+    },
+
+    getSession(sessionId: string): import("../../../../../src/platform/contracts/types/domain.js").SessionRecord | null {
+      const state = mockState.sessionStatuses.get(sessionId);
+      if (!state) return null;
+      return {
+        id: sessionId,
+        taskId: "task-1",
+        status: state.status,
+        createdAt: state.updatedAt,
+        updatedAt: state.updatedAt,
+      };
+    },
+
+    getExecution(executionId: string): import("../../../../../src/platform/contracts/types/domain.js").ExecutionRecord | null {
+      const state = mockState.executionStatuses.get(executionId);
+      if (!state) return null;
+      return {
+        id: executionId,
+        taskId: "task-1",
+        status: state.status,
+        startedAt: state.startedAt ?? null,
+        finishedAt: state.finishedAt ?? null,
+        lastErrorCode: state.lastErrorCode ?? null,
+        createdAt: state.updatedAt,
+        updatedAt: state.updatedAt,
+      };
+    },
+
     updateTaskStatusCas(
       entityId: string,
       fromStatus: string,
