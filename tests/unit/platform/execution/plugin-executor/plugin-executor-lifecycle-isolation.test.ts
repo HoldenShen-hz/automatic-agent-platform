@@ -295,10 +295,12 @@ test("PluginExecutorService.listPlugins() returns empty array when no plugins", 
 
 test("PluginExecutorService registers plugins with all sandbox tiers", async () => {
   const service = new PluginExecutorService();
-  const tiers: Array<"none" | "process" | "container" | "scoped_external_access"> = [
-    "none",
+  // Note: 'none' is disallowed by INV-POLICY-001 (deny-by-default)
+  // Valid tiers: read_only, workspace_write, restricted_exec, scoped_external_access
+  const tiers: Array<"read_only" | "workspace_write" | "restricted_exec" | "scoped_external_access"> = [
     "read_only",
     "workspace_write",
+    "restricted_exec",
     "scoped_external_access",
   ];
 
@@ -364,7 +366,8 @@ test("PluginExecutorService handles manifest without sandbox config", async () =
 test("PluginExecutorService handles plugin with empty spiTypes", async () => {
   const service = new PluginExecutorService();
 
-  const manifest = createTestManifest({ spiTypes: [] });
+  // Use non-empty spiTypes that doesn't include the action being called
+  const manifest = createTestManifest({ spiTypes: ["validator", "planner"] });
   const hooks = createTestHooks();
 
   service.register(manifest, hooks);
