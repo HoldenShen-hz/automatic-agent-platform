@@ -338,7 +338,7 @@ test("RetryableApiClient.performVersionHandshake validates version compatibility
 
   try {
     await assert.rejects(
-      client.initialize(),
+      client.performVersionHandshake(),
       (err: unknown) => err instanceof ValidationError && err.message.includes("not compatible"),
     );
   } finally {

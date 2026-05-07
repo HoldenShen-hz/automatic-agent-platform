@@ -577,10 +577,6 @@ export class RegionHealthCheckService {
       return "degraded";
     }
 
-    if (latencyMs > config.thresholds.maxLatencyMs) {
-      return "degraded";
-    }
-
     return "healthy";
   }
 
