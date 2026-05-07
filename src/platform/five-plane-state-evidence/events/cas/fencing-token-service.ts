@@ -16,6 +16,9 @@
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
  */
 
+import type { SqliteDatabase } from "../../truth/sqlite/sqlite-database.js";
+import { SqliteFenceRepository } from "./sqlite-fence-repository.js";
+
 /**
  * Fence mode indicating shared (multiple holders) or exclusive (single holder) access.
  */
@@ -376,4 +379,19 @@ export class FencingTokenService {
   private pruneExpiredFences(now: Date = new Date()): void {
     this.fences.deleteExpired(now);
   }
+}
+
+/**
+ * Creates a SQLite-backed fencing token service for shared/durable fencing state.
+ *
+ * This is the recommended factory for multi-process deployments that share the
+ * same SQLite authoritative store. Multi-node distributed deployments may still
+ * require a stronger backend such as Redis or PostgreSQL, but this closes the
+ * process-local Map gap called out by R22-41.
+ */
+export function createSqliteFencingTokenService(
+  sqliteDb: SqliteDatabase,
+  nodeId: string = "default-node",
+): FencingTokenService {
+  return new FencingTokenService(nodeId, new SqliteFenceRepository(sqliteDb.connection));
 }

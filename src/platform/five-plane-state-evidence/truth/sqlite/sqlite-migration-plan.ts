@@ -65,7 +65,7 @@ import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-bala
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
 import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../five-plane-state-evidence/truth/runtime-physical-schema.js";
-import { CAS_RECORDS_SQL } from "./sqlite-migration-runtime-part4.js";
+import { CAS_RECORDS_SQL, FENCE_RECORDS_SQL } from "./sqlite-migration-runtime-part4.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -369,6 +369,8 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   // R16-37: Add extended DLQ columns for DlqService persistence
   defineMigration(52, "0052_extended_dlq_records", EXTENDED_DLQ_RECORDS_SQL),
   defineMigration(53, "0053_dlq_incident_linking", DLQ_INCIDENT_LINKING_SQL),
+  // R22-41: Persist fencing records to SQLite for multi-process/shared fencing
+  defineMigration(54, "0054_fence_records_persistence", FENCE_RECORDS_SQL),
 ] as const;
 
 /**

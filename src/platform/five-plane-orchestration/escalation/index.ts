@@ -62,20 +62,6 @@ export class EscalationService {
    * The escalation follows a strict priority order - higher tiers short-circuit lower ones.
    */
   public decide(input: EscalationRequest): EscalationDecision {
-    // Tier 1 (agent): Automated resolution - no escalation needed for low/medium risk
-    // Check this FIRST per spec escalation chain: agent → team → human → incident
-    const costThreshold = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
-    const needsTeamApproval = input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThreshold || input.riskLevel === "high";
-    if (!needsTeamApproval) {
-      return {
-        decision: "none",
-        reasonCode: "escalation.not_required",
-        requiresOperatorAction: false,
-      };
-    }
-
-    // Tier 2 (team): Team-level approval - requires human review but not emergency takeover
-    // Only reached if Tier 1 conditions not met (i.e., there IS a reason to escalate)
     const needsHumanTakeover = input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute");
     const needsIncidentPanic = input.riskLevel === "critical" && input.affectsProduction;
 
@@ -89,6 +75,19 @@ export class EscalationService {
         decision: "takeover",
         reasonCode: "escalation.human_takeover_required",
         requiresOperatorAction: true,
+      };
+    }
+
+    // Tier 2 (team): Team-level approval for production impact, policy cost threshold, or high risk.
+    const costThreshold = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
+    const needsTeamApproval = input.affectsProduction
+      || (input.estimatedCostUsd ?? 0) >= costThreshold
+      || input.riskLevel === "high";
+    if (!needsTeamApproval) {
+      return {
+        decision: "none",
+        reasonCode: "escalation.not_required",
+        requiresOperatorAction: false,
       };
     }
 

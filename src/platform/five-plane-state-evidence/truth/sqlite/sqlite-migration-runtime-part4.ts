@@ -18,3 +18,22 @@ CREATE TABLE IF NOT EXISTS cas_records (
 );
 CREATE INDEX IF NOT EXISTS idx_cas_records_version ON cas_records(version);
 `;
+
+/**
+ * Migration 54: Adds persistent fence records table for distributed fencing backends.
+ * R22-41: FencingTokenService needs a durable/shared repository instead of process-local memory.
+ */
+export const FENCE_RECORDS_SQL = `
+CREATE TABLE IF NOT EXISTS fence_records (
+  fence_key TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  owner_node_id TEXT NOT NULL,
+  mode TEXT NOT NULL CHECK (mode IN ('shared', 'exclusive')),
+  fence_token TEXT NOT NULL,
+  acquired_at TEXT NOT NULL,
+  expires_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_fence_records_execution_id ON fence_records(execution_id);
+CREATE INDEX IF NOT EXISTS idx_fence_records_owner_node_id ON fence_records(owner_node_id);
+CREATE INDEX IF NOT EXISTS idx_fence_records_expires_at ON fence_records(expires_at);
+`;

@@ -1,18 +1,23 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 type ListenerMap = Record<string, (event: any) => void>;
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(currentDir, "../../../../../../");
+
 function loadServiceWorker(overrides: {
   caches?: CacheStorage;
   fetch?: typeof fetch;
+  indexedDB?: { open(name: string, version?: number): unknown };
 } = {}) {
   const listeners: ListenerMap = {};
   const script = readFileSync(
-    resolve(process.cwd(), "ui/apps/web/public/aa-sw.js"),
+    resolve(repoRoot, "ui/apps/web/public/aa-sw.js"),
     "utf8",
   );
 
@@ -24,7 +29,7 @@ function loadServiceWorker(overrides: {
     Promise,
     setTimeout,
     clearTimeout,
-    indexedDB: {
+    indexedDB: overrides.indexedDB ?? {
       open() {
         throw new Error("indexeddb not implemented for this test");
       },
@@ -124,4 +129,121 @@ test("service worker fetch normalizes cache keys by stripping query strings", as
 
   assert.deepEqual(matchedKeys, ["https://example.com/assets/app.js"]);
   assert.deepEqual(storedKeys, ["https://example.com/assets/app.js"]);
+});
+
+test("service worker bypasses caching for API GET requests", () => {
+  let respondWithCalled = false;
+  let cacheOpened = false;
+  const listeners = loadServiceWorker({
+    caches: {
+      open: async () => {
+        cacheOpened = true;
+        throw new Error("api requests should not open runtime cache");
+      },
+    } as unknown as CacheStorage,
+    fetch: async () => {
+      throw new Error("fetch should not be intercepted for API requests");
+    },
+  });
+
+  listeners.fetch({
+    request: new Request("https://example.com/api/v1/tasks", { method: "GET" }),
+    respondWith() {
+      respondWithCalled = true;
+    },
+  });
+
+  assert.equal(respondWithCalled, false);
+  assert.equal(cacheOpened, false);
+});
+
+test("service worker sync replays offline queue and deletes successfully synced mutations", async () => {
+  const deletedIds: string[] = [];
+  const fetchCalls: Array<{ endpoint: string; method: string; body: string | null }> = [];
+  const db = {
+    objectStoreNames: {
+      contains(_name: string) {
+        return true;
+      },
+    },
+    createObjectStore(_name: string, _options: unknown) {
+      return undefined;
+    },
+    transaction(_name: string, mode: string) {
+      return {
+        objectStore() {
+          if (mode === "readonly") {
+            return {
+              getAll() {
+                const request: {
+                  error?: Error;
+                  result?: unknown[];
+                  onsuccess?: () => void;
+                  onerror?: () => void;
+                } = {};
+                queueMicrotask(() => {
+                  request.result = [
+                    { id: "mutation-1", endpoint: "/api/v1/tasks", method: "POST", body: { ok: true } },
+                    { id: "mutation-2", endpoint: "/api/v1/preferences", method: "PUT", body: { theme: "light" } },
+                  ];
+                  request.onsuccess?.();
+                });
+                return request;
+              },
+            };
+          }
+          return {
+            delete(id: string) {
+              deletedIds.push(id);
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const indexedDB = {
+    open(_name: string, _version?: number) {
+      const request: {
+        error?: Error;
+        result?: typeof db;
+        onsuccess?: () => void;
+        onerror?: () => void;
+        onupgradeneeded?: (event: { target: { result: typeof db } }) => void;
+      } = {};
+      queueMicrotask(() => {
+        request.result = db;
+        request.onsuccess?.();
+      });
+      return request;
+    },
+  };
+
+  const listeners = loadServiceWorker({
+    indexedDB,
+    fetch: async (input, init) => {
+      const endpoint = typeof input === "string" ? input : input.url;
+      fetchCalls.push({
+        endpoint,
+        method: init?.method ?? "GET",
+        body: typeof init?.body === "string" ? init.body : null,
+      });
+      return new Response("ok", { status: 200 });
+    },
+  });
+
+  let syncPromise: Promise<unknown> | undefined;
+  listeners.sync({
+    tag: "aa-sync-offline",
+    waitUntil(promise: Promise<unknown>) {
+      syncPromise = promise;
+    },
+  });
+  await syncPromise;
+
+  assert.deepEqual(fetchCalls, [
+    { endpoint: "/api/v1/tasks", method: "POST", body: JSON.stringify({ ok: true }) },
+    { endpoint: "/api/v1/preferences", method: "PUT", body: JSON.stringify({ theme: "light" }) },
+  ]);
+  assert.deepEqual(deletedIds, ["mutation-1", "mutation-2"]);
 });
