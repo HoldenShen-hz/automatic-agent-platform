@@ -308,7 +308,7 @@ test("validatePluginDefinition uses default description when missing", async () 
     }],
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
     dependencies: [] as string[],
-    security: { sandboxTier: "process", egressDomains: [] as string[] },
+    security: { sandboxTier: "read_only" as const, egressDomains: [] as string[] },
   };
 
   const validated = await validatePluginDefinition(original);

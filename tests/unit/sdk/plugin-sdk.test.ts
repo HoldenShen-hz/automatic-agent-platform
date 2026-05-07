@@ -45,7 +45,7 @@ function createMinimalPlugin(overrides = {}): PluginDefinition {
     },
     dependencies: [] as string[],
     security: {
-      sandboxTier: "process" as const,
+      sandboxTier: "read_only" as const,
       egressDomains: [] as string[],
     },
     ...overrides,
