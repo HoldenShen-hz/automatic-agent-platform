@@ -100,12 +100,6 @@ function normalizeAction(type: LegacyStateCommandType): StateCommandAction {
   }
 }
 
-export function createStateCommand<TPayload>(
-  _input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
-): StateCommand<TPayload> {
-  // R16-79: StateCommand is deprecated - throw UnimplementedError
-  throw new UnimplementedError("DEPRECATED_STATE_COMMAND", "createStateCommand is no longer supported. StateCommand is deprecated. Use canonical contracts from executable-contracts instead.");
-}
 
 // =============================================================================
 // Re-exports from executable-contracts (canonical per §5.3)

@@ -1,7 +1,4 @@
-import { ValidationError } from "../errors.js";
-import { newId, nowIso } from "../types/ids.js";
 import type { PlanGraphBundle } from "../executable-contracts/index.js";
-import { assertNotDeprecated } from "../index.js";
 
 // Re-export canonical PlanGraphBundle from executable-contracts for backward compatibility
 export {
@@ -38,33 +35,5 @@ export interface ExecutionPlanStep {
   requiresApproval: boolean;
 }
 
-/**
- * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
- * This type alias is retained for backward compatibility only. The createExecutionPlan factory
- * throws an error to prevent usage - migrate to PlanGraphBundle.
- *
- * Legacy fields (planId, taskId, tenantId, version, steps, createdAt) are NOT carried forward
- * because the graph-based execution model uses PlanGraphBundle's structure instead.
- *
- * Root cause: Two parallel execution plan contracts existed without proper deprecation.
- * Canonical replacement is PlanGraphBundle which uses graph-based structure (nodes/edges)
- * vs legacy linear steps[] structure.
- */
-export type ExecutionPlan = PlanGraphBundle;
-
-/**
- * @deprecated createExecutionPlan is deprecated per §4.4.
- * Use createPlanGraphBundle from executable-contracts instead.
- */
-export function createExecutionPlan(input: Omit<ExecutionPlan, "planId" | "createdAt"> & {
-  planId?: string;
-  createdAt?: string;
-}): ExecutionPlan {
-  void input;
-  void newId;
-  void nowIso;
-  throw new ValidationError(
-    "execution_plan.legacy_contract_forbidden",
-    "ExecutionPlan is deprecated. Use PlanGraphBundle from executable-contracts instead.",
-  );
-}
+// ExecutionPlan type alias removed per R16-93 — PlanGraphBundle is the canonical type (ADR-109).
+// Factory is forbidden per ADR-109 — use createPlanGraphBundle from executable-contracts instead.

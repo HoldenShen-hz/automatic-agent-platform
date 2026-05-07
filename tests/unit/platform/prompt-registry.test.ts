@@ -14,14 +14,15 @@ test("PromptTemplateRegistryService.registerTemplate creates a new template", ()
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "test-template",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     owner: "test-owner",
     fixedPrefix: "You are a helpful assistant",
     domainBlock: "general",
   });
 
   assert.equal(result.templateKey, "test-template");
-  assert.equal(result.version, "1.0.0");
+  assert.equal(result.version, 1);
   assert.equal(result.owner, "test-owner");
   assert.equal(result.channel, "system");
   assert.equal(result.fixedPrefix, "You are a helpful assistant");
@@ -35,7 +36,8 @@ test("PromptTemplateRegistryService.registerTemplate throws on duplicate version
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     owner: "test-owner",
     fixedPrefix: "You are a helpful assistant",
     domainBlock: "general",
@@ -45,7 +47,8 @@ test("PromptTemplateRegistryService.registerTemplate throws on duplicate version
     () =>
       service.registerTemplate({
         templateKey: "test-template",
-        version: "1.0.0",
+        version: 1,
+        displayVersion: "v1.0.0",
         owner: "test-owner",
         fixedPrefix: "Different prefix",
         domainBlock: "general",
@@ -58,7 +61,7 @@ test("PromptTemplateRegistryService.registerTemplate with channel option", () =>
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "user-template",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     channel: "user",
     fixedPrefix: "User prompt",
@@ -72,7 +75,7 @@ test("PromptTemplateRegistryService.registerTemplate with variableSpecs", () => 
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-with-vars",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     fixedPrefix: "Hello {{name}}",
     domainBlock: "general",
@@ -92,7 +95,7 @@ test("PromptTemplateRegistryService.registerTemplate dedupes variableSpecs by ke
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-dedup",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
@@ -113,7 +116,7 @@ test("PromptTemplateRegistryService.registerTemplate with compatibilityTags", ()
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-with-tags",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
@@ -131,7 +134,7 @@ test("PromptTemplateRegistryService.registerTemplate throws on empty templateKey
     () =>
       service.registerTemplate({
         templateKey: "   ",
-        version: "1.0.0",
+        version: 1,
         owner: "test-owner",
         fixedPrefix: "Hello",
         domainBlock: "general",
@@ -140,13 +143,13 @@ test("PromptTemplateRegistryService.registerTemplate throws on empty templateKey
   );
 });
 
-test("PromptTemplateRegistryService.registerTemplate throws on empty version", () => {
+test("PromptTemplateRegistryService.registerTemplate throws on invalid version", () => {
   const service = new PromptTemplateRegistryService();
   assert.throws(
     () =>
       service.registerTemplate({
         templateKey: "test",
-        version: "",
+        version: 0,
         owner: "test-owner",
         fixedPrefix: "Hello",
         domainBlock: "general",
@@ -159,21 +162,22 @@ test("PromptTemplateRegistryService.getTemplate returns registered template", ()
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
 
-  const result = service.getTemplate("test-template", "1.0.0");
+  const result = service.getTemplate("test-template", 1);
   assert.ok(result !== null);
   assert.equal(result!.templateKey, "test-template");
-  assert.equal(result!.version, "1.0.0");
+  assert.equal(result!.version, 1);
 });
 
 test("PromptTemplateRegistryService.getTemplate returns null for non-existent template", () => {
   const service = new PromptTemplateRegistryService();
-  const result = service.getTemplate("non-existent", "1.0.0");
+  const result = service.getTemplate("non-existent", 1);
   assert.equal(result, null);
 });
 
@@ -181,13 +185,14 @@ test("PromptTemplateRegistryService.getTemplate returns null for non-existent ve
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
 
-  const result = service.getTemplate("test-template", "2.0.0");
+  const result = service.getTemplate("test-template", 2);
   assert.equal(result, null);
 });
 
@@ -195,14 +200,16 @@ test("PromptTemplateRegistryService.listVersions returns all versions sorted", (
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
   service.registerTemplate({
     templateKey: "test-template",
-    version: "2.0.0",
+    version: 2,
+    displayVersion: "v2.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello v2",
     domainBlock: "general",
@@ -210,22 +217,22 @@ test("PromptTemplateRegistryService.listVersions returns all versions sorted", (
 
   const versions = service.listVersions("test-template");
   assert.equal(versions.length, 2);
-  assert.equal(versions[0]!.version, "1.0.0");
-  assert.equal(versions[1]!.version, "2.0.0");
+  assert.equal(versions[0]!.version, 1);
+  assert.equal(versions[1]!.version, 2);
 });
 
 test("PromptTemplateRegistryService.listTemplates returns all templates", () => {
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "template-1",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
   service.registerTemplate({
     templateKey: "template-2",
-    version: "1.0.0",
+    version: 1,
     owner: "test-owner",
     fixedPrefix: "Hi",
     domainBlock: "general",
@@ -571,10 +578,10 @@ test("HierarchicalPromptRegistryService.registerBundle throws on empty name", ()
   );
 });
 
-test("HierarchicalPromptRegistryService.registerBundle throws on empty version", () => {
+test("HierarchicalPromptRegistryService.registerBundle throws on invalid version", () => {
   const service = new HierarchicalPromptRegistryService();
   assert.throws(
-    () => service.registerBundle(createValidBundleInput({ version: "" }), "global"),
+    () => service.registerBundle(createValidBundleInput({ version: 0 }), "global"),
     ValidationError,
   );
 });

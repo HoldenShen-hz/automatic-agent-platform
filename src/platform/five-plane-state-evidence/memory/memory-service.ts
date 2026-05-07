@@ -48,6 +48,8 @@ import {
 import { MemoryError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
+const memoryServiceLogger = new StructuredLogger({ retentionLimit: 100 });
+
 /**
  * Input for creating a memory via remember()
  */
@@ -245,7 +247,7 @@ export class MemoryService {
         // NOTE: The report is generated and available for logging/auditing per §29.2
         // In production, this should be sent to a logging/metrics system
         if (evictedRecordIds.length > 0) {
-          StructuredLogger.warn("memory.working_layer_eviction", {
+          memoryServiceLogger.warn("memory.working_layer_eviction", {
             report,
             evictedCount: evictedRecordIds.length,
             remainingCount: workingMemories.length - evictedRecordIds.length,

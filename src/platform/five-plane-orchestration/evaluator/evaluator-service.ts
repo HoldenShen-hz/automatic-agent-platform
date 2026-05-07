@@ -104,45 +104,68 @@ export class EvaluatorService {
    * - Risk boundary (current risk vs baseline)
    * - Budget adherence (spent vs reserved)
    * - Timing SLO (actual vs expected duration)
+   *
+   * @param params.planGraphBundle - The plan graph bundle to evaluate against
+   * @param params.feedback - Aggregated feedback signals from execution
+   * @param params.actualDurationMs - Actual execution duration
+   * @param params.actualCost - Actual cost consumed
+   * @param params.nodeRunId - Optional: filter feedback to a specific node/run
+   *                           for workflow-aware evaluation. When provided,
+   *                           only signals with matching nodeRunId are considered.
+   *                           This enables per-node quality assessment in
+   *                           parallel subgraph execution scenarios.
    */
   public evaluate(params: {
     planGraphBundle: PlanGraphBundle;
     feedback: FeedbackBatch;
     actualDurationMs?: number;
     actualCost?: number;
+    nodeRunId?: string;
   }): EvaluationReport {
-    const { planGraphBundle, feedback, actualDurationMs, actualCost } = params;
+    const { planGraphBundle, feedback, actualDurationMs, actualCost, nodeRunId } = params;
     const findings: EvaluatorFinding[] = [];
 
+    // Filter signals to the specific node if nodeRunId provided
+    // R11-02 FIX: Workflow-aware evaluation - filter signals by nodeRunId
+    // to enable per-node quality assessment in parallel subgraph execution
+    const filteredSignals = nodeRunId
+      ? feedback.signals.filter((s) => s.nodeRunId === nodeRunId)
+      : feedback.signals;
+
+    const nodeFilteredFeedback: FeedbackBatch = {
+      ...feedback,
+      signals: filteredSignals,
+    };
+
     // Evaluate quality gate
-    const qualityResult = this.evaluateQuality(feedback);
+    const qualityResult = this.evaluateQuality(nodeFilteredFeedback);
     if (!qualityResult.passed) {
       findings.push({
         findingId: newId("eval_find"),
         category: "quality",
         severity: qualityResult.severity,
-        message: `Quality gate failed: ${qualityResult.message}`,
+        message: `${qualityResult.message}${nodeRunId ? ` (node: ${nodeRunId})` : ""}`,
       });
     }
 
     // Evaluate goal deviation
-    const deviationResult = this.evaluateGoalDeviation(planGraphBundle, feedback);
+    const deviationResult = this.evaluateGoalDeviation(planGraphBundle, nodeFilteredFeedback);
     if (deviationResult.hasDeviation) {
       findings.push({
         findingId: newId("eval_find"),
         category: "deviation",
         severity: deviationResult.severity,
-        message: deviationResult.message,
+        message: `${deviationResult.message}${nodeRunId ? ` (node: ${nodeRunId})` : ""}`,
       });
     }
 
     // Evaluate risk boundary
-    const riskResult = this.evaluateRiskBoundary(planGraphBundle, feedback);
+    const riskResult = this.evaluateRiskBoundary(planGraphBundle, nodeFilteredFeedback);
     findings.push({
       findingId: newId("eval_find"),
       category: "risk",
       severity: riskResult.severity,
-      message: riskResult.message,
+      message: `${riskResult.message}${nodeRunId ? ` (node: ${nodeRunId})` : ""}`,
     });
 
     // Evaluate budget adherence
@@ -168,7 +191,7 @@ export class EvaluatorService {
     }
 
     // Determine overall decision
-    const decision = this.determineDecision(findings, feedback);
+    const decision = this.determineDecision(findings, nodeFilteredFeedback);
     const passed = decision === "accept";
     const qualityScore = this.calculateQualityScore(qualityResult, riskResult, budgetResult, timingResult);
 

@@ -2,6 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import type { Plugin } from "vite";
+import {
+  selectManualChunk,
+  WEB_BUILD_TARGET,
+  WEB_CHUNK_WARNING_LIMIT_KB,
+  WEB_MINIFY_MODE,
+} from "./build-config";
 
 /**
  * Vite plugin that injects CSP HTTP headers for production deployments.
@@ -48,38 +54,16 @@ export default defineConfig({
   build: {
     // Issue #1933 P1: Add explicit build target for consistent browser compatibility.
     // Without this, Vite defaults to esnext which may cause issues with older browsers.
-    target: "es2022",
+    target: WEB_BUILD_TARGET,
     sourcemap: false,
     // Issue #1939 P2: No terser/esbuild minify config - default behavior is ambiguous.
     // Explicitly set minify to esbuild (Vite default) to ensure consistent production builds.
-    minify: "esbuild",
-    // Issue #1934 P1: maxJsChunkBytes 550KB was 2.75x spec 200KB - enforce chunk size limits.
-    // Per §7.3.1 perf budget: main<200KB per chunk gzipped.
-    maxChunkSize: 200 * 1024,
-    maxEdgeWorkerResponseSize: 200 * 1024,
+    minify: WEB_MINIFY_MODE,
+    // Issue #1934 P1: keep the build warning threshold aligned with the 200KB raw chunk budget.
+    chunkSizeWarningLimit: WEB_CHUNK_WARNING_LIMIT_KB,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes("node_modules/reactflow")) {
-            return "flow-canvas";
-          }
-          if (id.includes("react-router-dom") || id.includes("/react/") || id.includes("/react-dom/")) {
-            return "react";
-          }
-          if (id.includes("@tanstack/react-query") || id.includes("/zustand/")) {
-            return "query";
-          }
-          if (id.includes("/packages/features/")) {
-            // R22-25 fix: Split features into individual chunks per §10 bundle size requirement
-            // Extract feature name from path like @aa/feature-dashboard or /packages/features/dashboard
-            const match = id.match(/feature[-\/](\w+)/);
-            if (match) {
-              return `feature-${match[1]}`;
-            }
-            return "features-misc";
-          }
-          return undefined;
-        },
+        manualChunks: selectManualChunk,
       },
     },
   },

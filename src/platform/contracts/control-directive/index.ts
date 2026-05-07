@@ -23,30 +23,6 @@ export interface ControlDirective {
   createdAt: string;
 }
 
-/**
- * @deprecated ControlDirective factory is deprecated per §4.3.
- * Use runtime decision or governance directives from executable-contracts instead.
- */
-export function createControlDirective(input: Omit<ControlDirective, "directiveId" | "createdAt"> & {
-  directiveId?: string;
-  createdAt?: string;
-}): ControlDirective {
-  void input;
-  void assertRequired;
-  void newId;
-  void nowIso;
-  throw new ValidationError(
-    "platform_contracts.legacy_control_directive_forbidden",
-    "ControlDirective is deprecated. Use OperationalDirective or DecisionDirective from executable-contracts instead.",
-  );
-}
-
-function assertRequired(value: string, code: string): void {
-  if (value.trim().length === 0) {
-    throw new ValidationError(code, "Control directive field is required.");
-  }
-}
-
 // =============================================================================
 // Canonical Directive Types (P2 → P3/P4 per §4.3)
 // =============================================================================

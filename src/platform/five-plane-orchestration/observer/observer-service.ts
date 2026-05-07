@@ -26,6 +26,11 @@ export interface ContextSnapshot {
   readonly relevantHistory: readonly string[];
   readonly knowledgeRefs: readonly string[];
   readonly capturedAt: number;
+  // R11-02 FIX: Optional workflow hierarchy context for nested subgraph tracking
+  readonly workflowContext?: {
+    readonly parentNodeRunId?: string;
+    readonly subgraphNodeIds?: readonly string[];
+  };
 }
 
 export interface ObservationBundle {
@@ -53,6 +58,18 @@ export class ObserverService {
    * history, and knowledge sources to produce an ObservationBundle.
    *
    * §13.2: Observe stage responsibility - signal collection and context assembly
+   *
+   * @param params.taskId - The task ID to observe
+   * @param params.taskGoal - The task goal/objective
+   * @param params.taskInputs - Input parameters for the task
+   * @param params.environmentState - Current environment state
+   * @param params.relevantHistory - Prior execution history references
+   * @param params.knowledgeRefs - Knowledge base references
+   * @param params.parentNodeRunId - Optional: parent node/run context for workflow-aware observation.
+   *                                  When provided, enables subgraph execution tracking and
+   *                                  proper hierarchical correlation in nested workflow scenarios.
+   * @param params.subgraphNodeIds - Optional: IDs of subgraph nodes within this observation scope.
+   *                                  Used to establish parent-child relationships in nested workflows.
    */
   public observe(params: {
     taskId: string;
@@ -61,6 +78,8 @@ export class ObserverService {
     environmentState?: Record<string, unknown>;
     relevantHistory?: readonly string[];
     knowledgeRefs?: readonly string[];
+    parentNodeRunId?: string;
+    subgraphNodeIds?: readonly string[];
   }): ObservationBundle {
     const signals = this.collectSignals(params);
     const contextSnapshot = this.assembleContextSnapshot(params);
@@ -82,6 +101,8 @@ export class ObserverService {
     environmentState?: Record<string, unknown>;
     relevantHistory?: readonly string[];
     knowledgeRefs?: readonly string[];
+    parentNodeRunId?: string;
+    subgraphNodeIds?: readonly string[];
   }): readonly ObservationSignal[] {
     const signals: ObservationSignal[] = [];
 
@@ -93,6 +114,28 @@ export class ObserverService {
       data: { goal: params.taskGoal, inputs: params.taskInputs },
       timestamp: Date.now(),
     });
+
+    // R11-02 FIX: Workflow-aware observation - include parent/child relationships
+    // to enable hierarchical tracking in nested subgraph execution scenarios
+    if (params.parentNodeRunId) {
+      signals.push({
+        signalId: newId("obs_sig"),
+        source: "context",
+        type: "parent_workflow_context",
+        data: { parentNodeRunId: params.parentNodeRunId },
+        timestamp: Date.now(),
+      });
+    }
+
+    if (params.subgraphNodeIds?.length) {
+      signals.push({
+        signalId: newId("obs_sig"),
+        source: "context",
+        type: "subgraph_nodes",
+        data: { subgraphNodeIds: params.subgraphNodeIds },
+        timestamp: Date.now(),
+      });
+    }
 
     // Context signals
     if (params.environmentState) {
@@ -136,7 +179,18 @@ export class ObserverService {
     environmentState?: Record<string, unknown>;
     relevantHistory?: readonly string[];
     knowledgeRefs?: readonly string[];
+    parentNodeRunId?: string;
+    subgraphNodeIds?: readonly string[];
   }): ContextSnapshot {
+    // R11-02 FIX: Include workflow hierarchy info in context snapshot
+    const workflowContext: Record<string, unknown> = {};
+    if (params.parentNodeRunId) {
+      workflowContext.parentNodeRunId = params.parentNodeRunId;
+    }
+    if (params.subgraphNodeIds?.length) {
+      workflowContext.subgraphNodeIds = params.subgraphNodeIds;
+    }
+
     return {
       snapshotId: newId("ctx_snap"),
       taskGoal: params.taskGoal,
@@ -145,6 +199,8 @@ export class ObserverService {
       relevantHistory: params.relevantHistory ?? [],
       knowledgeRefs: params.knowledgeRefs ?? [],
       capturedAt: Date.now(),
+      // R11-02 FIX: Include workflow hierarchy in snapshot data
+      ...(Object.keys(workflowContext).length > 0 && { workflowContext }),
     };
   }
 
