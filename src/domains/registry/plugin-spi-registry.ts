@@ -56,7 +56,7 @@ function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
     spiTypes: [plugin.spiType],
     extensionKind: plugin.spiType === "adapter" ? "external_adapter" : "domain_plugin",
     trustLevel: "trusted",
-    publicSdkSurface: "core/domain-registry/plugin-spi",
+    publicSdkSurface: ["core/domain-registry/plugin-spi"],
     settingsSchema: {},
   });
 }
