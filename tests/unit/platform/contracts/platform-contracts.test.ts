@@ -24,13 +24,12 @@ import {
   type PlatformPrincipal,
   type EvidenceRecord,
   type ProjectionUpdate,
-  type SideEffectExpectation,
-  type ExecutionPlanBudget,
-  type ExecutionReceiptErrorDetail,
-  type StateCommand,
-  type StateCommandType,
-  createStateCommand,
 } from "../../../../src/platform/contracts/types/platform-contracts.js";
+import {
+  createStateCommand,
+  type StateCommand,
+  type LegacyStateCommandType as StateCommandType,
+} from "../../../../src/platform/contracts/state-command/index.js";
 import {
   LEGACY_CONTRACT_NAMES,
   emitDeprecationWarning,
@@ -367,58 +366,6 @@ test("platform-contracts: StateCommandType union contains expected values", () =
 
     assert.equal(command.type, type);
   }
-});
-
-// =============================================================================
-// SideEffectExpectation Tests (Deprecated)
-// =============================================================================
-
-test("platform-contracts: SideEffectExpectation has correct shape", () => {
-  // Deprecated type but should still be accessible
-  const expectation: SideEffectExpectation = {
-    effectId: "effect_123",
-    category: "write",
-    targetRef: "resource_abc",
-    requiredReceipt: true,
-    reversible: false,
-  };
-
-  assert.equal(expectation.effectId, "effect_123");
-  assert.equal(expectation.category, "write");
-  assert.equal(expectation.requiredReceipt, true);
-  assert.equal(expectation.reversible, false);
-});
-
-// =============================================================================
-// ExecutionPlanBudget Tests
-// =============================================================================
-
-test("platform-contracts: ExecutionPlanBudget has correct shape", () => {
-  const budget: ExecutionPlanBudget = {
-    maxSteps: 10,
-    maxDurationMs: 60000,
-    maxCost: 1000,
-  };
-
-  assert.equal(budget.maxSteps, 10);
-  assert.equal(budget.maxDurationMs, 60000);
-  assert.equal(budget.maxCost, 1000);
-});
-
-// =============================================================================
-// ExecutionReceiptErrorDetail Tests
-// =============================================================================
-
-test("platform-contracts: ExecutionReceiptErrorDetail has correct shape", () => {
-  const error: ExecutionReceiptErrorDetail = {
-    code: "ERR_TASK_FAILED",
-    message: "Task execution failed",
-    retryable: true,
-  };
-
-  assert.equal(error.code, "ERR_TASK_FAILED");
-  assert.equal(error.message, "Task execution failed");
-  assert.equal(error.retryable, true);
 });
 
 // =============================================================================

@@ -15,110 +15,12 @@ import {
   createRequestEnvelope,
   createEvidenceRecord,
   createProjectionUpdate,
-  createStateCommand,
-  type PlatformPrincipal,
-  type EvidenceRecord,
-  type ProjectionUpdate,
-  type SideEffectExpectation,
-  type ExecutionPlanBudget,
-  type ExecutionReceiptErrorDetail,
-  type StateCommand,
-  type StateCommandType,
 } from "../../../../src/platform/contracts/types/platform-contracts.js";
-
-// =============================================================================
-// SideEffectExpectation Tests
-// =============================================================================
-
-test("platform-contracts: SideEffectExpectation structure", () => {
-  const expectation: SideEffectExpectation = {
-    effectId: "effect_123",
-    category: "external_api",
-    targetRef: "api_endpoint_1",
-    requiredReceipt: true,
-    reversible: false,
-  };
-
-  assert.equal(expectation.effectId, "effect_123");
-  assert.equal(expectation.category, "external_api");
-  assert.equal(expectation.requiredReceipt, true);
-  assert.equal(expectation.reversible, false);
-});
-
-test("platform-contracts: SideEffectExpectation categories", () => {
-  const categories: SideEffectExpectation["category"][] = [
-    "read",
-    "write",
-    "notification",
-    "artifact",
-    "external_api",
-  ];
-
-  for (const category of categories) {
-    const expectation: SideEffectExpectation = {
-      effectId: `effect_${category}`,
-      category,
-      targetRef: "ref",
-      requiredReceipt: false,
-      reversible: true,
-    };
-    assert.equal(expectation.category, category);
-  }
-});
-
-// =============================================================================
-// ExecutionPlanBudget Tests
-// =============================================================================
-
-test("platform-contracts: ExecutionPlanBudget structure", () => {
-  const budget: ExecutionPlanBudget = {
-    maxSteps: 100,
-    maxDurationMs: 300000,
-    maxCost: 10.50,
-  };
-
-  assert.equal(budget.maxSteps, 100);
-  assert.equal(budget.maxDurationMs, 300000);
-  assert.equal(budget.maxCost, 10.50);
-});
-
-test("platform-contracts: ExecutionPlanBudget allows zero values", () => {
-  const budget: ExecutionPlanBudget = {
-    maxSteps: 0,
-    maxDurationMs: 0,
-    maxCost: 0,
-  };
-
-  assert.equal(budget.maxSteps, 0);
-  assert.equal(budget.maxDurationMs, 0);
-  assert.equal(budget.maxCost, 0);
-});
-
-// =============================================================================
-// ExecutionReceiptErrorDetail Tests
-// =============================================================================
-
-test("platform-contracts: ExecutionReceiptErrorDetail structure", () => {
-  const error: ExecutionReceiptErrorDetail = {
-    code: "ERR_TASK_FAILED",
-    message: "Task execution failed",
-    retryable: true,
-  };
-
-  assert.equal(error.code, "ERR_TASK_FAILED");
-  assert.equal(error.message, "Task execution failed");
-  assert.equal(error.retryable, true);
-});
-
-test("platform-contracts: ExecutionReceiptErrorDetail non-retryable", () => {
-  const error: ExecutionReceiptErrorDetail = {
-    code: "ERR_PERMANENT",
-    message: "Cannot recover from this error",
-    retryable: false,
-  };
-
-  assert.equal(error.retryable, false);
-});
+import {
+  createStateCommand,
+  type StateCommand,
+  type LegacyStateCommandType as StateCommandType,
+} from "../../../../src/platform/contracts/state-command/index.js";
 
 // =============================================================================
 // StateCommand Tests
