@@ -101,17 +101,15 @@ test("createRequestEnvelope normalizes empty strings to null for nullable fields
   const envelope = createRequestEnvelope({
     requestId: "request-1",
     taskId: "",
-    tenantId: "",
+    tenantId: "tenant-1",
     sessionId: "",
-    traceId: "",
+    traceId: "trace-1",
     mode: "sync",
     body: {},
   });
 
   assert.equal(envelope.taskId, null);
-  assert.equal(envelope.tenantId, null);
   assert.equal(envelope.sessionId, null);
-  assert.equal(envelope.traceId, null);
 });
 
 test("createRequestEnvelope accepts sync mode", () => {

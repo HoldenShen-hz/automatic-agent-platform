@@ -629,10 +629,10 @@ test("platform-contracts: ProjectionUpdate version is a number", () => {
   assert.equal(projection.version, 0);
 });
 
-test("platform-contracts: ContractEnvelope version is a string", () => {
+test("platform-contracts: ContractEnvelope schemaVersion is a string", () => {
   const envelope = createContractEnvelope({
     payload: { test: true },
   });
 
-  assert.equal(typeof envelope.version, "string");
+  assert.equal(typeof envelope.schemaVersion, "string");
 });

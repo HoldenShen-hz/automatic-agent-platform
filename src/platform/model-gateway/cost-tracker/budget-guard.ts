@@ -83,6 +83,37 @@ export interface BudgetGuardCascadeResult extends BudgetGuardResult {
   readonly warningScopes: readonly ("task" | "pack" | "platform" | "daily" | "monthly")[];
 }
 
+/**
+ * Result of step constraint evaluation (R2-06).
+ * Evaluates maxSteps, maxDurationMs, and maxModelTokens limits.
+ */
+export interface StepConstraintResult {
+  readonly allowed: boolean;
+  readonly reasonCode: string | null;
+  /** Remaining steps allowed */
+  readonly remainingSteps: number;
+  /** Remaining duration allowed in ms */
+  readonly remainingDurationMs: number;
+  /** Remaining model tokens allowed */
+  readonly remainingModelTokens: number;
+  /** Which constraint was violated, if any */
+  readonly violatedConstraint: "maxSteps" | "maxDurationMs" | "maxModelTokens" | null;
+  /** Which constraints are approaching limit (>= 80%) */
+  readonly warningConstraints: readonly ("maxSteps" | "maxDurationMs" | "maxModelTokens")[];
+}
+
+/**
+ * Current execution state for step constraint evaluation (R2-06).
+ */
+export interface ExecutionStateForConstraint {
+  /** Current step count in this execution */
+  readonly currentSteps: number;
+  /** Elapsed time since execution started in milliseconds */
+  readonly elapsedDurationMs: number;
+  /** Current model token count used */
+  readonly currentModelTokens: number;
+}
+
 export interface BudgetReservationRequest {
   readonly policy: BudgetPolicy;
   readonly spend: ExecutionChainBudgetSpend;
@@ -233,6 +264,77 @@ export class BudgetGuard {
       projectedMonthlyCostUsd: projectedMonthly,
       violatedScope: null,
       warningScopes,
+    };
+  }
+
+  /**
+   * R2-06: Evaluates step constraint limits (maxSteps, maxDurationMs, maxModelTokens).
+   *
+   * These constraints are independent of cost-based evaluation and check
+   * the execution state against configured limits per §18.3.
+   *
+   * @param input.policy - Budget policy with step constraint limits
+   * @param input.executionState - Current execution state (steps, duration, tokens)
+   * @param input.nextStepCostTokens - Estimated tokens for next step (optional, for lookahead)
+   * @returns StepConstraintResult with allowed status and constraint details
+   */
+  public evaluateStepConstraints(input: {
+    policy: BudgetPolicy;
+    executionState: ExecutionStateForConstraint;
+    nextStepCostTokens?: number;
+  }): StepConstraintResult {
+    const { policy, executionState, nextStepCostTokens = 0 } = input;
+    const { currentSteps, elapsedDurationMs, currentModelTokens } = executionState;
+
+    // Calculate projected values
+    const projectedSteps = currentSteps + 1; // Always check if we can take at least one more step
+    const projectedDurationMs = elapsedDurationMs; // Duration doesn't change before step
+    const projectedModelTokens = currentModelTokens + nextStepCostTokens;
+
+    // Calculate remaining
+    const remainingSteps = Number.isFinite(policy.maxSteps) ? Math.max(0, policy.maxSteps - projectedSteps) : Number.MAX_SAFE_INTEGER;
+    const remainingDurationMs = Number.isFinite(policy.maxDurationMs) ? Math.max(0, policy.maxDurationMs - projectedDurationMs) : Number.MAX_SAFE_INTEGER;
+    const remainingModelTokens = Number.isFinite(policy.maxModelTokens) ? Math.max(0, policy.maxModelTokens - projectedModelTokens) : Number.MAX_SAFE_INTEGER;
+
+    // Check for violations
+    const violations: ("maxSteps" | "maxDurationMs" | "maxModelTokens")[] = [];
+    if (Number.isFinite(policy.maxSteps) && projectedSteps > policy.maxSteps) {
+      violations.push("maxSteps");
+    }
+    if (Number.isFinite(policy.maxDurationMs) && projectedDurationMs > policy.maxDurationMs) {
+      violations.push("maxDurationMs");
+    }
+    if (Number.isFinite(policy.maxModelTokens) && projectedModelTokens > policy.maxModelTokens) {
+      violations.push("maxModelTokens");
+    }
+
+    // Check for warnings (approaching limit at 80% threshold)
+    const warningConstraints: ("maxSteps" | "maxDurationMs" | "maxModelTokens")[] = [];
+    if (Number.isFinite(policy.maxSteps) && projectedSteps >= policy.maxSteps * policy.warnAtRatio) {
+      warningConstraints.push("maxSteps");
+    }
+    if (Number.isFinite(policy.maxDurationMs) && projectedDurationMs >= policy.maxDurationMs * policy.warnAtRatio) {
+      warningConstraints.push("maxDurationMs");
+    }
+    if (Number.isFinite(policy.maxModelTokens) && projectedModelTokens >= policy.maxModelTokens * policy.warnAtRatio) {
+      warningConstraints.push("maxModelTokens");
+    }
+
+    const violatedConstraint = violations[0] ?? null;
+    const reasonCode = violatedConstraint !== null
+      ? `budget.${violatedConstraint}_exceeded`
+      : warningConstraints.length > 0
+        ? "budget.step_constraint_approaching_limit"
+        : null;
+
+    return {
+      allowed: violations.length === 0,
+      reasonCode,
+      remainingSteps,
+      remainingDurationMs,
+      remainingModelTokens,
+      violatedConstraint,
+      warningConstraints,
     };
   }
 
