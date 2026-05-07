@@ -5,6 +5,7 @@ import { WebAppShell } from "../../../../../apps/web/src/app-shell";
 import { checkWebContractVersion } from "../../../../../apps/web/src/runtime";
 
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: () => <div data-testid="system-status-bar">status</div>,
   designTokens: {
     color: {
@@ -20,6 +21,7 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("@aa/shared-state", () => ({
   UiRuntimeProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 vi.mock("@aa/shared-domain", () => ({
@@ -42,6 +44,7 @@ vi.mock("@aa/shared-api-client", () => ({
   DefaultRESTClient: vi.fn(),
   HttpTransport: vi.fn(),
   InMemoryWSClient: vi.fn(),
+  createRuntimeWSClient: vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn(), subscribe: vi.fn(), onStatusChange: vi.fn(), publish: vi.fn(), useSseFallback: vi.fn() })),
   fetchContractVersion: (...args: unknown[]) => fetchContractVersion(...args),
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),

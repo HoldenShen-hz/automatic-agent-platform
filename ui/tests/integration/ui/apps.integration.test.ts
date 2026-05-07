@@ -11,6 +11,7 @@ import type { FeatureModule } from "@aa/ui-core";
 
 // Mock shared modules
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: ({ status }: { status: { ws: string; offline: string } }) => (
     <div data-testid="system-status-bar">
       <span>WS: {status.ws}</span>
@@ -33,6 +34,7 @@ vi.mock("@aa/shared-state", () => ({
     <div data-testid="ui-runtime-provider">{children}</div>
   ),
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 vi.mock("@aa/shared-domain", () => ({

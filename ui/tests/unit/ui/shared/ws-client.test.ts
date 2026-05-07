@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InMemoryWSClient,
   BrowserWSClient,
+  SharedWorkerWSClient,
   createRuntimeWSClient,
   type WebSocketFactory,
   type WSEventEnvelope,
@@ -320,11 +321,69 @@ describe("BrowserWSClient", () => {
 });
 
 describe("createRuntimeWSClient", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("returns a valid WSClient implementation", () => {
     const client = createRuntimeWSClient();
     expect(client).toBeDefined();
     expect(typeof client.connect).toBe("function");
     expect(typeof client.disconnect).toBe("function");
     expect(typeof client.subscribe).toBe("function");
+  });
+
+  it("uses SharedWorker-based multiplexing when the browser exposes SharedWorker", () => {
+    class FakePort {
+      public readonly sent: unknown[] = [];
+      private readonly listeners = new Set<(event: { data: unknown }) => void>();
+
+      public postMessage(message: unknown): void {
+        this.sent.push(message);
+      }
+
+      public addEventListener(_type: string, listener: (event: { data: unknown }) => void): void {
+        this.listeners.add(listener);
+      }
+
+      public removeEventListener(_type: string, listener: (event: { data: unknown }) => void): void {
+        this.listeners.delete(listener);
+      }
+
+      public start(): void {
+        return;
+      }
+
+      public close(): void {
+        return;
+      }
+
+      public emit(data: unknown): void {
+        for (const listener of this.listeners) {
+          listener({ data });
+        }
+      }
+    }
+
+    const port = new FakePort();
+    vi.stubGlobal("SharedWorker", class {});
+
+    const client = createRuntimeWSClient(undefined, () => ({ port: port as unknown as MessagePort }));
+    expect(client).toBeInstanceOf(SharedWorkerWSClient);
+
+    const statuses: string[] = [];
+    const events: WSEventEnvelope[] = [];
+    client.onStatusChange((status) => statuses.push(status));
+    client.subscribe("dashboard", (event) => events.push(event));
+    client.connect("wss://example.test/realtime", "shared-worker-token");
+
+    expect(port.sent).toContainEqual({ action: "connect", url: "wss://example.test/realtime", token: "shared-worker-token" });
+    expect(port.sent).toContainEqual({ action: "subscribe", channel: "dashboard" });
+
+    port.emit({ type: "status", status: "connected" });
+    port.emit({ type: "event", event: { channel: "dashboard", type: "dashboard.metric_updated", payload: { value: 1 } } });
+
+    expect(statuses).toContain("connected");
+    expect(events).toEqual([{ channel: "dashboard", type: "dashboard.metric_updated", payload: { value: 1 } }]);
   });
 });

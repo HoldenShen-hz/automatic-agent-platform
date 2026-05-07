@@ -1044,21 +1044,7 @@ public route(input: IntakeRouteInput): IntakePipelineResult {
   }
 
   if (!useLlmClassification) {
-    try {
-      const llmResult = extractLlmIntent(input.request, input.priorConversationContext);
-      if (llmResult != null && llmResult.confidence >= 0.80) {
-        classification = {
-          intent: llmResult.intent,
-          continuation: "new_task" as IntakeContinuation,
-          confidence: llmResult.confidence,
-          matchedRules: [`llm:${llmResult.reasoning}`],
-        };
-        useLlmClassification = true;
-        routeTrace.push(`llm_intent:${llmResult.intent}`);
-      }
-    } catch {
-      routeTrace.push("llm_extraction_failed:fallback_to_keyword");
-    }
+    routeTrace.push("llm_extraction_deferred:requires_preferred_intent");
   }
 
   routeTrace.push(`intent:${classification.intent}`);

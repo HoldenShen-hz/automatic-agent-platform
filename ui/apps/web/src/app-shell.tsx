@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import React from "react";
 import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-router-dom";
-import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
-import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
+import { SystemStatusBar, applyResolvedTheme, designTokens, type FeatureModule } from "@aa/ui-core";
+import { UiRuntimeProvider, useSystemStatus, useThemeState } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
 import type { TokenManager } from "@aa/shared-auth";
@@ -159,6 +159,16 @@ function AppFrame(
   );
 }
 
+function ThemeRuntimeBridge(): null {
+  const { resolvedThemeName } = useThemeState();
+
+  React.useEffect(() => {
+    applyResolvedTheme(resolvedThemeName);
+  }, [resolvedThemeName]);
+
+  return null;
+}
+
 /**
  * ErrorBoundary per §5.6 with per-severity fallback handling.
  */
@@ -227,6 +237,7 @@ export function WebAppShell(
   return (
     <PlatformAdapterProvider adapter={resolvedPlatformAdapter}>
       <UiRuntimeProvider {...runtimeProps}>
+        <ThemeRuntimeBridge />
         <AppErrorBoundary>
           <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
             <AppFrame features={features} authContext={authContext ?? null} startupBanner={startupBanner} />

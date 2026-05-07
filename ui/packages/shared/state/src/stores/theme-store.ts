@@ -1,16 +1,20 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 
-export type ThemeMode = "light" | "dark" | "system";
-export type ColorScheme = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "high-contrast" | "system";
+export type ResolvedThemeName = "light" | "dark" | "high-contrast";
 
 export interface ThemeStoreState {
   readonly themeMode: ThemeMode;
-  readonly resolvedColorScheme: ColorScheme;
+  readonly resolvedThemeName: ResolvedThemeName;
+  readonly resolvedColorScheme: "light" | "dark";
   setThemeMode(mode: ThemeMode): void;
 }
 
-function resolveColorScheme(mode: ThemeMode): ColorScheme {
+function resolveThemeName(mode: ThemeMode): ResolvedThemeName {
+  if (mode === "high-contrast") {
+    return "high-contrast";
+  }
   if (mode === "system") {
     if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
       return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -20,14 +24,23 @@ function resolveColorScheme(mode: ThemeMode): ColorScheme {
   return mode;
 }
 
+function resolveColorScheme(mode: ThemeMode): "light" | "dark" {
+  return resolveThemeName(mode) === "light" ? "light" : "dark";
+}
+
 export function createThemeStore() {
   return createStore<ThemeStoreState>()(
     persist(
       (set) => ({
         themeMode: "system",
+        resolvedThemeName: resolveThemeName("system"),
         resolvedColorScheme: resolveColorScheme("system"),
         setThemeMode(themeMode) {
-          set({ themeMode, resolvedColorScheme: resolveColorScheme(themeMode) });
+          set({
+            themeMode,
+            resolvedThemeName: resolveThemeName(themeMode),
+            resolvedColorScheme: resolveColorScheme(themeMode),
+          });
         },
       }),
       { name: "aa-theme-store" },

@@ -2,7 +2,7 @@ import {
   BrowserWSClient,
   DefaultRESTClient,
   HttpTransport,
-  InMemoryWSClient,
+  createRuntimeWSClient,
   fetchContractVersion,
   createAuthInterceptor,
   createContractVersionInterceptor,
@@ -91,9 +91,7 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): WebRuntimeCli
   // for the shell/runtime layer instead of smuggling it into the constructor.
   // The previous "fix" passed `new WebSocket(config.wsUrl)` as the factory, which
   // breaks `connect()` because BrowserWSClient expects a WebSocket constructor.
-  const wsClient = config.wsUrl == null
-    ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
-    : new BrowserWSClient(WebSocket, new InMemoryWSClient());
+  const wsClient = createRuntimeWSClient(WebSocket);
 
   return {
     client,

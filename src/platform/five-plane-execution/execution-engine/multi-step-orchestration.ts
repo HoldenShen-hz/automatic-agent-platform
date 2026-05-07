@@ -165,6 +165,8 @@ function deserializeOapeflirPlan(request: string): import("../../contracts/execu
             : "retry:default"
         )
       ),
+      // R19-09 fix: Preserve retryPolicy for maxAttempts calculation in oapeflirStepToMinimalStep
+      ...(node.retryPolicy != null ? { retryPolicy: node.retryPolicy } : {}),
       // R19-09 fix: Handle both timeoutMs (canonical) and timeout (legacy test format)
       timeoutMs: (node.timeoutMs as number | undefined) ?? (node.timeout as number | undefined) ?? 60000,
     };
@@ -180,6 +182,11 @@ function resolveOapeflirRoleId(_node: import("../../contracts/executable-contrac
 // R19-09 fix: Changed parameter type from PlanStep to PlanNode and preserves rich metadata
 // Previously converted PlanStep which lost nodeType, riskClass, budgetIntent, sideEffectProfile, retryPolicyRef
 function oapeflirStepToMinimalStep(node: import("../../contracts/executable-contracts/index.js").PlanNode): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
+  // R19-09 fix: Compute maxAttempts from legacy retryPolicy when present
+  // For legacy format (retryPolicy: { maxRetries: N }), derive maxAttempts = maxRetries + 1
+  const legacyRetryPolicy = (node as { retryPolicy?: { maxRetries: number } }).retryPolicy;
+  const maxAttempts = legacyRetryPolicy != null ? legacyRetryPolicy.maxRetries + 1 : 1;
+
   return {
     stepId: node.nodeId,
     roleId: resolveOapeflirRoleId(node),
@@ -187,7 +194,7 @@ function oapeflirStepToMinimalStep(node: import("../../contracts/executable-cont
     inputKeys: node.inputRefs,
     // R19-09 fix: Handle both timeoutMs (canonical PlanNode) and timeout (legacy test format)
     timeoutMs: node.timeoutMs ?? (node as { timeout?: number }).timeout ?? 60000,
-    maxAttempts: 1, // Default; retryPolicyRef is preserved separately
+    maxAttempts,
     dependsOnStepIds: node.inputRefs, // Note: PlanNode.inputRefs are step dependencies
     // R19-09 fix: Preserve rich metadata from PlanNode
     nodeType: node.nodeType,

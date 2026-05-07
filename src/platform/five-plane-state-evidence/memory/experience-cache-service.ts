@@ -309,7 +309,8 @@ export class ExperienceCacheService {
         input.finalErrorCode ?? null,
         input.qualityScore,
         createdAt,
-        createdAt,
+        0, // hit_count - literal 0 for new record
+        createdAt, // last_accessed_at - same as created_at for new record
       );
     });
 

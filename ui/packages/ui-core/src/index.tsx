@@ -8,7 +8,7 @@ export { ComponentErrorBoundary, FeatureScaffold, FeatureWorkbench, FeatureWorkb
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
-export { darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
+export { applyResolvedTheme, darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
 
 export interface FeatureModule {
   readonly manifest: PlatformFeatureManifest;

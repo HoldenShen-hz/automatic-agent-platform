@@ -7,6 +7,7 @@ import {
   MetricGrid,
   MiniTrendBars,
   SystemStatusBar,
+  applyResolvedTheme,
   createSystemHealthSummary,
   designTokens,
   darkTheme,
@@ -37,8 +38,15 @@ describe("ui-core split modules", () => {
     expect(screen.getByText("connected")).toBeInTheDocument();
     expect(createSystemHealthSummary({ wsStatus: "connected", offlineQueueSize: 2, syncStatus: "queued", panicActivated: false })).toHaveLength(4);
     expect(lightTheme.color.surface).not.toBe(darkTheme.color.surface);
-    expect(designTokens.color.background).toBe(lightTheme.color.background);
+    expect(designTokens.color.background).toContain("--aa-color-background");
     expect(resolveTheme("high-contrast")).toEqual(highContrastTheme);
+  });
+
+  it("applies resolved theme values to document CSS variables so module-level design tokens stay switchable", () => {
+    applyResolvedTheme("dark");
+    expect(document.documentElement.dataset.aaTheme).toBe("dark");
+    expect(document.documentElement.style.getPropertyValue("--aa-color-background")).toBe(darkTheme.color.background);
+    expect(document.documentElement.style.getPropertyValue("--aa-shadow-card")).toBe(darkTheme.shadows.card);
   });
 
   it("renders the interactive workbench baseline for L1 features", () => {

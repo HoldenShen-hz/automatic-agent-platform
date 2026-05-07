@@ -20,7 +20,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   private readonly redis: {
     status: string;
     connect(): Promise<void>;
-    incr(key: string): Promise<number>;
+    incr?(key: string): Promise<number>;
     set(key: string, value: string, ...args: Array<string | number>): Promise<string | null>;
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
@@ -73,6 +73,18 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     throw new LockingError("lock.sync_acquire_deprecated", "lock.sync_acquire_deprecated: Use acquireAsync instead");
   }
 
+  private async nextFencingToken(): Promise<number> {
+    const localNext = this.fencingCounter + 1;
+    if (typeof this.redis.incr !== "function") {
+      this.fencingCounter = localNext;
+      return this.fencingCounter;
+    }
+
+    const remoteToken = await this.redis.incr("lock:fencing_counter");
+    this.fencingCounter = Math.max(localNext, remoteToken);
+    return this.fencingCounter;
+  }
+
   public release(_lockKey: string, _owner: string): boolean {
     throw new LockingError("lock.sync_release_not_supported", "lock.sync_release_not_supported: Use releaseAsync for Redis backend");
   }
@@ -95,8 +107,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     const ttlMs = input.ttlMs ?? 30_000;
     const ttlSec = Math.ceil(ttlMs / 1000);
     const lockKey = `lock:${input.lockKey}`;
-    const fencingToken = await this.redis.incr("lock:fencing_counter");
-    this.fencingCounter = fencingToken;
+    const fencingToken = await this.nextFencingToken();
     const lockData: LockData = {
       id: `lock_${Date.now()}_${fencingToken}`,
       owner: input.owner,
@@ -182,8 +193,7 @@ return 1`;
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
     const now = new Date().toISOString();
-    const fencingToken = await this.redis.incr("lock:fencing_counter");
-    this.fencingCounter = fencingToken;
+    const fencingToken = await this.nextFencingToken();
     const ttlMs = 30_000;
     const lockData: LockData = {
       id: `lock_${Date.now()}_${fencingToken}`,
@@ -201,8 +211,8 @@ return 1`;
     // Note: result is always OK when SET succeeds without NX/XX constraint
     if (result === null) {
       throw new LockingError(
-        "lock.forceSteal_failed",
-        `lock.forceSteal_failed: Cannot force-steal lock ${lockKey}`,
+        "lock.forceSteal_lock_not_found",
+        `lock.forceSteal_lock_not_found: Cannot force-steal missing lock ${lockKey}`,
       );
     }
     return {

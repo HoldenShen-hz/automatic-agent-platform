@@ -43,7 +43,7 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
     await bus.deliverPending("inspect_projection");
 
     const pendingAfter = bus.pendingForConsumer("inspect_projection");
-    const event = store.listEventsForTask("task-1")[0];
+    const event = store.listEventsForTask("task-1").events[0];
     const payload = event ? (JSON.parse(event.payloadJson) as Record<string, unknown>) : null;
     const traceContext = payload?.traceContext as Record<string, unknown> | undefined;
     assert.equal(seen.length, 1);
@@ -216,7 +216,7 @@ test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-
     const remaining = bus.pendingForConsumer("inspect_projection");
     assert.equal(remaining.length, 0);
 
-    const persistedEvent = store.listEventsForTask("task-retry-exhaust")[0];
+    const persistedEvent = store.listEventsForTask("task-retry-exhaust").events[0];
     const ack = persistedEvent
       ? store.event.getEventConsumerAck(persistedEvent.id, "inspect_projection")
       : undefined;
@@ -467,7 +467,7 @@ test("durable event bus publishBatch inserts multiple events in transaction", as
     assert.notEqual(events[0]!.id, events[1]!.id);
     assert.notEqual(events[1]!.id, events[2]!.id);
 
-    const allEvents = store.listEventsForTask("task-batch");
+    const allEvents = store.listEventsForTask("task-batch").events;
     assert.equal(allEvents.length, 3);
   } finally {
     cleanup();
@@ -648,10 +648,12 @@ test("durable event bus multiple subscribers each receive events", async () => {
 
     const seen1: string[] = [];
     const seen2: string[] = [];
-    bus.subscribe("subscriber_1", async (event) => {
+    // Subscribe two different consumers - each gets their own handler
+    // task:status_changed has registered consumers: ["task_projection", "inspect_projection"]
+    bus.subscribe("task_projection", async (event) => {
       seen1.push(event.eventType);
     });
-    bus.subscribe("subscriber_2", async (event) => {
+    bus.subscribe("inspect_projection", async (event) => {
       seen2.push(event.eventType);
     });
 
@@ -663,10 +665,12 @@ test("durable event bus multiple subscribers each receive events", async () => {
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    // tier_1 events require deliverPending to be called for each consumer
+    await bus.deliverPending("task_projection");
+    await bus.deliverPending("inspect_projection");
 
-    assert.equal(seen1.length, 1);
-    assert.equal(seen2.length, 1);
+    assert.equal(seen1.length, 1, "task_projection handler should be called once");
+    assert.equal(seen2.length, 1, "inspect_projection handler should be called once");
   } finally {
     cleanup();
   }
@@ -733,7 +737,7 @@ test("durable event bus publish with traceContext injects trace fields into payl
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    const events = store.listEventsForTask("task-trace");
+    const events = store.listEventsForTask("task-trace").events;
     assert.equal(events.length, 1);
     const payload = JSON.parse(events[0]!.payloadJson) as Record<string, unknown>;
     assert.deepEqual(payload.traceContext, {

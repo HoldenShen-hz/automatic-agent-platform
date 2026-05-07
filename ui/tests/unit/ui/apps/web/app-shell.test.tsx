@@ -3,11 +3,12 @@ import { render, screen, cleanup, fireEvent, waitFor, act } from "@testing-libra
 import type { ReactElement } from "react";
 import React from "react";
 import { MemoryRouter, BrowserRouter } from "react-router-dom";
-import { WebAppShell, type WebAppShellProps, type AuthContext } from "./app-shell";
+import { WebAppShell, type WebAppShellProps, type AuthContext } from "../../../../../apps/web/src/app-shell";
 import type { FeatureModule } from "@aa/ui-core";
 
 // Mock shared modules
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: ({ status }: { status: { ws: string; offline: string } }) => (
     <div data-testid="system-status-bar">
       <span>WS: {status.ws}</span>
@@ -30,6 +31,7 @@ vi.mock("@aa/shared-state", () => ({
     <div data-testid="ui-runtime-provider">{children}</div>
   ),
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 vi.mock("@aa/shared-domain", () => ({

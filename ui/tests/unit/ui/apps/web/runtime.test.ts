@@ -10,6 +10,7 @@ import { featureRegistry } from "./feature-registry";
 
 // Mock shared modules
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: ({ status }: { status: { ws: string; offline: string } }) => (
     <div data-testid="system-status-bar">
       <span>WS: {status.ws}</span>
@@ -36,6 +37,7 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("@aa/shared-state", () => ({
   UiRuntimeProvider: ({ children }: { children: ReactElement }) => <div data-testid="ui-runtime-provider">{children}</div>,
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 vi.mock("@aa/shared-domain", () => ({
@@ -56,6 +58,7 @@ vi.mock("@aa/shared-api-client", () => ({
   DefaultRESTClient: vi.fn(),
   HttpTransport: vi.fn(),
   InMemoryWSClient: vi.fn(),
+  createRuntimeWSClient: vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn(), subscribe: vi.fn(), onStatusChange: vi.fn(), publish: vi.fn(), useSseFallback: vi.fn() })),
   fetchContractVersion: vi.fn(),
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),

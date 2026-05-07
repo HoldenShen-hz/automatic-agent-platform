@@ -26,6 +26,12 @@ export interface BrowserWSClientOptions {
   heartbeatTimeoutMs?: number;
 }
 
+export interface SharedWorkerLike {
+  readonly port: MessagePort;
+}
+
+export type SharedWorkerFactory = () => SharedWorkerLike;
+
 export class InMemoryWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
@@ -273,7 +279,120 @@ export class BrowserWSClient implements WSClient {
   }
 }
 
-export function createRuntimeWSClient(socketFactory?: WebSocketFactory): WSClient {
+type SharedWorkerInboundMessage =
+  | { readonly type: "status"; readonly status: WSStatus }
+  | { readonly type: "event"; readonly event: WSEventEnvelope };
+
+type SharedWorkerOutboundMessage =
+  | { readonly action: "connect"; readonly url: string; readonly token: string }
+  | { readonly action: "disconnect" }
+  | { readonly action: "subscribe"; readonly channel: string }
+  | { readonly action: "publish"; readonly event: WSEventEnvelope }
+  | { readonly action: "useSseFallback" };
+
+export class SharedWorkerWSClient implements WSClient {
+  private readonly handlers = new Map<string, Set<EventHandler>>();
+  private readonly statusHandlers = new Set<(status: WSStatus) => void>();
+  private readonly subscribedChannels = new Set<string>();
+  private status: WSStatus = "disconnected";
+  private port: MessagePort | null = null;
+
+  public constructor(private readonly workerFactory: SharedWorkerFactory) {}
+
+  private ensurePort(): MessagePort {
+    if (this.port != null) {
+      return this.port;
+    }
+    const worker = this.workerFactory();
+    const port = worker.port;
+    port.addEventListener("message", this.handleMessage as EventListener);
+    port.start?.();
+    this.port = port;
+    return port;
+  }
+
+  private readonly handleMessage = (event: MessageEvent<SharedWorkerInboundMessage>): void => {
+    const message = event.data;
+    if (message.type === "status") {
+      this.setStatus(message.status);
+      return;
+    }
+    this.publish(message.event);
+  };
+
+  public connect(url: string, token: string): void {
+    const port = this.ensurePort();
+    port.postMessage({ action: "connect", url, token } satisfies SharedWorkerOutboundMessage);
+    for (const channel of this.subscribedChannels) {
+      port.postMessage({ action: "subscribe", channel } satisfies SharedWorkerOutboundMessage);
+    }
+  }
+
+  public disconnect(): void {
+    if (this.port != null) {
+      this.port.postMessage({ action: "disconnect" } satisfies SharedWorkerOutboundMessage);
+      this.port.removeEventListener("message", this.handleMessage as EventListener);
+      this.port.close?.();
+      this.port = null;
+    }
+    this.setStatus("disconnected");
+  }
+
+  public subscribe(channel: string, handler: EventHandler): () => void {
+    const channelHandlers = this.handlers.get(channel) ?? new Set<EventHandler>();
+    channelHandlers.add(handler);
+    this.handlers.set(channel, channelHandlers);
+    this.subscribedChannels.add(channel);
+    if (this.port != null) {
+      this.port.postMessage({ action: "subscribe", channel } satisfies SharedWorkerOutboundMessage);
+    }
+    return () => {
+      channelHandlers.delete(handler);
+      if (channelHandlers.size === 0) {
+        this.handlers.delete(channel);
+        this.subscribedChannels.delete(channel);
+      }
+    };
+  }
+
+  public onStatusChange(handler: (status: WSStatus) => void): () => void {
+    this.statusHandlers.add(handler);
+    handler(this.status);
+    return () => this.statusHandlers.delete(handler);
+  }
+
+  public publish(event: WSEventEnvelope): void {
+    for (const handler of this.handlers.get(event.channel) ?? []) {
+      handler(event);
+    }
+    if (this.port != null) {
+      this.port.postMessage({ action: "publish", event } satisfies SharedWorkerOutboundMessage);
+    }
+  }
+
+  public useSseFallback(): void {
+    this.port?.postMessage({ action: "useSseFallback" } satisfies SharedWorkerOutboundMessage);
+    this.setStatus("sse-fallback");
+  }
+
+  private setStatus(status: WSStatus): void {
+    this.status = status;
+    for (const handler of this.statusHandlers) {
+      handler(status);
+    }
+  }
+}
+
+export function createRuntimeWSClient(socketFactory?: WebSocketFactory, sharedWorkerFactory?: SharedWorkerFactory): WSClient {
+  if (typeof SharedWorker !== "undefined") {
+    return new SharedWorkerWSClient(
+      sharedWorkerFactory
+      ?? (() => new SharedWorker(new URL("./shared-ws-worker.ts", import.meta.url), {
+        type: "module",
+        name: "aa-shared-ws-client",
+      })),
+    );
+  }
   if (typeof WebSocket !== "undefined") {
     return new BrowserWSClient(socketFactory ?? WebSocket, new InMemoryWSClient());
   }

@@ -531,6 +531,93 @@ export interface CoreDesignTokens {
   readonly subtle: string;
 }
 
+function cssVar(name: string, fallback: string): string {
+  return `var(${name}, ${fallback})`;
+}
+
+const themedSemanticColorTokens: SemanticTokens["color"] = {
+  background: cssVar("--aa-color-background", semanticTokens.color.background),
+  surface: cssVar("--aa-color-surface", semanticTokens.color.surface),
+  surfaceElevated: cssVar("--aa-color-surface-elevated", semanticTokens.color.surfaceElevated),
+  surfaceHover: cssVar("--aa-color-surface-hover", semanticTokens.color.surfaceHover),
+  border: cssVar("--aa-color-border", semanticTokens.color.border),
+  borderStrong: cssVar("--aa-color-border-strong", semanticTokens.color.borderStrong),
+  accent: cssVar("--aa-color-accent", semanticTokens.color.accent),
+  accentHover: cssVar("--aa-color-accent-hover", semanticTokens.color.accentHover),
+  text: cssVar("--aa-color-text", semanticTokens.color.text),
+  textSecondary: cssVar("--aa-color-text-secondary", semanticTokens.color.textSecondary),
+  textSubtle: cssVar("--aa-color-text-subtle", semanticTokens.color.textSubtle),
+  planned: cssVar("--aa-color-planned", semanticTokens.color.planned),
+  danger: cssVar("--aa-color-danger", semanticTokens.color.danger),
+  dangerHover: cssVar("--aa-color-danger-hover", semanticTokens.color.dangerHover),
+  success: cssVar("--aa-color-success", semanticTokens.color.success),
+  successHover: cssVar("--aa-color-success-hover", semanticTokens.color.successHover),
+  warning: cssVar("--aa-color-warning", semanticTokens.color.warning),
+  warningHover: cssVar("--aa-color-warning-hover", semanticTokens.color.warningHover),
+  info: cssVar("--aa-color-info", semanticTokens.color.info),
+  focusRing: cssVar("--aa-color-focus-ring", semanticTokens.color.focusRing),
+  riskLow: cssVar("--aa-color-risk-low", semanticTokens.color.riskLow),
+  riskMedium: cssVar("--aa-color-risk-medium", semanticTokens.color.riskMedium),
+  riskHigh: cssVar("--aa-color-risk-high", semanticTokens.color.riskHigh),
+  riskCritical: cssVar("--aa-color-risk-critical", semanticTokens.color.riskCritical),
+  autonomyManual: cssVar("--aa-color-autonomy-manual", semanticTokens.color.autonomyManual),
+  autonomyAssisted: cssVar("--aa-color-autonomy-assisted", semanticTokens.color.autonomyAssisted),
+  autonomyAutonomous: cssVar("--aa-color-autonomy-autonomous", semanticTokens.color.autonomyAutonomous),
+  autonomyFull: cssVar("--aa-color-autonomy-full", semanticTokens.color.autonomyFull),
+};
+
+const themedSemanticShadowTokens: SemanticTokens["shadows"] = {
+  card: cssVar("--aa-shadow-card", semanticTokens.shadows.card),
+  overlay: cssVar("--aa-shadow-overlay", semanticTokens.shadows.overlay),
+  inset: cssVar("--aa-shadow-inset", semanticTokens.shadows.inset),
+  focusRing: cssVar("--aa-shadow-focus-ring", semanticTokens.shadows.focusRing),
+};
+
+const themedSemanticTokens: SemanticTokens = {
+  ...semanticTokens,
+  color: themedSemanticColorTokens,
+  shadows: themedSemanticShadowTokens,
+};
+
+const themedDomainTokens: DomainTokens = {
+  workflow: {
+    stepPending: themedSemanticColorTokens.textSubtle,
+    stepActive: themedSemanticColorTokens.accent,
+    stepCompleted: themedSemanticColorTokens.success,
+    stepFailed: themedSemanticColorTokens.danger,
+    transitionDelay: primitiveTokens.motion.duration.normal,
+  },
+  task: {
+    priorityLow: themedSemanticColorTokens.info,
+    priorityMedium: themedSemanticColorTokens.textSecondary,
+    priorityHigh: themedSemanticColorTokens.warning,
+    priorityUrgent: themedSemanticColorTokens.danger,
+    statusPending: themedSemanticColorTokens.textSubtle,
+    statusRunning: themedSemanticColorTokens.accent,
+    statusCompleted: themedSemanticColorTokens.success,
+    statusFailed: themedSemanticColorTokens.danger,
+    statusCancelled: themedSemanticColorTokens.textSubtle,
+    statusPaused: themedSemanticColorTokens.warning,
+  },
+  execution: {
+    sandboxBorder: themedSemanticColorTokens.border,
+    approvalBorder: themedSemanticColorTokens.warning,
+    retryCountBadge: themedSemanticColorTokens.accent,
+  },
+  riskLevel: {
+    low: themedSemanticColorTokens.riskLow,
+    medium: themedSemanticColorTokens.riskMedium,
+    high: themedSemanticColorTokens.riskHigh,
+    critical: themedSemanticColorTokens.riskCritical,
+  },
+  autonomyLevel: {
+    manual: themedSemanticColorTokens.autonomyManual,
+    assisted: themedSemanticColorTokens.autonomyAssisted,
+    autonomous: themedSemanticColorTokens.autonomyAutonomous,
+    full: themedSemanticColorTokens.autonomyFull,
+  },
+};
+
 /**
  * Complete design token set with three-layer architecture.
  * Access via: designTokens.primitive.color.gray50
@@ -539,18 +626,18 @@ export interface CoreDesignTokens {
  */
 export const designTokens: CoreDesignTokens = {
   primitive: primitiveTokens,
-  semantic: semanticTokens,
-  domain: domainTokens,
+  semantic: themedSemanticTokens,
+  domain: themedDomainTokens,
   // Backward-compatible flat access (deprecated)
-  color: semanticTokens.color,
+  color: themedSemanticColorTokens,
   radius: semanticTokens.radius,
   typography: primitiveTokens.typography,
   motion: semanticTokens.motion,
   spacing: semanticTokens.spacing,
-  shadows: semanticTokens.shadows,
+  shadows: themedSemanticShadowTokens,
   iconSizes: semanticTokens.iconSizes,
   breakpoints: semanticTokens.breakpoints,
-  subtle: semanticTokens.color.textSubtle,
+  subtle: themedSemanticColorTokens.textSubtle,
 };
 
 /**
@@ -558,13 +645,13 @@ export const designTokens: CoreDesignTokens = {
  * @deprecated Use designTokens.semantic instead for new code.
  */
 export const legacyDesignTokens: Omit<CoreDesignTokens["semantic"], "riskLevel" | "autonomyLevel"> = {
-  color: semanticTokens.color,
+  color: themedSemanticColorTokens,
   radius: semanticTokens.radius,
   spacing: semanticTokens.spacing,
   typography: semanticTokens.typography,
   motion: semanticTokens.motion,
   breakpoints: semanticTokens.breakpoints,
-  shadows: semanticTokens.shadows,
+  shadows: themedSemanticShadowTokens,
   iconSizes: semanticTokens.iconSizes,
 };
 
@@ -574,14 +661,14 @@ export { animation, prefersReducedMotion, getAnimationDuration, getAnimationEasi
  * Creates a panel style using semantic tokens.
  * @deprecated Use semantic tokens directly.
  */
-export function createPanelStyle(accent = semanticTokens.color.border): {
+export function createPanelStyle(accent = themedSemanticColorTokens.border): {
   background: string;
   border: string;
   borderRadius: string;
   padding: number;
 } {
   return {
-    background: semanticTokens.color.surface,
+    background: themedSemanticColorTokens.surface,
     border: `1px solid ${accent}`,
     borderRadius: semanticTokens.radius.card,
     padding: semanticTokens.spacing.cardPadding,

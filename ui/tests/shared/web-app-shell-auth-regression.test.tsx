@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: ({ status }: { status: { ws: string; offline: string } }) => (
     <div data-testid="system-status-bar">
       <span>{status.ws}</span>
@@ -31,6 +32,7 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("@aa/shared-state", () => ({
   UiRuntimeProvider: ({ children }: { children: ReactElement }) => <div data-testid="ui-runtime-provider">{children}</div>,
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 vi.mock("@aa/shared-domain", () => ({

@@ -5,8 +5,8 @@ import { useDashboardVm } from "../hooks";
 
 export function DashboardWebView(): ReactElement {
   const vm = useDashboardVm();
-  const { resolvedColorScheme } = useThemeState();
-  const theme = resolveTheme(resolvedColorScheme);
+  const { resolvedThemeName } = useThemeState();
+  const theme = resolveTheme(resolvedThemeName);
   return (
     <FeatureScaffold title="Dashboard" summary="Mission Control 首页" status="Implemented/Internal">
       {vm.loading ? <p>Loading dashboard snapshot...</p> : (

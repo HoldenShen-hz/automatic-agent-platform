@@ -5,8 +5,8 @@ import { useAnalyticsVm } from "../hooks";
 
 export function AnalyticsWebView(): ReactElement {
   const vm = useAnalyticsVm();
-  const { resolvedColorScheme } = useThemeState();
-  const theme = resolveTheme(resolvedColorScheme);
+  const { resolvedThemeName } = useThemeState();
+  const theme = resolveTheme(resolvedThemeName);
   return (
     <FeatureScaffold title="Analytics" summary="多层级 KPI 看板与图表渲染架构" status="Planned">
       <MetricGrid metrics={vm.metrics} />

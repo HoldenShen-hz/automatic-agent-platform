@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
-import { App } from "./App";
-import { featureRegistry } from "./feature-registry";
+import { App } from "../../../../../apps/web/src/App";
+import { featureRegistry } from "../../../../../apps/web/src/feature-registry";
 
 // Mock the runtime modules to prevent actual initialization
 vi.mock("./runtime", () => ({
@@ -17,6 +17,7 @@ vi.mock("./runtime", () => ({
 
 // Mock ui-core
 vi.mock("@aa/ui-core", () => ({
+  applyResolvedTheme: vi.fn(),
   SystemStatusBar: () => null,
   designTokens: {
     color: {
@@ -33,6 +34,7 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("@aa/shared-state", () => ({
   UiRuntimeProvider: ({ children }: { children: ReactElement }) => children as ReactElement,
   useSystemStatus: () => ({ ws: "connected", offline: "idle" }),
+  useThemeState: () => ({ resolvedThemeName: "light" }),
 }));
 
 // Mock shared-domain

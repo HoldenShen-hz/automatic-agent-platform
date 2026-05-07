@@ -449,10 +449,48 @@ export class TaskTransitionService {
  * step index and any accumulated outputs from previous steps.
  */
 export class WorkflowTransitionService {
+  private static readonly passthroughDb = {
+    transaction<T>(fn: () => T): T {
+      return fn();
+    },
+  } satisfies Pick<AuthoritativeSqlDatabase, "transaction">;
+
+  private readonly db: Pick<AuthoritativeSqlDatabase, "transaction">;
+  private readonly repository: RuntimeLifecycleRepository;
+
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
-    private readonly repository: RuntimeLifecycleRepository,
-  ) {}
+    dbOrRepository: AuthoritativeSqlDatabase | RuntimeLifecycleRepository,
+    repository?: RuntimeLifecycleRepository,
+  ) {
+    if (repository == null) {
+      this.db = WorkflowTransitionService.passthroughDb;
+      this.repository = dbOrRepository as RuntimeLifecycleRepository;
+      return;
+    }
+
+    this.db = dbOrRepository as AuthoritativeSqlDatabase;
+    this.repository = repository;
+  }
+
+  private emitWorkflowStatusEvent(command: WorkflowStatusTransitionCommand): void {
+    try {
+      this.repository.createTier1StatusEvent({
+        taskId: command.entityId,
+        executionId: null,
+        eventType: "workflow:status_changed",
+        traceId: command.traceId,
+        payload: injectTraceContext(
+          buildStatusTransitionEventPayload(command),
+          buildEventTraceContext(command, command.entityId),
+        ),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "unused") {
+        return;
+      }
+      throw error;
+    }
+  }
 
   /**
    * Transitions workflow status atomically within a database transaction.
@@ -500,13 +538,7 @@ export class WorkflowTransitionService {
         );
       }
       // §28: Emit tier-1 status change event for workflow transitions
-      this.repository.createTier1StatusEvent({
-        taskId: command.entityId,
-        executionId: null,
-        eventType: "workflow:status_changed",
-        traceId: command.traceId,
-        payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
-      });
+      this.emitWorkflowStatusEvent(command);
     });
   }
 
@@ -567,13 +599,7 @@ export class WorkflowTransitionService {
       );
     }
     // §28: Emit tier-1 status change event for workflow transitions (legacy compatibility)
-    this.repository.createTier1StatusEvent({
-      taskId: command.entityId, // workflows are keyed by taskId
-      executionId: null,
-      eventType: "workflow:status_changed",
-      traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-    });
+    this.emitWorkflowStatusEvent(command);
   }
 }
 

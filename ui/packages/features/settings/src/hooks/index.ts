@@ -8,6 +8,7 @@ import {
   useTenantsQuery,
   useWebhooksQuery,
   useRestClient,
+  useThemeState,
 } from "@aa/shared-state";
 import { updatePreferences } from "@aa/shared-api-client";
 
@@ -32,6 +33,7 @@ export interface SettingsVm {
  */
 export function useSettingsVm(): SettingsVm {
   const client = useRestClient();
+  const { setThemeMode } = useThemeState();
   const preferencesQuery = usePreferencesQuery();
   const preferences = preferencesQuery.data;
   const roles = useRolesQuery().data ?? [];
@@ -52,8 +54,9 @@ export function useSettingsVm(): SettingsVm {
     if (preferences != null) {
       setDraftTheme(preferences.theme);
       setDraftLocale(preferences.locale);
+      setThemeMode(preferences.theme);
     }
-  }, [preferences]);
+  }, [preferences, setThemeMode]);
 
   const centerRows = useMemo(() => preferences == null ? [] : [
     { key: "Locale", value: draftLocale },
@@ -137,6 +140,7 @@ export function useSettingsVm(): SettingsVm {
     activityItems,
     setDraftTheme(theme: "light" | "dark" | "high-contrast") {
       setDraftTheme(theme);
+      setThemeMode(theme);
       setSaveState("idle");
     },
     setDraftLocale(locale: string) {
