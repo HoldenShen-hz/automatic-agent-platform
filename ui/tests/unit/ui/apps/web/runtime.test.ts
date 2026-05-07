@@ -5,7 +5,7 @@ import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { App } from "./App";
 import { WebAppShell } from "./app-shell";
-import { createWebRuntimeConfig, createWebRuntimeClients, registerWebServiceWorker } from "./runtime";
+import { checkWebContractVersion, createWebRuntimeConfig, createWebRuntimeClients, registerWebServiceWorker } from "./runtime";
 import { featureRegistry } from "./feature-registry";
 
 // Mock shared modules
@@ -56,6 +56,7 @@ vi.mock("@aa/shared-api-client", () => ({
   DefaultRESTClient: vi.fn(),
   HttpTransport: vi.fn(),
   InMemoryWSClient: vi.fn(),
+  fetchContractVersion: vi.fn(),
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
   createCsrfInterceptor: vi.fn(() => (request: unknown) => request),
@@ -165,6 +166,23 @@ describe("web runtime clients creation", () => {
   });
 });
 
+describe("contract version startup checks", () => {
+  it("returns a startup banner when the server contract is outside the client-supported set", async () => {
+    const { fetchContractVersion } = require("@aa/shared-api-client");
+    fetchContractVersion.mockResolvedValueOnce({
+      contractVersion: "v2",
+      minServerVersion: "v2",
+      supportedVersions: ["v2"],
+    });
+
+    await expect(checkWebContractVersion({} as never)).resolves.toEqual({
+      tone: "warning",
+      title: "Contract version mismatch",
+      message: "Server contract v2 is outside the client-supported set v1.",
+    });
+  });
+});
+
 describe("service worker registration", () => {
   it("returns null when window is undefined (SSR)", async () => {
     // Simulate SSR environment
@@ -249,6 +267,45 @@ describe("web app-shell guard behavior", () => {
     );
 
     expect(screen.getByText("Access denied")).toBeInTheDocument();
+  });
+
+  it("renders the startup mismatch banner when runtime bootstrap detects a contract drift", () => {
+    const mockFeature = {
+      manifest: {
+        id: "test-feature",
+        title: "Test Feature",
+        group: "Test Group",
+        kind: "implemented",
+        status: "Implemented/Internal",
+      },
+      route: {
+        path: "/test",
+        featureId: "test-feature",
+        group: "Test Group",
+        title: "Test Feature",
+        permission: "admin",
+        platforms: ["web"],
+        codeSplit: false,
+      },
+      Component: () => <div>Feature Content</div>,
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/test"]}>
+        <WebAppShell
+          features={[mockFeature]}
+          router="memory"
+          startupBanner={{
+            tone: "warning",
+            title: "Contract version mismatch",
+            message: "Server contract v2 is outside the client-supported set v1.",
+          }}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Contract version mismatch");
+    expect(screen.getByRole("alert")).toHaveTextContent("Server contract v2 is outside the client-supported set v1.");
   });
 });
 
