@@ -392,11 +392,16 @@ export class TaskTransitionService {
         `task.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
       );
     }
-    if (current != null && current.status === command.toStatus) {
-      // Task already in target status - treat as noop success
+    // R2161: Always validate the transition through the state machine, even for
+    // self-transitions. This ensures terminal states don't silently succeed and
+    // self-transitions are explicitly allowed by the state machine.
+    taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
+    // Only treat as noop if transitioning TO a different state, not for self-transitions
+    // (self-transitions must pass assertTransition above to be allowed)
+    if (command.fromStatus !== command.toStatus && current != null && current.status === command.toStatus) {
+      // Entity already in target status - treat as noop success
       return;
     }
-    taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
 
     // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
@@ -584,11 +589,15 @@ export class WorkflowTransitionService {
           `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
         );
       }
-      // If workflow is already in the target status, treat as noop success
-      if (current.status === command.toStatus) {
+      // R2161: Always validate the transition through the state machine, even for
+      // self-transitions. This ensures terminal states don't silently succeed and
+      // self-transitions are explicitly allowed by the state machine.
+      workflowStateMachine.assertTransition(current.status, command.toStatus);
+      // Only treat as noop if transitioning TO a different state, not for self-transitions
+      if (current.status !== command.toStatus) {
+        // Workflow already in target status - treat as noop success
         return;
       }
-      workflowStateMachine.assertTransition(current.status, command.toStatus);
       if (current.status !== command.fromStatus) {
         throw new Error(
           `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
@@ -767,22 +776,25 @@ export class ExecutionTransitionService {
   public apply(command: ExecutionStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "execution");
-    // Read current state to check if already in target status (noop case)
+    // Read current state to detect concurrent modification and self-transition
     const current = this.repository.getExecution(command.entityId);
-    // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
-    // This ensures CAS failures are reported correctly rather than as invalid transitions.
-    // CAS check must come BEFORE noop check so we detect concurrent modifications
-    // even when the target status happens to match the current status.
+    // R9-02 + R2161: Check fromStatus mismatch BEFORE noop check to catch:
+    // - Concurrent modifications (CAS failure)
+    // - Self-transitions (fromStatus === toStatus) which may hide idempotency bugs
     if (current != null && current.status !== command.fromStatus) {
       throw new Error(
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
       );
     }
-    if (current != null && current.status === command.toStatus) {
-      // Execution already in target status - treat as noop success
+    // R2161: Always validate the transition through the state machine, even for
+    // self-transitions. This ensures terminal states don't silently succeed and
+    // self-transitions are explicitly allowed by the state machine.
+    executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
+    // Only treat as noop if transitioning TO a different state, not for self-transitions
+    if (command.fromStatus !== command.toStatus && current != null && current.status === command.toStatus) {
+      // Entity already in target status - treat as noop success
       return;
     }
-    executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const startedAt =
       command.toStatus === "prechecking" || command.toStatus === "executing"
         ? command.occurredAt
