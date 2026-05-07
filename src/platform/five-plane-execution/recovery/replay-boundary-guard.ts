@@ -30,7 +30,7 @@ export class ReplayBoundaryGuard {
       };
     }
 
-    // reexecution_replay: allows real side effects, blocks tombstone violations on non-projection resources
+    // reexecution_replay: blocks real side effects to prevent duplicate external changes during recovery
     const tombstoneViolations = operations
       .filter((operation) => operation.tombstoneReplay && operation.resourceKind !== "projection")
       .map((operation) => operation.operationId);

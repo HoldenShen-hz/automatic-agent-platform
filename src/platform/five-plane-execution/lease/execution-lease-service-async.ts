@@ -214,7 +214,7 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
-    if (lease.expiresAt <= occurredAt) {
+    if (new Date(lease.expiresAt) <= new Date(occurredAt)) {
       return {
         outcome: "blocked",
         reasonCode: "lease_expired",
@@ -290,7 +290,7 @@ export class ExecutionLeaseServiceAsync {
 
     // R17-08 fix: Check expiration to prevent releasing already-expired lease
     // A lease may have status="active" but be past its expiration time
-    if (lease.expiresAt <= occurredAt) {
+    if (new Date(lease.expiresAt) <= new Date(occurredAt)) {
       return {
         outcome: "blocked",
         reasonCode: "lease_expired",

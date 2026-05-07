@@ -5,6 +5,7 @@ const MAX_DELEGATION_DEPTH_PER_PATH = 3;
 const MAX_GLOBAL_DELEGATION_DEPTH = 8;
 const DEFAULT_BUDGET = 1000;
 const DEFAULT_RISK_LEVEL_NUMERIC = 50;
+const MAX_REPAIR_CYCLES = 2;
 const ROOT_ALLOWED_TOOLS = [
   "read",
   "glob",
@@ -20,7 +21,8 @@ export type AgentTeamStage =
   | "review"
   | "validate"
   | "repair"
-  | "release";
+  | "release"
+  | "escalate";
 
 export type AgentModelTier = "cheap" | "standard" | "strong";
 
@@ -109,15 +111,15 @@ function computeExecutionLoop(
     "build",
     "review",
     "validate",
-    "repair",
-    "validate",
   ];
-  const extraReviewCycles = Math.min(
-    Math.max(Math.ceil((normalizedStepCount - 2) / 2), 0),
-    2,
-  );
-  for (let i = 0; i < extraReviewCycles; i++) {
-    highRiskLoop.push("review", "validate");
+  // Limit repair cycles to MAX_REPAIR_CYCLES to prevent infinite loops
+  const repairCycles = Math.min(Math.max(workflowStepsCount - 1, 1), MAX_REPAIR_CYCLES);
+  for (let i = 0; i < repairCycles; i++) {
+    highRiskLoop.push("repair", "validate");
+  }
+  // Escalation: if more steps remain after MAX_REPAIR_CYCLES, escalate to human review
+  if (normalizedStepCount > repairCycles + 1) {
+    highRiskLoop.push("escalate");
   }
   highRiskLoop.push("release");
   return highRiskLoop;

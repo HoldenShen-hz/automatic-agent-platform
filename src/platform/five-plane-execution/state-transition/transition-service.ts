@@ -559,52 +559,58 @@ export class WorkflowTransitionService {
   public apply(command: WorkflowStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "workflow");
-    const current = this.repository.getWorkflowState(command.entityId);
-    if (current == null) {
-      throw new Error(`workflow.not_found:${command.entityId}`);
-    }
-    // If workflow is already in the target status, treat as noop success
-    if (current.status === command.toStatus) {
-      return;
-    }
-    workflowStateMachine.assertTransition(current.status, command.toStatus);
-    if (current.status !== command.fromStatus) {
-      throw new Error(
-        `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
-      );
-    }
+    // §184-2148: Wrap read+write in transaction to prevent lost updates
+    // during concurrent transitions. Without a transaction, concurrent calls
+    // could both read the same state, then both write their own version,
+    // causing one update to be lost.
+    this.db.transaction(() => {
+      const current = this.repository.getWorkflowState(command.entityId);
+      if (current == null) {
+        throw new Error(`workflow.not_found:${command.entityId}`);
+      }
+      // If workflow is already in the target status, treat as noop success
+      if (current.status === command.toStatus) {
+        return;
+      }
+      workflowStateMachine.assertTransition(current.status, command.toStatus);
+      if (current.status !== command.fromStatus) {
+        throw new Error(
+          `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
+        );
+      }
 
-    // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
-    const traceContext = buildEventTraceContext(command, command.entityId);
-    const platformEvent = buildLegacyTransitionPlatformFactEvent({
-      aggregateType: "Workflow",
-      aggregateId: command.entityId,
-      traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-      occurredAt: command.occurredAt,
-      correlationId: command.entityId,
-      reasonCode: command.reasonCode,
-      emittedBy: "WorkflowTransitionService",
-      principal: command.actorId ?? "system",
+      // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
+      const traceContext = buildEventTraceContext(command, command.entityId);
+      const platformEvent = buildLegacyTransitionPlatformFactEvent({
+        aggregateType: "Workflow",
+        aggregateId: command.entityId,
+        traceId: command.traceId,
+        payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+        occurredAt: command.occurredAt,
+        correlationId: command.entityId,
+        reasonCode: command.reasonCode,
+        emittedBy: "WorkflowTransitionService",
+        principal: command.actorId ?? "system",
+      });
+      this.repository.appendPlatformFactEvent(platformEvent);
+
+      const affected = this.repository.updateWorkflowStateCas(
+        command.entityId,
+        current.currentStepIndex,
+        current.status,
+        command.toStatus,
+        command.currentStepIndex,
+        command.outputsJson,
+        command.occurredAt,
+      );
+      if (affected === 0) {
+        throw new Error(
+          `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+        );
+      }
+      // §28: Emit tier-1 status change event for workflow transitions (legacy compatibility)
+      this.emitWorkflowStatusEvent(command);
     });
-    this.repository.appendPlatformFactEvent(platformEvent);
-
-    const affected = this.repository.updateWorkflowStateCas(
-      command.entityId,
-      current.currentStepIndex,
-      current.status,
-      command.toStatus,
-      command.currentStepIndex,
-      command.outputsJson,
-      command.occurredAt,
-    );
-    if (affected === 0) {
-      throw new Error(
-        `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
-      );
-    }
-    // §28: Emit tier-1 status change event for workflow transitions (legacy compatibility)
-    this.emitWorkflowStatusEvent(command);
   }
 }
 

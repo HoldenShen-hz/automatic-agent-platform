@@ -62,35 +62,44 @@ export class EscalationService {
    * The escalation follows a strict priority order - higher tiers short-circuit lower ones.
    */
   public decide(input: EscalationRequest): EscalationDecision {
-    // Tier 4: Incident-level panic stop for critical production failures
-    if (input.riskLevel === "critical" && input.affectsProduction) {
+    // Tier 1 (agent): Automated resolution - no escalation needed for low/medium risk
+    // Check this FIRST per spec escalation chain: agent → team → human → incident
+    const costThreshold = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
+    const needsTeamApproval = input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThreshold || input.riskLevel === "high";
+    if (!needsTeamApproval) {
+      return {
+        decision: "none",
+        reasonCode: "escalation.not_required",
+        requiresOperatorAction: false,
+      };
+    }
+
+    // Tier 2 (team): Team-level approval - requires human review but not emergency takeover
+    // Only reached if Tier 1 conditions not met (i.e., there IS a reason to escalate)
+    const needsHumanTakeover = input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute");
+    const needsIncidentPanic = input.riskLevel === "critical" && input.affectsProduction;
+
+    // Tier 3 (human): Human takeover for critical risks or high-risk execute-stage failures
+    // Tier 4 (incident): Panic stop takes precedence over human takeover for critical production
+    if (needsIncidentPanic) {
       return this.triggerPanicStop(input);
     }
-    // Tier 3: Human takeover for critical risks OR high-risk execute-stage failures
-    if (input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute")) {
+    if (needsHumanTakeover) {
       return {
         decision: "takeover",
         reasonCode: "escalation.human_takeover_required",
         requiresOperatorAction: true,
       };
     }
-    // Tier 2: Team-level approval for production impact, cost threshold, or high risk
-    const costThreshold = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
-    if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThreshold || input.riskLevel === "high") {
-      // R17-10: Actually create the approval request instead of just returning a structure
-      const approvalRequestId = this.createApprovalRequest(input);
-      return {
-        decision: "approval",
-        reasonCode: "escalation.approval_required",
-        requiresOperatorAction: true,
-        ...(approvalRequestId != null ? { approvalRequestId } : {}),
-      };
-    }
-    // Tier 1: No escalation needed - automated resolution
+
+    // Tier 2 (team): Team-level approval for production impact, cost threshold, or high risk
+    // R17-10: Actually create the approval request instead of just returning a structure
+    const approvalRequestId = this.createApprovalRequest(input);
     return {
-      decision: "none",
-      reasonCode: "escalation.not_required",
-      requiresOperatorAction: false,
+      decision: "approval",
+      reasonCode: "escalation.approval_required",
+      requiresOperatorAction: true,
+      ...(approvalRequestId != null ? { approvalRequestId } : {}),
     };
   }
 

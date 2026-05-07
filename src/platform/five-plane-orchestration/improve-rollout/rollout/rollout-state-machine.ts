@@ -46,6 +46,9 @@ export class RolloutStateMachine {
     const currentStatus = options.currentStatus ?? inferCurrentStatus(candidate, nextLevel);
     const targetStatus = options.targetStatus ?? inferStatusFromLevel(nextLevel, currentStatus);
     const allowedTransitions = ROLLOUT_TRANSITIONS[currentStatus] ?? [];
+    if (currentStatus === targetStatus) {
+      throw new Error(`Self-transition not allowed: ${currentStatus} -> ${targetStatus}`);
+    }
     if (!allowedTransitions.includes(targetStatus)) {
       throw new Error(`Invalid rollout transition: ${currentStatus} -> ${targetStatus}`);
     }

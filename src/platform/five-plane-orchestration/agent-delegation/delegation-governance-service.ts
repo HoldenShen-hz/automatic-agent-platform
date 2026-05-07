@@ -244,9 +244,11 @@ export class DelegationGovernanceService {
     if (condition.delegationDepth !== undefined) {
       // Depth condition: match only when childDepth exceeds threshold
       if (childDepth > condition.delegationDepth) {
-        return true; // Depth exceeded - condition matches, deny effect applies
+        // Depth exceeded - condition is satisfied, but don't short-circuit
+        // Continue evaluating remaining conditions (AND semantics)
+      } else {
+        return false; // Depth not exceeded - condition does not match
       }
-      return false; // Depth not exceeded - condition does not match
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(
