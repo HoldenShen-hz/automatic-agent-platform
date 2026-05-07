@@ -19,7 +19,7 @@ import {
   type WSClient,
 } from "@aa/shared-api-client";
 import type { SystemStatusVM } from "@aa/shared-types";
-import { AuthService, TokenManager } from "@aa/shared-auth";
+import { AuthService, SessionGuard, TokenManager } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
 import { createApprovalsQuery } from "./queries/approval-queries";
 import {
@@ -109,6 +109,7 @@ export function UiRuntimeProvider(
   const themeStore = useMemo(() => createThemeStore(), []);
   const resolvedTokenManager = useMemo(() => tokenManager ?? new TokenManager(), [tokenManager]);
   const authService = useMemo(() => new AuthService(resolvedTokenManager), [resolvedTokenManager]);
+  const sessionGuard = useMemo(() => new SessionGuard(resolvedTokenManager), [resolvedTokenManager]);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
   useEffect(() => {
@@ -194,12 +195,30 @@ export function UiRuntimeProvider(
 
     void bootstrap();
 
+    let warnedExpiryAt: number | null = null;
+    const notifySessionTimeoutWarning = (): void => {
+      const warning = sessionGuard.getTimeoutWarning();
+      if (warning == null || warning.expiresAt === warnedExpiryAt) {
+        return;
+      }
+      warnedExpiryAt = warning.expiresAt;
+      const expiresInMinutes = Math.max(1, Math.ceil(warning.expiresInMs / 60_000));
+      notificationStore.getState().addNotification({
+        kind: "warning",
+        title: "Session expiring soon",
+        message: `Your session will expire in ${expiresInMinutes} minute(s).`,
+      });
+    };
+    notifySessionTimeoutWarning();
+    const sessionWarningInterval = setInterval(notifySessionTimeoutWarning, 30_000);
+
     return () => {
       disposed = true;
+      clearInterval(sessionWarningInterval);
       disposeStatus();
       router.disconnect();
     };
-  }, [authContext, authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore, wsUrl]);
+  }, [authContext, authService, authStore, notificationStore, realtimeStore, resolvedQueryClient, resolvedWsClient, sessionGuard, syncCoordinator, syncStore, uiStore, wsUrl]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },

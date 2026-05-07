@@ -61,7 +61,11 @@ function renderGuardedFeature(
     );
   }
 
-  return <feature.Component />;
+  return (
+    <React.Suspense fallback={<section data-testid="feature-loading-fallback">Loading feature...</section>}>
+      <feature.Component />
+    </React.Suspense>
+  );
 }
 
 function AppRouter(

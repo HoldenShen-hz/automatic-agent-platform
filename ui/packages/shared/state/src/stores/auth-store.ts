@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 /**
  * AuthStore state per §5.1.1 - complete auth context including tokens and tenant info.
@@ -75,7 +75,22 @@ export function createAuthStore() {
           set({ accessToken, refreshToken });
         },
       }),
-      { name: "aa-auth-store" },
+      {
+        name: "aa-auth-store",
+        storage: createJSONStorage(() => (typeof window === "undefined" ? {
+          getItem: () => null,
+          setItem: () => undefined,
+          removeItem: () => undefined,
+        } : window.sessionStorage)),
+        partialize: (state) => ({
+          authenticated: state.authenticated,
+          locale: state.locale,
+          userId: state.userId,
+          tenantId: state.tenantId,
+          roles: state.roles,
+          permissions: state.permissions,
+        }),
+      },
     ),
   );
 }

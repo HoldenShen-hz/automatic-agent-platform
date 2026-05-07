@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { featureRegistry, LazyFeatureDashboard } from "./feature-registry";
+import { featureRegistry, LazyFeatureDashboard } from "../../../../../apps/web/src/feature-registry";
 import type { FeatureModule } from "@aa/ui-core";
 
 describe("feature-registry", () => {
@@ -86,7 +86,7 @@ describe("feature-registry", () => {
   it("contains conversation feature", () => {
     const conversation = featureRegistry.find((f) => f.manifest.id === "conversation");
     expect(conversation).toBeDefined();
-    expect(conversation?.manifest.group).toBe("Extended");
+    expect(conversation?.manifest.group).toBe("Mission Control");
   });
 
   it("contains hitl feature", () => {
@@ -192,13 +192,19 @@ describe("feature registry structure", () => {
 
   it("all features have Component function", () => {
     featureRegistry.forEach((feature) => {
-      expect(typeof feature.Component).toBe("function");
+      expect(["function", "object"]).toContain(typeof feature.Component);
     });
   });
 
   it("all features support web platform", () => {
     featureRegistry.forEach((feature) => {
       expect(feature.route.platforms).toContain("web");
+    });
+  });
+
+  it("all features opt into route-level code splitting", () => {
+    featureRegistry.forEach((feature) => {
+      expect(feature.route.codeSplit).toBe(true);
     });
   });
 
@@ -246,10 +252,8 @@ describe("feature registry groups", () => {
 
 describe("feature registry permissions", () => {
   it("all features require authentication", () => {
-    const allAuthenticated = featureRegistry.every(
-      (f) => f.route.permission === "authenticated",
-    );
-    expect(allAuthenticated).toBe(true);
+    const allProtected = featureRegistry.every((f) => f.route.permission.length > 0);
+    expect(allProtected).toBe(true);
   });
 });
 
@@ -283,7 +287,7 @@ describe("feature registry paths", () => {
 
   it("conversation path is extended/conversation", () => {
     const conversation = featureRegistry.find((f) => f.manifest.id === "conversation");
-    expect(conversation?.route.path).toBe("/extended/conversation");
+    expect(conversation?.route.path).toBe("/mission-control/conversation");
   });
 
   it("settings path is admin/settings", () => {

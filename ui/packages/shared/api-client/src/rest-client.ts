@@ -46,6 +46,25 @@ export interface HttpTransportOptions {
   readonly fallbackToMock?: boolean;
 }
 
+export type RestUiAction =
+  | "redirect_to_login"
+  | "access_denied"
+  | "backoff_and_retry"
+  | "version_mismatch"
+  | "generic_error";
+
+export class RestHttpError extends Error {
+  public constructor(
+    message: string,
+    public readonly status: number,
+    public readonly uiAction: RestUiAction,
+    public readonly retryAfterMs: number | null = null,
+  ) {
+    super(message);
+    this.name = "RestHttpError";
+  }
+}
+
 export class MockTransport {
   public constructor(private readonly data: MockApiShape = defaultMockApiShape) {}
 
@@ -188,6 +207,38 @@ function calculateBackoffDelay(attempt: number, jitter: number): number {
   return Math.floor(exponentialDelay + jitterOffset);
 }
 
+function mapStatusToUiAction(status: number): RestUiAction {
+  if (status === 401) {
+    return "redirect_to_login";
+  }
+  if (status === 403) {
+    return "access_denied";
+  }
+  if (status === 406) {
+    return "version_mismatch";
+  }
+  if (status === 408 || status === 429 || status >= 500) {
+    return "backoff_and_retry";
+  }
+  return "generic_error";
+}
+
+function parseRetryAfterMs(headers: Headers): number | null {
+  const retryAfter = headers.get("retry-after");
+  if (retryAfter == null) {
+    return null;
+  }
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000);
+  }
+  const dateMs = Date.parse(retryAfter);
+  if (Number.isNaN(dateMs)) {
+    return null;
+  }
+  return Math.max(0, dateMs - Date.now());
+}
+
 export class HttpTransport {
   private readonly fetchImplementation: typeof fetch;
   private readonly fallbackTransport: MockTransport | null;
@@ -257,17 +308,31 @@ export class HttpTransport {
           // Handle 406 Not Acceptable - server doesn't support requested version
           if (response.status === 406) {
             this.recordFailure();
-            throw new Error("rest.version_not_supported:Server contract version not supported");
+            throw new RestHttpError(
+              "rest.version_not_supported:Server contract version not supported",
+              406,
+              "version_mismatch",
+            );
           }
           if (isRetryableError(response.status) && attempt < DEFAULT_RETRY_CONFIG.maxRetries) {
             const jitter = Math.random() * 0.3 - 0.15;
             const delay = calculateBackoffDelay(attempt, jitter);
             await new Promise((resolve) => setTimeout(resolve, delay));
-            lastError = new Error(`rest.http_error:${response.status}`);
+            lastError = new RestHttpError(
+              `rest.http_error:${response.status}`,
+              response.status,
+              mapStatusToUiAction(response.status),
+              parseRetryAfterMs(response.headers),
+            );
             continue;
           }
           this.recordFailure();
-          throw new Error(`rest.http_error:${response.status}`);
+          throw new RestHttpError(
+            `rest.http_error:${response.status}`,
+            response.status,
+            mapStatusToUiAction(response.status),
+            parseRetryAfterMs(response.headers),
+          );
         }
 
         this.recordSuccess();

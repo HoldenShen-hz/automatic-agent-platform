@@ -4,6 +4,7 @@ import {
   BrowserWSClient,
   DefaultRESTClient,
   HttpTransport,
+  RestHttpError,
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   fetchTasks,
@@ -160,6 +161,40 @@ describe("shared api-client runtime regressions", () => {
     });
 
     expect(capturedPath).toBe("/tasks?page=2&pageSize=50&sort=updatedAt%3Adesc&filter=status%3Arunning");
+  });
+
+  it("maps 401/403/429 HTTP failures to explicit UI actions instead of throwing only a generic Error", async () => {
+    const cases = [
+      { status: 401, expectedAction: "redirect_to_login" as const, retryAfter: null },
+      { status: 403, expectedAction: "access_denied" as const, retryAfter: null },
+      { status: 429, expectedAction: "backoff_and_retry" as const, retryAfter: 7000 },
+    ];
+
+    for (const testCase of cases) {
+      const transport = new HttpTransport({
+        baseUrl: "https://example.test",
+        fetchImplementation: async () => new Response(JSON.stringify({ ok: false }), {
+          status: testCase.status,
+          headers: {
+            "content-type": "application/json",
+            ...(testCase.retryAfter == null ? {} : { "retry-after": String(testCase.retryAfter / 1000) }),
+          },
+        }),
+      });
+
+      const result = await transport
+        .send(createRequest("/api/v1/tasks"))
+        .then(
+          () => ({ ok: true as const }),
+          (error) => ({ ok: false as const, error }),
+        );
+
+      expect(result.ok).toBe(false);
+      expect(result.error).toBeInstanceOf(RestHttpError);
+      expect((result.error as RestHttpError).status).toBe(testCase.status);
+      expect((result.error as RestHttpError).uiAction).toBe(testCase.expectedAction);
+      expect((result.error as RestHttpError).retryAfterMs).toBe(testCase.retryAfter);
+    }
   });
 
   it("queues offline writes and short-circuits the request before transport dispatch", async () => {

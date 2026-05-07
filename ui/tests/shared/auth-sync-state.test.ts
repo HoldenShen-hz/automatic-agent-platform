@@ -6,6 +6,7 @@ import {
   createQueryClientFactory,
   createRealtimeStore,
   createSyncStore,
+  useNotificationState,
   useUiState,
 } from "@aa/shared-state";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -141,5 +142,24 @@ describe("shared auth/sync/state split modules", () => {
 
     expect(result.allowed).toBe(true);
     expect(result.evaluatedLayers).toEqual(["auth", "role", "permission", "feature-flag", "domain"]);
+  });
+
+  it("emits a session timeout warning before expiry instead of only failing after expiration", async () => {
+    function WarningHarness(): ReactElement {
+      const notifications = useNotificationState();
+      const latest = notifications.notifications[0];
+      return createElement("div", undefined, latest?.title ?? "no-warning");
+    }
+
+    const tokenManager = new TokenManager();
+    tokenManager.setSession({
+      accessToken: "about-to-expire",
+      refreshToken: "refresh-token",
+      expiresAt: Date.now() + 4 * 60_000,
+    });
+
+    render(createElement(UiRuntimeProvider, { tokenManager }, createElement(WarningHarness)));
+
+    expect(await screen.findByText("Session expiring soon")).toBeInTheDocument();
   });
 });
