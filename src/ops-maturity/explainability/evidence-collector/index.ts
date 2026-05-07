@@ -23,3 +23,15 @@ export function collectExplanationEvidence(items: readonly ExplanationEvidence[]
     }, {}),
   };
 }
+
+export class EvidenceCollector<T extends { readonly taskId: string }> {
+  private readonly evidence: T[] = [];
+
+  public addEvidence(item: T): void {
+    this.evidence.push(item);
+  }
+
+  public getAggregatedEvidence(taskId: string): T[] {
+    return this.evidence.filter((item) => item.taskId === taskId);
+  }
+}

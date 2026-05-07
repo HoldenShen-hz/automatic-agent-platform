@@ -14,12 +14,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { WorkflowDebuggerService } from "../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
-import { BreakpointManager } from "../../src/ops-maturity/workflow-debugger/breakpoint-manager/index.js";
-import { TimeTravelDebugService } from "../../src/ops-maturity/workflow-debugger/time-travel-debug-service.js";
-import { RunComparator } from "../../src/ops-maturity/workflow-debugger/run-comparator/index.js";
-import type { DebugBreakpoint, DebugSnapshot, WorkflowRunRecord } from "../../src/ops-maturity/workflow-debugger/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { WorkflowDebuggerService } from "../../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
+import { BreakpointManager } from "../../../src/ops-maturity/workflow-debugger/breakpoint-manager/index.js";
+import { TimeTravelDebugService } from "../../../src/ops-maturity/workflow-debugger/time-travel-debug-service.js";
+import { RunComparator } from "../../../src/ops-maturity/workflow-debugger/run-comparator/index.js";
+import type { DebugBreakpoint, DebugSnapshot, WorkflowRunRecord } from "../../../src/ops-maturity/workflow-debugger/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

@@ -246,3 +246,16 @@ export function hasSideEffectDifferences(diff: SideEffectDiff): boolean {
     || diff.modifiedEffects.length > 0
   );
 }
+
+export class RunComparator {
+  public compare(
+    left: { readonly steps: readonly RunSnapshot[] },
+    right: { readonly steps: readonly RunSnapshot[] },
+  ): {
+    readonly differences: readonly string[];
+  } {
+    return {
+      differences: compareWorkflowRuns(left.steps, right.steps),
+    };
+  }
+}

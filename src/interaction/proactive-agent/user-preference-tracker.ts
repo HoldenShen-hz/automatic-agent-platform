@@ -105,6 +105,7 @@ const DEFAULT_CONFIG: PreferenceTrackerConfig = {
 export class UserPreferenceTracker {
   private readonly feedback: SuggestionFeedback[] = [];
   private readonly config: PreferenceTrackerConfig;
+  private readonly preferences = new Map<string, Map<string, unknown>>();
 
   public constructor(config: Partial<PreferenceTrackerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -259,6 +260,16 @@ export class UserPreferenceTracker {
     const before = this.feedback.length;
     this.feedback.splice(0, this.feedback.length, ...this.feedback.filter((f) => new Date(f.respondedAt) >= cutoff));
     return before - this.feedback.length;
+  }
+
+  public setPreference(userId: string, key: string, value: unknown): void {
+    const existing = this.preferences.get(userId) ?? new Map<string, unknown>();
+    existing.set(key, value);
+    this.preferences.set(userId, existing);
+  }
+
+  public getPreference(userId: string, key: string): unknown {
+    return this.preferences.get(userId)?.get(key);
   }
 
   /**

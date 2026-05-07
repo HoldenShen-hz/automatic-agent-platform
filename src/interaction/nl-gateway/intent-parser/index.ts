@@ -33,6 +33,27 @@ export interface IntentParserModelGateway {
   complete(prompt: string): Promise<string>;
 }
 
+export class SimpleIntentParser {
+  public async parse(request: { readonly message: string }): Promise<{
+    readonly intent: string;
+    readonly confidence: number;
+    readonly workflowId?: string;
+    readonly fallbackWorkflowId?: string;
+  }> {
+    const token = parseIntentTokens(request.message)[0] ?? {
+      intentType: "task_query",
+      confidence: 0.2,
+    };
+    const workflowId = token.intentType === "task_create" ? "single_agent_minimal" : "information_lookup";
+    return {
+      intent: token.intentType,
+      confidence: token.confidence,
+      workflowId,
+      fallbackWorkflowId: workflowId,
+    };
+  }
+}
+
 /**
  * R5-19: Intent extraction budget tracking interface.
  * Tracks token usage during LLM-based intent extraction to enforce budget limits.

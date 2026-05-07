@@ -16,19 +16,19 @@ import type { UserPortalSession, UserPortalContext, InteractionTemplate, Draggab
 
 function createPortalSession(overrides: Partial<UserPortalSession> = {}): UserPortalSession {
   return {
-    sessionId: overrides.sessionId ?? "session_ux_001",
     userId: overrides.userId ?? "user_ux_001",
-    tenantId: overrides.tenantId ?? null,
-    createdAt: overrides.createdAt ?? new Date().toISOString(),
-    lastActiveAt: overrides.lastActiveAt ?? new Date().toISOString(),
+    tenantId: overrides.tenantId ?? "tenant_ux_001",
+    displayName: overrides.displayName ?? "UX User",
+    preferredLocale: overrides.preferredLocale ?? "zh-CN",
     ...overrides,
   };
 }
 
 function createPortalContext(overrides: Partial<UserPortalContext> = {}): UserPortalContext {
   return {
-    divisionId: overrides.divisionId ?? "general_ops",
-    workflowClass: overrides.workflowClass ?? "deterministic",
+    memberCount: overrides.memberCount ?? 8,
+    departmentCount: overrides.departmentCount ?? 1,
+    requiresSso: overrides.requiresSso ?? false,
     ...overrides,
   };
 }
@@ -36,9 +36,14 @@ function createPortalContext(overrides: Partial<UserPortalContext> = {}): UserPo
 function createTemplate(overrides: Partial<InteractionTemplate> = {}): InteractionTemplate {
   return {
     templateId: overrides.templateId ?? "tmpl_001",
-    name: overrides.name ?? "Standard Onboarding",
+    title: overrides.title ?? "Standard Onboarding",
     description: overrides.description ?? "Default onboarding template",
+    domainId: overrides.domainId ?? "general_ops",
+    riskProfile: overrides.riskProfile ?? "low",
+    version: overrides.version ?? "1.0.0",
+    parameters: overrides.parameters ?? [],
     steps: overrides.steps ?? [],
+    requiredCapabilities: overrides.requiredCapabilities ?? [],
     ...overrides,
   };
 }
@@ -48,10 +53,11 @@ function createWizardSession(overrides: Partial<WizardSession> = {}): WizardSess
     sessionId: overrides.sessionId ?? "wizard_001",
     currentStepId: overrides.currentStepId ?? "step_1",
     steps: overrides.steps ?? [
-      { stepId: "step_1", label: "Welcome", completed: false },
-      { stepId: "step_2", label: "Configure", completed: false },
+      { stepId: "step_1", title: "Welcome", completed: false },
+      { stepId: "step_2", title: "Configure", completed: false },
     ],
-    data: overrides.data ?? {},
+    answers: overrides.answers ?? {},
+    history: overrides.history ?? [],
     ...overrides,
   };
 }
@@ -59,9 +65,12 @@ function createWizardSession(overrides: Partial<WizardSession> = {}): WizardSess
 function createDraggableComponent(overrides: Partial<DraggableComponent> = {}): DraggableComponent {
   return {
     componentId: overrides.componentId ?? "comp_001",
-    type: overrides.type ?? "tool",
-    label: overrides.label ?? "Test Component",
-    defaultConfig: overrides.defaultConfig ?? {},
+    name: overrides.name ?? "Test Component",
+    icon: overrides.icon ?? "bolt",
+    domainId: overrides.domainId ?? "general_ops",
+    riskLevel: overrides.riskLevel ?? "low",
+    configSchema: overrides.configSchema ?? {},
+    previewDescription: overrides.previewDescription ?? "Test component preview",
     ...overrides,
   };
 }
@@ -108,8 +117,8 @@ test("E2E UserExperience: Wizard step progression is tracked", async () => {
 
   const wizardSession = createWizardSession({
     steps: [
-      { stepId: "step_1", label: "Start", completed: true },
-      { stepId: "step_2", label: "Configure", completed: false },
+      { stepId: "step_1", title: "Start", completed: true },
+      { stepId: "step_2", title: "Configure", completed: false },
     ],
     currentStepId: "step_2",
   });

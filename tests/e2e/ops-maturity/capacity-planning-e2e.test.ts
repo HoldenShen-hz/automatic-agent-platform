@@ -13,10 +13,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { CapacityPlanningService } from "../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
-import { TrendAnalyzer } from "../../src/ops-maturity/capacity-planner/trend-analyzer/index.js";
-import type { CapacitySnapshot, ForecastRequest, ResourceAllocation } from "../../src/ops-maturity/capacity-planner/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { CapacityPlanningService } from "../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
+import { TrendAnalyzer } from "../../../src/ops-maturity/capacity-planner/trend-analyzer/index.js";
+import type { CapacitySnapshot, ForecastRequest, ResourceAllocation } from "../../../src/ops-maturity/capacity-planner/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

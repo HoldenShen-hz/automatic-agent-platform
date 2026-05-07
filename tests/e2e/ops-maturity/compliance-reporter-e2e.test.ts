@@ -13,9 +13,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { ComplianceReporterService } from "../../src/ops-maturity/compliance-reporter/compliance-reporter-service.js";
-import type { ComplianceReport, PolicyCheck, ViolationRecord } from "../../src/ops-maturity/compliance-reporter/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { ComplianceReporterService } from "../../../src/ops-maturity/compliance-reporter/compliance-reporter-service.js";
+import type { ComplianceReport, PolicyCheck, ViolationRecord } from "../../../src/ops-maturity/compliance-reporter/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

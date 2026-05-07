@@ -224,6 +224,20 @@ export class ExplanationPipelineService {
     };
   }
 
+  public async process(chain: {
+    readonly taskId: string;
+    readonly rootNodeId: string;
+    readonly nodes: ReadonlyArray<{ readonly label?: string; readonly type?: string }>;
+  }): Promise<{
+    readonly summary: string;
+    readonly factors: ReadonlyArray<string>;
+  }> {
+    return {
+      summary: `Built explanation for ${chain.taskId} from ${chain.nodes.length} nodes`,
+      factors: chain.nodes.map((node) => node.label ?? node.type ?? "unknown").slice(0, 5),
+    };
+  }
+
   /**
    * §59.6: Records an explanation audit trail entry.
    */

@@ -14,11 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { IntentParser } from "../../src/interaction/nl-gateway/intent-parser/index.js";
-import { AmbiguityHandler } from "../../src/interaction/nl-gateway/ambiguity-handler/index.js";
-import { SlotResolver } from "../../src/interaction/nl-gateway/slot-resolver/index.js";
-import type { NlRequest, ParsedIntent, DisambiguationOption } from "../../src/interaction/nl-gateway/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { SimpleIntentParser as IntentParser } from "../../../src/interaction/nl-gateway/intent-parser/index.js";
+import { AmbiguityHandler } from "../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
+import { SlotResolver } from "../../../src/interaction/nl-gateway/slot-resolver/index.js";
+import type { NlRequest, ParsedIntent, DisambiguationOption } from "../../../src/interaction/nl-gateway/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

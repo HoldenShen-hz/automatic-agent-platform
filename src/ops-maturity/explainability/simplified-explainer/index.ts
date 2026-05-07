@@ -74,6 +74,26 @@ export function simplifyExplanation(
   };
 }
 
+export class SimplifiedExplainer {
+  public simplify(input: {
+    readonly summary: string;
+    readonly factors?: ReadonlyArray<{ readonly factor: string }>;
+    readonly causalChain?: readonly string[];
+    readonly confidence?: number;
+  }): {
+    readonly plainLanguage: string;
+    readonly keyPoints: ReadonlyArray<string>;
+  } {
+    return {
+      plainLanguage: simplifyText(input.summary),
+      keyPoints: [
+        ...(input.factors?.map((item) => simplifyText(item.factor)) ?? []),
+        ...(input.causalChain?.slice(0, 2) ?? []),
+      ],
+    };
+  }
+}
+
 /**
  * Maps technical stage names to business-friendly terms.
  */

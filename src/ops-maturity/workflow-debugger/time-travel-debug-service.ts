@@ -332,6 +332,38 @@ export class TimeTravelDebugService {
     return [...latestVariables.values()];
   }
 
+  public reconstructAtStep(
+    run: {
+      readonly runId: string;
+      readonly taskId: string;
+      readonly steps: ReadonlyArray<Record<string, unknown>>;
+    },
+    stepIndex: number,
+  ): {
+    readonly snapshotId: string;
+    readonly stepIndex: number;
+    readonly workflowState: {
+      readonly runId: string;
+      readonly completedSteps: ReadonlyArray<number>;
+      readonly currentStep: number;
+      readonly currentOutput: unknown;
+    };
+  } {
+    const completedSteps = run.steps
+      .map((_, index) => index)
+      .filter((index) => index <= stepIndex);
+    return {
+      snapshotId: newId("debug_snapshot"),
+      stepIndex,
+      workflowState: {
+        runId: run.runId,
+        completedSteps,
+        currentStep: stepIndex,
+        currentOutput: run.steps[stepIndex]?.output ?? null,
+      },
+    };
+  }
+
   public endSession(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;

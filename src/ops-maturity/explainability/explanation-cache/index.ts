@@ -16,3 +16,17 @@ export function putExplanationCacheEntry(
     [entry.cacheKey]: entry,
   };
 }
+
+export class ExplanationCache<T = unknown> {
+  private readonly entries = new Map<string, T>();
+
+  public constructor(_options: { readonly ttlSeconds: number }) {}
+
+  public set(key: string, value: T): void {
+    this.entries.set(key, value);
+  }
+
+  public get(key: string): T | null {
+    return this.entries.get(key) ?? null;
+  }
+}

@@ -205,6 +205,14 @@ export interface DebuggerActor {
 
 export class WorkflowDebuggerService {
   private readonly breakpoints = new Map<string, DebugBreakpointDefinition[]>();
+  private readonly compatibilitySessions = new Map<string, { readonly sessionId: string; readonly taskId: string }>();
+  private readonly compatibilityBreakpoints = new Map<string, Array<{
+    readonly breakpointId: string;
+    readonly taskId: string;
+    readonly stepIndex: number;
+    readonly enabled: boolean;
+    readonly createdAt: string;
+  }>>();
 
   private resolvePlanGraphId(input: Pick<DebugBreakpointDefinition, "planGraphId" | "workflowId"> | Pick<WorkflowTraceFrame, "planGraphId" | "workflowId">): string {
     return input.planGraphId ?? input.workflowId ?? "";
@@ -325,5 +333,35 @@ export class WorkflowDebuggerService {
       timestamp: frame.timestamp,
       label: frame.label,
     })));
+  }
+
+  public startDebugSession(taskId: string): { readonly sessionId: string; readonly taskId: string } {
+    const session = {
+      sessionId: `debug_${taskId}`,
+      taskId,
+    };
+    this.compatibilitySessions.set(taskId, session);
+    return session;
+  }
+
+  public setBreakpoint(input: {
+    readonly breakpointId: string;
+    readonly taskId: string;
+    readonly stepIndex: number;
+    readonly enabled: boolean;
+    readonly createdAt: string;
+  }): void {
+    const existing = this.compatibilityBreakpoints.get(input.taskId) ?? [];
+    this.compatibilityBreakpoints.set(input.taskId, [...existing, input]);
+  }
+
+  public getBreakpoints(taskId: string): Array<{
+    readonly breakpointId: string;
+    readonly taskId: string;
+    readonly stepIndex: number;
+    readonly enabled: boolean;
+    readonly createdAt: string;
+  }> {
+    return [...(this.compatibilityBreakpoints.get(taskId) ?? [])];
   }
 }

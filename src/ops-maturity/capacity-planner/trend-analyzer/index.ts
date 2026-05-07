@@ -34,3 +34,24 @@ export class CapacityTrendAnalyzerService {
     };
   }
 }
+
+export class TrendAnalyzer {
+  public analyzeTrends(
+    snapshots: readonly {
+      readonly activeTasks: number;
+      readonly queuedTasks: number;
+    }[],
+  ): {
+    readonly patterns: readonly string[];
+    readonly growthRate: number;
+  } {
+    if (snapshots.length === 0) {
+      return { patterns: [], growthRate: 0 };
+    }
+    const first = snapshots[0]!.activeTasks;
+    const last = snapshots.at(-1)!.activeTasks;
+    const growthRate = first === 0 ? last : Number((((last - first) / first) * 100).toFixed(2));
+    const patterns = last > first ? ["increasing_load"] : last < first ? ["decreasing_load"] : ["stable_load"];
+    return { patterns, growthRate };
+  }
+}

@@ -195,6 +195,33 @@ export class SlotResolver {
   public getMaxRounds(): number {
     return this.maxRounds;
   }
+
+  public resolve(
+    request: { readonly message: string },
+    requiredEntityTypes: readonly string[],
+  ): Record<string, unknown> {
+    const message = request.message;
+    const resolved: Record<string, unknown> = {};
+
+    const divisionMatch = /([a-z0-9_-]+)\s*(?:分区|division)/i.exec(message);
+    const taskType = /备份|backup/i.test(message)
+      ? "backup"
+      : /分析|analy/i.test(message)
+        ? "analysis"
+        : "general";
+
+    for (const slot of requiredEntityTypes) {
+      if (slot === "divisionId") {
+        resolved[slot] = divisionMatch?.[1] ?? (/devops/i.test(message) ? "devops" : "general_ops");
+      } else if (slot === "taskType") {
+        resolved[slot] = taskType;
+      } else if (slot === "description") {
+        resolved[slot] = message;
+      }
+    }
+
+    return resolved;
+  }
 }
 
 /**

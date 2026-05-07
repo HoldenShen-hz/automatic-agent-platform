@@ -13,10 +13,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { AutonomyService } from "../../src/interaction/autonomy/autonomy-service.js";
-import { AutonomyAuditService } from "../../src/interaction/autonomy/autonomy-audit-service.js";
-import type { AutonomyLevel, AutonomyDecision, EscalationRequest } from "../../src/interaction/autonomy/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { AutonomyService } from "../../../src/interaction/autonomy/autonomy-service.js";
+import { AutonomyAuditService } from "../../../src/interaction/autonomy/autonomy-audit-service.js";
+import type { AutonomyLevel, AutonomyDecision, EscalationRequest } from "../../../src/interaction/autonomy/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

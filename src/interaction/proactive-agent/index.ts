@@ -390,6 +390,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     return [...this.incidents];
   }
 
+  public getTrigger(triggerId: string): TriggerDefinition | null {
+    return this.states.get(triggerId)?.trigger ?? null;
+  }
+
   public evaluate(triggerId: string, input: TriggerEvaluationInput): TriggerFireDecision {
     const state = this.states.get(triggerId);
     if (state == null) {
@@ -535,6 +539,47 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
   public acknowledgeSuggestion(suggestionId: string): boolean {
     return this.suggestions.delete(suggestionId);
+  }
+
+  public async evaluateTriggers(event: {
+    readonly triggerId: string;
+    readonly context: Record<string, unknown>;
+  }): Promise<Array<{ readonly triggerId: string; readonly actionType: string; readonly actionMode: TriggerFireDecision["actionMode"] }>> {
+    const trigger = this.getTrigger(event.triggerId);
+    if (trigger == null) {
+      return [];
+    }
+    const metricValue = Number(
+      event.context.cpuPercent
+      ?? event.context.cpu_percent
+      ?? event.context.memoryPercent
+      ?? event.context.value
+      ?? 0,
+    );
+    const metricName = typeof trigger.config === "object" && "metricName" in trigger.config
+      ? trigger.config.metricName
+      : "metric";
+    const decision = this.evaluate(trigger.triggerId, {
+      kind: trigger.type,
+      now: new Date().toISOString(),
+      metric: {
+        source: "compat",
+        name: metricName,
+        value: metricValue,
+      },
+    });
+    if (!decision.allowed) {
+      return [];
+    }
+    return [{
+      triggerId: trigger.triggerId,
+      actionType: trigger.action.actionType,
+      actionMode: decision.actionMode,
+    }];
+  }
+
+  public getScheduledTriggers(): TriggerDefinition[] {
+    return this.listTriggers().filter((trigger) => trigger.type === "schedule");
   }
 
   /**

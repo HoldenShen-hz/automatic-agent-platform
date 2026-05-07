@@ -13,9 +13,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { AnomalyDetectionService } from "../../src/ops-maturity/monitoring/anomaly-detection-service.js";
-import type { MetricSample, AnomalyAlert, SystemHealthStatus } from "../../src/ops-maturity/monitoring/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { AnomalyDetectionService } from "../../../src/ops-maturity/monitoring/anomaly-detection-service.js";
+import type { MetricSample, AnomalyAlert, SystemHealthStatus } from "../../../src/ops-maturity/monitoring/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

@@ -14,11 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { ProactiveAgentService, type TriggerDefinition } from "../../src/interaction/proactive-agent/index.js";
-import { TriggerEngine } from "../../src/interaction/proactive-agent/trigger-engine/index.js";
-import { UserPreferenceTracker } from "../../src/interaction/proactive-agent/user-preference-tracker.js";
-import type { TriggerEvent, ProactiveAction } from "../../src/interaction/proactive-agent/types.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
+import { ProactiveAgentService, type TriggerDefinition } from "../../../src/interaction/proactive-agent/index.js";
+import { TriggerEngine } from "../../../src/interaction/proactive-agent/trigger-engine/index.js";
+import { UserPreferenceTracker } from "../../../src/interaction/proactive-agent/user-preference-tracker.js";
+import type { TriggerEvent, ProactiveAction } from "../../../src/interaction/proactive-agent/types.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -30,9 +30,23 @@ function createTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefin
     domainId: overrides.domainId ?? "operations",
     name: overrides.name ?? "High CPU Alert",
     type: overrides.type ?? "threshold",
-    condition: overrides.condition ?? { metric: "cpu_percent", threshold: 90, operator: "gt" },
-    actions: overrides.actions ?? ["notify", "scale"],
+    config: overrides.config ?? {
+      metricSource: "system",
+      metricName: "cpu_percent",
+      condition: "gt",
+      threshold: 90,
+      evaluationWindow: "5m",
+      consecutiveBreaches: 1,
+    },
+    action: overrides.action ?? {
+      actionType: "suggest_to_user",
+      template: { channels: ["dashboard"] },
+      requireConfirmation: false,
+    },
     enabled: overrides.enabled ?? true,
+    riskLevel: overrides.riskLevel ?? "low",
+    maxFireRate: overrides.maxFireRate ?? "5/hour",
+    cooldown: overrides.cooldown ?? "5m",
     ...overrides,
   };
 }
@@ -59,7 +73,14 @@ test("E2E Proactive: TriggerEngine evaluates conditions and fires triggers", asy
 
     // Register trigger
     const trigger = createTrigger({
-      condition: { metric: "cpu_percent", threshold: 90, operator: "gt" },
+      config: {
+        metricSource: "system",
+        metricName: "cpu_percent",
+        condition: "gt",
+        threshold: 90,
+        evaluationWindow: "5m",
+        consecutiveBreaches: 1,
+      },
     });
     engine.registerTrigger(trigger);
 
@@ -138,8 +159,12 @@ test("E2E Proactive: Scheduled triggers fire at configured intervals", async () 
 
     const scheduledTrigger = createTrigger({
       triggerId: "scheduled_trigger_001",
-      type: "scheduled",
-      schedule: { intervalMs: 60000, cronExpression: null },
+      type: "schedule",
+      config: {
+        cron: "*/1 * * * *",
+        timezone: "UTC",
+        skipIfPreviousRunning: true,
+      },
     });
 
     service.registerTrigger(scheduledTrigger);

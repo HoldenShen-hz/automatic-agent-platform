@@ -25,3 +25,34 @@ export function resolveTriggerActionMode(
   // R16-04 FIX: low risk non-confirmation-required actions may proceed without user involvement.
   return "auto_execute";
 }
+
+export class TriggerEngine<TTrigger extends { readonly triggerId: string; readonly condition?: Record<string, unknown> }> {
+  private readonly triggers = new Map<string, TTrigger>();
+
+  public registerTrigger(trigger: TTrigger): void {
+    this.triggers.set(trigger.triggerId, trigger);
+  }
+
+  public evaluate(event: {
+    readonly triggerId: string;
+    readonly context: Record<string, unknown>;
+  }): TTrigger[] {
+    const trigger = this.triggers.get(event.triggerId);
+    if (trigger == null) {
+      return [];
+    }
+    const threshold = Number(trigger.condition?.threshold ?? 0);
+    const metric = String(trigger.condition?.metric ?? "");
+    const operator = String(trigger.condition?.operator ?? "gt");
+    const value = Number(
+      event.context.cpuPercent
+      ?? event.context.cpu_percent
+      ?? event.context.memoryPercent
+      ?? event.context[metric]
+      ?? event.context[metric.replace(/_([a-z])/g, (_match, char: string) => char.toUpperCase())]
+      ?? 0,
+    );
+    const matched = operator === "gt" ? value > threshold : operator === "lt" ? value < threshold : value === threshold;
+    return matched ? [trigger] : [];
+  }
+}
