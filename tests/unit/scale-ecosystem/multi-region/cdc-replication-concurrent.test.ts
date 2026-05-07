@@ -110,6 +110,15 @@ test("[SYS-REL-2.2] CDC service mergeVectorClock combines per-region sequences",
   assert.ok(merged.getMaxSequence() >= 10, "Merged clock should have max sequence from both");
 });
 
+test("[SYS-REL-2.2] CDC updateVectorClock stores explicit region sequence instead of blind increment", () => {
+  const service = new CDCReplicationService();
+
+  service.updateVectorClock("entity-2", "us-west-2", 7);
+  const clock = service.getVectorClock("entity-2");
+
+  assert.equal(clock?.toMap().get("us-west-2"), 7);
+});
+
 test("[SYS-REL-2.2] CDC detectConflict returns false for different taskIds", () => {
   const service = new CDCReplicationService();
 
@@ -128,25 +137,25 @@ test("[SYS-REL-2.2] CDC detectConflict returns false for different taskIds", () 
 test("[SYS-REL-2.2] CDC detectConflict returns true for concurrent updates to same task", () => {
   const service = new CDCReplicationService();
 
-  const localEvent = createReplicationEvent({ taskId: "task-shared", sequence: 1, id: "local-1" });
-  const remoteEvent = createReplicationEvent({ taskId: "task-shared", sequence: 1, id: "remote-1", createdAt: new Date().toISOString() });
+  const localEvent = createReplicationEvent({
+    taskId: "task-shared",
+    sequence: 1,
+    id: "local-1",
+    sourceRegionId: "region-a",
+    vectorClock: { "region-a": 1 },
+    payloadJson: JSON.stringify({ source: "local" }),
+  });
+  const remoteEvent = createReplicationEvent({
+    taskId: "task-shared",
+    sequence: 1,
+    id: "remote-1",
+    createdAt: new Date().toISOString(),
+    sourceRegionId: "region-b",
+    vectorClock: { "region-b": 1 },
+    payloadJson: JSON.stringify({ source: "remote" }),
+  });
 
-  // Set up concurrent vector clocks
-  service.updateVectorClock("task-shared", "region-a", 1);
-  service.updateVectorClock("task-shared", "region-b", 1);
-
-  const localClock = service.getVectorClock("task-shared")!;
-
-  // Manually set up remote clock for conflict detection
-  const remoteMap = new Map<string, number>();
-  remoteMap.set("region-b", 1);
-  const remoteClock = new VectorClock(remoteMap);
-
-  // Both clocks should be concurrent (equal)
-  assert.equal(localClock.compare(remoteClock), 0, "Clocks should be concurrent");
-
-  // The detectConflict should detect sequence mismatch with concurrent clocks
-  // This is the race condition scenario
+  assert.equal(service.detectConflict(localEvent, remoteEvent), true);
 });
 
 test("[SYS-REL-2.2] CDC mergeEventsWithConflictResolution handles concurrent events", () => {
@@ -165,6 +174,39 @@ test("[SYS-REL-2.2] CDC mergeEventsWithConflictResolution handles concurrent eve
 
   // With LWW, remote event (later timestamp) should win for conflicting sequence
   assert.ok(merged.length >= localEvents.length, "Should have merged events");
+});
+
+test("[SYS-REL-2.2] CDC applyBatch respects event vector clocks when replacing stale local events", () => {
+  const service = new CDCReplicationService();
+
+  const localEvents: CDCReplicationEvent[] = [
+    createReplicationEvent({
+      id: "local-1",
+      taskId: "task-clocked",
+      sequence: 5,
+      sourceRegionId: "us-west-2",
+      vectorClock: { "us-west-2": 5 },
+      createdAt: "2026-04-29T10:00:00.000Z",
+      payloadJson: JSON.stringify({ owner: "local" }),
+    }),
+  ];
+
+  const remoteEvents: CDCReplicationEvent[] = [
+    createReplicationEvent({
+      id: "remote-1",
+      taskId: "task-clocked",
+      sequence: 5,
+      sourceRegionId: "eu-west-1",
+      vectorClock: { "us-west-2": 5, "eu-west-1": 6 },
+      createdAt: "2026-04-29T10:00:01.000Z",
+      payloadJson: JSON.stringify({ owner: "remote" }),
+    }),
+  ];
+
+  const applied = service.applyBatch("task-clocked", localEvents, remoteEvents, "lww");
+
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0]?.id, "remote-1");
 });
 
 test("[SYS-REL-2.2] CDC prepareBatch filters events correctly after checkpoint", () => {
@@ -397,7 +439,7 @@ test("[SYS-REL-2.2] VectorClock getMaxSequence returns highest per-region sequen
   assert.equal(clock.getMaxSequence(), 10, "Max sequence should be 10 from region-b");
 });
 
-test("[SYS-REL-2.2] CDC replication lag calculation is accurate", () => {
+test("[SYS-REL-2.2] CDC replication lag is time-based after checkpoint confirmation", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -415,9 +457,9 @@ test("[SYS-REL-2.2] CDC replication lag calculation is accurate", () => {
   };
   service.confirmBatch("us-west-2", "eu-west-1", batch);
 
-  // Total source events is 100, so lag should be 50
   const lag = service.getReplicationLag("us-west-2", "eu-west-1", 100);
-  assert.equal(lag, 50, "Replication lag should be 50 events behind");
+  assert.ok(lag >= 0, "Replication lag should never be negative");
+  assert.ok(lag < 5_000, "Freshly confirmed batches should report low time-based lag");
 });
 
 test("[SYS-REL-2.2] CDC zero lag when fully caught up", () => {

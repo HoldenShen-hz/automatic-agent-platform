@@ -286,11 +286,11 @@ function decideLevel(
   }
 
   // §42 P0/P1 Demotion Logic:
-  // - P0 incidents: demote to suggestion (not frozen) per §42.2
+  // - P0 incidents: freeze immediately per R23-07
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
   const severity = score.lastIncidentSeverity;
   if (score.incidents > 0 && severity === "P0") {
-    return "suggestion";
+    return "frozen";
   }
 
   // R9-45 fix: Non-P0/P1 incidents require time window check for demotion
@@ -314,7 +314,8 @@ function decideLevel(
     } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
-    } else if (options.freezeOnIncident) {
+    } else if (options.freezeOnIncident && severity === "P0") {
+      // R23-08 fix: Only P0 incidents trigger freeze; other severities trigger suggestion
       return "frozen";
     } else {
       return "suggestion";

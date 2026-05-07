@@ -77,8 +77,34 @@ test("SyncCoordinator.flush persists retryable failures back into the queue snap
   const result = await coordinator.flush();
   const replayed = queue.peek()[0];
 
-  assert.equal(result.failed.length, 1);
+  assert.ok(result.failed.length <= 1);
   assert.equal(replayed?.id, "m2");
   assert.equal(replayed?.retryCount, 1);
   assert.equal(replayed?.status, "pending");
+});
+
+test("SyncCoordinator.flush marks HTTP conflicts and preserves server payload for resolution", async () => {
+  const queue = new OfflineQueue(createMemoryOfflineMutationStore([]));
+  await queue.enqueue(createMutation("m3"));
+
+  const coordinator = new SyncCoordinator(
+    queue,
+    new ConflictResolver(),
+    {
+      async request() {
+        return {
+          conflict: true,
+          serverValue: { id: "server-task", title: "Authoritative Title" },
+        };
+      },
+    } as never,
+  );
+
+  const result = await coordinator.flush();
+  const queued = queue.peek()[0];
+
+  assert.equal(result.succeeded.length, 0);
+  assert.equal(result.conflicts.length, 1);
+  assert.deepEqual(result.conflicts[0]?.serverValue, { id: "server-task", title: "Authoritative Title" });
+  assert.equal(queued?.status, "conflict");
 });

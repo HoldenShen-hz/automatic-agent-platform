@@ -39,6 +39,18 @@ export {
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
+  // R8-10: NodeRun-based checkpoint types
+  NODE_RUN_CHECKPOINT_SCHEMA_VERSION,
+  type NodeRunCheckpointDecisionContext,
+  type NodeRunCheckpointResumeContext,
+  type NodeRunCheckpointFileDiffSummary,
+  type NodeRunCheckpoint,
+  type CreateNodeRunCheckpointInput,
+  type NodeRunCheckpointSummary,
+  // R8-10: NodeRun-based checkpoint functions
+  createNodeRunCheckpoint,
+  readNodeRunCheckpoint,
+  summarizeNodeRunCheckpoint,
 } from "./workflow-step-checkpoint.js";
 
 export {

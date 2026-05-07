@@ -594,7 +594,7 @@ export class ChannelGatewayService {
 
     for (const queuedMessage of queuedMessages) {
       // Check rate limit before retrying
-      const rateLimit = deliveryService.checkRateLimit(queuedMessage.channel);
+      const rateLimit = deliveryService.checkRateLimit(undefined, queuedMessage.channel);
       if (!rateLimit.allowed) {
         summary.skippedRateLimited += 1;
         continue;
@@ -669,7 +669,7 @@ export class ChannelGatewayService {
     if (deliveryService == null) {
       return;
     }
-    const result = deliveryService.checkRateLimit(channel);
+    const result = deliveryService.checkRateLimit(undefined, channel);
     if (!result.allowed) {
       throw new GatewayRateLimitError(
         channel,
@@ -697,7 +697,7 @@ export class ChannelGatewayService {
   ): void {
     // Record rate limit hit to maintain accurate counters
     try {
-      deliveryService.recordRateLimitHit(channel);
+      deliveryService.recordRateLimitHit(undefined, channel);
     } catch (error) {
       this.logger.log({
         level: "warn",

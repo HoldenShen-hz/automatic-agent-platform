@@ -513,12 +513,13 @@ export class DivisionLoader {
       }
 
       // Lint the workflow for structural validity
-      const lintReport = new WorkflowValidator().validate(workflow);
-      if (!lintReport.ok) {
-        const firstError = lintReport.issues.find((issue) => issue.severity === "error");
+      const issues = new WorkflowValidator().validate(workflow);
+      const errors = issues.filter((issue) => issue.severity === "error");
+      if (errors.length > 0) {
+        const firstError = errors[0]!;
         throwDivisionWorkflowError("workflow.invalid", {
           workflowId: workflow.workflowId,
-          reasonCode: firstError?.code ?? "unknown",
+          reasonCode: firstError.code ?? "unknown",
         });
       }
     }

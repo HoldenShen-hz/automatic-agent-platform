@@ -305,6 +305,60 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     return this.state.budgetReservations.get(budgetReservationId) ?? null;
   }
 
+  public appendBudgetReservation(reservation: BudgetReservation): void {
+    requireLeader("runtime_truth.append_budget_reservation");
+    this.transaction(() => {
+      if (this.state.budgetReservations.has(reservation.budgetReservationId)) {
+        throw new ValidationError(
+          "runtime_truth_repository.duplicate_budget_reservation",
+          "BudgetReservation is append-only and cannot be overwritten.",
+        );
+      }
+      this.state.budgetReservations.set(reservation.budgetReservationId, reservation);
+    });
+  }
+
+  public compareAndSetBudgetLedger(nextLedger: BudgetLedger, expectedVersion: number): BudgetLedger {
+    requireLeader("runtime_truth.compare_and_set_budget_ledger");
+    return this.transaction(() => {
+      const stored = this.getBudgetLedger(nextLedger.budgetLedgerId);
+      if (stored == null) {
+        throw new ValidationError(
+          "runtime_truth_repository.aggregate_not_found",
+          `Runtime aggregate not found: BudgetLedger/${nextLedger.budgetLedgerId}`,
+        );
+      }
+      if (stored.version !== expectedVersion) {
+        throw new ValidationError(
+          "runtime_truth_repository.version_cas_failed",
+          `BudgetLedger ${nextLedger.budgetLedgerId} requires current version ${expectedVersion}.`,
+          {
+            details: {
+              budgetLedgerId: nextLedger.budgetLedgerId,
+              expectedVersion,
+              currentVersion: stored.version,
+            },
+          },
+        );
+      }
+      if (nextLedger.version !== expectedVersion + 1) {
+        throw new ValidationError(
+          "runtime_truth_repository.invalid_budget_ledger_version_advance",
+          `BudgetLedger ${nextLedger.budgetLedgerId} must advance version by exactly 1.`,
+          {
+            details: {
+              budgetLedgerId: nextLedger.budgetLedgerId,
+              expectedVersion,
+              nextVersion: nextLedger.version,
+            },
+          },
+        );
+      }
+      this.replaceAggregate("BudgetLedger", nextLedger);
+      return nextLedger;
+    });
+  }
+
   public listEvents(): readonly PlatformFactEvent[] {
     return [...this.state.events];
   }

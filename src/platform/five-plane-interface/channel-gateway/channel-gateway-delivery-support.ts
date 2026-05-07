@@ -25,7 +25,7 @@ export interface DeliveryReceipt {
   messageId: string;
   channel: string;
   targetId: string;
-  status: "delivered" | "failed" | "pending_retry";
+  status: "delivered" | "failed" | "pending_retry" | "pending";
   attempts: number;
   finalStatus: "success" | "permanent_failure" | "exhausted_retries" | undefined;
   firstAttemptAt: string;

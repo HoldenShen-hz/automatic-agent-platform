@@ -50,6 +50,8 @@ export interface CDCReplicationEvent {
   readonly id: string;
   readonly sequence: number;
   readonly epoch?: number;
+  readonly sourceRegionId?: string;
+  readonly vectorClock?: Readonly<Record<string, number>>;
   readonly eventType: string;
   readonly taskId: string;
   readonly payloadJson: string;
@@ -114,6 +116,15 @@ export class VectorClock {
   }
 
   /**
+   * Set a region sequence explicitly, keeping the maximum observed sequence.
+   */
+  public withRegionSequence(regionId: string, sequence: number): VectorClock {
+    const newClock = new Map(this.clock);
+    newClock.set(regionId, Math.max(newClock.get(regionId) ?? 0, sequence));
+    return new VectorClock(newClock);
+  }
+
+  /**
    * Merge another vector clock into this one (takes max of each component)
    */
   public merge(other: VectorClock): VectorClock {
@@ -164,6 +175,14 @@ export class VectorClock {
     return new Map(this.clock);
   }
 
+  public toRecord(): Readonly<Record<string, number>> {
+    const record: Record<string, number> = {};
+    for (const [regionId, sequence] of this.clock) {
+      record[regionId] = sequence;
+    }
+    return record;
+  }
+
   /**
    * Get the maximum sequence across all regions
    */
@@ -173,6 +192,14 @@ export class VectorClock {
       if (seq > max) max = seq;
     }
     return max;
+  }
+
+  public static fromRecord(record?: Readonly<Record<string, number>> | null): VectorClock {
+    const next = new Map<string, number>();
+    for (const [regionId, sequence] of Object.entries(record ?? {})) {
+      next.set(regionId, sequence);
+    }
+    return new VectorClock(next);
   }
 }
 
@@ -435,7 +462,7 @@ export class CDCReplicationService {
    */
   public updateVectorClock(entityId: string, regionId: string, sequence: number): VectorClock {
     const existing = this.vectorClocks.get(entityId) ?? new VectorClock();
-    const updated = existing.increment(regionId);
+    const updated = existing.withRegionSequence(regionId, sequence);
     this.vectorClocks.set(entityId, updated);
     return updated;
   }
@@ -470,9 +497,9 @@ export class CDCReplicationService {
           localEvent,
           remoteEvent,
           resolution: "remote_wins",
-          localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
-          remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
-          conflictType: "concurrent",
+          localVectorClock: this.getEventVectorClock(localEvent),
+          remoteVectorClock: this.getEventVectorClock(remoteEvent),
+          conflictType: this.getConflictType(localEvent, remoteEvent),
         },
         strategy: "lww",
       };
@@ -484,9 +511,9 @@ export class CDCReplicationService {
         localEvent,
         remoteEvent,
         resolution: "local_wins",
-        localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
-        remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
-        conflictType: "concurrent",
+        localVectorClock: this.getEventVectorClock(localEvent),
+        remoteVectorClock: this.getEventVectorClock(remoteEvent),
+        conflictType: this.getConflictType(localEvent, remoteEvent),
       },
       strategy: "lww",
     };
@@ -499,13 +526,12 @@ export class CDCReplicationService {
     if (localEvent.taskId !== remoteEvent.taskId) {
       return false;
     }
-    const localClock = this.getVectorClock(localEvent.taskId);
-    const remoteClock = this.getVectorClock(remoteEvent.taskId);
-    if (!localClock || !remoteClock) {
-      return false;
-    }
-    // Concurrent if neither happens-before the other
-    return localClock.compare(remoteClock) === 0 && localEvent.sequence !== remoteEvent.sequence;
+    const localClock = this.getEventVectorClock(localEvent);
+    const remoteClock = this.getEventVectorClock(remoteEvent);
+    const concurrent = localClock.compare(remoteClock) === 0;
+    const sameLogicalPosition = localEvent.sequence === remoteEvent.sequence;
+    const payloadDiffers = localEvent.id !== remoteEvent.id || localEvent.payloadJson !== remoteEvent.payloadJson;
+    return concurrent && sameLogicalPosition && payloadDiffers;
   }
 
   /**
@@ -533,9 +559,9 @@ export class CDCReplicationService {
         localEvent,
         remoteEvent,
         resolution: "merged",
-        localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
-        remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
-        conflictType: "concurrent",
+        localVectorClock: this.getEventVectorClock(localEvent),
+        remoteVectorClock: this.getEventVectorClock(remoteEvent),
+        conflictType: this.getConflictType(localEvent, remoteEvent),
       },
       strategy: "merge",
     };
@@ -558,6 +584,8 @@ export class CDCReplicationService {
 
   /**
    * Resolve conflict with configured strategy
+   * R21-01: When vector clocks diverge (concurrent), use VectorClock.merge() to combine
+   * instead of simple LWW which loses concurrent updates.
    */
   public resolveConflict(
     localEvent: CDCReplicationEvent,
@@ -568,6 +596,18 @@ export class CDCReplicationService {
 
     switch (resolvedStrategy) {
       case "lww":
+        // R21-01: Check if vector clocks are divergent (concurrent)
+        // If divergent, use merge() instead of simple LWW to preserve both updates
+        if (this.conflictConfig.enableVectorClock) {
+          const localClock = this.getVectorClock(localEvent.taskId) ?? new VectorClock();
+          const remoteClock = this.getVectorClock(remoteEvent.taskId) ?? new VectorClock();
+          const comparison = localClock.compare(remoteClock);
+
+          // If concurrent (neither happens-before), merge instead of LWW
+          if (comparison === 0 && localEvent.sequence !== remoteEvent.sequence) {
+            return this.resolveConflictMerge(localEvent, remoteEvent);
+          }
+        }
         return this.resolveConflictLWW(localEvent, remoteEvent);
       case "merge":
         return this.resolveConflictMerge(localEvent, remoteEvent);
@@ -579,9 +619,9 @@ export class CDCReplicationService {
             localEvent,
             remoteEvent,
             resolution: "aborted",
-            localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
-            remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
-            conflictType: "concurrent",
+            localVectorClock: this.getEventVectorClock(localEvent),
+            remoteVectorClock: this.getEventVectorClock(remoteEvent),
+            conflictType: this.getConflictType(localEvent, remoteEvent),
           },
           strategy: "abort",
         };
@@ -620,14 +660,14 @@ export class CDCReplicationService {
   ): CDCReplicationEvent[] {
     // Update local vector clock from local events first
     for (const event of localEvents) {
-      this.updateVectorClock(entityId, event.taskId, event.sequence);
+      this.mergeVectorClock(entityId, this.getEventVectorClock(event));
     }
 
     const result: CDCReplicationEvent[] = [...localEvents];
 
     for (const remoteEvent of remoteEvents) {
-      // Update remote vector clock for this event
-      this.updateVectorClock(entityId, remoteEvent.taskId, remoteEvent.sequence);
+      const remoteClock = this.getEventVectorClock(remoteEvent);
+      this.mergeVectorClock(entityId, remoteClock);
 
       const existingLocal = localEvents.find(
         (e) => e.sequence === remoteEvent.sequence && e.taskId === remoteEvent.taskId,
@@ -637,10 +677,27 @@ export class CDCReplicationService {
         // No conflict - just add
         result.push(remoteEvent);
       } else {
+        const localClock = this.getEventVectorClock(existingLocal);
+        const ordering = localClock.compare(remoteClock);
+
+        if (ordering === -1) {
+          const idx = result.findIndex(
+            (e) => e.sequence === existingLocal.sequence && e.taskId === existingLocal.taskId,
+          );
+          if (idx >= 0) {
+            result[idx] = remoteEvent;
+          }
+          this.mergeVectorClock(entityId, remoteClock);
+          continue;
+        }
+
+        if (ordering === 1) {
+          continue;
+        }
+
         // Conflict detected - resolve using configured strategy
         const conflictResult = this.resolveConflict(existingLocal, remoteEvent, strategy);
         if (conflictResult.resolved && conflictResult.resolvedEvent) {
-          // Replace with resolved event in result
           const idx = result.findIndex(
             (e) => e.sequence === conflictResult.conflict!.localEvent.sequence &&
                    e.taskId === conflictResult.conflict!.localEvent.taskId,
@@ -648,8 +705,7 @@ export class CDCReplicationService {
           if (idx >= 0) {
             result[idx] = conflictResult.resolvedEvent;
           }
-          // Update vector clock with the resolved sequence to reflect causal ordering
-          this.updateVectorClock(entityId, conflictResult.resolvedEvent.taskId, conflictResult.resolvedEvent.sequence);
+          this.mergeVectorClock(entityId, this.getEventVectorClock(conflictResult.resolvedEvent));
         }
         // Record the conflict for auditing
         if (conflictResult.conflict) {
@@ -659,6 +715,30 @@ export class CDCReplicationService {
     }
 
     return result;
+  }
+
+  private getEventVectorClock(event: CDCReplicationEvent): VectorClock {
+    if (event.vectorClock != null) {
+      return VectorClock.fromRecord(event.vectorClock);
+    }
+    if (event.sourceRegionId != null) {
+      return new VectorClock().withRegionSequence(event.sourceRegionId, event.sequence);
+    }
+    return this.getVectorClock(event.taskId) ?? new VectorClock();
+  }
+
+  private getConflictType(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+  ): ConflictInfo["conflictType"] {
+    const ordering = this.getEventVectorClock(localEvent).compare(this.getEventVectorClock(remoteEvent));
+    if (ordering === -1) {
+      return "causal_before";
+    }
+    if (ordering === 1) {
+      return "causal_after";
+    }
+    return "concurrent";
   }
 
   /**

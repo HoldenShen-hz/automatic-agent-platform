@@ -22,7 +22,11 @@
  * - TLDs like .local, .internal, .private
  */
 
+import { promisify } from "node:util";
+import { lookup as dnsLookup } from "node:dns";
 import { ValidationError } from "../../contracts/errors.js";
+
+const dnsLookupPromise = promisify(dnsLookup);
 
 /**
  * Set of hostnames that are always blocked.
@@ -108,13 +112,58 @@ export function isSupportedOutboundProtocol(protocol: string): boolean {
 }
 
 /**
+ * Checks if an IP address is private/internal.
+ * Covers IPv4 private ranges, loopback, link-local, and IPv6 special addresses.
+ *
+ * @param ip - The IP address to check
+ * @returns true if the IP is private/internal
+ */
+function isPrivateIP(ip: string): boolean {
+  // IPv4 private ranges (RFC 1918)
+  if (/^10\.\d+\.\d+\.\d+$/.test(ip)) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/.test(ip)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(ip)) return true;
+  // Loopback
+  if (/^127\.\d+\.\d+\.\d+$/.test(ip)) return true;
+  // Link-local (169.254.x.x)
+  if (/^169\.254\.\d+\.\d+$/.test(ip)) return true;
+  // IPv6 loopback
+  if (ip === "::1") return true;
+  // IPv6 link-local and unique local
+  if (/^fe80:/i.test(ip)) return true;
+  if (/^fc00:/i.test(ip)) return true;
+  if (/^fd00:/i.test(ip)) return true;
+  // IPv6 unicast generic
+  if (/^2001:db8:/i.test(ip)) return true;
+  return false;
+}
+
+/**
  * Determines if a URL points to an internal network address.
+ * Performs DNS resolution to verify the resolved IP is safe, preventing DNS rebinding attacks.
  *
  * @param url - The parsed URL to check
  * @returns true if the URL is internal and should be blocked
  */
-export function isInternalNetworkUrl(url: URL): boolean {
-  return !isSupportedOutboundProtocol(url.protocol) || isBlockedOutboundHostname(url.hostname);
+export async function isInternalNetworkUrl(url: URL): Promise<boolean> {
+  if (!isSupportedOutboundProtocol(url.protocol)) return true;
+  if (isBlockedOutboundHostname(url.hostname)) return true;
+
+  // DNS rebinding protection: resolve hostname and verify resolved IP is not private/internal
+  try {
+    const result = await dnsLookupPromise(url.hostname);
+    if (result.family === 4 || result.family === 6) {
+      if (isPrivateIP(result.address)) {
+        return true;
+      }
+    }
+  } catch {
+    // DNS resolution failed - hostname may be invalid or unreachable
+    // Block it to be safe since we can't verify it's external
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -126,17 +175,17 @@ export function isInternalNetworkUrl(url: URL): boolean {
  * @returns The parsed URL object
  * @throws ValidationError if URL is invalid or points to internal network
  */
-export function parseSafeOutboundUrl(
+export async function parseSafeOutboundUrl(
   urlString: string,
   errorCodes: OutboundUrlValidationErrorCodes,
-): URL {
+): Promise<URL> {
   let parsed: URL;
   try {
     parsed = new URL(urlString);
   } catch {
     throw new ValidationError(errorCodes.invalid, `${errorCodes.invalid}: Invalid URL: ${urlString}`);
   }
-  if (isInternalNetworkUrl(parsed)) {
+  if (await isInternalNetworkUrl(parsed)) {
     throw new ValidationError(errorCodes.blocked, `${errorCodes.blocked}: Blocked internal network URL: ${urlString}`);
   }
   return parsed;

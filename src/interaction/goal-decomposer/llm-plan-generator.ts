@@ -232,6 +232,81 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       // Mutate in place so later toFixed() calls always succeed
       (task as { estimatedCostUsd: number }).estimatedCostUsd = cost;
     }
+
+    // R23-11: Validate DAG validity, capability availability, risk propagation, and budget feasibility
+    const taskIds = new Set(parsed.tasks.map((_, i) => `${goal.goalId}:llm:${i + 1}`));
+
+    // 1. DAG validity: ensure all dependencies reference valid tasks and check for cycles
+    const visited = new Set<string>();
+    const stack = new Set<string>();
+    const adjacency = new Map<string, string[]>();
+
+    for (const edge of parsed.dependencyGraph) {
+      const from = this.normalizeTaskReference(goal.goalId, edge.fromTask);
+      const to = this.normalizeTaskReference(goal.goalId, edge.toTask);
+      if (!taskIds.has(from)) {
+        throw new Error(`goal_decomposer.invalid_dependency_from:${edge.fromTask}`);
+      }
+      if (!taskIds.has(to)) {
+        throw new Error(`goal_decomposer.invalid_dependency_to:${edge.toTask}`);
+      }
+      if (!adjacency.has(from)) adjacency.set(from, []);
+      adjacency.get(from)!.push(to);
+    }
+
+    // Cycle detection via DFS
+    const hasCycle = (node: string, visiting: Set<string>, visited: Set<string>): boolean => {
+      if (visiting.has(node)) return true;
+      if (visited.has(node)) return false;
+      visiting.add(node);
+      for (const neighbor of adjacency.get(node) ?? []) {
+        if (hasCycle(neighbor, visiting, visited)) return true;
+      }
+      visiting.delete(node);
+      visited.add(node);
+      return false;
+    };
+
+    for (const taskId of taskIds) {
+      if (hasCycle(taskId, new Set(), new Set())) {
+        throw new Error("goal_decomposer.cyclic_dependency_graph");
+      }
+    }
+
+    // 2. Capability availability: ensure each task has required capabilities
+    for (const task of parsed.tasks) {
+      if (!task.domainId || typeof task.domainId !== "string") {
+        throw new Error(`goal_decomposer.missing_domain_id:${task.description?.slice(0, 20)}`);
+      }
+    }
+
+    // 3. Risk propagation: validate riskTolerance consistency across tasks
+    const riskToleranceMap: Record<string, string> = {
+      low: "1",
+      medium: "2",
+      high: "3",
+    };
+    let maxRisk = 0;
+    for (const task of parsed.tasks) {
+      const riskLvl = riskToleranceMap[task.delegationMode === "manual" ? "high" : task.delegationMode === "supervised" ? "medium" : "low"] ?? "1";
+      maxRisk = Math.max(maxRisk, parseInt(riskLvl));
+    }
+    // Propagate risk: if any task has high risk, ensure budget accommodates escalation
+    if (maxRisk >= 3) {
+      const totalCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
+      const goalBudget = this.options.budgetControl?.estimatedCostUsd ?? 0;
+      if (goalBudget > 0 && totalCost > goalBudget * 0.9) {
+        throw new Error("goal_decomposer.risk_budget_infeasible");
+      }
+    }
+
+    // 4. Budget feasibility: ensure total estimated cost does not exceed goal budget
+    const totalEstimatedCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
+    const goalBudgetLimit = this.options.budgetControl?.estimatedCostUsd ?? 0;
+    if (goalBudgetLimit > 0 && totalEstimatedCost > goalBudgetLimit) {
+      throw new Error("goal_decomposer.exceeds_goal_budget");
+    }
+
     return parsed;
   }
 

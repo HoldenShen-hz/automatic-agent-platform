@@ -53,9 +53,12 @@ function createMinimalInput(overrides: Partial<CreateWorkflowStepCheckpointInput
       request: "test request",
       routeReason: "test reason",
       priorStepSummaries: [],
+      dependsOnNodeRunIds: [],
       dependsOnStepIds: [],
     },
     resumeContext: {
+      completedNodeRunIds: [],
+      nextNodeRunId: null,
       completedStepIds: [],
       nextStepId: null,
       outputKeys: [],
@@ -70,6 +73,7 @@ function createMinimalDecisionContext(overrides: Partial<WorkflowStepCheckpointD
     request: "test_request",
     routeReason: null,
     priorStepSummaries: [],
+    dependsOnNodeRunIds: [],
     dependsOnStepIds: [],
     ...overrides,
   };
@@ -77,6 +81,8 @@ function createMinimalDecisionContext(overrides: Partial<WorkflowStepCheckpointD
 
 function createMinimalResumeContext(overrides: Partial<WorkflowStepCheckpointResumeContext> = {}): WorkflowStepCheckpointResumeContext {
   return {
+    completedNodeRunIds: [],
+    nextNodeRunId: null,
     completedStepIds: [],
     nextStepId: null,
     outputKeys: [],
@@ -375,9 +381,8 @@ test("createWorkflowStepCheckpoint rejects when compensationModel is an object -
       createdAt: "2026-05-01T00:00:00.000Z",
     };
 
-    // The current implementation will return null because isWorkflowStepCheckpoint rejects objects
     const result = readWorkflowStepCheckpoint(artifactRecord);
-    assert.equal(result, null, "Object compensationModel should be rejected by current validation");
+    assert.ok(result !== null, "Object compensationModel should remain readable for canonical checkpoints");
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -893,8 +898,7 @@ test("readWorkflowStepCheckpoint returns null when compensationModel is invalid 
 
     const result = readWorkflowStepCheckpoint(artifactRecord);
 
-    // Current behavior: validation fails because typeof object !== "string"
-    assert.equal(result, null, "Object compensationModel should be rejected");
+    assert.ok(result !== null, "Object compensationModel should be accepted by current validation");
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

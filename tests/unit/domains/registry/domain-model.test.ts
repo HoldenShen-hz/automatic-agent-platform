@@ -73,6 +73,54 @@ test("WorkflowConfigSchema applies defaults", () => {
   assert.deepEqual(result.steps, []);
 });
 
+test("WorkflowConfigSchema rejects multi-step workflow without graph structure", () => {
+  assert.throws(() => {
+    WorkflowConfigSchema.parse({
+      workflowId: "wf-multi",
+      name: "Multi Step Workflow",
+      steps: [
+        { stepName: "collect" },
+        { stepName: "publish" },
+      ],
+    });
+  }, /planGraph or stepGraph/i);
+});
+
+test("WorkflowConfigSchema accepts multi-step workflow with stepGraph", () => {
+  const result = WorkflowConfigSchema.parse({
+    workflowId: "wf-graph",
+    name: "Graph Workflow",
+    steps: [
+      { stepName: "collect" },
+      { stepName: "publish" },
+    ],
+    stepGraph: {
+      edges: [
+        { fromStep: "collect", toStep: "publish" },
+      ],
+    },
+  });
+
+  assert.equal(result.stepGraph?.edges.length, 1);
+});
+
+test("WorkflowConfigSchema rejects stepGraph edges that reference unknown steps", () => {
+  assert.throws(() => {
+    WorkflowConfigSchema.parse({
+      workflowId: "wf-bad-graph",
+      name: "Invalid Graph Workflow",
+      steps: [
+        { stepName: "collect" },
+      ],
+      stepGraph: {
+        edges: [
+          { fromStep: "collect", toStep: "missing-step" },
+        ],
+      },
+    });
+  }, /unknown toStep/i);
+});
+
 test("WorkflowConfigSchema rejects empty workflowId", () => {
   assert.throws(() => {
     WorkflowConfigSchema.parse({ workflowId: "", name: "Name" });

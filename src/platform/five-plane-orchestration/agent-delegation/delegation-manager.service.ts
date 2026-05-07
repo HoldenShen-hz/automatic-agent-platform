@@ -962,9 +962,8 @@ export class DelegationManagerService {
       data_class: spec.dataClass ?? "delegation",
     };
 
-    this.delegationStore.set(delegationId, delegation);
-
-    // R17-13: Persist to repository if available for durability across restarts
+    // R9-06: When repository is available as primary store, write to repository first
+    // then update in-memory cache. When no repository, use in-memory as primary store.
     if (this.delegationRepository) {
       await this.delegationRepository.create({
         delegationId: delegation.delegationId,
@@ -976,6 +975,9 @@ export class DelegationManagerService {
         status: delegation.status,
       });
     }
+
+    // Always update in-memory cache after repository write (or as primary if no repository)
+    this.delegationStore.set(delegationId, delegation);
 
     return delegation;
   }

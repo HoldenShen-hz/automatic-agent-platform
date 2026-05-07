@@ -27,7 +27,7 @@ export class AsyncReleaseRepository {
         deployment_credential_ref, publish_workflow_path, deploy_workflow_path,
         required_readiness_checks_json, recommended_commands_json, task_id, json_artifact_uri,
         markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
       record.bundleId,
       record.environment,
       record.version,

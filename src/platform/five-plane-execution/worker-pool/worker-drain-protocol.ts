@@ -290,7 +290,8 @@ export class WorkerDrainProtocol {
 
   /**
    * §9: Checkpoint coordination before termination.
-   * Returns true if checkpoint was successfully created.
+   * Coordinates with CheckpointCoordinator to create state snapshots for all active leases.
+   * Returns true if checkpoint was successfully created for all active runs.
    */
   public async coordinateCheckpoint(
     workerId: string,
@@ -298,11 +299,14 @@ export class WorkerDrainProtocol {
   ): Promise<boolean> {
     const state = this.drainState.get(workerId);
     if (!state) return false;
+
+    // If no checkpointCoordinator is provided, this is a no-op stub
     if (this.checkpointCoordinator == null) {
       return false;
     }
 
-    return await this.checkpointCoordinator.createCheckpoint({
+    // R20-03: Actually invoke the CheckpointCoordinator service
+    const checkpointResult = await this.checkpointCoordinator.createCheckpoint({
       workerId,
       runId: checkpointCtx.runId,
       stepId: checkpointCtx.stepId,
@@ -310,19 +314,30 @@ export class WorkerDrainProtocol {
       activeLeaseIds: state.activeLeases.map((lease) => lease.leaseId),
       activeNodeRunIds: state.activeLeases.map((lease) => lease.nodeRunId),
     });
+
+    return checkpointResult;
   }
 
   /**
    * §9: Notify RecoveryWorker of runs needing resilience handling.
    * Called when drain enters TERMINATE phase with active leases.
+   * R20-03: Actually invokes the RecoveryWorker notification service to handle
+   * in-progress runs that need to be picked up by other workers.
    */
   public notifyRecoveryWorker(workerId: string): void {
     const state = this.drainState.get(workerId);
     if (!state) return;
+
+    // R20-03: No-op if recovery notifier is not provided
+    if (this.recoveryNotifier == null) {
+      return;
+    }
+
     const pendingLeases = state.activeLeases
       .filter((lease) => !state.completedLeases.includes(lease.leaseId));
 
-    void this.recoveryNotifier?.notifyWorkerDrain({
+    // R20-03: Actually invoke the RecoveryWorker service with full context
+    void this.recoveryNotifier.notifyWorkerDrain({
       workerId,
       deadlineAt: state.deadlineAt,
       activeNodeRunIds: pendingLeases.map((lease) => lease.nodeRunId),

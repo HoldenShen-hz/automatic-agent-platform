@@ -79,15 +79,18 @@ export class ChannelGatewayDeliveryService {
   }
 
   /**
-   * Checks whether a message can be sent under rate limits for the given channel.
+   * Checks whether a message can be sent under rate limits for the given channel and tenant.
    *
-   * GW-04: Implements per-channel rate limiting to prevent hitting provider limits.
+   * GW-04: Implements per-tenant per-channel rate limiting to prevent hitting provider limits.
    * Uses a sliding window counter persisted in the database.
+   * Falls back to "global" tenant if not provided for backward compatibility.
    *
+   * @param tenantId - Tenant identifier for rate limiting (optional, defaults to "global")
    * @param channel - Channel to check
    * @returns Result indicating if allowed and current counts
    */
-  checkRateLimit(channel: string): RateLimitResult {
+  checkRateLimit(tenantId: string | undefined, channel: string): RateLimitResult {
+    const effectiveTenantId = tenantId ?? "global";
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
 
@@ -98,9 +101,9 @@ export class ChannelGatewayDeliveryService {
     const row = this.db.connection
       .prepare(
         `SELECT message_count FROM gateway_rate_limits
-         WHERE channel = ? AND window_start = ?`,
+         WHERE tenant_id = ? AND channel = ? AND window_start = ?`,
       )
-      .get(channel, windowStart) as { message_count: number } | undefined;
+      .get(effectiveTenantId, channel, windowStart) as { message_count: number } | undefined;
 
     const currentCount = row?.message_count ?? 0;
 
@@ -127,10 +130,13 @@ export class ChannelGatewayDeliveryService {
    *
    * GW-04: Updates the rate limit counter after successful send.
    * Also performs lazy cleanup of old rate limit windows.
+   * Falls back to "global" tenant if not provided for backward compatibility.
    *
+   * @param tenantId - Tenant identifier (optional, defaults to "global")
    * @param channel - Channel that was used
    */
-  recordRateLimitHit(channel: string): void {
+  recordRateLimitHit(tenantId: string | undefined, channel: string): void {
+    const effectiveTenantId = tenantId ?? "global";
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
 
@@ -139,12 +145,12 @@ export class ChannelGatewayDeliveryService {
 
     this.db.connection
       .prepare(
-        `INSERT INTO gateway_rate_limits (channel, window_start, message_count)
-         VALUES (?, ?, 1)
-         ON CONFLICT(channel, window_start)
+        `INSERT INTO gateway_rate_limits (tenant_id, channel, window_start, message_count)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(tenant_id, channel, window_start)
          DO UPDATE SET message_count = message_count + 1`,
       )
-      .run(channel, windowStart);
+      .run(effectiveTenantId, channel, windowStart);
 
     const cutoff = new Date(now - 3600000).toISOString();
     this.db.connection
@@ -155,10 +161,12 @@ export class ChannelGatewayDeliveryService {
   /**
    * Returns current rate limit status for all configured channels.
    *
+   * @param tenantId - Tenant identifier (optional, defaults to "global")
    * @returns Current count, limit, and window for each channel
    */
-  getRateLimitStatus(): Record<string, { currentCount: number; limit: number; windowMs: number }> {
+  getRateLimitStatus(tenantId?: string): Record<string, { currentCount: number; limit: number; windowMs: number }> {
     const result: Record<string, { currentCount: number; limit: number; windowMs: number }> = {};
+    const effectiveTenantId = tenantId ?? "global";
     const now = Date.now();
 
     for (const [channel, config] of Object.entries(this.rateLimitConfig)) {
@@ -169,9 +177,9 @@ export class ChannelGatewayDeliveryService {
       const row = this.db.connection
         .prepare(
           `SELECT message_count FROM gateway_rate_limits
-           WHERE channel = ? AND window_start = ?`,
+           WHERE tenant_id = ? AND channel = ? AND window_start = ?`,
         )
-        .get(channel, windowStart) as { message_count: number } | undefined;
+        .get(effectiveTenantId, channel, windowStart) as { message_count: number } | undefined;
 
       result[channel] = {
         currentCount: row?.message_count ?? 0,
@@ -307,14 +315,14 @@ export class ChannelGatewayDeliveryService {
    * Creates a new delivery message with retry tracking.
    *
    * Initializes tracking record before delivery attempt is made.
-   * The message will remain in "pending_retry" status until
-   * recordDeliverySuccess or recordDeliveryFailure is called.
+   * The message will remain in "pending" status until an actual
+   * delivery attempt is made via recordDeliverySuccess or recordDeliveryFailure.
    *
    * @param channel - Channel for delivery
    * @param targetId - Target identifier
    * @param payload - Message payload to store for retry
    * @param maxRetries - Override default max retries
-   * @returns Initial delivery receipt
+   * @returns Initial delivery receipt with pending status
    */
   createDeliveryMessage(
     channel: string,
@@ -347,9 +355,9 @@ export class ChannelGatewayDeliveryService {
       messageId,
       channel,
       targetId,
-      status: "pending_retry",
+      status: "pending", // message created and queued; no delivery attempt made yet
       attempts: 0,
-      finalStatus: undefined, // Will be updated after actual delivery attempt
+      finalStatus: undefined, // no delivery attempt completed yet
       firstAttemptAt: now,
       lastAttemptAt: now,
       providerMessageId: null,

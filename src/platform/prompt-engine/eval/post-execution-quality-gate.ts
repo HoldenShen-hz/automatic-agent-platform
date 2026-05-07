@@ -24,6 +24,17 @@ export interface PreReleaseQualityGateDecision {
 }
 
 export class PostExecutionQualityGate {
+  private readonly preReleaseGate = new PreReleaseQualityGate();
+
+  /**
+   * Pre-release gate per §17.
+   * Validates workflow readiness before transitioning to released/stable state.
+   * Called before releasing a workflow to ensure quality thresholds are met.
+   */
+  public preReleaseGate(request: PreReleaseQualityGateRequest): PreReleaseQualityGateDecision {
+    return this.preReleaseGate.decide(request);
+  }
+
   /**
    * Evaluates critical_case_pass==100% as a hard release gate per §21.5.
    * If critical cases exist and any fail (pass rate < 1), the release is blocked.

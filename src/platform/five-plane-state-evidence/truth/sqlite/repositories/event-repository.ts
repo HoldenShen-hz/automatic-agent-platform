@@ -826,6 +826,7 @@ export class EventRepository {
                   createdAt: row.createdAt,
                 },
         })),
+        this.signingKey,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

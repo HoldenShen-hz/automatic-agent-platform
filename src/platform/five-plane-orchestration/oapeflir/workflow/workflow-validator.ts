@@ -145,12 +145,12 @@ function collectEntrypoints(steps: readonly MinimalWorkflowStep[]): string[] {
  */
 export class WorkflowValidator {
   /**
-   * Validates a workflow definition and returns a detailed lint report.
+   * Validates a workflow definition and returns static compatibility issues.
    *
    * @param definition - The workflow definition to validate
-   * @returns Lint report with all issues found and error/warning counts
+   * @returns Array of static compatibility issues found
    */
-  public validate(definition: MinimalWorkflowDefinition): WorkflowLintReport {
+  public validate(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
     const issues: WorkflowLintIssue[] = [];
     const seenStepIds = new Set<string>();
     const seenOutputKeys = new Set<string>();
@@ -256,57 +256,10 @@ export class WorkflowValidator {
         });
       }
 
-      if (requiresResourceBudget(step)) {
-        const budgetIntent = step.budgetIntent;
-        if (budgetIntent == null || budgetIntent.amount <= 0 || budgetIntent.resourceKinds.length === 0) {
-          issues.push({
-            code: "step.resource_bound_missing",
-            severity: "error",
-            message: `Step ${stepId || "<unknown>"} must declare a positive budget intent with resource kinds.`,
-            ...(stepId ? { stepId } : {}),
-          });
-        }
-      }
-
-      if (requiresExplicitExecutionScope(step) && (step.executionRoleId?.trim().length ?? 0) === 0) {
-        issues.push({
-          code: "step.auth_scope_missing",
-          severity: "error",
-          message: `Step ${stepId || "<unknown>"} must declare executionRoleId for external execution scope binding.`,
-          ...(stepId ? { stepId } : {}),
-        });
-      }
-
-      if (step.sideEffectProfile?.mayCommitExternalEffect === true && step.compensationModel == null) {
-        issues.push({
-          code: "step.idempotency_missing",
-          severity: "error",
-          message: `Step ${stepId || "<unknown>"} commits external effects but declares no compensation/idempotency model.`,
-          ...(stepId ? { stepId } : {}),
-        });
-      }
-
-      if (step.nodeType === "llm" && !step.budgetIntent?.resourceKinds.includes("token")) {
-        issues.push({
-          code: "step.timeout_budget_mismatch",
-          severity: "error",
-          message: `Step ${stepId || "<unknown>"} is an LLM step and must budget token resources before execution.`,
-          ...(stepId ? { stepId } : {}),
-        });
-      }
-
-      if (
-        step.sideEffectProfile?.mayCommitExternalEffect === true
-        && step.nodeType === "tool"
-        && !(step.budgetIntent?.resourceKinds.includes("api") || step.budgetIntent?.resourceKinds.includes("side_effect"))
-      ) {
-        issues.push({
-          code: "step.timeout_budget_mismatch",
-          severity: "error",
-          message: `Step ${stepId || "<unknown>"} commits external tool effects and must budget api or side_effect resources.`,
-          ...(stepId ? { stepId } : {}),
-        });
-      }
+      issues.push(...this.validateResourceBound(step, stepId));
+      issues.push(...this.validateAuthScope(step, stepId));
+      issues.push(...this.validateIdempotency(step, stepId));
+      issues.push(...this.validateTimeoutBudget(step, stepId));
     }
 
     // Pass 2: Validate dependency references and relationships
@@ -372,18 +325,7 @@ export class WorkflowValidator {
         }
       }
 
-      if (
-        (step.dependsOnStepIds?.length ?? 0) > 0
-        && (step.inputKeys?.length ?? 0) === 0
-        && !isDataFlowOptional(step)
-      ) {
-        issues.push({
-          code: "dependency.data_flow_missing",
-          severity: "warning",
-          message: `Step ${stepId} declares dependencies but no inputKeys/data-flow contract.`,
-          stepId,
-        });
-      }
+      issues.push(...this.validateDataFlow(step, stepId));
     }
 
     // Pass 3: Check for workflow-level issues (entrypoints, cycles)
@@ -397,19 +339,129 @@ export class WorkflowValidator {
 
     issues.push(...this.detectCycles(definition));
 
-    const errorCount = issues.filter((issue) => issue.severity === "error").length;
-    const warningCount = issues.length - errorCount;
-
-    return {
-      ok: errorCount === 0,
-      issues,
-      errorCount,
-      warningCount,
-    };
+    return issues;
   }
 
   public validateIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
-    return this.validate(definition).issues;
+    return this.validate(definition);
+  }
+
+  /**
+   * Validates resource bound requirements for a step.
+   * Steps that require resource budgets (llm, tool, compensation, or external effects)
+   * must declare a positive budget intent with resource kinds.
+   */
+  private validateResourceBound(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
+    const issues: WorkflowLintIssue[] = [];
+
+    if (requiresResourceBudget(step)) {
+      const budgetIntent = step.budgetIntent;
+      if (budgetIntent == null || budgetIntent.amount <= 0 || budgetIntent.resourceKinds.length === 0) {
+        issues.push({
+          code: "step.resource_bound_missing",
+          severity: "error",
+          message: `Step ${stepId || "<unknown>"} must declare a positive budget intent with resource kinds.`,
+          ...(stepId ? { stepId } : {}),
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  /**
+   * Validates auth scope requirements for a step.
+   * Steps that perform external execution (tool, compensation, or external effects)
+   * must declare an executionRoleId.
+   */
+  private validateAuthScope(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
+    const issues: WorkflowLintIssue[] = [];
+
+    if (requiresExplicitExecutionScope(step) && (step.executionRoleId?.trim().length ?? 0) === 0) {
+      issues.push({
+        code: "step.auth_scope_missing",
+        severity: "error",
+        message: `Step ${stepId || "<unknown>"} must declare executionRoleId for external execution scope binding.`,
+        ...(stepId ? { stepId } : {}),
+      });
+    }
+
+    return issues;
+  }
+
+  /**
+   * Validates idempotency requirements for a step.
+   * Steps that commit external effects must declare a compensation/idempotency model.
+   */
+  private validateIdempotency(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
+    const issues: WorkflowLintIssue[] = [];
+
+    if (step.sideEffectProfile?.mayCommitExternalEffect === true && step.compensationModel == null) {
+      issues.push({
+        code: "step.idempotency_missing",
+        severity: "error",
+        message: `Step ${stepId || "<unknown>"} commits external effects but declares no compensation/idempotency model.`,
+        ...(stepId ? { stepId } : {}),
+      });
+    }
+
+    return issues;
+  }
+
+  /**
+   * Validates timeout budget requirements for a step.
+   * LLM steps must budget token resources.
+   * Steps with external effects must budget api or side_effect resources.
+   */
+  private validateTimeoutBudget(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
+    const issues: WorkflowLintIssue[] = [];
+
+    if (step.nodeType === "llm" && !step.budgetIntent?.resourceKinds.includes("token")) {
+      issues.push({
+        code: "step.timeout_budget_mismatch",
+        severity: "error",
+        message: `Step ${stepId || "<unknown>"} is an LLM step and must budget token resources before execution.`,
+        ...(stepId ? { stepId } : {}),
+      });
+    }
+
+    if (
+      step.sideEffectProfile?.mayCommitExternalEffect === true
+      && step.nodeType === "tool"
+      && !(step.budgetIntent?.resourceKinds.includes("api") || step.budgetIntent?.resourceKinds.includes("side_effect"))
+    ) {
+      issues.push({
+        code: "step.timeout_budget_mismatch",
+        severity: "error",
+        message: `Step ${stepId || "<unknown>"} commits external tool effects and must budget api or side_effect resources.`,
+        ...(stepId ? { stepId } : {}),
+      });
+    }
+
+    return issues;
+  }
+
+  /**
+   * Validates data flow requirements for a step.
+   * Steps with dependencies should declare inputKeys for data flow contract.
+   */
+  private validateDataFlow(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
+    const issues: WorkflowLintIssue[] = [];
+
+    if (
+      (step.dependsOnStepIds?.length ?? 0) > 0
+      && (step.inputKeys?.length ?? 0) === 0
+      && !isDataFlowOptional(step)
+    ) {
+      issues.push({
+        code: "dependency.data_flow_missing",
+        severity: "warning",
+        message: `Step ${stepId} declares dependencies but no inputKeys/data-flow contract.`,
+        stepId,
+      });
+    }
+
+    return issues;
   }
 
   /**
@@ -486,16 +538,20 @@ export class WorkflowValidator {
  * @throws Error with code "workflow.invalid:{code}" if validation fails
  */
 export function assertWorkflowValid(definition: MinimalWorkflowDefinition): WorkflowLintReport {
-  const report = new WorkflowValidator().validate(definition);
-  if (!report.ok) {
-    const firstError = report.issues.find((issue) => issue.severity === "error");
+  const issues = new WorkflowValidator().validate(definition);
+  const errorCount = issues.filter((issue) => issue.severity === "error").length;
+  const warningCount = issues.length - errorCount;
+  const ok = errorCount === 0;
+
+  if (!ok) {
+    const firstError = issues.find((issue) => issue.severity === "error");
     throw new ValidationError(
       firstError ? `workflow.invalid:${firstError.code}` : "workflow.invalid:unknown",
       `${firstError ? `workflow.invalid:${firstError.code}` : "workflow.invalid:unknown"}: Workflow validation failed: ${firstError?.message ?? "unknown error"}`,
-      { details: { issues: report.issues.map((i) => ({ code: i.code, severity: i.severity, message: i.message })) } },
+      { details: { issues: issues.map((i) => ({ code: i.code, severity: i.severity, message: i.message })) } },
     );
   }
-  return report;
+  return { ok, issues, errorCount, warningCount };
 }
 
 export function validateWorkflowCompatibility(

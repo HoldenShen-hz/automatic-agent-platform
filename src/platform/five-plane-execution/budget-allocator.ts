@@ -12,6 +12,7 @@ import { ValidationError } from "../contracts/errors.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
 import {
   RuntimeStateMachine,
+  type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
 } from "./runtime-state-machine.js";
 
@@ -157,6 +158,17 @@ export interface SweeperConfig {
   readonly maxReservationsToScan: number; // Batch size for scanning
 }
 
+export interface BudgetAllocatorAuthoritativeStore {
+  getBudgetLedger(budgetLedgerId: string): BudgetLedger | null;
+  getBudgetReservation(budgetReservationId: string): BudgetReservation | null;
+  seed(aggregateType: "BudgetLedger" | "BudgetReservation", aggregate: BudgetLedger | BudgetReservation): void;
+  appendBudgetReservation(reservation: BudgetReservation): void;
+  compareAndSetBudgetLedger(nextLedger: BudgetLedger, expectedVersion: number): BudgetLedger;
+  transition(
+    command: RuntimeTransitionCommand<BudgetReservation>,
+  ): RuntimeTransitionResult<BudgetReservation>;
+}
+
 const DEFAULT_WATERMARK_ALERT: WatermarkAlertConfig = {
   warningThreshold: 0.8,
   criticalThreshold: 0.95,
@@ -186,15 +198,18 @@ export class BudgetAllocator {
   private readonly throttleState = new Map<string, boolean>(); // runId -> isThrottled
   private readonly events: BudgetAllocatorEvents | undefined;
   private readonly sweeperConfig: SweeperConfig;
+  private readonly authoritativeStore: BudgetAllocatorAuthoritativeStore | undefined;
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
     readonly events?: BudgetAllocatorEvents;
     readonly sweeperConfig?: SweeperConfig;
+    readonly authoritativeStore?: BudgetAllocatorAuthoritativeStore;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
     this.events = options.events;
     this.sweeperConfig = options.sweeperConfig ?? { enabled: false, scanIntervalMs: 60000, maxReservationsToScan: 100 };
+    this.authoritativeStore = options.authoritativeStore;
   }
 
   private normalizeContext(
@@ -396,6 +411,35 @@ export class BudgetAllocator {
     };
   }
 
+  private ensureSeededLedger(ledger: BudgetLedger): void {
+    if (this.authoritativeStore == null || this.authoritativeStore.getBudgetLedger(ledger.budgetLedgerId) != null) {
+      return;
+    }
+    this.authoritativeStore.seed("BudgetLedger", ledger);
+  }
+
+  private persistLedgerIfNeeded(
+    nextLedger: BudgetLedger,
+    expectedVersion: number,
+  ): BudgetLedger {
+    if (this.authoritativeStore == null) {
+      return nextLedger;
+    }
+    return this.authoritativeStore.compareAndSetBudgetLedger(nextLedger, expectedVersion);
+  }
+
+  private persistHierarchyLedgersIfNeeded(
+    entries: readonly HierarchicalBudgetLedgerInput[] | undefined,
+    nextLedgers: readonly BudgetLedger[],
+  ): readonly BudgetLedger[] {
+    if (entries == null || entries.length === 0) {
+      return [];
+    }
+    return nextLedgers.map((ledger, index) =>
+      this.persistLedgerIfNeeded(ledger, entries[index]!.expectedVersion)
+    );
+  }
+
   /**
    * Compute effective amount considering auto-throttle.
    * §18.2-18.3: Auto-throttle reduces allocation when engaged
@@ -477,6 +521,43 @@ export class BudgetAllocator {
     }
   }
 
+  /**
+   * R22-43 FIX: Enforce hierarchical budget checking.
+   * When allocating at STEP level, verify domain (PACK) budget allows it.
+   * When allocating at DOMAIN level, verify platform budget allows it.
+   * §18.2-18.3: platform→domain→task层级预算
+   */
+  private checkHierarchicalBudgetAllowance(
+    context: BudgetAllocatorContext,
+    hierarchyLedgers: readonly HierarchicalBudgetLedgerInput[],
+    requestedAmount: number,
+  ): void {
+    if (hierarchyLedgers.length === 0) return;
+
+    for (const entry of hierarchyLedgers) {
+      const ledger = entry.ledger;
+      const activeCommittedAmount = this.computeActiveCommittedAmount(ledger);
+      const availableBudget = ledger.hardCap - activeCommittedAmount;
+
+      if (requestedAmount > availableBudget) {
+        throw new ValidationError(
+          "budget_reservation.hierarchy_budget_exceeded",
+          `Budget reservation at tier ${context.tier} exceeds available budget at parent tier ${ledger.budgetLedgerId}.`,
+          {
+            details: {
+              childTier: context.tier,
+              parentLedgerId: ledger.budgetLedgerId,
+              requestedAmount,
+              availableBudget,
+              parentHardCap: ledger.hardCap,
+              parentActiveCommitted: activeCommittedAmount,
+            },
+          },
+        );
+      }
+    }
+  }
+
   public reserve(input: {
     readonly ledger: BudgetLedger;
     readonly amount: number;
@@ -511,6 +592,14 @@ export class BudgetAllocator {
       input.amount,
     );
 
+    this.ensureSeededLedger(input.ledger);
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.ensureSeededLedger(ancestor.ledger);
+    }
+
+    // R22-43 FIX: Enforce hierarchical budget checking before allocation
+    this.checkHierarchicalBudgetAllowance(context, input.hierarchyLedgers ?? [], effectiveAmount);
+
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
       this.reserveLedgerAmount(entry.ledger, effectiveAmount, entry.ledger.hardCap)
     );
@@ -539,10 +628,20 @@ export class BudgetAllocator {
       this.processStreamingSettle(context, reservation, 0);
     }
 
+    const persistedHierarchyLedgers = this.persistHierarchyLedgersIfNeeded(
+      input.hierarchyLedgers,
+      hierarchyLedgers,
+    );
+    const persistedLedger = this.persistLedgerIfNeeded(ledgerForReservation, input.expectedVersion);
+
+    if (this.authoritativeStore != null && this.authoritativeStore.getBudgetReservation(reservation.budgetReservationId) == null) {
+      this.authoritativeStore.appendBudgetReservation(reservation);
+    }
+
     return {
-      ledger: ledgerForReservation,
+      ledger: persistedLedger,
       reservation,
-      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
+      ...(persistedHierarchyLedgers.length > 0 ? { hierarchyLedgers: persistedHierarchyLedgers } : {}),
     };
   }
 
@@ -614,7 +713,15 @@ export class BudgetAllocator {
       );
     }
 
-    const reservation = this.stateMachine.transition({
+    if (this.authoritativeStore != null && this.authoritativeStore.getBudgetReservation(input.reservation.budgetReservationId) == null) {
+      this.authoritativeStore.seed("BudgetReservation", input.reservation);
+    }
+    this.ensureSeededLedger(input.ledger);
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.ensureSeededLedger(ancestor.ledger);
+    }
+
+    const reservationTransitionCommand: RuntimeTransitionCommand<BudgetReservation> = {
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
       entityId: input.reservation.budgetReservationId,
@@ -633,7 +740,10 @@ export class BudgetAllocator {
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
       ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
-    });
+    };
+    const reservation = this.authoritativeStore != null
+      ? this.authoritativeStore.transition(reservationTransitionCommand)
+      : this.stateMachine.transition(reservationTransitionCommand);
     if (context.streamingSettle?.enabled) {
       this.processStreamingSettle(context, input.reservation, input.actualAmount);
     }
@@ -656,12 +766,17 @@ export class BudgetAllocator {
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
       this.settleLedgerAmount(entry.ledger, input.reservation.amount, input.actualAmount)
     );
+    const persistedHierarchyLedgers = this.persistHierarchyLedgersIfNeeded(
+      input.hierarchyLedgers,
+      hierarchyLedgers,
+    );
+    const persistedLedger = this.persistLedgerIfNeeded(finalLedger, input.expectedVersion);
 
     return {
       reservation,
       settlement,
-      ledger: finalLedger,
-      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
+      ledger: persistedLedger,
+      ...(persistedHierarchyLedgers.length > 0 ? { hierarchyLedgers: persistedHierarchyLedgers } : {}),
     };
   }
 
@@ -694,7 +809,15 @@ export class BudgetAllocator {
       actualAmount: 0,
       settlementKind: "release_unused",
     });
-    const reservation = this.stateMachine.transition({
+    if (this.authoritativeStore != null && this.authoritativeStore.getBudgetReservation(input.reservation.budgetReservationId) == null) {
+      this.authoritativeStore.seed("BudgetReservation", input.reservation);
+    }
+    this.ensureSeededLedger(input.ledger);
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.ensureSeededLedger(ancestor.ledger);
+    }
+
+    const reservationTransitionCommand: RuntimeTransitionCommand<BudgetReservation> = {
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
       entityId: input.reservation.budgetReservationId,
@@ -709,7 +832,10 @@ export class BudgetAllocator {
       emittedBy: context.emittedBy,
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
       ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
-    });
+    };
+    const reservation = this.authoritativeStore != null
+      ? this.authoritativeStore.transition(reservationTransitionCommand)
+      : this.stateMachine.transition(reservationTransitionCommand);
 
     // Clean up streaming state on release
     this.streamingStates.delete(input.reservation.budgetReservationId);
@@ -723,12 +849,20 @@ export class BudgetAllocator {
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
       this.releaseLedgerAmount(entry.ledger, input.reservation.amount)
     );
+    const persistedHierarchyLedgers = this.persistHierarchyLedgersIfNeeded(
+      input.hierarchyLedgers,
+      hierarchyLedgers,
+    );
+    const persistedLedger = this.persistLedgerIfNeeded(
+      this.releaseLedgerAmount(input.ledger, input.reservation.amount),
+      input.expectedVersion,
+    );
 
     return {
       reservation,
       settlement,
-      ledger: this.releaseLedgerAmount(input.ledger, input.reservation.amount),
-      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
+      ledger: persistedLedger,
+      ...(persistedHierarchyLedgers.length > 0 ? { hierarchyLedgers: persistedHierarchyLedgers } : {}),
     };
   }
 

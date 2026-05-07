@@ -12,6 +12,7 @@ import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext, type BudgetWa
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
+import { RuntimeTruthRepository } from "../../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures & Helpers
@@ -684,6 +685,58 @@ test("hierarchical ledgers reserve and settle together", () => {
   assert.equal(settled.hierarchyLedgers?.[0]?.settledAmount, 120);
   assert.equal(settled.ledger.releasedAmount, 80);
   assert.equal(settled.hierarchyLedgers?.[0]?.releasedAmount, 80);
+});
+
+test("settle() and release() can persist ledger CAS through authoritative truth repository", () => {
+  const truth = new RuntimeTruthRepository();
+  const allocator = new BudgetAllocator({ authoritativeStore: truth });
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ version: 0 }),
+    amount: 100,
+    resourceKind: "token",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    expectedVersion: 0,
+    context: createTestContext(),
+  });
+
+  const storedAfterReserve = truth.getBudgetLedger(TEST_LEDGER_ID);
+  assert.equal(storedAfterReserve?.version, 1);
+  assert.equal(storedAfterReserve?.reservedAmount, 100);
+
+  const settleResult = allocator.settle({
+    ledger: reserveResult.ledger,
+    reservation: reserveResult.reservation,
+    actualAmount: 60,
+    expectedVersion: reserveResult.ledger.version,
+    context: createTestContext(),
+  });
+
+  const storedAfterSettle = truth.getBudgetLedger(TEST_LEDGER_ID);
+  assert.equal(storedAfterSettle?.version, 2);
+  assert.equal(storedAfterSettle?.settledAmount, 60);
+  assert.equal(storedAfterSettle?.releasedAmount, 40);
+
+  const releaseSeed = allocator.reserve({
+    ledger: settleResult.ledger,
+    amount: 20,
+    resourceKind: "token",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    expectedVersion: settleResult.ledger.version,
+    context: createTestContext(),
+  });
+
+  const releaseResult = allocator.release({
+    ledger: releaseSeed.ledger,
+    reservation: releaseSeed.reservation,
+    expectedVersion: releaseSeed.ledger.version,
+    context: createTestContext(),
+  });
+
+  const storedAfterRelease = truth.getBudgetLedger(TEST_LEDGER_ID);
+  assert.equal(storedAfterRelease?.version, 4);
+  assert.equal(storedAfterRelease?.reservedAmount, 0);
+  assert.equal(storedAfterRelease?.releasedAmount, 60);
+  assert.equal(releaseResult.ledger.version, storedAfterRelease?.version);
 });
 
 // ---------------------------------------------------------------------------

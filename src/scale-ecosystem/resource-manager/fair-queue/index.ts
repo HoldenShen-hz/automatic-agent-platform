@@ -55,9 +55,9 @@ export function orderFairQueue(items: readonly FairQueueItem[]): FairQueueItem[]
     const leftScore = leftSlaScore + leftPriorityScore + leftAgeScore + leftBorrowScore;
     const rightScore = rightSlaScore + rightPriorityScore + rightAgeScore + rightBorrowScore;
 
-    // Higher composite score = higher priority in queue
+    // Higher composite score = higher priority in queue (R24-06 FIX: use rightScore - leftScore)
     if (leftScore !== rightScore) {
-      return leftScore - rightScore;
+      return rightScore - leftScore;
     }
 
     // Tiebreaker: prefer item with higher guaranteed quota usage (ensure fairness)

@@ -32,9 +32,20 @@ export interface OfflineMutation {
 
 export type ConflictResolutionStrategy = "server_wins" | "local_wins" | "merge";
 
+export interface SyncReplayFailure {
+  readonly mutation: OfflineMutation;
+  readonly error: string;
+}
+
+export interface SyncReplayConflict {
+  readonly mutation: OfflineMutation;
+  readonly serverValue: unknown;
+}
+
 export interface SyncFlushResult {
-  readonly mutations: readonly OfflineMutation[];
-  readonly flushedAt: string;
+  readonly succeeded: readonly OfflineMutation[];
+  readonly failed: readonly SyncReplayFailure[];
+  readonly conflicts: readonly SyncReplayConflict[];
 }
 
 export interface OfflineMutationStore {

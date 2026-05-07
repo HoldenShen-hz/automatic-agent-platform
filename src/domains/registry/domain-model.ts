@@ -167,6 +167,38 @@ export const WorkflowConfigSchema = z.object({
       condition: z.record(z.string(), z.unknown()).nullable().default(null),
     })).default([]),
   }).optional(),
+}).superRefine((workflow, ctx) => {
+  const hasPlanGraph = workflow.planGraph != null;
+  const hasStepGraph = workflow.stepGraph != null && workflow.stepGraph.edges.length > 0;
+  const stepNames = new Set(workflow.steps.map((step) => step.stepName));
+  const requiresGraph = workflow.steps.length > 1 || workflow.steps.some((step) => step.dependsOn.length > 0);
+
+  if (requiresGraph && !hasPlanGraph && !hasStepGraph) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["steps"],
+      message: "Multi-step workflows must declare planGraph or stepGraph; linear-only steps[] is reserved for single-step flows.",
+    });
+  }
+
+  if (workflow.stepGraph != null) {
+    for (const [edgeIndex, edge] of workflow.stepGraph.edges.entries()) {
+      if (!stepNames.has(edge.fromStep)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["stepGraph", "edges", edgeIndex, "fromStep"],
+          message: `stepGraph edge references unknown fromStep '${edge.fromStep}'.`,
+        });
+      }
+      if (!stepNames.has(edge.toStep)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["stepGraph", "edges", edgeIndex, "toStep"],
+          message: `stepGraph edge references unknown toStep '${edge.toStep}'.`,
+        });
+      }
+    }
+  }
 });
 
 export const ToolBundleEntrySchema = z.object({

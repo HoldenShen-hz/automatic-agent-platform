@@ -52,6 +52,15 @@ export {
   type CanonicalContractName,
 } from "./executable-contracts/index.js";
 
+// R7-44 FIX: Re-export ContractEnvelope signature verification for inter-plane contract validation
+export {
+  type ContractEnvelope,
+  type ContractEnvelopeVerificationResult,
+  createContractEnvelope,
+  verifyContractEnvelopeSignature,
+  signContractEnvelope,
+} from "./executable-contracts/index.js";
+
 // emitDeprecationWarning and assertNotDeprecated are defined in this file below
 // and provide runtime enforcement for LEGACY_CONTRACT_NAMES usage
 

@@ -2,15 +2,6 @@ import { ConflictResolver, type ConflictMetadata } from "./conflict-resolver";
 import { createPersistentOfflineQueue, OfflineQueue } from "./offline-queue";
 import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types";
 
-/**
- * HTTP replay result for flush operations per §5.4.5.
- */
-export interface ReplayResult {
-  readonly succeeded: readonly OfflineMutation[];
-  readonly failed: readonly { mutation: OfflineMutation; error: string }[];
-  readonly conflicts: readonly { mutation: OfflineMutation; serverValue: unknown }[];
-}
-
 export class SyncCoordinator {
   private readonly httpClient: HTTPClient;
 
@@ -58,12 +49,14 @@ export class SyncCoordinator {
    * P1 FIX: Previously flush() returned mutations but the error handling re-queued
    * them without properly distinguishing retryable vs permanent failures. Now each
    * mutation is sent via httpClient.request() with correct HTTP method/headers.
-   * Retryable errors (429, 5xx) re-queue with incremented retryCount.
+   * Retryable errors (429, 5xx) re-queue with incremented retryCount up to MAX_RETRY_COUNT.
    * Non-retryable errors (4xx except 409) mark mutation as "failed".
    * Conflicts (409) trigger manual resolution flow.
    * Returns replay result with succeeded, failed, and conflict mutations.
    */
-  public async flush(): Promise<ReplayResult> {
+  private static readonly MAX_RETRY_COUNT = 5;
+
+  public async flush(): Promise<SyncFlushResult> {
     const mutations = this.queue.peek();
     if (mutations.length === 0) {
       return { succeeded: [], failed: [], conflicts: [] };
@@ -85,12 +78,17 @@ export class SyncCoordinator {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        if (this.isRetryableError(errorMessage)) {
-          nextQueue.push({ ...mutation, retryCount: mutation.retryCount + 1, status: "pending" });
-          failed.push({ mutation, error: errorMessage });
-        } else if (this.isConflictError(errorMessage)) {
+        if (this.isConflictError(errorMessage)) {
           conflicts.push({ mutation, serverValue: undefined });
           nextQueue.push({ ...mutation, status: "conflict" });
+        } else if (this.isRetryableError(errorMessage)) {
+          // Only retry if under max retry count
+          if (mutation.retryCount < SyncCoordinator.MAX_RETRY_COUNT) {
+            nextQueue.push({ ...mutation, retryCount: mutation.retryCount + 1, status: "pending" });
+          } else {
+            nextQueue.push({ ...mutation, status: "failed", lastError: `Max retries exceeded: ${errorMessage}` });
+            failed.push({ mutation, error: `Max retries exceeded: ${errorMessage}` });
+          }
         } else {
           nextQueue.push({ ...mutation, status: "failed", lastError: errorMessage });
           failed.push({ mutation, error: errorMessage });

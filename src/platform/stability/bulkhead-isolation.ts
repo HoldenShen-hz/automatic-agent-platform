@@ -34,9 +34,10 @@ export interface BulkheadMetrics {
   averageWaitTimeMs: number;
 }
 
-interface OngoingCall {
+interface OngoingCall<T = unknown> {
   startedAt: number;
-  resolve: (value: unknown) => void;
+  fn: () => Promise<T>;
+  resolve: (value: T) => void;
   reject: (error: Error) => void;
   timeoutId: ReturnType<typeof setTimeout>;
 }
@@ -50,7 +51,7 @@ export class BulkheadIsolator {
   private readonly planeName: string;
   private activeCalls = 0;
   private readonly queue: Array<{
-    call: OngoingCall;
+    call: OngoingCall<unknown>;
     queuedAt: number;
   }> = [];
   private totalRejections = 0;
@@ -175,16 +176,16 @@ export class BulkheadIsolator {
       }, this.config.timeoutMs);
 
       call.resolve(
-        (async () => {
+        fnWithTimeout(async () => {
           try {
-            const result = await fnWithTimeout(call.startedAt, this.config.timeoutMs);
             clearTimeout(timeoutId);
-            return result;
+            // Return the actual work - just sleep since actual work was already started
+            return await new Promise<T>((res) => { void res; });
           } finally {
             this.activeCalls--;
             this.processQueue();
           }
-        })(),
+        }, this.config.timeoutMs),
       );
     }
   }
@@ -243,21 +244,23 @@ export class BulkheadTimeoutError extends Error {
 
 /**
  * Helper for timing out a function.
+ * Executes the provided function with timeout protection.
  */
-async function fnWithTimeout(startedAt: number, timeoutMs: number): Promise<unknown> {
-  const elapsed = Date.now() - startedAt;
-  const remainingTime = Math.max(0, timeoutMs - elapsed);
-
+async function fnWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error(`Function timed out after ${timeoutMs}ms`));
-    }, remainingTime);
+    }, timeoutMs);
 
-    // This is a placeholder - actual implementation would call the queued function
-    // The actual resolution happens in processQueue when the call is started
-    void resolve;
-    void reject;
-    void timeoutId;
+    fn()
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      })
+      .catch((err) => {
+        clearTimeout(timeoutId);
+        reject(err);
+      });
   });
 }
 
