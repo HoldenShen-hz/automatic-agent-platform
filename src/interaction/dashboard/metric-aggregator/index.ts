@@ -259,9 +259,13 @@ function computePercentile(values: number[], percentile: number): number {
 function deriveTaskMetrics(statuses: readonly string[]): TaskMetricSnapshot {
   return {
     total: statuses.length,
-    done: statuses.filter((item): item is TaskStatus => item === "done").length,
+    queued: statuses.filter((item): item is TaskStatus => item === "queued").length,
+    pending: statuses.filter((item): item is TaskStatus => item === "pending").length,
     inProgress: statuses.filter((item): item is TaskStatus => item === "in_progress").length,
+    awaitingDecision: statuses.filter((item): item is TaskStatus => item === "awaiting_decision").length,
+    done: statuses.filter((item): item is TaskStatus => item === "done").length,
     failed: statuses.filter((item): item is TaskStatus => item === "failed").length,
+    cancelled: statuses.filter((item): item is TaskStatus => item === "cancelled").length,
   };
 }
 
@@ -269,9 +273,12 @@ function deriveWorkflowMetrics(statuses: readonly string[]): WorkflowMetricSnaps
   return {
     total: statuses.length,
     running: statuses.filter((item): item is WorkflowStatus => item === "running").length,
-    paused: statuses.filter((item): item is WorkflowStatus => item === "paused" || item === "awaiting_decision").length,
+    paused: statuses.filter((item): item is WorkflowStatus => item === "paused").length,
+    resuming: statuses.filter((item): item is WorkflowStatus => item === "resuming").length,
     completed: statuses.filter((item): item is WorkflowStatus => item === "completed").length,
     failed: statuses.filter((item): item is WorkflowStatus => item === "failed").length,
+    cancelling: statuses.filter((item): item is WorkflowStatus => item === "cancelling").length,
+    cancelled: statuses.filter((item): item is WorkflowStatus => item === "cancelled").length,
   };
 }
 
