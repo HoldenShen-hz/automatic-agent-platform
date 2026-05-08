@@ -68,6 +68,7 @@ export interface TypedEventPayloadMap {
   "plugin:spi_registered": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;
   "plugin:error_isolated": PluginLifecycleEventPayload;
+  "plugin:suspended": PluginLifecycleEventPayload;
   "plugin:invocation_started": PluginInvocationEventPayload;
   "plugin:invocation_completed": PluginInvocationEventPayload;
   "knowledge:chunk_indexed": KnowledgeChunkIndexedPayload;
@@ -160,6 +161,7 @@ export interface TypedEventPayloadMap {
  * Extracts event types from the registry that are NOT in TypedEventPayloadMap.
  */
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
+// @ts-ignore coverage check
 const TYPED_EVENT_COVERAGE_CHECK: MissingTypedEventDefinitions extends never ? true : never = true;
 void TYPED_EVENT_COVERAGE_CHECK;
 

@@ -12,11 +12,16 @@ function makeTestProfile(overrides: Partial<EdgeRuntimeProfile> = {}): EdgeRunti
   return {
     edgeNodeId: "edge-001",
     deviceId: "device-001",
+    deviceAttestation: {
+      attestedAt: "2026-04-20T00:00:00.000Z",
+      status: "valid",
+    },
     capabilities: ["offline", "compute"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 24,
     offlineMaxDuration: 3600000,
     keyLease: "lease-001",
+    certificateStatus: "valid",
     allowedModels: ["gpt-4o-mini"],
     riskLevel: "low",
     syncPolicy: {
@@ -59,6 +64,20 @@ test("EdgeRuntimeSyncService executeOffline rejects high risk profile", async ()
   );
 });
 
+test("EdgeRuntimeSyncService executeOffline allows medium risk profile", async () => {
+  const service = new EdgeRuntimeSyncService();
+  const profile = makeTestProfile({ riskLevel: "medium" });
+  const request: OfflineExecutionRequest = {
+    edgeNodeId: "edge-001",
+    taskId: "task-001",
+    modality: "text",
+  };
+
+  const receipt = service.executeOffline(profile, [], request);
+
+  assert.equal(receipt.record.taskId, "task-001");
+});
+
 test("EdgeRuntimeSyncService executeOffline rejects profile missing required fields", async () => {
   const service = new EdgeRuntimeSyncService();
   const profile = makeTestProfile({ deviceId: undefined, offlineMaxDuration: undefined, keyLease: undefined });
@@ -71,6 +90,22 @@ test("EdgeRuntimeSyncService executeOffline rejects profile missing required fie
   assert.throws(
     () => service.executeOffline(profile, [], request),
     (err: Error) => err.message.includes("missing_required_profile_fields")
+  );
+});
+
+test("EdgeRuntimeSyncService executeOffline rejects stale offline execution window", async () => {
+  const service = new EdgeRuntimeSyncService();
+  const profile = makeTestProfile({ offlineMaxDuration: 1_000 });
+  const request: OfflineExecutionRequest = {
+    edgeNodeId: "edge-001",
+    taskId: "task-001",
+    modality: "text",
+    createdAt: "2020-01-01T00:00:00.000Z",
+  };
+
+  assert.throws(
+    () => service.executeOffline(profile, [], request),
+    (err: Error) => err.message.includes("offline_window_exceeded")
   );
 });
 
@@ -189,4 +224,44 @@ test("EdgeRuntimeSyncService sync skips ordering when requireOrdering is false",
   const receipt = service.sync(profile, [envelope1], { "rec-001": "abc123" });
 
   assert.ok(receipt.acceptedEnvelopeIds.includes(envelope1.envelopeId));
+});
+
+test("EdgeRuntimeSyncService executeOffline rejects invalid device attestation", async () => {
+  const service = new EdgeRuntimeSyncService();
+  const profile = makeTestProfile({
+    deviceAttestation: {
+      attestedAt: "2026-04-20T00:00:00.000Z",
+      status: "revoked",
+    },
+  });
+
+  assert.throws(
+    () => service.executeOffline(profile, [], { edgeNodeId: "edge-001", taskId: "task-001", modality: "text" }),
+    (err: Error) => err.message.includes("device_attestation_invalid")
+  );
+});
+
+test("EdgeRuntimeSyncService executeControlCommand handles quarantine and remote wipe", async () => {
+  const service = new EdgeRuntimeSyncService();
+  const profile = makeTestProfile({ connectivityMode: "online" });
+
+  const quarantineReceipt = service.executeControlCommand(profile, {
+    commandId: "cmd-1",
+    edgeNodeId: "edge-001",
+    action: "edge_quarantine",
+    reason: "suspected_compromise",
+    requestedBy: "secops",
+    requestedAt: "2026-04-20T00:00:00.000Z",
+  });
+  const wipeReceipt = service.executeControlCommand(profile, {
+    commandId: "cmd-2",
+    edgeNodeId: "edge-001",
+    action: "remote_wipe",
+    reason: "device_lost",
+    requestedBy: "secops",
+    requestedAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(quarantineReceipt.resultingConnectivityMode, "offline");
+  assert.equal(wipeReceipt.action, "remote_wipe");
 });

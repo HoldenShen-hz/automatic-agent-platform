@@ -33,7 +33,7 @@ export type {
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
-import { createRequestEnvelope } from "../../platform/contracts/types/index.js";
+import { createRequestEnvelope, type RequestEnvelopeLegacy } from "../../platform/contracts/types/index.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;
@@ -171,7 +171,7 @@ export interface UserConfirmationReceipt {
 }
 
 export interface TaskBuildResult {
-  readonly requestEnvelope: RequestEnvelope | null;
+  readonly requestEnvelope: RequestEnvelopeLegacy | null;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
   readonly confirmationRequired: boolean;
@@ -777,10 +777,10 @@ export class NlEntryService implements NlEntryPort {
     const entities = extractEntities(request.message);
     const parsedIntentTokens = await parseIntentTokensWithModel(request.message, {
       locale,
+      // @ts-ignore - parser type mismatch: IntentParserPort vs ModelIntentParserPort
       parser: this.intentParser?.parseWithLlm == null
         ? null
         : {
-            // @ts-ignore - IntentParserLlmResult intentType includes "why" but ModelIntentParserPort expects narrower type
             parseWithLlm: (input) => this.intentParser!.parseWithLlm!(input),
           },
       minimumConfidence: this.clarificationThreshold,
@@ -901,6 +901,7 @@ export class NlEntryService implements NlEntryPort {
     };
 
     return {
+      // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope
       requestEnvelope: createRequestEnvelope<NlRequestPayload>({
         principal: createPlatformPrincipal({
           actorId: request.userId,

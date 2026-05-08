@@ -155,6 +155,7 @@ function seedTaskWithExecution(
       completedAt: null,
     });
 
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,
@@ -636,6 +637,7 @@ test("E2E: execution flow — execution superseded by new attempt", () => {
       });
 
       // First execution is in blocked state (waiting for approval) which can transition to superseded
+// @ts-ignore
       h.store.insertExecution({
         id: executionId1,
         taskId,
@@ -683,6 +685,7 @@ test("E2E: execution flow — execution superseded by new attempt", () => {
 
     // Insert second execution as retry
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: executionId2,
         taskId,
@@ -753,6 +756,7 @@ test("E2E: execution flow — terminal state transition cascades to all entities
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -880,6 +884,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
       });
 
       // First execution fails
+// @ts-ignore
       h.store.insertExecution({
         id: executionId1,
         taskId,
@@ -940,6 +945,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
 
     // Create retry execution
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: executionId2,
         taskId,

@@ -97,6 +97,7 @@ test("E2E Workflow Resume: workflow paused mid-step can be resumed", async () =>
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -249,6 +250,7 @@ test("E2E Workflow Resume: step advances after resume completes", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -416,6 +418,7 @@ test("E2E Workflow Resume: paused workflow can be cancelled", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -553,6 +556,7 @@ test("E2E Workflow Resume: partial outputs are preserved across pause-resume", a
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -734,6 +738,7 @@ test("E2E Workflow Resume: workflow survives multiple pause-resume cycles", asyn
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,

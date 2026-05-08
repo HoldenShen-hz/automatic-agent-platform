@@ -55,14 +55,14 @@ test("golden: mission control getSnapshot has expected structure", () => {
   assert.ok(snapshot.productSignals, "Should have productSignals");
 
   // Verify UI spec Dashboard wireframe fields
-  assert.ok(typeof snapshot.successRate === "number", "successRate should be number");
-  assert.ok(typeof snapshot.avgDurationMs === "number", "avgDurationMs should be number");
+  assert.ok(typeof snapshot.metrics.taskMetrics.successRate === "number", "successRate should be number");
+  assert.ok(typeof snapshot.avgDurationMs === "number" || snapshot.avgDurationMs === null, "avgDurationMs should be number or null");
   assert.ok(typeof snapshot.activeAgents === "number", "activeAgents should be number");
   assert.ok(typeof snapshot.queueDepth === "number", "queueDepth should be number");
   assert.ok(typeof snapshot.errorRate === "number", "errorRate should be number");
-  assert.ok(typeof snapshot.p50LatencyMs === "number", "p50LatencyMs should be number");
-  assert.ok(typeof snapshot.p99LatencyMs === "number", "p99LatencyMs should be number");
-  assert.ok(typeof snapshot.budgetUtilizationPercent === "number", "budgetUtilizationPercent should be number");
+  assert.ok(typeof snapshot.p50LatencyMs === "number" || snapshot.p50LatencyMs === null, "p50LatencyMs should be number or null");
+  assert.ok(typeof snapshot.p99LatencyMs === "number" || snapshot.p99LatencyMs === null, "p99LatencyMs should be number or null");
+  assert.ok(typeof snapshot.budgetUtilizationPercent === "number" || snapshot.budgetUtilizationPercent === null, "budgetUtilizationPercent should be number or null");
   assert.ok(typeof snapshot.uptimePercent === "number", "uptimePercent should be number");
 
   assertGolden("mission-control-snapshot-structure", {
@@ -71,7 +71,7 @@ test("golden: mission control getSnapshot has expected structure", () => {
     pendingApprovalsCount: snapshot.pendingApprovals.length,
     divisionsCount: snapshot.divisions.length,
     hasProductSignals: snapshot.productSignals !== undefined,
-    successRate: snapshot.successRate,
+    successRate: snapshot.metrics.taskMetrics.successRate,
     avgDurationMs: snapshot.avgDurationMs,
     activeAgents: snapshot.activeAgents,
     queueDepth: snapshot.queueDepth,

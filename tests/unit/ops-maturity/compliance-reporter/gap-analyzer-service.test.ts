@@ -178,3 +178,32 @@ test("GapAnalyzerService.analyze uses null deadline when not in deadlineMap", ()
 
   assert.equal(results[0]!.deadline, null);
 });
+
+test("ComplianceReportPipelineService exposes framework schedule and signoff escalation metadata", async () => {
+  const { ComplianceReportPipelineService } = await import("../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js");
+  const service = new ComplianceReportPipelineService([{
+    templateId: "soc2",
+    framework: "SOC2",
+    reportType: "audit",
+    requiredEvidenceTypes: [],
+    renderSchema: [],
+    version: "1.0",
+  }]);
+  const artifact = service.generate({
+    templateId: "soc2",
+    evidence: [],
+    requestedBy: "auditor@example.com",
+  });
+  const signoff = service.evaluateHumanSignoff({
+    artifact,
+    signoffDueAt: "2026-06-01T00:00:00.000Z",
+    now: "2026-06-02T00:00:00.000Z",
+    escalationOwner: "governance_oncall",
+    timeoutAction: "freeze_report",
+  });
+
+  assert.equal(service.getFrameworkSchedule("SOC2").frequency, "quarterly");
+  assert.equal(service.nextScheduledReportDueAt("HIPAA", "2026-01-01T00:00:00.000Z"), "2026-01-31T00:00:00.000Z");
+  assert.equal(signoff.escalationOwner, "governance_oncall");
+  assert.equal(signoff.timeoutAction, "freeze_report");
+});

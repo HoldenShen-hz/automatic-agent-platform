@@ -58,6 +58,7 @@ test("E2E Delegation: parent agent delegates to child and execution completes", 
       });
 
       // Parent execution
+// @ts-ignore
       harness.store.insertExecution({
         id: parentExecutionId,
         taskId,
@@ -318,6 +319,7 @@ test("E2E Delegation: delegation requires approval blocks execution", async () =
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,

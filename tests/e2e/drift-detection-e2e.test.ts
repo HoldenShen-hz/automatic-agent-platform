@@ -179,6 +179,7 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
       createdAt: now,
     });
 
+// @ts-ignore
     const result = service.proposeExperiencePromotion({
       taskId,
       executionId,

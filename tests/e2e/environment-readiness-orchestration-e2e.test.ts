@@ -119,6 +119,7 @@ test("E2E Environment Readiness: updates existing readiness record", () => {
 
   const records = service.listReadiness("test");
   assert.equal(records.length, 1, "Should still have one record (updated)");
+// @ts-ignore
   assert.equal(records[0].credentialReady, true, "Credential should now be ready");
 });
 
@@ -749,7 +750,9 @@ test("E2E Environment Readiness: filters readiness by environment", () => {
 
   assert.equal(prodRecords.length, 1, "Should have 1 prod record");
   assert.equal(devRecords.length, 1, "Should have 1 dev record");
+// @ts-ignore
   assert.equal(prodRecords[0].componentId, "prod-provider");
+// @ts-ignore
   assert.equal(devRecords[0].componentId, "dev-provider");
 });
 

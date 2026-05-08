@@ -424,8 +424,17 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         }
         try {
           const activation = service.issuePanicDirective({
-            ...payload,
+            scope: payload.scope,
+            reasonCode: payload.reasonCode,
+            activeIncidents: payload.activeIncidents,
             issuedBy: principal.actorId,
+            ...(payload.freezeModes != null ? { freezeModes: payload.freezeModes } : {}),
+            ...(payload.requiredApprovers != null ? { requiredApprovers: payload.requiredApprovers } : {}),
+            ...(payload.allowList != null ? { allowList: payload.allowList } : {}),
+            ...(payload.targetScopes != null ? { targetScopes: payload.targetScopes } : {}),
+            ...(payload.forensicArtifactIds != null ? { forensicArtifactIds: payload.forensicArtifactIds } : {}),
+            ...(payload.severity != null ? { severity: payload.severity } : {}),
+            ...(payload.triggerSignals != null ? { triggerSignals: payload.triggerSignals } : {}),
           });
           return buildJsonResponse(ctx.requestId, 200, {
             success: true,

@@ -95,6 +95,7 @@ function insertTaskAndExecution(
       updatedAt: now,
       completedAt: null,
     });
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,

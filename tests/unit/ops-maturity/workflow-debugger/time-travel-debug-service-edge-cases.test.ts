@@ -57,6 +57,21 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       assert.ok(session.startedAt <= after);
       assert.equal(session.endedAt, null);
     });
+
+    test("prod session requires short-lived expiry and prod permission", () => {
+      const service = createService();
+
+      assert.throws(
+        () => service.createSession("t", "e", {
+          actorId: "ops-1",
+          environment: "prod",
+          mfaVerified: true,
+          sessionExpiresAt: null,
+          permissions: ["time_travel:replay", "time_travel:replay:prod"],
+        }),
+        /time_travel_debug\.short_lived_session_required/,
+      );
+    });
   });
 
   describe("setBreakpoints", () => {
@@ -152,6 +167,22 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       const service = createService();
       service.loadEventStore("e", [{ timestamp: "t", variables: {} }]);
       const session = service.createSession("t", "e");
+
+      const state = service.replayStep(session.sessionId);
+      assert.ok(state !== null);
+      assert.equal(state!.currentEventIndex, 1);
+    });
+
+    test("sandbox can allow explicit write replays when configured", () => {
+      const service = createService();
+      service.loadEventStore("e", [{ stepId: "s1", timestamp: "t", variables: {}, effectType: "write" }]);
+      const session = service.createSession("t", "e", undefined, {
+        blockExternalSideEffects: true,
+        allowWrites: true,
+        allowNetwork: false,
+        allowProcess: false,
+        allowToolCalls: false,
+      });
 
       const state = service.replayStep(session.sessionId);
       assert.ok(state !== null);

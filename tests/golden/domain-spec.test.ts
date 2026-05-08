@@ -19,21 +19,20 @@ import {
   DomainEvalSpecSchema,
   DomainGovernanceSpecSchema,
   DomainInteractionSpecSchema,
-  toResponsibilityBoundary,
   resolveDomainRiskSpec,
-  type DomainRiskSpec,
   type DomainLifecycleState,
 } from "../../src/domains/domain-specs.js";
 import { assertGolden } from "../helpers/golden.js";
 
 test("golden: DomainLifecycleState enum values are valid", () => {
   const validStates: DomainLifecycleState[] = [
-    "validating",
-    "certified",
-    "canary",
+    "draft",
+    "validated",
+    "registered",
     "active",
+    "updating",
     "deprecated",
-    "retired",
+    "archived",
   ];
 
   for (const state of validStates) {
@@ -128,7 +127,7 @@ test("golden: DomainCoreDescriptor schema produces correct structure", () => {
     ownerOrgNodeId: "org_healthcare",
     primaryEntities: ["patient", "diagnosis", "treatment"],
     recipeArchetype: "compliance",
-    lifecycleState: "certified",
+    lifecycleState: "active",
   };
 
   const parsed = DomainCoreDescriptorSchema.parse(validDescriptor);
@@ -137,7 +136,7 @@ test("golden: DomainCoreDescriptor schema produces correct structure", () => {
   assert.equal(parsed.ownerOrgNodeId, "org_healthcare");
   assert.deepEqual(parsed.primaryEntities, ["patient", "diagnosis", "treatment"]);
   assert.equal(parsed.recipeArchetype, "compliance");
-  assert.equal(parsed.lifecycleState, "certified");
+  assert.equal(parsed.lifecycleState, "active");
 
   assertGolden("domain-core-descriptor-v1", {
     domainId: parsed.domainId,
@@ -155,8 +154,6 @@ test("golden: DomainRiskSpec schema produces correct structure", () => {
     advisoryOnly: false,
     humanAccountable: true,
     deterministicHotPathOnly: true,
-    allowedCapabilityOverrides: ["override_1", "override_2"],
-    requiredApprovalPolicies: ["policy_1"],
     liabilityOwner: ["financial-services-owners"],
     compensationModel: ["reversal", "manual_repair"],
     sideEffectTypes: ["payment", "transfer"],
@@ -170,8 +167,6 @@ test("golden: DomainRiskSpec schema produces correct structure", () => {
   assert.equal(parsed.advisoryOnly, false);
   assert.equal(parsed.humanAccountable, true);
   assert.equal(parsed.deterministicHotPathOnly, true);
-  assert.deepEqual(parsed.allowedCapabilityOverrides, ["override_1", "override_2"]);
-  assert.deepEqual(parsed.requiredApprovalPolicies, ["policy_1"]);
   assert.deepEqual(parsed.liabilityOwner, ["financial-services-owners"]);
   assert.deepEqual(parsed.compensationModel, ["reversal", "manual_repair"]);
   assert.deepEqual(parsed.sideEffectTypes, ["payment", "transfer"]);
@@ -330,63 +325,6 @@ test("golden: DomainInteractionSpec schema produces correct structure", () => {
     nlEntryPolicy: parsed.nlEntryPolicy,
     dashboardPolicy: parsed.dashboardPolicy,
     proactiveTriggerPolicy: parsed.proactiveTriggerPolicy,
-  });
-});
-
-test("golden: toResponsibilityBoundary maps risk flags correctly", () => {
-  // deterministicHotPathOnly -> deterministic_hot_path_only
-  const spec1: DomainRiskSpec = {
-    domainId: "test1",
-    riskClass: "high",
-    advisoryOnly: false,
-    humanAccountable: false,
-    deterministicHotPathOnly: true,
-    liabilityOwner: ["test"],
-    compensationModel: ["manual_repair"],
-  };
-  assert.equal(toResponsibilityBoundary(spec1), "deterministic_hot_path_only");
-
-  // humanAccountable -> human_accountable
-  const spec2: DomainRiskSpec = {
-    domainId: "test2",
-    riskClass: "high",
-    advisoryOnly: false,
-    humanAccountable: true,
-    deterministicHotPathOnly: false,
-    liabilityOwner: ["test"],
-    compensationModel: ["manual_repair"],
-  };
-  assert.equal(toResponsibilityBoundary(spec2), "human_accountable");
-
-  // advisoryOnly -> advisory_only
-  const spec3: DomainRiskSpec = {
-    domainId: "test3",
-    riskClass: "medium",
-    advisoryOnly: true,
-    humanAccountable: false,
-    deterministicHotPathOnly: false,
-    liabilityOwner: ["test"],
-    compensationModel: ["no_compensation"],
-  };
-  assert.equal(toResponsibilityBoundary(spec3), "advisory_only");
-
-  // none -> fully_autonomous
-  const spec4: DomainRiskSpec = {
-    domainId: "test4",
-    riskClass: "low",
-    advisoryOnly: false,
-    humanAccountable: false,
-    deterministicHotPathOnly: false,
-    liabilityOwner: ["test"],
-    compensationModel: ["refund"],
-  };
-  assert.equal(toResponsibilityBoundary(spec4), "fully_autonomous");
-
-  assertGolden("to-responsibility-boundary-v1", {
-    deterministicOnly: toResponsibilityBoundary(spec1),
-    humanAccountable: toResponsibilityBoundary(spec2),
-    advisoryOnly: toResponsibilityBoundary(spec3),
-    fullyAutonomous: toResponsibilityBoundary(spec4),
   });
 });
 

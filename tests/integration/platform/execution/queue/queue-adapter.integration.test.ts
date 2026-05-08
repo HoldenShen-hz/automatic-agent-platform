@@ -159,7 +159,9 @@ test("SqliteQueueAdapter integration: listQueues returns all queue names", () =>
 test("SqliteQueueAdapter integration: retryJob resets failed job", () => {
   const h = createSqliteHarness("aa-int-retry-");
   try {
-    const job = h.adapter.enqueue({ queueName: "retry-test", payload: {} });
+    // Use maxAttempts=1 so that after one nack (attempts becomes 1), the job goes to dead_letter
+    // rather than waiting, making it eligible for retryJob to reset
+    const job = h.adapter.enqueue({ queueName: "retry-test", payload: {}, maxAttempts: 1 });
     const result = h.adapter.dequeue("retry-test");
     result.nack("failed");
 

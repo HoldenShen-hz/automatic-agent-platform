@@ -15,6 +15,9 @@ export function orderEdgeSyncQueue(items: readonly EdgeSyncEnvelope[]): EdgeSync
     if (right.priority !== left.priority) {
       return right.priority - left.priority;
     }
+    if ((left.sequence_no ?? Number.MAX_SAFE_INTEGER) !== (right.sequence_no ?? Number.MAX_SAFE_INTEGER)) {
+      return (left.sequence_no ?? Number.MAX_SAFE_INTEGER) - (right.sequence_no ?? Number.MAX_SAFE_INTEGER);
+    }
     return String(left.createdAt ?? "").localeCompare(String(right.createdAt ?? ""));
   });
 }
@@ -25,4 +28,68 @@ export function dedupeEdgeSyncQueue(items: readonly EdgeSyncEnvelope[]): EdgeSyn
     latest.set(item.envelopeId, item);
   }
   return orderEdgeSyncQueue([...latest.values()]);
+}
+
+export interface SyncQueueChainValidationResult {
+  readonly valid: boolean;
+  readonly errors: readonly string[];
+  readonly topologicalOrder: readonly string[];
+}
+
+export function validateSyncQueueChain(items: readonly EdgeSyncEnvelope[]): SyncQueueChainValidationResult {
+  if (items.length === 0) {
+    return { valid: true, errors: [], topologicalOrder: [] };
+  }
+  const errors: string[] = [];
+  const ordered = orderEdgeSyncQueue(items);
+  const byEnvelopeId = new Map(ordered.map((item) => [item.envelopeId, item] as const));
+  const dependencyGraph = new Map<string, string[]>();
+  const indegree = new Map<string, number>();
+
+  for (let index = 0; index < ordered.length; index++) {
+    const item = ordered[index]!;
+    dependencyGraph.set(item.envelopeId, []);
+    indegree.set(item.envelopeId, 0);
+    if (index === 0 && item.prev_hash != null) {
+      errors.push(`first_item_must_have_null_prev_hash:${item.envelopeId}`);
+    }
+  }
+
+  for (const item of ordered) {
+    for (const dependency of item.side_effect_dependency_refs ?? []) {
+      if (!byEnvelopeId.has(dependency)) {
+        errors.push(`missing_dependency:${item.envelopeId}:${dependency}`);
+        continue;
+      }
+      dependencyGraph.get(dependency)!.push(item.envelopeId);
+      indegree.set(item.envelopeId, (indegree.get(item.envelopeId) ?? 0) + 1);
+    }
+  }
+
+  const queue: string[] = [...indegree.entries()]
+    .filter(([, count]) => count === 0)
+    .map(([envelopeId]) => envelopeId);
+  const topologicalOrder: string[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    topologicalOrder.push(current);
+    for (const next of dependencyGraph.get(current) ?? []) {
+      const nextInDegree = (indegree.get(next) ?? 0) - 1;
+      indegree.set(next, nextInDegree);
+      if (nextInDegree === 0) {
+        queue.push(next);
+      }
+    }
+  }
+
+  if (topologicalOrder.length !== ordered.length) {
+    errors.push("dependency_cycle_detected");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    topologicalOrder,
+  };
 }

@@ -128,6 +128,9 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
         }
         const _principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const harnessRunId = segments[3];
+        if (harnessRunId == null) {
+          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
+        }
         const run = harnessRunStore.get(harnessRunId);
         if (!run) {
           throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
@@ -176,7 +179,6 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
           status: (body.status as HarnessRunStatus) || "created",
           constraintPackRef: (body.constraintPackRef as string) || `constraint_pack:${domainId}`,
           versionLockId: newId("run_version_lock"),
-          planGraphBundleId: (body.planGraphBundleId as string) || undefined,
           budgetLedgerId: newId("budget_ledger"),
           budgetEnvelope: {
             budgetLedgerId: newId("budget_ledger"),
@@ -185,8 +187,9 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
           currentSeq: 0,
           createdAt: now,
           updatedAt: now,
-          leaseId: (body.leaseId as string) || undefined,
           fencingToken: `fence:${harnessRunId}:0`,
+          ...(body.planGraphBundleId != null ? { planGraphBundleId: body.planGraphBundleId as string } : {}),
+          ...(body.leaseId != null ? { leaseId: body.leaseId as string } : {}),
         };
 
         harnessRunStore.insert(run);
@@ -205,6 +208,9 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
         }
         const _principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const harnessRunId = segments[3];
+        if (harnessRunId == null) {
+          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
+        }
         const existing = harnessRunStore.get(harnessRunId);
         if (!existing) {
           throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");

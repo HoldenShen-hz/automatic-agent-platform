@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   mapEvidenceByType,
+  mapEvidenceByControlPoint,
   findMissingEvidenceTypes,
   EvidenceMapperService,
 } from "../../../../../src/ops-maturity/compliance-reporter/evidence-mapper/index.js";
@@ -103,4 +104,42 @@ test("EvidenceMapperService.summarizeCoverage returns 0.0 when no items and requ
   assert.equal(result.coverageRatio, 0);
   assert.deepStrictEqual(result.coveredTypes, []);
   assert.deepStrictEqual(result.missingTypes, ["access_log"]);
+});
+
+test("mapEvidenceByControlPoint groups evidence by control and derives status", () => {
+  const result = mapEvidenceByControlPoint([
+    { evidenceId: "e1", evidenceType: "access_log", controlId: "CC1", controlStatus: "pass" },
+    { evidenceId: "e2", evidenceType: "config_snapshot", controlId: "CC2", controlStatus: "partial" },
+    { evidenceId: "e3", evidenceType: "metric", controlId: "CC2", controlStatus: "pass" },
+  ]);
+
+  assert.equal(result["CC1"]?.status, "pass");
+  assert.equal(result["CC2"]?.status, "partial");
+  assert.deepStrictEqual(result["CC2"]?.evidenceIds, ["e2", "e3"]);
+});
+
+test("EvidenceMapperService.summarizeQuality scores completeness, freshness, trustworthiness, and tamper-proof", () => {
+  const service = new EvidenceMapperService();
+  const result = service.summarizeQuality([
+    {
+      evidenceId: "e1",
+      evidenceType: "access_log",
+      freshnessHours: 12,
+      trustScore: 0.9,
+      tamperProof: true,
+    },
+    {
+      evidenceId: "e2",
+      evidenceType: "config_snapshot",
+      freshnessHours: 96,
+      trustScore: 0.7,
+      tamperProof: false,
+    },
+  ], ["access_log", "config_snapshot", "metrics"]);
+
+  assert.equal(result.completenessScore, 0.67);
+  assert.ok(result.freshnessScore > 0);
+  assert.ok(result.trustworthinessScore > 0);
+  assert.ok(result.tamperProofScore < 1);
+  assert.ok(result.overallScore > 0);
 });

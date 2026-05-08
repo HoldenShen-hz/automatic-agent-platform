@@ -17,6 +17,10 @@ export interface ChangepointDetectionResult {
   reasonCode: string;
   severity: "low" | "medium" | "high" | "none";
   recommendedAction: "observe" | "require_review" | "pause_agent" | "none";
+  sampleSize: number;
+  minSampleSize: number;
+  distributionAssumption: DriftDetectorConfig["distributionAssumption"];
+  falsePositiveRate: number;
 }
 
 /**
@@ -73,6 +77,33 @@ const RECENT_WINDOW_HOURS = 3;
 const DRIFT_THRESHOLD_RELATIVE = -0.10;
 
 export class ChangepointDetectorService {
+  private readonly config: DriftDetectorConfig;
+  private lastAlertSampleIndex: number | null = null;
+
+  public constructor(config: Partial<DriftDetectorConfig> = {}) {
+    this.config = {
+      minSampleSize: config.minSampleSize ?? 1,
+      samplesPerHour: config.samplesPerHour ?? 1,
+      zscoreThreshold: config.zscoreThreshold ?? 2.0,
+      zscoreHighSeverity: config.zscoreHighSeverity ?? 4.0,
+      zscoreMediumSeverity: config.zscoreMediumSeverity ?? 3.0,
+      cusumBoundaryMultiplier: config.cusumBoundaryMultiplier ?? 5.0,
+      cusumSlackMultiplier: config.cusumSlackMultiplier ?? 0.5,
+      cusumHighSeverityMultiplier: config.cusumHighSeverityMultiplier ?? 3.0,
+      cusumMediumSeverityMultiplier: config.cusumMediumSeverityMultiplier ?? 2.0,
+      bayesianConfidenceLevel: config.bayesianConfidenceLevel ?? 0.95,
+      bayesianHighSeverity: config.bayesianHighSeverity ?? 0.01,
+      bayesianMediumSeverity: config.bayesianMediumSeverity ?? 0.03,
+      kljsDivergenceThreshold: config.kljsDivergenceThreshold ?? 0.1,
+      kljsHighSeverity: config.kljsHighSeverity ?? 0.3,
+      kljsMediumSeverity: config.kljsMediumSeverity ?? 0.2,
+      distributionAssumption: config.distributionAssumption ?? "normal",
+      falsePositiveRate: config.falsePositiveRate ?? 0.05,
+      falsePositiveWindowSize: config.falsePositiveWindowSize ?? 100,
+      minSamplesBetweenAlerts: config.minSamplesBetweenAlerts ?? 5,
+    };
+  }
+
   /**
    * Detects changepoints using 24h sliding window and -10% relative threshold.
    *
@@ -100,13 +131,17 @@ export class ChangepointDetectorService {
         reasonCode: "drift.insufficient_data",
         severity: "none",
         recommendedAction: "none",
+        sampleSize: samples.length,
+        minSampleSize: this.config.minSampleSize,
+        distributionAssumption: this.config.distributionAssumption,
+        falsePositiveRate: this.config.falsePositiveRate,
       };
     }
 
     // Fall back to the available pre-recent history when the full baseline window
     // is not available yet, but still require at least one full recent window of
     // baseline samples so comparisons are not made against a trivially small set.
-    if (baseline.length < recentWindow) {
+    if (baseline.length < recentWindow || samples.length < Math.max(this.config.minSampleSize, recentWindow + 1)) {
       return {
         detected: false,
         baselineMean: average(baseline.map((s) => s.score)),
@@ -116,6 +151,10 @@ export class ChangepointDetectorService {
         reasonCode: "drift.insufficient_data",
         severity: "none",
         recommendedAction: "none",
+        sampleSize: samples.length,
+        minSampleSize: this.config.minSampleSize,
+        distributionAssumption: this.config.distributionAssumption,
+        falsePositiveRate: this.config.falsePositiveRate,
       };
     }
 
@@ -129,7 +168,14 @@ export class ChangepointDetectorService {
     const EPSILON = 1e-9;
     const detected = relativeShift <= DRIFT_THRESHOLD_RELATIVE + EPSILON;
 
-    const severity = !detected
+    const suppressedByWindow = detected
+      && this.lastAlertSampleIndex != null
+      && (samples.length - this.lastAlertSampleIndex) < this.config.minSamplesBetweenAlerts;
+    const finalDetected = detected && !suppressedByWindow;
+    if (finalDetected) {
+      this.lastAlertSampleIndex = samples.length;
+    }
+    const severity = !finalDetected
       ? "none"
       : relativeShift <= -0.25
         ? "high"
@@ -137,14 +183,20 @@ export class ChangepointDetectorService {
           ? "medium"
           : "low";
     return {
-      detected,
+      detected: finalDetected,
       baselineMean,
       recentMean,
       absoluteShift,
       relativeShift,
-      reasonCode: detected ? "drift.changepoint_detected" : "drift.stable",
+      reasonCode: suppressedByWindow
+        ? "drift.false_positive_suppressed"
+        : finalDetected ? "drift.changepoint_detected" : "drift.stable",
       severity,
       recommendedAction: severity === "high" ? "pause_agent" : severity === "medium" ? "require_review" : severity === "low" ? "observe" : "none",
+      sampleSize: samples.length,
+      minSampleSize: this.config.minSampleSize,
+      distributionAssumption: this.config.distributionAssumption,
+      falsePositiveRate: this.config.falsePositiveRate,
     };
   }
 

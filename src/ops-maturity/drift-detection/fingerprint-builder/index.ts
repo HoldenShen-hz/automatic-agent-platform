@@ -6,6 +6,7 @@ export interface BehaviorFingerprintInput {
   failureCategories: readonly string[];
   averageLatencyMs: number;
   averageCostUsd: number;
+  avgStepCount?: number;
   window?: {
     readonly start: string;
     readonly end: string;
@@ -30,6 +31,8 @@ export class BehaviorFingerprintBuilder {
       `failures:${[...input.failureCategories].sort().join(",")}`,
       `latency_bucket:${bucketLatency(input.averageLatencyMs)}`,
       `cost_bucket:${bucketCost(input.averageCostUsd)}`,
+      `avg_step_count:${input.avgStepCount ?? 0}`,
+      `step_count_bucket:${bucketStepCount(input.avgStepCount ?? 0)}`,
       `window:${input.window?.start ?? "na"}:${input.window?.end ?? "na"}`,
       `tool_usage:${JSON.stringify(input.toolUsageDistribution ?? {})}`,
       `success_rate:${input.successRate ?? 0}`,
@@ -63,4 +66,14 @@ function bucketCost(costUsd: number): string {
     return "medium";
   }
   return "high";
+}
+
+function bucketStepCount(stepCount: number): string {
+  if (stepCount < 5) {
+    return "short";
+  }
+  if (stepCount < 15) {
+    return "medium";
+  }
+  return "long";
 }

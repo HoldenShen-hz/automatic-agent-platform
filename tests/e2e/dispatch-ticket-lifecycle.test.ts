@@ -109,6 +109,7 @@ test("E2E: ticket created with correct priority for queued task", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -212,6 +213,7 @@ test("E2E: worker claims ticket and acquires lease", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -267,6 +269,7 @@ test("E2E: worker claims ticket and acquires lease", () => {
 
     // Create worker snapshot
     h.db.transaction(() => {
+// @ts-ignore
       h.workerRepo.upsertWorkerSnapshot({
         workerId,
         status: "idle",
@@ -361,6 +364,7 @@ test("E2E: ticket consumed after successful execution", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -497,6 +501,7 @@ test("E2E: ticket invalidated when task cancelled", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -614,6 +619,7 @@ test("E2E: multiple tickets for task with different priorities", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -743,6 +749,7 @@ test("E2E: worker lease management - worker busy with active lease", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -773,6 +780,7 @@ test("E2E: worker lease management - worker busy with active lease", () => {
     });
 
     // Create worker with active lease
+// @ts-ignore
     const workerSnapshot: WorkerSnapshotRecord = {
       workerId,
       status: "busy",
@@ -859,6 +867,7 @@ test("E2E: execution preempted and ticket requeued", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

@@ -162,6 +162,7 @@ function seedExecution(
       });
     }
 
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,

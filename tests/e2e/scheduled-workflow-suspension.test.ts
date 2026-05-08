@@ -59,6 +59,7 @@ function seedWorkflowWithTask(
       completedAt: null,
     });
 
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,

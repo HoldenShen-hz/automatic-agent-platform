@@ -25,6 +25,7 @@ import type { PluginSandboxPolicy } from "../../../src/domains/registry/plugin-s
 // ---------------------------------------------------------------------------
 
 function createDomainDefinition(overrides: Partial<DomainDefinition> = {}): DomainDefinition {
+// @ts-ignore
   return {
     domainId: overrides.domainId ?? "domain_e2e_001",
     name: overrides.name ?? "E2E Test Domain",

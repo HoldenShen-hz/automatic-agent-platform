@@ -476,5 +476,5 @@ test("DomainSmokeTestRunner.run still passes domains without executionProfile", 
   const result = runner.run(domain);
   assert.equal(result.passed, true);
   assert.equal(result.issues.includes("domain_registry.runtime_checks_failed"), false);
-  assert.equal(result.runtimeChecks.length, 3);
+  assert.equal(result.runtimeChecks.length, 4);
 });

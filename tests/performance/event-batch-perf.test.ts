@@ -38,6 +38,8 @@ function cleanupDb(db: SqliteDatabase): void {
 function createAppender(db: SqliteDatabase): TransactionalEventAppender {
   const eventRepository = new EventRepository(db.connection);
   const outboxRepository = new OutboxRepository(db.connection);
+  // Disable foreign key checks for perf tests - events table requires task_id FK but tests don't create tasks
+  db.connection.exec("PRAGMA foreign_keys = OFF;");
   return new TransactionalEventAppender(db, eventRepository, outboxRepository);
 }
 

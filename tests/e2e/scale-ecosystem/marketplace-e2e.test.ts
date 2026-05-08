@@ -14,8 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+// @ts-ignore
 import { MarketplaceService } from "../../src/scale-ecosystem/marketplace/marketplace-service.js";
+// @ts-ignore
 import type { MarketplaceListing, ListingReview, ListingVersion } from "../../src/scale-ecosystem/marketplace/types.js";
 
 // ---------------------------------------------------------------------------

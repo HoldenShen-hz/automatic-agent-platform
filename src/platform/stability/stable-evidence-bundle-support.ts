@@ -497,6 +497,7 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
       startedAt: now,
       updatedAt: now,
     });
+    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: executionId,
       taskId,

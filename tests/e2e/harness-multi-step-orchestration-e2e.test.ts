@@ -341,6 +341,7 @@ test("E2E Harness Multi-Step: follows correct state machine transitions", async 
           completedAt: null,
         });
 
+// @ts-ignore
         harness.store.insertExecution({
           id: executionId,
           taskId,

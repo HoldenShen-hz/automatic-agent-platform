@@ -94,6 +94,7 @@ test("E2E HITL: break-glass emergency approval bypasses normal workflow", async 
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -214,6 +215,7 @@ test("E2E HITL: approval timeout triggers auto-reject when policy is reject", as
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -318,6 +320,7 @@ test("E2E HITL: approval timeout triggers auto-approve when policy is approve", 
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -424,6 +427,7 @@ test("E2E HITL: cascade denial rejects all dependent approvals", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId1,
         taskId,
@@ -450,6 +454,7 @@ test("E2E HITL: cascade denial rejects all dependent approvals", async () => {
         finishedAt: null,
         createdAt: now,
         updatedAt: now,
+// @ts-ignore
         updatedAt: now,
       });
     });
@@ -518,6 +523,7 @@ test("E2E HITL: high-risk approval requires elevated approver", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -606,6 +612,7 @@ test("E2E HITL: remain_pending policy leaves approval pending until explicit res
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,

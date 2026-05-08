@@ -76,6 +76,7 @@ function seedExecution(
   status: ExecutionStatus,
 ): void {
   db.transaction(() => {
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,

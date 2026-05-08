@@ -7,6 +7,8 @@ export interface AdminConfigRecord {
   readonly tenantId: string | null;
   readonly updatedBy: string;
   readonly updatedAt: string;
+  readonly deletedAt?: string;
+  readonly deletedBy?: string;
 }
 
 export interface ApplyAdminConfigInput {
@@ -14,6 +16,12 @@ export interface ApplyAdminConfigInput {
   readonly value: unknown;
   readonly tenantId?: string | null;
   readonly updatedBy: string;
+}
+
+export interface DeleteAdminConfigInput {
+  readonly key: string;
+  readonly tenantId?: string;
+  readonly deletedBy: string;
 }
 
 export class AdminConfigService {
@@ -34,8 +42,24 @@ export class AdminConfigService {
 
   public listUpdates(limit = 50, tenantId?: string | null): AdminConfigRecord[] {
     return [...this.records.values()]
-      .filter((record) => tenantId == null || record.tenantId === tenantId)
+      .filter((record) => !record.deletedAt && (tenantId == null || record.tenantId === tenantId))
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(0, Math.max(0, limit));
+  }
+
+  public deleteConfig(input: DeleteAdminConfigInput): AdminConfigRecord {
+    const existing = [...this.records.values()].find(
+      (r) => r.key === input.key && !r.deletedAt && (input.tenantId == null || r.tenantId === input.tenantId),
+    );
+    if (!existing) {
+      throw new Error(`AdminConfigRecord not found for key: ${input.key}`);
+    }
+    const updated: AdminConfigRecord = {
+      ...existing,
+      deletedAt: nowIso(),
+      deletedBy: input.deletedBy,
+    };
+    this.records.set(existing.updateId, updated);
+    return updated;
   }
 }

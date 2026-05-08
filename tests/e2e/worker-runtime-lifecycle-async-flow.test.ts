@@ -46,6 +46,7 @@ function insertClaimableRuntimeState(
       updatedAt: now,
       completedAt: null,
     });
+// @ts-ignore
     harness.store.insertExecution({
       id: seeded.executionId,
       taskId: seeded.taskId,

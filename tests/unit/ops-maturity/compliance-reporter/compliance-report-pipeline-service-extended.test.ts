@@ -41,7 +41,8 @@ describe("ComplianceReportPipelineService", () => {
       assert.equal(artifact.reportType, "audit");
       assert.equal(artifact.status, "generated");
       assert.equal(artifact.missingEvidenceTypes.length, 0);
-      assert.equal(artifact.evidenceQualityScore, 100);
+      assert.equal(artifact.evidenceQualityBreakdown.completeness, 100);
+      assert.equal(artifact.evidenceQualityScore, 70);
       assert.deepEqual(artifact.evidenceMap["access_log"], ["e1", "e2"]);
       assert.deepEqual(artifact.evidenceMap["config_snapshot"], ["e3"]);
     });
@@ -70,7 +71,8 @@ describe("ComplianceReportPipelineService", () => {
 
       assert.equal(artifact.status, "partial");
       assert.deepEqual(artifact.missingEvidenceTypes, ["config_snapshot", "metrics"]);
-      assert.equal(artifact.evidenceQualityScore, 33);
+      assert.equal(artifact.evidenceQualityBreakdown.completeness, 33);
+      assert.equal(artifact.evidenceQualityScore, 43);
     });
 
     test("throws for unknown template", () => {
@@ -389,7 +391,8 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "generated");
-      assert.equal(artifact.evidenceQualityScore, 100);
+      assert.equal(artifact.evidenceQualityBreakdown.completeness, 100);
+      assert.equal(artifact.evidenceQualityScore, 70);
       assert.ok(artifact.markdown.includes("coverage_ratio=1"));
     });
 
@@ -412,7 +415,8 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "partial");
-      assert.equal(artifact.evidenceQualityScore, 0);
+      assert.equal(artifact.evidenceQualityBreakdown.completeness, 0);
+      assert.equal(artifact.evidenceQualityScore, 30);
       assert.ok(artifact.markdown.includes("coverage_ratio=0"));
     });
 
@@ -438,6 +442,7 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "partial");
+      assert.equal(artifact.evidenceQualityBreakdown.completeness, 50);
       assert.equal(artifact.evidenceQualityScore, 50);
       // 2 out of 4 = 0.50
       assert.ok(artifact.markdown.includes("coverage_ratio=0.50"));

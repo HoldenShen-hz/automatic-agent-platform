@@ -127,6 +127,7 @@ test("E2E: high priority task transitions correctly", () => {
 
     // Transition through states
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

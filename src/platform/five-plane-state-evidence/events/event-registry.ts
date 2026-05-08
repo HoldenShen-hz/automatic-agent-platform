@@ -319,6 +319,12 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "plugin_spi_registry",
     consumers: ["inspect_projection", "feedback_projection"],
   },
+  "plugin:suspended": {
+    type: "plugin:suspended",
+    tier: "tier_2",
+    producer: "plugin_spi_registry",
+    consumers: ["inspect_projection", "feedback_projection"],
+  },
   "plugin:invocation_started": {
     type: "plugin:invocation_started",
     tier: "tier_2",
@@ -613,6 +619,7 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<
   "plugin:spi_registered": pluginLifecyclePayloadSchema,
   "plugin:activated": pluginLifecyclePayloadSchema,
   "plugin:error_isolated": pluginLifecyclePayloadSchema,
+  "plugin:suspended": pluginLifecyclePayloadSchema,
   "plugin:invocation_started": pluginInvocationPayloadSchema,
   "plugin:invocation_completed": pluginInvocationPayloadSchema,
   "knowledge:chunk_indexed": knowledgeChunkIndexedPayloadSchema,

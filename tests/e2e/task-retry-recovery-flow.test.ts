@@ -58,6 +58,7 @@ function seedTaskWithExecution(
       completedAt: null,
     });
 
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,
@@ -102,6 +103,7 @@ test("E2E: failed execution with retry creates new attempt", () => {
 
     // Create retry execution
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: exec2Id,
         taskId,
@@ -159,6 +161,7 @@ test("E2E: successful retry execution completes task", () => {
 
     // Create retry execution
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: exec2Id,
         taskId,
@@ -264,6 +267,7 @@ test("E2E: execution superseded by higher priority task", () => {
 
     // New execution takes over
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: exec2Id,
         taskId,

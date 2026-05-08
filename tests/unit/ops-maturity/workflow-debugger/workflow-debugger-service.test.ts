@@ -32,6 +32,7 @@ function createBreakpoint(
     workflowId,
     stepSelector,
     condition: "always",
+    replayCondition: { eventType: "frame_update", expression: "status === 'paused'", maxReplays: 1 },
     action: "pause",
   };
 }
@@ -45,7 +46,8 @@ test.describe("WorkflowDebuggerService", () => {
       const result = service.registerBreakpoint(createNonProdActor(), "dev", bp);
 
       assert.equal(result.breakpointId, "bp-1");
-      assert.deepEqual(service.listBreakpoints("wf-123"), [bp]);
+      assert.equal(service.listBreakpoints("wf-123").length, 1);
+      assert.equal(service.listBreakpoints("wf-123")[0]?.planGraphId, "wf-123");
     });
 
     test("registers breakpoint in staging environment for any actor", () => {
@@ -105,7 +107,25 @@ test.describe("WorkflowDebuggerService", () => {
 
       const result = service.registerBreakpoint(createProdActor(), "staging", bp);
 
-      assert.equal(result, bp);
+      assert.equal(result.breakpointId, bp.breakpointId);
+      assert.equal(result.planGraphId, "wf-xyz");
+      assert.equal(result.nodeRunSelector, "test");
+    });
+
+    test("normalizes planGraphId and nodeRunSelector aliases", () => {
+      const service = new WorkflowDebuggerService();
+      const result = service.registerBreakpoint(createProdActor(), "staging", {
+        breakpointId: "bp-alias",
+        planGraphId: "graph-1",
+        nodeRunSelector: "node-1",
+        condition: "always",
+        replayCondition: { eventType: "frame_update" },
+        action: "snapshot",
+      });
+
+      assert.equal(result.workflowId, "graph-1");
+      assert.equal(result.stepSelector, "node-1");
+      assert.equal(typeof result.replayCondition, "object");
     });
   });
 
@@ -263,6 +283,7 @@ test.describe("WorkflowDebuggerService", () => {
       const report = service.buildComparisonReport("wf-123", leftFrames, rightFrames);
 
       assert.deepEqual(report.differences, ["step:deploy:paused->failed"]);
+      assert.equal(report.regressionDetected, true);
     });
 
     test("returns empty differences when statuses match", () => {
@@ -274,6 +295,7 @@ test.describe("WorkflowDebuggerService", () => {
       const report = service.buildComparisonReport("wf-123", frames, frames);
 
       assert.deepEqual(report.differences, []);
+      assert.equal(report.regressionDetected, false);
     });
 
     test("includes workflowId in report", () => {
@@ -345,6 +367,72 @@ test.describe("WorkflowDebuggerService", () => {
       assert.equal(report.differences.length, 2);
       assert.ok(report.differences.includes("step:test:passed->failed"));
       assert.ok(report.differences.includes("step:deploy:pending->skipped"));
+    });
+
+    test("includes decision, cost, duration, and outcome differences", () => {
+      const service = new WorkflowDebuggerService();
+      const leftFrames: WorkflowTraceFrame[] = [
+        {
+          workflowId: "wf-123",
+          stepId: "deploy",
+          status: "done",
+          timestamp: "2026-04-20T00:00:00.000Z",
+          label: "deploy",
+          decision: "accept",
+          costUsd: 1.2,
+          durationMs: 3000,
+          outcome: "success",
+        },
+      ];
+      const rightFrames: WorkflowTraceFrame[] = [
+        {
+          workflowId: "wf-123",
+          stepId: "deploy",
+          status: "done",
+          timestamp: "2026-04-20T00:01:00.000Z",
+          label: "deploy",
+          decision: "replan",
+          costUsd: 2.4,
+          durationMs: 5000,
+          outcome: "rollback",
+        },
+      ];
+
+      const report = service.buildComparisonReport("wf-123", leftFrames, rightFrames);
+
+      assert.ok(report.differences.includes("decision:deploy:accept->replan"));
+      assert.ok(report.differences.includes("cost:deploy:1.2->2.4"));
+      assert.ok(report.differences.includes("duration:deploy:3000->5000"));
+      assert.ok(report.differences.includes("outcome:deploy:success->rollback"));
+      assert.equal(report.regressionDetected, true);
+    });
+
+    test("includes expected vs actual side-effect mismatches", () => {
+      const service = new WorkflowDebuggerService();
+      const report = service.buildComparisonReport("wf-123", [
+        {
+          workflowId: "wf-123",
+          stepId: "deploy",
+          status: "done",
+          timestamp: "2026-04-20T00:00:00.000Z",
+          label: "deploy",
+          expectedSideEffects: ["write_db", "emit_event"],
+          actualSideEffects: ["write_db"],
+        },
+      ], [
+        {
+          workflowId: "wf-123",
+          stepId: "deploy",
+          status: "done",
+          timestamp: "2026-04-20T00:00:01.000Z",
+          label: "deploy",
+          expectedSideEffects: ["write_db"],
+          actualSideEffects: ["write_db", "emit_event"],
+        },
+      ]);
+
+      assert.ok(report.differences.some((item) => item.startsWith("side_effect_expectation_mismatch:deploy:")));
+      assert.equal(report.regressionDetected, true);
     });
   });
 

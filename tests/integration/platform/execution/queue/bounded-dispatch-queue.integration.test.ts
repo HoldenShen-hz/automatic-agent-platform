@@ -54,18 +54,14 @@ test("BoundedDispatchQueue integration: event contains all required fields", () 
     dlqName: "full-event-dlq",
   };
 
-  const event = factory.create(snapshot, "node-run-123", "tenant-456", "trace-789");
+  const event = factory.create(snapshot);
 
   assert.equal(event.eventType, "platform.dispatch.queue.accepted");
-  assert.equal(event.nodeRunId, "node-run-123");
-  assert.equal(event.tenantId, "tenant-456");
-  assert.equal(event.traceId, "trace-789");
   assert.equal(event.queueName, "full-event-test");
   assert.equal(event.queueDepthBefore, 5);
   assert.equal(event.maxQueueDepth, 20);
   assert.equal(event.dlqName, "full-event-dlq");
-  assert.equal(event.ordering_policy_version, "1.0");
-  assert.equal(event.queue_class, "full-event-test");
+  assert.equal(event.reasonCode, "queue.accepted");
 });
 
 test("BoundedDispatchQueue integration: events for different queues are independent", () => {

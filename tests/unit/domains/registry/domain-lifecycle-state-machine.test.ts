@@ -126,7 +126,7 @@ test("DomainSmokeTestRunner reports current runtime checks", () => {
   assert.equal(result.passed, true);
   assert.deepEqual(
     result.runtimeChecks.map((check) => check.checkId),
-    ["dependency_graph", "sandbox_compatibility", "resource_quota"],
+    ["dependency_graph", "sandbox_compatibility", "resource_quota", "execution_profile"],
   );
 });
 

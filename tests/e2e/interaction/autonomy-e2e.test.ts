@@ -94,9 +94,11 @@ test("E2E Autonomy: AutonomyAuditService records all autonomy decisions", async 
       level: "auto",
       reason: "Low risk task",
     });
+// @ts-ignore
     auditService.record(decision);
 
     // Query audit trail
+// @ts-ignore
     const trail = auditService.getTrail("task_e2e_001");
     assert.ok(Array.isArray(trail), "Should return audit trail");
   } finally {

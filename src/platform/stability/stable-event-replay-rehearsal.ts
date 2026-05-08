@@ -66,6 +66,7 @@ function seedTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore)
       updatedAt: now,
       completedAt: null,
     });
+    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: "exec-replay-rehearsal",
       taskId: "task-replay-rehearsal",

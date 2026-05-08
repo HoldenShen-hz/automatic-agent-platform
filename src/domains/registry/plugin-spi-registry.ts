@@ -245,7 +245,6 @@ export class PluginSpiRegistry {
     }
 
     this.setLifecycleState(record, "suspended");
-    // @ts-ignore - plugin:suspended event type may not be registered in TypedEventPayloadMap
     this.eventPublisher?.publish({
       eventType: "plugin:suspended",
       payload: {
@@ -254,7 +253,7 @@ export class PluginSpiRegistry {
         spiType: record.plugin.spiType,
         lifecycleState: "suspended",
         bindingId: context.bindingId,
-        reason,
+        reasonCode: reason,
         occurredAt: nowIso(),
       },
     });

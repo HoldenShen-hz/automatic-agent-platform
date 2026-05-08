@@ -10,10 +10,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ChangepointDetectorService,
-  DEFAULT_DRIFT_DETECTOR_CONFIG,
   type DriftSample,
   type DriftDetectorConfig,
 } from "../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
+
+const DEFAULT_DRIFT_DETECTOR_CONFIG: DriftDetectorConfig = {
+  minSampleSize: 10,
+  samplesPerHour: 1,
+  zscoreThreshold: 2.0,
+  zscoreHighSeverity: 3.0,
+  zscoreMediumSeverity: 2.5,
+  cusumBoundaryMultiplier: 5.0,
+  cusumSlackMultiplier: 0.5,
+  cusumHighSeverityMultiplier: 2.5,
+  cusumMediumSeverityMultiplier: 1.5,
+  bayesianConfidenceLevel: 0.95,
+  bayesianHighSeverity: 0.99,
+  bayesianMediumSeverity: 0.95,
+  kljsDivergenceThreshold: 0.1,
+  kljsHighSeverity: 0.2,
+  kljsMediumSeverity: 0.1,
+  distributionAssumption: "normal",
+  falsePositiveRate: 0.05,
+  falsePositiveWindowSize: 100,
+  minSamplesBetweenAlerts: 10,
+};
 
 /**
  * Generate synthetic drift samples for testing.

@@ -797,7 +797,7 @@ test("compareWorkflowRuns uses deprecated stepId when nodeRunId is absent", () =
   ];
 
   const differences = compareWorkflowRuns(left, right);
-  assert.deepEqual(differences, ["step:legacy_step:status:done->error"]);
+  assert.deepEqual(differences, ["step:legacy_step:done->error"]);
 });
 
 // =============================================================================
@@ -900,10 +900,13 @@ test("TimeTravelDebugService respects maxSnapshotsPerSession limit", () => {
   const session = service.createSession("task_1", "harness_1");
   service.setBreakpoints(session.sessionId, ["node_1", "node_2", "node_3", "node_4"]);
 
-  service.replayToCursor(session.sessionId, 4);
+  service.replayStep(session.sessionId);
+  service.replayStep(session.sessionId);
+  service.replayStep(session.sessionId);
+  service.replayStep(session.sessionId);
 
   // Check snapshots are limited
-  const snapshots = (service as any).snapshots.get(session.sessionId) as DebugSnapshot[];
-  assert.ok(snapshots);
-  assert.ok(snapshots.length <= 2);
+  assert.equal(service.getSnapshot(session.sessionId, "node_1"), null);
+  assert.ok(service.getSnapshot(session.sessionId, "node_3"));
+  assert.ok(service.getSnapshot(session.sessionId, "node_4"));
 });

@@ -8,11 +8,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
+// @ts-ignore
 import type { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
+// @ts-ignore
 import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
+// @ts-ignore
 import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+// @ts-ignore
 import type { BillingService } from "../../../../../src/scale-ecosystem/billing/billing-service.js";
+// @ts-ignore
 import type { ApiDelegationService } from "../../../../../src/platform/interface/api/facade-interfaces.js";
 
 class NoOpMissionControlService implements MissionControlService {

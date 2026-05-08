@@ -13,6 +13,8 @@ test("TimeTravelDebugService.createSession creates a new session", () => {
   assert.deepEqual(session.breakpoints, []);
   assert.deepEqual(session.snapshots, []);
   assert.equal(session.currentEventIndex, 0);
+  assert.equal(session.accessContext.actorId, "local_debugger");
+  assert.equal(session.sandboxPolicy.blockExternalSideEffects, true);
   assert.ok(session.startedAt);
   assert.equal(session.endedAt, null);
 });
@@ -188,4 +190,38 @@ test("TimeTravelDebugService bounds snapshots and normalizes variable envelopes 
 
   assert.equal(service.getSnapshot(session.sessionId, "step-1"), null);
   assert.ok(service.getSnapshot(session.sessionId, "step-2") !== null);
+});
+
+test("TimeTravelDebugService blocks replay of unsafe side-effect events by default", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-unsafe", [
+    {
+      stepId: "network-call",
+      timestamp: "2026-04-20T00:00:00.000Z",
+      variables: {},
+      effectType: "network",
+    },
+  ]);
+
+  const session = service.createSession("task-unsafe", "exec-unsafe");
+
+  assert.throws(
+    () => service.replayStep(session.sessionId),
+    /time_travel_debug\.replay_side_effect_blocked:network/,
+  );
+});
+
+test("TimeTravelDebugService requires MFA and prod permission for prod replay sessions", () => {
+  const service = new TimeTravelDebugService();
+
+  assert.throws(
+    () => service.createSession("task-prod", "exec-prod", {
+      actorId: "operator-1",
+      environment: "prod",
+      mfaVerified: false,
+      sessionExpiresAt: "2026-12-31T00:00:00.000Z",
+      permissions: ["time_travel:replay", "time_travel:replay:prod"],
+    }),
+    /time_travel_debug\.mfa_required/,
+  );
 });

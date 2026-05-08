@@ -58,6 +58,7 @@ test("E2E: lease acquisition - worker can acquire lease for execution", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -89,6 +90,7 @@ test("E2E: lease acquisition - worker can acquire lease for execution", () => {
 
     // Create a worker snapshot
     h.db.transaction(() => {
+// @ts-ignore
       h.workerRepo.upsertWorkerSnapshot({
         workerId,
         status: "idle",
@@ -165,6 +167,7 @@ test("E2E: lease can be released and worker status updated", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -195,6 +198,7 @@ test("E2E: lease can be released and worker status updated", () => {
     });
 
     // Create worker with active lease
+// @ts-ignore
     const initialSnapshot: WorkerSnapshotRecord = {
       workerId,
       status: "busy",
@@ -295,6 +299,7 @@ test("E2E: ticket dispatch - pending ticket can be claimed by worker", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

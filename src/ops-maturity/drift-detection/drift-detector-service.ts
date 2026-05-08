@@ -52,7 +52,7 @@ export class DriftDetectorService implements IDriftDetector {
       falsePositiveWindowSize: 100,
       minSamplesBetweenAlerts: 5,
     };
-    this.changepointDetector = new ChangepointDetectorService();
+    this.changepointDetector = new ChangepointDetectorService(config);
     this.fingerprintBuilder = new BehaviorFingerprintBuilder();
     this.crossAgentAnalyzer = new CrossAgentAnalyzerService();
   }

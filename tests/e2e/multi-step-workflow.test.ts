@@ -75,6 +75,7 @@ test("E2E: multi-step workflow executes steps in dependency order", () => {
 
     // Insert execution and workflow state
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -213,6 +214,7 @@ test("E2E: workflow with step dependency waits for prerequisite", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -326,6 +328,7 @@ test("E2E: workflow fails correctly when step encounters error", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

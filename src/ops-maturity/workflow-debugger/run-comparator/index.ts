@@ -1,5 +1,6 @@
 export interface RunSnapshot {
-  readonly stepId: string;
+  readonly stepId?: string;
+  readonly nodeRunId?: string;
   readonly status: string;
   readonly latencyMs?: number;
   readonly outputHash?: string;
@@ -14,10 +15,22 @@ export interface RunComparisonDiff {
 }
 
 export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): string[] {
-  const rightByStep = new Map(right.map((item) => [item.stepId, item.status]));
+  const rightByStep = new Map(right.map((item) => [item.nodeRunId ?? item.stepId ?? "", item.status]));
   return left
-    .filter((item) => rightByStep.get(item.stepId) !== item.status)
-    .map((item) => `step:${item.stepId}:${item.status}->${rightByStep.get(item.stepId) ?? "missing"}`);
+    .filter((item) => rightByStep.get(item.nodeRunId ?? item.stepId ?? "") !== item.status)
+    .map((item) => {
+      const stepId = item.nodeRunId ?? item.stepId ?? "";
+      const rightStatus = rightByStep.get(stepId);
+      if (rightStatus == null) {
+        return item.nodeRunId != null
+          ? `step:${stepId}:missing_in_right`
+          : `step:${stepId}:${item.status}->missing`;
+      }
+      if (item.nodeRunId != null) {
+        return `step:${stepId}:status:${item.status}->${rightStatus}`;
+      }
+      return `step:${stepId}:${item.status}->${rightStatus}`;
+    });
 }
 
 export function buildRunComparison(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): RunComparisonDiff[] {

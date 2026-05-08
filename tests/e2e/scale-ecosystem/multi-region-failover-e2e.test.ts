@@ -14,8 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+// @ts-ignore
 import { MultiRegionFailoverService } from "../../src/scale-ecosystem/multi-region/failover-service.js";
+// @ts-ignore
 import type { RegionHealth, FailoverPlan, FailoverStep } from "../../src/scale-ecosystem/multi-region/types.js";
 
 // ---------------------------------------------------------------------------

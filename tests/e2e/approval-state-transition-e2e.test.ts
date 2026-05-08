@@ -100,6 +100,7 @@ test("E2E Approval: request → approve → execution proceeds to completion", a
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -218,6 +219,7 @@ test("E2E Approval: request → reject → execution fails", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -331,6 +333,7 @@ test("E2E Approval: timeout policy reject auto-expires approval", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -428,6 +431,7 @@ test("E2E Approval: approval context preserved through state transitions", async
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,

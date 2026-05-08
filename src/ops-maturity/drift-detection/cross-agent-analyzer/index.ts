@@ -5,6 +5,11 @@ export interface CrossAgentMetric {
   successRate: number;
   averageCostUsd: number;
   averageLatencyMs: number;
+  taskKindDistribution?: Readonly<{
+    real?: number;
+    synthetic?: number;
+    keepalive?: number;
+  }>;
 }
 
 export interface CrossAgentAnalysisResult {
@@ -63,12 +68,21 @@ export class CrossAgentAnalyzerService {
   }
 
   private detectAntiGaming(metrics: CrossAgentMetric[]): boolean {
-    // Detect if agents are gaming metrics by checking for suspicious patterns
     const successRates = metrics.map((m) => m.successRate);
     const variance = this.computeVariance(successRates);
     const costVariance = this.computeVariance(metrics.map((m) => m.averageCostUsd));
-    // High variance in success rates with low variance in cost may indicate gaming
-    return variance > 0.3 && costVariance < 0.1;
+    const provenanceGaming = metrics.some((metric) => {
+      const taskMix = metric.taskKindDistribution ?? {};
+      const total = (taskMix.real ?? 0) + (taskMix.synthetic ?? 0) + (taskMix.keepalive ?? 0);
+      if (total <= 0) {
+        return false;
+      }
+      const realRatio = (taskMix.real ?? 0) / total;
+      const syntheticRatio = (taskMix.synthetic ?? 0) / total;
+      const keepaliveRatio = (taskMix.keepalive ?? 0) / total;
+      return realRatio < 0.5 && (syntheticRatio + keepaliveRatio) > 0.5 && metric.successRate >= 0.85;
+    });
+    return provenanceGaming || (variance > 0.3 && costVariance < 0.1);
   }
 
   private computeVariance(values: number[]): number {

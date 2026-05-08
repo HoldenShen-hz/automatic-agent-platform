@@ -13,8 +13,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+// @ts-ignore
 import { EvaluatorService } from "../../src/platform/orchestration/evaluator/evaluator-service.js";
+// @ts-ignore
 import type { EvaluationResult, StepEvaluation, WorkflowEvaluation } from "../../src/platform/orchestration/evaluator/types.js";
 
 // ---------------------------------------------------------------------------

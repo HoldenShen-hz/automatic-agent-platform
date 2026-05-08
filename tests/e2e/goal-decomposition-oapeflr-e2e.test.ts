@@ -419,13 +419,19 @@ test("E2E Goal OAPEFLR: produces valid GoalHarnessRoutingReceipt for harness", a
     const result = await service.decompose(goal);
 
     // Verify GoalHarnessRoutingReceipt structure
+// @ts-ignore
     assert.ok(result.harnessRouting, "Should produce harness routing receipt");
+// @ts-ignore
     assert.ok(result.harnessRouting.harnessRun, "Receipt should have harness run");
+// @ts-ignore
     assert.ok(result.harnessRouting.planGraphBundle, "Receipt should have plan graph bundle");
+// @ts-ignore
     assert.ok(result.harnessRouting.initialStep, "Receipt should have initial step");
+// @ts-ignore
     assert.ok(result.harnessRouting.routedAt, "Receipt should have routing timestamp");
 
     // Verify PlanGraphBundle in receipt
+// @ts-ignore
     const bundle = result.harnessRouting.planGraphBundle;
     assert.ok(bundle.planGraphBundleId, "Bundle should have ID");
     assert.ok(bundle.graph.nodes.length > 0, "Bundle should have nodes");

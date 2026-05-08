@@ -79,3 +79,17 @@ test("ComplianceTemplateRegistryService.all returns all templates", () => {
 
   assert.equal(results.length, 2);
 });
+
+test("ComplianceTemplateRegistryService normalizes template lock and legal metadata", () => {
+  const service = new ComplianceTemplateRegistryService([
+    makeTemplate("t1", "SOC2", "audit"),
+  ]);
+
+  const template = service.find("t1");
+
+  assert.equal(template?.lockedOnGeneration, true);
+  assert.ok(template?.reportVersionLock?.startsWith("report_vlock:"));
+  assert.equal(template?.legalVersion, "current");
+  assert.equal(template?.effectiveDate, "1970-01-01");
+  assert.equal(template?.migrationRule, "no_migration_required");
+});

@@ -20,9 +20,12 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
   return {
     policyIds: ["policy.e2e.default"],
     approvalMode: "none",
+// @ts-ignore
     autonomyMode: "auto",
     tool_policy: { allowedTools: ["read", "write", "bash"] },
+// @ts-ignore
     sandboxRequirement: "workspace_write",
+// @ts-ignore
     approvalRequirement: "none",
     risk_policy: {
       maxRiskScore: 80,

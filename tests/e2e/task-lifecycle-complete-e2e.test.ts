@@ -71,6 +71,7 @@ test("E2E Task Lifecycle: task progresses from queued to done with execution", a
 
     // Step 3: Insert execution
     harness.db.transaction(() => {
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -184,6 +185,7 @@ test("E2E Task Lifecycle: task fails with error and proper error tracking", asyn
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -271,6 +273,7 @@ test("E2E Task Lifecycle: task can be cancelled from in_progress state", async (
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -358,6 +361,7 @@ test("E2E Task Lifecycle: task retries after transient failure", async () => {
       });
 
       // First execution (will fail)
+// @ts-ignore
       harness.store.insertExecution({
         id: exec1,
         taskId,
@@ -398,6 +402,7 @@ test("E2E Task Lifecycle: task retries after transient failure", async () => {
 
     // Create second execution (retry)
     harness.db.transaction(() => {
+// @ts-ignore
       harness.store.insertExecution({
         id: exec2,
         taskId,

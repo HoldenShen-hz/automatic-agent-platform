@@ -90,6 +90,7 @@ test("E2E Recovery: active execution at low attempt suggests resume_same_worker"
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -128,6 +129,7 @@ test("E2E Recovery: active execution at low attempt suggests resume_same_worker"
     // Worker failed - insert new execution in failed state for recovery scenario
     const failedExecId = newId("exec-failed");
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: failedExecId,
         taskId,
@@ -199,6 +201,7 @@ test("E2E Recovery: execution at high attempt suggests retry_new_ticket", () => 
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -235,6 +238,7 @@ test("E2E Recovery: execution at high attempt suggests retry_new_ticket", () => 
     // Create retry execution with attempt 4
     const retryExecutionId = newId("exec-retry");
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: retryExecutionId,
         taskId,
@@ -307,6 +311,7 @@ test("E2E Recovery: E7 locking error is retryable", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -379,6 +384,7 @@ test("E2E Recovery: E8 memory error escalates for human review", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -467,6 +473,7 @@ test("E2E Recovery: EC crash error suggests retry_new_ticket", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -539,6 +546,7 @@ test("E2E Recovery: stale execution is detected and can be recovered", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -576,6 +584,7 @@ test("E2E Recovery: stale execution is detected and can be recovered", () => {
     // Recovery: insert new execution in failed state with stale reference
     const staleRecoveryExecId = newId("exec-stale-recovery");
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: staleRecoveryExecId,
         taskId,
@@ -648,6 +657,7 @@ test("E2E Recovery: precheck denial leads to task cancellation", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -690,6 +700,7 @@ test("E2E Recovery: precheck denial leads to task cancellation", () => {
     // Precheck denied - insert execution in precheck_denied state
     const deniedExecId = newId("exec-denied");
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: deniedExecId,
         taskId,
@@ -780,6 +791,7 @@ test("E2E Recovery: approval-pending execution escalates for human takeover", ()
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -866,6 +878,7 @@ test("E2E Recovery: execution with checkpoint can be resumed from checkpoint", (
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -960,6 +973,7 @@ test("E2E Recovery: execution moved to dead letter after max retries", () => {
       });
 
       // Execution has exceeded retry limits
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

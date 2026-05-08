@@ -418,23 +418,13 @@ test("ArtifactPreviewService.renderBundle handles bundle with no finalDeliverabl
 
 test("ArtifactPreviewService.renderArtifact handles all artifact statuses", () => {
   const service = new ArtifactPreviewService();
-  const statuses: ArtifactRecord["status"][] = ["draft", "committed", "published", "archived"];
+  const statuses: ArtifactRecordExtended["publishStatus"][] = ["draft", "preview", "published", "archived"];
 
   for (const status of statuses) {
-    const artifact: ArtifactRecord = {
-      artifactId: "artifact_test",
-      taskId: "task_1",
-      stepId: "step_1",
-      agentRole: "builder",
-      type: "source_code",
-      path: "src/index.ts",
-      contentHash: "abc123",
-      version: 1,
-      parentArtifactId: null,
-      size: 100,
-      createdAt: new Date().toISOString(),
-      status,
-    };
+    const artifact: ArtifactRecordExtended = createMinimalArtifactExtended({
+      artifactId: `artifact_${status}`,
+      publishStatus: status,
+    });
 
     const rendered = service.renderArtifact(artifact);
     assert.ok(rendered.includes(status));
@@ -831,9 +821,9 @@ test("ArtifactPlaneService.publishBundle with review status bundle", () => {
 test("ArtifactPlaneService.prepareBundle computes correct totalSize", () => {
   const plane = new ArtifactPlaneService();
   const artifacts = [
-    createMinimalArtifact({ artifactId: "a1", size: 100 }),
-    createMinimalArtifact({ artifactId: "a2", size: 200 }),
-    createMinimalArtifact({ artifactId: "a3", size: 300 }),
+    createMinimalArtifact({ artifactId: "a1", sizeBytes: 100 }),
+    createMinimalArtifact({ artifactId: "a2", sizeBytes: 200 }),
+    createMinimalArtifact({ artifactId: "a3", sizeBytes: 300 }),
   ];
 
   const result = plane.prepareBundle({
@@ -881,6 +871,7 @@ function createMinimalBundleExtended(overrides: Partial<ArtifactBundleExtended> 
 function createMinimalArtifact(overrides: Partial<ArtifactRecord> = {}): ArtifactRecord {
   return {
     artifactId: "artifact_test",
+    harnessRunId: "harness_test",
     taskId: "task_1",
     stepId: "step_1",
     agentRole: "builder",
@@ -889,9 +880,9 @@ function createMinimalArtifact(overrides: Partial<ArtifactRecord> = {}): Artifac
     contentHash: "abc123",
     version: 1,
     parentArtifactId: null,
-    size: 100,
+    sizeBytes: 100,
     createdAt: new Date().toISOString(),
-    status: "draft",
+    publishStatus: "draft",
     ...overrides,
   };
 }
@@ -899,6 +890,7 @@ function createMinimalArtifact(overrides: Partial<ArtifactRecord> = {}): Artifac
 function createMinimalArtifactExtended(overrides: Partial<ArtifactRecordExtended> = {}): ArtifactRecordExtended {
   const base: ArtifactRecordExtended = {
     artifactId: "artifact:test",
+    harnessRunId: "harness_test",
     taskId: "task:test",
     stepId: "step:test",
     agentRole: "agent",
@@ -907,9 +899,9 @@ function createMinimalArtifactExtended(overrides: Partial<ArtifactRecordExtended
     contentHash: "abc123",
     version: 1,
     parentArtifactId: null,
-    size: 100,
+    sizeBytes: 100,
     createdAt: "2024-01-01T00:00:00.000Z",
-    status: "draft",
+    publishStatus: "draft",
     namespace: "test",
     artifactType: "config",
     storageUri: "file:///test",

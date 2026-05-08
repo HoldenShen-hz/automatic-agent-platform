@@ -10,9 +10,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
+// @ts-ignore
 import { ToolExecutorService } from "../../../src/platform/execution/tool-executor/tool-executor-service.js";
+// @ts-ignore
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+// @ts-ignore
 import type { ToolExecutionRequest, ToolDefinition } from "../../../src/platform/contracts/tool-schemas.js";
 
 function createToolDefinition(overrides: Partial<ToolDefinition> = {}): ToolDefinition {

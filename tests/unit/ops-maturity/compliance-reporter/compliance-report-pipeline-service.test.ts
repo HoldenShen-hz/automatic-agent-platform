@@ -45,7 +45,11 @@ test("ComplianceReportPipelineService.generate creates report for valid template
   const service = new ComplianceReportPipelineService(createTestTemplates());
   const request: ComplianceReportRequest = {
     templateId: "soc2-type2",
-    evidence: createEvidence(["access_log", "change_record", "incident_log"]),
+    evidence: [
+      { evidenceId: "artifact-access_log", evidenceType: "access_log", freshnessHours: 12, trustScore: 0.95, tamperProof: true },
+      { evidenceId: "artifact-change_record", evidenceType: "change_record", freshnessHours: 36, trustScore: 0.85, tamperProof: true },
+      { evidenceId: "artifact-incident_log", evidenceType: "incident_log", freshnessHours: 48, trustScore: 0.8, tamperProof: false, controlId: "CC1", controlStatus: "partial" },
+    ],
     requestedBy: "auditor-1",
   };
 
@@ -55,9 +59,14 @@ test("ComplianceReportPipelineService.generate creates report for valid template
   assert.equal(report.templateId, "soc2-type2");
   assert.equal(report.framework, "SOC2");
   assert.equal(report.reportType, "Type II");
+  assert.equal(report.lockedOnGeneration, true);
+  assert.ok(report.reportVersionLock.startsWith("report_vlock:"));
+  assert.equal(report.legalVersion, "current");
   assert.equal(report.status, "generated");
   assert.equal(report.missingEvidenceTypes.length, 0);
-  assert.equal(report.evidenceQualityScore, 100);
+  assert.ok(report.evidenceQualityScore < 100);
+  assert.ok(report.evidenceQualityBreakdown.freshness > 0);
+  assert.equal(report.controlPointMap["CC1"]?.status, "partial");
   assert.ok(report.markdown.length > 0);
   assert.equal(report.readOnly, true);
 });
@@ -74,7 +83,8 @@ test("ComplianceReportPipelineService.generate marks partial status and records 
 
   assert.equal(report.status, "partial");
   assert.equal(report.missingEvidenceTypes.length, 2);
-  assert.equal(report.evidenceQualityScore, 33);
+  assert.equal(report.evidenceQualityBreakdown.completeness, 33);
+  assert.equal(report.evidenceQualityScore, 43);
   assert.ok(report.missingEvidenceTypes.includes("change_record"));
   assert.ok(report.missingEvidenceTypes.includes("incident_log"));
 });

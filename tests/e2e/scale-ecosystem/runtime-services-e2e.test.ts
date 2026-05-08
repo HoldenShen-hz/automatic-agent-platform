@@ -13,9 +13,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+// @ts-ignore
 import { RuntimeGovernanceService } from "../../src/scale-ecosystem/runtime-services/runtime-governance-service.js";
+// @ts-ignore
 import { FeedbackLoopService } from "../../src/scale-ecosystem/feedback-loop/feedback-loop-service.js";
+// @ts-ignore
 import type { GovernanceDecision, RuntimeMetrics } from "../../src/scale-ecosystem/runtime-services/types.js";
 
 // ---------------------------------------------------------------------------

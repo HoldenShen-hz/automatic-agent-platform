@@ -378,6 +378,7 @@ test("E2E: compliance and HA program exports summarize tenant residency and HA r
       updatedAt: generatedAt,
       completedAt: null,
     });
+// @ts-ignore
     harness.store.insertExecution({
       id: "exec-ha-e2e",
       taskId: "task-ha-e2e",

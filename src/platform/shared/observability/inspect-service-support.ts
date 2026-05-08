@@ -199,6 +199,7 @@ export interface WorkflowInspectSummary {
   pendingApprovalCount: number;
   latestEventAt: string | null;
   updatedAt: string;
+  generatedAt?: string;
 }
 
 export interface DecisionInspectQuery {

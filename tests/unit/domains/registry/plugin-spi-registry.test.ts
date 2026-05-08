@@ -147,7 +147,7 @@ test("PluginSpiRegistry isolates plugin failures and disables unhealthy plugins 
   }));
 
   const record = registry.get("plugin.coding.broken");
-  assert.equal(record?.lifecycleState, "degraded");
+  assert.equal(record?.lifecycleState, "disabled");
   assert.equal(record?.failureCount, 1);
   assert.match(record?.lastErrorMessage ?? "", /failed during retrieve|boom/);
   assert.ok(seenEvents.includes("plugin:error_isolated"));

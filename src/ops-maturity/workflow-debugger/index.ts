@@ -1,4 +1,5 @@
 export * from "./breakpoint-manager/index.js";
+export * from "./debug-stream-service.js";
 export * from "./run-comparator/index.js";
 export * from "./time-travel-debug-service.js";
 export * from "./timeline-renderer/index.js";

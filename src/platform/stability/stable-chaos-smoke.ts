@@ -126,6 +126,7 @@ function seedTaskAndExecution(
       startedAt: now,
       updatedAt: now,
     });
+    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,

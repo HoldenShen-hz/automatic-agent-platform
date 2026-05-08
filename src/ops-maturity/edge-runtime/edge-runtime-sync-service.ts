@@ -8,17 +8,22 @@ import { orderEdgeSyncQueue } from "./sync-queue/index.js";
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
   readonly deviceId?: string;
+  readonly deviceAttestation?: {
+    readonly attestedAt: string;
+    readonly status: "valid" | "expired" | "revoked";
+  };
   readonly capabilities: readonly string[];
   readonly connectivityMode: "offline" | "intermittent" | "online";
   readonly maxLocalRetentionHours: number;
   readonly offlineMaxDuration?: number;
   readonly keyLease?: string;
+  readonly certificateStatus?: "valid" | "revoked";
   readonly allowedModels: readonly string[];
   readonly syncPolicy: {
     readonly allowRestrictedDataUpload: boolean;
     readonly requireOrdering: boolean;
   };
-  readonly riskLevel?: "low" | "medium";
+  readonly riskLevel?: "low" | "medium" | "high" | "critical";
 }
 
 export interface OfflineExecutionRequest {
@@ -64,27 +69,73 @@ export interface EdgeSyncReceipt {
   readonly decisions: readonly ConflictResolutionDecision[];
 }
 
+export interface EdgeControlCommand {
+  readonly commandId: string;
+  readonly edgeNodeId: string;
+  readonly action: "remote_wipe" | "edge_quarantine";
+  readonly reason: string;
+  readonly requestedBy: string;
+  readonly requestedAt: string;
+}
+
+export interface EdgeControlCommandReceipt {
+  readonly commandId: string;
+  readonly edgeNodeId: string;
+  readonly action: EdgeControlCommand["action"];
+  readonly status: "executed";
+  readonly executedAt: string;
+  readonly resultingConnectivityMode: EdgeRuntimeProfile["connectivityMode"];
+}
+
 export class EdgeRuntimeSyncService {
   public executeOffline(
     profile: EdgeRuntimeProfile,
     models: readonly LocalModelProfile[],
     request: OfflineExecutionRequest,
   ): EdgeNodeAttemptReceiptView {
-    if (profile.riskLevel === "medium" || (profile.riskLevel != null && profile.riskLevel !== "low")) {
-      throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_risk");
+    const missingRequiredFields = [
+      profile.deviceId == null ? "deviceId" : null,
+      profile.offlineMaxDuration == null ? "offlineMaxDuration" : null,
+      profile.keyLease == null ? "keyLease" : null,
+    ].filter((item): item is string => item != null);
+    if (missingRequiredFields.length > 0) {
+      throw new Error(`edge_runtime.missing_required_profile_fields:${missingRequiredFields.join(",")}`);
+    }
+    if (profile.keyLease.trim().length === 0) {
+      throw new Error("edge_runtime.key_lease_required");
+    }
+    if (profile.deviceAttestation == null || profile.deviceAttestation.status !== "valid") {
+      throw new Error("edge_runtime.device_attestation_invalid");
+    }
+    if (profile.certificateStatus === "revoked") {
+      throw new Error("edge_runtime.certificate_revoked");
+    }
+    if (profile.riskLevel == null || (profile.riskLevel !== "low" && profile.riskLevel !== "medium")) {
+      throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_or_medium_risk");
     }
     const createdAt = request.createdAt ?? nowIso();
+    const createdAtMillis = Date.parse(createdAt);
+    if (Number.isNaN(createdAtMillis)) {
+      throw new Error("edge_runtime.invalid_created_at");
+    }
+    if (Date.now() - createdAtMillis > profile.offlineMaxDuration) {
+      throw new Error("edge_runtime.offline_window_exceeded");
+    }
+    if (request.edgeNodeId !== profile.edgeNodeId) {
+      throw new Error("edge_runtime.edge_node_mismatch");
+    }
     const record = buildOfflineExecutionRecord(profile.edgeNodeId, request.taskId, createdAt);
     const model = selectEdgeLocalModel(
       models.filter((item) => profile.allowedModels.includes(item.modelId)),
       request.modality,
     );
+    const planGraphNodeIds = buildEdgeExecutionPlan([request.taskId]).orderedTaskIds;
 
     return {
       record,
       selectedModelId: model?.modelId ?? null,
-      planGraphNodeIds: buildEdgeExecutionPlan([request.taskId]).orderedTaskIds,
-      executionPlan: buildEdgeExecutionPlan([request.taskId]).orderedTaskIds,
+      planGraphNodeIds,
+      executionPlan: planGraphNodeIds,
     };
   }
 
@@ -121,7 +172,6 @@ export class EdgeRuntimeSyncService {
   ): EdgeSyncReceipt {
     const ordered = profile.syncPolicy.requireOrdering
       ? orderEdgeSyncQueue(envelopes.map((item) => ({ envelopeId: item.envelopeId, priority: item.priority })))
-        .reverse()
         .map((orderedItem) => envelopes.find((item) => item.envelopeId === orderedItem.envelopeId)!)
       : [...envelopes];
     const acceptedEnvelopeIds: string[] = [];
@@ -174,6 +224,24 @@ export class EdgeRuntimeSyncService {
       acceptedEnvelopeIds,
       rejectedEnvelopeIds,
       decisions,
+    };
+  }
+
+  public executeControlCommand(
+    profile: EdgeRuntimeProfile,
+    command: EdgeControlCommand,
+    executedAt = nowIso(),
+  ): EdgeControlCommandReceipt {
+    if (command.edgeNodeId !== profile.edgeNodeId) {
+      throw new Error("edge_runtime.control_command_node_mismatch");
+    }
+    return {
+      commandId: command.commandId,
+      edgeNodeId: command.edgeNodeId,
+      action: command.action,
+      status: "executed",
+      executedAt,
+      resultingConnectivityMode: command.action === "edge_quarantine" ? "offline" : profile.connectivityMode,
     };
   }
 

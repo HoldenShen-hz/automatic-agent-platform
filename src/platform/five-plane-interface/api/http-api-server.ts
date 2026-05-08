@@ -421,7 +421,7 @@ export class HttpApiServer {
         const idempotencyKey = extractIdempotencyKey(request.headers);
 
         if (method !== "GET" && method !== "OPTIONS" && idempotencyKey == null) {
-          const deduplicationKey = this.requestDeduplication.generateKey({ tenantId: tenantId ?? undefined });
+          const deduplicationKey = this.requestDeduplication.generateKey(tenantId != null ? { tenantId } : {});
           const fingerprint = this.requestDeduplication.generateFingerprint({
             method,
             path: route.pathname,

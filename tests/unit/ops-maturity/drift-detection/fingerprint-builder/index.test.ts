@@ -11,9 +11,12 @@ test("BehaviorFingerprintBuilder produces a stable normalized fingerprint", () =
     failureCategories: ["lint_error", "type_error"],
     averageLatencyMs: 1500,
     averageCostUsd: 0.3,
+    avgStepCount: 8,
   });
 
   assert.equal(fingerprint.fingerprintId, "fingerprint:agent-a");
   assert.ok(fingerprint.normalizedFeatures.includes("latency_bucket:medium"));
+  assert.ok(fingerprint.normalizedFeatures.includes("avg_step_count:8"));
+  assert.ok(fingerprint.normalizedFeatures.includes("step_count_bucket:medium"));
   assert.equal(fingerprint.hash.length, 64);
 });

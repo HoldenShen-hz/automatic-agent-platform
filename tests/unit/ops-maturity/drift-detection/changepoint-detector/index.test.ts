@@ -89,3 +89,49 @@ test("ChangepointDetectorService reports insufficient data when recent window is
   assert.equal(result.baselineMean, 0);
   assert.equal(result.recentMean, 0);
 });
+
+test("ChangepointDetectorService exposes sample-size and distribution metadata", () => {
+  const service = new ChangepointDetectorService({
+    minSampleSize: 8,
+    distributionAssumption: "poisson",
+    falsePositiveRate: 0.01,
+  });
+  const result = service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 0.9 },
+    { observedAt: "2026-04-20T00:01:00.000Z", score: 0.7 },
+    { observedAt: "2026-04-20T00:02:00.000Z", score: 0.6 },
+  ]);
+
+  assert.equal(result.sampleSize, 3);
+  assert.equal(result.minSampleSize, 8);
+  assert.equal(result.distributionAssumption, "poisson");
+  assert.equal(result.falsePositiveRate, 0.01);
+});
+
+test("ChangepointDetectorService suppresses repeated alerts inside false-positive window", () => {
+  const service = new ChangepointDetectorService({
+    minSampleSize: 6,
+    minSamplesBetweenAlerts: 5,
+  });
+  const first = service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T01:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T02:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T03:00:00.000Z", score: 0.6 },
+    { observedAt: "2026-04-20T04:00:00.000Z", score: 0.6 },
+    { observedAt: "2026-04-20T05:00:00.000Z", score: 0.6 },
+  ], 3, 3);
+  const second = service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T01:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T02:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T03:00:00.000Z", score: 0.6 },
+    { observedAt: "2026-04-20T04:00:00.000Z", score: 0.6 },
+    { observedAt: "2026-04-20T05:00:00.000Z", score: 0.6 },
+    { observedAt: "2026-04-20T06:00:00.000Z", score: 0.6 },
+  ], 4, 3);
+
+  assert.equal(first.detected, true);
+  assert.equal(second.detected, false);
+  assert.equal(second.reasonCode, "drift.false_positive_suppressed");
+});

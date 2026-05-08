@@ -16,7 +16,9 @@ export interface DebugSnapshot {
   snapshotId: string;
   taskId: string;
   executionId: string;
+  harnessRunId?: string;
   stepId: string;
+  nodeRunId?: string;
   timestamp: string;
   variablesJson: string;
   stackTrace: string | null;
@@ -26,6 +28,7 @@ export interface DebugSnapshot {
 export interface ReplayCursor {
   taskId: string;
   executionId: string;
+  harnessRunId?: string;
   fromEventIndex: number;
   toEventIndex: number;
 }
@@ -48,9 +51,12 @@ export interface TimeTravelDebugSession {
   sessionId: string;
   taskId: string;
   executionId: string;
+  harnessRunId?: string;
   breakpoints: readonly string[];
   snapshots: readonly DebugSnapshot[];
   currentEventIndex: number;
+  accessContext: ReplayAccessContext;
+  sandboxPolicy: ReplaySandboxPolicy;
   startedAt: string;
   endedAt: string | null;
 }
@@ -61,16 +67,39 @@ export interface TimeTravelDebugVariableEnvelope {
 
 export interface TimeTravelDebugEvent {
   readonly stepId?: string | null;
+  readonly nodeRunId?: string | null;
   readonly timestamp?: string | null;
   readonly variables?: Readonly<Record<string, unknown>> | null;
   readonly stackTrace?: string | null;
   readonly scope?: VariableState["scope"] | null;
+  readonly effectType?: "read" | "write" | "network" | "process" | "tool_call" | null;
+  readonly replayUnsafe?: boolean | null;
+}
+
+function readEventStepId(event: TimeTravelDebugEvent): string {
+  return String(event.nodeRunId ?? event.stepId ?? "");
 }
 
 export interface TimeTravelDebugServiceOptions {
   maxSessions?: number;
   maxEventsPerExecution?: number;
   maxSnapshotsPerSession?: number;
+}
+
+export interface ReplaySandboxPolicy {
+  readonly blockExternalSideEffects: boolean;
+  readonly allowWrites: boolean;
+  readonly allowNetwork: boolean;
+  readonly allowProcess: boolean;
+  readonly allowToolCalls: boolean;
+}
+
+export interface ReplayAccessContext {
+  readonly actorId: string;
+  readonly environment: "prod" | "staging" | "dev";
+  readonly mfaVerified: boolean;
+  readonly sessionExpiresAt: string | null;
+  readonly permissions: readonly string[];
 }
 
 function isVariableScope(value: unknown): value is VariableState["scope"] {
@@ -88,6 +117,26 @@ function readVariableValue(value: unknown): unknown {
   return value;
 }
 
+function defaultReplayAccessContext(): ReplayAccessContext {
+  return {
+    actorId: "local_debugger",
+    environment: "dev",
+    mfaVerified: true,
+    sessionExpiresAt: null,
+    permissions: ["time_travel:replay"],
+  };
+}
+
+function defaultReplaySandboxPolicy(): ReplaySandboxPolicy {
+  return {
+    blockExternalSideEffects: true,
+    allowWrites: false,
+    allowNetwork: false,
+    allowProcess: false,
+    allowToolCalls: false,
+  };
+}
+
 export class TimeTravelDebugService {
   private readonly maxSessions: number;
   private readonly maxEventsPerExecution: number;
@@ -102,15 +151,24 @@ export class TimeTravelDebugService {
     this.maxSnapshotsPerSession = options.maxSnapshotsPerSession ?? 100;
   }
 
-  public createSession(taskId: string, executionId: string): TimeTravelDebugSession {
+  public createSession(
+    taskId: string,
+    executionId: string,
+    accessContext: ReplayAccessContext = defaultReplayAccessContext(),
+    sandboxPolicy: ReplaySandboxPolicy = defaultReplaySandboxPolicy(),
+  ): TimeTravelDebugSession {
+    this.assertReplayAccess(accessContext);
     this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
       executionId,
+      harnessRunId: executionId,
       breakpoints: [],
       snapshots: [],
       currentEventIndex: 0,
+      accessContext,
+      sandboxPolicy,
       startedAt: nowIso(),
       endedAt: null,
     };
@@ -140,7 +198,8 @@ export class TimeTravelDebugService {
 
     for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
       const event = events[i]!;
-      const stepId = String(event.stepId ?? "");
+      this.assertReplayEventAllowed(session, event);
+      const stepId = readEventStepId(event);
       if (session.breakpoints.includes(stepId)) {
         this.captureSnapshot(session, event, i);
         session.currentEventIndex = i + 1;
@@ -162,7 +221,8 @@ export class TimeTravelDebugService {
     }
 
     const event = events[session.currentEventIndex]!;
-    const stepId = String(event.stepId ?? "");
+    this.assertReplayEventAllowed(session, event);
+    const stepId = readEventStepId(event);
     session.currentEventIndex++;
 
     const reachedBreakpoint = session.breakpoints.includes(stepId);
@@ -178,8 +238,9 @@ export class TimeTravelDebugService {
     if (!session) return null;
 
     const events = this.eventStore.get(session.executionId) ?? [];
-    const targetIndex = events.findIndex((e) => String(e.stepId) === stepId);
+    const targetIndex = events.findIndex((e) => readEventStepId(e) === stepId);
     if (targetIndex === -1) return null;
+    this.assertReplayEventAllowed(session, events[targetIndex]!);
 
     session.currentEventIndex = targetIndex + 1;
     return this.buildReplayState(session, session.currentEventIndex, false);
@@ -227,7 +288,9 @@ export class TimeTravelDebugService {
       snapshotId: newId("snap"),
       taskId: session.taskId,
       executionId: session.executionId,
-      stepId: String(event.stepId ?? ""),
+      harnessRunId: session.executionId,
+      stepId: readEventStepId(event),
+      nodeRunId: readEventStepId(event),
       timestamp: String(event.timestamp ?? nowIso()),
       variablesJson: JSON.stringify(vars),
       stackTrace: event.stackTrace ?? null,
@@ -256,6 +319,7 @@ export class TimeTravelDebugService {
       cursor: {
         taskId: session.taskId,
         executionId: session.executionId,
+        harnessRunId: session.executionId,
         fromEventIndex: session.currentEventIndex,
         toEventIndex: currentEventIndex,
       },
@@ -276,5 +340,51 @@ export class TimeTravelDebugService {
     }
     this.sessions.delete(oldest.sessionId);
     this.snapshots.delete(oldest.sessionId);
+  }
+
+  private assertReplayAccess(accessContext: ReplayAccessContext): void {
+    if (accessContext.actorId.trim().length === 0) {
+      throw new Error("time_travel_debug.actor_required");
+    }
+    if (!accessContext.permissions.includes("time_travel:replay")) {
+      throw new Error(`time_travel_debug.permission_denied:${accessContext.actorId}`);
+    }
+    if (accessContext.sessionExpiresAt != null && accessContext.sessionExpiresAt <= nowIso()) {
+      throw new Error(`time_travel_debug.session_expired:${accessContext.actorId}`);
+    }
+    if (accessContext.environment === "prod") {
+      if (!accessContext.mfaVerified) {
+        throw new Error(`time_travel_debug.mfa_required:${accessContext.actorId}`);
+      }
+      if (!accessContext.permissions.includes("time_travel:replay:prod")) {
+        throw new Error(`time_travel_debug.prod_permission_required:${accessContext.actorId}`);
+      }
+      if (accessContext.sessionExpiresAt == null) {
+        throw new Error(`time_travel_debug.short_lived_session_required:${accessContext.actorId}`);
+      }
+    }
+  }
+
+  private assertReplayEventAllowed(session: TimeTravelDebugSession, event: TimeTravelDebugEvent): void {
+    const effectType = event.effectType ?? (event.replayUnsafe ? "write" : null);
+    if (!session.sandboxPolicy.blockExternalSideEffects || effectType == null) {
+      return;
+    }
+    if (effectType === "read") {
+      return;
+    }
+    if (effectType === "write" && session.sandboxPolicy.allowWrites) {
+      return;
+    }
+    if (effectType === "network" && session.sandboxPolicy.allowNetwork) {
+      return;
+    }
+    if (effectType === "process" && session.sandboxPolicy.allowProcess) {
+      return;
+    }
+    if (effectType === "tool_call" && session.sandboxPolicy.allowToolCalls) {
+      return;
+    }
+    throw new Error(`time_travel_debug.replay_side_effect_blocked:${effectType}`);
   }
 }

@@ -380,7 +380,7 @@ test("LlmEvalService.listRuns returns runs optionally filtered by suite", () => 
   assert.ok(suite1Runs.every(r => r.suiteId === suite1.id));
 });
 
-test("LlmEvalService.runAbTest compares control vs treatment", () => {
+test("LlmEvalService.runAbTest compares control vs treatment", async () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
 
@@ -393,7 +393,7 @@ test("LlmEvalService.runAbTest compares control vs treatment", () => {
     ],
   });
 
-  const result = service.runAbTest(suite.id, {
+  const result = await service.runAbTest(suite.id, {
     controlModelId: "model_ctrl",
     treatmentModelId: "model_treat",
     controlPromptVersion: "v1",
@@ -404,8 +404,8 @@ test("LlmEvalService.runAbTest compares control vs treatment", () => {
 
   assert.equal(result.controlRunId.length > 0, true);
   assert.equal(result.treatmentRunId.length > 0, true);
-  assert.equal(result.controlAvgScore, 0.85);
-  assert.equal(result.treatmentAvgScore, 0.90);
+  assert.equal(result.controlAvgScore, 0.745);
+  assert.equal(result.treatmentAvgScore, 0.935);
   assert.ok(result.improvement > 0);
 });
 

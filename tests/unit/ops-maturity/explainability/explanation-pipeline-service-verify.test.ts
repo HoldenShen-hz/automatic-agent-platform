@@ -99,10 +99,7 @@ test("ExplanationPipelineService.verifyVersionLock returns false for tampered ve
 
   const result = service.verifyVersionLock(bundle.rationale.rationaleId, tamperedLock);
 
-  // verifyVersionLock checks if lock entry exists, not if ref matches
-  // The implementation just checks if lock exists, so it returns true for existing rationale
-  // This test documents the actual behavior
-  assert.equal(result, true);
+  assert.equal(result, false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,7 +170,7 @@ test("ExplanationPipelineService.generate sets audience based on depth", () => {
 
   const l1 = service.generate(request, "L1");
   const l2 = service.generate(request, "L2");
-  const l3 = service.generate(request, "L3");
+  const l3 = service.generate(request, "L3", { forensicBudgetReservationId: "budget:l3:audit" });
 
   const l1Trail = service.getAuditTrail(l1.rationale.rationaleId);
   const l2Trail = service.getAuditTrail(l2.rationale.rationaleId);
@@ -294,11 +291,33 @@ test("ExplanationPipelineService.getCached returns null for L3 depth", () => {
     decision: "accept" as const,
   };
 
-  const bundle = service.generate(request, "L3");
+  const bundle = service.generate(request, "L3", { forensicBudgetReservationId: "budget:l3:cache" });
   const cached = service.getCached(bundle.cacheKey);
 
   // L3 has 0 TTL (no caching)
   assert.equal(cached, null);
+});
+
+test("ExplanationPipelineService.generate separates recorded facts, model rationales, and inferred summary", () => {
+  const service = new ExplanationPipelineService();
+  const bundle = service.generate({
+    taskId: "task_structured_explanation",
+    stageId: "review",
+    summary: "high-level summary",
+    decisionFactors: ["reason_a", "reason_b"],
+    evidence: [{ evidenceId: "ev1", category: "test" }],
+    riskNotes: ["risk_a"],
+    decision: "accept",
+  }, "L2", {
+    recordedFacts: ["fact_a", "fact_b"],
+    modelRationales: ["reason_a", "reason_b"],
+    inferredSummary: "derived summary",
+  });
+
+  assert.deepEqual(bundle.rationale.recordedFacts, ["fact_a", "fact_b"]);
+  assert.deepEqual(bundle.rationale.modelRationales, ["reason_a", "reason_b"]);
+  assert.equal(bundle.rationale.inferredSummary, "derived summary");
+  assert.equal(bundle.rationale.summary, "derived summary");
 });
 
 test("ExplanationPipelineService.getCached returns null for unknown key", () => {
@@ -439,7 +458,7 @@ test("ExplanationPipelineService.generate includes causal chain in L3", () => {
     decision: "accept" as const,
   };
 
-  const bundle = service.generate(request, "L3");
+  const bundle = service.generate(request, "L3", { forensicBudgetReservationId: "budget:l3:causal" });
 
   assert.ok(bundle.rendered.includes("causal="));
   assert.ok(bundle.rendered.includes("A -> B: A leads to B"));
@@ -460,7 +479,7 @@ test("ExplanationPipelineService.generate includes redacted evidence in L3", () 
     decision: "accept" as const,
   };
 
-  const bundle = service.generate(request, "L3");
+  const bundle = service.generate(request, "L3", { forensicBudgetReservationId: "budget:l3:redacted" });
 
   assert.ok(bundle.redactedEvidenceRefs.includes("secret_ev"));
   assert.ok(!bundle.redactedEvidenceRefs.includes("public_ev"));

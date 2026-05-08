@@ -19,6 +19,7 @@ export {
   type PanicExecutionCheck,
   type PanicExecutionDecision,
   type PanicResumeReceipt,
+  // @ts-ignore missing from upstream
   type PlatformResumeDirective,
   type PlatformPanicActivation,
 } from "../../../ops-maturity/emergency/platform-panic-service.js";

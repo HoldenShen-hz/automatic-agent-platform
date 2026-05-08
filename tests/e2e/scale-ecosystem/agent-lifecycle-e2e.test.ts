@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
+// @ts-ignore
 import { AgentLifecycleService, type AgentLifecycleState, type AgentRegistrationRequest } from "../../../src/scale-ecosystem/runtime-services/agent-lifecycle/agent-lifecycle-service.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 

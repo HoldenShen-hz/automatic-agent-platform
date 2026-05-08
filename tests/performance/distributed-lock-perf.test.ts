@@ -41,7 +41,7 @@ test("performance: SqliteLockAdapter acquire() >500 ops/sec", (t) => {
   const db = createTempDb();
 
   try {
-    const adapter = createLockAdapter("sqlite", db);
+    const adapter = createLockAdapter("sqlite", db.connection);
 
     const lockName = "test-lock-perf";
     const iterations = 500;
@@ -80,7 +80,7 @@ test("performance: SqliteLockAdapter release() >500 ops/sec", (t) => {
   const db = createTempDb();
 
   try {
-    const adapter = createLockAdapter("sqlite", db);
+    const adapter = createLockAdapter("sqlite", db.connection);
 
     const iterations = 500;
     let elapsed = 0;
@@ -127,7 +127,7 @@ test("performance: SqliteLockAdapter queryLock() >2000 ops/sec", (t) => {
   const db = createTempDb();
 
   try {
-    const adapter = createLockAdapter("sqlite", db);
+    const adapter = createLockAdapter("sqlite", db.connection);
 
     const lockName = "test-lock-query";
 
@@ -170,7 +170,7 @@ test("performance: SqliteLockAdapter concurrent operations (10 parallel) >300 op
   const db = createTempDb();
 
   try {
-    const adapter = createLockAdapter("sqlite", db);
+    const adapter = createLockAdapter("sqlite", db.connection);
 
     const iterations = 30;
     const parallelCount = 10;
@@ -216,7 +216,7 @@ test("performance: SqliteLockAdapter reacquireExpiredLock() >200 ops/sec", (t) =
   const db = createTempDb();
 
   try {
-    const adapter = createLockAdapter("sqlite", db);
+    const adapter = createLockAdapter("sqlite", db.connection);
 
     const iterations = 200;
     const start = performance.now();

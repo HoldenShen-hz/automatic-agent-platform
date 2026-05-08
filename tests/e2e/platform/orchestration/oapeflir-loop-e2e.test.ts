@@ -11,10 +11,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../../helpers/e2e-harness.js";
+// @ts-ignore
 import { OapeflirLoopService } from "../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
+// @ts-ignore
 import { HandoffBuilder } from "../../../src/platform/orchestration/oapeflir/handoff-builder.js";
+// @ts-ignore
 import type { LoopIterationResult, StageTiming } from "../../../src/platform/orchestration/oapeflir/types.js";
+// @ts-ignore
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 
 function createStageTiming(overrides: Partial<StageTiming> = {}): StageTiming {

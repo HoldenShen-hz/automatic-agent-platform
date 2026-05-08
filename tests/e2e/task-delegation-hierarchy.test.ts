@@ -59,6 +59,7 @@ test("E2E: parent task creates child task via delegation", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: parentExecId,
         taskId: parentTaskId,

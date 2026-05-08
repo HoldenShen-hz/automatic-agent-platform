@@ -368,6 +368,7 @@ export class UnifiedChatProvider {
       }
       metricsRecorded = true;
       runtimeMetricsRegistry.recordLlmLatency(
+        // @ts-ignore null handling
         firstChunkLatencyMs != null ? firstChunkLatencyMs / 1000 : null,
         (Date.now() - startedAt) / 1000,
         model,

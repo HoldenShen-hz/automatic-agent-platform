@@ -9,11 +9,29 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { HttpApiServer } from "../../../../src/platform/interface/api/http-api-server.js";
+import { ApiAuthService, type ApiKeyRecord } from "../../../../src/platform/interface/api/api-auth-service.js";
+import { PrometheusMetricsExporter } from "../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
 import type { MissionControlService } from "../../../../src/platform/interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import type { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
 import type { BillingService } from "../../../../src/scale-ecosystem/billing/billing-service.js";
 import type { ApiDelegationService } from "../../../../src/platform/interface/api/facade-interfaces.js";
+
+class MockPrometheusMetricsExporter extends PrometheusMetricsExporter {
+  constructor() {
+    // Pass minimal dependencies - they won't be used since we're overriding export()
+    super(null as any, {} as any);
+  }
+
+  public override export(): string {
+    return `# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 0
+# HELP http_requests_total Total number of HTTP requests.
+# TYPE http_requests_total counter
+http_requests_total{method="GET",path="/healthz",status="200"} 1`;
+  }
+}
 
 class NoOpMissionControlService implements MissionControlService {
   async snapshot() {
@@ -27,6 +45,26 @@ class NoOpMissionControlService implements MissionControlService {
       divisions: [],
       gatewayTargets: [],
     };
+  }
+  getHealthReportAsync() {
+    return Promise.resolve({
+      status: "ok",
+      uptimeSeconds: 3600,
+      dbWritable: true,
+      providerHealth: "healthy",
+      providerSuccessRate: 1.0,
+      providerRecentCalls: 100,
+      activeExecutions: 0,
+      queuedTasks: 0,
+      eventLoopLagMs: null,
+      memoryRssMb: 100,
+      tier1AckBacklog: 0,
+      degradationMode: "none",
+      backpressure: { engaged: false, reason: null },
+      queueGovernance: { mode: "normal", queuedTasks: 0 },
+      workerHealth: { total: 0, healthy: 0, unhealthy: 0 },
+      findings: [],
+    });
   }
   getStableTasks() { return []; }
   getWorkers() { return []; }
@@ -130,7 +168,11 @@ function createTestServer(): HttpApiServer {
     missionControlService: new NoOpMissionControlService(),
     billingService: new NoOpBillingService(),
     coordinatorLoadBalancingService: new NoOpApiDelegationService(),
-    authService: null, // Use no-op auth for testing
+    authService: new ApiAuthService({
+      apiKeys: [{ apiKey: "test-api-key", actorId: "test-actor", roles: ["viewer"] }],
+      jwtSecret: "test-jwt-secret-for-integration-tests-only",
+    }),
+    prometheusMetricsExporter: new MockPrometheusMetricsExporter(),
   });
 }
 
@@ -147,7 +189,7 @@ test("HttpApiServer: GET /healthz returns healthy status", async () => {
 
     assert.equal(response.statusCode, 200);
     const data = response.json();
-    assert.equal(data.status, "ok");
+    assert.equal(data.data.status, "ok");
   } finally {
     await server.stop();
   }
@@ -235,7 +277,8 @@ test("HttpApiServer: Request body larger than limit returns 413", async () => {
   await server.start();
 
   try {
-    const largeBody = JSON.stringify({ data: "x".repeat(1_000_000) });
+    // Body must exceed MAX_BODY_BYTES (1,048,576) and be valid JSON with required fields
+    const largeBody = JSON.stringify({ title: "x".repeat(1_050_000) });
     const response = await server.inject({
       url: "/v1/tasks",
       method: "POST",
@@ -287,7 +330,7 @@ test("HttpApiServer: POST /v1/auth/token with valid payload succeeds", async () 
 
     assert.equal(response.statusCode, 200);
     const data = response.json();
-    assert.ok("accessToken" in data || "error" in data);
+    assert.ok("accessToken" in data.data || "error" in data.data);
   } finally {
     await server.stop();
   }
@@ -321,12 +364,14 @@ test("HttpApiServer: GET /v1/stability returns stability panel", async () => {
     const response = await server.inject({
       url: "/v1/stability",
       method: "GET",
-      headers: {},
+      headers: {
+        "x-api-key": "test-api-key",
+      },
     });
 
     assert.equal(response.statusCode, 200);
     const data = response.json();
-    assert.equal(data.status, "ok");
+    assert.equal(data.data.health.status, "ok");
   } finally {
     await server.stop();
   }

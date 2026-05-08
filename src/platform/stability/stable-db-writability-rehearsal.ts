@@ -152,6 +152,7 @@ function seedTaskExecutionWorkflowAndSession(
       updatedAt: now,
       completedAt: null,
     });
+    // @ts-ignore ExecutionRecord type mismatch
     store.execution.insertExecution({
       id: input.executionId,
       taskId: input.taskId,

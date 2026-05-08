@@ -63,11 +63,13 @@ test("ExplanationPipelineService generates audit (L3) explanation with causal ch
     riskNotes: ["edge_case_unclear"],
     causalLinks,
     allowedEvidenceCategories: ["security"],
-  }, "L3");
+  }, "L3", { forensicBudgetReservationId: "budget:forensics:1" });
 
   assert.equal(bundle.depth, "L3");
   assert.match(bundle.rendered, /causal=/);
   assert.match(bundle.rendered, /redacted=/);
+  assert.match(bundle.rendered, /facts=/);
+  assert.match(bundle.rendered, /model=/);
   assert.equal(bundle.causalSummary.length, 2);
   assert.equal(bundle.redactedEvidenceRefs.length, 1);
   assert.equal(bundle.redactedEvidenceRefs[0], "perf:report:2");
@@ -246,7 +248,24 @@ test("ExplanationPipelineService generates correct cache key format", () => {
     decisionFactors: [],
     evidence: [],
     riskNotes: [],
-  }, "L3");
+  }, "L3", { forensicBudgetReservationId: "budget:forensics:cache" });
 
   assert.equal(bundle.cacheKey, "task:abc:deploy:audit");
+});
+
+test("ExplanationPipelineService requires forensic budget for L3 generation", () => {
+  const service = new ExplanationPipelineService();
+
+  assert.throws(
+    () => service.generate({
+      taskId: "task:l3:budget",
+      stageId: "review",
+      summary: "Forensic run",
+      decision: "accept",
+      decisionFactors: [],
+      evidence: [],
+      riskNotes: [],
+    }, "L3"),
+    /explanation\.forensic_budget_required/,
+  );
 });

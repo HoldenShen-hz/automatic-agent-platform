@@ -82,6 +82,7 @@ test("E2E: webhook creates task that transitions through lifecycle", () => {
 
     // Insert execution for the task
     h.db.transaction(() => {
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,
@@ -167,6 +168,7 @@ test("E2E: gateway task can be completed through execution success", () => {
         completedAt: null,
       });
 
+// @ts-ignore
       h.store.insertExecution({
         id: executionId,
         taskId,

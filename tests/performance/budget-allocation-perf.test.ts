@@ -18,7 +18,7 @@ import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../src/platform/five-plane-execution/budget-allocator.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../../src/platform/five-plane-execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
 import { createBudgetLedger, type BudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
@@ -52,27 +52,6 @@ function createDefaultContext(tenantId: string, harnessRunId: string): BudgetAll
     tenantId,
     traceId: newId("trace"),
     emittedBy: "budget-perf-test",
-    tier: BudgetTier.TENANT,
-    tierLimit: 100000,
-    watermarkAlert: {
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-      hardCapThreshold: 1.0,
-    },
-    autoThrottle: {
-      enabled: false,
-      throttleRatio: 1,
-      recoveryRatio: 1,
-    },
-    crossRunPriority: {
-      priority: 1,
-      weightFactor: 1,
-    },
-    streamingSettle: {
-      enabled: false,
-      tokenInterval: Number.MAX_SAFE_INTEGER,
-      timeIntervalMs: Number.MAX_SAFE_INTEGER,
-    },
   };
 }
 
@@ -344,27 +323,6 @@ test("budget: watermark alert throughput >5000 ops/sec", (t) => {
       tenantId,
       traceId: newId("trace"),
       emittedBy: "budget-perf-test",
-      tier: BudgetTier.TENANT,
-      tierLimit: 1000,
-      watermarkAlert: {
-        warningThreshold: 0.1,
-        criticalThreshold: 0.2,
-        hardCapThreshold: 0.3,
-      },
-      autoThrottle: {
-        enabled: false,
-        throttleRatio: 1,
-        recoveryRatio: 1,
-      },
-      crossRunPriority: {
-        priority: 1,
-        weightFactor: 1,
-      },
-      streamingSettle: {
-        enabled: false,
-        tokenInterval: Number.MAX_SAFE_INTEGER,
-        timeIntervalMs: Number.MAX_SAFE_INTEGER,
-      },
     };
 
     const ledger = createBudgetLedger({
@@ -457,27 +415,6 @@ test("budget: tier hierarchy allocation throughput >800 ops/sec", (t) => {
         tenantId,
         traceId: newId("trace"),
         emittedBy: "budget-perf-test",
-        tier: BudgetTier.PLATFORM,
-        tierLimit: 500000,
-        watermarkAlert: {
-          warningThreshold: 0.8,
-          criticalThreshold: 0.95,
-          hardCapThreshold: 1.0,
-        },
-        autoThrottle: {
-          enabled: false,
-          throttleRatio: 1,
-          recoveryRatio: 1,
-        },
-        crossRunPriority: {
-          priority: 1,
-          weightFactor: 1,
-        },
-        streamingSettle: {
-          enabled: false,
-          tokenInterval: Number.MAX_SAFE_INTEGER,
-          timeIntervalMs: Number.MAX_SAFE_INTEGER,
-        },
       };
 
       const result = allocator.reserve({
@@ -615,27 +552,6 @@ test("budget: auto-throttle throughput >1000 ops/sec", (t) => {
       tenantId,
       traceId: newId("trace"),
       emittedBy: "budget-perf-test",
-      tier: BudgetTier.TENANT,
-      tierLimit: 10000,
-      watermarkAlert: {
-        warningThreshold: 0.5,
-        criticalThreshold: 0.8,
-        hardCapThreshold: 1.0,
-      },
-      autoThrottle: {
-        enabled: true,
-        throttleRatio: 0.5,
-        recoveryRatio: 0.8,
-      },
-      crossRunPriority: {
-        priority: 1,
-        weightFactor: 1,
-      },
-      streamingSettle: {
-        enabled: false,
-        tokenInterval: Number.MAX_SAFE_INTEGER,
-        timeIntervalMs: Number.MAX_SAFE_INTEGER,
-      },
     };
 
     const ledger = createBudgetLedger({

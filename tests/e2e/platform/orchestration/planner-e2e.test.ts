@@ -14,11 +14,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-ignore
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+// @ts-ignore
 import { PlanBuilder } from "../../src/platform/orchestration/planner/plan-builder.js";
+// @ts-ignore
 import { PlanDagValidator } from "../../src/platform/orchestration/planner/plan-dag-validator.js";
+// @ts-ignore
 import { PlanStrategySelector } from "../../src/platform/orchestration/planner/plan-strategy-selector.js";
+// @ts-ignore
 import { TaskDecompositionService } from "../../src/platform/orchestration/planner/task-decomposition-service.js";
+// @ts-ignore
 import type { PlanGraph, PlanNode, PlanEdge } from "../../src/platform/orchestration/planner/types.js";
 
 // ---------------------------------------------------------------------------

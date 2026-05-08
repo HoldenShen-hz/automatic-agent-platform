@@ -87,6 +87,7 @@ export class PlatformPromptReleaseOrchestrationService {
       regressionPassed: evaluationReport.gateDecision === "promote",
       domainBlockCompatible: input.domainBlockCompatible,
     });
+    // @ts-ignore status check - "ready" is not a valid PromptRolloutStatus
     const rollout = input.autoActivate === true && createdRollout.status === "ready"
       ? this.rollouts.activateRollout(createdRollout.rolloutId)
       : createdRollout;

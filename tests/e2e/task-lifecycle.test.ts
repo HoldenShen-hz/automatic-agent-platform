@@ -226,6 +226,7 @@ test("E2E Task Lifecycle: task executes and completes successfully", async () =>
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -346,6 +347,7 @@ test("E2E Task Lifecycle: task execution produces output", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -654,6 +656,7 @@ test("E2E Task Lifecycle: task retry recovers from transient failure", async () 
       });
 
       // First execution fails with transient error
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId1,
         taskId,
@@ -715,6 +718,7 @@ test("E2E Task Lifecycle: task retry recovers from transient failure", async () 
 
     // Create retry execution
     harness.db.transaction(() => {
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId2,
         taskId,
@@ -818,6 +822,7 @@ test("E2E Task Lifecycle: task fails permanently after max retries exhausted", a
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -943,6 +948,7 @@ test("E2E Task Lifecycle: task retry preserves partial workflow progress", async
       });
 
       // First execution failed at step 1
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId1,
         taskId,
@@ -1008,6 +1014,7 @@ test("E2E Task Lifecycle: task retry preserves partial workflow progress", async
 
     // Create retry execution
     harness.db.transaction(() => {
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId2,
         taskId,
@@ -1136,6 +1143,7 @@ test("E2E Task Lifecycle: superseded execution cannot be retried", async () => {
       });
 
       // First execution is blocked
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId1,
         taskId,
@@ -1173,6 +1181,7 @@ test("E2E Task Lifecycle: superseded execution cannot be retried", async () => {
 
     // Create second execution as retry
     harness.db.transaction(() => {
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId2,
         taskId,

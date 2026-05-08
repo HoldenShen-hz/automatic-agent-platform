@@ -122,6 +122,7 @@ function seedExecution(
   attempt: number = 1,
 ): void {
   db.transaction(() => {
+// @ts-ignore
     store.insertExecution({
       id: executionId,
       taskId,

@@ -96,6 +96,7 @@ test("E2E Task Terminal: task reaches done terminal state from in_progress", asy
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -229,6 +230,7 @@ test("E2E Task Terminal: task reaches failed terminal state from execution failu
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -356,6 +358,7 @@ test("E2E Task Terminal: task reaches cancelled terminal state from user cancell
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -480,6 +483,7 @@ test("E2E Task Terminal: multi-step workflow task reaches done terminal state", 
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -636,6 +640,7 @@ test("E2E Task Terminal: task with paused workflow reaches cancelled terminal st
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
@@ -770,6 +775,7 @@ test("E2E Task Terminal: terminal state preserves task output", async () => {
         completedAt: null,
       });
 
+// @ts-ignore
       harness.store.insertExecution({
         id: executionId,
         taskId,
