@@ -8,12 +8,12 @@ export interface DesktopShellManifest {
   readonly updateChannel: "stable" | "beta";
 }
 
-export const tauriMacosManifest: DesktopShellManifest = {
+export const tauriMacosManifest: DesktopShellManifest = Object.freeze({
   platform: "macos",
   runtime: "tauri",
   supportsDeepLink: true,
   updateChannel: "stable",
-};
+});
 
 export function createTauriMacosAdapter(base: PlatformAdapter): PlatformAdapter {
   return { ...base, platform: "macos" };

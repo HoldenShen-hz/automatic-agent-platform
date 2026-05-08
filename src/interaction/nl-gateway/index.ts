@@ -57,6 +57,8 @@ import {
   type InteractionAutonomyMode,
   type UnifiedRuntimeMode,
 } from "../../platform/contracts/types/unified-runtime-mode.js";
+import { ConversationHistoryService } from "../ux/conversation-history-service.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;
@@ -321,6 +323,8 @@ export interface NlEntryServiceOptions {
   readonly memoryService?: ConversationMemoryService | null;
   readonly intentParser?: IntentParser;
   readonly intentModelGateway?: IntentParserModelGateway | null;
+  // R7-27: ConversationHistoryService for emitting nl.clarification_needed events
+  readonly conversationHistoryService?: ConversationHistoryService | null;
 }
 
 function mergeNlGatewayConfig(overrides?: Partial<NlGatewayConfig> | null): NlGatewayConfig {
@@ -1091,6 +1095,8 @@ export class NlEntryService implements NlEntryPort {
   private readonly clarificationTracker = new Map<string, number>();
   private readonly slotResolver = new SlotResolver();
   private readonly intentParser: IntentParser;
+  // R7-27: ConversationHistoryService for emitting nl.clarification_needed events
+  private readonly conversationHistoryService: ConversationHistoryService | null;
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
@@ -1112,6 +1118,8 @@ export class NlEntryService implements NlEntryPort {
       enableConfidenceLogging: this.nlConfig.confidenceThresholds.enableConfidenceLogging,
     };
     this.intentParser = options.intentParser ?? new LlmIntentParser(intentParserOptions);
+    // R7-27: Initialize ConversationHistoryService for emitting nl.clarification_needed events
+    this.conversationHistoryService = options.conversationHistoryService ?? null;
   }
 
   /**
@@ -1289,6 +1297,14 @@ export class NlEntryService implements NlEntryPort {
       rounds: clarificationRounds,
       maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
     };
+
+    // R7-27: Emit nl.clarification_needed event when clarification is required
+    if (requiresClarification && this.conversationHistoryService != null && clarificationQuestions.length > 0) {
+      const sessionId = `${request.tenantId}:${request.userId}`;
+      const turnId = newId("turn");
+      const prompt = clarificationQuestions[0] ?? "";
+      this.conversationHistoryService.emitClarificationNeeded(sessionId, turnId, prompt);
+    }
 
     return {
       rawInput: request.message,

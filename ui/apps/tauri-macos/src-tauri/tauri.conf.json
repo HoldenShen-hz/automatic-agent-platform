@@ -6,7 +6,9 @@
       {
         "title": "Automatic Agent Platform UI",
         "width": 1440,
-        "height": 960
+        "height": 960,
+        "minWidth": 1180,
+        "minHeight": 760
       }
     ]
   },

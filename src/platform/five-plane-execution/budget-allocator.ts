@@ -611,6 +611,9 @@ export class BudgetAllocator {
         lastSettleAt: now,
         tokenAccumulator: 0, // Reset after settle
       });
+      if (this.events?.emitStreamingSettle) {
+        this.events.emitStreamingSettle(reservation.budgetReservationId, settleAmount, cfg.tier);
+      }
     } else {
       // Just accumulate
       this.streamingStates.set(reservation.budgetReservationId, {
@@ -631,6 +634,9 @@ export class BudgetAllocator {
         lastSettleAt: now,
         tokenAccumulator: 0,
       });
+      if (this.events?.emitStreamingSettle) {
+        this.events.emitStreamingSettle(reservation.budgetReservationId, settleAmount, cfg.tier);
+      }
     }
   }
 

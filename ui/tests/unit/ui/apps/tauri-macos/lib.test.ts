@@ -4,7 +4,7 @@ import {
   createTauriMacosAdapter,
   createTauriMacosDefaultAdapter,
   type DesktopShellManifest,
-} from "./index";
+} from "../../../../../apps/tauri-macos/src/index.ts";
 import type { PlatformAdapter } from "@aa/shared-types";
 
 // Issue #2170: open_deep_link no scheme validation, can open file:///javascript:

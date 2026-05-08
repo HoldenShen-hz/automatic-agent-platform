@@ -1,13 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/execution/worker-pool/worker-service-identity.js";
 import { WorkerDrainProtocol } from "../../../../../src/platform/execution/worker-pool/worker-drain-protocol.js";
+
+function createMockStore(): AuthoritativeTaskStore {
+  return {
+    worker: {
+      listWorkerSnapshots: () => [],
+      getWorkerSnapshot: () => null,
+      upsertWorkerSnapshot: () => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+}
 
 test("WorkerServiceIdentityRegistry evaluateClaim loads from store before evaluation", () => {
   // This test verifies that loadFromStore is called during evaluateClaim
   // even if the registry hasn't been explicitly loaded
-  const registry = new WorkerServiceIdentityRegistry();
+  const registry = new WorkerServiceIdentityRegistry(createMockStore());
   const decision = registry.evaluateClaim({
     workerId: "unknown-worker",
     nodeRunId: "nr-1",
@@ -21,7 +32,7 @@ test("WorkerServiceIdentityRegistry evaluateClaim loads from store before evalua
 });
 
 test("WorkerServiceIdentityRegistry multiple workers can be registered and evaluated", () => {
-  const registry = new WorkerServiceIdentityRegistry();
+  const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   // Register first worker
   registry.register({
@@ -61,7 +72,7 @@ test("WorkerServiceIdentityRegistry multiple workers can be registered and evalu
 });
 
 test("WorkerServiceIdentityRegistry evaluateClaim fails for wrong tenant", () => {
-  const registry = new WorkerServiceIdentityRegistry();
+  const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   registry.register({
     workerId: "worker-1",
@@ -265,7 +276,7 @@ test("WorkerDrainProtocol isDeadlineExceeded edge case - exactly at deadline", (
 });
 
 test("WorkerServiceIdentityRegistry register returns identity with correct fields", () => {
-  const registry = new WorkerServiceIdentityRegistry();
+  const registry = new WorkerServiceIdentityRegistry(createMockStore());
   const identity = {
     workerId: "worker-return-test",
     serviceIdentity: "service-return",
@@ -282,7 +293,7 @@ test("WorkerServiceIdentityRegistry register returns identity with correct field
 });
 
 test("WorkerServiceIdentityRegistry evaluateClaim returns correct reason codes for all failure cases", () => {
-  const registry = new WorkerServiceIdentityRegistry();
+  const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   registry.register({
     workerId: "worker-1",

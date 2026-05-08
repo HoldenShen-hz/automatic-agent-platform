@@ -40,6 +40,7 @@ import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { WorkflowBuilderService } from "../../../interaction/ux/workflow-builder-service.js";
 import {
   getGlobalIdempotencyKeyMiddleware,
   type IdempotencyKeyMiddleware,
@@ -112,6 +113,8 @@ export interface HttpApiServerOptions {
   taskStore?: AuthoritativeTaskStore | null;
   /** Intake admission service for task creation pipeline validation */
   intakeAdmissionService?: IntakeAdmissionService | null;
+  /** Workflow builder service for visual workflow construction */
+  workflowBuilderService?: WorkflowBuilderService | null;
   /** Distributed rate limiter for API endpoint protection */
   rateLimiter?: DistributedRateLimiter | null;
   /** Enable WebSocket support for real-time task updates */
@@ -693,6 +696,7 @@ export class HttpApiServer {
         missionControlService: this.options.missionControlService,
         ...(this.options.taskStore != null ? { taskStore: this.options.taskStore } : {}),
         ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
+        ...(this.options.workflowBuilderService != null ? { workflowBuilderService: this.options.workflowBuilderService } : {}),
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({

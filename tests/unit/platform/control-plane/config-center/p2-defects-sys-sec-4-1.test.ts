@@ -57,7 +57,9 @@ test("[SYS-SEC-4.1] startup env schema accepts valid plugin sandbox root", () =>
 });
 
 test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars are in schema", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // ZodEffects wraps the ZodObject; access inner shape via _def.schema.shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
   const requiredKeys = Object.keys(schemaShape);
 
   // Critical AA_* variables that must be in the startup env schema
@@ -78,7 +80,8 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars are in sc
 });
 
 test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_ALLOW_NETWORK_EGRESS", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
   assert.ok(
     "AA_PLUGIN_ALLOW_NETWORK_EGRESS" in schemaShape,
     "AA_PLUGIN_ALLOW_NETWORK_EGRESS must be in schema",
@@ -86,7 +89,8 @@ test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_ALLOW_NETWORK_EGRESS",
 });
 
 test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_RUNTIME_ISOLATION", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
   assert.ok(
     "AA_PLUGIN_RUNTIME_ISOLATION" in schemaShape,
     "AA_PLUGIN_RUNTIME_ISOLATION must be in schema",
@@ -94,7 +98,8 @@ test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_RUNTIME_ISOLATION", ()
 });
 
 test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_REGISTRY_URL", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
   assert.ok(
     "AA_PLUGIN_REGISTRY_URL" in schemaShape,
     "AA_PLUGIN_REGISTRY_URL must be in schema",
@@ -102,7 +107,8 @@ test("[SYS-SEC-4.1] startup env schema includes AA_PLUGIN_REGISTRY_URL", () => {
 });
 
 test("[SYS-SEC-4.1] startup env schema includes AA_SECURITY_ENFORCE_SANDBOX", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
   assert.ok(
     "AA_SECURITY_ENFORCE_SANDBOX" in schemaShape,
     "AA_SECURITY_ENFORCE_SANDBOX must be in schema",

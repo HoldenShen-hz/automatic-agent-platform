@@ -8,12 +8,12 @@ export interface DesktopShellManifest {
   readonly updateChannel: "stable" | "beta";
 }
 
-export const tauriLinuxManifest: DesktopShellManifest = {
+export const tauriLinuxManifest: DesktopShellManifest = Object.freeze({
   platform: "linux",
   runtime: "tauri",
-  supportsBackgroundAgent: true,
+  supportsBackgroundAgent: false,
   updateChannel: "stable",
-};
+});
 
 export function createTauriLinuxAdapter(base: PlatformAdapter): PlatformAdapter {
   return { ...base, platform: "linux" };

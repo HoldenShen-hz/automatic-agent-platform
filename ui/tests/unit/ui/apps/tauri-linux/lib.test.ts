@@ -18,7 +18,7 @@ describe("tauriLinuxManifest", () => {
   });
 
   it("declares background agent support", () => {
-    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(true);
+    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(false);
   });
 
   it("declares update channel for desktop updater consistency", () => {
@@ -31,13 +31,13 @@ describe("DesktopShellManifest interface structure for Linux", () => {
     const manifest: DesktopShellManifest = {
       platform: "linux",
       runtime: "tauri",
-      supportsBackgroundAgent: true,
+      supportsBackgroundAgent: false,
       updateChannel: "stable",
     };
 
     expect(manifest.platform).toBe("linux");
     expect(manifest.runtime).toBe("tauri");
-    expect(manifest.supportsBackgroundAgent).toBe(true);
+    expect(manifest.supportsBackgroundAgent).toBe(false);
     expect(manifest.updateChannel).toBe("stable");
   });
 });

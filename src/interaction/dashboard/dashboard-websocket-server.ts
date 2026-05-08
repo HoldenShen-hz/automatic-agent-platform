@@ -701,6 +701,14 @@ export class DashboardWebSocketServer {
         case "system_health_changed":
           channel = "global";
           break;
+        // R7-17 fix: Route approval_* changeTypes to "approvals" channel per UI spec
+        case "approval_requested":
+        case "approval_resolved":
+        case "approval_granted":
+        case "approval_rejected":
+        case "approval_revoked":
+          channel = "approvals";
+          break;
         default:
           // Push to global for other changes
           channel = "global";

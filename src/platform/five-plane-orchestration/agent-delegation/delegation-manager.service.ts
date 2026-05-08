@@ -1062,11 +1062,16 @@ export class DelegationManagerService {
     // R9-06: For terminal states, remove from in-memory cache to prevent memory leaks.
     // Terminal delegations (completed/failed/cancelled/expired/timed_out) are persisted in repository
     // and can be fetched from repository if needed. This ensures the in-memory cache only holds active delegations.
+    // IMPORTANT: Only delete from cache when repository is available as backup. Without repository,
+    // in-memory delegations must be kept to prevent loss of delegation state.
     const terminalStatuses: readonly DelegationStatus[] = ["completed", "failed", "cancelled", "expired", "timed_out"];
-    if (terminalStatuses.includes(nextStatus)) {
+    if (terminalStatuses.includes(nextStatus) && this.delegationRepository) {
       this.delegationStore.delete(delegation.delegationId);
       // R9-06: Also clean up chain-related entries for this delegation
       this.delegationRootStore.delete(delegation.delegationId);
+    } else if (terminalStatuses.includes(nextStatus)) {
+      // R9-06: No repository available - keep delegation in cache for state queries
+      this.delegationStore.set(delegation.delegationId, delegation);
     } else {
       // R9-06: Update in-memory cache for non-terminal states
       this.delegationStore.set(delegation.delegationId, delegation);

@@ -48,9 +48,9 @@ export interface NlSummaryDigest {
 }
 
 const DEFAULT_ROUTING_RULES: readonly NotificationRoutingRule[] = [
-  { alertType: "incident", priority: "critical", deliveryMethods: ["overlay", "push", "haptic"], cooldownSeconds: 60 },
+  { alertType: "incident", priority: "critical", deliveryMethods: ["overlay", "push", "haptic", "email", "sms"], cooldownSeconds: 60 },
   { alertType: "incident", priority: "high", deliveryMethods: ["overlay", "push"], cooldownSeconds: 120 },
-  { alertType: "approval_needed", priority: "high", deliveryMethods: ["push", "overlay"], cooldownSeconds: 60 },
+  { alertType: "approval_needed", priority: "high", deliveryMethods: ["push", "overlay", "email", "sms"], cooldownSeconds: 60 },
   { alertType: "approval_needed", priority: "normal", deliveryMethods: ["push"], cooldownSeconds: 300 },
   { alertType: "budget_warning", priority: "high", deliveryMethods: ["overlay", "push"], cooldownSeconds: 180 },
   { alertType: "budget_warning", priority: "normal", deliveryMethods: ["push"], cooldownSeconds: 600 },
@@ -150,6 +150,26 @@ export class AlertRouter {
     return items.filter((item) => {
       const rule = this.findMatchingRule(item);
       return rule?.deliveryMethods.includes("haptic") ?? false;
+    });
+  }
+
+  /**
+   * Filter items that should trigger email notification.
+   */
+  public getEmailNotifications(items: readonly AttentionItem[]): readonly AttentionItem[] {
+    return items.filter((item) => {
+      const rule = this.findMatchingRule(item);
+      return rule?.deliveryMethods.includes("email") ?? false;
+    });
+  }
+
+  /**
+   * Filter items that should trigger SMS alert.
+   */
+  public getSmsAlerts(items: readonly AttentionItem[]): readonly AttentionItem[] {
+    return items.filter((item) => {
+      const rule = this.findMatchingRule(item);
+      return rule?.deliveryMethods.includes("sms") ?? false;
     });
   }
 
