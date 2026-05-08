@@ -45,7 +45,7 @@ export class Timeout {
       throw new Error("timeoutMs must be a positive number");
     }
     this.timeoutMs = options.timeoutMs;
-    this.cleanupFn = options.cleanupFn;
+    this.cleanupFn = options.cleanupFn ?? (() => {});
     this.propagateError = options.propagateError ?? true;
   }
 

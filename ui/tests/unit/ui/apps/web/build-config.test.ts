@@ -32,7 +32,7 @@ test("selectManualChunk splits feature and vendor modules instead of falling bac
 });
 
 test("perf-budget script fail-closes on missing dist root and is wired into CI", () => {
-  const uiRoot = resolve(process.cwd(), "ui");
+  const uiRoot = process.cwd();
   const perfBudgetScript = readFileSync(resolve(uiRoot, "scripts/perf-budget.mjs"), "utf8");
   const packageJson = JSON.parse(readFileSync(resolve(uiRoot, "package.json"), "utf8")) as {
     scripts: Record<string, string>;
@@ -41,5 +41,7 @@ test("perf-budget script fail-closes on missing dist root and is wired into CI",
   assert.equal(existsSync(resolve(uiRoot, "scripts/perf-budget.mjs")), true);
   assert.match(perfBudgetScript, /if \(!existsSync\(distRoot\)\)/);
   assert.match(perfBudgetScript, /if \(process\.env\.CI === "true"\)/);
+  assert.match(perfBudgetScript, /maxEchartsGzBytes/);
+  assert.match(perfBudgetScript, /maxMonacoGzBytes/);
   assert.match(packageJson.scripts.ci, /perf:budget/);
 });

@@ -2,7 +2,7 @@ import type { SystemSituationPort } from "../contracts/dashboard-port.js";
 
 /**
  * Structured health score data per UI spec StabilityPanelView.
- * Contains 8 required fields: uptime, error_rate, p99, etc.
+ * Contains 9 required fields: overall, uptime, errorRate, p50LatencyMs, p99LatencyMs, queueDepth, activeWorkers, budgetUtilizationPercent, findings.
  */
 export interface StructuredHealthScore {
   readonly overall: number;

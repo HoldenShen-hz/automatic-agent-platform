@@ -780,8 +780,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       blockedForDecision = result.blockedForDecision;
       skippedNodeIds = result.skippedNodeIds;
       failedNodeIds = result.failedNodeIds;
-      skippedStepIds = result.skippedStepIds ?? skippedNodeIds;
-      failedStepIds = result.failedStepIds ?? failedNodeIds;
+      skippedStepIds = result.skippedStepIds ?? skippedNodeIds ?? new Set<string>();
+      failedStepIds = result.failedStepIds ?? failedNodeIds ?? new Set<string>();
 
       if (blockedForDecision) {
         // R4-25 (INV-BUDGET-001): Settle budget session before returning

@@ -166,3 +166,32 @@ function requireNonEmpty(value: string, code: string): void {
     throw new ValidationError(code, "Required string cannot be empty.");
   }
 }
+
+// =============================================================================
+// Legacy Factory - Fail-Fast Enforcement (R4-1)
+// =============================================================================
+
+/**
+ * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
+ * This factory exists only for backward compatibility and always throws.
+ * @throws {ValidationError} Always throws with code "platform_contracts.legacy_control_directive_forbidden"
+ */
+export function createControlDirective(input: {
+  directiveId?: string;
+  kind: ControlDirectiveKind;
+  targetRef: string;
+  reasonCode: string;
+  issuedBy: string;
+  tenantId: string | null;
+  executionId: string | null;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+}): never {
+  // Fail-fast: legacy ControlDirective contract is forbidden
+  throw new ValidationError(
+    "platform_contracts.legacy_control_directive_forbidden",
+    `ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead. ` +
+    `See: https://docs.example.com/platform/contracts#control-directive-migration`,
+    { userMessage: "Legacy ControlDirective contract is forbidden. Use OperationalDirective or DecisionDirective." },
+  );
+}

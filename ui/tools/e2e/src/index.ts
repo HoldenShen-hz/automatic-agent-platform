@@ -1,3 +1,5 @@
+import { expect, type Page } from "@playwright/test";
+
 export const e2eScenarioCatalog = [
   {
     id: "login-callback",
@@ -49,4 +51,13 @@ export function createScenarioChecklist() {
 
 export function findScenarioById(id: E2EScenarioId) {
   return e2eScenarioCatalog.find((scenario) => scenario.id === id) ?? null;
+}
+
+export async function runScenarioAssertion(page: Page, id: E2EScenarioId): Promise<void> {
+  const scenario = findScenarioById(id);
+  if (scenario == null) {
+    throw new Error(`e2e.scenario_not_found:${id}`);
+  }
+  await page.goto(scenario.route);
+  await expect(page.getByRole("heading", { name: scenario.expectedTitle })).toBeVisible();
 }

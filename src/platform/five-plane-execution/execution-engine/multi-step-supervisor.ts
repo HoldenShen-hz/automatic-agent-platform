@@ -184,7 +184,7 @@ export async function executeStepLoop(
         taskId,
         // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
         nodeRunId: step.nodeId,
-        stepId: step.stepId ?? step.nodeId,
+        stepId: (step.stepId ?? step.nodeId) as string,
         roleId: step.roleId,
         status: "skipped",
         dataJson: JSON.stringify({ reasonCode: "upstream_dependency_failed", blockedBy: hardBlockers }),
@@ -409,7 +409,7 @@ export async function executeStepLoop(
               sessionId,
               direction: "system",
               messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
+              content: buildStepFailureSummary((step.stepId ?? step.nodeId) as string, decision),
               attachmentsJson: null,
               createdAt: failedAt,
             };
@@ -458,11 +458,11 @@ export async function executeStepLoop(
           taskId,
           // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
           nodeRunId: step.nodeId,
-          stepId: step.stepId ?? step.nodeId,
+          stepId: (step.stepId ?? step.nodeId) as string,
           roleId: step.roleId,
           status: "failed",
           dataJson: JSON.stringify({ reasonCode: plannedFailure.errorCode }),
-          summary: plannedFailure.summary ?? buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
+          summary: plannedFailure.summary ?? buildStepFailureSummary((step.stepId ?? step.nodeId) as string, decision),
           artifactsJson: null,
           tokenCost: 0,
           durationMs: 0,
@@ -492,7 +492,7 @@ export async function executeStepLoop(
         throw new Error("workflow.budget_context_missing");
       }
       const stepData = await buildStepOutput({
-        stepId: step.stepId ?? step.nodeId,
+        stepId: (step.stepId ?? step.nodeId) as string,
         roleId: step.roleId,
         request: input.request,
         priorSummaries,
@@ -502,11 +502,11 @@ export async function executeStepLoop(
         harnessRunId: validatedPlanGraphBundle.harnessRunId,
         budgetLedger,
       });
-      Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
+      Object.assign(stepData, input.stepOutputOverrides?.[(step.stepId ?? step.nodeId) as string] ?? {});
 
       let validation: ReturnType<typeof validateWorkflowStepOutput>;
       try {
-        validation = validateWorkflowStepOutput(step, stepData as unknown as Record<string, unknown>);
+        validation = validateWorkflowStepOutput({ stepId: step.nodeId, outputSchemaPath: step.outputSchemaPath ?? null }, stepData as unknown as Record<string, unknown>);
       } catch (error) {
         const errorCode = normalizeStepErrorCode(error);
         const decision = decideWorkflowStepRetry({ errorCode, attempt, maxAttempts: step.maxAttempts });
@@ -548,7 +548,7 @@ export async function executeStepLoop(
               sessionId,
               direction: "system",
               messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
+              content: buildStepFailureSummary((step.stepId ?? step.nodeId) as string, decision),
               attachmentsJson: null,
               createdAt: failedAt,
             };
@@ -572,7 +572,7 @@ export async function executeStepLoop(
             currentStepIndex: decision.action === "retry" ? index : index + 1,
             outputsJson: JSON.stringify(outputs),
             updatedAt: failedAt,
-            resumableFromStep: step.stepId,
+            resumableFromStep: (step.stepId ?? step.nodeId) ?? null,
             retryCount: workflowRetryCount,
             lastErrorCode: errorCode,
           });
@@ -589,11 +589,11 @@ export async function executeStepLoop(
           taskId,
           // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
           nodeRunId: step.nodeId,
-          stepId: step.stepId ?? step.nodeId,
+          stepId: (step.stepId ?? step.nodeId) as string,
           roleId: step.roleId,
           status: "failed",
           dataJson: JSON.stringify({ reasonCode: errorCode, internalMessage: error instanceof Error ? error.message : String(error) }),
-          summary: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
+          summary: buildStepFailureSummary((step.stepId ?? step.nodeId) as string, decision),
           artifactsJson: null,
           tokenCost: 0,
           durationMs: 0,
@@ -633,8 +633,8 @@ export async function executeStepLoop(
       const artifact = deps.artifactStore.writeJsonArtifact({
         taskId,
         executionId,
-        // R6-19 fix: stepId retained for artifact metadata legacy compatibility
-        stepId: step.stepId ?? step.nodeId ?? null,
+        nodeRunId: step.nodeId,
+        stepId: (step.stepId ?? step.nodeId) as string,
         kind: "workflow_step_snapshot",
         fileName: `${step.nodeId}.json`,
         content: createWorkflowStepCheckpoint({
@@ -642,12 +642,13 @@ export async function executeStepLoop(
           // R6-19 fix: nodeRunId is canonical per §5.5
           nodeRunId: step.nodeId,
           planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
+          graphVersion: validatedPlanGraphBundle.graphVersion,
+          planGraphId: validatedPlanGraphBundle.graph.graphId,
           taskId,
           executionId,
           workflowId: plannedWorkflow.workflow.workflowId,
           divisionId: plannedWorkflow.workflow.divisionId,
-          // R6-19 fix: stepId retained for legacy checkpoint compatibility
-          stepId: step.stepId ?? step.nodeId,
+          nodeId: step.nodeId,
           roleId: step.roleId,
           outputKey: step.outputKey,
           status: "succeeded",
@@ -658,12 +659,15 @@ export async function executeStepLoop(
             request: input.request,
             routeReason: routing.routeReason,
             priorStepSummaries: priorSummaries,
+            dependsOnNodeRunIds: [...step.dependsOnStepIds],
             dependsOnStepIds: [...step.dependsOnStepIds],
           },
           resumeContext: {
             completedNodeRunIds: completedNodeIds,
             // R6-19 fix: Use nodeId for next step reference per §5.5
             nextNodeRunId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
+            completedStepIds: completedNodeIds,
+            nextStepId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
             outputKeys,
           },
           upstreamArtifactRefs,
@@ -682,7 +686,7 @@ export async function executeStepLoop(
         taskId,
         // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
         nodeRunId: step.nodeId,
-        stepId: step.stepId ?? step.nodeId,
+        stepId: (step.stepId ?? step.nodeId) as string,
         roleId: step.roleId,
         status: "succeeded",
         dataJson: JSON.stringify(stepData),

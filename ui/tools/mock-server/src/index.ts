@@ -1,4 +1,6 @@
 import { defaultMockApiShape } from "@aa/shared-api-client";
+import { http, HttpResponse } from "msw";
+import { setupServer, type SetupServerApi } from "msw/node";
 
 export function createMockServerSnapshot() {
   return defaultMockApiShape;
@@ -151,4 +153,21 @@ export function resolveMockRequest(path: string) {
     ok: true,
     path,
   };
+}
+
+export function createMockHandlers() {
+  return [
+    http.all("http://mock.local/*", ({ request }) => {
+      const resolved = resolveMockRequest(request.url);
+      return HttpResponse.json(resolved);
+    }),
+    http.all("https://mock.local/*", ({ request }) => {
+      const resolved = resolveMockRequest(request.url);
+      return HttpResponse.json(resolved);
+    }),
+  ];
+}
+
+export function createMockServer(): SetupServerApi {
+  return setupServer(...createMockHandlers());
 }

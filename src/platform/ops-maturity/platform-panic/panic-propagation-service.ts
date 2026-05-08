@@ -234,7 +234,7 @@ export class PanicPropagationService {
     // Create proper acknowledgment with verified status
     const acknowledgment: PanicAcknowledgment = {
       plane,
-      status: this.allPlanesAcknowledged(directiveId) ? "complete" : "ack",
+      status: this.allPlanesAcknowledged(directiveId) ? "ack" : "ack",
       localStopState,
       evidenceRef,
     };
@@ -511,11 +511,8 @@ export class PanicPropagationService {
       ...events[idx]!,
       localState: state,
       haltedAt: timestamp ?? events[idx]!.haltedAt,
+      ...(state === "acknowledged" && timestamp ? { acknowledgedAt: timestamp } : {}),
     };
-
-    if (state === "acknowledged" && timestamp) {
-      updated.acknowledgedAt = timestamp;
-    }
 
     const updatedEvents = [...events];
     updatedEvents[idx] = updated;

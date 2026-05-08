@@ -12,6 +12,8 @@ const budgets = {
   maxJsChunkGzBytes: 100 * 1024,   // 100KB gz per lazy chunk (spec: 200KB raw = ~100KB gz)
   maxCssChunkGzBytes: 40 * 1024,   // 40KB gz per css chunk
   totalGzBytes: 200 * 1024,         // 200KB gz total
+  maxEchartsGzBytes: 150 * 1024,
+  maxMonacoGzBytes: 200 * 1024,
   // Issue #1930 P0: spec requires FCP<1.5s and TTI<3.5s but no time-based enforcement existed.
   fcpMs: 1500,
   ttiMs: 3500,
@@ -60,6 +62,8 @@ let largestJsFile = "none";
 let largestCssGzBytes = 0;
 let largestCssFile = "none";
 let totalGzBytes = 0;
+let echartsGzBytes = 0;
+let monacoGzBytes = 0;
 
 for (const asset of jsAssets) {
   const fullPath = join(distRoot, asset.file);
@@ -67,6 +71,12 @@ for (const asset of jsAssets) {
   if (gzBytes > largestJsGzBytes) {
     largestJsGzBytes = gzBytes;
     largestJsFile = asset.file;
+  }
+  if (/echart|echarts/i.test(asset.file)) {
+    echartsGzBytes += gzBytes;
+  }
+  if (/monaco/i.test(asset.file)) {
+    monacoGzBytes += gzBytes;
   }
   totalGzBytes += gzBytes;
 }
@@ -88,6 +98,12 @@ if (largestCssGzBytes > budgets.maxCssChunkGzBytes) {
 }
 if (totalGzBytes > budgets.totalGzBytes) {
   throw new Error(`perf_budget.total_exceeded:${totalGzBytes}`);
+}
+if (echartsGzBytes > budgets.maxEchartsGzBytes) {
+  throw new Error(`perf_budget.echarts_exceeded:${echartsGzBytes}`);
+}
+if (monacoGzBytes > budgets.maxMonacoGzBytes) {
+  throw new Error(`perf_budget.monaco_exceeded:${monacoGzBytes}`);
 }
 
 // Issue #1930 P0: No FCP/TTI time enforcement existed (spec requires FCP<1.5s, TTI<3.5s).
@@ -156,6 +172,10 @@ console.log(
       budgets,
       largestJs: { file: largestJsFile, gzBytes: largestJsGzBytes },
       largestCss: { file: largestCssFile, gzBytes: largestCssGzBytes },
+      libraries: {
+        echartsGzBytes,
+        monacoGzBytes,
+      },
       totalGzBytes,
     },
     null,

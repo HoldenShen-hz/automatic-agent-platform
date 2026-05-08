@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import React from "react";
-import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-router-dom";
-import { SystemStatusBar, applyResolvedTheme, designTokens, type FeatureModule } from "@aa/ui-core";
+import { BrowserRouter, MemoryRouter, NavLink, Outlet, Route, Routes } from "react-router-dom";
+import { SystemStatusBar, applyResolvedTheme, designTokens, type FeatureModule, type FeatureSubPage } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus, useThemeState } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
@@ -31,13 +31,18 @@ export interface AuthContext {
   readonly roles: readonly string[];
 }
 
-function renderGuardedFeature(
-  features: readonly FeatureModule[],
-  path: string,
+function renderFeatureBody(Component: () => ReactElement): ReactElement {
+  return (
+    <React.Suspense fallback={<section data-testid="feature-loading-fallback">Loading feature...</section>}>
+      <Component />
+    </React.Suspense>
+  );
+}
+
+function renderGuardedFeatureFrame(
+  feature: FeatureModule,
   authContext: AuthContext | null,
 ): ReactElement {
-  const feature = features.find((candidate) => candidate.route.path === path) ?? features[0]!;
-
   // §5.1.1: Use real RBAC from auth context instead of hardcoded demoGuardContext
   const guardContext = createFeatureGuardContext({
     authenticated: authContext !== null,
@@ -64,10 +69,46 @@ function renderGuardedFeature(
   }
 
   return (
-    <React.Suspense fallback={<section data-testid="feature-loading-fallback">Loading feature...</section>}>
-      <feature.Component />
-    </React.Suspense>
+    <section style={{ display: "grid", gap: 16 }}>
+      {feature.subPages == null || feature.subPages.length === 0 ? null : (
+        <nav aria-label={`${feature.manifest.title} sections`} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <NavLink
+            end
+            style={({ isActive }) => ({
+              color: isActive ? designTokens.color.accent : designTokens.color.text,
+              textDecoration: "none",
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: `1px solid ${isActive ? designTokens.color.accent : designTokens.color.border}`,
+            })}
+            to={feature.route.path}
+          >
+            Overview
+          </NavLink>
+          {feature.subPages.map((subPage) => (
+            <NavLink
+              key={subPage.id}
+              style={({ isActive }) => ({
+                color: isActive ? designTokens.color.accent : designTokens.color.text,
+                textDecoration: "none",
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: `1px solid ${isActive ? designTokens.color.accent : designTokens.color.border}`,
+              })}
+              to={`${feature.route.path}/${subPage.path}`}
+            >
+              {subPage.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+      <Outlet />
+    </section>
   );
+}
+
+function renderSubPage(subPage: FeatureSubPage): ReactElement {
+  return renderFeatureBody(subPage.Component);
 }
 
 function AppRouter(
@@ -140,20 +181,26 @@ function AppFrame(
         )}
         <SystemStatusBar status={systemStatus} />
         <Routes>
-        {/* §4.4.1 L2-L5 nested drill-down routes */}
-        {features.map((feature) => (
-          <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path, authContext)} path={feature.route.path}>
-            {/* L3-L5 nested child routes per §4.4.1 */}
-            <Route index element={null} />
-            <Route path="evidence" element={null} />
-            <Route path="logs" element={null} />
-            <Route path="debug" element={null} />
-            <Route path="metrics" element={null} />
-            <Route path="settings" element={null} />
-          </Route>
-        ))}
-        <Route element={renderGuardedFeature(features, features[0]!.route.path, authContext)} path="*" />
-      </Routes>
+          {/* §4.4.1 L2-L5 nested drill-down routes */}
+          {features.map((feature) => (
+            <Route
+              key={feature.manifest.id}
+              element={renderGuardedFeatureFrame(feature, authContext)}
+              path={feature.route.path}
+            >
+              <Route index element={renderFeatureBody(feature.Component)} />
+              <Route path="evidence" element={null} />
+              <Route path="logs" element={null} />
+              <Route path="debug" element={null} />
+              <Route path="metrics" element={null} />
+              <Route path="settings" element={null} />
+              {feature.subPages?.map((subPage) => (
+                <Route key={subPage.id} element={renderSubPage(subPage)} path={subPage.path} />
+              ))}
+            </Route>
+          ))}
+          <Route element={renderFeatureBody(features[0]!.Component)} path="*" />
+        </Routes>
       </main>
     </div>
   );

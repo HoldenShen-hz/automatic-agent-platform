@@ -24,7 +24,7 @@ export interface PreReleaseQualityGateDecision {
 }
 
 export class PostExecutionQualityGate {
-  private readonly preReleaseGate = new PreReleaseQualityGate();
+  private readonly _preReleaseGate = new PreReleaseQualityGate();
 
   /**
    * Pre-release gate per §17.
@@ -32,7 +32,7 @@ export class PostExecutionQualityGate {
    * Called before releasing a workflow to ensure quality thresholds are met.
    */
   public preReleaseGate(request: PreReleaseQualityGateRequest): PreReleaseQualityGateDecision {
-    return this.preReleaseGate.decide(request);
+    return this._preReleaseGate.decide(request);
   }
 
   /**

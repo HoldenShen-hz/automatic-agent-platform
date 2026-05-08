@@ -10,10 +10,18 @@ export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
 export { applyResolvedTheme, darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
 
+export interface FeatureSubPage {
+  readonly id: string;
+  readonly path: string;
+  readonly label: string;
+  readonly Component: () => ReactElement;
+}
+
 export interface FeatureModule {
   readonly manifest: PlatformFeatureManifest;
   readonly route: AppRoute;
   readonly Component: () => ReactElement;
+  readonly subPages?: readonly FeatureSubPage[];
 }
 
 export function createFeatureModule(config: {
@@ -28,6 +36,7 @@ export function createFeatureModule(config: {
   apiLayer?: "A" | "B" | "C";
   summary: string;
   render?: () => ReactElement;
+  subPages?: readonly FeatureSubPage[];
 }): FeatureModule {
   const platforms = config.platforms ?? ["web", "windows", "macos", "linux", "android", "ios"];
   const Component = config.render ?? (() => (
@@ -68,6 +77,7 @@ export function createFeatureModule(config: {
       codeSplit: true,
     },
     Component: WrappedComponent,
+    ...(config.subPages == null ? {} : { subPages: config.subPages }),
   };
 }
 

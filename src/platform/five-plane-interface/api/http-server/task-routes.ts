@@ -489,7 +489,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             outputKey: "result",
             timeoutMs: 300000,
             maxAttempts: 3,
-          }],
+          }] as const,
         };
         const harnessRunId = newId("harness_run");
         const planGraphBundle = minimalWorkflowToPlanGraphBundle(minimalWorkflow, harnessRunId);

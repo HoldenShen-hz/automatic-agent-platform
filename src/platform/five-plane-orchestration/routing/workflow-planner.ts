@@ -118,7 +118,7 @@ function toAgentId(roleId: string): string {
 function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep): PlannedExecutionStep {
   return {
     nodeId: step.nodeId,
-    stepId: step.stepId,
+    stepId: step.stepId ?? step.nodeId,
     divisionId: step.divisionId ?? workflowDivisionId,
     roleId: step.roleId,
     inputKeys: step.inputKeys ?? [],

@@ -103,6 +103,7 @@ describe("feature-registry", () => {
     const settings = featureRegistry.find((f) => f.manifest.id === "settings");
     expect(settings).toBeDefined();
     expect(settings?.manifest.group).toBe("Admin");
+    expect(settings?.subPages).toHaveLength(8);
   });
 
   it("contains workers feature", () => {

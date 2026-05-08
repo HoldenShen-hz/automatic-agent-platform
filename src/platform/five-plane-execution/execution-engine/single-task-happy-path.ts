@@ -901,16 +901,16 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.nodeId,
+      stepId: step.nodeId ?? step.stepId,
     });
 
-    const validation = validateWorkflowStepOutput({ stepId: step.nodeId, outputSchemaPath: step.outputSchemaPath }, stepData);
+    const validation = validateWorkflowStepOutput({ stepId: step.stepId ?? step.nodeId ?? "", ...(step.outputSchemaPath != null && { outputSchemaPath: step.outputSchemaPath }) }, stepData);
 
     const stepProducedAt = nowIso();
     const artifact = artifactStore.writeJsonArtifact({
       taskId,
       executionId,
-      stepId: step.nodeId,
+      stepId: step.stepId ?? step.nodeId ?? null,
       kind: "workflow_step_snapshot",
       fileName: `${step.nodeId}.json`,
       content: createWorkflowStepCheckpoint({
@@ -955,7 +955,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       id: newId("step"),
       taskId,
       nodeRunId: step.nodeId,
-      stepId: step.nodeId,
+      stepId: step.stepId ?? step.nodeId,
       roleId: step.roleId,
       status: "succeeded",
       dataJson: JSON.stringify(stepData),
@@ -972,7 +972,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.nodeId,
+      stepId: step.stepId ?? step.nodeId,
     });
 
     db.transaction(() => {
@@ -1024,7 +1024,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.nodeId,
+      stepId: step.stepId ?? step.nodeId,
     });
 
     transitions.transitionTaskTerminalState({
