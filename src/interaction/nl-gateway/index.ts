@@ -13,6 +13,7 @@ import {
   type IntentConfig,
   type EntityExtractionConfig,
 } from "./nl-gateway-config-loader.js";
+import { resolveRequiredSlots } from "./slot-resolver/index.js";
 
 export {
   loadNlGatewayConfig,
@@ -88,6 +89,7 @@ export interface IntentParseResult {
   readonly context: ContextEnrichment;
   readonly securityFindings: readonly PromptInjectionFinding[];
   readonly blockedByPolicy: boolean;
+  readonly priorConversationTurns: readonly ConversationTurn[];
 }
 
 export interface RiskPreview {
@@ -137,6 +139,9 @@ export interface ContextEnrichment {
   readonly targetEnvironments: readonly string[];
   readonly requestedChannels: readonly string[];
   readonly timelineRefs: readonly string[];
+  readonly requiredSlots?: readonly string[];
+  readonly missingSlots?: readonly string[];
+  readonly resolvedSlots?: Readonly<Record<string, unknown>>;
 }
 
 export interface TaskDraft {
@@ -164,7 +169,7 @@ export interface UserConfirmationReceipt {
 }
 
 export interface TaskBuildResult {
-  readonly requestEnvelope: RequestEnvelope;
+  readonly requestEnvelope: RequestEnvelope | null;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
   readonly confirmationRequired: boolean;
@@ -173,6 +178,8 @@ export interface TaskBuildResult {
   readonly clarificationState: ClarificationState;
   readonly confirmationReceipt: UserConfirmationReceipt;
   readonly conversationState: ConversationState;
+  readonly clarificationSession: ClarificationSession | null;
+  readonly dryRunPreview?: DryRunPreview;
 }
 
 export interface LocaleConfig {
@@ -187,6 +194,32 @@ export interface CostEstimatorPort {
   estimate(divisionId?: string | null): CostEstimate;
 }
 
+export interface IntentParserLlmResult {
+  readonly intentType: DetectedIntent["intentType"];
+  readonly confidence: number;
+  readonly reasoning?: string;
+  readonly language?: string;
+}
+
+export interface IntentParserPort {
+  parseWithLlm?(input: {
+    readonly message: string;
+    readonly locale: string;
+    readonly priorConversationContext?: ConversationContext;
+  }): Promise<IntentParserLlmResult>;
+}
+
+export interface MemoryServicePort {
+  remember(input: {
+    readonly scope: string;
+    readonly content: string;
+    readonly classification?: string;
+  }): void;
+  findMemories(query: {
+    readonly scope: string;
+  }): readonly { readonly content: string }[];
+}
+
 export interface NlEntryServiceOptions {
   readonly intakeRouter?: IntakeRouter;
   readonly costEstimator?: CostEstimatorPort | null;
@@ -194,6 +227,29 @@ export interface NlEntryServiceOptions {
   readonly localeConfig?: LocaleConfig;
   readonly conversationWindowSize?: number;
   readonly nlGatewayConfig?: NlGatewayConfig;
+  readonly intentParser?: IntentParserPort;
+  readonly memoryService?: MemoryServicePort;
+}
+
+export interface ClarificationSession {
+  readonly sessionId: string;
+  readonly taskDraftId: string;
+  readonly stage: "pending_clarification";
+}
+
+export interface DryRunPreview {
+  readonly mode: "dry_run";
+  readonly blocked: boolean;
+  readonly approvalRequired: boolean;
+  readonly scope: string;
+  readonly proposedOperations: readonly string[];
+  readonly sideEffectPreview: readonly string[];
+  readonly policyChecks: readonly string[];
+  readonly proposedPayload: {
+    readonly userId: string;
+    readonly divisionId: string;
+    readonly workflowId: string;
+  };
 }
 
 const INTENT_CONFIDENCE_THRESHOLD = 0.8;
@@ -442,6 +498,21 @@ function buildClarificationQuestions(message: string, confidence: number, divisi
   return questions;
 }
 
+function buildMissingSlotQuestions(missingSlots: readonly string[]): string[] {
+  return missingSlots.map((slot) => {
+    switch (slot) {
+      case "date":
+        return "请提供日期或时间范围，例如 2026-05-01。";
+      case "environment":
+        return "请说明目标环境，例如 dev、staging 或 production。";
+      case "channel":
+        return "请说明通知渠道，例如 slack、email 或 webhook。";
+      default:
+        return `请补充必需信息：${slot}。`;
+    }
+  });
+}
+
 function detectPromptInjection(message: string): PromptInjectionFinding[] {
   return PROMPT_INJECTION_PATTERNS.flatMap((pattern) => {
     const matched = pattern.exec(message);
@@ -449,7 +520,7 @@ function detectPromptInjection(message: string): PromptInjectionFinding[] {
       return [];
     }
     return [{
-      reasonCode: "nl_gateway.prompt_injection_detected",
+      reasonCode: "harness.guardrail.prompt_injection_detected",
       severity: /reveal|show me|泄露/.test(matched[0]) ? "high" : "medium",
       blocked: true,
       matchedText: matched[0],
@@ -506,6 +577,85 @@ function buildRiskPreview(message: string, intentType: DetectedIntent["intentTyp
     reversible: !irreversible,
     sideEffects,
     approvalNeeded: critical || high || intentType === "approval_action",
+  };
+}
+
+function inferRequiredSlots(
+  message: string,
+  intentType: DetectedIntent["intentType"],
+  workflowId: string,
+): string[] {
+  const required = new Set<string>();
+  if (/(schedule|rollout|安排|排期)/i.test(message) || workflowId.includes("schedule")) {
+    required.add("date");
+  }
+  if (/(deploy|release|publish|上线|发布|生产环境|prod|production)/i.test(message)) {
+    required.add("environment");
+  }
+  if (/(notify|notification|通知|slack|email|webhook)/i.test(message)) {
+    required.add("channel");
+  }
+  if (intentType === "approval_action" && /(invoice|payment|发票|付款)/i.test(message)) {
+    required.add("date");
+  }
+  return [...required];
+}
+
+function memoryScopeFor(request: Pick<NlEntryRequest, "tenantId" | "userId">): string {
+  return `${request.tenantId}:${request.userId}:nl_gateway`;
+}
+
+function parseStoredConversationTurn(content: string): ConversationTurn | null {
+  try {
+    const parsed = JSON.parse(content) as Partial<ConversationTurn>;
+    if (
+      typeof parsed.message === "string"
+      && typeof parsed.turnNumber === "number"
+      && typeof parsed.timestamp === "string"
+      && parsed.detectedIntent != null
+    ) {
+      return parsed as ConversationTurn;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function buildDryRunPreview(input: {
+  readonly request: NlEntryRequest;
+  readonly divisionId: string;
+  readonly workflowId: string;
+  readonly riskPreview: RiskPreview;
+  readonly context: ContextEnrichment;
+}): DryRunPreview | undefined {
+  if (!input.riskPreview.approvalNeeded && input.riskPreview.overallRisk !== "critical") {
+    return undefined;
+  }
+  const environment = input.context.targetEnvironments[0] ?? "unknown";
+  const channel = input.context.requestedChannels[0] ?? null;
+  return {
+    mode: "dry_run",
+    blocked: false,
+    approvalRequired: input.riskPreview.approvalNeeded,
+    scope: `${input.divisionId}/${environment}`,
+    proposedOperations: [
+      `目标环境 ${environment}`,
+      ...(channel == null ? [] : [`结果通知渠道 ${channel}`]),
+      `执行域 ${input.divisionId}`,
+    ],
+    sideEffectPreview: input.riskPreview.sideEffects.length > 0
+      ? input.riskPreview.sideEffects
+      : ["可能影响环境配置或运行中的业务流量"],
+    policyChecks: [
+      ...(input.riskPreview.approvalNeeded ? ["approval_required"] : []),
+      ...(input.riskPreview.reversible ? ["reversible_candidate"] : ["irreversible_operation"]),
+    ],
+    proposedPayload: {
+      userId: input.request.userId,
+      divisionId: input.divisionId,
+      workflowId: input.workflowId,
+    },
   };
 }
 

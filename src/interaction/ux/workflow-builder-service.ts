@@ -192,12 +192,20 @@ function categorizeComponents(components: readonly DraggableComponent[]): Compon
   }));
 }
 
+function getTemplateStepId(step: InteractionTemplate["steps"][number], index: number): string {
+  return typeof step === "string" ? `node_${index + 1}` : step.stepId;
+}
+
+function getTemplateStepLabel(step: InteractionTemplate["steps"][number]): string {
+  return typeof step === "string" ? step : step.stepId;
+}
+
 function buildPreview(template: InteractionTemplate, steps: readonly WizardStep[]): WorkflowPreview {
   return {
     estimatedDuration: `${Math.max(1, steps.length * 5)} min`,
     estimatedCost: `$${(template.steps.length * 0.03).toFixed(2)}`,
     riskAssessment: steps.some((item) => item.completed === false) ? "needs review" : "ready",
-    stepByStepDescription: template.steps,
+    stepByStepDescription: template.steps.map((step) => getTemplateStepLabel(step)),
   };
 }
 
@@ -297,16 +305,16 @@ export class WorkflowBuilderService {
     const builder: VisualWorkflowBuilder = {
       canvas: {
         nodes: template.steps.map((step, index) => ({
-          nodeId: `node_${index + 1}`,
+          nodeId: getTemplateStepId(step, index),
           componentId: palette.flatMap((item) => item.components).find((component) =>
-            component.previewDescription.toLowerCase().includes(step.toLowerCase())
-              || component.name.toLowerCase().includes(step.toLowerCase()),
+            component.previewDescription.toLowerCase().includes(getTemplateStepLabel(step).toLowerCase())
+              || component.name.toLowerCase().includes(getTemplateStepLabel(step).toLowerCase()),
           )?.componentId ?? `template_step_${index + 1}`,
-          label: step,
+          label: getTemplateStepLabel(step),
         })),
         edges: template.steps.slice(1).map((_, index) => ({
-          fromNodeId: `node_${index + 1}`,
-          toNodeId: `node_${index + 2}`,
+          fromNodeId: getTemplateStepId(template.steps[index]!, index),
+          toNodeId: getTemplateStepId(template.steps[index + 1]!, index + 1),
         })),
       },
       componentPalette: palette,

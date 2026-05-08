@@ -44,6 +44,19 @@ export interface FencingTokenValidation {
 }
 
 /**
+ * Repository interface for fence records.
+ * Implementations may use different storage backends (SQLite, etcd, etc.)
+ */
+export interface FenceRepository {
+  getFencesForExecution(executionId: string): FenceInfo[];
+  getFencesForNode(nodeId: string): FenceInfo[];
+  get(key: string): FenceInfo | undefined;
+  set(key: string, fence: FenceInfo): void;
+  delete(key: string): boolean;
+  deleteExpired(now: Date): number;
+}
+
+/**
  * Service for generating and validating fencing tokens to prevent split-brain.
  *
  * Implements:

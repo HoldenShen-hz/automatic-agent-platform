@@ -43,6 +43,7 @@ export interface DomainOnboardingWizard {
     readonly stepId: "business_type" | "capability_setup" | "risk_setup" | "activation";
     readonly title: string;
     readonly description: string;
+    readonly emphasis?: "minimal" | "guided" | "governed";
   }[];
   readonly recommendedDomains: readonly string[];
   readonly defaultMode: PlatformMode;
@@ -202,50 +203,70 @@ export class UserPortalService implements UserPortalPort {
   }
 
   public buildDomainOnboardingWizard(description: string, context: UserPortalContext): DomainOnboardingWizard {
+    const mode = this.resolveMode(context);
     return {
       steps: [
         {
           stepId: "business_type",
           title: "选择业务类型",
-          description: "根据你的业务场景自动推荐领域模板。",
+          description: mode.mode === "solo"
+            ? "根据你的业务场景快速推荐第一个可运行模板。"
+            : "根据组织场景推荐领域模板，并标记需要协作的业务边界。",
+          emphasis: mode.mode === "solo" ? "minimal" : "guided",
         },
         {
           stepId: "capability_setup",
           title: "配置核心能力",
-          description: "勾选需要的执行能力、集成和默认工作流。",
+          description: mode.mode === "enterprise"
+            ? "按部门与环境分层配置能力、集成和默认工作流。"
+            : "勾选需要的执行能力、集成和默认工作流。",
+          emphasis: mode.mode === "solo" ? "minimal" : "guided",
         },
         {
           stepId: "risk_setup",
           title: "设置风控规则",
-          description: "确认审批方式、预算约束和默认安全边界。",
+          description: mode.mode === "solo"
+            ? "确认默认预算和基础安全边界。"
+            : "确认审批方式、预算约束和默认安全边界。",
+          emphasis: mode.mode === "enterprise" ? "governed" : "guided",
         },
         {
           stepId: "activation",
           title: "激活上线",
-          description: "创建首个 Agent 并进入看板观察运行状态。",
+          description: mode.mode === "enterprise"
+            ? "先进入受控灰度，再在多级看板中观察运行状态。"
+            : "创建首个 Agent 并进入看板观察运行状态。",
+          emphasis: mode.mode === "enterprise" ? "governed" : "guided",
         },
       ],
       recommendedDomains: this.recommendDomains(description),
-      defaultMode: this.resolveMode(context),
+      defaultMode: mode,
     };
   }
 
-  public buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[]): VisualWorkflowBuilder {
+  public buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[], context?: UserPortalContext): VisualWorkflowBuilder {
     const domains = selectedDomains != null && selectedDomains.length > 0
       ? [...selectedDomains]
       : this.recommendDomains(description);
     const primaryDomain = domains[0] ?? "general_ops";
+    const mode = context == null
+      ? null
+      : this.resolveMode(context);
+    const includeApprovalStage = mode?.features.approvalEngine === "full";
 
     return {
       canvas: {
         nodes: [
           { nodeId: "node_trigger", componentId: "manual_trigger", label: "手动触发" },
           { nodeId: "node_action", componentId: "domain_action", label: `${primaryDomain} 主动作` },
+          ...(includeApprovalStage ? [{ nodeId: "node_approval", componentId: "policy_approval", label: "审批与预算校验" }] : []),
           { nodeId: "node_output", componentId: "report_output", label: "输出结果" },
         ],
         edges: [
           { fromNodeId: "node_trigger", toNodeId: "node_action" },
-          { fromNodeId: "node_action", toNodeId: "node_output" },
+          ...(includeApprovalStage
+            ? [{ fromNodeId: "node_action", toNodeId: "node_approval" }, { fromNodeId: "node_approval", toNodeId: "node_output" }]
+            : [{ fromNodeId: "node_action", toNodeId: "node_output" }]),
         ],
       },
       componentPalette: [
@@ -275,6 +296,22 @@ export class UserPortalService implements UserPortalPort {
             previewDescription: `在 ${domainId} 域中执行核心动作。`,
           })),
         },
+        ...(includeApprovalStage
+          ? [{
+            category: "approval" as const,
+            components: [
+              {
+                componentId: "policy_approval",
+                name: "审批与预算校验",
+                icon: "shield",
+                domainId: "platform",
+                riskLevel: "high" as const,
+                configSchema: { type: "object", properties: { approverGroup: { type: "string" } } },
+                previewDescription: "在执行前校验预算、权限和审批策略。",
+              },
+            ],
+          }]
+          : []),
         {
           category: "output",
           components: [
@@ -291,12 +328,17 @@ export class UserPortalService implements UserPortalPort {
         },
       ],
       livePreview: {
-        estimatedDuration: "15m",
-        estimatedCost: "$0.20",
-        riskAssessment: domains.includes("finance") ? "中高风险，需要保留审批点" : "中等风险，可先以 supervised 模式运行",
+        estimatedDuration: includeApprovalStage ? "20m" : "15m",
+        estimatedCost: includeApprovalStage ? "$0.28" : "$0.20",
+        riskAssessment: domains.includes("finance")
+          ? "中高风险，需要保留审批点"
+          : includeApprovalStage
+            ? "组织模式要求先经过审批与预算校验"
+            : "中等风险，可先以 supervised 模式运行",
         stepByStepDescription: [
           "接收触发条件并校验输入。",
           `在 ${primaryDomain} 域执行主要业务动作。`,
+          ...(includeApprovalStage ? ["执行审批、预算和权限校验。"] : []),
           "生成交付结果并推送到用户看板。",
         ],
       },
@@ -309,14 +351,29 @@ export class UserPortalService implements UserPortalPort {
 
   private recommendDomains(description: string): string[] {
     const normalized = description.toLowerCase();
-    const recommendations = new Set<string>();
-    if (/(marketing|campaign|广告|投放|增长)/i.test(description)) recommendations.add("advertising");
-    if (/(finance|invoice|budget|财务|预算)/i.test(description)) recommendations.add("finance");
-    if (/(recruit|hire|hr|招聘|入职)/i.test(description)) recommendations.add("hr");
-    if (/(support|customer|客服|工单)/i.test(description)) recommendations.add("customer_support");
-    if (/(code|engineering|deploy|bug|代码|研发|发布)/i.test(description)) recommendations.add("engineering_ops");
-    if (recommendations.size === 0 && normalized.length > 0) recommendations.add("general_ops");
-    return [...recommendations];
+    const lexicon: Readonly<Record<string, readonly string[]>> = {
+      advertising: ["marketing", "campaign", "广告", "投放", "增长", "roi", "线索"],
+      finance: ["finance", "invoice", "budget", "财务", "预算", "付款", "发票", "工资"],
+      hr: ["recruit", "hire", "hr", "招聘", "入职", "候选人", "员工"],
+      customer_support: ["support", "customer", "客服", "工单", "ticket", "sla", "投诉"],
+      engineering_ops: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布", "生产环境", "pipeline"],
+    };
+    const scores = new Map<string, number>();
+    for (const [domainId, keywords] of Object.entries(lexicon)) {
+      let score = 0;
+      for (const keyword of keywords) {
+        if (normalized.includes(keyword.toLowerCase())) {
+          score += /(deploy|production|prod|付款|工资|预算)/i.test(keyword) ? 3 : 2;
+        }
+      }
+      if (score > 0) {
+        scores.set(domainId, score);
+      }
+    }
+    const ranked = [...scores.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .map(([domainId]) => domainId);
+    return ranked.length > 0 ? ranked : normalized.length > 0 ? ["general_ops"] : [];
   }
 
   private resolveDomainRiskLevel(domainId: string, description: string): DraggableComponent["riskLevel"] {

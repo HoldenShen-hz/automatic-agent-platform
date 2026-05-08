@@ -382,27 +382,24 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
 
 test("E2E: loop aborts when max duration exceeded", (t) => {
   // R10-38 fix: Use Date.now mocking to simulate time passage since Node.js executes
-  // too fast (<1ms) to trigger the duration guard naturally. With maxDurationMs=0,
-  // any elapsed time > 0 triggers the guard. We mock Date.now to return incrementing
-  // values so startedAt (first call) is 100 and subsequent calls return 101+,
-  // making elapsed = 1 > 0 and triggering the guard.
+  // too fast (<1ms) to trigger the duration guard. With maxDurationMs=-1, any
+  // elapsed time >= 0 triggers the guard (since elapsed is always >= 0).
+  // This works around the lack of useFakeTimers in Node.js v22.
   const originalDateNow = Date.now.bind(Date);
-  let dateNowValue = 100;
 
   Object.defineProperty(Date, 'now', {
-    get: () => () => dateNowValue++,
+    get: () => originalDateNow,
   });
 
   const harness = createE2EHarness("aa-e2e-max-dur-");
   try {
     const service = new HarnessRuntimeService();
-    // Set up constraint pack with zero duration to trigger guard immediately
+    // Set up constraint pack with -1ms duration - any elapsed time >= 0 triggers guard
+    // The guard condition is: elapsed > maxDurationMs = -1
+    // Since elapsed (durationMs) is always >= 0, we have 0 > -1 = true
     const constraintPack = createConstraintPack({
-      budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 0 },
+      budget: { maxSteps: 30, maxCost: 100, maxDurationMs: -1 },
     });
-
-    // Reset the mock value before runLoop
-    dateNowValue = 100;
 
     const runLoopResult = service.runLoop({
       taskId: "task-e2e-dur-002",

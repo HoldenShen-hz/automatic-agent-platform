@@ -45,6 +45,22 @@ interface SerializablePlan {
   readonly dependencyGraph: readonly TaskDependency[];
 }
 
+interface GoalBudgetEnvelope {
+  readonly totalBudgetUsd: number | null;
+  readonly requiresApproval: boolean;
+  readonly riskTolerance: "low" | "medium" | "high";
+}
+
+function parseGoalBudgetEnvelope(goal: Goal): GoalBudgetEnvelope {
+  const raw = [goal.description, ...goal.constraints].join(" ");
+  const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(raw);
+  return {
+    totalBudgetUsd: budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!),
+    requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(raw),
+    riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
+  };
+}
+
 export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   private readonly model: string;
   public readonly managesBudgetReservations: boolean;
@@ -78,6 +94,8 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         costTag: "goal_decomposer.llm_plan",
       });
       const parsed = this.parsePlan(response);
+      const goalBudget = parseGoalBudgetEnvelope(goal);
+      const totalEstimatedCostUsd = parsed.tasks.reduce((sum, task) => sum + task.estimatedCostUsd, 0);
       if (reservedBudget != null) {
         allocator.settle({
           ledger: reservedBudget.ledger,
@@ -101,6 +119,10 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             successCriteria: goal.successCriteria,
             constraints: goal.constraints,
             deadline: goal.deadline ?? null,
+            priority: goal.priority,
+            allocatedBudgetUsd: goalBudget.totalBudgetUsd == null
+              ? null
+              : Number(((task.estimatedCostUsd / Math.max(totalEstimatedCostUsd, task.estimatedCostUsd)) * goalBudget.totalBudgetUsd).toFixed(4)),
           },
           expectedOutputs: task.expectedOutputs,
           delegationMode: task.delegationMode,
@@ -109,8 +131,17 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
             confidence: "low",
             sampleCount: 0,
-            divisionId: null,
+            divisionId: task.domainId,
             basedOn: "default",
+          },
+          constraintEnvelope: {
+            budgetLimitUsd: goalBudget.totalBudgetUsd == null
+              ? null
+              : Number(((task.estimatedCostUsd / Math.max(totalEstimatedCostUsd, task.estimatedCostUsd)) * goalBudget.totalBudgetUsd).toFixed(4)),
+            riskTolerance: goalBudget.riskTolerance,
+            requiresApproval: goalBudget.requiresApproval || task.delegationMode !== "auto",
+            requiredPermissions: [],
+            requiredCapabilities: [task.domainId],
           },
         })),
         dependencyGraph: parsed.dependencyGraph.map((edge) => ({

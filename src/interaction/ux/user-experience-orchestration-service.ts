@@ -73,7 +73,7 @@ export class UserExperienceOrchestrationService {
         ...(builder.builder.canvas.nodes[0]?.componentId == null
           ? {}
           : { workflowId: builder.builder.canvas.nodes[0].componentId }),
-        steps: builder.template.steps,
+        steps: builder.template.steps.map((step) => typeof step === "string" ? step : step.stepId),
         validationFindings: builder.builder.validation.messages,
         ownerUserId: request.session.userId,
       },
