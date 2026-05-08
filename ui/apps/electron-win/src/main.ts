@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, Menu, Tray, nativeImage } from "electron";
+import { app, BrowserWindow, shell, ipcMain, Menu, Tray, nativeImage, globalShortcut, Notification } from "electron";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,6 +72,13 @@ export const electronBridgeCapabilities = {
 // R17-43: Export BrowserWindow instance for external access
 export let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+const secondaryWindows = new Set<BrowserWindow>();
+
+export const electronGlobalShortcuts = [
+  { accelerator: "CommandOrControl+K", action: "command-palette" },
+  { accelerator: "CommandOrControl+N", action: "new-window" },
+  { accelerator: "Shift+CommandOrControl+D", action: "diagnostics" },
+] as const;
 
 interface WindowCreateOptions {
   width?: number;
@@ -135,6 +142,35 @@ function createMainWindow(options: WindowCreateOptions = {}): BrowserWindow {
   return mainWindow;
 }
 
+export function openSecondaryWindow(routeHash = "/mission-control/dashboard"): BrowserWindow {
+  const windowHandle = new BrowserWindow({
+    width: 1180,
+    height: 760,
+    minWidth: 960,
+    minHeight: 640,
+    webPreferences: {
+      contextIsolation: electronMainBaseline.security.contextIsolation,
+      nodeIntegration: electronMainBaseline.security.nodeIntegration,
+      sandbox: electronMainBaseline.security.sandbox,
+      preload: join(currentDir, "preload.js"),
+    },
+    show: false,
+    backgroundColor: "#ffffff",
+    titleBarStyle: "default",
+    visualEffectState: "active",
+  });
+
+  secondaryWindows.add(windowHandle);
+  void windowHandle.loadFile(join(appRootDir, "index.html"), { hash: routeHash });
+  windowHandle.once("ready-to-show", () => {
+    windowHandle.show();
+  });
+  windowHandle.on("closed", () => {
+    secondaryWindows.delete(windowHandle);
+  });
+  return windowHandle;
+}
+
 function createTray(): Tray | null {
   // Create a simple tray icon (16x16 transparent image as placeholder)
   const icon = nativeImage.createEmpty();
@@ -151,6 +187,55 @@ function createTray(): Tray | null {
   tray.on("click", () => mainWindow?.show());
 
   return tray;
+}
+
+export function showPlatformNotification(title: string, body: string): boolean {
+  if (typeof Notification.isSupported === "function" && Notification.isSupported() === false) {
+    return false;
+  }
+  const notification = new Notification({ title, body });
+  notification.show();
+  return true;
+}
+
+export function configureWindowsDesktopIntegrations(): void {
+  if (typeof app.setUserTasks === "function") {
+    app.setUserTasks([
+      {
+        program: process.execPath,
+        arguments: "--open-dashboard",
+        iconPath: process.execPath,
+        iconIndex: 0,
+        title: "Open Dashboard",
+        description: "Launch the main mission control dashboard",
+      },
+      {
+        program: process.execPath,
+        arguments: "--open-command-palette",
+        iconPath: process.execPath,
+        iconIndex: 0,
+        title: "Open Command Palette",
+        description: "Open the desktop command palette",
+      },
+    ]);
+  }
+}
+
+export function registerGlobalShortcuts(): void {
+  for (const shortcut of electronGlobalShortcuts) {
+    globalShortcut.register(shortcut.accelerator, () => {
+      if (shortcut.action === "command-palette") {
+        mainWindow?.show();
+        mainWindow?.webContents.send("desktop:shortcut", { action: "command-palette" });
+        return;
+      }
+      if (shortcut.action === "new-window") {
+        openSecondaryWindow("/mission-control/dashboard");
+        return;
+      }
+      showPlatformNotification("Diagnostics", "Desktop diagnostics shortcut triggered");
+    });
+  }
 }
 
 function setupIpcHandlers(): void {
@@ -219,6 +304,9 @@ async function initializeApp(): Promise<void> {
   // Create system tray
   createTray();
 
+  configureWindowsDesktopIntegrations();
+  registerGlobalShortcuts();
+
   // Register global exception handlers
   process.on("uncaughtException", (error) => {
     console.error("Uncaught Exception:", error);
@@ -256,6 +344,7 @@ app.on("ready", () => {
 app.on("before-quit", () => {
   // Cleanup tray on quit
   tray?.destroy();
+  globalShortcut.unregisterAll();
 });
 
 // Export for testing

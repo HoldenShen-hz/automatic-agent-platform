@@ -5,6 +5,7 @@ vi.mock("electron", () => ({
     on: vi.fn(),
     whenReady: vi.fn(async () => undefined),
     quit: vi.fn(),
+    setUserTasks: vi.fn(),
   },
   BrowserWindow: Object.assign(
     vi.fn(() => ({
@@ -19,6 +20,7 @@ vi.mock("electron", () => ({
       setContentProtection: vi.fn(),
       webContents: {
         setWindowOpenHandler: vi.fn(),
+        send: vi.fn(),
       },
     })),
     {
@@ -31,6 +33,18 @@ vi.mock("electron", () => ({
   ipcMain: {
     handle: vi.fn(),
   },
+  globalShortcut: {
+    register: vi.fn(),
+    unregisterAll: vi.fn(),
+  },
+  Notification: Object.assign(
+    vi.fn(() => ({
+      show: vi.fn(),
+    })),
+    {
+      isSupported: vi.fn(() => true),
+    },
+  ),
   Menu: {
     buildFromTemplate: vi.fn(() => ({})),
   },
@@ -46,11 +60,17 @@ vi.mock("electron", () => ({
 }));
 
 import {
+  configureWindowsDesktopIntegrations,
   createMainWindow,
+  electronGlobalShortcuts,
   electronMainBaseline,
   electronBridgeCapabilities,
   isShellCommandAllowed,
+  openSecondaryWindow,
+  registerGlobalShortcuts,
+  showPlatformNotification,
 } from "../../../../../apps/electron-win/src/main";
+import { app, globalShortcut, Notification } from "electron";
 
 describe("electronMainBaseline", () => {
   it("keeps the hardened browser security baseline enabled", () => {
@@ -120,5 +140,43 @@ describe("createMainWindow", () => {
     const windowHandle = createMainWindow();
 
     expect(windowHandle.loadFile).toHaveBeenCalledWith(expect.stringContaining("index.html"));
+  });
+});
+
+describe("desktop integrations", () => {
+  it("registers the documented global shortcuts", () => {
+    registerGlobalShortcuts();
+
+    expect(globalShortcut.register).toHaveBeenCalledTimes(electronGlobalShortcuts.length);
+    expect(globalShortcut.register).toHaveBeenCalledWith("CommandOrControl+K", expect.any(Function));
+    expect(globalShortcut.register).toHaveBeenCalledWith("CommandOrControl+N", expect.any(Function));
+    expect(globalShortcut.register).toHaveBeenCalledWith("Shift+CommandOrControl+D", expect.any(Function));
+  });
+
+  it("configures Windows jump-list tasks for dashboard and command palette entrypoints", () => {
+    configureWindowsDesktopIntegrations();
+
+    expect(app.setUserTasks).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ title: "Open Dashboard" }),
+        expect.objectContaining({ title: "Open Command Palette" }),
+      ]),
+    );
+  });
+
+  it("shows a platform notification when desktop notifications are supported", () => {
+    expect(showPlatformNotification("Diagnostics", "Desktop diagnostics shortcut triggered")).toBe(true);
+    expect(Notification).toHaveBeenCalledWith({
+      title: "Diagnostics",
+      body: "Desktop diagnostics shortcut triggered",
+    });
+  });
+
+  it("opens a secondary window for multi-window desktop flows", () => {
+    const windowHandle = openSecondaryWindow("/shared/settings");
+
+    expect(windowHandle.loadFile).toHaveBeenCalledWith(expect.stringContaining("index.html"), {
+      hash: "/shared/settings",
+    });
   });
 });
