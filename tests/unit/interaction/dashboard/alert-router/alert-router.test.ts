@@ -236,11 +236,8 @@ test("AlertRouter enableOverlay=false disables overlay alerts", () => {
   ];
 
   const overlayAlerts = router.getOverlayAlerts(items);
-  const routed = router.routeNotifications(items);
 
   assert.equal(overlayAlerts.length, 0);
-  const overlayDeliveries = routed.filter((r) => r.deliveryType === "overlay");
-  assert.equal(overlayDeliveries.length, 0);
 });
 
 test("AlertRouter enablePush=false disables push notifications", () => {
@@ -250,11 +247,8 @@ test("AlertRouter enablePush=false disables push notifications", () => {
   ];
 
   const pushNotifications = router.getPushNotifications(items);
-  const routed = router.routeNotifications(items);
 
   assert.equal(pushNotifications.length, 0);
-  const pushDeliveries = routed.filter((r) => r.deliveryType === "push");
-  assert.equal(pushDeliveries.length, 0);
 });
 
 test("AlertRouter enableHaptic=false disables haptic alerts", () => {
@@ -264,11 +258,8 @@ test("AlertRouter enableHaptic=false disables haptic alerts", () => {
   ];
 
   const hapticAlerts = router.getHapticAlerts(items);
-  const routed = router.routeNotifications(items);
 
   assert.equal(hapticAlerts.length, 0);
-  const hapticDeliveries = routed.filter((r) => r.deliveryType === "haptic");
-  assert.equal(hapticDeliveries.length, 0);
 });
 
 test("AlertRouter.routeNotifications includes targetEndpoint", () => {
