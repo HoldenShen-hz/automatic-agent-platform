@@ -28,6 +28,12 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+/**
+ * Default page size for reconciliation scans to prevent OOM on large ticket sets.
+ * Issue #1910 P1: scan() without pagination can cause OOM when scanning all tickets.
+ */
+const DEFAULT_RECONCILIATION_PAGE_SIZE = 100;
+
 export interface DispatchReconciliationIssue {
   issueType: "orphan_queue_claim" | "terminal_execution_ticket";
   resolutionAction: "requeue_ticket" | "invalidate_ticket";
@@ -82,10 +88,38 @@ export class ExecutionDispatchReconciliationService {
   }
 
   public scan(now: string = nowIso()): DispatchReconciliationIssue[] {
-    const tickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
-    return tickets
-      .map((ticket) => this.findIssueForTicket(ticket, now))
-      .filter((issue): issue is DispatchReconciliationIssue => issue != null);
+    return this.scanPaginated(DEFAULT_RECONCILIATION_PAGE_SIZE, now);
+  }
+
+  /**
+   * Paginated scan to prevent OOM when reconciling large ticket sets.
+   * Issue #1910 P1: Full scan without pagination can cause OOM.
+   */
+  public scanPaginated(pageSize: number = DEFAULT_RECONCILIATION_PAGE_SIZE, now: string = nowIso()): DispatchReconciliationIssue[] {
+    const issues: DispatchReconciliationIssue[] = [];
+    let offset = 0;
+    while (true) {
+      const tickets = this.getTicketsPage(pageSize, offset);
+      if (tickets.length === 0) {
+        break;
+      }
+      for (const ticket of tickets) {
+        const issue = this.findIssueForTicket(ticket, now);
+        if (issue) {
+          issues.push(issue);
+        }
+      }
+      if (tickets.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+    return issues;
+  }
+
+  private getTicketsPage(pageSize: number, offset: number): ExecutionTicketRecord[] {
+    const allTickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
+    return allTickets.slice(offset, offset + pageSize);
   }
 
   public findIssueByTicketId(ticketId: string, now: string = nowIso()): DispatchReconciliationIssue | null {

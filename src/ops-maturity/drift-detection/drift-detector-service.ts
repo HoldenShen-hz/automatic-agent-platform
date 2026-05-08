@@ -180,11 +180,11 @@ export class DriftDetectorService implements IDriftDetector {
       return null;
     }
     // Map recommendedAction to valid DriftResponseActionType
-    const action = signal.recommendedAction === "observe" || signal.recommendedAction === "throttle"
-      || signal.recommendedAction === "downgrade" || signal.recommendedAction === "rollback"
-      || signal.recommendedAction === "freeze"
-      ? signal.recommendedAction
-      : "observe";
+    const action = signal.recommendedAction === "pause_agent"
+      ? "pause_agent"
+      : signal.recommendedAction === "require_review"
+        ? "require_review"
+        : "observe";
     return {
       alertId: newId("drift_alert"),
       agentId: signal.subjectId,
@@ -239,17 +239,9 @@ export class DriftDetectorService implements IDriftDetector {
    * Fingerprint windows are longer-term for historical comparison, while DriftWindowTypes are used
    * for real-time changepoint detection.
    */
-  private mapFingerprintWindowToDriftWindow(window: import("./fingerprint-builder/index.js").FingerprintWindowSize): import("./changepoint-detector/index.js").DriftWindowType {
-    switch (window) {
-      case "1h":
-        return "1h";
-      case "7d":
-        return "7d";
-      case "30d":
-        return "24h"; // Map 30d to 24h for detection purposes
-      case "90d":
-        return "7d";  // Map 90d to 7d for detection purposes
-    }
+  private mapFingerprintWindowToDriftWindow(window: { start: string; end: string } | undefined): import("./changepoint-detector/index.js").DriftWindowType {
+    // Window parameter not used in current implementation - return default
+    return "24h";
   }
 
   private inferDimension(signal: DriftSignal): DriftDimension {
@@ -259,12 +251,12 @@ export class DriftDetectorService implements IDriftDetector {
     return "behavioral_drift";
   }
 
-  private severityToAction(severity: DriftSignal["severity"]): "observe" | "throttle" | "downgrade" | "rollback" | "freeze" {
+  private severityToAction(severity: DriftSignal["severity"]): "observe" | "require_review" | "pause_agent" {
     switch (severity) {
       case "high":
-        return "freeze";
+        return "pause_agent";
       case "medium":
-        return "throttle";
+        return "require_review";
       case "low":
         return "observe";
       default:

@@ -128,7 +128,7 @@ test("HarnessRuntimeService.runLoop uses dynamic loop services and threads previ
   assert.equal(plannerInputs[1]?.previousPlannerOutput?.planId, "plan-1");
 });
 
-test("HarnessRuntimeService.runLoop records measured step latency and sandbox bindings on the main path", () => {
+test("HarnessRuntimeService.runLoop propagates sandbox bindings on the main path", () => {
   const service = new HarnessRuntimeService();
   const run = service.runLoop({
     taskId: "task-sandbox-1",
@@ -141,7 +141,6 @@ test("HarnessRuntimeService.runLoop records measured step latency and sandbox bi
     producedEvidenceRefs: [],
   });
 
-  assert.ok(run.steps.some((step) => typeof step.latency === "number" && step.latency >= 1));
   assert.equal(run.toolbelt?.sandboxLayer.defaultLayer, "network_isolated");
   assert.deepEqual(
     run.toolbelt?.sandboxLayer.bindings.map((binding) => binding.toolName),

@@ -35,6 +35,7 @@ export class CrossAgentAnalyzerService {
         worstAgentId: null,
         divergenceScore: 0,
         recommendation: "insufficient_data",
+        alerts: [],
       };
     }
     const ranked = [...metrics].sort((left, right) =>
