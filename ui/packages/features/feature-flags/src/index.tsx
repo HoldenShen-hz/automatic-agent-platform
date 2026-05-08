@@ -13,5 +13,6 @@ const featureFlagsFeature = createFeatureModule({
 });
 
 export default featureFlagsFeature;
+export { createFeatureFlagsMobileCards } from "./mobile";
 export { FeatureFlagsWebView } from "./web";
 export { useFeatureFlagsVm } from "./hooks";

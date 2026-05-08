@@ -98,7 +98,7 @@ function defaultOperatorActions(attentionQueue: readonly AttentionItem[]): reado
       route: hasCriticalAttention ? "/workbench/takeover" : "/workbench/tasks",
       requiredRole: hasCriticalAttention ? "admin" : "operator",
     },
-  ];
+  ] as const satisfies WorkbenchOperatorAction[];
   if (actions.some((action) => !isWorkbenchViewRoute(action.route))) {
     throw new Error("workbench.invalid_view_route");
   }

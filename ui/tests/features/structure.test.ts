@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 
 describe("feature split structure", () => {
   it("keeps every feature package aligned to web/mobile/hooks", () => {
-    const featureRoot = join(process.cwd(), "packages/features");
+    const featureRoot = join(process.cwd(), "ui/packages/features");
     const features = readdirSync(featureRoot).sort();
 
-    expect(features.length).toBe(28);
+    expect(features.length).toBe(29);
 
     for (const feature of features) {
       const base = join(featureRoot, feature, "src");

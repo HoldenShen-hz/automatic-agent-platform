@@ -47,7 +47,7 @@ describe("useTaskCockpitVm", () => {
     expect(result.current.selectedTask).toBeNull();
   });
 
-  it("calls backend mutations for claim, resume, and escalate", async () => {
+  it("calls backend mutations for claim, pause, cancel, retry, resume, and escalate", async () => {
     const { result } = renderHook(() => useTaskCockpitVm());
 
     act(() => {
@@ -56,11 +56,17 @@ describe("useTaskCockpitVm", () => {
 
     await act(async () => {
       await result.current.claimTask("platform-sre");
+      await result.current.pauseTask();
+      await result.current.cancelTask();
+      await result.current.retryTask();
       await result.current.resumeTask("supervised");
       await result.current.escalateTask("domain-admin");
     });
 
     expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { owner: "platform-sre", status: "running" });
+    expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { status: "paused", currentStep: "paused_by_operator" });
+    expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { status: "cancelled", currentStep: "cancelled_by_operator" });
+    expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { status: "queued", currentStep: "retry_requested" });
     expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { status: "running", currentStep: "supervised-resume" });
     expect(mockUpdateTask).toHaveBeenCalledWith(mockClient, "task-1", { status: "blocked", currentStep: "escalated:domain-admin" });
 

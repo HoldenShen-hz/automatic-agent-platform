@@ -93,8 +93,8 @@ export const defaultMockApiShape: MockApiShape = {
     { approvalId: "approval-1", taskId: "task-2", riskLevel: "critical", reasonSummary: "策略需要人工审批" },
   ],
   incidents: [
-    { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z" },
-    { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z" },
+    { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z", domainId: "platform" },
+    { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z", domainId: "governance" },
   ],
   workers: [
     { id: "worker-1", status: "busy", queue: "dispatch", heartbeatLagMs: 140 },

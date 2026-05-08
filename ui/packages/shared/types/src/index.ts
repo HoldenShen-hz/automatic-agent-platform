@@ -221,6 +221,7 @@ export interface IncidentDTO {
   readonly title: string;
   readonly summary: string;
   readonly createdAt: string;
+  readonly domainId?: string;
 }
 
 export interface WorkerDTO {
@@ -365,7 +366,7 @@ export interface SystemConfigDTO {
 export interface TaskDTO {
   readonly id: string;
   readonly title: string;
-  readonly status: "queued" | "running" | "blocked" | "completed" | "failed";
+  readonly status: "queued" | "running" | "paused" | "blocked" | "completed" | "failed" | "cancelled";
   readonly domainId: string;
   readonly currentStep: string;
   readonly owner?: string;

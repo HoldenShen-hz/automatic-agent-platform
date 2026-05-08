@@ -80,6 +80,20 @@ describe("useApprovalCenterVm", () => {
     });
   });
 
+  it("removes the delegated approval from the actionable queue and selects the next item", async () => {
+    const { result } = renderHook(() => useApprovalCenterVm());
+
+    await act(async () => {
+      await result.current.delegate("domain-admin");
+    });
+
+    expect(mockDelegateApproval).toHaveBeenCalledWith(mockClient, "approval-1", "domain-admin");
+    await waitFor(() => {
+      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
+      expect(result.current.selectedId).toBe("approval-2");
+    });
+  });
+
   it("restores the approval queue when an optimistic approve call fails", async () => {
     mockApproveApproval.mockRejectedValueOnce(new Error("approval-write-failed"));
     const { result } = renderHook(() => useApprovalCenterVm());

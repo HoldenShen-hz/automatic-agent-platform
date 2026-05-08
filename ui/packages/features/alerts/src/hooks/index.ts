@@ -9,12 +9,14 @@ export type IncidentSeverity = "critical" | "high" | "medium" | "low";
 
 export interface AlertFilter {
   readonly severity: IncidentSeverity | "all";
+  readonly domainId: string | "all";
   readonly timeRange: "1h" | "24h" | "7d" | "all";
 }
 
 export interface AlertsVm {
   readonly items: readonly { title: string; description: string; severity: IncidentSeverity; id: string }[];
   readonly incidents: readonly IncidentDTO[];
+  readonly availableDomains: readonly string[];
   readonly filter: AlertFilter;
   readonly setFilter: (filter: Partial<AlertFilter>) => void;
   readonly dismissAlert: (id: string) => void;
@@ -47,6 +49,9 @@ function filterIncidents(incidents: readonly IncidentDTO[], filter: AlertFilter)
     if (filter.severity !== "all" && incident.severity !== filter.severity) {
       return false;
     }
+    if (filter.domainId !== "all" && incident.domainId !== filter.domainId) {
+      return false;
+    }
     if (filter.timeRange !== "all") {
       const now = Date.now();
       const incidentTime = new Date(incident.createdAt).getTime();
@@ -62,6 +67,7 @@ function filterIncidents(incidents: readonly IncidentDTO[], filter: AlertFilter)
 export function mapAlertsToVm(incidents: readonly IncidentDTO[]): AlertsVm {
   const [filter, setFilterState] = useState<AlertFilter>({
     severity: "all",
+    domainId: "all",
     timeRange: "all",
   });
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -75,11 +81,15 @@ export function mapAlertsToVm(incidents: readonly IncidentDTO[]): AlertsVm {
   }, []);
 
   const visibleIncidents = incidents.filter((i) => !dismissedIds.has(i.id));
+  const availableDomains = Array.from(
+    new Set(visibleIncidents.map((incident) => incident.domainId).filter((value): value is string => Boolean(value))),
+  ).sort();
   const sorted = sortBySeverity(visibleIncidents);
   const filtered = filterIncidents(sorted, filter);
 
   return {
     incidents: filtered,
+    availableDomains,
     items: filtered.map((incident) => ({
       id: incident.id,
       title: `${incident.severity} · ${incident.title}`,

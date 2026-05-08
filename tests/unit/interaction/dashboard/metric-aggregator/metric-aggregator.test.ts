@@ -10,6 +10,7 @@ import test from "node:test";
 
 import {
   aggregateWindowedMetrics,
+  buildDashboardMetricsWithAggregation,
   calculateMetricTrend,
   compareSloValue,
   groupMetricsByDomain,
@@ -256,6 +257,40 @@ test("MetricAggregator.addTimeSeriesEntry adds entry to history", () => {
 
   const history = aggregator.getTimeSeriesHistory();
   assert.equal(history.length, 1);
+});
+
+test("buildDashboardMetricsWithAggregation returns window, trend, slo, and domain grouping", () => {
+  const aggregated = buildDashboardMetricsWithAggregation({
+    taskStatuses: ["done", "done", "in_progress", "failed"],
+    workflowStatuses: ["running", "paused", "completed"],
+    healthStatus: "degraded",
+    queueDepth: 6,
+    workerCount: 4,
+    p50LatencyMs: 120,
+    p99LatencyMs: 420,
+    totalCostUsd: 120,
+    budgetLimit: 400,
+    pendingApprovals: 2,
+    resolvedApprovals24h: 5,
+    alertCounts: { critical: 1, high: 2 },
+    domainMetrics: [
+      { domainId: "marketing", total: 10, done: 9, failed: 1, latencyMs: 80 },
+      { domainId: "platform", total: 4, done: 3, failed: 1, latencyMs: 240 },
+    ],
+    timeSeriesHistory: [
+      { timestamp: "2026-04-19T01:00:00.000Z", total: 10, done: 9, inProgress: 1, failed: 0, successRate: 0.9, latencyMs: 100 },
+      { timestamp: "2026-04-19T01:05:00.000Z", total: 12, done: 10, inProgress: 1, failed: 1, successRate: 0.8333, latencyMs: 200 },
+      { timestamp: "2026-04-19T01:10:00.000Z", total: 14, done: 12, inProgress: 1, failed: 1, successRate: 0.8571, latencyMs: 300 },
+      { timestamp: "2026-04-19T01:15:00.000Z", total: 16, done: 15, inProgress: 0, failed: 1, successRate: 0.9375, latencyMs: 400 },
+    ],
+  });
+
+  assert.equal(aggregated.summary.activeAgents, 1);
+  assert.equal(aggregated.windowedAggregation.totalTasks, 52);
+  assert.equal(aggregated.domainGroupedMetrics.length, 2);
+  assert.equal(aggregated.domainGroupedMetrics[0]!.domainId, "marketing");
+  assert.equal(aggregated.latencySloComparison.status, "healthy");
+  assert.ok(aggregated.successRateTrend != null);
 });
 
 test("MetricAggregator.getWindowedAggregation filters by time window", () => {

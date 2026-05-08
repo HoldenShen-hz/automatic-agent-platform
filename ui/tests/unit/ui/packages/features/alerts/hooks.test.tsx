@@ -25,6 +25,7 @@ vi.mock("@aa/shared-state", () => ({
         title: "Primary region outage",
         summary: "gateway errors",
         createdAt: "2026-05-07T08:00:00.000Z",
+        domainId: "platform",
       },
     ],
   }),
@@ -39,7 +40,7 @@ vi.mock("@aa/shared-api-client", () => ({
   resolveIncident: (...args: unknown[]) => resolveIncident(...args),
 }));
 
-import { useAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
+import { mapAlertsToVm, useAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
 
 describe("useAlertsVm", () => {
   it("wires acknowledge/mitigate/resolve actions to the incident API and refreshes incidents", async () => {
@@ -55,6 +56,40 @@ describe("useAlertsVm", () => {
     expect(startIncidentMitigation).toHaveBeenCalledWith(mockClient, "incident-1");
     expect(resolveIncident).toHaveBeenCalledWith(mockClient, "incident-1");
     expect(invalidateQueries).toHaveBeenCalledTimes(3);
+    expect(result.current.items).toHaveLength(0);
+  });
+
+  it("sorts by severity, filters by domain/time/severity, and supports dismiss", () => {
+    const { result } = renderHook(() => mapAlertsToVm([
+      {
+        id: "incident-1",
+        severity: "high",
+        title: "Queue lag",
+        summary: "lag detected",
+        createdAt: new Date().toISOString(),
+        domainId: "platform",
+      },
+      {
+        id: "incident-2",
+        severity: "critical",
+        title: "Approval outage",
+        summary: "approval blocked",
+        createdAt: new Date().toISOString(),
+        domainId: "governance",
+      },
+    ]));
+
+    expect(result.current.items.map((item) => item.id)).toEqual(["incident-2", "incident-1"]);
+    expect(result.current.availableDomains).toEqual(["governance", "platform"]);
+
+    act(() => {
+      result.current.setFilter({ severity: "critical", domainId: "governance" });
+    });
+    expect(result.current.items.map((item) => item.id)).toEqual(["incident-2"]);
+
+    act(() => {
+      result.current.dismissAlert("incident-2");
+    });
     expect(result.current.items).toHaveLength(0);
   });
 });

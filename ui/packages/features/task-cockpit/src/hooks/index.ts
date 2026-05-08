@@ -46,6 +46,9 @@ export interface TaskCockpitVm {
   readonly timelineViewer: TimelineViewerVm;
   selectTask(id: string): void;
   claimTask(operator: string): Promise<void>;
+  pauseTask(): Promise<void>;
+  cancelTask(): Promise<void>;
+  retryTask(): Promise<void>;
   resumeTask(mode: "normal" | "supervised"): Promise<void>;
   escalateTask(target: string): Promise<void>;
 }
@@ -187,6 +190,87 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     }
   }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
 
+  const pauseTask = useCallback(async (): Promise<void> => {
+    if (selectedTask == null) return;
+    setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
+    try {
+      updateSelected(
+        (task) => ({ ...task, status: "paused", currentStep: "paused_by_operator" }),
+        `Paused · ${selectedTask.title}`,
+        "Operator paused the task and preserved the current checkpoint.",
+      );
+      addTimelineEvent("checkpoint", `Paused · ${selectedTask.title}`, "Task paused by operator.");
+      await updateTask(client, selectedTask.id, {
+        status: "paused",
+        currentStep: "paused_by_operator",
+      });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
+    } finally {
+      setPendingAction(false);
+    }
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
+
+  const cancelTask = useCallback(async (): Promise<void> => {
+    if (selectedTask == null) return;
+    setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
+    try {
+      updateSelected(
+        (task) => ({ ...task, status: "cancelled", currentStep: "cancelled_by_operator" }),
+        `Cancelled · ${selectedTask.title}`,
+        "Operator cancelled the task before further side effects were committed.",
+      );
+      addTimelineEvent("transition", `Cancelled · ${selectedTask.title}`, "Task cancelled by operator.");
+      await updateTask(client, selectedTask.id, {
+        status: "cancelled",
+        currentStep: "cancelled_by_operator",
+      });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
+    } finally {
+      setPendingAction(false);
+    }
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
+
+  const retryTask = useCallback(async (): Promise<void> => {
+    if (selectedTask == null) return;
+    setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
+    try {
+      updateSelected(
+        (task) => ({ ...task, status: "queued", currentStep: "retry_requested" }),
+        `Retry Requested · ${selectedTask.title}`,
+        "Task was re-queued for another execution attempt.",
+      );
+      addTimelineEvent("update", `Retry Requested · ${selectedTask.title}`, "Task re-queued for retry.");
+      await updateTask(client, selectedTask.id, {
+        status: "queued",
+        currentStep: "retry_requested",
+      });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
+    } finally {
+      setPendingAction(false);
+    }
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
+
   const resumeTask = useCallback(async (mode: "normal" | "supervised"): Promise<void> => {
     if (selectedTask == null) return;
     setPendingAction(true);
@@ -289,6 +373,9 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       setSelectedId(id);
     },
     claimTask,
+    pauseTask,
+    cancelTask,
+    retryTask,
     resumeTask,
     escalateTask,
   };

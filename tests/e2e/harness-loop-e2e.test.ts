@@ -59,6 +59,13 @@ function assertHasTimelineEvent(
   assert.ok(found, message ?? `timeline should contain event type: ${type}`);
 }
 
+function transitionRunToRunning(service: HarnessRuntimeService, run: ReturnType<HarnessRuntimeService["createRun"]>) {
+  let current = service.transitionRunStatus(run, "admitted", "harness.admitted");
+  current = service.transitionRunStatus(current, "planning", "harness.planning_started");
+  current = service.transitionRunStatus(current, "ready", "harness.plan_ready");
+  return service.transitionRunStatus(current, "running", "harness.execution_started");
+}
+
 // ---------------------------------------------------------------------------
 // Scenario 1 & 5: runLoop() executes full workflow with all 8 timeline events
 // ---------------------------------------------------------------------------
@@ -78,6 +85,13 @@ test("E2E: runLoop executes full workflow and records all 8 HarnessTimelineEvent
       constraintPack,
       iteration: 1,
     });
+
+    assert.equal(orchestrator.planner.getCallCount(), 1, "planner should be invoked exactly once");
+    assert.equal(orchestrator.generator.getCallCount(), 1, "generator should be invoked exactly once");
+    assert.equal(orchestrator.evaluator.getCallCount(), 1, "evaluator should be invoked exactly once");
+    assert.equal(orchestrator.planner.getCapturedInputs()[0]?.taskId, "task-e2e-all-events-001");
+    assert.equal(orchestrator.generator.getCapturedInputs()[0]?.plannerOutput.planId, plannerOutput.planId);
+    assert.equal(orchestrator.evaluator.getCapturedInputs()[0]?.generatorOutput.artifact, generatorOutput.artifact);
 
     const run = service.runLoop({
       taskId: "task-e2e-all-events-001",
@@ -120,6 +134,50 @@ test("E2E: runLoop executes full workflow and records all 8 HarnessTimelineEvent
     assert.ok(stepCompletedIdx < guardrailsIdx, "step_completed should come before guardrails_evaluated");
     assert.ok(guardrailsIdx < decisionIdx, "guardrails_evaluated should come before decision_recorded");
   } finally {
+    harness.cleanup();
+  }
+});
+
+test("E2E: runLoop aborts when duration guard is exceeded during a replan loop", () => {
+  const harness = createE2EHarness("aa-e2e-duration-guard-");
+  const originalNow = Date.now;
+  let mockNow = 1_000;
+  Date.now = () => {
+    mockNow += 5;
+    return mockNow;
+  };
+  try {
+    const service = new HarnessRuntimeService();
+    const constraintPack = createConstraintPack({
+      budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 1 },
+    });
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.42, verdict: "retry" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-duration-guard-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
+
+    const run = service.runLoop({
+      taskId: "task-e2e-duration-guard-001",
+      domainId: "coding",
+      constraintPack,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
+      producedEvidenceRefs: [],
+    });
+
+    assert.equal(run.status, "aborted");
+    assert.equal(run.decision?.action, "abort");
+    assert.ok(run.decision?.reasonCodes.includes("harness.guard.max_duration_exceeded"));
+    assert.ok((run.loopMetrics?.durationMs ?? 0) > 0);
+  } finally {
+    Date.now = originalNow;
     harness.cleanup();
   }
 });
@@ -185,8 +243,7 @@ test("E2E: recover() records recovery_started event in timeline", (t) => {
     });
 
     // Transition to running state
-    run = service.transitionRunStatus(run, "admitted", "harness.test_admitted");
-    run = service.transitionRunStatus(run, "running", "harness.test_running");
+    run = transitionRunToRunning(service, run);
 
     // Append some steps
     run = service.appendStep(run, {
@@ -223,7 +280,7 @@ test("E2E: recover() can be called from terminal state and transitions to paused
       constraintPack,
     });
 
-    run = service.transitionRunStatus(run, "admitted", "harness.admitted");
+    run = transitionRunToRunning(service, run);
     run = service.transitionRunStatus(run, "completed", "harness.completed");
 
     // Recover from terminal state should transition to paused
@@ -249,8 +306,7 @@ test("E2E: resume() clears recovery state and removes pauseReason", (t) => {
       constraintPack,
     });
 
-    run = service.transitionRunStatus(run, "admitted", "harness.admitted");
-    run = service.transitionRunStatus(run, "running", "harness.running");
+    run = transitionRunToRunning(service, run);
     run = service.appendStep(run, {
       role: "planner",
       stage: "plan",
@@ -314,7 +370,7 @@ test("E2E: HITL path records hitl_requested and hitl_resolved events", (t) => {
     assert.equal(run.pauseReason, "hitl", "run should be paused for HITL");
     assert.equal(run.status, "paused", "status should be paused");
     assert.ok(run.hitlRequest, "hitlRequest should be set");
-    assert.equal(run.hitlRequest?.status, "pending", "HITL request should be pending");
+    assert.equal(run.hitlRequest?.status, "pending_approval", "HITL request should be pending");
 
     // Resolve the HITL review with approval
     const approved = service.resolveHitlReview(run, "approved", "security_operator");
@@ -435,8 +491,7 @@ test("E2E: sleep() records sleep_started event in timeline", (t) => {
       constraintPack,
     });
 
-    run = service.transitionRunStatus(run, "admitted", "harness.admitted");
-    run = service.transitionRunStatus(run, "running", "harness.running");
+    run = transitionRunToRunning(service, run);
 
     const resumeAt = new Date(Date.now() + 30_000).toISOString();
     const slept = service.sleep(run, "awaiting_external_dependency", resumeAt);
@@ -467,8 +522,7 @@ test("E2E: resume() clears sleep state and removes sleepLease", (t) => {
       constraintPack,
     });
 
-    run = service.transitionRunStatus(run, "admitted", "harness.admitted");
-    run = service.transitionRunStatus(run, "running", "harness.running");
+    run = transitionRunToRunning(service, run);
 
     const resumeAt = new Date(Date.now() + 30_000).toISOString();
     run = service.sleep(run, "waiting_for_data", resumeAt);
@@ -674,8 +728,7 @@ test("E2E: single run can emit multiple event types through lifecycle", (t) => {
     // run_created is emitted by createRun
     assertHasTimelineEvent(run.timeline, "run_created", "run_created should be in timeline");
 
-    run = service.transitionRunStatus(run, "admitted", "harness.admitted");
-    run = service.transitionRunStatus(run, "running", "harness.running");
+    run = transitionRunToRunning(service, run);
 
     // Add planner step - emits step_completed
     run = service.appendStep(run, {
@@ -723,3 +776,97 @@ test("E2E: single run can emit multiple event types through lifecycle", (t) => {
 // ---------------------------------------------------------------------------
 // End of E2E tests
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// R10-38: DurationGuard E2E Enforcement Tests
+// ---------------------------------------------------------------------------
+
+test("E2E: runLoop aborts when maxDurationMs is exceeded", async (t) => {
+  const harness = createE2EHarness("aa-e2e-duration-");
+  try {
+    const service = new HarnessRuntimeService();
+    // Use a very short duration to trigger guard - 1ms is enough since
+    // the controller records startedAt = Date.now() at construction
+    const constraintPack = createConstraintPack({
+      budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 1 },
+    });
+
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
+
+    // Wait to ensure actual time exceeds maxDurationMs
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-duration-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
+
+    const run = service.runLoop({
+      taskId: "task-e2e-duration-001",
+      domainId: "coding",
+      constraintPack,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
+      producedEvidenceRefs: [],
+    });
+
+    // Duration guard should abort the run
+    assert.equal(
+      run.status,
+      "aborted",
+      "run should be aborted when maxDurationMs is exceeded",
+    );
+    assert.equal(
+      run.decision?.reasonCode,
+      "harness.guard.max_duration_exceeded",
+      "reasonCode should be max_duration_exceeded",
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test("E2E: runLoop completes when maxDurationMs is not exceeded", async (t) => {
+  const harness = createE2EHarness("aa-e2e-duration-ok-");
+  try {
+    const service = new HarnessRuntimeService();
+    // Use a generous duration that won't be exceeded
+    const constraintPack = createConstraintPack({
+      budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
+    });
+
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-duration-ok-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
+
+    const run = service.runLoop({
+      taskId: "task-e2e-duration-ok-001",
+      domainId: "coding",
+      constraintPack,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
+      producedEvidenceRefs: [],
+    });
+
+    // Run should not abort due to duration
+    assert.ok(
+      run.status !== "aborted" || run.decision?.reasonCode !== "harness.guard.max_duration_exceeded",
+      "run should not abort due to duration when maxDurationMs is not exceeded",
+    );
+  } finally {
+    harness.cleanup();
+  }
+});

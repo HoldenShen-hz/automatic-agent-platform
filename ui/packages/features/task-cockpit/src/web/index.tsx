@@ -71,6 +71,9 @@ export function TaskCockpitWebView(): ReactElement {
               >
                 Take Over
               </button>
+              <button onClick={() => vm.pauseTask()} type="button">Pause</button>
+              <button onClick={() => vm.cancelTask()} type="button">Cancel</button>
+              <button onClick={() => vm.retryTask()} type="button">Retry</button>
               <button onClick={() => vm.resumeTask("normal")} type="button">Resume</button>
               <button onClick={() => vm.resumeTask("supervised")} type="button">Supervised Resume</button>
               <label style={{ display: "grid", gap: 4 }}>

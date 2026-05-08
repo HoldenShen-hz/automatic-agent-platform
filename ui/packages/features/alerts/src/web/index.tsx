@@ -24,6 +24,19 @@ export function AlertsWebView(): ReactElement {
             </select>
           </label>
           <label style={{ color: "var(--text-subtle)", fontSize: 12 }}>
+            Domain:
+            <select
+              value={vm.filter.domainId}
+              onChange={(e) => vm.setFilter({ domainId: (e.target as HTMLSelectElement).value })}
+              style={{ marginLeft: 8, padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border)" }}
+            >
+              <option value="all">全部</option>
+              {vm.availableDomains.map((domainId) => (
+                <option key={domainId} value={domainId}>{domainId}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ color: "var(--text-subtle)", fontSize: 12 }}>
             时间范围:
             <select
               value={vm.filter.timeRange}
@@ -58,6 +71,12 @@ export function AlertsWebView(): ReactElement {
             label: "解决告警",
             tone: "danger",
             onTrigger: (item) => item == null ? undefined : vm.resolveAlert(item.id ?? ""),
+          },
+          {
+            id: "alerts-dismiss",
+            label: "忽略当前",
+            tone: "neutral",
+            onTrigger: (item) => item == null ? undefined : vm.dismissAlert(item.id ?? ""),
           },
         ]}
       />

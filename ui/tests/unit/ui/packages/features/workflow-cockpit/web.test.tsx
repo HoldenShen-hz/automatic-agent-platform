@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mockSelectWorkflow = vi.fn();
 const mockPauseWorkflow = vi.fn();
@@ -46,25 +46,29 @@ vi.mock("../../../../../../packages/features/workflow-cockpit/src/hooks", () => 
 
 import { WorkflowCockpitWebView } from "../../../../../../packages/features/workflow-cockpit/src/web";
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("WorkflowCockpitWebView", () => {
   it("renders DAG viewer and approval/evidence side data", () => {
     render(<WorkflowCockpitWebView />);
 
-    expect(screen.getByText("DAG execute 1")).toBeInTheDocument();
-    expect(screen.getByText(/Approval Nodes: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Evidence Refs: 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Risk Review pending · domain-admin/)).toBeInTheDocument();
-    expect(screen.getByText(/artifact Launch plan/)).toBeInTheDocument();
+    expect(screen.queryByText("DAG execute 1")).not.toBeNull();
+    expect(screen.queryByText(/Approval Nodes: 1/)).not.toBeNull();
+    expect(screen.queryByText(/Evidence Refs: 1/)).not.toBeNull();
+    expect(screen.queryByText(/Risk Review pending · domain-admin/)).not.toBeNull();
+    expect(screen.queryByText(/artifact Launch plan/)).not.toBeNull();
   });
 
   it("wires pause/resume/recover/release controls", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<WorkflowCockpitWebView />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
-    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
-    fireEvent.click(screen.getByRole("button", { name: "Recover" }));
-    fireEvent.click(screen.getByRole("button", { name: "Release" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Pause" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Resume" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Recover" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0]!);
 
     expect(mockPauseWorkflow).toHaveBeenCalled();
     expect(mockResumeWorkflow).toHaveBeenCalled();

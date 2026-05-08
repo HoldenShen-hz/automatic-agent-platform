@@ -111,7 +111,21 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
     artifactKind: "quality-evaluation",
     retentionDays: 90,
   },
-  riskLevelThresholds: [],
+  // R11-05 FIX: Added default per-risk-level thresholds (§17.3).
+  // These provide configurable thresholds per risk class when no external
+  // config is loaded via loadQualityConfig(). The external config loader
+  // (quality-config-loader.ts) applies the same defaults when riskLevelThresholds
+  // is absent from config/quality/default.json.
+  riskLevelThresholds: [
+    { riskClass: "low", passThreshold: 0.4, criticalThreshold: 0.7, enforcement: "warning" },
+    { riskClass: "medium", passThreshold: 0.55, criticalThreshold: 0.8, enforcement: "blocking" },
+    { riskClass: "high", passThreshold: 0.7, criticalThreshold: 0.9, enforcement: "blocking" },
+    { riskClass: "critical", passThreshold: 0.85, criticalThreshold: 0.95, enforcement: "blocking" },
+  ],
+  // R11-05 FIX: domainThresholdOverrides remains empty by default.
+  // Per-domain overrides must be provided via external config (config/quality/default.json)
+  // when needed. The implementation correctly falls back to riskLevelThresholds
+  // or defaultPassThreshold when no domain override is present.
   domainThresholdOverrides: [],
 };
 

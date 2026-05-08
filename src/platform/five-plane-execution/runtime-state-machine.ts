@@ -192,9 +192,9 @@ const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   resuming: ["running", "failed", "aborted"],
   replanning: ["ready", "running", "failed", "aborted"],
   compensating: ["completed", "failed", "aborted"],
-  completed: [],
-  failed: [],
-  aborted: [],
+  completed: ["paused"],
+  failed: ["paused"],
+  aborted: ["paused"],
 };
 
 const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {

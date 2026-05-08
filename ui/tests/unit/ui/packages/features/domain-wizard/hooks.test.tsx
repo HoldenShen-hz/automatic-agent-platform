@@ -49,4 +49,25 @@ describe("useDomainWizardVm", () => {
     expect(alertSpy).toHaveBeenCalled();
     expect(localStorage.getItem("aa-domain-wizard-draft")).toBeNull();
   });
+
+  it("exposes multi-step navigation and capability/risk controls", () => {
+    const { result } = renderHook(() => useDomainWizardVm());
+
+    expect(result.current.steps.map((step) => step.id)).toEqual([
+      "domain-select",
+      "risk-profile",
+      "capability-config",
+      "review",
+    ]);
+
+    act(() => {
+      result.current.setCurrentStep("risk-profile");
+      result.current.riskProfile.setRiskLevel("critical");
+      result.current.capabilityConfig.setAllowedDrillDepth(5);
+    });
+
+    expect(result.current.currentStep).toBe("risk-profile");
+    expect(result.current.riskProfile.riskLevel).toBe("critical");
+    expect(result.current.capabilityConfig.allowedDrillDepth).toBe(5);
+  });
 });

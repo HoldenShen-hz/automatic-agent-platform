@@ -117,7 +117,13 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
   const delegate = useCallback(async (target: string): Promise<void> => {
     if (selectedApproval == null) return;
     setPendingAction(true);
+    const previousApprovals = approvals;
+    const previousSelectedId = selectedId;
+    const previousActionHistory = actionHistory;
+    const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
     try {
+      setApprovals(nextApprovals);
+      resolveNextSelection(nextApprovals);
       await delegateApproval(client, selectedApproval.approvalId, target);
       setActionHistory((history) => [
         {
@@ -126,10 +132,15 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
         },
         ...history,
       ]);
+    } catch (error) {
+      setApprovals(previousApprovals);
+      setSelectedId(previousSelectedId);
+      setActionHistory(previousActionHistory);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedApproval]);
+  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
 
   const requestMoreContext = useCallback(async (): Promise<void> => {
     // §4.6.2: request_more_context action - asks the execution engine for additional context
