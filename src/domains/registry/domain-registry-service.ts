@@ -38,7 +38,7 @@ export class DomainRegistryService {
 
   public register(input: DomainDefinition): DomainDefinition {
     const parsed = DomainDefinitionSchema.parse(input);
-    const normalized = parsed.status === "validated"
+    const normalized = parsed.status === "draft" || parsed.status === "validated"
       ? { ...parsed, status: "registered" as const }
       : parsed;
     const normalizedBindings = normalized.pluginBindings.map((binding, index) =>
@@ -48,6 +48,9 @@ export class DomainRegistryService {
       ...normalized,
       pluginBindings: normalizedBindings,
     };
+    if (this.registry.has(normalizedDefinition.domainId)) {
+      throw this.validationError("domain_registry.duplicate_domain", "Domain ID is already registered.");
+    }
     this.validateDefinition(normalizedDefinition);
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
@@ -71,9 +74,9 @@ export class DomainRegistryService {
     return this.smokeTests.run(definition);
   }
 
-  public activate(domainId: string): DomainDefinition {
+  public activate(domainId: string, allowLegacyCanary = false): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (current.status !== "registered") {
+    if (current.status !== "registered" && !(allowLegacyCanary && current.status === "updating")) {
       throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
         category: "validation",
         source: "internal",
@@ -103,10 +106,97 @@ export class DomainRegistryService {
     return updated;
   }
 
+  public updating(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "active") {
+      throw new ValidationError("domain_registry.invalid_updating_state", "Domains can only enter updating from active state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "updating" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      eventType: "domain:updating",
+      payload: {
+        domainId,
+        status: "updating",
+        capabilityCount: updated.pluginBindings.length,
+        pluginCount: updated.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
+  public completeUpdate(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "updating") {
+      throw new ValidationError("domain_registry.invalid_complete_update_state", "Domains can only complete update from updating state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const smoke = this.smokeTests.run(current);
+    if (!smoke.passed) {
+      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during update completion.", {
+        category: "validation",
+        source: "internal",
+        details: { issues: smoke.issues },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "active" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      eventType: "domain:updated",
+      payload: {
+        domainId,
+        status: "active",
+        capabilityCount: updated.pluginBindings.length,
+        pluginCount: updated.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
   public deprecate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
+    if (current.status !== "active") {
+      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only deprecate from active state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
     const updated: DomainDefinition = { ...current, status: "deprecated" };
     this.registry.set(domainId, updated);
+    return updated;
+  }
+
+  public archive(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "deprecated") {
+      throw new ValidationError("domain_registry.invalid_archive_state", "Domains can only archive from deprecated state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "archived" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      eventType: "domain:archived",
+      payload: {
+        domainId,
+        status: "archived",
+        capabilityCount: updated.pluginBindings.length,
+        pluginCount: updated.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
     return updated;
   }
 
@@ -226,6 +316,13 @@ export class DomainRegistryService {
         }
         stepNames.add(step.stepName);
       }
+      for (const step of workflow.steps) {
+        for (const dependency of step.dependsOn) {
+          if (!stepNames.has(dependency)) {
+            throw this.validationError("domain_registry.invalid_dependency", "Workflow step dependencies must reference existing steps.");
+          }
+        }
+      }
     }
 
     for (const bundle of parsed.toolBundles) {
@@ -250,6 +347,9 @@ export class DomainRegistryService {
         if (registryRecord.manifest.domainIds.length > 0 && !registryRecord.manifest.domainIds.includes(parsed.domainId)) {
           throw this.validationError("domain_registry.plugin_domain_not_allowed", "Plugin manifest does not allow the registered domain.");
         }
+        continue;
+      }
+      if (this.installedPluginIds.size === 0 && this.healthyPluginIds.size === 0 && this.pluginRegistry == null) {
         continue;
       }
       if (!this.installedPluginIds.has(binding.pluginId)) {

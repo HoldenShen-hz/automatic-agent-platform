@@ -180,23 +180,83 @@ export class DashboardProjectionService {
     const tasksByStatus = new Map<string, number>();
     const incidentsByPriority = new Map<string, number>();
 
+    // KPI accumulators
+    let completedCount = 0;
+    let failedCount = 0;
+    let totalDurationMs = 0;
+    let activeAgentCount = 0;
+    let pendingQueueCount = 0;
+    const latencySamples: number[] = [];
+    let budgetCurrentUsd = 0;
+    let budgetLimitUsd = 0;
+
     for (const projection of projections) {
+      const state = projection.state as Record<string, unknown>;
       switch (projection.projectionName) {
         case "task_summary":
           taskCount++;
-          const status = String(projection.state.taskStatus ?? "unknown");
+          const status = String(state.taskStatus ?? "unknown");
           tasksByStatus.set(status, (tasksByStatus.get(status) ?? 0) + 1);
+          // KPI: success/failure counts
+          if (status === "completed" || status === "done") {
+            completedCount++;
+            if (typeof state.durationMs === "number") {
+              totalDurationMs += state.durationMs;
+            }
+            if (typeof state.latencyMs === "number") {
+              latencySamples.push(state.latencyMs);
+            }
+          } else if (status === "failed") {
+            failedCount++;
+          }
           break;
         case "incident_summary":
           incidentCount++;
-          const priority = String(projection.state.priority ?? "normal");
+          const priority = String(state.priority ?? "normal");
           incidentsByPriority.set(priority, (incidentsByPriority.get(priority) ?? 0) + 1);
           break;
         case "workflow_summary":
           workflowCount++;
           break;
+        case "worker_status_projection":
+          // KPI: active agents (workers with status "active" or "claiming")
+          if (state.status === "active" || state.status === "claiming") {
+            activeAgentCount++;
+          }
+          break;
+        case "dispatch_projection":
+          // KPI: queue depth (pending dispatch tickets)
+          if (state.status === "pending") {
+            pendingQueueCount++;
+          }
+          break;
+        case "cost_dashboard":
+          // KPI: budget utilization
+          if (typeof state.currentCostUsd === "number") {
+            budgetCurrentUsd += state.currentCostUsd;
+          }
+          if (typeof state.limitUsd === "number") {
+            budgetLimitUsd += state.limitUsd;
+          }
+          break;
       }
     }
+
+    // Compute derived KPIs
+    const totalTerminalCount = completedCount + failedCount;
+    const successRate = totalTerminalCount > 0 ? completedCount / totalTerminalCount : 0;
+    const errorRate = totalTerminalCount > 0 ? failedCount / totalTerminalCount : 0;
+    const avgDurationMs = completedCount > 0 ? totalDurationMs / completedCount : 0;
+    const budgetUtilizationPercent = budgetLimitUsd > 0 ? (budgetCurrentUsd / budgetLimitUsd) * 100 : 0;
+
+    // Compute latency percentiles
+    const sortedLatencies = [...latencySamples].sort((a, b) => a - b);
+    const p50LatencyMs = sortedLatencies.length > 0
+      ? sortedLatencies[Math.floor(sortedLatencies.length * 0.5)] ?? 0
+      : 0;
+    const p99LatencyMs = sortedLatencies.length > 0
+      ? sortedLatencies[Math.min(Math.floor(sortedLatencies.length * 0.99), sortedLatencies.length - 1)] ?? 0
+      : 0;
 
     return {
       totalTasks: taskCount,
@@ -205,6 +265,15 @@ export class DashboardProjectionService {
       incidentsByPriority: Object.fromEntries(incidentsByPriority),
       totalWorkflows: workflowCount,
       lastUpdatedAt: nowIso(),
+      // KPI fields
+      successRate: Math.round(successRate * 100) / 100,
+      avgDurationMs: Math.round(avgDurationMs),
+      activeAgents: activeAgentCount,
+      queueDepth: pendingQueueCount,
+      errorRate: Math.round(errorRate * 100) / 100,
+      p50LatencyMs: Math.round(p50LatencyMs),
+      p99LatencyMs: Math.round(p99LatencyMs),
+      budgetUtilizationPercent: Math.round(budgetUtilizationPercent * 100) / 100,
     };
   }
 
@@ -368,6 +437,15 @@ export interface DashboardProjectionState {
   readonly incidentsByPriority: Record<string, number>;
   readonly totalWorkflows: number;
   readonly lastUpdatedAt: string;
+  // KPI fields
+  readonly successRate: number;
+  readonly avgDurationMs: number;
+  readonly activeAgents: number;
+  readonly queueDepth: number;
+  readonly errorRate: number;
+  readonly p50LatencyMs: number;
+  readonly p99LatencyMs: number;
+  readonly budgetUtilizationPercent: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

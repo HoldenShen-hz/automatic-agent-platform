@@ -1,3 +1,5 @@
+import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+
 export interface ConfigDriftSource {
   readonly sourceName: "defaults" | "environment" | "runtime" | "run_version_lock";
   readonly values: Readonly<Record<string, string | number | boolean>>;
@@ -18,7 +20,20 @@ export interface ConfigDriftReport {
   readonly blocking: boolean;
 }
 
+export interface ConfigDriftReconcilerOptions {
+  readonly eventBus?: DurableEventBus | null;
+  readonly emitIncidents?: boolean;
+}
+
 export class ConfigDriftReconciler {
+  private readonly eventBus: DurableEventBus | null;
+  private readonly emitIncidents: boolean;
+
+  public constructor(options: ConfigDriftReconcilerOptions = {}) {
+    this.eventBus = options.eventBus ?? null;
+    this.emitIncidents = options.emitIncidents ?? true;
+  }
+
   public reconcile(input: {
     readonly baseline: ConfigDriftSource;
     readonly observed: readonly ConfigDriftSource[];
@@ -43,11 +58,42 @@ export class ConfigDriftReconciler {
       }
     }
 
-    return {
+    const report: ConfigDriftReport = {
       generatedAt: input.generatedAt,
       baselineSource: input.baseline.sourceName,
       findings,
       blocking: findings.some((finding) => finding.severity === "blocking"),
     };
+
+    this.emitDriftDetected(report, input.observed);
+
+    return report;
+  }
+
+  private emitDriftDetected(
+    report: ConfigDriftReport,
+    observed: readonly ConfigDriftSource[],
+  ): void {
+    if (!this.emitIncidents || this.eventBus == null || report.findings.length === 0) {
+      return;
+    }
+
+    this.eventBus.publish({
+      eventType: "config.drift_detected",
+      payload: {
+        generatedAt: report.generatedAt,
+        baselineSource: report.baselineSource,
+        observedSources: observed.map((source) => source.sourceName),
+        blocking: report.blocking,
+        findingCount: report.findings.length,
+        findings: report.findings.map((finding) => ({
+          key: finding.key,
+          expectedValue: finding.expectedValue,
+          observedValue: finding.observedValue,
+          observedSource: finding.observedSource,
+          severity: finding.severity,
+        })),
+      },
+    });
   }
 }

@@ -11,6 +11,8 @@ import { checkSandboxPath, type SandboxPolicy } from "../iam/sandbox-policy.js";
 export interface ModelProviderMetadata {
   status: "active" | "degraded" | "disabled" | "deprecated";
   authMethods: string[];
+  region?: string;
+  latencyP99Ms?: number;
 }
 
 /**
@@ -28,6 +30,11 @@ export interface ModelProfileMetadata {
     outputPer1kUsd: number;
   };
   metadataSource: "bundled_snapshot" | "local_override" | "remote_refresh";
+  region?: string;
+  latencyP99Ms?: number;
+  piiSafe?: boolean;
+  trainingOptOutSupported?: boolean;
+  judgeIndependent?: boolean;
 }
 
 /**

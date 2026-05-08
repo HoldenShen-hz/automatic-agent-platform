@@ -379,27 +379,27 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
 });
 
 test("E2E: loop aborts when max duration exceeded", (t) => {
+  // R10-38 fix: Use fake timers to simulate time passage since Node.js executes too fast (<1ms)
+  // to trigger the duration guard in real time. With useFakeTimers(), we set initial time to 0
+  // (captured as startedAt), then advance time to 100ms before the guard check runs, so
+  // elapsed = 100 - 0 = 100ms > maxDurationMs=0, triggering the guard.
+  t.mock.timers.useFakeTimers({ shouldAdvanceTime: false });
+
   const harness = createE2EHarness("aa-e2e-max-dur-");
   try {
     const service = new HarnessRuntimeService();
-    // Set up constraint pack with very short duration
+    // Set up constraint pack with zero duration to trigger guard immediately
     const constraintPack = createConstraintPack({
-      budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 1 },
+      budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 0 },
     });
 
-    // Create a run and simulate it started in the past (beyond maxDuration)
-    const startedInPast = Date.now() - 100;
-    let run = service.createRun({
-      taskId: "task-e2e-dur-001",
-      domainId: "coding",
-      constraintPack,
-    });
+    // Set initial time to 0 - this will be captured as startedAt inside runLoop
+    t.mock.timers.setSystemTime(0);
 
-    // Manually advance time in the run by using the loop controller with initial state
-    const loopController = new HarnessLoopController(constraintPack, {}, { startedAt: startedInPast });
-    loopController.recordIteration();
+    // Use runLoop which will start with startedAt=0, then advance time to 100ms
+    // The duration check will see elapsed=100ms > maxDurationMs=0
+    t.mock.timers.setSystemTime(100);
 
-    // Use runLoop which will start with the current timestamp and immediately see duration exceeded
     const runLoopResult = service.runLoop({
       taskId: "task-e2e-dur-002",
       domainId: "coding",
@@ -411,12 +411,15 @@ test("E2E: loop aborts when max duration exceeded", (t) => {
       producedEvidenceRefs: [],
     });
 
-    // The runLoop starts fresh, so duration guard may not trigger immediately
-    // But guardrails may still cause abort
-    assert.ok(runLoopResult.status === "completed" || runLoopResult.status === "aborted");
+    // Verify the run aborts due to duration guard
+    assert.equal(runLoopResult.status, "aborted", "run should abort when max duration exceeded");
     assert.ok(runLoopResult.decision, "decision should be present");
+    assert.equal(runLoopResult.decision?.action, "abort", "decision action should be abort");
+    assert.equal(runLoopResult.decision?.reasonCode, "harness.guard.max_duration_exceeded", "reasonCode should be harness.guard.max_duration_exceeded");
+    assert.ok(runLoopResult.completedAt, "completedAt should be set for aborted run");
   } finally {
     harness.cleanup();
+    t.mock.timers.reset();
   }
 });
 

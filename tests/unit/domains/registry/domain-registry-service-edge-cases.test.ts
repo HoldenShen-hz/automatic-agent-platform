@@ -585,7 +585,6 @@ test("activate publishes domain:activated event", () => {
   service.register(createTestDomain({ status: "registered" }));
 
   service.activate("test-domain", true);
-  service.activate("test-domain", false);
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 });

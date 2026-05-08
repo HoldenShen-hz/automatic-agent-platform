@@ -58,6 +58,7 @@ export type OperatorActionType =
 export interface ExtendedDeadLetterRecord {
   deadLetterId: string;
   sourceEventId: string;
+  eventType: string;
   consumerId: string;
   errorCode: string;
   errorMessage: string | null;
@@ -70,12 +71,20 @@ export interface ExtendedDeadLetterRecord {
   updatedAt: string;
   /** Original timestamp when the failed event occurred */
   originalTimestamp: string | null;
+  /** Timestamp when the first failure occurred */
+  firstFailedAt: string | null;
+  /** Timestamp when the most recent failure occurred */
+  lastFailedAt: string | null;
+  /** Timestamp of the most recent retry attempt */
+  lastAttemptAt: string | null;
   /** Category classification for the failure */
   failureCategory: FailureCategory | null;
   /** Reason description for operator visibility */
   reason: string | null;
   /** Timestamp when all retries were exhausted */
   retryExhaustedAt: string | null;
+  /** Linked incident ID for correlation */
+  linkedIncidentId: string | null;
   /** Operator action log for audit trail */
   operatorActionLog: OperatorActionRecord[];
 }
@@ -93,6 +102,18 @@ export interface DlqSummary {
   pendingConsumers: string[];
   maxRetryCount: number;
   oldestPendingAt: string | null;
+}
+
+/**
+ * Repository interface for DLQ persistence
+ */
+export interface DlqRepository {
+  insert(record: ExtendedDeadLetterRecord): void;
+  findById(deadLetterId: string): ExtendedDeadLetterRecord | null;
+  update(record: ExtendedDeadLetterRecord): void;
+  listAll(): ExtendedDeadLetterRecord[];
+  listByConsumer(consumerId: string): ExtendedDeadLetterRecord[];
+  listRetryable(asOf: string): ExtendedDeadLetterRecord[];
 }
 
 /**
@@ -116,6 +137,7 @@ export class DlqService {
    */
   public enqueue(input: {
     sourceEventId: string;
+    eventType: string;
     consumerId: string;
     errorCode: string;
     errorMessage?: string | null;
@@ -128,6 +150,7 @@ export class DlqService {
     const record: ExtendedDeadLetterRecord = {
       deadLetterId: newId("dlq"),
       sourceEventId: input.sourceEventId,
+      eventType: input.eventType,
       consumerId: input.consumerId,
       errorCode: input.errorCode,
       errorMessage: input.errorMessage ?? null,
@@ -139,9 +162,13 @@ export class DlqService {
       createdAt: now,
       updatedAt: now,
       originalTimestamp: input.originalTimestamp ?? null,
+      firstFailedAt: now,
+      lastFailedAt: now,
+      lastAttemptAt: null,
       failureCategory: input.failureCategory ?? null,
       reason: input.reason ?? null,
       retryExhaustedAt: null,
+      linkedIncidentId: null,
       operatorActionLog: [],
     };
     this.records.set(record.deadLetterId, record);
@@ -168,6 +195,8 @@ export class DlqService {
       status: "retrying",
       retryCount: record.retryCount + 1,
       nextRetryAt,
+      lastFailedAt: now,
+      lastAttemptAt: now,
       updatedAt: now,
     };
     this.records.set(deadLetterId, updated);

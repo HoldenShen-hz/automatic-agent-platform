@@ -63,8 +63,8 @@ function main(): void {
 
     // Contract version validation if provided
     if (opts.contractVersion) {
-      const minVersion = validated.sdk_release?.platform_min_version ?? "0.0.0";
-      const maxVersion = validated.sdk_release?.platform_max_version ?? "999.999.999";
+      const minVersion = validated.platform_min_version ?? "0.0.0";
+      const maxVersion = validated.platform_max_version ?? "999.999.999";
       const contractMajor = minVersion.split(".").map(Number)[0] ?? 0;
       const minMajor = minVersion.split(".").map(Number)[0] ?? 0;
       const maxMajor = maxVersion.split(".").map(Number)[0] ?? 999;
@@ -78,7 +78,7 @@ function main(): void {
     }
 
     // SDK semver check
-    if (!validated.sdk_release?.sdk_semver) {
+    if (!validated.sdk_semver) {
       if (opts.strict) {
         result.valid = false;
         result.errors.push("missing_field:sdk_semver");
@@ -88,7 +88,7 @@ function main(): void {
     }
 
     // Contract test generator check
-    if (!validated.sdk_release?.contract_test_generator) {
+    if (!validated.contract_test_generator) {
       result.warnings.push("missing_optional_field:contract_test_generator");
     }
 

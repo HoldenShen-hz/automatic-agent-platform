@@ -47,6 +47,12 @@ import {
   delegationAuditService,
 } from "./delegation-audit-service.js";
 
+// Extended options interface that includes service dependencies
+interface DelegationManagerOptions extends DelegationOptions {
+  governanceService?: DelegationGovernanceService;
+  auditService?: DelegationAuditService;
+}
+
 export interface DelegationExpirationConfig {
   checkIntervalMs?: number;
   batchSize?: number;
@@ -99,7 +105,7 @@ export class DelegationManagerService {
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
-  public constructor(options: DelegationOptions = {}, delegationRepository?: DelegationRepository, eventRepository?: DelegationEventRepository) {
+  public constructor(options: DelegationManagerOptions = {}, delegationRepository?: DelegationRepository, eventRepository?: DelegationEventRepository) {
     const config: TopologyValidatorConfig = {
       maxDepth: options.maxDepth ?? options.maxDelegationDepth ?? DEFAULT_MAX_DEPTH,
       maxFanout: options.maxFanout ?? 10,
@@ -439,17 +445,10 @@ export class DelegationManagerService {
 
   public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
     const delegation = this.requireDelegation(delegationId);
-    const capabilityIntersection = this.buildAcpCapabilityIntersection(delegation.permissions);
     const validation = this.collaborationProtocol.validateAndSend(
       this.collaborationProtocol.createMessage("completion_report", {
         correlation_id: delegationId,
         parent_run_id: delegationId,
-        delegationId: delegation.delegationId,
-        childRunId: delegation.childAgentId,
-        capabilityIntersection,
-        budgetCap: delegation.permissions.constraints.maxTokens ?? delegation.permissions.constraints.maxDurationMs ?? 0,
-        dataBoundary: delegation.data_class ?? "delegation",
-        deadline: delegation.expiresAt,
         depth: delegation.depth,
         sender_agent_id: delegation.childAgentId,
         receiver_agent_id: delegation.parentAgentId,
@@ -1141,7 +1140,7 @@ export class DelegationManagerService {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function createDelegationManager(
-  options?: DelegationOptions,
+  options?: DelegationManagerOptions,
   delegationRepository?: DelegationRepository,
   eventRepository?: DelegationEventRepository,
 ): DelegationManagerService {

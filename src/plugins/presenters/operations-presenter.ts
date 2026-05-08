@@ -7,17 +7,17 @@
  * §G8: Operations domain — formats for "operator" and "reviewer" audiences.
  */
 
-import type { DomainPresenterPlugin, HumanOutput } from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput, MachineOutput } from "../../domains/registry/plugin-spi.js";
 
-function formatIncident(output: { stepId: string; payload: Record<string, unknown> }): string {
+function formatIncident(output: MachineOutput): string {
   const severity = output.payload["severity"] as string ?? "unknown";
   const system = output.payload["system"] as string ?? "unknown";
   const description = output.payload["description"] as string ?? "No description provided.";
   return `## [${severity.toUpperCase()}] ${system}\n\n${description}`;
 }
 
-function formatRunbook(output: { stepId: string; payload: Record<string, unknown> }): string {
-  const title = output.payload["title"] as string ?? output.stepId;
+function formatRunbook(output: MachineOutput): string {
+  const title = output.payload["title"] as string ?? output.stepId ?? output.nodeId ?? "unknown";
   const steps = (output.payload["steps"] as string[]) ?? [];
   return [
     `## ${title}`,
@@ -49,13 +49,13 @@ export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
         const type = output.payload["type"] as string ?? "generic";
         if (type === "incident") {
           sections.push(formatIncident(output));
-          citations.push(output.outputRef ?? output.stepId);
+          citations.push(output.outputRef ?? output.stepId ?? output.nodeId ?? "unknown");
         } else if (type === "runbook") {
           sections.push(formatRunbook(output));
-          citations.push(output.outputRef ?? output.stepId);
+          citations.push(output.outputRef ?? output.stepId ?? output.nodeId ?? "unknown");
         } else {
           sections.push(
-            `### ${output.stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
+            `### ${output.stepId ?? output.nodeId ?? "unknown"}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
           );
         }
       }

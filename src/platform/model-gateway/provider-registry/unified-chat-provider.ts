@@ -19,6 +19,7 @@ import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../state-evidence/knowledge/indexing/embedding-provider.js";
+import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../control-plane/config-center/model-metadata-registry.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -40,6 +41,7 @@ export interface ChatCompletionUsage {
 
 export interface ChatCompletionResult {
   id: string;
+  requestId: string;
   content: string;
   refusal: string | null;
   reasoningContent: string | null;
@@ -51,6 +53,8 @@ export interface ChatCompletionResult {
     function: { name: string; arguments: string };
   }>;
   usage: ChatCompletionUsage;
+  estimatedCostUsd: number | null;
+  latencyMs: number;
   model: string;
   provider: string;
 }
@@ -66,9 +70,11 @@ export interface ChatCompletionRequest {
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
   traceId?: string;
+  spanId?: string;
   tenantId?: string | null;
   principalId?: string | null;
   costTag?: string;
+  timeoutMs?: number;
   abortSignal?: AbortSignal;
   validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
   /** Policy outcome for audit logging per §11.1-11.2 */
@@ -85,6 +91,7 @@ export interface CompletionOptions {
   tenantId?: string | null;
   principalId?: string | null;
   costTag?: string;
+  timeoutMs?: number;
   abortSignal?: AbortSignal;
   policyOutcome?: "approved" | "denied" | "flagged" | null;
 }
@@ -272,6 +279,10 @@ export class UnifiedChatProvider {
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
+    const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
+    const runtimeRequest = runtimeSignal === request.abortSignal
+      ? request
+      : { ...request, abortSignal: runtimeSignal };
 
     // Audit logging per §11.1-11.2: log principal/tenantId/policyOutcome for all LLM calls
     const logger_1 = new StructuredLogger({ retentionLimit: 100 });
@@ -282,6 +293,7 @@ export class UnifiedChatProvider {
       principalId: request.principalId,
       policyOutcome: request.policyOutcome,
       traceId: request.traceId,
+      spanId: request.spanId,
     });
 
     let result: ChatCompletionResult;
@@ -289,25 +301,25 @@ export class UnifiedChatProvider {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
         const chatResult = breaker
-          ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(request)))
-          : await anthropicService.createChatCompletion(this.toAnthropicRequest(request));
-        result = this.normalizeAnthropicResult(chatResult, provider);
+          ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest)))
+          : await anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest));
+        result = this.normalizeAnthropicResult(chatResult, provider, request.model, Date.now() - startedAt);
         break;
       }
       case "openai": {
         const openaiService = service as OpenAIChatService;
         const chatResult = breaker
-          ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(request)))
-          : await openaiService.createChatCompletion(this.toOpenAIRequest(request));
-        result = this.normalizeOpenAIResult(chatResult, provider);
+          ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest)))
+          : await openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest));
+        result = this.normalizeOpenAIResult(chatResult, provider, request.model, Date.now() - startedAt);
         break;
       }
       case "minimax": {
         const minimaxService = service as MiniMaxChatService;
         const chatResult = breaker
-          ? await breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(request)))
-          : await minimaxService.createChatCompletion(this.toMiniMaxRequest(request));
-        result = this.normalizeMiniMaxResult(chatResult, provider);
+          ? await breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
+          : await minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
+        result = this.normalizeMiniMaxResult(chatResult, provider, request.model, Date.now() - startedAt);
         break;
       }
     }
@@ -328,42 +340,62 @@ export class UnifiedChatProvider {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
+    const breaker = this.breakers.get(provider);
+    const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
+    const runtimeRequest = runtimeSignal === request.abortSignal
+      ? request
+      : { ...request, abortSignal: runtimeSignal };
 
     switch (provider) {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
-        await anthropicService.createStreamingChatCompletion(
-          this.toAnthropicRequest(request),
+        const runStreaming = () => anthropicService.createStreamingChatCompletion(
+          this.toAnthropicRequest(runtimeRequest),
           (chunk, isFinal) => {
-            const normalized = this.normalizeAnthropicResult(chunk, provider);
+            const normalized = this.normalizeAnthropicResult(chunk, provider, request.model, 0);
             request.validatePartialChunk?.(normalized, isFinal);
             onChunk(normalized, isFinal);
           },
         );
+        if (breaker != null) {
+          await breaker.execute(runStreaming);
+        } else {
+          await runStreaming();
+        }
         return;
       }
       case "openai": {
         const openaiService = service as OpenAIChatService;
-        await openaiService.createStreamingChatCompletion(
-          this.toOpenAIRequest(request),
+        const runStreaming = () => openaiService.createStreamingChatCompletion(
+          this.toOpenAIRequest(runtimeRequest),
           (chunk, isFinal) => {
-            const normalized = this.normalizeOpenAIResult(chunk, provider);
+            const normalized = this.normalizeOpenAIResult(chunk, provider, request.model, 0);
             request.validatePartialChunk?.(normalized, isFinal);
             onChunk(normalized, isFinal);
           },
         );
+        if (breaker != null) {
+          await breaker.execute(runStreaming);
+        } else {
+          await runStreaming();
+        }
         return;
       }
       case "minimax": {
         const minimaxService = service as MiniMaxChatService;
-        await minimaxService.createStreamingChatCompletion(
-          this.toMiniMaxRequest(request),
+        const runStreaming = () => minimaxService.createStreamingChatCompletion(
+          this.toMiniMaxRequest(runtimeRequest),
           (chunk) => {
-            const normalized = this.normalizeMiniMaxResult(chunk, provider);
+            const normalized = this.normalizeMiniMaxResult(chunk, provider, request.model, 0);
             request.validatePartialChunk?.(normalized, false);
             onChunk(normalized, false);
           },
         );
+        if (breaker != null) {
+          await breaker.execute(runStreaming);
+        } else {
+          await runStreaming();
+        }
         return;
       }
     }
@@ -387,6 +419,7 @@ export class UnifiedChatProvider {
       ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
       ...(options.principalId !== undefined ? { principalId: options.principalId } : {}),
       ...(options.costTag !== undefined ? { costTag: options.costTag } : {}),
+      ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.abortSignal !== undefined ? { abortSignal: options.abortSignal } : {}),
       ...(options.policyOutcome !== undefined ? { policyOutcome: options.policyOutcome } : {}),
       maxTokens: options.maxTokens ?? 512,
@@ -499,9 +532,27 @@ export class UnifiedChatProvider {
     return result;
   }
 
-  private normalizeAnthropicResult(result: AnthropicChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+  public getAvailableProfiles() {
+    return Object.entries(DEFAULT_MODEL_METADATA_REGISTRY.profiles)
+      .filter(([, profile]) => this.hasProvider(profile.provider as ChatProviderType))
+      .map(([profileName, profile]) => ({
+        profileName,
+        provider: profile.provider,
+        tier: profile.tier,
+        healthy: true,
+        inputCostPer1kUsd: profile.pricing.inputPer1kUsd,
+      }));
+  }
+
+  private normalizeAnthropicResult(
+    result: AnthropicChatCompletionResult,
+    provider: ChatProviderType,
+    requestedModel: string,
+    latencyMs: number,
+  ): ChatCompletionResult {
     return {
       id: result.id,
+      requestId: result.id,
       content: result.content,
       refusal: result.refusal,
       reasoningContent: null,
@@ -513,14 +564,26 @@ export class UnifiedChatProvider {
         completionTokens: result.usage.output_tokens,
         totalTokens: result.usage.input_tokens + result.usage.output_tokens,
       },
+      estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
+        promptTokens: result.usage.input_tokens,
+        completionTokens: result.usage.output_tokens,
+        totalTokens: result.usage.input_tokens + result.usage.output_tokens,
+      }),
+      latencyMs,
       model: result.model,
       provider,
     };
   }
 
-  private normalizeOpenAIResult(result: OpenAIChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+  private normalizeOpenAIResult(
+    result: OpenAIChatCompletionResult,
+    provider: ChatProviderType,
+    requestedModel: string,
+    latencyMs: number,
+  ): ChatCompletionResult {
     return {
       id: result.id,
+      requestId: result.id,
       content: result.content ?? "",
       refusal: result.refusal,
       reasoningContent: null,
@@ -536,14 +599,26 @@ export class UnifiedChatProvider {
         completionTokens: result.usage.completion_tokens,
         totalTokens: result.usage.total_tokens,
       },
+      estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
+        promptTokens: result.usage.prompt_tokens,
+        completionTokens: result.usage.completion_tokens,
+        totalTokens: result.usage.total_tokens,
+      }),
+      latencyMs,
       model: result.model,
       provider,
     };
   }
 
-  private normalizeMiniMaxResult(result: MiniMaxChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+  private normalizeMiniMaxResult(
+    result: MiniMaxChatCompletionResult,
+    provider: ChatProviderType,
+    requestedModel: string,
+    latencyMs: number,
+  ): ChatCompletionResult {
     return {
       id: result.id,
+      requestId: result.id,
       content: result.content,
       refusal: null,
       reasoningContent: result.reasoningContent,
@@ -555,9 +630,39 @@ export class UnifiedChatProvider {
         completionTokens: result.usage.completion_tokens ?? 0,
         totalTokens: result.usage.total_tokens ?? 0,
       },
-      model: result.model ?? "minimax",
+      estimatedCostUsd: this.estimateCostUsd(result.model ?? requestedModel, {
+        promptTokens: result.usage.prompt_tokens ?? 0,
+        completionTokens: result.usage.completion_tokens ?? 0,
+        totalTokens: result.usage.total_tokens ?? 0,
+      }),
+      latencyMs,
+      model: result.model ?? requestedModel,
       provider,
     };
+  }
+
+  private estimateCostUsd(modelId: string, usage: ChatCompletionUsage): number | null {
+    const profile = Object.values(DEFAULT_MODEL_METADATA_REGISTRY.profiles).find((candidate) =>
+      candidate.modelId === modelId || candidate.modelId.toLowerCase() === modelId.toLowerCase(),
+    );
+    if (profile == null) {
+      return null;
+    }
+    return Number((
+      (usage.promptTokens / 1000) * profile.pricing.inputPer1kUsd +
+      (usage.completionTokens / 1000) * profile.pricing.outputPer1kUsd
+    ).toFixed(6));
+  }
+
+  private buildRuntimeSignal(signal: AbortSignal | undefined, timeoutMs: number | undefined): AbortSignal | undefined {
+    if (timeoutMs == null) {
+      return signal;
+    }
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    if (signal == null) {
+      return timeoutSignal;
+    }
+    return AbortSignal.any([signal, timeoutSignal]);
   }
 
   private createEmbeddingProvider(model: string): EmbeddingProvider {

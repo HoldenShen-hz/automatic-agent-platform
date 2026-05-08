@@ -156,7 +156,7 @@ test("buildCapabilityEntry returns correct structure", () => {
   assert.deepEqual(entry.toolNames, ["bash", "read"]);
   assert.deepEqual(entry.skillIds, ["wf_test"]);
   assert.deepEqual(entry.pluginIds, ["plugin.retriever"]);
-  assert.equal(entry.defaultActivationPolicy, "draft");
+  assert.equal(entry.defaultActivationPolicy, "registered");
   assert.equal(entry.trustTier, "standard");
 });
 
@@ -416,15 +416,13 @@ test("list returns all registered domains", () => {
   assert.equal(all.length, 2);
 });
 
-test("register updates existing domain (overwrite)", () => {
+test("register rejects duplicate domain IDs instead of overwriting", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({ domainId: "overwrite_me" }));
-  service.register(makeMinimalDefinition({
+
+  assert.throws(() => service.register(makeMinimalDefinition({
     domainId: "overwrite_me",
     name: "Updated Name",
     description: "Updated description",
-  }));
-
-  const updated = service.get("overwrite_me");
-  assert.equal(updated?.name, "Updated Name");
+  })), /duplicate_domain/i);
 });

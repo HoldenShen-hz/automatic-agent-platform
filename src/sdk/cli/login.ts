@@ -1,16 +1,83 @@
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { readTrimmedEnv } from "../../platform/control-plane/config-center/runtime-env.js";
-import {
-  buildAuthorizationUrl,
-  exchangeCodeForTokens,
-  generatePkcePair,
-  saveOAuthTokens,
-  type OAuthPkceConfig,
-} from "./index.js";
+
+export interface OAuthPkceConfig {
+  authorizationUrl: string;
+  tokenUrl: string;
+  clientId: string;
+  redirectUri: string;
+  scopes: readonly string[];
+}
+
+interface PkcePair {
+  verifier: string;
+  challenge: string;
+}
+
+function generatePkcePair(): PkcePair {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  return { verifier, challenge };
+}
+
+function buildAuthorizationUrl(config: OAuthPkceConfig, pkce: PkcePair, state: string): string {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: config.clientId,
+    redirect_uri: config.redirectUri,
+    scope: config.scopes.join(" "),
+    state,
+    code_challenge: pkce.challenge,
+    code_challenge_method: "S256",
+  });
+  return `${config.authorizationUrl}?${params.toString()}`;
+}
+
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string;
+}
+
+async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, verifier: string): Promise<TokenResponse> {
+  const params = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: config.redirectUri,
+    client_id: config.clientId,
+    code_verifier: verifier,
+  });
+
+  const response = await fetch(config.tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    throw new ValidationError("oauth.token_exchange_failed", `Token exchange failed: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<TokenResponse>;
+}
+
+function saveOAuthTokens(tokens: {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  refreshToken?: string;
+}, env: NodeJS.ProcessEnv = process.env): string {
+  const credentialsPath = env.AA_CREDENTIALS_PATH ?? join(env.HOME ?? "/tmp", ".automatic-agent", "credentials.json");
+  mkdirSync(dirname(credentialsPath), { recursive: true, mode: 0o700 });
+  writeFileSync(credentialsPath, JSON.stringify(tokens, null, 2), { encoding: "utf8", mode: 0o600 });
+  return credentialsPath;
+}
 
 interface LoginStateRecord {
   state: string;

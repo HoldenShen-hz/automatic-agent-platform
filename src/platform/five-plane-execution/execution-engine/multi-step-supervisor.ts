@@ -160,6 +160,7 @@ export async function executeStepLoop(
       const skipNow = nowIso();
       const skipOutput: StepOutputRecord = {
         id: newId("step"),
+        nodeRunId: newId("step"),
         taskId,
         stepId: step.stepId,
         roleId: step.roleId,
@@ -382,6 +383,7 @@ export async function executeStepLoop(
         failedStepIds.add(step.stepId);
         const failOutput: StepOutputRecord = {
           id: newId("step"),
+          nodeRunId: executionId,
           taskId,
           stepId: step.stepId,
           roleId: step.roleId,
@@ -503,6 +505,7 @@ export async function executeStepLoop(
         failedStepIds.add(step.stepId);
         const failOutput: StepOutputRecord = {
           id: newId("step"),
+          nodeRunId: executionId,
           taskId,
           stepId: step.stepId,
           roleId: step.roleId,
@@ -586,6 +589,7 @@ export async function executeStepLoop(
 
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
+        nodeRunId: executionId,
         taskId,
         stepId: step.stepId,
         roleId: step.roleId,

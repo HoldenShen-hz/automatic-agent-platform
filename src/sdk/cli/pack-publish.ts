@@ -10,7 +10,6 @@
 import { readFileSync } from "node:fs";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
-import { createPrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
 
 interface PackPublishOptions {
   manifest: string;
@@ -92,11 +91,6 @@ async function main(): Promise<void> {
       baseUrl: registryUrl,
       apiVersion,
       bearerToken,
-      principal: createPrincipalRef({
-        principalId: "sdk.pack-publish",
-        tenantId: "platform",
-        roles: ["operator"],
-      }),
     };
 
     const client = createApiClient(config);

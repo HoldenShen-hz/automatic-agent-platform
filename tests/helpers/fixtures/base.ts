@@ -11,6 +11,24 @@ import type {
   ExecutionRecord,
   ApprovalRecord,
 } from "../../../src/platform/contracts/types/domain.js";
+import {
+  createMinimalBudgetLedger as createCanonicalBudgetLedger,
+  createMinimalBudgetReservation as createCanonicalBudgetReservation,
+  createMinimalHarnessRun as createCanonicalHarnessRun,
+  createMinimalNodeRun as createCanonicalNodeRun,
+  createMinimalPlanEdge as createCanonicalPlanEdge,
+  createMinimalPlanGraphBundle as createCanonicalPlanGraphBundle,
+  createMinimalPlanNode as createCanonicalPlanNode,
+} from "./canonical.js";
+import type {
+  BudgetLedger,
+  BudgetReservation,
+  HarnessRun,
+  NodeRun,
+  PlanEdge,
+  PlanGraphBundle,
+  PlanNode,
+} from "../../../src/platform/contracts/executable-contracts/index.js";
 
 const DEFAULT_NOW = nowIso();
 
@@ -96,4 +114,115 @@ export function createMinimalApproval(overrides: Partial<ApprovalRecord> = {}): 
     respondedAt: null,
     ...overrides,
   };
+}
+
+export function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
+  return createCanonicalHarnessRun({
+    tenantId: "tenant-test-001",
+    overrides: {
+      harnessRunId: "hrun-test-001",
+      currentSeq: 0,
+      ...overrides,
+    },
+  });
+}
+
+export function createMinimalPlanNode(nodeId: string, overrides: Partial<PlanNode> = {}): PlanNode {
+  return createCanonicalPlanNode({
+    nodeId,
+    timeoutMs: 30000,
+    overrides,
+  });
+}
+
+export function createMinimalPlanEdge(
+  edgeId: string,
+  fromNodeId: string,
+  toNodeId: string,
+  overrides: Partial<PlanEdge> = {},
+): PlanEdge {
+  return createCanonicalPlanEdge({
+    edgeId,
+    fromNodeId,
+    toNodeId,
+    condition: overrides.condition ?? true,
+    dependencyType: overrides.dependencyType ?? "hard",
+  });
+}
+
+export function createMinimalPlanGraphBundle(
+  harnessRunId: string,
+  overrides: Partial<PlanGraphBundle> = {},
+): PlanGraphBundle {
+  const nodes = overrides.graph?.nodes ?? [
+    createMinimalPlanNode("init"),
+    createMinimalPlanNode("process"),
+  ];
+  const edges = overrides.graph?.edges ?? [
+    createMinimalPlanEdge("edge-init-process", nodes[0]!.nodeId, nodes[1]!.nodeId),
+  ];
+  return createCanonicalPlanGraphBundle({
+    harnessRunId,
+    planGraphBundleId: overrides.planGraphBundleId,
+    graphVersion: overrides.graphVersion ?? 1,
+    graph: {
+      graphId: overrides.graph?.graphId ?? "graph-test-001",
+      nodes,
+      edges,
+      entryNodeIds: overrides.graph?.entryNodeIds ?? [nodes[0]!.nodeId],
+      terminalNodeIds: overrides.graph?.terminalNodeIds ?? [nodes[nodes.length - 1]!.nodeId],
+      joinStrategy: overrides.graph?.joinStrategy ?? "all",
+      graphHash: overrides.graph?.graphHash ?? "sha256:test-graph",
+    },
+    overrides,
+  });
+}
+
+export function createMinimalNodeRun(
+  harnessRunId: string,
+  planGraphBundleId: string,
+  overrides: Partial<NodeRun> = {},
+): NodeRun {
+  return createCanonicalNodeRun({
+    harnessRunId,
+    planGraphBundleId,
+    nodeId: overrides.nodeId ?? "node-test-001",
+    nodeRunId: overrides.nodeRunId ?? "nrun-test-001",
+    status: overrides.status ?? "created",
+    attemptCount: overrides.attemptCount ?? 0,
+    currentSeq: overrides.currentSeq ?? 0,
+    overrides,
+  });
+}
+
+export function createMinimalBudgetLedger(
+  harnessRunId: string,
+  overrides: Partial<BudgetLedger> = {},
+): BudgetLedger {
+  return createCanonicalBudgetLedger({
+    harnessRunId,
+    budgetLedgerId: overrides.budgetLedgerId ?? "ledger-test-001",
+    hardCap: overrides.hardCap ?? 1000,
+    reservedAmount: overrides.reservedAmount ?? 0,
+    status: overrides.status ?? "open",
+    currency: overrides.currency ?? "USD",
+    overrides,
+  });
+}
+
+export function createMinimalBudgetReservation(
+  budgetLedgerId: string,
+  harnessRunId: string,
+  overrides: Partial<BudgetReservation> = {},
+): BudgetReservation {
+  return createCanonicalBudgetReservation({
+    budgetLedgerId,
+    harnessRunId,
+    budgetReservationId: overrides.budgetReservationId ?? "bresv-test-001",
+    amount: overrides.amount ?? 100,
+    resourceKind: overrides.resourceKind ?? "token",
+    status: overrides.status ?? "reserved",
+    nodeRunId: overrides.nodeRunId,
+    overrides,
+  });
 }

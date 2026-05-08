@@ -3,6 +3,7 @@ import { DomainExecutionProfileSchema } from "../domain-specs.js";
 
 const DOMAIN_STATUS_ALIASES = {
   testing: "validated",
+  canary: "registered",
 } as const;
 
 const DOMAIN_PLUGIN_TYPE_ALIASES = {
@@ -129,7 +130,7 @@ export type PluginBinding = Omit<PluginBindingParsed, "pluginType"> & {
 };
 type DomainDefinitionParsed = z.infer<typeof DomainDefinitionSchema>;
 export type DomainDefinition = Omit<DomainDefinitionParsed, "status" | "pluginBindings" | "executionProfile"> & {
-  status: DomainDefinitionParsed["status"] | "testing";
+  status: DomainDefinitionParsed["status"] | "testing" | "canary";
   pluginBindings: PluginBinding[];
   executionProfile?: DomainDefinitionParsed["executionProfile"];
 };

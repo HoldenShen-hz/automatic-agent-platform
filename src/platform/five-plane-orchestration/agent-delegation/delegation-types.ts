@@ -21,6 +21,8 @@ export interface AgentContext {
   sandboxTier: SandboxMode;
   correlationId: string;
   tenantId: string | null;
+  currentCallDepth?: number;
+  goalDecompositionDepth?: number;
 }
 
 export interface PermissionSet {
@@ -81,6 +83,7 @@ export interface DelegationSpec {
   requiresApproval?: boolean;
   inputSchema?: ToolSchema;
   outputSchema?: ToolSchema;
+  dataClass?: string;
   // Collaboration modes
   collaborationMode?: "pipeline" | "negotiation";
   pipelineStages?: PipelineStageDefinition[];
@@ -108,11 +111,21 @@ export interface DelegationResult {
   correlationId: string;
   requiresApproval?: boolean;
   status: DelegationStatus;
+  artifact_refs?: readonly string[];
+  trust_level?: number;
+  taint_labels?: readonly string[];
+  evidence_refs?: readonly string[];
+  policy_outcome?: string;
+  data_class?: string;
+  summary?: string;
 }
 
 export type DelegationStatus =
   | "pending"
   | "pending_approval"
+  | "discovery"
+  | "bid"
+  | "awarded"
   | "active"
   | "completed"
   | "failed"
@@ -150,6 +163,7 @@ export interface DelegationChainNode {
   depth: number;
   createdAt: string;
   parentDelegationId: string | null;
+  status?: DelegationStatus;
 }
 
 export interface DelegationChain {

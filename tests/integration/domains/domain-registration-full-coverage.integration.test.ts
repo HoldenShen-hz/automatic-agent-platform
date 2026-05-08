@@ -7,9 +7,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import type { DomainDefinition } from "../../../../src/domains/registry/domain-model.js";
+import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
+import { ValidationError } from "../../../src/platform/contracts/errors.js";
+import type { DomainDefinition } from "../../../src/domains/registry/domain-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -54,7 +54,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "validated",
     externalAdapters: [],

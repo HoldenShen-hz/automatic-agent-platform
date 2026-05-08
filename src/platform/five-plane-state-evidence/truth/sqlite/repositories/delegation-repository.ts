@@ -7,7 +7,7 @@
 
 import { newId, nowIso } from "../../../../contracts/types/ids.js";
 
-export type DelegationStatus = "pending" | "active" | "completed" | "failed" | "cancelled" | "expired";
+export type DelegationStatus = "pending" | "pending_approval" | "discovery" | "bid" | "awarded" | "active" | "completed" | "failed" | "cancelled" | "expired" | "timed_out";
 
 export interface DelegationRecord {
   delegationId: string;
@@ -43,11 +43,13 @@ export interface DelegationRepository {
 }
 
 export interface CreateDelegationInput {
+  delegationId?: string;
   parentAgentId: string;
   childAgentId: string;
   delegationChain: readonly string[];
   depth: number;
   expiresAt?: string;
+  status?: DelegationStatus;
 }
 
 export interface DelegationEventRepository {

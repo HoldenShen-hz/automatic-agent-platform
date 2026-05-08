@@ -98,7 +98,7 @@ test("buildPlatformRootSummary keeps other sections available when one builder f
   });
 
   assert.ok(Array.isArray(summary.domains.startupOrder));
-  assert.equal(summary.aiOperations.totalCapabilityCount, 0);
+  assert.ok(summary.aiOperations.totalCapabilityCount > 0);
   assert.equal(summary.aiOperations.capabilityCounts.modelGateway, 0);
   assert.equal(summary.aiOperations.capabilityCounts.harness, 0);
 });

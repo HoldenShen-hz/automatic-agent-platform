@@ -60,22 +60,22 @@ function main(): void {
       result.checks.push(`version:${validated.version}`);
       result.checks.push(`domain:${validated.domainId}`);
       result.checks.push(`owner:${validated.owner}`);
-      result.checks.push(`sdk_semver:${validated.sdk_release?.sdk_semver ?? "not_set"}`);
-      result.checks.push(`platform_min_version:${validated.sdk_release?.platform_min_version ?? "not_set"}`);
-      result.checks.push(`platform_max_version:${validated.sdk_release?.platform_max_version ?? "not_set"}`);
-      result.checks.push(`contract_test_generator:${validated.sdk_release?.contract_test_generator ?? "not_set"}`);
+      result.checks.push(`sdk_semver:${validated.sdk_semver ?? "not_set"}`);
+      result.checks.push(`platform_min_version:${validated.platform_min_version ?? "not_set"}`);
+      result.checks.push(`platform_max_version:${validated.platform_max_version ?? "not_set"}`);
+      result.checks.push(`contract_test_generator:${validated.contract_test_generator ?? "not_set"}`);
     }
 
     // Check required fields per §22.2
-    if (!validated.sdk_release?.sdk_semver) {
+    if (!validated.sdk_semver) {
       result.passed = false;
       result.errors.push("missing_required_field:sdk_semver");
     }
-    if (!validated.sdk_release?.platform_min_version) {
+    if (!validated.platform_min_version) {
       result.passed = false;
       result.errors.push("missing_required_field:platform_min_version");
     }
-    if (!validated.sdk_release?.platform_max_version) {
+    if (!validated.platform_max_version) {
       result.passed = false;
       result.errors.push("missing_required_field:platform_max_version");
     }

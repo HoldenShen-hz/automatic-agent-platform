@@ -235,6 +235,42 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "runtime_recovery_decision_service",
     consumers: ["inspect_projection"],
   },
+  "config.changed": {
+    type: "config.changed",
+    tier: "tier_2",
+    producer: "hierarchical_config_loader",
+    consumers: ["inspect_projection"],
+  },
+  "config.rollout.started": {
+    type: "config.rollout.started",
+    tier: "tier_2",
+    producer: "config_rollout_service",
+    consumers: ["inspect_projection"],
+  },
+  "config.rollout.promoted": {
+    type: "config.rollout.promoted",
+    tier: "tier_2",
+    producer: "config_rollout_service",
+    consumers: ["inspect_projection"],
+  },
+  "config.rollout.cancelled": {
+    type: "config.rollout.cancelled",
+    tier: "tier_2",
+    producer: "config_rollout_service",
+    consumers: ["inspect_projection"],
+  },
+  "config.rollout.auto_progressed": {
+    type: "config.rollout.auto_progressed",
+    tier: "tier_2",
+    producer: "config_rollout_service",
+    consumers: ["inspect_projection"],
+  },
+  "config.drift_detected": {
+    type: "config.drift_detected",
+    tier: "tier_2",
+    producer: "config_drift_reconciler",
+    consumers: ["inspect_projection"],
+  },
   "domain:registered": {
     type: "domain:registered",
     tier: "tier_2",

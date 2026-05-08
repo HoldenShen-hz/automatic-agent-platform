@@ -15,7 +15,6 @@ import { execute, queryAll, queryOne } from "../query-helper.js";
 import { stableStringify } from "../../../../control-plane/config-center/config-governance-support.js";
 import type {
   ConfigRollout,
-  ConfigRolloutStore,
   RolloutStage,
 } from "../../../../control-plane/config-center/config-rollout-service.js";
 
@@ -350,7 +349,7 @@ export class ConfigRolloutRepository {
  * Implements ConfigRolloutStore interface using SQLite.
  * R15-79: Provides durable storage for ConfigRolloutService.
  */
-export class SqliteConfigRolloutStore implements ConfigRolloutStore {
+export class SqliteConfigRolloutStore {
   public constructor(private readonly conn: SqliteConnection) {}
 
   public async save(rollout: ConfigRollout): Promise<void> {
@@ -368,9 +367,9 @@ export class SqliteConfigRolloutStore implements ConfigRolloutStore {
       targetPercentage: rollout.targetPercentage,
       currentPercentage: rollout.currentPercentage,
       metadataJson: rollout.metadata ? stableStringify(rollout.metadata) : null,
-      healthGatesJson: stableStringify(rollout.healthGates),
-      lastHealthCheckAt: rollout.lastHealthCheckAt,
-      lastHealthCheckPassed: rollout.lastHealthCheckPassed,
+      healthGatesJson: stableStringify(rollout.healthGates ?? null),
+      lastHealthCheckAt: rollout.lastHealthCheckAt ?? null,
+      lastHealthCheckPassed: rollout.lastHealthCheckPassed ?? null,
     };
     new ConfigRolloutRepository(this.conn).save(record);
   }

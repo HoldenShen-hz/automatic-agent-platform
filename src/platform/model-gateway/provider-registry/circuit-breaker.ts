@@ -46,6 +46,8 @@ export interface CircuitBreakerOptions {
   halfOpenSuccessThreshold?: number;
   /** Monitor window in ms for failure rate calculation (default: 60000) */
   monitorWindowMs?: number;
+  /** Minimum sample size before rate-based opening can trigger (default: 10). */
+  minSampleSize?: number;
   /** Optional callback for state change events per §9.4 */
   onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
 }
@@ -55,6 +57,7 @@ export interface CircuitBreakerOptions {
  */
 export interface CircuitBreakerMetrics {
   state: CircuitBreakerState;
+  totalRequests: number;
   failures: number;
   successes: number;
   consecutiveFailures: number;
@@ -62,6 +65,7 @@ export interface CircuitBreakerMetrics {
   lastFailureAt: number | null;
   lastSuccessAt: number | null;
   nextAttemptAt: number | null;
+  recentFailureRate: number;
 }
 
 /**
@@ -78,6 +82,7 @@ export class CircuitBreaker {
   private readonly resetTimeoutMs: number;
   private readonly halfOpenSuccessThreshold: number;
   private readonly monitorWindowMs: number;
+  private readonly minSampleSize: number;
 
   private state: CircuitBreakerState = "closed";
   private failures = 0;
@@ -93,6 +98,7 @@ export class CircuitBreaker {
 
   // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
+  private readonly requestTimestamps: number[] = [];
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
@@ -100,6 +106,7 @@ export class CircuitBreaker {
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
+    this.minSampleSize = options.minSampleSize ?? 10;
     this.onStateChange = options.onStateChange;
   }
 
@@ -132,6 +139,8 @@ export class CircuitBreaker {
   onSuccess(): void {
     const now = Date.now();
     this.lastSuccessAt = now;
+    this.requestTimestamps.push(now);
+    this.pruneRequestTimestamps(now);
     this.successes++;
     this.consecutiveFailures = 0;
 
@@ -162,6 +171,8 @@ export class CircuitBreaker {
   onFailure(): void {
     const now = Date.now();
     this.lastFailureAt = now;
+    this.requestTimestamps.push(now);
+    this.pruneRequestTimestamps(now);
     this.failures++;
     this.consecutiveFailures++;
     this.consecutiveSuccesses = 0;
@@ -214,6 +225,7 @@ export class CircuitBreaker {
   getMetrics(): CircuitBreakerMetrics {
     return {
       state: this.getState(),
+      totalRequests: this.failures + this.successes,
       failures: this.failures,
       successes: this.successes,
       consecutiveFailures: this.consecutiveFailures,
@@ -221,6 +233,7 @@ export class CircuitBreaker {
       lastFailureAt: this.lastFailureAt,
       lastSuccessAt: this.lastSuccessAt,
       nextAttemptAt: this.nextAttemptAt,
+      recentFailureRate: this.getRecentFailureRate(),
     };
   }
 
@@ -271,6 +284,7 @@ export class CircuitBreaker {
       this.consecutiveFailures = 0;
       this.consecutiveSuccesses = 0;
       this.failureTimestamps.length = 0;
+      this.requestTimestamps.length = 0;
       this.halfOpenInFlight = 0;
     }
 
@@ -301,12 +315,13 @@ export class CircuitBreaker {
    */
   private getRecentFailureRate(): number {
     this.pruneFailureTimestamps(Date.now());
+    this.pruneRequestTimestamps(Date.now());
     const recentFailures = this.failureTimestamps.length;
-    const windowSeconds = this.monitorWindowMs / 1000;
-    // Approximate rate: failures per second * window
-    // If we have 3 failures in 60s, rate is low
-    // If we have 30 failures in 60s, rate is high
-    return Math.min(1, (recentFailures / windowSeconds) * 10); // Normalize to 0-1
+    const recentRequests = this.requestTimestamps.length;
+    if (recentRequests < this.minSampleSize || recentRequests === 0) {
+      return 0;
+    }
+    return recentFailures / recentRequests;
   }
 
   /**
@@ -316,6 +331,13 @@ export class CircuitBreaker {
     const cutoff = now - this.monitorWindowMs;
     while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
       this.failureTimestamps.shift();
+    }
+  }
+
+  private pruneRequestTimestamps(now: number): void {
+    const cutoff = now - this.monitorWindowMs;
+    while (this.requestTimestamps.length > 0 && this.requestTimestamps[0]! < cutoff) {
+      this.requestTimestamps.shift();
     }
   }
 }

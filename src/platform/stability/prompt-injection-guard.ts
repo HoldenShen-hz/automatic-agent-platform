@@ -53,6 +53,7 @@ export interface MLInjectionClassifierConfig {
   readonly threshold: number;
   readonly highConfidenceThreshold: number;
   readonly mediumConfidenceThreshold: number;
+  readonly mlModelEndpoint?: string;
 }
 
 export const DEFAULT_ML_CLASSIFIER_CONFIG: MLInjectionClassifierConfig = {
@@ -114,7 +115,39 @@ function buildLexicalAssessment(
   };
 }
 
-function buildSemanticAssessment(input: string, threshold: number): PromptDefenseLayerAssessment {
+async function fetchMLSemanticAssessment(
+  input: string,
+  mlModelEndpoint: string,
+): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
+  try {
+    const response = await fetch(mlModelEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input }),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as {
+      score?: number;
+      signals?: string[];
+      blocked?: boolean;
+    };
+    return {
+      score: data.score ?? 0,
+      signals: data.signals ?? [],
+      blocked: data.blocked ?? false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildSemanticAssessment(
+  input: string,
+  threshold: number,
+  config: MLInjectionClassifierConfig,
+): PromptDefenseLayerAssessment {
   const normalized = input.toLowerCase();
   const revealIntent = /(show|reveal|extract|dump|print|display|tell me)/.test(normalized);
   const boundaryTerms = /(system|developer|hidden)\s+(prompt|message|instructions?)/.test(normalized);
@@ -210,14 +243,31 @@ function deriveConfidence(
   return "low";
 }
 
-export function classifyPromptInjectionRisk(
+export async function classifyPromptInjectionRisk(
   input: string,
   threshold = 0.7,
   config: MLInjectionClassifierConfig = DEFAULT_ML_CLASSIFIER_CONFIG,
-): PromptInjectionClassification {
+): Promise<PromptInjectionClassification> {
   const sanitizedInput = sanitizePromptInput(input);
   const lexical = buildLexicalAssessment(input.normalize("NFKC"), threshold, config);
-  const semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold);
+
+  let semantic: PromptDefenseLayerAssessment;
+  if (config.mlModelEndpoint) {
+    const mlResult = await fetchMLSemanticAssessment(input.normalize("NFKC"), config.mlModelEndpoint);
+    if (mlResult) {
+      semantic = {
+        layer: "semantic",
+        score: mlResult.score,
+        triggeredSignals: mlResult.signals,
+        blocked: mlResult.blocked,
+      };
+    } else {
+      semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold, config);
+    }
+  } else {
+    semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold, config);
+  }
+
   const behavioral = buildBehavioralAssessment(input.normalize("NFKC"), threshold);
   const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral);
   const score = consensus.score;
@@ -286,16 +336,16 @@ export function assemblePromptSegments(input: {
   };
 }
 
-export function protectSystemPrompt(input: {
+export async function protectSystemPrompt(input: {
   systemPrompt: string;
   userInput: string;
   scope: string;
   threshold?: number;
   config?: MLInjectionClassifierConfig;
-}): PromptProtectionPlan {
+}): Promise<PromptProtectionPlan> {
   const effectiveConfig = input.config ?? DEFAULT_ML_CLASSIFIER_CONFIG;
   const threshold = input.threshold ?? effectiveConfig.threshold;
-  const classification = classifyPromptInjectionRisk(input.userInput, threshold, effectiveConfig);
+  const classification = await classifyPromptInjectionRisk(input.userInput, threshold, effectiveConfig);
   const assembled = assemblePromptSegments({
     systemPrompt: input.systemPrompt,
     userInput: input.userInput,

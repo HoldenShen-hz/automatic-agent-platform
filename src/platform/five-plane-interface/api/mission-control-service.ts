@@ -71,6 +71,15 @@ export interface MissionControlSnapshot {
     perceptionBriefs: PerceptionBriefPreview[];
   };
   gatewayTargets: GatewayTargetPreview[];
+  // Derived metrics
+  activeAgents: number;
+  queueDepth: number;
+  errorRate: number;
+  avgDurationMs: number | null;
+  p50LatencyMs: number | null;
+  p99LatencyMs: number | null;
+  budgetUtilizationPercent: number | null;
+  uptimePercent: number;
 }
 
 export interface WorkflowCockpitView {
@@ -90,6 +99,12 @@ export interface StabilityPanelView {
   pendingApprovals: ApprovalRecord[];
   workers: WorkerInspectSummary[];
   findings: string[];
+  activeTaskCount: number;
+  queuedTaskCount: number;
+  blockedTaskCount: number;
+  pendingApprovalCount: number;
+  workerCount: number;
+  findingsCount: number;
 }
 
 export interface AdminTakeoverConsoleView {
@@ -182,6 +197,15 @@ export class MissionControlService {
             source: entry.source,
             lastSeenAt: entry.lastSeenAt,
           })),
+      // Derived metrics
+      activeAgents: this.metricsService.buildSummary().runtimeMetrics.activeExecutions,
+      queueDepth: this.metricsService.buildSummary().runtimeMetrics.queuedTasks,
+      errorRate: this.computeErrorRate(this.metricsService.buildSummary()),
+      avgDurationMs: this.metricsService.buildSummary().stepMetrics.averageDurationMs,
+      p50LatencyMs: this.percentileFromSummary(0.5),
+      p99LatencyMs: this.percentileFromSummary(0.99),
+      budgetUtilizationPercent: this.computeBudgetUtilizationPercent(this.metricsService.buildSummary()),
+      uptimePercent: this.computeUptimePercent(this.healthService.getReport()),
     };
   }
 
@@ -271,16 +295,27 @@ export class MissionControlService {
     const workers = this.inspectService.queryWorkerInspectSummaries({ limit });
     const pendingApprovals = this.listApprovalQueue(limit);
 
+    const activeTasks = taskSummaries.filter((summary) => isActiveTaskSummary(summary));
+    const queuedTasks = taskSummaries.filter((summary) => isQueuedTaskSummary(summary));
+    const blockedTasks = taskSummaries.filter((summary) => isBlockedTaskSummary(summary));
+    const findings = this.healthService.getReport().findings;
+
     return {
       generatedAt: new Date().toISOString(),
       health: this.healthService.getReport(),
-      activeTasks: taskSummaries.filter((summary) => isActiveTaskSummary(summary)).slice(0, limit),
-      queuedTasks: taskSummaries.filter((summary) => isQueuedTaskSummary(summary)).slice(0, limit),
-      blockedTasks: taskSummaries.filter((summary) => isBlockedTaskSummary(summary)).slice(0, limit),
+      activeTasks: activeTasks.slice(0, limit),
+      queuedTasks: queuedTasks.slice(0, limit),
+      blockedTasks: blockedTasks.slice(0, limit),
       workflows: workflowSummaries,
       pendingApprovals,
       workers,
-      findings: this.healthService.getReport().findings,
+      findings,
+      activeTaskCount: activeTasks.length,
+      queuedTaskCount: queuedTasks.length,
+      blockedTaskCount: blockedTasks.length,
+      pendingApprovalCount: pendingApprovals.length,
+      workerCount: workers.length,
+      findingsCount: findings.length,
     };
   }
 
@@ -386,6 +421,43 @@ export class MissionControlService {
       retryable: false,
       details: { tenantId },
     });
+  }
+
+  private computeErrorRate(summary: RuntimeMetricsSummary): number {
+    const total = summary.taskMetrics.total;
+    if (total === 0) {
+      return 0;
+    }
+    return Math.round((summary.taskMetrics.failedCount / total) * 10_000) / 10_000;
+  }
+
+  private percentileFromSummary(quantile: number): number | null {
+    // Uses in-memory step duration data from the summary construction path.
+    // This is a placeholder that returns null; percentile calculation requires
+    // access to raw duration arrays which are built inside MetricsService.buildSummary().
+    // For now, derive from available metrics - p50/p99 require raw data access.
+    // TODO: Consider adding p50/p99 to RuntimeMetricsSummary if needed.
+    return null;
+  }
+
+  private computeBudgetUtilizationPercent(summary: RuntimeMetricsSummary): number | null {
+    // Budget utilization requires a budget limit which is not tracked in current metrics.
+    // Returns null until budget limit is available in cost metrics.
+    // TODO: Add budgetLimitUsd to costMetrics when budget tracking is implemented.
+    return null;
+  }
+
+  private computeUptimePercent(report: HealthStatusReport): number {
+    // uptimeSeconds is tracked by HealthService; compute uptime percentage
+    // assuming an expected uptime window (e.g., 24 hours / 86400 seconds as baseline).
+    // Alternatively, compute based on total service window vs actual uptime.
+    const uptimeSeconds = report.uptimeSeconds;
+    // Using 24 hours as baseline for uptime percentage calculation
+    const baselineSeconds = 24 * 60 * 60;
+    if (uptimeSeconds >= baselineSeconds) {
+      return 100;
+    }
+    return Math.round((uptimeSeconds / baselineSeconds) * 100 * 10_000) / 10_000;
   }
 }
 

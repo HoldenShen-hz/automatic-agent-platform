@@ -80,6 +80,7 @@ export class HierarchicalPromptRegistryService {
       bundleId,
       name: input.name,
       version: input.version,
+      displayVersion: input.displayVersion,
       domain: domain ?? input.domain,
       taskType: input.taskType,
       packId: packId ?? input.packId,
@@ -87,6 +88,7 @@ export class HierarchicalPromptRegistryService {
       userPrompt: input.userPrompt,
       fewShotExamples: input.fewShotExamples ?? [],
       constraints: this.normalizeConstraints(input.constraints),
+      compatibilityMatrix: input.compatibilityMatrix,
       metadata: this.buildMetadata(input),
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -148,13 +150,14 @@ export class HierarchicalPromptRegistryService {
     return bundles
       .map((bundle) => ({
         version: bundle.version,
+        displayVersion: bundle.displayVersion,
         isCurrent: bundle.metadata.deprecated !== true,
         isDefault: bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: bundle.metadata.trafficAllocation.weight,
         createdAt: bundle.createdAt,
         deprecated: bundle.metadata.deprecated,
       }))
-      .sort((a, b) => a.version.localeCompare(b.version));
+      .sort((a, b) => a.version - b.version);
   }
 
   /**
@@ -219,11 +222,11 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
   ): boolean {
     const scopeKey = this.buildScopeKey(name, level, level === "task-type" ? domain : undefined, domain, packId);
-    const removedFromScope = this.versionsByScope.get(scopeKey)?.delete(version) ?? false;
+    const removedFromScope = this.versionsByScope.get(scopeKey)?.delete(String(version)) ?? false;
     const versions = this.versionsByName.get(name);
     if (versions) {
       for (const [bundleId, bundle] of versions.entries()) {
-        if (bundle.version === version) {
+        if (String(bundle.version) === version) {
           versions.delete(bundleId);
         }
       }
@@ -279,7 +282,7 @@ export class HierarchicalPromptRegistryService {
     if (domain) parts.push(domain);
     if (packId) parts.push(packId);
     parts.push(input.name);
-    parts.push(input.version);
+    parts.push(String(input.version));
     return parts.join(":");
   }
 
@@ -287,7 +290,7 @@ export class HierarchicalPromptRegistryService {
     if (!input.name?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_name", "Bundle name must be non-empty");
     }
-    if (!input.version?.trim()) {
+    if (!String(input.version)?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be non-empty");
     }
     if (!input.domain?.trim()) {
@@ -327,6 +330,7 @@ export class HierarchicalPromptRegistryService {
     return {
       owner: input.metadata?.owner ?? "system",
       deprecated: input.metadata?.deprecated ?? false,
+      lifecycleStatus: input.metadata?.lifecycleStatus ?? "active",
       tags: input.metadata?.tags ?? [],
       compatibilityTags: input.metadata?.compatibilityTags ?? [],
       trafficAllocation: input.metadata?.trafficAllocation ?? {
@@ -382,7 +386,7 @@ export class HierarchicalPromptRegistryService {
     if (!this.versionsByScope.has(scopeKey)) {
       this.versionsByScope.set(scopeKey, new Map());
     }
-    this.versionsByScope.get(scopeKey)!.set(bundle.version, bundle);
+    this.versionsByScope.get(scopeKey)!.set(String(bundle.version), bundle);
   }
 
   private findBundle(
@@ -412,7 +416,7 @@ export class HierarchicalPromptRegistryService {
     return {
       bundle,
       availableVersions: this.listBundleVersions(bundle.name),
-      currentVersion: bundle.version,
+      currentVersion: String(bundle.version),
     };
   }
 

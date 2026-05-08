@@ -70,6 +70,16 @@ export interface ModelRouteRequest {
   fallbackLease?: ModelRouteFallbackLease | null;
   // Governance snapshot for profile status
   governanceSnapshot?: ModelGovernanceSnapshot | null;
+  /** Required provider/profile region for data residency controls. */
+  data_residency?: string | null;
+  /** Whether PII was detected in the request payload. */
+  pii_input_detected?: boolean;
+  /** Whether the caller requires model-training opt-out. */
+  model_training_opt_out?: boolean;
+  /** Whether judge-model independence is required. */
+  judge_independence?: boolean;
+  /** Optional latency SLO target for the selected profile. */
+  latency_slo_target_ms?: number | null;
   // Maximum input cost per 1k USD (filters candidates)
   maxInputPer1kUsd?: number | null;
   // Allow fallback to higher-cost tiers if needed
@@ -154,6 +164,19 @@ export interface ModelRoutingServiceOptions {
   registry: ModelMetadataRegistry;
   // Health status per provider
   providerHealth?: Record<string, ProviderHealthSummary>;
+  persistence?: {
+    persistRoutingDecision: (decision: {
+      profileName: string;
+      provider: string;
+      dataResidencyMet: boolean;
+      latencySloTargetMs: number;
+      latencyP99Ms: number | null;
+      piiSafe: boolean;
+      trainingOptOutSupported: boolean;
+      judgeIndependent: boolean;
+      occurredAt: string;
+    }) => void;
+  };
 }
 
 // Internal: eligible profile with provider status attached
@@ -340,9 +363,29 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
     return a.profile.pricing.inputPer1kUsd - b.profile.pricing.inputPer1kUsd;
   }
   if (a.profile.maxOutputTokens !== b.profile.maxOutputTokens) {
-    return a.profile.maxOutputTokens - b.profile.maxOutputTokens;
+    return b.profile.maxOutputTokens - a.profile.maxOutputTokens;
   }
   return a.profileName.localeCompare(b.profileName);
+}
+
+function resolveLatencySloTargetMs(
+  routeClass: ModelRouteClass,
+  riskLevel: ModelRouteRiskLevel,
+  explicitTarget: number | null | undefined,
+): number {
+  if (typeof explicitTarget === "number" && explicitTarget > 0) {
+    return explicitTarget;
+  }
+  if (routeClass === "classification") {
+    return riskLevel === "high" || riskLevel === "critical" ? 1500 : 1000;
+  }
+  if (routeClass === "coding" || routeClass === "reasoning") {
+    return 5000;
+  }
+  if (routeClass === "writing") {
+    return 2500;
+  }
+  return 2000;
 }
 
 /**
@@ -355,10 +398,12 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
 export class ModelRoutingService {
   private readonly registry: ModelMetadataRegistry;
   private readonly providerHealth: Record<string, ProviderHealthSummary>;
+  private readonly persistence: ModelRoutingServiceOptions["persistence"];
 
   public constructor(options: ModelRoutingServiceOptions) {
     this.registry = options.registry;
     this.providerHealth = options.providerHealth ?? {};
+    this.persistence = options.persistence;
   }
 
   /**
@@ -380,6 +425,11 @@ export class ModelRoutingService {
     const turnId = normalizeTurnId(request.turnId);
     const fallbackLease = normalizeFallbackLease(request.fallbackLease);
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
+    const dataResidency = normalizeOptionalName(request.data_residency);
+    const piiInputDetected = request.pii_input_detected === true;
+    const modelTrainingOptOut = request.model_training_opt_out === true;
+    const judgeIndependence = request.judge_independence === true;
+    const latencySloTargetMs = resolveLatencySloTargetMs(routeClass, riskLevel, request.latency_slo_target_ms);
     const pinnedProfileName = normalizeOptionalName(request.pinnedProfileName);
     const preferredProfileName = normalizeOptionalName(request.preferredProfileName);
     const stickyProfileName = normalizeOptionalName(request.stickyProfileName);
@@ -406,6 +456,22 @@ export class ModelRoutingService {
         }
         if (!requiredCapabilities.every((capability) => profile.capabilities.includes(capability))) {
           filteredOut.push(`${profileName}:capability_mismatch`);
+          return false;
+        }
+        if (dataResidency != null && profile.region !== dataResidency && provider.region !== dataResidency) {
+          filteredOut.push(`${profileName}:data_residency_mismatch`);
+          return false;
+        }
+        if (piiInputDetected && profile.piiSafe !== true) {
+          filteredOut.push(`${profileName}:pii_unsafe`);
+          return false;
+        }
+        if (modelTrainingOptOut && profile.trainingOptOutSupported !== true) {
+          filteredOut.push(`${profileName}:training_opt_out_unsupported`);
+          return false;
+        }
+        if (judgeIndependence && profile.judgeIndependent !== true) {
+          filteredOut.push(`${profileName}:judge_independence_missing`);
           return false;
         }
         if (getGovernanceStatus(profileName) === "disabled") {
@@ -471,21 +537,35 @@ export class ModelRoutingService {
         | "turnScopedFallbackIssued"
         | "turnScopedFallbackAutoRecoveryNextTurn"
       >>,
-    ): ModelRouteDecision => ({
-      profileName: candidate.profileName,
-      profile: candidate.profile,
-      trace: buildTrace(
-        candidate.profileName,
-        candidate.profile.provider,
-        reason,
-        traceOverrides?.turnScopedFallbackPrimaryProfileName ?? null,
-        traceOverrides?.turnScopedFallbackProfileName ?? null,
-        traceOverrides?.turnScopedFallbackActive ?? false,
-        traceOverrides?.turnScopedFallbackIssued ?? false,
-        traceOverrides?.turnScopedFallbackAutoRecoveryNextTurn ?? false,
-      ),
-      fallbackLease: fallback,
-    });
+    ): ModelRouteDecision => {
+      const decision: ModelRouteDecision = {
+        profileName: candidate.profileName,
+        profile: candidate.profile,
+        trace: buildTrace(
+          candidate.profileName,
+          candidate.profile.provider,
+          reason,
+          traceOverrides?.turnScopedFallbackPrimaryProfileName ?? null,
+          traceOverrides?.turnScopedFallbackProfileName ?? null,
+          traceOverrides?.turnScopedFallbackActive ?? false,
+          traceOverrides?.turnScopedFallbackIssued ?? false,
+          traceOverrides?.turnScopedFallbackAutoRecoveryNextTurn ?? false,
+        ),
+        fallbackLease: fallback,
+      };
+      this.persistence?.persistRoutingDecision({
+        profileName: candidate.profileName,
+        provider: candidate.profile.provider,
+        dataResidencyMet: dataResidency == null || candidate.profile.region === dataResidency || this.registry.providers[candidate.profile.provider]?.region === dataResidency,
+        latencySloTargetMs,
+        latencyP99Ms: candidate.profile.latencyP99Ms ?? this.registry.providers[candidate.profile.provider]?.latencyP99Ms ?? null,
+        piiSafe: candidate.profile.piiSafe === true,
+        trainingOptOutSupported: candidate.profile.trainingOptOutSupported === true,
+        judgeIndependent: candidate.profile.judgeIndependent === true,
+        occurredAt: new Date().toISOString(),
+      });
+      return decision;
+    };
 
     const requireProfile = (profileName: string, reason: ModelRouteTrace["routeReason"]): ModelRouteDecision => {
       if (getGovernanceStatus(profileName) === "disabled") {

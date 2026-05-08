@@ -10,12 +10,12 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
-import { DomainSmokeTestRunner } from "../../../../src/domains/registry/domain-smoke-test.js";
-import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
-import type { DomainDefinition } from "../../../../src/domains/registry/domain-model.js";
+import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
+import { DomainSmokeTestRunner } from "../../../src/domains/registry/domain-smoke-test.js";
+import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
+import { ValidationError } from "../../../src/platform/contracts/errors.js";
+import type { PluginSandboxPolicy } from "../../../src/domains/registry/plugin-spi.js";
+import type { DomainDefinition } from "../../../src/domains/registry/domain-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -77,7 +77,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "validated",
     externalAdapters: [],
@@ -176,7 +176,7 @@ test("Domain registration with plugin bindings", async () => {
   assert.equal(bindings[0]!.pluginId, "plugin.integration");
 });
 
-test("Domain registration fails smoke test with invalid workflow", async () => {
+test("Domain activation fails smoke test with invalid workflow", async () => {
   const service = new DomainRegistryService();
   const domain = createTestDomain({
     domainId: "invalid-workflow-domain",
@@ -211,8 +211,10 @@ test("Domain registration fails smoke test with invalid workflow", async () => {
     ],
   });
 
+  service.register(domain);
+
   assert.throws(
-    () => service.register(domain),
+    () => service.activate("invalid-workflow-domain", false),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });
@@ -354,21 +356,12 @@ test("Canary lifecycle: canary -> active -> deprecated -> archived", async () =>
   assert.equal(result.status, "archived");
 });
 
-test("Activation fails smoke test when domain becomes invalid during update", async () => {
+test("Complete update fails smoke test when updating domain contains circular workflow", async () => {
   const service = new DomainRegistryService();
 
-  // Register and activate
-  const domain = createTestDomain({ domainId: "update-fail-integration", status: "registered" });
-  service.register(domain);
-  service.activate("update-fail-integration", false);
-
-  // Enter updating state
-  service.updating("update-fail-integration");
-
-  // Now register a domain with invalid workflows after activation
-  // This tests that completeUpdate checks validity
   const invalidDomain = createTestDomain({
-    domainId: "update-invalid-workflow",
+    domainId: "update-fail-integration",
+    status: "updating",
     workflows: [
       {
         workflowId: "circular_wf",
@@ -400,9 +393,10 @@ test("Activation fails smoke test when domain becomes invalid during update", as
     ],
   });
 
-  // This registration should fail
+  service.register(invalidDomain);
+
   assert.throws(
-    () => service.register(invalidDomain),
+    () => service.completeUpdate("update-fail-integration"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });

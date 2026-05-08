@@ -64,6 +64,13 @@ export interface ConfigRollout {
   targetPercentage: number;
   currentPercentage: number;
   metadata: Record<string, unknown> | undefined;
+  healthGates?: Record<string, unknown>;
+  lastHealthCheckAt?: string | null;
+  lastHealthCheckPassed?: boolean | null;
+  lastObservedErrorRate?: number | null;
+  lastObservedLatencyRegression?: number | null;
+  lastObservedIncidentRate?: number | null;
+  lastHealthCheckReasons?: readonly string[];
 }
 
 /**

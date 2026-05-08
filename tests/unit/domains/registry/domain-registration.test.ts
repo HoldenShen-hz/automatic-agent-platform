@@ -257,7 +257,7 @@ test("register throws when plugin manifest does not allow the registered domain"
 
 // --- missing plugin when no registry ---
 
-test("register throws when plugin binding references an unregistered plugin and no registry", () => {
+test("register allows unresolved plugin bindings when no plugin inventory is configured", () => {
   const service = new DomainRegistryService({
     installedPluginIds: [],
     healthyPluginIds: [],
@@ -269,9 +269,8 @@ test("register throws when plugin binding references an unregistered plugin and 
     ],
   });
 
-  assert.throws(() => service.register(definition), (err: unknown) => {
-    return err instanceof ValidationError && err.code === "domain_registry.plugin_missing";
-  });
+  const registered = service.register(definition);
+  assert.equal(registered.pluginBindings.length, 1);
 });
 
 // --- unhealthy plugin ---

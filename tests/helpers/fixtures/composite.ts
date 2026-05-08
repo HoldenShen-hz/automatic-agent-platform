@@ -11,6 +11,20 @@ import type {
   ExecutionRecord,
   ApprovalRecord,
 } from "../../../src/platform/contracts/types/domain.js";
+import type {
+  BudgetLedger,
+  BudgetReservation,
+  HarnessRun,
+  NodeRun,
+  PlanGraphBundle,
+} from "../../../src/platform/contracts/executable-contracts/index.js";
+import {
+  createMinimalBudgetLedger,
+  createMinimalBudgetReservation,
+  createMinimalHarnessRun,
+  createMinimalNodeRun,
+  createMinimalPlanGraphBundle,
+} from "./canonical.js";
 
 const DEFAULT_NOW = nowIso();
 
@@ -224,4 +238,108 @@ export function createFailedTask(
   };
 
   return { task, execution };
+}
+
+export function createCompleteHarnessRun(
+  harnessRunId: string,
+  confirmedTaskSpecId: string,
+  overrides: {
+    nodeIds?: readonly string[];
+    status?: HarnessRun["status"];
+  } = {},
+): {
+  harnessRun: HarnessRun;
+  planGraphBundle: PlanGraphBundle;
+  budgetLedger: BudgetLedger;
+  nodeRuns: NodeRun[];
+} {
+  const nodeIds = overrides.nodeIds ?? ["init", "process", "final"];
+  const planGraphBundle = createMinimalPlanGraphBundle({
+    harnessRunId,
+    graph: {
+      graphId: "graph-test-001",
+      nodes: nodeIds.map((nodeId) => ({
+        nodeId,
+        nodeType: "tool",
+        inputRefs: [],
+        outputSchemaRef: "test://schema/output",
+        riskClass: "low",
+        budgetIntent: { amount: 100, currency: "USD", resourceKinds: ["token"] },
+        sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+        retryPolicyRef: "test-retry-policy",
+        timeoutMs: 30000,
+      })),
+      edges: nodeIds.slice(1).map((nodeId, index) => ({
+        edgeId: `edge-${index}`,
+        fromNodeId: nodeIds[index]!,
+        toNodeId: nodeId,
+        condition: true,
+        dependencyType: "hard",
+      })),
+      entryNodeIds: [nodeIds[0]!],
+      terminalNodeIds: [nodeIds[nodeIds.length - 1]!],
+      joinStrategy: "all",
+      graphHash: "sha256:test-graph",
+    },
+  });
+  const budgetLedger = createMinimalBudgetLedger({ harnessRunId });
+  const harnessRun = createMinimalHarnessRun({
+    confirmedTaskSpecId,
+    planGraphBundleId: planGraphBundle.planGraphBundleId,
+    budgetLedgerId: budgetLedger.budgetLedgerId,
+    status: overrides.status ?? "created",
+    overrides: {
+      harnessRunId,
+    },
+  });
+  const nodeRuns = nodeIds.map((nodeId) =>
+    createMinimalNodeRun({
+      harnessRunId,
+      planGraphBundleId: planGraphBundle.planGraphBundleId,
+      nodeId,
+    }),
+  );
+
+  return { harnessRun, planGraphBundle, budgetLedger, nodeRuns };
+}
+
+export function createBudgetReservedHarnessRun(
+  harnessRunId: string,
+  nodeRunId: string,
+  overrides: {
+    amount?: number;
+    resourceKind?: BudgetReservation["resourceKind"];
+  } = {},
+): {
+  harnessRun: HarnessRun;
+  planGraphBundle: PlanGraphBundle;
+  budgetLedger: BudgetLedger;
+  budgetReservation: BudgetReservation;
+} {
+  const complete = createCompleteHarnessRun(harnessRunId, "ctspec-test-001", {
+    status: "running",
+  });
+  const budgetLedger = createMinimalBudgetLedger({
+    harnessRunId,
+    budgetLedgerId: complete.budgetLedger.budgetLedgerId,
+    reservedAmount: overrides.amount ?? 100,
+  });
+  const budgetReservation = createMinimalBudgetReservation({
+    budgetLedgerId: budgetLedger.budgetLedgerId,
+    harnessRunId,
+    nodeRunId,
+    amount: overrides.amount ?? 100,
+    resourceKind: overrides.resourceKind ?? "token",
+  });
+
+  return {
+    harnessRun: {
+      ...complete.harnessRun,
+      status: "running",
+      budgetLedgerId: budgetLedger.budgetLedgerId,
+    },
+    planGraphBundle: complete.planGraphBundle,
+    budgetLedger,
+    budgetReservation,
+  };
 }
