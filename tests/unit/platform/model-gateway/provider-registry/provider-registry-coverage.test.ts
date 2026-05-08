@@ -942,6 +942,7 @@ test("ChatTool minimal definition", () => {
 test("ChatCompletionResult with all fields", () => {
   const result: ChatCompletionResult = {
     id: "test-id",
+    requestId: "test-id",
     content: "test content",
     refusal: "some refusal",
     reasoningContent: "some reasoning",
@@ -959,6 +960,8 @@ test("ChatCompletionResult with all fields", () => {
       completionTokens: 20,
       totalTokens: 30,
     },
+    estimatedCostUsd: 0.001,
+    latencyMs: 100,
     model: "test-model",
     provider: "test-provider",
   };
@@ -1008,6 +1011,7 @@ test("UnifiedProviderConfig partial configuration", () => {
 test("CircuitBreakerMetrics structure", () => {
   const metrics: CircuitBreakerMetrics = {
     state: "closed",
+    totalRequests: 0,
     failures: 0,
     successes: 0,
     consecutiveFailures: 0,
@@ -1015,6 +1019,7 @@ test("CircuitBreakerMetrics structure", () => {
     lastFailureAt: null,
     lastSuccessAt: null,
     nextAttemptAt: null,
+    recentFailureRate: 0,
   };
 
   assert.equal(metrics.state, "closed");
