@@ -40,6 +40,8 @@ function createMockStore(
 ): AuthoritativeTaskStore {
   return {
     worker: {
+      listExecutionTicketsByStatusesPaginated: (statuses: string[], _pageSize: number, offset: number) =>
+        tickets.filter(t => statuses.includes(t.status)).slice(offset, offset + (_pageSize ?? 100)),
       listExecutionTicketsByStatuses: (statuses: string[]) =>
         tickets.filter(t => statuses.includes(t.status)),
       getExecutionTicket: (id: string) => tickets.find(t => t.id === id) ?? null,
