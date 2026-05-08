@@ -64,6 +64,7 @@ test("ChatCompletionUsage structure is correct", () => {
 test("ChatCompletionResult structure is correct", () => {
   const result: ChatCompletionResult = {
     id: "chatcmpl_123",
+    requestId: "chatcmpl_123",
     content: "Hello! How can I help you?",
     refusal: null,
     reasoningContent: null,
@@ -75,6 +76,8 @@ test("ChatCompletionResult structure is correct", () => {
       completionTokens: 20,
       totalTokens: 30,
     },
+    estimatedCostUsd: 0.0012,
+    latencyMs: 120,
     model: "claude-3-5-sonnet",
     provider: "anthropic",
   };
@@ -85,6 +88,7 @@ test("ChatCompletionResult structure is correct", () => {
 test("ChatCompletionResult allows tool calls", () => {
   const result: ChatCompletionResult = {
     id: "chatcmpl_456",
+    requestId: "chatcmpl_456",
     content: "",
     refusal: null,
     reasoningContent: null,
@@ -102,6 +106,8 @@ test("ChatCompletionResult allows tool calls", () => {
       completionTokens: 100,
       totalTokens: 150,
     },
+    estimatedCostUsd: 0.003,
+    latencyMs: 95,
     model: "gpt-4o",
     provider: "openai",
   };
@@ -112,6 +118,7 @@ test("ChatCompletionResult allows tool calls", () => {
 test("ChatCompletionResult allows reasoning content", () => {
   const result: ChatCompletionResult = {
     id: "chatcmpl_reasoning",
+    requestId: "chatcmpl_reasoning",
     content: "Let me think about this...",
     refusal: null,
     reasoningContent: "I need to consider the implications...",
@@ -123,6 +130,8 @@ test("ChatCompletionResult allows reasoning content", () => {
       completionTokens: 200,
       totalTokens: 300,
     },
+    estimatedCostUsd: 0.009,
+    latencyMs: 180,
     model: "claude-4-sonnet",
     provider: "anthropic",
   };
