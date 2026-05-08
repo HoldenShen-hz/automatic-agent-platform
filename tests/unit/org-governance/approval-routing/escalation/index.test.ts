@@ -15,12 +15,20 @@ function createRule(overrides: Partial<{
   triggerAfterMinutes: number;
   escalateToApproverId: string;
   appliesToRiskLevels: ("low" | "medium" | "high" | "critical")[];
+  maxEscalationDepth: number;
+  cooldownMinutes: number;
+  notifyOnSlaBreach: boolean;
+  slaBreachNotificationTargetIds: string[];
 }> = {}): ApprovalEscalationRule {
   return {
     ruleId: "rule-1",
     triggerAfterMinutes: 30,
     escalateToApproverId: "escalation-manager",
     appliesToRiskLevels: ["high", "critical"],
+    maxEscalationDepth: 1,
+    cooldownMinutes: 0,
+    notifyOnSlaBreach: false,
+    slaBreachNotificationTargetIds: [],
     ...overrides,
   };
 }
