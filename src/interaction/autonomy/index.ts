@@ -303,12 +303,14 @@ function decideLevel(
   );
 
   if (score.incidents > 0) {
-    // Only apply demotion if incident is recent; older incidents don't trigger demotion
+    // §42.2: P0 incidents always demote to suggestion - no time window check needed
+    // null lastIncidentAgeDays means "unknown" which should be treated as recent for P0
+    if (severity === "P0") {
+      return "suggestion";
+    }
+    // Only apply demotion for non-P0 if incident is recent; older incidents don't trigger demotion
     if (lastIncidentAgeDays > recentIncidentThreshold) {
       // Incident is old - don't demote, but still require incident-free for promotion
-    } else if (severity === "P0") {
-      // §42.2: P0 incidents demote to suggestion, not frozen
-      return "suggestion";
     } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);

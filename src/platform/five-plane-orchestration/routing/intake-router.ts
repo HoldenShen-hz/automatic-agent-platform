@@ -1314,7 +1314,7 @@ public route(input: IntakeRouteInput): IntakePipelineResult {
     // R9-09: If no capable worker found, route to fallback queue instead
     const effectiveWorkflowId = capabilityMatch.capableWorkerFound
       ? (division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration")
-      : "capability_fallback_queue";
+      : "single_division_multi_step_orchestration";
     const effectiveDivisionId = capabilityMatch.capableWorkerFound
       ? (division?.id ?? "general_ops")
       : "capability_queue";
@@ -1352,7 +1352,7 @@ public route(input: IntakeRouteInput): IntakePipelineResult {
   // R9-09: If no capable worker found, route to fallback queue
   const effectiveWorkflowId = capabilityMatch.capableWorkerFound
     ? (division?.defaultWorkflowId ?? "single_agent_minimal")
-    : "capability_fallback_queue";
+    : "single_division_multi_step_orchestration";
   const effectiveDivisionId = capabilityMatch.capableWorkerFound
     ? (division?.id ?? "general_ops")
     : "capability_queue";

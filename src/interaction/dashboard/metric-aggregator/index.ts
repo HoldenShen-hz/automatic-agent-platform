@@ -1,18 +1,150 @@
 import type { TaskStatus, WorkflowStatus } from "../../../platform/contracts/types/status.js";
 
+/**
+ * TaskMetricSnapshot covers all 7 TaskStatus values per UI spec R7-19.
+ * Statuses: queued, pending, in_progress, awaiting_decision, done, failed, cancelled
+ */
 export interface TaskMetricSnapshot {
   readonly total: number;
-  readonly done: number;
+  readonly queued: number;
+  readonly pending: number;
   readonly inProgress: number;
+  readonly awaitingDecision: number;
+  readonly done: number;
   readonly failed: number;
+  readonly cancelled: number;
 }
 
+/**
+ * WorkflowMetricSnapshot covers all 7 WorkflowStatus values per UI spec R7-19.
+ * Statuses: running, paused, resuming, completed, failed, cancelling, cancelled
+ */
 export interface WorkflowMetricSnapshot {
   readonly total: number;
   readonly running: number;
   readonly paused: number;
+  readonly resuming: number;
   readonly completed: number;
   readonly failed: number;
+  readonly cancelling: number;
+  readonly cancelled: number;
+}
+
+/**
+ * AgentMetricSnapshot for L2 agent utilization panel per UI spec §4.6.8.
+ */
+export interface AgentMetricSnapshot {
+  readonly totalAgents: number;
+  readonly activeAgents: number;
+  readonly idleAgents: number;
+  readonly degradedAgents: number;
+  readonly offlineAgents: number;
+  readonly avgUtilizationPercent: number;
+}
+
+/**
+ * TopFailureSnapshot for L2 "Top 5 failures" panel per UI spec §4.6.8.
+ */
+export interface TopFailureSnapshot {
+  readonly failures: readonly {
+    readonly reason: string;
+    readonly count: number;
+    readonly percentOfTotal: number;
+  }[];
+  readonly totalFailures: number;
+}
+
+/**
+ * WorkflowDurationSnapshot for workflow duration panel per UI spec §4.6.8.
+ */
+export interface WorkflowDurationSnapshot {
+  readonly workflows: readonly {
+    readonly workflowId: string;
+    readonly p50Ms: number;
+    readonly p95Ms: number;
+    readonly p99Ms: number;
+  }[];
+}
+
+/**
+ * IncidentTimelineEntry for L3 incident timeline panel per UI spec §4.6.8.
+ */
+export interface IncidentTimelineEntry {
+  readonly incidentId: string;
+  readonly severity: "critical" | "high" | "medium" | "low";
+  readonly title: string;
+  readonly startedAt: string;
+  readonly resolvedAt?: string;
+  readonly status: "active" | "acknowledged" | "resolved";
+}
+
+/**
+ * IncidentMetricSnapshot for L3 incident timeline panel.
+ */
+export interface IncidentMetricSnapshot {
+  readonly activeIncidents: number;
+  readonly acknowledgedIncidents: number;
+  readonly resolvedIncidents24h: number;
+  readonly criticalIncidents: number;
+  readonly timeline: readonly IncidentTimelineEntry[];
+}
+
+/**
+ * FivePlaneHealthSnapshot for L3 five-plane health panel per UI spec §4.6.8.
+ */
+export interface FivePlaneHealthSnapshot {
+  readonly interfacePlane: number; // 0-100 health score
+  readonly controlPlane: number;
+  readonly orchestrationPlane: number;
+  readonly executionPlane: number;
+  readonly stateEvidencePlane: number;
+  readonly overallScore: number;
+}
+
+/**
+ * ResourceUtilizationSnapshot for L3 resource utilization panel per UI spec §4.6.8.
+ */
+export interface ResourceUtilizationSnapshot {
+  readonly cpuPercent: number;
+  readonly memoryPercent: number;
+  readonly diskPercent: number;
+  readonly networkPercent: number;
+  readonly gpuPercent?: number;
+}
+
+/**
+ * FleetCostSnapshot for L4 fleet cost comparison panel per UI spec §4.6.8.
+ */
+export interface FleetCostSnapshot {
+  readonly regions: readonly {
+    readonly region: string;
+    readonly totalCostUsd: number;
+    readonly taskCount: number;
+    readonly avgCostPerTask: number;
+  }[];
+}
+
+/**
+ * TenantComparisonSnapshot for L4 tenant comparison radar chart per UI spec §4.6.8.
+ */
+export interface TenantComparisonSnapshot {
+  readonly tenants: readonly {
+    readonly tenantId: string;
+    readonly taskCount: number;
+    readonly successRate: number;
+    readonly avgLatencyMs: number;
+    readonly costUsd: number;
+  }[];
+}
+
+/**
+ * CapacityForecastSnapshot for L4 capacity prediction panel per UI spec §4.6.8.
+ */
+export interface CapacityForecastSnapshot {
+  readonly currentCapacityPercent: number;
+  readonly predictedCapacityPercent30d: number;
+  readonly predictedCapacityPercent90d: number;
+  readonly recommendedActions: readonly string[];
 }
 
 export interface SystemHealthSnapshot {

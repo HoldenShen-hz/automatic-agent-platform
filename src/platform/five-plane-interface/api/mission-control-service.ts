@@ -138,6 +138,7 @@ export interface StabilityPanelView {
   queuedTasks: TaskInspectSummary[];
   blockedTasks: TaskInspectSummary[];
   workflows: WorkflowInspectSummary[];
+  workflowCount: number;
   pendingApprovals: ApprovalRecord[];
   pendingApprovalCount: number;
   workers: WorkerInspectSummary[];
@@ -648,6 +649,7 @@ export class MissionControlService {
       queuedTasks: queuedTaskItems,
       blockedTasks: blockedTaskItems,
       workflows: workflowSummaries,
+      workflowCount: workflowSummaries.length,
       pendingApprovals,
       pendingApprovalCount: pendingApprovals.length,
       workers,
