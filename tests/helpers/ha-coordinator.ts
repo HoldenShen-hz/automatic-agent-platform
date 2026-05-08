@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { setHaCoordinatorInstance, getHaCoordinatorInstance, type HaCoordinatorService, HA_COORDINATOR_DDL } from "../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
+import { HA_COORDINATOR_DDL, type HaCoordinatorService } from "../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { createTempWorkspace, cleanupPath } from "./fs.js";
 
@@ -84,8 +84,7 @@ export function initHaCoordinatorForTests(options?: {
   // These are not part of the main SQLITE_MIGRATIONS since HA coordinator uses its own DDL
   db.connection.exec(HA_COORDINATOR_DDL);
 
-  setHaCoordinatorInstance(db, { strictLeaderAuthority: options?.strictLeaderAuthority ?? false });
-  const coordinator = getHaCoordinatorInstance();
+  const coordinator = new HaCoordinatorService(db, { strictLeaderAuthority: options?.strictLeaderAuthority ?? false });
 
   coordinator.registerNode(options?.nodeId ?? TEST_NODE_ID, options?.region ?? TEST_NODE_REGION);
   coordinator.acquireLeadership({

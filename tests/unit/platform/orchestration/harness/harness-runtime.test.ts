@@ -199,7 +199,7 @@ test("HarnessRuntimeService.assertInvariants detects iteration_exceeds_budget", 
   };
 
   const result = runtime.assertInvariants(runWithHighIteration);
-  assert.ok(result.violations.includes("harness.invariant.iteration_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-1:harness.invariant.iteration_exceeds_budget"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects replan_count_exceeds_budget", () => {
@@ -232,7 +232,7 @@ test("HarnessRuntimeService.assertInvariants detects replan_count_exceeds_budget
   };
 
   const result = runtime.assertInvariants(runWithHighReplans);
-  assert.ok(result.violations.includes("harness.invariant.replan_count_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-2:harness.invariant.replan_count_exceeds_budget"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects total_cost_exceeds_budget", () => {
@@ -265,7 +265,7 @@ test("HarnessRuntimeService.assertInvariants detects total_cost_exceeds_budget",
   };
 
   const result = runtime.assertInvariants(runWithHighCost);
-  assert.ok(result.violations.includes("harness.invariant.total_cost_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-3:harness.invariant.total_cost_exceeds_budget"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects duration_exceeds_budget", () => {
@@ -298,7 +298,7 @@ test("HarnessRuntimeService.assertInvariants detects duration_exceeds_budget", (
   };
 
   const result = runtime.assertInvariants(runWithLongDuration);
-  assert.ok(result.violations.includes("harness.invariant.duration_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-4:harness.invariant.duration_exceeds_budget"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects final_state_requires_completed_at", () => {
@@ -324,7 +324,7 @@ test("HarnessRuntimeService.assertInvariants detects final_state_requires_comple
   };
 
   const result = runtime.assertInvariants(completedRun);
-  assert.ok(result.violations.includes("harness.invariant.final_state_requires_completed_at"));
+  assert.ok(result.violations.includes("INV-5:harness.invariant.final_state_requires_completed_at"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects paused_requires_wait_reason", () => {
@@ -351,7 +351,7 @@ test("HarnessRuntimeService.assertInvariants detects paused_requires_wait_reason
   };
 
   const result = runtime.assertInvariants(pausedRun);
-  assert.ok(result.violations.includes("harness.invariant.paused_requires_wait_reason"));
+  assert.ok(result.violations.includes("INV-6:harness.invariant.paused_requires_wait_reason"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects non_accept_decision_requires_feedback", () => {

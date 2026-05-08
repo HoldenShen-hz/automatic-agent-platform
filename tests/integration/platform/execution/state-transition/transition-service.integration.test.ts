@@ -168,21 +168,23 @@ test("TransitionService transitions execution through valid states", () => {
       });
     });
 
+    // Valid execution transition: created -> prechecking
     transitions.transitionExecutionStatus({
       entityKind: "execution",
       entityId: executionId,
       fromStatus: "created",
-      toStatus: "dispatching",
-      reasonCode: "execution.dispatching",
+      toStatus: "prechecking",
+      reasonCode: "execution.prechecking",
       traceId,
       actorType: "system",
       occurredAt: nowIso(),
     });
 
+    // Valid execution transition: prechecking -> executing
     transitions.transitionExecutionStatus({
       entityKind: "execution",
       entityId: executionId,
-      fromStatus: "dispatching",
+      fromStatus: "prechecking",
       toStatus: "executing",
       reasonCode: "execution.started",
       traceId,
@@ -322,14 +324,17 @@ test("TransitionService handles workflow transitions", () => {
         updatedAt: now,
         completedAt: null,
       });
-      store.insertWorkflow({
-        id: taskId,
+      store.insertWorkflowState({
         taskId,
-        status: "running",
+        divisionId: "general_ops",
+        workflowId: "multi_step_workflow",
         currentStepIndex: 0,
-        stepsJson: "[]",
+        status: "running",
         outputsJson: "{}",
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
         updatedAt: now,
       });
     });
@@ -373,6 +378,26 @@ test("TransitionService handles session transitions", () => {
     const now = nowIso();
 
     db.transaction(() => {
+      store.insertTask({
+        id: "task-sess-001",
+        parentId: null,
+        rootId: "task-sess-001",
+        divisionId: "general_ops",
+        tenantId: null,
+        title: "Session transition test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
       store.insertSession({
         id: sessionId,
         taskId: "task-sess-001",

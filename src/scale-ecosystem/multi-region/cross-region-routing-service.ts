@@ -50,7 +50,6 @@ export class CrossRegionRoutingService {
       .filter((region) =>
         blockedRegionIds.has(region.regionId)
         || region.regionId === unhealthyPrimaryRegionId
-        || region.status === "disabled"
         || !region.residencyAllowed
         || !allowedJurisdictions.has(region.jurisdiction)
         || !includesAllCapabilities(region, requiredCapabilities))

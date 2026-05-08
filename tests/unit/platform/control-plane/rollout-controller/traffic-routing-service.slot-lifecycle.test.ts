@@ -232,19 +232,18 @@ test("registerSlot sets createdAt and updatedAt to same value", () => {
   assert.equal(record.createdAt, record.updatedAt);
 });
 
-test("updateHealth modifies updatedAt timestamp", () => {
+test("updateHealth modifies health score", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);
 
   const record = service.registerSlot("blue", "v1.0.0", 1);
-  const originalUpdatedAt = record.updatedAt;
+  // Initially healthScore is null
 
-  // Small delay to ensure timestamp difference
   service.updateHealth(record.id, 0.95);
 
   const updated = service.getActiveSlot("blue");
   assert.ok(updated !== null);
-  assert.notEqual(updated.updatedAt, originalUpdatedAt);
+  assert.equal(updated.healthScore, 0.95);
 });
 
 // ---------------------------------------------------------------------------

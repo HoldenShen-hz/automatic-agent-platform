@@ -637,7 +637,7 @@ test("contract: ExplanationPipelineService keeps facts stable across depths and 
   };
 
   const brief = service.generate(request, "L1");
-  const audit = service.generate(request, "L3");
+  const audit = service.generate(request, "L3", { forensicBudgetReservationId: "budget_1" });
 
   assert.equal(brief.rationale.summary, audit.rationale.summary);
   assert.deepEqual(audit.rationale.evidenceRefs, ["evt_public_1"]);
@@ -707,6 +707,9 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_store_1",
+    deviceId: "device_edge_store_1",
+    offlineMaxDuration: 86400,
+    keyLease: "lease_key_1",
     capabilities: ["text", "sync"],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 12,
@@ -715,6 +718,9 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       allowRestrictedDataUpload: false,
       requireOrdering: true,
     },
+    deviceAttestation: { status: "valid" as const },
+    certificateStatus: "active" as const,
+    riskLevel: "low" as const,
   };
   const execution = service.executeOffline(
     profile,

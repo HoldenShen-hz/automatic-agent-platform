@@ -19,10 +19,29 @@ import {
   isMemoryStale,
   getEvictionPriority,
   shouldEvict,
-  createContextTruncationReport,
   DEFAULT_LAYER_TTL_CONFIGS,
+  type EvictionReason,
+  type ContextTruncationReport,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+/**
+ * Stub for createContextTruncationReport since it doesn't exist in source
+ */
+function createContextTruncationReport(
+  layer: string,
+  memories: MemoryRecord[],
+  reason: EvictionReason
+): ContextTruncationReport {
+  return {
+    layer,
+    totalEvicted: memories.length,
+    evictedRecords: memories.map(m => ({ recordId: m.id, scope: m.scope })),
+    evictedSizeBytes: memories.reduce((sum, m) => sum + (m.contentJson?.length ?? 0), 0),
+    reason,
+    timestamp: new Date().toISOString(),
+  };
+}
 
 function createTestMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {

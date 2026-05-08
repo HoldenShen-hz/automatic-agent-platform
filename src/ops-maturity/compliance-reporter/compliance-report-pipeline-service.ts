@@ -96,6 +96,23 @@ export interface ComplianceFrameworkSchedule {
   readonly intervalDays: number;
 }
 
+export interface ComplianceAuditorAccessRequest {
+  readonly auditorId: string;
+  readonly framework?: string;
+  readonly grantedPermissions: readonly string[];
+  readonly allowPiiAccess?: boolean;
+}
+
+export interface ComplianceAuditorAccessView {
+  readonly artifactId: string;
+  readonly framework: string;
+  readonly accessorId: string;
+  readonly permissions: readonly string[];
+  readonly piiRedacted: boolean;
+  readonly markdown: string;
+  readonly evidenceMap: Readonly<Record<string, readonly string[]>>;
+}
+
 export class GapAnalyzerService {
   public analyze(
     controls: readonly string[],
@@ -147,6 +164,43 @@ export class ComplianceFrequencySchedulerService {
   }
 }
 
+export class ComplianceAuditorAccessService {
+  private readonly minimumPermissionsByFramework: Readonly<Record<string, readonly string[]>> = {
+    SOC2: ["compliance:report:read", "compliance:soc2:read"],
+    HIPAA: ["compliance:report:read", "compliance:hipaa:read"],
+    GDPR: ["compliance:report:read", "compliance:gdpr:read"],
+    ISO27001: ["compliance:report:read", "compliance:iso27001:read"],
+  };
+
+  public requiredPermissionsForFramework(framework: string): readonly string[] {
+    return this.minimumPermissionsByFramework[framework] ?? ["compliance:report:read"];
+  }
+
+  public buildAuditorView(
+    artifact: ComplianceReportArtifact,
+    request: ComplianceAuditorAccessRequest,
+  ): ComplianceAuditorAccessView {
+    const framework = request.framework ?? artifact.framework;
+    const requiredPermissions = this.requiredPermissionsForFramework(framework);
+    const permissionSet = new Set(request.grantedPermissions);
+    const missingPermissions = requiredPermissions.filter((permission) => !permissionSet.has(permission));
+    if (missingPermissions.length > 0) {
+      throw new Error(`compliance_report.auditor_permission_denied:${framework}:${missingPermissions.join(",")}`);
+    }
+    const piiRedacted = request.allowPiiAccess !== true;
+
+    return {
+      artifactId: artifact.artifactId,
+      framework,
+      accessorId: request.auditorId,
+      permissions: [...requiredPermissions],
+      piiRedacted,
+      markdown: piiRedacted ? redactPiiText(artifact.markdown) : artifact.markdown,
+      evidenceMap: piiRedacted ? redactEvidenceMap(artifact.evidenceMap) : artifact.evidenceMap,
+    };
+  }
+}
+
 export class ComplianceReportPipelineService {
   private readonly templates: readonly ComplianceReportTemplateDefinition[];
   private readonly accessLog = new Map<string, ComplianceReportAccessReceipt[]>();
@@ -154,6 +208,7 @@ export class ComplianceReportPipelineService {
   private readonly renderer = new ComplianceReportRendererService();
   private readonly registry: ComplianceTemplateRegistryService<ComplianceReportTemplateDefinition>;
   private readonly schedulePolicy = new ComplianceFrequencySchedulerService();
+  private readonly auditorAccess = new ComplianceAuditorAccessService();
 
   public constructor(templates: readonly ComplianceReportTemplateDefinition[]) {
     this.templates = templates;
@@ -261,6 +316,13 @@ export class ComplianceReportPipelineService {
     return this.schedulePolicy.nextDueAt(framework, fromDate);
   }
 
+  public buildAuditorAccessView(
+    artifact: ComplianceReportArtifact,
+    request: ComplianceAuditorAccessRequest,
+  ): ComplianceAuditorAccessView {
+    return this.auditorAccess.buildAuditorView(artifact, request);
+  }
+
   private buildSections(
     template: ComplianceReportTemplateDefinition,
     evidenceMap: Readonly<Record<string, readonly string[]>>,
@@ -319,4 +381,19 @@ export class ComplianceReportPipelineService {
       },
     ];
   }
+}
+
+function redactEvidenceMap(
+  evidenceMap: Readonly<Record<string, readonly string[]>>,
+): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(
+    Object.entries(evidenceMap).map(([key, values]) => [key, values.map((value) => redactPiiText(value))]),
+  );
+}
+
+function redactPiiText(input: string): string {
+  return input
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[REDACTED_EMAIL]")
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_SSN]")
+    .replace(/\b(?:\+?\d{1,2}\s*)?(?:\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "[REDACTED_PHONE]");
 }

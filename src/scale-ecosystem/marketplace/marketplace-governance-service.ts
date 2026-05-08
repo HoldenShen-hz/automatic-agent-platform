@@ -377,6 +377,9 @@ export class MarketplaceGovernanceService {
       manifestChecksum: assertChecksum(input.manifestChecksum, "marketplace.invalid_manifest_checksum"),
       lifecycleState: input.lifecycleState ?? "installed",
       reviewRequired: input.reviewRequired === false ? 0 : 1,
+      sbomVerified: (input as { sbomVerified?: boolean }).sbomVerified ? 1 : 0,
+      sandboxCertVerified: (input as { sandboxCertVerified?: boolean }).sandboxCertVerified ? 1 : 0,
+      egressPolicyCompliant: (input as { egressPolicyCompliant?: boolean }).egressPolicyCompliant ? 1 : 0,
       createdAt,
       updatedAt,
     };

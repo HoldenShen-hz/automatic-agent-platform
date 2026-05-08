@@ -48,8 +48,8 @@ test("ComplianceReportPipelineService keeps reports generated when all evidence 
   const artifact = service.generate({
     templateId: "iso27001_quarterly",
     evidence: [
-      { evidenceId: "ev_audit_1", evidenceType: "audit_log" },
-      { evidenceId: "ev_control_1", evidenceType: "control_test" },
+      { evidenceId: "ev_audit_1", evidenceType: "audit_log", freshnessHours: 12, trustScore: 1, tamperProof: true },
+      { evidenceId: "ev_control_1", evidenceType: "control_test", freshnessHours: 12, trustScore: 1, tamperProof: true },
     ],
     requestedBy: "auditor_2",
   });

@@ -6,7 +6,51 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { InMemoryDlqRepository, type ExtendedDeadLetterRecord } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+import { type ExtendedDeadLetterRecord, type DlqRepository } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
+
+/**
+ * In-memory implementation of DlqRepository for testing
+ */
+class InMemoryDlqRepository implements DlqRepository {
+  private readonly records = new Map<string, ExtendedDeadLetterRecord>();
+
+  insert(record: ExtendedDeadLetterRecord): void {
+    if (this.records.has(record.deadLetterId)) {
+      throw new Error(`Record with ID ${record.deadLetterId} already exists`);
+    }
+    this.records.set(record.deadLetterId, record);
+  }
+
+  findById(deadLetterId: string): ExtendedDeadLetterRecord | null {
+    return this.records.get(deadLetterId) ?? null;
+  }
+
+  update(record: ExtendedDeadLetterRecord): void {
+    if (!this.records.has(record.deadLetterId)) {
+      throw new Error(`Record with ID ${record.deadLetterId} not found`);
+    }
+    this.records.set(record.deadLetterId, record);
+  }
+
+  listAll(): ExtendedDeadLetterRecord[] {
+    return Array.from(this.records.values()).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }
+
+  listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
+    return Array.from(this.records.values())
+      .filter((r) => r.consumerId === consumerId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  listRetryable(asOf: string): ExtendedDeadLetterRecord[] {
+    const asOfTime = new Date(asOf).getTime();
+    return Array.from(this.records.values())
+      .filter((r) => r.status === "retrying" && r.nextRetryAt !== null && new Date(r.nextRetryAt).getTime() <= asOfTime)
+      .sort((a, b) => new Date(a.nextRetryAt!).getTime() - new Date(b.nextRetryAt!).getTime());
+  }
+}
 
 function createRecord(overrides: Partial<ExtendedDeadLetterRecord> = {}): ExtendedDeadLetterRecord {
   const now = new Date().toISOString();
@@ -140,6 +184,8 @@ test("InMemoryDlqRepository.listRetryable returns records due for retry", () => 
 test("InMemoryDlqRepository.listRetryable sorts by nextRetryAt ascending", () => {
   const repo = new InMemoryDlqRepository();
   const now = new Date().toISOString();
+  const past = new Date(Date.parse(now) - 1000).toISOString();
+  const earlier = new Date(Date.parse(now) - 5000).toISOString();
 
   repo.insert(createRecord({
     deadLetterId: "dlq_later",
@@ -149,14 +195,22 @@ test("InMemoryDlqRepository.listRetryable sorts by nextRetryAt ascending", () =>
   repo.insert(createRecord({
     deadLetterId: "dlq_earlier",
     status: "retrying",
-    nextRetryAt: new Date(Date.parse(now) + 1000).toISOString(),
+    nextRetryAt: earlier,
+  }));
+  repo.insert(createRecord({
+    deadLetterId: "dlq_past",
+    status: "retrying",
+    nextRetryAt: past,
   }));
 
-  const retryable = repo.listRetryable(now);
+  // Pass a future "asOf" to include all retryable records
+  const futureAsOf = new Date(Date.parse(now) + 10000).toISOString();
+  const retryable = repo.listRetryable(futureAsOf);
 
-  assert.equal(retryable.length, 2);
+  assert.equal(retryable.length, 3);
   assert.equal(retryable[0]!.deadLetterId, "dlq_earlier");
-  assert.equal(retryable[1]!.deadLetterId, "dlq_later");
+  assert.equal(retryable[1]!.deadLetterId, "dlq_past");
+  assert.equal(retryable[2]!.deadLetterId, "dlq_later");
 });
 
 test("InMemoryDlqRepository: empty repository returns empty arrays", () => {

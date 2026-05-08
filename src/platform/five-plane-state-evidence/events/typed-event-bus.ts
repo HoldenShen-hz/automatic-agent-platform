@@ -73,6 +73,13 @@ export interface TypedEventPayloadMap {
   "plugin:invocation_completed": PluginInvocationEventPayload;
   "knowledge:chunk_indexed": KnowledgeChunkIndexedPayload;
   "learning:knowledge_promoted": LearningKnowledgePromotedPayload;
+  // Config change events
+  "config.changed": Record<string, unknown>;
+  "config.rollout.started": Record<string, unknown>;
+  "config.rollout.promoted": Record<string, unknown>;
+  "config.rollout.cancelled": Record<string, unknown>;
+  "config.rollout.auto_progressed": Record<string, unknown>;
+  "config.drift_detected": Record<string, unknown>;
   "skill:execution_started": {
     skillId: string;
     version: string;
@@ -161,7 +168,6 @@ export interface TypedEventPayloadMap {
  * Extracts event types from the registry that are NOT in TypedEventPayloadMap.
  */
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
-// @ts-ignore coverage check
 const TYPED_EVENT_COVERAGE_CHECK: MissingTypedEventDefinitions extends never ? true : never = true;
 void TYPED_EVENT_COVERAGE_CHECK;
 

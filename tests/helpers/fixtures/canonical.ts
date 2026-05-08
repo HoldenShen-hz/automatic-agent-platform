@@ -163,7 +163,7 @@ export function createMinimalPlanEdge(input: {
     edgeId: input.edgeId ?? newId("edge"),
     fromNodeId: input.fromNodeId,
     toNodeId: input.toNodeId,
-    condition: input.condition ?? true,
+    condition: (input.condition !== undefined ? input.condition : true) as import("../../../src/platform/contracts/executable-contracts/index.js").JsonValue,
     dependencyType: input.dependencyType ?? "hard",
   };
 }
@@ -264,8 +264,9 @@ export function createMinimalNodeRun(input: MinimalNodeRunInput = {}): NodeRun {
     status: input.status ?? "created",
     attemptCount: input.attemptCount ?? 0,
     sideEffects: [],
+    compensation: [],
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
-    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
+    fencingToken: input.fencingToken ?? "test-fencing-token",
     currentSeq: input.currentSeq ?? 0,
     createdAt: now,
     updatedAt: input.updatedAt ?? now,
@@ -335,7 +336,7 @@ export function createMinimalNodeAttemptReceipt(input: MinimalNodeAttemptReceipt
     duration: input.duration ?? 100,
     ...(input.outputRef != null ? { outputRef: input.outputRef } : {}),
     ...(input.error != null ? { error: input.error } : {}),
-    ...(input.errorDetail != null ? { errorDetail: input.errorDetail } : {}),
+    errorDetail: input.errorDetail ?? "",
     sideEffectRefs: input.sideEffectRefs ?? [],
     budgetSettlementRefs: input.budgetSettlementRefs ?? [],
     evidenceRefs: input.evidenceRefs ?? [],
@@ -431,6 +432,7 @@ export interface MinimalSideEffectRecordInput {
 
 export function createMinimalSideEffectRecord(input: MinimalSideEffectRecordInput = {}): SideEffectRecord {
   const now = input.createdAt ?? DEFAULT_NOW;
+  const deadline = new Date(Date.now() + 3600000).toISOString();
   return {
     sideEffectId: input.sideEffectId ?? newId("seffect"),
     harnessRunId: input.harnessRunId ?? newId("hrun"),
@@ -443,6 +445,7 @@ export function createMinimalSideEffectRecord(input: MinimalSideEffectRecordInpu
     ...(input.approvalRef != null ? { approvalRef: input.approvalRef } : {}),
     preCommitPolicyProofRef: input.preCommitPolicyProofRef ?? createTestArtifactRef(),
     ...(input.externalRef != null ? { externalRef: input.externalRef } : {}),
+    deadline,
     createdAt: now,
     updatedAt: input.updatedAt ?? now,
     ...input.overrides,

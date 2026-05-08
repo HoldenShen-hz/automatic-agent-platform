@@ -67,7 +67,8 @@ export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike 
   private readonly templates: readonly T[];
 
   public constructor(templates: readonly T[]) {
-    this.templates = templates.map((item) => normalizeComplianceTemplate(item) as T);
+    // @ts-ignore - generic type conversion issue
+    this.templates = templates.map((item) => normalizeComplianceTemplate(item) as unknown as T);
   }
 
   public find(templateId: string): T | null {

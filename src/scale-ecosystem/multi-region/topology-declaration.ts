@@ -249,7 +249,7 @@ export function buildActiveActiveTopology(
         sourceRegionId: writableRegions[i]!.regionId,
         targetRegionId: writableRegions[j]!.regionId,
         replicationMode: options?.defaultReplicationMode ?? "asynchronous",
-        conflictResolution: options?.conflictResolutionStrategy,
+        ...(options?.conflictResolutionStrategy !== undefined ? { conflictResolution: options.conflictResolutionStrategy } : {}),
         replicationEnabled: true,
       });
     }

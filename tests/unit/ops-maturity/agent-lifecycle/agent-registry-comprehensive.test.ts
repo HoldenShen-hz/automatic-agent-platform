@@ -92,8 +92,8 @@ test("isValidLifecycleTransition - invalid transitions return false", () => {
   // Cannot go from active back to canary
   assert.equal(isValidLifecycleTransition("active", "canary"), false);
 
-  // Cannot go from paused to canary
-  assert.equal(isValidLifecycleTransition("paused", "canary"), false);
+  // paused -> canary is allowed (bidirectional)
+  assert.equal(isValidLifecycleTransition("paused", "canary"), true);
 });
 
 test("isValidLifecycleTransition - same state returns false (not a valid transition)", () => {
@@ -242,6 +242,7 @@ test("VALID_LIFECYCLE_TRANSITIONS contains all states", () => {
     "paused",
     "deprecated",
     "archived",
+    "removed",
   ];
 
   for (const state of allStates) {
@@ -254,10 +255,11 @@ test("VALID_LIFECYCLE_TRANSITIONS contains all states", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, allStates.length);
 });
 
-test("archived state has no valid transitions (completely terminal)", () => {
+test("archived state has valid transition to removed (terminal via removed)", () => {
   const archivedTransitions = VALID_LIFECYCLE_TRANSITIONS.get("archived");
   assert.ok(archivedTransitions !== undefined);
-  assert.equal(archivedTransitions.length, 0);
+  assert.equal(archivedTransitions.length, 1);
+  assert.equal(archivedTransitions[0], "removed");
 });
 
 test("draft state only allows transition to testing", () => {

@@ -53,14 +53,15 @@ class PluginTaintTracker {
     inputTaintLabels?: readonly DataTaintLabel[];
     description?: string;
   }): import("../platform/five-plane-state-evidence/truth/data-taint-propagation.js").DataTaintPropagationRecord {
-    const result = this.taintService.computePropagation({
+    const propagationOptions: import("../platform/five-plane-state-evidence/truth/data-taint-propagation.js").ComputeTaintPropagationOptions = {
       sourceObjectType: "ToolOutput",
       sourceObjectId: newId("plugin_taint"),
       inputDataClasses: input.inputDataClasses as import("../platform/five-plane-state-evidence/truth/data-taint-propagation.js").DataClassificationLevel[],
-      inputTaintLabels: input.inputTaintLabels,
       sourcePluginId: input.pluginId,
       description: input.description ?? `Plugin ${input.pluginId} execution output`,
-    });
+      ...(input.inputTaintLabels ? { inputTaintLabels: input.inputTaintLabels } : {}),
+    };
+    const result = this.taintService.computePropagation(propagationOptions);
 
     const record: PluginTaintRecord = {
       pluginId: input.pluginId,

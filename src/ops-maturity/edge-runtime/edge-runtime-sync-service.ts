@@ -5,6 +5,8 @@ import { buildEdgeExecutionPlan } from "./edge-orchestrator/index.js";
 import { selectEdgeLocalModel, type LocalModelProfile } from "./local-model/index.js";
 import { orderEdgeSyncQueue } from "./sync-queue/index.js";
 
+export type EdgeDeploymentMode = "edge_micro" | "edge_standard" | "edge_mobile" | "edge_hybrid";
+
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
   readonly deviceId?: string;
@@ -19,6 +21,7 @@ export interface EdgeRuntimeProfile {
   readonly keyLease?: string;
   readonly certificateStatus?: "valid" | "revoked";
   readonly allowedModels: readonly string[];
+  readonly deploymentMode?: EdgeDeploymentMode;
   readonly syncPolicy: {
     readonly allowRestrictedDataUpload: boolean;
     readonly requireOrdering: boolean;
@@ -55,6 +58,7 @@ export interface ConflictResolutionDecision {
 export interface EdgeNodeAttemptReceiptView {
   readonly record: OfflineExecutionRecord;
   readonly selectedModelId: string | null;
+  readonly deploymentMode: EdgeDeploymentMode;
   readonly planGraphNodeIds: readonly string[];
   /** @deprecated compatibility alias; use planGraphNodeIds */
   readonly executionPlan: readonly string[];
@@ -130,10 +134,12 @@ export class EdgeRuntimeSyncService {
       request.modality,
     );
     const planGraphNodeIds = buildEdgeExecutionPlan([request.taskId]).orderedTaskIds;
+    const deploymentMode = resolveEdgeDeploymentMode(profile);
 
     return {
       record,
       selectedModelId: model?.modelId ?? null,
+      deploymentMode,
       planGraphNodeIds,
       executionPlan: planGraphNodeIds,
     };
@@ -251,4 +257,21 @@ export class EdgeRuntimeSyncService {
       .digest("hex");
     return expected === envelope.signature;
   }
+}
+
+export function resolveEdgeDeploymentMode(profile: EdgeRuntimeProfile): EdgeDeploymentMode {
+  if (profile.deploymentMode) {
+    return profile.deploymentMode;
+  }
+  const capabilitySet = new Set(profile.capabilities);
+  if (capabilitySet.has("mobile") || capabilitySet.has("battery_powered")) {
+    return "edge_mobile";
+  }
+  if (profile.connectivityMode === "intermittent" || capabilitySet.has("cloud_sync")) {
+    return "edge_hybrid";
+  }
+  if (profile.connectivityMode === "offline" && profile.allowedModels.length <= 1) {
+    return "edge_micro";
+  }
+  return "edge_standard";
 }

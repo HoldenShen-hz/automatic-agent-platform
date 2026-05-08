@@ -306,7 +306,7 @@ export class TenantLifecycleService {
       reason,
       timestamp: nowIso(),
       actor,
-      metadata,
+      ...(metadata !== undefined ? { metadata } : {}),
     };
 
     const events = this.eventHistory.get(tenantId) ?? [];

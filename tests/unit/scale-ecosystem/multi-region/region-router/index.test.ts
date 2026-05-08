@@ -10,6 +10,9 @@ import {
 test("RegionDescriptorSchema parses valid region descriptor", () => {
   const valid = {
     regionId: "us-east-1",
+    provider: "aws",
+    endpoints: { api: "https://api.example.com" },
+    dataResidencyPolicy: "regional",
     countryCode: "US",
     jurisdiction: "US-East",
     capabilities: ["compute", "storage"],
@@ -29,12 +32,17 @@ test("RegionDescriptorSchema parses valid region descriptor", () => {
 });
 
 test("RegionDescriptorSchema applies defaults", () => {
-  const minimal = {
+  // Note: Schema does NOT have defaults for required fields (provider, endpoints, dataResidencyPolicy)
+  // So we need to provide complete valid input to test defaults that do exist
+  const withPartialDefaults = {
     regionId: "eu-west-1",
     jurisdiction: "EU-West",
+    provider: "aws",
+    endpoints: { api: "https://api.example.com" },
+    dataResidencyPolicy: "regional",
   };
 
-  const result = RegionDescriptorSchema.parse(minimal);
+  const result = RegionDescriptorSchema.parse(withPartialDefaults);
   assert.equal(result.regionId, "eu-west-1");
   assert.equal(result.countryCode, "XX");
   assert.deepEqual(result.capabilities, []);
@@ -57,6 +65,9 @@ test("RegionDescriptorSchema rejects latencyScore below zero", () => {
   const invalid = {
     regionId: "us-west-2",
     jurisdiction: "US-West",
+    provider: "aws",
+    endpoints: { api: "https://api.example.com" },
+    dataResidencyPolicy: "regional",
     latencyScore: -1,
   };
 

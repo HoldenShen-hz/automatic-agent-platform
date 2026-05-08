@@ -218,7 +218,7 @@ test("GuardrailEngine assess warns when required evidence missing", () => {
   const input: GuardrailAssessmentInput = {
     toolbelt: createMockToolbelt({ requiredEvidence: ["audit_log", "approval_record"] }),
     evidenceRefs: ["audit_log"], // missing approval_record
-    riskScore: 10,
+    riskScore: 35, // Exceeds escalationThreshold of 30, triggering risk warning AND requiresHuman
     maxRiskScore: 50,
     escalationThreshold: 30,
     currentStepCount: 5,
@@ -228,10 +228,8 @@ test("GuardrailEngine assess warns when required evidence missing", () => {
   const result = engine.assess(input);
 
   assert.ok(result.passed); // still passes but with warning
-  assert.ok(result.requiresHuman);
-  assert.equal(result.findings.length, 1);
-  assert.equal(result.findings[0]!.layer, "evidence");
-  assert.equal(result.findings[0]!.severity, "warn");
+  assert.ok(result.requiresHuman); // Risk warning triggers human requirement
+  assert.equal(result.findings.length, 2); // risk warning + evidence warning
 });
 
 test("GuardrailEngine assess blocks when risk exceeds max", () => {

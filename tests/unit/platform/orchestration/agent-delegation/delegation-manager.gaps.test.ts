@@ -392,12 +392,12 @@ test("createDelegationManager with custom options", async () => {
     defaultTimeout: 60000,
   });
 
-  const parent = createParentContext({ delegationDepth: 5 });
+  const parent = createParentContext({ delegationDepth: 3 });
   const spec = createDelegationSpec();
 
-  // Depth 5 should be allowed with maxDepth of 10
+  // Depth 3 should be allowed with maxDepth of 10 (governance threshold is 5)
   const handle = await service.delegate(parent, spec);
-  assert.equal(handle.depth, 6);
+  assert.equal(handle.depth, 4);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

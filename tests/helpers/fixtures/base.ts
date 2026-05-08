@@ -163,7 +163,7 @@ export function createMinimalPlanGraphBundle(
   ];
   return createCanonicalPlanGraphBundle({
     harnessRunId,
-    planGraphBundleId: overrides.planGraphBundleId,
+    ...(overrides.planGraphBundleId != null ? { planGraphBundleId: overrides.planGraphBundleId } : {}),
     graphVersion: overrides.graphVersion ?? 1,
     graph: {
       graphId: overrides.graph?.graphId ?? "graph-test-001",

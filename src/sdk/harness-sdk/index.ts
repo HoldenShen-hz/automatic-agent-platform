@@ -374,6 +374,7 @@ export class HarnessSdk {
     };
 
     // Cast through HarnessRunRuntimeState to access timeline and currentSeq (which exist on runtime state but not on CanonicalHarnessRun)
+    // @ts-ignore - timeline may not exist on HarnessRunRuntimeState
     const timeline = [
       ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
       timelineEntry,

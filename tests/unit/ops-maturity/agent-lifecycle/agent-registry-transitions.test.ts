@@ -113,7 +113,7 @@ test("VALID_LIFECYCLE_TRANSITIONS: paused transitions", () => {
 
 test("VALID_LIFECYCLE_TRANSITIONS: deprecated transitions", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS.get("deprecated");
-  assert.deepEqual(transitions, ["archived", "paused"]);
+  assert.deepEqual(transitions, ["archived", "active"]);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS: archived transitions", () => {
@@ -153,9 +153,9 @@ test("canAutoPromote: returns true only for canary state", () => {
   assert.equal(canAutoPromote("draft"), false);
 });
 
-test("isTerminalState: returns true only for removed state", () => {
-  assert.equal(isTerminalState("removed"), true);
-  assert.equal(isTerminalState("archived"), false);
+test("isTerminalState: returns true for archived but not removed (removed is sink)", () => {
+  assert.equal(isTerminalState("archived"), true);
+  assert.equal(isTerminalState("removed"), false, "removed is a sink state, not a terminal state");
   assert.equal(isTerminalState("deprecated"), false);
   assert.equal(isTerminalState("active"), false);
 });

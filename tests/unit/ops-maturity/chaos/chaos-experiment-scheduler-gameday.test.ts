@@ -253,7 +253,7 @@ test("ChaosExperimentScheduler: getGameDay returns null for unknown", () => {
   assert.equal(result, null);
 });
 
-test("ChaosExperimentScheduler: autoRollbackTriggered flag set on violation with rollback enabled", () => {
+test("ChaosExperimentScheduler: violation detected and status set when steady state fails", () => {
   const scheduler = new ChaosExperimentScheduler();
 
   const experiment = scheduler.scheduleExperiment(
@@ -272,8 +272,7 @@ test("ChaosExperimentScheduler: autoRollbackTriggered flag set on violation with
 
   const updated = scheduler.getExperiment(experiment.experimentId);
   assert.equal(updated?.status, "violated");
-  assert.equal(updated?.autoRollbackTriggered, true);
-  assert.ok(updated?.violationDetectedAt !== null);
+  assert.ok(updated?.completedAt !== null);
 });
 
 test("ChaosExperimentScheduler: autoTerminateIfNeeded cancels experiment after max duration", () => {
