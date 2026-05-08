@@ -115,6 +115,7 @@ test.describe("AsyncArtifactRepository", () => {
       artifactId: "artifact-001",
       taskId: "task-artifact-001",
       executionId: "exec-artifact-001",
+      nodeRunId: "node-run-artifact-001",
       stepId: "step-1",
       kind: "output",
       storagePath: "/artifacts/output-001.txt",
@@ -131,6 +132,7 @@ test.describe("AsyncArtifactRepository", () => {
 
     assert.equal(retrieved?.artifactId, "artifact-001");
     assert.equal(retrieved?.taskId, "task-artifact-001");
+    assert.equal(retrieved?.nodeRunId, "node-run-artifact-001");
     assert.equal(retrieved?.fileName, "output-001.txt");
     assert.equal(retrieved?.sizeBytes, 1024);
     assert.equal(retrieved?.mimeType, "text/plain");
@@ -149,6 +151,7 @@ test.describe("AsyncArtifactRepository", () => {
         artifactId: "artifact-list-001",
         taskId: "task-artifact-list",
         executionId: "exec-list-001",
+        nodeRunId: "node-run-list-001",
         stepId: "step-1",
         kind: "output",
         storagePath: "/artifacts/output-001.txt",
@@ -163,6 +166,7 @@ test.describe("AsyncArtifactRepository", () => {
         artifactId: "artifact-list-002",
         taskId: "task-artifact-list",
         executionId: "exec-list-001",
+        nodeRunId: "node-run-list-002",
         stepId: "step-2",
         kind: "log",
         storagePath: "/artifacts/log-001.txt",
@@ -190,6 +194,7 @@ test.describe("AsyncArtifactRepository", () => {
       artifactId: "artifact-tenant-001",
       taskId: "task-artifact-tenant",
       executionId: "exec-tenant",
+      nodeRunId: "node-run-tenant-001",
       stepId: "step-1",
       kind: "output",
       storagePath: "/artifacts/output.txt",
@@ -215,6 +220,7 @@ test.describe("AsyncArtifactRepository", () => {
         artifactId: "artifact-order-002",
         taskId: "task-artifact-order",
         executionId: "exec-order",
+        nodeRunId: "node-run-order-002",
         stepId: "step-2",
         kind: "output",
         storagePath: "/artifacts/second.txt",
@@ -229,6 +235,7 @@ test.describe("AsyncArtifactRepository", () => {
         artifactId: "artifact-order-001",
         taskId: "task-artifact-order",
         executionId: "exec-order",
+        nodeRunId: "node-run-order-001",
         stepId: "step-1",
         kind: "output",
         storagePath: "/artifacts/first.txt",

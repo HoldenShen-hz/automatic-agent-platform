@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "openapi-typescript": "^0.14.0"
+    "openapi-typescript": "^7.9.1"
   }
 }

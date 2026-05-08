@@ -314,8 +314,8 @@ function decideLevel(
     } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
-    } else if (options.freezeOnIncident && severity === "P0") {
-      // R23-08 fix: Only P0 incidents trigger freeze; other severities trigger suggestion
+    } else if (options.freezeOnIncident) {
+      // R23-08 fix: Freeze on incident for non-P0 severities that reach this point
       return "frozen";
     } else {
       return "suggestion";

@@ -117,6 +117,7 @@ function toAgentId(roleId: string): string {
  */
 function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep): PlannedExecutionStep {
   return {
+    nodeId: step.nodeId,
     stepId: step.stepId,
     divisionId: step.divisionId ?? workflowDivisionId,
     roleId: step.roleId,
@@ -165,16 +166,16 @@ function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSte
   const adjacency = new Map<string, string[]>();
 
   for (const step of executionSteps) {
-    if (stepIds.has(step.stepId)) {
+    if (stepIds.has(step.nodeId)) {
       throw buildWorkflowValidationError(
         workflow.workflowId,
         "workflow.duplicate_step_id",
-        { stepId: step.stepId },
+        { stepId: step.nodeId },
       );
     }
-    stepIds.add(step.stepId);
-    inDegree.set(step.stepId, 0);
-    adjacency.set(step.stepId, []);
+    stepIds.add(step.nodeId);
+    inDegree.set(step.nodeId, 0);
+    adjacency.set(step.nodeId, []);
   }
 
   for (const step of executionSteps) {
@@ -184,13 +185,13 @@ function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSte
           workflow.workflowId,
           "workflow.missing_dependency",
           {
-            stepId: step.stepId,
+            stepId: step.nodeId,
             dependencyStepId,
           },
         );
       }
-      adjacency.get(dependencyStepId)?.push(step.stepId);
-      inDegree.set(step.stepId, (inDegree.get(step.stepId) ?? 0) + 1);
+      adjacency.get(dependencyStepId)?.push(step.nodeId);
+      inDegree.set(step.nodeId, (inDegree.get(step.nodeId) ?? 0) + 1);
     }
   }
 
@@ -216,7 +217,7 @@ function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSte
 
   if (visitedCount !== executionSteps.length) {
     const cyclicStepIds = executionSteps
-      .map((step) => step.stepId)
+      .map((step) => step.nodeId)
       .filter((stepId) => (inDegree.get(stepId) ?? 0) > 0);
     throw buildWorkflowValidationError(
       workflow.workflowId,
@@ -266,7 +267,7 @@ export class WorkflowPlanner {
 
     // Build dependency edges: for each step, create edges from its dependencies to itself
     const dependencyEdges = executionSteps.flatMap((step) =>
-      step.dependsOnStepIds.map((fromStepId) => ({ fromStepId, toStepId: step.stepId })),
+      step.dependsOnStepIds.map((fromStepId) => ({ fromStepId, toStepId: step.nodeId })),
     );
 
     return {

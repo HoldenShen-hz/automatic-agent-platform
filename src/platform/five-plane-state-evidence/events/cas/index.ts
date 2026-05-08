@@ -11,6 +11,7 @@
 export { CasService, type CasResult, type CasRepository, createInMemoryCasService, createSqliteCasService } from "./cas-service.js";
 export { SqliteCasRepository } from "./sqlite-cas-repository.js";
 export { SqliteFenceRepository } from "./sqlite-fence-repository.js";
+export { PostgresFenceRepository } from "./postgres-fence-repository.js";
 export {
   FencingTokenService,
   type FenceRepository,
@@ -19,3 +20,7 @@ export {
   type FencingTokenValidation,
   createSqliteFencingTokenService,
 } from "./fencing-token-service.js";
+export {
+  AsyncFencingTokenService,
+  createPostgresFencingTokenService,
+} from "./postgres-fencing-token-service.js";

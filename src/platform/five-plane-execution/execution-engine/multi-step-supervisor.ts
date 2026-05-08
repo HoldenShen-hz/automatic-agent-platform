@@ -184,7 +184,7 @@ export async function executeStepLoop(
         taskId,
         // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
         nodeRunId: step.nodeId,
-        stepId: step.stepId,
+        stepId: step.stepId ?? step.nodeId,
         roleId: step.roleId,
         status: "skipped",
         dataJson: JSON.stringify({ reasonCode: "upstream_dependency_failed", blockedBy: hardBlockers }),
@@ -409,7 +409,7 @@ export async function executeStepLoop(
               sessionId,
               direction: "system",
               messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId, decision),
+              content: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
               attachmentsJson: null,
               createdAt: failedAt,
             };
@@ -458,11 +458,11 @@ export async function executeStepLoop(
           taskId,
           // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
           nodeRunId: step.nodeId,
-          stepId: step.stepId,
+          stepId: step.stepId ?? step.nodeId,
           roleId: step.roleId,
           status: "failed",
           dataJson: JSON.stringify({ reasonCode: plannedFailure.errorCode }),
-          summary: plannedFailure.summary ?? buildStepFailureSummary(step.stepId, decision),
+          summary: plannedFailure.summary ?? buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
           artifactsJson: null,
           tokenCost: 0,
           durationMs: 0,
@@ -492,7 +492,7 @@ export async function executeStepLoop(
         throw new Error("workflow.budget_context_missing");
       }
       const stepData = await buildStepOutput({
-        stepId: step.stepId,
+        stepId: step.stepId ?? step.nodeId,
         roleId: step.roleId,
         request: input.request,
         priorSummaries,
@@ -548,7 +548,7 @@ export async function executeStepLoop(
               sessionId,
               direction: "system",
               messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId, decision),
+              content: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
               attachmentsJson: null,
               createdAt: failedAt,
             };
@@ -583,15 +583,17 @@ export async function executeStepLoop(
           continue;
         }
 
-        failedStepIds.add(step.stepId);
+        failedNodeIds.add(step.nodeId);
         const failOutput: StepOutputRecord = {
           id: newId("step"),
           taskId,
-          stepId: step.stepId,
+          // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+          nodeRunId: step.nodeId,
+          stepId: step.stepId ?? step.nodeId,
           roleId: step.roleId,
           status: "failed",
           dataJson: JSON.stringify({ reasonCode: errorCode, internalMessage: error instanceof Error ? error.message : String(error) }),
-          summary: buildStepFailureSummary(step.stepId, decision),
+          summary: buildStepFailureSummary(step.stepId ?? step.nodeId, decision),
           artifactsJson: null,
           tokenCost: 0,
           durationMs: 0,
@@ -617,7 +619,7 @@ export async function executeStepLoop(
       }
 
       // R6-19 fix: Use nodeId as canonical identifier per §5.5
-      const completedNodeIds = [...stepOutputs.map((item) => item.nodeRunId), step.nodeId];
+      const completedNodeIds = [...stepOutputs.map((item) => item.nodeRunId!).filter((id): id is string => id != null), step.nodeId];
       const outputKeys = [...Object.keys(outputs), step.outputKey];
       const upstreamArtifactRefs = stepOutputs.flatMap((item) => {
         if (!item.artifactsJson) return [];
@@ -632,7 +634,7 @@ export async function executeStepLoop(
         taskId,
         executionId,
         // R6-19 fix: stepId retained for artifact metadata legacy compatibility
-        stepId: step.stepId,
+        stepId: step.stepId ?? step.nodeId ?? null,
         kind: "workflow_step_snapshot",
         fileName: `${step.nodeId}.json`,
         content: createWorkflowStepCheckpoint({
@@ -645,7 +647,7 @@ export async function executeStepLoop(
           workflowId: plannedWorkflow.workflow.workflowId,
           divisionId: plannedWorkflow.workflow.divisionId,
           // R6-19 fix: stepId retained for legacy checkpoint compatibility
-          stepId: step.stepId,
+          stepId: step.stepId ?? step.nodeId,
           roleId: step.roleId,
           outputKey: step.outputKey,
           status: "succeeded",
@@ -659,9 +661,9 @@ export async function executeStepLoop(
             dependsOnStepIds: [...step.dependsOnStepIds],
           },
           resumeContext: {
-            completedNodeIds,
+            completedNodeRunIds: completedNodeIds,
             // R6-19 fix: Use nodeId for next step reference per §5.5
-            nextStepId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
+            nextNodeRunId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
             outputKeys,
           },
           upstreamArtifactRefs,

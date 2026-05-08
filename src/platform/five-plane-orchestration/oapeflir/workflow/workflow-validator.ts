@@ -128,7 +128,7 @@ function isDataFlowOptional(step: MinimalWorkflowStep): boolean {
 function collectEntrypoints(steps: readonly MinimalWorkflowStep[]): string[] {
   return steps
     .filter((step) => (step.dependsOnStepIds?.length ?? 0) === 0)
-    .map((step) => step.stepId);
+    .map((step) => step.nodeId ?? "");
 }
 
 /**
@@ -181,7 +181,7 @@ export class WorkflowValidator {
 
     // Pass 1: Validate individual step fields and check for duplicates
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.stepId);
+      const stepId = normalizeStepId(step.nodeId ?? "");
       const roleId = step.roleId.trim();
       const inputKeys = (step.inputKeys ?? []).map((inputKey) => inputKey.trim());
       const outputKey = step.outputKey.trim();
@@ -279,7 +279,7 @@ export class WorkflowValidator {
 
     // Pass 2: Validate dependency references and relationships
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.stepId);
+      const stepId = normalizeStepId(step.nodeId ?? "");
       const seenDependencies = new Set<string>();
       const dependencyOutputKeys = new Set<string>();
 
@@ -321,7 +321,7 @@ export class WorkflowValidator {
 
         seenDependencies.add(normalizedDependency);
         const dependency = definition.steps.find(
-          (candidate) => normalizeStepId(candidate.stepId) === normalizedDependency,
+          (candidate) => normalizeStepId(candidate.nodeId ?? "") === normalizedDependency,
         );
         const dependencyOutputKey = dependency?.outputKey.trim();
         if (dependencyOutputKey) {
@@ -495,7 +495,7 @@ export class WorkflowValidator {
 
     // Build adjacency list from step dependencies
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.stepId);
+      const stepId = normalizeStepId(step.nodeId ?? "");
       if (stepId.length === 0) {
         continue;
       }

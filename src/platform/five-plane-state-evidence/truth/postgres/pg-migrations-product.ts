@@ -765,6 +765,29 @@ ALTER TABLE execution_tickets
   ADD COLUMN IF NOT EXISTS required_isolation_level TEXT NOT NULL DEFAULT 'standard';
 `);
 
+/**
+ * Migration 16: Completes PG support for artifact nodeRunId correlation and durable fencing.
+ */
+const MIGRATION_16_ARTIFACT_NODE_RUN_AND_FENCING = defineMigration(16, "artifact_node_run_and_fencing", `
+ALTER TABLE artifacts
+  ADD COLUMN IF NOT EXISTS node_run_id VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_artifacts_node_run_id
+  ON artifacts(task_id, node_run_id, created_at);
+
+CREATE TABLE IF NOT EXISTS fence_records (
+  fence_key VARCHAR(255) PRIMARY KEY,
+  execution_id VARCHAR(255) NOT NULL,
+  owner_node_id VARCHAR(255) NOT NULL,
+  mode TEXT NOT NULL CHECK (mode IN ('shared', 'exclusive')),
+  fence_token TEXT NOT NULL,
+  acquired_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fence_records_execution_id ON fence_records(execution_id);
+CREATE INDEX IF NOT EXISTS idx_fence_records_owner_node_id ON fence_records(owner_node_id);
+CREATE INDEX IF NOT EXISTS idx_fence_records_expires_at ON fence_records(expires_at);
+`);
+
 export {
   MIGRATION_07_BILLING,
   MIGRATION_08_INTELLIGENCE,
@@ -775,4 +798,5 @@ export {
   MIGRATION_13_KNOWLEDGE_SEMANTIC_VECTORS,
   MIGRATION_14_TASK_TENANT_PARITY,
   MIGRATION_15_RUNTIME_ASYNC_PARITY_GAPS,
+  MIGRATION_16_ARTIFACT_NODE_RUN_AND_FENCING,
 };

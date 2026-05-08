@@ -96,7 +96,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         ...(this.options.budgetControl?.tenantId !== undefined ? { tenantId: this.options.budgetControl.tenantId } : {}),
         costTag: "goal_decomposer.llm_plan",
       });
-      const parsed = this.parsePlan(response);
+      const parsed = this.parsePlan(response, goal);
       if (reservedBudget != null) {
         allocator.settle({
           ledger: reservedBudget.ledger,
@@ -214,7 +214,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     );
   }
 
-  private parsePlan(response: string): SerializablePlan {
+  private parsePlan(response: string, goal: Goal): SerializablePlan {
     const trimmed = response.trim();
     const normalized = trimmed.startsWith("```")
       ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")

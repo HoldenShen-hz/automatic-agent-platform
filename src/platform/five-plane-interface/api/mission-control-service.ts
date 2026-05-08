@@ -107,6 +107,10 @@ export interface WorkflowCockpitView {
       startedAt: string | null;
       completedAt: string | null;
     }>;
+    // UI spec §5.2 required fields (R7-23 fix: were missing)
+    dependencyState: ReadonlyArray<{ nodeId: string; blockedBy: ReadonlyArray<string>; blockedReason: string | null }>;
+    approvalNodes: ReadonlyArray<{ nodeId: string; approvalId: string | null; status: string; requestedAt: string | null }>;
+    evidenceRefs: ReadonlyArray<{ artifactId: string; nodeRunId: string | null; artifactType: string; label: string }>;
     activeNodeRunId: string | null;
     elapsedTimeMs: number;
     estimatedRemainingMs: number;
@@ -347,6 +351,11 @@ export class MissionControlService {
     const activeNodeRunId = this.deriveActiveNodeRunId(inspect, planGraphNodes);
     const nodeRuns = this.deriveNodeRuns(inspect, planGraphNodes);
 
+    // R7-23 fix: derive UI spec §5.2 required fields (dependency_state, approval_nodes, evidence_refs)
+    const dependencyState = this.deriveDependencyState(inspect, planGraphNodes, planGraphEdges);
+    const approvalNodes = this.deriveApprovalNodes(inspect, planGraphNodes);
+    const evidenceRefs = this.deriveEvidenceRefs(inspect);
+
     return {
       generatedAt: new Date().toISOString(),
       summary,
@@ -357,6 +366,9 @@ export class MissionControlService {
         progressPercent,
         planGraph: { nodes: planGraphNodes, edges: planGraphEdges },
         nodeRuns,
+        dependencyState,
+        approvalNodes,
+        evidenceRefs,
         activeNodeRunId,
         elapsedTimeMs,
         estimatedRemainingMs,
@@ -432,6 +444,90 @@ export class MissionControlService {
         completedAt: execution?.finishedAt ?? null,
       };
     });
+  }
+
+  // R7-23 fix: derive UI spec §5.2 dependency_state
+  private deriveDependencyState(
+    inspect: ReturnType<InspectService["getTaskInspectView"]>,
+    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
+    edges: ReadonlyArray<{ fromNodeId: string; toNodeId: string }>,
+  ): ReadonlyArray<{ nodeId: string; blockedBy: ReadonlyArray<string>; blockedReason: string | null }> {
+    // Build a map of nodeId -> blockedBy (incoming edges)
+    const blockedByMap = new Map<string, string[]>();
+    for (const node of nodes) {
+      blockedByMap.set(node.nodeId, []);
+    }
+    for (const edge of edges) {
+      const existing = blockedByMap.get(edge.toNodeId);
+      if (existing) {
+        existing.push(edge.fromNodeId);
+      }
+    }
+    // Build dependency state: a node is blocked if its blockers are not yet completed
+    return nodes.map((node) => {
+      const blockedBy = blockedByMap.get(node.nodeId) ?? [];
+      const blockersNotDone = blockedBy.filter((blockerId) => {
+        const blocker = nodes.find((n) => n.nodeId === blockerId);
+        return blocker && blocker.status !== "done" && blocker.status !== "skipped";
+      });
+      const isBlocked = blockersNotDone.length > 0;
+      const blockedReason = isBlocked ? `Blocked by: ${blockersNotDone.join(", ")}` : null;
+      return {
+        nodeId: node.nodeId,
+        blockedBy: blockedBy as ReadonlyArray<string>,
+        blockedReason,
+      };
+    });
+  }
+
+  // R7-23 fix: derive UI spec §5.2 approval_nodes
+  private deriveApprovalNodes(
+    inspect: ReturnType<InspectService["getTaskInspectView"]>,
+    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
+  ): ReadonlyArray<{ nodeId: string; approvalId: string | null; status: string; requestedAt: string | null }> {
+    // Map approvals to nodes - approval records may reference node IDs via requestJson
+    const approvals = inspect.approvals ?? [];
+    // Try to extract nodeId from approval requestJson
+    const approvalNodeMap = new Map<string, { approvalId: string; status: string; requestedAt: string | null }>();
+    for (const approval of approvals) {
+      let nodeId = `node_${approval.id}`;
+      try {
+        const req = JSON.parse(approval.requestJson) as Record<string, unknown>;
+        if (req.nodeId && typeof req.nodeId === "string") {
+          nodeId = req.nodeId;
+        }
+      } catch {
+        // Fall through to default nodeId
+      }
+      approvalNodeMap.set(nodeId, {
+        approvalId: approval.id,
+        status: approval.status,
+        requestedAt: approval.createdAt ?? null,
+      });
+    }
+    // Return approval info for each node (empty entry if no approval)
+    return nodes.map((node) => {
+      const info = approvalNodeMap.get(node.nodeId);
+      return {
+        nodeId: node.nodeId,
+        approvalId: info?.approvalId ?? null,
+        status: info?.status ?? "none",
+        requestedAt: info?.requestedAt ?? null,
+      };
+    });
+  }
+
+  // R7-23 fix: derive UI spec §5.2 evidence_refs
+  private deriveEvidenceRefs(
+    inspect: ReturnType<InspectService["getTaskInspectView"]>,
+  ): ReadonlyArray<{ artifactId: string; nodeRunId: string | null; artifactType: string; label: string }> {
+    const artifacts = inspect.artifacts ?? [];
+    return artifacts.map((artifact) => ({
+      artifactId: artifact.artifactId,
+      nodeRunId: artifact.nodeRunId ?? null,
+      artifactType: artifact.kind ?? "unknown",
+      label: artifact.fileName ?? artifact.artifactId,
+    }));
   }
 
   private deriveStatusLabel(taskStatus: string | undefined): string {

@@ -28,11 +28,13 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run audit
       - run: npm run test:coverage
       - run: npm run build
+      - run: npm run test:a11y
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v11
         with:

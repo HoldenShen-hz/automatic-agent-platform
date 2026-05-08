@@ -621,15 +621,6 @@ export class WorkerDrainProtocol {
     const forcedHandoffCount = state?.forcedHandoffLeases.length
       ?? (deadlineExceeded ? (state?.activeLeases.length ?? currentReceipt.activeLeaseCount) - actualCompletedCount : 0);
 
-    // Determine cleanup result if entering TERMINATE phase
-    const cleanupResult = newPhase === WorkerDrainPhase.TERMINATE && state
-      ? {
-          runsTerminated: state.forcedHandoffLeases.length,
-          gracefulMs: new Date(observedAt).getTime() - new Date(state.startedAt).getTime(),
-          forcedMs: 0,
-        }
-      : undefined;
-
     return {
       ...currentReceipt,
       status: newStatus,
@@ -637,7 +628,13 @@ export class WorkerDrainProtocol {
       completedLeaseCount: actualCompletedCount,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
       forcedHandoffCount,
-      cleanupResult,
+      cleanupResult: newPhase === WorkerDrainPhase.TERMINATE && state
+        ? {
+            runsTerminated: state.forcedHandoffLeases.length,
+            gracefulMs: new Date(observedAt).getTime() - new Date(state.startedAt).getTime(),
+            forcedMs: 0,
+          }
+        : { runsTerminated: 0, gracefulMs: 0, forcedMs: 0 },
       phaseHistory: updatedHistory,
     };
   }

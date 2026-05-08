@@ -13,12 +13,13 @@ export function aggregateCostAttribution(entries: readonly CostAttributionEntry[
     if (!acc[item.subjectId]) {
       acc[item.subjectId] = { llm: 0, tool: 0, compute: 0, storage: 0, egress: 0, humanReview: 0 };
     }
-    acc[item.subjectId].llm += item.llmCostUsd;
-    acc[item.subjectId].tool += item.toolCostUsd;
-    acc[item.subjectId].compute += item.computeCostUsd;
-    acc[item.subjectId].storage += item.storageCostUsd;
-    acc[item.subjectId].egress += item.egressCostUsd;
-    acc[item.subjectId].humanReview += item.humanReviewCostUsd;
+    const entry = acc[item.subjectId]!;
+    entry.llm += item.llmCostUsd;
+    entry.tool += item.toolCostUsd;
+    entry.compute += item.computeCostUsd;
+    entry.storage += item.storageCostUsd;
+    entry.egress += item.egressCostUsd;
+    entry.humanReview += item.humanReviewCostUsd;
     return acc;
   }, {});
   // Compute total per subject (sum of 7 dimensions)

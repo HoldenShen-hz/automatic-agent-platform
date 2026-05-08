@@ -201,9 +201,11 @@ function resolveArtifactRefs(stepOutput: StepOutputRecord, artifacts: ArtifactRe
     return dedupeArtifactRefs(parsedRefs);
   }
 
-  // R6-19 fix: This legacy comparison uses stepId which is deprecated.
-  // TODO(R6-19): When ArtifactRecord is migrated to add nodeRunId, update this to use
-  // nodeRunId-based matching instead of stepId comparison.
+  const canonicalMatches = artifacts.filter((artifact) => artifact.nodeRunId === stepOutput.nodeRunId);
+  if (canonicalMatches.length > 0) {
+    return dedupeArtifactRefs(canonicalMatches.map(toArtifactRef));
+  }
+
   return dedupeArtifactRefs(
     artifacts.filter((artifact) => artifact.stepId === stepOutput.stepId).map(toArtifactRef),
   );

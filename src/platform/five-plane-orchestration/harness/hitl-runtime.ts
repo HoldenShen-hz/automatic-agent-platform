@@ -245,7 +245,7 @@ export class HitlRuntime {
     };
     this.persistRequest(resolved);
     // R3-3 fix: Produce HumanResponsibilityRecord for every HITL operation including resolve()
-    const action: HitlMode = resolution === "approved" ? "resume" : "abort";
+    const action: HitlMode = resolution === "approved" ? "resume" : "override";
     const rationale = `hitl_resolution:${resolution}`;
     const record = this.createResponsibilityRecord(resolved, actorId, action, rationale);
     return { request: resolved, record };

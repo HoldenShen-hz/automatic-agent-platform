@@ -48,6 +48,9 @@ export interface ArtifactRecord {
   artifactId: string;
   taskId: string;
   executionId: string | null;
+  /** Canonical execution correlation key per §5.5. Optional during legacy artifact migration. */
+  nodeRunId?: string | null;
+  /** @deprecated Legacy projection identifier per §5.5. Prefer nodeRunId. */
   stepId: string | null;
   kind: string;
   storagePath: string;

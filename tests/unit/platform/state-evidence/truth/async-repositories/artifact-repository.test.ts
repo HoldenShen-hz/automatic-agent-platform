@@ -47,6 +47,7 @@ function artifactRecord(overrides: Partial<ArtifactRecord> = {}): ArtifactRecord
     artifactId: "art-1",
     taskId: "task-1",
     executionId: "exec-1",
+    nodeRunId: "node-run-1",
     stepId: "step-1",
     kind: "output",
     storagePath: "/artifacts/art-1.json",
@@ -69,7 +70,7 @@ test("AsyncArtifactRepository insertArtifact inserts artifact record", async () 
 
   assert.equal(calls.length, 1);
   assert.match(calls[0]!.sql, /INSERT INTO artifacts/);
-  assert.match(calls[0]!.sql, /artifact_id, task_id, execution_id/);
+  assert.match(calls[0]!.sql, /artifact_id, task_id, execution_id, node_run_id, step_id/);
 });
 
 test("AsyncArtifactRepository getArtifact returns artifact when found", async () => {

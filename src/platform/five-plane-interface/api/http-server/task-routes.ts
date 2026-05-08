@@ -483,6 +483,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           workflowId: newId("workflow"),
           divisionId,
           steps: [{
+            nodeId: "step-1",
             stepId: "step-1",
             roleId: "general_executor",
             outputKey: "result",

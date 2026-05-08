@@ -661,7 +661,7 @@ export class SelfServiceGovernanceConsole {
       timestamp: nowIso(),
       details: params.details,
       success: params.success,
-      failureReason: params.failureReason,
+      failureReason: params.failureReason ?? "",
     };
     this.auditLogStore.append(entry);
   }

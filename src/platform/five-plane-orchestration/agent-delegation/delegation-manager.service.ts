@@ -260,6 +260,7 @@ export class DelegationManagerService {
             depth: record.depth,
             createdAt: record.createdAt,
             parentDelegationId: null,
+            status: "active",
           };
           chain.nodes = [...chain.nodes, node];
           chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
@@ -593,6 +594,7 @@ export class DelegationManagerService {
             depth: record.depth,
             createdAt: record.createdAt,
             parentDelegationId: null,
+            status: "active",
           };
           chain.nodes = [...chain.nodes, node];
           chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
@@ -1099,6 +1101,7 @@ export class DelegationManagerService {
       depth: delegation.depth,
       createdAt: delegation.createdAt,
       parentDelegationId: parent.activeDelegations.at(-1) ?? null,
+      status: "active",
     };
 
     chain.nodes = [...chain.nodes, node];

@@ -317,7 +317,7 @@ export class HumanTakeoverService {
         currentStepIndex: target.stepIndex,
         outputsJson: workflow.outputsJson,
         updatedAt: now,
-        resumableFromStep: target.step.stepId,
+        resumableFromStep: target.step.stepId ?? null,
         retryCount: workflow.retryCount,
         lastErrorCode: workflow.lastErrorCode,
       });
@@ -365,9 +365,9 @@ export class HumanTakeoverService {
       const status = input.status ?? "succeeded";
 
       // R14-6/R14-7: Validate step output before storing
-      this.validateStepOutput(parsedOutput, target.step.stepId, status);
+      this.validateStepOutput(parsedOutput, target.step.stepId!, status);
 
-      const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId, parsedOutput);
+      const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId!, parsedOutput);
 
       // Store the output keyed by the step's outputKey
       outputs[target.step.outputKey] = parsedOutput;
@@ -375,8 +375,9 @@ export class HumanTakeoverService {
       // Insert step output record with manual override flag
       this.store.workflow.insertStepOutput({
         id: newId("step"),
+        nodeRunId: newId("noderun"),
         taskId: snapshot.task.id,
-        stepId: target.step.stepId,
+        stepId: target.step.stepId!,
         roleId: target.step.roleId,
         status,
         dataJson: normalizedOutputJson,
@@ -470,8 +471,9 @@ export class HumanTakeoverService {
 
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
+        nodeRunId: newId("noderun"),
         taskId: snapshot.task.id,
-        stepId: step.stepId,
+        stepId: step.stepId!,
         roleId: step.roleId,
         status: "partial_success",
         dataJson: JSON.stringify(manualOutput),

@@ -122,7 +122,7 @@ interface MinimalWorkflowInput {
  * Maps a `StepOutputRecord` from the supervisor to an OAPEFLIR `StepResult`.
  */
 export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
-  const canonicalNodeRunId = record.nodeRunId ?? record.stepId;
+  const canonicalNodeRunId = record.nodeRunId ?? record.stepId ?? "";
   let outputs: Record<string, unknown> = {};
   try {
     outputs = JSON.parse(record.dataJson);
@@ -141,7 +141,7 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
 
   return {
     nodeRunId: canonicalNodeRunId,
-    stepId: record.stepId,
+    stepId: record.stepId ?? "",
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
     durationMs: record.durationMs,
     tokenCost: record.tokenCost,
@@ -332,7 +332,7 @@ export function minimalWorkflowToPlanGraphBundle(
   }
 
   const nodes: import("../../contracts/executable-contracts/index.js").PlanNode[] = workflow.steps.map((step) => ({
-    nodeId: step.stepId,
+    nodeId: step.nodeId ?? "",
     nodeType: roleToNodeType(step.roleId),
     inputRefs: step.inputKeys ?? [],
     outputSchemaRef: step.outputSchemaPath ?? "schema:step.output",
@@ -355,7 +355,7 @@ export function minimalWorkflowToPlanGraphBundle(
         edges.push({
           edgeId: newId("edge"),
           fromNodeId: depId,
-          toNodeId: step.stepId,
+          toNodeId: step.nodeId ?? "",
           condition: true,
           dependencyType: "hard",
         });
@@ -364,16 +364,16 @@ export function minimalWorkflowToPlanGraphBundle(
   }
 
   // Determine entry and terminal nodes
-  const allStepIds = new Set(workflow.steps.map((s) => s.stepId));
+  const allStepIds = new Set(workflow.steps.map((s) => s.nodeId));
   // Entry nodes: steps with no dependencies (empty dependsOnStepIds)
   const entryNodeIds = workflow.steps
     .filter((s) => (s.dependsOnStepIds?.length ?? 0) === 0)
-    .map((s) => s.stepId);
+    .map((s) => s.nodeId ?? "");
   // Terminal nodes: steps that no other step depends on
   const dependentStepIds = new Set(workflow.steps.flatMap((s) => s.dependsOnStepIds ?? []));
   const terminalNodeIds = workflow.steps
-    .filter((s) => !dependentStepIds.has(s.stepId))
-    .map((s) => s.stepId);
+    .filter((s) => !dependentStepIds.has(s.nodeId))
+    .map((s) => s.nodeId ?? "");
 
   return {
     planGraphBundleId: bundleId,

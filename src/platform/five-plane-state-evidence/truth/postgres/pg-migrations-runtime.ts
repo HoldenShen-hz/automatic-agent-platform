@@ -441,6 +441,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
   artifact_id VARCHAR(255) PRIMARY KEY,
   task_id VARCHAR(255) NOT NULL,
   execution_id VARCHAR(255) NULL,
+  node_run_id VARCHAR(255) NULL,
   step_id VARCHAR(255) NULL,
   kind TEXT NOT NULL,
   storage_path TEXT NOT NULL,
@@ -454,6 +455,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
 
 CREATE INDEX IF NOT EXISTS idx_artifacts_task_created_at ON artifacts(task_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_artifacts_execution_created_at ON artifacts(execution_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_artifacts_node_run_id ON artifacts(task_id, node_run_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_artifacts_step_id ON artifacts(task_id, step_id, created_at);
 
 CREATE TABLE IF NOT EXISTS tool_result_files (

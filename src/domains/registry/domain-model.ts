@@ -199,6 +199,7 @@ export const WorkflowConfigSchema = z.object({
     const edges = workflow.stepGraph.edges;
     for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
       const edge = edges[edgeIndex];
+      if (!edge) continue;
       if (!stepNames.has(edge.fromStep)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

@@ -37,3 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_fence_records_execution_id ON fence_records(execu
 CREATE INDEX IF NOT EXISTS idx_fence_records_owner_node_id ON fence_records(owner_node_id);
 CREATE INDEX IF NOT EXISTS idx_fence_records_expires_at ON fence_records(expires_at);
 `;
+
+/**
+ * Migration 55: Add canonical node_run_id to legacy artifacts for R6-19 migration.
+ */
+export const ARTIFACT_NODE_RUN_ID_SQL = `
+ALTER TABLE artifacts ADD COLUMN node_run_id TEXT NULL;
+CREATE INDEX IF NOT EXISTS idx_artifacts_node_run_id ON artifacts(task_id, node_run_id, created_at);
+`;

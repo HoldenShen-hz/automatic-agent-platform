@@ -226,7 +226,7 @@ function buildOapeflirPlannedWorkflow(
     return {
       nodeId: step.nodeId,
       // R6-19 fix: stepId retained for legacy compatibility only
-      stepId: step.stepId,
+      stepId: step.stepId ?? step.nodeId ?? "",
       divisionId: step.divisionId ?? workflowDef.divisionId,
       roleId: step.roleId,
       inputKeys: step.inputKeys ?? [],
@@ -724,6 +724,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       let workflowRetryCount = 0;
       let workflowLastErrorCode: string | null = null;
       let blockedForDecision = false;
+      let skippedNodeIds = new Set<string>();
+      let failedNodeIds = new Set<string>();
       let skippedStepIds = new Set<string>();
       let failedStepIds = new Set<string>();
 
@@ -752,6 +754,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           workflowRetryCount,
           workflowLastErrorCode,
           blockedForDecision,
+          skippedNodeIds: skippedStepIds,
+          failedNodeIds: failedStepIds,
           skippedStepIds,
           failedStepIds,
         },
@@ -767,7 +771,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         },
       );
 
-      ({ outputs, stepOutputs, latestCompaction, workflowRetryCount, workflowLastErrorCode, blockedForDecision, skippedStepIds, failedStepIds } = stepResult);
+      const result = stepResult;
+      outputs = result.outputs;
+      stepOutputs = result.stepOutputs;
+      latestCompaction = result.latestCompaction;
+      workflowRetryCount = result.workflowRetryCount;
+      workflowLastErrorCode = result.workflowLastErrorCode;
+      blockedForDecision = result.blockedForDecision;
+      skippedNodeIds = result.skippedNodeIds;
+      failedNodeIds = result.failedNodeIds;
+      skippedStepIds = result.skippedStepIds ?? skippedNodeIds;
+      failedStepIds = result.failedStepIds ?? failedNodeIds;
 
       if (blockedForDecision) {
         // R4-25 (INV-BUDGET-001): Settle budget session before returning
@@ -807,9 +821,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
 
       const finalOutput = (outputs.final as Record<string, unknown> | undefined) ?? outputs;
       const allStepsFailedOrSkipped = plannedWorkflow.executionSteps.every(
-        (step) => failedStepIds.has(step.stepId) || skippedStepIds.has(step.stepId),
+        (step) => failedNodeIds.has(step.nodeId) || skippedNodeIds.has(step.nodeId),
       );
-      const workflowFailed = failedStepIds.size > 0 || allStepsFailedOrSkipped;
+      const workflowFailed = failedNodeIds.size > 0 || allStepsFailedOrSkipped;
       const lastExecution = store.execution.listExecutionsByTask(taskId).at(-1);
       const lastExecutionId = lastExecution?.id ?? newId("exec");
 

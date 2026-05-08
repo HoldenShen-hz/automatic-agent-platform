@@ -576,8 +576,8 @@ export class DivisionLoader {
       }
 
       // Lint the workflow for structural validity
-      const issues = new WorkflowValidator().validate(workflow);
-      const errors = issues.filter((issue) => issue.severity === "error");
+      const report = new WorkflowValidator().validate(workflow);
+      const errors = report.issues.filter((issue) => issue.severity === "error");
       if (errors.length > 0) {
         const firstError = errors[0]!;
         throwDivisionWorkflowError("workflow.invalid", {
@@ -636,9 +636,9 @@ export class DivisionLoader {
       workflows,
       rootPath: divisionRoot,
       quotas: resolvedQuotas,
-      domainDescriptor,
-      riskProfile,
-      evalSpec,
+      ...(domainDescriptor !== undefined && { domainDescriptor }),
+      ...(riskProfile !== undefined && { riskProfile }),
+      ...(evalSpec !== undefined && { evalSpec }),
     };
   }
 
@@ -940,6 +940,7 @@ export class DivisionLoader {
     policy: SandboxPolicy,
   ): MinimalWorkflowStep {
     return {
+      nodeId: expectNonEmptyString(entry.step_id, `workflow.step_id_missing:${sourcePath}:${index}`),
       stepId: expectNonEmptyString(entry.step_id, `workflow.step_id_missing:${sourcePath}:${index}`),
       divisionId:
         typeof entry.division_id === "string" && entry.division_id.trim().length > 0
@@ -1044,7 +1045,7 @@ export class DivisionLoader {
 
         for (const step of workflow.steps) {
           const hasDependencies = (step.dependsOnStepIds?.length ?? 0) > 0;
-          const isReferenced = referencedBy.has(step.stepId);
+          const isReferenced = referencedBy.has(step.stepId ?? "");
           if (!hasDependencies && !isReferenced && workflow.steps.length > 1) {
             throwDivisionWorkflowError("workflow.orphaned_step", {
               workflowId: workflow.workflowId,
@@ -1059,15 +1060,15 @@ export class DivisionLoader {
 
         const graph = new Map<string, Set<string>>();
         for (const step of workflow.steps) {
-          graph.set(step.stepId, new Set<string>());
+          graph.set(step.stepId ?? "", new Set<string>());
         }
         for (const step of workflow.steps) {
           for (const dependencyStepId of step.dependsOnStepIds ?? []) {
             if (!stepIds.has(dependencyStepId)) {
               continue;
             }
-            graph.get(step.stepId)?.add(dependencyStepId);
-            graph.get(dependencyStepId)?.add(step.stepId);
+            graph.get(step.stepId ?? "")?.add(dependencyStepId);
+            graph.get(dependencyStepId)?.add(step.stepId ?? "");
           }
         }
 
@@ -1087,7 +1088,7 @@ export class DivisionLoader {
           }
         }
 
-        const disconnectedStep = workflow.steps.find((step) => !visited.has(step.stepId));
+        const disconnectedStep = workflow.steps.find((step) => !visited.has(step.stepId ?? ""));
         if (disconnectedStep) {
           throwDivisionWorkflowError("workflow.disconnected_step", {
             workflowId: workflow.workflowId,

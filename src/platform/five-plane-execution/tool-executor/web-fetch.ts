@@ -127,8 +127,8 @@ export function isDomainAllowed(
  * @param url - The URL to check
  * @returns true if the URL is internal
  */
-export function isInternalUrl(url: URL): boolean {
-  return isInternalNetworkUrl(url);
+export async function isInternalUrl(url: URL): Promise<boolean> {
+  return await isInternalNetworkUrl(url);
 }
 
 async function defaultDnsLookup(hostname: string): Promise<readonly DnsLookupResult[]> {
@@ -198,7 +198,7 @@ export function createWebFetchTool(deps: WebFetchToolDeps = {}) {
       }
 
       // Check internal network access
-      if (isInternalUrl(url)) {
+      if (await isInternalUrl(url)) {
         return {
           success: false,
           status: "blocked",
