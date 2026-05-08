@@ -682,7 +682,7 @@ export async function executeStepLoop(
         taskId,
         // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
         nodeRunId: step.nodeId,
-        stepId: step.stepId,
+        stepId: step.stepId ?? step.nodeId,
         roleId: step.roleId,
         status: "succeeded",
         dataJson: JSON.stringify(stepData),
