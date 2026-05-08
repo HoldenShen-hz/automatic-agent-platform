@@ -51,7 +51,7 @@ test("WebSocketMessageType - task_update message", () => {
     status: "completed",
     timestamp: "2026-04-15T00:00:00.000Z",
   };
-  const msg: WebSocketMessageType = { type: "task_update", taskId: "task-123", event };
+  const msg: WebSocketMessageType = { type: "task_update", taskId: "task-123", eventId: "evt-1", sequenceNum: 0, event };
   assert.equal(msg.type, "task_update");
   assert.equal(msg.taskId, "task-123");
   assert.equal(msg.event.eventType, "status_changed");
