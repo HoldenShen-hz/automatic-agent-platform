@@ -4,7 +4,7 @@ import test from "node:test";
 import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
 import { PluginManifestSchema } from "../../../src/domains/registry/plugin-spi.js";
 
-function makeMinimalPlugin(pluginId: string, spiType: "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator" = "tool") {
+function makeMinimalPlugin(pluginId: string, spiType: "adapter" | "retriever" | "planner" | "presenter" | "validator" = "planner") {
   return {
     pluginId,
     spiType,
@@ -84,7 +84,7 @@ test("PluginSpiRegistry.listByDomain filters by domain", () => {
 test("PluginSpiRegistry.listByDomain filters by spiType", () => {
   const registry = new PluginSpiRegistry();
   registry.register(makeMinimalPlugin("retriever_plugin", "retriever"));
-  registry.register(makeMinimalPlugin("tool_plugin", "tool"));
+  registry.register(makeMinimalPlugin("planner_plugin", "planner"));
 
   const retrievers = registry.listByDomain("", "retriever");
   assert.equal(retrievers.length, 1);
@@ -188,7 +188,7 @@ test("PluginSpiRegistry.unload transitions plugin to unloaded state", async () =
 
 test("PluginSpiRegistry.invokeRetriever throws for non-retriever plugin", async () => {
   const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("non_retriever", "tool"));
+  registry.register(makeMinimalPlugin("non_retriever", "planner"));
 
   await assert.rejects(async () => {
     await registry.invokeRetriever("non_retriever", {
@@ -204,7 +204,7 @@ test("PluginSpiRegistry.invokeRetriever throws for non-retriever plugin", async 
 
 test("PluginSpiRegistry.invokePresenter throws for non-presenter plugin", async () => {
   const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("non_presenter", "tool"));
+  registry.register(makeMinimalPlugin("non_presenter", "planner"));
 
   await assert.rejects(async () => {
     await registry.invokePresenter("non_presenter", {
@@ -217,7 +217,7 @@ test("PluginSpiRegistry.invokePresenter throws for non-presenter plugin", async 
 
 test("PluginSpiRegistry.invokeAdapterAuthenticate throws for non-adapter plugin", async () => {
   const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("non_adapter", "tool"));
+  registry.register(makeMinimalPlugin("non_adapter", "planner"));
 
   await assert.rejects(async () => {
     await registry.invokeAdapterAuthenticate("non_adapter", {
@@ -228,7 +228,7 @@ test("PluginSpiRegistry.invokeAdapterAuthenticate throws for non-adapter plugin"
 
 test("PluginSpiRegistry.invokeAdapterExecute throws for non-adapter plugin", async () => {
   const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("non_adapter_exec", "tool"));
+  registry.register(makeMinimalPlugin("non_adapter_exec", "planner"));
 
   await assert.rejects(async () => {
     await registry.invokeAdapterExecute("non_adapter_exec", {

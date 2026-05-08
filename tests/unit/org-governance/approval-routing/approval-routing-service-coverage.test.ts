@@ -217,3 +217,108 @@ test("ApprovalRoutingService constructor handles undefined optional params", () 
 
   assert.ok(service != null);
 });
+
+test("ApprovalRoutingService route prefers the most specific eligible escalation rule instead of first match", () => {
+  const orgNodes = [createMockOrgNode()];
+  const service = new ApprovalRoutingService({
+    orgNodes,
+    escalationRules: [
+      {
+        ruleId: "escalate-manager",
+        triggerAfterMinutes: 15,
+        escalateToApproverId: "manager",
+        appliesToRiskLevels: ["high"],
+        maxEscalationDepth: 2,
+        cooldownMinutes: 0,
+        notifyOnSlaBreach: false,
+        slaBreachNotificationTargetIds: [],
+      },
+      {
+        ruleId: "escalate-director",
+        triggerAfterMinutes: 45,
+        escalateToApproverId: "director",
+        appliesToRiskLevels: ["high"],
+        maxEscalationDepth: 2,
+        cooldownMinutes: 0,
+        notifyOnSlaBreach: false,
+        slaBreachNotificationTargetIds: [],
+      },
+    ],
+  });
+
+  const result = service.route(
+    createMockRequest({ riskLevel: "high" }),
+    "2026-04-01T00:00:00.000Z",
+    "2026-04-01T01:00:00.000Z",
+  );
+
+  assert.equal(result.escalatedTo, "director");
+  assert.equal(result.escalationRuleId, "escalate-director");
+});
+
+test("ApprovalRoutingService route enforces escalation cooldown and max depth", () => {
+  const orgNodes = [createMockOrgNode()];
+  const service = new ApprovalRoutingService({
+    orgNodes,
+    escalationRules: [
+      {
+        ruleId: "escalate-director",
+        triggerAfterMinutes: 15,
+        escalateToApproverId: "director",
+        appliesToRiskLevels: ["high"],
+        maxEscalationDepth: 1,
+        cooldownMinutes: 30,
+        notifyOnSlaBreach: false,
+        slaBreachNotificationTargetIds: [],
+      },
+    ],
+  });
+
+  const blockedByDepth = service.route(
+    createMockRequest({ riskLevel: "high" }),
+    "2026-04-01T00:00:00.000Z",
+    "2026-04-01T01:00:00.000Z",
+    { escalationDepth: 1 },
+  );
+  const blockedByCooldown = service.route(
+    createMockRequest({ riskLevel: "high" }),
+    "2026-04-01T00:00:00.000Z",
+    "2026-04-01T01:00:00.000Z",
+    {
+      escalationDepth: 0,
+      lastEscalatedAtIso: "2026-04-01T00:45:00.000Z",
+    },
+  );
+
+  assert.equal(blockedByDepth.escalatedTo, null);
+  assert.equal(blockedByCooldown.escalatedTo, null);
+});
+
+test("ApprovalRoutingService route surfaces SLA breach notification targets", () => {
+  const orgNodes = [createMockOrgNode()];
+  const service = new ApprovalRoutingService({
+    orgNodes,
+    escalationRules: [
+      {
+        ruleId: "escalate-oncall",
+        triggerAfterMinutes: 15,
+        escalateToApproverId: "oncall-director",
+        appliesToRiskLevels: ["high"],
+        maxEscalationDepth: 2,
+        cooldownMinutes: 0,
+        notifyOnSlaBreach: true,
+        slaBreachNotificationTargetIds: ["compliance", "incident-commander"],
+      },
+    ],
+  });
+
+  const result = service.route(
+    createMockRequest({ riskLevel: "high" }),
+    "2026-04-01T00:00:00.000Z",
+    "2026-04-01T01:00:00.000Z",
+    { slaBreached: true },
+  );
+
+  assert.deepEqual(result.slaBreachNotificationTargetIds, ["compliance", "incident-commander"]);
+  assert.ok(result.auditRecord.reasonCodes.includes("approval.sla_breach_notified"));
+});

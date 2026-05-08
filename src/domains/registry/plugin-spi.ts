@@ -20,8 +20,8 @@ export interface HumanOutput {
   citations: string[];
 }
 
-export const PluginSpiTypeSchema = z.enum(["retriever", "validator", "planner", "presenter", "adapter"]);
-export const PluginLifecycleStateSchema = z.enum(["registered", "loaded", "active", "inactive", "unloaded", "degraded", "disabled"]);
+export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter"]);
+export const PluginLifecycleStateSchema = z.enum(["registered", "loaded", "active", "inactive", "suspended", "unloaded", "degraded", "disabled"]);
 export const PluginRuntimeIsolationSchema = z.enum([
   "shared_process",
   "serialized_in_process",
@@ -90,6 +90,7 @@ export interface PluginLifecycleHooks {
   onLoad?(context: PluginLifecycleContext): Promise<void> | void;
   onActivate?(context: PluginLifecycleContext): Promise<void> | void;
   onDeactivate?(context: PluginLifecycleContext): Promise<void> | void;
+  suspend?(reason: string, context?: PluginLifecycleContext): Promise<void> | void;
   onUnload?(context: PluginLifecycleContext): Promise<void> | void;
   initialize?(): Promise<void> | void;
   healthCheck?(): Promise<boolean> | boolean;
@@ -118,6 +119,14 @@ export type RetrieverKnowledgeResult =
       documentId?: string;
       matchType?: "semantic" | "keyword" | "structural";
     };
+
+export interface DomainToolPlugin extends PluginLifecycleHooks {
+  pluginId: string;
+  spiType: "tool";
+  domainId?: string;
+  capabilityIds?: readonly string[];
+  execute?(input: Record<string, unknown>): Promise<Record<string, unknown>> | Record<string, unknown>;
+}
 
 export interface DomainRetrieverPlugin extends PluginLifecycleHooks {
   pluginId: string;
@@ -198,6 +207,7 @@ export interface ExternalAdapterPlugin extends PluginLifecycleHooks {
 }
 
 export type RegisteredPlugin =
+  | DomainToolPlugin
   | DomainRetrieverPlugin
   | DomainValidatorPlugin
   | DomainPlannerPlugin

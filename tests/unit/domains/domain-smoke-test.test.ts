@@ -167,7 +167,7 @@ test("DomainSmokeTestRunner.run fails when required tools missing", () => {
   assert.ok(result.issues.includes("domain_registry.missing_required_tools"));
 });
 
-test("DomainSmokeTestRunner.run validates executionProfile", () => {
+test("DomainSmokeTestRunner.run records dependency, sandbox, and quota checks for a valid domain", () => {
   const runner = new DomainSmokeTestRunner();
   const domain: DomainDefinition = {
     ...minimalDomain("exec_profile_test"),
@@ -203,9 +203,15 @@ test("DomainSmokeTestRunner.run validates executionProfile", () => {
   };
 
   const result = runner.run(domain);
-  const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
-  assert.notEqual(execCheck, undefined);
-  assert.equal(execCheck!.passed, true);
+  const dependencyCheck = result.runtimeChecks.find((c) => c.checkId === "dependency_graph");
+  const sandboxCheck = result.runtimeChecks.find((c) => c.checkId === "sandbox_compatibility");
+  const quotaCheck = result.runtimeChecks.find((c) => c.checkId === "resource_quota");
+  assert.notEqual(dependencyCheck, undefined);
+  assert.notEqual(sandboxCheck, undefined);
+  assert.notEqual(quotaCheck, undefined);
+  assert.equal(dependencyCheck!.passed, true);
+  assert.equal(sandboxCheck!.passed, true);
+  assert.equal(quotaCheck!.passed, true);
 });
 
 test("DomainSmokeTestRunner.run validates dependency graph", () => {
@@ -439,7 +445,7 @@ test("DomainSmokeTestRunner.computeRollbackPoints identifies steps with dependen
   assert.ok(result.rollbackPoints.some((p) => p.includes("step2")));
 });
 
-test("DomainSmokeTestRunner.run validates domain without executionProfile", () => {
+test("DomainSmokeTestRunner.run still passes domains without executionProfile", () => {
   const runner = new DomainSmokeTestRunner();
   const domain: DomainDefinition = {
     ...minimalDomain("no_exec_profile"),
@@ -468,7 +474,7 @@ test("DomainSmokeTestRunner.run validates domain without executionProfile", () =
   };
 
   const result = runner.run(domain);
-  const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
-  assert.notEqual(execCheck, undefined);
-  assert.equal(execCheck!.passed, false);
+  assert.equal(result.passed, true);
+  assert.equal(result.issues.includes("domain_registry.runtime_checks_failed"), false);
+  assert.equal(result.runtimeChecks.length, 3);
 });

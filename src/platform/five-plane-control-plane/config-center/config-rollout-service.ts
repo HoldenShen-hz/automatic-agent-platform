@@ -130,8 +130,7 @@ export class ConfigRolloutService {
     const rolloutId = newId("rollout");
     const now = nowIso();
 
-    // Find the starting stage based on target percentage
-    const startStage = this.stages.find((s) => s.percentage >= targetPercentage) ?? this.stages[this.stages.length - 1]!;
+    const startStage = this.resolveInitialStage(targetPercentage);
 
     const rollout: ConfigRollout = {
       rolloutId,
@@ -252,6 +251,10 @@ export class ConfigRolloutService {
       return null;
     }
 
+    if (rollout.stage.phase === RolloutPhase.FULL || rollout.stage.phase === RolloutPhase.CANCELLED) {
+      return rollout;
+    }
+
     const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
     if (currentIndex === -1 || currentIndex >= this.stages.length - 1) {
       // Already at final stage
@@ -305,6 +308,9 @@ export class ConfigRolloutService {
 
     for (const rollout of this.activeRollouts.values()) {
       if (!rollout.stage.autoProgress) {
+        continue;
+      }
+      if (rollout.stage.phase === RolloutPhase.FULL || rollout.stage.phase === RolloutPhase.CANCELLED) {
         continue;
       }
 
@@ -391,5 +397,22 @@ export class ConfigRolloutService {
       hash = hash & hash;
     }
     return Math.abs(hash % 100);
+  }
+
+  private resolveInitialStage(targetPercentage: number): RolloutStage {
+    if (targetPercentage <= 0) {
+      return this.stages.find((stage) => stage.phase === RolloutPhase.PENDING) ?? this.stages[0]!;
+    }
+
+    const firstCanaryStage = this.stages.find((stage) =>
+      stage.percentage > 0 &&
+      stage.phase !== RolloutPhase.CANCELLED &&
+      stage.phase !== RolloutPhase.FULL,
+    );
+    if (targetPercentage >= 100 && firstCanaryStage != null) {
+      return firstCanaryStage;
+    }
+
+    return this.stages.find((stage) => stage.percentage >= targetPercentage) ?? this.stages[this.stages.length - 1]!;
   }
 }

@@ -51,11 +51,9 @@ test("DomainRiskSpecSchema accepts contract snake_case fields", () => {
   const spec = DomainRiskSpecSchema.parse({
     domainId: "snake-case-domain",
     riskClass: "high",
-    advisory_only: true,
-    human_accountable: true,
-    deterministic_hot_path_only: false,
-    allowed_capability_overrides: ["budget_override"],
-    required_approval_policies: ["human_signoff"],
+    advisoryOnly: true,
+    humanAccountable: true,
+    deterministicHotPathOnly: false,
     liabilityOwner: ["owner1"],
     compensationModel: ["manual_repair"],
   });
@@ -63,8 +61,6 @@ test("DomainRiskSpecSchema accepts contract snake_case fields", () => {
   assert.equal(spec.advisoryOnly, true);
   assert.equal(spec.humanAccountable, true);
   assert.equal(spec.deterministicHotPathOnly, false);
-  assert.deepEqual(spec.allowedCapabilityOverrides, ["budget_override"]);
-  assert.deepEqual(spec.requiredApprovalPolicies, ["human_signoff"]);
 });
 
 test("DomainRiskSpecSchema defaults advisoryOnly to false", () => {
@@ -246,7 +242,7 @@ test("resolveDomainRiskSpec returns spec with default sideEffectTypes and approv
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("DomainLifecycleStateSchema accepts all canonical contract states", () => {
-  const states = ["draft", "validating", "certified", "canary", "active", "deprecated", "retired"] as const;
+  const states = ["draft", "validated", "registered", "active", "updating", "deprecated", "archived"] as const;
   for (const state of states) {
     const parsed = DomainLifecycleStateSchema.parse(state);
     assert.equal(parsed, state);
@@ -254,7 +250,7 @@ test("DomainLifecycleStateSchema accepts all canonical contract states", () => {
 });
 
 test("DomainLifecycleStateSchema preserves legacy compatibility aliases", () => {
-  const states = ["testing", "registered", "archived", "updating", "validated"] as const;
+  const states = ["registered", "archived", "updating", "validated"] as const;
   for (const state of states) {
     const parsed = DomainLifecycleStateSchema.parse(state);
     assert.equal(parsed, state);

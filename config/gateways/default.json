@@ -1,4 +1,37 @@
 {
   "defaultGateway": "cli",
-  "sseEnabled": true
+  "sseEnabled": true,
+  "timeout": 30000,
+  "circuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 5,
+    "resetTimeoutMs": 60000,
+    "fallbackMode": "fail_closed"
+  },
+  "rateLimit": {
+    "enabled": true,
+    "windowMs": 60000,
+    "maxRequests": 120
+  },
+  "cors": {
+    "enabled": true,
+    "allowedOrigins": ["http://localhost:3000"],
+    "allowCredentials": true
+  },
+  "auth": {
+    "required": true,
+    "allowApiKey": true,
+    "allowOidc": true
+  },
+  "websocket": {
+    "enabled": true,
+    "maxConnections": 500,
+    "heartbeatIntervalMs": 30000,
+    "maxMessageBytes": 65536
+  },
+  "requestLimits": {
+    "maxBodyBytes": 1048576,
+    "maxHeaders": 100,
+    "maxConcurrentStreams": 50
+  }
 }

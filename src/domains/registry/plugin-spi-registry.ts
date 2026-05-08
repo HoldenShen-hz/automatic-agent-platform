@@ -187,7 +187,14 @@ export class PluginSpiRegistry {
         details: { pluginId, disabledReason: record.disabledReason },
       });
     }
-    if (record.lifecycleState === "active" || record.lifecycleState === "degraded") {
+    if (record.lifecycleState === "unloaded") {
+      throw new ValidationError("plugin_spi.plugin_unloaded", `Plugin ${pluginId} was unloaded and must be re-registered before activation.`, {
+        category: "validation",
+        source: "internal",
+        details: { pluginId },
+      });
+    }
+    if (record.lifecycleState === "active") {
       return record.plugin;
     }
     this.assertNotCoolingDown(record, "activation", context);
@@ -218,6 +225,38 @@ export class PluginSpiRegistry {
       await record.plugin.onDeactivate(context);
     }
     this.setLifecycleState(record, "inactive");
+  }
+
+  public async suspend(pluginId: string, reason: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
+    const record = this.requireRecord(pluginId);
+    if (record.lifecycleState === "registered" || record.lifecycleState === "disabled" || record.lifecycleState === "suspended") {
+      return;
+    }
+
+    const context = buildContext(record, overrides);
+    if (record.lifecycleState === "active") {
+      if (typeof record.plugin.suspend === "function") {
+        await record.plugin.suspend(reason, context);
+      } else if (record.plugin.onDeactivate) {
+        await record.plugin.onDeactivate(context);
+      }
+    } else if (record.lifecycleState === "inactive" && typeof record.plugin.suspend === "function") {
+      await record.plugin.suspend(reason, context);
+    }
+
+    this.setLifecycleState(record, "suspended");
+    this.eventPublisher?.publish({
+      eventType: "plugin:suspended",
+      payload: {
+        pluginId: record.manifest.pluginId,
+        domainId: context.domainId,
+        spiType: record.plugin.spiType,
+        lifecycleState: "suspended",
+        bindingId: context.bindingId,
+        reason,
+        occurredAt: nowIso(),
+      },
+    });
   }
 
   public async unload(pluginId: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
@@ -357,7 +396,7 @@ export class PluginSpiRegistry {
   private requireRecord(pluginId: string): RegisteredPluginRecord {
     const record = this.get(pluginId);
     if (!record) {
-      throw new ValidationError("plugin_spi.plugin_not_found", `Plugin ${pluginId} is not registered.`, {
+      throw new ValidationError("plugin_spi.plugin_not_found", `Plugin ${pluginId} was not found or is not registered.`, {
         category: "validation",
         source: "internal",
       });
@@ -514,7 +553,7 @@ export class PluginSpiRegistry {
   ): Promise<RegisteredPlugin> {
     const timeoutMs = record.manifest.sandbox.timeoutMs;
     try {
-      if (record.lifecycleState === "registered" || record.lifecycleState === "unloaded") {
+      if (record.lifecycleState === "registered") {
         await this.runLifecycle(record, "load", context, async () => {
           if (this.isProcessIsolatedRuntime(record)) {
             await this.invokeForkedRuntime<void>(record, "load", context);
@@ -546,7 +585,7 @@ export class PluginSpiRegistry {
         });
         record.lastHealthCheckAt = nowIso();
         if (!healthy) {
-          throw new ValidationError("plugin_spi.unhealthy_plugin", "Plugin health check failed during activation.", {
+          throw new ValidationError("plugin_spi.unhealthy_plugin", "Plugin unhealthy: health check failed during activation.", {
             category: "validation",
             source: "internal",
             details: { pluginId: record.manifest.pluginId, timeoutMs },
@@ -643,9 +682,11 @@ export class PluginSpiRegistry {
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }
-    if (record.failureCount > this.maxConsecutiveFailures) {
+    if (record.failureCount >= this.maxConsecutiveFailures) {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
+    } else if (phase === "activation" || phase === "load" || phase === "health_check") {
+      this.setLifecycleState(record, "suspended");
     } else {
       this.setLifecycleState(record, "degraded");
     }

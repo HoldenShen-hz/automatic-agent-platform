@@ -252,6 +252,12 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
       integer: true,
       minExclusive: 0,
     },
+    retryMax: {
+      kind: "number",
+      issue: "config.invalid_runtime.retryMax",
+      integer: true,
+      minExclusive: 0,
+    },
     circuitBreaker: {
       kind: "object",
       issue: "config.invalid_runtime.circuitBreaker",
@@ -263,6 +269,22 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
         threshold: {
           kind: "number",
           issue: "config.invalid_runtime.circuitBreaker.threshold",
+          integer: true,
+          minExclusive: 0,
+        },
+      },
+    },
+    rateLimit: {
+      kind: "object",
+      issue: "config.invalid_runtime.rateLimit",
+      shape: {
+        enabled: {
+          kind: "boolean",
+          issue: "config.invalid_runtime.rateLimit.enabled",
+        },
+        requestsPerMinute: {
+          kind: "number",
+          issue: "config.invalid_runtime.rateLimit.requestsPerMinute",
           integer: true,
           minExclusive: 0,
         },

@@ -8,6 +8,7 @@
  * This enables tenant-specific, pack-specific, and task-type-specific config overrides.
  */
 
+import { sha256, stableStringify } from "./config-governance-support.js";
 import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
 
 /**
@@ -238,17 +239,10 @@ export class HierarchicalConfigLoader {
   }
 
   /**
-   * Computes a simple version hash from config content.
+   * Computes a stable SHA-256 version hash from config content.
    */
   private computeVersion(config: Record<string, unknown>): string {
-    const str = JSON.stringify(config, Object.keys(config).sort());
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
+    return sha256(stableStringify(config));
   }
 
   /**

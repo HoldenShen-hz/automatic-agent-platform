@@ -5,6 +5,7 @@ import {
   buildAiOperationsStartupPlan,
   buildFivePlaneRuntimeCatalog,
   buildPlatformRootDemoSummary,
+  buildPlatformRootSummary,
 } from "../../../src/index.js";
 import type { PlatformRootEntryMode } from "../../../src/index.js";
 import type {
@@ -87,4 +88,17 @@ test("buildPlatformRootDemoSummary publishes canonical-neutral output instead of
   assert.equal("workflow" in (summary as Record<string, unknown>), false);
   assert.equal("execution" in (summary as Record<string, unknown>), false);
   assert.equal("session" in (summary as Record<string, unknown>), false);
+});
+
+test("buildPlatformRootSummary keeps other sections available when one builder fails", () => {
+  const summary = buildPlatformRootSummary({
+    buildAiOperationsRuntimeCatalog: () => {
+      throw new Error("ai ops unavailable");
+    },
+  });
+
+  assert.ok(Array.isArray(summary.domains.startupOrder));
+  assert.equal(summary.aiOperations.totalCapabilityCount, 0);
+  assert.equal(summary.aiOperations.capabilityCounts.modelGateway, 0);
+  assert.equal(summary.aiOperations.capabilityCounts.harness, 0);
 });

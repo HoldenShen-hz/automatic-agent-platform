@@ -8,7 +8,8 @@
 |------|------|------|----------|
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
-| [003](./003-memory-seven-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
+| [003A](./003-memory-six-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
+| [003B](./003-memory-seven-layers.md) | 七层记忆模型（历史稿） | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
@@ -72,6 +73,7 @@
 | [065](./065-workflow-visual-debugger.md) | 工作流可视化调试器架构 | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成引擎 | Accepted | 2026-04-20 |
 | [066](./066-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI Framework（重编号保留） | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Accepted | 2026-04-20 |
@@ -125,7 +127,8 @@
 
 ## 备注
 
-- 原始历史文件中存在 `066` 号双占用；为避免破坏既有引用，当前保留该历史编号冲突，并在索引中显式列出。
+- 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`，两者均已被 ADR-020 取代；索引中显式列出，避免遗漏旧引用。
+- 原始历史文件中存在 `066` 号双占用，且后续保留了 `071-plugin-spi-framework.md` 作为重编号副本；为避免破坏既有引用，当前全部保留并在索引中显式列出。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。
 - `109-112` 通过 freeze / authority / event namespace / ring boundary 约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名等语义；历史 ADR 正文保留，不直接改写。

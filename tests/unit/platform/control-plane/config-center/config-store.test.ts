@@ -180,6 +180,34 @@ test("ConfigStore.onChange notifies listeners on value change", () => {
   assert.equal(receivedNewValue, "updated");
 });
 
+test("ConfigStore.onChange ignores structurally-equal object updates", () => {
+  const store = new ConfigStore();
+  let callCount = 0;
+
+  store.onChange(() => {
+    callCount++;
+  });
+
+  store.set("policy", { limit: 10, nested: { enabled: true } });
+  store.set("policy", { nested: { enabled: true }, limit: 10 });
+
+  assert.equal(callCount, 1);
+});
+
+test("ConfigStore.onChange detects deep object changes", () => {
+  const store = new ConfigStore();
+  let callCount = 0;
+
+  store.onChange(() => {
+    callCount++;
+  });
+
+  store.set("policy", { limit: 10, nested: { enabled: true } });
+  store.set("policy", { limit: 10, nested: { enabled: false } });
+
+  assert.equal(callCount, 2);
+});
+
 test("ConfigStore.offChange removes listener", () => {
   const store = new ConfigStore();
   let callCount = 0;

@@ -95,7 +95,7 @@
         },
         "securityLevel": "standard"
       },
-      "status": "testing",
+      "status": "active",
       "externalAdapters": ["github"],
       "pluginBindings": [
         {

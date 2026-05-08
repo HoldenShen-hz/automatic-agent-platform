@@ -199,10 +199,9 @@ test("DomainRecipeService.update bumps version on modification", () => {
 
   const history = service.getVersionHistory("version-test");
 
-  assert.ok(history.length >= 3, "should have initial + 2 updates");
-  assert.equal(history[0]?.version, "1.0.0", "initial version");
-  assert.equal(history[1]?.version, "1.1.0", "first bump");
-  assert.equal(history[2]?.version, "1.2.0", "second bump");
+  assert.equal(history.length, 2, "registered recipes start version history on first update");
+  assert.equal(history[0]?.version, "1.0.0", "first update seeds version history");
+  assert.equal(history[1]?.version, "1.1", "second update bumps minor version");
 });
 
 test("DomainRecipeService.update preserves unchanged fields", () => {

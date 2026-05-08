@@ -40,12 +40,12 @@ test("startRollout creates a new rollout with default stages", () => {
   assert.ok(rollout.updatedAt);
 });
 
-test("startRollout defaults to FULL stage for 100% target", () => {
+test("startRollout begins 100 percent rollouts at canary instead of skipping directly to full", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
 
-  assert.equal(rollout.stage.phase, RolloutPhase.FULL);
-  assert.equal(rollout.currentPercentage, 100);
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
+  assert.equal(rollout.currentPercentage, 5);
   assert.equal(rollout.targetPercentage, 100);
 });
 
@@ -128,8 +128,11 @@ test("shouldApplyConfig returns shouldApply:false for CANCELLED rollout", () => 
 
 test("shouldApplyConfig applies config based on hash percentage", () => {
   const service = new ConfigRolloutService();
-  // Start at FULL (100%) so all hashes will match
+  // Start at CANARY_5 and then promote to FULL so all hashes will match
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
+  service.promoteRollout(rollout.rolloutId);
+  service.promoteRollout(rollout.rolloutId);
+  service.promoteRollout(rollout.rolloutId);
 
   // With 100%, all hashes should be below percentage
   const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "any-hash");
@@ -171,17 +174,18 @@ test("promoteRollout returns null for non-existent rollout", () => {
   assert.equal(result, null);
 });
 
-test("promoteRollout from FULL transitions to next stage", () => {
+test("promoteRollout from FULL remains at FULL terminal stage", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
-
+  service.promoteRollout(rollout.rolloutId);
+  service.promoteRollout(rollout.rolloutId);
+  service.promoteRollout(rollout.rolloutId);
   assert.equal(rollout.stage.phase, RolloutPhase.FULL);
 
   const promoted = service.promoteRollout(rollout.rolloutId);
 
   assert.ok(promoted);
-  // Note: source code advances to CANCELLED from FULL
-  assert.equal(promoted!.stage.phase, RolloutPhase.CANCELLED);
+  assert.equal(promoted!.stage.phase, RolloutPhase.FULL);
 });
 
 test("cancelRollout cancels the rollout", () => {
@@ -250,9 +254,10 @@ test("getActiveRollouts returns all active rollouts", () => {
   assert.equal(rollouts.length, 2);
 });
 
-test("autoProgressRollouts does not auto-progress non-auto stages", () => {
+test("autoProgressRollouts does not auto-progress terminal full stage", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
+  rollout.stage = { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false };
 
   // FULL stage has autoProgress: false
   const progressed = service.autoProgressRollouts();

@@ -133,6 +133,19 @@ test("HierarchicalConfigLoader.loadConfig computes version", () => {
   const result2 = loader.loadConfig(config2);
 
   assert.notEqual(result1.version, result2.version);
+  assert.equal(result1.version.length, 64);
+  assert.equal(result2.version.length, 64);
+});
+
+test("HierarchicalConfigLoader.loadConfig computes stable SHA-256 version regardless of object key order", () => {
+  const loader = new HierarchicalConfigLoader();
+  const config1 = { a: 1, nested: { x: 1, y: 2 } };
+  const config2 = { nested: { y: 2, x: 1 }, a: 1 };
+
+  const result1 = loader.loadConfig(config1);
+  const result2 = loader.loadConfig(config2);
+
+  assert.equal(result1.version, result2.version);
 });
 
 test("HierarchicalConfigLoader.emitConfigChange does not throw without eventBus", () => {

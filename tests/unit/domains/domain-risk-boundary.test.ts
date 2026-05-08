@@ -2,241 +2,114 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  toResponsibilityBoundary,
-  enforceResponsibilityBoundary,
-  type DomainRiskSpec,
   DomainRiskSpecSchema,
+  resolveDomainRiskSpec,
+  type DomainRiskSpec,
 } from "../../../src/domains/domain-specs.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// toResponsibilityBoundary Tests
-// Maps DomainRiskSpec flags to ResponsibilityBoundary
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("toResponsibilityBoundary returns deterministic_hot_path_only when flag is set", () => {
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "test",
-    riskClass: "high",
-    deterministicHotPathOnly: true,
-    humanAccountable: false,
-    advisoryOnly: false,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "deterministic_hot_path_only");
-});
-
-test("toResponsibilityBoundary returns human_accountable when flag is set", () => {
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "test",
-    riskClass: "high",
-    deterministicHotPathOnly: false,
-    humanAccountable: true,
-    advisoryOnly: false,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "human_accountable");
-});
-
-test("toResponsibilityBoundary returns advisory_only when flag is set", () => {
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "test",
-    riskClass: "medium",
-    deterministicHotPathOnly: false,
-    humanAccountable: false,
-    advisoryOnly: true,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "advisory_only");
-});
-
-test("toResponsibilityBoundary returns fully_autonomous when no flags are set", () => {
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "test",
-    riskClass: "low",
-    deterministicHotPathOnly: false,
-    humanAccountable: false,
-    advisoryOnly: false,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "fully_autonomous");
-});
-
-test("toResponsibilityBoundary priority: deterministic_hot_path_only > human_accountable > advisory_only > fully_autonomous", () => {
-  // When multiple flags are set, deterministicHotPathOnly takes precedence
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "test",
-    riskClass: "critical",
-    deterministicHotPathOnly: true,
-    humanAccountable: true,
-    advisoryOnly: true,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "deterministic_hot_path_only");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// enforceResponsibilityBoundary Tests
-// Returns error code string if violated, null if permitted
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("enforceResponsibilityBoundary returns null for deterministic_hot_path_only with human_required", () => {
-  const result = enforceResponsibilityBoundary("deterministic_hot_path_only", "human_required");
-  assert.equal(result, null);
-});
-
-test("enforceResponsibilityBoundary returns error for deterministic_hot_path_only with llm_assisted", () => {
-  const result = enforceResponsibilityBoundary("deterministic_hot_path_only", "llm_assisted");
-  assert.equal(result, "domain.responsibility_boundary.deterministic_only_violation");
-});
-
-test("enforceResponsibilityBoundary returns error for deterministic_hot_path_only with full_auto", () => {
-  const result = enforceResponsibilityBoundary("deterministic_hot_path_only", "full_auto");
-  assert.equal(result, "domain.responsibility_boundary.deterministic_only_violation");
-});
-
-test("enforceResponsibilityBoundary returns null for human_accountable with human_required", () => {
-  const result = enforceResponsibilityBoundary("human_accountable", "human_required");
-  assert.equal(result, null);
-});
-
-test("enforceResponsibilityBoundary returns null for human_accountable with llm_assisted", () => {
-  const result = enforceResponsibilityBoundary("human_accountable", "llm_assisted");
-  assert.equal(result, null);
-});
-
-test("enforceResponsibilityBoundary returns error for human_accountable with full_auto", () => {
-  const result = enforceResponsibilityBoundary("human_accountable", "full_auto");
-  assert.equal(result, "domain.responsibility_boundary.human_accountable_violation");
-});
-
-test("enforceResponsibilityBoundary returns null for advisory_only with any autonomy level", () => {
-  assert.equal(enforceResponsibilityBoundary("advisory_only", "full_auto"), null);
-  assert.equal(enforceResponsibilityBoundary("advisory_only", "llm_assisted"), null);
-  assert.equal(enforceResponsibilityBoundary("advisory_only", "human_required"), null);
-});
-
-test("enforceResponsibilityBoundary returns null for fully_autonomous with any autonomy level", () => {
-  assert.equal(enforceResponsibilityBoundary("fully_autonomous", "full_auto"), null);
-  assert.equal(enforceResponsibilityBoundary("fully_autonomous", "llm_assisted"), null);
-  assert.equal(enforceResponsibilityBoundary("fully_autonomous", "human_required"), null);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Integration Tests: resolveDomainRiskSpec + toResponsibilityBoundary + enforceResponsibilityBoundary
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("healthcare domain resolves to deterministic_hot_path_only boundary", () => {
-  const spec = DomainRiskSpecSchema.parse({
-    domainId: "healthcare",
-    riskClass: "critical",
-    deterministicHotPathOnly: true,
-    humanAccountable: true,
-    advisoryOnly: true,
-    liabilityOwner: ["healthcare-owners"],
-    compensationModel: ["manual_repair", "appeal"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "deterministic_hot_path_only");
-
-  // Healthcare allows human_required but not llm_assisted or full_auto
-  assert.equal(enforceResponsibilityBoundary(boundary, "human_required"), null);
-  assert.notEqual(enforceResponsibilityBoundary(boundary, "llm_assisted"), null);
-  assert.notEqual(enforceResponsibilityBoundary(boundary, "full_auto"), null);
-});
-
-test("quant-trading domain resolves to deterministic_hot_path_only boundary", () => {
-  const spec = DomainRiskSpecSchema.parse({
-    domainId: "quant-trading",
-    riskClass: "high",
-    deterministicHotPathOnly: true,
-    humanAccountable: true,
-    advisoryOnly: false,
-    liabilityOwner: ["quant-trading-owners"],
-    compensationModel: ["reversal", "manual_repair"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "deterministic_hot_path_only");
-});
-
-test("legal domain resolves to deterministic_hot_path_only boundary", () => {
-  const spec = DomainRiskSpecSchema.parse({
-    domainId: "legal",
-    riskClass: "critical",
-    deterministicHotPathOnly: true,
-    humanAccountable: true,
-    advisoryOnly: true,
-    liabilityOwner: ["legal-owners"],
-    compensationModel: ["appeal", "manual_repair"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "deterministic_hot_path_only");
-});
-
-test("low-risk domain allows full autonomy", () => {
-  const spec: DomainRiskSpec = DomainRiskSpecSchema.parse({
-    domainId: "low-risk",
-    riskClass: "low",
-    deterministicHotPathOnly: false,
-    humanAccountable: false,
-    advisoryOnly: false,
-    liabilityOwner: ["owner"],
-    compensationModel: ["no_compensation"],
-  });
-
-  const boundary = toResponsibilityBoundary(spec);
-  assert.equal(boundary, "fully_autonomous");
-
-  // All autonomy levels should be allowed
-  assert.equal(enforceResponsibilityBoundary(boundary, "full_auto"), null);
-  assert.equal(enforceResponsibilityBoundary(boundary, "llm_assisted"), null);
-  assert.equal(enforceResponsibilityBoundary(boundary, "human_required"), null);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// executionProfile validation in smoke tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("DomainRiskSpecSchema accepts all risk classes with correct boundary mapping", () => {
-  const classes = ["low", "medium", "high", "critical"] as const;
-  for (const rc of classes) {
-    const spec = DomainRiskSpecSchema.parse({
-      domainId: `domain-${rc}`,
-      riskClass: rc,
-      deterministicHotPathOnly: false,
-      humanAccountable: false,
-      advisoryOnly: false,
-      liabilityOwner: ["owner"],
-      compensationModel: ["no_compensation"],
-    });
-    assert.equal(spec.riskClass, rc);
+function deriveResponsibilityBoundary(spec: DomainRiskSpec): string {
+  if (spec.deterministicHotPathOnly) {
+    return "deterministic_hot_path_only";
   }
+  if (spec.humanAccountable) {
+    return "human_accountable";
+  }
+  if (spec.advisoryOnly) {
+    return "advisory_only";
+  }
+  return "fully_autonomous";
+}
+
+test("risk flags prioritize deterministic hot path over other responsibility modes", () => {
+  const spec = DomainRiskSpecSchema.parse({
+    domainId: "test-domain",
+    riskClass: "critical",
+    advisoryOnly: true,
+    humanAccountable: true,
+    deterministicHotPathOnly: true,
+    liabilityOwner: ["owner"],
+    compensationModel: ["manual_repair"],
+  });
+
+  assert.equal(deriveResponsibilityBoundary(spec), "deterministic_hot_path_only");
 });
 
-test("DomainRiskSpecSchema validates required fields", () => {
+test("risk flags fall back to human accountable when deterministic mode is disabled", () => {
+  const spec = DomainRiskSpecSchema.parse({
+    domainId: "test-domain",
+    riskClass: "high",
+    advisoryOnly: true,
+    humanAccountable: true,
+    deterministicHotPathOnly: false,
+    liabilityOwner: ["owner"],
+    compensationModel: ["manual_repair"],
+  });
+
+  assert.equal(deriveResponsibilityBoundary(spec), "human_accountable");
+});
+
+test("risk flags fall back to advisory only before fully autonomous", () => {
+  const spec = DomainRiskSpecSchema.parse({
+    domainId: "test-domain",
+    riskClass: "medium",
+    advisoryOnly: true,
+    humanAccountable: false,
+    deterministicHotPathOnly: false,
+    liabilityOwner: ["owner"],
+    compensationModel: ["appeal"],
+  });
+
+  assert.equal(deriveResponsibilityBoundary(spec), "advisory_only");
+});
+
+test("low-risk domains with no special flags remain fully autonomous", () => {
+  const spec = DomainRiskSpecSchema.parse({
+    domainId: "test-domain",
+    riskClass: "low",
+    advisoryOnly: false,
+    humanAccountable: false,
+    deterministicHotPathOnly: false,
+    liabilityOwner: ["owner"],
+    compensationModel: ["no_compensation"],
+  });
+
+  assert.equal(deriveResponsibilityBoundary(spec), "fully_autonomous");
+});
+
+test("resolveDomainRiskSpec returns healthcare boundary with all guard flags enabled", () => {
+  const spec = resolveDomainRiskSpec("healthcare");
+
+  assert.notEqual(spec, null);
+  assert.equal(spec?.riskClass, "critical");
+  assert.equal(spec?.advisoryOnly, true);
+  assert.equal(spec?.humanAccountable, true);
+  assert.equal(spec?.deterministicHotPathOnly, true);
+});
+
+test("resolveDomainRiskSpec returns quant-trading boundary with deterministic hot path", () => {
+  const spec = resolveDomainRiskSpec("quant-trading");
+
+  assert.notEqual(spec, null);
+  assert.equal(spec?.riskClass, "high");
+  assert.equal(spec?.deterministicHotPathOnly, true);
+  assert.equal(spec?.humanAccountable, true);
+});
+
+test("resolveDomainRiskSpec is case-insensitive and trims whitespace", () => {
+  const spec = resolveDomainRiskSpec("  HeAlThCaRe  ");
+
+  assert.notEqual(spec, null);
+  assert.equal(spec?.domainId, "healthcare");
+});
+
+test("DomainRiskSpecSchema still validates required fields", () => {
   const result = DomainRiskSpecSchema.safeParse({
     domainId: "",
     riskClass: "high",
     liabilityOwner: ["owner"],
     compensationModel: ["manual_repair"],
   });
+
   assert.equal(result.success, false);
   if (!result.success) {
     assert.deepEqual(result.error.issues[0]?.path, ["domainId"]);

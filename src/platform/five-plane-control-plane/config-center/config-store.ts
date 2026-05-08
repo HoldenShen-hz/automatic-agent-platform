@@ -113,7 +113,7 @@ export class ConfigStore {
     this.version++;
 
     // Notify listeners
-    if (oldEntry?.value !== value) {
+    if (!areConfigValuesEqual(oldEntry?.value, value)) {
       for (const listener of this.changeListeners) {
         listener(key, oldEntry?.value, value);
       }
@@ -240,4 +240,21 @@ export class ConfigStore {
       this.changeListeners.splice(index, 1);
     }
   }
+}
+
+function areConfigValuesEqual(left: unknown, right: unknown): boolean {
+  return stableSerialize(left) === stableSerialize(right);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+  }
+  if (value != null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableSerialize(entry)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

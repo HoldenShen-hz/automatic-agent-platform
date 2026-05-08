@@ -11,7 +11,16 @@ export const ApprovalEscalationRuleSchema = z.object({
   slaBreachNotificationTargetIds: z.array(z.string().min(1)).default([]),
 });
 
-export type ApprovalEscalationRule = z.infer<typeof ApprovalEscalationRuleSchema>;
+export interface ApprovalEscalationRule {
+  readonly ruleId: string;
+  readonly triggerAfterMinutes: number;
+  readonly escalateToApproverId: string;
+  readonly appliesToRiskLevels: readonly ("low" | "medium" | "high" | "critical")[];
+  readonly maxEscalationDepth?: number;
+  readonly cooldownMinutes?: number;
+  readonly notifyOnSlaBreach?: boolean;
+  readonly slaBreachNotificationTargetIds?: readonly string[];
+}
 
 export interface ApprovalEscalationEvaluationContext {
   readonly escalationDepth?: number;
@@ -48,7 +57,7 @@ export function evaluateApprovalEscalation(
   }
 
   const escalationDepth = context.escalationDepth ?? 0;
-  if (escalationDepth >= rule.maxEscalationDepth) {
+  if (escalationDepth >= (rule.maxEscalationDepth ?? 1)) {
     return {
       shouldEscalate: false,
       shouldNotifySlaBreach: false,
@@ -67,8 +76,8 @@ export function evaluateApprovalEscalation(
     };
   }
 
-  if (rule.cooldownMinutes > 0 && context.lastEscalatedAtIso != null) {
-    const cooldownMs = rule.cooldownMinutes * 60_000;
+  if ((rule.cooldownMinutes ?? 0) > 0 && context.lastEscalatedAtIso != null) {
+    const cooldownMs = (rule.cooldownMinutes ?? 0) * 60_000;
     const lastEscalatedMs = Date.parse(context.lastEscalatedAtIso);
     if (Number.isFinite(lastEscalatedMs) && Date.parse(nowIso) - lastEscalatedMs < cooldownMs) {
       return {
@@ -80,9 +89,9 @@ export function evaluateApprovalEscalation(
     }
   }
 
-  const notificationTargetIds = context.slaBreached && rule.notifyOnSlaBreach
-    ? (rule.slaBreachNotificationTargetIds.length > 0
-        ? [...rule.slaBreachNotificationTargetIds]
+  const notificationTargetIds = context.slaBreached && rule.notifyOnSlaBreach === true
+    ? ((rule.slaBreachNotificationTargetIds?.length ?? 0) > 0
+        ? [...(rule.slaBreachNotificationTargetIds ?? [])]
         : [rule.escalateToApproverId])
     : [];
 

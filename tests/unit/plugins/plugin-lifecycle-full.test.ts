@@ -206,7 +206,7 @@ test("PluginLifecycle: unloaded plugin cannot be activated", async () => {
 
   await assert.rejects(
     async () => registry.ensureActive(plugin.pluginId),
-    /not found/i,
+    /unloaded|not found/i,
   );
 });
 

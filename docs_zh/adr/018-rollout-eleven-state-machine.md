@@ -1,82 +1,30 @@
 # ADR-018 Rollout 十一态状态机与六阶段发布
 
----
-
-## OAPEFLIR 关联
-
-本文档定义 OAPEFLIR 八阶段认知循环中的以下组件：
-
-- **Observe**：信号采集与统一 DTO
-- **Assess**：执行前/后评估与风险判断
-- **Plan**：显式规划与 DAG 构建（ADR-060）
-- **Execute**：步骤执行与 Dual-Channel 输出
-- **Feedback**：信号收集、预处理与 7 类反馈源（ADR-079）
-- **Learn**：模式检测与知识提取（ADR-080）
-- **Improve**：改进候选评估与 Rollout 状态机（ADR-075）
-- **Release**：六级受控发布与自动回滚
-
----
-
 - 状态：Superseded by ADR-075
 - 决策日期：2026-04-17
-- 被取代：ADR-075 (2026-04-17) 重新定义了六级发布状态机，Level 和状态集合与 ADR-018 不兼容
+- 当前权威规范：ADR-075《六级受控发布与 Rollout 状态机》
+
+> Historical record only. Do not implement from this document.
 
 ## 背景
 
-§9 定义了五级发布（L0-L5）和 11 态 RolloutStatus 状态机。当前 `rollout-state-machine.ts` 仅实现了 3 态（off → suggest → shadow），无法支持渐进式发布（canary → staged → stable）和自动回滚。
+ADR-018 曾经提出过一版 `RolloutStatus` 十一态与六级发布模型，用来描述从建议态到渐进式放量再到回滚的完整生命周期。
 
-## 决策
+随着受控发布链路、状态机边界和回滚门槛统一收敛到 ADR-075，本文件中的状态集合、流量分级、阈值与迁移步骤已经不再是当前实现的权威来源。
 
-### 十一态 RolloutStatus 枚举
+## 结论
 
-```
-draft
-  ↓ (guardrail pass)
-pending_approval
-  ↓           ↓ (rejected)
-shadow        rejected
-  ↓ (24h)
-canary_5      ← 5% 流量
-  ↓ (metrics gate: error_rate < 0.5%, p99 < 2x baseline)
-partial_25    ← 25% 流量
-  ↓
-partial_50    ← 50% 流量
-  ↓
-partial_75    ← 75% 流量
-  ↓
-stable        ← 100% 流量，视为 adopted
-  ↓
-rolled_back   ← 自动或手动回滚
-  ↓
-paused        ← 暂停，可恢复
-```
+- ADR-018 仅保留为历史记录，用于解释曾经为什么探索过更细粒度的 rollout 状态拆分。
+- 任何新的实现、测试、运维规则、阈值配置或状态流转，均必须以 ADR-075 为准。
+- 如需查阅当前发布链路，请直接参考 [ADR-075](./075-controlled-rollout-release.md)。
 
-### 五级发布
+## 保留原因
 
-| 级别 | 名称 | 流量 | 适用场景 |
-|------|------|------|---------|
-| L0 | off | 0% | 禁用 |
-| L1 | suggest | 0% | 仅建议，不自动执行 |
-| L2 | shadow | 0% | shadow mode，不影响生产 |
-| L3 | canary | 1-10% | 小流量验证 |
-| L4 | staged | 25-75% | 灰度发布 |
-| L5 | stable | 100% | 全量发布 |
+- 历史审计与评审文档仍会引用 ADR-018 编号。
+- 部分旧讨论记录和设计分支曾以 ADR-018 作为背景材料，需要保留可追溯性。
 
-### 自动回滚规则
+## 迁移说明
 
-当以下任一条件满足时，自动触发 `rolled_back`：
-
-- `failureRate > 5%`（5 分钟窗口）
-- `p99Latency > 2x baseline`
-
-### 当前实现状态
-
-- `src/core/improvement/rollout/rollout-state-machine.ts`：3/11 态，需扩展。
-- `src/core/improvement/auto-rollback-service.ts`：待创建。
-- `src/core/improvement/canary-traffic-router.ts`：待创建。
-
-## 后果
-
-- Rollout 状态机扩展是 Sprint 2 的核心工作之一（ GAP-V2-07）。
-- 完整的 11 态 + 自动回滚使系统具备生产级渐进发布能力。
-- RolloutRecord 必须持久化所有状态转换历史，用于审计和 RCA。
+- 如果你正在查找 rollout 状态定义，请转到 ADR-075。
+- 如果你正在查找自动回滚、灰度发布、阶段门禁或稳定态准入，请转到 ADR-075。
+- 如果你正在修复旧文档中的 ADR-018 引用，请把“执行依据”改写为 ADR-075，把 ADR-018 保留为历史背景引用。

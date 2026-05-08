@@ -457,8 +457,20 @@ test("validateLayerSchema skips undefined layers", () => {
 test("validateLayerSchema validates defined layers", () => {
   const layer = {
     appName: "test-app",
-    phase: "phase1",
+    phase: "ring_1",
     stableCoreEnabled: true,
+    dependencyOrder: ["bootstrap", "platform"],
+    readinessGates: ["config_loaded"],
+    degradationPolicy: {
+      onReadinessFailure: "fail_closed",
+    },
+    healthCheckTimeoutMs: 5000,
+    readinessProbe: {
+      initialDelayMs: 1000,
+      intervalMs: 5000,
+      timeoutMs: 3000,
+      failureThreshold: 3,
+    },
   };
   const issues: string[] = [];
   validateLayerSchema(layer, BOOTSTRAP_LAYER_SCHEMA, issues);
@@ -523,9 +535,14 @@ test("RUNTIME_LAYER_SCHEMA accepts config schema version, breaker threshold, and
     apiMaxTimeoutMs: 30000,
     maxAgentRounds: 6,
     maxToolCalls: 8,
+    retryMax: 3,
     circuitBreaker: {
       enabled: true,
       threshold: 5,
+    },
+    rateLimit: {
+      enabled: true,
+      requestsPerMinute: 120,
     },
     configDriftReconciler: {
       interval: 300000,
@@ -546,5 +563,6 @@ test("RUNTIME_LAYER_SCHEMA rejects runtime defaults that omit config schema vers
   assert.ok(issues.includes("config.invalid_runtime.configVersion"));
   assert.ok(issues.includes("config.invalid_runtime.configSchemaVersion"));
   assert.ok(issues.includes("config.invalid_runtime.circuitBreaker"));
+  assert.ok(issues.includes("config.invalid_runtime.rateLimit"));
   assert.ok(issues.includes("config.invalid_runtime.configDriftReconciler"));
 });

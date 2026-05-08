@@ -89,6 +89,14 @@ export class ServiceRegistry {
   }
 
   /**
+   * Creates an isolated scoped registry instance without mutating the global singleton.
+   * Used by bootstrap paths that need fresh service graphs for tests or local runtime scopes.
+   */
+  public static createScoped(): ServiceRegistry {
+    return new ServiceRegistry();
+  }
+
+  /**
    * Registers bootstrap wiring that should be replayed for every fresh registry instance.
    */
   public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {

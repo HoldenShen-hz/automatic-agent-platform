@@ -190,10 +190,10 @@ test("PackMigrationService.rollbackMigration with no executed steps", async () =
   const plan = service.createMigrationPlan("pack-a", "pack-b");
   // Don't execute, try to rollback directly
 
-  const result = await service.rollbackMigration(plan.planId);
-
-  // Should fail because plan is not in completed/failed state
-  assert.equal(result.success, false);
+  await assert.rejects(
+    () => service.rollbackMigration(plan.planId),
+    /Cannot rollback plan in planned state\./,
+  );
 });
 
 test("PackMigrationService.rollbackMigration twice fails gracefully", async () => {
@@ -205,10 +205,10 @@ test("PackMigrationService.rollbackMigration twice fails gracefully", async () =
   await service.rollbackMigration(plan.planId);
 
   // Try to rollback again
-  const result = await service.rollbackMigration(plan.planId);
-
-  // Should handle gracefully
-  assert.equal(result.success, false);
+  await assert.rejects(
+    () => service.rollbackMigration(plan.planId),
+    /Cannot rollback plan in rolled_back state\./,
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

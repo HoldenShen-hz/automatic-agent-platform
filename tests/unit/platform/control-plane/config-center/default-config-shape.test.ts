@@ -13,8 +13,11 @@ test("runtime default config includes configVersion for version tracking", () =>
   assert.equal(typeof runtimeConfig["configVersion"], "string");
   assert.ok(String(runtimeConfig["configVersion"]).length > 0);
   assert.equal(typeof runtimeConfig["configSchemaVersion"], "string");
+  assert.equal(runtimeConfig["retryMax"], 3);
   assert.equal(typeof runtimeConfig["circuitBreaker"], "object");
   assert.equal((runtimeConfig["circuitBreaker"] as Record<string, unknown>)["threshold"], 5);
+  assert.equal(typeof runtimeConfig["rateLimit"], "object");
+  assert.equal((runtimeConfig["rateLimit"] as Record<string, unknown>)["requestsPerMinute"], 120);
   assert.equal(typeof runtimeConfig["configDriftReconciler"], "object");
   assert.equal((runtimeConfig["configDriftReconciler"] as Record<string, unknown>)["interval"], 300000);
 });
@@ -27,6 +30,8 @@ test("gateway default config includes rate limit, cors, auth, and request limits
   assert.equal(typeof gatewayConfig["rateLimit"], "object");
   assert.equal(typeof gatewayConfig["cors"], "object");
   assert.equal(typeof gatewayConfig["auth"], "object");
+  assert.equal(typeof gatewayConfig["websocket"], "object");
+  assert.equal((gatewayConfig["websocket"] as Record<string, unknown>)["heartbeatIntervalMs"], 30000);
   assert.equal(typeof gatewayConfig["requestLimits"], "object");
 });
 

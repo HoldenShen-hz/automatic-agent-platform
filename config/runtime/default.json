@@ -8,9 +8,14 @@
   "apiMaxTimeoutMs": 30000,
   "maxAgentRounds": 6,
   "maxToolCalls": 8,
+  "retryMax": 3,
   "circuitBreaker": {
     "enabled": true,
     "threshold": 5
+  },
+  "rateLimit": {
+    "enabled": true,
+    "requestsPerMinute": 120
   },
   "configDriftReconciler": {
     "interval": 300000

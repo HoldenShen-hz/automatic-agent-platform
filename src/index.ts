@@ -15,6 +15,7 @@ import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+import { StructuredLogger } from "./platform/shared/observability/structured-logger.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
@@ -45,7 +46,7 @@ export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 export type PlatformRootEntryMode = PlatformStartupTargetKind;
 
 export interface PlatformRootSummary {
-  readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
+  readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;
   readonly domains: {
     readonly startupOrder: readonly string[];
     readonly totalCapabilityCount: number;
@@ -94,6 +95,22 @@ export interface PlatformRootSummary {
     };
   };
 }
+
+interface PlatformRootSummaryBuilderDeps {
+  readonly buildArchitectureSummary: () => ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
+  readonly buildDomainsStartupPlan: typeof buildDomainsStartupPlan;
+  readonly buildDomainsRuntimeCatalog: typeof buildDomainsRuntimeCatalog;
+  readonly buildFivePlaneStartupPlan: typeof buildFivePlaneStartupPlan;
+  readonly buildFivePlaneRuntimeCatalog: typeof buildFivePlaneRuntimeCatalog;
+  readonly buildAiOperationsStartupPlan: typeof buildAiOperationsStartupPlan;
+  readonly buildAiOperationsRuntimeCatalog: typeof buildAiOperationsRuntimeCatalog;
+  readonly buildInteractionGovernanceStartupPlan: typeof buildInteractionGovernanceStartupPlan;
+  readonly buildInteractionGovernanceRuntimeCatalog: typeof buildInteractionGovernanceRuntimeCatalog;
+  readonly buildScaleOpsStartupPlan: typeof buildScaleOpsStartupPlan;
+  readonly buildScaleOpsRuntimeCatalog: typeof buildScaleOpsRuntimeCatalog;
+}
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 interface PlatformRootDemoLegacySnapshot {
   readonly task: {
@@ -232,18 +249,91 @@ export async function runPlatformRootSummary(): Promise<void> {
   console.log(JSON.stringify(summary, null, 2));
 }
 
-export function buildPlatformRootSummary(): PlatformRootSummary {
-  const architecture = buildPlatformArchitectureBootstrapSummary();
-  const domainsStartupPlan = buildDomainsStartupPlan();
-  const domainsRuntimeCatalog = buildDomainsRuntimeCatalog();
-  const startupPlan = buildFivePlaneStartupPlan();
-  const aiOperationsStartupPlan = buildAiOperationsStartupPlan();
-  const interactionGovernanceStartupPlan = buildInteractionGovernanceStartupPlan();
-  const runtimeCatalog = buildFivePlaneRuntimeCatalog();
-  const aiOperationsRuntimeCatalog = buildAiOperationsRuntimeCatalog();
-  const interactionGovernanceRuntimeCatalog = buildInteractionGovernanceRuntimeCatalog();
-  const scaleOpsStartupPlan = buildScaleOpsStartupPlan();
-  const scaleOpsRuntimeCatalog = buildScaleOpsRuntimeCatalog();
+function safeBuildSection<T>(section: string, build: () => T, fallback: T): T {
+  try {
+    return build();
+  } catch (error) {
+    logger.warn("Platform root summary section failed; using fallback", {
+      section,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fallback;
+  }
+}
+
+export function buildPlatformRootSummary(
+  deps: Partial<PlatformRootSummaryBuilderDeps> = {},
+): PlatformRootSummary {
+  const resolvedDeps: PlatformRootSummaryBuilderDeps = {
+    buildArchitectureSummary: deps.buildArchitectureSummary ?? buildPlatformArchitectureBootstrapSummary,
+    buildDomainsStartupPlan: deps.buildDomainsStartupPlan ?? buildDomainsStartupPlan,
+    buildDomainsRuntimeCatalog: deps.buildDomainsRuntimeCatalog ?? buildDomainsRuntimeCatalog,
+    buildFivePlaneStartupPlan: deps.buildFivePlaneStartupPlan ?? buildFivePlaneStartupPlan,
+    buildFivePlaneRuntimeCatalog: deps.buildFivePlaneRuntimeCatalog ?? buildFivePlaneRuntimeCatalog,
+    buildAiOperationsStartupPlan: deps.buildAiOperationsStartupPlan ?? buildAiOperationsStartupPlan,
+    buildAiOperationsRuntimeCatalog: deps.buildAiOperationsRuntimeCatalog ?? buildAiOperationsRuntimeCatalog,
+    buildInteractionGovernanceStartupPlan: deps.buildInteractionGovernanceStartupPlan ?? buildInteractionGovernanceStartupPlan,
+    buildInteractionGovernanceRuntimeCatalog: deps.buildInteractionGovernanceRuntimeCatalog ?? buildInteractionGovernanceRuntimeCatalog,
+    buildScaleOpsStartupPlan: deps.buildScaleOpsStartupPlan ?? buildScaleOpsStartupPlan,
+    buildScaleOpsRuntimeCatalog: deps.buildScaleOpsRuntimeCatalog ?? buildScaleOpsRuntimeCatalog,
+  };
+
+  const architecture = safeBuildSection("architecture", resolvedDeps.buildArchitectureSummary, null);
+  const domainsStartupPlan = safeBuildSection("domains.startupPlan", resolvedDeps.buildDomainsStartupPlan, {
+    startupOrder: [],
+    totalCapabilityCount: 0,
+    steps: [],
+  });
+  const domainsRuntimeCatalog = safeBuildSection("domains.runtimeCatalog", resolvedDeps.buildDomainsRuntimeCatalog, {
+    ring1: [],
+    ring2: [],
+    ring3: [],
+  });
+  const startupPlan = safeBuildSection("planes.startupPlan", resolvedDeps.buildFivePlaneStartupPlan, {
+    startupOrder: [],
+    totalCapabilityCount: 0,
+    steps: [],
+  });
+  const aiOperationsStartupPlan = safeBuildSection("aiOperations.startupPlan", resolvedDeps.buildAiOperationsStartupPlan, {
+    startupOrder: [],
+    totalCapabilityCount: 0,
+    steps: [],
+  });
+  const interactionGovernanceStartupPlan = safeBuildSection("interactionGovernance.startupPlan", resolvedDeps.buildInteractionGovernanceStartupPlan, {
+    startupOrder: [],
+    totalCapabilityCount: 0,
+    steps: [],
+  });
+  const runtimeCatalog = safeBuildSection("planes.runtimeCatalog", resolvedDeps.buildFivePlaneRuntimeCatalog, {
+    interfacePlane: [],
+    controlPlane: [],
+    orchestrationPlane: [],
+    executionPlane: [],
+    stateEvidencePlane: [],
+  });
+  const aiOperationsRuntimeCatalog = safeBuildSection("aiOperations.runtimeCatalog", resolvedDeps.buildAiOperationsRuntimeCatalog, {
+    modelGateway: [],
+    promptEngine: [],
+    compliance: [],
+    harness: [],
+  });
+  const interactionGovernanceRuntimeCatalog = safeBuildSection(
+    "interactionGovernance.runtimeCatalog",
+    resolvedDeps.buildInteractionGovernanceRuntimeCatalog,
+    {
+      interaction: [],
+      governance: [],
+    },
+  );
+  const scaleOpsStartupPlan = safeBuildSection("scaleOps.startupPlan", resolvedDeps.buildScaleOpsStartupPlan, {
+    startupOrder: [],
+    totalCapabilityCount: 0,
+    steps: [],
+  });
+  const scaleOpsRuntimeCatalog = safeBuildSection("scaleOps.runtimeCatalog", resolvedDeps.buildScaleOpsRuntimeCatalog, {
+    scaleEcosystem: [],
+    opsMaturity: [],
+  });
 
   return {
     architecture,

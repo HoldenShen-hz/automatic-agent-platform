@@ -156,6 +156,25 @@ test("src/index safeBuild error boundary returns success:false on thrown error",
   assert.ok(typeof summary1.domains.capabilityCounts.ring1 === "number");
 });
 
+test("src/index buildPlatformRootSummary isolates section failures behind fallbacks", async () => {
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
+
+  const summary = buildPlatformRootSummary({
+    buildDomainsStartupPlan: () => {
+      throw new Error("domains unavailable");
+    },
+    buildFivePlaneRuntimeCatalog: () => {
+      throw new Error("runtime unavailable");
+    },
+  });
+
+  assert.equal(summary.architecture === null || typeof summary.architecture === "object", true);
+  assert.deepEqual(summary.domains.startupOrder, []);
+  assert.equal(summary.domains.totalCapabilityCount, 0);
+  assert.equal(summary.planes.capabilityCounts.interface, 0);
+  assert.equal(summary.planes.capabilityCounts.controlPlane, 0);
+});
+
 test("src/index getPlatformApplicationKernel returns kernel instance", async () => {
   const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 

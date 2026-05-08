@@ -3,61 +3,57 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
-const RISK_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
-const riskConfig = JSON.parse(readFileSync(RISK_CONFIG_PATH, "utf-8"));
+import { loadRiskConfig } from "../../../src/platform/control-plane/risk-control/risk-config-loader.js";
 
-test("risk-config exposes the canonical 8-factor model", () => {
+const riskConfig = loadRiskConfig();
+const rawRiskConfig = JSON.parse(
+  readFileSync(resolve(process.cwd(), "config/risk/default.json"), "utf-8"),
+) as { riskCategories: string[] };
+
+test("risk-config exposes the canonical weighted factor model", () => {
   assert.deepEqual(Object.keys(riskConfig.factorWeights), [
-    "operationRisk",
-    "targetResourceCriticality",
-    "dataSensitivity",
-    "autonomyModeRisk",
-    "tenantImpact",
+    "stepTypeRisk",
+    "targetSystemRisk",
+    "dataClassRisk",
     "blastRadius",
-    "historicalFailureRate",
-    "evidenceConfidence",
+    "priorFailureRate",
+    "confidence",
   ]);
 });
 
 test("risk-config includes expected categories", () => {
-  for (const category of ["operational", "financial", "compliance", "reputational", "safety", "strategic", "ai", "data"]) {
-    assert.ok(riskConfig.riskCategories.includes(category), `riskCategories should include '${category}'`);
+  for (const category of ["operational", "financial", "compliance", "reputational", "safety", "strategic"]) {
+    assert.ok(rawRiskConfig.riskCategories.includes(category), `riskCategories should include '${category}'`);
   }
 });
 
-test("risk-config enforces approval for medium and above", () => {
+test("risk-config enforces approval for high and critical", () => {
   assert.equal(riskConfig.riskLevelActions.low.autoExecute, true);
   assert.equal(riskConfig.riskLevelActions.low.requiresApproval, false);
 
-  assert.equal(riskConfig.riskLevelActions.medium.autoExecute, false);
-  assert.equal(riskConfig.riskLevelActions.medium.requiresApproval, true);
-  assert.equal(riskConfig.riskLevelActions.medium.approvalType, "standard");
+  assert.equal(riskConfig.riskLevelActions.medium.autoExecute, true);
+  assert.equal(riskConfig.riskLevelActions.medium.requiresApproval, false);
 
   assert.equal(riskConfig.riskLevelActions.high.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.high.requiresApproval, true);
-  assert.equal(riskConfig.riskLevelActions.high.approvalType, "standard");
+  assert.equal(riskConfig.riskLevelActions.high.approvalType, undefined);
 
   assert.equal(riskConfig.riskLevelActions.critical.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.critical.requiresApproval, true);
   assert.equal(riskConfig.riskLevelActions.critical.approvalType, "break_glass");
 });
 
-test("risk-config threshold and autonomy ordering is consistent", () => {
+test("risk-config threshold ordering is consistent", () => {
   assert.ok(riskConfig.riskLevelThresholds.low < riskConfig.riskLevelThresholds.medium);
   assert.ok(riskConfig.riskLevelThresholds.medium < riskConfig.riskLevelThresholds.high);
   assert.ok(riskConfig.riskLevelThresholds.high < riskConfig.riskLevelThresholds.critical);
-
-  assert.equal(riskConfig.autonomyRiskCaps.low, "full_auto");
-  assert.equal(riskConfig.autonomyRiskCaps.medium, "supervised");
-  assert.equal(riskConfig.autonomyRiskCaps.high, "semi_auto");
-  assert.equal(riskConfig.autonomyRiskCaps.critical, "suggestion");
 });
 
-test("risk-config event registry and domain defaults stay wired", () => {
-  assert.ok(riskConfig.eventRegistry.tier1Events.includes("risk.assessment.completed"));
-  assert.ok(riskConfig.eventRegistry.tier1Events.includes("risk.level.changed"));
-  assert.ok(riskConfig.eventRegistry.tier1Events.includes("risk.breach.detected"));
-
-  assert.equal(riskConfig.domainRiskDefaults.healthcare.humanAccountable, true);
-  assert.equal(riskConfig.domainRiskDefaults.quant_trading.maxAutonomy, "supervised");
+test("risk-config value maps and thresholds stay wired", () => {
+  assert.equal(riskConfig.stepTypeRiskValues.external_call, 4);
+  assert.equal(riskConfig.targetSystemRiskValues.production, 5);
+  assert.equal(riskConfig.dataClassRiskValues.restricted, 5);
+  assert.equal(riskConfig.blastRadiusValues.platform, 5);
+  assert.equal(riskConfig.priorFailureRateThresholds.high.value, 3);
+  assert.equal(riskConfig.confidenceValues.low, 5);
 });

@@ -188,7 +188,7 @@ export class ApprovalRoutingService {
       .filter((item) => item.decision.shouldEscalate)
       .sort((left, right) =>
         right.rule.triggerAfterMinutes - left.rule.triggerAfterMinutes ||
-        right.rule.maxEscalationDepth - left.rule.maxEscalationDepth,
+        (right.rule.maxEscalationDepth ?? 1) - (left.rule.maxEscalationDepth ?? 1),
       )[0];
 
     return {
