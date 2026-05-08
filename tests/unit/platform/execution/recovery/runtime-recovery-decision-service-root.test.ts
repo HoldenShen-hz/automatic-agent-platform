@@ -262,7 +262,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", async () => {
   assert.equal(updated, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
+test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", async () => {
   const db = createMockDb();
   let deadLetterInserted = false;
   const store = createFullMockStore({
@@ -274,7 +274,7 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "move_dead_letter");
   assert.ok(result.deadLetter);
