@@ -11,6 +11,7 @@ vi.mock("electron", () => ({
       once: vi.fn(),
       show: vi.fn(),
       on: vi.fn(),
+      loadFile: vi.fn(),
       minimize: vi.fn(),
       isMaximized: vi.fn(() => false),
       unmaximize: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock("electron", () => ({
 }));
 
 import {
+  createMainWindow,
   electronMainBaseline,
   electronBridgeCapabilities,
   isShellCommandAllowed,
@@ -110,5 +112,13 @@ describe("isShellCommandAllowed", () => {
     expect(isShellCommandAllowed("health")).toBe(true);
     expect(isShellCommandAllowed("version")).toBe(true);
     expect(isShellCommandAllowed("powershell -Command whoami")).toBe(false);
+  });
+});
+
+describe("createMainWindow", () => {
+  it("loads the packaged electron html shell and keeps preload isolated", () => {
+    const windowHandle = createMainWindow();
+
+    expect(windowHandle.loadFile).toHaveBeenCalledWith(expect.stringContaining("index.html"));
   });
 });

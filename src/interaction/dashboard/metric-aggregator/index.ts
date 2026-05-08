@@ -184,7 +184,9 @@ export interface DashboardMetricSummary {
   readonly approvals: ApprovalMetricSnapshot;
   readonly alerts: AlertMetricSnapshot;
   readonly activeAgents: number;
+  readonly totalAgents: number;
   readonly successRate: number;
+  readonly sloCompliance: number;
   readonly avgDurationMs: number;
 }
 
@@ -331,9 +333,13 @@ function deriveAlertMetrics(alertCounts: Record<string, number>): AlertMetricSna
 export function summarizeTaskMetrics(statuses: readonly string[]): TaskMetricSnapshot {
   return {
     total: statuses.length,
-    done: statuses.filter((item) => item === "done").length,
-    inProgress: statuses.filter((item) => item === "in_progress").length,
-    failed: statuses.filter((item) => item === "failed").length,
+    queued: statuses.filter((item): item is TaskStatus => item === "queued").length,
+    pending: statuses.filter((item): item is TaskStatus => item === "pending").length,
+    inProgress: statuses.filter((item): item is TaskStatus => item === "in_progress").length,
+    awaitingDecision: statuses.filter((item): item is TaskStatus => item === "awaiting_decision").length,
+    done: statuses.filter((item): item is TaskStatus => item === "done").length,
+    failed: statuses.filter((item): item is TaskStatus => item === "failed").length,
+    cancelled: statuses.filter((item): item is TaskStatus => item === "cancelled").length,
   };
 }
 
@@ -559,6 +565,7 @@ export function buildDashboardMetrics(options: {
   healthStatus?: string;
   queueDepth?: number;
   workerCount?: number;
+  totalAgents?: number;
   p50LatencyMs?: number;
   p99LatencyMs?: number;
   totalCostUsd?: number;
@@ -566,6 +573,7 @@ export function buildDashboardMetrics(options: {
   pendingApprovals?: number;
   resolvedApprovals24h?: number;
   alertCounts?: Record<string, number>;
+  sloTarget?: number;
 }): DashboardMetricSummary {
   const {
     taskStatuses = [],
@@ -573,6 +581,7 @@ export function buildDashboardMetrics(options: {
     healthStatus = "ok",
     queueDepth = 0,
     workerCount = 0,
+    totalAgents = 0,
     p50LatencyMs = 250,
     p99LatencyMs = 2000,
     totalCostUsd = 0,
@@ -580,6 +589,7 @@ export function buildDashboardMetrics(options: {
     pendingApprovals = 0,
     resolvedApprovals24h = 0,
     alertCounts = {},
+    sloTarget = DEFAULT_SLO_TARGET,
   } = options;
 
   const taskMetrics = deriveTaskMetrics(taskStatuses);
@@ -597,6 +607,9 @@ export function buildDashboardMetrics(options: {
   // Calculate active agents as in-progress tasks
   const activeAgents = taskMetrics.inProgress;
 
+  // Calculate SLO compliance (success rate vs SLO target)
+  const sloCompliance = Number((successRate / sloTarget).toFixed(4));
+
   // Estimate avg duration from queue depth and completion rate
   const avgDurationMs = completedCount > 0 ? Math.round((queueDepth * 1000) / Math.max(1, completedCount)) : 0;
 
@@ -608,7 +621,9 @@ export function buildDashboardMetrics(options: {
     approvals: approvalMetrics,
     alerts: alertMetrics,
     activeAgents,
+    totalAgents,
     successRate: Number(successRate.toFixed(4)),
+    sloCompliance,
     avgDurationMs,
   };
 }
@@ -622,6 +637,7 @@ export function buildDashboardMetricsWithAggregation(options: {
   healthStatus?: string;
   queueDepth?: number;
   workerCount?: number;
+  totalAgents?: number;
   p50LatencyMs?: number;
   p99LatencyMs?: number;
   totalCostUsd?: number;
@@ -646,6 +662,7 @@ export function buildDashboardMetricsWithAggregation(options: {
     healthStatus = "ok",
     queueDepth = 0,
     workerCount = 0,
+    totalAgents = 0,
     p50LatencyMs = 250,
     p99LatencyMs = 2000,
     totalCostUsd = 0,
@@ -664,6 +681,7 @@ export function buildDashboardMetricsWithAggregation(options: {
     healthStatus,
     queueDepth,
     workerCount,
+    totalAgents,
     p50LatencyMs,
     p99LatencyMs,
     totalCostUsd,
@@ -671,6 +689,7 @@ export function buildDashboardMetricsWithAggregation(options: {
     pendingApprovals,
     resolvedApprovals24h,
     alertCounts,
+    sloTarget,
   });
 
   const windowedAggregation = aggregateWindowedMetrics(timeSeriesHistory, DEFAULT_WINDOW_SIZE_MS);

@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createContext, createElement, useContext, useEffect, useMemo, type PropsWithChildren, type ReactElement } from "react";
 import { useStore } from "zustand";
 import {
@@ -21,7 +21,7 @@ import {
 import type { PlatformAdapter, SystemStatusVM } from "@aa/shared-types";
 import { AuthService, SessionGuard, TokenManager, type AuthSession, type SecureTokenStorage } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
-import { createApprovalsQuery } from "./queries/approval-queries";
+import { createApprovalsQuery, createInfiniteApprovalsQuery } from "./queries/approval-queries";
 import {
   createAnalyticsQuery,
   createDashboardSnapshotQuery,
@@ -29,11 +29,13 @@ import {
 } from "./queries/dashboard-queries";
 import {
   createAgentsQuery,
+  createInfiniteAgentsQuery,
+  createInfiniteIncidentsQuery,
   createIncidentsQuery,
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
-import { createTasksQuery, createWorkflowsQuery, createWorkflowRunStepsQuery } from "./queries/task-queries";
+import { createInfiniteTasksQuery, createInfiniteWorkflowsQuery, createTasksQuery, createWorkflowsQuery, createWorkflowRunStepsQuery } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
 import {
   createIndexedDbQueryCachePersister,
@@ -413,9 +415,19 @@ export function useTasksQuery() {
   return useQuery(createTasksQuery(client));
 }
 
+export function useInfiniteTasksQuery() {
+  const client = useRestClient();
+  return useInfiniteQuery(createInfiniteTasksQuery(client));
+}
+
 export function useWorkflowsQuery() {
   const client = useRestClient();
   return useQuery(createWorkflowsQuery(client));
+}
+
+export function useInfiniteWorkflowsQuery() {
+  const client = useRestClient();
+  return useInfiniteQuery(createInfiniteWorkflowsQuery(client));
 }
 
 export function useApprovalsQuery() {
@@ -423,9 +435,19 @@ export function useApprovalsQuery() {
   return useQuery(createApprovalsQuery(client));
 }
 
+export function useInfiniteApprovalsQuery() {
+  const client = useRestClient();
+  return useInfiniteQuery(createInfiniteApprovalsQuery(client));
+}
+
 export function useIncidentsQuery() {
   const client = useRestClient();
   return useQuery(createIncidentsQuery(client));
+}
+
+export function useInfiniteIncidentsQuery() {
+  const client = useRestClient();
+  return useInfiniteQuery(createInfiniteIncidentsQuery(client));
 }
 
 export function useWorkersQuery() {
@@ -441,6 +463,11 @@ export function useQueuesQuery() {
 export function useAgentsQuery() {
   const client = useRestClient();
   return useQuery(createAgentsQuery(client));
+}
+
+export function useInfiniteAgentsQuery() {
+  const client = useRestClient();
+  return useInfiniteQuery(createInfiniteAgentsQuery(client));
 }
 
 export function useAnalyticsQuery() {

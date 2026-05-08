@@ -92,6 +92,14 @@ describe("ui-core split modules", () => {
 
 describe("ui-mobile split modules", () => {
   it("builds screen descriptors, route map and native capability summary", () => {
+    globalThis.__AA_MOBILE__ = {
+      vibrate: () => undefined,
+      openDeepLink: () => undefined,
+      readSecureValue: async () => null,
+      writeSecureValue: async () => undefined,
+      deleteSecureValue: async () => undefined,
+      enableScreenSecurity: async () => undefined,
+    };
     const screen = createMobileScreenDescriptor(
       {
         id: "dashboard",
@@ -114,5 +122,6 @@ describe("ui-mobile split modules", () => {
     expect(mobileNavigationBaseline).toHaveLength(5);
     expect(routeMap.home).toEqual(["dashboard"]);
     expect(describeNativeModules().some((item) => item.name === "haptics" && item.enabled)).toBe(true);
+    delete globalThis.__AA_MOBILE__;
   });
 });

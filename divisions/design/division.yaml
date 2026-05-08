@@ -1,63 +1,29 @@
 id: design
 version: 1
-name: Product Management Division
-description: Product roadmapping, feature prioritization, stakeholder alignment, requirements gathering, product analytics.
-priority: 55
+name: Design Division
+description: UI/UX design, system design, architecture planning, prototyping.
+priority: 35
 default_workflow: design_single_step
 orchestration_workflow: design_single_step
 triggers:
-  - product management
-  - roadmap
-  - feature
-  - requirements
-  - prioritization
-  - stakeholder
-  - PRD
-# §37: DomainDescriptor - Product Management vertical business domain
-domain_descriptor:
-  domainId: product-management
-  ownerOrgNodeId: org.product
-  primaryEntities:
-    - roadmaps
-    - features
-    - requirements
-    - priorities
-    - stakeholders
-  recipeArchetype: crud_heavy
-  lifecycleState: active
-# §37: DomainRiskProfile - Product Management risk classification
-risk_profile:
-  profileId: product-management.risk
-  domainId: product-management
-  riskLevel: medium
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: unregulated
-# §37: DomainEvalSpec - Product Management evaluation framework
-eval_spec:
-  domainId: product-management
-  evalBaselines:
-    - requirement_clarity
-    - stakeholder_satisfaction
-    - roadmap_alignment
-  criticalCases:
-    - unclear_requirements
-    - scope_creep
-    - misaligned_priorities
-    - stakeholder_conflict
-  acceptanceThresholds:
-    requirement_clarity: 90
-    stakeholder_satisfaction: 88
-    roadmap_alignment: 92
-  adversarialScenarios:
-    - requirement_inflation
-    - scope_creep
-    - competing_stakeholder_priorities
+  - design
+  - UI
+  - UX
+  - prototype
+  - wireframe
+  - mockup
+  - architecture
+  - system design
 roles:
-  - id: product_manager
-    name: Product Manager
-    prompt: roles/design/product_manager.prompt.md
+  - id: designer
+    name: Designer
+    prompt: roles/design/designer.prompt.md
     model: balanced
-    tools: [read, write, web_search]
+    tools: [read, write]
     max_instances: 3
+  - id: ux_researcher
+    name: UX Researcher
+    prompt: roles/design/ux_researcher.prompt.md
+    model: balanced
+    tools: [read, web_search]
+    max_instances: 2

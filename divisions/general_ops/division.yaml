@@ -56,9 +56,21 @@ eval_spec:
     - context_loss
     - scheduling_chaos
 roles:
-  - id: executive_assistant
-    name: Executive Assistant
+  - id: general_executor
+    name: General Executor
     prompt: roles/general_executor.prompt.md
     model: balanced
     tools: [read, write, web_search]
     max_instances: 3
+  - id: intake_router
+    name: Intake Router
+    prompt: roles/intake_router.prompt.md
+    model: balanced
+    tools: [read, write]
+    max_instances: 2
+  - id: workflow_planner
+    name: Workflow Planner
+    prompt: roles/workflow_planner.prompt.md
+    model: balanced
+    tools: [read, write]
+    max_instances: 2

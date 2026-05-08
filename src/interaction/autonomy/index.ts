@@ -309,7 +309,9 @@ function decideLevel(
       return "suggestion";
     }
     // Only apply demotion for non-P0 if incident is recent; older incidents don't trigger demotion
-    if (lastIncidentAgeDays > recentIncidentThreshold) {
+    // R9-45 fix: Treat null lastIncidentAgeDays as recent (0 days) for proper demotion
+    const effectiveAge = lastIncidentAgeDays === Infinity ? 0 : lastIncidentAgeDays;
+    if (effectiveAge > recentIncidentThreshold) {
       // Incident is old - don't demote, but still require incident-free for promotion
     } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing

@@ -1,8 +1,11 @@
 import { app, BrowserWindow, shell, ipcMain, Menu, Tray, nativeImage } from "electron";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const appRootDir = join(currentDir, "..");
 
 // §R8-55: Auto-update mechanism via electron-updater - only initialize when not in dev
 function resolveAutoUpdater(): { checkForUpdatesAndNotify(): void } | null {
@@ -100,13 +103,15 @@ function createMainWindow(options: WindowCreateOptions = {}): BrowserWindow {
       contextIsolation,
       nodeIntegration,
       sandbox,
-      preload: join(__dirname, "preload.js"),
+      preload: join(currentDir, "preload.js"),
     },
     show: false, // Don't show until ready-to-show
     backgroundColor: "#ffffff",
     titleBarStyle: "default",
     visualEffectState: "active",
   });
+
+  void mainWindow.loadFile(join(appRootDir, "index.html"));
 
   // Show window when ready to prevent visual flash
   mainWindow.once("ready-to-show", () => {

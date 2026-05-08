@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(currentDir, "../../../../../");
 const electronIndexHtmlPath = resolve(repoRoot, "ui/apps/electron-win/index.html");
+const electronRendererPath = resolve(repoRoot, "ui/apps/electron-win/src/renderer.js");
 const tauriMacosConfigPath = resolve(repoRoot, "ui/apps/tauri-macos/src-tauri/tauri.conf.json");
 const tauriLinuxConfigPath = resolve(repoRoot, "ui/apps/tauri-linux/src-tauri/tauri.conf.json");
 
@@ -20,6 +21,8 @@ describe("desktop shell security configs", () => {
     expect(html).toContain("Content-Security-Policy");
     expect(html).toContain("default-src 'self'");
     expect(html).toContain("frame-ancestors 'none'");
+    expect(html).toContain('<script type="module" src="./src/renderer.js"></script>');
+    expect(readFileSync(electronRendererPath, "utf8")).toContain("Automatic Agent Platform Electron Shell");
   });
 
   it("tauri macos config enables the security section and CSP", () => {

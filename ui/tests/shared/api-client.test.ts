@@ -16,6 +16,7 @@ import {
   deleteTask,
   endpointCatalog,
   fetchAgents,
+  fetchAgentsPage,
   fetchDashboardSnapshot,
   fetchKnowledge,
   fetchPackVersions,
@@ -23,6 +24,7 @@ import {
   fetchPrompts,
   fetchSystemConfig,
   fetchTasks,
+  fetchTasksPage,
   fetchWorkflowRunSteps,
   fetchWorkflows,
   mapEventToQuery,
@@ -60,6 +62,36 @@ describe("shared api-client", () => {
     expect(requestId.length).toBeGreaterThan(0);
   });
 
+  it("normalizes cursor-page list responses and keeps flat-array compatibility for legacy callers", async () => {
+    const requestedPaths: string[] = [];
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      requestedPaths.push(request.path);
+      return {
+        status: 200,
+        data: {
+          items: [{ id: "task-1", title: "Paged task" }],
+          nextCursor: "cursor-2",
+          prevCursor: null,
+          totalCount: 3,
+        } as T,
+      };
+    });
+
+    const page = await fetchTasksPage(client, { pageSize: 25, cursor: "cursor-1", sort: "updatedAt:desc" });
+    const agentsPage = await fetchAgentsPage(client, { pageSize: 10 });
+
+    expect(requestedPaths[0]).toContain("pageSize=25");
+    expect(requestedPaths[0]).toContain("cursor=cursor-1");
+    expect(requestedPaths[0]).toContain("sort=updatedAt%3Adesc");
+    expect(requestedPaths[1]).toContain("pageSize=10");
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBe("cursor-2");
+    expect(agentsPage.items).toHaveLength(1);
+
+    const flatTasks = await fetchTasks(client, { pageSize: 25 });
+    expect(flatTasks).toEqual(page.items);
+  });
+
   it("supports websocket subscriptions and SSE fallback", () => {
     const client = new InMemoryWSClient();
     const events: string[] = [];
@@ -88,7 +120,7 @@ describe("shared api-client", () => {
     expect(mapEventToQuery({ channel: "global", type: "artifact_ready", payload: {} }).queryKey).toEqual(["tasks"]);
     expect(mapEventToQuery({ channel: "global", type: "panic.activated", payload: {} }).scope).toBe("panic");
     expect(mapEventToQuery({ channel: "global", type: "config.feature-flags.updated", payload: {} }).queryKey).toEqual(["feature-flags"]);
-    expect(Object.values(endpointCatalog)).toHaveLength(43);
+    expect(Object.values(endpointCatalog)).toHaveLength(44);
   });
 
   it("routes websocket events through the query router", () => {

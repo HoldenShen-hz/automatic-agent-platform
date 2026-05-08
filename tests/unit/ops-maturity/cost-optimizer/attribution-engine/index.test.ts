@@ -63,8 +63,8 @@ test("aggregateCostAttribution sums 7 dimensions correctly", () => {
     { subjectId: "task-1", llmCostUsd: 5, toolCostUsd: 2, computeCostUsd: 1, storageCostUsd: 1, egressCostUsd: 0, humanReviewCostUsd: 1 },
   ];
   const result = aggregateCostAttribution(entries);
-  // 10+5+3+2+1+0 = 11 (first entry)
+  // 10+5+3+2+1+0 = 21 (first entry)
   // 5+2+1+1+0+1 = 10 (second entry)
-  // total = 21
-  assert.equal(result["task-1"], 21);
+  // total = 31
+  assert.equal(result["task-1"], 31);
 });

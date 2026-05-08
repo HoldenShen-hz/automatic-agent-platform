@@ -5,6 +5,14 @@ import React from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 import { MobileApp } from "../../../../../apps/mobile/src/App";
 
+vi.mock("react-native", () => ({
+  View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
+  Text: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("span", { style }, children),
+  StyleSheet: {
+    create: <T,>(styles: T) => styles,
+  },
+}));
+
 // Mock shared-platform module
 vi.mock("@aa/shared-platform", () => ({
   createMobilePlatformAdapter: vi.fn((platform: string) => ({

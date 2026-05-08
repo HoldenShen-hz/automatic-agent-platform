@@ -120,6 +120,14 @@ function domainWithCircularDeps(): DomainDefinition {
             dependsOn: ["step_b"],
           },
         ],
+        // §13: Complex workflows with circular deps must use stepGraph
+        stepGraph: {
+          edges: [
+            { fromStep: "step_a", toStep: "step_c" },
+            { fromStep: "step_b", toStep: "step_a" },
+            { fromStep: "step_c", toStep: "step_b" },
+          ],
+        },
       },
     ],
     toolBundles: [

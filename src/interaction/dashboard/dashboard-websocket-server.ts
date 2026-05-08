@@ -520,12 +520,19 @@ export class DashboardWebSocketServer {
     const firstChange = changes[0];
     if (firstChange === undefined) return "dashboard_snapshot";
     const changeType = firstChange.changeType;
+    // R7-16 fix: explicitly map all DashboardChange.changeType values to UI spec domain events
     if (changeType === "task_created") {
       return "task.created";
+    } else if (changeType === "task_updated") {
+      return "task.status_changed";
     } else if (changeType === "task_completed") {
       return "task.completed";
     } else if (changeType === "task_failed") {
       return "task.failed";
+    } else if (changeType === "approval_requested") {
+      return "approval.requested";
+    } else if (changeType === "approval_resolved") {
+      return "approval.resolved";
     } else if (changeType === "incident_opened") {
       return "incident.opened";
     } else if (changeType === "incident_resolved") {

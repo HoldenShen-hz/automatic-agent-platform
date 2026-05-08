@@ -8,8 +8,11 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  KnowledgeItemDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
+  PluginDTO,
+  PromptDTO,
   QueueDTO,
   RoleDTO,
   SystemConfigDTO,
@@ -34,6 +37,9 @@ export interface MockApiShape {
   readonly analytics: readonly AnalyticsMetricDTO[];
   readonly costs: readonly CostReportDTO[];
   readonly marketplace: readonly MarketplacePackDTO[];
+  readonly knowledge: readonly KnowledgeItemDTO[];
+  readonly plugins: readonly PluginDTO[];
+  readonly prompts: readonly PromptDTO[];
   readonly explanations: readonly ExplanationDTO[];
   readonly roles: readonly RoleDTO[];
   readonly featureFlags: readonly FeatureFlagDTO[];
@@ -141,6 +147,16 @@ export const defaultMockApiShape: MockApiShape = {
   marketplace: [
     { id: "pack-1", name: "Campaign Optimizer", category: "marketing", version: "1.4.0" },
     { id: "pack-2", name: "Risk Lens", category: "finance", version: "2.1.3" },
+  ],
+  knowledge: [
+    { id: "kb-1", title: "Launch checklist", domainId: "marketing", classification: "internal", updatedAt: "2026-04-23T16:00:00Z" },
+    { id: "kb-2", title: "Risk control playbook", domainId: "quant-trading", classification: "restricted", updatedAt: "2026-04-22T12:30:00Z" },
+  ],
+  plugins: [
+    { id: "plugin-1", name: "Risk Analyzer", provider: "automatic-agent", version: "1.2.0", status: "active" },
+  ],
+  prompts: [
+    { id: "prompt-1", name: "Incident triage", version: "2026-04-01", status: "active", owner: "platform-sre" },
   ],
   explanations: [
     { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },

@@ -56,8 +56,8 @@ eval_spec:
     - logistics_bottleneck
     - counterfeit_parts
 roles:
-  - id: supply_chain_manager
-    name: Supply Chain Manager
+  - id: ops_executor
+    name: Operations Executor
     prompt: roles/ops_executor.prompt.md
     model: balanced
     tools: [read, bash]

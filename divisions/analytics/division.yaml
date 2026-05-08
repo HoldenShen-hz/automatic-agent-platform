@@ -53,7 +53,7 @@ eval_spec:
     - selective_data
     - competing_bias
 roles:
-  - id: industry_analyst
+  - id: bi_analyst
     name: Industry Analyst
     prompt: roles/bi_analyst.prompt.md
     model: balanced

@@ -8,8 +8,11 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  KnowledgeItemDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
+  PluginDTO,
+  PromptDTO,
   QueueDTO,
   RoleDTO,
   SystemConfigDTO,
@@ -103,6 +106,9 @@ export class MockTransport {
     | readonly AnalyticsMetricDTO[]
     | readonly CostReportDTO[]
     | readonly MarketplacePackDTO[]
+    | readonly KnowledgeItemDTO[]
+    | readonly PluginDTO[]
+    | readonly PromptDTO[]
     | readonly ExplanationDTO[]
     | readonly RoleDTO[]
     | readonly FeatureFlagDTO[]
@@ -146,6 +152,15 @@ export class MockTransport {
     }
     if (path.includes("/marketplace")) {
       return this.data.marketplace;
+    }
+    if (path.includes("/knowledge")) {
+      return this.data.knowledge;
+    }
+    if (path.includes("/plugins")) {
+      return this.data.plugins;
+    }
+    if (path.includes("/prompts")) {
+      return this.data.prompts;
     }
     if (path.includes("/explanations")) {
       return this.data.explanations;

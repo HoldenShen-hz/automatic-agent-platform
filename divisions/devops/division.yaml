@@ -64,3 +64,9 @@ roles:
     model: balanced
     tools: [read, bash, monitoring]
     max_instances: 3
+  - id: devops_engineer
+    name: DevOps Engineer
+    prompt: roles/devops/engineer.prompt.md
+    model: balanced
+    tools: [read, bash, docker, kubernetes]
+    max_instances: 3

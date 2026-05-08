@@ -56,9 +56,9 @@ eval_spec:
     - unintended_content
     - brand_drift
 roles:
-  - id: creative_specialist
-    name: Creative Specialist
-    prompt: roles/content/editor.prompt.md
-    model: reasoning
+  - id: writer
+    name: Writer
+    prompt: roles/content/writer.prompt.md
+    model: balanced
     tools: [read, web_search, write]
-    max_instances: 3
+    max_instances: 4

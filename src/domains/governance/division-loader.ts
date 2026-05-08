@@ -472,8 +472,14 @@ export class DivisionLoader {
         continue;
       }
 
+      const divisionPath = join(rootCheck.normalizedPath, entry.name);
+      // Skip directories that don't have a division.yaml (incomplete divisions)
+      if (!existsSync(join(divisionPath, "division.yaml"))) {
+        continue;
+      }
+
       // Load and validate the division from its subdirectory
-      const division = this.loadDivision(join(rootCheck.normalizedPath, entry.name), effectivePolicy);
+      const division = this.loadDivision(divisionPath, effectivePolicy);
 
       // Check for duplicate division IDs across all divisions
       if (divisions.has(division.id)) {
