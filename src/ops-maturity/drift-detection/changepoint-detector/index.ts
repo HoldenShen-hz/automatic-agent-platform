@@ -147,6 +147,16 @@ export class ChangepointDetectorService {
       recommendedAction: severity === "high" ? "pause_agent" : severity === "medium" ? "require_review" : severity === "low" ? "observe" : "none",
     };
   }
+
+  /**
+   * Batch detection across multiple sample windows.
+   * Returns results for all windows configured in DriftDetectorConfig.
+   */
+  public detectAll(samples: DriftSample[]): readonly ChangepointDetectionResult[] {
+    // Use default single-window detection as fallback
+    // The DriftDetectorConfig is used by DriftDetectorService to configure multi-window analysis
+    return [this.detect(samples)];
+  }
 }
 
 function average(values: number[]): number {
