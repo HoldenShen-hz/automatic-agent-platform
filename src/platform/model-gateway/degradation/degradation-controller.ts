@@ -185,22 +185,38 @@ export class DegradationController {
    * D4: Service unavailable error
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
-    switch (this.currentLevel) {
-      case DegradationLevel.D0:
-        return this.routeD0(request);
+    let attemptLevel = this.currentLevel;
+    const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
 
-      case DegradationLevel.D1:
-        return this.routeD1(request);
-
-      case DegradationLevel.D2:
-        return this.routeD2(request);
-
-      case DegradationLevel.D3:
-        return this.routeD3(request);
-
-      case DegradationLevel.D4:
-        return this.routeD4(request);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      switch (attemptLevel) {
+        case DegradationLevel.D0:
+          try {
+            return await this.routeD0(request);
+          } catch {
+            this.lastEscalationReason = "route_d0_failed";
+            this.escalate();
+            attemptLevel = this.currentLevel;
+            continue;
+          }
+        case DegradationLevel.D1:
+          try {
+            return await this.routeD1(request);
+          } catch {
+            this.lastEscalationReason = "route_d1_failed";
+            this.escalate();
+            attemptLevel = this.currentLevel;
+            continue;
+          }
+        case DegradationLevel.D2:
+          return this.routeD2(request);
+        case DegradationLevel.D3:
+          return this.routeD3(request);
+        case DegradationLevel.D4:
+          return this.routeD4(request);
+      }
     }
+    return this.routeD4(request);
   }
 
   /**
@@ -237,10 +253,7 @@ export class DegradationController {
         fromCache: false,
       };
     } catch (error) {
-      this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
-      this.escalate();
-      // Retry with new level
-      return this.route(request);
+      throw error;
     }
   }
 
@@ -250,9 +263,11 @@ export class DegradationController {
   private async routeD1(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     const fallbackProfile = this.selectFallbackProfile(request.model);
     if (fallbackProfile == null) {
-      // No fallback available, escalate to D2
-      this.escalate();
-      return this.route(request);
+      throw new AppError(
+        "degradation.fallback_unavailable",
+        "Fallback profile unavailable during degraded routing.",
+        { category: "provider", source: "provider" },
+      );
     }
 
     try {
@@ -274,10 +289,7 @@ export class DegradationController {
         fromCache: false,
       };
     } catch (error) {
-      this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
-      this.escalate();
-      // Retry with new level
-      return this.route(request);
+      throw error;
     }
   }
 
@@ -361,7 +373,13 @@ export class DegradationController {
    * This would typically be enhanced to read from a provider registry.
    */
   private getFallbackCandidates(): ModelFallbackCandidate[] {
-    return [];
+    const fromPrimary = this.primaryProvider.getAvailableProfiles?.() ?? [];
+    const fromFallback = this.fallbackProvider?.getAvailableProfiles?.() ?? [];
+    const deduped = new Map<string, ModelFallbackCandidate>();
+    for (const candidate of [...fromPrimary, ...fromFallback]) {
+      deduped.set(candidate.profileName, candidate);
+    }
+    return [...deduped.values()];
   }
 
   /**

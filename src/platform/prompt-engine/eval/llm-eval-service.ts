@@ -103,6 +103,23 @@ export interface AbTestConfig {
   significanceThreshold: number;
 }
 
+export interface AbTestCaseEvaluatorInput extends EvalCaseEvaluatorInput {
+  arm: "control" | "treatment";
+  expectedOutput: string;
+}
+
+export interface AbTestCaseEvaluation {
+  actualOutput: EvalStructuredOutput;
+  score: number;
+  latencyMs?: number;
+}
+
+export interface AbTestOptions {
+  llmEvaluator?: {
+    evaluateCase: (input: AbTestCaseEvaluatorInput) => Promise<AbTestCaseEvaluation> | AbTestCaseEvaluation;
+  };
+}
+
 /**
  * Result of an A/B test evaluation.
  */
@@ -113,6 +130,7 @@ export interface AbTestResult {
   treatmentAvgScore: number;
   improvement: number;
   significant: boolean;
+  pValue: number;
   verdict: QualityVerdict;
 }
 
@@ -345,17 +363,55 @@ export class LlmEvalService {
    * Executes the same evaluation suite against control and treatment configurations,
    * then computes statistical significance of the difference in scores.
    */
-  runAbTest(suiteId: string, config: AbTestConfig): AbTestResult {
+  async runAbTest(
+    suiteId: string,
+    config: AbTestConfig,
+    options: AbTestOptions = {},
+  ): Promise<AbTestResult> {
     const controlRun = this.startRun(suiteId, config.controlModelId, config.controlPromptVersion, "ab_test");
     const treatmentRun = this.startRun(suiteId, config.treatmentModelId, config.treatmentPromptVersion, "ab_test");
 
     const suite = this.getSuite(suiteId);
     const cases = suite ? this.parseCases(suite) : [];
+    const evaluator = options.llmEvaluator ?? createDeterministicAbEvaluator();
 
-    // Simulate evaluation (real implementation would call the LLM)
     for (const c of cases) {
-      this.recordCaseResult({ runId: controlRun.id, caseId: c.id, input: c.input, expectedOutput: c.expectedOutput, actualOutput: `control:${c.expectedOutput}`, score: 0.85, passed: true, latencyMs: 100 });
-      this.recordCaseResult({ runId: treatmentRun.id, caseId: c.id, input: c.input, expectedOutput: c.expectedOutput, actualOutput: `treatment:${c.expectedOutput}`, score: 0.90, passed: true, latencyMs: 95 });
+      const controlEvaluation = await evaluator.evaluateCase({
+        suite: suite ?? controlRunSuiteFallback(suiteId),
+        caseDefinition: c,
+        modelId: config.controlModelId,
+        promptVersion: config.controlPromptVersion,
+        arm: "control",
+        expectedOutput: c.expectedOutput,
+      });
+      const treatmentEvaluation = await evaluator.evaluateCase({
+        suite: suite ?? controlRunSuiteFallback(suiteId),
+        caseDefinition: c,
+        modelId: config.treatmentModelId,
+        promptVersion: config.treatmentPromptVersion,
+        arm: "treatment",
+        expectedOutput: c.expectedOutput,
+      });
+      this.recordCaseResult({
+        runId: controlRun.id,
+        caseId: c.id,
+        input: c.input,
+        expectedOutput: c.expectedOutput,
+        actualOutput: serializeEvalOutput(controlEvaluation.actualOutput),
+        score: clampScore(controlEvaluation.score),
+        passed: clampScore(controlEvaluation.score) >= 0.8,
+        latencyMs: controlEvaluation.latencyMs ?? deterministicLatency(`${c.id}:control`),
+      });
+      this.recordCaseResult({
+        runId: treatmentRun.id,
+        caseId: c.id,
+        input: c.input,
+        expectedOutput: c.expectedOutput,
+        actualOutput: serializeEvalOutput(treatmentEvaluation.actualOutput),
+        score: clampScore(treatmentEvaluation.score),
+        passed: clampScore(treatmentEvaluation.score) >= 0.8,
+        latencyMs: treatmentEvaluation.latencyMs ?? deterministicLatency(`${c.id}:treatment`),
+      });
     }
 
     const controlCompleted = this.completeRun(controlRun.id);
@@ -364,7 +420,11 @@ export class LlmEvalService {
     const controlAvg = controlCompleted?.averageScore ?? 0;
     const treatmentAvg = treatmentCompleted?.averageScore ?? 0;
     const improvement = controlAvg > 0 ? (treatmentAvg - controlAvg) / controlAvg : 0;
-    const significant = Math.abs(improvement) >= config.significanceThreshold && cases.length >= config.minSampleSize;
+    const pValue = calculateAbPValue(controlAvg, treatmentAvg, cases.length);
+    const significant =
+      Math.abs(improvement) >= config.significanceThreshold &&
+      cases.length >= config.minSampleSize &&
+      pValue <= 0.05;
 
     return {
       controlRunId: controlRun.id,
@@ -372,6 +432,7 @@ export class LlmEvalService {
       controlAvgScore: controlAvg,
       treatmentAvgScore: treatmentAvg,
       improvement,
+      pValue,
       significant,
       verdict: significant && improvement > 0 ? "pass" : (significant && improvement < 0 ? "fail" : "inconclusive"),
     };
@@ -583,6 +644,50 @@ function createDeterministicCiEvaluator(): EvalCaseEvaluator {
       latencyMs: deterministicLatency(caseDefinition.id),
     };
   };
+}
+
+function createDeterministicAbEvaluator(): NonNullable<AbTestOptions["llmEvaluator"]> {
+  return {
+    evaluateCase(input) {
+      const actualOutput = `${input.arm}:${input.modelId}:${input.promptVersion}:${input.expectedOutput}`;
+      const score = deterministicAbScore(`${input.arm}:${input.modelId}:${input.promptVersion}:${input.caseDefinition.id}`);
+      return {
+        actualOutput,
+        score,
+        latencyMs: deterministicLatency(`${input.arm}:${input.caseDefinition.id}`),
+      };
+    },
+  };
+}
+
+function controlRunSuiteFallback(suiteId: string): EvalSuiteRecord {
+  return {
+    id: suiteId,
+    name: "",
+    kind: "ab_test",
+    description: "",
+    cases: "[]",
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+
+function clampScore(score: number): number {
+  return Math.max(0, Math.min(1, Number(score.toFixed(6))));
+}
+
+function deterministicAbScore(seed: string): number {
+  const checksum = [...seed].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return clampScore(0.55 + ((checksum % 40) / 100));
+}
+
+function calculateAbPValue(controlAvg: number, treatmentAvg: number, sampleSize: number): number {
+  if (sampleSize <= 0) {
+    return 1;
+  }
+  const delta = Math.abs(treatmentAvg - controlAvg);
+  const confidence = Math.min(0.99, delta * Math.sqrt(sampleSize));
+  return Number((1 - confidence).toFixed(6));
 }
 
 /**

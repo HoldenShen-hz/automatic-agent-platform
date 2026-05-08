@@ -280,7 +280,7 @@ export class UnifiedChatProvider {
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
     const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
-    const runtimeRequest = runtimeSignal === request.abortSignal
+    const runtimeRequest = runtimeSignal === request.abortSignal || runtimeSignal === undefined
       ? request
       : { ...request, abortSignal: runtimeSignal };
 

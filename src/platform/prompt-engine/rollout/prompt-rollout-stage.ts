@@ -1,12 +1,6 @@
 export const PROMPT_ROLLOUT_STAGES = [
-  "draft",
-  "review",
-  "staging",
-  "shadow",
   "canary_5",
-  "partial_25",
-  "partial_50",
-  "partial_75",
+  "canary_20",
   "stable",
   "rolled_back",
 ] as const;
@@ -23,8 +17,37 @@ export function comparePromptRolloutStage(left: PromptRolloutStage, right: Promp
 
 export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRolloutStage | null {
   const currentIndex = PROMPT_ROLLOUT_STAGES.indexOf(stage);
-  if (currentIndex < 0 || currentIndex >= PROMPT_ROLLOUT_STAGES.length - 1) {
+  if (currentIndex < 0 || stage === "stable" || stage === "rolled_back") {
+    return null;
+  }
+  if (currentIndex >= PROMPT_ROLLOUT_STAGES.length - 1) {
     return null;
   }
   return PROMPT_ROLLOUT_STAGES[currentIndex + 1] ?? null;
+}
+
+export const QUALITY_GATE_THRESHOLDS: Record<Exclude<PromptRolloutStage, "rolled_back">, {
+  maxErrorRate: number;
+  minPassthrough: number;
+}> = {
+  canary_5: {
+    maxErrorRate: 0.05,
+    minPassthrough: 0.95,
+  },
+  canary_20: {
+    maxErrorRate: 0.03,
+    minPassthrough: 0.97,
+  },
+  stable: {
+    maxErrorRate: 0.01,
+    minPassthrough: 0.99,
+  },
+};
+
+export function passesQualityGate(stage: PromptRolloutStage, errorRate: number): boolean {
+  const threshold = QUALITY_GATE_THRESHOLDS[stage as Exclude<PromptRolloutStage, "rolled_back">];
+  if (threshold == null) {
+    return true;
+  }
+  return errorRate < threshold.maxErrorRate;
 }

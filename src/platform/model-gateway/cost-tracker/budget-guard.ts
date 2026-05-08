@@ -9,6 +9,7 @@
 import {
   createBudgetLedger,
   type BudgetLedger,
+  type BudgetReservation,
   type BudgetReservationResult,
   type BudgetResourceKind,
 } from "../../contracts/executable-contracts/index.js";
@@ -19,8 +20,13 @@ import { BudgetAllocator } from "../../execution/budget-allocator.js";
  */
 export interface BudgetPolicy {
   maxTaskCostUsd: number;
+  maxPackCostUsd?: number;
+  maxPlatformCostUsd?: number;
   maxDailyCostUsd: number;
   maxMonthlyCostUsd: number;
+  maxModelTokens?: number;
+  maxSteps?: number;
+  maxDurationMs?: number;
   warnAtRatio: number;
   mode: "supervised" | "auto" | "full-auto";
 }
@@ -66,6 +72,14 @@ export interface BudgetReservationExecutionResult extends BudgetGuardCascadeResu
   readonly ledger: BudgetLedger;
   readonly reservation: BudgetReservationResult["reservation"] | null;
   readonly reservationReasonCode: string | null;
+}
+
+export interface BudgetExecutionSession {
+  readonly sessionId: string;
+  readonly state: "reserved" | "executing" | "settled";
+  readonly ledger: BudgetLedger;
+  readonly reservation: BudgetReservation;
+  readonly request: BudgetReservationRequest;
 }
 
 /**
@@ -198,5 +212,82 @@ export class BudgetGuard {
       reservation: reserved.reservation,
       reservationReasonCode: "budget.reserved_pre_execution",
     };
+  }
+}
+
+export class BudgetExecutionSessionManager {
+  private readonly allocator: BudgetAllocator;
+  private readonly sessions = new Map<string, BudgetExecutionSession>();
+
+  public constructor(options: { readonly allocator?: BudgetAllocator } = {}) {
+    this.allocator = options.allocator ?? new BudgetAllocator();
+  }
+
+  public reserveAndCreateSession(
+    request: BudgetReservationRequest,
+    amount: number,
+  ): BudgetExecutionSession {
+    const ledger = request.ledger ?? createBudgetLedger({
+      tenantId: request.tenantId,
+      harnessRunId: request.harnessRunId,
+      currency: "USD",
+      hardCap: request.policy.maxTaskCostUsd,
+      softCap: Number((request.policy.maxTaskCostUsd * request.policy.warnAtRatio).toFixed(4)),
+    });
+    const reserved = this.allocator.reserve({
+      ledger,
+      amount,
+      resourceKind: request.resourceKind ?? "token",
+      expiresAt: request.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expectedVersion: ledger.version,
+    });
+    const session: BudgetExecutionSession = {
+      sessionId: reserved.reservation.budgetReservationId,
+      state: "reserved",
+      ledger: reserved.ledger,
+      reservation: reserved.reservation,
+      request,
+    };
+    this.sessions.set(session.sessionId, session);
+    return session;
+  }
+
+  public markExecuting(sessionId: string): BudgetExecutionSession {
+    const session = this.getRequiredSession(sessionId);
+    const updated: BudgetExecutionSession = { ...session, state: "executing" };
+    this.sessions.set(sessionId, updated);
+    return updated;
+  }
+
+  public settle(sessionId: string, actualAmount: number): BudgetLedger {
+    const session = this.getRequiredSession(sessionId);
+    const settled = this.allocator.settle({
+      ledger: session.ledger,
+      reservation: session.reservation,
+      actualAmount,
+      context: {
+        tenantId: session.request.tenantId,
+        traceId: session.request.traceId,
+        emittedBy: session.request.emittedBy,
+      },
+    });
+    this.sessions.set(sessionId, {
+      ...session,
+      state: "settled",
+      ledger: settled.ledger,
+    });
+    return settled.ledger;
+  }
+
+  public getSession(sessionId: string): BudgetExecutionSession | null {
+    return this.sessions.get(sessionId) ?? null;
+  }
+
+  private getRequiredSession(sessionId: string): BudgetExecutionSession {
+    const session = this.sessions.get(sessionId);
+    if (session == null) {
+      throw new Error(`budget.execution_session_not_found:${sessionId}`);
+    }
+    return session;
   }
 }

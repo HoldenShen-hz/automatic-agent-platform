@@ -423,3 +423,12 @@ export interface KnowledgeQueryProcessedPayload {
   queryDurationMs?: number;
   processedAt: string;
 }
+
+// Circuit breaker state change events
+export interface CircuitBreakerStateChangePayload {
+  circuitName: string;
+  oldState: "closed" | "open" | "half_open";
+  newState: "closed" | "open" | "half_open";
+  nextAttemptAt: number | null;
+  occurredAt: string;
+}

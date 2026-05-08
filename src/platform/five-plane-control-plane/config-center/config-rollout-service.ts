@@ -90,6 +90,17 @@ export interface ConfigRolloutServiceOptions {
   eventBus?: DurableEventBus | null;
   stages?: RolloutStage[];
   defaultMinDurationMs?: number;
+  healthThresholds?: {
+    maxErrorRate: number;
+    maxLatencyRegression: number;
+    maxIncidentRate: number;
+  };
+}
+
+export interface RolloutHealthSnapshot {
+  errorRate: number;
+  latencyRegression: number;
+  incidentRate: number;
 }
 
 /**
@@ -109,12 +120,22 @@ export class ConfigRolloutService {
   private readonly eventBus: DurableEventBus | null;
   private readonly stages: RolloutStage[];
   private readonly defaultMinDurationMs: number;
+  private readonly healthThresholds: {
+    maxErrorRate: number;
+    maxLatencyRegression: number;
+    maxIncidentRate: number;
+  };
   private readonly activeRollouts = new Map<string, ConfigRollout>();
 
   public constructor(options: ConfigRolloutServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
     this.stages = options.stages ?? DEFAULT_ROLLOUT_STAGES;
     this.defaultMinDurationMs = options.defaultMinDurationMs ?? 300000;
+    this.healthThresholds = options.healthThresholds ?? {
+      maxErrorRate: 0.05,
+      maxLatencyRegression: 0.2,
+      maxIncidentRate: 0.02,
+    };
   }
 
   /**
@@ -309,7 +330,9 @@ export class ConfigRolloutService {
    *
    * @returns Number of rollouts that were auto-progressed
    */
-  public autoProgressRollouts(): number {
+  public autoProgressRollouts(
+    healthSnapshots: Record<string, RolloutHealthSnapshot> = {},
+  ): number {
     const now = Date.now();
     let progressCount = 0;
 
@@ -327,7 +350,7 @@ export class ConfigRolloutService {
       }
 
       const elapsedMs = now - new Date(rollout.updatedAt).getTime();
-      if (elapsedMs >= rollout.stage.minDurationMs) {
+      if (elapsedMs >= rollout.stage.minDurationMs && this.passesHealthGate(healthSnapshots[rollout.rolloutId])) {
         const nextStage = this.stages[currentIndex + 1]!;
         rollout.stage = nextStage;
         rollout.currentPercentage = nextStage.percentage;
@@ -421,5 +444,16 @@ export class ConfigRolloutService {
     }
 
     return this.stages.find((stage) => stage.percentage >= targetPercentage) ?? this.stages[this.stages.length - 1]!;
+  }
+
+  private passesHealthGate(snapshot: RolloutHealthSnapshot | undefined): boolean {
+    if (snapshot == null) {
+      return true;
+    }
+    return (
+      snapshot.errorRate <= this.healthThresholds.maxErrorRate &&
+      snapshot.latencyRegression <= this.healthThresholds.maxLatencyRegression &&
+      snapshot.incidentRate <= this.healthThresholds.maxIncidentRate
+    );
   }
 }

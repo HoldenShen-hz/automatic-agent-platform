@@ -22,6 +22,7 @@ import type {
   LearningKnowledgePromotedPayload,
   WorkerLifecyclePayload,
   WorkflowStepCompletedPayload,
+  CircuitBreakerStateChangePayload,
 } from "./typed-event-payloads.js";
 
 /**
@@ -61,6 +62,9 @@ export interface TypedEventPayloadMap {
   "recovery:cancelled": RecoveryPayload;
   "domain:registered": DomainLifecyclePayload;
   "domain:activated": DomainLifecyclePayload;
+  "domain:updating": DomainLifecyclePayload;
+  "domain:updated": DomainLifecyclePayload;
+  "domain:archived": DomainLifecyclePayload;
   "plugin:spi_registered": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;
   "plugin:error_isolated": PluginLifecycleEventPayload;

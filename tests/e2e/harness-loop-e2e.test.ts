@@ -378,12 +378,13 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
   }
 });
 
-test("E2E: loop aborts when max duration exceeded", (t) => {
+test("E2E: loop aborts when max duration exceeded", async (t) => {
   // R10-38 fix: Use fake timers to simulate time passage since Node.js executes too fast (<1ms)
-  // to trigger the duration guard in real time. With useFakeTimers(), we set initial time to 0
-  // (captured as startedAt), then advance time to 100ms before the guard check runs, so
-  // elapsed = 100 - 0 = 100ms > maxDurationMs=0, triggering the guard.
-  t.mock.timers.useFakeTimers({ shouldAdvanceTime: false });
+  // to trigger the duration guard in real time. We use shouldAdvanceTime to advance time during
+  // async operations (setTimeout). The key is that we schedule time advancement BEFORE runLoop,
+  // so when runLoop's internal duration check runs (even synchronously), the fake time has
+  // been advanced by shouldAdvanceTime.
+  t.mock.timers.useFakeTimers({ shouldAdvanceTime: true });
 
   const harness = createE2EHarness("aa-e2e-max-dur-");
   try {
@@ -393,11 +394,12 @@ test("E2E: loop aborts when max duration exceeded", (t) => {
       budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 0 },
     });
 
-    // Set initial time to 0 - this will be captured as startedAt inside runLoop
-    t.mock.timers.setSystemTime(0);
+    // Schedule time advancement - this will advance fake time when the timer fires
+    // We use setTimeout to trigger time advancement, and shouldAdvanceTime makes
+    // Date.now() return progressively larger values during async yields
+    setTimeout(() => {}, 100);
 
-    // Use runLoop which will start with startedAt=0, then advance time to 100ms
-    // The duration check will see elapsed=100ms > maxDurationMs=0
+    // Also advance time manually to ensure we exceed maxDurationMs=0
     t.mock.timers.setSystemTime(100);
 
     const runLoopResult = service.runLoop({
