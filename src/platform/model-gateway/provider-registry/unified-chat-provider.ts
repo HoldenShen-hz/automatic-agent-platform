@@ -342,7 +342,7 @@ export class UnifiedChatProvider {
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
     const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
-    const runtimeRequest = runtimeSignal === request.abortSignal
+    const runtimeRequest = runtimeSignal === request.abortSignal || runtimeSignal === undefined
       ? request
       : { ...request, abortSignal: runtimeSignal };
 
