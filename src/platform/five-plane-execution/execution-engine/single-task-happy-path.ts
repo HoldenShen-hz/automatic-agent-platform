@@ -47,7 +47,7 @@ import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-poli
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulator.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
-import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
+import { createNodeRunCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
 import type { BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
@@ -911,9 +911,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       stepId: step.stepId ?? step.nodeId ?? null,
-      kind: "workflow_step_snapshot",
+      kind: "node_run_snapshot",
       fileName: `${step.nodeId}.json`,
-      content: createWorkflowStepCheckpoint({
+      content: createNodeRunCheckpoint({
         harnessRunId: harnessRunIdFromBundle,
         nodeRunId: step.nodeId,
         planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
@@ -921,7 +921,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         planGraphId: validatedPlanGraphBundle.graph.graphId,
         taskId,
         executionId,
-        workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
         divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
         nodeId: step.nodeId,
         roleId: stepRoleId,
@@ -933,12 +932,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           source: "single_task_execution",
           request: input.request,
           routeReason: null,
-          priorStepSummaries: [],
-          dependsOnStepIds: [],
+          priorNodeSummaries: [],
+          dependsOnNodeIds: [],
         },
         resumeContext: {
-          completedStepIds: [step.nodeId],
-          nextStepId: null,
+          completedNodeIds: [step.nodeId],
+          nextNodeId: null,
           outputKeys: [step.outputKey],
         },
         compensationModel: step.compensationModel ?? null,

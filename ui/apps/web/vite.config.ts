@@ -49,13 +49,13 @@ function cspHeadersPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tsconfigPaths(), cspHeadersPlugin()],
   build: {
     // Issue #1933 P1: Add explicit build target for consistent browser compatibility.
     // Without this, Vite defaults to esnext which may cause issues with older browsers.
     target: WEB_BUILD_TARGET,
-    sourcemap: false,
+    sourcemap: mode === "production" ? "hidden" : true,
     // Issue #1939 P2: No terser/esbuild minify config - default behavior is ambiguous.
     // Explicitly set minify to esbuild (Vite default) to ensure consistent production builds.
     minify: WEB_MINIFY_MODE,
@@ -67,4 +67,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

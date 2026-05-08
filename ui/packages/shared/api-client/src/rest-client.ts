@@ -377,13 +377,20 @@ export class HttpTransport {
  * otherwise falls back to MockTransport for development/testing.
  */
 function createDefaultTransport(): RestTransport {
-  // Check for API base URL in environment variables
   const baseUrl = typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL;
   if (baseUrl != null && baseUrl.length > 0) {
     return (request) => new HttpTransport({ baseUrl }).send(request);
   }
-  // Fall back to mock transport for development/testing
-  return (request) => new MockTransport().send(request);
+  if (typeof window !== "undefined" && typeof window.location?.origin === "string" && window.location.origin.length > 0) {
+    return (request) => new HttpTransport({
+      baseUrl: `${window.location.origin}/api/v1`,
+      fallbackToMock: false,
+    }).send(request);
+  }
+  return (request) => new HttpTransport({
+    baseUrl: "/api/v1",
+    fallbackToMock: false,
+  }).send(request);
 }
 
 export class DefaultRESTClient implements RESTClient {
@@ -446,5 +453,13 @@ export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>)
       fallbackToMock: options?.fallbackToMock ?? true,
     }).send(request));
   }
-  return new DefaultRESTClient((request) => new MockTransport().send(request));
+  const runtimeBaseUrl = typeof window !== "undefined" && typeof window.location?.origin === "string" && window.location.origin.length > 0
+    ? `${window.location.origin}/api/v1`
+    : "/api/v1";
+  return new DefaultRESTClient((request) => new HttpTransport({
+    baseUrl: runtimeBaseUrl,
+    fallbackToMock: options?.fallbackToMock ?? false,
+    ...(options?.headers == null ? {} : { headers: options.headers }),
+    ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
+  }).send(request));
 }

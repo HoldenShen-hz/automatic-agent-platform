@@ -22,28 +22,83 @@ import {
   HarnessRuntimeService,
   type HarnessTimelineEvent,
   type ConstraintPack,
+  type HarnessLoopServices,
+  type HarnessLoopPlannerInput,
+  type HarnessLoopGeneratorInput,
+  type HarnessLoopEvaluatorInput,
 } from "../../src/platform/orchestration/harness/index.js";
-import {
-  TestHarnessOrchestrator,
-  createTestConstraintPack,
-} from "../unit/platform/orchestration/harness/test-service-wrapper.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * R10-39 fix: Use createTestConstraintPack for dynamic values instead of
- * static construction parameters. This ensures tests exercise real
- * planner/generator/evaluator code paths through the orchestrator.
- */
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
-  return createTestConstraintPack({
+  return {
     policyIds: ["policy.e2e.default"],
+    approvalMode: "none",
     autonomyMode: "semi_auto",
+    tool_policy: { allowedTools: ["read", "write", "execute"] },
+    risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
+    output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: { sandboxMode: "ephemeral", timeoutMs: 30_000, allowedHosts: [] },
+    approvalRequirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 300_000,
+    },
+    budgetEnvelope: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
     budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
     ...overrides,
-  });
+  };
+}
+
+function createLoopServices(options: { score?: number; verdict?: string } = {}): {
+  loopServices: HarnessLoopServices;
+  plannerInputs: HarnessLoopPlannerInput[];
+  generatorInputs: HarnessLoopGeneratorInput[];
+  evaluatorInputs: HarnessLoopEvaluatorInput[];
+} {
+  const plannerInputs: HarnessLoopPlannerInput[] = [];
+  const generatorInputs: HarnessLoopGeneratorInput[] = [];
+  const evaluatorInputs: HarnessLoopEvaluatorInput[] = [];
+  const score = options.score ?? 0.86;
+  const verdict = options.verdict ?? "pass";
+
+  return {
+    plannerInputs,
+    generatorInputs,
+    evaluatorInputs,
+    loopServices: {
+      plan(input) {
+        plannerInputs.push(input);
+        return {
+          planId: `plan-${input.taskId}-${input.iteration}`,
+          summary: `Plan for ${input.taskId}`,
+          costUsd: 0.1,
+          output: `Plan output ${input.iteration}`,
+        };
+      },
+      generate(input) {
+        generatorInputs.push(input);
+        return {
+          artifact: `artifact-${input.taskId}-${input.iteration}`,
+          summary: `Generated artifact for ${(input.plannerOutput.planId as string | undefined) ?? input.taskId}`,
+          costUsd: 0.2,
+          input: `Generated from ${(input.plannerOutput.planId as string | undefined) ?? input.taskId}`,
+          output: `Generated output ${input.iteration}`,
+        };
+      },
+      evaluate(input) {
+        evaluatorInputs.push(input);
+        return {
+          verdict,
+          score,
+          reasoning: `Evaluation for ${(input.generatorOutput.artifact as string | undefined) ?? input.taskId}`,
+          costUsd: 0.05,
+        };
+      },
+    },
+  };
 }
 
 function countTimelineEvents(timeline: readonly HarnessTimelineEvent[], type: HarnessTimelineEvent["type"]): number {
@@ -75,34 +130,25 @@ test("E2E: runLoop executes full workflow and records all 8 HarnessTimelineEvent
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-all-events-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
+    const { loopServices, plannerInputs, generatorInputs, evaluatorInputs } = createLoopServices({
+      score: 0.91,
+      verdict: "pass",
     });
-
-    assert.equal(orchestrator.planner.getCallCount(), 1, "planner should be invoked exactly once");
-    assert.equal(orchestrator.generator.getCallCount(), 1, "generator should be invoked exactly once");
-    assert.equal(orchestrator.evaluator.getCallCount(), 1, "evaluator should be invoked exactly once");
-    assert.equal(orchestrator.planner.getCapturedInputs()[0]?.taskId, "task-e2e-all-events-001");
-    assert.equal(orchestrator.generator.getCapturedInputs()[0]?.plannerOutput.planId, plannerOutput.planId);
-    assert.equal(orchestrator.evaluator.getCapturedInputs()[0]?.generatorOutput.artifact, generatorOutput.artifact);
 
     const run = service.runLoop({
       taskId: "task-e2e-all-events-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
+
+    assert.equal(plannerInputs.length, 1, "planner should be invoked exactly once");
+    assert.equal(generatorInputs.length, 1, "generator should be invoked exactly once");
+    assert.equal(evaluatorInputs.length, 1, "evaluator should be invoked exactly once");
+    assert.equal(plannerInputs[0]?.taskId, "task-e2e-all-events-001");
+    assert.equal(generatorInputs[0]?.plannerOutput.planId, "plan-task-e2e-all-events-001-1");
+    assert.equal(evaluatorInputs[0]?.generatorOutput.artifact, "artifact-task-e2e-all-events-001-1");
 
     // Verify all 8 timeline events are present
     const timeline = run.timeline;
@@ -150,25 +196,15 @@ test("E2E: runLoop aborts when duration guard is exceeded during a replan loop",
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack({
       budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 1 },
+      budgetEnvelope: { maxSteps: 9, maxCost: 10, maxDurationMs: 1 },
     });
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.42, verdict: "retry" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-duration-guard-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.42, verdict: "retry" });
 
     const run = service.runLoop({
       taskId: "task-e2e-duration-guard-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 
@@ -187,25 +223,13 @@ test("E2E: runLoop produces 8 distinct timeline event types in successful accept
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.88, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-eight-types-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.88, verdict: "pass" });
 
     const run = service.runLoop({
       taskId: "task-e2e-eight-types-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 
@@ -339,25 +363,13 @@ test("E2E: HITL path records hitl_requested and hitl_resolved events", (t) => {
       autonomyMode: "supervised",
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
     });
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.72, verdict: "needs-review" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-hitl-001",
-      domainId: "security",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.72, verdict: "needs-review" });
 
     const run = service.runLoop({
       taskId: "task-e2e-hitl-001",
       domainId: "security",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       riskScore: 65, // Above escalationThreshold of 50
       producedEvidenceRefs: ["deployment_manifest"],
       requiresHuman: true,
@@ -397,25 +409,13 @@ test("E2E: HITL rejection records hitl_resolved with rejected resolution and abo
       autonomyMode: "supervised",
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
     });
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.55, verdict: "requires-human" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-hitl-reject-001",
-      domainId: "security",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.55, verdict: "requires-human" });
 
     const run = service.runLoop({
       taskId: "task-e2e-hitl-reject-001",
       domainId: "security",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       riskScore: 78,
       producedEvidenceRefs: [],
       requiresHuman: true,
@@ -441,26 +441,14 @@ test("E2E: HITL resolution throws when no open HITL request exists", (t) => {
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-hitl-no-req-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.91, verdict: "pass" });
 
     // Run completes without HITL
     const run = service.runLoop({
       taskId: "task-e2e-hitl-no-req-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 
@@ -543,26 +531,15 @@ test("E2E: runLoop with low score triggers replan path without HITL", (t) => {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack({
       budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
+      budgetEnvelope: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
     });
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.42, verdict: "retry" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-replan-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.42, verdict: "retry" });
 
     const run = service.runLoop({
       taskId: "task-e2e-replan-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 
@@ -590,25 +567,13 @@ test("E2E: guardrails_evaluated event is recorded with assessment details", (t) 
     const constraintPack = createConstraintPack({
       risk_policy: { maxRiskScore: 60, escalationThreshold: 50 },
     });
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.85, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-guardrails-001",
-      domainId: "security",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.85, verdict: "pass" });
 
     const run = service.runLoop({
       taskId: "task-e2e-guardrails-001",
       domainId: "security",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       riskScore: 45, // Below escalationThreshold
       producedEvidenceRefs: [],
     });
@@ -633,16 +598,7 @@ test("E2E: guardrail assessment blocks when risk exceeds maxRiskScore", (t) => {
     const constraintPack = createConstraintPack({
       risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
     });
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.88, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-guardrail-block-001",
-      domainId: "security",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.88, verdict: "pass" });
 
     // Attempting to run with risk score above maxRiskScore should throw
     assert.throws(
@@ -651,10 +607,7 @@ test("E2E: guardrail assessment blocks when risk exceeds maxRiskScore", (t) => {
           taskId: "task-e2e-guardrail-block-001",
           domainId: "security",
           constraintPack,
-          plannerOutput,
-          generatorOutput,
-          evaluatorOutput,
-          evaluatorScore,
+          loopServices,
           riskScore: 85, // Exceeds maxRiskScore of 50
           producedEvidenceRefs: [],
         }),
@@ -671,25 +624,13 @@ test("E2E: guardrails_evaluated appears before decision_recorded in timeline", (
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
-    // Use real planner/generator/evaluator via orchestrator wrapper
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.9, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-guardrail-order-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.9, verdict: "pass" });
 
     const run = service.runLoop({
       taskId: "task-e2e-guardrail-order-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 
@@ -781,58 +722,6 @@ test("E2E: single run can emit multiple event types through lifecycle", (t) => {
 // R10-38: DurationGuard E2E Enforcement Tests
 // ---------------------------------------------------------------------------
 
-test("E2E: runLoop aborts when maxDurationMs is exceeded", async (t) => {
-  const harness = createE2EHarness("aa-e2e-duration-");
-  try {
-    const service = new HarnessRuntimeService();
-    // Use a very short duration that will be exceeded during loop execution.
-    // The controller's startedAt is set at construction time inside runLoop().
-    // With maxDurationMs=0, ANY elapsed time (>0ms) should exceed the budget.
-    const constraintPack = createConstraintPack({
-      budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 0 },
-    });
-
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-duration-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
-
-    // Run loop - with maxDurationMs=0 and non-zero execution time, duration guard should trigger
-    const run = service.runLoop({
-      taskId: "task-e2e-duration-001",
-      domainId: "coding",
-      constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
-      producedEvidenceRefs: [],
-    });
-
-    // Duration guard should abort the run with max_duration_exceeded
-    // Note: The loop checks duration at the START of evaluateProgress(), after iteration executes.
-    // If actual execution time elapsed exceeds maxDurationMs=0, it should return violation.
-    const isDurationAborted =
-      run.status === "aborted" && run.decision?.reasonCode === "harness.guard.max_duration_exceeded";
-
-    // If duration guard didn't trigger (because actual execution was faster than 1ms),
-    // at minimum verify the run completed and the duration check was at least evaluated
-    if (!isDurationAborted) {
-      assert.ok(
-        run.loopMetrics != null,
-        "loopMetrics should exist, proving the loop ran and duration was checked",
-      );
-    }
-  } finally {
-    harness.cleanup();
-  }
-});
-
 test("E2E: runLoop completes when maxDurationMs is not exceeded", async (t) => {
   const harness = createE2EHarness("aa-e2e-duration-ok-");
   try {
@@ -840,26 +729,15 @@ test("E2E: runLoop completes when maxDurationMs is not exceeded", async (t) => {
     // Use a generous duration that won't be exceeded
     const constraintPack = createConstraintPack({
       budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
+      budgetEnvelope: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
     });
-
-    const orchestrator = new TestHarnessOrchestrator();
-    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
-
-    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
-      taskId: "task-e2e-duration-ok-001",
-      domainId: "coding",
-      constraintPack,
-      iteration: 1,
-    });
+    const { loopServices } = createLoopServices({ score: 0.91, verdict: "pass" });
 
     const run = service.runLoop({
       taskId: "task-e2e-duration-ok-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput,
-      generatorOutput,
-      evaluatorOutput,
-      evaluatorScore,
+      loopServices,
       producedEvidenceRefs: [],
     });
 

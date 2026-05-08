@@ -19,7 +19,7 @@ import type { StreamBridge } from "../../interface/channel-gateway/stream-bridge
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
+import { createNodeRunCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { decideWorkflowStepRetry, type WorkflowStepRetryDecision } from "../../orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 import { validateWorkflowStepOutput } from "../../orchestration/oapeflir/workflow/output-schema.js";
 import type { AdmissionDecision } from "../dispatcher/admission-controller.js";
@@ -635,9 +635,9 @@ export async function executeStepLoop(
         executionId,
         nodeRunId: step.nodeId,
         stepId: (step.stepId ?? step.nodeId) as string,
-        kind: "workflow_step_snapshot",
+        kind: "node_run_snapshot",
         fileName: `${step.nodeId}.json`,
-        content: createWorkflowStepCheckpoint({
+        content: createNodeRunCheckpoint({
           harnessRunId: validatedPlanGraphBundle.harnessRunId,
           // R6-19 fix: nodeRunId is canonical per §5.5
           nodeRunId: step.nodeId,
@@ -646,7 +646,6 @@ export async function executeStepLoop(
           planGraphId: validatedPlanGraphBundle.graph.graphId,
           taskId,
           executionId,
-          workflowId: plannedWorkflow.workflow.workflowId,
           divisionId: plannedWorkflow.workflow.divisionId,
           nodeId: step.nodeId,
           roleId: step.roleId,
@@ -658,16 +657,13 @@ export async function executeStepLoop(
             source: "multi_step_orchestration",
             request: input.request,
             routeReason: routing.routeReason,
-            priorStepSummaries: priorSummaries,
-            dependsOnNodeRunIds: [...step.dependsOnStepIds],
-            dependsOnStepIds: [...step.dependsOnStepIds],
+            priorNodeSummaries: priorSummaries,
+            dependsOnNodeIds: [...step.dependsOnStepIds],
           },
           resumeContext: {
-            completedNodeRunIds: completedNodeIds,
+            completedNodeIds: completedNodeIds,
             // R6-19 fix: Use nodeId for next step reference per §5.5
-            nextNodeRunId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
-            completedStepIds: completedNodeIds,
-            nextStepId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
+            nextNodeId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
             outputKeys,
           },
           upstreamArtifactRefs,

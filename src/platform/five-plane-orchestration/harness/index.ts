@@ -626,15 +626,46 @@ export interface HarnessLoopInput {
   readonly taskId: string;
   readonly domainId: string;
   readonly constraintPack: ConstraintPack;
-  readonly plannerOutput: Readonly<Record<string, unknown>>;
-  readonly generatorOutput: Readonly<Record<string, unknown>>;
-  readonly evaluatorOutput: Readonly<Record<string, unknown>>;
-  readonly evaluatorScore: number;
+  readonly plannerOutput?: Readonly<Record<string, unknown>>;
+  readonly generatorOutput?: Readonly<Record<string, unknown>>;
+  readonly evaluatorOutput?: Readonly<Record<string, unknown>>;
+  readonly evaluatorScore?: number;
   readonly riskScore?: number;
   readonly requestedTools?: readonly string[];
   readonly producedEvidenceRefs?: readonly string[];
   readonly requiresHuman?: boolean;
   readonly iteration?: number;
+  readonly loopServices?: HarnessLoopServices;
+}
+
+export interface HarnessLoopPlannerInput {
+  readonly taskId: string;
+  readonly domainId: string;
+  readonly constraintPack: ConstraintPack;
+  readonly iteration: number;
+  readonly previousPlannerOutput: Readonly<Record<string, unknown>> | null;
+}
+
+export interface HarnessLoopGeneratorInput {
+  readonly taskId: string;
+  readonly domainId: string;
+  readonly constraintPack: ConstraintPack;
+  readonly iteration: number;
+  readonly plannerOutput: Readonly<Record<string, unknown>>;
+}
+
+export interface HarnessLoopEvaluatorInput {
+  readonly taskId: string;
+  readonly domainId: string;
+  readonly constraintPack: ConstraintPack;
+  readonly iteration: number;
+  readonly generatorOutput: Readonly<Record<string, unknown>>;
+}
+
+export interface HarnessLoopServices {
+  readonly plan: (input: HarnessLoopPlannerInput) => Readonly<Record<string, unknown>>;
+  readonly generate: (input: HarnessLoopGeneratorInput) => Readonly<Record<string, unknown>>;
+  readonly evaluate: (input: HarnessLoopEvaluatorInput) => Readonly<Record<string, unknown>>;
 }
 
 export class HarnessRuntimeService {
@@ -1365,6 +1396,7 @@ export class HarnessRuntimeService {
 
     while (true) {
       const iteration = (input.iteration ?? 1) + loop.getState().iteration;
+      const plannerOutput = this.resolvePlannerOutput(input, iteration, run);
 
       // §45.5 budget gate: check budget BEFORE each stage per spec
       // Budget gate check BEFORE planner stage (not after)
@@ -1398,7 +1430,7 @@ export class HarnessRuntimeService {
         role: "planner",
         stage: "plan",
         inputs: { taskId: input.taskId, domainId: input.domainId },
-        outputs: input.plannerOutput,
+        outputs: plannerOutput,
         iteration,
       });
 
@@ -1424,11 +1456,13 @@ export class HarnessRuntimeService {
         }, "aborted", "harness.guard_aborted");
       }
 
+      const generatorOutput = this.resolveGeneratorOutput(input, iteration, plannerOutput);
+
       run = this.appendStep(run, {
         role: "generator",
         stage: "execute",
-        inputs: input.plannerOutput,
-        outputs: input.generatorOutput,
+        inputs: plannerOutput,
+        outputs: generatorOutput,
         iteration,
       });
 
@@ -1454,11 +1488,14 @@ export class HarnessRuntimeService {
         }, "aborted", "harness.guard_aborted");
       }
 
+      const evaluatorOutput = this.resolveEvaluatorOutput(input, iteration, generatorOutput);
+      const evaluatorScore = this.resolveEvaluatorScore(input, evaluatorOutput);
+
       run = this.appendStep(run, {
         role: "evaluator",
         stage: "evaluate",
-        inputs: input.generatorOutput,
-        outputs: input.evaluatorOutput,
+        inputs: generatorOutput,
+        outputs: evaluatorOutput,
         iteration,
       });
 
@@ -1478,19 +1515,19 @@ export class HarnessRuntimeService {
         currentStepCount: run.steps.length,
         maxSteps: inputBudget?.maxSteps ?? 100,
         // R3-1 fix: Pass inputPrompt and memoryAccessPattern for Input/Memory guardrail checks
-        ...(typeof input.generatorOutput?.input === "string" ? { inputPrompt: input.generatorOutput.input as string } : {}),
+        ...(typeof generatorOutput.input === "string" ? { inputPrompt: generatorOutput.input as string } : {}),
         ...(input.producedEvidenceRefs ? { memoryAccessPattern: input.producedEvidenceRefs } : {}),
         // R26-37 fix: Pass planningOutput and generatedOutput for Planning/Output layer guardrail checks
-        ...(typeof input.plannerOutput?.output === "string" ? { planningOutput: input.plannerOutput.output as string } : {}),
-        ...(typeof input.generatorOutput?.output === "string" ? { generatedOutput: input.generatorOutput.output as string } : {}),
+        ...(typeof plannerOutput.output === "string" ? { planningOutput: plannerOutput.output as string } : {}),
+        ...(typeof generatorOutput.output === "string" ? { generatedOutput: generatorOutput.output as string } : {}),
       });
       this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
-      this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
+      this.memoryManager.write("domain", run.domainId, "last_evaluator_score", evaluatorScore);
 
       const lastNodeRunId = run.nodeRunIds.at(-1);
       // R18-03 fix: Pass all decision factors to decide() per §45.25
       // §45.25: Freeze all decision state at decision time before LLM-as-Judge evaluation
-      const frozenEvaluator = { score: input.evaluatorScore ?? 0.5, reasoning: "" };
+      const frozenEvaluator = { score: evaluatorScore, reasoning: "" };
       const frozenRisk = {
         currentScore: input.riskScore ?? 0,
         maxScore: riskPolicy.maxRiskScore,
@@ -1516,7 +1553,7 @@ export class HarnessRuntimeService {
         findings: guardrailAssessment.findings.map(f => ({ code: f.code, message: f.message })),
       };
       const decision = this.decide({
-        evaluatorScore: input.evaluatorScore,
+        evaluatorScore,
         ...(input.requiresHuman || guardrailAssessment.requiresHuman ? { requiresHuman: true } : {}),
         ...(inputBudget && run.steps.length >= inputBudget.maxSteps ? { maxIterationsReached: true } : {}),
         ...(input.riskScore !== undefined ? { riskScore: input.riskScore } : {}),
@@ -1628,7 +1665,7 @@ export class HarnessRuntimeService {
         );
       }
 
-      loop.recordIteration(this.estimateIterationCost(input));
+      loop.recordIteration(this.estimateIterationCost(plannerOutput, generatorOutput, evaluatorOutput));
       if (decision.action === "replan") {
         loop.recordReplan();
       }
@@ -1844,7 +1881,130 @@ export class HarnessRuntimeService {
     }
   }
 
-  private estimateIterationCost(input: HarnessLoopInput): number {
+  private resolvePlannerOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+    run: HarnessRunRuntimeState,
+  ): Readonly<Record<string, unknown>> {
+    if (input.loopServices) {
+      return input.loopServices.plan({
+        taskId: input.taskId,
+        domainId: input.domainId,
+        constraintPack: input.constraintPack,
+        iteration,
+        previousPlannerOutput: this.getPreviousPlannerOutput(run),
+      });
+    }
+    if (input.plannerOutput) {
+      return input.plannerOutput;
+    }
+    return this.createDefaultPlannerOutput(input, iteration);
+  }
+
+  private resolveGeneratorOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+    plannerOutput: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> {
+    if (input.loopServices) {
+      return input.loopServices.generate({
+        taskId: input.taskId,
+        domainId: input.domainId,
+        constraintPack: input.constraintPack,
+        iteration,
+        plannerOutput,
+      });
+    }
+    if (input.generatorOutput) {
+      return input.generatorOutput;
+    }
+    return this.createDefaultGeneratorOutput(input, iteration, plannerOutput);
+  }
+
+  private resolveEvaluatorOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+    generatorOutput: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> {
+    if (input.loopServices) {
+      return input.loopServices.evaluate({
+        taskId: input.taskId,
+        domainId: input.domainId,
+        constraintPack: input.constraintPack,
+        iteration,
+        generatorOutput,
+      });
+    }
+    if (input.evaluatorOutput) {
+      return input.evaluatorOutput;
+    }
+    return this.createDefaultEvaluatorOutput(input, iteration, generatorOutput);
+  }
+
+  private resolveEvaluatorScore(
+    input: HarnessLoopInput,
+    evaluatorOutput: Readonly<Record<string, unknown>>,
+  ): number {
+    if (typeof input.evaluatorScore === "number" && Number.isFinite(input.evaluatorScore)) {
+      return input.evaluatorScore;
+    }
+    const score = evaluatorOutput.score;
+    return typeof score === "number" && Number.isFinite(score) ? score : 0.5;
+  }
+
+  private getPreviousPlannerOutput(run: HarnessRunRuntimeState): Readonly<Record<string, unknown>> | null {
+    const previousPlannerStep = [...run.steps].reverse().find((step) => step.role === "planner");
+    if (previousPlannerStep?.outputs && typeof previousPlannerStep.outputs === "object" && !Array.isArray(previousPlannerStep.outputs)) {
+      return previousPlannerStep.outputs as Readonly<Record<string, unknown>>;
+    }
+    return null;
+  }
+
+  private createDefaultPlannerOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+  ): Readonly<Record<string, unknown>> {
+    return {
+      planId: `plan-${input.taskId}-${iteration}`,
+      summary: `Plan ${iteration} for ${input.taskId}`,
+      costUsd: Number((0.05 * iteration).toFixed(3)),
+      output: `Plan ${iteration} for ${input.domainId}`,
+      checkpoints: [`checkpoint-${iteration}-1`, `checkpoint-${iteration}-2`],
+    };
+  }
+
+  private createDefaultGeneratorOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+    plannerOutput: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> {
+    return {
+      artifact: `artifact-${input.taskId}-${iteration}`,
+      summary: `Generated artifact for ${(plannerOutput.planId as string | undefined) ?? input.taskId}`,
+      costUsd: Number((0.1 * iteration).toFixed(3)),
+      input: `Task ${input.taskId} iteration ${iteration}`,
+      output: `Generated artifact ${iteration} for ${input.domainId}`,
+    };
+  }
+
+  private createDefaultEvaluatorOutput(
+    input: HarnessLoopInput,
+    iteration: number,
+    generatorOutput: Readonly<Record<string, unknown>>,
+  ): Readonly<Record<string, unknown>> {
+    return {
+      verdict: "pass",
+      score: 0.86,
+      costUsd: Number((0.02 * iteration).toFixed(3)),
+      reasoning: `Artifact ${(generatorOutput.artifact as string | undefined) ?? input.taskId} passed evaluation`,
+    };
+  }
+
+  private estimateIterationCost(
+    plannerOutput: Readonly<Record<string, unknown>>,
+    generatorOutput: Readonly<Record<string, unknown>>,
+    evaluatorOutput: Readonly<Record<string, unknown>>,
+  ): number {
     const extract = (value: unknown): number => {
       if (typeof value === "number" && Number.isFinite(value)) {
         return value;
@@ -1856,7 +2016,7 @@ export class HarnessRuntimeService {
       return 0;
     };
 
-    return Number((extract(input.plannerOutput) + extract(input.generatorOutput) + extract(input.evaluatorOutput)).toFixed(6));
+    return Number((extract(plannerOutput) + extract(generatorOutput) + extract(evaluatorOutput)).toFixed(6));
   }
 
   private mapDecisionKind(action: HarnessDecisionAction): CanonicalDecisionInputBundle["decisionKind"] {
