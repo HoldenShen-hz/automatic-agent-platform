@@ -52,7 +52,7 @@ export class DriftDetectorService implements IDriftDetector {
       falsePositiveWindowSize: 100,
       minSamplesBetweenAlerts: 5,
     };
-    this.changepointDetector = new ChangepointDetectorService(config);
+    this.changepointDetector = new ChangepointDetectorService();
     this.fingerprintBuilder = new BehaviorFingerprintBuilder();
     this.crossAgentAnalyzer = new CrossAgentAnalyzerService();
   }
@@ -123,7 +123,7 @@ export class DriftDetectorService implements IDriftDetector {
     }
 
     // Analyze behavioral feature differences
-    const featureDiff = this.computeFeatureDifference(current.behaviorFeatures, baseline.behaviorFeatures);
+    const featureDiff = this.computeFeatureDifference(current.normalizedFeatures, baseline.normalizedFeatures);
     const driftScore = Math.min(1.0, featureDiff / 10.0); // Normalize to 0-1
 
     // Determine severity based on drift score
@@ -140,11 +140,11 @@ export class DriftDetectorService implements IDriftDetector {
     return {
       signalId: newId("drift_sig"),
       subjectId: current.fingerprintId.split(":")[1] ?? current.fingerprintId,
-      subjectType: current.subjectType,
+      subjectType: "agent",
       detectedAt: nowIso(),
       driftScore,
       severity,
-      windowType: this.mapFingerprintWindowToDriftWindow(current.window),
+      windowType: "24h",
       baselineRef: baseline.fingerprintId,
       reasonCode: "drift.fingerprint_mismatch",
       recommendedAction: this.severityToAction(severity),
