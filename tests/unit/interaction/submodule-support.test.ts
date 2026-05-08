@@ -65,13 +65,9 @@ test("interaction support modules provide deterministic helper behavior", () => 
 
   assert.deepEqual(summarizeTaskMetrics(["done", "failed", "in_progress"]), {
     total: 3,
-    queued: 0,
-    pending: 0,
-    inProgress: 1,
-    awaitingDecision: 0,
     done: 1,
+    inProgress: 1,
     failed: 1,
-    cancelled: 0,
   });
 
   assert.deepEqual(

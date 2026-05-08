@@ -2,8 +2,6 @@ import { z } from "zod";
 
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1),
-  // R26-34 FIX: Phase 1 only supports 3 learning types per ADR-080 §R4-TYPES constraint
-  // Removed model_retraining/dataset_gap - not in Phase 1 scope
   learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook"]),
   title: z.string().min(1),
   summary: z.string().min(1),

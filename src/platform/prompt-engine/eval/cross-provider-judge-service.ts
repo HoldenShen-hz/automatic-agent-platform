@@ -81,54 +81,35 @@ export class CrossProviderJudgeService {
   }): ConsensusEvaluationResult {
     const { evaluation, pipeline } = input;
     const results: MultiProviderJudgeResult[] = [];
-    // R16-17 FIX: Honor parallelEvaluation flag — run fallback judges concurrently
-    const judgeIds = [
-      ...(pipeline.primaryJudgeId ? [pipeline.primaryJudgeId] : []),
-      ...pipeline.fallbackJudgeIds.filter((id) => id !== pipeline.primaryJudgeId),
-    ];
 
-    if (pipeline.parallelEvaluation) {
-      // Run all judges in parallel
-      const parallelResults = judgeIds
-        .map((judgeId) => {
-          const judge = this.judgeService.getJudge(judgeId);
-          if (!judge || judge.status !== "ready") return null;
-          const report = this.judgeService.evaluateDataset({ ...evaluation, judgeId });
-          return { judgeId, provider: judge.provider, report } as MultiProviderJudgeResult;
-        })
-        .filter((r): r is MultiProviderJudgeResult => r !== null);
-      results.push(...parallelResults);
-    } else {
-      // Sequential evaluation (legacy behavior)
-      if (pipeline.primaryJudgeId) {
-        const judge = this.judgeService.getJudge(pipeline.primaryJudgeId);
-        if (judge && judge.status === "ready") {
-          const report = this.judgeService.evaluateDataset({
-            ...evaluation,
-            judgeId: pipeline.primaryJudgeId,
-          });
-          results.push({
-            judgeId: pipeline.primaryJudgeId,
-            provider: judge.provider,
-            report,
-          });
-        }
+    if (pipeline.primaryJudgeId) {
+      const judge = this.judgeService.getJudge(pipeline.primaryJudgeId);
+      if (judge && judge.status === "ready") {
+        const report = this.judgeService.evaluateDataset({
+          ...evaluation,
+          judgeId: pipeline.primaryJudgeId,
+        });
+        results.push({
+          judgeId: pipeline.primaryJudgeId,
+          provider: judge.provider,
+          report,
+        });
       }
+    }
 
-      for (const judgeId of pipeline.fallbackJudgeIds) {
-        if (judgeId === pipeline.primaryJudgeId) continue;
-        const judge = this.judgeService.getJudge(judgeId);
-        if (judge && judge.status === "ready") {
-          const report = this.judgeService.evaluateDataset({
-            ...evaluation,
-            judgeId,
-          });
-          results.push({
-            judgeId,
-            provider: judge.provider,
-            report,
-          });
-        }
+    for (const judgeId of pipeline.fallbackJudgeIds) {
+      if (judgeId === pipeline.primaryJudgeId) continue;
+      const judge = this.judgeService.getJudge(judgeId);
+      if (judge && judge.status === "ready") {
+        const report = this.judgeService.evaluateDataset({
+          ...evaluation,
+          judgeId,
+        });
+        results.push({
+          judgeId,
+          provider: judge.provider,
+          report,
+        });
       }
     }
 
@@ -216,18 +197,11 @@ function buildConsensusResult(
   const holdCount = results.filter((r) => r.report.gateDecision === "hold").length;
   const rollbackCount = results.filter((r) => r.report.gateDecision === "rollback").length;
 
-  // §21.5: agreementScore measures consensus around the final decision, not just promote votes.
-  // All-rollback is a valid unanimous consensus and should score 1.0, not 0.
-  // Find the modal decision (most common), then count how many judges agreed on it.
-  const decisionCounts = { promote: promoteCount, hold: holdCount, rollback: rollbackCount };
-  const modalDecision = (Object.keys(decisionCounts) as Array<keyof typeof decisionCounts>)
-    .reduce((a, b) => decisionCounts[a] >= decisionCounts[b] ? a : b);
-  const modalCount = decisionCounts[modalDecision];
-  const agreementScore = Number((modalCount / results.length).toFixed(2));
+  const agreementScore = Number((promoteCount / results.length).toFixed(2));
 
   let consensusDecision: "promote" | "hold" | "rollback";
   if (agreementScore >= threshold) {
-    consensusDecision = modalDecision as "promote" | "hold" | "rollback";
+    consensusDecision = "promote";
   } else if (promoteCount + holdCount > rollbackCount) {
     consensusDecision = "hold";
   } else {

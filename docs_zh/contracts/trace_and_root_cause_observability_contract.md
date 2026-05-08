@@ -93,7 +93,7 @@
 
 | 层 | 指标示例 |
 | --- | --- |
-| `oapeflir` | loop 收敛率、feedback 正负比、release 成功率 |
+| `oapeflir` | loop 收敛率、feedback 正负比、rollout 成功率 |
 | `business` | 任务成功率、审批率、事业部产出、用户升级率 |
 | `platform` | 吞吐、队列积压、恢复成功率、租约回收数 |
 | `runtime` | worker 心跳、执行时长、重试率、背压触发率 |
@@ -108,7 +108,7 @@
 - 最近相关 prompt / model / policy 变更
 - 最近相关 worker / lease 切换
 - 最近相关成本异常
-- 最近相关 feedback / learning / release 动作
+- 最近相关 feedback / learning / rollout 动作
 
 ## 8. 异常模式检测
 
@@ -119,7 +119,7 @@
 - 某租户或事业部成本异常抬升
 - 某 worker 心跳抖动异常
 - 某 loop 长时间不收敛
-- 某 release 连续受阻或回滚
+- 某 rollout 连续受阻或回滚
 
 ## 9. 可视化目标
 

@@ -28,7 +28,7 @@ export function buildExecutionPlaneBootstrap(): ExecutionPlaneBootstrap {
 }
 
 export function registerExecutionPlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ExecutionPlaneBootstrap {
   registry.register<readonly ExecutionCapabilityBaseline[]>(EXECUTION_PLANE_CATALOG_SERVICE_ID, {
     init: () => listExecutionCapabilityBaselines(),

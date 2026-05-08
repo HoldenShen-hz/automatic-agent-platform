@@ -22,7 +22,7 @@
 
 ## 背景
 
-v4.3 `§52-§57` 要求平台进入规模化运行和开放生态阶段。当前仓库已有：
+v2.7 `§52-§57` 要求平台进入规模化运行和开放生态阶段。当前仓库已有：
 
 - `src/scale-ecosystem/multi-region`
 - `src/scale-ecosystem/resource-manager`

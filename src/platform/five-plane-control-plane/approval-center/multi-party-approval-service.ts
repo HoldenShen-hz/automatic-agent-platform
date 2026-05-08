@@ -14,10 +14,6 @@ import { createRuntimeLifecycleRepository, type RuntimeLifecycleRepository } fro
 import { TransitionService } from "../../execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
 
-function resolveApprovalHarnessRunId(request: Pick<ApprovalRequest, "harnessRunId" | "executionId">): string | null {
-  return request.harnessRunId ?? request.executionId ?? null;
-}
-
 export interface MultiPartyApprovalOptions {
   /** Number of approvals required. Default: 1 */
   requiredApprovals?: number;
@@ -56,9 +52,7 @@ export class MultiPartyApprovalService {
     const approval: ApprovalRequest = {
       approvalId: newId("approval"),
       taskId: request.taskId,
-      harnessRunId: request.harnessRunId ?? request.executionId ?? null,
-      nodeRunId: request.nodeRunId ?? null,
-      executionId: request.executionId ?? request.harnessRunId ?? null,
+      executionId: request.executionId ?? null,
       sourceAgentId: request.sourceAgentId,
       reason: request.reason,
       riskLevel: request.riskLevel,
@@ -79,7 +73,7 @@ export class MultiPartyApprovalService {
       this.repository.insertApproval({
         id: approval.approvalId,
         taskId: approval.taskId,
-        executionId: resolveApprovalHarnessRunId(approval),
+        executionId: approval.executionId ?? null,
         status: "requested",
         requestJson: JSON.stringify(approval),
         responseJson: null,
@@ -90,7 +84,7 @@ export class MultiPartyApprovalService {
       this.repository.insertEvent({
         id: newId("evt"),
         taskId: approval.taskId,
-        executionId: resolveApprovalHarnessRunId(approval),
+        executionId: approval.executionId ?? null,
         eventType: "decision:requested",
         eventTier: "tier_1",
         payloadJson: JSON.stringify(approval),

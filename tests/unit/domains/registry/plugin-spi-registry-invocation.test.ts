@@ -582,8 +582,8 @@ test("PluginSpiRegistry transitions to degraded after invocation failure", async
   const record = registry.get("plugin.degrade_on_fail");
   assert.ok(record);
   assert.ok(
-    record.lifecycleState === "suspended" || record.lifecycleState === "disabled",
-    `Expected suspended or disabled, got ${record.lifecycleState}`,
+    record.lifecycleState === "degraded" || record.lifecycleState === "disabled",
+    `Expected degraded or disabled, got ${record.lifecycleState}`,
   );
 });
 

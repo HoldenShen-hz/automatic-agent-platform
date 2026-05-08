@@ -21,7 +21,7 @@ import type {
   LoadedDivisionDefinition,
 } from "../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../domains/governance/division-loader.js";
-import { expandToolNames, inferPromotedToolNames } from "../../platform/shared/tool-discovery/index.js";
+import { inferPromotedToolNames, expandToolNames } from "../../platform/execution/tool-executor/tool-recommend-service.js";
 
 /** Reason codes for gap analysis triggers */
 export type HrGapTriggerReason = "no_role_match" | "scope_exceeded";
@@ -159,122 +159,6 @@ export interface RegisterApprovedHrRoleRequest {
 const FORBIDDEN_HR_TOOL_NAMES = new Set(["spawn_agent", "send_message"]);
 /** Tool names related to command execution that require special scope boundaries */
 const COMMAND_RELATED_TOOL_NAMES = new Set(["bash", "command_exec"]);
-
-/**
- * Role constraint definition for SoD and guardrail enforcement.
- */
-export interface RoleConstraint {
-  readonly constraintId: string;
-  readonly type: "separation_of_duty" | "resource_quota" | "delegation_depth" | "max_instances";
-  readonly description: string;
-  readonly value: unknown;
-  readonly appliesToRoles?: readonly string[];
-}
-
-/**
- * Evaluates role constraints for a proposal.
- * Returns violation codes for any violated constraints.
- */
-function evaluateRoleConstraints(
-  proposal: HrRoleProposal,
-  existingRoles: readonly DivisionRoleDefinition[],
-  constraints: readonly RoleConstraint[],
-): string[] {
-  const violations: string[] = [];
-  for (const constraint of constraints) {
-    switch (constraint.type) {
-      case "separation_of_duty": {
-        // SoD constraint: specified roles cannot coexist
-        const conflictingRoles = constraint.value as readonly string[];
-        if (conflictingRoles.includes(proposal.roleId)) {
-          const otherRoles = conflictingRoles.filter((id) => id !== proposal.roleId);
-          const hasConflict = existingRoles.some((role) => otherRoles.includes(role.id));
-          if (hasConflict) {
-            violations.push(`hr.constraint_violation.sod:${constraint.constraintId}:${proposal.roleId}`);
-          }
-        }
-        break;
-      }
-      case "max_instances": {
-        // Check if proposal exceeds max instances constraint
-        const maxAllowed = constraint.value as number;
-        if (proposal.maxInstances != null && proposal.maxInstances > maxAllowed) {
-          violations.push(`hr.constraint_violation.max_instances:${constraint.constraintId}:${proposal.maxInstances}>${maxAllowed}`);
-        }
-        break;
-      }
-      case "resource_quota": {
-        // Resource quota constraints (CPU, memory, etc.)
-        // Format: { quotaType: string, limit: number }
-        const quota = constraint.value as { quotaType: string; limit: number };
-        if (quota && typeof quota.limit === "number") {
-          // Check if any workflow steps exceed resource limits
-          const workflowSuggestion = proposal.workflowSuggestion;
-          const stepTimeoutMs = workflowSuggestion?.step.timeoutMs ?? 0;
-          if (stepTimeoutMs > quota.limit * 1000) {
-            violations.push(`hr.constraint_violation.resource_quota:${constraint.constraintId}:timeout:${stepTimeoutMs}>${quota.limit * 1000}`);
-          }
-        }
-        break;
-      }
-    }
-  }
-  return violations;
-}
-
-/**
- * Checks separation of duties conflicts in role assignments.
- * SoD prevents same user from holding conflicting roles.
- */
-function checkSeparationOfDuties(
-  proposal: HrRoleProposal,
-  existingRoles: readonly DivisionRoleDefinition[],
-  allRoleAssignments: ReadonlyMap<string, readonly string[]>,
-): string[] {
-  const violations: string[] = [];
-  // Find roles that should not coexist (conflicting roles)
-  const conflictingGroups: readonly string[][] = [
-    ["admin_role", "auditor_role"],
-    ["deploy_role", "security_review_role"],
-    ["finance_role", "audit_role"],
-  ];
-  for (const group of conflictingGroups) {
-    if (group.includes(proposal.roleId)) {
-      const otherRoles = group.filter((id) => id !== proposal.roleId);
-      for (const [assignedUser, assignedRoles] of allRoleAssignments.entries()) {
-        const hasProposalRole = assignedRoles.includes(proposal.roleId);
-        const hasConflictingRole = otherRoles.some((id) => assignedRoles.includes(id));
-        if (hasProposalRole && hasConflictingRole) {
-          violations.push(`hr.sod_violation:user:${assignedUser}:conflicting:${otherRoles.join(",")}`);
-        }
-      }
-    }
-  }
-  return violations;
-}
-
-/**
- * Validates that proposal permissions don't exceed delegation chain authority.
- */
-function validateDelegationChainAuthority(
-  proposal: HrRoleProposal,
-  delegatorRole: string,
-  maxDelegationDepth: number,
-): string[] {
-  const violations: string[] = [];
-  // Tools that require higher authority than typical delegation
-  const highAuthorityTools = new Set(["spawn_agent", "admin_access", "system_config", "user_management"]);
-  const proposalHighAuthorityTools = proposal.tools.filter((tool) => highAuthorityTools.has(tool));
-  if (proposalHighAuthorityTools.length > 0 && delegatorRole !== "platform_team") {
-    // High-authority tools can only be delegated by platform_team
-    violations.push(`hr.delegation_chain.exceeds_authority:${proposalHighAuthorityTools.join(",")}:requires:platform_team`);
-  }
-  // Check if proposed maxInstances exceeds reasonable delegation limits
-  if (proposal.maxInstances != null && proposal.maxInstances > 10 && maxDelegationDepth > 3) {
-    violations.push(`hr.delegation_chain.depth_exceeded:maxInstances:${proposal.maxInstances}:depth:${maxDelegationDepth}`);
-  }
-  return violations;
-}
 
 /**
  * Normalizes text by trimming whitespace and converting to lowercase.
@@ -419,10 +303,6 @@ export class HrRoleGovernanceService {
   public constructor(
     private readonly divisionRegistry: DivisionRegistry | null = getDefaultDivisionRegistry(),
     private readonly approvalService: ApprovalService | null = null,
-    private readonly roleConstraints: readonly RoleConstraint[] = [],
-    private readonly roleAssignments: ReadonlyMap<string, readonly string[]> = new Map(),
-    private readonly maxDelegationDepth: number = 5,
-    private readonly delegatorRole: string = "platform_team",
   ) {}
 
   /**
@@ -579,26 +459,6 @@ export class HrRoleGovernanceService {
 
     if (expandedProposalTools.resolvedToolNames.every((toolName) => toolName === "read" || toolName === "question")) {
       warnings.push("hr.read_only_role");
-    }
-
-    // R19-1: Evaluate role constraints (separation of duties, resource quotas, etc.)
-    if (this.roleConstraints.length > 0) {
-      const constraintViolations = evaluateRoleConstraints(proposal, division.roles, this.roleConstraints);
-      for (const violation of constraintViolations) {
-        errors.push(violation);
-      }
-    }
-
-    // R19-2: Enforce separation of duties checks
-    const sodViolations = checkSeparationOfDuties(proposal, division.roles, this.roleAssignments);
-    for (const violation of sodViolations) {
-      errors.push(violation);
-    }
-
-    // R19-3: Validate delegation chain authority
-    const delegationViolations = validateDelegationChainAuthority(proposal, this.delegatorRole, this.maxDelegationDepth);
-    for (const violation of delegationViolations) {
-      errors.push(violation);
     }
 
     return {

@@ -3,7 +3,6 @@ import test from "node:test";
 
 import { WorkflowPlanner, type WorkflowPlannerInput } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
 import { StorageError } from "../../../../../src/platform/contracts/errors.js";
-import type { MinimalWorkflowDefinition } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
 
 test("WorkflowPlanner type exports are correct", () => {
   // WorkflowPlannerInput requires workflowId and request
@@ -201,73 +200,4 @@ test("WorkflowPlanner.plan multi-step workflow edge direction is correct", () =>
     (e) => e.fromStepId === "intake_triage" && e.toStepId === "draft_solution",
   );
   assert.ok(triageToDraft !== undefined, "edge from intake_triage to draft_solution should exist");
-});
-
-test("WorkflowPlanner.plan rejects missing dependency references", () => {
-  const workflow: MinimalWorkflowDefinition = {
-    workflowId: "missing-dependency-workflow",
-    divisionId: "general_ops",
-    steps: [
-      {
-        stepId: "step_a",
-        roleId: "general_executor",
-        outputKey: "a",
-        timeoutMs: 1000,
-        maxAttempts: 1,
-      },
-      {
-        stepId: "step_b",
-        roleId: "general_executor",
-        outputKey: "b",
-        timeoutMs: 1000,
-        maxAttempts: 1,
-        dependsOnStepIds: ["step_missing"],
-      },
-    ],
-  };
-  const planner = new WorkflowPlanner((workflowId) => workflowId === workflow.workflowId ? workflow : null);
-
-  assert.throws(
-    () => planner.plan({ workflowId: workflow.workflowId, request: "test request" }),
-    (err: unknown) => err instanceof StorageError && err.code === "workflow.missing_dependency",
-  );
-});
-
-test("WorkflowPlanner.plan rejects cyclic dependencies before execution", () => {
-  const workflow: MinimalWorkflowDefinition = {
-    workflowId: "cyclic-workflow",
-    divisionId: "general_ops",
-    steps: [
-      {
-        stepId: "step_a",
-        roleId: "general_executor",
-        outputKey: "a",
-        timeoutMs: 1000,
-        maxAttempts: 1,
-        dependsOnStepIds: ["step_c"],
-      },
-      {
-        stepId: "step_b",
-        roleId: "general_executor",
-        outputKey: "b",
-        timeoutMs: 1000,
-        maxAttempts: 1,
-        dependsOnStepIds: ["step_a"],
-      },
-      {
-        stepId: "step_c",
-        roleId: "general_executor",
-        outputKey: "c",
-        timeoutMs: 1000,
-        maxAttempts: 1,
-        dependsOnStepIds: ["step_b"],
-      },
-    ],
-  };
-  const planner = new WorkflowPlanner((workflowId) => workflowId === workflow.workflowId ? workflow : null);
-
-  assert.throws(
-    () => planner.plan({ workflowId: workflow.workflowId, request: "test request" }),
-    (err: unknown) => err instanceof StorageError && err.code === "workflow.cyclic_dependency",
-  );
 });

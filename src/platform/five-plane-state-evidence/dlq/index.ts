@@ -89,31 +89,12 @@ export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueReposit
 export class DeadLetterQueueService {
   private readonly repo: DeadLetterQueueRepository;
 
-  // R12-06 FIX: Static flag to ensure warning is printed only once per process
-  private static IN_MEMORY_WARNING_EMITTED = false;
-
   /**
    * Create a DLQ service with an optional repository.
    * @param repo - Optional repository for persistence. Defaults to in-memory storage.
-   *             WARNING: In-memory storage loses all entries on process restart.
-   *             Production deployments must provide a persistent repository.
    */
   public constructor(repo?: DeadLetterQueueRepository) {
-    if (repo == null) {
-      this.repo = new InMemoryDeadLetterQueueRepository();
-      // R12-06 FIX: Emit warning once when using in-memory storage in non-test environments
-      if (!DeadLetterQueueService.IN_MEMORY_WARNING_EMITTED && process.env["NODE_ENV"] !== "test") {
-        console.warn(
-          "[DeadLetterQueueService] WARNING: Using in-memory DLQ repository. " +
-          "DLQ entries will be lost on process restart. " +
-          "For production, provide a persistent DeadLetterQueueRepository implementation. " +
-          "See §28.8 for persistent DLQ requirements.",
-        );
-        DeadLetterQueueService.IN_MEMORY_WARNING_EMITTED = true;
-      }
-    } else {
-      this.repo = repo;
-    }
+    this.repo = repo ?? new InMemoryDeadLetterQueueRepository();
   }
 
   public enqueue(input: {
@@ -155,12 +136,6 @@ export class DeadLetterQueueService {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
     const record = this.getRequired(deadLetterId);
-    if (record.status === "discarded" || record.status === "resolved") {
-      throw new ValidationError(
-        "dlq.retry_terminal_status",
-        `Dead-letter record ${deadLetterId} is already terminal and cannot be retried.`,
-      );
-    }
     const now = nowIso();
     const updated: DeadLetterRecord = {
       ...record,
@@ -192,7 +167,7 @@ export class DeadLetterQueueService {
     const record = this.getRequired(deadLetterId);
     const updated: DeadLetterRecord = {
       ...record,
-      status: "discarded",
+      status: "pending",
       retryExhaustedAt: nowIso(),
       nextRetryAt: null,
       updatedAt: nowIso(),

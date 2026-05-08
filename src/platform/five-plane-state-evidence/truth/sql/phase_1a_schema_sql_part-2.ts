@@ -1,12 +1,36 @@
 export const PHASE_1A_SCHEMA_SQL_PART_2 = `
+  status TEXT NOT NULL,
+  repo_version TEXT NULL,
+  remote_session_status TEXT NULL,
+  last_acknowledged_stream_offset TEXT NULL,
+  stream_resume_success_rate REAL NULL,
+  credential_refresh_success_rate REAL NULL,
+  session_consistency_check_status TEXT NULL,
+  session_consistency_checked_at TEXT NULL,
+  workspace_sync_status TEXT NULL,
+  workspace_sync_checked_at TEXT NULL,
+  saturation REAL NULL,
+  active_lease_count INTEGER NOT NULL DEFAULT 0,
+  mean_startup_latency_ms INTEGER NULL,
+  sandbox_success_rate REAL NULL,
+  repo_cache_hit_rate REAL NULL,
+  capabilities_json TEXT NOT NULL,
+  running_executions_json TEXT NOT NULL,
+  max_concurrency INTEGER NOT NULL,
+  queue_affinity TEXT NULL,
+  last_heartbeat_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_worker_snapshots_status_updated_at ON worker_snapshots(status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_worker_snapshots_heartbeat ON worker_snapshots(last_heartbeat_at);
+
 CREATE TABLE IF NOT EXISTS execution_tickets (
   id TEXT PRIMARY KEY,
   execution_id TEXT NOT NULL,
   task_id TEXT NOT NULL,
   priority TEXT NOT NULL,
   queue_name TEXT NULL,
-  dispatch_target TEXT NOT NULL DEFAULT 'any',
-  required_isolation_level TEXT NOT NULL DEFAULT 'standard',
   required_repo_version TEXT NULL,
   required_capabilities_json TEXT NOT NULL,
   dispatch_after TEXT NULL,
@@ -19,8 +43,6 @@ CREATE TABLE IF NOT EXISTS execution_tickets (
   invalidated_at TEXT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  critical_path_rank INTEGER NULL,
-  scheduler_seed TEXT NULL,
   FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE CASCADE,
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
@@ -164,34 +186,19 @@ CREATE INDEX IF NOT EXISTS idx_compaction_records_task_created_at ON compaction_
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   task_id TEXT NULL,
-  session_id TEXT NULL,
   execution_id TEXT NULL,
   event_type TEXT NOT NULL,
   event_tier TEXT NOT NULL,
   payload_json TEXT NOT NULL,
   trace_id TEXT NULL,
-  schema_version TEXT NULL,
-  aggregate_id TEXT NULL,
-  run_id TEXT NULL,
-  sequence INTEGER NULL,
-  causation_id TEXT NULL,
-  correlation_id TEXT NULL,
-  payload_hash TEXT NULL,
-  idempotency_key TEXT NULL,
-  replay_behavior TEXT NULL,
-  principal TEXT NULL,
-  evidence_refs TEXT NULL,
   created_at TEXT NOT NULL,
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
   FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_task_created_at ON events(task_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_execution_created_at ON events(execution_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_type_created_at ON events(event_type, created_at);
-CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
-CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
 
 CREATE TABLE IF NOT EXISTS event_consumer_acks (
   id TEXT PRIMARY KEY,

@@ -33,14 +33,6 @@ import type {
   WorkspaceRecord,
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { QuotaEnforcerService, type QuotaPolicy, type MultiResourceQuotaVector, type MultiDimensionalQuotaDecision } from "../../scale-ecosystem/resource-manager/quota-enforcer/index.js";
-import { orderFairQueue, type FairQueueItem } from "../../scale-ecosystem/resource-manager/fair-queue/index.js";
-import { FairSchedulingService, type ResourceClaim } from "../../scale-ecosystem/resource-manager/fair-scheduling-service.js";
-import { ResourcePoolService, type ResourcePool } from "../../scale-ecosystem/resource-manager/resource-pool-service.js";
-import { choosePreemptionVictim, type PreemptionCandidate, type PreemptionDecision } from "../../scale-ecosystem/resource-manager/preemption/index.js";
-
-// R13-25: Tenant lifecycle state for tracking suspension, deactivation, and decommission
-export type TenantLifecycleState = "active" | "suspended" | "deactivated" | "decommissioned";
 
 /**
  * Validates an identifier string against the allowed pattern.
@@ -94,8 +86,6 @@ export interface CreateWorkspaceInput {
 export interface AddWorkspaceMembershipInput {
   /** Workspace to add membership to */
   workspaceId: string;
-  /** Authenticated caller issuing the request */
-  callerUserId: string;
   /** User ID to add */
   userId: string;
   /** Role identifier for this membership */
@@ -108,8 +98,6 @@ export interface AddWorkspaceMembershipInput {
 export interface CreateOrganizationInput {
   /** Optional organization ID (auto-generated if not provided) */
   organizationId?: string;
-  /** Owner user ID used to bootstrap authoritative membership */
-  ownerId: string;
   /** Human-readable display name */
   displayName: string;
   /** Optional billing account binding */
@@ -124,8 +112,6 @@ export interface CreateOrganizationInput {
 export interface AddOrganizationMembershipInput {
   /** Organization to add membership to */
   organizationId: string;
-  /** Authenticated caller issuing the request */
-  callerUserId: string;
   /** User ID to add */
   userId: string;
   /** Role identifier for this membership */
@@ -198,55 +184,6 @@ export interface CreateDataNamespaceInput {
   createdAt?: string;
 }
 
-/**
- * Per-tenant SLO definition per R21-10.
- * Defines availability and performance targets for each tenant.
- */
-export interface TenantSloDefinition {
-  /** Tenant this SLO applies to */
-  tenantId: string;
-  /** SLO tier determining priority in scheduling */
-  sloTier: "platinum" | "gold" | "silver" | "bronze";
-  /** Minimum availability target as percentage (e.g., 99.99) */
-  availabilityTarget: number;
-  /** Maximum p99 latency in milliseconds */
-  maxLatencyMs: number;
-  /** Maximum concurrent executions guaranteed */
-  maxConcurrentExecutions: number;
-  /** Maximum queue time in milliseconds before warning */
-  maxQueueTimeMs: number;
-}
-
-/**
- * Tenant scheduling context for fair scheduling per R21-09.
- * Carries scheduling metadata used by weighted fair queuing.
- */
-export interface TenantSchedulingContext {
-  tenantId: string;
-  orgNodeId?: string | null;
-  domainId: string;
-  sloTier: number;
-  priority: number;
-  weight: number;
-  currentUsage: number;
-  guaranteedQuota: number;
-  borrowedQuota: number;
-}
-
-/**
- * Scheduling decision for tenant load placement per R21-08.
- */
-export interface TenantSchedulingDecision {
-  /** Whether the request was admitted */
-  admitted: boolean;
-  /** Preemption victim if load was evicted */
-  victimExecutionId: string | null;
-  /** Reason for admission or rejection */
-  reason: string;
-  /** Queue position if admitted */
-  queuePosition: number | null;
-}
-
 /** Summary of the entire tenant topology with counts and entity lists */
 export interface TenantTopologySummary {
   /** ISO timestamp when the summary was generated */
@@ -273,15 +210,6 @@ export interface TenantTopologySummary {
   dataNamespaces: DataNamespaceRecord[];
 }
 
-/** Input for tenant scheduling request per R21-08 */
-export interface TenantSchedulingInput {
-  tenantId: string;
-  requestedUnits: number;
-  preemptionCandidates?: readonly PreemptionCandidate[];
-  /** R15-57: Optional dedicated pool ID for isolated tenants */
-  dedicatedPoolId?: string | null;
-}
-
 /**
  * Service for managing the tenant platform topology.
  *
@@ -290,10 +218,6 @@ export interface TenantSchedulingInput {
  * boundaries and validates scope relationships when creating namespaces.
  */
 export class TenantPlatformService {
-  private readonly quotaEnforcer = new QuotaEnforcerService();
-  private readonly fairScheduler = new FairSchedulingService();
-  private readonly resourcePools = new ResourcePoolService();
-
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -336,25 +260,13 @@ export class TenantPlatformService {
 
   /**
    * Adds a user membership to a workspace.
-   * Caller must be a workspace member with appropriate role to add new members.
    *
    * @param input - Membership creation parameters
    * @returns The created workspace membership record
    */
   public addWorkspaceMembership(input: AddWorkspaceMembershipInput): WorkspaceMembershipRecord {
     return this.db.transaction(() => {
-      const workspace = this.requireWorkspace(input.workspaceId);
-      const callerUserId = assertIdentifier(input.callerUserId, "tenant.invalid_caller_user_id");
-      const callerMembership = this.store.organization
-        .listWorkspaceMemberships(workspace.workspaceId)
-        .find((membership) => membership.userId === callerUserId);
-      if (!callerMembership || !["owner", "admin"].includes(callerMembership.role)) {
-        throw new ValidationError("tenant.add_membership_not_authorized", "Caller must be workspace owner or admin to add members", {
-          category: "tenant",
-          source: "runtime",
-          details: { workspaceId: workspace.workspaceId, callerUserId },
-        });
-      }
+      this.requireWorkspace(input.workspaceId);
       const membership: WorkspaceMembershipRecord = {
         workspaceId: assertIdentifier(input.workspaceId, "tenant.invalid_workspace_id"),
         userId: assertIdentifier(input.userId, "tenant.invalid_user_id"),
@@ -379,8 +291,6 @@ export class TenantPlatformService {
   public createOrganization(input: CreateOrganizationInput): OrganizationRecord {
     return this.db.transaction(() => {
       const createdAt = input.createdAt ?? nowIso();
-      const organizationId = assertIdentifier(input.organizationId ?? newId("org"), "tenant.invalid_organization_id");
-      const ownerId = assertIdentifier(input.ownerId, "tenant.invalid_owner_id");
 
       // Validate billing account exists if provided
       if (input.billingAccountId) {
@@ -397,16 +307,13 @@ export class TenantPlatformService {
       }
 
       // Validate default tenant belongs to this organization
-      // Root cause: Condition always false due to nullish coalescing - input.organizationId ?? tenant.organizationId
-      // When input.organizationId is undefined, it falls back to tenant.organizationId, making comparison always equal
-      // Fix: Use the actual organizationId being created (either provided or auto-generated)
       if (input.defaultTenantId) {
         const tenant = this.requireTenant(input.defaultTenantId);
-        if (tenant.organizationId !== organizationId) {
+        if (tenant.organizationId !== (input.organizationId ?? tenant.organizationId)) {
           throw new TenantBoundaryError("tenant.default_tenant_mismatch", "tenant.default_tenant_mismatch", {
             details: {
               defaultTenantId: input.defaultTenantId,
-              organizationId,
+              organizationId: input.organizationId ?? null,
               tenantOrganizationId: tenant.organizationId,
             },
           });
@@ -414,7 +321,7 @@ export class TenantPlatformService {
       }
 
       const organization: OrganizationRecord = {
-        organizationId,
+        organizationId: assertIdentifier(input.organizationId ?? newId("org"), "tenant.invalid_organization_id"),
         displayName: assertNonEmpty(input.displayName, "tenant.invalid_organization_display_name"),
         billingAccountId: input.billingAccountId ? assertIdentifier(input.billingAccountId, "tenant.invalid_billing_account_id") : null,
         defaultTenantId: input.defaultTenantId ? assertIdentifier(input.defaultTenantId, "tenant.invalid_default_tenant_id") : null,
@@ -422,49 +329,23 @@ export class TenantPlatformService {
         updatedAt: createdAt,
       };
       this.store.organization.upsertOrganizationRecord(organization);
-      this.store.organization.upsertOrganizationMembershipRecord({
-        organizationId,
-        userId: ownerId,
-        role: "owner",
-        joinedAt: createdAt,
-      });
       return organization;
     });
   }
 
   /**
    * Adds a user membership to an organization.
-   * Caller must be an organization member with appropriate role to add new members.
    *
    * @param input - Membership creation parameters
    * @returns The created organization membership record
    */
   public addOrganizationMembership(input: AddOrganizationMembershipInput): OrganizationMembershipRecord {
     return this.db.transaction(() => {
-      const organization = this.requireOrganization(input.organizationId);
-      const callerUserId = assertIdentifier(input.callerUserId, "tenant.invalid_caller_user_id");
-      const callerMembership = this.store.organization
-        .listOrganizationMemberships(organization.organizationId)
-        .find((membership) => membership.userId === callerUserId);
-      if (!callerMembership || !["owner", "admin"].includes(callerMembership.role)) {
-        throw new ValidationError("tenant.add_membership_not_authorized", "Caller must be organization owner or admin to add members", {
-          category: "tenant",
-          source: "runtime",
-          details: { organizationId: organization.organizationId, callerUserId },
-        });
-      }
-      const targetRole = assertIdentifier(input.role, "tenant.invalid_organization_role");
-      if (targetRole === "owner" && callerMembership.role !== "owner") {
-        throw new ValidationError("tenant.owner_role_requires_owner_caller", "Only an organization owner can assign the owner role", {
-          category: "tenant",
-          source: "runtime",
-          details: { organizationId: organization.organizationId, callerUserId },
-        });
-      }
+      this.requireOrganization(input.organizationId);
       const membership: OrganizationMembershipRecord = {
         organizationId: assertIdentifier(input.organizationId, "tenant.invalid_organization_id"),
         userId: assertIdentifier(input.userId, "tenant.invalid_user_id"),
-        role: targetRole,
+        role: assertIdentifier(input.role, "tenant.invalid_organization_role"),
         joinedAt: input.joinedAt ?? nowIso(),
       };
       this.store.organization.upsertOrganizationMembershipRecord(membership);
@@ -480,9 +361,6 @@ export class TenantPlatformService {
    * is true or the organization has no default tenant yet, this tenant
    * becomes the organization's default.
    *
-   * Per R15-57 and §9.8: dedicated_pool isolation mode creates real infrastructure isolation
-   * by provisioning a dedicated deployment binding with isolated resources.
-   *
    * @param input - Tenant creation parameters
    * @returns The created tenant record
    */
@@ -491,62 +369,6 @@ export class TenantPlatformService {
       const organization = this.requireOrganization(input.organizationId);
       const createdAt = input.createdAt ?? nowIso();
       const tenantId = assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id");
-      const isolationMode = input.isolationMode ?? "shared_hard_scoped";
-
-      // Per R15-57: dedicated_pool tenants need real isolation via dedicated deployment
-      // When isolationMode is dedicated_pool, override deploymentMode to private_cloud
-      // unless already explicitly set to a non-shared mode
-      let deploymentMode = input.deploymentMode;
-      if (isolationMode === "dedicated_pool") {
-        if (!deploymentMode || deploymentMode === "cloud_shared") {
-          deploymentMode = "private_cloud";
-        }
-        // Create a dedicated storage scope for true isolation
-        const tenant: TenantRecord = {
-          tenantId,
-          organizationId: organization.organizationId,
-          displayName: tenantId,
-          storageScope: assertIdentifier(`${input.storageScope}-dedicated`, "tenant.invalid_storage_scope"),
-          identityScope: assertIdentifier(`${input.identityScope}-dedicated`, "tenant.invalid_identity_scope"),
-          policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),
-          artifactScope: assertIdentifier(`${input.artifactScope}-dedicated`, "tenant.invalid_artifact_scope"),
-          isolationMode,
-          deploymentMode,
-          createdAt,
-          updatedAt: createdAt,
-        };
-        this.store.organization.upsertTenantRecord(tenant);
-
-        // Create a dedicated data namespace for this tenant's isolated data
-        this.store.organization.upsertDataNamespaceRecord({
-          namespaceId: assertIdentifier(`${tenantId}-dedicated-ns`, "tenant.invalid_namespace_id"),
-          plane: "transactional",
-          tenantId: tenant.tenantId,
-          organizationId: organization.organizationId,
-          workspaceId: null,
-          retentionPolicy: "dedicated_retention",
-          encryptionPolicy: "dedicated_encryption",
-          residencyPolicy: null,
-          createdAt,
-          updatedAt: createdAt,
-        });
-
-        // R15-57 FIX: Create a dedicated resource pool for this isolated tenant
-        // The pool is tagged with tenantId for FairSchedulingService to route tasks
-        this.resourcePools.createDedicatedPool(tenantId, 100); // Default 100 capacity units
-
-        // Set as organization default if requested or if no default exists
-        if (input.setAsOrganizationDefault === true || organization.defaultTenantId == null) {
-          this.store.organization.upsertOrganizationRecord({
-            ...organization,
-            defaultTenantId: tenant.tenantId,
-            updatedAt: createdAt,
-          });
-        }
-        return tenant;
-      }
-
-      // Standard shared tenant creation
       const tenant: TenantRecord = {
         tenantId,
         organizationId: organization.organizationId,
@@ -555,8 +377,8 @@ export class TenantPlatformService {
         identityScope: assertIdentifier(input.identityScope, "tenant.invalid_identity_scope"),
         policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),
         artifactScope: assertIdentifier(input.artifactScope, "tenant.invalid_artifact_scope"),
-        isolationMode,
-        deploymentMode: deploymentMode ?? "cloud_shared",
+        isolationMode: input.isolationMode ?? "shared_hard_scoped",
+        deploymentMode: input.deploymentMode ?? "cloud_shared",
         createdAt,
         updatedAt: createdAt,
       };
@@ -628,13 +450,6 @@ export class TenantPlatformService {
             : tenant != null
               ? this.requireOrganization(tenant.organizationId)
               : null;
-
-      // §R8-34: Enforce Chinese Wall - prevent cross-tenant data movement
-      // If both source and target tenant IDs are provided, they must match
-      // This is called before allowing cross-tenant scope resolution
-      if (tenant !== null) {
-        this.assertNoCrossTenantDataMovement(tenant.tenantId, null);
-      }
 
       // Validate workspace-tenant-organization consistency
       if (workspace != null && tenant != null && workspace.organizationId != null && workspace.organizationId !== tenant.organizationId) {
@@ -769,255 +584,5 @@ export class TenantPlatformService {
       });
     }
     return tenant;
-  }
-
-  /**
-   * §R8-34: Assert no cross-tenant data movement.
-   * Throws TenantBoundaryError if sourceTenantId != targetTenantId.
-   * This enforces the Chinese Wall between tenants.
-   *
-   * @param sourceTenantId - Source tenant ID
-   * @param targetTenantId - Target tenant ID (null means no specific target)
-   * @throws TenantBoundaryError if cross-tenant movement is detected
-   */
-  public assertNoCrossTenantDataMovement(sourceTenantId: string, targetTenantId: string | null): void {
-    if (targetTenantId !== null && sourceTenantId !== targetTenantId) {
-      throw new TenantBoundaryError(
-        "tenant.cross_tenant_data_movement",
-        "tenant.cross_tenant_data_movement: Cross-tenant data movement is not allowed.",
-        {
-          details: {
-            sourceTenantId,
-            targetTenantId,
-          },
-        },
-      );
-    }
-  }
-
-  /**
-   * Enforces quota for a given scope and scopeId per R21-08.
-   * Checks if the requested units would exceed the registered quota policy
-   * and returns the multi-dimensional quota decision.
-   *
-   * @param scope - Scope type (e.g., "tenant", "workspace", "organization")
-   * @param scopeId - Identifier within that scope
-   * @param requested - Multi-resource quota vector being requested
-   * @returns Multi-dimensional quota decision indicating pass/fail and warning dimensions
-   */
-  public enforceQuota(scope: string, scopeId: string | null, requested: MultiResourceQuotaVector): MultiDimensionalQuotaDecision {
-    return this.quotaEnforcer.checkQuota(scope, scopeId, requested);
-  }
-
-  /**
-   * Selects a preemption victim from a list of candidates per §53.4.
-   * Only candidates with completed checkpoints are eligible.
-   * Returns the lowest priority candidate that has a checkpoint.
-   *
-   * @param candidates - List of preemption candidates to evaluate
-   * @returns PreemptionDecision with victim and reason
-   */
-  public selectPreemptionVictim(candidates: readonly PreemptionCandidate[]): PreemptionDecision {
-    return choosePreemptionVictim(candidates);
-  }
-
-  /**
-   * Schedules a tenant request using fair scheduling per R21-08.
-   * Evaluates quota, checks for starvation, and optionally preempts a victim
-   * if quota would be exceeded.
-   *
-   * @param input - Tenant scheduling input with tenantId, requestedUnits, and optional candidates
-   * @returns TenantSchedulingDecision indicating admission and queue position
-   */
-  public scheduleTenant(input: TenantSchedulingInput): TenantSchedulingDecision {
-    // R13-32 FIX: Properly enforce tenant-scoped quota by using multi-resource quota check
-    const requested: MultiResourceQuotaVector = {
-      worker_concurrency: input.requestedUnits,
-      tool_qps: 0,
-      model_tpm: 0,
-      model_rpm: 0,
-      budget_amount: 0,
-      approval_capacity: 0,
-      storage_io: 0,
-      promotion_budget: 0,
-    };
-
-    // Check tenant-scoped quota using the quota enforcer
-    const quotaDecision = this.enforceQuota("tenant", input.tenantId, requested);
-
-    // If quota check fails, reject immediately without scheduling
-    if (!quotaDecision.passed) {
-      return {
-        admitted: false,
-        victimExecutionId: null,
-        reason: `Quota exceeded: ${quotaDecision.failedDimensions.join(", ")}`,
-        queuePosition: null,
-      };
-    }
-
-    // Build the claim for fair scheduling - use actual quota limits
-    const claim: ResourceClaim = {
-      claimId: newId("claim"),
-      schedulingClass: {
-        tenantId: input.tenantId,
-        domainId: "default",
-        slaTierId: "default",
-        priority: 1,
-      },
-      requestedUnits: input.requestedUnits,
-    };
-
-    // Use fair scheduler for queue management and preemption
-    // R15-57: Check if this tenant has a dedicated pool for isolated routing
-    const dedicatedPool = this.resourcePools.getDedicatedPool(input.tenantId);
-    const isIsolatedTenant = dedicatedPool != null;
-    const dedicatedPoolId: string | null = dedicatedPool?.poolId ?? input.dedicatedPoolId ?? null;
-    const fairDecision = this.fairScheduler.schedule({
-      quotaPolicy: {
-        scope: "tenant",
-        scopeId: input.tenantId,
-        resourceType: "runtime_units",
-        hardLimit: 0, // Quota already checked above via multi-dimensional enforcement
-        currentUsage: 0,
-      },
-      claim,
-      queueItems: [],
-      preemptionCandidates: input.preemptionCandidates ?? [],
-      isIsolatedTenant,
-      dedicatedPoolId,
-    });
-
-    return {
-      admitted: !fairDecision.queue.quotaExceeded,
-      victimExecutionId: fairDecision.preemption.victimExecutionId,
-      reason: fairDecision.preemption.reason ?? "admitted",
-      queuePosition: fairDecision.queue.orderedItemIds.length > 0 ? fairDecision.queue.orderedItemIds.length : null,
-    };
-  }
-
-  // ============================================================================
-  // Tenant Lifecycle Management (R13-25 FIX)
-  // ============================================================================
-
-  // Internal state to track tenant lifecycle (since isolationMode doesn't support lifecycle states)
-  private readonly tenantLifecycleState = new Map<string, TenantLifecycleState>();
-
-  /**
-   * Suspends a tenant - pauses all active executions and prevents new ones.
-   * R13-25 FIX: Tenant lifecycle management - suspend operation.
-   *
-   * @param tenantId - Tenant to suspend
-   * @param reason - Reason for suspension
-   * @param suspendedBy - Actor performing the suspension
-   */
-  public suspendTenant(tenantId: string, reason: string, suspendedBy: string): void {
-    // Validate tenant exists
-    this.requireTenant(tenantId);
-
-    // Update internal lifecycle state
-    this.tenantLifecycleState.set(tenantId, "suspended");
-
-    // Emit suspension event for execution layer to pick up
-    this.emitTenantLifecycleEvent(tenantId, "suspended", reason, suspendedBy);
-  }
-
-  /**
-   * Deactivates a tenant - disables all capabilities but retains data.
-   * R13-25 FIX: Tenant lifecycle management - deactivate operation.
-   *
-   * @param tenantId - Tenant to deactivate
-   * @param reason - Reason for deactivation
-   * @param deactivatedBy - Actor performing the deactivation
-   */
-  public deactivateTenant(tenantId: string, reason: string, deactivatedBy: string): void {
-    // Validate tenant exists
-    this.requireTenant(tenantId);
-
-    // Update internal lifecycle state
-    this.tenantLifecycleState.set(tenantId, "deactivated");
-
-    // Clear tenant-scoped quota policies
-    this.clearTenantQuotaPolicies(tenantId);
-
-    // Emit deactivation event
-    this.emitTenantLifecycleEvent(tenantId, "deactivated", reason, deactivatedBy);
-  }
-
-  /**
-   * Decommissioned a tenant - marks for cleanup by downstream systems.
-   * R13-25 FIX: Tenant lifecycle management - decommission operation.
-   * Note: Actual record deletion is handled by downstream systems via emitted events.
-   *
-   * @param tenantId - Tenant to decommission
-   * @param reason - Reason for decommission
-   * @param decommissionedBy - Actor performing the decommission
-   */
-  public decommissionTenant(tenantId: string, reason: string, decommissionedBy: string): void {
-    // Validate tenant exists
-    this.requireTenant(tenantId);
-
-    // Update internal lifecycle state
-    this.tenantLifecycleState.set(tenantId, "decommissioned");
-
-    // Emit decommission event for downstream cleanup systems
-    this.emitTenantLifecycleEvent(tenantId, "decommissioned", reason, decommissionedBy);
-  }
-
-  /**
-   * Gets the lifecycle state of a tenant.
-   * R13-25 FIX: Tenant lifecycle state query.
-   */
-  public getTenantLifecycleState(tenantId: string): TenantLifecycleState {
-    // Check internal state first
-    const internalState = this.tenantLifecycleState.get(tenantId);
-    if (internalState) {
-      return internalState;
-    }
-
-    // Fall back to checking tenant existence
-    const tenant = this.store.organization.getTenantRecord(tenantId);
-    if (!tenant) {
-      return "decommissioned";
-    }
-    return "active";
-  }
-
-  /**
-   * Reactivates a previously suspended or deactivated tenant.
-   * R13-25 FIX: Tenant lifecycle management - reactivate operation.
-   */
-  public reactivateTenant(tenantId: string, reactivatedBy: string): void {
-    // Validate tenant exists
-    this.requireTenant(tenantId);
-
-    // Update internal lifecycle state
-    this.tenantLifecycleState.set(tenantId, "active");
-
-    // Emit reactivation event
-    this.emitTenantLifecycleEvent(tenantId, "active", "Tenant reactivated", reactivatedBy);
-  }
-
-  /**
-   * Emits a tenant lifecycle event for downstream systems.
-   */
-  private emitTenantLifecycleEvent(tenantId: string, state: TenantLifecycleState, reason: string, actor: string): void {
-    // In production, this would emit to an event bus
-    // For now, we just track it
-    const event = {
-      type: `tenant.${state}`,
-      tenantId,
-      reason,
-      actor,
-      timestamp: nowIso(),
-    };
-    // Event emission would go to event bus here
-  }
-
-  /**
-   * Clears all quota policies for a tenant.
-   */
-  private clearTenantQuotaPolicies(tenantId: string): void {
-    // In a real implementation, this would clear quota policies from the quota enforcer
-    // For now, this is a placeholder that would interact with the quota enforcer service
   }
 }

@@ -11,7 +11,6 @@ import {
 } from "../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
 import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
-import type { PlanGraphBundle, PlanNode } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import type { MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
 
 function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
@@ -25,68 +24,6 @@ function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
     timeout: 120_000,
     retryPolicy: { maxRetries: 0, backoffMs: 0 },
     ...overrides,
-  };
-}
-
-function toPlanNode(step: PlanStep): PlanNode {
-  return {
-    nodeId: step.stepId,
-    nodeType: "llm",
-    inputRefs: [],
-    outputSchemaRef: "schema:test.output",
-    riskClass: "medium",
-    budgetIntent: {
-      amount: 0,
-      currency: "USD",
-      resourceKinds: ["token"],
-    },
-    sideEffectProfile: {
-      mayCommitExternalEffect: false,
-      reversible: true,
-    },
-    retryPolicyRef: `retry:${step.retryPolicy.maxRetries}`,
-    timeoutMs: step.timeout,
-  };
-}
-
-function createPlanGraphBundle(planId: string, steps: PlanStep[]): PlanGraphBundle {
-  const dependencyIds = new Set(steps.flatMap((step) => step.dependencies));
-  return {
-    planGraphBundleId: planId,
-    harnessRunId: `harness_${planId}`,
-    graphVersion: 1,
-    graph: {
-      graphId: `graph_${planId}`,
-      nodes: steps.map(toPlanNode),
-      edges: steps.flatMap((step) =>
-        step.dependencies.map((dependencyId, index) => ({
-          edgeId: `${step.stepId}_${dependencyId}_${index}`,
-          fromNodeId: dependencyId,
-          toNodeId: step.stepId,
-          condition: true,
-          dependencyType: "hard" as const,
-        })),
-      ),
-      entryNodeIds: steps.filter((step) => step.dependencies.length === 0).map((step) => step.stepId),
-      terminalNodeIds: steps.filter((step) => !dependencyIds.has(step.stepId)).map((step) => step.stepId),
-      joinStrategy: "all",
-      graphHash: `hash_${planId}`,
-    },
-    schedulerPolicy: {
-      policyId: "scheduler:test",
-      strategy: "deterministic_fifo",
-    },
-    budgetPlanRef: `budget:${planId}`,
-    riskProfile: {
-      riskClass: "medium",
-      reasons: ["unit_test"],
-    },
-    validationReport: {
-      valid: true,
-      findings: [],
-    },
-    artifactRefs: [],
-    createdAt: "2026-04-01T00:00:00.000Z",
   };
 }
 
@@ -127,27 +64,43 @@ test("MockExecuteBridge.executeStep includes step outputs", async () => {
 
 test("MockExecuteBridge.executePlan returns results for multiple steps", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = createPlanGraphBundle("plan_test", [
-    createMockPlanStep({ stepId: "step_1", action: "action_1" }),
-    createMockPlanStep({ stepId: "step_2", action: "action_2" }),
-    createMockPlanStep({ stepId: "step_3", action: "action_3" }),
-  ]);
+  const plan = {
+    planId: "plan_test",
+    taskId: "task_123",
+    version: 1,
+    assessmentRef: "assessment_123",
+    strategy: "linear" as const,
+    steps: [
+      createMockPlanStep({ stepId: "step_1", action: "action_1" }),
+      createMockPlanStep({ stepId: "step_2", action: "action_2" }),
+      createMockPlanStep({ stepId: "step_3", action: "action_3" }),
+    ],
+    createdAt: Date.now(),
+  };
 
   const result = await bridge.executePlan(plan, { taskId: "task_123" });
 
   assert.equal(result.planId, "plan_test");
   assert.equal(result.results.length, 3);
   assert.ok(result.allSucceeded);
-  assert.equal(result.skippedNodeRunIds.length, 0);
-  assert.equal(result.failedNodeRunIds.length, 0);
+  assert.equal(result.skippedStepIds.length, 0);
+  assert.equal(result.failedStepIds.length, 0);
 });
 
 test("MockExecuteBridge.executePlan calculates totals correctly", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = createPlanGraphBundle("plan_totals", [
-    createMockPlanStep({ stepId: "step_1" }),
-    createMockPlanStep({ stepId: "step_2" }),
-  ]);
+  const plan = {
+    planId: "plan_totals",
+    taskId: "task_456",
+    version: 1,
+    assessmentRef: "assessment_456",
+    strategy: "linear" as const,
+    steps: [
+      createMockPlanStep({ stepId: "step_1" }),
+      createMockPlanStep({ stepId: "step_2" }),
+    ],
+    createdAt: Date.now(),
+  };
 
   const result = await bridge.executePlan(plan, { taskId: "task_456" });
 
@@ -163,7 +116,6 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
     planId: "plan_transform",
     results: [
       {
-        nodeRunId: "step_1",
         stepId: "step_1",
         status: "succeeded" as const,
         durationMs: 100,
@@ -179,14 +131,13 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
     totalDurationMs: 100,
     totalTokenCost: 200,
     allSucceeded: true,
-    skippedNodeRunIds: [],
-    failedNodeRunIds: [],
+    skippedStepIds: [],
+    failedStepIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
 
   assert.equal(outputs.length, 1);
-  assert.equal(outputs[0]?.nodeRunId, "step_1");
   assert.equal(outputs[0]?.stepId, "step_1");
   assert.equal(outputs[0]?.planRef, "plan_transform");
   assert.equal(outputs[0]?.userFacingResult.summary, "Step 1 completed");
@@ -195,7 +146,15 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
 
 test("MockExecuteBridge.executePlan handles empty steps", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = createPlanGraphBundle("plan_empty", []);
+  const plan = {
+    planId: "plan_empty",
+    taskId: "task_empty",
+    version: 1,
+    assessmentRef: "assessment_empty",
+    strategy: "linear" as const,
+    steps: [],
+    createdAt: Date.now(),
+  };
 
   const result = await bridge.executePlan(plan, { taskId: "task_empty" });
 
@@ -216,95 +175,6 @@ test("MockExecuteBridge.executeStep accepts ExecutionContext", async () => {
 
   assert.equal(result.stepId, "step_ctx");
   assert.equal(result.status, "succeeded");
-});
-
-test("RuntimeExecuteBridge delegates through injected runtime executor and maps outputs", async () => {
-  let capturedInput:
-    | {
-        dbPath: string;
-        planGraphBundle: PlanGraphBundle;
-        contextBudgetTokens?: number;
-      }
-    | undefined;
-
-  const bridge = new RuntimeExecuteBridge(
-    "/tmp/runtime-execute-bridge.db",
-    "MiniMax-M2.7",
-    async (input) => {
-      capturedInput = input;
-      return {
-        snapshot: {
-          executionRecord: {
-            stepOutputs: [
-              {
-                id: "sor-runtime-1",
-                stepId: "step_runtime_1",
-                taskId: "task_runtime",
-                roleId: "general_executor",
-                status: "succeeded",
-                dataJson: '{"result":"ok"}',
-                artifactsJson: '["artifact.txt"]',
-                summary: "Runtime execution completed",
-                durationMs: 75,
-                tokenCost: 120,
-                validationJson: '{"valid":true}',
-                producedAt: "2026-04-28T00:00:00.000Z",
-              },
-            ],
-          },
-        },
-      } as unknown as MultiStepOrchestrationResult;
-    },
-  );
-
-  const plan = createPlanGraphBundle("plan_runtime", [
-    createMockPlanStep({
-      stepId: "step_runtime_1",
-      action: "write_code",
-      outputs: ["artifact.txt"],
-    }),
-  ]);
-
-  const result = await bridge.executePlan(plan, {
-    taskId: "task_runtime",
-    tokenBudget: 2048,
-  });
-
-  assert.deepEqual(capturedInput, {
-    dbPath: "/tmp/runtime-execute-bridge.db",
-    planGraphBundle: plan,
-    contextBudgetTokens: 2048,
-  });
-  assert.equal(result.planId, "plan_runtime");
-  assert.equal(result.results.length, 1);
-  assert.equal(result.results[0]!.nodeRunId, "step_runtime_1");
-  assert.equal(result.results[0]!.stepId, "step_runtime_1");
-  assert.equal(result.results[0]!.summary, "Runtime execution completed");
-  assert.deepEqual(result.results[0]!.outputs, { result: "ok" });
-  assert.deepEqual(result.results[0]!.artifacts, ["artifact.txt"]);
-  assert.equal(result.totalDurationMs, 75);
-  assert.equal(result.totalTokenCost, 120);
-  assert.equal(result.allSucceeded, true);
-});
-
-test("RuntimeExecuteBridge rejects legacy Plan objects and enforces PlanGraphBundle-only contract", async () => {
-  const bridge = new RuntimeExecuteBridge(
-    "/tmp/runtime-execute-bridge.db",
-    "MiniMax-M2.7",
-    async () => {
-      throw new Error("runtime executor should not be reached for legacy plan input");
-    },
-  );
-
-  const legacyPlan = {
-    planId: "legacy-plan-1",
-    steps: [],
-  };
-
-  await assert.rejects(
-    () => bridge.executePlan(legacyPlan as unknown as PlanGraphBundle, { taskId: "task_legacy" }),
-    /legacy Plan type/i,
-  );
 });
 
 // ---------------------------------------------------------------------------
@@ -329,7 +199,6 @@ test("mapStepOutputRecord parses dataJson successfully", () => {
 
   const result = mapStepOutputRecord(record);
 
-  assert.equal(result.nodeRunId, "step_1");
   assert.equal(result.stepId, "step_1");
   assert.equal(result.status, "succeeded");
   assert.deepEqual(result.outputs, { key: "value", count: 42 });
@@ -363,30 +232,6 @@ test("mapStepOutputRecord handles invalid dataJson gracefully", () => {
   assert.deepEqual(result.outputs, {});
   assert.deepEqual(result.artifacts, []);
   assert.equal(result.validationPassed, false);
-});
-
-test("mapStepOutputRecord prefers nodeRunId over legacy stepId", () => {
-  const record: StepOutputRecord = {
-    id: "sor_node_run",
-    nodeRunId: "node_run_primary",
-    stepId: "legacy_step_alias",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "failed",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: null,
-    durationMs: 25,
-    tokenCost: 40,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.nodeRunId, "node_run_primary");
-  assert.equal(result.stepId, "legacy_step_alias");
-  assert.equal(result.summary, "Step node_run_primary failed");
 });
 
 test("mapStepOutputRecord handles invalid artifactsJson gracefully", () => {
@@ -598,7 +443,6 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
     planId: "plan_transform_test",
     results: [
       {
-        nodeRunId: "step_1",
         stepId: "step_1",
         status: "succeeded" as const,
         durationMs: 100,
@@ -611,7 +455,6 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
         validationPassed: true,
       },
       {
-        nodeRunId: "step_2",
         stepId: "step_2",
         status: "failed" as const,
         durationMs: 50,
@@ -627,8 +470,8 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
     totalDurationMs: 150,
     totalTokenCost: 300,
     allSucceeded: false,
-    skippedNodeRunIds: [],
-    failedNodeRunIds: ["step_2"],
+    skippedStepIds: [],
+    failedStepIds: ["step_2"],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
@@ -636,7 +479,6 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
   assert.equal(outputs.length, 2);
 
   // First step - succeeded
-  assert.equal(outputs[0]!.nodeRunId, "step_1");
   assert.equal(outputs[0]!.stepId, "step_1");
   assert.equal(outputs[0]!.planRef, "plan_transform_test");
   assert.equal(outputs[0]!.userFacingResult.summary, "Step 1 completed");
@@ -649,7 +491,6 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
   assert.equal(outputs[0]!.systemTelemetry.validationPassed, true);
 
   // Second step - failed
-  assert.equal(outputs[1]!.nodeRunId, "step_2");
   assert.equal(outputs[1]!.stepId, "step_2");
   assert.equal(outputs[1]!.userFacingResult.summary, "Step 2 failed");
   assert.equal(outputs[1]!.systemTelemetry.validationPassed, false);
@@ -663,8 +504,8 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs handles empty results", () =
     totalDurationMs: 0,
     totalTokenCost: 0,
     allSucceeded: true,
-    skippedNodeRunIds: [],
-    failedNodeRunIds: [],
+    skippedStepIds: [],
+    failedStepIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
@@ -672,602 +513,34 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs handles empty results", () =
   assert.equal(outputs.length, 0);
 });
 
-test("serialiseOapeflirPlan serializes step metadata correctly", () => {
-  const steps: PlanStep[] = [
-    createMockPlanStep({
-      stepId: "step_with_inputs",
-      action: "compute_action",
-      title: "Compute Step",
-      inputs: { param1: "value1", param2: 42 },
-      outputs: ["result_file"],
-      dependencies: ["dep_step"],
-      timeout: 60_000,
-    }),
-  ];
-
-  const result = serialiseOapeflirPlan(steps);
-
-  assert.ok(result.startsWith("oapeflir://plan "));
-  const parsed = JSON.parse(result.slice("oapeflir://plan ".length));
-  assert.equal(parsed[0].stepId, "step_with_inputs");
-  assert.equal(parsed[0].action, "compute_action");
-  assert.equal(parsed[0].title, "Compute Step");
-  assert.deepEqual(parsed[0].inputs, { param1: "value1", param2: 42 });
-  assert.deepEqual(parsed[0].outputs, ["result_file"]);
-  assert.deepEqual(parsed[0].dependencies, ["dep_step"]);
-  assert.equal(parsed[0].timeout, 60_000);
-});
-
-test("serialiseOapeflirPlan preserves retryPolicy in serialized output", () => {
-  const steps: PlanStep[] = [
-    createMockPlanStep({
-      stepId: "step_retry",
-      retryPolicy: { maxRetries: 3, backoffMs: 500 },
-    }),
-  ];
-
-  const result = serialiseOapeflirPlan(steps);
-  const parsed = JSON.parse(result.slice("oapeflir://plan ".length));
-
-  assert.deepEqual(parsed[0].retryPolicy, { maxRetries: 3, backoffMs: 500 });
-});
-
-test("serialiseOapeflirPlan handles multiple steps with all fields", () => {
-  const steps: PlanStep[] = [
-    createMockPlanStep({
-      stepId: "step_a",
-      action: "action_a",
-      inputs: { x: 1 },
-      dependencies: [],
-    }),
-    createMockPlanStep({
-      stepId: "step_b",
-      action: "action_b",
-      inputs: { y: 2 },
-      dependencies: ["step_a"],
-    }),
-    createMockPlanStep({
-      stepId: "step_c",
-      action: "action_c",
-      inputs: { z: 3 },
-      dependencies: ["step_a", "step_b"],
-    }),
-  ];
-
-  const result = serialiseOapeflirPlan(steps);
-  const parsed = JSON.parse(result.slice("oapeflir://plan ".length));
-
-  assert.equal(parsed.length, 3);
-  assert.deepEqual(parsed[1].dependencies, ["step_a"]);
-  assert.deepEqual(parsed[2].dependencies, ["step_a", "step_b"]);
-});
-
-// ---------------------------------------------------------------------------
-// RuntimeExecuteBridge.executePlan with mocked orchestrator
-// ---------------------------------------------------------------------------
-
-test("RuntimeExecuteBridge.executePlan calls runMultiStepOrchestration with serialized plan", async () => {
-  let callCount = 0;
-  let capturedInput: any = null;
-
-  const mockModule = await import("../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js");
-  const { RuntimeExecuteBridge: RealRuntimeExecuteBridge } = mockModule;
-
-  // Create bridge and intercept the dynamic import
-  const bridge = new RealRuntimeExecuteBridge("/fake/db/path");
-
-  // We'll test by creating a plan and checking that executePlan
-  // would call runMultiStepOrchestration with the right request format
-  // Since we cannot easily intercept the dynamic import, we test the
-  // serialisation side and trust the integration is correct
-
-  const steps: PlanStep[] = [
-    createMockPlanStep({ stepId: "plan_step_1", action: "test" }),
-  ];
-
-  const plan = createPlanGraphBundle("plan_exec_test", steps);
-
-  // The request format must be the oapeflir URL format
-  const { serialiseOapeflirPlan } = mockModule;
-  const request = serialiseOapeflirPlan(plan.graph.nodes);
-  assert.ok(request.startsWith("oapeflir://plan "));
-  const parsedSteps = JSON.parse(request.slice("oapeflir://plan ".length));
-  assert.equal(parsedSteps.length, 1);
-  assert.equal(parsedSteps[0].nodeId, "plan_step_1");
-
-  callCount++;
-  assert.ok(callCount > 0);
-});
-
-test("RuntimeExecuteBridge.executePlan includes tokenBudget in orchestrator input when provided", () => {
-  // This test verifies the bridge passes context.tokenBudget correctly
-  // We verify through the type signature that contextBudgetTokens is optional
-  // and only set when tokenBudget is not null/undefined
-
-  const steps: PlanStep[] = [
-    createMockPlanStep({ stepId: "budget_step", action: "budget_test" }),
-  ];
-
-  const plan = createPlanGraphBundle("plan_budget", steps);
-
-  // Verify plan structure is valid for execution
-  assert.ok(plan.graph.nodes.length === 1);
-  assert.ok(steps[0].stepId === "budget_step");
-});
-
-test("RuntimeExecuteBridge.executeStep wraps single step in temporary plan", async () => {
-  // executeStep should call executePlan with a single-step plan
-  // having planId "plan_<stepId>"
-  const { MockExecuteBridge } = await import("../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js");
-
-  const bridge = new MockExecuteBridge();
-  const step = createMockPlanStep({ stepId: "single_step_wrap", action: "wrap_test" });
-
-  const result = await bridge.executeStep(step, { taskId: "task_wrap" });
-
-  assert.equal(result.stepId, "single_step_wrap");
-  assert.equal(result.status, "succeeded");
-});
-
-// ---------------------------------------------------------------------------
-// Error propagation tests
-// ---------------------------------------------------------------------------
-
-test("mapStepOutputRecord handles partial_success status as failed", () => {
-  const record: StepOutputRecord = {
-    id: "sor_partial",
-    stepId: "step_partial",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "partial_success",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: "Partial completion",
-    durationMs: 80,
-    tokenCost: 100,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  // partial_success is not "succeeded" or "skipped", so it becomes "failed"
-  assert.equal(result.status, "failed");
-});
-
-test("mapStepOutputRecord handles null artifactsJson gracefully", () => {
-  const record: StepOutputRecord = {
-    id: "sor_null_art",
-    stepId: "step_null_art",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: '{"data":true}',
-    artifactsJson: null,
-    summary: "No artifacts",
-    durationMs: 50,
-    tokenCost: 100,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.deepEqual(result.outputs, { data: true });
-  assert.deepEqual(result.artifacts, []);
-});
-
-test("mapToDualChannelStepOutputs handles multiple records with mixed status", () => {
-  const records: StepOutputRecord[] = [
-    {
-      id: "sor_multi_1",
-      stepId: "step_multi_1",
-      taskId: "task_1",
-      roleId: "agent",
-      status: "succeeded",
-      dataJson: "{}",
-      artifactsJson: null,
-      summary: "Success",
-      durationMs: 100,
-      tokenCost: 200,
-      validationJson: null,
-      producedAt: "2026-04-01T00:00:00.000Z",
-    },
-    {
-      id: "sor_multi_2",
-      stepId: "step_multi_2",
-      taskId: "task_1",
-      roleId: "agent",
-      status: "failed",
-      dataJson: "{}",
-      artifactsJson: null,
-      summary: "Failed",
-      durationMs: 50,
-      tokenCost: 100,
-      validationJson: null,
-      producedAt: "2026-04-01T00:00:00.000Z",
-    },
-    {
-      id: "sor_multi_3",
-      stepId: "step_multi_3",
-      taskId: "task_1",
-      roleId: "agent",
-      status: "skipped",
-      dataJson: "{}",
-      artifactsJson: null,
-      summary: "Skipped",
-      durationMs: 0,
-      tokenCost: 0,
-      validationJson: null,
-      producedAt: "2026-04-01T00:00:00.000Z",
-    },
-  ];
-
-  const result = mapToDualChannelStepOutputs(records, "plan_multi");
-
-  assert.equal(result.length, 3);
-  assert.equal(result[0]!.stepId, "step_multi_1");
-  assert.equal(result[1]!.stepId, "step_multi_2");
-  assert.equal(result[2]!.stepId, "step_multi_3");
-  assert.equal(result[0]!.systemTelemetry.validationPassed, false);
-  assert.equal(result[1]!.systemTelemetry.validationPassed, false);
-});
-
-test("extractStepOutputRecords handles snapshot with undefined executionRecord", () => {
-  const result = extractStepOutputRecords({
-    snapshot: { task: {} } as any,
-    streamFrames: [],
-    routing: null as any,
-    plannedWorkflow: null as any,
-    compaction: null,
-  });
-
-  assert.deepEqual(result, []);
-});
-
-test("extractStepOutputRecords handles snapshot with null executionRecord", () => {
-  const result = extractStepOutputRecords({
-    snapshot: { task: {} as any, executionRecord: null },
-    streamFrames: [],
-    routing: null as any,
-    plannedWorkflow: null as any,
-    compaction: null,
-  });
-
-  assert.deepEqual(result, []);
-});
-
-test("RuntimeExecuteBridge.toDualChannelStepOutputs maps failed step status correctly", () => {
+test("RuntimeExecuteBridge.toDualChannelStepOutputs adds artifact prefix", () => {
   const bridge = new RuntimeExecuteBridge("/fake/db/path");
   const executionResult = {
-    planId: "plan_failed",
+    planId: "plan_artifacts",
     results: [
       {
-        nodeRunId: "step_fail",
-        stepId: "step_fail",
-        status: "failed" as const,
-        durationMs: 75,
-        tokenCost: 150,
-        summary: "Step failed due to error",
-        outputs: { error: "something went wrong" },
-        artifacts: [],
-        modelId: "MiniMax-M2.7",
-        retryCount: 2,
-        validationPassed: false,
-      },
-    ],
-    totalDurationMs: 75,
-    totalTokenCost: 150,
-    allSucceeded: false,
-    skippedNodeRunIds: [],
-    failedNodeRunIds: ["step_fail"],
-  };
-
-  const outputs = bridge.toDualChannelStepOutputs(executionResult);
-
-  assert.equal(outputs.length, 1);
-  assert.equal(outputs[0]!.nodeRunId, "step_fail");
-  assert.equal(outputs[0]!.stepId, "step_fail");
-  assert.equal(outputs[0]!.userFacingResult.summary, "Step failed due to error");
-  assert.equal(outputs[0]!.systemTelemetry.retryCount, 2);
-  assert.equal(outputs[0]!.systemTelemetry.validationPassed, false);
-});
-
-test("RuntimeExecuteBridge.toDualChannelStepOutputs maps skipped step status correctly", () => {
-  const bridge = new RuntimeExecuteBridge("/fake/db/path");
-  const executionResult = {
-    planId: "plan_skipped",
-    results: [
-      {
-        nodeRunId: "step_skip",
-        stepId: "step_skip",
-        status: "skipped" as const,
-        durationMs: 0,
-        tokenCost: 0,
-        summary: "Step skipped",
+        stepId: "step_art",
+        status: "succeeded" as const,
+        durationMs: 100,
+        tokenCost: 200,
+        summary: "Done",
         outputs: {},
-        artifacts: [],
-        modelId: "MiniMax-M2.7",
+        artifacts: ["file.txt", "data.json"],
+        modelId: "runtime",
         retryCount: 0,
         validationPassed: true,
       },
     ],
-    totalDurationMs: 0,
-    totalTokenCost: 0,
-    allSucceeded: false,
-    skippedNodeRunIds: ["step_skip"],
-    failedNodeRunIds: [],
+    totalDurationMs: 100,
+    totalTokenCost: 200,
+    allSucceeded: true,
+    skippedStepIds: [],
+    failedStepIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
 
-  assert.equal(outputs.length, 1);
-  assert.equal(outputs[0]!.nodeRunId, "step_skip");
-  assert.equal(outputs[0]!.stepId, "step_skip");
-  assert.equal(outputs[0]!.systemTelemetry.durationMs, 0);
-  assert.equal(outputs[0]!.systemTelemetry.tokensUsed, 0);
-});
-
-// ---------------------------------------------------------------------------
-// Plan execution totals aggregation
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// MockExecuteBridge.executePlan - missing result handling
-// ---------------------------------------------------------------------------
-
-test("MockExecuteBridge.executePlan result has correct structure for aggregation", async () => {
-  const bridge = new MockExecuteBridge();
-  const plan = createPlanGraphBundle("plan_agg", [
-    createMockPlanStep({ stepId: "agg_1" }),
-    createMockPlanStep({ stepId: "agg_2" }),
-    createMockPlanStep({ stepId: "agg_3" }),
-  ]);
-
-  const result = await bridge.executePlan(plan, { taskId: "task_agg" });
-
-  // Verify aggregation fields exist and have correct types
-  assert.equal(typeof result.totalDurationMs, "number");
-  assert.equal(typeof result.totalTokenCost, "number");
-  assert.equal(typeof result.allSucceeded, "boolean");
-  assert.equal(typeof result.skippedNodeRunIds, "object");
-  assert.equal(typeof result.failedNodeRunIds, "object");
-});
-
-test("MockExecuteBridge.executeStep returns result matching StepResult interface", async () => {
-  const bridge = new MockExecuteBridge();
-  const step = createMockPlanStep({ stepId: "step_interface", action: "test_action" });
-
-  const result = await bridge.executeStep(step, { taskId: "task_interface" });
-
-  // Verify all StepResult fields are present
-  assert.equal(typeof result.stepId, "string");
-  assert.equal(typeof result.status, "string");
-  assert.equal(typeof result.durationMs, "number");
-  assert.equal(typeof result.tokenCost, "number");
-  assert.equal(typeof result.summary, "string");
-  assert.equal(typeof result.outputs, "object");
-  assert.equal(typeof result.artifacts, "object");
-  assert.equal(typeof result.modelId, "string");
-  assert.equal(typeof result.retryCount, "number");
-  assert.equal(typeof result.validationPassed, "boolean");
-
-  // Status should be one of the allowed values
-  assert.ok(["succeeded", "failed", "skipped"].includes(result.status));
-});
-
-test("mapStepOutputRecord sets modelId to runtime always", () => {
-  const record: StepOutputRecord = {
-    id: "sor_model",
-    stepId: "step_model",
-    taskId: "task_1",
-    roleId: "supervisor",
-    status: "succeeded",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: "Done",
-    durationMs: 100,
-    tokenCost: 200,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.modelId, "runtime");
-});
-
-test("mapToDualChannelStepOutputs adds artifact prefix to all artifacts", () => {
-  const records: StepOutputRecord[] = [
-    {
-      id: "sor_prefix",
-      stepId: "step_prefix",
-      taskId: "task_1",
-      roleId: "agent",
-      status: "succeeded",
-      dataJson: "{}",
-      artifactsJson: '["file_a.txt","file_b.log","file_c.csv"]',
-      summary: "Multiple artifacts",
-      durationMs: 100,
-      tokenCost: 200,
-      validationJson: null,
-      producedAt: "2026-04-01T00:00:00.000Z",
-    },
-  ];
-
-  const result = mapToDualChannelStepOutputs(records, "plan_prefix");
-
-  assert.equal(result.length, 1);
-  assert.equal(result[0]!.userFacingResult.artifacts.length, 3);
-  assert.ok(result[0]!.userFacingResult.artifacts.includes("artifact:file_a.txt"));
-  assert.ok(result[0]!.userFacingResult.artifacts.includes("artifact:file_b.log"));
-  assert.ok(result[0]!.userFacingResult.artifacts.includes("artifact:file_c.csv"));
-});
-
-// ---------------------------------------------------------------------------
-// Edge cases for error propagation
-// ---------------------------------------------------------------------------
-
-test("mapStepOutputRecord handles empty dataJson string", () => {
-  const record: StepOutputRecord = {
-    id: "sor_empty",
-    stepId: "step_empty",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "",
-    artifactsJson: null,
-    summary: "Empty data",
-    durationMs: 10,
-    tokenCost: 50,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.deepEqual(result.outputs, {});
-});
-
-test("mapStepOutputRecord handles whitespace-only dataJson", () => {
-  const record: StepOutputRecord = {
-    id: "sor_ws",
-    stepId: "step_ws",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "   ",
-    artifactsJson: null,
-    summary: "Whitespace",
-    durationMs: 10,
-    tokenCost: 50,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.deepEqual(result.outputs, {});
-});
-
-test("mapStepOutputRecord handles artifactsJson with empty array", () => {
-  const record: StepOutputRecord = {
-    id: "sor_empty_art",
-    stepId: "step_empty_art",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "{}",
-    artifactsJson: "[]",
-    summary: "No artifacts",
-    durationMs: 50,
-    tokenCost: 100,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.deepEqual(result.artifacts, []);
-});
-
-test("mapStepOutputRecord handles validationJson present", () => {
-  const record: StepOutputRecord = {
-    id: "sor_valid",
-    stepId: "step_valid",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: "Validated",
-    durationMs: 100,
-    tokenCost: 200,
-    validationJson: '{"valid":true,"schema":"output-schema-v1"}',
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.validationPassed, true);
-});
-
-test("mapStepOutputRecord treats malformed validationJson as failed validation", () => {
-  const record: StepOutputRecord = {
-    id: "sor_invalid_validation",
-    stepId: "step_invalid_validation",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: "Invalid validation payload",
-    durationMs: 100,
-    tokenCost: 200,
-    validationJson: '{"valid": tru',
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.validationPassed, false);
-});
-
-test("mapStepOutputRecord uses fallback summary for succeeded status", () => {
-  const record: StepOutputRecord = {
-    id: "sor_no_sum_suc",
-    stepId: "step_suc_fallback",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "succeeded",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: null,
-    durationMs: 100,
-    tokenCost: 200,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.summary, "Step step_suc_fallback succeeded");
-});
-
-test("mapStepOutputRecord uses fallback summary for skipped status", () => {
-  const record: StepOutputRecord = {
-    id: "sor_no_sum_skip",
-    stepId: "step_skip_fallback",
-    taskId: "task_1",
-    roleId: "agent",
-    status: "skipped",
-    dataJson: "{}",
-    artifactsJson: null,
-    summary: null,
-    durationMs: 0,
-    tokenCost: 0,
-    validationJson: null,
-    producedAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const result = mapStepOutputRecord(record);
-
-  assert.equal(result.summary, "Step step_skip_fallback skipped");
-});
-
-test("MockExecuteBridge.executePlan marks allSucceeded false when steps have mixed results", async () => {
-  // MockExecuteBridge always returns succeeded, but the type allows
-  // us to verify the aggregation logic
-  const bridge = new MockExecuteBridge();
-  const plan = createPlanGraphBundle("plan_mixed", [
-    createMockPlanStep({ stepId: "mixed_1" }),
-    createMockPlanStep({ stepId: "mixed_2" }),
-  ]);
-
-  const result = await bridge.executePlan(plan, { taskId: "task_mixed" });
-
-  // Mock always succeeds all steps
-  assert.ok(result.allSucceeded);
-  assert.equal(result.failedNodeRunIds.length, 0);
-  assert.equal(result.skippedNodeRunIds.length, 0);
+  assert.equal(outputs[0]!.userFacingResult.artifacts.length, 2);
+  assert.ok(outputs[0]!.userFacingResult.artifacts.includes("artifact:file.txt"));
+  assert.ok(outputs[0]!.userFacingResult.artifacts.includes("artifact:data.json"));
 });

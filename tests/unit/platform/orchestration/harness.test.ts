@@ -12,7 +12,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.default"],
     approvalMode: "supervised",
     autonomyMode: "supervised",
-    tool_policy: {
+    toolPolicy: {
       allowedTools: ["read", "summarize"],
     },
     risk_policy: {
@@ -22,15 +22,6 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     output_policy: {
       requiredEvidence: ["risk_profile"],
       redactSensitiveData: true,
-    },
-    sandboxRequirement: {
-      sandboxMode: "none",
-      timeoutMs: 60000,
-    },
-    approvalRequirement: {
-      requiredForRiskClass: ["low", "medium", "high", "critical"],
-      approverRoles: ["admin"],
-      escalationTimeoutMs: 60000,
     },
     budget: {
       maxSteps: 8,

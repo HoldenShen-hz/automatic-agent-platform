@@ -23,7 +23,7 @@ export function buildControlPlaneBootstrap(): ControlPlaneBootstrap {
 }
 
 export function registerControlPlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ControlPlaneBootstrap {
   registry.register<readonly ControlPlaneCapabilityBaseline[]>(CONTROL_PLANE_CATALOG_SERVICE_ID, {
     init: () => listControlPlaneCapabilityBaselines(),

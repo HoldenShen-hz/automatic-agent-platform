@@ -12,13 +12,7 @@ test("ComplianceFrameworkSchema parses valid framework", () => {
     type: "soc2",
     displayName: "Custom Framework",
     controlIds: ["ctrl1", "ctrl2"],
-    auditRequirements: [
-      {
-        frequency: "monthly",
-        evidenceType: "attestation",
-        retentionPeriod: 365,
-      },
-    ],
+    auditRequirements: ["attestation"],
     reportTemplate: "custom_template",
     minimumPolicies: { enabled: true },
   };
@@ -29,11 +23,7 @@ test("ComplianceFrameworkSchema parses valid framework", () => {
   assert.strictEqual(result.type, "soc2");
   assert.strictEqual(result.displayName, "Custom Framework");
   assert.deepStrictEqual(result.controlIds, ["ctrl1", "ctrl2"]);
-  assert.deepStrictEqual(result.auditRequirements, [{
-    frequency: "monthly",
-    evidenceType: "attestation",
-    retentionPeriod: 365,
-  }]);
+  assert.deepStrictEqual(result.auditRequirements, ["attestation"]);
   assert.strictEqual(result.reportTemplate, "custom_template");
   assert.deepStrictEqual(result.minimumPolicies, { enabled: true });
 });
@@ -96,7 +86,7 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains SOX framework", () => {
   assert.ok(sox.controlIds.includes("access_review"));
   assert.ok(sox.controlIds.includes("approval_segregation"));
   assert.ok(sox.controlIds.includes("audit_retention"));
-  assert.ok(sox.auditRequirements.some((item) => item.evidenceType === "access_review_log"));
+  assert.ok(sox.auditRequirements.includes("quarterly_access_review"));
   assert.strictEqual(sox.reportTemplate, "sox_control_attestation");
   assert.strictEqual(sox.minimumPolicies.segregationOfDuties, true);
   assert.strictEqual(sox.minimumPolicies.auditRetentionDays, 2555);
@@ -112,7 +102,7 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains HIPAA framework", () => {
   assert.ok(hipaa.controlIds.includes("phi_access"));
   assert.ok(hipaa.controlIds.includes("minimum_necessary"));
   assert.ok(hipaa.controlIds.includes("encryption_required"));
-  assert.ok(hipaa.auditRequirements.some((item) => item.evidenceType === "phi_access_log"));
+  assert.ok(hipaa.auditRequirements.includes("phi_access_log"));
   assert.strictEqual(hipaa.reportTemplate, "hipaa_phi_control_report");
   assert.strictEqual(hipaa.minimumPolicies.dataClassification, "restricted");
   assert.strictEqual(hipaa.minimumPolicies.encryptionRequired, true);
@@ -128,7 +118,7 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains PCI DSS framework", () => {
   assert.ok(pci.controlIds.includes("network_segmentation"));
   assert.ok(pci.controlIds.includes("key_rotation"));
   assert.ok(pci.controlIds.includes("payment_audit"));
-  assert.ok(pci.auditRequirements.some((item) => item.evidenceType === "cardholder_data_scan"));
+  assert.ok(pci.auditRequirements.includes("cardholder_data_scan"));
   assert.strictEqual(pci.reportTemplate, "pci_dss_attestation");
   assert.strictEqual(pci.minimumPolicies.cardDataIsolation, true);
   assert.strictEqual(pci.minimumPolicies.keyRotationDays, 90);
@@ -145,7 +135,7 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains GDPR framework", () => {
   assert.ok(gdpr.controlIds.includes("erasure"));
   assert.ok(gdpr.controlIds.includes("residency"));
   assert.ok(gdpr.controlIds.includes("consent_audit"));
-  assert.ok(gdpr.auditRequirements.some((item) => item.evidenceType === "lawful_basis_register"));
+  assert.ok(gdpr.auditRequirements.includes("lawful_basis_register"));
   assert.strictEqual(gdpr.reportTemplate, "gdpr_data_governance_report");
   assert.strictEqual(gdpr.minimumPolicies.erasureWorkflowRequired, true);
   assert.strictEqual(gdpr.minimumPolicies.residencyAwareProcessing, true);
@@ -158,11 +148,11 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS includes SOC2 and PIPL canonical types", () 
 
   assert.ok(soc2);
   assert.strictEqual(soc2.type, "soc2");
-  assert.ok(soc2.auditRequirements.some((item) => item.evidenceType === "control_owner_attestation"));
+  assert.ok(soc2.auditRequirements.includes("control_owner_attestation"));
 
   assert.ok(pipl);
   assert.strictEqual(pipl.type, "pipl");
-  assert.ok(pipl.auditRequirements.some((item) => item.evidenceType === "cross_border_transfer_register"));
+  assert.ok(pipl.auditRequirements.includes("cross_border_transfer_register"));
 });
 
 test("DEFAULT_COMPLIANCE_FRAMEWORKS frameworks are readonly", () => {

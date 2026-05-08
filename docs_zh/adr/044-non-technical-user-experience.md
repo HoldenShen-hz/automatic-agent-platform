@@ -11,17 +11,12 @@
 
 ### 用户角色
 
-| 角色 | 说明 | 界面 | §46 OrgNode hierarchy 对齐 |
-|------|------|------|----------------------------|
-| seat | 个人用户/业务操作者 | 简化界面 | §46.1 OrgNodeType.seat |
-| team_member | 团队成员 | 标准视图 | §46.1 OrgNodeType.team |
-| team_lead | 团队负责人 | 管理视图 | §46.1 OrgNodeType.team（leader 权限） |
-| department_head | 部门负责人 | 部门视图 | §46.1 OrgNodeType.department |
-| division_head | 事业部负责人 | 事业部视图 | §46.1 OrgNodeType.division |
-| executive | 高管 | 报表视图 | §46.1 OrgNodeType.division/company |
-| admin | 平台管理员 | 全功能界面 | §46.1 OrgNodeType.company/tenant |
-
-注：用户角色体系应与 §46 OrgNode hierarchy 对齐——OrgNodeType enum 包括：company / division / department / team / seat（见 §46.1）。用户身份映射到 OrgNode，权限继承按 OrgTree 向上查找。业务操作者（seat）在团队（team）内作业；团队负责人（team_lead）在部门（department）内管理；部门负责人（department_head）跨部门协调；高管（executive）对应事业部或公司层级视图；平台管理员（admin）对应 company/tenant 层级。
+| 角色 | 说明 | 界面 |
+|------|------|------|
+| business_operator | 业务操作者 | 简化界面 |
+| team_lead | 团队负责人 | 管理视图 |
+| executive | 高管 | 报表视图 |
+| admin | 管理员 | 全功能界面 |
 
 ### 简化交互模式
 

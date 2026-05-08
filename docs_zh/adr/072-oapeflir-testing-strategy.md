@@ -15,47 +15,48 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Golden / E2E Tests                        │
-│   (tests/golden/harness-run-*.test.ts 等)                   │
+│   (tests/golden/oapeflir-happy-path.test.ts 等)             │
 ├─────────────────────────────────────────────────────────────┤
 │                   Integration Tests                          │
-│   (tests/integration/platform/orchestration/*.test.ts 等)   │
+│   (tests/integration/oapeflir-loop-integration.test.ts 等)  │
 ├─────────────────────────────────────────────────────────────┤
 │                    Unit Tests                                │
 │   (tests/unit/{module}/*.test.ts)                           │
 ├─────────────────────────────────────────────────────────────┤
-│          Invariants / Docs / Targeted Risk Checks           │
-│   (tests/invariants/*.test.ts, tests/unit/docs/*.test.ts)   │
+│               Security / Chaos / Performance                │
+│   (tests/security/, tests/chaos/, tests/performance/)       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. 新模块测试矩阵（v4.3 runtime 模块结构）
+### 2. 新模块测试矩阵
 
 | 模块 | 单元测试 | 集成测试 | Golden | 安全 | 预估用例 |
 |------|---------|---------|--------|------|---------|
-| `platform/interface/` | API gateway, ingress, scheduler | intake→admission→projection 联调 | harness-run happy path | handoff 信息泄露 | ~120 |
-| `platform/control-plane/` | IAM, config-center, approval-center | control-plane→orchestration | linear plan happy path | — | ~80 |
-| `platform/orchestration/` | OAPEFLIR, routing, planner, HITL | plan→execute 集成 | — | autonomy boundary | ~60 |
-| `platform/execution/` | dispatcher, execution-engine, recovery, worker-pool | execution→state-evidence | failure pattern golden | — | ~80 |
-| `platform/state-evidence/` | truth, events, checkpoints, artifacts | truth→events 传递 | canary→stable golden | source pollution | ~100 |
-| `domains/` | domain-registry, plugin-spi | 插件加载→执行 | retrieval accuracy golden | config injection | ~150 |
-| `interaction/` | NL entry, goal decomposition | 摄取→检索 E2E | — | — | ~40 |
+| `agent-loop/` | run() 循环完整性, assess, handoff | 8 阶段联调 | O→A→P→E→F happy path | handoff 信息泄露 | ~120 |
+| `planning/` | plan-builder, DAG validator, replanning, strategy selector | plan→execute 集成 | linear plan happy path | — | ~80 |
+| `feedback/` | signal-preprocessor (去重/关联/过滤), collector, event-consumer | feedback→learning 传递 | — | — | ~60 |
+| `learning/` | 4 detector, learning-object-validator, experience-distillation | learn→improve 传递 | failure pattern golden | — | ~80 |
+| `improvement/` | rollout-state-machine, rollout-scheduler, auto-rollback, guardrail | rollout 完整流程 | canary→stable golden | autonomy boundary | ~100 |
+| `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | 摄取→检索 E2E | retrieval accuracy golden | source pollution | ~150 |
+| `domain-registry/` | plugin-spi-registry, plugin-runtime-host, domain-registry-service | 插件加载→执行 | — | config injection | ~100 |
+| `plugins/` | github-adapter, basic-planner, coding-retriever | 插件注册→调用 | — | — | ~40 |
 | **合计** | | | | | **~730** |
 
 ### 3. E2E 测试设计（5 个核心测试）
 
-#### Test 1: Runtime Happy Path
+#### Test 1: Happy Path
 ```
 输入: "modify foo.ts bar function"
-验证: intake → admission → `HarnessRun` / `NodeRun` / `NodeAttemptReceipt` 全链路
-验证: canonical contract 通过 schema 校验
+验证: O→A→P→E→F→L→I(shadow) 全链路
+验证: 每阶段 DTO 通过 Zod 校验
 验证: `oapeflir.view.*` 阶段视图连续，且不替代 runtime truth
 验证: <60s E2E 延迟
 ```
 
-#### Test 2: Runtime Failure Drives Learn
+#### Test 2: Execution 失败触发 Learn
 ```
 输入: 无效文件路径（必定失败）
-验证: `NodeRun` 失败后，feedback / learn 视图能回链到同一 `harnessRunId`
+验证: Execute 失败 → Feedback → Learn 产出 FailurePattern
 验证: FailurePattern 有 evidence 链接
 ```
 
@@ -66,7 +67,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 验证: 新 `GraphPatch` 从失败 `NodeRun` 后继续
 ```
 
-#### Test 4: Release Gate Progression
+#### Test 4: Canary 升级流程
 ```
 输入: 已有 LearningObject → ImprovementCandidate
 验证: shadow → canary_5 → partial_25 → stable 完整流程
@@ -81,28 +82,21 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 验证: FactLayer 无敏感信息泄露
 ```
 
-### 4. 性能目标与专用基准落地点
+### 4. 性能基准目标
 
 ## v4.3 ADR Remediation
 
 - A-66: 本 ADR 原先把 OAPEFLIR 测试描述成“无阶段被跳过”的可执行主链，并使用“失败步骤后继续”表述 replan，根因是测试策略 ADR 把认知阶段视图和 runtime 执行图混在了一起。修复：正文现把 OAPEFLIR 限定为 view 连续性验证，把恢复/重规划锚点切到 `GraphPatch / NodeRun`。
-- R8-74: 测试目标已改写为 `HarnessRun / NodeRun / NodeAttemptReceipt` truth + `oapeflir.view.*` 投影连续性，不再把 OAPEFLIR 本身表述为独立执行管线。
-- R16-94: 本 ADR 之前把 `tests/security/`、`tests/chaos/`、`tests/performance/` 写成既有目录，根因是把规划中的专项测试资产误写成已落地事实。修复：正文现在只把 `tests/unit/`、`tests/integration/`、`tests/golden/`、`tests/e2e/`、`tests/invariants/` 作为现存权威测试根；专项性能/安全/混沌套件只能在目录和 CI 真正落地后再宣称存在。
 
-| 模块 | 操作 | P99 目标 | 当前验证入口 |
-|------|------|---------|-------------|
-| Feedback | signal-preprocessor.preprocess() | <10ms | 由对应模块定向单测或后续专用基准承载 |
-| Knowledge | knowledge-query-service.query() (Quick) | <100ms | 由对应模块定向单测或后续专用基准承载 |
-| Knowledge | knowledge-retrieval.retrieve() (Standard) | <500ms | 由对应模块定向单测或后续专用基准承载 |
-| Planning | plan-builder.build() | <50ms | 由对应模块定向单测或后续专用基准承载 |
-| Runtime + OAPEFLIR View | `HarnessRun` truth 与 `oapeflir.view.*` 投影连续性 | <30s | 当前以集成测试与 `tests/invariants/` 不变量守护为主 |
-| Handoff | handoff-serializer.serialize() | <5ms | 由 handoff 相关单测与不变量测试承载 |
-| Plugin | plugin-spi-registry.invoke() | <200ms | 由 plugin SPI 相关单测与不变量测试承载 |
-
-注：
-
-- 当前仓内已存在的权威测试根只有 `tests/unit/`、`tests/integration/`、`tests/golden/`、`tests/e2e/`、`tests/invariants/`。
-- 若后续新增 dedicated `performance` / `security` / `chaos` 套件，必须连同目录、测试文件与 CI 接线一起落地，不能只在 ADR 中预声明路径。
+| 模块 | 操作 | P99 目标 | 测试文件 |
+|------|------|---------|---------|
+| Feedback | signal-preprocessor.preprocess() | <10ms | tests/performance/feedback-perf.test.ts |
+| Knowledge | knowledge-query-service.query() (Quick) | <100ms | tests/performance/knowledge-perf.test.ts |
+| Knowledge | knowledge-retrieval.retrieve() (Standard) | <500ms | tests/performance/knowledge-perf.test.ts |
+| Planning | plan-builder.build() | <50ms | tests/performance/planning-perf.test.ts |
+| OAPEFLIR | 完整循环 O→A→P→E→F | <30s | tests/performance/oapeflir-perf.test.ts |
+| Handoff | handoff-serializer.serialize() | <5ms | tests/performance/handoff-perf.test.ts |
+| Plugin | plugin-spi-registry.invoke() | <200ms | tests/performance/plugin-perf.test.ts |
 
 ### 5. 安全测试覆盖
 
@@ -140,7 +134,8 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 - 新增 `tests/unit/{module}/` 目录结构。
 - 新增 `tests/integration/` 集成测试文件。
 - 新增 `tests/golden/` Golden path 测试。
-- 可在后续单独落地 dedicated 性能/安全/混沌套件，但必须先创建真实目录、测试文件和 CI 接线后再更新 ADR。
+- 新增 `tests/performance/` 性能基准测试。
+- 新增 `tests/security/` 安全回归测试。
 - `npm test` 必须全量通过作为生产就绪门禁。
 
 ## 交叉引用
@@ -155,7 +150,3 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 - `§G3` E2E 测试设计
 - `§G4` 性能基准测试
 - `§6.1` 工业级标准
-
-## v4.3 ADR Remediation
-
-- R6-55: 修复测试矩阵对齐 v4.3 canonical runtime 模块。ADR-072 原先测试矩阵按 OAPEFLIR 模块目录组织，与 v4.3 canonical runtime 模块结构（platform/interface/、platform/control-plane/、platform/orchestration/、platform/execution/、platform/state-evidence/、domains/、interaction/）不一致。修复：正文测试矩阵已使用 v4.3 runtime 模块结构。

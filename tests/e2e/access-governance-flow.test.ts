@@ -69,7 +69,7 @@ test("E2E: access governance bridges principal context decisions into approval f
     const regulatedDecision = evaluateAuthorizationContext({
       principalType: agentProfile.principalType,
       roles: agentProfile.roles,
-      action: "invoke_model",
+      action: "write_file",
       mode: "full-auto",
       riskCategory: "sensitive_data",
       context: {
@@ -113,7 +113,7 @@ test("E2E: access governance bridges principal context decisions into approval f
     assert.equal(approvalRecord?.status, "approved");
     assert.equal(approvalResponse.selectedOptionId, "approve");
 
-    const eventTypes = harness.store.listEventsForTask("task-access-governance").events.map((event) => event.eventType);
+    const eventTypes = harness.store.listEventsForTask("task-access-governance").map((event) => event.eventType);
     assert.ok(eventTypes.includes("decision:requested"));
     assert.ok(eventTypes.includes("decision:responded"));
   } finally {

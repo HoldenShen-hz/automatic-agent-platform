@@ -6,79 +6,46 @@ import { z } from "zod";
 export const RiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 export type RiskLevel = z.infer<typeof RiskLevelSchema>;
 
-// ============================================================================
-// ADR-026 8-Factor Canonical Model
-//
-// The canonical risk model per ADR-026 §8 uses 8 weighted factors:
-//   operationRisk (w=3), targetResourceCriticality (w=3), dataSensitivity (w=3),
-//   autonomyModeRisk (w=2), tenantImpact (w=2), blastRadius (w=2),
-//   historicalFailureRate (w=2), evidenceConfidence (w=1)
-// Max possible weighted score = 18 (divisor 18 produces normalized 0-1 score).
-//
-// Legacy 6-factor model (stepTypeRisk / targetSystemRisk / dataClassRisk /
-// blastRadius / priorFailureRate / confidence) is superseded.
-// ============================================================================
-
 /**
- * Operation risk - type of operation and side effect risk per ADR-026
+ * Step type risk classification per §10.2
  */
-export const OperationRiskSchema = z.enum(["read", "write", "delete", "external_call"]);
-export type OperationRisk = z.infer<typeof OperationRiskSchema>;
+export const StepTypeRiskSchema = z.enum(["read", "write", "delete", "external_call"]);
+export type StepTypeRisk = z.infer<typeof StepTypeRiskSchema>;
 
 /**
- * Target resource criticality per ADR-026
+ * Target system classification per §10.2
  */
-export const TargetResourceCriticalitySchema = z.enum(["internal", "staging", "production"]);
-export type TargetResourceCriticality = z.infer<typeof TargetResourceCriticalitySchema>;
+export const TargetSystemRiskSchema = z.enum(["internal", "staging", "production"]);
+export type TargetSystemRisk = z.infer<typeof TargetSystemRiskSchema>;
 
 /**
- * Data sensitivity level per ADR-026
+ * Data classification per §10.2
  */
-export const DataSensitivitySchema = z.enum(["public", "internal", "confidential", "restricted"]);
-export type DataSensitivity = z.infer<typeof DataSensitivitySchema>;
+export const DataClassRiskSchema = z.enum(["public", "internal", "confidential", "restricted"]);
+export type DataClassRisk = z.infer<typeof DataClassRiskSchema>;
 
 /**
- * Autonomy mode risk - automation amplification risk per ADR-026
- */
-export const AutonomyModeRiskSchema = z.enum(["full_auto", "semi_auto", "supervised", "suggestion"]);
-export type AutonomyModeRisk = z.infer<typeof AutonomyModeRiskSchema>;
-
-/**
- * Tenant impact scope per ADR-026
- */
-export const TenantImpactSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
-export type TenantImpact = z.infer<typeof TenantImpactSchema>;
-
-/**
- * Blast radius - failure propagation radius per ADR-026
+ * Blast radius scope per §10.2
  */
 export const BlastRadiusSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
 export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
 
 /**
- * Historical failure rate per ADR-026
+ * Confidence level per §10.2
  */
-export const HistoricalFailureRateSchema = z.enum(["low", "medium", "high", "critical"]);
-export type HistoricalFailureRate = z.infer<typeof HistoricalFailureRateSchema>;
+export const ConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
+export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
 
 /**
- * Evidence confidence - sufficiency of evidence and judgment confidence per ADR-026
- */
-export const EvidenceConfidenceSchema = z.enum(["high", "medium", "low"]);
-export type EvidenceConfidence = z.infer<typeof EvidenceConfidenceSchema>;
-
-/**
- * Input factors for risk score calculation per ADR-026 8-factor model
+ * Input factors for risk score calculation per §10.2
  */
 export const RiskFactorsSchema = z.object({
-  operationRisk: OperationRiskSchema,
-  targetResourceCriticality: TargetResourceCriticalitySchema,
-  dataSensitivity: DataSensitivitySchema,
-  autonomyModeRisk: AutonomyModeRiskSchema,
-  tenantImpact: TenantImpactSchema,
+  stepTypeRisk: StepTypeRiskSchema,
+  targetSystemRisk: TargetSystemRiskSchema,
+  dataClassRisk: DataClassRiskSchema,
   blastRadius: BlastRadiusSchema,
-  historicalFailureRate: HistoricalFailureRateSchema,
-  evidenceConfidence: EvidenceConfidenceSchema,
+  priorFailureRatePercent: z.number().min(0).max(100),
+  confidence: ConfidenceLevelSchema,
 });
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 
@@ -136,32 +103,27 @@ export interface RiskEvaluationEngineOptions {
 
 /**
  * Risk configuration loaded from config/risk/default.json
- * Updated to ADR-026 8-factor canonical model
  */
 export interface RiskConfig {
   readonly factorWeights: {
-    readonly operationRisk: number;
-    readonly targetResourceCriticality: number;
-    readonly dataSensitivity: number;
-    readonly autonomyModeRisk: number;
-    readonly tenantImpact: number;
+    readonly stepTypeRisk: number;
+    readonly targetSystemRisk: number;
+    readonly dataClassRisk: number;
     readonly blastRadius: number;
-    readonly historicalFailureRate: number;
-    readonly evidenceConfidence: number;
+    readonly priorFailureRate: number;
+    readonly confidence: number;
   };
-  readonly operationRiskValues: Record<OperationRisk, number>;
-  readonly targetResourceCriticalityValues: Record<TargetResourceCriticality, number>;
-  readonly dataSensitivityValues: Record<DataSensitivity, number>;
-  readonly autonomyModeRiskValues: Record<AutonomyModeRisk, number>;
-  readonly tenantImpactValues: Record<TenantImpact, number>;
+  readonly stepTypeRiskValues: Record<StepTypeRisk, number>;
+  readonly targetSystemRiskValues: Record<TargetSystemRisk, number>;
+  readonly dataClassRiskValues: Record<DataClassRisk, number>;
   readonly blastRadiusValues: Record<BlastRadius, number>;
-  readonly historicalFailureRateThresholds: {
+  readonly priorFailureRateThresholds: {
     readonly low: { readonly maxPercent: number; readonly value: number };
     readonly medium: { readonly maxPercent: number; readonly value: number };
     readonly high: { readonly maxPercent: number; readonly value: number };
     readonly critical: { readonly maxPercent: number; readonly value: number };
   };
-  readonly evidenceConfidenceValues: Record<EvidenceConfidence, number>;
+  readonly confidenceValues: Record<ConfidenceLevel, number>;
   readonly riskLevelThresholds: {
     readonly low: number;
     readonly medium: number;

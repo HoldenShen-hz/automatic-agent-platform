@@ -37,26 +37,26 @@ test("UserPortalService resolves enterprise mode for SSO-heavy tenants", () => {
   assert.deepEqual(mode.features.dashboardLevels, ["L1", "L2", "L3", "L4"]);
 });
 
-test("UserPortalService builds onboarding wizard and workflow builder", async () => {
+test("UserPortalService builds onboarding wizard and workflow builder", () => {
   const service = new UserPortalService();
 
-  const wizard = await service.buildDomainOnboardingWizard("我要做广告投放自动化", {
+  const wizard = service.buildDomainOnboardingWizard("我要做广告投放自动化", {
     memberCount: 1,
     departmentCount: 1,
     requiresSso: false,
   });
-  const builder = await service.buildVisualWorkflowBuilder("我要做广告投放自动化");
+  const builder = service.buildVisualWorkflowBuilder("我要做广告投放自动化");
 
-  assert.equal(wizard.steps.length, 2);
+  assert.equal(wizard.steps.length, 4);
   assert.ok(wizard.recommendedDomains.includes("advertising"));
   assert.equal(builder.validation.valid, true);
   assert.ok(builder.componentPalette.some((category) => category.category === "action"));
 });
 
-test("UserPortalService marks finance payment workflows as critical risk", async () => {
+test("UserPortalService marks finance payment workflows as critical risk", () => {
   const service = new UserPortalService();
 
-  const builder = await service.buildVisualWorkflowBuilder("我要做财务付款审批和工资发放自动化", ["finance"]);
+  const builder = service.buildVisualWorkflowBuilder("我要做财务付款审批和工资发放自动化", ["finance"]);
   const financeAction = builder.componentPalette
     .flatMap((category) => category.components)
     .find((component) => component.domainId === "finance");

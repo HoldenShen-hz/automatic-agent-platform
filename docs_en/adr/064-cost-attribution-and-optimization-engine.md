@@ -5,7 +5,7 @@
 
 ## Context
 
-LLM cost is a major component of OPEX, requiring precise cost attribution and optimization guidance.
+LLM costs are a major component of OPEX, requiring precise cost attribution and optimization guidance.
 
 ## Decision
 
@@ -34,7 +34,7 @@ interface CostDimension {
 
 | Type | Description |
 |------|-------------|
-| llm_token | LLM Token consumption |
+| llm_token | LLM token consumption |
 | compute | Compute resources |
 | storage | Storage resources |
 | network | Network bandwidth |

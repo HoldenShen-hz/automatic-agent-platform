@@ -1,39 +1,32 @@
 import type { SourceTrustPolicy, TrustLevel } from "../knowledge-model.js";
 
 const DEFAULT_POLICIES: Record<TrustLevel, SourceTrustPolicy> = {
-  authoritative: {
-    level: "authoritative",
+  verified: {
+    level: "verified",
     allowedInFinalResponse: true,
     requiresCitation: true,
     maxRetrievalWeight: 1,
     humanReviewRequired: false,
   },
-  official: {
-    level: "official",
-    allowedInFinalResponse: true,
-    requiresCitation: true,
-    maxRetrievalWeight: 0.9,
-    humanReviewRequired: false,
-  },
-  team_reviewed: {
-    level: "team_reviewed",
+  reviewed: {
+    level: "reviewed",
     allowedInFinalResponse: true,
     requiresCitation: true,
     maxRetrievalWeight: 0.8,
     humanReviewRequired: false,
   },
-  private_unverified: {
-    level: "private_unverified",
+  community: {
+    level: "community",
+    allowedInFinalResponse: true,
+    requiresCitation: true,
+    maxRetrievalWeight: 0.5,
+    humanReviewRequired: false,
+  },
+  unverified: {
+    level: "unverified",
     allowedInFinalResponse: false,
     requiresCitation: false,
     maxRetrievalWeight: 0.3,
-    humanReviewRequired: true,
-  },
-  contested: {
-    level: "contested",
-    allowedInFinalResponse: false,
-    requiresCitation: true,
-    maxRetrievalWeight: 0.1,
     humanReviewRequired: true,
   },
 };

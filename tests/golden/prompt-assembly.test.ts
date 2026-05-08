@@ -14,13 +14,9 @@ import {
   type PromptPartitionInput,
 } from "../../src/platform/execution/execution-engine/prompt-partition-cache.js";
 
-const PRIMARY_TEST_MODEL_ID = "test-model-primary";
-const SECONDARY_TEST_MODEL_ID = "test-model-secondary";
-const TERTIARY_TEST_MODEL_ID = "test-model-tertiary";
-
 test("golden: partitionPromptForCache produces correct structure", () => {
   const input: PromptPartitionInput = {
-    model: PRIMARY_TEST_MODEL_ID,
+    model: "claude-sonnet-4-6",
     profileId: "default",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
@@ -32,7 +28,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
   const result = partitionPromptForCache(input);
 
   // Verify structure
-  assert.equal(result.model, PRIMARY_TEST_MODEL_ID);
+  assert.equal(result.model, "claude-sonnet-4-6");
   assert.equal(result.profileId, "default");
   assert.equal(result.staticMessageCount, 1, "Should have 1 static (system) message");
   assert.equal(result.dynamicMessageCount, 2, "Should have 2 dynamic (user/assistant) messages");
@@ -46,7 +42,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
 
 test("golden: partitionPromptForCache is deterministic", () => {
   const input: PromptPartitionInput = {
-    model: PRIMARY_TEST_MODEL_ID,
+    model: "claude-sonnet-4-6",
     profileId: "test-profile",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
@@ -65,7 +61,7 @@ test("golden: partitionPromptForCache is deterministic", () => {
 
 test("golden: partitionPromptForCache separates system from user messages", () => {
   const input: PromptPartitionInput = {
-    model: SECONDARY_TEST_MODEL_ID,
+    model: "claude-haiku-4-5-20251001",
     profileId: "division-executor",
     messages: [
       { role: "system", content: "You are a coding assistant." },
@@ -101,7 +97,7 @@ test("golden: partitionPromptForCache handles empty messages", () => {
 
 test("golden: partitionPromptForCache handles null/undefined fields in messages", () => {
   const input: PromptPartitionInput = {
-    model: TERTIARY_TEST_MODEL_ID,
+    model: "claude-opus-4-6",
     profileId: "test",
     messages: [
       { role: null, content: undefined },

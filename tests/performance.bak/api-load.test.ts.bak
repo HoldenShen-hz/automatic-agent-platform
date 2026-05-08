@@ -1,0 +1,215 @@
+/**
+ * Performance Test: API Load Testing
+ *
+ * Establishes performance baselines for HTTP API server operations.
+ * Tests QPS and response time under load.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { join } from "node:path";
+
+import { createSeededApiContext } from "../helpers/api.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import { newId } from "../../src/core/types/ids.js";
+
+test("performance: API server handles concurrent requests with P95 < 500ms", async () => {
+  const workspace = createTempWorkspace("perf-api-load-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const server = context.createServer();
+
+    const latencies: number[] = [];
+    const concurrentRequests = 50;
+    const iterations = 10;
+
+    // Warm up
+    for (let i = 0; i < 5; i++) {
+      await server.inject({
+        url: "/healthz",
+      });
+    }
+
+    // Run concurrent request test
+    for (let iter = 0; iter < iterations; iter++) {
+      const start = performance.now();
+
+      // Fire concurrent requests and wait for all to complete
+      const promises = Array.from({ length: concurrentRequests }, (_, i) =>
+        server.inject({
+          url: "/healthz",
+          headers: {
+            "x-request-id": `perf-${iter}-${i}`,
+          },
+        }),
+      );
+
+      await Promise.all(promises);
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95 for total iteration time
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(latencies.length * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 for concurrent batch should be reasonable
+    assert.ok(
+      p95Latency < 500,
+      `API concurrent batch P95 latency ${p95Latency.toFixed(3)}ms exceeds 500ms baseline`,
+    );
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: task list endpoint meets P95 < 50ms for 100 tasks", async () => {
+  const workspace = createTempWorkspace("perf-api-tasks-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const server = context.createServer();
+
+    // Get admin token for authenticated requests
+    const tokenResponse = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: {
+        "x-api-key": "test-api-key",
+      },
+    });
+    const token = JSON.parse(tokenResponse.body as string).data.accessToken as string;
+
+    const latencies: number[] = [];
+    const iterations = 100;
+
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      await server.inject({
+        url: "/v1/tasks?limit=10",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 50ms
+    assert.ok(
+      p95Latency < 50,
+      `Task list P95 latency ${p95Latency.toFixed(3)}ms exceeds 50ms baseline`,
+    );
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: task inspect endpoint meets P95 < 20ms", async () => {
+  const workspace = createTempWorkspace("perf-api-inspect-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const server = context.createServer();
+
+    // Get admin token for authenticated requests
+    const tokenResponse = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: {
+        "x-api-key": "test-api-key",
+      },
+    });
+    const token = JSON.parse(tokenResponse.body as string).data.accessToken as string;
+
+    const latencies: number[] = [];
+    const iterations = 100;
+
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      await server.inject({
+        url: `/v1/tasks/${context.seededTaskId}/inspect`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 20ms
+    assert.ok(
+      p95Latency < 20,
+      `Task inspect P95 latency ${p95Latency.toFixed(3)}ms exceeds 20ms baseline`,
+    );
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: dashboard snapshot endpoint meets P95 < 100ms", async () => {
+  const workspace = createTempWorkspace("perf-api-dashboard-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const server = context.createServer();
+
+    // Get admin token for authenticated requests
+    const tokenResponse = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: {
+        "x-api-key": "test-api-key",
+      },
+    });
+    const token = JSON.parse(tokenResponse.body as string).data.accessToken as string;
+
+    const latencies: number[] = [];
+    const iterations = 50;
+
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      await server.inject({
+        url: "/v1/dashboard/snapshot",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 100ms
+    assert.ok(
+      p95Latency < 100,
+      `Dashboard snapshot P95 latency ${p95Latency.toFixed(3)}ms exceeds 100ms baseline`,
+    );
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

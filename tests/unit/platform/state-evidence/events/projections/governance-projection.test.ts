@@ -154,21 +154,6 @@ test("governanceProjectionHandler handles decision:rejected", () => {
   assert.equal(state.actionType, "approval_denied");
 });
 
-test("governanceProjectionHandler does not infer approval_granted for unknown decision events", () => {
-  const event = makeEvent(
-    "evt_decision_expired",
-    "decision:expired",
-    null,
-    '{"approvalId":"dec_1","principal":"system"}',
-  );
-
-  const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
-
-  assert.equal(state.actionType, null);
-  assert.equal(state.status, "denied");
-  assert.equal(state.approved, false);
-});
-
 test("governanceProjectionHandler handles delegation:created", () => {
   const event = makeEvent(
     "evt_delegation_created",
@@ -559,60 +544,52 @@ test("governanceProjectionHandler handles unknown event types gracefully", () =>
   assert.deepEqual(state.processedEventIds, ["evt_unknown"]);
 });
 
-test("governanceProjectionHandler does not infer policy actionType from unknown event types", () => {
+test("governanceProjectionHandler infers actionType from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_policy", "unknown:policy_change", null, '{"policyId":"pol_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "policy_updated");
 });
 
-test("governanceProjectionHandler does not infer approval action from unknown event types", () => {
+test("governanceProjectionHandler infers approval action from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_approval", "unknown:approval_event", null, '{"approvalId":"apr_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "approval_granted");
 });
 
-test("governanceProjectionHandler does not infer approval_granted from unknown decision-like event types alone", () => {
-  const event = makeEvent("evt_unknown_decision", "unknown:decision_pending", null, '{"some":"data"}');
-
-  const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
-
-  assert.equal(state.actionType, null);
-});
-
-test("governanceProjectionHandler does not infer delegation action from unknown event types", () => {
+test("governanceProjectionHandler infers delegation action from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_delegation", "unknown:delegation_event", null, '{"delegationId":"del_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "delegation_created");
 });
 
-test("governanceProjectionHandler does not infer compliance action from unknown event types", () => {
+test("governanceProjectionHandler infers compliance action from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_compliance", "unknown:compliance_event", null, '{"violationId":"vio_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "compliance_violation");
 });
 
-test("governanceProjectionHandler does not infer permission action from unknown event types", () => {
+test("governanceProjectionHandler infers permission action from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_permission", "unknown:permission_event", null, '{"principal":"user_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "permission_granted");
 });
 
-test("governanceProjectionHandler does not infer role action from unknown event types", () => {
+test("governanceProjectionHandler infers role action from payload for unknown event types", () => {
   const event = makeEvent("evt_infer_role", "unknown:role_event", null, '{"actorId":"user_1"}');
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
 
-  assert.equal(state.actionType, null);
+  assert.equal(state.actionType, "role_assigned");
 });
 
 test("governanceProjectionHandler preserves occurredAt from payload", () => {

@@ -174,13 +174,8 @@ export class ContextIsolator {
     }
 
     // Check if child requires significantly fewer permissions
-    // #2178: Guard against division by zero when parent has no actions
-    const parentActionCount = parent.permissions.actions.length;
-    const childRequiredCount = spec.requiredPermissions.actions.length;
-    let permissionRatio = 0; // Default to MINIMAL if parent has no actions
-    if (parentActionCount > 0) {
-      permissionRatio = childRequiredCount / parentActionCount;
-    }
+    const permissionRatio =
+      spec.requiredPermissions.actions.length / parent.permissions.actions.length;
 
     if (permissionRatio >= 0.9) {
       return IsolationLevel.FULL;
@@ -219,28 +214,15 @@ export class ContextIsolator {
         };
 
       case IsolationLevel.MINIMAL:
-        // Child only gets intersection of parent and required permissions
-        // R9-07 fix: §19 requires intersection, not replacement
-        // Child agent cannot request resources/actions parent doesn't already have
+        // Child only gets explicitly required permissions
         return {
           resources: requiredPermissions.resources.length > 0
-            ? parentPermissions.resources.filter((r) => requiredPermissions.resources.includes(r))
+            ? requiredPermissions.resources
             : parentPermissions.resources,
           actions: requiredPermissions.actions.length > 0
-            ? parentPermissions.actions.filter((a) => requiredPermissions.actions.includes(a))
+            ? requiredPermissions.actions
             : parentPermissions.actions,
-          constraints: {
-            ...parentPermissions.constraints,
-            ...requiredPermissions.constraints,
-            maxDurationMs: Math.min(
-              parentPermissions.constraints.maxDurationMs ?? Infinity,
-              requiredPermissions.constraints.maxDurationMs ?? Infinity,
-            ),
-            maxTokens: Math.min(
-              parentPermissions.constraints.maxTokens ?? Infinity,
-              requiredPermissions.constraints.maxTokens ?? Infinity,
-            ),
-          },
+          constraints: requiredPermissions.constraints,
         };
 
       case IsolationLevel.SANDBOXED:

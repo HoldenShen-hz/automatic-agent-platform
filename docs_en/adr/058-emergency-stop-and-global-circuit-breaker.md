@@ -1,11 +1,11 @@
-# ADR-058 Emergency Stop and Global Circuit Breaker
+# ADR-058 Emergency Stop and Global Circuit Breaker Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Platform needs to respond quickly to cascading failures, requires emergency stop mechanism and global circuit breaker.
+When security incidents occur, the platform needs to be able to instantly stop all Agent operations across the platform. A global circuit breaker mechanism prevents fault propagation.
 
 ## Decision
 
@@ -35,11 +35,9 @@ interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
   threshold: number;       // Failure rate threshold
   window_ms: number;      // Statistics window
-  open_duration_ms: number; // Circuit breaker open duration before attempting half-open
+  open_duration_ms: number; // Circuit breaker duration
 }
 ```
-
-**Important**: `open_duration_ms` is the timeout before transitioning from `open` to `half_open` (probe attempt). The circuit breaker does NOT automatically restore full function after `open_duration_ms` - it only transitions to `half_open` for probe. Explicit `closed` transition (manual or via successful probe) is required to fully restore. This distinguishes the circuit breaker from TTL-based auto-expiry patterns.
 
 ### Recovery Process
 
@@ -76,7 +74,7 @@ Costs:
 
 ## Source Section
 
-- `§58` Emergency Stop and Global Circuit Breaker
+- `§60` Emergency Stop and Global Circuit Breaker Architecture
 
 ## v4.3 ADR Remediation
 

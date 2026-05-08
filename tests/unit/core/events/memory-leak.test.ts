@@ -7,44 +7,31 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
-import { initHaCoordinatorForTests } from "../../../helpers/ha-coordinator.js";
 
-interface TestBusContext {
-  bus: DurableEventBus;
-  db: SqliteDatabase;
-  store: AuthoritativeTaskStore;
-  workspace: string;
-  cleanup: () => void;
-}
-
-function createTestBus(): TestBusContext {
-  // Initialize HA coordinator first - this sets up the singleton needed for DurableEventBus
-  const haContext = initHaCoordinatorForTests();
-  const workspace = haContext.dbPath.replace("/test-ha.db", ""); // Derive workspace from db path
-  const db = haContext.db;
+function createTestBus(): { bus: DurableEventBus; db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
+  const workspace = createTempWorkspace("event-bus-test-");
+  const dbPath = `${workspace}/test.db`;
+  const db = new SqliteDatabase(dbPath);
+  db.migrate();
   const store = new AuthoritativeTaskStore(db);
   const bus = new DurableEventBus(db, store);
-  return {
-    bus,
-    db,
-    store,
-    workspace,
-    cleanup: () => {
-      bus.dispose();
-      haContext.cleanup();
-      cleanupPath(workspace);
-    },
-  };
+  return { bus, db, store, workspace };
+}
+
+function cleanupBus(bus: DurableEventBus, db: SqliteDatabase, workspace: string): void {
+  bus.dispose();
+  db.close();
+  cleanupPath(workspace);
 }
 
 // =============================================================================
 // Event handler memory leak tests — DurableEventBus
 // =============================================================================
 
-test("[SYS-PERF-3.1] DurableEventBus subscribe does not leak when called multiple times", async (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus subscribe does not leak when called multiple times", async () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-sub-leak",
       executionId: "exec-sub-leak",
       traceId: "trace-sub-leak",
@@ -57,15 +44,14 @@ test("[SYS-PERF-3.1] DurableEventBus subscribe does not leak when called multipl
 
     // Subscribe multiple times with same consumerId — each call overwrites the handler
     // Use inspect_projection which is a required consumer for task:status_changed
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.subscribe("inspect_projection", handler);
+    bus.subscribe("inspect_projection", handler);
+    bus.subscribe("inspect_projection", handler);
+    bus.subscribe("inspect_projection", handler);
 
     // Publish an event
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-sub-leak",
-      principal: "test-node",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
@@ -75,14 +61,14 @@ test("[SYS-PERF-3.1] DurableEventBus subscribe does not leak when called multipl
     // Handler should be called exactly once (last subscription wins)
     assert.equal(handlerCallCount, 1, "Handler should be called only once despite multiple subscribes");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus unsubscribe removes handler", (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus unsubscribe removes handler", () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-unsub-test",
       executionId: "exec-unsub-test",
       traceId: "trace-unsub-test",
@@ -93,34 +79,32 @@ test("[SYS-PERF-3.1] DurableEventBus unsubscribe removes handler", (t) => {
       handlerCallCount += 1;
     };
 
-    ctx.bus.subscribe("consumer-unsub", handler);
-    ctx.bus.unsubscribe("consumer-unsub");
+    bus.subscribe("consumer-unsub", handler);
+    bus.unsubscribe("consumer-unsub");
 
     // Publish multiple events after unsubscribe
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-unsub-test",
-      principal: "test-node",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-unsub-test",
-      principal: "test-node",
       payload: { fromStatus: "in_progress", toStatus: "done" },
     });
 
     // Handler should not be called after unsubscribe
     assert.equal(handlerCallCount, 0, "Handler should not be called after unsubscribe");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-dispose-test",
       executionId: "exec-dispose-test",
       traceId: "trace-dispose-test",
@@ -132,17 +116,16 @@ test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", (t) => {
     };
 
     // Use inspect_projection which is a required consumer for task:status_changed
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.dispose();
+    bus.subscribe("inspect_projection", handler);
+    bus.subscribe("inspect_projection", handler);
+    bus.dispose();
 
     // After dispose, publish should throw
     assert.throws(
       () =>
-        ctx.bus.publish({
+        bus.publish({
           eventType: "task:status_changed",
           taskId: "task-dispose-test",
-          principal: "test-node",
           payload: { fromStatus: "queued", toStatus: "in_progress" },
         }),
       /disposed/,
@@ -151,57 +134,56 @@ test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", (t) => {
     // Handler should not be called since dispose cleared subscribers
     assert.equal(handlerCallCount, 0, "No handlers should be called after dispose");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus dispose is idempotent", (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus dispose is idempotent", () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-dispose-idempotent",
       executionId: "exec-dispose-idempotent",
       traceId: "trace-dispose-idempotent",
     });
 
     // Should not throw
-    ctx.bus.dispose();
-    ctx.bus.dispose();
-    ctx.bus.dispose();
+    bus.dispose();
+    bus.dispose();
+    bus.dispose();
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus publish after dispose throws", (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus publish after dispose throws", () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-publish-after-dispose",
       executionId: "exec-publish-after-dispose",
       traceId: "trace-publish-after-dispose",
     });
 
-    ctx.bus.dispose();
+    bus.dispose();
     assert.throws(
       () =>
-        ctx.bus.publish({
+        bus.publish({
           eventType: "task:status_changed",
           taskId: "task-publish-after-dispose",
-          principal: "test-node",
           payload: {},
         }),
       /disposed/,
     );
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus multiple consumers each get their own handler", async (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus multiple consumers each get their own handler", async () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-multi-consumer",
       executionId: "exec-multi-consumer",
       traceId: "trace-multi-consumer",
@@ -213,14 +195,13 @@ test("[SYS-PERF-3.1] DurableEventBus multiple consumers each get their own handl
 
     // Use inspect_projection (required consumer) - only one consumer can receive tier_1 events
     // For multiple handlers, we need to use a different approach - subscribe same handler to same consumer
-    ctx.bus.subscribe("inspect_projection", () => { handlerACalls += 1; });
-    ctx.bus.subscribe("inspect_projection", () => { handlerBCalls += 1; });
-    ctx.bus.subscribe("inspect_projection", () => { handlerCCalls += 1; });
+    bus.subscribe("inspect_projection", () => { handlerACalls += 1; });
+    bus.subscribe("inspect_projection", () => { handlerBCalls += 1; });
+    bus.subscribe("inspect_projection", () => { handlerCCalls += 1; });
 
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-multi-consumer",
-      principal: "test-node",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
@@ -233,16 +214,16 @@ test("[SYS-PERF-3.1] DurableEventBus multiple consumers each get their own handl
     assert.equal(handlerBCalls, 0, "Second handler should not be called - was overwritten");
     assert.equal(handlerCCalls, 1, "Last handler should be called once");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus off() is not required when unsubscribe is used", async (t) => {
+test("[SYS-PERF-3.1] DurableEventBus off() is not required when unsubscribe is used", async () => {
   // This test verifies the unsubscribe pattern works correctly
   // DurableEventBus uses unsubscribe(consumerId) rather than off(event, handler)
-  const ctx = createTestBus();
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-off-pattern",
       executionId: "exec-off-pattern",
       traceId: "trace-off-pattern",
@@ -252,14 +233,13 @@ test("[SYS-PERF-3.1] DurableEventBus off() is not required when unsubscribe is u
     const handler = () => { calls += 1; };
 
     // Use inspect_projection which is a required consumer for task:status_changed
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.unsubscribe("inspect_projection");
+    bus.subscribe("inspect_projection", handler);
+    bus.unsubscribe("inspect_projection");
 
     // Verify unsubscribe actually removed the handler
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-off-pattern",
-      principal: "test-node",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
@@ -268,14 +248,14 @@ test("[SYS-PERF-3.1] DurableEventBus off() is not required when unsubscribe is u
 
     assert.equal(calls, 0, "unsubscribe must remove the handler");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 
-test("[SYS-PERF-3.1] DurableEventBus re-subscribe after unsubscribe works", async (t) => {
-  const ctx = createTestBus();
+test("[SYS-PERF-3.1] DurableEventBus re-subscribe after unsubscribe works", async () => {
+  const { bus, db, store, workspace } = createTestBus();
   try {
-    seedTaskAndExecution(ctx.db, ctx.store, {
+    seedTaskAndExecution(db, store, {
       taskId: "task-resub",
       executionId: "exec-resub",
       traceId: "trace-resub",
@@ -285,14 +265,13 @@ test("[SYS-PERF-3.1] DurableEventBus re-subscribe after unsubscribe works", asyn
     const handler = () => { calls += 1; };
 
     // Use inspect_projection which is a required consumer for task:status_changed
-    ctx.bus.subscribe("inspect_projection", handler);
-    ctx.bus.unsubscribe("inspect_projection");
-    ctx.bus.subscribe("inspect_projection", handler);
+    bus.subscribe("inspect_projection", handler);
+    bus.unsubscribe("inspect_projection");
+    bus.subscribe("inspect_projection", handler);
 
-    ctx.bus.publish({
+    bus.publish({
       eventType: "task:status_changed",
       taskId: "task-resub",
-      principal: "test-node",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
@@ -301,7 +280,7 @@ test("[SYS-PERF-3.1] DurableEventBus re-subscribe after unsubscribe works", asyn
 
     assert.equal(calls, 1, "Re-subscribe after unsubscribe should work");
   } finally {
-    ctx.cleanup();
+    cleanupBus(bus, db, workspace);
   }
 });
 

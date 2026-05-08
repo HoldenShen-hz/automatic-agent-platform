@@ -10,28 +10,16 @@ export interface CorsConfig {
 }
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
-  allowedOrigins: [],
+  allowedOrigins: ["*"],
   allowedMethods: ["GET", "POST", "OPTIONS"],
-  // R7-47 FIX: Add accept-version header for API version negotiation per §6.4
-  allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key", "accept-version"],
-  // R7-43 FIX: Add x-trace-id to exposed headers so CORS callers can access correlation IDs per §6.2
-  exposedHeaders: ["x-request-id", "x-api-version", "x-app-version", "x-trace-id"],
+  allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
+  exposedHeaders: ["x-request-id", "x-api-version", "x-app-version"],
   maxAgeSeconds: 86_400,
-  credentials: false,
+  credentials: true,
 };
 
-// R12-29 fix: Enhanced CSP for API responses that also serves UI content
-// - default-src 'self' allows same-origin requests
-// - frame-ancestors 'none' prevents clickjacking
-// - base-uri 'self' restricts base element to same origin
-// - form-action 'self' restricts form submissions to same origin
-// - script-src 'self' allows scripts from same origin
-// - style-src 'self' allows styles from same origin
-// - img-src 'self' data: allows images from same origin and data URIs
-// - connect-src 'self' ws: wss: allows WebSocket connections
-// - object-src 'none' prevents plugin-based content
 const DEFAULT_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  "content-security-policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'",
+  "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-frame-options": "DENY",
   "x-content-type-options": "nosniff",
@@ -51,7 +39,7 @@ export function parseAllowedOrigins(raw: string | undefined): string[] {
 }
 
 export function normalizeCorsConfig(config: Partial<CorsConfig> | null | undefined): CorsConfig {
-  const normalized: CorsConfig = {
+  return {
     allowedOrigins: config?.allowedOrigins != null && config.allowedOrigins.length > 0
       ? [...config.allowedOrigins]
       : [...DEFAULT_CORS_CONFIG.allowedOrigins],
@@ -67,19 +55,12 @@ export function normalizeCorsConfig(config: Partial<CorsConfig> | null | undefin
     maxAgeSeconds: config?.maxAgeSeconds ?? DEFAULT_CORS_CONFIG.maxAgeSeconds,
     credentials: config?.credentials ?? DEFAULT_CORS_CONFIG.credentials,
   };
-  if (normalized.credentials && normalized.allowedOrigins.includes("*")) {
-    throw new Error("api.cors.invalid_wildcard_credentials");
-  }
-  return normalized;
 }
 
 export function isOriginAllowed(origin: string | undefined, config: CorsConfig): boolean {
   if (typeof origin !== "string" || origin.trim().length === 0) {
     return false;
   }
-  // Wildcard origin is always allowed (for preflight handling).
-  // The actual response header will echo the origin when credentials are enabled,
-  // or use wildcard when credentials are disabled.
   if (config.allowedOrigins.includes("*")) {
     return true;
   }
@@ -90,12 +71,9 @@ function resolveAllowOrigin(origin: string | undefined, config: CorsConfig): str
   if (!isOriginAllowed(origin, config)) {
     return null;
   }
-  // When wildcard origin is allowed without credentials, use wildcard directly
-  if (config.allowedOrigins.includes("*") && !config.credentials) {
-    return "*";
+  if (config.allowedOrigins.includes("*")) {
+    return origin != null && config.credentials ? origin : "*";
   }
-  // When credentials are enabled, we must never use wildcard origin.
-  // Echo the validated origin back to the client.
   return origin!.trim();
 }
 
@@ -120,14 +98,12 @@ export function decorateResponseHeaders(
   payload: ApiResponsePayload,
   origin: string | undefined,
   corsConfig: CorsConfig,
-  traceId: string | undefined,
 ): ApiResponsePayload {
   const headers: Record<string, string> = {
-    ...DEFAULT_SECURITY_HEADERS,
-    "x-api-version": payload.headers["x-api-version"] ?? "v1",
-    "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
     ...payload.headers,
-    ...(traceId != null ? { "x-trace-id": traceId } : {}),
+    ...DEFAULT_SECURITY_HEADERS,
+    "x-api-version": "v1",
+    "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);
   if (allowOrigin != null) {

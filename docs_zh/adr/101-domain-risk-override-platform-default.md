@@ -28,26 +28,6 @@
 - 任何覆写都必须留下审计理由
 - 无显式领域风险 profile 时，禁止高风险自动化
 
-### DomainRiskSpec 定义
-
-```typescript
-interface DomainRiskSpec {
-  domain_id: string;
-  risk_level: 'low' | 'medium' | 'high' | 'critical';
-  // 高风险域必填字段（三选一或等价责任边界）
-  advisory_only?: boolean;              // 仅提供建议，需人工确认
-  human_accountable?: boolean;          // 全程人工负责
-  deterministic_hot_path_only?: boolean; // 仅确定性执行路径
-  // 覆盖字段
-  overrides?: RiskOverride[];
-  justification: string;                // 必须提供覆写理由
-  approver?: string;                    // 审批人
-}
-```
-
-注：**DomainRiskSpec 必填字段**：high/critical 域必须显式声明 `advisory_only`、`human_accountable`、`deterministic_hot_path_only` 三选一（或等价责任边界），未声明时平台按更保守模式处理，默认不允许 full_auto（见 §10 风险控制、§37.3 DomainRiskProfile）。validator 强制校验必填字段，block domain release（见 INV-DOMAIN-001）。
-
 ## 后果
 
 - 高风险领域拥有清晰的治理边界
-- DomainRiskSpec validator 强制校验必填字段，block domain release（见 INV-DOMAIN-001）

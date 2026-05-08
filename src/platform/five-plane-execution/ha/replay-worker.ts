@@ -6,7 +6,7 @@ import {
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service-root.js";
-import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "../recovery/replay-boundary-guard.js";
+import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "./replay-boundary-guard.js";
 
 export interface ReplayWorkerOptions {
   readonly replayService: Pick<RuntimeRecoveryReplayService, "buildTaskReplayReport">;
@@ -27,7 +27,6 @@ export class ReplayWorker implements RecoveryWorker {
   private readonly cadence: RecoveryCadence;
   private readonly now: () => string;
   private readonly replayPolicy: ReplaySandboxPolicy;
-  private readonly boundaryGuard: ReplayBoundaryGuard;
 
   public constructor(private readonly options: ReplayWorkerOptions) {
     this.cadence = buildRecoveryCadence({
@@ -40,7 +39,6 @@ export class ReplayWorker implements RecoveryWorker {
       mode: "trace_only",
       allowRealSideEffects: false,
     };
-    this.boundaryGuard = new ReplayBoundaryGuard();
     this.assertReplayPolicySafe(this.replayPolicy);
   }
 
@@ -59,46 +57,6 @@ export class ReplayWorker implements RecoveryWorker {
     try {
       this.assertReplayPolicySafe(this.replayPolicy);
       const taskIds = [...await this.options.listTaskIds()];
-
-      // R4-29 (INV-REPLAY-001): Evaluate replay operations through ReplayBoundaryGuard
-      // to ensure replay never produces real side effects
-      const replayMode: ReplayMode = this.replayPolicy.mode === "trace_only" ? "trace_replay" : "reexecution_replay";
-
-      // R4-29: ReplaySandboxPolicy implementation - determine hasRealSideEffect based on policy
-      // In trace_only mode, we never produce real side effects (read-only replay)
-      // In isolated_sandbox mode, we still don't produce real side effects unless explicitly allowed
-      const operations: ReplayOperation[] = taskIds.map((taskId) => ({
-        operationId: taskId,
-        resourceKind: "tool" as const,
-        // R4-29: hasRealSideEffect is determined by replay policy, not hardcoded
-        // The replay service produces effects that we must track for reconciliation
-        hasRealSideEffect: this.replayPolicy.allowRealSideEffects && replayMode === "reexecution_replay",
-        tombstoneReplay: false,
-      }));
-      const boundaryDecision = this.boundaryGuard.evaluate(replayMode, operations);
-      if (!boundaryDecision.allowed) {
-        return {
-          workerId: this.getWorkerId(),
-          workerType: "replay",
-          startedAt,
-          completedAt: this.now(),
-          durationMs: Date.now() - startedMs,
-          itemsProcessed: 0,
-          itemsRecovered: 0,
-          errors: [{
-            code: boundaryDecision.reasonCode,
-            message: `Replay boundary guard blocked operations: ${boundaryDecision.blockedOperationIds.join(", ")}`,
-          }],
-          metadata: {
-            replayedTaskIds: [],
-            recoveryActiveCount: 0,
-            replayPolicyMode: this.replayPolicy.mode,
-            replaySandboxId: this.replayPolicy.sandboxId ?? null,
-            boundaryBlocked: true,
-          },
-        };
-      }
-
       const reports = taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt));
       const recoveryActiveCount = reports.filter((report) => report.outcome !== "no_recovery_activity").length;
 

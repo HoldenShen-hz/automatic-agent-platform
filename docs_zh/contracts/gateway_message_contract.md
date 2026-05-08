@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -87,39 +87,6 @@ DecisionResponse 至少需要：
 - gateway 可以维护 `ChannelDirectory` 或等价 target registry，用于把平台可枚举目标与历史会话来源统一成只读目标目录。
 - 发送前若接受人类可读目标名，应先解析成 canonical target id；只允许精确匹配或唯一前缀匹配，歧义时必须 fail-close。
 - 新平台接入不应只改 adapter 文件；至少应同步更新 platform enum、adapter factory、auth map、session source、tool delivery、cron delivery 与 target directory 入口。
-
-## 8. Console WebSocket 推送协议
-
-面向 console / cockpit / dashboard 的实时推送必须使用显式事件 envelope，不得把任意内部事件对象直接透传到 UI。
-
-```typescript
-interface ConsolePushEnvelope {
-  messageType:
-    | "task.status_changed"
-    | "task.timeline_appended"
-    | "approval.created"
-    | "approval.resolved"
-    | "nl.clarification_needed"
-    | "runtime.alert_raised"
-    | "dashboard.snapshot"
-    | "dashboard.delta";
-  harnessRunId: string | null;
-  nodeRunId: string | null;
-  channel: "global" | `task:${string}` | "approvals" | "admin";
-  schemaVersion: number;
-  traceId: string | null;
-  emittedAt: string;
-  payload: Record<string, unknown>;
-}
-```
-
-规则：
-
-- `harnessRunId / nodeRunId` 是 console push 的 canonical 关联键；`task_id` 只能存在于 `payload` 作为 legacy projection。
-- `nl.clarification_needed` 必须至少包含 `clarificationSessionId`、`questions[]`、`reasonCodes[]`，用于 UI 恢复 ClarificationSession。
-- `dashboard.snapshot` 表示全量投影刷新，`dashboard.delta` 只允许承载可幂等重放的局部更新。
-- `channel` 必须映射到 UI 订阅模型；不得再使用不可组合的 dashboard-id 专用推送通道。
-- 任何 push 协议都必须能回溯到 `platform.*` truth event 或 canonical projection，不得把 OAPEFLIR stage view 当作唯一事实源。
 
 ### 7.1 与 MessageParts 的衔接
 

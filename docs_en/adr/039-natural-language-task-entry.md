@@ -5,7 +5,7 @@
 
 ## Context
 
-Non-technical users need to interact with the platform through natural language. The platform needs to convert NL input into structured tasks.
+Non-technical users need to interact with the platform through natural language, and the platform needs to convert NL input into structured tasks.
 
 ## Decision
 
@@ -29,17 +29,16 @@ interface DetectedIntent {
 }
 ```
 
-### 5 intent_type Types
+### 6 intent_types
 
 | Type | Description |
 |------|-------------|
 | create_task | Create task |
 | query_status | Query status |
 | modify_task | Modify task |
+| cancel_task | Cancel task |
 | create_goal | Create goal |
-| decompress_goal | Decompose goal |
-
-Note: cancel_task has been removed from §6.3. Callers must use abort/pause/panic kill semantics instead.
+| decompress_goal | Decompress goal |
 
 ### RiskPreview
 
@@ -50,15 +49,15 @@ interface RiskPreview {
 }
 ```
 
-### Multi-turn Conversation State Machine
+### Multi-Turn Conversation State Machine
 
 - Maintains conversation context
-- Supports follow-up questions and clarification
+- Supports follow-up questions and clarifications
 
-### High-risk Intent Handling
+### High-Risk Intent Handling
 
 - High-risk intents must be explicitly confirmed
-- Execution only after user confirmation
+- User confirmation required before execution
 
 ### LocaleConfig
 
@@ -69,26 +68,24 @@ interface RiskPreview {
 | ja-JP | Japanese |
 | de-DE | German |
 
-- Fallback to en-US
+- Falls back to en-US
 
 ## Consequences
 
-Pros:
-
+Positive:
 - NL entry lowers usage barrier
 - Ambiguity detection improves accuracy
 - Multi-language support expands scope
 
-Cons:
+Negative:
+- NLU model requires training and maintenance
+- Ambiguity detection may not be 100% accurate
 
-- NLU model accuracy limitations
-- Multi-language support increases complexity
-
-## Cross-references
+## Cross-References
 
 - [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)
-- [ADR-042 Progressive Autonomy Model](./042-progressive-autonomy-model.md)
+- [ADR-082 Natural Language Entry and Goal Decomposition](./082-natural-language-entry-and-goal-decomposition.md)
 
-## Source Section
+## Source Sections
 
-- `§39` Natural Language Task Entry Architecture
+- `§39` Natural Language Task Entry

@@ -18,30 +18,76 @@ import test from "node:test";
 
 import { OapeflirLoopService } from "../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../src/platform/orchestration/oapeflir/execute-bridge.js";
+import type { Plan, PlanStep } from "../../src/platform/orchestration/oapeflir/types/plan.js";
 import type { DualChannelStepOutput } from "../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
+
+// Deterministic bridge that never fails — used to isolate loop logic
+class DeterministicE2EBridge implements ExecuteBridge {
+  executeStep(_step: PlanStep, _context: ExecutionContext): Promise<StepResult> {
+    return Promise.resolve({
+      stepId: _step.stepId,
+      status: "succeeded",
+      durationMs: 1,
+      tokenCost: 1,
+      summary: `E2E executed ${_step.stepId}`,
+      outputs: {},
+      artifacts: [],
+      modelId: "e2e-deterministic",
+      retryCount: 0,
+      validationPassed: true,
+    });
+  }
+
+  executePlan(plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
+    return Promise.resolve({
+      planId: plan.planId,
+      results: plan.steps.map((step) => ({
+        stepId: step.stepId,
+        status: "succeeded" as const,
+        durationMs: 1,
+        tokenCost: 1,
+        summary: `E2E executed ${step.stepId}`,
+        outputs: {},
+        artifacts: [],
+        modelId: "e2e-deterministic",
+        retryCount: 0,
+        validationPassed: true,
+      })),
+      totalDurationMs: plan.steps.length,
+      totalTokenCost: plan.steps.length,
+      allSucceeded: true,
+      skippedStepIds: [],
+      failedStepIds: [],
+    });
+  }
+
+  toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
+    return result.results.map((stepResult) => ({
+      stepId: stepResult.stepId,
+      planRef: result.planId,
+      userFacingResult: {
+        summary: stepResult.summary,
+        artifacts: stepResult.artifacts,
+      },
+      systemTelemetry: {
+        durationMs: stepResult.durationMs,
+        tokensUsed: stepResult.tokenCost,
+        modelId: stepResult.modelId,
+        retryCount: stepResult.retryCount,
+        validationPassed: stepResult.validationPassed,
+      },
+    }));
+  }
+}
 
 test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", async () => {
   const workspace = createTempWorkspace("e2e-oapeflir-");
 
   try {
-    const service = new OapeflirLoopService();
-    const stepOutputs: DualChannelStepOutput[] = [
-      {
-        stepId: "step_e2e",
-        planRef: "plan_e2e_happy",
-        userFacingResult: {
-          summary: "E2E consumed caller-supplied canonical step output",
-          artifacts: [],
-        },
-        systemTelemetry: {
-          durationMs: 1,
-          tokensUsed: 1,
-          modelId: "e2e-deterministic",
-          retryCount: 0,
-          validationPassed: true,
-        },
-      },
-    ];
+    const service = new OapeflirLoopService({
+      executeBridge: new DeterministicE2EBridge(),
+    });
 
     const result = await service.run({
       taskId: "task_e2e_happy",
@@ -79,7 +125,6 @@ test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", asy
         planReason: "e2e.happy_path",
         dependencyEdges: [],
       },
-      stepOutputs,
     });
 
     // Core G3 assertion: all 8 stages appear in the timeline
@@ -123,32 +168,17 @@ test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", asy
   }
 });
 
-test("E2E: OAPEFLIR loop consumes caller-supplied step outputs on feedback path", async () => {
+test("E2E: OAPEFLIR loop with failure signal triggers learn/improve/release chain", async () => {
   const workspace = createTempWorkspace("e2e-oapeflir-failure-");
 
   try {
-    const service = new OapeflirLoopService();
-    const stepOutputs: DualChannelStepOutput[] = [
-      {
-        stepId: "step_failure",
-        planRef: "plan_e2e_failure",
-        userFacingResult: {
-          summary: "Failure-path caller output",
-          artifacts: [],
-        },
-        systemTelemetry: {
-          durationMs: 1,
-          tokensUsed: 1,
-          modelId: "e2e-deterministic",
-          retryCount: 0,
-          validationPassed: true,
-        },
-      },
-    ];
+    const service = new OapeflirLoopService({
+      executeBridge: new DeterministicE2EBridge(),
+    });
 
     const result = await service.run({
       taskId: "task_e2e_failure",
-      objective: "E2E test: feedback path still consumes caller-supplied outputs",
+      objective: "E2E test: failure signal triggers F→L→I→R chain",
       workflow: {
         workflow: {
           workflowId: "wf_e2e_failure",
@@ -173,7 +203,6 @@ test("E2E: OAPEFLIR loop consumes caller-supplied step outputs on feedback path"
         planReason: "e2e.failure_path",
         dependencyEdges: [],
       },
-      stepOutputs,
       feedbackSignals: [
         {
           signalId: "sig_e2e_failure",
@@ -191,10 +220,28 @@ test("E2E: OAPEFLIR loop consumes caller-supplied step outputs on feedback path"
       ],
     });
 
-    const executeEntry = result.timeline.find((e) => e.stage === "execute");
-    assert.ok(executeEntry, "Execute stage must be present");
-    assert.equal(executeEntry!.status, "completed");
-    assert.equal(result.stepOutputs.length, 1);
+    // learn/improve/release must complete (not skip) when failure signal is present
+    const learnEntry = result.timeline.find((e) => e.stage === "learn");
+    assert.ok(learnEntry, "Learn stage must be present");
+    assert.equal(learnEntry!.status, "completed", "Learn stage must complete with failure signal");
+
+    const improveEntry = result.timeline.find((e) => e.stage === "improve");
+    assert.ok(improveEntry, "Improve stage must be present");
+    assert.equal(improveEntry!.status, "completed", "Improve stage must complete with failure signal");
+
+    const releaseEntry = result.timeline.find((e) => e.stage === "release");
+    assert.ok(releaseEntry, "Release stage must be present");
+    assert.equal(releaseEntry!.status, "completed", "Release stage must complete with failure signal");
+
+    // Learning objects must be produced
+    assert.ok(result.learningObjects.length > 0, "Must produce at least one learning object");
+
+    // Rollout record must be in shadow mode
+    assert.ok(result.rolloutRecord, "Rollout record must be created");
+    assert.equal(result.rolloutRecord!.status, "shadow", "Rollout must start in shadow mode");
+
+    // Replan decision must be triggered
+    assert.equal(result.replanDecision.shouldReplan, true, "Replan must be triggered on failure");
   } finally {
     cleanupPath(workspace);
   }

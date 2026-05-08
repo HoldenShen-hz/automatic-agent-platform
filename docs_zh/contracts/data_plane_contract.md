@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -121,18 +121,12 @@ flowchart TD
 - `size_bytes`
 - `checksum`
 - `created_at`
-- `source_harness_run_id?`
-- `source_node_run_id?`
+- `source_execution_id?`
 
 规则：
 
 - transaction 层只能保存 `ArtifactRef`，不能回灌 artifact 本体。
 - artifact ref 必须稳定、可校验、可追溯。
-- `source_harness_run_id` / `source_node_run_id` 为 canonical 关联键，`source_execution_id` 为 legacy 查询键，仅做兼容投影。
-
-## v4.3 Contract Remediation
-
-- T-39: `ArtifactRef.source_execution_id` 为 legacy 字段。v4.3 canonical 关联键为 `source_harness_run_id` / `source_node_run_id`。现有使用 `source_execution_id` 的实现必须迁移到 canonical 字段，新实现不得再新增 `source_execution_id` 引用。
 
 ## 10. `AnalyticsFact` 最小字段
 

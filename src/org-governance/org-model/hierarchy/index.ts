@@ -59,71 +59,12 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
     if (node.parentOrgNodeId === node.orgNodeId) {
       findings.push(`org_hierarchy.self_cycle:${node.orgNodeId}`);
     }
-    // R19-5: Validate node type is valid
-    const validTypes = ["tenant", "division", "department", "team", "seat"];
-    if (!validTypes.includes(node.nodeType)) {
-      findings.push(`org_hierarchy.invalid_node_type:${node.orgNodeId}:${node.nodeType}`);
-    }
-    // R19-5: Validate ownerUserIds is not empty for non-tenant nodes
-    if (node.nodeType !== "tenant" && node.ownerUserIds.length === 0) {
-      findings.push(`org_hierarchy.missing_owner:${node.orgNodeId}`);
-    }
-    // R19-5: Validate costCenter format
-    if (node.costCenter && !/^[A-Z]{2}\d{4,}$/.test(node.costCenter)) {
-      findings.push(`org_hierarchy.invalid_cost_center:${node.orgNodeId}:${node.costCenter}`);
-    }
   }
 
-  // R19-5: Validate depth doesn't exceed 5 levels
+  // Validate depth doesn't exceed 5 levels
   const { valid, depth } = validateHierarchyDepth(nodes);
   if (!valid) {
     findings.push(`org_hierarchy.exceeds_max_depth:${depth}`);
-  }
-
-  // R19-4: Validate no duplicate cost centers in same division
-  const costCentersByDivision = new Map<string, string[]>();
-  for (const node of nodes) {
-    if (node.nodeType === "division") {
-      const divisionChildren = nodes.filter((n) => n.parentOrgNodeId === node.orgNodeId);
-      const costCenters = divisionChildren.map((n) => n.costCenter).filter((cc) => cc.length > 0);
-      const duplicates = costCenters.filter((cc, idx) => costCenters.indexOf(cc) !== idx);
-      if (duplicates.length > 0) {
-        findings.push(`org_hierarchy.duplicate_cost_center:${node.orgNodeId}:${[...new Set(duplicates)].join(",")}`);
-      }
-    }
-  }
-
-  return findings;
-}
-
-/**
- * R19-4: Enforces maximum reporting limits per manager.
- * Default maximum direct reports is 7 per management best practice.
- *
- * @param nodes - The org hierarchy nodes
- * @param maxDirectReports - Maximum allowed direct reports per manager (default: 7)
- * @returns Array of violation messages for managers who exceed the limit
- */
-export function enforceReportingLimits(
-  nodes: readonly OrgNode[],
-  maxDirectReports: number = 7,
-): string[] {
-  const findings: string[] = [];
-
-  // Count direct reports per parent
-  const directReportsCount = new Map<string, number>();
-  for (const node of nodes) {
-    if (node.parentOrgNodeId != null) {
-      const count = directReportsCount.get(node.parentOrgNodeId) ?? 0;
-      directReportsCount.set(node.parentOrgNodeId, count + 1);
-    }
-  }
-
-  // Check each manager's direct reports count
-  for (const [managerId, count] of directReportsCount.entries()) {
-    if (count > maxDirectReports) {
-      findings.push(`org_hierarchy.reporting_limit_exceeded:${managerId}:${count}>${maxDirectReports}`);
-    }
   }
 
   return findings;
@@ -131,14 +72,8 @@ export function enforceReportingLimits(
 
 export function listAncestorNodeIds(nodes: readonly OrgNode[], nodeId: string): string[] {
   const ancestors: string[] = [];
-  const visited = new Set<string>(); // SECURITY FIX: Track visited nodes to detect cycles
   let current = nodes.find((item) => item.orgNodeId === nodeId) ?? null;
   while (current?.parentOrgNodeId != null) {
-    // SECURITY FIX: Detect circular references to prevent infinite loops
-    if (visited.has(current.parentOrgNodeId)) {
-      throw new Error(`org_hierarchy.circular_reference_detected:${nodeId}`);
-    }
-    visited.add(current.parentOrgNodeId);
     ancestors.push(current.parentOrgNodeId);
     current = nodes.find((item) => item.orgNodeId === current?.parentOrgNodeId) ?? null;
   }
@@ -288,10 +223,7 @@ export function detectOrgChangeEvents(
         type: "employee_transfer",
         userId: assignment.userId,
         fromTeamId: beforeNode.orgNodeId,
-        // SECURITY FIX: toTeamId should be the target team node, not the parent ID.
-        // When an employee transfers, they go TO the new team node (afterNode),
-        // not to the parent's node (which is the parent's org node, not the target team).
-        toTeamId: afterNode.orgNodeId,
+        toTeamId: afterNode.parentOrgNodeId ?? "",
         newManagerId: assignment.managerUserId,
       });
     }

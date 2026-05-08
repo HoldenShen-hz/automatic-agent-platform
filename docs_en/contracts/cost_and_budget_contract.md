@@ -49,11 +49,10 @@ Compatibility Note:
 
 ## 4. CostEvent Minimum Fields
 
-- `cost_event_id`
-- `harness_run_id` (required - canonical runtime chain anchor)
+- `task_id`
+- `harness_run_id?`
 - `node_run_id?`
 - `attempt_id?`
-- `task_id?` (deprecated - use harness_run_id instead)
 - `session_id?`
 - `agent_id?`
 - `stage?`
@@ -62,7 +61,6 @@ Compatibility Note:
 - `input_tokens`
 - `output_tokens`
 - `cost_usd`
-- `budget_reservation_id?` (links to BudgetReservation for settlement tracking)
 - `created_at`
 
 ## 5. Behavioral Constraints
@@ -115,10 +113,10 @@ The following system internal operations generate model call costs and must be i
 
 | Operation | Attribution Rule | CostEvent Annotation |
 | --- | --- | --- |
-| Context compaction (compaction stage 2 summarize) | Attributed to session and harness run that triggered compaction | `budget_scope: compaction`, associated `session_id` and `harness_run_id` |
-| Model call after skill cache miss | Attributed to harness run and node run that triggered skill execution | `budget_scope: skill_execution`, associated `harness_run_id` and `node_run_id` + `attempt_id` |
-| Self-healing / recovery retry | Attributed to original harness run (not newly created recovery task) | `budget_scope: recovery_retry`, associated original `harness_run_id` |
-| Guardian / reviewer subagent reasoning | Attributed to harness run that triggered approval | `budget_scope: approval_review`, associated `harness_run_id` and `approval_id` |
+| Context compaction (compaction stage 2 summarize) | Attributed to session and task that triggered compaction | `budget_scope: compaction`, associated `session_id` and `task_id` |
+| Model call after skill cache miss | Attributed to task and execution that triggered skill execution | `budget_scope: skill_execution`, associated `execution_id` |
+| Self-healing / recovery retry | Attributed to original task (not newly created recovery task) | `budget_scope: recovery_retry`, associated original `task_id` |
+| Guardian / reviewer subagent reasoning | Attributed to task that triggered approval | `budget_scope: approval_review`, associated `approval_id` |
 
 Rules:
 

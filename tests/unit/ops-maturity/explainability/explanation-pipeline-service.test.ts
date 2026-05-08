@@ -180,7 +180,7 @@ test("ExplanationPipelineService caches generated explanations", () => {
 
   assert.ok(cached !== null);
   assert.equal(cached?.cacheKey, bundle1.cacheKey);
-  assert.equal(cached?.summary, bundle1.rationale.inferredSummary);
+  assert.equal(cached?.summary, bundle1.rationale.summary);
 });
 
 test("ExplanationPipelineService returns null for unknown cache key", () => {

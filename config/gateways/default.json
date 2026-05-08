@@ -1,47 +1,4 @@
 {
   "defaultGateway": "cli",
-  "sseEnabled": true,
-  "timeout": 30000,
-  "circuitBreaker": {
-    "enabled": true,
-    "failureThreshold": 5,
-    "resetTimeoutMs": 30000,
-    "halfOpenMaxAttempts": 3,
-    "fallbackMode": "fail_closed"
-  },
-  "rateLimit": {
-    "enabled": true,
-    "maxRequestsPerMinute": 1200,
-    "burstSize": 120
-  },
-  "cors": {
-    "enabled": true,
-    "allowOrigins": ["http://localhost:3000", "http://127.0.0.1:3000"],
-    "allowMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    "allowHeaders": ["authorization", "content-type", "x-sdk-version", "x-contract-version", "x-platform-min-version"]
-  },
-  "auth": {
-    "required": true,
-    "supportedSchemes": ["bearer", "session_cookie"]
-  },
-  "tls": {
-    "enabled": true,
-    "minVersion": "TLS 1.2",
-    "cipherSuites": ["TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"],
-    "rejectUnauthorized": true,
-    "requestClientCert": true
-  },
-  "requestLimits": {
-    "maxRequestBodyBytes": 1048576,
-    "maxBatchItems": 100
-  },
-  "websocket": {
-    "enabled": true,
-    "path": "/ws/v1/stream",
-    "maxConnections": 10000,
-    "heartbeatIntervalMs": 30000,
-    "maxMessageSizeBytes": 65536,
-    "backpressureThresholdBytes": 1048576,
-    "authViaSubprotocol": true
-  }
+  "sseEnabled": true
 }

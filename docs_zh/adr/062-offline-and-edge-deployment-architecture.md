@@ -48,17 +48,12 @@ interface EdgeRuntime {
 
 ### 冲突解决
 
-| 策略 | 适用范围 | 说明 |
-|------|----------|------|
-| server_wins | truth / budget / side effect 对象 | 服务端单 leader 写入（必须），符合 §25.11/§52.3 fencing 要求 |
-| last_write_wins | projection / 非关键统计对象 | 客户端时间戳优先写入 |
-| merge | projection / 非关键统计对象 | 合并冲突（可使用 CRDT） |
-| manual | 所有对象 | 人工解决 |
-
-**约束**：
-- truth / budget / side effect 对象必须使用 `server_wins`（单 leader 写入 + fencing），不允许 `last_write_wins`
-- projection / 非关键统计对象可使用 `last_write_wins` 或 `merge`
-- §25.11/§52.3 要求单 leader 写入时必须使用 fencing token 保护，防止脑裂
+| 策略 | 说明 |
+|------|------|
+| last_write_wins | 最后写入胜出 |
+| server_wins | 服务端优先 |
+| merge | 合并冲突 |
+| manual | 人工解决 |
 
 ## 后果
 

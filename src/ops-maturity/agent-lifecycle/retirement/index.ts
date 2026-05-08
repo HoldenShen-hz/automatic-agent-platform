@@ -42,14 +42,8 @@ export interface AgentRetirementRecord {
   readonly status: "initiated" | "in_grace_period" | "completed" | "cancelled";
 }
 
-/**
- * R27-14 FIX: ISO string comparison must be timezone-aware.
- * plan.revokeAt may be in any timezone, so we parse both as Dates for proper comparison.
- */
 export function canRetireAgent(plan: AgentRetirementPlan, nowIso: string): boolean {
-  const revokeAtDate = new Date(plan.revokeAt);
-  const nowDate = new Date(nowIso);
-  return revokeAtDate.getTime() <= nowDate.getTime();
+  return plan.revokeAt <= nowIso;
 }
 
 /**

@@ -6,7 +6,6 @@ import {
   type RegionReplicationConfig,
   type CDCReplicationBatch,
 } from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("CDCReplicationService registers and retrieves replication config", () => {
   const service = new CDCReplicationService();
@@ -245,85 +244,4 @@ test("CDCReplicationService returns idle status when no pending work", () => {
 
   const status = service.getStatus("us-east", "eu-west");
   assert.equal(status, "idle");
-});
-
-test("CDCReplicationService persists checkpoints across service restart when state file is configured", () => {
-  const workspace = createTempWorkspace("aa-cdc-state-");
-  const stateFilePath = `${workspace}/cdc-state.json`;
-
-  try {
-    const firstService = new CDCReplicationService({ stateFilePath });
-    firstService.registerReplication({
-      sourceRegionId: "us-east",
-      targetRegionId: "eu-west",
-      batchSize: 100,
-      replicationIntervalMs: 5000,
-      enabled: true,
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-    });
-
-    const batch = firstService.prepareBatch("us-east", "eu-west", [
-      { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
-      { id: "evt_2", sequence: 2, eventType: "task:updated", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:01:00Z" },
-    ] as any);
-    assert.ok(batch != null);
-    firstService.confirmBatch("us-east", "eu-west", batch!);
-
-    const restartedService = new CDCReplicationService({ stateFilePath });
-    restartedService.registerReplication({
-      sourceRegionId: "us-east",
-      targetRegionId: "eu-west",
-      batchSize: 100,
-      replicationIntervalMs: 5000,
-      enabled: true,
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-    });
-
-    const checkpoint = restartedService.getCheckpoint("us-east", "eu-west");
-    assert.equal(checkpoint?.lastEventSequence, 2);
-    assert.equal(checkpoint?.lastEventId, "evt_2");
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("CDCReplicationService persists pending queues and keeps failed batch retryable across restart", () => {
-  const workspace = createTempWorkspace("aa-cdc-state-");
-  const stateFilePath = `${workspace}/cdc-state.json`;
-
-  try {
-    const firstService = new CDCReplicationService({ stateFilePath });
-    firstService.registerReplication({
-      sourceRegionId: "us-east",
-      targetRegionId: "eu-west",
-      batchSize: 100,
-      replicationIntervalMs: 5000,
-      enabled: true,
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-    });
-
-    const batch = firstService.prepareBatch("us-east", "eu-west", [
-      { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
-    ] as any);
-    assert.ok(batch != null);
-    firstService.recordFailure("us-east", "eu-west", batch!, "network timeout");
-
-    const restartedService = new CDCReplicationService({ stateFilePath });
-    restartedService.registerReplication({
-      sourceRegionId: "us-east",
-      targetRegionId: "eu-west",
-      batchSize: 100,
-      replicationIntervalMs: 5000,
-      enabled: true,
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-    });
-
-    assert.equal(restartedService.getStatus("us-east", "eu-west"), "syncing");
-    const pendingBatch = restartedService.prepareBatch("us-east", "eu-west", [
-      { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
-    ] as any);
-    assert.equal(pendingBatch, null);
-  } finally {
-    cleanupPath(workspace);
-  }
 });

@@ -20,7 +20,6 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   private readonly redis: {
     status: string;
     connect(): Promise<void>;
-    incr?(key: string): Promise<number>;
     set(key: string, value: string, ...args: Array<string | number>): Promise<string | null>;
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
@@ -73,18 +72,6 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     throw new LockingError("lock.sync_acquire_deprecated", "lock.sync_acquire_deprecated: Use acquireAsync instead");
   }
 
-  private async nextFencingToken(): Promise<number> {
-    const localNext = this.fencingCounter + 1;
-    if (typeof this.redis.incr !== "function") {
-      this.fencingCounter = localNext;
-      return this.fencingCounter;
-    }
-
-    const remoteToken = await this.redis.incr("lock:fencing_counter");
-    this.fencingCounter = Math.max(localNext, remoteToken);
-    return this.fencingCounter;
-  }
-
   public release(_lockKey: string, _owner: string): boolean {
     throw new LockingError("lock.sync_release_not_supported", "lock.sync_release_not_supported: Use releaseAsync for Redis backend");
   }
@@ -107,23 +94,19 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     const ttlMs = input.ttlMs ?? 30_000;
     const ttlSec = Math.ceil(ttlMs / 1000);
     const lockKey = `lock:${input.lockKey}`;
-    const fencingToken = await this.nextFencingToken();
+    this.fencingCounter += 1;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${fencingToken}`,
+      id: `lock_${Date.now()}_${this.fencingCounter}`,
       owner: input.owner,
-      fencingToken,
+      fencingToken: this.fencingCounter,
       ttlMs,
       acquiredAt: now,
       metadata: null,
     };
     const result = await this.redis.set(lockKey, JSON.stringify(lockData), "EX", ttlSec, "NX");
     if (result !== "OK") {
-      // R29-12: Record lock acquisition failure (lock held)
-      runtimeMetricsRegistry.recordLockFailed(input.lockKey, "redis", "lock_held");
       return { acquired: false };
     }
-    // R29-12: Record successful lock acquisition
-    runtimeMetricsRegistry.recordLockAcquired(input.lockKey, "redis");
     return {
       acquired: true,
       lock: {
@@ -141,12 +124,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async releaseAsync(lockKey: string, owner: string): Promise<boolean> {
     await this.ensureConnected();
     const script = "local current=redis.call('GET',KEYS[1]) if not current then return -1 end local data=cjson.decode(current) if data.owner~=ARGV[1] then return 0 end return redis.call('DEL',KEYS[1])";
-    const result = Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
-    // R29-12: Record lock release
-    if (result) {
-      runtimeMetricsRegistry.recordLockReleased(lockKey, "redis");
-    }
-    return result;
+    return Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
   }
 
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
@@ -161,18 +139,13 @@ if not current then return -1 end
 local data = cjson.decode(current)
 if data.owner ~= ARGV[1] then return 0 end
 local newTtl = math.min(tonumber(ARGV[2]), 600000)
-data.ttlMs = newTtl
-redis.call('set', KEYS[1], cjson.encode(data), 'PX', newTtl)
+redis.call('pexpire', KEYS[1], newTtl)
 return 1`;
     const newTtlMs = Math.min(additionalMs, 600_000);
     const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
     if (result !== 1) {
-      // R29-12: Record lock extension failure
-      runtimeMetricsRegistry.recordLockFailed(lockKey, "redis", "extend_failed");
       return null;
     }
-    // R29-12: Record lock extension
-    runtimeMetricsRegistry.recordLockExtension(lockKey, owner, newTtlMs);
     const current = await this.redis.get(key);
     if (!current) {
       return null;
@@ -193,32 +166,30 @@ return 1`;
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
     const now = new Date().toISOString();
-    const fencingToken = await this.nextFencingToken();
+    this.fencingCounter += 1;
     const ttlMs = 30_000;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${fencingToken}`,
+      id: `lock_${Date.now()}_${this.fencingCounter}`,
       owner: newOwner,
-      fencingToken,
+      fencingToken: this.fencingCounter,
       ttlMs,
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    // R16-16 FIX: Use SET with PX (ms TTL) without XX to steal regardless of lock existence
-    // Previous: SET with "XX" only succeeds if lock exists, fails if original lock expired
-    // Fix: Use SET with NX (only if not exists) doesn't help either - we want to create
-    // the lock if expired. Use plain SET without NX/XX to unconditionally set the lock.
-    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)));
-    // Note: result is always OK when SET succeeds without NX/XX constraint
-    if (result === null) {
+    // Use SET with XX to atomically steal only if lock exists
+    // Use NX variant if we want to only set if NOT exists (opposite of XX)
+    // Here we use SET with PX (ms TTL) and XX (only if exists)
+    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)), "XX");
+    if (result !== "OK") {
       throw new LockingError(
         "lock.forceSteal_lock_not_found",
-        `lock.forceSteal_lock_not_found: Cannot force-steal missing lock ${lockKey}`,
+        `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`,
       );
     }
     return {
       lockKey,
       owner: newOwner,
-      fencingToken,
+      fencingToken: this.fencingCounter,
       status: "held",
       acquiredAt: now,
       ttlMs,

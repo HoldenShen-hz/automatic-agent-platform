@@ -1,6 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
 
-import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { LockingError } from "../../contracts/errors.js";
 import { lockLogger } from "./locking-support.js";
 import type { AcquireLockInput, AcquireLockResult, DistributedLockAdapter, LockBackendKind, LockRecord } from "./distributed-lock-types.js";
@@ -22,8 +21,6 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
       if (existing.owner === owner && existing.status === "held") {
         this.db.prepare(`UPDATE distributed_locks SET ttl_ms = ?, acquired_at = ? WHERE lock_key = ? AND owner = ?`).run(ttlMs, new Date().toISOString(), lockKey, owner);
         const fencingToken = existing.fencing_token || Date.now();
-        // R29-12: Record lock extension on refresh
-        runtimeMetricsRegistry.recordLockExtension(lockKey, owner, ttlMs);
         return { acquired: true, lock: { lockKey, owner, fencingToken, status: "held", acquiredAt: new Date().toISOString(), ttlMs, metadata: null } };
       }
       // RT-03: honour TTL on stale locks. Previously any existing row blocked
@@ -38,8 +35,6 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
         ? existingAcquiredMs + (existing.ttl_ms ?? 0)
         : Number.POSITIVE_INFINITY;
       if (Date.now() < expiresAt) {
-        // R29-12: Record lock acquisition failure (blocked by existing lock)
-        runtimeMetricsRegistry.recordLockFailed(lockKey, "sqlite", "lock_held");
         return { acquired: false };
       }
       this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ?`).run(lockKey);
@@ -49,8 +44,6 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
         message: "sqlite_lock.evicted_expired",
         data: { lockKey, previousOwner: existing.owner, expiresAt },
       });
-      // R29-12: Record lock expiry (evicted expired lock)
-      runtimeMetricsRegistry.recordLockTimeout(lockKey, "sqlite");
     }
     this.fencingCounter += 1;
     const fencingToken = this.fencingCounter;
@@ -58,13 +51,9 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
     try {
       this.db.prepare(`INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms) VALUES (?, ?, ?, 'held', ?, ?)`)
         .run(lockKey, owner, fencingToken, acquiredAt, ttlMs);
-      // R29-12: Record successful lock acquisition
-      runtimeMetricsRegistry.recordLockAcquired(lockKey, "sqlite");
       return { acquired: true, lock: { lockKey, owner, fencingToken, status: "held", acquiredAt, ttlMs, metadata: null } };
     } catch (err) {
       lockLogger.log({ level: "warn", message: "Lock acquire operation failed", data: { lockKey, owner, error: err instanceof Error ? err.message : String(err) } });
-      // R29-12: Record lock acquisition failure (db error)
-      runtimeMetricsRegistry.recordLockFailed(lockKey, "sqlite", "db_error");
       return { acquired: false };
     }
   }
@@ -72,10 +61,6 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
   release(lockKey: string, owner: string): boolean {
     try {
       const result = this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ? AND owner = ?`).run(lockKey, owner);
-      // R29-12: Record lock release
-      if (result.changes > 0) {
-        runtimeMetricsRegistry.recordLockReleased(lockKey, "sqlite");
-      }
       return result.changes > 0;
     } catch (err) {
       lockLogger.log({ level: "warn", message: "Lock release operation failed", data: { lockKey, owner, error: err instanceof Error ? err.message : String(err) } });

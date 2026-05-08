@@ -35,7 +35,7 @@ test("contracts barrel re-exports canonical namespaced core contract modules onl
 test("contracts barrel exposes canonical request factory without first-class legacy execution factories", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
-  assert.equal(typeof mod.executableContracts?.createRequestEnvelopeFromConfirmedTask, "function");
+  assert.equal(typeof mod.createPlaneRequestEnvelope, "function");
   assert.equal("createPlaneControlDirective" in mod, false);
   assert.equal("createPlaneExecutionPlan" in mod, false);
   assert.equal("createPlaneExecutionReceipt" in mod, false);
@@ -45,7 +45,7 @@ test("contracts barrel exposes canonical request factory without first-class leg
 test("contracts barrel does not export legacy execution factories as direct canonical entries", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
-  assert.equal(typeof mod.executableContracts?.createRequestEnvelopeFromConfirmedTask, "function");
+  assert.equal(typeof mod.createRequestEnvelope, "function");
   assert.equal("createControlDirective" in mod, false);
   assert.equal("createExecutionPlan" in mod, false);
   assert.equal("createExecutionReceipt" in mod, false);
@@ -352,7 +352,7 @@ test("createExecutionPlan with all options", async () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
@@ -375,7 +375,7 @@ test("createExecutionReceipt with error detail", async () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
   );
 });
 
@@ -390,22 +390,16 @@ test("createStateCommand with all command types", async () => {
   const commandTypes = ["update_truth", "append_event", "write_checkpoint", "store_artifact"] as const;
 
   for (const type of commandTypes) {
-    assert.throws(
-      () =>
-        createStateCommand({
-          traceId: "trace_123",
-          principal,
-          type,
-          aggregateId: "task_456",
-          expectedVersion: 1,
-          fencingToken: "fence_abc",
-          payload: { data: "test" },
-        }),
-      (error: unknown) =>
-        error instanceof Error
-        && "code" in error
-        && (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
-    );
+    const command = createStateCommand({
+      traceId: "trace_123",
+      principal,
+      type,
+      aggregateId: "task_456",
+      expectedVersion: 1,
+      fencingToken: "fence_abc",
+      payload: { data: "test" },
+    });
+    assert.equal(command.type, type);
   }
 });
 

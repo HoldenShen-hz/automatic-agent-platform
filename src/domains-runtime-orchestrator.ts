@@ -61,7 +61,7 @@ function buildDependencyServiceIds(
 export class DomainsRuntimeOrchestrator {
   private startupPlan: DomainsStartupPlan | undefined;
 
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
 
   public prepare(): DomainsStartupPlan {
     registerDomainsBootstrap(this.registry);
@@ -124,7 +124,7 @@ export class DomainsRuntimeOrchestrator {
 }
 
 export function registerDomainsRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsRuntimeOrchestrator {
   registerDomainsBootstrap(registry);
   registerDomainsRuntimeCatalog(registry);

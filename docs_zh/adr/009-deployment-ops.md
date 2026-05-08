@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与 Dual-Channel 输出
 - **Feedback**：信号收集、预处理与 7 类反馈源（ADR-079）
 - **Learn**：模式检测与知识提取（ADR-080）
-- **Improve**：改进候选评估与 Release 状态机（ADR-075）
+- **Improve**：改进候选评估与 Rollout 状态机（ADR-075）
 - **Release**：六级受控发布与自动回滚
 
 ---
@@ -28,7 +28,7 @@
 
 采用 TypeScript 全栈 + 分阶段基础设施演进路线：
 
-- 核心服务层统一放在 `src/platform/`（v4.3 §35 canonical）。
+- 核心服务层统一放在 `src/core/`。
 - 接入层包括 CLI、TUI、HTTP Server、Gateway 和 Embedded Client。
 - 早期持久化使用 SQLite + WAL。
 - 通过结构化事件、工作流状态、产出物存储和恢复算法支持 crash recovery。
@@ -38,7 +38,7 @@
 
 代码结构应围绕职责边界展开：
 
-- `platform/`：运行时、工具、provider、session、storage、安全、supervisor、memory（v4.3 §35 canonical）。
+- `core/`：运行时、工具、provider、session、storage、安全、supervisor、memory。
 - `divisions/`：事业部定义与角色 prompt。
 - `tools/`：内置工具、协作工具和专用工具。
 - `gateway/`：多渠道接入。
@@ -58,7 +58,7 @@ Phase 1-2 采用 SQLite，但必须承认其边界：
 为了支撑恢复，至少需要：
 
 - 任务表。
-- harness_runs（v4.3 §35 canonical）。
+- workflow_state。
 - workflow_step_outputs。
 - sessions / messages。
 - events。
@@ -136,7 +136,3 @@ Phase 1-2 采用 SQLite，但必须承认其边界：
 - `§3.8`
 - `§9`
 - `§12`
-
-## v4.3 ADR Remediation
-
-- R6-50: 修复目录结构引用。ADR-009 原先描述核心服务层放在 `src/core/`，与 v4.3 §35 canonical 目录结构 `src/platform/` 不符。修复：正文改为 `src/platform/`（v4.3 §35 canonical）。

@@ -79,7 +79,7 @@
 
 规则：
 
-- artifact 必须能通过 `ref_id` 回链到 feedback / learning / improvement / release / diagnostics 等闭环对象。
+- artifact 必须能通过 `ref_id` 回链到 feedback / learning / improvement / rollout / diagnostics 等闭环对象。
 - publish / preview / governance 相关 artifact 不得只存在文件系统路径，必须有结构化索引。
 
 ## v4.3 Contract Remediation

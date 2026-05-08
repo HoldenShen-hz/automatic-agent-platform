@@ -1,13 +1,13 @@
 /**
  * Risk Control Module
  *
- * Implements ADR-026 Risk Control Architecture:
- * - RiskEvaluationEngine: 8-factor weighted scoring algorithm
+ * Implements §10 Risk Control Architecture:
+ * - RiskEvaluationEngine: Weighted scoring algorithm with 6 factors
  * - 4 risk levels: LOW, MEDIUM, HIGH, CRITICAL
  * - Config-driven risk matrix from config/risk/default.json
  * - Domain-level risk profile overrides
  *
- * @see docs_en/adr/026-risk-control-architecture.md
+ * @see docs_zh/architecture/00-platform-architecture.md §10
  */
 
 export {
@@ -19,14 +19,11 @@ export { loadRiskConfig } from "./risk-config-loader.js";
 
 export type {
   RiskLevel,
-  OperationRisk,
-  TargetResourceCriticality,
-  DataSensitivity,
-  AutonomyModeRisk,
-  TenantImpact,
+  StepTypeRisk,
+  TargetSystemRisk,
+  DataClassRisk,
   BlastRadius,
-  HistoricalFailureRate,
-  EvidenceConfidence,
+  ConfidenceLevel,
   RiskFactors,
   RiskEvaluationRequest,
   RiskEvaluationResult,

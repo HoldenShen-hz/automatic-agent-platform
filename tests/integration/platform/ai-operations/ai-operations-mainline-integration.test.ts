@@ -194,13 +194,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
     const budget = new BudgetGuard().evaluateTaskSpend({
       policy: {
         maxTaskCostUsd: 5,
-        maxPackCostUsd: 50,
-        maxPlatformCostUsd: 500,
         maxDailyCostUsd: 50,
         maxMonthlyCostUsd: 500,
-        maxModelTokens: 100_000,
-        maxSteps: 100,
-        maxDurationMs: 600_000,
         warnAtRatio: 0.8,
         mode: "supervised",
       },
@@ -269,8 +264,8 @@ test("integration: ai operations mainline composes prompt governance, model roll
     const constraintPack: ConstraintPack = {
       policyIds: ["prompt_release", "model_governance", "compliance_transfer"],
       approvalMode: budget.requiresApproval ? "required" : "supervised",
-      autonomyMode: "semi_auto",
-      tool_policy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      autonomyMode: "supervised",
+      toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
       risk_policy: {
         maxRiskScore: 70,
         escalationThreshold: 55,
@@ -278,15 +273,6 @@ test("integration: ai operations mainline composes prompt governance, model roll
       output_policy: {
         requiredEvidence: ["risk_profile", "eval_framework"],
         redactSensitiveData: true,
-      },
-      sandboxRequirement: {
-        sandboxMode: "none",
-        timeoutMs: 60000,
-      },
-      approvalRequirement: {
-        requiredForRiskClass: ["low", "medium", "high", "critical"],
-        approverRoles: ["admin"],
-        escalationTimeoutMs: 60000,
       },
       budget: {
         maxSteps: 6,

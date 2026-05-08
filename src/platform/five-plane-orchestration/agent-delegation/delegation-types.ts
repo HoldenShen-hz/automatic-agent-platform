@@ -16,8 +16,6 @@ export interface AgentContext {
   agentType: string;
   packId: string;
   delegationDepth: number;
-  currentCallDepth?: number;
-  goalDecompositionDepth?: number;
   activeDelegations: ReadonlyArray<string>;
   permissions: PermissionSet;
   sandboxTier: SandboxMode;
@@ -74,15 +72,6 @@ export interface ToolSchema extends Record<string, unknown> {
 // Delegation Specification Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type CollaborationMode = "pipeline" | "negotiation" | "broadcast";
-
-export interface AggregationPolicy {
-  aggregationMethod: "all" | "best_n" | "threshold" | "consensus";
-  bestNCount?: number;
-  thresholdScore?: number;
-  resultMergeStrategy: "concat" | "union" | "intersection";
-}
-
 export interface DelegationSpec {
   targetAgentId: string;
   targetAgentType: string;
@@ -93,14 +82,10 @@ export interface DelegationSpec {
   inputSchema?: ToolSchema;
   outputSchema?: ToolSchema;
   // Collaboration modes
-  collaborationMode?: CollaborationMode;
+  collaborationMode?: "pipeline" | "negotiation";
   pipelineStages?: PipelineStageDefinition[];
   negotiationRounds?: number;
   negotiationSelectionPolicy?: "highest_confidence" | "consensus" | "parent_selection";
-  // Broadcast and aggregation
-  aggregationPolicy?: AggregationPolicy;
-  // Data classification
-  dataClass?: string;
 }
 
 export interface PipelineStageDefinition {
@@ -123,23 +108,11 @@ export interface DelegationResult {
   correlationId: string;
   requiresApproval?: boolean;
   status: DelegationStatus;
-  // §19.1 required fields
-  summary: string;
-  artifact_refs: readonly string[];
-  trust_level: number;
-  taint_labels: readonly string[];
-  evidence_refs: readonly string[];
-  policy_outcome: string;
-  // §19.1 cross-delegation data classification
-  data_class: string;
 }
 
 export type DelegationStatus =
   | "pending"
   | "pending_approval"
-  | "discovery"
-  | "bid"
-  | "awarded"
   | "active"
   | "completed"
   | "failed"
@@ -177,7 +150,6 @@ export interface DelegationChainNode {
   depth: number;
   createdAt: string;
   parentDelegationId: string | null;
-  status: DelegationStatus;
 }
 
 export interface DelegationChain {
@@ -232,6 +204,4 @@ export interface DelegationOptions {
   allowedPackIds?: readonly string[];
   defaultTimeout?: number;
   defaultTimeoutMs?: number;
-  governanceService?: import("./delegation-governance-service.js").DelegationGovernanceService;
-  auditService?: import("./delegation-audit-service.js").DelegationAuditService;
 }

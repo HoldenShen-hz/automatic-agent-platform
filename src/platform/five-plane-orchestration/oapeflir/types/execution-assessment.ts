@@ -53,10 +53,8 @@ export interface ExecutionAssessment {
 export type ExecutionOutcome = "completed" | "completed_with_deviations" | "repairable" | "failed" | "escalated";
 
 export interface ExecutionDeviation {
-  /** Canonical NodeRun ID where deviation occurred */
-  nodeRunId: string;
-  /** @deprecated Use nodeRunId for canonical correlation. */
-  stepId?: string;
+  /** Step ID where deviation occurred */
+  stepId: string;
   /** Type of deviation */
   deviationType: "skipped" | "reordered" | "modified" | "added" | "substituted";
   /** Description of what changed */
@@ -66,10 +64,8 @@ export interface ExecutionDeviation {
 }
 
 export interface ExecutionError {
-  /** Canonical NodeRun ID where error occurred */
-  nodeRunId: string;
-  /** @deprecated Use nodeRunId for canonical correlation. */
-  stepId?: string;
+  /** Step ID where error occurred */
+  stepId: string;
   /** Error code */
   errorCode: string;
   /** Human-readable message */

@@ -19,12 +19,11 @@ test("HarnessSdk handles checkpoint and restore roundtrip", () => {
   const run = sdk.createRun({
     taskId: "task-checkpoint",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: ["policy.audit"],
       approvalMode: "supervised",
       autonomyMode: "supervised",
-      tool_policy: { allowedTools: ["search"] },
+      toolPolicy: { allowedTools: ["search"] },
       risk_policy: { maxRiskScore: 0.6, escalationThreshold: 0.4 },
       output_policy: { requiredEvidence: ["decision_log"], redactSensitiveData: true },
       budget: { maxSteps: 5, maxCost: 5, maxDurationMs: 60_000 },
@@ -37,7 +36,7 @@ test("HarnessSdk handles checkpoint and restore roundtrip", () => {
   const restored = sdk.restoreFromCheckpoint(checkpointRef);
   // restoreFromCheckpoint may return null depending on implementation
   // Just verify it doesn't throw
-  assert.ok(restored === null || restored.harnessRunId === run.harnessRunId);
+  assert.ok(restored === null || restored.runId === run.runId);
 });
 
 test("HarnessSdk.decide with maxIterationsReached returns abort", () => {
@@ -85,12 +84,11 @@ test("HarnessSdk.sleep accepts string or run", () => {
   const run = sdk.createRun({
     taskId: "task-sleep",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -108,12 +106,11 @@ test("HarnessSdk.resume accepts string or run", () => {
   const run = sdk.createRun({
     taskId: "task-resume",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -131,12 +128,11 @@ test("HarnessSdk.requestHumanReview adds HITL request to run", () => {
   const run = sdk.createRun({
     taskId: "task-hitl",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -154,12 +150,11 @@ test("HarnessSdk.resolveReview with approved resolution", () => {
   const run = sdk.createRun({
     taskId: "task-resolve",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -177,12 +172,11 @@ test("HarnessSdk.resolveReview with rejected resolution", () => {
   const run = sdk.createRun({
     taskId: "task-reject",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -200,12 +194,11 @@ test("HarnessSdk.getTimeline returns timeline events", () => {
   const run = sdk.createRun({
     taskId: "task-timeline",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -222,12 +215,11 @@ test("HarnessSdk.getEvaluation returns evaluation report", () => {
   const run = sdk.createRun({
     taskId: "task-eval",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -243,12 +235,11 @@ test("HarnessSdk.persist persists run without error", () => {
   const run = sdk.createRun({
     taskId: "task-persist",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -265,12 +256,11 @@ test("HarnessSdk.assertInvariants returns empty violations for valid run", () =>
   const run = sdk.createRun({
     taskId: "task-assert",
     domainId: "legal",
-    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 1, escalationThreshold: 0.9 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },

@@ -16,12 +16,6 @@ import {
   REMOTE_LOG_AGGREGATION_SQL,
   TRUSTED_REMOTE_WORKER_REGISTRATION_SQL,
   EVENT_SESSION_ID_SQL,
-  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns for fencing token enforcement
-  HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL,
-  SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL,
-  BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL,
-  WORKER_IDENTITY_AND_CAPACITY_SQL,
-  EXECUTION_TICKET_GRAPH_SCHEDULING_SQL,
 } from "./sqlite-migration-runtime-part1.js";
 import {
   REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL,
@@ -55,17 +49,11 @@ import {
   EVENT_DEAD_LETTERS_SQL,
   SESSION_EVENTS_SQL,
   DLQ_RECORDS_SQL,
-  BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
-  CONFIG_VERSIONING_AND_ROLLOUT_SQL,
-  EXTENDED_DLQ_RECORDS_SQL,
-  DLQ_INCIDENT_LINKING_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
-import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../five-plane-state-evidence/truth/runtime-physical-schema.js";
-import { ARTIFACT_NODE_RUN_ID_SQL, CAS_RECORDS_SQL, FENCE_RECORDS_SQL } from "./sqlite-migration-runtime-part4.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -351,27 +339,6 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(40, "0040_session_events", SESSION_EVENTS_SQL),
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
   defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
-  defineMigration(43, "0043_billing_usage_event_canonical_attribution", BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL),
-  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to harness_runs for single-leader enforcement
-  defineMigration(44, "0044_harness_run_lease_fencing", HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL),
-  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to side_effect_records for fencing enforcement
-  defineMigration(45, "0045_side_effect_lease_fencing", SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL),
-  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to budget_ledgers for fencing enforcement
-  defineMigration(46, "0046_budget_ledger_lease_fencing", BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL),
-  // Bridge legacy authoritative storage with the canonical five-plane runtime schema.
-  defineMigration(47, "0047_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_SQL),
-  defineMigration(48, "0048_worker_identity_and_capacity", WORKER_IDENTITY_AND_CAPACITY_SQL),
-  defineMigration(49, "0049_execution_ticket_graph_scheduling", EXECUTION_TICKET_GRAPH_SCHEDULING_SQL),
-  // R15-78/R15-79: Persist config version snapshots and active rollouts to SQLite
-  defineMigration(50, "0050_config_versioning_and_rollout", CONFIG_VERSIONING_AND_ROLLOUT_SQL),
-  // R16-35: Persist CAS records to SQLite instead of in-memory Map
-  defineMigration(51, "0051_cas_records_persistence", CAS_RECORDS_SQL),
-  // R16-37: Add extended DLQ columns for DlqService persistence
-  defineMigration(52, "0052_extended_dlq_records", EXTENDED_DLQ_RECORDS_SQL),
-  defineMigration(53, "0053_dlq_incident_linking", DLQ_INCIDENT_LINKING_SQL),
-  // R22-41: Persist fencing records to SQLite for multi-process/shared fencing
-  defineMigration(54, "0054_fence_records_persistence", FENCE_RECORDS_SQL),
-  defineMigration(55, "0055_artifact_node_run_id", ARTIFACT_NODE_RUN_ID_SQL),
 ] as const;
 
 /**

@@ -14,58 +14,14 @@ export interface MachineOutput {
   payload: Record<string, unknown>;
 }
 
-/**
- * Resolve the best available execution reference for plugin-facing machine output.
- * Canonical order is nodeRunId -> nodeId -> legacy stepId.
- */
-export function resolveMachineOutputExecutionId(
-  output: Pick<MachineOutput, "nodeRunId" | "nodeId" | "stepId">,
-  fallback = "unknown_step",
-): string {
-  return output.nodeRunId ?? output.nodeId ?? output.stepId ?? fallback;
-}
-
-/**
- * Backfill legacy stepId projection from canonical execution identifiers.
- * This keeps older presenter plugins working while new callers migrate to nodeRunId.
- */
-export function withLegacyMachineOutputProjection(output: MachineOutput): MachineOutput {
-  const executionId = resolveMachineOutputExecutionId(output, "");
-  if (executionId.length === 0 || output.stepId != null) {
-    return output;
-  }
-  return {
-    ...output,
-    stepId: executionId,
-  };
-}
-
-export function normalizeMachineOutputs(outputs: readonly MachineOutput[]): MachineOutput[] {
-  return outputs.map((output) => withLegacyMachineOutputProjection(output));
-}
-
 export interface HumanOutput {
   summary: string;
   sections: string[];
   citations: string[];
 }
 
-export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
-/**
- * Plugin lifecycle states per contract §4.
- * States: suspended/loading/initialized map to code's degraded/disabled in operational sense.
- * Code uses more granular states for internal tracking; contract defines canonical set.
- */
-export const PluginLifecycleStateSchema = z.enum([
-  "registered",   // Plugin registered but not loaded
-  "validated",     // Plugin validated
-  "loading",       // Plugin is being loaded (code: loaded)
-  "active",        // Plugin fully loaded and active (code: active)
-  "inactive",      // Plugin loaded but inactive
-  "unloaded",      // Plugin unloaded
-  "suspended",     // Plugin suspended (code: degraded)
-  "disabled",      // Plugin disabled (code: disabled)
-]);
+export const PluginSpiTypeSchema = z.enum(["retriever", "validator", "planner", "presenter", "adapter"]);
+export const PluginLifecycleStateSchema = z.enum(["registered", "loaded", "active", "inactive", "unloaded", "degraded", "disabled"]);
 export const PluginRuntimeIsolationSchema = z.enum([
   "shared_process",
   "serialized_in_process",
@@ -91,27 +47,6 @@ export const PluginSandboxPolicySchema = z.object({
   rateLimitPerMinute: z.number().int().positive().optional().default(60),
 });
 
-/**
- * R8-25: PluginSignature holds cryptographic signature data for plugin integrity verification.
- * When loading a plugin, the signature must be verified using the corresponding public key.
- */
-export interface PluginSignature {
-  /** Unique identifier for the key used to create this signature */
-  keyId: string;
-  /** Base64-encoded cryptographic signature of the plugin manifest */
-  signature: string;
-  /** Algorithm used for signature creation/verification (e.g., "RS256", "RS384", "RS512") */
-  algorithm: "RS256" | "RS384" | "RS512" | "ES256" | "ES384" | "ES512" | "HS256" | "HS384" | "HS512";
-}
-
-export const PluginSignatureSchema = z.object({
-  keyId: z.string().min(1),
-  signature: z.string().min(1),
-  algorithm: z.enum(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512"]),
-});
-
-export type PluginSignatureData = z.infer<typeof PluginSignatureSchema>;
-
 export const PluginManifestSchema = z.object({
   pluginId: z.string().min(1),
   name: z.string().min(1),
@@ -121,13 +56,8 @@ export const PluginManifestSchema = z.object({
   capabilityIds: z.array(z.string().min(1)).default([]),
   spiTypes: z.array(PluginSpiTypeSchema).min(1),
   extensionKind: z.enum(["domain_plugin", "external_adapter"]).default("domain_plugin"),
-  trustLevel: z.enum(["internal", "trusted", "community", "unverified", "verified", "untrusted"]).default("trusted"),
-  publicSdkSurface: z.preprocess(
-    (value) => typeof value === "string" ? [value] : value,
-    z.array(z.string().min(1)).default([]),
-  ),
-  /** R18-7: Plugin dependencies - list of plugin IDs this plugin depends on */
-  dependencies: z.array(z.string().min(1)).default([]),
+  trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
+  publicSdkSurface: z.string().min(1),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
   sandbox: PluginSandboxPolicySchema.default({
     timeoutMs: 5000,
@@ -139,8 +69,6 @@ export const PluginManifestSchema = z.object({
     runtimeIsolation: "serialized_in_process",
     cooldownMs: 0,
   }),
-  /** R8-25: Optional cryptographic signature for plugin integrity verification */
-  signature: PluginSignatureSchema.optional(),
 });
 
 export type PluginSpiType = z.infer<typeof PluginSpiTypeSchema>;
@@ -163,8 +91,6 @@ export interface PluginLifecycleHooks {
   onActivate?(context: PluginLifecycleContext): Promise<void> | void;
   onDeactivate?(context: PluginLifecycleContext): Promise<void> | void;
   onUnload?(context: PluginLifecycleContext): Promise<void> | void;
-  /** Suspend plugin operations - called when transitioning to suspended state per contract §4 */
-  suspend?(reason: string): Promise<void> | void;
   initialize?(): Promise<void> | void;
   healthCheck?(): Promise<boolean> | boolean;
   shutdown?(): Promise<void> | void;
@@ -254,45 +180,6 @@ export interface DomainPresenterPlugin extends PluginLifecycleHooks {
   }): Promise<HumanOutput>;
 }
 
-export interface DomainToolPlugin extends PluginLifecycleHooks {
-  pluginId: string;
-  domainId: string;
-  spiType: "tool";
-  capabilityIds?: readonly string[];
-  execute(params: {
-    taskId: string;
-    toolName: string;
-    arguments: Record<string, unknown>;
-    context: Record<string, unknown>;
-  }): Promise<{
-    success: boolean;
-    output: unknown;
-    errorMessage?: string;
-    metadata?: Record<string, unknown>;
-  }>;
-}
-
-export interface DomainEvaluatorPlugin extends PluginLifecycleHooks {
-  pluginId: string;
-  domainId: string;
-  spiType: "evaluator";
-  capabilityIds?: readonly string[];
-  evaluate(input: {
-    taskId: string;
-    nodeId?: string;
-    /** @deprecated legacy projection identifier; use nodeId */
-    stepId?: string;
-    machineOutput: MachineOutput;
-    criteria: Record<string, unknown>;
-    context: Record<string, unknown>;
-  }): Promise<{
-    passed: boolean;
-    score: number;
-    feedback: string;
-    details: Array<{ criterion: string; passed: boolean; score: number; reason: string }>;
-  }>;
-}
-
 export interface ExternalAdapterPlugin extends PluginLifecycleHooks {
   pluginId: string;
   spiType: "adapter";
@@ -315,6 +202,4 @@ export type RegisteredPlugin =
   | DomainValidatorPlugin
   | DomainPlannerPlugin
   | DomainPresenterPlugin
-  | DomainToolPlugin
-  | DomainEvaluatorPlugin
   | ExternalAdapterPlugin;

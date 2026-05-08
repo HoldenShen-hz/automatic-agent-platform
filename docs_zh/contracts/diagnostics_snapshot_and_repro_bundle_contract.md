@@ -44,7 +44,7 @@
 - oapeflir timeline
 - relevant messages
 - tool usage
-- feedback signals / learning objects / release refs（若相关）
+- feedback signals / learning objects / rollout refs（若相关）
 - sanitized artifacts
 - config subset
 - session / interaction export（若存在交互层）
@@ -151,7 +151,7 @@
 - 为什么触发重试
 - 为什么切 fallback provider
 - 为什么接受或拒绝 improvement candidate
-- 为什么推进或阻断 release
+- 为什么推进或阻断 rollout
 
 ## 6. 收口结论
 

@@ -87,23 +87,6 @@ export interface RuntimeMetricsSummary {
     pendingTier1AckCount: number;
     failedTier1AckCount: number;
   };
-  harnessRunMetrics: {
-    total: number;
-    completedCount: number;
-    failedCount: number;
-    abortedCount: number;
-    activeCount: number;
-    successRate: number;
-  };
-  nodeRunMetrics: {
-    total: number;
-    readyCount: number;
-    runningCount: number;
-    succeededCount: number;
-    failedCount: number;
-    retryCount: number;
-    blockedCount: number;
-  };
   runtimeMetrics: {
     status: HealthStatusReport["status"];
     degradationMode: HealthStatusReport["degradationMode"];
@@ -116,65 +99,6 @@ export interface RuntimeMetricsSummary {
     queueGovernance: HealthStatusReport["queueGovernance"];
     workerHealth: HealthStatusReport["workerHealth"];
     findings: string[];
-  };
-  /** Per §4.1 contract: attempt-level metrics with duration percentiles */
-  attemptMetrics: {
-    total: number;
-    activeCount: number;
-    retryAttemptCount: number;
-    recoveryAttemptCount: number;
-    averageDurationMs: number | null;
-    p95DurationMs: number | null;
-  };
-  /** Per §4.1 contract: OAPEFLIR loop-level view metrics */
-  oapeflirViewMetrics: {
-    loopCount: number;
-    completedLoopCount: number;
-    failedLoopCount: number;
-    averageLoopDurationMs: number | null;
-    convergenceRate: number;
-  };
-  /** Per §4.1 contract: per-stage view metrics for OAPEFLIR 8 stages */
-  stageViewMetrics: {
-    observe: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    assess: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    plan: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    execute: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    feedback: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    learn: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    improve: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-    release: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
-  };
-  /** Per §4.1 contract: feedback signal metrics */
-  feedbackMetrics: {
-    receivedCount: number;
-    classifiedCount: number;
-    consumedCount: number;
-    positiveCount: number;
-    negativeCount: number;
-    correctionCount: number;
-  };
-  /** Per §4.1 contract: learning object metrics */
-  learningMetrics: {
-    objectCreatedCount: number;
-    validatedCount: number;
-    promotedCount: number;
-    rejectedCount: number;
-  };
-  /** Per §4.1 contract: improvement candidate metrics */
-  improvementMetrics: {
-    candidateProposedCount: number;
-    acceptedCount: number;
-    rejectedCount: number;
-    guardrailBlockedCount: number;
-  };
-  /** Per §4.1 contract: release progression metrics */
-  releaseMetrics: {
-    startedCount: number;
-    advancedCount: number;
-    completedCount: number;
-    rolledBackCount: number;
-    currentLevel: number;
   };
 }
 
@@ -198,10 +122,7 @@ export class MetricsService {
     const taskWindow = this.selectRow<{
       firstTaskCreatedAt: string | null;
       lastTaskUpdatedAt: string | null;
-    }>(
-      `SELECT MIN(created_at) AS firstTaskCreatedAt, MAX(updated_at) AS lastTaskUpdatedAt FROM tasks`,
-      { firstTaskCreatedAt: null, lastTaskUpdatedAt: null },
-    );
+    }>(`SELECT MIN(created_at) AS firstTaskCreatedAt, MAX(updated_at) AS lastTaskUpdatedAt FROM tasks`);
 
     // Query task status counts
     const taskCounts = this.selectRow<{
@@ -220,7 +141,6 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
          COALESCE(SUM(CASE WHEN status NOT IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END), 0) AS activeCount
        FROM tasks`,
-      { total: 0, terminalCount: 0, successCount: 0, failedCount: 0, cancelledCount: 0, activeCount: 0 },
     );
 
     // Query workflow status counts
@@ -238,7 +158,6 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
          COALESCE(SUM(CASE WHEN retry_count > 0 THEN 1 ELSE 0 END), 0) AS retriedCount
        FROM workflow_state`,
-      { total: 0, completedCount: 0, failedCount: 0, cancelledCount: 0, retriedCount: 0 },
     );
 
     // Query execution status counts
@@ -254,7 +173,6 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
          COALESCE(SUM(CASE WHEN status = 'superseded' THEN 1 ELSE 0 END), 0) AS supersededCount
        FROM executions`,
-      { total: 0, activeCount: 0, retryAttemptCount: 0, supersededCount: 0 },
     );
 
     // Query recovery event counts
@@ -277,7 +195,6 @@ export class MetricsService {
        LEFT JOIN tasks t ON t.id = e.task_id
        WHERE e.task_id IS NOT NULL
          AND e.event_type LIKE 'recovery:%'`,
-      { taskCount: 0, successfulTaskCount: 0, decisionCount: 0, repairEventCount: 0, deadLetterCount: 0, cancelledCount: 0 },
     );
 
     // Query approval counts
@@ -293,7 +210,6 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status != 'requested' THEN 1 ELSE 0 END), 0) AS resolvedCount,
          COUNT(DISTINCT task_id) AS taskTriggerCount
        FROM approvals`,
-      { total: 0, pendingCount: 0, resolvedCount: 0, taskTriggerCount: 0 },
     );
 
     // Query event tier counts
@@ -309,7 +225,6 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN event_tier = 'tier_2' THEN 1 ELSE 0 END), 0) AS tier2Count,
          COALESCE(SUM(CASE WHEN event_tier = 'tier_3' THEN 1 ELSE 0 END), 0) AS tier3Count
        FROM events`,
-      { total: 0, tier1Count: 0, tier2Count: 0, tier3Count: 0 },
     );
 
     // Query event consumer ack counts (for tier-1 pending/failed acks)
@@ -323,45 +238,6 @@ export class MetricsService {
        FROM event_consumer_acks a
        INNER JOIN events e ON e.id = a.event_id
        WHERE e.event_tier = 'tier_1'`,
-      { pendingTier1AckCount: 0, failedTier1AckCount: 0 },
-    );
-
-    // Query harness_runs counts (R4-42: harness.* metrics gap fix)
-    const harnessRunCounts = this.selectRow<{
-      total: number;
-      completedCount: number;
-      failedCount: number;
-      abortedCount: number;
-      activeCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS total,
-         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
-         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
-         COALESCE(SUM(CASE WHEN status = 'aborted' THEN 1 ELSE 0 END), 0) AS abortedCount,
-         COALESCE(SUM(CASE WHEN status NOT IN ('completed', 'failed', 'aborted') THEN 1 ELSE 0 END), 0) AS activeCount
-       FROM harness_runs`,
-    );
-
-    // Query node_runs counts (R4-42: harness.* metrics gap fix)
-    const nodeRunCounts = this.selectRow<{
-      total: number;
-      readyCount: number;
-      runningCount: number;
-      succeededCount: number;
-      failedCount: number;
-      retryCount: number;
-      blockedCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS total,
-         COALESCE(SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END), 0) AS readyCount,
-         COALESCE(SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END), 0) AS runningCount,
-         COALESCE(SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END), 0) AS succeededCount,
-         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
-         COALESCE(SUM(CASE WHEN attempt_count > 0 THEN 1 ELSE 0 END), 0) AS retryCount,
-         COALESCE(SUM(CASE WHEN status IN ('awaiting_hitl', 'policy_blocked', 'dependency_failed') THEN 1 ELSE 0 END), 0) AS blockedCount
-       FROM node_runs`,
     );
 
     // Query cost metrics
@@ -385,161 +261,6 @@ export class MetricsService {
     const stepRows = this.db.connection
       .prepare(`SELECT duration_ms AS durationMs, token_cost AS tokenCost FROM workflow_step_outputs ORDER BY duration_ms ASC`)
       .all() as Array<{ durationMs: number; tokenCost: number }>;
-
-    // Query attempt metrics (R7-5: attemptMetrics per §4.1 contract)
-    const attemptCounts = this.selectRow<{
-      total: number;
-      activeCount: number;
-      retryAttemptCount: number;
-      recoveryAttemptCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS total,
-         COALESCE(SUM(CASE WHEN status IN ('created', 'prechecking', 'executing', 'blocked') THEN 1 ELSE 0 END), 0) AS activeCount,
-         COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
-         COALESCE((SELECT COUNT(*) FROM events ev WHERE ev.execution_id = executions.id AND ev.event_type LIKE 'recovery:%'), 0) AS recoveryAttemptCount
-       FROM executions`,
-    );
-
-    // Query attempt durations for percentile calculation
-    const attemptDurationRows = this.db.connection
-      .prepare(`SELECT (julianday(finished_at) - julianday(started_at)) * 86400000 AS durationMs FROM executions WHERE finished_at IS NOT NULL AND started_at IS NOT NULL ORDER BY durationMs ASC`)
-      .all() as Array<{ durationMs: number }>;
-    const attemptDurations = attemptDurationRows.map((row) => Number(row.durationMs ?? 0));
-
-    // Query OAPEFLIR loop metrics (R7-5: oapeflirViewMetrics per §4.1 contract)
-    const loopCounts = this.safeSelectRow<{
-      loopCount: number;
-      completedLoopCount: number;
-      failedLoopCount: number;
-      totalDurationMs: number;
-    }>(
-      `SELECT
-         COUNT(*) AS loopCount,
-         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedLoopCount,
-         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedLoopCount,
-         COALESCE(SUM(duration_ms), 0) AS totalDurationMs
-       FROM harness_loops`,
-      { loopCount: 0, completedLoopCount: 0, failedLoopCount: 0, totalDurationMs: 0 },
-    );
-
-    // Query stage view metrics (R7-5: stageViewMetrics per §4.1 contract)
-    const stageCounts = this.safeSelectRow<{
-      observeCount: number; observeDurationMs: number; observeFailureCount: number; observeTimeoutCount: number;
-      assessCount: number; assessDurationMs: number; assessFailureCount: number; assessTimeoutCount: number;
-      planCount: number; planDurationMs: number; planFailureCount: number; planTimeoutCount: number;
-      executeCount: number; executeDurationMs: number; executeFailureCount: number; executeTimeoutCount: number;
-      feedbackCount: number; feedbackDurationMs: number; feedbackFailureCount: number; feedbackTimeoutCount: number;
-      learnCount: number; learnDurationMs: number; learnFailureCount: number; learnTimeoutCount: number;
-      improveCount: number; improveDurationMs: number; improveFailureCount: number; improveTimeoutCount: number;
-      releaseCount: number; releaseDurationMs: number; releaseFailureCount: number; releaseTimeoutCount: number;
-    }>(
-      `SELECT
-         COALESCE(SUM(CASE WHEN stage = 'observe' THEN 1 ELSE 0 END), 0) AS observeCount,
-         COALESCE(SUM(CASE WHEN stage = 'observe' THEN duration_ms END), 0) AS observeDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'observe' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS observeFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'observe' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS observeTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'assess' THEN 1 ELSE 0 END), 0) AS assessCount,
-         COALESCE(SUM(CASE WHEN stage = 'assess' THEN duration_ms END), 0) AS assessDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'assess' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS assessFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'assess' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS assessTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'plan' THEN 1 ELSE 0 END), 0) AS planCount,
-         COALESCE(SUM(CASE WHEN stage = 'plan' THEN duration_ms END), 0) AS planDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'plan' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS planFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'plan' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS planTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'execute' THEN 1 ELSE 0 END), 0) AS executeCount,
-         COALESCE(SUM(CASE WHEN stage = 'execute' THEN duration_ms END), 0) AS executeDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'execute' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS executeFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'execute' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS executeTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'feedback' THEN 1 ELSE 0 END), 0) AS feedbackCount,
-         COALESCE(SUM(CASE WHEN stage = 'feedback' THEN duration_ms END), 0) AS feedbackDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'feedback' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS feedbackFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'feedback' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS feedbackTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'learn' THEN 1 ELSE 0 END), 0) AS learnCount,
-         COALESCE(SUM(CASE WHEN stage = 'learn' THEN duration_ms END), 0) AS learnDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'learn' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS learnFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'learn' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS learnTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'improve' THEN 1 ELSE 0 END), 0) AS improveCount,
-         COALESCE(SUM(CASE WHEN stage = 'improve' THEN duration_ms END), 0) AS improveDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'improve' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS improveFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'improve' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS improveTimeoutCount,
-         COALESCE(SUM(CASE WHEN stage = 'release' THEN 1 ELSE 0 END), 0) AS releaseCount,
-         COALESCE(SUM(CASE WHEN stage = 'release' THEN duration_ms END), 0) AS releaseDurationMs,
-         COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS releaseFailureCount,
-         COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS releaseTimeoutCount
-       FROM stage_samples`,
-      { observeCount: 0, observeDurationMs: 0, observeFailureCount: 0, observeTimeoutCount: 0, assessCount: 0, assessDurationMs: 0, assessFailureCount: 0, assessTimeoutCount: 0, planCount: 0, planDurationMs: 0, planFailureCount: 0, planTimeoutCount: 0, executeCount: 0, executeDurationMs: 0, executeFailureCount: 0, executeTimeoutCount: 0, feedbackCount: 0, feedbackDurationMs: 0, feedbackFailureCount: 0, feedbackTimeoutCount: 0, learnCount: 0, learnDurationMs: 0, learnFailureCount: 0, learnTimeoutCount: 0, improveCount: 0, improveDurationMs: 0, improveFailureCount: 0, improveTimeoutCount: 0, releaseCount: 0, releaseDurationMs: 0, releaseFailureCount: 0, releaseTimeoutCount: 0 },
-    );
-
-    // Query feedback metrics (R7-5: feedbackMetrics per §4.1 contract)
-    const feedbackCounts = this.safeSelectRow<{
-      receivedCount: number;
-      classifiedCount: number;
-      consumedCount: number;
-      positiveCount: number;
-      negativeCount: number;
-      correctionCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS receivedCount,
-         COALESCE(SUM(CASE WHEN classification IS NOT NULL THEN 1 ELSE 0 END), 0) AS classifiedCount,
-         COALESCE(SUM(CASE WHEN consumed_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS consumedCount,
-         COALESCE(SUM(CASE WHEN sentiment = 'positive' THEN 1 ELSE 0 END), 0) AS positiveCount,
-         COALESCE(SUM(CASE WHEN sentiment = 'negative' THEN 1 ELSE 0 END), 0) AS negativeCount,
-         COALESCE(SUM(CASE WHEN kind = 'correction' THEN 1 ELSE 0 END), 0) AS correctionCount
-       FROM feedback_signals`,
-      { receivedCount: 0, classifiedCount: 0, consumedCount: 0, positiveCount: 0, negativeCount: 0, correctionCount: 0 },
-    );
-
-    // Query learning metrics (R7-5: learningMetrics per §4.1 contract)
-    const learningCounts = this.safeSelectRow<{
-      objectCreatedCount: number;
-      validatedCount: number;
-      promotedCount: number;
-      rejectedCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS objectCreatedCount,
-         COALESCE(SUM(CASE WHEN validation_status = 'validated' THEN 1 ELSE 0 END), 0) AS validatedCount,
-         COALESCE(SUM(CASE WHEN promotion_status = 'promoted' THEN 1 ELSE 0 END), 0) AS promotedCount,
-         COALESCE(SUM(CASE WHEN promotion_status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount
-       FROM learning_objects`,
-      { objectCreatedCount: 0, validatedCount: 0, promotedCount: 0, rejectedCount: 0 },
-    );
-
-    // Query improvement metrics (R7-5: improvementMetrics per §4.1 contract)
-    const improvementCounts = this.safeSelectRow<{
-      candidateProposedCount: number;
-      acceptedCount: number;
-      rejectedCount: number;
-      guardrailBlockedCount: number;
-    }>(
-      `SELECT
-         COUNT(*) AS candidateProposedCount,
-         COALESCE(SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END), 0) AS acceptedCount,
-         COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount,
-         COALESCE(SUM(CASE WHEN blocked_by_guardrail = 1 THEN 1 ELSE 0 END), 0) AS guardrailBlockedCount
-       FROM improvement_candidates`,
-      { candidateProposedCount: 0, acceptedCount: 0, rejectedCount: 0, guardrailBlockedCount: 0 },
-    );
-
-    // Query release metrics (R7-5: releaseMetrics per §4.1 contract)
-    const releaseCounts = this.safeSelectRow<{
-      startedCount: number;
-      advancedCount: number;
-      completedCount: number;
-      rolledBackCount: number;
-      maxLevel: number;
-    }>(
-      `SELECT
-         COALESCE(SUM(CASE WHEN status IN ('started', 'in_progress') THEN 1 ELSE 0 END), 0) AS startedCount,
-         COALESCE(SUM(CASE WHEN status = 'advanced' THEN 1 ELSE 0 END), 0) AS advancedCount,
-         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
-         COALESCE(SUM(CASE WHEN status = 'rolled_back' THEN 1 ELSE 0 END), 0) AS rolledBackCount,
-         COALESCE(MAX(level), 0) AS maxLevel
-       FROM release_records`,
-      { startedCount: 0, advancedCount: 0, completedCount: 0, rolledBackCount: 0, maxLevel: 0 },
-    );
 
     // Get current health status
     const health = this.healthService.getReport();
@@ -616,23 +337,6 @@ export class MetricsService {
         pendingTier1AckCount: ackCounts.pendingTier1AckCount,
         failedTier1AckCount: ackCounts.failedTier1AckCount,
       },
-      harnessRunMetrics: {
-        total: harnessRunCounts.total,
-        completedCount: harnessRunCounts.completedCount,
-        failedCount: harnessRunCounts.failedCount,
-        abortedCount: harnessRunCounts.abortedCount,
-        activeCount: harnessRunCounts.activeCount,
-        successRate: ratio(harnessRunCounts.completedCount, harnessRunCounts.total),
-      },
-      nodeRunMetrics: {
-        total: nodeRunCounts.total,
-        readyCount: nodeRunCounts.readyCount,
-        runningCount: nodeRunCounts.runningCount,
-        succeededCount: nodeRunCounts.succeededCount,
-        failedCount: nodeRunCounts.failedCount,
-        retryCount: nodeRunCounts.retryCount,
-        blockedCount: nodeRunCounts.blockedCount,
-      },
       runtimeMetrics: {
         status: health.status,
         degradationMode: health.degradationMode,
@@ -646,99 +350,6 @@ export class MetricsService {
         workerHealth: health.workerHealth,
         findings: health.findings,
       },
-      // R7-5: New metrics per §4.1 contract
-      attemptMetrics: {
-        total: attemptCounts.total,
-        activeCount: attemptCounts.activeCount,
-        retryAttemptCount: attemptCounts.retryAttemptCount,
-        recoveryAttemptCount: attemptCounts.recoveryAttemptCount,
-        averageDurationMs: average(attemptDurations),
-        p95DurationMs: percentile(attemptDurations, 0.95),
-      },
-      oapeflirViewMetrics: {
-        loopCount: loopCounts.loopCount,
-        completedLoopCount: loopCounts.completedLoopCount,
-        failedLoopCount: loopCounts.failedLoopCount,
-        averageLoopDurationMs: loopCounts.loopCount > 0 ? roundMetric(loopCounts.totalDurationMs / loopCounts.loopCount) : null,
-        convergenceRate: ratio(loopCounts.completedLoopCount, loopCounts.loopCount),
-      },
-      stageViewMetrics: {
-        observe: {
-          count: stageCounts.observeCount,
-          durationMs: stageCounts.observeCount > 0 ? roundMetric(stageCounts.observeDurationMs / stageCounts.observeCount) : null,
-          failureCount: stageCounts.observeFailureCount,
-          timeoutCount: stageCounts.observeTimeoutCount,
-        },
-        assess: {
-          count: stageCounts.assessCount,
-          durationMs: stageCounts.assessCount > 0 ? roundMetric(stageCounts.assessDurationMs / stageCounts.assessCount) : null,
-          failureCount: stageCounts.assessFailureCount,
-          timeoutCount: stageCounts.assessTimeoutCount,
-        },
-        plan: {
-          count: stageCounts.planCount,
-          durationMs: stageCounts.planCount > 0 ? roundMetric(stageCounts.planDurationMs / stageCounts.planCount) : null,
-          failureCount: stageCounts.planFailureCount,
-          timeoutCount: stageCounts.planTimeoutCount,
-        },
-        execute: {
-          count: stageCounts.executeCount,
-          durationMs: stageCounts.executeCount > 0 ? roundMetric(stageCounts.executeDurationMs / stageCounts.executeCount) : null,
-          failureCount: stageCounts.executeFailureCount,
-          timeoutCount: stageCounts.executeTimeoutCount,
-        },
-        feedback: {
-          count: stageCounts.feedbackCount,
-          durationMs: stageCounts.feedbackCount > 0 ? roundMetric(stageCounts.feedbackDurationMs / stageCounts.feedbackCount) : null,
-          failureCount: stageCounts.feedbackFailureCount,
-          timeoutCount: stageCounts.feedbackTimeoutCount,
-        },
-        learn: {
-          count: stageCounts.learnCount,
-          durationMs: stageCounts.learnCount > 0 ? roundMetric(stageCounts.learnDurationMs / stageCounts.learnCount) : null,
-          failureCount: stageCounts.learnFailureCount,
-          timeoutCount: stageCounts.learnTimeoutCount,
-        },
-        improve: {
-          count: stageCounts.improveCount,
-          durationMs: stageCounts.improveCount > 0 ? roundMetric(stageCounts.improveDurationMs / stageCounts.improveCount) : null,
-          failureCount: stageCounts.improveFailureCount,
-          timeoutCount: stageCounts.improveTimeoutCount,
-        },
-        release: {
-          count: stageCounts.releaseCount,
-          durationMs: stageCounts.releaseCount > 0 ? roundMetric(stageCounts.releaseDurationMs / stageCounts.releaseCount) : null,
-          failureCount: stageCounts.releaseFailureCount,
-          timeoutCount: stageCounts.releaseTimeoutCount,
-        },
-      },
-      feedbackMetrics: {
-        receivedCount: feedbackCounts.receivedCount,
-        classifiedCount: feedbackCounts.classifiedCount,
-        consumedCount: feedbackCounts.consumedCount,
-        positiveCount: feedbackCounts.positiveCount,
-        negativeCount: feedbackCounts.negativeCount,
-        correctionCount: feedbackCounts.correctionCount,
-      },
-      learningMetrics: {
-        objectCreatedCount: learningCounts.objectCreatedCount,
-        validatedCount: learningCounts.validatedCount,
-        promotedCount: learningCounts.promotedCount,
-        rejectedCount: learningCounts.rejectedCount,
-      },
-      improvementMetrics: {
-        candidateProposedCount: improvementCounts.candidateProposedCount,
-        acceptedCount: improvementCounts.acceptedCount,
-        rejectedCount: improvementCounts.rejectedCount,
-        guardrailBlockedCount: improvementCounts.guardrailBlockedCount,
-      },
-      releaseMetrics: {
-        startedCount: releaseCounts.startedCount,
-        advancedCount: releaseCounts.advancedCount,
-        completedCount: releaseCounts.completedCount,
-        rolledBackCount: releaseCounts.rolledBackCount,
-        currentLevel: releaseCounts.maxLevel,
-      },
     };
   }
 
@@ -746,9 +357,9 @@ export class MetricsService {
    * Executes a SQL query and returns the first row with normalized values.
    * Converts non-finite numbers to 0 to ensure consistent types.
    */
-  private selectRow<T extends Record<string, unknown>>(sql: string, fallback?: T): T {
+  private selectRow<T extends Record<string, unknown>>(sql: string): T {
     const row = (this.db.connection.prepare(sql).get() ?? {}) as Record<string, unknown>;
-    const normalized: Record<string, unknown> = fallback == null ? {} : { ...fallback };
+    const normalized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(row)) {
       normalized[key] =
@@ -760,22 +371,6 @@ export class MetricsService {
     }
 
     return normalized as T;
-  }
-
-  /**
-   * Safely executes a SQL query that may reference a table that doesn't exist.
-   * Returns a zero-filled result when the table is missing.
-   */
-  private safeSelectRow<T extends Record<string, unknown>>(sql: string, fallback: T): T {
-    try {
-      return this.selectRow<T>(sql);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes("no such table") || message.includes("no such column")) {
-        return fallback;
-      }
-      throw error;
-    }
   }
 }
 

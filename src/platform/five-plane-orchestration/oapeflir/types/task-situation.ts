@@ -11,7 +11,6 @@ import {
 
 export const TaskSituationSchema = z.object({
   taskId: z.string().min(1),
-  domainId: z.string().min(1).optional(),
   timestamp: z.number().int().nonnegative(),
   objective: z.string().min(1),
   currentPhase: TaskPhaseSchema,

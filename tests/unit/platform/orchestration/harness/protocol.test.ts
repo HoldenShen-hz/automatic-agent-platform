@@ -126,7 +126,7 @@ test("protocol exports HarnessLoopInput type", () => {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },

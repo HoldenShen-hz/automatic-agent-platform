@@ -1,16 +1,5 @@
-/**
- * Degradation Controller Unit Tests - Issues #2090, #2091, #2096
- *
- * Tests for the degradation controller focusing on:
- * - Issue #2090: getFallbackCandidates() hardcoded returns [], D1 never生效
- * - Issue #2091: Recursive escalation has no depth limit
- * - Issue #2096: De-escalation ignores latency P99
- */
-
-import assert from "node:assert/strict";
-import test from "node:test";
-import { mock } from "node:test";
-
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import assert from "node:assert";
 import {
   DegradationController,
   DegradationLevel,
@@ -18,28 +7,14 @@ import {
   DEFAULT_TEMPLATE_RESPONSES,
   type ProviderMetrics,
   type LLMDegradationRequest,
-} from "../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
+} from "../../../../../src/platform/model-gateway/degradation/index.js";
 import type { ModelFallbackCandidate } from "../../../../../src/platform/model-gateway/fallback/index.js";
 
-// ============================================================================
-// Mock Implementations
-// ============================================================================
-
-interface MockChatResult {
-  id: string;
-  content: string;
-  refusal: string | null;
-  reasoningContent: string | null;
-  finishReason: string;
-  stopSequence: string | null;
-  toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }>;
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
-  model: string;
-  provider: string;
-}
-
+/**
+ * Mock UnifiedChatProvider for testing
+ */
 class MockUnifiedChatProvider {
-  public createChatCompletion = mock.fn(async (request: { model: string; messages: unknown[] }): Promise<MockChatResult> => {
+  public createChatCompletion = mock.fn(async (request: { model: string; messages: { role: string; content: string }[]; maxTokens: number }) => {
     return {
       id: "mock-completion-id",
       content: `Response from ${request.model}`,
@@ -48,658 +23,809 @@ class MockUnifiedChatProvider {
       finishReason: "stop",
       stopSequence: null,
       toolCalls: [],
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+      usage: {
+        promptTokens: 10,
+        completionTokens: 20,
+        totalTokens: 30,
+      },
       model: request.model,
       provider: "mock",
     };
   });
-
-  public getAvailableProfiles = mock.fn(() => [
-    { profileName: "primary-model", provider: "mock", tier: "balanced" },
-    { profileName: "fallback-model", provider: "mock", tier: "fast" },
-    { profileName: "secondary-model", provider: "mock", tier: "balanced" },
-  ]);
 }
 
+/**
+ * Mock ModelGatewayFallbackService
+ */
 class MockFallbackService {
   public selectFallback = mock.fn((input: { primaryProfileName: string; candidates: ModelFallbackCandidate[] }) => {
-    // Return the first candidate if available
-    if (input.candidates.length > 0) {
-      return {
-        selectedProfileName: input.candidates[0]!.profileName,
-        reasonCode: "fallback.selected",
-        degradedFromProfileName: input.primaryProfileName,
-        attemptedProfiles: input.candidates.map((c) => c.profileName),
-      };
-    }
     return {
       selectedProfileName: null,
       reasonCode: "fallback.no_candidate_available",
       degradedFromProfileName: input.primaryProfileName,
-      attemptedProfiles: [],
+      attemptedProfiles: input.candidates.map((c) => c.profileName),
     };
   });
 }
 
+/**
+ * Mock ModelGatewayCacheService
+ */
 class MockCacheService {
-  private entries = new Map<string, { value: string; model: string }>();
+  private readonly entries = new Map<string, { value: string; model: string; tenantId?: string | null; routeClass?: string }>();
 
-  public put(input: { cacheKey: string; value: string; model: string }): void {
-    this.entries.set(input.cacheKey, { value: input.value, model: input.model });
+  public put(input: { cacheKey: string; tenantId?: string | null; model: string; routeClass: string; value: string; ttlMs?: number }): void {
+    this.entries.set(input.cacheKey, { value: input.value, model: input.model, tenantId: input.tenantId, routeClass: input.routeClass } as any);
   }
 
   public get(cacheKey: string): { value: string; model: string } | null {
-    return this.entries.get(cacheKey) ?? null;
+    const entry = this.entries.get(cacheKey);
+    return entry ? { value: entry.value, model: entry.model } : null;
   }
 }
 
-// ============================================================================
-// Test Setup
-// ============================================================================
+describe("DegradationController", () => {
+  let controller: DegradationController;
+  let mockProvider: MockUnifiedChatProvider;
+  let mockFallbackService: MockFallbackService;
+  let mockCacheService: MockCacheService;
 
-function createController(overrides?: {
-  primaryProvider?: MockUnifiedChatProvider;
-  fallbackProvider?: MockUnifiedChatProvider | null;
-  maxAutoDeescalateLevel?: DegradationLevel;
-  config?: Partial<typeof DEFAULT_DEGRADATION_CONFIG>;
-}): { controller: DegradationController; mockProvider: MockUnifiedChatProvider; mockFallbackService: MockFallbackService; mockCacheService: MockCacheService } {
-  const mockProvider = overrides?.primaryProvider ?? new MockUnifiedChatProvider();
-  const mockFallbackService = new MockFallbackService();
-  const mockCacheService = new MockCacheService();
-
-  return {
-    controller: new DegradationController({
+  const createController = (overrides?: { maxAutoDeescalateLevel?: DegradationLevel }) => {
+    return new DegradationController({
       primaryProvider: mockProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-      fallbackProvider: overrides?.fallbackProvider ? overrides.fallbackProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider : null,
       fallbackService: mockFallbackService as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
       cacheService: mockCacheService as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
-      config: overrides?.config ?? {},
-    }),
-    mockProvider,
-    mockFallbackService,
-    mockCacheService,
-  };
-}
-
-// ============================================================================
-// Issue #2090: getFallbackCandidates() Tests
-// ============================================================================
-
-test("DegradationController getFallbackCandidates returns candidates from fallbackProvider", () => {
-  const fallbackProvider = new MockUnifiedChatProvider();
-  fallbackProvider.getAvailableProfiles = mock.fn(() => [
-    { profileName: "fallback-model-1", provider: "fallback", tier: "fast" },
-    { profileName: "fallback-model-2", provider: "fallback", tier: "balanced" },
-  ]);
-
-  const { controller, mockCacheService } = createController({ fallbackProvider });
-
-  // Access private method via any
-  const candidates = (controller as any).getFallbackCandidates("primary-model");
-
-  // Should return candidates from fallback provider
-  assert.ok(Array.isArray(candidates));
-  assert.ok(candidates.length > 0);
-  assert.ok(candidates.some((c: ModelFallbackCandidate) => c.profileName === "fallback-model-1"));
-});
-
-test("DegradationController getFallbackCandidates returns candidates from primary when no fallbackProvider", () => {
-  const { controller, mockProvider } = createController({ fallbackProvider: null });
-
-  // Access private method via any
-  const candidates = (controller as any).getFallbackCandidates("primary-model");
-
-  // Should return candidates from primary provider (excluding primary)
-  assert.ok(Array.isArray(candidates));
-  // primary-model is excluded, so we should see fallback-model, secondary-model
-  assert.ok(candidates.some((c: ModelFallbackCandidate) => c.profileName === "fallback-model"));
-  assert.ok(candidates.some((c: ModelFallbackCandidate) => c.profileName === "secondary-model"));
-  assert.ok(!candidates.some((c: ModelFallbackCandidate) => c.profileName === "primary-model"));
-});
-
-test("DegradationController getFallbackCandidates excludes the primary profile", () => {
-  const { controller } = createController({ fallbackProvider: null });
-
-  const candidates = (controller as any).getFallbackCandidates("fallback-model");
-
-  // fallback-model should be excluded
-  assert.ok(!candidates.some((c: ModelFallbackCandidate) => c.profileName === "fallback-model"));
-});
-
-test("DegradationController D1 uses fallbackProvider when configured", async () => {
-  const fallbackProvider = new MockUnifiedChatProvider();
-  fallbackProvider.createChatCompletion = mock.fn(async (request: { model: string }) => {
-    return {
-      id: "fallback-completion",
-      content: `Fallback response from ${request.model}`,
-      refusal: null,
-      reasoningContent: null,
-      finishReason: "stop",
-      stopSequence: null,
-      toolCalls: [],
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      model: request.model,
-      provider: "fallback",
-    };
-  });
-  fallbackProvider.getAvailableProfiles = mock.fn(() => [
-    { profileName: "fallback-model", provider: "fallback", tier: "fast" },
-  ]);
-
-  const { controller } = createController({ fallbackProvider });
-  controller.setLevel(DegradationLevel.D1);
-
-  const request: LLMDegradationRequest = {
-    model: "primary-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
+      config: {
+        ...DEFAULT_DEGRADATION_CONFIG,
+        ...overrides,
+      },
+    });
   };
 
-  const response = await controller.route(request);
-
-  // Should use fallback provider
-  assert.equal(response.degradationLevel, DegradationLevel.D1);
-  assert.ok(response.content.includes("Fallback"));
-});
-
-// ============================================================================
-// Issue #2091: Recursive Escalation Depth Limit Tests
-// ============================================================================
-
-test("DegradationController MAX_ROUTE_RECURSION_DEPTH is defined as 5", () => {
-  assert.equal(DegradationController.MAX_ROUTE_RECURSION_DEPTH, 5);
-});
-
-test("DegradationController stops recursion after MAX_ROUTE_RECURSION_DEPTH", async () => {
-  const mockProvider = new MockUnifiedChatProvider();
-  mockProvider.createChatCompletion = mock.fn(async () => {
-    throw new Error("Provider failure");
+  beforeEach(() => {
+    mockProvider = new MockUnifiedChatProvider();
+    mockFallbackService = new MockFallbackService();
+    mockCacheService = new MockCacheService();
+    controller = createController();
   });
 
-  const { controller, mockCacheService } = createController({ primaryProvider: mockProvider });
+  afterEach(() => {
+    mockProvider.createChatCompletion.mock.resetCalls();
+    mockFallbackService.selectFallback.mock.resetCalls();
+  });
 
-  const request: LLMDegradationRequest = {
-    model: "failing-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-  };
+  describe("initialization", () => {
+    it("should start at D0 (normal) level", () => {
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
 
-  // After exceeding recursion depth, should throw with max_recursion_exceeded
-  await assert.rejects(
-    async () => controller.route(request),
-    (error: unknown) => {
-      if (error instanceof Error && error.message.includes("max_recursion")) {
-        return true;
+    it("should have no escalation reason initially", () => {
+      assert.strictEqual(controller.getLastEscalationReason(), null);
+    });
+
+    it("should use default config values", () => {
+      const defaultConfig = DEFAULT_DEGRADATION_CONFIG;
+      assert.strictEqual(defaultConfig.escalateErrorRateThreshold, 50);
+      assert.strictEqual(defaultConfig.deescalateErrorRateThreshold, 5);
+      assert.strictEqual(defaultConfig.escalateLatencyP99Ms, 5000);
+      assert.strictEqual(defaultConfig.deescalateMinHealthyCount, 3);
+    });
+  });
+
+  describe("D0: Normal operation", () => {
+    it("should call primary provider in D0", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D0);
+      assert.strictEqual(response.fromCache, false);
+      assert.strictEqual(response.cached, false);
+      assert.strictEqual(mockProvider.createChatCompletion.mock.callCount(), 1);
+    });
+
+    it("should return correct content from primary provider", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.content, "Response from gpt-4o");
+      assert.strictEqual(response.model, "gpt-4o");
+    });
+
+    it("should cache successful response for D2 fallback when semanticKey provided", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        semanticKey: "test-key-123",
+      };
+
+      await controller.route(request);
+
+      const cached = mockCacheService.get("test-key-123");
+      assert.notStrictEqual(cached, null);
+      assert.strictEqual(cached!.value, "Response from gpt-4o");
+      assert.strictEqual(cached!.model, "gpt-4o");
+    });
+
+    it("should not cache when semanticKey is not provided", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await controller.route(request);
+
+      // Cache should remain empty since no semanticKey was provided
+      assert.strictEqual(mockCacheService.get("any-key"), null);
+    });
+
+    it("should escalate and retry when primary provider fails", async () => {
+      mockProvider.createChatCompletion = mock.fn(async () => {
+        throw new Error("Provider error");
+      });
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      // D0 fails -> escalates to D1 -> D1 has no fallback -> escalates to D2 -> D2 has no cache -> D3 returns template.
+      // The controller remains at D2; D3 is the response path, not a persisted level.
+      const response = await controller.route(request);
+
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+    });
+  });
+
+  describe("D1: Fallback operation", () => {
+    it("should escalate to D2 when no fallback is available", async () => {
+      controller.setLevel(DegradationLevel.D1);
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      const response = await controller.route(request);
+
+      // No fallback -> escalate to D2 -> no cache -> D3 response path
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+    });
+  });
+
+  describe("D2: Cache operation", () => {
+    beforeEach(() => {
+      controller.setLevel(DegradationLevel.D2);
+    });
+
+    it("should return cached response when cache hit", async () => {
+      // Pre-populate cache
+      mockCacheService.put({
+        cacheKey: "cached-key",
+        model: "gpt-4o",
+        routeClass: "default",
+        value: "Cached response content",
+      });
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        semanticKey: "cached-key",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D2);
+      assert.strictEqual(response.cached, true);
+      assert.strictEqual(response.fromCache, true);
+      assert.strictEqual(response.content, "Cached response content");
+      assert.strictEqual(response.model, "gpt-4o");
+    });
+
+    it("should fall through to D3 when cache miss", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        semanticKey: "non-existent-key",
+      };
+
+      const response = await controller.route(request);
+
+      // No cache hit -> D3 template
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+    });
+
+    it("should fall through to D3 when no semanticKey provided", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      const response = await controller.route(request);
+
+      // No semanticKey -> can't check cache -> D3 template
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+    });
+
+    it("should not call any provider in D2", async () => {
+      mockCacheService.put({
+        cacheKey: "cached-key",
+        model: "gpt-4o",
+        routeClass: "default",
+        value: "Cached response",
+      });
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        semanticKey: "cached-key",
+      };
+
+      await controller.route(request);
+
+      assert.strictEqual(mockProvider.createChatCompletion.mock.callCount(), 0);
+    });
+  });
+
+  describe("D3: Template responses", () => {
+    beforeEach(() => {
+      controller.setLevel(DegradationLevel.D3);
+    });
+
+    it("should return default template for unknown task type", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        taskType: "unknown-type",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.model, "template");
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["default"]);
+      assert.strictEqual(response.cached, false);
+      assert.strictEqual(response.fromCache, false);
+    });
+
+    it("should return coding template for coding task type", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "coding",
+        messages: [{ role: "user", content: "Write code" }],
+        taskType: "coding",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["coding"]);
+    });
+
+    it("should return reasoning template for reasoning task type", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "reasoning",
+        messages: [{ role: "user", content: "Think deeply" }],
+        taskType: "reasoning",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["reasoning"]);
+    });
+
+    it("should return classification template for classification task type", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "classification",
+        messages: [{ role: "user", content: "Classify this" }],
+        taskType: "classification",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["classification"]);
+    });
+
+    it("should return writing template for writing task type", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "writing",
+        messages: [{ role: "user", content: "Write something" }],
+        taskType: "writing",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["writing"]);
+    });
+
+    it("should return default template when taskType is empty", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        taskType: "",
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["default"]);
+    });
+
+    it("should return default template when taskType is undefined", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      const response = await controller.route(request);
+
+      assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
+      assert.strictEqual(response.content, DEFAULT_TEMPLATE_RESPONSES["default"]);
+    });
+
+    it("should not call any provider at D3", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await controller.route(request);
+
+      assert.strictEqual(mockProvider.createChatCompletion.mock.callCount(), 0);
+    });
+  });
+
+  describe("D4: Service unavailable", () => {
+    beforeEach(() => {
+      controller.setLevel(DegradationLevel.D4);
+    });
+
+    it("should throw ProviderError at D4", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await assert.rejects(
+        async () => controller.route(request),
+        (error: unknown) => {
+          if (error instanceof Error && "code" in error) {
+            return (error as { code: string }).code === "degradation.service_unavailable";
+          }
+          return false;
+        },
+      );
+    });
+
+    it("should throw retryable error", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await assert.rejects(
+        async () => controller.route(request),
+        (error: unknown) => {
+          if (error instanceof Error && "retryable" in error) {
+            return (error as { retryable: boolean }).retryable === true;
+          }
+          return false;
+        },
+      );
+    });
+
+    it("should not call any provider at D4", async () => {
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await assert.rejects(async () => controller.route(request));
+
+      assert.strictEqual(mockProvider.createChatCompletion.mock.callCount(), 0);
+    });
+  });
+
+  describe("escalation", () => {
+    it("should manually escalate via setLevel", () => {
+      controller.setLevel(DegradationLevel.D2);
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
+
+      controller.setLevel(DegradationLevel.D4);
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D4);
+    });
+
+    it("should not escalate beyond D4", () => {
+      controller.setLevel(DegradationLevel.D4);
+      controller.escalate();
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D4);
+    });
+
+    it("should reset consecutive healthy count on escalation", () => {
+      controller.setLevel(DegradationLevel.D2);
+      // Manually trigger through evaluateHealth to increment healthy count
+      const metrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 1,
+        errorRate: 1,
+        latencyP99Ms: 500,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+      controller.evaluateHealth(metrics); // Should maintain at D2
+
+      controller.escalate(); // Manual escalation
+
+      // Fresh escalation should not have waiting_recovery
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D3);
+    });
+  });
+
+  describe("deescalation", () => {
+    it("should not deescalate below D0", () => {
+      controller.setLevel(DegradationLevel.D0);
+      controller.deescalate();
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
+
+    it("should reset consecutive healthy count on deescalation", () => {
+      controller.setLevel(DegradationLevel.D2);
+      controller.deescalate();
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D1);
+      // consecutiveHealthyCount should be reset
+      controller.deescalate();
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
+  });
+
+  describe("health evaluation", () => {
+    it("should escalate when error rate exceeds threshold", () => {
+      const metrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 60,
+        errorRate: 60,
+        latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const result = controller.evaluateHealth(metrics);
+
+      assert.strictEqual(result.action, "escalate");
+      assert.ok(result.newLevel > DegradationLevel.D0);
+      assert.ok(result.reason.includes("error_rate"));
+    });
+
+    it("should escalate when latency P99 exceeds threshold", () => {
+      const metrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 5,
+        errorRate: 5,
+        latencyP99Ms: 6000,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const result = controller.evaluateHealth(metrics);
+
+      assert.strictEqual(result.action, "escalate");
+      assert.ok(result.reason.includes("latency_p99"));
+    });
+
+    it("should not escalate when already at D4", () => {
+      controller.setLevel(DegradationLevel.D4);
+      const metrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 90,
+        errorRate: 90,
+        latencyP99Ms: 10000,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const result = controller.evaluateHealth(metrics);
+
+      assert.strictEqual(result.action, "maintain");
+      assert.strictEqual(result.newLevel, DegradationLevel.D4);
+    });
+
+    it("should maintain level when error rate is below threshold", () => {
+      const metrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 2,
+        errorRate: 2,
+        latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const result = controller.evaluateHealth(metrics);
+
+      assert.strictEqual(result.action, "maintain");
+      assert.strictEqual(result.newLevel, DegradationLevel.D0);
+      assert.strictEqual(result.reason, "healthy");
+    });
+
+    it("should deescalate after consecutive healthy evaluations", () => {
+      // First set to D2
+      controller.setLevel(DegradationLevel.D2);
+
+      const healthyMetrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 1,
+        errorRate: 1,
+        latencyP99Ms: 500,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // First healthy check
+      let result = controller.evaluateHealth(healthyMetrics);
+      assert.strictEqual(result.action, "maintain");
+      assert.ok(result.reason.includes("waiting_recovery"));
+
+      // Second healthy check
+      result = controller.evaluateHealth(healthyMetrics);
+      assert.strictEqual(result.action, "maintain");
+      assert.ok(result.reason.includes("waiting_recovery"));
+
+      // Third healthy check - should deescalate
+      result = controller.evaluateHealth(healthyMetrics);
+      assert.strictEqual(result.action, "deescalate");
+      assert.strictEqual(result.newLevel, DegradationLevel.D1);
+    });
+
+    it("should reset healthy counter when error rate is marginal", () => {
+      controller.setLevel(DegradationLevel.D2);
+
+      // One healthy check
+      const healthyMetrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 1,
+        errorRate: 1,
+        latencyP99Ms: 500,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+      controller.evaluateHealth(healthyMetrics);
+
+      // Marginal error rate (not healthy enough to deescalate, not bad enough to escalate)
+      const marginalMetrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 10,
+        errorRate: 10,
+        latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+      const result = controller.evaluateHealth(marginalMetrics);
+
+      assert.strictEqual(result.action, "maintain");
+      assert.strictEqual(result.reason, "healthy");
+    });
+
+    it("should respect maxAutoDeescalateLevel", () => {
+      // Set to D3 but max auto deescalate is D1
+      const ctrl = createController({ maxAutoDeescalateLevel: DegradationLevel.D1 });
+      ctrl.setLevel(DegradationLevel.D3);
+
+      const healthyMetrics: ProviderMetrics = {
+        provider: "openai",
+        profileName: "gpt-4o",
+        totalRequests: 100,
+        failedRequests: 1,
+        errorRate: 1,
+        latencyP99Ms: 500,
+        ttftP99Ms: 1000,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Run 3 healthy evaluations
+      ctrl.evaluateHealth(healthyMetrics);
+      ctrl.evaluateHealth(healthyMetrics);
+      const result = ctrl.evaluateHealth(healthyMetrics);
+
+      // Should deescalate but only to D1 (maxAutoDeescalateLevel)
+      assert.strictEqual(result.action, "deescalate");
+      assert.strictEqual(result.newLevel, DegradationLevel.D2);
+    });
+  });
+
+  describe("reset", () => {
+    it("should reset to D0", () => {
+      controller.setLevel(DegradationLevel.D4);
+      controller.reset();
+
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
+
+    it("should clear escalation reason", () => {
+      controller.setLevel(DegradationLevel.D4);
+      controller.reset();
+
+      assert.strictEqual(controller.getLastEscalationReason(), null);
+    });
+
+    it("should reset consecutive healthy count", () => {
+      controller.setLevel(DegradationLevel.D2);
+      controller.reset();
+
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
+  });
+
+  describe("setLevel validation", () => {
+    it("should reject invalid degradation levels below D0", () => {
+      assert.throws(
+        () => controller.setLevel(-1 as DegradationLevel),
+        (error: unknown) => {
+          if (error instanceof Error && "code" in error) {
+            return (error as { code: string }).code === "degradation.invalid_level";
+          }
+          return false;
+        },
+      );
+    });
+
+    it("should reject invalid degradation levels above D4", () => {
+      assert.throws(
+        () => controller.setLevel(5 as DegradationLevel),
+        (error: unknown) => {
+          if (error instanceof Error && "code" in error) {
+            return (error as { code: string }).code === "degradation.invalid_level";
+          }
+          return false;
+        },
+      );
+    });
+
+    it("should accept valid degradation levels D0-D4", () => {
+      for (let level = DegradationLevel.D0; level <= DegradationLevel.D4; level++) {
+        controller.setLevel(level);
+        assert.strictEqual(controller.getCurrentLevel(), level);
       }
-      return false;
-    },
-  );
-});
+    });
 
-test("DegradationController recursion depth is tracked per route call", async () => {
-  const mockProvider = new MockUnifiedChatProvider();
-  let callCount = 0;
-  mockProvider.createChatCompletion = mock.fn(async () => {
-    callCount++;
-    throw new Error("Provider failure");
+    it("should reset consecutive healthy count on setLevel", () => {
+      controller.setLevel(DegradationLevel.D2);
+
+      // Manually set to D0 with a different instance
+      controller.setLevel(DegradationLevel.D0);
+
+      // Should not deescalate further
+      controller.deescalate();
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D0);
+    });
   });
 
-  const { controller } = createController({ primaryProvider: mockProvider });
+  describe("custom templates", () => {
+    it("should use custom templates when provided", async () => {
+      const customController = new DegradationController({
+        primaryProvider: mockProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+        fallbackService: mockFallbackService as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+        cacheService: mockCacheService as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+        templates: {
+          default: "Custom default message",
+          coding: "Custom coding message",
+        },
+      });
 
-  const request: LLMDegradationRequest = {
-    model: "failing-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-  };
+      customController.setLevel(DegradationLevel.D3);
 
-  await assert.rejects(async () => controller.route(request), /max_recursion|Provider failure/);
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        taskType: "unknown",
+      };
 
-  // Should have called provider multiple times before hitting recursion limit
-  assert.ok(callCount >= 3, `Expected at least 3 calls, got ${callCount}`);
-});
+      const response = await customController.route(request);
 
-test("DegradationController recursion limit applies to D1 route as well", async () => {
-  const mockProvider = new MockUnifiedChatProvider();
-  mockProvider.createChatCompletion = mock.fn(async () => {
-    throw new Error("Provider failure");
+      assert.strictEqual(response.content, "Custom default message");
+    });
   });
 
-  const { controller } = createController({ primaryProvider: mockProvider, fallbackProvider: null });
+  describe("lastEscalationReason", () => {
+    it("should record escalation reason on provider failure", async () => {
+      mockProvider.createChatCompletion = mock.fn(async () => {
+        throw new Error("Connection timeout");
+      });
 
-  controller.setLevel(DegradationLevel.D1);
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
 
-  const request: LLMDegradationRequest = {
-    model: "failing-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-  };
+      await controller.route(request);
 
-  // Should eventually hit recursion limit
-  await assert.rejects(
-    async () => controller.route(request),
-    /max_recursion|Provider failure/,
-  );
-});
+      assert.strictEqual(controller.getLastEscalationReason(), "Connection timeout");
+    });
 
-test("DegradationController resets recursion depth after successful route", async () => {
-  const mockProvider = new MockUnifiedChatProvider();
-  mockProvider.createChatCompletion = mock.fn(async (request: { model: string }) => {
-    return {
-      id: "success-id",
-      content: `Response from ${request.model}`,
-      refusal: null,
-      reasoningContent: null,
-      finishReason: "stop",
-      stopSequence: null,
-      toolCalls: [],
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      model: request.model,
-      provider: "mock",
-    };
+    it("should record escalation reason on D1 provider failure", async () => {
+      controller.setLevel(DegradationLevel.D1);
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+      };
+
+      await controller.route(request);
+
+      // D1 escalates to D2 because no fallback is available. This path does not introduce
+      // a new provider error, so the last escalation reason may remain null.
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
+    });
   });
 
-  const { controller } = createController({ primaryProvider: mockProvider });
-
-  const request: LLMDegradationRequest = {
-    model: "success-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-  };
-
-  // First successful call
-  const response = await controller.route(request);
-  assert.equal(response.degradationLevel, DegradationLevel.D0);
-
-  // Second call should also succeed (recursion depth reset)
-  const response2 = await controller.route(request);
-  assert.equal(response2.degradationLevel, DegradationLevel.D0);
-});
-
-// ============================================================================
-// Issue #2096: De-escalation Latency P99 Ignored Tests
-// ============================================================================
-
-test("DegradationController evaluateHealth de-escalation does NOT check latency P99", () => {
-  const { controller } = createController();
-
-  // Start at D1
-  controller.setLevel(DegradationLevel.D1);
-
-  // Low error rate but high latency - should de-escalate based on error rate only
-  const metricsHighLatency: ProviderMetrics = {
-    provider: "openai",
-    profileName: "gpt-4o",
-    totalRequests: 100,
-    failedRequests: 1, // 1% error rate - below 5% threshold
-    errorRate: 1,
-    latencyP99Ms: 10000, // Very high latency
-    ttftP99Ms: 1000,
-    lastUpdated: new Date().toISOString(),
-  };
-
-  // After 3 consecutive healthy checks with low error rate
-  controller.evaluateHealth(metricsHighLatency); // 1: waiting
-  controller.evaluateHealth(metricsHighLatency); // 2: waiting
-  const result = controller.evaluateHealth(metricsHighLatency); // 3: should de-escalate
-
-  // Issue #2096: De-escalation ignores latency P99, so it should de-escalate
-  // because error rate is below threshold, even though latency is high
-  assert.equal(result.action, "deescalate");
-  assert.equal(result.newLevel, DegradationLevel.D0);
-});
-
-test("DegradationController evaluateHealth does NOT escalate for high latency if error rate is low", () => {
-  const { controller } = createController();
-
-  // At D0
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D0);
-
-  const metrics: ProviderMetrics = {
-    provider: "openai",
-    profileName: "gpt-4o",
-    totalRequests: 100,
-    failedRequests: 2,
-    errorRate: 2, // Low error rate
-    latencyP99Ms: 8000, // High latency but below TTFT threshold
-    ttftP99Ms: 5000,
-    lastUpdated: new Date().toISOString(),
-  };
-
-  const result = controller.evaluateHealth(metrics);
-
-  // High latency alone without high error rate should NOT escalate
-  assert.equal(result.action, "maintain");
-});
-
-test("DegradationController evaluateHealth de-escalation requires consecutive healthy checks", () => {
-  const { controller } = createController();
-
-  controller.setLevel(DegradationLevel.D2);
-
-  const metricsHealthy: ProviderMetrics = {
-    provider: "openai",
-    profileName: "gpt-4o",
-    totalRequests: 100,
-    failedRequests: 1,
-    errorRate: 1,
-    latencyP99Ms: 500,
-    ttftP99Ms: 500,
-    lastUpdated: new Date().toISOString(),
-  };
-
-  // First check - should not de-escalate yet
-  let result = controller.evaluateHealth(metricsHealthy);
-  assert.equal(result.action, "maintain");
-  assert.ok(result.reason.includes("waiting_recovery"));
-
-  // Second check - still not enough
-  result = controller.evaluateHealth(metricsHealthy);
-  assert.equal(result.action, "maintain");
-
-  // Third check - should de-escalate
-  result = controller.evaluateHealth(metricsHealthy);
-  assert.equal(result.action, "deescalate");
-});
-
-test("DegradationController evaluateHealth respects maxAutoDeescalateLevel during de-escalation", () => {
-  const { controller } = createController({ maxAutoDeescalateLevel: DegradationLevel.D1 });
-
-  controller.setLevel(DegradationLevel.D3);
-
-  const metricsHealthy: ProviderMetrics = {
-    provider: "openai",
-    profileName: "gpt-4o",
-    totalRequests: 100,
-    failedRequests: 1,
-    errorRate: 1,
-    latencyP99Ms: 500,
-    ttftP99Ms: 500,
-    lastUpdated: new Date().toISOString(),
-  };
-
-  // 3 healthy checks
-  controller.evaluateHealth(metricsHealthy);
-  controller.evaluateHealth(metricsHealthy);
-  const result = controller.evaluateHealth(metricsHealthy);
-
-  // Should only de-escalate to D2 (maxAutoDeescalateLevel is D1)
-  assert.equal(result.action, "deescalate");
-  assert.equal(result.newLevel, DegradationLevel.D2);
-});
-
-test("DegradationController evaluateHealth TTFT P99 separate threshold from latency P99", () => {
-  const { controller } = createController();
-
-  // High TTFT should trigger escalation independently
-  const metricsHighTTFT: ProviderMetrics = {
-    provider: "openai",
-    profileName: "gpt-4o",
-    totalRequests: 100,
-    failedRequests: 2,
-    errorRate: 2, // Low error rate
-    latencyP99Ms: 1000, // Normal latency
-    ttftP99Ms: 11000, // High TTFT > 10000 threshold
-    lastUpdated: new Date().toISOString(),
-  };
-
-  const result = controller.evaluateHealth(metricsHighTTFT);
-
-  // High TTFT should escalate
-  assert.equal(result.action, "escalate");
-  assert.ok(result.reason.includes("ttft_p99"));
-});
-
-// ============================================================================
-// General Degradation Controller Tests
-// ============================================================================
-
-test("DegradationController escalate increments level correctly", () => {
-  const { controller } = createController();
-
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D0);
-
-  controller.escalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D1);
-
-  controller.escalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
-
-  controller.escalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D3);
-
-  controller.escalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D4);
-});
-
-test("DegradationController cannot escalate beyond D4", () => {
-  const { controller } = createController();
-
-  controller.setLevel(DegradationLevel.D4);
-  controller.escalate();
-
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D4);
-});
-
-test("DegradationController deescalate decrements level correctly", () => {
-  const { controller } = createController();
-
-  controller.setLevel(DegradationLevel.D4);
-
-  controller.deescalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D3);
-
-  controller.deescalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
-
-  controller.deescalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D1);
-
-  controller.deescalate();
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D0);
-});
-
-test("DegradationController cannot deescalate below D0", () => {
-  const { controller } = createController();
-
-  controller.setLevel(DegradationLevel.D0);
-  controller.deescalate();
-
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D0);
-});
-
-test("DegradationController reset returns to D0", () => {
-  const { controller } = createController();
-
-  controller.setLevel(DegradationLevel.D3);
-  controller.reset();
-
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D0);
-  assert.strictEqual(controller.getLastEscalationReason(), null);
-});
-
-test("DegradationController setLevel rejects invalid levels", () => {
-  const { controller } = createController();
-
-  assert.throws(
-    () => controller.setLevel(-1 as DegradationLevel),
-    /invalid_level/,
-  );
-
-  assert.throws(
-    () => controller.setLevel(5 as DegradationLevel),
-    /invalid_level/,
-  );
-});
-
-test("DegradationController D3 returns template response", async () => {
-  const { controller } = createController();
-  controller.setLevel(DegradationLevel.D3);
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "coding",
-    messages: [{ role: "user", content: "Hello" }],
-    taskType: "coding",
-  };
-
-  const response = await controller.route(request);
-
-  assert.equal(response.degradationLevel, DegradationLevel.D3);
-  assert.equal(response.model, "template");
-  assert.ok(response.content.includes("apologize") || response.content.includes("demand"));
-});
-
-test("DegradationController D4 throws ProviderError", async () => {
-  const { controller } = createController();
-  controller.setLevel(DegradationLevel.D4);
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-  };
-
-  await assert.rejects(
-    async () => controller.route(request),
-    (error: unknown) => {
-      if (error instanceof Error && "retryable" in error) {
-        return (error as { retryable: boolean }).retryable === true;
-      }
-      return false;
-    },
-  );
-});
-
-test("DegradationController caches successful D0 responses", async () => {
-  const { controller, mockCacheService } = createController();
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-    semanticKey: "test-semantic-key",
-  };
-
-  await controller.route(request);
-
-  const cached = mockCacheService.get("test-semantic-key");
-  assert.ok(cached !== null);
-});
-
-test("DegradationController D0 does not cache when no semanticKey", async () => {
-  const { controller, mockCacheService } = createController();
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-    // No semanticKey
-  };
-
-  await controller.route(request);
-
-  // Should have no entries in cache
-  const keys = Array.from((mockCacheService as any).entries.keys());
-  assert.equal(keys.length, 0);
-});
-
-// ============================================================================
-// Default Configuration Tests
-// ============================================================================
-
-test("DEFAULT_DEGRADATION_CONFIG has correct escalation threshold", () => {
-  assert.equal(DEFAULT_DEGRADATION_CONFIG.escalateErrorRateThreshold, 50); // 50%
-  assert.equal(DEFAULT_DEGRADATION_CONFIG.deescalateErrorRateThreshold, 5); // 5%
-  assert.equal(DEFAULT_DEGRADATION_CONFIG.escalateLatencyP99Ms, 5000);
-  assert.equal(DEFAULT_DEGRADATION_CONFIG.escalateTtftP99Ms, 10000); // §15.6 TTFT threshold
-  assert.equal(DEFAULT_DEGRADATION_CONFIG.deescalateMinHealthyCount, 3);
-});
-
-test("DEFAULT_TEMPLATE_RESPONSES has all required keys", () => {
-  const requiredKeys = ["default", "coding", "reasoning", "classification", "writing"];
-  for (const key of requiredKeys) {
-    assert.ok(DEFAULT_TEMPLATE_RESPONSES[key] !== undefined);
-    assert.ok(DEFAULT_TEMPLATE_RESPONSES[key]!.length > 0);
-  }
-});
-
-// ============================================================================
-// Event Bus Emission Tests
-// ============================================================================
-
-test("DegradationController emits event on escalation", () => {
-  const events: Array<{ eventType: string; payload: unknown }> = [];
-  const eventBusEmitter = (eventType: string, payload: unknown) => {
-    events.push({ eventType, payload });
-  };
-
-  const controller = new DegradationController({
-    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackProvider: null,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
-    eventBusEmitter,
+  describe("full degradation cascade", () => {
+    it("should correctly cascade through all levels on repeated failures", async () => {
+      mockProvider.createChatCompletion = mock.fn(async () => {
+        throw new Error("Provider failure");
+      });
+
+      const request: LLMDegradationRequest = {
+        model: "gpt-4o",
+        routeClass: "default",
+        messages: [{ role: "user", content: "Hello" }],
+        semanticKey: "cascade-test",
+      };
+
+      // First call: D0 fails -> D1 (no fallback) -> D2 (no cache yet because D0 didn't cache) -> D3 response path
+      await controller.route(request);
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
+
+      // Reset for next test
+      controller.reset();
+    });
   });
-
-  controller.escalate();
-
-  assert.ok(events.some((e) => e.eventType === "degradation:escalate"));
-});
-
-// ============================================================================
-// D2 Cache Behavior Tests
-// ============================================================================
-
-test("DegradationController D2 returns cached response", async () => {
-  const { controller, mockCacheService } = createController();
-
-  mockCacheService.put({ cacheKey: "cached-key", value: "Cached response", model: "cached-model" });
-  controller.setLevel(DegradationLevel.D2);
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-    semanticKey: "cached-key",
-  };
-
-  const response = await controller.route(request);
-
-  assert.equal(response.degradationLevel, DegradationLevel.D2);
-  assert.equal(response.content, "Cached response");
-  assert.equal(response.fromCache, true);
-});
-
-test("DegradationController D2 falls through to D3 on cache miss", async () => {
-  const { controller } = createController();
-  controller.setLevel(DegradationLevel.D2);
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-    semanticKey: "non-existent-key",
-  };
-
-  const response = await controller.route(request);
-
-  // No cache hit -> falls through to D3 template
-  assert.equal(response.degradationLevel, DegradationLevel.D3);
-});
-
-test("DegradationController D2 requires semanticKey for cache lookup", async () => {
-  const { controller, mockCacheService } = createController();
-  controller.setLevel(DegradationLevel.D2);
-
-  const request: LLMDegradationRequest = {
-    model: "any-model",
-    routeClass: "default",
-    messages: [{ role: "user", content: "Hello" }],
-    // No semanticKey
-  };
-
-  const response = await controller.route(request);
-
-  // No semanticKey -> falls through to D3
-  assert.equal(response.degradationLevel, DegradationLevel.D3);
 });

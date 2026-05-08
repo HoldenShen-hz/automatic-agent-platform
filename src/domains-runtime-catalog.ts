@@ -26,7 +26,7 @@ export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
 }
 
 export function registerDomainsRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsRuntimeCatalog {
   const bootstrap = registerDomainsBootstrap(registry);
   const ringMap = new Map(bootstrap.rings.map((ring) => [ring.ringId, ring.baselines]));

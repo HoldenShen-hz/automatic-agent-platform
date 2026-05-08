@@ -5,18 +5,38 @@ import { StructuredLogger } from "../../../shared/observability/structured-logge
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import type { WorkerHandshakeDecision, WorkerRemoteLogInput } from "./execution-worker-handshake-types.js";
 
-// R27-05 FIX: Extract shared utilities to common module to prevent maintenance divergence
-// Re-export from writeback-support for consumers that need both
-export { parseJsonArray, toWorkerStatus, persistRemoteLogs } from "./execution-worker-writeback-support.js";
-
 const logger = new StructuredLogger({ retentionLimit: 100 });
+
+export function parseJsonArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch (err) {
+    logger.log({
+      level: "warn",
+      message: "Failed to parse JSON array",
+      data: { error: err instanceof Error ? err.message : String(err), value: value.substring(0, 100) },
+    });
+    return [];
+  }
+}
 
 export function mergeExecutionIds(existing: string[], executionId: string): string[] {
   return Array.from(new Set([...existing, executionId])).sort();
 }
 
-// buildAgentExecutionRecord has different signatures in handshake vs writeback
-// Keep handshake version here and re-export writeback version under different name if needed
+export function toWorkerStatus(
+  snapshot: WorkerSnapshotRecord,
+  runningExecutionIds: string[],
+): WorkerSnapshotRecord["status"] {
+  if (snapshot.status === "unavailable") return "unavailable";
+  if (snapshot.status === "quarantined") return "quarantined";
+  if (snapshot.status === "offline") return "offline";
+  if (snapshot.status === "draining") return "draining";
+  if (snapshot.status === "degraded") return "degraded";
+  return runningExecutionIds.length > 0 ? "busy" : "idle";
+}
+
 export function buildAgentExecutionRecord(
   store: AuthoritativeTaskStore,
   execution: NonNullable<ReturnType<AuthoritativeTaskStore["getExecution"]>>,
@@ -69,16 +89,39 @@ export function buildAgentExecutionRecord(
   };
 }
 
-export function normalizeLeaseReason(reasonCode: string | null): WorkerHandshakeDecision["reasonCode"] {
-  if (
-    reasonCode === "lease_not_found" ||
-    reasonCode === "lease_not_active" ||
-    reasonCode === "lease_expired" ||
-    reasonCode === "worker_mismatch"
-  ) {
-    return reasonCode;
+export function persistRemoteLogs(
+  store: AuthoritativeTaskStore,
+  taskId: string,
+  executionId: string,
+  traceId: string,
+  workerId: string,
+  runtimeInstanceId: string | null,
+  remoteLogs: WorkerRemoteLogInput[] | undefined,
+  defaultOccurredAt: string,
+): void {
+  for (const entry of remoteLogs ?? []) {
+    const message = entry.message.trim();
+    if (message.length === 0) continue;
+    store.worker.insertRemoteLog({
+      id: newId("rlog"),
+      taskId,
+      executionId,
+      workerId,
+      runtimeInstanceId,
+      level: entry.level,
+      message,
+      contextJson: JSON.stringify({
+        taskId,
+        executionId,
+        workerId,
+        traceId,
+        correlationId: taskId,
+        ...(runtimeInstanceId ? { runtimeInstanceId } : {}),
+        ...(entry.context ?? {}),
+      }),
+      createdAt: entry.occurredAt ?? defaultOccurredAt,
+    });
   }
-  return reasonCode === "no_active_lease" || reasonCode === "stale_fencing_token" ? reasonCode : null;
 }
 
 export function recordRejectedEvent(
@@ -100,4 +143,16 @@ export function recordRejectedEvent(
     traceId: execution?.traceId ?? null,
     createdAt: occurredAt,
   });
+}
+
+export function normalizeLeaseReason(reasonCode: string | null): WorkerHandshakeDecision["reasonCode"] {
+  if (
+    reasonCode === "lease_not_found" ||
+    reasonCode === "lease_not_active" ||
+    reasonCode === "lease_expired" ||
+    reasonCode === "worker_mismatch"
+  ) {
+    return reasonCode;
+  }
+  return reasonCode === "no_active_lease" || reasonCode === "stale_fencing_token" ? reasonCode : null;
 }

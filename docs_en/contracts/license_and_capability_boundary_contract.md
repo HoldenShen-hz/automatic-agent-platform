@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -12,14 +12,14 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
 - **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and release
+- **Improve**: Improvement candidate evaluation and rollout
 - **Release**: Controlled release and rollback
 
 ---
 
 ## 1. Scope
 
-This contract defines capability boundary engineering for future product forms such as Community, Professional, and Enterprise editions.
+This contract defines the capability boundary engineering approach for future product tiers such as Community, Professional, and Enterprise editions.
 
 Related documents:
 
@@ -28,15 +28,15 @@ Related documents:
 - `tenant_and_organization_contract.md`
 - `feature` flags in `environment_and_configuration_governance_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-- Proactively make features, quotas, concurrency, audit, and multi-tenancy capabilities controllable switches.
+- Proactively engineering features, quotas, concurrency, audit, and multi-tenant capabilities as controllable switches.
 - Avoid hard-cutting code paths after commercialization.
-- Let entitlement judgment enter formal policy / metering closed loop.
+- Bring entitlement judgment into the formal policy/metering closed loop.
 
 ## 3. Capability Boundaries
 
-Future at least switchable by the following dimensions:
+At minimum, the following dimensions should be controllable in the future:
 
 - feature gate
 - quota gate
@@ -46,7 +46,7 @@ Future at least switchable by the following dimensions:
 - remote worker gate
 - enterprise security gate
 
-## 4. Core Objects
+## 4. Canonical Objects
 
 - `LicenseTier`
 - `CapabilityBundle`
@@ -56,28 +56,28 @@ Future at least switchable by the following dimensions:
 
 ## 5. Rules
 
-- All commercial capabilities should go through capability check rather than scattered in UI or routing.
+- All commercial capabilities should go through capability checks, rather than being scattered across UI or routing.
 - Capability check results must be auditable.
-- Trial, downgrade, overdue, freeze must all have explicit system behavior.
-- Product layering must not break the same set of contract truths.
-- Capability check must not only take effect at frontend or gateway layer; runtime, API, admin console must also reuse the same judgment result.
-- Overdue, freeze, downgrade must not silently relax existing isolation and audit boundaries.
+- Trial periods, downgrades, overdue payments, and freezes must all have clear system behaviors.
+- Product tiering must not break the unified contract truth.
+- Capability checks must not be enforced only at the frontend or gateway layer; runtime, API, and admin console must all reuse the same judgment results.
+- Overdue payments, freezes, and downgrades should not silently relax existing isolation and audit boundaries.
 
 ## 6. Typical Tiers
 
 | Tier | Typical Capabilities |
 | --- | --- |
-| `community` | Single tenant, local capabilities, basic tools |
-| `professional` | More concurrency, more quotas, basic audit |
+| `community` | Single-tenant, local capabilities, basic tools |
+| `professional` | Higher concurrency, higher quotas, basic audit |
 | `enterprise` | Multi-tenant, SSO, audit export, private models, private network deployment |
 
-## 7. Conclusion
+## 7. Closure Conclusion
 
 Commercial capability boundaries must be engineered early.
 
-Otherwise subsequently will appear:
+Otherwise, the following issues will arise later:
 
-- Code fork
+- Code forking
 - Permission drift
-- Quota rules scattered
-- Enterprise capabilities difficult to safely launch
+- Scattered quota rules
+- Enterprise capabilities difficult to deploy safely

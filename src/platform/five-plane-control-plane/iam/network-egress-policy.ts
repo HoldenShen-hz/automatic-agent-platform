@@ -2,7 +2,7 @@
  * Network Egress Policy
  *
  * Enforces network egress policies for outbound connections.
- * Supports audit-only and blocking modes.
+ * Supports both audit-only and enforcement modes.
  *
  * ## Purpose
  *
@@ -15,13 +15,12 @@
  * ## Modes
  *
  * - `audit_only`: Records decisions and logs, but doesn't block
- * - `deny`: Blocks prohibited connections (default)
- * - `enforce`: Alias for `deny`
+ * - `enforce`: Actually blocks prohibited connections
  *
  * ## Configuration (Environment Variables)
  *
  * - AA_EGRESS_POLICY_ENABLED: Set to 0 to disable
- * - AA_EGRESS_POLICY_MODE: "audit_only", "deny", or "enforce"
+ * - AA_EGRESS_POLICY_MODE: "audit_only" or "enforce"
  * - AA_EGRESS_ALLOWED_DOMAINS: Comma-separated allowed domains
  * - AA_EGRESS_BLOCKED_DOMAINS: Comma-separated blocked domains
  * - AA_EGRESS_ALLOWED_TYPES: Comma-separated allowed destination types
@@ -221,11 +220,7 @@ export function loadNetworkEgressPolicyConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): NetworkEgressPolicyConfig {
   const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "deny").trim().toLowerCase();
-  const mode: NetworkEgressPolicyMode = modeValue === "audit_only"
-    ? "audit_only"
-    : modeValue === "enforce"
-      ? "enforce"
-      : "deny";
+  const mode: NetworkEgressPolicyMode = modeValue === "enforce" ? "enforce" : "deny";
   return {
     enabled: env["AA_EGRESS_POLICY_ENABLED"] !== "0",
     mode,
@@ -241,7 +236,7 @@ export function loadNetworkEgressPolicyConfigFromEnv(
  * Network Egress Policy Service
  *
  * Evaluates outbound connection requests against configured policies.
- * Can operate in audit-only mode (log only) or blocking mode (`deny` / `enforce`).
+ * Can operate in audit-only mode (log only) or enforce mode (block).
  */
 export class NetworkEgressPolicyService {
   private readonly enabled: boolean;
@@ -271,10 +266,6 @@ export class NetworkEgressPolicyService {
     return this.mode;
   }
 
-  private isBlockingMode(): boolean {
-    return this.mode !== "audit_only";
-  }
-
   /**
    * Evaluates a URL against the policy.
    * Returns a decision object indicating whether the URL is allowed.
@@ -296,28 +287,21 @@ export class NetworkEgressPolicyService {
 
     // Check internal hostname block
     if (!this.allowInternalHosts && isInternalHostname(hostname)) {
-      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked.
-      // The 'allowed' field reflects what WILL happen, not just what policy says.
-      // audit_only mode allows everything through (just logs), so allowed:true is honest.
-      // The reasonCode still indicates the policy violation for audit purposes.
-      const allowed = this.mode === "audit_only";
       return {
-        allowed,
+        allowed: this.mode !== "enforce",
         destinationType,
         destination,
-        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_INTERNAL_BLOCKED" : "EGRESS_INTERNAL_BLOCKED",
+        reasonCode: "EGRESS_INTERNAL_BLOCKED",
       };
     }
 
     // Check blocked destination types
     if (this.blockedDestinationTypes.includes(destinationType)) {
-      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
-      const allowed = this.mode === "audit_only";
       return {
-        allowed,
+        allowed: this.mode !== "enforce",
         destinationType,
         destination,
-        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_TYPE_BLOCKED" : "EGRESS_TYPE_BLOCKED",
+        reasonCode: "EGRESS_TYPE_BLOCKED",
       };
     }
 
@@ -326,25 +310,21 @@ export class NetworkEgressPolicyService {
       this.allowedDestinationTypes.length > 0
       && !this.allowedDestinationTypes.includes(destinationType)
     ) {
-      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
-      const allowed = this.mode === "audit_only";
       return {
-        allowed,
+        allowed: this.mode !== "enforce",
         destinationType,
         destination,
-        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_TYPE_NOT_ALLOWED" : "EGRESS_TYPE_NOT_ALLOWED",
+        reasonCode: "EGRESS_TYPE_NOT_ALLOWED",
       };
     }
 
     // Check blocked domains
     if (this.blockedDomains.some((item) => domainMatches(hostname, item))) {
-      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
-      const allowed = this.mode === "audit_only";
       return {
-        allowed,
+        allowed: this.mode !== "enforce",
         destinationType,
         destination,
-        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_DOMAIN_BLOCKED" : "EGRESS_DOMAIN_BLOCKED",
+        reasonCode: "EGRESS_DOMAIN_BLOCKED",
       };
     }
 
@@ -353,13 +333,11 @@ export class NetworkEgressPolicyService {
       this.allowedDomains.length > 0
       && !this.allowedDomains.some((item) => domainMatches(hostname, item))
     ) {
-      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
-      const allowed = this.mode === "audit_only";
       return {
-        allowed,
+        allowed: this.mode !== "enforce",
         destinationType,
         destination,
-        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_DOMAIN_NOT_ALLOWED" : "EGRESS_DOMAIN_NOT_ALLOWED",
+        reasonCode: "EGRESS_DOMAIN_NOT_ALLOWED",
       };
     }
 
@@ -431,8 +409,7 @@ export function createPolicyAwareFetch(
     const url = extractUrlString(input);
     const decision = policy.evaluate(url);
 
-    // Record the decision to audit log
-    // §11.5: All egress decisions must be recorded
+    // If blocked, record and throw
     if (!decision.allowed) {
       policy.record(url, options.action, false, {
         errorCode: decision.reasonCode ?? "EGRESS_BLOCKED",
@@ -441,18 +418,13 @@ export function createPolicyAwareFetch(
           destinationType: decision.destinationType,
         },
       });
-      // In blocking mode (deny/enforce), throw on blocked destinations
-      // In audit_only mode, log and continue
-      if (policy.getMode() !== "audit_only") {
-        throw new PolicyDeniedError("egress.blocked", `egress.blocked:${decision.reasonCode ?? "EGRESS_DOMAIN_BLOCKED"}:${decision.destination}`, {
-          details: {
-            destination: decision.destination,
-            reasonCode: decision.reasonCode ?? "EGRESS_BLOCKED",
-            destinationType: decision.destinationType,
-          },
-        });
-      }
-      // Fall through in audit_only mode - request proceeds but is logged
+      throw new PolicyDeniedError("egress.blocked", `egress.blocked:${decision.reasonCode ?? "EGRESS_DOMAIN_BLOCKED"}:${decision.destination}`, {
+        details: {
+          destination: decision.destination,
+          reasonCode: decision.reasonCode ?? "EGRESS_BLOCKED",
+          destinationType: decision.destinationType,
+        },
+      });
     }
 
     // Attempt the fetch

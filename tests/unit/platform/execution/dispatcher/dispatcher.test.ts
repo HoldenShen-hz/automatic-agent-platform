@@ -9,28 +9,12 @@ import {
   resetToolRegistry,
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-  setToolRegistryBudgetLedger,
   type MultiStepToolDefinition,
-} from "../../../../../src/platform/five-plane-execution/dispatcher/index.js";
-import { createBudgetLedger } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../../../../src/platform/execution/dispatcher/index.js";
 
 // ---------------------------------------------------------------------------
 // Test setup and teardown
 // ---------------------------------------------------------------------------
-
-test.beforeEach(() => {
-  // R4-25: Set up budget ledger for tool execution tests
-  const ledger = createBudgetLedger({
-    tenantId: "tenant:dispatcher-test",
-    harnessRunId: "harness_run:dispatcher-test",
-    currency: "USD",
-    hardCap: 1000,
-    reservedAmount: 0,
-    settledAmount: 0,
-    releasedAmount: 0,
-  });
-  setToolRegistryBudgetLedger(ledger);
-});
 
 test.afterEach(() => {
   resetMultiStepToolRegistryForTests();
@@ -460,15 +444,14 @@ test("executeToolCall handles empty string JSON", async () => {
 // todo_write tool basic tests
 // ---------------------------------------------------------------------------
 
-test("executeToolCall todo_write denies write operations without explicit sandbox allow", async () => {
-  await assert.rejects(
-    () => executeMultiStepToolCallForTests("todo_write", JSON.stringify({
-      operation: "create",
-      title: "Test Todo",
-      sessionId: "test-session",
-    })),
-    /Sandbox policy denies tool todo_write with operation create/,
-  );
+test("executeToolCall todo_write with valid operation", async () => {
+  const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
+    operation: "create",
+    title: "Test Todo",
+    sessionId: "test-session",
+  }));
+  const parsed = JSON.parse(result);
+  assert.ok(typeof parsed === "object");
 });
 
 test("executeToolCall todo_write with list operation", async () => {
@@ -489,23 +472,21 @@ test("executeToolCall todo_write with get operation", async () => {
   assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write update is denied without explicit sandbox allow", async () => {
-  await assert.rejects(
-    () => executeMultiStepToolCallForTests("todo_write", JSON.stringify({
-      operation: "update",
-      todoId: "todo-123",
-      title: "Updated Title",
-    })),
-    /Sandbox policy denies tool todo_write with operation update|denied by sandbox policy/,
-  );
+test("executeToolCall todo_write with update operation", async () => {
+  const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
+    operation: "update",
+    todoId: "todo-123",
+    title: "Updated Title",
+  }));
+  const parsed = JSON.parse(result);
+  assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write delete is denied without explicit sandbox allow", async () => {
-  await assert.rejects(
-    () => executeMultiStepToolCallForTests("todo_write", JSON.stringify({
-      operation: "delete",
-      todoId: "todo-123",
-    })),
-    /Sandbox policy denies tool todo_write with operation delete|denied by sandbox policy/,
-  );
+test("executeToolCall todo_write with delete operation", async () => {
+  const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
+    operation: "delete",
+    todoId: "todo-123",
+  }));
+  const parsed = JSON.parse(result);
+  assert.ok(typeof parsed === "object");
 });

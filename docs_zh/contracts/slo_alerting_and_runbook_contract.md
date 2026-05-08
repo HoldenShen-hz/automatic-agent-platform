@@ -16,7 +16,7 @@
 
 | 层 | SLI 示例 |
 | --- | --- |
-| OAPEFLIR 层 | loop 收敛率、feedback 正向率、release 成功率 |
+| OAPEFLIR 层 | loop 收敛率、feedback 正向率、rollout 成功率 |
 | 系统层 | API 可用性、事件循环延迟、DB 可写性 |
 | 平台层 | 任务成功率、启动延迟、恢复成功率 |
 | 交互层 | approval 可用性、streaming 首包延迟 |
@@ -32,7 +32,7 @@
 - `cost_accounting_accuracy`
 - `oapeflir_loop_convergence_rate`
 - `feedback_positive_rate`
-- `release_success_rate`
+- `rollout_success_rate`
 
 规则：
 
@@ -69,7 +69,7 @@
 - `stale_lease_repair`
 - `secret_rotation_failure`
 - `oapeflir_loop_stalled`
-- `release_blocked_or_rollback`
+- `rollout_blocked_or_rollback`
 
 ## 7. 告警流程图
 

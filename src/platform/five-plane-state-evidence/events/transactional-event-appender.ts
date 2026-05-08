@@ -19,7 +19,6 @@ import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-databa
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { OutboxRepository } from "../../shared/outbox/outbox-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 /**
  * Options for transactional event append
@@ -31,15 +30,6 @@ export interface TransactionalAppendOptions {
   traceId?: string | null;
   /** Event tier (defaults to auto-detect based on event type) */
   eventTier?: EventRecord["eventTier"];
-  /**
-   * Optional truth-table mutation to run inside the same database transaction as the event append.
-   * This closes the gap where callers previously had no way to atomically update truth + event.
-   */
-  mutateTruth?: (db: AuthoritativeSqlDatabase) => void;
-  // §28.1 replay ordering fields
-  aggregateId?: string | null;
-  runId?: string | null;
-  sequence?: number | null;
 }
 
 /**
@@ -88,11 +78,6 @@ export class TransactionalEventAppender {
     },
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult {
-    // R4-36: Verify leader authority before any write operation.
-    // In HA mode, only the leader node can append events to ensure consistency.
-    // This uses "system" as the nodeId since TransactionalEventAppender doesn't
-    // carry explicit node identity - callers should ensure proper node context.
-    assertLeaderAuthoritative("system", "transactional_event_appender_append");
     const eventId = eventData.id ?? newId("evt");
     const now = nowIso();
 
@@ -106,24 +91,12 @@ export class TransactionalEventAppender {
       payloadJson: eventData.payloadJson,
       traceId: options.traceId ?? null,
       createdAt: now,
-      schemaVersion: null,
-      aggregateId: options.aggregateId ?? null,
-      runId: options.runId ?? null,
-      sequence: options.sequence ?? null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: null,
-      evidenceRefs: [],
     };
 
-    // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
-    // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
-    return this.db.transaction(() => {
-      options.mutateTruth?.(this.db);
+    // Use a transaction to ensure atomicity
+    this.db.connection.exec("BEGIN TRANSACTION");
 
+    try {
       // Step 1: Insert event into event store
       const insertedEvent = this.insertEventInternal(event);
 
@@ -136,11 +109,16 @@ export class TransactionalEventAppender {
         );
       }
 
+      this.db.connection.exec("COMMIT");
+
       return {
         event: insertedEvent,
         outboxEntryId,
       };
-    });
+    } catch (error) {
+      this.db.connection.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   /**
@@ -156,16 +134,11 @@ export class TransactionalEventAppender {
     }>,
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult[] {
-    // R4-36: Verify leader authority before any write operation.
-    // In HA mode, only the leader node can append events to ensure consistency.
-    assertLeaderAuthoritative("system", "transactional_event_appender_append_batch");
-    // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
-    // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
-    return this.db.transaction(() => {
-      options.mutateTruth?.(this.db);
+    const results: TransactionalAppendResult[] = [];
 
-      const results: TransactionalAppendResult[] = [];
+    this.db.connection.exec("BEGIN TRANSACTION");
 
+    try {
       for (const eventData of events) {
         const eventId = eventData.id ?? newId("evt");
         const now = nowIso();
@@ -180,17 +153,6 @@ export class TransactionalEventAppender {
           payloadJson: eventData.payloadJson,
           traceId: options.traceId ?? null,
           createdAt: now,
-          schemaVersion: null,
-          aggregateId: options.aggregateId ?? null,
-          runId: options.runId ?? null,
-          sequence: options.sequence ?? null,
-          causationId: null,
-          correlationId: null,
-          payloadHash: null,
-          idempotencyKey: null,
-          replayBehavior: null,
-          principal: null,
-          evidenceRefs: [],
         };
 
         const insertedEvent = this.insertEventInternal(event);
@@ -203,23 +165,38 @@ export class TransactionalEventAppender {
         results.push({ event: insertedEvent, outboxEntryId });
       }
 
+      this.db.connection.exec("COMMIT");
       return results;
-    });
+    } catch (error) {
+      this.db.connection.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   /**
    * Insert event without transaction wrapper (internal use)
-   *
-   * R16-27 FIX: Uses eventRepository.insertEvent instead of raw SQL to ensure:
-   * 1. Event insert + ack creation happen in the SAME transaction
-   * 2. Required consumer acks are created atomically with the event
-   * This satisfies §25.2 "Truth Table + Event Log dual model" atomicity requirement.
    */
   private insertEventInternal(event: EventRecord): EventRecord {
-    // R16-27: Use eventRepository.insertEvent which creates consumer ack records
-    // atomically in the same transaction, ensuring event sourcing guarantee that
-    // truth and events are never out of sync.
-    return this.eventRepository.insertEvent(event);
+    this.db.connection
+      .prepare(
+        `INSERT INTO events (
+          id, task_id, session_id, execution_id, event_type, event_tier,
+          payload_json, trace_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        event.id,
+        event.taskId,
+        event.sessionId,
+        event.executionId,
+        event.eventType,
+        event.eventTier,
+        event.payloadJson,
+        event.traceId,
+        event.createdAt,
+      );
+
+    return event;
   }
 
   /**

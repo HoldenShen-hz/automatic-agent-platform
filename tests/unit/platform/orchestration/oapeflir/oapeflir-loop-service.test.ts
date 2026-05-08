@@ -7,30 +7,6 @@ import type { Plan, PlanStep } from "../../../../../src/platform/orchestration/o
 import type { DualChannelStepOutput } from "../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
-/**
- * Creates a minimal DualChannelStepOutput suitable for tests that need to
- * exercise the observe, assess, plan, and feedback/learn stages without
- * hitting the execute bridge directly (since OAPEFLIR is a projection/view
- * that consumes stepOutputs from the caller per R9-14).
- */
-function makeStepOutput(stepId: string): DualChannelStepOutput {
-  return {
-    stepId,
-    planRef: `plan_${stepId}`,
-    userFacingResult: {
-      summary: `Executed ${stepId}`,
-      artifacts: [`artifact:${stepId}`],
-    },
-    systemTelemetry: {
-      durationMs: 25,
-      tokensUsed: 10,
-      modelId: "test-bridge",
-      retryCount: 0,
-      validationPassed: true,
-    },
-  };
-}
-
 class DeterministicExecuteBridge implements ExecuteBridge {
   public executionCount = 0;
 
@@ -127,7 +103,6 @@ test("OapeflirLoopService aggregates task and system observation", async () => {
     taskId: "task_observe",
     objective: "Inspect observation aggregation",
     workflow,
-    stepOutputs: [makeStepOutput("step_read")],
   });
 
   assert.equal(result.observation.task.taskId, "task_observe");
@@ -138,84 +113,25 @@ test("OapeflirLoopService aggregates task and system observation", async () => {
   assert.ok(runtimeMetricsRegistry.getCounters("oapeflir_stage_outcome_total").some((series) => series.labels.stage === "execute"));
 });
 
-test("OapeflirLoopService records execute stage completion when stepOutputs are provided", async () => {
+test("OapeflirLoopService records execute errors when execute bridge fails", async () => {
   runtimeMetricsRegistry.reset();
-  // R9-14: OAPEFLIR is a projection/view that consumes stepOutputs provided by the caller.
-  // The run() method no longer calls executeBridge.executePlan() directly.
-  // This test verifies that when stepOutputs are provided, the execute stage completes.
+  class FailingExecuteBridge extends DeterministicExecuteBridge {
+    override async executePlan(_plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
+      throw new Error("execute bridge exploded");
+    }
+  }
+
   const service = new OapeflirLoopService({
-    executeBridge: new DeterministicExecuteBridge(),
-  });
-
-  const result = await service.run({
-    taskId: "task_execute_error",
-    objective: "Exercise execute stage with caller-provided outputs",
-    workflow: {
-      workflow: { workflowId: "wf_execute_error", divisionId: "coding", steps: [] },
-      executionSteps: [
-        {
-          stepId: "step_execute",
-          divisionId: "coding",
-          roleId: "writer",
-          inputKeys: [],
-          agentId: "agent_writer",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step_execution",
-      dependencyEdges: [],
-    },
-    // Provide stepOutputs so the execute stage can complete
-    stepOutputs: [makeStepOutput("step_execute")],
-  });
-
-  // Verify execute stage was recorded as completed (not error, since stepOutputs were valid)
-  assert.ok(
-    runtimeMetricsRegistry
-      .getCounters("oapeflir_stage_outcome_total")
-      .some((series) => series.labels.stage === "execute" && series.labels.result === "completed"),
-  );
-  // Verify we got step outputs back
-  assert.equal(result.stepOutputs.length, 1);
-  assert.equal(result.stepOutputs[0].stepId, "step_execute");
-});
-
-test("OapeflirLoopService preserves trace and span context on stage failures", async () => {
-  runtimeMetricsRegistry.reset();
-  // R9-14: OAPEFLIR is a projection/view. To test stage error context preservation,
-  // we trigger an O→A boundary validation failure by injecting a custom
-  // observationAggregator that returns an invalid (empty) task situation.
-  const publishedEvents: Array<{ eventType: string; payload: Record<string, unknown>; taskId?: string }> = [];
-  const service = new OapeflirLoopService({
-    executeBridge: new DeterministicExecuteBridge(),
-    observationAggregator: {
-      aggregate() {
-        return {
-          task: {} as never, // Invalid empty task will fail O→A validation
-          system: {} as never,
-          observedAt: Date.now(),
-        };
-      },
-    } as never,
-    eventPublisher: {
-      publish(input) {
-        publishedEvents.push(input as { eventType: string; payload: Record<string, unknown>; taskId?: string });
-      },
-    } as never,
+    executeBridge: new FailingExecuteBridge(),
   });
 
   await assert.rejects(
     async () => {
       await service.run({
-        taskId: "task_stage_context",
-        objective: "Exercise stage error context",
+        taskId: "task_execute_error",
+        objective: "Exercise execute failure path",
         workflow: {
-          workflow: { workflowId: "wf_stage_context", divisionId: "coding", steps: [] },
+          workflow: { workflowId: "wf_execute_error", divisionId: "coding", steps: [] },
           executionSteps: [
             {
               stepId: "step_execute",
@@ -234,94 +150,15 @@ test("OapeflirLoopService preserves trace and span context on stage failures", a
           planReason: "workflow.single_step_execution",
           dependencyEdges: [],
         },
-        // Provide stepOutputs so we can reach the O→A boundary where the error occurs
-        stepOutputs: [makeStepOutput("step_execute")],
       });
     },
-    (error: unknown) => {
-      assert.ok(error instanceof Error);
-      // O→A boundary validation failure throws a plain Error with the taskId in the message
-      assert.match(error.message, /boundary\.validation_failed.*task_stage_context/i);
-      const stageError = error as Error & {
-        stage?: string;
-        taskId?: string;
-        traceId?: string;
-        spanId?: string;
-        parentSpanId?: string | null;
-      };
-      // taskId appears in the error message since O→A boundary error is thrown
-      // as plain Error (not OapeflirStageError) before runStage context attachment
-      assert.ok(error.message.includes("task_stage_context"));
-      return true;
-    },
-  );
-});
-
-test("OapeflirLoopService emits boundary violation signal and metric on O→A validation failure", async () => {
-  runtimeMetricsRegistry.reset();
-  const publishedEvents: Array<{ eventType: string; payload: Record<string, unknown>; taskId?: string }> = [];
-  const service = new OapeflirLoopService({
-    executeBridge: new DeterministicExecuteBridge(),
-    observationAggregator: {
-      aggregate() {
-        return {
-          task: {} as never,
-          system: {} as never,
-          observedAt: Date.now(),
-        };
-      },
-    } as never,
-    eventPublisher: {
-      publish(input) {
-        publishedEvents.push(input as { eventType: string; payload: Record<string, unknown>; taskId?: string });
-      },
-    } as never,
-  });
-
-  await assert.rejects(
-    async () => {
-      await service.run({
-        taskId: "task_boundary_violation",
-        objective: "Trigger boundary validation failure",
-        workflow: {
-          workflow: { workflowId: "wf_boundary_violation", divisionId: "coding", steps: [] },
-          executionSteps: [
-            {
-              stepId: "step_observe",
-              divisionId: "coding",
-              roleId: "observer",
-              inputKeys: [],
-              agentId: "agent_observer",
-              outputKey: "result",
-              outputSchemaPath: null,
-              dependsOnStepIds: [],
-              dependencyTypes: {},
-              timeoutMs: 1000,
-              maxAttempts: 1,
-            },
-          ],
-          planReason: "workflow.single_step_execution",
-          dependencyEdges: [],
-        },
-      });
-    },
-    /boundary\.validation_failed: TaskSituation validation failed at O→A boundary/,
+    /execute bridge exploded/,
   );
 
   assert.ok(
     runtimeMetricsRegistry
-      .getCounters("oapeflir_boundary_violation_total")
-      .some((series) =>
-        series.labels.boundary === "O→A"
-        && series.labels.taskId === "task_boundary_violation"
-        && series.labels.reasonCode === "boundary:O→A:validation_failed"
-        && series.value >= 1),
-  );
-  assert.ok(
-    publishedEvents.some((event) =>
-      event.eventType === "platform.harness_run.status_changed"
-      && event.taskId === "task_boundary_violation"
-      && event.payload.status === "decision:boundary_violation:abort"),
+      .getCounters("oapeflir_stage_outcome_total")
+      .some((series) => series.labels.stage === "execute" && series.labels.result === "error" && series.value >= 1),
   );
 });
 
@@ -355,7 +192,6 @@ test("OapeflirLoopService skips learn-driven stages when no feedback signals are
       dependencyEdges: [],
     },
     feedbackSignals: [],
-    stepOutputs: [makeStepOutput("step_skip")],
   });
 
   assert.equal(result.learningSignals.length, 0);
@@ -424,72 +260,53 @@ test("OapeflirLoopService completes learn improve and release stages when failur
     executeBridge: new DeterministicExecuteBridge(),
   });
 
-  // Note: With R9-14, OAPEFLIR is a projection/view. The FSM backward transition during
-  // replanning can throw fsm.transition_rejected when transitioning from feedback→plan.
-  // This happens because the FSM doesn't properly support backward transitions for replanning
-  // from the release stage. We catch the error and verify core properties are accessible.
-  try {
-    const result = await service.run({
-      taskId: "task_learning_release",
-      objective: "Promote failure pattern into rollout lane",
-      workflow: {
-        workflow: { workflowId: "wf_learning_release", divisionId: "coding", steps: [] },
-        executionSteps: [
-          {
-            stepId: "step_release",
-            divisionId: "coding",
-            roleId: "writer",
-            inputKeys: [],
-            agentId: "agent_writer",
-            outputKey: "result",
-            outputSchemaPath: null,
-            dependsOnStepIds: [],
-            dependencyTypes: {},
-            timeoutMs: 1000,
-            maxAttempts: 1,
-          },
-        ],
-        planReason: "workflow.single_step_execution",
-        dependencyEdges: [],
-      },
-      feedbackSignals: [
+  const result = await service.run({
+    taskId: "task_learning_release",
+    objective: "Promote failure pattern into rollout lane",
+    workflow: {
+      workflow: { workflowId: "wf_learning_release", divisionId: "coding", steps: [] },
+      executionSteps: [
         {
-          signalId: "signal_failure",
-          harnessRunId: "task_learning_release",
-          nodeRunId: "step_release",
-          taskId: "task_learning_release",
-          source: "validation" as const,
-          category: "failure" as const,
-          severity: "error" as const,
-          payload: {
-            summary: "Schema validation failed after execution.",
-            reasonCode: "schema_loop.detected",
-          },
-          stepOutputRefs: ["step_release"],
-          timestamp: Date.now(),
-          trustScore: {
-            overallScore: 0.95,
-            sourceCredibility: 0.98,
-            historicalAccuracy: 0.9,
-            attackSurface: 0.05,
-          },
-          evidenceRefs: [],
+          stepId: "step_release",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
         },
       ],
-      stepOutputs: [makeStepOutput("step_release")],
-    });
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
+    },
+    feedbackSignals: [
+      {
+        signalId: "signal_failure",
+        taskId: "task_learning_release",
+        source: "validation",
+        category: "failure",
+        severity: "error",
+        payload: {
+          summary: "Schema validation failed after execution.",
+          reasonCode: "schema_loop.detected",
+        },
+        stepOutputRefs: ["step_release"],
+        timestamp: Date.now(),
+      },
+    ],
+  });
 
-    // When quality gate is rejected, replanning should be triggered
-    assert.equal(result.replanDecision.shouldReplan, true);
-    // The quality gate should be rejected due to failure feedback
-    assert.equal(result.qualityGate.accepted, false);
-  } catch (error) {
-    // With failure feedback, the FSM can throw during backward transition for replanning.
-    // This is a known limitation of the FSM design for R9-14 architecture.
-    // Verify the error is the FSM transition error, not some other error.
-    assert.ok(error instanceof Error, "Expected an Error");
-    assert.match((error as Error).message, /fsm\.backward_not_allowed|transition_rejected/i);
-  }
+  assert.equal(result.learningObjects.length > 0, true);
+  assert.equal(result.timeline.find((entry) => entry.stage === "learn")?.status, "completed");
+  assert.equal(result.timeline.find((entry) => entry.stage === "improve")?.status, "completed");
+  assert.equal(result.timeline.find((entry) => entry.stage === "release")?.status, "completed");
+  assert.equal(result.rolloutRecord?.status, "shadow");
+  assert.equal(result.qualityGate.accepted, false);
+  assert.equal(result.replanDecision.shouldReplan, true);
 });
 
 test("OapeflirLoopService preserves successful quality gate when only success feedback is present", async () => {
@@ -524,27 +341,17 @@ test("OapeflirLoopService preserves successful quality gate when only success fe
     feedbackSignals: [
       {
         signalId: "signal_success",
-        harnessRunId: "task_successful_quality_gate",
-        nodeRunId: "step_success",
         taskId: "task_successful_quality_gate",
-        source: "user" as const,
-        category: "success" as const,
-        severity: "info" as const,
+        source: "user",
+        category: "success",
+        severity: "info",
         payload: {
           summary: "The output solved the task.",
         },
         stepOutputRefs: ["step_success"],
         timestamp: Date.now(),
-        trustScore: {
-          overallScore: 0.95,
-          sourceCredibility: 0.98,
-          historicalAccuracy: 0.9,
-          attackSurface: 0.05,
-        },
-        evidenceRefs: [],
       },
     ],
-    stepOutputs: [makeStepOutput("step_success")],
   });
 
   assert.equal(result.outcome.nextAction, "complete");
@@ -581,7 +388,6 @@ test("OapeflirLoopService.buildSerializedHandoff creates handoff from loop resul
       planReason: "workflow.single_step_execution",
       dependencyEdges: [],
     },
-    stepOutputs: [makeStepOutput("step_handoff")],
   });
 
   const handoff = service.buildSerializedHandoff(result, "agent_a", "agent_b", 4096);
@@ -624,7 +430,6 @@ test("OapeflirLoopService handles empty feedback signals for buildSerializedHand
       dependencyEdges: [],
     },
     feedbackSignals: [],
-    stepOutputs: [makeStepOutput("step_empty")],
   });
 
   // Should not throw even with empty feedback
@@ -639,65 +444,47 @@ test("OapeflirLoopService records quality gate replan trigger correctly", async 
     executeBridge: new DeterministicExecuteBridge(),
   });
 
-  try {
-    const result = await service.run({
-      taskId: "task_replan_trigger",
-      objective: "Test replan trigger with failed feedback",
-      workflow: {
-        workflow: { workflowId: "wf_replan", divisionId: "coding", steps: [] },
-        executionSteps: [
-          {
-            stepId: "step_replan",
-            divisionId: "coding",
-            roleId: "writer",
-            inputKeys: [],
-            agentId: "agent_writer",
-            outputKey: "result",
-            outputSchemaPath: null,
-            dependsOnStepIds: [],
-            dependencyTypes: {},
-            timeoutMs: 1000,
-            maxAttempts: 1,
-          },
-        ],
-        planReason: "workflow.single_step_execution",
-        dependencyEdges: [],
-      },
-      feedbackSignals: [
+  const result = await service.run({
+    taskId: "task_replan_trigger",
+    objective: "Test replan trigger with failed feedback",
+    workflow: {
+      workflow: { workflowId: "wf_replan", divisionId: "coding", steps: [] },
+      executionSteps: [
         {
-          signalId: "signal_fail",
-          harnessRunId: "task_replan_trigger",
-          nodeRunId: "step_replan",
-          taskId: "task_replan_trigger",
-          source: "validation" as const,
-          category: "failure" as const,
-          severity: "error" as const,
-          payload: {
-            summary: "Schema validation failed",
-            reasonCode: "schema_loop.detected",
-          },
-          stepOutputRefs: ["step_replan"],
-          timestamp: Date.now(),
-          trustScore: {
-            overallScore: 0.95,
-            sourceCredibility: 0.98,
-            historicalAccuracy: 0.9,
-            attackSurface: 0.05,
-          },
-          evidenceRefs: [],
+          stepId: "step_replan",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
         },
       ],
-      stepOutputs: [makeStepOutput("step_replan")],
-    });
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
+    },
+    feedbackSignals: [
+      {
+        signalId: "signal_fail",
+        taskId: "task_replan_trigger",
+        source: "validation",
+        category: "failure",
+        severity: "error",
+        payload: {
+          summary: "Schema validation failed",
+          reasonCode: "schema_loop.detected",
+        },
+        stepOutputRefs: ["step_replan"],
+        timestamp: Date.now(),
+      },
+    ],
+  });
 
-    // Verify replan was triggered due to quality gate rejection
-    assert.equal(result.replanDecision.shouldReplan, true);
-    assert.ok(result.qualityGate.reasonCodes.length > 0);
-  } catch (error) {
-    // With failure feedback, the FSM can throw during backward transition for replanning.
-    // This is a known limitation of the FSM design for R9-14 architecture.
-    // Verify the error is the FSM transition error, not some other error.
-    assert.ok(error instanceof Error, "Expected an Error");
-    assert.match((error as Error).message, /fsm\.backward_not_allowed|transition_rejected/i);
-  }
+  // Verify replan was triggered due to quality gate rejection
+  assert.equal(result.replanDecision.shouldReplan, true);
+  assert.ok(result.qualityGate.reasonCodes.length > 0);
 });

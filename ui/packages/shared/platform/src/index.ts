@@ -9,7 +9,6 @@ export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./b
 export type { ElectronBridge, MobileBridge, ShellResult, SpawnedProcessHandle, TauriBridge } from "./bridge-types";
 export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter";
 export { MobilePlatformAdapter } from "./mobile-platform-adapter";
-export { PlatformAdapterProvider, usePlatformAdapter } from "./provider";
 export { WebPlatformAdapter } from "./web-platform-adapter";
 
 export function createPlatformAdapter(options: PlatformAdapterFactoryOptions): DefaultPlatformAdapter {

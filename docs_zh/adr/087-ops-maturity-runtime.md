@@ -22,7 +22,7 @@
 
 ## 背景
 
-v4.3 `§59-§69` 引入运营成熟度层。当前仓库已有：
+v2.7 `§59-§69` 引入运营成熟度层。当前仓库已有：
 
 - `src/ops-maturity/explainability`
 - `src/ops-maturity/emergency`

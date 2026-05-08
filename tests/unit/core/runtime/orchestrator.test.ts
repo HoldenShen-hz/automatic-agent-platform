@@ -99,7 +99,6 @@ test("MultiStepOrchestrationResult has expected structure", () => {
         continuation: "new_task",
         matchedRules: [],
       },
-      confirmedTaskSpecId: "task_spec_123",
     },
     plannedWorkflow: {
       workflow: {} as any,
@@ -175,13 +174,7 @@ test("MultiStepToolExecutionInput optional fields", () => {
       maxQueuedTasks: 100,
       maxActiveExecutions: 10,
       maxTier1AckBacklog: 50,
-      criticalQueueHeadroom: 5,
-      riskClassIsolationEnabled: false,
-      tenantQuotaEnabled: false,
-      sandboxMatchingEnabled: false,
-      capabilityClassGateEnabled: false,
-      maxRiskClassTasks: {},
-      tenantTaskQuota: 100,
+      urgentQueueHeadroom: 5,
     },
     admissionBackpressureSnapshot: () => ({
       status: "ok" as const,

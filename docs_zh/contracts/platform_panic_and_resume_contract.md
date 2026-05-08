@@ -21,7 +21,7 @@
 - `issued_at`
 - `freeze_modes`
 - `allow_list?`
-- `expires_at` — TTL，必须指定具体时间，不得使用 auto-TTL；若未指定则表示 non-expiring directive
+- `expires_at?`
 
 `scope` canonical enum:
 

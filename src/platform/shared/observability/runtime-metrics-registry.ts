@@ -119,10 +119,6 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
   }
 
-  public recordOapeflirBoundaryViolation(boundary: string, taskId: string, reasonCode: string): void {
-    this.incrementCounter("oapeflir_boundary_violation_total", { boundary, taskId, reasonCode }, 1);
-  }
-
   public recordLlmLatency(ttfbSeconds: number, totalSeconds: number, model: string, provider: string): void {
     this.observeHistogram("llm_ttfb_seconds", { model, provider }, ttfbSeconds);
     this.observeHistogram("llm_total_seconds", { model, provider }, totalSeconds);
@@ -171,124 +167,16 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("knowledge_query_total", { operation, result }, 1);
   }
 
-  // R12-30 fix: Event bus metrics instrumentation
-  public recordEventPublished(eventType: string, tier: string, aggregateId: string | null): void {
-    this.incrementCounter("event_bus_published_total", { eventType, tier, hasAggregate: String(aggregateId !== null) }, 1);
-  }
-
-  public recordEventDelivered(eventType: string, consumerId: string, success: boolean): void {
-    const result = success ? "success" : "failed";
-    this.incrementCounter("event_bus_delivered_total", { eventType, consumerId, result }, 1);
-  }
-
-  public recordEventDeadLettered(eventType: string, consumerId: string, errorCode: string): void {
-    this.incrementCounter("event_bus_dead_lettered_total", { eventType, consumerId, errorCode }, 1);
-  }
-
-  public recordEventDeliveryLatency(eventType: string, consumerId: string, latencyMs: number): void {
-    this.observeHistogram("event_bus_delivery_latency_ms", { eventType, consumerId }, latencyMs);
-  }
-
-  public recordEventBackpressure(consumerId: string, pendingCount: number, isHighWaterMark: boolean): void {
-    this.setGauge("event_bus_backpressure_pending", { consumerId }, pendingCount);
-    this.setGauge("event_bus_backpressure_high_water", { consumerId }, isHighWaterMark ? 1 : 0);
-  }
-
-  // R29-10: Worker metrics instrumentation
-  public recordWorkerRegistration(workerId: string, placement: string): void {
-    this.incrementCounter("worker_registrations_total", { workerId, placement }, 1);
-  }
-
-  public recordWorkerHeartbeat(workerId: string, status: string): void {
-    this.incrementCounter("worker_heartbeats_total", { workerId, status }, 1);
-  }
-
-  public recordWorkerLeaseAcquired(workerId: string, queueName: string | null): void {
-    this.incrementCounter("worker_lease_acquired_total", { workerId, queueName: queueName ?? "default" }, 1);
-    this.setGauge("worker_active_leases", { workerId }, 1);
-  }
-
-  public recordWorkerLeaseReleased(workerId: string, queueName: string | null): void {
-    this.incrementCounter("worker_lease_released_total", { workerId, queueName: queueName ?? "default" }, 1);
-  }
-
-  public recordWorkerFailure(workerId: string, reason: string): void {
-    this.incrementCounter("worker_failures_total", { workerId, reason }, 1);
-  }
-
-  public recordWorkerSaturation(workerId: string, saturation: number): void {
-    this.setGauge("worker_saturation", { workerId }, saturation);
-  }
-
-  public recordWorkerCapacity(workerId: string, used: number, max: number): void {
-    this.setGauge("worker_capacity_used", { workerId }, used);
-    this.setGauge("worker_capacity_max", { workerId }, max);
-  }
-
-  // R29-11: Queue metrics instrumentation
-  public recordQueueDepth(queueName: string, depth: number): void {
-    this.setGauge("queue_depth", { queueName }, depth);
-  }
-
-  public recordQueueEnqueue(queueName: string): void {
-    this.incrementCounter("queue_enqueued_total", { queueName }, 1);
-  }
-
-  public recordQueueDequeue(queueName: string): void {
-    this.incrementCounter("queue_dequeued_total", { queueName }, 1);
-  }
-
-  public recordQueueFailure(queueName: string, reason: string): void {
-    this.incrementCounter("queue_failures_total", { queueName, reason }, 1);
-  }
-
-  public recordQueueWaitTime(queueName: string, waitTimeMs: number): void {
-    this.observeHistogram("queue_wait_time_ms", { queueName }, waitTimeMs);
-  }
-
-  // R29-12: Lock metrics instrumentation
-  public recordLockAcquired(lockKey: string, backend: string): void {
-    this.incrementCounter("lock_acquired_total", { lockKey, backend }, 1);
-  }
-
-  public recordLockReleased(lockKey: string, backend: string): void {
-    this.incrementCounter("lock_released_total", { lockKey, backend }, 1);
-  }
-
-  public recordLockFailed(lockKey: string, backend: string, reason: string): void {
-    this.incrementCounter("lock_failed_total", { lockKey, backend, reason }, 1);
-  }
-
-  public recordLockTimeout(lockKey: string, backend: string): void {
-    this.incrementCounter("lock_timeouts_total", { lockKey, backend }, 1);
-  }
-
-  public recordLockDeadlock(lockKey: string, backend: string): void {
-    this.incrementCounter("lock_deadlocks_total", { lockKey, backend }, 1);
-  }
-
-  public recordLockExtension(lockKey: string, owner: string, additionalMs: number): void {
-    this.observeHistogram("lock_extension_ms", { lockKey, owner }, additionalMs);
-  }
-
   public getCounters(name: string): CounterSeries[] {
     return [...this.counters.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
   }
 
-  public listCounterNames(): string[] {
-    return [...new Set([...this.counters.keys()].map((key) => key.split("|", 1)[0] ?? ""))].sort((left, right) => left.localeCompare(right));
-  }
-
   public getGauges(name: string): GaugeSeries[] {
     return [...this.gauges.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)
       .map(([, series]) => ({ labels: { ...series.labels }, value: series.value }));
-  }
-
-  public listGaugeNames(): string[] {
-    return [...new Set([...this.gauges.keys()].map((key) => key.split("|", 1)[0] ?? ""))].sort((left, right) => left.localeCompare(right));
   }
 
   public getHistograms(name: string): HistogramSeries[] {
@@ -301,10 +189,6 @@ export class RuntimeMetricsRegistry {
         count: series.count,
         sum: series.sum,
       }));
-  }
-
-  public listHistogramNames(): string[] {
-    return [...new Set([...this.histograms.keys()].map((key) => key.split("|", 1)[0] ?? ""))].sort((left, right) => left.localeCompare(right));
   }
 
   public reset(): void {

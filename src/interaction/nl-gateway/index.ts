@@ -1,3 +1,4 @@
+export { detectAmbiguity } from "./ambiguity-handler/index.js";
 export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";
@@ -27,38 +28,13 @@ export type {
   EntityExtractionConfig,
 };
 
-import { SlotResolver } from "./slot-resolver/index.js";
-import { LlmIntentParser, type IntentParser, type IntentParserModelGateway } from "./intent-parser/index.js";
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
-import type { CostEstimate } from "../../platform/contracts/types/cost.js";
+import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import {
   createPlatformPrincipal,
   createRequestEnvelope,
-  type RequestEnvelopeLegacy as LegacyRequestEnvelope,
-} from "../../platform/contracts/types/platform-contracts.js";
-import {
-  createConfirmedTaskSpec,
-  createPrincipalRef,
-  createRequestEnvelopeFromConfirmedTask,
-  createTaskDraft as createCanonicalTaskDraft,
-  normalizeDomainBindingId,
-  type ConfirmedTaskSpec as CanonicalConfirmedTaskSpec,
-  type RequestEnvelope as CanonicalRequestEnvelope,
-  type RiskClass,
-  type TaskDraft as CanonicalTaskDraft,
-  type UserConfirmationReceipt as CanonicalUserConfirmationReceipt,
-  type BudgetResourceKind,
-  type JsonValue,
-} from "../../platform/contracts/executable-contracts/index.js";
-import type { ClarificationSession } from "../../platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
-import { GuardrailEngine } from "../../platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
-import {
-  mapAutonomyLevelToUnifiedRuntimeMode,
-  type InteractionAutonomyMode,
-  type UnifiedRuntimeMode,
-} from "../../platform/contracts/types/unified-runtime-mode.js";
-import { ConversationHistoryService } from "../ux/conversation-history-service.js";
-import { newId } from "../../platform/contracts/types/ids.js";
+  type RequestEnvelope as PlatformRequestEnvelope,
+} from "../../platform/contracts/types/index.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;
@@ -93,51 +69,11 @@ export interface DetectedIntent {
     | "task_query"
     | "task_modify"
     | "status_inquiry"
-    | "approval_action"
-    | "create_goal"
-    | "decompress_goal"
-    | "why"; // §39: explanation query type
-  // R26-3 FIX: Removed cancel_task per §6.3 - callers must use abort/pause/panic kill
+    | "approval_action";
   readonly domainHint: string | null;
   readonly entities: readonly ExtractedEntity[];
   readonly urgency: "low" | "normal" | "high" | "critical";
   readonly confidence: number;
-}
-
-/**
- * §39.2: Independent risk classification as admission gate.
- * Risk classification runs BEFORE intent processing as a separate stage.
- */
-function classifyRisk(message: string): RiskPreview {
-  const normalized = message.toLowerCase();
-  const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const riskFactors: string[] = [];
-  const sideEffects: string[] = [];
-
-  if (critical) {
-    riskFactors.push("请求涉及破坏性或生产级变更");
-  } else if (high) {
-    riskFactors.push("请求可能影响线上系统、审批流或成本");
-  }
-  if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
-    sideEffects.push("可能改变成本或预算分配");
-  }
-  if (/(deploy|release|publish|发布|上线)/i.test(message)) {
-    sideEffects.push("可能影响运行中的环境或用户体验");
-  }
-  if (/(delete|drop|remove|删除|清空)/i.test(message)) {
-    sideEffects.push("可能移除已有数据或配置");
-  }
-
-  return {
-    overallRisk: critical ? "critical" : high ? "high" : "low",
-    riskFactors,
-    reversible: !irreversible,
-    sideEffects,
-    approvalNeeded: critical || high,
-  };
 }
 
 export interface IntentParseResult {
@@ -155,8 +91,6 @@ export interface IntentParseResult {
   readonly context: ContextEnrichment;
   readonly securityFindings: readonly PromptInjectionFinding[];
   readonly blockedByPolicy: boolean;
-  /** §39.5: Prior conversation turns for context carry-across (Memory §29.2) */
-  readonly priorConversationTurns: readonly ConversationTurn[];
 }
 
 export interface RiskPreview {
@@ -182,7 +116,7 @@ export interface NlRequestPayload {
   readonly generatedSummary: string;
 }
 
-export type NlRequestEnvelope = LegacyRequestEnvelope<NlRequestPayload>;
+export type RequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
 
 export type ConversationState =
   | "Idle"
@@ -200,20 +134,12 @@ export interface PromptInjectionFinding {
   readonly matchedText: string;
 }
 
-interface ExecutionPolicyContext {
-  readonly autonomyMode: InteractionAutonomyMode;
-  readonly runtimeMode: UnifiedRuntimeMode;
-}
-
 export interface ContextEnrichment {
   readonly domainHint: string;
   readonly extractedConstraints: readonly string[];
   readonly targetEnvironments: readonly string[];
   readonly requestedChannels: readonly string[];
   readonly timelineRefs: readonly string[];
-  readonly requiredSlots?: readonly string[];
-  readonly missingSlots?: readonly string[];
-  readonly resolvedSlots?: Readonly<Record<string, unknown>>;
 }
 
 export interface TaskDraft {
@@ -230,49 +156,26 @@ export interface ClarificationState {
   readonly state: "none" | "required" | "blocked";
   readonly reasonCodes: readonly string[];
   readonly questions: readonly string[];
-  readonly rounds: number;
-  readonly maxRounds: number;
 }
-
-const DEFAULT_MAX_CLARIFICATION_ROUNDS = 5;
-const inputGuardrailEngine = new GuardrailEngine();
 
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
   readonly required: boolean;
-  // R17-21 fix: Add "confirmed" as terminal state to represent user confirmation completion
-  // Previously only had "not_required" | "pending_user_confirmation" - missing "confirmed" state
-  // §39: ConfirmationReceipt must represent the full lifecycle: not_required → pending → confirmed/expired
-  readonly state: "not_required" | "pending_user_confirmation" | "confirmed" | "expired" | "denied";
+  readonly state: "not_required" | "pending_user_confirmation";
   readonly reasonCodes: readonly string[];
   readonly summary: string;
-  // §39: Required fields when state is "confirmed"
-  readonly scope?: string;
-  readonly time?: string;
-  readonly timestamp?: string;
-  readonly riskPreviewVersion?: string;
-  readonly actor?: string;
-  readonly confirmedAt?: string;
-  // §39: Extended fields for confirmed state
-  readonly confirmedScope?: string;
-  readonly confirmedActor?: string;
 }
 
 export interface TaskBuildResult {
-  readonly requestEnvelope: NlRequestEnvelope | null;
+  readonly requestEnvelope: RequestEnvelope;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
-  readonly dryRunPreview?: DryRunPreview;
   readonly confirmationRequired: boolean;
   readonly humanSummary: string;
   readonly taskDraft: TaskDraft;
   readonly clarificationState: ClarificationState;
   readonly confirmationReceipt: UserConfirmationReceipt;
   readonly conversationState: ConversationState;
-  readonly canonicalTaskDraft: CanonicalTaskDraft;
-  readonly clarificationSession: ClarificationSession | null;
-  readonly confirmedTaskSpec: CanonicalConfirmedTaskSpec | null;
-  readonly canonicalRequestEnvelope: CanonicalRequestEnvelope | null;
 }
 
 export interface LocaleConfig {
@@ -287,32 +190,6 @@ export interface CostEstimatorPort {
   estimate(divisionId?: string | null): CostEstimate;
 }
 
-export interface ConversationMemoryService {
-  remember(input: {
-    scope: string;
-    content: string;
-    classification?: string;
-  }): void;
-  findMemories(query: {
-    scope: string;
-  }): {
-    content: string;
-  }[];
-}
-
-export interface DryRunPreview {
-  readonly previewId: string;
-  readonly mode: "dry_run";
-  readonly scope: string;
-  readonly summary: string;
-  readonly proposedPayload: NlRequestPayload;
-  readonly proposedOperations: readonly string[];
-  readonly sideEffectPreview: readonly string[];
-  readonly policyChecks: readonly string[];
-  readonly blocked: boolean;
-  readonly approvalRequired: boolean;
-}
-
 export interface NlEntryServiceOptions {
   readonly intakeRouter?: IntakeRouter;
   readonly costEstimator?: CostEstimatorPort | null;
@@ -320,44 +197,6 @@ export interface NlEntryServiceOptions {
   readonly localeConfig?: LocaleConfig;
   readonly conversationWindowSize?: number;
   readonly nlGatewayConfig?: NlGatewayConfig;
-  readonly memoryService?: ConversationMemoryService | null;
-  readonly intentParser?: IntentParser;
-  readonly intentModelGateway?: IntentParserModelGateway | null;
-  // R7-27: ConversationHistoryService for emitting nl.clarification_needed events
-  readonly conversationHistoryService?: ConversationHistoryService | null;
-}
-
-function mergeNlGatewayConfig(overrides?: Partial<NlGatewayConfig> | null): NlGatewayConfig {
-  const base = loadNlGatewayConfig();
-  if (overrides == null) {
-    return base;
-  }
-  return {
-    conversationWindow: {
-      ...base.conversationWindow,
-      ...overrides.conversationWindow,
-      byTaskType: {
-        ...base.conversationWindow.byTaskType,
-        ...overrides.conversationWindow?.byTaskType,
-      },
-    },
-    disambiguation: {
-      ...base.disambiguation,
-      ...overrides.disambiguation,
-    },
-    intent: {
-      ...base.intent,
-      ...overrides.intent,
-    },
-    entityExtraction: {
-      ...base.entityExtraction,
-      ...overrides.entityExtraction,
-    },
-    confidenceThresholds: {
-      ...base.confidenceThresholds,
-      ...overrides.confidenceThresholds,
-    },
-  };
 }
 
 const INTENT_CONFIDENCE_THRESHOLD = 0.8;
@@ -490,41 +329,16 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "create":
       return "task_create";
     case "modify":
+    case "cancel":
     case "correction":
       return "task_modify";
-    // R26-3 FIX: cancel_task removed per §6.3 - callers must use abort/pause/panic kill
-    case "create_goal":
-      return "create_goal";
-    case "decompress_goal":
-      return "decompress_goal";
     case "approve":
       return "approval_action";
     case "clarify":
     case "chitchat":
       return "status_inquiry";
-    case "why":
-    case "explain":
-      return "why"; // §39: explanation query type
     default:
       return "task_query";
-  }
-}
-
-function mapIntentTypeToIntakeIntent(intent: DetectedIntent["intentType"]): "create" | "modify" | "approve" | "query" {
-  switch (intent) {
-    case "task_create":
-    case "create_goal":
-      return "create";
-    case "task_modify":
-    case "decompress_goal":
-      return "modify";
-    case "approval_action":
-      return "approve";
-    case "status_inquiry":
-    case "why":
-    case "task_query":
-    default:
-      return "query";
   }
 }
 
@@ -631,120 +445,19 @@ function buildClarificationQuestions(message: string, confidence: number, divisi
   return questions;
 }
 
-function deriveRequiredSlots(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-): string[] {
-  const requiredSlots = new Set<string>();
-  const normalized = message.toLowerCase();
-
-  if (/(deploy|release|publish|上线|发布)/i.test(message) || (intentType === "task_modify" && /(prod|production|staging|环境)/i.test(message))) {
-    requiredSlots.add("environment");
-  }
-  if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
-    requiredSlots.add("money");
-  }
-  if (/(schedule|before|after|when|date|time|日期|时间|今天|明天|下周|\d{4}[-/]\d{1,2}[-/]\d{1,2})/i.test(normalized)) {
-    requiredSlots.add("date");
-  }
-  if (/(notify|通知|via|slack|email|邮件|sms|短信|channel|渠道)/i.test(message)) {
-    requiredSlots.add("channel");
-  }
-
-  return [...requiredSlots];
-}
-
-function dedupeStrings(values: readonly string[]): string[] {
-  return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
-}
-
-function severityRank(severity: PromptInjectionFinding["severity"]): number {
-  switch (severity) {
-    case "high":
-      return 3;
-    case "medium":
-      return 2;
-    default:
-      return 1;
-  }
-}
-
-function dedupePromptInjectionFindings(findings: readonly PromptInjectionFinding[]): PromptInjectionFinding[] {
-  const deduped = new Map<string, PromptInjectionFinding>();
-  for (const finding of findings) {
-    const key = `${finding.reasonCode}:${finding.matchedText}`;
-    const existing = deduped.get(key);
-    if (existing == null || severityRank(finding.severity) > severityRank(existing.severity)) {
-      deduped.set(key, finding);
-    }
-  }
-  return [...deduped.values()];
-}
-
 function detectPromptInjection(message: string): PromptInjectionFinding[] {
-  const findings: PromptInjectionFinding[] = [];
-  for (const pattern of PROMPT_INJECTION_PATTERNS) {
-    // matchAll requires the g flag; clone pattern with g flag added
-    const globalPattern = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g");
-    for (const matched of message.matchAll(globalPattern)) {
-      if (matched[0] != null) {
-        findings.push({
-          reasonCode: "nl_gateway.prompt_injection_detected",
-          severity: /reveal|show me|泄露/.test(matched[0]) ? "high" : "medium",
-          blocked: true,
-          matchedText: matched[0],
-        });
-      }
+  return PROMPT_INJECTION_PATTERNS.flatMap((pattern) => {
+    const matched = pattern.exec(message);
+    if (matched == null) {
+      return [];
     }
-  }
-  return findings;
-}
-
-function assessInputGuardrails(message: string): PromptInjectionFinding[] {
-  const promptInjectionFindings = detectPromptInjection(message);
-  const guardrailAssessment = inputGuardrailEngine.assess({
-    toolbelt: {
-      allowedTools: [],
-      grantedTools: [],
-      blockedTools: [],
-      requiredEvidence: [],
-    },
-    evidenceRefs: [],
-    riskScore: 0,
-    maxRiskScore: 1,
-    escalationThreshold: 1,
-    currentStepCount: 0,
-    maxSteps: 1,
-    inputPrompt: message,
+    return [{
+      reasonCode: "nl_gateway.prompt_injection_detected",
+      severity: /reveal|show me|泄露/.test(matched[0]) ? "high" : "medium",
+      blocked: true,
+      matchedText: matched[0],
+    } satisfies PromptInjectionFinding];
   });
-  const guardrailFindings = guardrailAssessment.findings
-    .filter((finding) => finding.layer === "input")
-    .map<PromptInjectionFinding>((finding) => ({
-      reasonCode: finding.code,
-      severity: finding.severity === "block" ? "high" : finding.severity === "warn" ? "medium" : "low",
-      blocked: finding.severity === "block",
-      matchedText: message,
-    }));
-  return dedupePromptInjectionFindings([...promptInjectionFindings, ...guardrailFindings]);
-}
-
-function deriveExecutionPolicyContext(
-  riskPreview: Pick<RiskPreview, "overallRisk">,
-  blockedByPolicy: boolean,
-): ExecutionPolicyContext {
-  const autonomyMode: InteractionAutonomyMode = blockedByPolicy
-    ? "frozen"
-    : riskPreview.overallRisk === "critical"
-      ? "suggestion"
-      : riskPreview.overallRisk === "high"
-        ? "supervised"
-        : riskPreview.overallRisk === "medium"
-          ? "semi_auto"
-          : "full_auto";
-  return {
-    autonomyMode,
-    runtimeMode: mapAutonomyLevelToUnifiedRuntimeMode(autonomyMode),
-  };
 }
 
 function deriveConversationState(
@@ -761,136 +474,16 @@ function deriveConversationState(
   if (confirmationRequired) {
     return "Confirming";
   }
-  // R23-19: Low-risk should still go through Confirming before Executing
-  return "Confirming";
+  return "Executing";
 }
 
-function buildRequestEnvelope(
-  request: NlEntryRequest,
-  detailed: IntentParseResult,
-  surfacedSummary: string,
-  primaryIntent: DetectedIntent,
-  confirmationRequired: boolean,
-  canonicalRequestEnvelope: CanonicalRequestEnvelope | null,
-): NlRequestEnvelope | null {
-  // R23-01: Block dispatch when confirmation is pending
-  if (confirmationRequired) {
-    return null;
-  }
-  return createRequestEnvelope<NlRequestPayload>({
-    principal: createPlatformPrincipal({
-      actorId: request.userId,
-      tenantId: request.tenantId,
-      roles: ["requester"],
-      authMethod: "nl_entry",
-    }),
-    tenantId: request.tenantId,
-    requestId: `request:${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}`,
-    idempotencyKey: buildIntakeIdempotencyKey(request, taskDraftIdFromMessage(request.message)),
-    traceId: buildIntakeTraceId(request, taskDraftIdFromMessage(request.message)),
-    payload: {
-      userId: request.userId,
-      title: deriveTitle(request.message),
-      request: request.message,
-      locale: detailed.locale,
-      channel: request.channel ?? null,
-      divisionId: detailed.suggestedDivisionId,
-      workflowId: detailed.suggestedWorkflowId,
-      intent: primaryIntent.intentType,
-      continuation: detailed.continuation,
-      entities: primaryIntent.entities,
-      confirmationRequired,
-      generatedSummary: surfacedSummary,
-    },
-    metadata: {
-      source: "nl_entry",
-      confirmationRequired,
-      divisionId: detailed.suggestedDivisionId,
-      workflowId: detailed.suggestedWorkflowId,
-      locale: detailed.locale,
-      canonicalRequestEnvelopeId: canonicalRequestEnvelope?.requestId ?? null,
-    },
-  });
-}
-
-/**
- * §39: Dry-run execution for high/critical risk instructions.
- * Simulates task with no-op tools to capture real side effects.
- */
-function executeDryRunForRisk(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-  context: ContextEnrichment,
-): { capturedSideEffects: string[]; dryRunPassed: boolean } {
-  // For high/critical risk, perform actual dry-run simulation
-  // to capture real side effects rather than relying on keyword matching
-  const capturedSideEffects: string[] = [];
-  let dryRunPassed = true;
-
-  // Simulate task execution with no-op tools to trace actual effects
-  const simulatedOps: string[] = [];
-
-  // Map intent to simulated operations
-  if (intentType === "task_create") {
-    simulatedOps.push("task_creation", "resource_allocation");
-  } else if (intentType === "task_modify") {
-    simulatedOps.push("state_update", "configuration_change");
-  } else if (intentType === "approval_action") {
-    simulatedOps.push("approval_chain_trigger", "notification_dispatch");
-  }
-
-  // Check actual effects based on context
-  if (context.targetEnvironments.some(e => /prod|production|线上|生产环境/i.test(e))) {
-    capturedSideEffects.push("涉及生产环境，可能产生不可逆影响");
-    dryRunPassed = false;
-  }
-  if (context.extractedConstraints.includes("budget_constraint")) {
-    capturedSideEffects.push("涉及预算约束，可能触发成本变化");
-  }
-  if (/(delete|drop|remove|删除|清空)/i.test(message)) {
-    capturedSideEffects.push("检测到数据删除操作");
-    dryRunPassed = false;
-  }
-  if (/(deploy|release|publish|上线|发布)/i.test(message)) {
-    capturedSideEffects.push("涉及部署操作，可能影响线上稳定性");
-  }
-
-  return { capturedSideEffects, dryRunPassed };
-}
-
-function buildRiskPreview(
-  message: string,
-  intentType: DetectedIntent["intentType"],
-  context?: ContextEnrichment,
-): RiskPreview {
+function buildRiskPreview(message: string, intentType: DetectedIntent["intentType"]): RiskPreview {
   const normalized = message.toLowerCase();
   const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const isObservationalIntent =
-    intentType === "task_query" || intentType === "status_inquiry" || intentType === "why";
-  const isObservationMessage =
-    /(status|health|summary|what changed|show|list|查看|查询|状态|健康|摘要|同步)/i.test(message);
-  const suppressActionRiskForObservation =
-    isObservationalIntent
-    && isObservationMessage
-    && !/(approve|审批|budget|cost|费用|预算|price|价格)/i.test(message);
-  const high = suppressActionRiskForObservation
-    ? false
-    : HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
   const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
   const riskFactors: string[] = [];
   const sideEffects: string[] = [];
-
-  // §39: For high/critical risk, perform dry-run to capture actual side effects
-  // rather than relying solely on keyword matching
-  if ((high || critical) && context != null) {
-    const { capturedSideEffects, dryRunPassed } = executeDryRunForRisk(message, intentType, context);
-    if (capturedSideEffects.length > 0) {
-      sideEffects.push(...capturedSideEffects);
-    }
-    if (!dryRunPassed) {
-      riskFactors.push("dry-run 检测到不可逆或高风险操作");
-    }
-  }
 
   if (critical) {
     riskFactors.push("请求涉及破坏性或生产级变更");
@@ -917,120 +510,6 @@ function buildRiskPreview(
     sideEffects,
     approvalNeeded: critical || high || intentType === "approval_action",
   };
-}
-
-function buildDryRunPreview(input: {
-  readonly tenantId: string;
-  readonly userId: string;
-  readonly message: string;
-  readonly locale: string;
-  readonly channel: string | null;
-  readonly divisionId: string;
-  readonly workflowId: string;
-  readonly continuation: IntentParseResult["continuation"];
-  readonly intentType: DetectedIntent["intentType"];
-  readonly entities: readonly ExtractedEntity[];
-  readonly context: ContextEnrichment;
-  readonly riskPreview: RiskPreview;
-  readonly costEstimate: CostEstimate;
-  readonly confirmationRequired: boolean;
-  readonly blockedByPolicy: boolean;
-  readonly generatedSummary: string;
-  readonly scope: string;
-}): DryRunPreview {
-  const proposedOperations: string[] = [];
-  const sideEffectPreview = [...input.riskPreview.sideEffects];
-  const policyChecks: string[] = [];
-
-  switch (input.intentType) {
-    case "task_query":
-    case "status_inquiry":
-    case "why":
-      proposedOperations.push(`预演只读请求，路由到 ${input.divisionId}/${input.workflowId}`);
-      break;
-    case "approval_action":
-      proposedOperations.push(`预演审批动作，目标队列 ${input.divisionId}/${input.workflowId}`);
-      break;
-    case "task_modify":
-      proposedOperations.push(`预演变更请求，路由到 ${input.divisionId}/${input.workflowId}`);
-      break;
-    default:
-      proposedOperations.push(`预演任务创建，请求将进入 ${input.divisionId}/${input.workflowId}`);
-      break;
-  }
-
-  for (const environment of input.context.targetEnvironments) {
-    proposedOperations.push(`目标环境 ${environment}`);
-    sideEffectPreview.push(`若确认执行，将在 ${environment} 范围内产生变更或查询`);
-  }
-
-  for (const channel of input.context.requestedChannels) {
-    proposedOperations.push(`结果通知渠道 ${channel}`);
-  }
-
-  for (const constraint of input.context.extractedConstraints) {
-    policyChecks.push(`constraint:${constraint}`);
-  }
-  if (input.riskPreview.approvalNeeded) {
-    policyChecks.push("approval_required");
-  }
-  if (input.confirmationRequired) {
-    policyChecks.push("user_confirmation_required");
-  }
-  if (input.blockedByPolicy) {
-    policyChecks.push("policy_blocked");
-  }
-  policyChecks.push(input.riskPreview.reversible ? "reversible_candidate" : "irreversible_candidate");
-
-  if (sideEffectPreview.length === 0) {
-    sideEffectPreview.push("未检测到显式写副作用，当前预演停留在结构化路由与约束检查");
-  }
-
-  const proposedPayload: NlRequestPayload = {
-    userId: input.userId,
-    title: deriveTitle(input.message),
-    request: input.message,
-    locale: input.locale,
-    channel: input.channel,
-    divisionId: input.divisionId,
-    workflowId: input.workflowId,
-    intent: input.intentType,
-    continuation: input.continuation,
-    entities: input.entities,
-    confirmationRequired: input.confirmationRequired,
-    generatedSummary: input.generatedSummary,
-  };
-
-  return {
-    previewId: `${input.tenantId}:${deriveTitle(input.message).replace(/\s+/g, "_").toLowerCase()}:dry-run`,
-    mode: "dry_run",
-    scope: input.scope,
-    summary: [
-      `预演将把请求规范化为 ${input.intentType}`,
-      `目标 ${input.divisionId}/${input.workflowId}`,
-      `风险 ${input.riskPreview.overallRisk}`,
-      `预估成本 $${input.costEstimate.estimatedCostUsd.toFixed(2)}`,
-    ].join("，"),
-    proposedPayload,
-    proposedOperations,
-    sideEffectPreview,
-    policyChecks,
-    blocked: input.blockedByPolicy,
-    approvalRequired: input.riskPreview.approvalNeeded,
-  };
-}
-
-function toCanonicalRiskClass(risk: RiskPreview["overallRisk"]): RiskClass {
-  switch (risk) {
-    case "critical":
-      return "critical";
-    case "high":
-      return "high";
-    case "medium":
-      return "medium";
-    default:
-      return "low";
-  }
 }
 
 export class ContextEnricher {
@@ -1091,44 +570,24 @@ export class NlEntryService implements NlEntryPort {
   private readonly nlConfig: NlGatewayConfig;
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
-  private readonly conversationContextManager: ConversationContextManager;
-  private readonly clarificationTracker = new Map<string, number>();
-  private readonly slotResolver = new SlotResolver();
-  private readonly intentParser: IntentParser;
-  // R7-27: ConversationHistoryService for emitting nl.clarification_needed events
-  private readonly conversationHistoryService: ConversationHistoryService | null;
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
     this.costEstimator = options.costEstimator ?? null;
-    this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
-    // R5-14: Read threshold AFTER merge so custom configs are properly applied
     const configuredThreshold = options.clarificationThreshold
-      ?? this.nlConfig.disambiguation.threshold
+      ?? options.nlGatewayConfig?.disambiguation.threshold
       ?? INTENT_CONFIDENCE_THRESHOLD;
-    this.clarificationThreshold = Math.min(1, Math.max(0, configuredThreshold));
+    this.clarificationThreshold = Math.max(INTENT_CONFIDENCE_THRESHOLD, configuredThreshold);
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
+    this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
-    this.conversationContextManager = new ConversationContextManager(this.nlConfig, options.memoryService ?? undefined);
-    // R5-32: Pass confidence thresholds from config to intent parser
-    const intentParserOptions = {
-      modelGateway: options.intentModelGateway ?? null,
-      confidenceThresholds: this.nlConfig.confidenceThresholds,
-      enableConfidenceLogging: this.nlConfig.confidenceThresholds.enableConfidenceLogging,
-    };
-    this.intentParser = options.intentParser ?? new LlmIntentParser(intentParserOptions);
-    // R7-27: Initialize ConversationHistoryService for emitting nl.clarification_needed events
-    this.conversationHistoryService = options.conversationHistoryService ?? null;
   }
 
   /**
    * Get the configured conversation window size for a given task type
    */
   public getConversationWindowSize(taskType?: string): number {
-    if (taskType == null) {
-      return this.conversationWindowSize;
-    }
     return getConversationWindowSize(this.nlConfig, taskType);
   }
 
@@ -1159,86 +618,12 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
-    // §39.5: Retrieve prior conversation turns for context carry-across
-    const priorContext = this.conversationContextManager.getContext(
-      request.tenantId,
-      request.userId,
-    );
-    const locale = this.resolveLocale(request);
-    if (request.message.trim().length === 0) {
-      const emptyIntent: DetectedIntent = {
-        intentType: "task_query",
-        domainHint: "general_ops",
-        entities: [],
-        urgency: "low",
-        confidence: 0,
-      };
-      const clarificationState: ClarificationState = {
-        state: "required",
-        reasonCodes: ["nl_gateway.empty_message"],
-        questions: ["请补充你的请求内容，例如目标对象、环境或希望执行的操作。"],
-        rounds: this.getClarificationRounds(request.tenantId, request.userId),
-        maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
-      };
-      return {
-        rawInput: request.message,
-        detectedIntents: [emptyIntent],
-        confidence: 0,
-        requiresClarification: true,
-        clarificationQuestions: clarificationState.questions,
-        locale,
-        continuation: "new_task",
-        suggestedDivisionId: "general_ops",
-        suggestedWorkflowId: "single_agent_minimal",
-        conversationState: "Clarifying",
-        clarificationState,
-        context: this.contextEnricher.enrich(request.message, "general_ops", []),
-        securityFindings: [],
-        blockedByPolicy: false,
-        priorConversationTurns: priorContext.turns,
-      };
-    }
-    const riskPreview = classifyRisk(request.message);
-    const draftId = taskDraftIdFromMessage(request.message);
-    const securityFindings = assessInputGuardrails(request.message);
-    const blockedByPolicy = securityFindings.some((item) => item.blocked);
-    const principalRef = createPrincipalRef({
-      principalId: request.userId,
-      tenantId: request.tenantId,
-      roles: ["requester"],
-      displayName: request.userId,
-      authorizationLevel: "viewer",
-    });
-    const parsedIntent = blockedByPolicy
-      ? {
-          intentType: "task_query" as const,
-          confidence: 0,
-          reasoning: "blocked_by_input_guardrail",
-          language: locale,
-        }
-      : await this.intentParser.parseWithLlm(request.message, locale);
-    // §39.5: Inject prior conversation context into intent parsing
-    const pipeline = await this.intakeRouter.route({
+    const route = this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
-      ...(priorContext.turns.length > 0 ? { priorConversationContext: priorContext } : {}),
-      tenantId: request.tenantId,
-      traceId: buildIntakeTraceId(request, draftId),
-      idempotencyKey: buildIntakeIdempotencyKey(request, draftId),
-      principal: principalRef,
-      confirmedTaskSpecId: `intent-draft:${draftId}`,
-      ...(blockedByPolicy ? {} : {
-        preferredIntent: {
-          intent: mapIntentTypeToIntakeIntent(parsedIntent.intentType),
-          confidence: parsedIntent.confidence,
-          reasoning: parsedIntent.reasoning,
-          language: parsedIntent.language,
-          source: "nl_intent_parser",
-        },
-      }),
     });
-    const route = "routeDecision" in pipeline ? pipeline.routeDecision : pipeline;
     const entities = extractEntities(request.message);
+    const securityFindings = detectPromptInjection(request.message);
     const detectedIntent: DetectedIntent = {
       intentType: mapIntentType(route.classification.intent),
       domainHint: route.divisionId,
@@ -1246,65 +631,30 @@ export class NlEntryService implements NlEntryPort {
       urgency: deriveUrgency(request.message),
       confidence: route.classification.confidence,
     };
-    const requiredSlots = deriveRequiredSlots(request.message, detectedIntent.intentType);
-    const slotResolution = requiredSlots.length === 0
-      ? null
-      : this.slotResolver.resolveRequiredSlots(
-          entities,
-          requiredSlots,
-          undefined,
-          undefined,
-          priorContext.turns,
-        );
-    const context = {
-      ...this.contextEnricher.enrich(request.message, route.divisionId, entities),
-      ...(requiredSlots.length === 0 ? {} : {
-        requiredSlots,
-        missingSlots: slotResolution?.missing ?? [],
-        resolvedSlots: slotResolution?.resolved ?? {},
-      }),
-    };
-    const clarificationQuestions = dedupeStrings([
-      ...buildClarificationQuestions(
-        request.message,
-        route.classification.confidence,
-        route.divisionId,
-        entities,
-      ),
-      ...(slotResolution?.generatedQuestions ?? []),
-    ]);
+    const context = this.contextEnricher.enrich(request.message, route.divisionId, entities);
+    const clarificationQuestions = buildClarificationQuestions(
+      request.message,
+      route.classification.confidence,
+      route.divisionId,
+      entities,
+    );
+    const locale = this.resolveLocale(request);
     const slotConfidence = estimateSlotConfidence(entities, request.message);
-    const effectiveSlotConfidence =
-      slotResolution != null && requiredSlots.length > 0 && slotResolution.missing.length === 0
-        ? Math.max(slotConfidence, 0.95)
-        : slotConfidence;
-    const clarificationRounds = this.getClarificationRounds(request.tenantId, request.userId);
+    const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const requiresClarification =
       blockedByPolicy
       || route.classification.confidence < this.clarificationThreshold
-      || effectiveSlotConfidence < SLOT_CONFIDENCE_THRESHOLD
-      || clarificationQuestions.length > 0
-      || slotResolution?.shouldRequestClarification === true;
+      || slotConfidence < SLOT_CONFIDENCE_THRESHOLD
+      || clarificationQuestions.length > 0;
     const clarificationState: ClarificationState = {
       state: blockedByPolicy ? "blocked" : requiresClarification ? "required" : "none",
       reasonCodes: [
         ...(blockedByPolicy ? ["nl_gateway.prompt_injection_detected"] : []),
         ...(route.classification.confidence < this.clarificationThreshold ? ["nl_gateway.intent_confidence_low"] : []),
-        ...(effectiveSlotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
-        ...(slotResolution?.shouldRequestClarification ? ["nl_gateway.required_slots_missing"] : []),
+        ...(slotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
       ],
       questions: clarificationQuestions,
-      rounds: clarificationRounds,
-      maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
     };
-
-    // R7-27: Emit nl.clarification_needed event when clarification is required
-    if (requiresClarification && this.conversationHistoryService != null && clarificationQuestions.length > 0) {
-      const sessionId = `${request.tenantId}:${request.userId}`;
-      const turnId = newId("turn");
-      const prompt = clarificationQuestions[0] ?? "";
-      this.conversationHistoryService.emitClarificationNeeded(sessionId, turnId, prompt);
-    }
 
     return {
       rawInput: request.message,
@@ -1320,7 +670,6 @@ export class NlEntryService implements NlEntryPort {
       context,
       securityFindings,
       blockedByPolicy,
-      priorConversationTurns: priorContext.turns,
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
     };
   }
@@ -1334,95 +683,21 @@ export class NlEntryService implements NlEntryPort {
       urgency: "low" as const,
       confidence: detailed.confidence,
     };
-    const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType, detailed.context);
-    const executionPolicy = deriveExecutionPolicyContext(riskPreview, detailed.blockedByPolicy);
+    const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType);
     const costEstimate = this.costEstimator?.estimate(detailed.suggestedDivisionId) ?? defaultCostEstimate();
     const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical" || detailed.blockedByPolicy;
-    const clarificationRounds = detailed.requiresClarification
-      ? this.incrementClarificationRounds(request.tenantId, request.userId)
-      : this.resetClarificationRounds(request.tenantId, request.userId);
-    const clarificationState: ClarificationState = {
-      ...detailed.clarificationState,
-      rounds: clarificationRounds,
-    };
     const humanSummary = this.responseFormatter.formatTaskSummary({
       divisionId: detailed.suggestedDivisionId,
       workflowId: detailed.suggestedWorkflowId,
       costEstimate,
       riskPreview,
-      clarificationState,
+      clarificationState: detailed.clarificationState,
     });
-    const canonicalDomainId = normalizeDomainBindingId(detailed.context.domainHint || detailed.suggestedDivisionId);
-    const confirmationScope = this.deriveConfirmationScope(request.message, detailed);
-    const dryRunPreview = riskPreview.overallRisk === "high" || riskPreview.overallRisk === "critical"
-      ? buildDryRunPreview({
-          tenantId: request.tenantId,
-          userId: request.userId,
-          message: request.message,
-          locale: detailed.locale,
-          channel: request.channel ?? null,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          continuation: detailed.continuation,
-          intentType: primaryIntent.intentType,
-          entities: primaryIntent.entities,
-          context: detailed.context,
-          riskPreview,
-          costEstimate,
-          confirmationRequired,
-          blockedByPolicy: detailed.blockedByPolicy,
-          generatedSummary: humanSummary,
-          scope: confirmationScope,
-        })
-      : undefined;
-    const surfacedSummary = dryRunPreview == null
-      ? humanSummary
-      : `${humanSummary}；dry-run 预演：${dryRunPreview.summary}`;
     const conversationState = deriveConversationState(
       detailed.requiresClarification,
       confirmationRequired,
       detailed.blockedByPolicy,
     );
-    const principalRef = createPrincipalRef({
-      principalId: request.userId,
-      tenantId: request.tenantId,
-      roles: ["requester"],
-      displayName: request.userId,
-      authorizationLevel: confirmationRequired ? "operator" : "viewer",
-    });
-    const canonicalTaskDraft = createCanonicalTaskDraft({
-      tenantId: request.tenantId,
-      principal: principalRef,
-      source: "nl",
-      domainId: canonicalDomainId,
-      taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:${deriveTitle(request.message).replace(/\s+/g, "_").toLowerCase()}`,
-      normalizedIntent: {
-        intent: primaryIntent.intentType,
-        continuation: detailed.continuation,
-        domainId: canonicalDomainId,
-        divisionId: detailed.suggestedDivisionId,
-        workflowId: detailed.suggestedWorkflowId,
-        locale: detailed.locale,
-        entities: primaryIntent.entities as unknown as JsonValue,
-        context: {
-          ...detailed.context,
-          autonomyMode: executionPolicy.autonomyMode,
-          runtimeMode: executionPolicy.runtimeMode,
-        } as unknown as JsonValue,
-        summary: surfacedSummary,
-      },
-      missingFields: clarificationState.questions,
-      riskPreview: {
-        riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-        reasons: riskPreview.riskFactors,
-      },
-      ambiguityPolicy: clarificationState.state === "none" ? "safe_default" : "require_confirmation",
-      rawInputRef: {
-        artifactId: `${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}:raw-input`,
-        uri: `artifact://nl-input/${encodeURIComponent(request.tenantId)}/${encodeURIComponent(request.userId)}/${encodeURIComponent(taskDraftIdFromMessage(request.message))}`,
-      },
-      ...(confirmationRequired ? { expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() } : {}),
-    });
     const taskDraft: TaskDraft = {
       draftId: deriveTitle(request.message).replace(/\s+/g, "_").toLowerCase(),
       rawInput: request.message,
@@ -1440,218 +715,50 @@ export class NlEntryService implements NlEntryPort {
         ...(detailed.requiresClarification ? ["nl_gateway.clarification_required"] : []),
         ...(riskPreview.approvalNeeded ? ["nl_gateway.approval_required"] : []),
         ...(detailed.blockedByPolicy ? ["nl_gateway.security_review_required"] : []),
-        ...(dryRunPreview == null ? [] : ["nl_gateway.dry_run_preview_ready"]),
       ],
-      summary: surfacedSummary,
-      scope: confirmationScope,
-      time: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      riskPreviewVersion: this.buildRiskPreviewVersion(riskPreview),
-      actor: request.userId,
+      summary: humanSummary,
     };
-    const clarificationSession: ClarificationSession | null = confirmationRequired
-      ? {
-          sessionId: `clarify:${canonicalTaskDraft.taskDraftId}`,
-          taskDraftId: canonicalTaskDraft.taskDraftId,
-          stage: "pending_clarification",
-          ambiguityFlags: clarificationState.reasonCodes,
-          createdAt: confirmationReceipt.time ?? new Date().toISOString(),
-          expiresAt: canonicalTaskDraft.expiresAt ?? null,
-          confirmationReceipt: null,
-        }
-      : null;
-    const canonicalConfirmationReceipt: CanonicalUserConfirmationReceipt | undefined =
-      confirmationRequired && confirmationReceipt.state === "confirmed"
-        ? {
-            receiptId: confirmationReceipt.confirmationId,
-            confirmedBy: principalRef,
-            riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-            confirmedAt: confirmationReceipt.time ?? new Date().toISOString(),
-            state: "confirmed",
-            ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
-          }
-        : undefined;
-    const policyContext = {
-      channel: request.channel ?? null,
-      approvalRequired: riskPreview.approvalNeeded,
-      blockedByPolicy: detailed.blockedByPolicy,
-      autonomyMode: executionPolicy.autonomyMode,
-      runtimeMode: executionPolicy.runtimeMode,
-    };
-
-    // §39.2: Only emit RequestEnvelope after TaskSpec is confirmed
-    // When confirmation is pending, return null requestEnvelope to prevent premature execution
-    if (confirmationRequired && clarificationState.rounds >= clarificationState.maxRounds) {
-      // Exceeded max clarification rounds - block the request
-      return {
-        requestEnvelope: null,
-        riskPreview,
-        costEstimate,
-        ...(dryRunPreview !== undefined ? { dryRunPreview } : {}),
-        confirmationRequired: true,
-        humanSummary: surfacedSummary,
-        taskDraft,
-        clarificationState: {
-          ...clarificationState,
-          state: "blocked" as const,
-          reasonCodes: [...clarificationState.reasonCodes, "nl_gateway.max_clarification_rounds_exceeded"],
-        },
-        confirmationReceipt: {
-          ...confirmationReceipt,
-          state: "pending_user_confirmation" as const,
-        },
-        conversationState: "Clarifying",
-        canonicalTaskDraft,
-        clarificationSession: clarificationSession ?? null,
-        confirmedTaskSpec: null,
-        canonicalRequestEnvelope: null,
-      };
-    }
-    // R9-32 fix: Only build confirmedTaskSpec and canonicalRequestEnvelope when confirmation is confirmed
-    // This ensures RequestEnvelope is only created after user confirmation is obtained
-    // Note: When confirmationRequired is false, state is "not_required" and we still build because
-    // no confirmation is needed - this is the correct behavior
-    if (confirmationReceipt.state === "pending_user_confirmation") {
-      return {
-        requestEnvelope: null,
-        riskPreview,
-        costEstimate,
-        ...(dryRunPreview != null ? { dryRunPreview } : {}),
-        confirmationRequired,
-        humanSummary: surfacedSummary,
-        taskDraft,
-        clarificationState,
-        confirmationReceipt,
-        conversationState,
-        canonicalTaskDraft,
-        clarificationSession: clarificationSession ?? null,
-        confirmedTaskSpec: null,
-        canonicalRequestEnvelope: null,
-      };
-    }
-
-    const confirmedTaskSpec = createConfirmedTaskSpec({
-      confirmedTaskSpecId: `ctspec:${canonicalTaskDraft.taskDraftId}`,
-      taskDraftId: canonicalTaskDraft.taskDraftId,
-      tenantId: request.tenantId,
-      principal: principalRef,
-      domainId: canonicalDomainId,
-      goal: surfacedSummary,
-      inputs: {
-        request: request.message,
-        domainId: canonicalDomainId,
-        divisionId: detailed.suggestedDivisionId,
-        workflowId: detailed.suggestedWorkflowId,
-        continuation: detailed.continuation,
-        channel: request.channel ?? null,
-        entities: primaryIntent.entities as unknown as JsonValue,
-        context: {
-          ...detailed.context,
-          autonomyMode: executionPolicy.autonomyMode,
-          runtimeMode: executionPolicy.runtimeMode,
-        } as unknown as JsonValue,
-        policyContext: policyContext as unknown as JsonValue,
-      },
-      constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
-      riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-      ...(canonicalConfirmationReceipt !== undefined ? { confirmationReceipt: canonicalConfirmationReceipt } : {}),
-      idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
-      traceId: buildIntakeTraceId(request, taskDraft.draftId),
-    });
-    const canonicalRequestEnvelope = createRequestEnvelopeFromConfirmedTask({
-      confirmedTaskSpec,
-      requestId: `request:${confirmedTaskSpec.confirmedTaskSpecId}`,
-      requestHash: `request_hash:${confirmedTaskSpec.confirmedTaskSpecId}`,
-      priority: ((): number => {
-        switch (riskPreview.overallRisk) {
-          case "critical": return 100;
-          case "high": return 80;
-          default: return 40;
-        }
-      })(),
-      budgetIntent: {
-        amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
-        currency: "USD",
-        resourceKinds: (["token"] as readonly BudgetResourceKind[]),
-      },
-      policyContext: policyContext as unknown as JsonValue,
-      artifactRefs: canonicalTaskDraft.rawInputRef == null ? [] : [canonicalTaskDraft.rawInputRef],
-    });
-    // §39.6: Architecture requires only confirmed TaskSpec can generate RequestEnvelope
-    // Gate RequestEnvelope creation behind confirmation state check
-    // R5-15 fix: Removed redundant guard - line 1415 already handles pending_user_confirmation case
-    // The confirmationRequired check at line 1483 was redundant since when confirmationRequired=true
-    // and state=pending_user_confirmation we return early at 1415, meaning we only reach 1483 when
-    // state != pending_user_confirmation (confirmed/not_required/expired/denied)
-    const requestEnvelope: NlRequestEnvelope | null = buildRequestEnvelope(request, detailed, surfacedSummary, primaryIntent, confirmationRequired, canonicalRequestEnvelope);
-
-    // §39.5: Record this turn in conversation context for subsequent turns
-    this.conversationContextManager.addTurn(
-      request.tenantId,
-      request.userId,
-      request.message,
-      primaryIntent,
-    );
 
     return {
-      requestEnvelope: requestEnvelope ?? null,
+      requestEnvelope: createRequestEnvelope<NlRequestPayload>({
+        principal: createPlatformPrincipal({
+          actorId: request.userId,
+          tenantId: request.tenantId,
+          roles: ["requester"],
+          authMethod: "nl_entry",
+        }),
+        tenantId: request.tenantId,
+        payload: {
+          userId: request.userId,
+          title: deriveTitle(request.message),
+          request: request.message,
+          locale: detailed.locale,
+          channel: request.channel ?? null,
+          divisionId: detailed.suggestedDivisionId,
+          workflowId: detailed.suggestedWorkflowId,
+          intent: primaryIntent.intentType,
+          continuation: detailed.continuation,
+          entities: primaryIntent.entities,
+          confirmationRequired,
+          generatedSummary: humanSummary,
+        },
+        metadata: {
+          source: "nl_entry",
+          confirmationRequired,
+          divisionId: detailed.suggestedDivisionId,
+          workflowId: detailed.suggestedWorkflowId,
+          locale: detailed.locale,
+        },
+      }),
       riskPreview,
       costEstimate,
-      ...(dryRunPreview != null ? { dryRunPreview } : {}),
       confirmationRequired,
-      humanSummary: surfacedSummary,
+      humanSummary,
       taskDraft,
-      clarificationState,
+      clarificationState: detailed.clarificationState,
       confirmationReceipt,
       conversationState,
-      canonicalTaskDraft,
-      clarificationSession: clarificationSession ?? null,
-      confirmedTaskSpec: confirmedTaskSpec ?? null,
-      canonicalRequestEnvelope: canonicalRequestEnvelope ?? null,
     };
-  }
-
-  private clarificationKey(tenantId: string, userId: string): string {
-    return `${tenantId}:${userId}`;
-  }
-
-  private getClarificationRounds(tenantId: string, userId: string): number {
-    return this.clarificationTracker.get(this.clarificationKey(tenantId, userId)) ?? 0;
-  }
-
-  private incrementClarificationRounds(tenantId: string, userId: string): number {
-    const key = this.clarificationKey(tenantId, userId);
-    const rounds = (this.clarificationTracker.get(key) ?? 0) + 1;
-    this.clarificationTracker.set(key, rounds);
-    return rounds;
-  }
-
-  private resetClarificationRounds(tenantId: string, userId: string): number {
-    this.clarificationTracker.delete(this.clarificationKey(tenantId, userId));
-    return 0;
-  }
-
-  private deriveConfirmationScope(
-    message: string,
-    detailed: Pick<IntentParseResult, "suggestedDivisionId" | "suggestedWorkflowId" | "context">,
-  ): string {
-    const environmentScope = detailed.context.targetEnvironments[0];
-    if (environmentScope != null && environmentScope.length > 0) {
-      return `${detailed.suggestedDivisionId}/${environmentScope}`;
-    }
-    if (/(production|prod|线上|生产环境)/i.test(message)) {
-      return `${detailed.suggestedDivisionId}/production`;
-    }
-    return `${detailed.suggestedDivisionId}/${detailed.suggestedWorkflowId}`;
-  }
-
-  private buildRiskPreviewVersion(riskPreview: RiskPreview): string {
-    return [
-      "risk-preview-v1",
-      riskPreview.overallRisk,
-      riskPreview.approvalNeeded ? "approval" : "direct",
-      riskPreview.reversible ? "reversible" : "irreversible",
-    ].join(":");
   }
 
   private resolveLocale(request: Pick<NlEntryRequest, "locale" | "preferredLocale" | "acceptLanguage" | "message">): string {
@@ -1688,125 +795,43 @@ export class NlEntryService implements NlEntryPort {
   }
 }
 
-function taskDraftIdFromMessage(message: string): string {
-  return deriveTitle(message).replace(/\s+/g, "_").toLowerCase();
-}
-
-function buildConstraintPackRef(domainId: string, workflowId: string): string {
-  return `constraint_pack:${domainId}:${workflowId}`;
-}
-
-function buildIntakeIdempotencyKey(request: NlEntryRequest, draftId: string): string {
-  return `nl:${request.tenantId}:${request.userId}:${draftId}`;
-}
-
-function buildIntakeTraceId(request: NlEntryRequest, draftId: string): string {
-  return `trace:nl:${request.tenantId}:${request.userId}:${draftId}`;
-}
-
 /**
  * Conversation Context Manager
  *
  * Manages multi-turn conversation context with configurable window size.
  * Window size can be configured per task type via nlGatewayConfig.
- *
- * §39.1: Implements persistence to Memory for cross-session recovery.
- * When a MemoryService is provided, conversation context is durably stored
- * and recovered across sessions. Without Memory, operates in pure in-memory mode.
- *
- * §175-2051 FIX: Added LRU eviction for contexts Map to prevent unbounded memory growth.
- * Previously the Map grew without bound as new conversations were created.
- * Now uses a simple LRU strategy with a maximum size limit.
  */
 export class ConversationContextManager {
   private readonly contexts = new Map<string, ConversationContext>();
   private readonly nlConfig: NlGatewayConfig;
-  private readonly memoryService: ConversationMemoryService | null;
-  private readonly memoryEnabled: boolean;
-  /** §175-2051: Maximum number of contexts to keep in memory before LRU eviction */
-  private readonly maxContexts: number;
-  /** §175-2051: Track access order for LRU eviction */
-  private readonly contextAccessOrder: string[] = [];
 
-  public constructor(nlConfig?: NlGatewayConfig, memoryService?: ConversationMemoryService) {
+  public constructor(nlConfig?: NlGatewayConfig) {
     this.nlConfig = nlConfig ?? loadNlGatewayConfig();
-    this.memoryService = memoryService ?? null;
-    this.memoryEnabled = memoryService != null;
-    // Default to 1000 contexts max; can be overridden via config in future
-    this.maxContexts = 1000;
   }
 
   /**
-   * §175-2051: Evict least recently used context when at capacity.
-   * Removes the oldest entry from both contexts Map and access order.
-   */
-  private evictLRU(): void {
-    if (this.contextAccessOrder.length === 0) return;
-    const lruKey = this.contextAccessOrder.shift();
-    if (lruKey) {
-      this.contexts.delete(lruKey);
-    }
-  }
-
-  /**
-   * §175-2051: Record context access for LRU tracking.
-   */
-  private recordAccess(key: string): void {
-    const idx = this.contextAccessOrder.indexOf(key);
-    if (idx !== -1) {
-      this.contextAccessOrder.splice(idx, 1);
-    }
-    this.contextAccessOrder.push(key);
-  }
-
-  /**
-   * §39.1: Get or create a conversation context for a user.
-   * When memory is enabled, attempts to load persisted context from Memory first.
-   *
-   * §175-2051 FIX: Added LRU eviction when at capacity. If contexts Map is full,
-   * evicts least recently used entry before adding new one.
+   * Get or create a conversation context for a user
    */
   public getContext(tenantId: string, userId: string, taskType?: string): ConversationContext {
     const key = `${tenantId}:${userId}`;
     const existing = this.contexts.get(key);
 
     if (existing) {
-      // §175-2051: Update LRU access order
-      this.recordAccess(key);
       return existing;
     }
 
-    // §175-2051: Evict LRU if at capacity before creating new context
-    if (this.contexts.size >= this.maxContexts) {
-      this.evictLRU();
-    }
-
-    // §39.1: Try to recover context from Memory if enabled
-    if (this.memoryEnabled) {
-      const recovered = this.loadFromMemory(tenantId, userId);
-      if (recovered) {
-        this.contexts.set(key, recovered);
-        this.recordAccess(key);
-        return recovered;
-      }
-    }
-
     const maxTurns = getConversationWindowSize(this.nlConfig, taskType);
-    const newContext = {
+    return {
       tenantId,
       userId,
       turnCount: 0,
       maxTurns,
       turns: [],
     };
-    this.contexts.set(key, newContext);
-    this.recordAccess(key);
-    return newContext;
   }
 
   /**
-   * §39.1: Add a turn to the conversation.
-   * When memory is enabled, persists the updated context to Memory.
+   * Add a turn to the conversation
    */
   public addTurn(
     tenantId: string,
@@ -1843,47 +868,19 @@ export class ConversationContextManager {
     };
 
     this.contexts.set(key, updatedContext);
-    // §175-2051: Update LRU access order after modification
-    this.recordAccess(key);
-
-    // §39.1: Persist to Memory for cross-session recovery
-    if (this.memoryEnabled) {
-      this.saveToMemory(updatedContext);
-    }
-
     return updatedContext;
   }
 
   /**
-   * §39.1: Clear a conversation context from both memory and in-memory storage.
-   * §175-2051 FIX: Also remove from LRU access order.
+   * Clear a conversation context
    */
   public clearContext(tenantId: string, userId: string): void {
     const key = `${tenantId}:${userId}`;
     this.contexts.delete(key);
-    // §175-2051: Remove from LRU tracking
-    const idx = this.contextAccessOrder.indexOf(key);
-    if (idx !== -1) {
-      this.contextAccessOrder.splice(idx, 1);
-    }
-
-    // §39.1: Also clear from Memory
-    if (this.memoryEnabled) {
-      const scope = this.getMemoryScope(tenantId, userId);
-      try {
-        // Find and revoke memories for this conversation
-        const memories = this.memoryService!.findMemories({ scope });
-        for (const memory of memories) {
-          // Memory revocation would be handled by the memory service
-        }
-      } catch {
-        // Best effort - clear failed but operation continues
-      }
-    }
   }
 
   /**
-   * §39.1: Check if conversation is approaching window limit.
+   * Check if conversation is approaching window limit
    */
   public isNearWindowLimit(tenantId: string, userId: string): boolean {
     const context = this.contexts.get(`${tenantId}:${userId}`);
@@ -1894,74 +891,9 @@ export class ConversationContextManager {
   }
 
   /**
-   * Get window size for a specific task type.
+   * Get window size for a specific task type
    */
   public getWindowSize(taskType?: string): number {
     return getConversationWindowSize(this.nlConfig, taskType);
-  }
-
-  /**
-   * §39.1: Get the memory scope for a conversation context.
-   */
-  private getMemoryScope(tenantId: string, userId: string): string {
-    return `nl_gateway:conversation:${tenantId}:${userId}`;
-  }
-
-  /**
-   * §39.1: Save conversation context to Memory for cross-session recovery.
-   */
-  private saveToMemory(context: ConversationContext): void {
-    if (!this.memoryService) return;
-
-    const scope = this.getMemoryScope(context.tenantId, context.userId);
-    const content = JSON.stringify({
-      tenantId: context.tenantId,
-      userId: context.userId,
-      turnCount: context.turnCount,
-      maxTurns: context.maxTurns,
-      turns: context.turns,
-      lastIntent: context.lastIntent,
-    });
-
-    try {
-      this.memoryService.remember({
-        scope,
-        content,
-        classification: "conversation_context",
-      });
-    } catch {
-      // Best effort - Memory write failure should not break conversation flow
-    }
-  }
-
-  /**
-   * §39.1: Load conversation context from Memory for cross-session recovery.
-   */
-  private loadFromMemory(tenantId: string, userId: string): ConversationContext | null {
-    if (!this.memoryService) return null;
-
-    const scope = this.getMemoryScope(tenantId, userId);
-
-    try {
-      const memories = this.memoryService.findMemories({ scope });
-      if (memories.length > 0) {
-        const lastMemory = memories[memories.length - 1];
-        if (lastMemory) {
-          const parsed = JSON.parse(lastMemory.content);
-          return {
-            tenantId: parsed.tenantId,
-            userId: parsed.userId,
-            turnCount: parsed.turnCount,
-            maxTurns: parsed.maxTurns,
-            turns: parsed.turns ?? [],
-            lastIntent: parsed.lastIntent,
-          };
-        }
-      }
-    } catch {
-      // Best effort - Memory read failure returns null, causing fresh context creation
-    }
-
-    return null;
   }
 }

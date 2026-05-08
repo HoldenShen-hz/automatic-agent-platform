@@ -12,20 +12,6 @@ Related documents:
 - `sandbox_and_auth_contract.md`: Plugin sandbox security boundaries.
 - [ADR-066 Plugin SPI Framework](../adr/066-plugin-spi-framework.md)
 
-### 1.1 Lifecycle Hook Naming Convention
-
-**Canonical naming**: `onLoad` / `onActivate` / `onDeactivate` / `onUnload`
-
-The old naming `initialize` / `activate` is deprecated but retained for backward compatibility. All new plugin implementations should use the `on` prefix convention consistent with `tool_skill_plugin_contract.md`.
-
-```typescript
-interface PluginLifecycleContext {
-  pluginId: string;
-  domainId?: string;
-  capabilityIds: string[];
-}
-```
-
 ## 2. Four OAPEFLIR Domain Plugin SPI Interfaces
 
 ### 2.1 DomainRetrieverPlugin
@@ -41,15 +27,11 @@ interface DomainRetrieverPlugin {
   // Retrieve relevant knowledge
   retrieve(request: RetrievalRequest): Promise<RetrievalHit[]>;
 
-  // Lifecycle hooks (canonical naming per §K)
-  // @deprecated Use onLoad/onActivate instead - kept for backward compatibility
-  initialize?(config: PluginConfig): Promise<void>;
-  activate?(): Promise<void>;
-  // Canonical hooks (use these instead)
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  suspend?(): Promise<void>;
-  deactivate?(): Promise<void>;
+  // Lifecycle
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface RetrievalRequest {
@@ -74,15 +56,10 @@ interface DomainValidatorPlugin {
   // Validate input/output
   validate(input: unknown, context: ValidationContext): Promise<ValidationResult>;
 
-  // Lifecycle hooks (canonical naming per §K)
-  // @deprecated Use onLoad/onActivate instead - kept for backward compatibility
-  initialize?(config: PluginConfig): Promise<void>;
-  activate?(): Promise<void>;
-  // Canonical hooks (use these instead)
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  suspend?(): Promise<void>;
-  deactivate?(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface ValidationContext {
@@ -124,15 +101,10 @@ interface DomainPlannerPlugin {
   // Generate plan for specific domain
   plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
-  // Lifecycle hooks (canonical naming per §K)
-  // @deprecated Use onLoad/onActivate instead - kept for backward compatibility
-  initialize?(config: PluginConfig): Promise<void>;
-  activate?(): Promise<void>;
-  // Canonical hooks (use these instead)
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  suspend?(): Promise<void>;
-  deactivate?(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface UnifiedAssessment {
@@ -159,15 +131,10 @@ interface DomainPresenterPlugin {
   // Format output
   present(output: DualChannelStepOutput, format: OutputFormat): Promise<PresentedOutput>;
 
-  // Lifecycle hooks (canonical naming per §K)
-  // @deprecated Use onLoad/onActivate instead - kept for backward compatibility
-  initialize?(config: PluginConfig): Promise<void>;
-  activate?(): Promise<void>;
-  // Canonical hooks (use these instead)
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  suspend?(): Promise<void>;
-  deactivate?(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface OutputFormat {

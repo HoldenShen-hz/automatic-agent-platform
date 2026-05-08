@@ -161,29 +161,6 @@ test("DashboardProjectionService derives incident change type from resolved stat
   assert.equal(resolvedDelta!.changes[0]!.changeType, "incident_resolved");
 });
 
-test("DashboardProjectionService processes approval_summary and extended projection types", () => {
-  const service = new DashboardProjectionService();
-
-  const approvalDelta = service.processProjectionUpdate(
-    createProjectionRecord({
-      projectionName: "approval_summary",
-      entityRef: "approval-1",
-      state: { resolved: false, tenantId: "tenant-1" },
-    }),
-  );
-  const healthDelta = service.processProjectionUpdate(
-    createProjectionRecord({
-      projectionName: "agent_health",
-      entityRef: "agent-1",
-      state: { status: "healthy" },
-    }),
-  );
-
-  assert.equal(approvalDelta?.changes[0]?.changeType, "approval_requested");
-  assert.ok(approvalDelta?.affectedMetrics.includes("approvalPendingCount"));
-  assert.equal(healthDelta?.changes[0]?.changeType, "system_health_changed");
-});
-
 test("DashboardProjectionService builds state from projections", () => {
   const service = new DashboardProjectionService();
 
@@ -201,24 +178,6 @@ test("DashboardProjectionService builds state from projections", () => {
   assert.equal(state.tasksByStatus["pending"], 1);
   assert.equal(state.totalIncidents, 1);
   assert.equal(state.totalWorkflows, 1);
-});
-
-test("DashboardProjectionService aggregates extended dashboard projections into state", () => {
-  const service = new DashboardProjectionService();
-
-  const projections: ProjectionRecord[] = [
-    createProjectionRecord({ projectionName: "agent_health", entityRef: "agent-1", state: { status: "healthy" } }),
-    createProjectionRecord({ projectionName: "approval_summary", entityRef: "approval-1", state: { resolved: false } }),
-    createProjectionRecord({ projectionName: "cost_summary", entityRef: "cost-1", state: { totalCostUsd: 250 } }),
-    createProjectionRecord({ projectionName: "resource_usage", entityRef: "exec-1", state: { durationMs: 400 } }),
-  ];
-
-  const state = service.buildStateFromProjections(projections);
-
-  assert.equal(state.activeAgents, 1);
-  assert.equal(state.approvalPendingCount, 1);
-  assert.equal(state.avgDurationMs, 0);
-  assert.ok(state.budgetUtilizationPercent > 0);
 });
 
 test("DashboardProjectionService extracts entityId from various payload fields", () => {

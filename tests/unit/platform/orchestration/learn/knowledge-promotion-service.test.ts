@@ -25,7 +25,7 @@ function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningOb
     sourceSignalIds: overrides.sourceSignalIds ?? [],
     validatedBy: overrides.validatedBy ?? "evidence",
     promotionStatus: overrides.promotionStatus ?? "validated",
-    createdAt: overrides.createdAt ?? Date.now(),
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
   };
 }
 

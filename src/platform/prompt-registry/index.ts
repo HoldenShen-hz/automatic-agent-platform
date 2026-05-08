@@ -25,5 +25,6 @@ export {
 export {
   PromptVersionManager,
   type VersionLineage,
+  type SemanticVersion,
   type VersionManagerConfig,
 } from "../prompt-engine/registry/prompt-version-manager.js";

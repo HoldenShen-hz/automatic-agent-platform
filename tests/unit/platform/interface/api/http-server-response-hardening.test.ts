@@ -14,10 +14,10 @@ import type { ApiResponsePayload } from "../../../../../src/platform/interface/a
 test("DEFAULT_CORS_CONFIG has correct structure", () => {
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, ["*"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedMethods, ["GET", "POST", "OPTIONS"]);
-  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedHeaders, ["content-type", "authorization", "x-request-id", "x-api-key", "accept-version"]);
-  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-api-version", "x-app-version", "x-trace-id"]);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.allowedHeaders, ["content-type", "authorization", "x-request-id", "x-api-key"]);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-api-version", "x-app-version"]);
   assert.equal(DEFAULT_CORS_CONFIG.maxAgeSeconds, 86_400);
-  assert.equal(DEFAULT_CORS_CONFIG.credentials, false);
+  assert.equal(DEFAULT_CORS_CONFIG.credentials, true);
 });
 
 test("parseAllowedOrigins returns default for undefined input", () => {
@@ -201,7 +201,7 @@ test("decorateResponseHeaders adds security headers", () => {
     body: "test",
   };
   const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
-  assert.equal(result.headers["content-security-policy"], "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'");
+  assert.equal(result.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
   assert.equal(result.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
   assert.equal(result.headers["x-frame-options"], "DENY");
   assert.equal(result.headers["x-content-type-options"], "nosniff");
@@ -224,7 +224,7 @@ test("decorateResponseHeaders adds CORS headers when origin allowed", () => {
     headers: {},
     body: "test",
   };
-  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"], credentials: true };
+  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
   const result = decorateResponseHeaders(payload, "https://example.com", config);
   assert.equal(result.headers["access-control-allow-origin"], "https://example.com");
   assert.equal(result.headers["access-control-allow-credentials"], "true");

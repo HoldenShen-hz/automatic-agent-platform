@@ -28,9 +28,7 @@ export class CrossRegionTruthLeader {
     if (epoch.tenantId !== claim.tenantId) {
       return { accepted: false, reasonCode: "truth_leader.tenant_mismatch" };
     }
-    // §28.7: Allow writes if claim.region matches the current leaderRegion (supports leader failover)
-    // homeRegion is the origin region; leaderRegion is the current authoritative region
-    if (claim.region !== epoch.leaderRegion) {
+    if (epoch.homeRegion !== claim.region || epoch.leaderRegion !== claim.region) {
       return { accepted: false, reasonCode: "truth_leader.not_home_region" };
     }
     if (epoch.epoch !== claim.epoch) {

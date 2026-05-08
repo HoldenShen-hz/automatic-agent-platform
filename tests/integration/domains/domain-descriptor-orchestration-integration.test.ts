@@ -90,7 +90,7 @@ test("integration: domain descriptor review and onboarding checklist drive activ
       domainId: "coding",
       prompts: [{ promptId: "release", stage: "execute", version: "1.0", template: "Release safely", guardrails: [] }],
     },
-    recipes: [{ recipeId: "release", domainId: "coding", name: "Release Recipe", triggerPhrases: ["release"], risk_profile_ref: "risk_coding", guardrail_overlay: "standard", default_prompt_bundle_ref: "prompt_release", acceptance_checklist_ref: "check_release", defaultWorkflowId: "wf_release", defaultToolBundleIds: ["repo_tools"], archetype: "incident_ops", riskLevel: "medium", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "release", domainId: "coding", triggerPhrases: ["release"], defaultWorkflowId: "wf_release", defaultToolBundleIds: ["repo_tools"] }],
     defaultToolBundleIds: ["repo_tools"],
     defaultWorkflowIds: ["wf_release"],
   });

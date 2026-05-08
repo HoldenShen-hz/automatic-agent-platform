@@ -36,22 +36,6 @@ export interface EndpointDefinition {
   readonly planned: boolean;
 }
 
-export interface PaginationParams {
-  readonly page?: number;
-  readonly pageSize?: number;
-  readonly sort?: string;
-  readonly filter?: string;
-  readonly cursor?: string;
-  readonly direction?: "forward" | "backward";
-}
-
-export interface CursorPage<TItem> {
-  readonly items: readonly TItem[];
-  readonly nextCursor: string | null;
-  readonly prevCursor: string | null;
-  readonly totalCount?: number;
-}
-
 export const endpointCatalog = {
   dashboardSnapshot: { id: "dashboard.snapshot", path: "/dashboard/snapshot", method: "GET", apiLayer: "C", planned: false },
   tasks: { id: "tasks.list", path: "/tasks", method: "GET", apiLayer: "C", planned: false },
@@ -70,7 +54,6 @@ export const endpointCatalog = {
   approvalsReject: { id: "approvals.reject", path: "/approvals/:approvalId/reject", method: "POST", apiLayer: "C", planned: false },
   approvalsDelegate: { id: "approvals.delegate", path: "/approvals/:approvalId/delegate", method: "POST", apiLayer: "C", planned: false },
   incidents: { id: "incidents.list", path: "/incidents", method: "GET", apiLayer: "C", planned: false },
-  incidentsUpdate: { id: "incidents.update", path: "/incidents/:incidentId", method: "PATCH", apiLayer: "C", planned: false },
   workers: { id: "workers.list", path: "/admin/workers", method: "GET", apiLayer: "B", planned: false },
   queues: { id: "queues.list", path: "/admin/queues", method: "GET", apiLayer: "B", planned: false },
   agents: { id: "agents.list", path: "/agents", method: "GET", apiLayer: "C", planned: false },
@@ -94,64 +77,19 @@ export const endpointCatalog = {
   systemConfig: { id: "admin.system-config", path: "/admin/system-config", method: "GET", apiLayer: "C", planned: false },
   webhooks: { id: "admin.webhooks", path: "/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
-  preferencesUpdate: { id: "user.preferences.update", path: "/preferences", method: "PATCH", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
-  // §1.8 contract version negotiation
-  contractVersion: { id: "meta.contract-version", path: "/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
 } satisfies Record<string, EndpointDefinition>;
 
 function resolvePath(template: string, params: Record<string, string>): string {
   return Object.entries(params).reduce((resolved, [key, value]) => resolved.replace(`:${key}`, value), template);
 }
 
-function buildQueryString(pagination?: PaginationParams): string {
-  if (pagination == null) return "";
-  const params = new URLSearchParams();
-  if (pagination.page != null) params.set("page", String(pagination.page));
-  if (pagination.pageSize != null) params.set("pageSize", String(pagination.pageSize));
-  if (pagination.sort != null) params.set("sort", pagination.sort);
-  if (pagination.filter != null) params.set("filter", pagination.filter);
-  if (pagination.cursor != null) params.set("cursor", pagination.cursor);
-  if (pagination.direction != null) params.set("direction", pagination.direction);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-}
-
-function normalizeCursorPage<TItem>(payload: CursorPage<TItem> | readonly TItem[]): CursorPage<TItem> {
-  if (Array.isArray(payload)) {
-    return {
-      items: payload,
-      nextCursor: null,
-      prevCursor: null,
-    };
-  }
-  return {
-    items: payload.items,
-    nextCursor: payload.nextCursor ?? null,
-    prevCursor: payload.prevCursor ?? null,
-    ...(payload.totalCount == null ? {} : { totalCount: payload.totalCount }),
-  };
-}
-
-async function fetchCursorPage<TItem>(
-  client: RESTClient,
-  path: string,
-  pagination?: PaginationParams,
-): Promise<CursorPage<TItem>> {
-  const response = await client.get<CursorPage<TItem> | readonly TItem[]>(`${path}${buildQueryString(pagination)}`);
-  return normalizeCursorPage(response);
-}
-
 export async function fetchDashboardSnapshot(client: RESTClient): Promise<DashboardSnapshotDTO> {
   return client.get<DashboardSnapshotDTO>(endpointCatalog.dashboardSnapshot.path);
 }
 
-export async function fetchTasksPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<TaskDTO>> {
-  return fetchCursorPage<TaskDTO>(client, endpointCatalog.tasks.path, pagination);
-}
-
-export async function fetchTasks(client: RESTClient, pagination?: PaginationParams): Promise<readonly TaskDTO[]> {
-  return (await fetchTasksPage(client, pagination)).items;
+export async function fetchTasks(client: RESTClient): Promise<readonly TaskDTO[]> {
+  return client.get<readonly TaskDTO[]>(endpointCatalog.tasks.path);
 }
 
 export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -166,12 +104,8 @@ export async function deleteTask(client: RESTClient, taskId: string): Promise<{ 
   return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.tasksDelete.path, { taskId }));
 }
 
-export async function fetchWorkflowsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<WorkflowDTO>> {
-  return fetchCursorPage<WorkflowDTO>(client, endpointCatalog.workflows.path, pagination);
-}
-
-export async function fetchWorkflows(client: RESTClient, pagination?: PaginationParams): Promise<readonly WorkflowDTO[]> {
-  return (await fetchWorkflowsPage(client, pagination)).items;
+export async function fetchWorkflows(client: RESTClient): Promise<readonly WorkflowDTO[]> {
+  return client.get<readonly WorkflowDTO[]>(endpointCatalog.workflows.path);
 }
 
 export async function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -182,30 +116,8 @@ export async function pauseWorkflow(client: RESTClient, workflowId: string): Pro
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPause.path, { workflowId }), { action: "pause" });
 }
 
-export async function resumeWorkflow(
-  client: RESTClient,
-  workflowId: string,
-  mode?: "normal" | "replan" | "supervised" | "abort",
-): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), {
-    action: "resume",
-    ...(mode == null ? {} : { mode }),
-  });
-}
-
-export async function recoverWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "recover" });
-}
-
-export async function cancelWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), {
-    action: "resume",
-    mode: "abort",
-  });
-}
-
-export async function releaseWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPublish.path, { workflowId }), { action: "release" });
+export async function resumeWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "resume" });
 }
 
 export async function publishWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
@@ -220,12 +132,8 @@ export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: s
   return client.get<readonly WorkflowRunStepDTO[]>(resolvePath(endpointCatalog.workflowRunSteps.path, { workflowRunId }));
 }
 
-export async function fetchApprovalsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<ApprovalDTO>> {
-  return fetchCursorPage<ApprovalDTO>(client, endpointCatalog.approvals.path, pagination);
-}
-
-export async function fetchApprovals(client: RESTClient, pagination?: PaginationParams): Promise<readonly ApprovalDTO[]> {
-  return (await fetchApprovalsPage(client, pagination)).items;
+export async function fetchApprovals(client: RESTClient): Promise<readonly ApprovalDTO[]> {
+  return client.get<readonly ApprovalDTO[]>(endpointCatalog.approvals.path);
 }
 
 export async function approveApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
@@ -240,241 +148,80 @@ export async function delegateApproval(client: RESTClient, approvalId: string, d
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { delegateTo });
 }
 
-export async function submitApprovalTextInput(
-  client: RESTClient,
-  approvalId: string,
-  inputText: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(
-    `/approvals/${approvalId}/decision`,
-    {
-      decisionType: "text_input",
-      inputText,
-    },
-  );
+export async function fetchIncidents(client: RESTClient): Promise<readonly IncidentDTO[]> {
+  return client.get<readonly IncidentDTO[]>(endpointCatalog.incidents.path);
 }
 
-export async function submitApprovalAction(
-  client: RESTClient,
-  approvalId: string,
-  action: string,
-  payload: Record<string, unknown> = {},
-): Promise<{ ok: true; body?: unknown }> {
-  return submitApprovalTextInput(
-    client,
-    approvalId,
-    JSON.stringify({ action, ...payload }),
-  );
+export async function fetchWorkers(client: RESTClient): Promise<readonly WorkerDTO[]> {
+  return client.get<readonly WorkerDTO[]>(endpointCatalog.workers.path);
 }
 
-export async function editApproval(
-  client: RESTClient,
-  approvalId: string,
-  edits: Record<string, unknown>,
-): Promise<{ ok: true; body?: unknown }> {
-  return submitApprovalAction(client, approvalId, "edit", { edits });
+export async function fetchQueues(client: RESTClient): Promise<readonly QueueDTO[]> {
+  return client.get<readonly QueueDTO[]>(endpointCatalog.queues.path);
 }
 
-export async function escalateApproval(
-  client: RESTClient,
-  approvalId: string,
-  reason: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return submitApprovalAction(client, approvalId, "escalate", { reason });
+export async function fetchAgents(client: RESTClient): Promise<readonly AgentDTO[]> {
+  return client.get<readonly AgentDTO[]>(endpointCatalog.agents.path);
 }
 
-export async function deferApproval(
-  client: RESTClient,
-  approvalId: string,
-  until: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return submitApprovalAction(client, approvalId, "defer", { until });
+export async function fetchAnalytics(client: RESTClient): Promise<readonly AnalyticsMetricDTO[]> {
+  return client.get<readonly AnalyticsMetricDTO[]>(endpointCatalog.analytics.path);
 }
 
-// §210-2493: requestMoreContextApproval not previously defined - add endpoint for requesting additional context
-export async function requestMoreContextApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { action: "request_context" });
+export async function fetchCosts(client: RESTClient): Promise<readonly CostReportDTO[]> {
+  return client.get<readonly CostReportDTO[]>(endpointCatalog.costs.path);
 }
 
-export async function fetchIncidentsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<IncidentDTO>> {
-  return fetchCursorPage<IncidentDTO>(client, endpointCatalog.incidents.path, pagination);
+export async function fetchMarketplace(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
+  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.marketplace.path);
 }
 
-export async function fetchIncidents(client: RESTClient, pagination?: PaginationParams): Promise<readonly IncidentDTO[]> {
-  return (await fetchIncidentsPage(client, pagination)).items;
+export async function fetchKnowledge(client: RESTClient): Promise<readonly KnowledgeItemDTO[]> {
+  return client.get<readonly KnowledgeItemDTO[]>(endpointCatalog.knowledge.path);
 }
 
-export async function updateIncident(
-  client: RESTClient,
-  incidentId: string,
-  body: { status: "acknowledged" | "mitigating" | "resolved"; owner?: string },
-): Promise<{ ok: true; body?: unknown }> {
-  return client.patch<{ ok: true; body?: unknown }>(
-    resolvePath(endpointCatalog.incidentsUpdate.path, { incidentId }),
-    body,
-  );
-}
-
-export async function acknowledgeIncident(
-  client: RESTClient,
-  incidentId: string,
-  owner: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return updateIncident(client, incidentId, { status: "acknowledged", owner });
-}
-
-export async function startIncidentMitigation(
-  client: RESTClient,
-  incidentId: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return updateIncident(client, incidentId, { status: "mitigating" });
-}
-
-export async function resolveIncident(
-  client: RESTClient,
-  incidentId: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return updateIncident(client, incidentId, { status: "resolved" });
-}
-
-export async function fetchWorkersPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<WorkerDTO>> {
-  return fetchCursorPage<WorkerDTO>(client, endpointCatalog.workers.path, pagination);
-}
-
-export async function fetchWorkers(client: RESTClient, pagination?: PaginationParams): Promise<readonly WorkerDTO[]> {
-  return (await fetchWorkersPage(client, pagination)).items;
-}
-
-export async function fetchQueuesPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<QueueDTO>> {
-  return fetchCursorPage<QueueDTO>(client, endpointCatalog.queues.path, pagination);
-}
-
-export async function fetchQueues(client: RESTClient, pagination?: PaginationParams): Promise<readonly QueueDTO[]> {
-  return (await fetchQueuesPage(client, pagination)).items;
-}
-
-export async function fetchAgentsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<AgentDTO>> {
-  return fetchCursorPage<AgentDTO>(client, endpointCatalog.agents.path, pagination);
-}
-
-export async function fetchAgents(client: RESTClient, pagination?: PaginationParams): Promise<readonly AgentDTO[]> {
-  return (await fetchAgentsPage(client, pagination)).items;
-}
-
-export async function fetchAnalyticsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<AnalyticsMetricDTO>> {
-  return fetchCursorPage<AnalyticsMetricDTO>(client, endpointCatalog.analytics.path, pagination);
-}
-
-export async function fetchAnalytics(client: RESTClient, pagination?: PaginationParams): Promise<readonly AnalyticsMetricDTO[]> {
-  return (await fetchAnalyticsPage(client, pagination)).items;
-}
-
-export async function fetchCostsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<CostReportDTO>> {
-  return fetchCursorPage<CostReportDTO>(client, endpointCatalog.costs.path, pagination);
-}
-
-export async function fetchCosts(client: RESTClient, pagination?: PaginationParams): Promise<readonly CostReportDTO[]> {
-  return (await fetchCostsPage(client, pagination)).items;
-}
-
-export async function fetchMarketplacePage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<MarketplacePackDTO>> {
-  return fetchCursorPage<MarketplacePackDTO>(client, endpointCatalog.marketplace.path, pagination);
-}
-
-export async function fetchMarketplace(client: RESTClient, pagination?: PaginationParams): Promise<readonly MarketplacePackDTO[]> {
-  return (await fetchMarketplacePage(client, pagination)).items;
-}
-
-export async function fetchKnowledgePage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<KnowledgeItemDTO>> {
-  return fetchCursorPage<KnowledgeItemDTO>(client, endpointCatalog.knowledge.path, pagination);
-}
-
-export async function fetchKnowledge(client: RESTClient, pagination?: PaginationParams): Promise<readonly KnowledgeItemDTO[]> {
-  return (await fetchKnowledgePage(client, pagination)).items;
-}
-
-export async function fetchPacksPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<MarketplacePackDTO>> {
-  return fetchCursorPage<MarketplacePackDTO>(client, endpointCatalog.packs.path, pagination);
-}
-
-export async function fetchPacks(client: RESTClient, pagination?: PaginationParams): Promise<readonly MarketplacePackDTO[]> {
-  return (await fetchPacksPage(client, pagination)).items;
+export async function fetchPacks(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
+  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.packs.path);
 }
 
 export async function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]> {
   return client.get<readonly PackVersionDTO[]>(resolvePath(endpointCatalog.packVersions.path, { packId }));
 }
 
-export async function fetchPluginsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<PluginDTO>> {
-  return fetchCursorPage<PluginDTO>(client, endpointCatalog.plugins.path, pagination);
+export async function fetchPlugins(client: RESTClient): Promise<readonly PluginDTO[]> {
+  return client.get<readonly PluginDTO[]>(endpointCatalog.plugins.path);
 }
 
-export async function fetchPlugins(client: RESTClient, pagination?: PaginationParams): Promise<readonly PluginDTO[]> {
-  return (await fetchPluginsPage(client, pagination)).items;
+export async function fetchPrompts(client: RESTClient): Promise<readonly PromptDTO[]> {
+  return client.get<readonly PromptDTO[]>(endpointCatalog.prompts.path);
 }
 
-export async function fetchPromptsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<PromptDTO>> {
-  return fetchCursorPage<PromptDTO>(client, endpointCatalog.prompts.path, pagination);
+export async function fetchExplanations(client: RESTClient): Promise<readonly ExplanationDTO[]> {
+  return client.get<readonly ExplanationDTO[]>(endpointCatalog.explanations.path);
 }
 
-export async function fetchPrompts(client: RESTClient, pagination?: PaginationParams): Promise<readonly PromptDTO[]> {
-  return (await fetchPromptsPage(client, pagination)).items;
+export async function fetchRoles(client: RESTClient): Promise<readonly RoleDTO[]> {
+  return client.get<readonly RoleDTO[]>(endpointCatalog.roles.path);
 }
 
-export async function fetchExplanationsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<ExplanationDTO>> {
-  return fetchCursorPage<ExplanationDTO>(client, endpointCatalog.explanations.path, pagination);
+export async function fetchFeatureFlags(client: RESTClient): Promise<readonly FeatureFlagDTO[]> {
+  return client.get<readonly FeatureFlagDTO[]>(endpointCatalog.featureFlags.path);
 }
 
-export async function fetchExplanations(client: RESTClient, pagination?: PaginationParams): Promise<readonly ExplanationDTO[]> {
-  return (await fetchExplanationsPage(client, pagination)).items;
+export async function fetchModels(client: RESTClient): Promise<readonly ModelConfigDTO[]> {
+  return client.get<readonly ModelConfigDTO[]>(endpointCatalog.models.path);
 }
 
-export async function fetchRolesPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<RoleDTO>> {
-  return fetchCursorPage<RoleDTO>(client, endpointCatalog.roles.path, pagination);
+export async function fetchDomainConfigs(client: RESTClient): Promise<readonly DomainConfigDTO[]> {
+  return client.get<readonly DomainConfigDTO[]>(endpointCatalog.domainConfigs.path);
 }
 
-export async function fetchRoles(client: RESTClient, pagination?: PaginationParams): Promise<readonly RoleDTO[]> {
-  return (await fetchRolesPage(client, pagination)).items;
+export async function fetchTenants(client: RESTClient): Promise<readonly TenantDTO[]> {
+  return client.get<readonly TenantDTO[]>(endpointCatalog.tenants.path);
 }
 
-export async function fetchFeatureFlagsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<FeatureFlagDTO>> {
-  return fetchCursorPage<FeatureFlagDTO>(client, endpointCatalog.featureFlags.path, pagination);
-}
-
-export async function fetchFeatureFlags(client: RESTClient, pagination?: PaginationParams): Promise<readonly FeatureFlagDTO[]> {
-  return (await fetchFeatureFlagsPage(client, pagination)).items;
-}
-
-export async function fetchModelsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<ModelConfigDTO>> {
-  return fetchCursorPage<ModelConfigDTO>(client, endpointCatalog.models.path, pagination);
-}
-
-export async function fetchModels(client: RESTClient, pagination?: PaginationParams): Promise<readonly ModelConfigDTO[]> {
-  return (await fetchModelsPage(client, pagination)).items;
-}
-
-export async function fetchDomainConfigsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<DomainConfigDTO>> {
-  return fetchCursorPage<DomainConfigDTO>(client, endpointCatalog.domainConfigs.path, pagination);
-}
-
-export async function fetchDomainConfigs(client: RESTClient, pagination?: PaginationParams): Promise<readonly DomainConfigDTO[]> {
-  return (await fetchDomainConfigsPage(client, pagination)).items;
-}
-
-export async function fetchTenantsPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<TenantDTO>> {
-  return fetchCursorPage<TenantDTO>(client, endpointCatalog.tenants.path, pagination);
-}
-
-export async function fetchTenants(client: RESTClient, pagination?: PaginationParams): Promise<readonly TenantDTO[]> {
-  return (await fetchTenantsPage(client, pagination)).items;
-}
-
-export async function fetchUsersPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<UserDTO>> {
-  return fetchCursorPage<UserDTO>(client, endpointCatalog.users.path, pagination);
-}
-
-export async function fetchUsers(client: RESTClient, pagination?: PaginationParams): Promise<readonly UserDTO[]> {
-  return (await fetchUsersPage(client, pagination)).items;
+export async function fetchUsers(client: RESTClient): Promise<readonly UserDTO[]> {
+  return client.get<readonly UserDTO[]>(endpointCatalog.users.path);
 }
 
 export async function createUser(client: RESTClient, body: Partial<UserDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -489,43 +236,10 @@ export async function fetchSystemConfig(client: RESTClient): Promise<SystemConfi
   return client.get<SystemConfigDTO>(endpointCatalog.systemConfig.path);
 }
 
-export async function fetchWebhooksPage(client: RESTClient, pagination?: PaginationParams): Promise<CursorPage<WebhookDTO>> {
-  return fetchCursorPage<WebhookDTO>(client, endpointCatalog.webhooks.path, pagination);
-}
-
-export async function fetchWebhooks(client: RESTClient, pagination?: PaginationParams): Promise<readonly WebhookDTO[]> {
-  return (await fetchWebhooksPage(client, pagination)).items;
+export async function fetchWebhooks(client: RESTClient): Promise<readonly WebhookDTO[]> {
+  return client.get<readonly WebhookDTO[]>(endpointCatalog.webhooks.path);
 }
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {
   return client.get<UserPreferenceDTO>(endpointCatalog.preferences.path);
-}
-
-/**
- * Updates user preferences with optimistic locking per §4.7.8.
- * @param client - REST client
- * @param body - Preference updates
- * @param etag - Optional ETag for If-Match header (enables optimistic locking)
- */
-export async function updatePreferences(
-  client: RESTClient,
-  body: Partial<UserPreferenceDTO>,
-  etag?: string,
-): Promise<{ ok: true; body?: unknown }> {
-  return client.patch<{ ok: true; body?: unknown }>(
-    endpointCatalog.preferencesUpdate.path,
-    body,
-    etag == null ? undefined : { "If-Match": etag },
-  );
-}
-
-// §1.8 contract version negotiation
-export interface ContractVersionInfo {
-  readonly contractVersion: string;
-  readonly minServerVersion: string;
-  readonly supportedVersions: readonly string[];
-}
-
-export async function fetchContractVersion(client: RESTClient): Promise<ContractVersionInfo> {
-  return client.get<ContractVersionInfo>(endpointCatalog.contractVersion.path);
 }

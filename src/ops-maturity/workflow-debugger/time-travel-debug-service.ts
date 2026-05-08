@@ -15,25 +15,19 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 export interface DebugSnapshot {
   snapshotId: string;
   taskId: string;
-  harnessRunId: string;
-  nodeRunId: string;
+  executionId: string;
+  stepId: string;
   timestamp: string;
   variablesJson: string;
   stackTrace: string | null;
   eventIndex: number;
-  /** @deprecated use nodeRunId */
-  stepId?: string;
-  /** @deprecated use harnessRunId */
-  executionId?: string;
 }
 
 export interface ReplayCursor {
   taskId: string;
-  harnessRunId: string;
+  executionId: string;
   fromEventIndex: number;
   toEventIndex: number;
-  /** @deprecated use harnessRunId */
-  executionId?: string;
 }
 
 export interface VariableState {
@@ -53,14 +47,12 @@ export interface ReplayState {
 export interface TimeTravelDebugSession {
   sessionId: string;
   taskId: string;
-  harnessRunId: string;
+  executionId: string;
   breakpoints: readonly string[];
   snapshots: readonly DebugSnapshot[];
   currentEventIndex: number;
   startedAt: string;
   endedAt: string | null;
-  /** @deprecated use harnessRunId */
-  executionId?: string;
 }
 
 export interface TimeTravelDebugVariableEnvelope {
@@ -68,70 +60,17 @@ export interface TimeTravelDebugVariableEnvelope {
 }
 
 export interface TimeTravelDebugEvent {
-  readonly nodeRunId?: string | null;
+  readonly stepId?: string | null;
   readonly timestamp?: string | null;
   readonly variables?: Readonly<Record<string, unknown>> | null;
   readonly stackTrace?: string | null;
   readonly scope?: VariableState["scope"] | null;
-  /** @deprecated use nodeRunId */
-  readonly stepId?: string | null;
-}
-
-/**
- * Replay sandbox policy per §65.3.
- * Ensures replay events are isolated and cannot trigger real side effects.
- */
-export interface ReplaySandboxPolicy {
-  readonly isolationMode: "full" | "observed_only" | "mocked_io";
-  readonly allowNetwork: boolean;
-  readonly allowFileSystem: boolean;
-  readonly allowSideEffects: boolean;
-  readonly maxReplaySpeed: number; // events per second, 0 = unlimited
-  readonly timeoutPerEventMs: number;
-}
-
-export const DEFAULT_REPLAY_SANDBOX_POLICY: ReplaySandboxPolicy = {
-  isolationMode: "full",
-  allowNetwork: false,
-  allowFileSystem: false,
-  allowSideEffects: false,
-  maxReplaySpeed: 0,
-  timeoutPerEventMs: 5000,
-};
-
-/**
- * Debug permission context per §65.3: dual factor + least privilege + short-lived sessions + audit.
- */
-export interface DebugPermissionContext {
-  readonly userId: string;
-  readonly sessionToken: string;
-  readonly sessionIssuedAt: string;
-  readonly sessionExpiresAt: string;
-  readonly allowedTaskIds: readonly string[];
-  readonly allowedHarnessRunIds: readonly string[];
-  readonly requireTwoFactor: boolean;
-  readonly twoFactorVerified: boolean;
-  readonly auditTrailEnabled: boolean;
-}
-
-export function isSessionExpired(ctx: DebugPermissionContext): boolean {
-  return nowIso() > ctx.sessionExpiresAt;
-}
-
-export function canAccessTask(ctx: DebugPermissionContext, taskId: string): boolean {
-  return ctx.allowedTaskIds.length === 0 || ctx.allowedTaskIds.includes(taskId);
-}
-
-export function canAccessHarnessRun(ctx: DebugPermissionContext, harnessRunId: string): boolean {
-  return ctx.allowedHarnessRunIds.length === 0 || ctx.allowedHarnessRunIds.includes(harnessRunId);
 }
 
 export interface TimeTravelDebugServiceOptions {
   maxSessions?: number;
   maxEventsPerExecution?: number;
   maxSnapshotsPerSession?: number;
-  replaySandboxPolicy?: ReplaySandboxPolicy;
-  permissionContext?: DebugPermissionContext | null;
 }
 
 function isVariableScope(value: unknown): value is VariableState["scope"] {
@@ -153,8 +92,6 @@ export class TimeTravelDebugService {
   private readonly maxSessions: number;
   private readonly maxEventsPerExecution: number;
   private readonly maxSnapshotsPerSession: number;
-  private readonly replaySandboxPolicy: ReplaySandboxPolicy;
-  private readonly permissionContext: DebugPermissionContext | null;
   private readonly sessions = new Map<string, TimeTravelDebugSession>();
   private readonly eventStore = new Map<string, ReadonlyArray<TimeTravelDebugEvent>>();
   private readonly snapshots = new Map<string, DebugSnapshot[]>();
@@ -163,50 +100,14 @@ export class TimeTravelDebugService {
     this.maxSessions = options.maxSessions ?? 100;
     this.maxEventsPerExecution = options.maxEventsPerExecution ?? 10_000;
     this.maxSnapshotsPerSession = options.maxSnapshotsPerSession ?? 100;
-    this.replaySandboxPolicy = options.replaySandboxPolicy ?? DEFAULT_REPLAY_SANDBOX_POLICY;
-    this.permissionContext = options.permissionContext ?? null;
   }
 
-  /**
-   * Returns the active replay sandbox policy.
-   */
-  public getReplaySandboxPolicy(): ReplaySandboxPolicy {
-    return this.replaySandboxPolicy;
-  }
-
-  private isReplayIsolated(): boolean {
-    return this.replaySandboxPolicy.isolationMode === "full" || this.replaySandboxPolicy.isolationMode === "mocked_io";
-  }
-
-  private assertReplayAllowed(): void {
-    if (this.replaySandboxPolicy.allowSideEffects) {
-      throw new Error("debug_session.replay_blocked: allowSideEffects must be false for replay per INV-REPLAY-001");
-    }
-  }
-
-  public createSession(taskId: string, harnessRunId: string): TimeTravelDebugSession {
-    // §65.3: Dual factor + least privilege + short-lived session + audit
-    const ctx = this.permissionContext;
-    if (ctx) {
-      if (isSessionExpired(ctx)) {
-        throw new Error("debug_session.session_expired");
-      }
-      if (ctx.requireTwoFactor && !ctx.twoFactorVerified) {
-        throw new Error("debug_session.two_factor_required");
-      }
-      if (!canAccessTask(ctx, taskId)) {
-        throw new Error("debug_session.access_denied:task_not_allowed");
-      }
-      if (!canAccessHarnessRun(ctx, harnessRunId)) {
-        throw new Error("debug_session.access_denied:harness_run_not_allowed");
-      }
-    }
+  public createSession(taskId: string, executionId: string): TimeTravelDebugSession {
     this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
-      harnessRunId,
-      executionId: harnessRunId, // deprecated alias
+      executionId,
       breakpoints: [],
       snapshots: [],
       currentEventIndex: 0,
@@ -217,109 +118,91 @@ export class TimeTravelDebugService {
     return session;
   }
 
-  public setBreakpoints(sessionId: string, nodeRunIds: readonly string[]): void {
+  public setBreakpoints(sessionId: string, stepIds: readonly string[]): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    // §203-2383: Use spread to create new array instead of mutating readonly field.
-    // Previously mutated the underlying array in-place via splice on readonly property.
-    session.breakpoints = [...nodeRunIds];
+    session.breakpoints = [...stepIds];
   }
 
-  public loadEventStore(harnessRunId: string, events: readonly TimeTravelDebugEvent[]): void {
+  public loadEventStore(executionId: string, events: readonly TimeTravelDebugEvent[]): void {
     const boundedEvents = events.length > this.maxEventsPerExecution
       ? events.slice(events.length - this.maxEventsPerExecution)
       : [...events];
-    this.eventStore.set(harnessRunId, boundedEvents);
+    this.eventStore.set(executionId, boundedEvents);
   }
 
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
-    this.assertReplayAllowed();
+    const events = this.eventStore.get(session.executionId) ?? [];
+    const currentIndex = session.currentEventIndex;
 
-    const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const fromIndex = session.currentEventIndex;
-
-    for (let i = fromIndex; i < Math.min(toEventIndex, events.length); i++) {
+    for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
       const event = events[i]!;
-      const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
-      if (session.breakpoints.includes(nodeRunId)) {
+      const stepId = String(event.stepId ?? "");
+      if (session.breakpoints.includes(stepId)) {
         this.captureSnapshot(session, event, i);
-        const newEventIndex = i + 1;
-        session.currentEventIndex = newEventIndex;
-        return this.buildReplayState(session, fromIndex, newEventIndex, true);
+        session.currentEventIndex = i + 1;
+        return this.buildReplayState(session, session.currentEventIndex, true);
       }
     }
 
-    const finalEventIndex = Math.min(toEventIndex, events.length);
-    session.currentEventIndex = finalEventIndex;
-    return this.buildReplayState(session, fromIndex, finalEventIndex, false);
+    session.currentEventIndex = Math.min(toEventIndex, events.length);
+    return this.buildReplayState(session, session.currentEventIndex, false);
   }
 
   public replayStep(sessionId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
-    this.assertReplayAllowed();
-
-    const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const fromIndex = session.currentEventIndex;
-    if (fromIndex >= events.length) {
-      return this.buildReplayState(session, fromIndex, fromIndex, false);
+    const events = this.eventStore.get(session.executionId) ?? [];
+    if (session.currentEventIndex >= events.length) {
+      return this.buildReplayState(session, session.currentEventIndex, false);
     }
 
-    const event = events[fromIndex]!;
-    const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
-    const newEventIndex = fromIndex + 1;
-    session.currentEventIndex = newEventIndex;
+    const event = events[session.currentEventIndex]!;
+    const stepId = String(event.stepId ?? "");
+    session.currentEventIndex++;
 
-    const reachedBreakpoint = session.breakpoints.includes(nodeRunId);
+    const reachedBreakpoint = session.breakpoints.includes(stepId);
     if (reachedBreakpoint) {
-      this.captureSnapshot(session, event, fromIndex);
+      this.captureSnapshot(session, event, session.currentEventIndex - 1);
     }
 
-    return this.buildReplayState(session, fromIndex, newEventIndex, reachedBreakpoint);
+    return this.buildReplayState(session, session.currentEventIndex, reachedBreakpoint);
   }
 
-  public jumpToStep(sessionId: string, nodeRunId: string): ReplayState | null {
+  public jumpToStep(sessionId: string, stepId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
-    this.assertReplayAllowed();
-
-    const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const targetIndex = events.findIndex((e) => String(e.nodeRunId ?? e.stepId) === nodeRunId);
+    const events = this.eventStore.get(session.executionId) ?? [];
+    const targetIndex = events.findIndex((e) => String(e.stepId) === stepId);
     if (targetIndex === -1) return null;
 
-    const fromIndex = session.currentEventIndex;
-    const newEventIndex = targetIndex + 1;
-    session.currentEventIndex = newEventIndex;
-    return this.buildReplayState(session, fromIndex, newEventIndex, false);
+    session.currentEventIndex = targetIndex + 1;
+    return this.buildReplayState(session, session.currentEventIndex, false);
   }
 
-  public getSnapshot(sessionId: string, nodeRunId: string): DebugSnapshot | null {
+  public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
     const sessionSnapshots = this.snapshots.get(sessionId) ?? [];
-    return sessionSnapshots.find((s) => s.nodeRunId === nodeRunId || s.stepId === nodeRunId) ?? null;
+    return sessionSnapshots.find((s) => s.stepId === stepId) ?? null;
   }
 
   public getVariableState(sessionId: string, atEventIndex: number): readonly VariableState[] {
     const session = this.sessions.get(sessionId);
     if (!session) return [];
 
-    const events = this.eventStore.get(session.harnessRunId) ?? [];
-    // Use a map to keep only the latest value for each variable name
-    const latestVariables = new Map<string, VariableState>();
+    const events = this.eventStore.get(session.executionId) ?? [];
+    const variables: VariableState[] = [];
 
     for (let i = 0; i <= atEventIndex && i < events.length; i++) {
       const event = events[i]!;
       const vars = readVariables(event);
       if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
-          latestVariables.set(name, {
+          variables.push({
             name,
             value: readVariableValue(value),
             type: String(typeof value),
@@ -329,39 +212,7 @@ export class TimeTravelDebugService {
       }
     }
 
-    return [...latestVariables.values()];
-  }
-
-  public reconstructAtStep(
-    run: {
-      readonly runId: string;
-      readonly taskId: string;
-      readonly steps: ReadonlyArray<Record<string, unknown>>;
-    },
-    stepIndex: number,
-  ): {
-    readonly snapshotId: string;
-    readonly stepIndex: number;
-    readonly workflowState: {
-      readonly runId: string;
-      readonly completedSteps: ReadonlyArray<number>;
-      readonly currentStep: number;
-      readonly currentOutput: unknown;
-    };
-  } {
-    const completedSteps = run.steps
-      .map((_, index) => index)
-      .filter((index) => index <= stepIndex);
-    return {
-      snapshotId: newId("debug_snapshot"),
-      stepIndex,
-      workflowState: {
-        runId: run.runId,
-        completedSteps,
-        currentStep: stepIndex,
-        currentOutput: run.steps[stepIndex]?.output ?? null,
-      },
-    };
+    return variables;
   }
 
   public endSession(sessionId: string): void {
@@ -372,14 +223,11 @@ export class TimeTravelDebugService {
 
   private captureSnapshot(session: TimeTravelDebugSession, event: TimeTravelDebugEvent, eventIndex: number): void {
     const vars = readVariables(event);
-    const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
     const snapshot: DebugSnapshot = {
       snapshotId: newId("snap"),
       taskId: session.taskId,
-      harnessRunId: session.harnessRunId,
-      executionId: session.harnessRunId, // deprecated alias
-      nodeRunId,
-      stepId: nodeRunId, // deprecated alias
+      executionId: session.executionId,
+      stepId: String(event.stepId ?? ""),
       timestamp: String(event.timestamp ?? nowIso()),
       variablesJson: JSON.stringify(vars),
       stackTrace: event.stackTrace ?? null,
@@ -398,22 +246,20 @@ export class TimeTravelDebugService {
 
   private buildReplayState(
     session: TimeTravelDebugSession,
-    fromEventIndex: number,
-    toEventIndex: number,
+    currentEventIndex: number,
     reachedBreakpoint: boolean,
   ): ReplayState {
-    const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const variables = this.getVariableState(session.sessionId, toEventIndex);
+    const events = this.eventStore.get(session.executionId) ?? [];
+    const variables = this.getVariableState(session.sessionId, currentEventIndex);
 
     return {
       cursor: {
         taskId: session.taskId,
-        harnessRunId: session.harnessRunId,
-        executionId: session.harnessRunId, // deprecated alias
-        fromEventIndex,
-        toEventIndex,
+        executionId: session.executionId,
+        fromEventIndex: session.currentEventIndex,
+        toEventIndex: currentEventIndex,
       },
-      currentEventIndex: toEventIndex,
+      currentEventIndex,
       variables,
       reachedBreakpoint,
     };
@@ -430,9 +276,5 @@ export class TimeTravelDebugService {
     }
     this.sessions.delete(oldest.sessionId);
     this.snapshots.delete(oldest.sessionId);
-    // Issue #1923 P1 FIX: Clean up eventStore entries to prevent memory leak.
-    // Previously eventStore entries were never removed when sessions were evicted,
-    // causing unbounded memory growth over time.
-    this.eventStore.delete(oldest.harnessRunId);
   }
 }

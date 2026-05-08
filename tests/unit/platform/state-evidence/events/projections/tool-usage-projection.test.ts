@@ -76,21 +76,6 @@ test("toolUsageProjectionHandler handles skill:step_succeeded", () => {
   assert.equal(state.invocationCount, 0);
 });
 
-test("toolUsageProjectionHandler marks plugin:invocation_completed as completed", () => {
-  const event = makeEvent(
-    "evt_plugin_done",
-    "plugin:invocation_completed",
-    "task_1",
-    '{"pluginId":"plugin_1","status":"completed","durationMs":42}',
-  );
-
-  const state = toolUsageProjectionHandler(null, event) as unknown as ToolUsageState;
-
-  assert.equal(state.status, "completed");
-  assert.equal(state.successCount, 1);
-  assert.equal(state.lastSuccessAt, "2026-04-19T10:00:00.000Z");
-});
-
 test("toolUsageProjectionHandler handles skill:step_failed", () => {
   const event = makeEvent(
     "evt_fail_1",

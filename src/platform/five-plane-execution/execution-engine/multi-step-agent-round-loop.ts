@@ -6,12 +6,6 @@ import type { LlmModelCallResult } from "./model-call-provider.js";
 import { initializeModelCallProvider } from "./model-call-provider.js";
 import type { MultiStepToolDefinition } from "./multi-step-tool-definitions.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import type { BudgetLedger } from "../../contracts/executable-contracts/index.js";
-import { createDecisionInputBundle as createCanonicalDecisionInputBundle, createHarnessDecision as createCanonicalHarnessDecision } from "../../contracts/executable-contracts/index.js";
-import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
-import { getToolRegistry } from "../dispatcher/index.js";
-import { HarnessRuntimeService } from "../../orchestration/harness/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -23,9 +17,6 @@ export interface AgentRoundLoopInput {
   routingReason: string;
   tools?: MultiStepToolDefinition[];
   maxIterations?: number;
-  // R4-25 (INV-BUDGET-001): Budget tracking from validated PlanGraphBundle
-  harnessRunId: string;
-  budgetLedger: BudgetLedger;
 }
 
 export interface ToolCallResult {
@@ -44,193 +35,8 @@ export interface AgentRoundLoopResult {
   finishReason: "stop" | "max_iterations" | "error";
 }
 
-/**
- * R4-35 (INV-EVIDENCE-001): Persist LLM decision as immutable EvidenceRecord.
- * This ensures every LLM decision is auditable and can be replayed for debugging/certification.
- */
-interface PersistLlmDecisionEvidenceInput {
-  llmResult: LlmModelCallResult;
-  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
-  model: string;
-  stepId: string;
-  roleId: string;
-  harnessRunId: string;
-  routingReason: string;
-  iterations: number;
-  tools?: Array<{
-    type: "function";
-    name: string;
-    description?: string;
-    parameters: Record<string, unknown>;
-  }>;
-}
-
-async function persistLlmDecisionEvidence(input: PersistLlmDecisionEvidenceInput): Promise<void> {
-  const { llmResult, messages, model, stepId, roleId, harnessRunId, routingReason, iterations, tools } = input;
-
-  // Get RuntimeTruthRepository from tool registry
-  const registry = getToolRegistry();
-  const runtimeTruthRepository = registry.getRuntimeTruthRepository();
-  if (runtimeTruthRepository == null) {
-    // R4-35: Evidence persistence is optional - runtime functions without RTR
-    logger.log({
-      level: "debug",
-      message: "R4-35 (INV-EVIDENCE-001): RuntimeTruthRepository not available, skipping evidence persistence",
-    });
-    return;
-  }
-
-  const principal = createPlatformPrincipal({
-    actorId: "multi-step-agent",
-    tenantId: "tenant:local",
-    roles: ["harness", "llm_decider"],
-  });
-
-  // Determine decision kind based on LLM output
-  // R27-06 FIX: decisionKind must be a valid DecisionInputBundle["decisionKind"] value
-  // The LLM's suggestion to generate content or select tools is an "approve" decision
-  const decisionKind: "approve" = "approve";
-
-  // Create DecisionInputBundle with input context
-  const decisionInputBundle = createCanonicalDecisionInputBundle({
-    harnessRunId,
-    nodeRunId: stepId,
-    decisionKind,
-    riskClass: "low", // LLM decisions are generally low risk
-    evidenceRefs: [],
-    sideEffectRefs: [],
-  });
-
-  // Create HarnessDecision with output/reasoning
-  const harnessDecisionId = newId("harness_decision");
-  // R27-06 FIX: decision must be a valid HarnessDecision["decision"] value
-  // "accept" is correct because the harness is accepting the LLM's proposed content/tool
-  const canonicalDecision = createCanonicalHarnessDecision({
-    decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
-    decisionKind,
-    decision: "accept",
-    deciderType: "llm",
-    deciderRef: `multi-step-agent:${stepId}`,
-    reasonCode: `llm.${llmResult.finishReason}`,
-    harnessDecisionId,
-  });
-
-  // Create EvidenceRecord with full decision metadata
-  const evidenceRecord = createEvidenceRecord({
-    traceId: `trace:${harnessRunId}`,
-    principal,
-    category: "decision",
-    targetRef: `llm_decision:${harnessDecisionId}`,
-    content: {
-      decisionId: harnessDecisionId,
-      decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
-      decisionKind,
-      stepId,
-      roleId,
-      harnessRunId,
-      routingReason,
-      iterations,
-      model,
-      provider: llmResult.provider,
-      finishReason: llmResult.finishReason,
-      content: llmResult.content,
-      refusal: llmResult.refusal,
-      reasoningContent: llmResult.reasoningContent,
-      toolCalls: llmResult.toolCalls?.map((tc) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: tc.function.arguments,
-      })) ?? [],
-      usage: llmResult.usage,
-      messageCount: messages.length,
-      hasTools: tools != null && tools.length > 0,
-      toolCount: tools?.length ?? 0,
-      createdAt: nowIso(),
-    },
-    metadata: {
-      deciderType: "llm",
-      decisionKind,
-      stepId,
-      roleId,
-      finishReason: llmResult.finishReason,
-    },
-  });
-
-  try {
-    // R4-35 (INV-EVIDENCE-001): Persist DecisionInputBundle first (before HarnessDecision)
-    // DecisionInputBundle captures the full decision context for audit replay
-    try {
-      runtimeTruthRepository.appendDecisionInputBundle(decisionInputBundle);
-      logger.log({
-        level: "debug",
-        message: "R4-35 (INV-EVIDENCE-001): Persisted LLM decision DecisionInputBundle",
-        data: {
-          bundleId: decisionInputBundle.decisionInputBundleId,
-          decisionKind,
-          stepId,
-        },
-      });
-    } catch (error) {
-      // R4-35: If append fails, log but don't fail the LLM call
-      logger.log({
-        level: "warn",
-        message: "R4-35 (INV-EVIDENCE-001): Failed to persist DecisionInputBundle",
-        data: { bundleId: decisionInputBundle.decisionInputBundleId, error: error instanceof Error ? error.message : String(error) },
-      });
-    }
-
-    // R4-35 (INV-EVIDENCE-001): Persist HarnessDecision (linked to DecisionInputBundle by bundleId)
-    try {
-      runtimeTruthRepository.appendHarnessDecision(canonicalDecision);
-      logger.log({
-        level: "debug",
-        message: "R4-35 (INV-EVIDENCE-001): Persisted LLM decision HarnessDecision",
-        data: {
-          decisionId: harnessDecisionId,
-          decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
-          decisionKind,
-          stepId,
-        },
-      });
-    } catch (error) {
-      // R4-35: If append fails, log but don't fail the LLM call
-      logger.log({
-        level: "warn",
-        message: "R4-35 (INV-EVIDENCE-001): Failed to persist HarnessDecision",
-        data: { decisionId: harnessDecisionId, error: error instanceof Error ? error.message : String(error) },
-      });
-    }
-
-    // R4-35 (INV-EVIDENCE-001): Persist EvidenceRecord with full decision metadata
-    runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
-    logger.log({
-      level: "debug",
-      message: "R4-35 (INV-EVIDENCE-001): Persisted LLM decision EvidenceRecord",
-      data: {
-        recordId: evidenceRecord.recordId,
-        decisionId: harnessDecisionId,
-        decisionKind,
-        stepId,
-        finishReason: llmResult.finishReason,
-      },
-    });
-  } catch (error) {
-    // R4-35: If append fails, log but don't fail the LLM call
-    logger.log({
-      level: "warn",
-      message: "R4-35 (INV-EVIDENCE-001): Failed to persist LLM decision evidence",
-      data: { recordId: evidenceRecord.recordId, error: error instanceof Error ? error.message : String(error) },
-    });
-  }
-}
-
 export async function executeAgentRoundLoop(input: AgentRoundLoopInput): Promise<AgentRoundLoopResult> {
-  // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId to model provider
-  // so BudgetAllocator.reserve() uses the shared ledger from validatedPlanGraphBundle
-  const modelProvider = initializeModelCallProvider({
-    budgetLedger: input.budgetLedger,
-    harnessRunId: input.harnessRunId,
-  });
+  const modelProvider = initializeModelCallProvider({});
   const maxIterations = input.maxIterations ?? 10;
 
   if (!modelProvider.hasAnyProvider()) {
@@ -291,15 +97,6 @@ ${priorContext}`,
     return item;
   });
 
-  // R4-32 (INV-SANDBOX): Enforce sandbox policy on tool definitions BEFORE passing to LLM
-  // This ensures the LLM can only use tools that are allowed by sandbox policy
-  if (input.tools != null && input.tools.length > 0) {
-    const registry = getToolRegistry();
-    for (const toolDef of input.tools) {
-      registry.assertToolDefinitionAllowed(toolDef.name);
-    }
-  }
-
   const toolCallHistory: ToolCallResult[] = [];
   let iterations = 0;
   let lastLlmResult: LlmModelCallResult | null = null;
@@ -317,20 +114,6 @@ ${priorContext}`,
       });
 
       lastLlmResult = llmResult;
-
-      // R4-35 (INV-EVIDENCE-001): Create EvidenceRecord for LLM decision
-      // This ensures every LLM call produces immutable evidence that can be audited
-      await persistLlmDecisionEvidence({
-        llmResult,
-        messages,
-        model: modelProvider.getDefaultModel(),
-        stepId: input.stepId,
-        roleId: input.roleId,
-        harnessRunId: input.harnessRunId,
-        routingReason: input.routingReason,
-        iterations,
-        ...(llmTools != null ? { tools: llmTools } : {}),
-      });
 
       if (llmResult.toolCalls && llmResult.toolCalls.length > 0) {
         for (const toolCall of llmResult.toolCalls) {
@@ -437,9 +220,6 @@ export interface BuildStepOutputInput {
   priorSummaries: string[];
   routingReason: string;
   tools?: MultiStepToolDefinition[];
-  // R4-25 (INV-BUDGET-001): Budget tracking from validated PlanGraphBundle
-  harnessRunId: string;
-  budgetLedger: BudgetLedger;
 }
 
 export interface BuildStepOutputResult {
@@ -451,16 +231,7 @@ export interface BuildStepOutputResult {
 }
 
 export async function buildStepOutput(input: BuildStepOutputInput): Promise<BuildStepOutputResult> {
-  const loopResult = await executeAgentRoundLoop({
-    stepId: input.stepId,
-    roleId: input.roleId,
-    request: input.request,
-    priorSummaries: input.priorSummaries,
-    routingReason: input.routingReason,
-    ...(input.tools !== undefined ? { tools: input.tools } : {}),
-    harnessRunId: input.harnessRunId,
-    budgetLedger: input.budgetLedger,
-  });
+  const loopResult = await executeAgentRoundLoop(input);
   return {
     summary: loopResult.summary,
     result: loopResult.result,

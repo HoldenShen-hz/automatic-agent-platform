@@ -118,7 +118,7 @@ function parseJsonArray(value: string): string[] {
 /** Maps task priority to a numeric rank for comparison (higher = more urgent). */
 function priorityRank(priority: TaskPriority): number {
   switch (priority) {
-    case "critical":
+    case "urgent":
       return 4;
     case "high":
       return 3;
@@ -188,11 +188,10 @@ export class ExecutionPriorityPreemptionService {
    * updates workflow state for recovery, and emits preemption events.
    */
   public preemptForUrgentTicket(input: PriorityPreemptionRequest): PriorityPreemptionDecision {
-    // R6-8: Use canonical "critical" priority instead of legacy "urgent"
-    if (input.ticket.priority !== "critical") {
+    if (input.ticket.priority !== "urgent") {
       return {
         outcome: "not_preempted",
-        trace: this.buildTrace(input.ticket.priority, null, null, "ticket_not_critical"),
+        trace: this.buildTrace(input.ticket.priority, null, null, "ticket_not_urgent"),
       };
     }
 
@@ -293,12 +292,7 @@ export class ExecutionPriorityPreemptionService {
         if (priorityCompare !== 0) {
           return priorityCompare;
         }
-        // Issue #1906 P1: Use execution-level timestamp (createdAt) instead of
-        // worker-level lastProgressAt for fairer preemption ordering based on
-        // how long the execution has been running, not just worker activity.
-        const leftTime = left.execution.createdAt ?? "";
-        const rightTime = right.execution.createdAt ?? "";
-        const progressCompare = leftTime.localeCompare(rightTime);
+        const progressCompare = (left.worker.lastProgressAt ?? "").localeCompare(right.worker.lastProgressAt ?? "");
         if (progressCompare !== 0) {
           return progressCompare;
         }
@@ -394,7 +388,7 @@ export class ExecutionPriorityPreemptionService {
 
     const latestTicket = this.store.worker.listExecutionTicketsByExecution(execution.id).at(-1) ?? null;
     const candidatePriority = resolveCandidatePriority(task.priority, latestTicket);
-    if (candidatePriority === "critical") {
+    if (candidatePriority === "urgent") {
       return null;
     }
 
@@ -504,7 +498,7 @@ export class ExecutionPriorityPreemptionService {
         }),
       lastErrorCode: existing?.lastErrorCode ?? null,
       retryCount: existing?.retryCount ?? Math.max(candidate.execution.attempt - 1, 0),
-      progressMessage: `preempted by critical dispatch at ${candidate.recoveryStepId}`,
+      progressMessage: `preempted by urgent dispatch at ${candidate.recoveryStepId}`,
       startedAt: existing?.startedAt ?? candidate.execution.startedAt ?? candidate.execution.createdAt,
       createdAt: existing?.createdAt ?? occurredAt,
       updatedAt: occurredAt,

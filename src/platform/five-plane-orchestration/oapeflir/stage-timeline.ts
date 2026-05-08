@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-// §13.7: OAPEFLIR is strictly 8 stages. There is no 9th stage - knowledge_promotion
-// is a separate post-OAPEFLIR service and is not part of the OAPEFLIR loop.
-export const OapeflirStageSchema = z.enum(["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"]);
+export const OapeflirStageSchema = z.enum(["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release", "knowledge_promotion"]);
 export const OapeflirStageStatusSchema = z.enum(["completed", "skipped"]);
 
 export const OapeflirStageRecordSchema = z.object({

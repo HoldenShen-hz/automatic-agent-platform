@@ -21,7 +21,6 @@ import type {
   PromptBundleSegment,
   PromptBundleVersion,
 } from "../../contracts/prompt-bundle/index.js";
-import type * as PromptBundleContracts from "../../contracts/prompt-bundle/index.js";
 
 export interface HierarchicalPromptRegistryConfig {
   enableVersioning: boolean;
@@ -57,7 +56,7 @@ export class HierarchicalPromptRegistryService {
   private readonly packBundles = new Map<string, Map<string, PromptBundle>>();
   private readonly taskTypeBundles = new Map<string, Map<string, Map<string, PromptBundle>>>();
   private readonly versionsByName = new Map<string, Map<string, PromptBundle>>();
-  private readonly versionsByScope = new Map<string, Map<number, PromptBundle>>();
+  private readonly versionsByScope = new Map<string, Map<string, PromptBundle>>();
 
   private readonly config: HierarchicalPromptRegistryConfig;
 
@@ -67,7 +66,6 @@ export class HierarchicalPromptRegistryService {
 
   /**
    * Registers a new prompt bundle at the specified level.
-   * §16.4: Validates compatibility matrix before registration.
    */
   public registerBundle(
     input: PromptBundleRegistrationInput,
@@ -77,15 +75,11 @@ export class HierarchicalPromptRegistryService {
   ): PromptBundle {
     this.validateRegistrationInput(input);
 
-    // §16.4 FIX: Validate compatibility matrix before registration
-    this.validateBundleCompatibilityMatrix(input.compatibilityMatrix);
-
     const bundleId = this.buildBundleId(input, level, domain, packId);
     const bundle: PromptBundle = {
       bundleId,
       name: input.name,
       version: input.version,
-      displayVersion: input.displayVersion,
       domain: domain ?? input.domain,
       taskType: input.taskType,
       packId: packId ?? input.packId,
@@ -93,7 +87,6 @@ export class HierarchicalPromptRegistryService {
       userPrompt: input.userPrompt,
       fewShotExamples: input.fewShotExamples ?? [],
       constraints: this.normalizeConstraints(input.constraints),
-      compatibilityMatrix: input.compatibilityMatrix,
       metadata: this.buildMetadata(input),
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -133,10 +126,7 @@ export class HierarchicalPromptRegistryService {
     // Try domain level
     if (domain) {
       const domainEntry = this.domainBundles.get(domain)?.get(name);
-      if (domainEntry) {
-        if (domainEntry.metadata.deprecated) {
-          return null;
-        }
+      if (domainEntry && !domainEntry.metadata.deprecated) {
         return domainEntry;
       }
     }
@@ -158,14 +148,13 @@ export class HierarchicalPromptRegistryService {
     return bundles
       .map((bundle) => ({
         version: bundle.version,
-        displayVersion: bundle.displayVersion,
         isCurrent: bundle.metadata.deprecated !== true,
         isDefault: bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: bundle.metadata.trafficAllocation.weight,
         createdAt: bundle.createdAt,
         deprecated: bundle.metadata.deprecated,
       }))
-      .sort((a, b) => b.version - a.version);
+      .sort((a, b) => a.version.localeCompare(b.version));
   }
 
   /**
@@ -178,7 +167,6 @@ export class HierarchicalPromptRegistryService {
     const addFromMap = (map: Map<string, PromptBundle>) => {
       for (const bundle of map.values()) {
         if (seen.has(bundle.bundleId)) continue;
-        if (bundle.metadata.deprecated) continue;
         seen.add(bundle.bundleId);
         results.push(this.buildListResult(bundle));
       }
@@ -206,7 +194,7 @@ export class HierarchicalPromptRegistryService {
    */
   public deprecateBundle(
     name: string,
-    version: number,
+    version: string,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -219,25 +207,13 @@ export class HierarchicalPromptRegistryService {
       );
     }
 
-    // §58: Do not directly mutate "immutable" snapshot objects (issue #1955).
-    // Create a new object instead of mutating the existing bundle's metadata.
-    // R2-8 FIX: Set both deprecated flag AND lifecycleStatus per §20.6
-    const updatedBundle: PromptBundle = {
-      ...bundle,
-      metadata: {
-        ...bundle.metadata,
-        deprecated: true,
-        lifecycleStatus: "deprecated",
-      },
-      updatedAt: nowIso(),
-    };
-    this.storeVersion(updatedBundle, level, domain, packId);
-    this.refreshScopeBundle(level, updatedBundle.name, updatedBundle.taskType, domain ?? updatedBundle.domain, packId ?? updatedBundle.packId);
+    bundle.metadata.deprecated = true;
+    bundle.updatedAt = nowIso();
   }
 
   public removeBundle(
     name: string,
-    version: number,
+    version: string,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -252,14 +228,12 @@ export class HierarchicalPromptRegistryService {
         }
       }
     }
-    this.refreshScopeBundle(level, name, undefined, domain, packId);
     return removedFromScope;
   }
 
   /**
    * Gets the resolved prompt bundle considering traffic allocation.
    * Used for A/B testing scenarios.
-   * R16-15 FIX: Incorporates runVersionLock to ensure consistent bundle selection per run.
    */
   public resolveBundleForTraffic(
     name: string,
@@ -267,7 +241,6 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
     domain?: string,
     trafficKey?: string,
-    runVersionLock?: { runVersionLockId: string } | null,
   ): PromptBundle | null {
     const candidates = this.getResolvedScopeBundles(name, taskType, packId, domain);
     if (candidates.length === 0) {
@@ -280,20 +253,17 @@ export class HierarchicalPromptRegistryService {
 
     const activeCandidates = candidates.filter((bundle) => this.isBundleTrafficActive(bundle));
     const eligible = activeCandidates.length > 0 ? activeCandidates : candidates;
-    // §16.2: Normalize weights so they sum to 100, preventing slots above total from永不匹配
-    const rawWeights = eligible.map((bundle) => Math.max(0, bundle.metadata.trafficAllocation.weight));
-    const totalWeight = rawWeights.reduce((sum, w) => sum + w, 0);
+    const totalWeight = eligible.reduce((sum, bundle) => sum + Math.max(0, bundle.metadata.trafficAllocation.weight), 0);
     if (totalWeight <= 0) {
       return this.selectDefaultBundle(eligible);
     }
 
-    const normalizedWeights = rawWeights.map((w) => (w / totalWeight) * 100);
-    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`, runVersionLock);
+    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
     let cursor = 0;
-    for (let i = 0; i < eligible.length; i++) {
-      cursor += normalizedWeights[i]!;
+    for (const bundle of eligible) {
+      cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);
       if (slot < cursor) {
-        return eligible[i]!;
+        return bundle;
       }
     }
     return this.selectDefaultBundle(eligible);
@@ -309,7 +279,7 @@ export class HierarchicalPromptRegistryService {
     if (domain) parts.push(domain);
     if (packId) parts.push(packId);
     parts.push(input.name);
-    parts.push(String(input.version));
+    parts.push(input.version);
     return parts.join(":");
   }
 
@@ -317,8 +287,8 @@ export class HierarchicalPromptRegistryService {
     if (!input.name?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_name", "Bundle name must be non-empty");
     }
-    if (!Number.isInteger(input.version) || input.version <= 0) {
-      throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be a positive integer");
+    if (!input.version?.trim()) {
+      throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be non-empty");
     }
     if (!input.domain?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_domain", "Bundle domain must be non-empty");
@@ -328,37 +298,6 @@ export class HierarchicalPromptRegistryService {
     }
     if (!input.systemPrompt?.content?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_system_prompt", "System prompt content must be non-empty");
-    }
-  }
-
-  /**
-   * §16.4 FIX: Validates compatibility matrix covers all required dimensions.
-   * Raises ValidationError if any required matrix dimension is missing or empty.
-   */
-  private validateBundleCompatibilityMatrix(matrix: PromptBundleContracts.PromptBundleCompatibilityMatrix): void {
-    if (!matrix.toolSchemaVersions || matrix.toolSchemaVersions.length === 0) {
-      throw new ValidationError(
-        "prompt_bundle.missing_compatibility_matrix",
-        "compatibilityMatrix.toolSchemaVersions is required per §16.4",
-      );
-    }
-    if (!matrix.evaluatorSchemaVersions || matrix.evaluatorSchemaVersions.length === 0) {
-      throw new ValidationError(
-        "prompt_bundle.missing_compatibility_matrix",
-        "compatibilityMatrix.evaluatorSchemaVersions is required per §16.4",
-      );
-    }
-    if (!matrix.domainDescriptorVersions || matrix.domainDescriptorVersions.length === 0) {
-      throw new ValidationError(
-        "prompt_bundle.missing_compatibility_matrix",
-        "compatibilityMatrix.domainDescriptorVersions is required per §16.4",
-      );
-    }
-    if (!matrix.modelRoutingProfiles || matrix.modelRoutingProfiles.length === 0) {
-      throw new ValidationError(
-        "prompt_bundle.missing_compatibility_matrix",
-        "compatibilityMatrix.modelRoutingProfiles is required per §16.4",
-      );
     }
   }
 
@@ -388,8 +327,6 @@ export class HierarchicalPromptRegistryService {
     return {
       owner: input.metadata?.owner ?? "system",
       deprecated: input.metadata?.deprecated ?? false,
-      lifecycleStatus: input.metadata?.lifecycleStatus
-        ?? (input.metadata?.deprecated ? "deprecated" : "active"),
       tags: input.metadata?.tags ?? [],
       compatibilityTags: input.metadata?.compatibilityTags ?? [],
       trafficAllocation: input.metadata?.trafficAllocation ?? {
@@ -450,26 +387,32 @@ export class HierarchicalPromptRegistryService {
 
   private findBundle(
     name: string,
-    version: number,
+    version: string,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
   ): PromptBundle | null {
-    const scopeKey = this.buildScopeKey(name, level, undefined, domain, packId);
-    const scopeBundles = this.versionsByScope.get(scopeKey);
-    if (!scopeBundles) {
-      return null;
+    switch (level) {
+      case "global":
+        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId));
+      case "domain":
+        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
+      case "pack":
+        return packId ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
+      case "task-type":
+        if (packId && domain) {
+          const scopeKey = this.buildScopeKey(name, level, domain, domain, packId);
+          return this.findCurrentScopeBundle(scopeKey);
+        }
+        return null;
     }
-    // R16-16 FIX: Respect version parameter when deprecating — only mark the exact version
-    const bundle = scopeBundles.get(version);
-    return bundle && !bundle.metadata.deprecated ? bundle : null;
   }
 
   private buildListResult(bundle: PromptBundle): PromptBundleListResult {
     return {
       bundle,
       availableVersions: this.listBundleVersions(bundle.name),
-      currentVersion: bundle.displayVersion,
+      currentVersion: bundle.version,
     };
   }
 
@@ -494,13 +437,7 @@ export class HierarchicalPromptRegistryService {
     for (const scopeKey of scopeKeys) {
       const bundles = [...(this.versionsByScope.get(scopeKey)?.values() ?? [])]
         .filter((bundle) => bundle.metadata.deprecated !== true)
-        .sort((left, right) => {
-          const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
-          if (createdAtOrder !== 0) {
-            return createdAtOrder;
-          }
-          return right.version - left.version;
-        });
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
       if (bundles.length > 0) {
         return bundles;
       }
@@ -535,20 +472,14 @@ export class HierarchicalPromptRegistryService {
         if (weightOrder !== 0) {
           return weightOrder;
         }
-        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
-        if (createdAtOrder !== 0) {
-          return createdAtOrder;
-        }
-        return right.version - left.version;
+        return right.createdAt.localeCompare(left.createdAt);
       });
     return eligible[0] ?? null;
   }
 
-  private computeTrafficSlot(key: string, runVersionLock?: { runVersionLockId: string } | null): number {
+  private computeTrafficSlot(key: string): number {
     let hash = 0;
-    // R16-15 FIX: Include runVersionLock in hash for consistent bundle selection per run
-    const effectiveKey = runVersionLock ? `${key}:${runVersionLock.runVersionLockId}` : key;
-    for (const char of effectiveKey) {
+    for (const char of key) {
       hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
     }
     return hash % 100;
@@ -567,78 +498,5 @@ export class HierarchicalPromptRegistryService {
 
   private findCurrentScopeBundle(scopeKey: string): PromptBundle | null {
     return this.selectDefaultBundle([...(this.versionsByScope.get(scopeKey)?.values() ?? [])]);
-  }
-
-  private refreshScopeBundle(
-    level: RegistryLevel,
-    name: string,
-    taskType?: string,
-    domain?: string,
-    packId?: string,
-  ): void {
-    const scopeKey = this.buildScopeKey(name, level, taskType, domain, packId);
-    const current = this.findCurrentScopeBundle(scopeKey);
-    switch (level) {
-      case "global":
-        if (current == null) {
-          this.globalBundles.delete(name);
-        } else {
-          this.globalBundles.set(name, current);
-        }
-        break;
-      case "domain": {
-        const key = domain ?? "";
-        const scope = this.domainBundles.get(key);
-        if (scope == null) {
-          break;
-        }
-        if (current == null) {
-          scope.delete(name);
-        } else {
-          scope.set(name, current);
-        }
-        if (scope.size === 0) {
-          this.domainBundles.delete(key);
-        }
-        break;
-      }
-      case "pack": {
-        const key = packId ?? "";
-        const scope = this.packBundles.get(key);
-        if (scope == null) {
-          break;
-        }
-        if (current == null) {
-          scope.delete(name);
-        } else {
-          scope.set(name, current);
-        }
-        if (scope.size === 0) {
-          this.packBundles.delete(key);
-        }
-        break;
-      }
-      case "task-type": {
-        const packKey = packId ?? "";
-        const typeKey = taskType ?? "";
-        const packScope = this.taskTypeBundles.get(packKey);
-        const typeScope = packScope?.get(typeKey);
-        if (typeScope == null) {
-          break;
-        }
-        if (current == null) {
-          typeScope.delete(name);
-        } else {
-          typeScope.set(name, current);
-        }
-        if (typeScope.size === 0) {
-          packScope?.delete(typeKey);
-        }
-        if (packScope?.size === 0) {
-          this.taskTypeBundles.delete(packKey);
-        }
-        break;
-      }
-    }
   }
 }

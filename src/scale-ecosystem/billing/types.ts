@@ -1,6 +1,5 @@
 import type { ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";
 import type { BillingPaymentGateway } from "./billing-payment-gateway.js";
-import type { FxRateService } from "./billing-service.js";
 import type {
   BillingMetricType,
   BillingPlanCatalog,
@@ -71,11 +70,6 @@ export interface RecordUsageInput {
   /** @deprecated legacy projection identifier; use nodeRunId */
   stepId?: string | null;
   metricType: BillingMetricType;
-  /** Multi-dimensional usage dimensions for granular tracking per §53.2 */
-  metricDimensions?: ReadonlyArray<{
-    readonly dimensionKey: string;
-    readonly dimensionValue: string;
-  }>;
   quantity: number;
   source: BillingUsageSource;
   capturedAt?: string;
@@ -96,8 +90,6 @@ export interface RecordUsageResult {
   budgetReservation?: BudgetReservation;
   budgetSettlement?: BudgetSettlement;
   budgetLedger?: BudgetLedger;
-  /** Multi-dimensional quota counters updated per §53.2 */
-  dimensionQuotaCounters?: ReadonlyArray<QuotaCounterRecord>;
 }
 
 export interface BillingAccountSummary {
@@ -190,8 +182,6 @@ export interface BillingServiceOptions {
   sandboxPolicy?: SandboxPolicy;
   policyVersion?: string;
   paymentGateway?: BillingPaymentGateway;
-  /** R8-15 FIX: FX rate service for multi-currency support per §18.4 */
-  fxRateService?: FxRateService;
 }
 
 export interface CreateBillingAdjustmentInput {

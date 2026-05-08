@@ -15,31 +15,7 @@ function isInsideGitRepo(): boolean {
 import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-  setToolRegistryBudgetLedger,
 } from "../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { createBudgetLedger } from "../../../src/platform/contracts/executable-contracts/index.js";
-
-// ---------------------------------------------------------------------------
-// Test setup and teardown
-// ---------------------------------------------------------------------------
-
-test.beforeEach(() => {
-  // R4-25: Set up budget ledger for tool execution tests
-  const ledger = createBudgetLedger({
-    tenantId: "tenant:dispatcher-test",
-    harnessRunId: "harness_run:dispatcher-test",
-    currency: "USD",
-    hardCap: 1000,
-    reservedAmount: 0,
-    settledAmount: 0,
-    releasedAmount: 0,
-  });
-  setToolRegistryBudgetLedger(ledger);
-});
-
-test.afterEach(() => {
-  resetMultiStepToolRegistryForTests();
-});
 
 test("multi-step tool registry executes repo-map searches", async () => {
   resetMultiStepToolRegistryForTests();

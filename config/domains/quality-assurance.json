@@ -3,11 +3,6 @@
   "phase": "9c",
   "divisionId": "engineering_ops",
   "latencyTier": "near_realtime",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "quality-assurance.primary",
     "rollout": "baseline"

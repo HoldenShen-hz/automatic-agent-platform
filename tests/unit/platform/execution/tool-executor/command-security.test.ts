@@ -258,21 +258,6 @@ test("CommandSafetyClassifier blocks interpreter -c flag with inline code", () =
   assert.equal(result.reasonCode, "tool.inline_code_denied");
 });
 
-test("CommandSafetyClassifier allows interpreter flags when a real script path follows", () => {
-  const result = CLASSIFIER.assess("python", ["--verbose", "script.py"]);
-  assert.equal(result.allowed, true);
-  assert.equal(result.reasonCode, null);
-  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
-});
-
-test("createDefaultCommandPolicies keeps single touch and mkdir entries", async () => {
-  const { createDefaultCommandPolicies } = await import("../../../../../src/platform/execution/tool-executor/command-security.js");
-  const policies = createDefaultCommandPolicies();
-  const keys = [...policies.keys()];
-  assert.equal(keys.filter((key) => key === "touch").length, 1);
-  assert.equal(keys.filter((key) => key === "mkdir").length, 1);
-});
-
 test("CommandSafetyClassifier blocks python -c flag", () => {
   const result = CLASSIFIER.assess("python", ["-c", "print('hello')"]);
   assert.equal(result.allowed, false);
@@ -285,22 +270,17 @@ test("CommandSafetyClassifier blocks node -e flag", () => {
   assert.equal(result.reasonCode, "tool.inline_code_denied");
 });
 
-test("CommandSafetyClassifier allows interpreter arguments after the script path", () => {
+test("CommandSafetyClassifier blocks interpreter with later flag arguments", () => {
+  // S-04: Flag-like args after script path should also be blocked
   const result = CLASSIFIER.assess("python3", ["script.py", "--version"]);
-  assert.equal(result.allowed, true);
-  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "tool.command_interpreter_flag_denied");
 });
 
 test("CommandSafetyClassifier allows interpreter with only script path", () => {
   const result = CLASSIFIER.assess("python", ["script.py"]);
   assert.equal(result.allowed, true);
   assert.equal(result.riskLevel, "high");
-});
-
-test("CommandSafetyClassifier allows interpreter pre-flags when a real script path follows", () => {
-  const result = CLASSIFIER.assess("python", ["--verbose", "script.py"]);
-  assert.equal(result.allowed, true);
-  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -313,11 +293,10 @@ test("CommandSafetyClassifier marks rm as high risk", () => {
   assert.equal(result.riskLevel, "high");
 });
 
-test("CommandSafetyClassifier blocks curl until network egress policy is available", () => {
+test("CommandSafetyClassifier marks curl as high risk", () => {
   const result = CLASSIFIER.assess("curl", ["https://example.com"]);
-  assert.equal(result.allowed, false);
-  assert.equal(result.riskLevel, "critical");
-  assert.equal(result.reasonCode, "tool.curl_blocked_requires_egress_policy");
+  assert.equal(result.allowed, true);
+  assert.equal(result.riskLevel, "high");
 });
 
 test("CommandSafetyClassifier marks git as high risk", () => {

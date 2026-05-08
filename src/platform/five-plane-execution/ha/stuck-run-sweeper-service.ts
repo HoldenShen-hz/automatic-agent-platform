@@ -404,7 +404,6 @@ export class StuckRunSweeperService implements RecoveryWorker {
     this.intervalHandle = setInterval(() => {
       void this.doSweepCycle();
     }, this.config.sweepIntervalMs);
-    this.intervalHandle.unref?.();
   }
 
   /**
@@ -557,9 +556,12 @@ export class StuckRunSweeperService implements RecoveryWorker {
    * Kills a stuck run.
    */
   private async killRun(run: StuckRun): Promise<boolean> {
+    run.status = "killed";
+    run.killedAt = nowIso();
+    this.metrics.totalKilled++;
+
     try {
       // Call the kill callback if provided
-      let killCallbackSucceeded = true;
       if (this.onKillExecution) {
         const success = await this.onKillExecution(
           run.executionId,
@@ -571,19 +573,8 @@ export class StuckRunSweeperService implements RecoveryWorker {
             message: "stuck_run_sweeper.kill_callback_failed",
             data: { executionId: run.executionId },
           });
-          killCallbackSucceeded = false;
         }
       }
-
-      // §209-2476: Only mark as killed after successful callback completion
-      // If callback failed, do not pollute run state
-      if (!killCallbackSucceeded) {
-        return false;
-      }
-
-      run.status = "killed";
-      run.killedAt = nowIso();
-      this.metrics.totalKilled++;
 
       this.onRunKilled?.(run);
 

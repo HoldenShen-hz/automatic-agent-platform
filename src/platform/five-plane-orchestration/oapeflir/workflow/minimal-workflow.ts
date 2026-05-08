@@ -58,24 +58,10 @@ export type CompensationModel =
  * Each step is assigned to a role and produces an output under a specified key.
  * Steps can declare dependencies on other steps, creating a directed acyclic graph
  * of execution order.
- *
- * R19-09 fix: Extended with optional rich metadata fields from PlanNode to preserve
- * riskClass, budgetIntent, sideEffectProfile, and nodeType through the orchestration pipeline.
- * These fields were previously lost when buildOapeflirPlannedWorkflow converted
- * PlanNode[] to MinimalWorkflowStep[], bypassing the validated PlanGraphBundle.
  */
 export interface MinimalWorkflowStep {
-  /**
-   * Canonical node identifier per §5.5.
-   * This is the primary identifier for workflow nodes.
-   */
-  nodeId: string;
-  /**
-   * @deprecated Legacy step identifier per §5.5.
-   * Use nodeId for canonical correlation. This field is retained
-   * for backward compatibility with legacy workflow definitions.
-   */
-  stepId?: string;
+  /** Unique identifier for this step within the workflow */
+  stepId: string;
   /** Division that owns the step execution. Defaults to the workflow's division when omitted. */
   divisionId?: string | null;
   /** Role that will execute this step (determines available tools and permissions) */
@@ -90,12 +76,9 @@ export interface MinimalWorkflowStep {
   timeoutMs: number;
   /** Maximum number of execution attempts on failure */
   maxAttempts: number;
-  /**
-   * @deprecated Use dependsOnNodeIds per §5.5.
-   * Node IDs this step depends on (will not execute until all dependencies complete)
-   */
+  /** Step IDs this step depends on (will not execute until all dependencies complete) */
   dependsOnStepIds?: readonly string[];
-  /** Dependency type per upstream node ID. Defaults to "hard" if not specified.
+  /** Dependency type per upstream step ID. Defaults to "hard" if not specified.
    *  - "hard": downstream is skipped if upstream fails/is skipped
    *  - "soft": downstream still executes; missing input filled with null */
   dependencyTypes?: Readonly<Record<string, "hard" | "soft">>;
@@ -105,22 +88,6 @@ export interface MinimalWorkflowStep {
    *  - "compensating_action": a reverse action undoes the side effect
    *  - "manual_reconciliation_required": human intervention needed on failure */
   compensationModel?: CompensationModel;
-
-  // R19-09 fix: Rich metadata from PlanNode preserved through orchestration pipeline
-  /** Node type from the original PlanNode (e.g. "llm", "tool", "subgraph") */
-  nodeType?: import("../../../../platform/contracts/executable-contracts/index.js").PlanNodeType;
-  /** Risk class from the original PlanNode - controls execution isolation and review requirements */
-  riskClass?: import("../../../../platform/contracts/executable-contracts/index.js").RiskClass;
-  /** Budget intent from the original PlanNode - token and compute budget allocation */
-  budgetIntent?: import("../../../../platform/contracts/executable-contracts/index.js").BudgetIntent;
-  /** Side effect profile from the original PlanNode - external effect and reversibility info */
-  sideEffectProfile?: import("../../../../platform/contracts/executable-contracts/index.js").SideEffectProfile;
-  /** Retry policy reference from the original PlanNode */
-  retryPolicyRef?: string;
-  // R4-26 (INV-GRAPH-001): Preserve original roleId for execution after PlanNode conversion
-  // When MinimalWorkflowStep is converted to PlanNode, roleId is converted to nodeType.
-  // This field preserves the original roleId for tool exposure resolution.
-  executionRoleId?: string;
 }
 
 /**
@@ -151,7 +118,7 @@ export const SINGLE_AGENT_MINIMAL_WORKFLOW: MinimalWorkflowDefinition = {
   divisionId: "general_ops",
   steps: [
     {
-      nodeId: "analyze_request",
+      stepId: "analyze_request",
       roleId: "general_executor",
       outputKey: "analysis",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
@@ -177,7 +144,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
   divisionId: "general_ops",
   steps: [
     {
-      nodeId: "intake_triage",
+      stepId: "intake_triage",
       roleId: "intake_router",
       outputKey: "triage",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
@@ -186,7 +153,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       compensationModel: "idempotent_replay",
     },
     {
-      nodeId: "draft_solution",
+      stepId: "draft_solution",
       roleId: "general_executor",
       inputKeys: ["triage"],
       outputKey: "draft",
@@ -197,7 +164,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       compensationModel: "idempotent_replay",
     },
     {
-      nodeId: "final_review",
+      stepId: "final_review",
       roleId: "workflow_planner",
       inputKeys: ["draft"],
       outputKey: "final",

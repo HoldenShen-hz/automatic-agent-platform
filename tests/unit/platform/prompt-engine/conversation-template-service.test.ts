@@ -122,45 +122,6 @@ test("ConversationTemplateExecutor completes conversation", () => {
   assert.ok(conversation?.nextPrompt === undefined);
 });
 
-test("ConversationTemplateExecutor.next returns the existing conversation when template is no longer available mid-flow", () => {
-  const registry = new ConversationTemplateRegistry();
-  registry.register({
-    templateId: "missing_mid_flow",
-    name: "Missing Mid Flow",
-    description: "Template removed after start",
-    intent: "task_create",
-    steps: [
-      {
-        stepId: "step1",
-        prompt: "step1",
-        isRequired: true,
-        expectedEntities: [],
-        allowSkip: false,
-      },
-      {
-        stepId: "step2",
-        prompt: "step2",
-        isRequired: true,
-        expectedEntities: [],
-        allowSkip: false,
-      },
-    ],
-    isActive: true,
-  });
-
-  const executor = new ConversationTemplateExecutor(registry);
-  const conversation = executor.start("missing_mid_flow");
-  assert.ok(conversation !== null);
-
-  const originalGet = registry.get.bind(registry);
-  (registry as { get: (templateId: string) => ConversationTemplate | undefined }).get = (templateId: string) =>
-    templateId === "missing_mid_flow" ? undefined : originalGet(templateId);
-
-  const advanced = executor.next(conversation!, "response");
-  assert.equal(advanced, conversation);
-  assert.equal(advanced.currentStepIndex, 0);
-});
-
 test("ConversationTemplateExecutor tracks progress", () => {
   const executor = new ConversationTemplateExecutor();
 

@@ -1,8 +1,7 @@
 # Event Bus Contract
 
-> **v4.3 兼容说明**：本文件定义总线语义、命名空间和消费约束。`EventEnvelope` canonical 字段以 [event-envelope-contract.md](./event-envelope-contract.md) 为准；truth event 只能使用 `platform.*`，`oapeflir.view.*` / `oapeflir.rationale.*` 只作为 projection。
-
-> **更新日期**：2026-05-01
+> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR 8 阶段的事件总线机制，对应 ADR-016 §双链拓扑 和 ADR-079/ADR-080。
+> **更新日期**：2026-04-17
 
 ## 1. 范围
 
@@ -10,41 +9,50 @@
 
 ## 2. 关键对象
 
+- `BusEvent`
 - `EventEnvelope`
 - `EventTier`
 - `EventConsumerAck`
 - `EventSchemaRegistry`
-- `RegisteredEventType`
+- `LoopEventEnvelope`
 
-## 3. EventEnvelope 与关联锚点
-
-canonical `EventEnvelope` 字段见 [event-envelope-contract.md](./event-envelope-contract.md)。
-
-本层额外约束：
-
-- truth event 的关联锚点必须使用 `runId + aggregateType + aggregateId + aggregateSeq`。
-- 若 payload 需要暴露具体运行链对象，必须优先使用 `harnessRunId`、`nodeRunId`、`planGraphId`、`attemptId`。
-- `task_id`、`workflow_id`、`execution_id` 只允许出现在 legacy compatibility adapter 中，不得作为新事件 payload 的主关联字段。
-- `EventEnvelope` 只描述事件本体，不承载某个消费者的消费状态。
-- 多消费者确认必须通过独立 ack 记录表达，不能复用单个 `consumed_at` 字段。
-
-## 4. EventConsumerAck
+## 3. EventEnvelope 最小字段
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `ackId` | `string` | ack 记录 ID |
-| `eventId` | `string` | 目标事件 |
-| `consumerId` | `string` | 消费者稳定标识 |
+| `id` | `string` | 事件唯一 ID |
+| `type` | `string` | 事件类型 |
+| `tier` | `tier1 \| tier2 \| tier3` | 可靠性等级 |
+| `task_id` | `string?` | 关联任务 |
+| `session_id` | `string?` | 关联会话 |
+| `loop_iteration` | `integer?` | OAPEFLIR 第几轮 |
+| `stage` | `string?` | 关联 OAPEFLIR stage |
+| `trace_id` | `string?` | 链路追踪 ID |
+| `payload` | `json` | 事件正文 |
+| `created_at` | `timestamp` | 创建时间 |
+
+规则：
+
+- `EventEnvelope` 只描述事件本体，不承载某个消费者的消费状态。
+- 多消费者确认必须通过独立的 ack 记录表达，不能复用单个 `consumed_at` 字段。
+
+## 4. `EventConsumerAck` 最小字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `ack_id` | `string` | ack 记录 ID |
+| `event_id` | `string` | 目标事件 |
+| `consumer_id` | `string` | 消费者稳定标识 |
 | `status` | `pending \| acked \| failed \| skipped` | 消费状态 |
-| `lastAttemptAt` | `timestamp?` | 最近尝试时间 |
-| `ackedAt` | `timestamp?` | 确认时间 |
-| `errorCode` | `string?` | 最近失败原因 |
+| `last_attempt_at` | `timestamp?` | 最近尝试时间 |
+| `acked_at` | `timestamp?` | 确认时间 |
+| `error_code?` | `string` | 最近失败原因 |
 
 规则：
 
 - Tier 1 事件提交时，必须按注册表为所有必需消费者初始化 `pending` ack 记录。
-- `consumerId` 必须是稳定标识，重启后不得随机变化。
-- 重复 ack 同一 `eventId + consumerId` 默认视为幂等更新，而不是新消费事实。
+- `consumer_id` 必须是稳定标识，重启后不得随机变化。
+- 重复 ack 同一 `event_id + consumer_id` 默认视为幂等更新，而不是新消费事实。
 
 ## 5. 可靠性分级
 
@@ -54,59 +62,50 @@ canonical `EventEnvelope` 字段见 [event-envelope-contract.md](./event-envelop
 
 ## 6. 事件命名约定
 
-统一采用：`<namespace>.<aggregate_or_domain>.<action>`
+统一采用：`<domain><separator><action>`
+
+当前口径：
+
+- 面向业务 / 闭环 / 用户语义的事件，canonical 命名使用点号：`domain.action`。
+- 历史 dispatch / worker / recovery / skill 运维事件当前保留冒号格式：`domain:action`。
+- 新增 OAPEFLIR、feedback、improve、release 类事件不得再引入新的冒号命名。
+
+Ring 1 之后仍保留的稳定事件类型至少包括：
+
+- `platform.task.status_changed`
+- `platform.node.completed`
+- `approval.requested`
+- `approval.resolved`
+- `feedback.signal_received`
+- `learn.object_created`
+- `learn.object_promoted`
+- `improve.candidate_proposed`
+- `improve.candidate_accepted`
+- `release.rollout_started`
+- `release.rollout_completed`
+- `release.rollback_triggered`
+- `loop.iteration_completed`
+- `platform.gateway.message_received`
+- `platform.stream.chunk_emitted`
+- `dispatch:ticket_created`
+- `dispatch:ticket_claimed`
+- `dispatch:decision_recorded`
+- `worker:claim_accepted`
+- `worker:writeback_recorded`
+- `takeover:initiated`
+- `takeover:completed`
+- `recovery:started`
+- `recovery:completed`
+- `skill:execution_started`
+- `skill:execution_completed`
+
+完整注册表见 `event_registry_and_ops_threshold_contract.md`。
 
 规则：
 
-- truth event namespace 只能是 `platform.*`。
-- OAPEFLIR 视图 / 解释事件只能是 `oapeflir.view.*` 或 `oapeflir.rationale.*`。
-- `dispatch:*` / `worker:*` / `takeover:*` / `recovery:*` / `skill:*` 可以继续作为运维诊断或 compatibility 事件存在，但不得冒充 truth fact。
-- 新增 event type 不得再把 `task.*`、`workflow.*`、`execution.*` 作为 canonical 运行事实命名。
-
-Ring 1 之后仍保留的稳定 canonical 事件类型至少包括：
-
-- `platform.harness_run.created`
-- `platform.harness_run.admitted`
-- `platform.harness_run.planning`
-- `platform.harness_run.ready`
-- `platform.harness_run.status_changed`
-- `platform.harness_run.completed`
-- `platform.harness_run.aborted`
-- `platform.node_run.created`
-- `platform.node_run.admitted`
-- `platform.node_run.ready`
-- `platform.node_run.status_changed`
-- `platform.node_run.completed`
-- `platform.node_run.failed`
-- `platform.node_run.skipped`
-- `platform.budget.reservation_created`
-- `platform.budget.reservation_released`
-- `platform.budget.exhausted`
-- `platform.release.started`
-- `platform.release.completed`
-- `platform.release.rollback_triggered`
-- `platform.approval.requested`
-- `platform.approval.resolved`
-- `platform.feedback.signal_received`
-- `platform.learn.object_created`
-- `platform.learn.object_promoted`
-- `platform.improve.candidate_proposed`
-- `platform.improve.candidate_accepted`
-- `platform.loop.iteration_completed`
-- `oapeflir.view.observe.signals_collected`
-- `oapeflir.view.assess.evaluation_completed`
-- `oapeflir.view.plan.proposal_created`
-
-legacy / compatibility 映射：
-
-- `platform.harness.run.*` -> `platform.harness_run.*`
-- `platform.node.run.*` -> `platform.node_run.*`
-- `approval.*` -> `platform.approval.*`（若承载 truth fact）
-- `feedback.*` -> `platform.feedback.*`（若承载 truth fact）
-- `learn.*` -> `platform.learn.*`（若承载 truth fact）
-- `improve.*` -> `platform.improve.*`（若承载 truth fact）
-- `release.*` -> `platform.release.*`（若承载 truth fact）
-- `loop.*` -> `platform.loop.*`（若承载 truth fact）
+- `domain` 使用稳定名词，不使用实现细节词。
+- `action` 使用过去式或完成态语义，避免模糊词。
+- 新事件类型进入实现前必须先登记到 schema 注册表。
 
 ## 7. Event Schema Registry
 
@@ -114,31 +113,31 @@ legacy / compatibility 映射：
 
 - `type`
 - `tier`
-- `payloadSchemaRef`
+- `payload_schema`
 - `producer`
 - `consumers`
-- `compatibilityPolicy`
 - `notes?`
 
 规则：
 
-- `payloadSchemaRef` 是 authoritative schema。
+- `payload_schema` 是 authoritative schema。
 - producer 和 consumer 都不得依赖未注册事件类型。
 - schema 破坏性变更必须走显式版本演进或新类型。
 
-当前 OAPEFLIR 闭环最少要求以下事件具有显式 schema：
+当前 OAPEFLIR 闭环最少要求以下投影视图事件具有显式 schema：
 
-- `platform.harness_run.status_changed`
-- `platform.node_run.status_changed`
-- `platform.release.started`
-- `platform.release.completed`
-- `platform.release.rollback_triggered`
-- `platform.feedback.signal_received`
-- `platform.learn.object_created`
-- `platform.improve.candidate_proposed`
 - `oapeflir.view.observe.signals_collected`
 - `oapeflir.view.assess.evaluation_completed`
 - `oapeflir.view.plan.proposal_created`
+- `feedback.signal_received`
+- `learn.object_created`
+- `learn.object_promoted`
+- `improve.candidate_proposed`
+- `improve.candidate_accepted`
+- `release.rollout_started`
+- `release.rollout_completed`
+- `release.rollback_triggered`
+- `loop.iteration_completed`
 
 ## 8. StreamBridge 与 EventBus 边界
 
@@ -153,7 +152,7 @@ legacy / compatibility 映射：
 - 消费方必须是幂等的。
 - 事件类型应稳定命名，不频繁变更。
 - stream 类高频事件不应强制走重型持久化路径。
-- Tier 1 若存在多个消费者，必须按 `eventId + consumerId` 分别确认。
+- Tier 1 若存在多个消费者，必须按 `event_id + consumer_id` 分别确认。
 - 单个消费者的失败不得覆盖其他消费者的确认状态。
 - 启动补发时，必须只重放仍处于 `pending / failed` 的目标消费者，而不是重新广播给所有已确认消费者。
 
@@ -168,4 +167,3 @@ legacy / compatibility 映射：
 
 - 事件注册表在文档层 authoritative，代码层应映射到集中 schema registry 模块。
 - 升级到跨进程总线时，事件类型名、tier 和 payload schema 保持不变，变化只发生在 transport 层。
-- `release.*` 裸命名空间既不是 v4.3 truth namespace，也不是 OAPEFLIR 视图 namespace；若仍存在，必须在边界层显式映射到 `platform.release.*` 或 `oapeflir.view.release.*`。

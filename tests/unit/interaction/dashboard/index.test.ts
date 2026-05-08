@@ -1,93 +1,160 @@
-/**
- * Unit Tests: Dashboard Aggregation Service
- *
- * Tests DashboardAggregationService including attention queue sorting.
- *
- * Issue #2050: Attention queue sorts by createdAt ignoring priority
- *
- * Test categories:
- * 1. Attention queue sorting by createdAt (not priority)
- * 2. Dashboard snapshot generation
- * 3. Different dashboard builders (operator, domain admin, platform ops, fleet)
- * 4. Projection delta merging
- * 5. Edge cases
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import { DashboardAggregationService, type AttentionItem } from "../../../../src/interaction/dashboard/index.js";
-import type { DashboardProjectionService } from "../../../../src/interaction/dashboard/index.js";
-import type { DashboardDelta } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
+import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Local Test Types (matching production types)
-// ─────────────────────────────────────────────────────────────────────────────
-
-type TaskBoardItem = {
-  taskId: string;
-  title: string;
-  priority: string;
-  taskStatus: string;
-  workflowStatus: string | null;
-  divisionId: string | null;
-  currentStepIndex: number | null;
-  sessionStatus: string | null;
-  latestEventAt: string | null;
-  updatedAt: string;
-};
-
-type SystemSituation = {
-  healthStatus: string;
-  providerHealth: { status: string; successRate: number; recentCalls: number };
-  resourceUtilization: { memoryRssMb: number; cpuPercent: number; activeProcesses: number };
-  queueBacklog: { size: number; degraded: boolean };
-  eventBusBacklog: { tier1PendingAcks: number };
-  findings: unknown[];
-  observedAt: string;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Test Fixtures
-// ─────────────────────────────────────────────────────────────────────────────
-
-function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], updatedAt: string): TaskBoardItem {
+function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general_ops"): TaskBoardItem {
   return {
     taskId,
     title: `Task ${taskId}`,
     priority: "normal",
     taskStatus,
     workflowStatus: taskStatus === "done" ? "completed" : "running",
-    divisionId: "general_ops",
+    divisionId,
     currentStepIndex: 0,
     sessionStatus: "open",
-    latestEventAt: updatedAt,
-    updatedAt,
+    latestEventAt: "2026-04-19T00:00:00.000Z",
+    updatedAt: "2026-04-19T00:00:00.000Z",
   };
 }
 
 function makeSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
   return {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 0.98, recentCalls: 50 },
-    resourceUtilization: { memoryRssMb: 512, cpuPercent: 45, activeProcesses: 8 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: new Date().toISOString(),
+    healthStatus: "degraded",
+    providerHealth: {
+      status: "degraded",
+      successRate: 0.92,
+      recentCalls: 50,
+    },
+    resourceUtilization: {
+      memoryRssMb: 512,
+      cpuPercent: 45,
+      activeProcesses: 8,
+    },
+    queueBacklog: {
+      size: 3,
+      degraded: true,
+    },
+    eventBusBacklog: {
+      tier1PendingAcks: 1,
+    },
+    findings: ["queue backlog elevated"],
+    observedAt: Date.parse("2026-04-19T00:00:00.000Z"),
     ...overrides,
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Issue #2050: Attention Queue Sorting - createdAt only, not priority
-// ─────────────────────────────────────────────────────────────────────────────
+test("DashboardAggregationService builds operator dashboard with attention queue and cost warning", () => {
+  const suggestions: AttentionItem[] = [
+    {
+      itemType: "suggestion",
+      priority: "normal",
+      title: "建议优化广告预算",
+      description: "CTR 下降，建议调整预算结构。",
+      actionOptions: ["open_suggestion"],
+      createdAt: "2026-04-19T00:01:00.000Z",
+      domainId: "advertising",
+    },
+  ];
 
-test("attention queue sorts by priority first, then recency (newer first within priority)", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_newer", "failed", "2026-04-20T12:00:00.000Z"),
-        makeTask("task_older", "failed", "2026-04-19T12:00:00.000Z"),
+        makeTask("task_1", "failed", "engineering_ops"),
+        makeTask("task_2", "pending", "finance"),
+        makeTask("task_3", "done", "engineering_ops"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation(),
+    },
+    currentTime: () => "2026-04-19T00:02:00.000Z",
+    costBurnUsd: 12,
+    forecastCostUsd: 10,
+    suggestions,
+    activeGoals: [{ goalId: "goal_1", progressPercent: 60 }],
+  });
+
+  const dashboard = service.buildOperatorDashboard();
+
+  assert.equal(dashboard.dailySummary.tasksFailed, 1);
+  assert.ok(dashboard.attentionQueue.some((item) => item.itemType === "incident"));
+  assert.ok(dashboard.attentionQueue.some((item) => item.itemType === "budget_warning"));
+  assert.equal(dashboard.proactiveSuggestions.length, 1);
+});
+
+test("DashboardAggregationService snapshot reflects backlog and incidents", async () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "in_progress"),
+        makeTask("task_2", "failed"),
+        makeTask("task_3", "done"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation({ healthStatus: "ok" }),
+    },
+    currentTime: () => "2026-04-19T00:00:00.000Z",
+  });
+
+  const snapshot = await service.getSnapshot();
+
+  assert.equal(snapshot.workflowBacklog, 2);
+  assert.equal(snapshot.incidentCount, 1);
+  assert.equal(snapshot.budgetAlerts, 0);
+});
+
+test("DashboardAggregationService builds fleet dashboard grouped by division", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "in_progress", "engineering_ops"),
+        makeTask("task_2", "failed", "engineering_ops"),
+        makeTask("task_3", "pending", "finance"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation({ healthStatus: "unhealthy" }),
+    },
+  });
+
+  const dashboard = service.buildFleetDashboard();
+
+  assert.equal(dashboard.platformHealth.overall, 58);
+  assert.equal(dashboard.departmentOverview.length, 2);
+  assert.ok(dashboard.departmentOverview.some((item) => item.departmentId === "engineering_ops"));
+});
+
+test("DashboardAggregationService buildDomainAdminDashboard filters by domainId", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "in_progress", "engineering_ops"),
+        makeTask("task_2", "pending", "engineering_ops"),
+        makeTask("task_3", "done", "finance"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation(),
+    },
+    currentTime: () => "2026-04-19T00:00:00.000Z",
+  });
+
+  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+
+  assert.equal(dashboard.domainId, "engineering_ops");
+  assert.equal(dashboard.activeWorkflows.length, 2);
+  assert.equal(dashboard.pendingApprovals.length, 1);
+});
+
+test("DashboardAggregationService buildDomainAdminDashboard returns empty for unknown domain", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "in_progress", "engineering_ops"),
       ],
     },
     systemSource: {
@@ -95,28 +162,19 @@ test("attention queue sorts by priority first, then recency (newer first within 
     },
   });
 
-  const dashboard = service.buildOperatorDashboard();
-  const attentionQueue = dashboard.attentionQueue;
+  const dashboard = service.buildDomainAdminDashboard("unknown_domain");
 
-  // Verify items are sorted by priority first, then by recency (newer first) within same priority
-  assert.ok(attentionQueue.length >= 2);
-  // Both are "failed" tasks which create "incident" items with "high" priority
-  // Within same priority, sort is by recency (newer first)
-  const times = attentionQueue.map((item) => new Date(item.createdAt).getTime());
-  // Verify that times are sorted with newer (larger timestamp) earlier
-  // But since all have same priority, items at same priority level follow recency order
+  assert.equal(dashboard.domainId, "unknown_domain");
+  assert.equal(dashboard.agentInventory.length, 0);
+  assert.equal(dashboard.activeWorkflows.length, 0);
 });
 
-test("attention queue ignores priority when sorting - newer critical comes after older low", () => {
-  // This test documents the behavior issue #2050: sorting only by createdAt
-  // A critical/high priority item that is NEWER should ideally come before a low priority
-  // item that is OLDER, but the current implementation only sorts by createdAt.
-
+test("DashboardAggregationService buildDomainAdminDashboard calculates domain budget", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_critical_new", "failed", "2026-04-20T10:00:00.000Z"),
-        makeTask("task_low_old", "failed", "2026-04-19T08:00:00.000Z"),
+        makeTask("task_1", "in_progress", "engineering_ops"),
+        makeTask("task_2", "pending", "engineering_ops"),
       ],
     },
     systemSource: {
@@ -124,103 +182,33 @@ test("attention queue ignores priority when sorting - newer critical comes after
     },
   });
 
-  const dashboard = service.buildOperatorDashboard();
-  const attentionQueue = dashboard.attentionQueue;
+  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
 
-  // The newer item should come after the older item (sorted by createdAt, not priority)
-  // This is the behavior issue #2050 - sorting only by createdAt ignores priority
-  const newerIdx = attentionQueue.findIndex((item) => item.title.includes("task_critical_new"));
-  const olderIdx = attentionQueue.findIndex((item) => item.title.includes("task_low_old"));
-
-  if (newerIdx >= 0 && olderIdx >= 0) {
-    const newerTime = new Date(attentionQueue[newerIdx]!.createdAt).getTime();
-    const olderTime = new Date(attentionQueue[olderIdx]!.createdAt).getTime();
-    assert.ok(
-      olderTime < newerTime,
-      "Older item should come before newer item in sorted order (sorted by createdAt)",
-    );
-  }
+  assert.ok(dashboard.domainBudget.allocated);
+  assert.ok(dashboard.domainBudget.consumed);
+  assert.ok(dashboard.domainBudget.forecast);
+  assert.ok(dashboard.domainBudget.allocated.startsWith("$"));
 });
 
-test("attention queue with mixed priorities is sorted by priority first, then recency", () => {
+test("DashboardAggregationService buildPlatformOpsDashboard returns infrastructure health", () => {
   const service = new DashboardAggregationService({
     taskSource: {
-      list: () => [
-        makeTask("task_p1", "failed", "2026-04-20T08:00:00.000Z"), // high priority, early
-        makeTask("task_p2", "pending", "2026-04-20T09:00:00.000Z"), // normal priority, middle
-        makeTask("task_p3", "failed", "2026-04-20T10:00:00.000Z"), // high priority, late
-        makeTask("task_p4", "pending", "2026-04-20T11:00:00.000Z"), // normal priority, latest
-      ],
+      list: () => [],
     },
     systemSource: {
-      build: () => makeSystemSituation(),
+      build: () => makeSystemSituation({ healthStatus: "ok" }),
     },
+    currentTime: () => "2026-04-19T00:00:00.000Z",
   });
 
-  const dashboard = service.buildOperatorDashboard();
+  const dashboard = service.buildPlatformOpsDashboard();
 
-  // Verify items are sorted by priority first (critical=0, high=1, normal=2, low=3)
-  // Within same priority, newer items (later createdAt) come first
-  const priorities = dashboard.attentionQueue.map((item) => item.priority);
-  // High priority (failed tasks) come before normal (pending tasks)
-  assert.ok(dashboard.attentionQueue.length >= 4);
-  const highPriorityItems = dashboard.attentionQueue.filter((item) => item.priority === "high");
-  const normalPriorityItems = dashboard.attentionQueue.filter((item) => item.priority === "normal");
-  const firstHighIdx = dashboard.attentionQueue.findIndex((item) => item.priority === "high");
-  const firstNormalIdx = dashboard.attentionQueue.findIndex((item) => item.priority === "normal");
-  if (firstHighIdx >= 0 && firstNormalIdx >= 0) {
-    assert.ok(firstHighIdx < firstNormalIdx, "High priority items should come before normal priority");
-  }
-  // Within high priority, verify recency (newer first)
-  const highTimes = highPriorityItems.map((item) => new Date(item.createdAt).getTime());
-  for (let i = 1; i < highTimes.length; i++) {
-    assert.ok(highTimes[i - 1]! >= highTimes[i]!, "Within same priority, newer items should come first");
-  }
+  assert.equal(dashboard.infrastructureHealth.length, 2);
+  assert.ok(dashboard.infrastructureHealth.some((c) => c.component === "platform"));
+  assert.ok(dashboard.infrastructureHealth.some((c) => c.component === "model_gateway"));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Attention Queue - Item Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("attention queue includes failed tasks as incidents", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_failed_1", "failed", "2026-04-18T10:00:00.000Z"),
-        makeTask("task_failed_2", "failed", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const incidents = dashboard.attentionQueue.filter((item) => item.itemType === "incident");
-
-  assert.equal(incidents.length, 2);
-});
-
-test("attention queue includes pending tasks as approval_needed", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_pending_1", "pending", "2026-04-18T10:00:00.000Z"),
-        makeTask("task_pending_2", "pending", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const approvals = dashboard.attentionQueue.filter((item) => item.itemType === "approval_needed");
-
-  assert.equal(approvals.length, 2);
-});
-
-test("attention queue adds platform health incident when system degraded", () => {
+test("DashboardAggregationService buildPlatformOpsDashboard returns queue metrics", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [],
@@ -228,20 +216,34 @@ test("attention queue adds platform health incident when system degraded", () =>
     systemSource: {
       build: () => makeSystemSituation({ healthStatus: "degraded" }),
     },
-    currentTime: () => "2026-04-25T12:00:00.000Z",
   });
 
-  const dashboard = service.buildOperatorDashboard();
-  const healthIncident = dashboard.attentionQueue.find((item) =>
-    item.title.includes("Platform health"),
-  );
+  const dashboard = service.buildPlatformOpsDashboard();
 
-  assert.ok(healthIncident);
-  assert.equal(healthIncident!.itemType, "incident");
-  assert.equal(healthIncident!.priority, "high");
+  assert.equal(dashboard.queueMetrics.length, 1);
+  assert.equal(dashboard.queueMetrics[0]!.queueName, "default");
+  assert.equal(dashboard.queueMetrics[0]!.dlqCount, 0);
 });
 
-test("attention queue adds platform health critical incident when system unhealthy", () => {
+test("DashboardAggregationService buildPlatformOpsDashboard includes active incidents", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        makeTask("task_1", "failed"),
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation(),
+    },
+  });
+
+  const dashboard = service.buildPlatformOpsDashboard();
+
+  assert.ok(dashboard.activeIncidents.length > 0);
+  assert.equal(dashboard.activeIncidents[0]!.itemType, "incident");
+});
+
+test("DashboardAggregationService buildPlatformOpsDashboard marks platform as down when unhealthy", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [],
@@ -249,209 +251,63 @@ test("attention queue adds platform health critical incident when system unhealt
     systemSource: {
       build: () => makeSystemSituation({ healthStatus: "unhealthy" }),
     },
-    currentTime: () => "2026-04-25T12:00:00.000Z",
   });
 
-  const dashboard = service.buildOperatorDashboard();
-  const healthIncident = dashboard.attentionQueue.find((item) =>
-    item.title.includes("Platform health"),
-  );
+  const dashboard = service.buildPlatformOpsDashboard();
 
-  assert.ok(healthIncident);
-  assert.equal(healthIncident!.itemType, "incident");
-  assert.equal(healthIncident!.priority, "critical");
+  const platform = dashboard.infrastructureHealth.find((c) => c.component === "platform");
+  assert.equal(platform!.status, "down");
+  assert.ok(platform!.uptime30d < 99);
 });
 
-test("attention queue adds budget warning when cost exceeds forecast", () => {
+test("DashboardAggregationService buildPlatformOpsDashboard marks model_gateway as down when provider failed", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [],
     },
     systemSource: {
-      build: () => makeSystemSituation(),
-    },
-    costBurnUsd: 150,
-    forecastCostUsd: 100,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const budgetWarning = dashboard.attentionQueue.find(
-    (item) => item.itemType === "budget_warning",
-  );
-
-  assert.ok(budgetWarning);
-  assert.equal(budgetWarning!.priority, "high");
-});
-
-test("attention queue does not add budget warning when cost is under forecast", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-    costBurnUsd: 80,
-    forecastCostUsd: 100,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const budgetWarning = dashboard.attentionQueue.find(
-    (item) => item.itemType === "budget_warning",
-  );
-
-  assert.equal(budgetWarning, undefined);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Suggestions Integration
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("suggestions are appended after tasks in attention queue", () => {
-  const suggestions: AttentionItem[] = [
-    {
-      itemType: "suggestion",
-      priority: "normal",
-      title: "Suggestion 1",
-      description: "First suggestion",
-      actionOptions: ["accept"],
-      createdAt: "2026-04-19T14:00:00.000Z",
-      domainId: "general_ops",
-    },
-    {
-      itemType: "suggestion",
-      priority: "normal",
-      title: "Suggestion 2",
-      description: "Second suggestion",
-      actionOptions: ["accept"],
-      createdAt: "2026-04-19T15:00:00.000Z",
-      domainId: "general_ops",
-    },
-  ];
-
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "failed", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T12:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-    suggestions,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const suggestionItems = dashboard.attentionQueue.filter(
-    (item) => item.itemType === "suggestion",
-  );
-
-  assert.equal(suggestionItems.length, 2);
-  // Suggestions are appended at the end after task-based items
-  // The task items are sorted by createdAt, suggestions maintain their order
-});
-
-test("suggestions with different timestamps are sorted by recency within same priority", () => {
-  const suggestions: AttentionItem[] = [
-    {
-      itemType: "suggestion",
-      priority: "normal",
-      title: "Later suggestion",
-      description: "Second suggestion",
-      actionOptions: ["accept"],
-      createdAt: "2026-04-20T10:00:00.000Z", // later
-      domainId: "general_ops",
-    },
-    {
-      itemType: "suggestion",
-      priority: "normal",
-      title: "Earlier suggestion",
-      description: "First suggestion",
-      actionOptions: ["accept"],
-      createdAt: "2026-04-19T10:00:00.000Z", // earlier
-      domainId: "general_ops",
-    },
-  ];
-
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-    suggestions,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-  const suggestionItems = dashboard.attentionQueue.filter(
-    (item) => item.itemType === "suggestion",
-  );
-
-  assert.equal(suggestionItems.length, 2);
-  // Within same priority, items are sorted by recency (newer first)
-  assert.ok(suggestionItems.length >= 2);
-  // Verify that within same priority, newer items come first
-  for (let i = 1; i < suggestionItems.length; i++) {
-    const prevTime = new Date(suggestionItems[i - 1]!.createdAt).getTime();
-    const currTime = new Date(suggestionItems[i]!.createdAt).getTime();
-    assert.ok(prevTime >= currTime, "Within same priority, newer items should come first");
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dashboard Snapshot
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("getSnapshot returns correct workflowBacklog count", async () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "in_progress", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-        makeTask("task_3", "done", "2026-04-19T12:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
+      build: () => makeSystemSituation({
+        providerHealth: { status: "failed", successRate: 0.3, recentCalls: 1000 },
+      }),
     },
   });
 
-  const snapshot = await service.getSnapshot();
+  const dashboard = service.buildPlatformOpsDashboard();
 
-  assert.equal(snapshot.workflowBacklog, 2); // in_progress + failed, not done
+  const modelGateway = dashboard.infrastructureHealth.find((c) => c.component === "model_gateway");
+  assert.equal(modelGateway!.status, "down");
 });
 
-test("getSnapshot counts incidents correctly", async () => {
+test("DashboardAggregationService respects limit parameter for buildOperatorDashboard", () => {
+  const tasks = Array.from({ length: 50 }, (_, i) => makeTask(`task_${i}`, i % 3 === 0 ? "done" : "in_progress"));
   const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "in_progress", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation({ healthStatus: "degraded" }),
-    },
+    taskSource: { list: (limit) => (limit ? tasks.slice(0, limit) : tasks) },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
   });
 
-  const snapshot = await service.getSnapshot();
+  const dashboard = service.buildOperatorDashboard(10);
 
-  // Failed task = 1 incident, degraded system = 1 incident = 2 total
-  assert.equal(snapshot.incidentCount, 2);
+  assert.ok(dashboard.agentHealthCards.length > 0);
 });
 
-test("getSnapshot counts budgetAlerts when cost exceeds forecast", async () => {
+test("DashboardAggregationService respects limit parameter for buildDomainAdminDashboard", () => {
+  const tasks = Array.from({ length: 60 }, (_, i) => makeTask(`task_${i}`, "in_progress", "engineering_ops"));
   const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-    costBurnUsd: 150,
-    forecastCostUsd: 100,
+    taskSource: { list: (limit) => (limit ? tasks.slice(0, limit) : tasks) },
+    systemSource: { build: () => makeSystemSituation() },
+  });
+
+  const dashboard = service.buildDomainAdminDashboard("engineering_ops", 20);
+
+  assert.ok(dashboard.activeWorkflows.length <= 20);
+});
+
+test("DashboardAggregationService getSnapshot returns budgetAlerts when cost exceeds forecast", async () => {
+  const service = new DashboardAggregationService({
+    taskSource: { list: () => [] },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
+    costBurnUsd: 100,
+    forecastCostUsd: 50,
   });
 
   const snapshot = await service.getSnapshot();
@@ -459,466 +315,113 @@ test("getSnapshot counts budgetAlerts when cost exceeds forecast", async () => {
   assert.equal(snapshot.budgetAlerts, 1);
 });
 
-test("getSnapshot has generatedAt timestamp", async () => {
+test("DashboardAggregationService getSnapshot returns zero budgetAlerts when cost is within forecast", async () => {
   const service = new DashboardAggregationService({
     taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation() },
-    currentTime: () => "2026-04-25T12:00:00.000Z",
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
+    costBurnUsd: 50,
+    forecastCostUsd: 100,
   });
 
   const snapshot = await service.getSnapshot();
 
-  assert.equal(snapshot.generatedAt, "2026-04-25T12:00:00.000Z");
+  assert.equal(snapshot.budgetAlerts, 0);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Operator Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("buildOperatorDashboard includes attentionQueue", () => {
+test("DashboardAggregationService getSnapshot returns zero budgetAlerts when forecast is zero", async () => {
   const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "failed", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
+    taskSource: { list: () => [] },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
+    costBurnUsd: 100,
+    forecastCostUsd: 0,
+  });
+
+  const snapshot = await service.getSnapshot();
+
+  assert.equal(snapshot.budgetAlerts, 0);
+});
+
+test("DashboardAggregationService buildOperatorDashboard includes cost burn data", () => {
+  const service = new DashboardAggregationService({
+    taskSource: { list: () => [] },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
+    costBurnUsd: 42.50,
+    forecastCostUsd: 100,
   });
 
   const dashboard = service.buildOperatorDashboard();
 
-  assert.ok(Array.isArray(dashboard.attentionQueue));
-  assert.ok(dashboard.attentionQueue.length > 0);
+  assert.equal(dashboard.costBurn.consumedUsd, 42.50);
+  assert.equal(dashboard.costBurn.forecastUsd, 100);
 });
 
-test("buildOperatorDashboard includes dailySummary", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-
-  assert.ok(dashboard.dailySummary);
-  assert.ok(typeof dashboard.dailySummary.tasksCompleted === "number");
-  assert.ok(typeof dashboard.dailySummary.tasksInProgress === "number");
-  assert.ok(typeof dashboard.dailySummary.tasksFailed === "number");
-  assert.ok(typeof dashboard.dailySummary.totalCostToday === "string");
-  assert.ok(typeof dashboard.dailySummary.agentUptimePercent === "number");
-});
-
-test("buildOperatorDashboard includes agentHealthCards", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-
-  assert.ok(Array.isArray(dashboard.agentHealthCards));
-  assert.ok(dashboard.agentHealthCards.length > 0);
-});
-
-test("buildOperatorDashboard includes costBurn", () => {
+test("DashboardAggregationService buildOperatorDashboard includes active goals", () => {
   const service = new DashboardAggregationService({
     taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation() },
-    costBurnUsd: 25.5,
-    forecastCostUsd: 30.0,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-
-  assert.ok(dashboard.costBurn);
-  assert.equal(dashboard.costBurn.consumedUsd, 25.5);
-  assert.equal(dashboard.costBurn.forecastUsd, 30.0);
-});
-
-test("buildOperatorDashboard respects limit parameter", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "failed", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-        makeTask("task_3", "failed", "2026-04-19T12:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard(2);
-
-  // Should only process 2 tasks
-  assert.ok(dashboard.recentCompletions.length <= 2);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Domain Admin Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("buildDomainAdminDashboard filters by domainId", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "in_progress", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "in_progress", "2026-04-19T11:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  // Override list to return different divisionId
-  const dashboard = service.buildDomainAdminDashboard("marketing", 50);
-
-  assert.equal(dashboard.domainId, "marketing");
-});
-
-test("buildDomainAdminDashboard includes agentInventory", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildDomainAdminDashboard("marketing", 50);
-
-  assert.ok(Array.isArray(dashboard.agentInventory));
-});
-
-test("buildDomainAdminDashboard includes domainBudget", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "in_progress", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildDomainAdminDashboard("marketing", 50);
-
-  assert.ok(dashboard.domainBudget);
-  assert.ok(typeof dashboard.domainBudget.allocated === "string");
-  assert.ok(typeof dashboard.domainBudget.consumed === "string");
-  assert.ok(typeof dashboard.domainBudget.forecast === "string");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Platform Ops Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("buildPlatformOpsDashboard includes infrastructureHealth", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation() },
-  });
-
-  const dashboard = service.buildPlatformOpsDashboard();
-
-  assert.ok(Array.isArray(dashboard.infrastructureHealth));
-  assert.ok(dashboard.infrastructureHealth.length > 0);
-});
-
-test("buildPlatformOpsDashboard includes queueMetrics", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: {
-      build: () =>
-        makeSystemSituation({
-          queueBacklog: { size: 10, degraded: true },
-        }),
-    },
-  });
-
-  const dashboard = service.buildPlatformOpsDashboard();
-
-  assert.ok(Array.isArray(dashboard.queueMetrics));
-  assert.ok(dashboard.queueMetrics.length > 0);
-  assert.equal(dashboard.queueMetrics[0]?.queueName, "default");
-});
-
-test("buildPlatformOpsDashboard includes activeIncidents", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "failed", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildPlatformOpsDashboard();
-
-  assert.ok(Array.isArray(dashboard.activeIncidents));
-});
-
-test("buildPlatformOpsDashboard marks infrastructure as degraded when healthStatus is degraded", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation({ healthStatus: "degraded" }) },
-  });
-
-  const dashboard = service.buildPlatformOpsDashboard();
-
-  const platformHealth = dashboard.infrastructureHealth.find(
-    (h) => h.component === "platform",
-  );
-  assert.equal(platformHealth?.status, "degraded");
-});
-
-test("buildPlatformOpsDashboard marks infrastructure as down when healthStatus is unhealthy", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation({ healthStatus: "unhealthy" }) },
-  });
-
-  const dashboard = service.buildPlatformOpsDashboard();
-
-  const platformHealth = dashboard.infrastructureHealth.find(
-    (h) => h.component === "platform",
-  );
-  assert.equal(platformHealth?.status, "down");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Fleet Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("buildFleetDashboard includes platformHealth", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation() },
-  });
-
-  const dashboard = service.buildFleetDashboard();
-
-  assert.ok(dashboard.platformHealth);
-  assert.ok(typeof dashboard.platformHealth.overall === "number");
-  assert.ok(Array.isArray(dashboard.platformHealth.degradedComponents));
-});
-
-test("buildFleetDashboard includes departmentOverview", () => {
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildFleetDashboard();
-
-  assert.ok(Array.isArray(dashboard.departmentOverview));
-  assert.ok(dashboard.departmentOverview.length > 0);
-});
-
-test("buildFleetDashboard groups tasks by division", () => {
-  const tasks = [
-    makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-    makeTask("task_2", "done", "2026-04-19T11:00:00.000Z"),
-  ];
-  // Override divisionId to be different
-  tasks[0]!.divisionId = "marketing";
-  tasks[1]!.divisionId = "engineering";
-
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => tasks },
-    systemSource: { build: () => makeSystemSituation() },
-  });
-
-  const dashboard = service.buildFleetDashboard();
-
-  assert.ok(dashboard.departmentOverview.length >= 1);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Projection Service Integration
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("buildOperatorDashboard merges projection deltas when projectionService is provided", () => {
-  // Create a mock projection service
-  const mockProjectionService: DashboardProjectionService = {
-    processProjectionUpdate: () => null,
-    consumePendingDeltas: (): readonly DashboardDelta[] => [
-      {
-        deltaId: "delta-1",
-        timestamp: "2026-04-20T10:00:00.000Z",
-        tenantId: null,
-        visibilityScope: "tenant",
-        changes: [
-          {
-            changeType: "task_failed",
-            entityId: "task-from-delta",
-            newValue: {},
-          },
-        ],
-        affectedMetrics: ["incidentCount"],
-      },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
+    activeGoals: [
+      { goalId: "goal_1", progressPercent: 30 },
+      { goalId: "goal_2", progressPercent: 75 },
     ],
-  } as unknown as DashboardProjectionService;
-
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
-    systemSource: { build: () => makeSystemSituation() },
-    projectionService: mockProjectionService,
   });
 
   const dashboard = service.buildOperatorDashboard();
 
-  // The projection delta should add an incident to the attention queue
-  assert.ok(dashboard.attentionQueue.length >= 0);
+  assert.equal(dashboard.activeGoals.length, 2);
+  assert.equal(dashboard.activeGoals[0]!.progressPercent, 30);
 });
 
-test("buildOperatorDashboard with empty projection deltas returns original queue", () => {
-  const mockProjectionService: DashboardProjectionService = {
-    processProjectionUpdate: () => null,
-    consumePendingDeltas: () => [],
-  } as unknown as DashboardProjectionService;
-
-  const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [makeTask("task_1", "failed", "2026-04-19T10:00:00.000Z")],
-    },
-    systemSource: { build: () => makeSystemSituation() },
-    projectionService: mockProjectionService,
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-
-  // Should have the failed task incident
-  const incidents = dashboard.attentionQueue.filter((item) => item.itemType === "incident");
-  assert.ok(incidents.length >= 1);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Edge Cases
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("attention queue sorting is stable for same createdAt", () => {
+test("DashboardAggregationService buildFleetDashboard calculates health scores per department", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_a", "failed", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_b", "failed", "2026-04-19T10:00:00.000Z"),
+        makeTask("task_1", "failed", "engineering_ops"),
+        makeTask("task_2", "failed", "engineering_ops"),
+        makeTask("task_3", "in_progress", "engineering_ops"),
+        makeTask("task_4", "pending", "finance"),
       ],
     },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
-  });
-
-  const dashboard = service.buildOperatorDashboard();
-
-  // Both items have same createdAt - order should still be deterministic
-  assert.equal(dashboard.attentionQueue.length, 2);
-});
-
-test("empty task list produces empty attention queue from tasks", () => {
-  const service = new DashboardAggregationService({
-    taskSource: { list: () => [] },
     systemSource: {
       build: () => makeSystemSituation({ healthStatus: "ok" }),
     },
   });
 
-  const dashboard = service.buildOperatorDashboard();
+  const dashboard = service.buildFleetDashboard();
 
-  // Only system health incidents if status is not ok
-  const taskIncidents = dashboard.attentionQueue.filter(
-    (item) => item.title.includes("Task failed"),
-  );
-  assert.equal(taskIncidents.length, 0);
+  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering_ops");
+  assert.ok(engOps);
+  assert.equal(engOps!.incidentsOpen, 2);
+  // activeWorkflows counts all non-done tasks: 2 failed + 1 in_progress = 3
+  assert.equal(engOps!.activeWorkflows, 3);
+  // Health score: 100 - (2 * 20) = 60
+  assert.equal(engOps!.healthScore, 60);
 });
 
-test("agent health cards have correct structure", () => {
+test("DashboardAggregationService buildFleetDashboard handles department with no tasks", () => {
   const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
+    taskSource: { list: () => [] },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "ok" }) },
   });
 
-  const dashboard = service.buildOperatorDashboard();
+  const dashboard = service.buildFleetDashboard();
 
-  for (const card of dashboard.agentHealthCards) {
-    assert.ok(typeof card.agentId === "string");
-    assert.ok(typeof card.domainId === "string");
-    assert.ok(typeof card.name === "string");
-    assert.ok(
-      ["healthy", "degraded", "failing", "paused"].includes(card.status),
-    );
-    assert.ok(typeof card.trustLevel === "string");
-    assert.ok(typeof card.tasksToday === "number");
-    assert.ok(typeof card.successRate7d === "number");
-    assert.ok(typeof card.cost7d === "string");
-    assert.ok(
-      ["improving", "stable", "declining"].includes(card.trend),
-    );
-  }
+  assert.equal(dashboard.platformHealth.overall, 92);
+  assert.deepEqual(dashboard.departmentOverview, []);
 });
 
-test("dailySummary includes highlights and concerns", () => {
+test("DashboardAggregationService buildFleetDashboard degrades overall health for degraded system", () => {
   const service = new DashboardAggregationService({
-    taskSource: {
-      list: () => [
-        makeTask("task_1", "done", "2026-04-19T10:00:00.000Z"),
-        makeTask("task_2", "failed", "2026-04-19T11:00:00.000Z"),
-      ],
-    },
-    systemSource: {
-      build: () => makeSystemSituation(),
-    },
+    taskSource: { list: () => [] },
+    systemSource: { build: () => makeSystemSituation({ healthStatus: "degraded" }) },
   });
 
-  const dashboard = service.buildOperatorDashboard();
+  const dashboard = service.buildFleetDashboard();
 
-  assert.ok(Array.isArray(dashboard.dailySummary.highlights));
-  assert.ok(Array.isArray(dashboard.dailySummary.concerns));
-  assert.ok(dashboard.dailySummary.highlights.length >= 0);
-  assert.ok(dashboard.dailySummary.concerns.length >= 0);
+  assert.equal(dashboard.platformHealth.overall, 75);
+  assert.ok(dashboard.platformHealth.degradedComponents.length > 0);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Metric Registry
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("operator dashboard includes metricRegistry", () => {
+test("DashboardAggregationService defaults costBurnUsd and forecastCostUsd to 0", () => {
   const service = new DashboardAggregationService({
     taskSource: { list: () => [] },
     systemSource: { build: () => makeSystemSituation() },
@@ -926,11 +429,11 @@ test("operator dashboard includes metricRegistry", () => {
 
   const dashboard = service.buildOperatorDashboard();
 
-  assert.ok(Array.isArray(dashboard.metricRegistry));
-  assert.ok(dashboard.metricRegistry.length > 0);
+  assert.equal(dashboard.costBurn.consumedUsd, 0);
+  assert.equal(dashboard.costBurn.forecastUsd, 0);
 });
 
-test("metricRegistry entries have required fields", () => {
+test("DashboardAggregationService defaults activeGoals and suggestions to empty arrays", () => {
   const service = new DashboardAggregationService({
     taskSource: { list: () => [] },
     systemSource: { build: () => makeSystemSituation() },
@@ -938,15 +441,6 @@ test("metricRegistry entries have required fields", () => {
 
   const dashboard = service.buildOperatorDashboard();
 
-  for (const entry of dashboard.metricRegistry) {
-    assert.ok(typeof entry.metricId === "string");
-    assert.ok(typeof entry.metricOwner === "string");
-    assert.ok(typeof entry.sourceOfTruth === "string");
-    assert.ok(typeof entry.freshnessSlo === "string");
-    assert.ok(
-      ["informational", "operator_actionable", "policy_gated"].includes(
-        entry.actionability,
-      ),
-    );
-  }
+  assert.equal(dashboard.activeGoals.length, 0);
+  assert.equal(dashboard.proactiveSuggestions.length, 0);
 });

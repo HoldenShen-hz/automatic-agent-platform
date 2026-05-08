@@ -22,7 +22,9 @@ function createMockRequest(overrides: Partial<Parameters<ApprovalRoutingService[
   return {
     requesterId: "requester-1",
     orgNodeId: "org-node-1",
-    // Omit amountUsd to avoid FX rate requirement; tests do not depend on amount-based routing
+    amountUsd: 5000,
+    riskLevel: "medium",
+    resourceType: "compute",
     ...overrides,
   };
 }

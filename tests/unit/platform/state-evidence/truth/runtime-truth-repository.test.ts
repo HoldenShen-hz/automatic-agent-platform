@@ -29,13 +29,7 @@ function makeHarnessRunTransitionCommand(
   fromStatus: "created" | "admitted" | "planning" | "ready" | "running",
   toStatus: string,
 ) {
-  const leaseId = aggregate.leaseId ?? "lease-1";
-  const fencingToken = aggregate.fencingToken ?? "fence-1";
   return {
-    commandId: `cmd-${aggregate.harnessRunId}-${fromStatus}-${toStatus}`,
-    entityType: "HarnessRun" as const,
-    entityId: aggregate.harnessRunId,
-    principal: "test-suite",
     aggregateType: "HarnessRun" as const,
     aggregate,
     fromStatus,
@@ -44,9 +38,6 @@ function makeHarnessRunTransitionCommand(
     traceId: "test-trace",
     reasonCode: "test",
     emittedBy: "test-suite",
-    leaseId,
-    fencingToken,
-    auditRef: `audit/ref/${aggregate.harnessRunId}/${fromStatus}/${toStatus}`,
     ...(toStatus === "admitted" ? { runVersionLockId: "rvlock-1" } : {}),
   };
 }
@@ -71,28 +62,6 @@ test("seed stores HarnessRun and makes it retrievable", () => {
   repository.seed("HarnessRun", run);
 
   assert.equal(repository.getHarnessRun("hrun-1")?.harnessRunId, "hrun-1");
-});
-
-test("seed rejects overwriting an existing aggregate", () => {
-  const repository = new RuntimeTruthRepository();
-  const run = createHarnessRun({
-    harnessRunId: "hrun-append-only",
-    tenantId: "tenant-1",
-    confirmedTaskSpecId: "ctspec-1",
-    requestEnvelopeId: "request-1",
-    requestHash: "hash-1",
-    constraintPackRef: "cp-1",
-    versionLockId: "rvlock-1",
-    budgetLedgerId: "bledger-1",
-  });
-
-  repository.seed("HarnessRun", run);
-
-  assert.throws(
-    () => repository.seed("HarnessRun", run),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code === "runtime_truth_repository.append_only_violation",
-  );
 });
 
 test("seed stores NodeRun and makes it retrievable", () => {
@@ -183,8 +152,6 @@ test("transition updates aggregate status and appends platform fact event", () =
   );
 
   assert.equal(result.aggregate.status, "admitted");
-  assert.equal(result.aggregate.leaseId, "lease-1");
-  assert.equal(result.aggregate.fencingToken, "fence-1");
   assert.equal(result.event.eventType, "platform.harness_run.status_changed");
   assert.equal(result.event.aggregateSeq, 1);
 });
@@ -313,42 +280,6 @@ test("transition stores event in both events list and outbox", () => {
   assert.equal(repository.listEvents()[0], repository.listOutbox()[0]);
 });
 
-test("transition rejects HarnessRun mutations with stale fencing token", () => {
-  const repository = new RuntimeTruthRepository();
-  const run = createHarnessRun({
-    harnessRunId: "hrun-fencing",
-    tenantId: "tenant-1",
-    confirmedTaskSpecId: "ctspec-1",
-    requestEnvelopeId: "request-1",
-    requestHash: "hash-1",
-    constraintPackRef: "cp-1",
-    versionLockId: "rvlock-1",
-    budgetLedgerId: "bledger-1",
-    status: "admitted",
-    currentSeq: 1,
-    leaseId: "lease-current",
-    fencingToken: "fence-current",
-  });
-  repository.seed("HarnessRun", run);
-
-  assert.throws(
-    () => repository.transition({
-      aggregateType: "HarnessRun",
-      aggregate: run,
-      fromStatus: "admitted",
-      toStatus: "planning",
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      reasonCode: "advance",
-      emittedBy: "test",
-      leaseId: "lease-current",
-      fencingToken: "fence-stale",
-    }),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code === "runtime_truth_repository.stale_fencing_token",
-  );
-});
-
 test("transition records auditRef when provided", () => {
   const repository = new RuntimeTruthRepository();
   const run = createHarnessRun({
@@ -368,7 +299,7 @@ test("transition records auditRef when provided", () => {
     auditRef: "audit/ref/123",
   });
 
-  assert.ok(repository.listAuditRefs().includes("audit/ref/123"));
+  assert.deepEqual(repository.listAuditRefs(), ["audit/ref/123"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -644,7 +575,6 @@ test("listAuditRefs returns a copy, not the internal array", () => {
 
   assert.notEqual(refs1, refs2);
   assert.deepEqual(refs1, refs2);
-  assert.ok(refs1.some((ref) => ref === "audit/ref/1"));
 });
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 /**
- * Self-Service Governance Console
+ * Self-Service Governance Console - Basic Stub
  *
- * This module provides the self-service governance console as described in
- * architecture doc §51.
+ * This module provides a basic stub implementation of the self-service governance
+ * console as described in architecture doc §51.
  *
  * The governance console allows organization administrators to:
  * - Delegate governance permissions to grantees within their scope
@@ -10,11 +10,13 @@
  * - Review and revoke delegations
  * - Export audit trails for compliance
  *
- * Implementation Status: Complete
- * - Persistent storage for delegations (SqliteDelegationStore)
- * - Full audit logging for all console actions (SqliteAuditLogStore)
- * - Role-based access control for console operations (RBAC permissions)
- * - Frontend dashboard integration via REST API
+ * Current Implementation Status: Phase 1 stub
+ *
+ * TODO (Phase 2):
+ * - Add persistent storage for delegations
+ * - Implement full audit logging for all console actions
+ * - Add role-based access control for console operations
+ * - Integrate with frontend dashboard for UI-based governance
  *
  * Architecture Reference: docs_en/architecture/00-platform-architecture.md §51
  */
@@ -26,9 +28,7 @@ import { mkdirSync } from "node:fs";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   GovernanceDelegationSchema,
-  GovernanceDelegationLevelSchema,
   type GovernanceDelegation,
-  type GovernanceDelegationLevel,
   type GovernancePermission,
 } from "./delegation-registry/index.js";
 import {
@@ -62,8 +62,6 @@ export type GovernanceConsoleAction = z.infer<typeof GovernanceConsoleActionSche
 export const CreateDelegationRequestSchema = z.object({
   grantorId: z.string().min(1),
   granteeId: z.string().min(1),
-  level: GovernanceDelegationLevelSchema.default("view"),
-  delegatable: z.boolean().default(false),
   orgNodeIds: z.array(z.string()).default([]),
   domainIds: z.array(z.string()).default([]),
   permissions: z.array(z.string()).default([]),
@@ -74,36 +72,14 @@ export type CreateDelegationRequest = z.infer<typeof CreateDelegationRequestSche
 export type CreateDelegationRequestInput = z.input<typeof CreateDelegationRequestSchema>;
 
 /**
- * Console audit log entry - comprehensive record of all governance console actions
+ * Console audit log entry
  */
 export interface GovernanceConsoleAuditEntry {
-  readonly eventId: string;
   readonly action: GovernanceConsoleAction;
   readonly actorId: string;
-  readonly actorRole: "platform_team" | "division_admin" | "department_admin" | "team_lead" | "system";
   readonly delegationId: string | null;
-  readonly targetType: "delegation" | "org_node" | "grantee" | "audit_export" | null;
-  readonly targetId: string | null;
   readonly timestamp: string;
   readonly details: Record<string, unknown>;
-  readonly success: boolean;
-  readonly failureReason?: string;
-}
-
-/**
- * RBAC check result
- */
-export interface RbacCheckResult {
-  readonly allowed: boolean;
-  readonly reason: string;
-}
-
-/**
- * Actor context for RBAC checks
- */
-export interface ActorContext {
-  readonly actorId: string;
-  readonly role: "platform_team" | "division_admin" | "department_admin" | "team_lead";
 }
 
 function openGovernanceConsoleDb(sqliteDbPath: string): DatabaseSync {
@@ -113,26 +89,13 @@ function openGovernanceConsoleDb(sqliteDbPath: string): DatabaseSync {
 }
 
 /**
- * RBAC permissions for governance console operations
- * Per §51.3: Only platform_team can create/revoke delegations at platform level
- */
-const RBAC_PERMISSIONS = {
-  createDelegation: ["platform_team"] as const,
-  revokeDelegation: ["platform_team"] as const,
-  listDelegationsForGrantee: ["platform_team", "division_admin", "department_admin"] as const,
-  listDelegationsForOrgNode: ["platform_team", "division_admin", "department_admin"] as const,
-  reviewDelegation: ["platform_team", "division_admin", "department_admin", "team_lead"] as const,
-  exportAuditLog: ["platform_team"] as const,
-  getDelegation: ["platform_team", "division_admin", "department_admin", "team_lead"] as const,
-} as const;
-
-/**
- * SelfServiceGovernanceConsole - Governance console with RBAC and audit logging
+ * SelfServiceGovernanceConsole - Basic stub service
  *
- * Full implementation of governance console per architecture doc §51:
- * - Persistent storage for delegations
- * - Full audit trail for all console actions
- * - Role-based access control for console operations
+ * This is a basic stub that can be expanded later to support:
+ * - Persistent storage integration
+ * - Full audit trail export
+ * - Role-based access control
+ * - Integration with frontend dashboard
  */
 export class SelfServiceGovernanceConsole {
   private readonly delegationStore: DelegationStore;
@@ -151,55 +114,17 @@ export class SelfServiceGovernanceConsole {
   }
 
   /**
-   * Checks if an actor has permission to perform a specific operation.
-   */
-  public checkPermission(
-    actor: ActorContext,
-    operation: keyof typeof RBAC_PERMISSIONS,
-  ): RbacCheckResult {
-    const allowedRoles = RBAC_PERMISSIONS[operation];
-    if ((allowedRoles as readonly string[]).includes(actor.role)) {
-      return { allowed: true, reason: `Role ${actor.role} is permitted for ${operation}` };
-    }
-    return { allowed: false, reason: `Role ${actor.role} is not permitted for ${operation}` };
-  }
-
-  /**
    * Creates a new delegation from a grantor to a grantee.
    * Per §51.1, only platform_team can create delegations at the platform level.
-   *
-   * @param input - Delegation creation request
-   * @param actor - Actor performing the action (must be platform_team)
-   * @returns Created delegation or throws if RBAC check fails
    */
-  public createDelegation(
-    input: CreateDelegationRequestInput,
-    actor: ActorContext = { actorId: "system", role: "platform_team" },
-  ): GovernanceDelegation {
-    // RBAC check: only platform_team can create delegations
-    const rbacCheck = this.checkPermission(actor, "createDelegation");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "delegate",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId: null,
-        targetType: "delegation",
-        targetId: null,
-        details: { input, attemptedAction: "createDelegation" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      throw new Error(`RBAC_DENIED: ${rbacCheck.reason}`);
-    }
-
+  public createDelegation(input: CreateDelegationRequestInput): GovernanceDelegation {
     const request = CreateDelegationRequestSchema.parse(input);
     const delegation: GovernanceDelegation = {
       delegationId: newId("del"),
       grantorId: request.grantorId,
       granteeId: request.granteeId,
-      level: request.level as GovernanceDelegationLevel,
-      delegatable: request.delegatable,
+      level: "view",
+      delegatable: false,
       orgNodeIds: request.orgNodeIds,
       domainIds: request.domainIds,
       derivedDelegationIds: [],
@@ -211,103 +136,23 @@ export class SelfServiceGovernanceConsole {
     };
 
     this.delegationStore.save(delegation);
-
-    // Comprehensive audit log for delegation creation
-    this.logAudit({
-      action: "delegate",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId: delegation.delegationId,
-      targetType: "delegation",
-      targetId: delegation.delegationId,
-      details: {
-        grantorId: request.grantorId,
-        granteeId: request.granteeId,
-        level: request.level,
-        delegatable: request.delegatable,
-        orgNodeIds: request.orgNodeIds,
-        domainIds: request.domainIds,
-        permissions: request.permissions,
-        expiresAt: request.expiresAt,
-        revocable: request.revocable,
-      },
-      success: true,
-    });
-
+    this.logAudit("delegate", request.grantorId, delegation.delegationId, { request });
     return delegation;
   }
 
   /**
    * Revokes an active delegation.
-   *
-   * @param delegationId - ID of delegation to revoke
-   * @param actor - Actor performing the action (must be grantor or platform_team)
-   * @returns Result indicating success or failure with reason
    */
   public revokeDelegation(
     delegationId: string,
-    actor: ActorContext = { actorId: "system", role: "platform_team" },
+    actorId: string,
   ): { success: boolean; error?: string } {
-    // RBAC check: only platform_team can revoke delegations
-    const rbacCheck = this.checkPermission(actor, "revokeDelegation");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "revoke",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "revokeDelegation" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return { success: false, error: `permission_denied: ${rbacCheck.reason}` };
-    }
-
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
-      this.logAudit({
-        action: "revoke",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "revokeDelegation" },
-        success: false,
-        failureReason: "delegation_not_found",
-      });
       return { success: false, error: "delegation_not_found" };
     }
     if (!delegation.revocable) {
-      this.logAudit({
-        action: "revoke",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { grantorId: delegation.grantorId, granteeId: delegation.granteeId },
-        success: false,
-        failureReason: "delegation_not_revocable",
-      });
       return { success: false, error: "delegation_not_revocable" };
-    }
-    // SECURITY: Only the grantor or platform_team can revoke a delegation
-    if (delegation.grantorId !== actor.actorId && actor.role !== "platform_team") {
-      this.logAudit({
-        action: "revoke",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { grantorId: delegation.grantorId, attemptedActorId: actor.actorId },
-        success: false,
-        failureReason: "only_grantor_or_platform_team_can_revoke",
-      });
-      return { success: false, error: "permission_denied" };
     }
 
     const revoked: GovernanceDelegation = {
@@ -315,254 +160,60 @@ export class SelfServiceGovernanceConsole {
       status: "revoked",
     };
     this.delegationStore.save(revoked);
-
-    // Comprehensive audit log for revocation
-    this.logAudit({
-      action: "revoke",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId,
-      targetType: "delegation",
-      targetId: delegationId,
-      details: {
-        grantorId: delegation.grantorId,
-        granteeId: delegation.granteeId,
-        previousStatus: delegation.status,
-      },
-      success: true,
-    });
-
+    this.logAudit("revoke", actorId, delegationId, {});
     return { success: true };
   }
 
   /**
    * Gets a delegation by ID.
-   *
-   * @param delegationId - ID of delegation to retrieve
-   * @param actor - Actor performing the action
-   * @returns Delegation or null if not found / not permitted
    */
-  public getDelegation(delegationId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation | null {
-    // RBAC check
-    const rbacCheck = this.checkPermission(actor, "getDelegation");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "getDelegation" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return null;
-    }
-
-    const delegation = this.delegationStore.get(delegationId);
-    if (!delegation) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "getDelegation" },
-        success: false,
-        failureReason: "delegation_not_found",
-      });
-      return null;
-    }
-
-    this.logAudit({
-      action: "review",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId,
-      targetType: "delegation",
-      targetId: delegationId,
-      details: { grantorId: delegation.grantorId, granteeId: delegation.granteeId, status: delegation.status },
-      success: true,
-    });
-
-    return delegation;
+  public getDelegation(delegationId: string): GovernanceDelegation | null {
+    return this.delegationStore.get(delegationId);
   }
 
   /**
    * Lists all delegations for a grantee.
-   *
-   * @param granteeId - ID of the grantee
-   * @param actor - Actor performing the action
-   * @returns Array of active delegations for the grantee
    */
-  public listDelegationsForGrantee(granteeId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation[] {
-    // RBAC check
-    const rbacCheck = this.checkPermission(actor, "listDelegationsForGrantee");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId: null,
-        targetType: "grantee",
-        targetId: granteeId,
-        details: { attemptedAction: "listDelegationsForGrantee" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return [];
-    }
-
+  public listDelegationsForGrantee(granteeId: string): GovernanceDelegation[] {
     const delegations = this.delegationStore.listByGrantee(granteeId).filter(
       (d) => d.status === "active",
     );
-
-    this.logAudit({
-      action: "review",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId: null,
-      targetType: "grantee",
-      targetId: granteeId,
-      details: { scope: "grantee", granteeId, count: delegations.length },
-      success: true,
-    });
-
+    this.logAudit("review", "system", null, { scope: "grantee", granteeId, count: delegations.length });
     return delegations;
   }
 
   /**
    * Lists all delegations within an org node.
-   *
-   * @param orgNodeId - ID of the org node
-   * @param actor - Actor performing the action
-   * @returns Array of delegations within the org node
    */
-  public listDelegationsForOrgNode(orgNodeId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation[] {
-    // RBAC check
-    const rbacCheck = this.checkPermission(actor, "listDelegationsForOrgNode");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId: null,
-        targetType: "org_node",
-        targetId: orgNodeId,
-        details: { attemptedAction: "listDelegationsForOrgNode" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return [];
-    }
-
+  public listDelegationsForOrgNode(orgNodeId: string): GovernanceDelegation[] {
     const delegations = this.delegationStore.listByOrgNode(orgNodeId);
-
-    this.logAudit({
-      action: "review",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId: null,
-      targetType: "org_node",
-      targetId: orgNodeId,
-      details: { scope: "org_node", orgNodeId, count: delegations.length },
-      success: true,
-    });
-
+    this.logAudit("review", "system", null, { scope: "org_node", orgNodeId, count: delegations.length });
     return delegations;
   }
 
   /**
    * Reviews a delegation - returns details for audit purposes.
-   *
-   * @param delegationId - ID of delegation to review
-   * @param actor - Actor performing the action
-   * @returns Delegation details or null if not found / not permitted
    */
-  public reviewDelegation(delegationId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation | null {
-    // RBAC check
-    const rbacCheck = this.checkPermission(actor, "reviewDelegation");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "reviewDelegation" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return null;
-    }
-
+  public reviewDelegation(
+    delegationId: string,
+    actorId: string,
+  ): GovernanceDelegation | null {
     const delegation = this.delegationStore.get(delegationId);
-    if (!delegation) {
-      this.logAudit({
-        action: "review",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId,
-        targetType: "delegation",
-        targetId: delegationId,
-        details: { attemptedAction: "reviewDelegation" },
-        success: false,
-        failureReason: "delegation_not_found",
-      });
-      return null;
+    if (delegation) {
+      this.logAudit("review", actorId, delegationId ?? null, {});
     }
-
-    this.logAudit({
-      action: "review",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId,
-      targetType: "delegation",
-      targetId: delegationId,
-      details: {
-        grantorId: delegation.grantorId,
-        granteeId: delegation.granteeId,
-        level: delegation.level,
-        status: delegation.status,
-      },
-      success: true,
-    });
-
-    return delegation;
+    return delegation ?? null;
   }
 
   /**
    * Exports audit log entries for compliance.
-   * Only platform_team can export audit logs (contains sensitive compliance data).
-   *
-   * @param options - Filter options for the audit log export
-   * @param actor - Actor performing the action (must be platform_team)
-   * @returns Array of audit entries matching the filter
+   * Returns entries within the optional time range.
    */
-  public exportAuditLog(
-    options: { startTime?: string; endTime?: string; actorId?: string } | undefined,
-    actor: ActorContext = { actorId: "system", role: "platform_team" },
-  ): GovernanceConsoleAuditEntry[] {
-    // RBAC check: only platform_team can export audit logs
-    const rbacCheck = this.checkPermission(actor, "exportAuditLog");
-    if (!rbacCheck.allowed) {
-      this.logAudit({
-        action: "export_audit",
-        actorId: actor.actorId,
-        actorRole: actor.role,
-        delegationId: null,
-        targetType: "audit_export",
-        targetId: null,
-        details: { filter: options, attemptedAction: "exportAuditLog" },
-        success: false,
-        failureReason: rbacCheck.reason,
-      });
-      return [];
-    }
-
+  public exportAuditLog(options?: {
+    startTime?: string;
+    endTime?: string;
+    actorId?: string;
+  }): GovernanceConsoleAuditEntry[] {
     let entries = [...this.auditLogStore.list()];
 
     if (options?.startTime) {
@@ -575,30 +226,13 @@ export class SelfServiceGovernanceConsole {
       entries = entries.filter((e) => e.actorId === options.actorId);
     }
 
-    // Comprehensive audit log for export action
-    this.logAudit({
-      action: "export_audit",
-      actorId: actor.actorId,
-      actorRole: actor.role,
-      delegationId: null,
-      targetType: "audit_export",
-      targetId: null,
-      details: {
-        filter: options,
-        exportedCount: entries.length,
-        exportedFields: ["eventId", "action", "actorId", "actorRole", "delegationId", "targetType", "targetId", "timestamp", "details", "success", "failureReason"],
-      },
-      success: true,
-    });
-
+    this.logAudit("export_audit", "system", null, { filter: options });
     return entries;
   }
 
   /**
    * Checks if a governance action is permitted for an actor.
    * This implements §51.3 governance operation rules.
-   *
-   * @deprecated Use checkPermission() instead for console operations
    */
   public isActionAllowed(
     actorId: string,
@@ -636,34 +270,19 @@ export class SelfServiceGovernanceConsole {
     };
   }
 
-  /**
-   * Logs a comprehensive audit entry with actor, action, target, timestamp, and outcome.
-   */
-  private logAudit(params: {
-    action: GovernanceConsoleAction;
-    actorId: string;
-    actorRole: "platform_team" | "division_admin" | "department_admin" | "team_lead" | "system";
-    delegationId: string | null;
-    targetType: "delegation" | "org_node" | "grantee" | "audit_export" | null;
-    targetId: string | null;
-    details: Record<string, unknown>;
-    success: boolean;
-    failureReason?: string;
-  }): void {
-    const entry: GovernanceConsoleAuditEntry = {
-      eventId: newId("audit"),
-      action: params.action,
-      actorId: params.actorId,
-      actorRole: params.actorRole,
-      delegationId: params.delegationId,
-      targetType: params.targetType,
-      targetId: params.targetId,
+  private logAudit(
+    action: GovernanceConsoleAction,
+    actorId: string,
+    delegationId: string | null,
+    details: Record<string, unknown>,
+  ): void {
+    this.auditLogStore.append({
+      action,
+      actorId,
+      delegationId,
       timestamp: nowIso(),
-      details: params.details,
-      success: params.success,
-      failureReason: params.failureReason ?? "",
-    };
-    this.auditLogStore.append(entry);
+      details,
+    });
   }
 }
 

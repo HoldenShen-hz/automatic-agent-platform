@@ -134,9 +134,6 @@ function usageEventRecord(overrides: Partial<UsageEventRecord> = {}): UsageEvent
     workspaceId: "ws-1",
     tenantId: "tenant-1",
     taskId: null,
-    harnessRunId: "harness-run-1",
-    nodeRunId: "node-run-1",
-    attemptId: "attempt-1",
     executionId: null,
     stepId: null,
     metricType: "api_calls",
@@ -363,13 +360,6 @@ test("AsyncBillingRepository insertUsageEvent inserts record", async () => {
 
   assert.equal(calls.length, 1);
   assert.match(calls[0]!.sql, /INSERT INTO usage_events/);
-  assert.match(calls[0]!.sql, /harness_run_id/);
-  assert.match(calls[0]!.sql, /node_run_id/);
-  assert.match(calls[0]!.sql, /attempt_id/);
-  assert.match(calls[0]!.sql, /step_id/);
-  assert.equal(calls[0]!.params[6], "harness-run-1");
-  assert.equal(calls[0]!.params[7], "node-run-1");
-  assert.equal(calls[0]!.params[8], "attempt-1");
 });
 
 // === Quota Counter Tests ===

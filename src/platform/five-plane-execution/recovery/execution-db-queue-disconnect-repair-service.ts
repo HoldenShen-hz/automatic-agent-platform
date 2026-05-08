@@ -122,7 +122,7 @@ function parsePriority(value: unknown): TaskPriority | undefined {
     case "low":
     case "normal":
     case "high":
-    case "critical":
+    case "urgent":
       return value;
     default:
       return undefined;

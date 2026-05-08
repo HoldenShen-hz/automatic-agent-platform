@@ -66,7 +66,7 @@ Accepted
 
 ## 交叉引用
 
-- [ADR-071 Plugin SPI 框架](./071-plugin-spi-framework.md)
+- [ADR-066 Plugin SPI 框架](./066-plugin-spi-framework.md)
 - [ADR-089 AI Operations 治理与质量](./089-ai-operations-governance-and-quality.md)
 
 ## 来源章节

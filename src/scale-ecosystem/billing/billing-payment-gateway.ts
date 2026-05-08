@@ -291,7 +291,7 @@ export class ManualBillingPaymentGateway implements BillingPaymentGateway {
  * Requires a Stripe secret key and redirect URLs for payment completion.
  */
 export interface StripeBillingPaymentGatewayOptions {
-  /** Stripe secret key for API authentication - will be wrapped for redaction */
+  /** Stripe secret key for API authentication */
   secretKey: string;
   /** URL to redirect to after successful payment */
   successUrl: string;
@@ -301,28 +301,6 @@ export interface StripeBillingPaymentGatewayOptions {
   apiBaseUrl?: string;
   /** Fetch function to use for HTTP requests. Defaults to global fetch. */
   fetchFn?: typeof fetch;
-}
-
-/**
- * Redacted secret wrapper for Stripe API key.
- * Prevents accidental credential leakage in logs/error messages.
- * The actual secret value is only accessible via getSecretValue().
- */
-class StripeSecretRedactor {
-  private readonly redacted = "[REDACTED]";
-  public constructor(private readonly value: string) {}
-
-  getSecretValue(): string {
-    return this.value;
-  }
-
-  toString(): string {
-    return this.redacted;
-  }
-
-  valueOf(): string {
-    return this.redacted;
-  }
 }
 
 export interface PaddleBillingPaymentGatewayOptions {
@@ -362,14 +340,10 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
 
   private readonly apiBaseUrl: string;
   private readonly fetchFn: typeof fetch;
-  /** Wrapped secret to prevent accidental credential leakage in logs */
-  private readonly wrappedSecret: StripeSecretRedactor;
 
   public constructor(private readonly options: StripeBillingPaymentGatewayOptions) {
     this.apiBaseUrl = options.apiBaseUrl?.trim() || STRIPE_API_URL;
     this.fetchFn = options.fetchFn ?? fetch;
-    // Wrap the secret key to prevent accidental logging exposure
-    this.wrappedSecret = new StripeSecretRedactor(options.secretKey);
   }
 
   /**
@@ -410,7 +384,7 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
     const response = await this.fetchFn(`${this.apiBaseUrl.replace(/\/+$/, "")}/checkout/sessions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.wrappedSecret.getSecretValue()}`,
+        Authorization: `Bearer ${this.options.secretKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: form.toString(),
@@ -469,7 +443,7 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${this.wrappedSecret.getSecretValue()}`,
+          Authorization: `Bearer ${this.options.secretKey}`,
         },
       },
     );

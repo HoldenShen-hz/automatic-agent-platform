@@ -1,18 +1,17 @@
 import { z } from "zod";
 
 /**
- * Canonical organization node types representing the 5-level hierarchy:
- * - tenant: Top-level legal/entity root (maps to platform)
+ * Canonical organization node types representing the 4-level hierarchy:
+ * - company: Top-level legal/entity root
  * - division: Business division (maps to tenant_group for budget aggregation)
  * - department: Department (maps to tenant for isolation)
  * - team: Team (maps to domain + pack_group)
- * - seat: Individual seat/resource (leaf node in hierarchy)
  *
  * Individual people are not org nodes; they are principals assigned to nodes.
  * Legacy payloads may still use orgNodeId/nodeType/displayName naming, which is
  * normalized into the canonical nodeId/type/name fields by OrgNodeSchema.
  */
-export const OrgNodeTypeSchema = z.enum(["tenant", "division", "department", "team", "seat"]);
+export const OrgNodeTypeSchema = z.enum(["company", "division", "department", "team"]);
 
 export const LegalEntityBoundarySchema = z.object({
   boundaryId: z.string().min(1),
@@ -176,7 +175,7 @@ export type OrgChangeEvent =
   | { type: "org_restructure"; affectedNodeIds: readonly string[] };
 
 export function isLeafOrgNode(node: OrgNode): boolean {
-  return node.nodeType === "seat";
+  return node.nodeType === "team";
 }
 
 /**
@@ -185,11 +184,10 @@ export function isLeafOrgNode(node: OrgNode): boolean {
  */
 export function getPlatformMapping(nodeType: OrgNodeType): string {
   const mappings: Record<OrgNodeType, string> = {
-    tenant: "platform",
+    company: "platform",
     division: "tenant_group",
     department: "tenant",
     team: "domain/pack_group",
-    seat: "resource/seat",
   };
   return mappings[nodeType];
 }

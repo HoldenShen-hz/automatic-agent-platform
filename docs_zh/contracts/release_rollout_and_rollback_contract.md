@@ -1,11 +1,11 @@
-# Release And Rollback Contract
+# Release Rollout And Rollback Contract
 
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Improve Hub 的受控发布与回滚机制，对应 ADR-075 和 ADR-018。
 > **更新日期**：2026-04-17
 
 ## 1. Scope
 
-This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Release pipeline.
+This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Rollout pipeline.
 
 Related documents:
 
@@ -20,7 +20,7 @@ Related documents:
 - Unify release paths for code, config, prompt, role, skill.
 - Make any production release have controllable canary and executable rollback.
 - Make schema changes comply with forward/backward compatibility.
-- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → ReleaseRecord pipeline.
+- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → RolloutRecord pipeline.
 
 ## 3. Release Objects
 
@@ -33,48 +33,7 @@ Related documents:
 - `schema_migration`
 - `LearningObject`（对应 OAPEFLIR 副链）
 
-### 3.1 `ReleaseDecisionView`
-
-`ReleaseDecisionView` 是 OAPEFLIR release 阶段的 canonical projection object，不是 truth fact。
-
-最小字段：
-
-- `releaseDecisionViewId`
-- `harnessRunId`
-- `candidateId`
-- `channelId`
-- `recommendedLevel`
-- `guardrailFindings`
-- `approvalRequired`
-- `derivedFromEventIds`
-- `generatedAt`
-
-规则：
-
-- `ReleaseDecisionView` 只能由 `platform.release.*` fact 或 `oapeflir.view.*` / `oapeflir.rationale.*` 投影派生，不得反向充当发布状态机。
-- 该对象必须能回链到 `harnessRunId` 和候选对象，不能仅靠 rollout 文本摘要存在。
-
-### 3.2 `ReleaseChannel`
-
-`ReleaseChannel` 是发布目标面的权威通道定义。
-
-最小字段：
-
-- `channelId`
-- `channelKind` (`shadow | canary | partial | stable`)
-- `targetScope` (`tenant | domain | region | platform`)
-- `rolloutStrategy`
-- `approvalPolicyRef`
-- `healthGateRef`
-- `rollbackPolicyRef`
-- `activeVersion`
-
-规则：
-
-- `ReleaseChannel` 表达发布目标与治理门，不等同于 `ReleaseDecisionView`。
-- decision view 可以推荐 channel；只有 release truth path 才能真正推进 channel 状态。
-
-## 4. Release Levels and ReleaseStatus
+## 4. Release Levels and RolloutStatus
 
 ### 4.1 六级受控发布（L0-L5）
 
@@ -89,7 +48,7 @@ Related documents:
 | L4 | `stable_75` | 75% | 执行配置变更 | 全部必须审批 |
 | L5 | `stable_100` | 100% | 完全自主（受 guardrail 约束） | 仅异常升级 |
 
-### 4.2 Release 状态机
+### 4.2 Rollout 状态机
 
 完整状态机（见 ADR-018 和 ADR-075 §2）：
 
@@ -148,9 +107,7 @@ LearningObject(validated/promoted)
     → ImprovementCandidate(candidate_created)
     → under_review
     → approved / rejected
-    → ReleaseDecisionView
-    → ReleaseChannel gate check
-    → ReleaseRecord(evaluate_0 → canary → partial → stable → released)
+    → RolloutRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
 **必须满足的条件**（R4-EVIDENCE 约束）：
@@ -168,32 +125,32 @@ interface ImprovementCandidate {
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
   status: ImprovementCandidateStatus;
-  releaseLevel: ReleaseLevel;
-  metrics: ReleaseMetrics;
+  rolloutLevel: RolloutLevel;
+  metrics: RolloutMetrics;
   guardrails: ImprovementGuardrail[];
   createdAt: string;
   updatedAt: string;
 }
 
-type ReleaseLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
-## 7. ReleaseRecord 接口
+## 7. RolloutRecord 接口
 
 ```typescript
-interface ReleaseRecord {
+interface RolloutRecord {
   recordId: string;
   candidateId: string;
-  fromLevel: ReleaseLevel;
-  toLevel: ReleaseLevel;
+  fromLevel: RolloutLevel;
+  toLevel: RolloutLevel;
   triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
   triggerReason?: string;
-  metrics: ReleaseMetrics;
+  metrics: RolloutMetrics;
   auditContext: AuditContext;
   createdAt: string;
 }
 
-interface ReleaseMetrics {
+interface RolloutMetrics {
   errorRate: number;
   latencyP99: number;
   successRate: number;

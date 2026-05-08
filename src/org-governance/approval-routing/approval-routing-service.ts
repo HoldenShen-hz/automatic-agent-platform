@@ -60,11 +60,9 @@ export class ApprovalRoutingService {
   public route(request: ApprovalRouteRequest, createdAtIso: string, nowIso: string): ApprovalRoutingResult {
     const delegationMap = this.buildDelegationMap(request.orgNodeId, nowIso);
     const base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
-    const escalation = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
-    // SECURITY FIX: In sequential mode, prepend escalated approver so they approve BEFORE chain
-    // Previously appended to end, causing escalated approver to approve last in sequential chain
-    const approverChain = escalation != null && !base.approverChain.includes(escalation)
-      ? [escalation, ...base.approverChain]
+    const escalatedTo = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
+    const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)
+      ? [...base.approverChain, escalatedTo]
       : [...base.approverChain];
 
     return {
@@ -72,17 +70,13 @@ export class ApprovalRoutingService {
       approverChain,
       delegated: base.delegated,
       routingStrategy: base.routingStrategy,
-      approvalSteps: base.approvalSteps,
       routeSnapshot: {
         ...base.routeSnapshot,
         approverIds: approverChain,
       },
-      escalatedTo: escalation,
+      escalatedTo,
       auditRecord: buildGovernanceAuditRecord({
-        // R34-36 FIX #1979: Use crypto.randomUUID() for guaranteed uniqueness.
-        // Date.now() only has ms precision; same requester+node within 1ms collides.
-        // Math.random() alone is not cryptographically random enough for audit IDs.
-        recordId: `audit_${request.requesterId}_${request.orgNodeId}_${Date.now()}_${crypto.randomUUID()}`,
+        recordId: `audit_${request.requesterId}_${request.orgNodeId}`,
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,
@@ -90,7 +84,7 @@ export class ApprovalRoutingService {
         reasonCodes: [
           ...(base.delegated ? ["approval.delegated"] : ["approval.direct_route"]),
           `approval.routing.${base.routingStrategy}`,
-          ...(escalation != null ? ["approval.escalated"] : []),
+          ...(escalatedTo != null ? ["approval.escalated"] : []),
         ],
         occurredAt: nowIso,
       }),

@@ -8,7 +8,7 @@
 |--------|-------|--------|---------------|
 | [001](./001-three-layer-architecture.md) | Three-Layer Separation of Authority | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
-| [003](./003-memory-six-layers.md) | Six-Layer Memory and KV Cache Fixed Prefix | Accepted | 2026-04-02 |
+| [003](./003-memory-seven-layers.md) | Six-Layer Memory and KV Cache Fixed Prefix | Accepted | 2026-04-02 |
 | [004](./004-workflow-routing.md) | Workflow and Routing | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | Security Model | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider Strategy | Accepted | 2026-04-02 |

@@ -47,77 +47,8 @@ const EVENT_COLS_PREFIXED = `e.id,
         e.trace_id AS traceId,
         e.created_at AS createdAt`;
 
-export interface TaskEventStreamSnapshot {
-  taskId: string;
-  tenantId: string | null;
-  events: EventRecord[];
-  streamVersion: number;
-  snapshotCursor: string | null;
-  lastEventId: string | null;
-  lastCreatedAt: string | null;
-}
-
-/**
- * R9-12 FIX: Result type for listEventsForTask with projection versioning.
- * Enables efficient incremental event rebuilding via snapshot cursor.
- */
-export interface TaskEventListResult {
-  events: EventRecord[];
-  streamVersion: number;
-  snapshotCursor: string | null;
-  lastEventId: string | null;
-  lastCreatedAt: string | null;
-}
-
-function encodeEventStreamCursor(event: Pick<EventRecord, "id" | "createdAt">): string {
-  return Buffer.from(JSON.stringify({ id: event.id, createdAt: event.createdAt }), "utf8").toString("base64url");
-}
-
-function decodeEventStreamCursor(cursor: string): { id: string; createdAt: string } {
-  const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
-    id?: unknown;
-    createdAt?: unknown;
-  };
-  if (typeof parsed.id !== "string" || typeof parsed.createdAt !== "string") {
-    throw new Error("event_repository.invalid_snapshot_cursor");
-  }
-  return {
-    id: parsed.id,
-    createdAt: parsed.createdAt,
-  };
-}
-
-function resolveTier1OutboxAggregate(input: {
-  taskId: string | null;
-  sessionId?: string | null;
-  executionId: string | null;
-}): { aggregateType: "task" | "session" | "execution"; aggregateId: string } {
-  if (input.taskId) {
-    return { aggregateType: "task", aggregateId: input.taskId };
-  }
-  if (input.sessionId) {
-    return { aggregateType: "session", aggregateId: input.sessionId };
-  }
-  if (input.executionId) {
-    return { aggregateType: "execution", aggregateId: input.executionId };
-  }
-  throw new Error("tier1_status_event.aggregate_id_required");
-}
-
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
-
-  // R12-16 fix: Store signingKey for HMAC tamper-evident checksums
-  private signingKey: string | undefined;
-
-  /**
-   * R12-16 fix: Sets the HMAC signing key for Tier 1 audit event checksums.
-   * This must be called before publishing tier-1 events if HMAC signing is required.
-   * @param key - The HMAC signing key
-   */
-  public setSigningKey(key: string): void {
-    this.signingKey = key;
-  }
 
   public insertCostEvent(costEvent: {
     id: string;
@@ -167,30 +98,8 @@ export class EventRepository {
 
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier: EventRecord["eventTier"];
+      eventTier?: EventRecord["eventTier"];
       sessionId?: string | null;
-      /** §28.1: schema version for replay compatibility */
-      schemaVersion?: string | null;
-      /** §28.1: aggregate ID for partition-by-aggregate ordering */
-      aggregateId?: string | null;
-      /** §28.1: run ID for sequence tracking */
-      runId?: string | null;
-      /** §28.1: monotonic sequence for replay ordering */
-      sequence?: number | null;
-      /** §28.1: causation chain tracking */
-      causationId?: string | null;
-      /** §28.1: correlation ID for workflow linking */
-      correlationId?: string | null;
-      /** §28.1: payload integrity hash */
-      payloadHash?: string | null;
-      /** §28.1: idempotency key for duplicate detection */
-      idempotencyKey?: string | null;
-      /** §28.1: replay behavior directive */
-      replayBehavior?: EventRecord["replayBehavior"];
-      /** §28.1: principal that emitted the event */
-      principal?: string | null;
-      /** §28.1: evidence references for audit trail */
-      evidenceRefs?: readonly string[];
     },
   ): EventRecord {
     const record: EventRecord = {
@@ -203,33 +112,16 @@ export class EventRepository {
       payloadJson: event.payloadJson,
       traceId: event.traceId ?? null,
       createdAt: event.createdAt,
-      // §28.1 replay ordering fields
-      schemaVersion: event.schemaVersion ?? null,
-      aggregateId: event.aggregateId ?? null,
-      runId: event.runId ?? null,
-      sequence: event.sequence ?? null,
-      // §28.1 causation/correlation/payload integrity fields
-      causationId: event.causationId ?? null,
-      correlationId: event.correlationId ?? null,
-      payloadHash: event.payloadHash ?? null,
-      idempotencyKey: event.idempotencyKey ?? null,
-      replayBehavior: event.replayBehavior ?? null,
-      principal: event.principal ?? null,
-      evidenceRefs: event.evidenceRefs ?? [],
     };
 
-    // R12-05/R5-37 FIX: Persist all §28.1 fields to enable replay ordering and audit trail.
-    // Previously only id/task_id/session_id/execution_id/event_type/event_tier/payload_json/trace_id/created_at
-    // were persisted, losing schemaVersion/aggregateId/runId/sequence/causationId/correlationId.
-    (this.conn.prepare(
-      `INSERT INTO events (
+    this.conn
+      .prepare(
+        `INSERT INTO events (
           id, task_id, session_id, execution_id, event_type, event_tier,
-          payload_json, trace_id, created_at,
-          schema_version, aggregate_id, run_id, sequence,
-          causation_id, correlation_id, payload_hash, idempotency_key,
-          replay_behavior, principal, evidence_refs
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ) as unknown as { run: (...args: unknown[]) => unknown }).run(
+          payload_json, trace_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
         record.id,
         record.taskId,
         record.sessionId,
@@ -239,17 +131,6 @@ export class EventRepository {
         record.payloadJson,
         record.traceId,
         record.createdAt,
-        record.schemaVersion,
-        record.aggregateId,
-        record.runId,
-        record.sequence,
-        record.causationId,
-        record.correlationId,
-        record.payloadHash,
-        record.idempotencyKey,
-        record.replayBehavior,
-        record.principal,
-        record.evidenceRefs && record.evidenceRefs.length > 0 ? JSON.stringify(record.evidenceRefs) : null,
       );
 
     for (const consumerId of getRequiredConsumers(record.eventType)) {
@@ -556,72 +437,23 @@ export class EventRepository {
     return Number(result.changes ?? 0);
   }
 
-  public listEventsForTask(taskId: string, limit?: number): TaskEventListResult;
-  public listEventsForTask(taskId: string, tenantId?: string | null): TaskEventListResult;
-  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): TaskEventListResult {
-    let events: EventRecord[];
+  public listEventsForTask(taskId: string, limit?: number): EventRecord[];
+  public listEventsForTask(taskId: string, tenantId?: string | null): EventRecord[];
+  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): EventRecord[] {
     if (typeof tenantIdOrLimit === "number") {
-      events = queryAll<EventRecord>(
+      return queryAll<EventRecord>(
         this.conn,
         `SELECT ${EVENT_COLS}
          FROM events
          WHERE task_id = ?
-         ORDER BY created_at DESC, id DESC
+         ORDER BY created_at DESC
          LIMIT ?`,
         taskId,
         tenantIdOrLimit,
       );
-    } else {
-      const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
-      if (scopedTenantId !== undefined) {
-        events = queryAll<EventRecord>(
-          this.conn,
-          `SELECT ${EVENT_COLS_PREFIXED}
-           FROM events e
-           INNER JOIN tasks t ON t.id = e.task_id
-           WHERE e.task_id = ?
-             AND t.tenant_id = ?
-           ORDER BY e.created_at ASC, e.id ASC`,
-          taskId,
-          scopedTenantId,
-        );
-      } else {
-        events = queryAll<EventRecord>(
-          this.conn,
-          `SELECT ${EVENT_COLS}
-           FROM events
-           WHERE task_id = ?
-           ORDER BY created_at ASC, id ASC`,
-          taskId,
-        );
-      }
     }
-    const lastEvent = events.at(-1) ?? null;
-    return {
-      events,
-      streamVersion: events.length,
-      snapshotCursor: lastEvent ? encodeEventStreamCursor(lastEvent) : null,
-      lastEventId: lastEvent?.id ?? null,
-      lastCreatedAt: lastEvent?.createdAt ?? null,
-    };
-  }
 
-  public listEventsForTaskSnapshot(taskId: string, tenantId?: string | null): TaskEventStreamSnapshot {
-    const result = this.listEventsForTask(taskId, tenantId);
-    return {
-      taskId,
-      tenantId: resolveTenantScope(tenantId) ?? null,
-      events: result.events,
-      streamVersion: result.streamVersion,
-      snapshotCursor: result.snapshotCursor,
-      lastEventId: result.lastEventId,
-      lastCreatedAt: result.lastCreatedAt,
-    };
-  }
-
-  public listEventsForTaskSinceCursor(taskId: string, snapshotCursor: string, tenantId?: string | null): EventRecord[] {
-    const cursor = decodeEventStreamCursor(snapshotCursor);
-    const scopedTenantId = resolveTenantScope(tenantId);
+    const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
     if (scopedTenantId !== undefined) {
       return queryAll<EventRecord>(
         this.conn,
@@ -630,26 +462,19 @@ export class EventRepository {
          INNER JOIN tasks t ON t.id = e.task_id
          WHERE e.task_id = ?
            AND t.tenant_id = ?
-           AND (e.created_at > ? OR (e.created_at = ? AND e.id > ?))
-         ORDER BY e.created_at ASC, e.id ASC`,
+         ORDER BY e.created_at ASC`,
         taskId,
         scopedTenantId,
-        cursor.createdAt,
-        cursor.createdAt,
-        cursor.id,
       );
     }
+
     return queryAll<EventRecord>(
       this.conn,
       `SELECT ${EVENT_COLS}
        FROM events
        WHERE task_id = ?
-         AND (created_at > ? OR (created_at = ? AND id > ?))
-       ORDER BY created_at ASC, id ASC`,
+       ORDER BY created_at ASC`,
       taskId,
-      cursor.createdAt,
-      cursor.createdAt,
-      cursor.id,
     );
   }
 
@@ -664,32 +489,6 @@ export class EventRepository {
     );
   }
 
-  // R13-12 FIX: Implement getEventsByTenantId for multi-tenant isolation queries.
-  // Tenant isolation is maintained via JOIN with tasks table.
-  public listEventsByTenantId(tenantId: string, limit?: number, cursor?: string | null): EventRecord[] {
-    let sql = `SELECT ${EVENT_COLS_PREFIXED}
-       FROM events e
-       INNER JOIN tasks t ON t.id = e.task_id
-       WHERE t.tenant_id = ?`;
-    const params: (string | number)[] = [tenantId];
-
-    if (cursor !== undefined && cursor !== null) {
-      // cursor is encoded as base64url JSON: {id, createdAt}
-      const cursorData = decodeEventStreamCursor(cursor);
-      sql += ` AND (e.created_at > ? OR (e.created_at = ? AND e.id > ?))`;
-      params.push(cursorData.createdAt, cursorData.createdAt, cursorData.id);
-    }
-
-    sql += ` ORDER BY e.created_at ASC, e.id ASC`;
-
-    if (limit !== undefined) {
-      sql += ` LIMIT ?`;
-      params.push(limit);
-    }
-
-    return queryAll<EventRecord>(this.conn, sql, ...params);
-  }
-
   public getEvent(eventId: string): EventRecord | undefined {
     return queryOne<EventRecord>(
       this.conn,
@@ -700,34 +499,8 @@ export class EventRepository {
     );
   }
 
-  // R13-10 FIX: Implement getEventsByCorrelationId for workflow linking.
-  // correlation_id links events belonging to the same workflow or business transaction.
-  public listEventsByCorrelationId(correlationId: string, limit?: number): EventRecord[] {
-    let sql = `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE correlation_id = ?
-       ORDER BY created_at ASC, id ASC`;
-    if (limit !== undefined) {
-      sql += ` LIMIT ${limit}`;
-    }
-    return queryAll<EventRecord>(this.conn, sql, correlationId);
-  }
-
-  // R13-11 FIX: Implement getEventsByCausationId for cause-effect chain tracking.
-  // causation_id links an event to its originating event (the cause).
-  public listEventsByCausationId(causationId: string, limit?: number): EventRecord[] {
-    let sql = `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE causation_id = ?
-       ORDER BY created_at ASC, id ASC`;
-    if (limit !== undefined) {
-      sql += ` LIMIT ${limit}`;
-    }
-    return queryAll<EventRecord>(this.conn, sql, causationId);
-  }
-
   public listDispatchDecisionTracesByTask(taskId: string, tenantId?: string | null): DispatchDecisionTrace[] {
-    return this.listEventsForTask(taskId, tenantId).events
+    return this.listEventsForTask(taskId, tenantId)
       .filter((event) => event.eventType === "dispatch:decision_recorded")
       .flatMap((event) => {
         const parsed = parseDispatchDecisionTrace(event.payloadJson);
@@ -826,7 +599,6 @@ export class EventRepository {
                   createdAt: row.createdAt,
                 },
         })),
-        this.signingKey,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -879,15 +651,14 @@ export class EventRepository {
     );
 
     for (const event of pendingEvents) {
-      // R12-16 fix: Use HMAC signing key for tamper-evident checksums
-      const eventChecksum = computeTier1AuditEventChecksum(event, this.signingKey);
+      const eventChecksum = computeTier1AuditEventChecksum(event);
       chainPosition += 1;
       const chainHash = computeTier1AuditChainHash({
         chainPosition,
         previousChainHash,
         eventChecksum,
         eventId: event.id,
-      }, this.signingKey);
+      });
 
       insertIntegrityRecord.run(
         event.id,
@@ -953,18 +724,16 @@ export class EventRepository {
   }
 
   public createTier1StatusEvent(input: {
-    taskId: string | null;
-    sessionId?: string | null;
+    taskId: string;
     executionId: string | null;
     eventType: string;
     traceId: string;
     payload: Record<string, unknown>;
   }): EventRecord {
-    const aggregate = resolveTier1OutboxAggregate(input);
     const eventRecord = this.insertEvent({
       id: newId("evt"),
       taskId: input.taskId,
-      sessionId: input.sessionId ?? null,
+      sessionId: null,
       executionId: input.executionId,
       eventType: input.eventType,
       eventTier: "tier_1",
@@ -980,7 +749,6 @@ export class EventRepository {
       eventId: eventRecord.id,
       eventType: input.eventType,
       taskId: input.taskId,
-      sessionId: input.sessionId ?? null,
       executionId: input.executionId,
       payload: input.payload,
     };
@@ -994,8 +762,8 @@ export class EventRepository {
       )
       .run(
         outboxId,
-        aggregate.aggregateType,
-        aggregate.aggregateId,
+        "task",
+        input.taskId,
         input.eventType,
         JSON.stringify(outboxPayload),
         input.traceId,

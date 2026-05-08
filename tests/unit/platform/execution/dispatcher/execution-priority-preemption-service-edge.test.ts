@@ -239,7 +239,7 @@ test("preemptForUrgentTicket returns not_preempted when worker has available slo
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -260,7 +260,7 @@ test("preemptForUrgentTicket returns not_preempted when worker maxConcurrency is
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -281,7 +281,7 @@ test("preemptForUrgentTicket returns not_preempted when worker has wrong running
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -303,7 +303,7 @@ test("preemptForUrgentTicket filters by dispatchTarget local_only with remote wo
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { dispatchTarget: "local_only" });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -325,7 +325,7 @@ test("preemptForUrgentTicket filters by dispatchTarget require_remote with local
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { dispatchTarget: "require_remote" });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -347,7 +347,7 @@ test("preemptForUrgentTicket filters worker by unavailable status", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -369,7 +369,7 @@ test("preemptForUrgentTicket filters worker by quarantined status", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -391,7 +391,7 @@ test("preemptForUrgentTicket filters worker by offline status", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -413,7 +413,7 @@ test("preemptForUrgentTicket filters worker by draining status", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -435,7 +435,7 @@ test("preemptForUrgentTicket excludes degraded workers when includeDegraded is f
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { includeDegraded: false });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -462,7 +462,7 @@ test("preemptForUrgentTicket filters untrusted remote workers", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -484,7 +484,7 @@ test("preemptForUrgentTicket filters by queueAffinity mismatch", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical", { queueName: "queue-beta" });
+  const ticket = createMockTicket("urgent", { queueName: "queue-beta" });
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -506,7 +506,7 @@ test("preemptForUrgentTicket filters by insufficient isolation level", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { requiredIsolationLevel: "hardened" as WorkerIsolationLevel });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -528,7 +528,7 @@ test("preemptForUrgentTicket filters by repo version mismatch", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { requiredRepoVersion: "v2.0.0" });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -550,7 +550,7 @@ test("preemptForUrgentTicket filters by missing capabilities", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { requiredCapabilities: ["gpu", "large_memory"] });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -572,7 +572,7 @@ test("preemptForUrgentTicket filters by preferredWorkerId mismatch", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { preferredWorkerId: "worker-2" });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -594,7 +594,7 @@ test("preemptForUrgentTicket skips source execution in candidate selection", () 
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical", { executionId: "exec-1" });
+  const ticket = createMockTicket("urgent", { executionId: "exec-1" });
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -620,7 +620,7 @@ test("preemptForUrgentTicket filters execution with non-executing status", () =>
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -650,7 +650,7 @@ test("preemptForUrgentTicket filters when workflow status is not running", () =>
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -681,7 +681,7 @@ test("preemptForUrgentTicket filters when no active lease", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -713,7 +713,7 @@ test("preemptForUrgentTicket filters when lease workerId does not match", () => 
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -746,7 +746,7 @@ test("preemptForUrgentTicket filters when no recovery step", () => {
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -780,7 +780,7 @@ test("preemptForUrgentTicket filters when worker currentStepId does not match re
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -817,7 +817,7 @@ test("preemptForUrgentTicket filters when agentExecution currentStepId does not 
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -845,7 +845,7 @@ test("preemptForUrgentTicket rejects standard isolation when required is strict"
 
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { requiredIsolationLevel: "strict" as WorkerIsolationLevel });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -869,7 +869,7 @@ test("preemptForUrgentTicket rejects hardened isolation when required is strict"
 
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket, { requiredIsolationLevel: "strict" as WorkerIsolationLevel });
   const decision = service.preemptForUrgentTicket(request);
 
@@ -901,7 +901,7 @@ test("preemptForUrgentTicket filters remote worker with viewer_only session", ()
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -929,7 +929,7 @@ test("preemptForUrgentTicket filters remote worker with disconnected session", (
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -957,7 +957,7 @@ test("preemptForUrgentTicket filters remote worker with consistency mismatch", (
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -985,7 +985,7 @@ test("preemptForUrgentTicket filters remote worker with workspace sync conflict"
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 
@@ -1013,7 +1013,7 @@ test("preemptForUrgentTicket filters remote worker with null stream offset", () 
   });
   const service = new ExecutionPriorityPreemptionService(createMockDb(), store);
 
-  const ticket = createMockTicket("critical");
+  const ticket = createMockTicket("urgent");
   const request = createPreemptionRequest(ticket);
   const decision = service.preemptForUrgentTicket(request);
 

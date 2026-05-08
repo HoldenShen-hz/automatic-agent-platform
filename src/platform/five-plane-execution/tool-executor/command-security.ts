@@ -66,14 +66,9 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["ls", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
   // find: optional path arg at [0]
   ["find", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
-  // R30-21 FIX: grep/rg pathArgPositions should validate ALL file args, not just the last.
-  // Root cause: pathArgPositions: [-1] only validated the final argument, so "grep pattern file1 file2"
-  // would only check file2, allowing file1 to bypass path validation.
-  // Fix: Validate all arguments after the pattern (first non-option arg) as potential file paths.
-  // Note: This is conservative - it may reject some valid uses with complex option combinations,
-  // but ensures all file operands are checked against the sandbox policy.
-  ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [1, 2, 3, 4, 5] }],
-  ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [1, 2, 3, 4, 5] }],
+  // grep/rg: pattern first, then optional file path at the end (-1)
+  ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
+  ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
   // sort/uniq/cut: first arg is file path
   ["sort", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
   ["uniq", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
@@ -81,9 +76,8 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["sed", { allowed: true, riskLevel: "medium" }],
   ["tr", { allowed: true, riskLevel: "low" }],
   ["sleep", { allowed: true, riskLevel: "low" }],
-  // R12-23 fix: env/printenv expose AA*VAULT_TOKEN/AA_SECRET* variables - blocked by default
-  ["env", { allowed: false, riskLevel: "critical", reasonCode: "tool.env_blocked_exposes_secrets" }],
-  ["printenv", { allowed: false, riskLevel: "critical", reasonCode: "tool.printenv_blocked_exposes_secrets" }],
+  ["env", { allowed: true, riskLevel: "medium" }],
+  ["printenv", { allowed: true, riskLevel: "medium" }],
   ["which", { allowed: true, riskLevel: "low" }],
   ["ps", { allowed: true, riskLevel: "medium" }],
   ["git", { allowed: true, riskLevel: "high" }],
@@ -95,33 +89,23 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["bash", { allowed: true, riskLevel: "high" }],
   ["sh", { allowed: true, riskLevel: "high" }],
   ["zsh", { allowed: true, riskLevel: "high" }],
+  ["mkdir", { allowed: true, riskLevel: "high" }],
+  ["touch", { allowed: true, riskLevel: "high" }],
   ["cp", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["mv", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  // R30-15/R30-16 FIX: chmod/chown writePathArgPositions should be [1], not [0].
-  // Root cause: For "chmod 755 file.txt", arg[0]="755" is the mode and arg[1]="file.txt" is the path.
-  // The previous config validated arg[0] (the mode) instead of arg[1] (the actual file path),
-  // allowing sandbox bypass - attackers could modify arbitrary files by controlling the path arg.
-  // Same issue applies to chown with "user:group file.txt" format.
-  ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
-  ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
-  // R12-22 fix: curl/wget must route through NetworkEgressPolicyService - blocked by default
-  // until proper egress policy integration is implemented
-  ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],
-  ["wget", { allowed: false, riskLevel: "critical", reasonCode: "tool.wget_blocked_requires_egress_policy" }],
-  // R12-4 fix: tar with archive extraction can write to arbitrary paths - validate target dirs
-  // tar [-x|-t|-c] [-f] archive [member...] - arg[0] is usually flag, arg[1] is archive, rest are members
-  ["tar", { allowed: true, riskLevel: "high", pathArgPositions: [1], writePathArgPositions: [1, 2, 3, 4] }],
-  ["unzip", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  ["zip", { allowed: true, riskLevel: "high", pathArgPositions: [1], writePathArgPositions: [0] }],
-  // sqlite3 can read/write database files - arg[0] is the db path
-  ["sqlite3", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [0] }],
-  // psql can execute SQL files - arg[0] is typically a flag, arg[1] can be a file
-  ["psql", { allowed: true, riskLevel: "high", pathArgPositions: [1] }],
+  ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["curl", { allowed: true, riskLevel: "high" }],
+  ["wget", { allowed: true, riskLevel: "high" }],
+  ["tar", { allowed: true, riskLevel: "high" }],
+  ["unzip", { allowed: true, riskLevel: "high" }],
+  ["zip", { allowed: true, riskLevel: "high" }],
+  ["sqlite3", { allowed: true, riskLevel: "high" }],
+  ["psql", { allowed: true, riskLevel: "high" }],
   // tee: arg[0] is a file path (writes to file)
   ["tee", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["jq", { allowed: true, riskLevel: "medium" }],
-  // P2-2144: Removed duplicate touch/mkdir entries - Map takes last value so first entries were dead code
   ["touch", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["mkdir", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
 ];
@@ -133,14 +117,7 @@ export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinit
 // Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
 // S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
 // and newline continuation attacks
-// P1-2136 fix: Only block glob metacharacters when they appear in a SHELL EXPANSION context,
-// not when they appear as literal arguments (e.g. "ls *.ts" has *.ts as a literal glob arg).
-// The original regex wrongly blocked `ls *.ts` because `*` and `?` are glob meta-chars.
-// We fix this by only matching them when preceded by a shell context marker like space,
-// quote, or parenthesis. Simpler: remove [*?] from the regex since they are only dangerous
-// in unquoted contexts (command substitution). The validateCommandSignature path catches
-// actual injection via $() etc.
-const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|\[[^\]]+\]|\r|\n/;
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|[*?]|\[[^\]]+\]|\r|\n/;
 const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
 
 // Fork bomb detection patterns
@@ -273,24 +250,13 @@ function validateCommandSignature(command: string, args: readonly string[], risk
   }
 
   if (SCRIPT_FILE_INTERPRETERS.has(command)) {
-    // R17-04 fix: Find the actual script path by locating the first non-flag argument,
-    // not just assuming args[0] is the script. Commands like `python --verbose script.py`
-    // have the script at args[1], not args[0].
-    const nonFlagArgIndex = args.findIndex((arg) => !arg.startsWith("-"));
-    if (nonFlagArgIndex === -1) {
+    const scriptPath = args[0] ?? null;
+    if (scriptPath === null) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    const scriptPath = args[nonFlagArgIndex]!;
-    // R17-04 fix: Block only when ALL args look like interpreter flags.
-    // python -c "code" → blocked (all args are flags, no script)
-    // python --verbose script.py → ALLOWED (script path is after flags)
-    // python /path/script.py → ALLOWED (script path is normal file)
-    // python --malicious-flag → blocked (no script, just flags)
-    // P1-2135 fix: Check for at least one non-flag arg (the script path), not just "all args are flags".
-    // "python --output foo script.py" has non-flag arg "script.py" so it's allowed.
-    const allArgsAreFlags = args.every((arg) => arg.startsWith("-"));
-    const hasScriptPath = args.some((arg) => !arg.startsWith("-"));
-    if (allArgsAreFlags || !hasScriptPath) {
+    // S-04: Check ALL arguments for flag-like values, not just the first one.
+    // python /path/script.py --malicious-flag would have passed before this fix.
+    if (scriptPath.startsWith("-") || args.slice(1).some((arg) => arg.startsWith("-"))) {
       return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);

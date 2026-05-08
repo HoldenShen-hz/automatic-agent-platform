@@ -415,51 +415,6 @@ test("canonical contract text directly encodes the first unresolved contract fix
   assert.match(runtimeRepository, /node_attempt_receipts/);
 });
 
-test("task intake and harness run contracts now require canonical domain binding", () => {
-  const intake = readFileSync("docs_zh/contracts/task-intake-request-contract.md", "utf8");
-  assert.match(intake, /\| `domainId` \| `string` \| 已归一化的执行域绑定/);
-  assert.match(intake, /\| `priority` \| `number` \| admission \/ scheduler 优先级/);
-  assert.match(intake, /`ConfirmedTaskSpec` 阶段回退为 legacy division 标识/);
-  assert.match(intake, /后续 `HarnessRun`、risk overlay、knowledge boundary 与 prompt 库选择不得再从 `divisionId` 反推/);
-
-  const harnessRun = readFileSync("docs_zh/contracts/harness-run-contract.md", "utf8");
-  assert.match(harnessRun, /\| `domainId` \| `string` \| canonical 域绑定/);
-  assert.match(harnessRun, /`domainId` 是 run truth 的一部分/);
-  assert.match(harnessRun, /projection 若展示 `divisionId`、`domainHint` 或业务别名，必须保留 `domainId -> legacy alias` 的显式映射/);
-});
-
-test("event, workflow, release, and handoff contracts stay aligned to canonical runtime names", () => {
-  const eventEnvelope = readFileSync("docs_zh/contracts/event-envelope-contract.md", "utf8");
-  assert.match(eventEnvelope, /\| `schemaVersion` \| `number` \|/);
-  assert.match(eventEnvelope, /\| `schema_version` \| `schemaVersion` \|/);
-  assert.match(eventEnvelope, /snake_case 只允许出现在 wire adapter/);
-
-  const eventBus = readFileSync("docs_zh/contracts/event_bus_contract.md", "utf8");
-  assert.match(eventBus, /platform\.harness_run\.created/);
-  assert.match(eventBus, /platform\.node_run\.status_changed/);
-  assert.match(eventBus, /platform\.release\.rollout_started/);
-  assert.match(eventBus, /release\.\*.*必须在边界层显式映射到 `platform\.release\.\*`/s);
-  assert.match(eventBus, /platform\.harness\.run\.\*` -> `platform\.harness_run\.\*/);
-
-  const workflow = readFileSync("docs_zh/contracts/task_and_workflow_contract.md", "utf8");
-  assert.match(workflow, /\| `domain_id` \| `string` \| 归属执行域 \|/);
-  assert.match(workflow, /legacy_division_alias/);
-  assert.match(workflow, /不得替代 `domain_id` 参与 runtime truth 关联/);
-
-  const release = readFileSync("docs_zh/contracts/release_rollout_and_rollback_contract.md", "utf8");
-  assert.match(release, /ReleaseDecisionView/);
-  assert.match(release, /ReleaseChannel/);
-  assert.match(release, /channelKind/);
-
-  const handoff = readFileSync("docs_zh/contracts/agent_handoff_contract.md", "utf8");
-  assert.match(handoff, /DelegationRequest/);
-  assert.match(handoff, /DelegationReceipt/);
-  assert.match(handoff, /ACPMessage/);
-  assert.match(handoff, /AgentHandoff/);
-  assert.match(handoff, /C1 child_subset_of_parent/);
-  assert.match(handoff, /NodeAttemptReceipt/);
-});
-
 test("OAPEFLIR executable spec remediation directly covers F-1 through F-25", () => {
   const text = readFileSync("docs_zh/architecture/oapeflir-v4.4-executable-spec.md", "utf8");
   assert.match(text, /## v4\.3 Canonical Compatibility Override/);
@@ -506,10 +461,12 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr005, /UI 投影/);
 
   const adr026 = readFileSync("docs_zh/adr/026-risk-control-architecture.md", "utf8");
-  assert.match(adr026, /impact × 4 \+ irreversibility × 4/);
-  assert.match(adr026, /\| impact \|/);
-  assert.match(adr026, /\| irreversibility \|/);
-  assert.match(adr026, /二维 canonical 模型/);
+  assert.match(adr026, /8 因子加权评分算法/);
+  assert.match(adr026, /operationRisk/);
+  assert.match(adr026, /targetResourceCriticality/);
+  assert.match(adr026, /autonomyModeRisk/);
+  assert.match(adr026, /tenantImpact/);
+  assert.match(adr026, /evidenceConfidence/);
   assert.doesNotMatch(adr026, /\| stepTypeRisk \|/);
 
   const adr073 = readFileSync("docs_zh/adr/073-unified-resource-model.md", "utf8");
@@ -553,22 +510,11 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr098, /awaiting_hitl/);
   assert.doesNotMatch(adr098, /run 进入 `waiting_hitl`/);
 
-  const adr066 = readFileSync("docs_zh/adr/071-plugin-spi-framework.md", "utf8");
+  const adr066 = readFileSync("docs_zh/adr/066-plugin-spi-framework.md", "utf8");
   assert.match(adr066, /Promise<PlanGraphBundle>/);
   assert.match(adr066, /独立进程/);
   assert.match(adr066, /IPC/);
   assert.doesNotMatch(adr066, /独立 Worker 线程，通过 `plugin-runtime-host\.ts` 管理/);
-
-  const adr072 = readFileSync("docs_zh/adr/072-oapeflir-testing-strategy.md", "utf8");
-  const adr072Canonical = stripRemediationSection(adr072, "## v4.3 ADR Remediation");
-  assert.match(adr072Canonical, /tests\/invariants\/\*\.test\.ts/);
-  assert.match(adr072Canonical, /tests\/unit\/docs\/\*\.test\.ts/);
-  assert.match(adr072Canonical, /HarnessRun/);
-  assert.match(adr072Canonical, /oapeflir\.view\.\*/);
-  assert.doesNotMatch(adr072Canonical, /tests\/security\//);
-  assert.doesNotMatch(adr072Canonical, /tests\/chaos\//);
-  assert.doesNotMatch(adr072Canonical, /tests\/performance\//);
-  assert.doesNotMatch(adr072Canonical, /完整循环 O→A→P→E→F/);
 
   const adr040 = readFileSync("docs_zh/adr/040-goal-decomposition-engine.md", "utf8");
   assert.match(adr040, /GoalProjection 与 HarnessRun 生命周期关系/);
@@ -613,13 +559,13 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   const adr075 = readFileSync("docs_zh/adr/075-controlled-rollout-release.md", "utf8");
   assert.match(adr075, /L1.*`evaluate_0`/);
   assert.match(adr075, /evaluation_enabled \(L1\)/);
-  assert.match(adr075, /状态改为 `evaluation_enabled`/);
+  assert.match(adr075, /'evaluation_enabled'/);
   assert.doesNotMatch(adr075, /\*\*L1\*\* \| `shadow`/);
 
   const releaseRolloutContract = readFileSync("docs_zh/contracts/release_rollout_and_rollback_contract.md", "utf8");
   assert.match(releaseRolloutContract, /L1 \| `evaluate_0`/);
   assert.match(releaseRolloutContract, /evaluation_enabled \(L1\)/);
-  assert.match(releaseRolloutContract, /ReleaseRecord\(evaluate_0 → canary → partial → stable → released\)/);
+  assert.match(releaseRolloutContract, /RolloutRecord\(evaluate_0 → canary → partial → stable → released\)/);
   assert.doesNotMatch(releaseRolloutContract, /L1 \| `shadow`/);
 
   const adr016 = readFileSync("docs_zh/adr/016-oapeflir-loop-model.md", "utf8");

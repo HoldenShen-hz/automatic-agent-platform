@@ -2,13 +2,6 @@
 
 > v4.3 canonical contract。覆盖 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`。
 
-## 0. 类型定义
-
-| 类型 | 定义 | 说明 |
-| --- | --- | --- |
-| `ConstraintPackRef` | `string` | 约束包引用，格式为 `constraint_pack:${id}`，指向平台合并后的不可变约束包 |
-| `PrincipalRef` | `{ principalId: string; tenantId: string; roles: readonly string[] }` | 发起主体引用 |
-
 ## 1. 范围
 
 本 contract 定义从原始输入进入 HarnessRuntime 前的唯一 intake 链路：
@@ -32,7 +25,6 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `principal` | `PrincipalRef` | 发起主体 |
 | `source` | `nl \| webhook \| ui \| cli \| scheduler \| external_event` | 输入来源 |
 | `rawInputRef` | `ArtifactRef?` | 原始输入引用；大文本必须 artifact 化 |
-| `domainId` | `string` | 已归一化的执行域绑定；legacy `divisionId/domainHint` 只允许在入口归一化后落为该字段 |
 | `normalizedIntent` | `json` | 结构化意图 |
 | `missingFields` | `string[]` | 仍需澄清字段 |
 | `riskPreview` | `RiskPreview` | 初步风险判断 |
@@ -45,7 +37,6 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 - `TaskDraft` 不分配 worker、不创建 `HarnessRun`、不占用执行预算。
 - high / critical 风险草稿必须形成显式确认材料。
 - 草稿过期后不得复用生成 `RequestEnvelope`，必须重新确认。
-- canonical draft 必须携带 `domainId`；若入口仍提供 `divisionId`、`domainHint` 或历史域别名，必须在 intake admission 前归一化。
 
 ## 3. ConfirmedTaskSpec
 
@@ -59,7 +50,6 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `taskDraftId` | `string` | 来源草稿 |
 | `tenantId` | `string` | 租户 |
 | `principal` | `PrincipalRef` | 发起主体 |
-| `domainId` | `string` | 与草稿一致的 canonical 域绑定 |
 | `goal` | `string` | 用户确认后的目标 |
 | `inputs` | `json` | 已确认输入 |
 | `constraints` | `ConstraintPackRef` | 任务级约束包 |
@@ -74,7 +64,6 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 - `riskClass=high|critical` 时，`confirmationReceipt` 必须存在且未过期。
 - `idempotencyKey` 在同一 tenant 下必须稳定；重复提交返回同一 admission 结果。
 - `constraints` 必须来自平台、租户、域和任务约束合并后的不可变引用。
-- `domainId` 必须沿用 admission 已验证的 canonical 绑定，不得在 `ConfirmedTaskSpec` 阶段回退为 legacy division 标识。
 
 ## 4. RequestEnvelope
 
@@ -88,10 +77,8 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `confirmedTaskSpecId` | `string` | 已确认任务规格 |
 | `tenantId` | `string` | 租户 |
 | `principal` | `PrincipalRef` | 发起主体 |
-| `domainId` | `string` | 从 `ConfirmedTaskSpec` 继承的 canonical 域绑定 |
 | `traceId` | `string` | trace |
 | `idempotencyKey` | `string` | 幂等键 |
-| `priority` | `number` | admission / scheduler 优先级；必须进入 canonical schema，而不是只存在于工厂默认值 |
 | `requestHash` | `string` | admission 幂等校验 hash |
 | `constraintPackRef` | `ConstraintPackRef` | 约束包 |
 | `budgetIntent` | `BudgetIntent` | 预算意图，不是 reservation |
@@ -104,7 +91,6 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 - `RequestEnvelope` 不得包含未确认的自然语言原文作为唯一任务定义。
 - `budgetIntent` 只能进入预算预检；实际扣留必须通过 `BudgetReservation`。
 - admission 成功后创建 `HarnessRun`；失败必须记录 platform fact event 与可解释拒绝原因。
-- `domainId` 必须直接复制自 `ConfirmedTaskSpec.domainId`，后续 `HarnessRun`、risk overlay、knowledge boundary 与 prompt 库选择不得再从 `divisionId` 反推。
 
 ## 5. Legacy / Deprecated 映射
 

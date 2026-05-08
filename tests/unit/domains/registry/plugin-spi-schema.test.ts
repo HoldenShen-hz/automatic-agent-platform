@@ -10,7 +10,7 @@ import {
 } from "../../../../src/domains/registry/plugin-spi.js";
 
 test("PluginSpiTypeSchema accepts valid spi types", () => {
-  const validTypes = ["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"];
+  const validTypes = ["retriever", "validator", "planner", "presenter", "adapter"];
   for (const type of validTypes) {
     const result = PluginSpiTypeSchema.safeParse(type);
     assert.equal(result.success, true, `Expected ${type} to be valid`);
@@ -23,7 +23,7 @@ test("PluginSpiTypeSchema rejects invalid spi types", () => {
 });
 
 test("PluginLifecycleStateSchema accepts valid states", () => {
-  const validStates = ["registered", "validated", "loading", "active", "inactive", "unloaded", "suspended", "disabled"];
+  const validStates = ["registered", "loaded", "active", "inactive", "unloaded", "degraded", "disabled"];
   for (const state of validStates) {
     const result = PluginLifecycleStateSchema.safeParse(state);
     assert.equal(result.success, true, `Expected ${state} to be valid`);

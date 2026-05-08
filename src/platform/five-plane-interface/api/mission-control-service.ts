@@ -62,7 +62,6 @@ export interface MissionControlSnapshot {
   generatedAt: string;
   health: HealthStatusReport;
   metrics: RuntimeMetricsSummary;
-  // UI spec Dashboard wireframe fields per §4.7.7
   taskBoard: TaskBoardItem[];
   pendingApprovals: ApprovalRecord[];
   divisions: DivisionCatalogEntry[];
@@ -72,57 +71,11 @@ export interface MissionControlSnapshot {
     perceptionBriefs: PerceptionBriefPreview[];
   };
   gatewayTargets: GatewayTargetPreview[];
-  // Additional UI spec required fields
-  successRate: number;
-  avgDurationMs: number;
-  activeAgents: number;
-  queueDepth: number;
-  errorRate: number;
-  p50LatencyMs: number;
-  p99LatencyMs: number;
-  budgetUtilizationPercent: number;
-  uptimePercent: number;
 }
 
 export interface WorkflowCockpitView {
   generatedAt: string;
   summary: WorkflowInspectSummary;
-  // UI spec §5.2 Cockpit - canonical PlanGraph/DAG model (R7-32 fix: was legacy linear steps/current_step_index)
-  presentation: {
-    harnessRunId: string;
-    taskTitle: string;
-    statusLabel: string;
-    progressPercent: number;
-    // planGraph replaces legacy current_step_index/linear steps model
-    planGraph: {
-      nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>;
-      edges: ReadonlyArray<{ fromNodeId: string; toNodeId: string }>;
-    };
-    // NodeRun list replaces legacy step list (R7-32 fix)
-    nodeRuns: ReadonlyArray<{
-      nodeRunId: string;
-      nodeId: string;
-      status: string;
-      attempts: number;
-      startedAt: string | null;
-      completedAt: string | null;
-    }>;
-    // UI spec §5.2 required fields (R7-23 fix: were missing)
-    dependencyState: ReadonlyArray<{ nodeId: string; blockedBy: ReadonlyArray<string>; blockedReason: string | null }>;
-    approvalNodes: ReadonlyArray<{ nodeId: string; approvalId: string | null; status: string; requestedAt: string | null }>;
-    evidenceRefs: ReadonlyArray<{ artifactId: string; nodeRunId: string | null; artifactType: string; label: string }>;
-    activeNodeRunId: string | null;
-    elapsedTimeMs: number;
-    estimatedRemainingMs: number;
-    riskLevel: "low" | "medium" | "high" | "critical";
-    recentEvents: readonly { eventType: string; timestamp: string; description: string }[];
-    keyMetrics: {
-      successRate: number;
-      avgStepDurationMs: number;
-      retryCount: number;
-      approvalCount: number;
-    };
-  };
   inspect: ReturnType<InspectService["getTaskInspectView"]>;
   timeline: ReturnType<TaskTimelineService["buildTaskTimeline"]>;
 }
@@ -130,29 +83,19 @@ export interface WorkflowCockpitView {
 export interface StabilityPanelView {
   generatedAt: string;
   health: HealthStatusReport;
-  // UI spec requires scalar counts per panel item, not arrays
-  activeTaskCount: number;
-  queuedTaskCount: number;
-  blockedTaskCount: number;
   activeTasks: TaskInspectSummary[];
   queuedTasks: TaskInspectSummary[];
   blockedTasks: TaskInspectSummary[];
   workflows: WorkflowInspectSummary[];
-  workflowCount: number;
   pendingApprovals: ApprovalRecord[];
-  pendingApprovalCount: number;
   workers: WorkerInspectSummary[];
-  workerCount: number;
   findings: string[];
-  findingsCount: number;
 }
 
 export interface AdminTakeoverConsoleView {
   generatedAt: string;
-  // R7-33/R7-34 fix: scope uses harness_run_id/node_run_id instead of legacy taskId
   scope: {
-    harnessRunId: string;
-    nodeRunId: string | null;
+    taskId: string;
     divisionId: string | null;
     workspaceId: string | null;
     tenantId: string | null;
@@ -174,12 +117,6 @@ export interface AdminTakeoverConsoleView {
   billingAccounts: BillingAccountPreview[];
   inspect: ReturnType<InspectService["getTaskInspectView"]>;
   timeline: ReturnType<TaskTimelineService["buildTaskTimeline"]>;
-  // R7-33 fix: canonical override/retry/skip operations (replaces legacy retry_step/skip_step/override_step_output)
-  overrideActions: {
-    retryNodeRun: (nodeRunId: string) => Promise<void>;
-    skipNodeRun: (nodeRunId: string) => Promise<void>;
-    overrideNodeOutput: (nodeRunId: string, output: unknown) => Promise<void>;
-  };
 }
 
 export interface MissionControlServiceOptions {
@@ -217,29 +154,11 @@ export class MissionControlService {
       .map((summary) => this.store.approval.getApproval(summary.decisionId))
       .filter((record): record is ApprovalRecord => record != null);
 
-    const taskBoard = this.taskBoardService.list(25);
-    const metrics = this.metricsService.buildSummary();
-
-    // Compute UI spec Dashboard wireframe fields from task board and metrics
-    const totalTasks = taskBoard.length;
-    const completedTasks = taskBoard.filter((t) => t.taskStatus === "done").length;
-    const failedTasks = taskBoard.filter((t) => t.taskStatus === "failed").length;
-    const inProgressTasks = taskBoard.filter((t) => t.taskStatus === "in_progress").length;
-    const successRate = totalTasks > 0 ? completedTasks / totalTasks : 1.0;
-    const errorRate = totalTasks > 0 ? failedTasks / totalTasks : 0;
-    const activeAgents = inProgressTasks;
-    const queueDepth = totalTasks - completedTasks - failedTasks;
-    const avgDurationMs = metrics.stepMetrics?.averageDurationMs ?? 250;
-    const p50LatencyMs = metrics.stepMetrics?.p95DurationMs ? metrics.stepMetrics.p95DurationMs * 0.5 : 250;
-    const p99LatencyMs = metrics.stepMetrics?.p95DurationMs ?? 2000;
-    const budgetUtilizationPercent = metrics.costMetrics?.totalActualCostUsd ? Math.min(100, metrics.costMetrics.totalActualCostUsd / 100) : 0;
-    const uptimePercent = metrics.taskMetrics?.total && metrics.taskMetrics.total > 0 ? (metrics.taskMetrics.successRate * 100) : 99.9;
-
     return {
       generatedAt: new Date().toISOString(),
       health: this.healthService.getReport(),
-      metrics,
-      taskBoard,
+      metrics: this.metricsService.buildSummary(),
+      taskBoard: this.taskBoardService.list(25),
       pendingApprovals,
       divisions: this.listDivisionCatalog(),
       productSignals: {
@@ -263,16 +182,6 @@ export class MissionControlService {
             source: entry.source,
             lastSeenAt: entry.lastSeenAt,
           })),
-      // UI spec Dashboard wireframe fields
-      successRate: Number(successRate.toFixed(4)),
-      avgDurationMs,
-      activeAgents,
-      queueDepth,
-      errorRate: Number(errorRate.toFixed(4)),
-      p50LatencyMs,
-      p99LatencyMs,
-      budgetUtilizationPercent,
-      uptimePercent,
     };
   }
 
@@ -335,282 +244,11 @@ export class MissionControlService {
       });
     }
 
-    // Build UI spec presentation shape from inspect data
-    // R7-32 fix: canonical PlanGraph/DAG model replaces legacy linear steps/current_step_index
-    const workflowState = inspect.workflowState;
-    const statusLabel = this.deriveStatusLabel(inspect.task.status);
-    const progressPercent = this.deriveProgressPercent(workflowState);
-    const elapsedTimeMs = this.deriveElapsedTimeMs(inspect.task.createdAt);
-    const estimatedRemainingMs = this.deriveEstimatedRemainingMs(workflowState, elapsedTimeMs);
-    const riskLevel = this.deriveRiskLevel(inspect);
-    const recentEvents = this.deriveRecentEvents(inspect);
-    const keyMetrics = this.deriveKeyMetrics(inspect);
-
-    // Build planGraph nodes/edges from workflowState (R7-32 fix: DAG replaces linear steps)
-    const planGraphNodes = this.buildPlanGraphNodes(inspect);
-    const planGraphEdges = this.buildPlanGraphEdges(inspect);
-    const activeNodeRunId = this.deriveActiveNodeRunId(inspect, planGraphNodes);
-    const nodeRuns = this.deriveNodeRuns(inspect, planGraphNodes);
-
-    // R7-23 fix: derive UI spec §5.2 required fields (dependency_state, approval_nodes, evidence_refs)
-    const dependencyState = this.deriveDependencyState(inspect, planGraphNodes, planGraphEdges);
-    const approvalNodes = this.deriveApprovalNodes(inspect, planGraphNodes);
-    const evidenceRefs = this.deriveEvidenceRefs(inspect);
-
     return {
       generatedAt: new Date().toISOString(),
       summary,
-      presentation: {
-        harnessRunId: String(inspect.task.id ?? taskId),
-        taskTitle: inspect.task.title ?? `Task ${taskId}`,
-        statusLabel,
-        progressPercent,
-        planGraph: { nodes: planGraphNodes, edges: planGraphEdges },
-        nodeRuns,
-        dependencyState,
-        approvalNodes,
-        evidenceRefs,
-        activeNodeRunId,
-        elapsedTimeMs,
-        estimatedRemainingMs,
-        riskLevel,
-        recentEvents,
-        keyMetrics,
-      },
       inspect,
       timeline: this.timelineService.buildTaskTimeline(taskId),
-    };
-  }
-
-  private buildPlanGraphNodes(inspect: ReturnType<InspectService["getTaskInspectView"]>): ReadonlyArray<{ nodeId: string; status: string; label: string }> {
-    // Build nodes from workflowState or use a default single-node representation
-    const ws = inspect.workflowState as Record<string, unknown> | null;
-    if (!ws) return [];
-    const nodeArray = ws.nodes as ReadonlyArray<Record<string, unknown>> | undefined;
-    if (!Array.isArray(nodeArray)) {
-      // Fallback: create single node from task
-      return [{
-        nodeId: String(inspect.task.id ?? ""),
-        status: inspect.task.status ?? "pending",
-        label: "Root",
-      }];
-    }
-    return nodeArray.map((n) => ({
-      nodeId: String(n.nodeId ?? n.id ?? ""),
-      status: String(n.status ?? "pending"),
-      label: String(n.label ?? n.nodeId ?? ""),
-    }));
-  }
-
-  private buildPlanGraphEdges(inspect: ReturnType<InspectService["getTaskInspectView"]>): ReadonlyArray<{ fromNodeId: string; toNodeId: string }> {
-    const ws = inspect.workflowState as Record<string, unknown> | null;
-    if (!ws) return [];
-    const edgeArray = ws.edges as ReadonlyArray<Record<string, unknown>> | undefined;
-    if (!Array.isArray(edgeArray)) return [];
-    return edgeArray.map((e) => ({
-      fromNodeId: String(e.from ?? e.fromNodeId ?? ""),
-      toNodeId: String(e.to ?? e.toNodeId ?? ""),
-    }));
-  }
-
-  private deriveActiveNodeRunId(
-    inspect: ReturnType<InspectService["getTaskInspectView"]>,
-    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
-  ): string | null {
-    // Find first non-terminal node as active
-    const active = nodes.find((n) => n.status === "in_progress" || n.status === "pending");
-    return active?.nodeId ?? null;
-  }
-
-  private deriveNodeRuns(
-    inspect: ReturnType<InspectService["getTaskInspectView"]>,
-    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
-  ): ReadonlyArray<{
-    nodeRunId: string;
-    nodeId: string;
-    status: string;
-    attempts: number;
-    startedAt: string | null;
-    completedAt: string | null;
-  }> {
-    // Map nodes to NodeRun-shaped objects with attempt info from inspect
-    const execution = inspect.execution;
-    return nodes.map((node, idx) => {
-      return {
-        nodeRunId: `noderun_${node.nodeId}`,
-        nodeId: node.nodeId,
-        status: node.status,
-        attempts: execution ? (execution.attempt ?? 1) : 1,
-        startedAt: execution?.startedAt ?? null,
-        completedAt: execution?.finishedAt ?? null,
-      };
-    });
-  }
-
-  // R7-23 fix: derive UI spec §5.2 dependency_state
-  private deriveDependencyState(
-    inspect: ReturnType<InspectService["getTaskInspectView"]>,
-    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
-    edges: ReadonlyArray<{ fromNodeId: string; toNodeId: string }>,
-  ): ReadonlyArray<{ nodeId: string; blockedBy: ReadonlyArray<string>; blockedReason: string | null }> {
-    // Build a map of nodeId -> blockedBy (incoming edges)
-    const blockedByMap = new Map<string, string[]>();
-    for (const node of nodes) {
-      blockedByMap.set(node.nodeId, []);
-    }
-    for (const edge of edges) {
-      const existing = blockedByMap.get(edge.toNodeId);
-      if (existing) {
-        existing.push(edge.fromNodeId);
-      }
-    }
-    // Build dependency state: a node is blocked if its blockers are not yet completed
-    return nodes.map((node) => {
-      const blockedBy = blockedByMap.get(node.nodeId) ?? [];
-      const blockersNotDone = blockedBy.filter((blockerId) => {
-        const blocker = nodes.find((n) => n.nodeId === blockerId);
-        return blocker && blocker.status !== "done" && blocker.status !== "skipped";
-      });
-      const isBlocked = blockersNotDone.length > 0;
-      const blockedReason = isBlocked ? `Blocked by: ${blockersNotDone.join(", ")}` : null;
-      return {
-        nodeId: node.nodeId,
-        blockedBy: blockedBy as ReadonlyArray<string>,
-        blockedReason,
-      };
-    });
-  }
-
-  // R7-23 fix: derive UI spec §5.2 approval_nodes
-  private deriveApprovalNodes(
-    inspect: ReturnType<InspectService["getTaskInspectView"]>,
-    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
-  ): ReadonlyArray<{ nodeId: string; approvalId: string | null; status: string; requestedAt: string | null }> {
-    // Map approvals to nodes - approval records may reference node IDs via requestJson
-    const approvals = inspect.approvals ?? [];
-    // Try to extract nodeId from approval requestJson
-    const approvalNodeMap = new Map<string, { approvalId: string; status: string; requestedAt: string | null }>();
-    for (const approval of approvals) {
-      let nodeId = `node_${approval.id}`;
-      try {
-        const req = JSON.parse(approval.requestJson) as Record<string, unknown>;
-        if (req.nodeId && typeof req.nodeId === "string") {
-          nodeId = req.nodeId;
-        }
-      } catch {
-        // Fall through to default nodeId
-      }
-      approvalNodeMap.set(nodeId, {
-        approvalId: approval.id,
-        status: approval.status,
-        requestedAt: approval.createdAt ?? null,
-      });
-    }
-    // Return approval info for each node (empty entry if no approval)
-    return nodes.map((node) => {
-      const info = approvalNodeMap.get(node.nodeId);
-      return {
-        nodeId: node.nodeId,
-        approvalId: info?.approvalId ?? null,
-        status: info?.status ?? "none",
-        requestedAt: info?.requestedAt ?? null,
-      };
-    });
-  }
-
-  // R7-23 fix: derive UI spec §5.2 evidence_refs
-  private deriveEvidenceRefs(
-    inspect: ReturnType<InspectService["getTaskInspectView"]>,
-  ): ReadonlyArray<{ artifactId: string; nodeRunId: string | null; artifactType: string; label: string }> {
-    const artifacts = inspect.artifacts ?? [];
-    return artifacts.map((artifact) => ({
-      artifactId: artifact.artifactId,
-      nodeRunId: artifact.nodeRunId ?? null,
-      artifactType: artifact.kind ?? "unknown",
-      label: artifact.fileName ?? artifact.artifactId,
-    }));
-  }
-
-  private deriveStatusLabel(taskStatus: string | undefined): string {
-    const status = taskStatus ?? "pending";
-    // R6-17 FIX: Complete labelMap to cover all TaskStatus values (7 states)
-    // Missing: queued (was in original 6), cancelled (was missing entirely)
-    const labelMap: Record<string, string> = {
-      queued: "Queued",
-      pending: "Pending",
-      in_progress: "In Progress",
-      awaiting_decision: "Awaiting Decision",
-      done: "Completed",
-      failed: "Failed",
-      cancelled: "Cancelled",
-    };
-    return labelMap[status] ?? status;
-  }
-
-  private deriveProgressPercent(workflowState: unknown): number {
-    if (!workflowState || typeof workflowState !== "object") return 0;
-    const ws = workflowState as Record<string, unknown>;
-    if (typeof ws.progressPercent === "number") return ws.progressPercent;
-    if (typeof ws.completedSteps === "number" && typeof ws.totalSteps === "number") {
-      return ws.totalSteps > 0 ? Math.round((ws.completedSteps / ws.totalSteps) * 100) : 0;
-    }
-    return 0;
-  }
-
-  private deriveActiveStep(workflowState: unknown): string {
-    if (!workflowState || typeof workflowState !== "object") return "Unknown";
-    const ws = workflowState as Record<string, unknown>;
-    return String(ws.currentStepLabel ?? ws.activeStep ?? "Processing");
-  }
-
-  private deriveElapsedTimeMs(createdAtIso: string | undefined): number {
-    if (!createdAtIso) return 0;
-    const created = new Date(createdAtIso).getTime();
-    const now = Date.now();
-    return Math.max(0, now - created);
-  }
-
-  private deriveEstimatedRemainingMs(workflowState: unknown, elapsedMs: number): number {
-    if (!workflowState || typeof workflowState !== "object") return 0;
-    const ws = workflowState as Record<string, unknown>;
-    const progress = this.deriveProgressPercent(workflowState);
-    if (progress <= 0 || progress >= 100) return 0;
-    const estimatedTotal = elapsedMs / (progress / 100);
-    return Math.max(0, Math.round(estimatedTotal - elapsedMs));
-  }
-
-  private deriveRiskLevel(inspect: ReturnType<InspectService["getTaskInspectView"]>): "low" | "medium" | "high" | "critical" {
-    if (inspect.task.status === "failed") return "critical";
-    if (inspect.task.status === "awaiting_decision") return "high";
-    if (inspect.recoverySummary?.activeExecutionId) return "medium";
-    return "low";
-  }
-
-  private deriveRecentEvents(inspect: ReturnType<InspectService["getTaskInspectView"]>): readonly { eventType: string; timestamp: string; description: string }[] {
-    const events: { eventType: string; timestamp: string; description: string }[] = [];
-    const createdAt = inspect.task.createdAt;
-    const updatedAt = inspect.task.updatedAt;
-    if (createdAt) {
-      events.push({ eventType: "task.created", timestamp: createdAt, description: "Task created" });
-    }
-    if (inspect.execution?.startedAt) {
-      events.push({ eventType: "execution.started", timestamp: inspect.execution.startedAt, description: "Execution started" });
-    }
-    if (inspect.task.status === "done" && updatedAt) {
-      events.push({ eventType: "task.completed", timestamp: updatedAt, description: "Task completed" });
-    }
-    if (inspect.task.status === "failed" && updatedAt) {
-      events.push({ eventType: "task.failed", timestamp: updatedAt, description: "Task failed" });
-    }
-    return events.slice(0, 10);
-  }
-
-  private deriveKeyMetrics(inspect: ReturnType<InspectService["getTaskInspectView"]>): { successRate: number; avgStepDurationMs: number; retryCount: number; approvalCount: number } {
-    return {
-      successRate: inspect.task.status === "done" ? 1.0 : inspect.task.status === "failed" ? 0 : 0.95,
-      avgStepDurationMs: 2500,
-      retryCount: inspect.task?.status === "failed" ? 1 : 0,
-      approvalCount: inspect.approvals.filter((a) => a.status === "requested").length,
     };
   }
 
@@ -632,30 +270,17 @@ export class MissionControlService {
     const workflowSummaries = this.inspectService.queryWorkflowInspectSummaries({ limit });
     const workers = this.inspectService.queryWorkerInspectSummaries({ limit });
     const pendingApprovals = this.listApprovalQueue(limit);
-    const healthReport = this.healthService.getReport();
-
-    const activeTaskItems = taskSummaries.filter((summary) => isActiveTaskSummary(summary)).slice(0, limit);
-    const queuedTaskItems = taskSummaries.filter((summary) => isQueuedTaskSummary(summary)).slice(0, limit);
-    const blockedTaskItems = taskSummaries.filter((summary) => isBlockedTaskSummary(summary)).slice(0, limit);
 
     return {
       generatedAt: new Date().toISOString(),
-      health: healthReport,
-      // UI spec requires scalar counts per panel item
-      activeTaskCount: activeTaskItems.length,
-      queuedTaskCount: queuedTaskItems.length,
-      blockedTaskCount: blockedTaskItems.length,
-      activeTasks: activeTaskItems,
-      queuedTasks: queuedTaskItems,
-      blockedTasks: blockedTaskItems,
+      health: this.healthService.getReport(),
+      activeTasks: taskSummaries.filter((summary) => isActiveTaskSummary(summary)).slice(0, limit),
+      queuedTasks: taskSummaries.filter((summary) => isQueuedTaskSummary(summary)).slice(0, limit),
+      blockedTasks: taskSummaries.filter((summary) => isBlockedTaskSummary(summary)).slice(0, limit),
       workflows: workflowSummaries,
-      workflowCount: workflowSummaries.length,
       pendingApprovals,
-      pendingApprovalCount: pendingApprovals.length,
       workers,
-      workerCount: workers.length,
-      findings: healthReport.findings,
-      findingsCount: healthReport.findings.length,
+      findings: this.healthService.getReport().findings,
     };
   }
 
@@ -677,15 +302,10 @@ export class MissionControlService {
         ? workers.length === 1 ? workers[0] ?? null : null
         : workers.find((worker) => worker.workerId === activeWorkerId) ?? null;
 
-    // R7-33/R7-34 fix: use harness_run_id/node_run_id instead of legacy taskId
-    const harnessRunId = String(inspect.task.id ?? taskId);
-    const activeNodeRunId = this.deriveActiveNodeRunIdFromInspect(inspect);
-
     return {
       generatedAt: new Date().toISOString(),
       scope: {
-        harnessRunId,
-        nodeRunId: activeNodeRunId,
+        taskId,
         divisionId: inspect.task.divisionId ?? null,
         workspaceId: null,
         tenantId: inspect.task.tenantId ?? null,
@@ -714,29 +334,7 @@ export class MissionControlService {
       })),
       inspect,
       timeline: this.timelineService.buildTaskTimeline(taskId),
-      // R7-33 fix: canonical override actions (replaces legacy retry_step/skip_step/override_step_output)
-      overrideActions: {
-        retryNodeRun: async (nodeRunId: string) => {
-          // Placeholder: actual implementation would call RuntimeStateMachine.transition
-          console.log(`retryNodeRun: ${nodeRunId}`);
-        },
-        skipNodeRun: async (nodeRunId: string) => {
-          console.log(`skipNodeRun: ${nodeRunId}`);
-        },
-        overrideNodeOutput: async (nodeRunId: string, output: unknown) => {
-          console.log(`overrideNodeOutput: ${nodeRunId}`, output);
-        },
-      },
     };
-  }
-
-  private deriveActiveNodeRunIdFromInspect(inspect: ReturnType<InspectService["getTaskInspectView"]>): string | null {
-    const ws = inspect.workflowState as Record<string, unknown> | null;
-    if (!ws) return null;
-    const nodes = ws.nodes as ReadonlyArray<Record<string, unknown>> | undefined;
-    if (!Array.isArray(nodes)) return null;
-    const active = nodes.find((n) => n.status === "in_progress" || n.status === "pending");
-    return active ? String(active.nodeId ?? active.id ?? null) : null;
   }
 
   private listDivisionCatalog(): DivisionCatalogEntry[] {

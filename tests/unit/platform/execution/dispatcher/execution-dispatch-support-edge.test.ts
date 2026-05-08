@@ -422,10 +422,10 @@ test("resolveDispatchBackpressureReason returns null for high priority with paus
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical for urgent priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns null for urgent priority with pause_non_critical", () => {
   const ticket = { priority: "urgent" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
-  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.pause_non_critical");
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
 test("resolveDispatchBackpressureReason returns null for high priority with queue_only no starvation", () => {
@@ -434,10 +434,10 @@ test("resolveDispatchBackpressureReason returns null for high priority with queu
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.queue_only for urgent priority with queue_only starvation", () => {
+test("resolveDispatchBackpressureReason returns null for urgent priority with queue_only starvation", () => {
   const ticket = { priority: "urgent" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
-  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.queue_only");
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
 test("resolveDispatchBackpressureReason returns backpressure.starvation_protection for low priority", () => {

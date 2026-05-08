@@ -1,13 +1,12 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
-
 import {
   BudgetGuard,
   ChargebackService,
   type BudgetPolicy,
   type BudgetGuardResult,
   type BudgetGuardCascadeResult,
-  type BudgetGuardCascadeInput,
   type ChargebackReport,
   type ChargebackReportSource,
   type ChargebackAllocation,
@@ -18,7 +17,67 @@ test("BudgetGuard is instantiable", () => {
   assert.ok(guard instanceof BudgetGuard);
 });
 
-test("BudgetGuard evaluateTaskSpend allows request under budget", () => {
+test("BudgetPolicy structure validation", () => {
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 10,
+    maxDailyCostUsd: 100,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+  assert.equal(policy.maxTaskCostUsd, 10);
+  assert.equal(policy.maxDailyCostUsd, 100);
+  assert.equal(policy.warnAtRatio, 0.8);
+  assert.equal(policy.mode, "supervised");
+});
+
+test("BudgetPolicy mode accepts supervised, auto, and full-auto", () => {
+  const modes: BudgetPolicy["mode"][] = ["supervised", "auto", "full-auto"];
+  assert.equal(modes.length, 3);
+  assert.ok(modes.includes("supervised"));
+  assert.ok(modes.includes("auto"));
+  assert.ok(modes.includes("full-auto"));
+});
+
+test("BudgetGuardResult structure for allowed request", () => {
+  const result: BudgetGuardResult = {
+    allowed: true,
+    requiresApproval: false,
+    reasonCode: null,
+    remainingBudgetUsd: 5,
+  };
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, null);
+  assert.equal(result.remainingBudgetUsd, 5);
+});
+
+test("BudgetGuardResult structure for blocked request", () => {
+  const result: BudgetGuardResult = {
+    allowed: false,
+    requiresApproval: false,
+    reasonCode: "budget.task_limit_exceeded",
+    remainingBudgetUsd: 0,
+  };
+  assert.equal(result.allowed, false);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  assert.equal(result.remainingBudgetUsd, 0);
+});
+
+test("BudgetGuardResult structure for approval required", () => {
+  const result: BudgetGuardResult = {
+    allowed: true,
+    requiresApproval: true,
+    reasonCode: "budget.approaching_limit",
+    remainingBudgetUsd: 1,
+  };
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.reasonCode, "budget.approaching_limit");
+});
+
+test("BudgetGuard.evaluateTaskSpend allows request under budget", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -39,7 +98,7 @@ test("BudgetGuard evaluateTaskSpend allows request under budget", () => {
   assert.equal(result.remainingBudgetUsd, 5);
 });
 
-test("BudgetGuard evaluateTaskSpend blocks request over budget", () => {
+test("BudgetGuard.evaluateTaskSpend blocks request over budget", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -60,7 +119,7 @@ test("BudgetGuard evaluateTaskSpend blocks request over budget", () => {
   assert.equal(result.remainingBudgetUsd, 0);
 });
 
-test("BudgetGuard evaluateTaskSpend requires approval when approaching limit", () => {
+test("BudgetGuard.evaluateTaskSpend requires approval when approaching limit", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -82,7 +141,7 @@ test("BudgetGuard evaluateTaskSpend requires approval when approaching limit", (
   assert.equal(result.reasonCode, "budget.approaching_limit");
 });
 
-test("BudgetGuard evaluateTaskSpend no approval when far from limit", () => {
+test("BudgetGuard.evaluateTaskSpend no approval when far from limit", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -103,7 +162,27 @@ test("BudgetGuard evaluateTaskSpend no approval when far from limit", () => {
   assert.equal(result.reasonCode, null);
 });
 
-test("BudgetGuard evaluateExecutionChain allows request within all limits", () => {
+test("BudgetGuard.evaluateTaskSpend remaining budget never negative", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 10,
+    maxDailyCostUsd: 100,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateTaskSpend({
+    policy,
+    currentTaskCostUsd: 20,
+    nextEstimatedCostUsd: 5,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.remainingBudgetUsd >= 0);
+});
+
+test("BudgetGuard.evaluateExecutionChain allows request within all limits", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -131,7 +210,7 @@ test("BudgetGuard evaluateExecutionChain allows request within all limits", () =
   assert.ok(result.projectedMonthlyCostUsd === 503);
 });
 
-test("BudgetGuard evaluateExecutionChain blocks on task limit exceeded", () => {
+test("BudgetGuard.evaluateExecutionChain blocks on task limit exceeded", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -156,7 +235,7 @@ test("BudgetGuard evaluateExecutionChain blocks on task limit exceeded", () => {
   assert.equal(result.violatedScope, "task");
 });
 
-test("BudgetGuard evaluateExecutionChain blocks on daily limit exceeded", () => {
+test("BudgetGuard.evaluateExecutionChain blocks on daily limit exceeded", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -181,7 +260,7 @@ test("BudgetGuard evaluateExecutionChain blocks on daily limit exceeded", () => 
   assert.equal(result.violatedScope, "daily");
 });
 
-test("BudgetGuard evaluateExecutionChain blocks on monthly limit exceeded", () => {
+test("BudgetGuard.evaluateExecutionChain blocks on monthly limit exceeded", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {
     maxTaskCostUsd: 10,
@@ -204,6 +283,56 @@ test("BudgetGuard evaluateExecutionChain blocks on monthly limit exceeded", () =
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "budget.monthly_limit_exceeded");
   assert.equal(result.violatedScope, "monthly");
+});
+
+test("BudgetGuard.evaluateExecutionChain sets warning scopes at threshold", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 10,
+    maxDailyCostUsd: 100,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  // Projected task cost = 8 (exactly at 80% threshold)
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 5,
+      nextEstimatedCostUsd: 3,
+      currentDailyCostUsd: 50,
+      currentMonthlyCostUsd: 500,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.violatedScope, null);
+  assert.ok(result.warningScopes.includes("task"));
+});
+
+test("BudgetGuard.evaluateExecutionChain calculates correct remaining budget", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 10,
+    maxDailyCostUsd: 100,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 2,
+      nextEstimatedCostUsd: 3,
+      currentDailyCostUsd: 50,
+      currentMonthlyCostUsd: 500,
+    },
+  });
+
+  // remainingBudgetUsd = min(10-5, 100-53, 1000-503) = min(5, 47, 497) = 5
+  assert.ok(result.remainingBudgetUsd === 5);
 });
 
 test("ChargebackService is instantiable with source", () => {
@@ -253,6 +382,102 @@ test("ChargebackService.buildReport aggregates costs correctly", () => {
   assert.equal(report.currency, "USD");
 });
 
+test("ChargebackService.buildReport merges allocations by key", () => {
+  const mockSource: ChargebackReportSource = {
+    listReports: () => [
+      {
+        periodStart: "2024-01-01",
+        periodEnd: "2024-01-31",
+        tenantId: "tenant-1",
+        currency: "USD",
+        totalCostUsd: 100,
+        resourceCosts: [
+          { resourceId: "res-1", resourceType: "token", currency: "USD", costUsd: 50 },
+        ],
+      },
+      {
+        periodStart: "2024-02-01",
+        periodEnd: "2024-02-29",
+        tenantId: "tenant-1",
+        currency: "USD",
+        totalCostUsd: 150,
+        resourceCosts: [
+          { resourceId: "res-1", resourceType: "token", currency: "USD", costUsd: 75 },
+        ],
+      },
+    ],
+  };
+
+  const service = new ChargebackService(mockSource);
+  const report = service.buildReport({ tenantId: "tenant-1" });
+
+  // Same resource should be merged
+  assert.equal(report.totalCostUsd, 250);
+  assert.equal(report.reportCount, 2);
+  assert.ok(report.allocations.length === 1);
+  assert.equal(report.allocations[0].costUsd, 125);
+  assert.equal(report.allocations[0].reportCount, 2);
+});
+
+test("ChargebackService.buildReport tracks first and latest periods", () => {
+  const mockSource: ChargebackReportSource = {
+    listReports: () => [
+      {
+        periodStart: "2024-02-01",
+        periodEnd: "2024-02-29",
+        tenantId: "tenant-1",
+        currency: "USD",
+        totalCostUsd: 50,
+        resourceCosts: [
+          { resourceId: "res-1", resourceType: "token", currency: "USD", costUsd: 50 },
+        ],
+      },
+      {
+        periodStart: "2024-01-01",
+        periodEnd: "2024-01-31",
+        tenantId: "tenant-1",
+        currency: "USD",
+        totalCostUsd: 50,
+        resourceCosts: [
+          { resourceId: "res-1", resourceType: "token", currency: "USD", costUsd: 50 },
+        ],
+      },
+    ],
+  };
+
+  const service = new ChargebackService(mockSource);
+  const report = service.buildReport({ tenantId: "tenant-1" });
+
+  const allocation = report.allocations[0];
+  assert.equal(allocation.firstPeriodStart, "2024-01-01");
+  assert.equal(allocation.latestPeriodEnd, "2024-02-29");
+});
+
+test("ChargebackService.buildReport sorts allocations by cost descending", () => {
+  const mockSource: ChargebackReportSource = {
+    listReports: () => [
+      {
+        periodStart: "2024-01-01",
+        periodEnd: "2024-01-31",
+        tenantId: "tenant-1",
+        currency: "USD",
+        totalCostUsd: 100,
+        resourceCosts: [
+          { resourceId: "res-small", resourceType: "token", currency: "USD", costUsd: 10 },
+          { resourceId: "res-large", resourceType: "token", currency: "USD", costUsd: 90 },
+        ],
+      },
+    ],
+  };
+
+  const service = new ChargebackService(mockSource);
+  const report = service.buildReport({ tenantId: "tenant-1" });
+
+  assert.ok(report.allocations.length === 2);
+  assert.equal(report.allocations[0].resourceId, "res-large");
+  assert.equal(report.allocations[1].resourceId, "res-small");
+});
+
 test("ChargebackService.buildReport uses default limit of 500", () => {
   let capturedLimit = 0;
   const mockSource: ChargebackReportSource = {
@@ -283,69 +508,46 @@ test("ChargebackService.buildReport respects custom limit", () => {
   assert.equal(capturedLimit, 100);
 });
 
-test("BudgetPolicy mode accepts supervised, auto, and full-auto", () => {
-  const policySupervised: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "supervised",
+test("ChargebackService.buildReport handles platform-level tenant (null)", () => {
+  const mockSource: ChargebackReportSource = {
+    listReports: () => [
+      {
+        periodStart: "2024-01-01",
+        periodEnd: "2024-01-31",
+        tenantId: null,
+        currency: "USD",
+        totalCostUsd: 50,
+        resourceCosts: [
+          { resourceId: "res-1", resourceType: "token", currency: "USD", costUsd: 50 },
+        ],
+      },
+    ],
   };
-  assert.equal(policySupervised.mode, "supervised");
 
-  const policyAuto: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "auto",
-  };
-  assert.equal(policyAuto.mode, "auto");
+  const service = new ChargebackService(mockSource);
+  const report = service.buildReport({ tenantId: null });
 
-  const policyFullAuto: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "full-auto",
-  };
-  assert.equal(policyFullAuto.mode, "full-auto");
+  assert.equal(report.tenantId, null);
+  assert.equal(report.allocations[0].tenantId, null);
 });
 
-test("BudgetGuardResult structure for allowed request", () => {
-  const result: BudgetGuardResult = {
-    allowed: true,
-    requiresApproval: false,
-    reasonCode: null,
-    remainingBudgetUsd: 5,
+test("ChargebackAllocation structure is correct", () => {
+  const allocation: ChargebackAllocation = {
+    allocationKey: "platform:token:res-1:USD",
+    tenantId: null,
+    resourceId: "res-1",
+    resourceType: "token",
+    currency: "USD",
+    costUsd: 100,
+    reportCount: 1,
+    firstPeriodStart: "2024-01-01",
+    latestPeriodEnd: "2024-01-31",
   };
-  assert.equal(result.allowed, true);
-  assert.equal(result.requiresApproval, false);
-  assert.equal(result.reasonCode, null);
-  assert.equal(result.remainingBudgetUsd, 5);
-});
 
-test("BudgetGuardResult structure for blocked request", () => {
-  const result: BudgetGuardResult = {
-    allowed: false,
-    requiresApproval: false,
-    reasonCode: "budget.task_limit_exceeded",
-    remainingBudgetUsd: 0,
-  };
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
-});
-
-test("BudgetGuardResult structure for approval required", () => {
-  const result: BudgetGuardResult = {
-    allowed: true,
-    requiresApproval: true,
-    reasonCode: "budget.approaching_limit",
-    remainingBudgetUsd: 1,
-  };
-  assert.equal(result.allowed, true);
-  assert.equal(result.requiresApproval, true);
-  assert.equal(result.reasonCode, "budget.approaching_limit");
+  assert.equal(allocation.allocationKey, "platform:token:res-1:USD");
+  assert.equal(allocation.tenantId, null);
+  assert.equal(allocation.resourceId, "res-1");
+  assert.equal(allocation.costUsd, 100);
 });
 
 test("BudgetGuardCascadeResult structure", () => {
@@ -365,91 +567,4 @@ test("BudgetGuardCascadeResult structure", () => {
   assert.equal(result.projectedTaskCostUsd, 5);
   assert.equal(result.violatedScope, null);
   assert.deepEqual(result.warningScopes, []);
-});
-
-test("ChargebackAllocation structure is correct", () => {
-  const allocation: ChargebackAllocation = {
-    allocationKey: "platform:token:res-1:USD",
-    tenantId: null,
-    resourceId: "res-1",
-    resourceType: "token",
-    currency: "USD",
-    costUsd: 100,
-    reportCount: 1,
-    firstPeriodStart: "2024-01-01",
-    latestPeriodEnd: "2024-01-31",
-  };
-
-  assert.equal(allocation.allocationKey, "platform:token:res-1:USD");
-  assert.equal(allocation.costUsd, 100);
-});
-
-test("BudgetGuard remaining budget never negative when limit exceeded", () => {
-  const guard = new BudgetGuard();
-  const policy: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "supervised",
-  };
-
-  const result = guard.evaluateTaskSpend({
-    policy,
-    currentTaskCostUsd: 20,
-    nextEstimatedCostUsd: 5,
-  });
-
-  assert.equal(result.allowed, false);
-  assert.ok(result.remainingBudgetUsd >= 0);
-});
-
-test("BudgetGuard evaluateExecutionChain calculates correct remaining budget", () => {
-  const guard = new BudgetGuard();
-  const policy: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "supervised",
-  };
-
-  const result = guard.evaluateExecutionChain({
-    policy,
-    spend: {
-      currentTaskCostUsd: 2,
-      nextEstimatedCostUsd: 3,
-      currentDailyCostUsd: 50,
-      currentMonthlyCostUsd: 500,
-    },
-  });
-
-  // remainingBudgetUsd = min(10-5, 100-53, 1000-503) = min(5, 47, 497) = 5
-  assert.ok(result.remainingBudgetUsd === 5);
-});
-
-test("BudgetGuard evaluateExecutionChain sets warning scopes at threshold", () => {
-  const guard = new BudgetGuard();
-  const policy: BudgetPolicy = {
-    maxTaskCostUsd: 10,
-    maxDailyCostUsd: 100,
-    maxMonthlyCostUsd: 1000,
-    warnAtRatio: 0.8,
-    mode: "supervised",
-  };
-
-  // Projected task cost = 8 (exactly at 80% threshold)
-  const result = guard.evaluateExecutionChain({
-    policy,
-    spend: {
-      currentTaskCostUsd: 5,
-      nextEstimatedCostUsd: 3,
-      currentDailyCostUsd: 50,
-      currentMonthlyCostUsd: 500,
-    },
-  });
-
-  assert.equal(result.allowed, true);
-  assert.equal(result.violatedScope, null);
-  assert.ok(result.warningScopes.includes("task"));
 });

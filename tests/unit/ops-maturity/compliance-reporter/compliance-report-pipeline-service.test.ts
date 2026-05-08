@@ -5,7 +5,6 @@
  */
 
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import test from "node:test";
 import {
   ComplianceReportRendererService,
@@ -26,14 +25,6 @@ function createTestTemplates(): readonly ComplianceReportTemplateDefinition[] {
       requiredEvidenceTypes: ["access_log", "change_record", "incident_log"],
       renderSchema: ["template", "evidence_coverage", "completeness"],
       version: "1.0",
-      // §66.1 required fields
-      lockedOnGeneration: true,
-      reportVersionLock: "1.0",
-      requiredDataSources: ["access-log", "change-log", "incident-log"],
-      legalVersion: "2024-01",
-      migrationRule: "Use latest version",
-      effectiveDate: "2024-01-01",
-      lastReviewDate: "2024-06-01",
     },
     {
       templateId: "gdpr-data-processing",
@@ -42,14 +33,6 @@ function createTestTemplates(): readonly ComplianceReportTemplateDefinition[] {
       requiredEvidenceTypes: ["consent_record", "erasure_request", "data_mapping"],
       renderSchema: ["template", "evidence_coverage", "completeness"],
       version: "1.0",
-      // §66.1 required fields
-      lockedOnGeneration: true,
-      reportVersionLock: "1.0",
-      requiredDataSources: ["consent-records", "erasure-log", "data-map"],
-      legalVersion: "2024-01",
-      migrationRule: "Use latest version",
-      effectiveDate: "2024-01-01",
-      lastReviewDate: "2024-06-01",
     },
   ];
 }
@@ -72,9 +55,9 @@ test("ComplianceReportPipelineService.generate creates report for valid template
   assert.equal(report.templateId, "soc2-type2");
   assert.equal(report.framework, "SOC2");
   assert.equal(report.reportType, "Type II");
-  assert.equal(report.status, "pending_signoff");
+  assert.equal(report.status, "generated");
   assert.equal(report.missingEvidenceTypes.length, 0);
-  assert.equal(report.evidenceQualityScore, 40);
+  assert.equal(report.evidenceQualityScore, 100);
   assert.ok(report.markdown.length > 0);
   assert.equal(report.readOnly, true);
 });
@@ -91,7 +74,7 @@ test("ComplianceReportPipelineService.generate marks partial status and records 
 
   assert.equal(report.status, "partial");
   assert.equal(report.missingEvidenceTypes.length, 2);
-  assert.equal(report.evidenceQualityScore, 13.2);
+  assert.equal(report.evidenceQualityScore, 33);
   assert.ok(report.missingEvidenceTypes.includes("change_record"));
   assert.ok(report.missingEvidenceTypes.includes("incident_log"));
 });
@@ -182,54 +165,6 @@ test("ComplianceReportPipelineService.generate uses provided generatedAt timesta
   assert.equal(report.generatedAt, fixedTime);
 });
 
-test("ComplianceReportPipelineService.evaluateHumanSignoff returns signed_late when signoff misses due date", () => {
-  const service = new ComplianceReportPipelineService(createTestTemplates());
-  const artifact = service.generate({
-    templateId: "soc2-type2",
-    evidence: createEvidence(["access_log", "change_record", "incident_log"]),
-    requestedBy: "auditor-1",
-    generatedAt: "2026-01-01T00:00:00.000Z",
-  });
-
-  const signoff = service.evaluateHumanSignoff({
-    artifact,
-    signerId: "reviewer-1",
-    signoffDueAt: "2026-01-08T00:00:00.000Z",
-    signedAt: "2026-01-08T00:00:01.000Z",
-    now: "2026-01-08T00:00:01.000Z",
-  });
-
-  assert.equal(signoff.status, "signed_late");
-  assert.equal(signoff.signerId, "reviewer-1");
-});
-
-test("ComplianceReportPipelineService.evaluateHumanSignoff compares non-UTC offsets using parsed timestamps", () => {
-  const service = new ComplianceReportPipelineService(createTestTemplates());
-  const artifact = service.generate({
-    templateId: "soc2-type2",
-    evidence: createEvidence(["access_log", "change_record", "incident_log"]),
-    requestedBy: "auditor-1",
-  });
-
-  const signoff = service.evaluateHumanSignoff({
-    artifact,
-    signerId: "reviewer-1",
-    signoffDueAt: "2026-05-01T12:00:00+08:00",
-    signedAt: "2026-05-01T04:00:01Z",
-    now: "2026-05-01T04:00:01Z",
-  });
-
-  assert.equal(signoff.status, "signed_late");
-});
-
-test("ComplianceReportPipelineService.generate performs a single registry template lookup", () => {
-  const source = fs.readFileSync(
-    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts",
-    "utf-8",
-  );
-  assert.equal((source.match(/registry\.find\(request\.templateId\)/g) ?? []).length, 1);
-});
-
 test("ComplianceReportPipelineService.generate handles GDPR template with data evidence", () => {
   const service = new ComplianceReportPipelineService(createTestTemplates());
   const request: ComplianceReportRequest = {
@@ -242,7 +177,7 @@ test("ComplianceReportPipelineService.generate handles GDPR template with data e
 
   assert.equal(report.templateId, "gdpr-data-processing");
   assert.equal(report.framework, "GDPR");
-  assert.equal(report.status, "pending_signoff");
+  assert.equal(report.status, "generated");
 });
 
 test("EvidenceMapperService summarizes coverage ratio", () => {

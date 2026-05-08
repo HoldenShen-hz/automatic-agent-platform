@@ -30,9 +30,6 @@ dist_test
 dist-test/
 .tmp/
 .runtime/
-:memory:*
-*.db-shm
-*.db-wal
 
 # TypeScript compiled output
 *.js
@@ -48,6 +45,3 @@ session-replay/
 tests/**/artifacts/
 tests/golden/snapshots/
 tests/fixtures/migration/snapshots/
-
-# Logs
-logs/

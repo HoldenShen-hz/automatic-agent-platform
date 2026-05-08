@@ -1,11 +1,11 @@
-# ADR-025 Stability Architecture
+# ADR-025 Stability Architecture (Seven Layers)
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Background
+## Context
 
-Enterprise-class Agent platform must have complete stability mechanisms to handle various failure scenarios: network partition, dependency timeout, resource exhaustion, etc.
+Enterprise-class Agent platforms must have comprehensive stability mechanisms to handle various failure scenarios: network partitions, dependency timeouts, resource exhaustion, etc.
 
 ## Decision
 
@@ -13,9 +13,9 @@ Enterprise-class Agent platform must have complete stability mechanisms to handl
 
 | Layer | Mechanism | Threshold/Strategy |
 |-------|-----------|-------------------|
-| L1 Isolation | Tenant failure rate >30% auto isolation | AutoStopLossService |
-| L2 Rate Limiting & Backpressure | 4-level queue_lag threshold | Backpressure control in dispatcher |
-| L3 Timeout Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
+| L1 Isolation | Tenant failure rate >30% auto-isolation | AutoStopLossService |
+| L2 Rate Limiting & Backpressure | 4-level queue_lag threshold | Backpressure controlled in dispatcher |
+| L3 Timeout & Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
 | L4 Circuit Breaker | 50% failure rate/60s → open → 30s half-open | CircuitBreaker |
 | L5 Degradation Mode | 8 runtime modes | PolicyMode enum |
 | L6 Recovery | 6 recovery workers | RuntimeRecoveryService, etc. |
@@ -45,7 +45,7 @@ enum PolicyMode {
 5. StalledExecutionEscalationService (130 lines)
 6. ExecutionDbQueueDisconnectRepairService (346 lines)
 
-### Auto-Rollback Conditions
+### Automatic Rollback Conditions
 
 | Condition | Threshold | Window |
 |-----------|-----------|--------|
@@ -57,26 +57,26 @@ enum PolicyMode {
 
 ## Consequences
 
-Advantages:
+Benefits:
 
-- Seven-layer defense covers common failure scenarios
-- Auto-degradation ensures core service availability
-- 6 recovery workers implement self-healing capability
+- Seven layers of defense cover common failure scenarios
+- Automatic degradation ensures core service availability
+- 6 recovery workers implement self-healing capabilities
 
 Costs:
 
-- Multi-layer mechanism increases system complexity
-- Requires complete monitoring and alerting support
+- Multi-layer mechanisms increase system complexity
+- Requires comprehensive monitoring and alerting infrastructure
 
 ## Cross References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## Source Sections
+## Source Section
 
-- `§9` Stability architecture (7 layers)
+- `§9` Stability Architecture (Seven Layers)
 
 ## v4.3 ADR Remediation
 
-- A-19: This ADR originally mixed `supervised / degraded / maintenance / emergency` into canonical `PolicyMode`. The root cause was that stability ADR merged alert/operation semantics and runtime strong constraint modes into one enumeration. Fix: The text now converges mode enumeration to the 8 canonical runtime modes specified in main architecture: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`.
+- A-19: This ADR originally mixed `supervised / degraded / maintenance / emergency` into the canonical `PolicyMode`. The root cause was that the stability ADR merged alerting/operational semantics with runtime enforced modes into one enum. Fix: The text now converges the mode enum to the 8 runtime modes specified by the main architecture: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`.

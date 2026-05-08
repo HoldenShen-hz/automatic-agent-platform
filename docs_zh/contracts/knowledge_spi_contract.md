@@ -23,7 +23,7 @@ Intake → Extraction → Archive → Index → Query
 |------|------|------|
 | Intake | `KnowledgeIngestionPipeline` | 接收原始文档，格式校验 |
 | Extraction | `KnowledgeExtractor` | 语义抽取、分块、摘要 |
-| Archive | `KnowledgeArchive` | 冷数据持久化（实现可插拔；SQLite 仅允许作为 MVP / 本地模式） |
+| Archive | `KnowledgeArchive` | 冷数据持久化（SQLite） |
 | Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | 三种索引维护 |
 | Query | `KnowledgeQueryService` | Quick/Standard/Deep 三级查询 |
 
@@ -36,8 +36,6 @@ interface KnowledgeSource {
   sourceId: string;
   type: 'user_input' | 'system_generated' | 'external_api' | 'file_import';
   uri: string;
-  harnessRunId?: string;     // canonical execution context
-  nodeRunId?: string;        // canonical node context
   trustLevel: TrustLevel;
   ingestedAt: string;
 }
@@ -119,7 +117,7 @@ interface SemanticVectorStore {
 }
 ```
 
-**当前状态**：可在本地/MVP 模式下使用 SHA-256 hash 伪向量（`local-hash-v1:` 前缀）；生产知识平面必须接到可持久化、可扩展的向量后端。
+**当前状态**：使用 SHA-256 hash 伪向量（`local-hash-v1:` 前缀）。
 
 ### 4.3 ASTIndex
 
@@ -190,20 +188,14 @@ interface RetrievalHit {
 }
 ```
 
-## 6. 4 级信任模型（对齐 §29 知识边界规则）
+## 6. 4 级信任模型
 
-| 信任级别 | 来源 | 用途 | §29 对应 |
-|---------|------|------|---------|
-| `verified` | 人工审核过的内容 | 生产决策 | Knowledge boundary §29.3 允许 high-risk 域使用 |
-| `reviewed` | LearningObjectValidator 验证 | 改进候选 | §29.2 TrustLevel 传播规则 |
-| `inferred` | 系统推断 | 建议/参考 | §29.1 默认信任级别 |
-| `untrusted` | 未验证来源 | 仅展示 | §29.3 禁止用于 critical 域 |
-
-约束：
-
-- TrustLevel 必须在 intake 时确定，不得降级传播（§29.2）。
-- `verified` 内容可用于 high/critical 风险域决策；`untrusted` 不得用于生产（§29.3）。
-- Knowledge boundary 检查需在 query 时验证 TrustLevel 与 domain risk 匹配。
+| 信任级别 | 来源 | 用途 |
+|---------|------|------|
+| `verified` | 人工审核过的内容 | 生产决策 |
+| `reviewed` | LearningObjectValidator 验证 | 改进候选 |
+| `inferred` | 系统推断 | 建议/参考 |
+| `untrusted` | 未验证来源 | 仅展示 |
 
 ## 7. Learn→Knowledge 集成
 
@@ -249,7 +241,3 @@ FailurePatternMiner.mine()
 - **命名空间隔离**：跨 namespace 查询必须通过 KnowledgeAccessControl 授权。
 - **R4-EVIDENCE**：Learn→Knowledge 注入的内容必须包含 EvidenceRef 链接。
 - **信任级别传播**：trustLevel 必须在 intake 时确定，不得降级。
-
-## v4.3 Contract Remediation
-
-- T-44: Knowledge SPI 早期版本缺少 `harness_run_id` 集成字段，`KnowledgeSource.harnessRunId` / `nodeRunId` 现已添加。TrustLevel 4 级模型已在 §29 知识边界规则中正式定义，本文档第 6 节对齐 §29 对应关系，新实现必须遵循 TrustLevel 传播约束，不得降级。

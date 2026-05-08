@@ -1,34 +1,13 @@
-import type { CapacitySignal as CanonicalCapacitySignal } from "../ops-maturity/capacity-planner/capacity-planning-service.js";
-
 export type MarketplaceLifecycleState = "active" | "deprecated" | "sunset" | "removed";
 export type RemoteSessionState = "connecting" | "connected" | "reconnecting" | "degraded" | "failed" | "viewer_only";
 export type SlaBreachType = "latency" | "success_rate" | "queue_wait" | "execution_timeout" | "dependency_unavailability";
 
-// R3-20 FIX: §54.3 per-workflow-class SLA mapping
-export type WorkflowClass = "automated" | "human_review" | "privileged" | "emergency";
-
-export interface WorkflowClassSlaMapping {
-  readonly workflowClass: WorkflowClass;
-  readonly tierId: string;
-  readonly maxDurationMs: number;
-  readonly retryPolicy: {
-    readonly maxRetries: number;
-    readonly backoffMs: number;
-  };
-}
-
 export interface MarketplaceCatalogEntry {
   readonly listingId: string;
-  // R3-21 FIX: §55.1 requires packId/rating/installCount (use entryId as fallback)
-  readonly entryId?: string;
-  readonly packId?: string;
   readonly publisherId: string;
   readonly artifactType: "pack" | "plugin" | "connector" | "model_profile";
   readonly artifactRef: string;
   readonly pricingModel: "free" | "usage" | "subscription" | "enterprise";
-  // R3-21 FIX: rating and installCount per §55.1
-  readonly rating?: number;
-  readonly installCount?: number;
   readonly capabilities: readonly string[];
   readonly version: string;
   readonly lifecycleState: MarketplaceLifecycleState;
@@ -52,8 +31,15 @@ export interface BillingAdjustment {
   readonly preservesUsageLedger: true;
 }
 
-// Re-export the canonical ops-maturity type instead of maintaining a stale shim copy.
-export type CapacitySignal = CanonicalCapacitySignal;
+export interface CapacitySignal {
+  readonly signalId: string;
+  readonly slaTier: string;
+  readonly queueDelayMs: number;
+  readonly budgetPressure: number;
+  readonly approvalCapacity: number;
+  readonly providerQuotaRemaining: number;
+  readonly regionFailoverReserve: number;
+}
 
 export interface CostAttributionRecord {
   readonly recordId: string;

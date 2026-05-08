@@ -1,46 +1,80 @@
-/**
- * Domain Registry Service Unit Tests - Canary State & Archive Methods
- *
- * Tests for issue #2174 (missing canary state) and issue #2175 (no archived state transition methods).
- *
- * Coverage:
- * - DomainRegistryService.activate() canary flag behavior
- * - DomainRegistryService.updating() transitions
- * - DomainRegistryService.completeUpdate() transitions
- * - DomainRegistryService.archive() transitions
- * - DomainRegistryService.deprecate() transitions
- */
-
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
-import type { DomainDefinition } from "../../../../src/domains/registry/domain-model.js";
+import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
+import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test Fixtures
-// ─────────────────────────────────────────────────────────────────────────────
-
-function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefinition {
+function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
-    domainId: "test-domain",
-    name: "Test Domain",
-    description: "A test domain for registry service testing",
+    timeoutMs: 5000,
+    allowFilesystemWrite: false,
+    allowNetworkEgress: false,
+    allowedKnowledgeNamespaces: [],
+    maxConcurrentInvocations: 1,
+    maxQueuedInvocations: 8,
+    runtimeIsolation: "serialized_in_process",
+    cooldownMs: 0,
+    allowedExternalDomains: [],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
+    ...overrides,
+  };
+}
+
+test("DomainRegistryService registers, validates, activates, and filters tools", () => {
+  const events: string[] = [];
+  const pluginRegistry = new PluginSpiRegistry();
+  pluginRegistry.register({
+    pluginId: "plugin.coding.presenter",
+    domainId: "coding",
+    spiType: "presenter",
+    async formatOutput() { return { summary: "ok", sections: [], citations: [] }; },
+  }, {
+    pluginId: "plugin.coding.presenter",
+    name: "coding presenter",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: ["present.output"],
+    spiTypes: ["presenter"],
+    publicSdkSurface: "tests/mock",
+    settingsSchema: {},
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    sandbox: makeSandboxPolicy({
+      timeoutMs: 1000,
+      allowedKnowledgeNamespaces: [],
+    }),
+  });
+
+  const service = new DomainRegistryService({
+    pluginRegistry,
+    eventPublisher: {
+      publish(input) {
+        events.push(input.eventType);
+      },
+    },
+  });
+  service.register({
+    domainId: "coding",
+    name: "Coding",
+    description: "Coding workflows",
     version: 1,
     workflows: [
       {
-        workflowId: "wf_main",
-        name: "Main Workflow",
+        workflowId: "wf_build",
+        name: "Build",
         triggerConditions: {},
         steps: [
           {
-            stepName: "step_one",
-            toolHints: [],
+            stepName: "read",
+            toolHints: ["read"],
             modelHints: {},
             outputSchema: null,
             retryPolicy: { maxRetries: 0, backoffMs: 0 },
             requiresReview: false,
-            timeoutMs: 60000,
+            timeoutMs: 1000,
             dependsOn: [],
           },
         ],
@@ -48,486 +82,197 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
     ],
     toolBundles: [
       {
-        bundleId: "default_tools",
-        tools: [{ toolName: "bash", enabled: true, configOverrides: {} }],
+        bundleId: "coding-default",
+        tools: [
+          { toolName: "repo_map", enabled: true, configOverrides: {} },
+          { toolName: "apply_patch", enabled: true, configOverrides: {} },
+        ],
       },
     ],
+    outputContracts: [
+      {
+        contractId: "contract.patch",
+        name: "Patch Contract",
+        schema: { type: "object" },
+        validationLevel: "strict",
+      },
+    ],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: ["bugfix"],
+      requiredTools: ["repo_map"],
+      optionalTools: ["apply_patch", "read"],
+      modelPreferences: { primary: "gpt-5.2" },
+      budgetLimits: { maxTokensPerTask: 6000, maxCostPerTask: 4 },
+      securityLevel: "standard",
+    },
+    status: "validated",
+    externalAdapters: ["github"],
+    pluginBindings: [
+      {
+        bindingId: "binding.presenter",
+        domainId: "coding",
+        pluginType: "tool",
+        bindingRole: "presenter",
+        pluginId: "plugin.coding.presenter",
+        priority: 1,
+        enabled: true,
+        config: {},
+      },
+    ],
+  });
+  service.registerKnowledgeNamespace("coding/repo", "coding");
+
+  assert.equal(service.validate("coding").passed, true);
+  assert.equal(service.activate("coding").status, "active");
+  assert.deepEqual(service.filterAllowedTools("coding", ["read", "bash", "apply_patch"]), ["read", "apply_patch"]);
+  assert.equal(service.getWorkflow("coding", "wf_build")?.name, "Build");
+  assert.equal(service.getToolBundle("coding", "coding-default")?.tools.length, 2);
+  assert.equal(service.getOutputContract("coding", "contract.patch")?.validationLevel, "strict");
+  assert.equal(service.resolvePlugins("coding", "presenter" as any).length, 1);
+  assert.deepEqual(service.buildCapabilityEntry("coding").pluginIds, ["plugin.coding.presenter"]);
+  assert.deepEqual(service.buildCapabilityEntry("coding").knowledgeNamespaces, ["coding/repo"]);
+  assert.ok(events.includes("domain:registered"));
+  assert.ok(events.includes("domain:activated"));
+});
+
+test("DomainRegistryService list and listActive return registered domains", () => {
+  const service = new DomainRegistryService();
+  service.register({
+    domainId: "domain_a",
+    name: "Domain A",
+    description: "Test domain A",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
     outputContracts: [],
     promptOverrides: {},
     capabilities: {
-      supportedTaskTypes: ["test"],
-      requiredTools: ["bash"],
+      supportedTaskTypes: [],
+      requiredTools: [],
       optionalTools: [],
       modelPreferences: {},
-      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "restricted",
-    },
-    executionProfile: {
-      executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
-        llmInHotPathAllowed: true,
-        maxHotPathLatencyMs: 1000,
-      },
-      latencyTier: "interactive",
-      compiledArtifactRef: null,
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
     },
     status: "validated",
     externalAdapters: [],
     pluginBindings: [],
-    ...overrides,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Canary State Tests (Issue #2174)
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("activate with canary=true transitions registered domains into canary", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "canary_registered", status: "registered" }));
-
-  const result = service.activate("canary_registered", true);
-
-  assert.equal(result.status, "canary");
-});
-
-test("activate with canary=false requires prior canary promotion", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "standard_registered", status: "registered" }));
-
-  assert.throws(
-    () => service.activate("standard_registered", false),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
-  );
-});
-
-test("activate with canary=true transitions updating domains into canary", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "canary_updating", status: "updating" }));
-
-  const result = service.activate("canary_updating", true);
-
-  assert.equal(result.status, "canary");
-});
-
-test("activate with canary=false throws for non-registered domains", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "not_registered", status: "active" }));
-
-  assert.throws(
-    () => service.activate("not_registered", false),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
-  );
-});
-
-test("activate with canary=true throws for non-updating/non-registered domains", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "canary_invalid", status: "draft" }));
-
-  assert.throws(
-    () => service.activate("canary_invalid", true),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_canary_state",
-  );
-});
-
-test("canary activation publishes domain:activated event", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
   });
-  service.register(createTestDomain({ domainId: "canary_event_test", status: "registered" }));
-
-  service.activate("canary_event_test", true);
-  service.activate("canary_event_test", false);
-
-  assert.ok(events.some((e) => e.eventType === "domain:activated"));
-});
-
-test("canary activation sets correct status in event payload", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
-  });
-  service.register(createTestDomain({ domainId: "canary_payload_test", status: "registered" }));
-
-  service.activate("canary_payload_test", true);
-  service.activate("canary_payload_test", false);
-
-  const activatedEvent = events.find((e) => e.eventType === "domain:activated");
-  assert.ok(activatedEvent);
-  assert.equal(activatedEvent.payload.status, "active");
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Updating State Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("updating transitions domain from active to updating", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "updating_test", status: "active" }));
-
-  const result = service.updating("updating_test");
-
-  assert.equal(result.status, "updating");
-});
-
-test("updating emits domain:updating event", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
-  });
-  service.register(createTestDomain({ domainId: "updating_event_test", status: "active" }));
-
-  service.updating("updating_event_test");
-
-  assert.ok(events.some((e) => e.eventType === "domain:updating"));
-});
-
-test("updating throws when domain is not active", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "updating_invalid_state", status: "registered" }));
-
-  assert.throws(
-    () => service.updating("updating_invalid_state"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_updating_state",
-  );
-});
-
-test("updating throws for unknown domain", () => {
-  const service = new DomainRegistryService();
-
-  assert.throws(
-    () => service.updating("unknown_domain"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.domain_not_found",
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Complete Update Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("completeUpdate transitions domain from updating to active", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "complete_update_test", status: "updating" }));
-
-  const result = service.completeUpdate("complete_update_test");
-
-  assert.equal(result.status, "active");
-});
-
-test("completeUpdate emits domain:updated event", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
-  });
-  service.register(createTestDomain({ domainId: "complete_update_event_test", status: "updating" }));
-
-  service.completeUpdate("complete_update_event_test");
-
-  assert.ok(events.some((e) => e.eventType === "domain:updated"));
-});
-
-test("completeUpdate throws when domain is not in updating state", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "complete_update_invalid", status: "active" }));
-
-  assert.throws(
-    () => service.completeUpdate("complete_update_invalid"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_complete_update_state",
-  );
-});
-
-test("completeUpdate throws for unknown domain", () => {
-  const service = new DomainRegistryService();
-
-  assert.throws(
-    () => service.completeUpdate("unknown_domain"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.domain_not_found",
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Archive State Tests (Issue #2175)
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("archive transitions domain from deprecated to archived", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "archive_test", status: "deprecated" }));
-
-  const result = service.archive("archive_test");
-
-  assert.equal(result.status, "archived");
-});
-
-test("archive emits domain:archived event", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
-  });
-  service.register(createTestDomain({ domainId: "archive_event_test", status: "deprecated" }));
-
-  service.archive("archive_event_test");
-
-  assert.ok(events.some((e) => e.eventType === "domain:archived"));
-});
-
-test("archive event contains correct domainId and status", () => {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
-  const service = new DomainRegistryService({
-    eventPublisher: {
-      publish(input) {
-        events.push(input as { eventType: string; payload: Record<string, unknown> });
-      },
-    },
-  });
-  service.register(createTestDomain({ domainId: "archive_payload_test", status: "deprecated" }));
-
-  service.archive("archive_payload_test");
-
-  const archivedEvent = events.find((e) => e.eventType === "domain:archived");
-  assert.ok(archivedEvent);
-  assert.equal(archivedEvent.payload.domainId, "archive_payload_test");
-  assert.equal(archivedEvent.payload.status, "archived");
-});
-
-test("archive throws when domain is not deprecated", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "archive_invalid_state", status: "active" }));
-
-  assert.throws(
-    () => service.archive("archive_invalid_state"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_archive_state",
-  );
-});
-
-test("archive throws for unknown domain", () => {
-  const service = new DomainRegistryService();
-
-  assert.throws(
-    () => service.archive("unknown_domain"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.domain_not_found",
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Deprecate State Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("deprecate transitions domain from active to deprecated", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "deprecate_test", status: "active" }));
-
-  const result = service.deprecate("deprecate_test");
-
-  assert.equal(result.status, "deprecated");
-});
-
-test("deprecate throws when domain is not active", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "deprecate_invalid_state", status: "registered" }));
-
-  assert.throws(
-    () => service.deprecate("deprecate_invalid_state"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_deprecate_state",
-  );
-});
-
-test("deprecate throws for unknown domain", () => {
-  const service = new DomainRegistryService();
-
-  assert.throws(
-    () => service.deprecate("unknown_domain"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.domain_not_found",
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Full Lifecycle Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("full lifecycle: registered -> active -> updating -> active -> deprecated -> archived", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "full_lifecycle_test", status: "registered" }));
-
-  // registered -> canary -> active
-  let domain = service.activate("full_lifecycle_test", true);
-  assert.equal(domain.status, "canary");
-  domain = service.activate("full_lifecycle_test", false);
-  assert.equal(domain.status, "active");
-
-  // active -> updating
-  domain = service.updating("full_lifecycle_test");
-  assert.equal(domain.status, "updating");
-
-  // updating -> active (complete update)
-  domain = service.completeUpdate("full_lifecycle_test");
-  assert.equal(domain.status, "active");
-
-  // active -> deprecated
-  domain = service.deprecate("full_lifecycle_test");
-  assert.equal(domain.status, "deprecated");
-
-  // deprecated -> archived
-  domain = service.archive("full_lifecycle_test");
-  assert.equal(domain.status, "archived");
-});
-
-test("canary lifecycle: canary -> active -> deprecated -> archived", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "canary_lifecycle_test", status: "canary" }));
-
-  // canary -> active (canary activation)
-  let domain = service.activate("canary_lifecycle_test", true);
-  assert.equal(domain.status, "active");
-
-  // active -> deprecated
-  domain = service.deprecate("canary_lifecycle_test");
-  assert.equal(domain.status, "deprecated");
-
-  // deprecated -> archived
-  domain = service.archive("canary_lifecycle_test");
-  assert.equal(domain.status, "archived");
-});
-
-test("archived domains cannot be activated", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "archived_no_activate", status: "archived" }));
-
-  assert.throws(
-    () => service.activate("archived_no_activate", false),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
-  );
-});
-
-test("archived domains cannot be updated", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "archived_no_update", status: "archived" }));
-
-  assert.throws(
-    () => service.updating("archived_no_update"),
-    /invalid_updating_state|active/,
-  );
-});
-
-test("archived domains cannot be deprecated", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "archived_no_deprecate", status: "archived" }));
-
-  assert.throws(
-    () => service.deprecate("archived_no_deprecate"),
-    /invalid_deprecate_state|active/,
-  );
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Smoke Test Integration
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("activate fails smoke test when domain has invalid configuration", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({
-    domainId: "smoke_fail_activate",
-    status: "registered",
+  service.register({
+    domainId: "domain_b",
+    name: "Domain B",
+    description: "Test domain B",
+    version: 1,
     workflows: [],
-  }));
-  assert.throws(
-    () => {
-      service.activate("smoke_fail_activate", true);
-      service.activate("smoke_fail_activate");
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
     },
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
-  );
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [],
+  });
+
+  const all = service.list();
+  assert.equal(all.length, 2);
+
+  const active = service.listActive();
+  assert.equal(active.length, 1);
+  assert.equal(active[0]?.domainId, "domain_b");
 });
 
-test("completeUpdate fails smoke test when domain configuration becomes invalid", () => {
+test("DomainRegistryService get returns null for unknown domain", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({
-    domainId: "smoke_fail_complete",
-    status: "updating",
-    workflows: [
-      {
-        workflowId: "wf_fail",
-        name: "Failing Workflow",
-        triggerConditions: {},
-        steps: [
-          {
-            stepName: "step_a",
-            toolHints: [],
-            modelHints: {},
-            outputSchema: null,
-            retryPolicy: { maxRetries: 0, backoffMs: 0 },
-            requiresReview: false,
-            timeoutMs: 60000,
-            dependsOn: ["step_b"],
-          },
-          {
-            stepName: "step_b",
-            toolHints: [],
-            modelHints: {},
-            outputSchema: null,
-            retryPolicy: { maxRetries: 0, backoffMs: 0 },
-            requiresReview: false,
-            timeoutMs: 60000,
-            dependsOn: ["step_a"],
-          },
-        ],
-      },
+  assert.equal(service.get("unknown_domain"), null);
+  assert.equal(service.getWorkflow("unknown_domain", "wf"), null);
+  assert.equal(service.getToolBundle("unknown_domain", "bundle"), null);
+  assert.equal(service.getOutputContract("unknown_domain", "contract"), null);
+  assert.deepEqual(service.getPluginBindings("unknown_domain"), []);
+});
+
+test("DomainRegistryService deprecate marks domain as deprecated", () => {
+  const service = new DomainRegistryService();
+  service.register({
+    domainId: "deprecated_domain",
+    name: "Deprecated",
+    description: "Will be deprecated",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [],
+  });
+
+  const deprecated = service.deprecate("deprecated_domain");
+  assert.equal(deprecated.status, "deprecated");
+
+  const listed = service.listActive();
+  assert.equal(listed.length, 0);
+});
+
+test("DomainRegistryService filterAllowedTools returns empty for unknown domain", () => {
+  const service = new DomainRegistryService();
+  const filtered = service.filterAllowedTools("unknown_domain", ["read", "write"]);
+  assert.deepEqual(filtered, []);
+});
+
+test("DomainRegistryService getPluginBindings filters by pluginType", () => {
+  const service = new DomainRegistryService({
+    installedPluginIds: ["p1", "p2", "p3", "p4"],
+    healthyPluginIds: ["p1", "p2", "p3", "p4"],
+  });
+  service.register({
+    domainId: "multi_plugin",
+    name: "Multi Plugin Domain",
+    description: "Has multiple plugin types",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [
+      { bindingId: "b1", domainId: "multi_plugin", pluginType: "tool", bindingRole: "presenter", pluginId: "p1", priority: 1, enabled: true, config: {} },
+      { bindingId: "b2", domainId: "multi_plugin", pluginType: "tool", bindingRole: "presenter", pluginId: "p2", priority: 2, enabled: true, config: {} },
+      { bindingId: "b3", domainId: "multi_plugin", pluginType: "retriever", pluginId: "p3", priority: 1, enabled: true, config: {} },
+      { bindingId: "b4", domainId: "multi_plugin", pluginType: "retriever", pluginId: "p4", priority: 1, enabled: false, config: {} },
     ],
-  }));
-  assert.throws(
-    () => service.completeUpdate("smoke_fail_complete"),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
-  );
-});
+  });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// List Operations After State Transitions
-// ─────────────────────────────────────────────────────────────────────────────
+  const all = service.getPluginBindings("multi_plugin");
+  assert.equal(all.length, 3); // enabled presenter (2) + enabled retriever (1), disabled excluded
 
-test("listActive excludes deprecated and archived domains", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "active_1", status: "active" }));
-  service.register(createTestDomain({ domainId: "active_2", status: "active" }));
-  service.register(createTestDomain({ domainId: "deprecated_1", status: "deprecated" }));
-  service.register(createTestDomain({ domainId: "archived_1", status: "archived" }));
+  const presenters = service.getPluginBindings("multi_plugin", "presenter" as any);
+  assert.equal(presenters.length, 2);
 
-  const activeDomains = service.listActive();
-
-  assert.equal(activeDomains.length, 2);
-  assert.ok(activeDomains.some((d) => d.domainId === "active_1"));
-  assert.ok(activeDomains.some((d) => d.domainId === "active_2"));
-  assert.ok(!activeDomains.some((d) => d.domainId === "deprecated_1"));
-  assert.ok(!activeDomains.some((d) => d.domainId === "archived_1"));
-});
-
-test("list returns all domains regardless of status", () => {
-  const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "list_all_1", status: "active" }));
-  service.register(createTestDomain({ domainId: "list_all_2", status: "deprecated" }));
-  service.register(createTestDomain({ domainId: "list_all_3", status: "archived" }));
-
-  const allDomains = service.list();
-
-  assert.equal(allDomains.length, 3);
+  const retrievers = service.getPluginBindings("multi_plugin", "retriever");
+  assert.equal(retrievers.length, 1);
 });

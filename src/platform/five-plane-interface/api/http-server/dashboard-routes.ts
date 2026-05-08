@@ -11,7 +11,7 @@ import type { RouteDefinition } from "./types.js";
 import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
-import { PlatformWorkbenchSnapshotService } from "../../../shared/ux/platform-workbench-snapshot-service.js";
+import { PlatformWorkbenchSnapshotService } from "../../../../interaction/ux/platform-workbench-snapshot-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
 import { ProjectionInventoryService } from "../../../state-evidence/events/projection-inventory-service.js";

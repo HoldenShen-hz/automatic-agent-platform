@@ -5,6 +5,4 @@ export * from "./observability/index.js";
 export * from "./outbox/index.js";
 export * from "./scaling/index.js";
 export * from "./stability/index.js";
-export * from "./tool-discovery/index.js";
-export * from "./ux/index.js";
 export * from "./utils/index.js";

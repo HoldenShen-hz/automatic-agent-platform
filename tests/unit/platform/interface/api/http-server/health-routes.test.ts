@@ -21,12 +21,12 @@ function createMockContext(): RouteContext {
   };
 }
 
-test("createHealthRoutes returns 7 routes", () => {
+test("createHealthRoutes returns 4 routes", () => {
   const deps = {
     missionControlService: createMockMissionControlService(),
   };
   const routes = createHealthRoutes(deps);
-  assert.equal(routes.length, 7);
+  assert.equal(routes.length, 4);
 });
 
 test("GET /healthz returns health status", async () => {

@@ -208,7 +208,7 @@ test("validateBusinessPackManifest checks sandbox tier for critical risk", () =>
     name: "Critical Pack",
     version: "1.0.0",
     domainId: "test",
-    sandboxTier: "process",
+    sandboxTier: "none",
     riskMatrix: [
       { riskId: "r1", level: "critical", triggers: [], mitigation: "", escalationPolicy: "" },
     ],

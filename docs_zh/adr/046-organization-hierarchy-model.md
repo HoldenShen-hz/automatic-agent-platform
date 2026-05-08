@@ -30,40 +30,20 @@ interface OrgNode {
 }
 ```
 
-### 层级治理策略（OrgNode 层次，v4.3 §46-§51）
+### 层级治理策略
 
 | 层级 | 治理自主权 | 审批链路 |
 |------|-----------|----------|
-| 根节点（公司级） | 平台管理 | OrgNode 治理链 |
-| 事业群级 | 事业群管理 | OrgNode 审批路由 |
-| 部门级 | 部门管理 | OrgNode 审批路由 |
-| 团队级 | 团队管理 | OrgNode 审批路由 |
-| 个人级 | 个人管理 | OrgNode 审批路由 |
-
-注：v4.3 以 OrgNode 层次替代 CEO/VP 命名体系，审批链路通过 ApprovalFlow + OrgNode hierarchy 动态路由。
+| 公司级 | 平台管理 | CEO/治理委员会 |
+| 事业群级 | 事业群管理 | VP |
+| 部门级 | 部门管理 | 部门负责人 |
+| 团队级 | 团队管理 | Team Lead |
 
 ### 与租户的关系
 
 - tenant 是顶层隔离单位
 - 组织层次在 tenant 内细分
 - 跨 tenant 无组织关系
-
-### OrgTree 级联变更（§2.4 Saga 语义）
-
-OrgTree 变更（部门合并、团队拆分、人员转岗）须遵循四段 Saga 语义：
-
-| 阶段 | 说明 | 补偿触发 |
-|------|------|----------|
-| prepare | 验证变更可行性，生成影响分析，锁定受影响的子节点 | N/A |
-| commit | 执行组织结构变更，更新所有关联的审批链路和权限 | compensate |
-| compensate | 若变更失败则回滚至原组织结构，恢复受影响节点的原始状态 | 递归补偿直至成功或人工介入 |
-| audit | 记录变更事件，生成变更报告，通知相关干系人 | N/A |
-
-补偿事务要求：
-- 每一步 commit 操作须记录反向操作（inverse operation）到 compensation_log
-- compensate 阶段须保证幂等性（idempotent），可安全重试
-- audit 阶段须记录完整的 prepare/commit/compensate 链路时间戳和操作者身份
-- 若 compensate 失败，系统进入 `saga_in_flight` 状态并告警，需人工确认后继续
 
 ## 后果
 

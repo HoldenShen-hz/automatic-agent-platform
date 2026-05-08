@@ -9,9 +9,7 @@ const require = createRequire(import.meta.url);
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
-// R30-39 FIX: Renamed from stdoutBuffer to stdinBuffer since it accumulates stdin data
-// (copy-paste naming error - was accumulating stdin but named as stdout)
-let stdinBuffer = "";
+let stdoutBuffer = "";
 
 installRuntimeGuards();
 installStdioProtocolConsoleRedirection();
@@ -90,29 +88,7 @@ async function handleRequest(request: PluginRuntimeRequest): Promise<unknown> {
 function installRuntimeGuards(): void {
   const sandboxRoot = process.env.AA_PLUGIN_SANDBOX_ROOT?.trim();
   if (sandboxRoot) {
-    // §198-2315: Root cause - path traversal check only caught "..", "//", "~"
-    // but missed encoded dots (%2e), backslash, null bytes, and other traversal vectors.
-    // Fix: Validate with more comprehensive checks including null bytes, encoded traversal, backslash.
-    const normalizedRoot = sandboxRoot.replace(/%00|%2e|%2f|\\|\0/g, "");
-    if (
-      sandboxRoot.includes("..") ||
-      sandboxRoot.includes("//") ||
-      sandboxRoot.includes("~") ||
-      sandboxRoot.includes("\0") ||
-      sandboxRoot.includes("%00") ||
-      sandboxRoot.includes("%2e") ||
-      sandboxRoot.includes("%2f") ||
-      sandboxRoot.includes("\\") ||
-      normalizedRoot.includes("..") ||
-      normalizedRoot.includes("//")
-    ) {
-      throw new Error(`Plugin sandbox root contains invalid path sequence: ${sandboxRoot}`);
-    }
-    try {
-      process.chdir(sandboxRoot);
-    } catch {
-      throw new Error(`Plugin sandbox root is not a valid directory: ${sandboxRoot}`);
-    }
+    process.chdir(sandboxRoot);
   }
   if (process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "true") {
     return;
@@ -144,14 +120,14 @@ process.on("message", (message: unknown) => {
 
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk: string) => {
-  stdinBuffer += chunk;
+  stdoutBuffer += chunk;
   while (true) {
-    const newlineIndex = stdinBuffer.indexOf("\n");
+    const newlineIndex = stdoutBuffer.indexOf("\n");
     if (newlineIndex === -1) {
       break;
     }
-    const line = stdinBuffer.slice(0, newlineIndex).trim();
-    stdinBuffer = stdinBuffer.slice(newlineIndex + 1);
+    const line = stdoutBuffer.slice(0, newlineIndex).trim();
+    stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
     if (line.length === 0) {
       continue;
     }

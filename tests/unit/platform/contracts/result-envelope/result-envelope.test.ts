@@ -40,7 +40,6 @@ function createStepOutputRecord(overrides: Partial<StepOutputRecord> = {}): Step
   return {
     id: "step_out_1",
     taskId: "task_1",
-    nodeRunId: "node_run_step_1",
     stepId: "step1",
     roleId: "executor",
     status: "succeeded",
@@ -77,7 +76,6 @@ function createArtifactRecord(overrides: Partial<ArtifactRecord> = {}): Artifact
     artifactId: "art_1",
     taskId: "task_1",
     executionId: null,
-    nodeRunId: null,
     stepId: null,
     kind: "code",
     storagePath: "/tmp/art_1.txt",
@@ -360,14 +358,13 @@ test("buildStepResultEnvelope enriches artifact refs with record data", () => {
 test("buildStepResultEnvelope provenance includes step details", () => {
   const stepOutput = createStepOutputRecord({
     taskId: "task_1",
-    nodeRunId: "node_run_step_1",
     stepId: "step_1",
     roleId: "executor",
   });
   const result = buildStepResultEnvelope(stepOutput, []);
 
   assert.equal(result.provenance!.taskId, "task_1");
-  assert.equal(result.provenance!.nodeRunId, "node_run_step_1");
+  assert.equal(result.provenance!.stepId, "step_1");
   assert.equal(result.provenance!.roleId, "executor");
 });
 
@@ -680,11 +677,10 @@ test("buildTaskResultEnvelope uses humanSummary from structuredData over task ti
   assert.equal(result!.humanSummary, "Human readable summary");
 });
 
-test("buildStepResultEnvelope includes step warning with nodeRunId prefix", () => {
+test("buildStepResultEnvelope includes step warning with stepId prefix", () => {
   const task = createTaskRecord({ status: "done" });
   const stepOutputs = [
     createStepOutputRecord({
-      nodeRunId: "node_run_warning_1",
       stepId: "step_1",
       status: "partial_success",
     }),
@@ -697,7 +693,7 @@ test("buildStepResultEnvelope includes step warning with nodeRunId prefix", () =
   });
 
   assert.notEqual(result, null);
-  assert.ok(result!.warnings.some(w => w.startsWith("node_run_warning_1:")));
+  assert.ok(result!.warnings.some(w => w.startsWith("step_1:")));
 });
 
 test("resolveArtifactRefs falls back to task artifacts when step output has no refs", () => {
@@ -718,28 +714,4 @@ test("resolveArtifactRefs falls back to task artifacts when step output has no r
   assert.equal(result!.artifacts.length, 1);
   const firstArtifact = result!.artifacts[0]!;
   assert.equal(firstArtifact.artifactId, "fallback_art");
-});
-
-test("resolveArtifactRefs prefers canonical nodeRunId over legacy stepId", () => {
-  const task = createTaskRecord({ status: "done" });
-  const artifact = createArtifactRecord({
-    artifactId: "canonical_art",
-    nodeRunId: "node_run_canonical",
-    stepId: "legacy-step-mismatch",
-  });
-  const stepOutput = createStepOutputRecord({
-    nodeRunId: "node_run_canonical",
-    stepId: "step_legacy_only",
-    artifactsJson: null,
-  });
-  const result = buildTaskResultEnvelope({
-    task,
-    workflowState: null,
-    stepOutputs: [stepOutput],
-    artifacts: [artifact],
-  });
-
-  assert.notEqual(result, null);
-  assert.equal(result!.artifacts.length, 1);
-  assert.equal(result!.artifacts[0]!.artifactId, "canonical_art");
 });

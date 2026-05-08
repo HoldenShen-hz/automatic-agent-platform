@@ -18,6 +18,3 @@ export { RuntimeStateMachine, isTruthConsumerEvent } from "./runtime-state-machi
 export { SideEffectManager } from "./side-effect-manager.js";
 export { BudgetAllocator } from "./budget-allocator.js";
 export { TransitionService } from "./state-transition/transition-service.js";
-export { ReconciliationWorker } from "./reconciliation-worker.js";
-export { CompensationManager } from "./compensation-manager.js";
-export * as hibernation from "./hibernation/index.js";

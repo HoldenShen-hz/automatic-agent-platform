@@ -19,15 +19,14 @@ export class ArtifactRepository {
     this.conn
       .prepare(
         `INSERT INTO artifacts (
-          artifact_id, task_id, execution_id, node_run_id, step_id, kind, storage_path, file_name,
-          mime_type, size_bytes, checksum, lineage_json, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          artifact_id, task_id, execution_id, step_id, kind, storage_path, file_name, mime_type,
+          size_bytes, checksum, lineage_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         artifact.artifactId,
         artifact.taskId,
         artifact.executionId,
-        artifact.nodeRunId ?? null,
         artifact.stepId,
         artifact.kind,
         artifact.storagePath,
@@ -50,7 +49,6 @@ export class ArtifactRepository {
         artifact_id AS artifactId,
         task_id AS taskId,
         execution_id AS executionId,
-        node_run_id AS nodeRunId,
         step_id AS stepId,
         kind,
         storage_path AS storagePath,
@@ -78,7 +76,6 @@ export class ArtifactRepository {
           a.artifact_id AS artifactId,
           a.task_id AS taskId,
           a.execution_id AS executionId,
-          a.node_run_id AS nodeRunId,
           a.step_id AS stepId,
           a.kind,
           a.storage_path AS storagePath,
@@ -103,7 +100,6 @@ export class ArtifactRepository {
         artifact_id AS artifactId,
         task_id AS taskId,
         execution_id AS executionId,
-        node_run_id AS nodeRunId,
         step_id AS stepId,
         kind,
         storage_path AS storagePath,

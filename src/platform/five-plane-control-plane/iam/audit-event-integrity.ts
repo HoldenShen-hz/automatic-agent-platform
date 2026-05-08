@@ -29,7 +29,7 @@
  * @see Tier 1 audit contract: docs_zh/contracts/audit_event_integrity_contract.md
  */
 
-import { createHash, createHmac } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import type { EventRecord } from "../../contracts/types/domain.js";
 
@@ -61,19 +61,6 @@ export interface Tier1AuditIntegrityRecord {
 
   /** When this integrity record was computed */
   recordedAt: string;
-}
-
-/**
- * Configuration for audit event integrity service.
- */
-export interface AuditEventIntegrityOptions {
-  /**
-   * HMAC signing key for tamper-evident chain.
-   * §11.5 requires tamper-evident audit - without a signing key,
-   * an attacker with DB write access could recompute the entire chain.
-   * If not provided, falls back to plain SHA-256 (less secure).
-   */
-  signingKey?: string;
 }
 
 /**
@@ -133,44 +120,15 @@ type Tier1AuditEventShape = Pick<
 >;
 
 /**
- * Internal SHA-256 hashing utility.
- * Uses Node.js crypto module for fast, reliable hashing.
- *
- * @param value - String to hash
- * @returns Hex-encoded hash string
- */
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
-
-/**
- * Internal HMAC-SHA-256 hashing utility for tamper-evident signing.
- * §11.5: Uses HMAC with a signing key so attackers with DB write access
- * cannot recompute the chain after modifying events.
- *
- * @param value - String to hash
- * @param key - HMAC signing key
- * @returns Hex-encoded HMAC hash string
- */
-function hmacSha256(value: string, key: string): string {
-  return createHmac("sha256", key).update(value, "utf8").digest("hex");
-}
-
-/**
- * Computes a checksum for a Tier 1 audit event.
- * Uses HMAC-SHA-256 if a signing key is configured, otherwise plain SHA-256.
+ * Computes a SHA-256 checksum for a Tier 1 audit event.
  * The checksum covers all fields that must remain immutable for integrity.
  * Changes to any of these fields would indicate tampering.
  *
  * @param event - The event to compute checksum for
- * @param signingKey - Optional HMAC signing key for tamper-evident audit
- * @returns Hex-encoded checksum string
+ * @returns Hex-encoded SHA-256 checksum string
  */
-export function computeTier1AuditEventChecksum(
-  event: Tier1AuditEventShape,
-  signingKey?: string,
-): string {
-  const data = JSON.stringify({
+export function computeTier1AuditEventChecksum(event: Tier1AuditEventShape): string {
+  return sha256(JSON.stringify({
     id: event.id,
     taskId: event.taskId,
     sessionId: event.sessionId,
@@ -180,36 +138,33 @@ export function computeTier1AuditEventChecksum(
     payloadJson: event.payloadJson,
     traceId: event.traceId,
     createdAt: event.createdAt,
-  });
-  return signingKey != null ? hmacSha256(data, signingKey) : sha256(data);
+  }));
 }
 
 /**
  * Computes the chain hash that links this event to the previous one.
  * This creates the tamper-evident chain property - changing any event
  * breaks all subsequent chain hashes.
- * Uses HMAC-SHA-256 if a signing key is configured.
  *
  * @param input - Components needed for chain hash computation
- * @param signingKey - Optional HMAC signing key for tamper-evident audit
+ * @param input.chainPosition - Position in the chain (1-indexed)
+ * @param input.previousChainHash - Hash of the previous event (null for first)
+ * @param input.eventChecksum - Checksum of this event
+ * @param input.eventId - ID of this event
  * @returns Hex-encoded chain hash
  */
-export function computeTier1AuditChainHash(
-  input: {
-    chainPosition: number;
-    previousChainHash: string | null;
-    eventChecksum: string;
-    eventId: string;
-  },
-  signingKey?: string,
-): string {
-  const data = JSON.stringify({
+export function computeTier1AuditChainHash(input: {
+  chainPosition: number;
+  previousChainHash: string | null;
+  eventChecksum: string;
+  eventId: string;
+}): string {
+  return sha256(JSON.stringify({
     chainPosition: input.chainPosition,
     previousChainHash: input.previousChainHash,
     eventChecksum: input.eventChecksum,
     eventId: input.eventId,
-  });
-  return signingKey != null ? hmacSha256(data, signingKey) : sha256(data);
+  }));
 }
 
 /**
@@ -224,14 +179,11 @@ export function computeTier1AuditChainHash(
  * 4. Event tier - confirms events are actually Tier 1
  *
  * @param entries - Array of integrity records with their corresponding events
- * @param signingKey - HMAC signing key for tamper-evident verification (required for HMAC-protected events)
  * @returns Verification report with findings and statistics
  */
 export function verifyTier1AuditIntegrity(
   entries: ReadonlyArray<Tier1AuditIntegrityVerificationEntry>,
-  signingKey?: string,
 ): Tier1AuditIntegrityReport {
-  const sortedEntries = [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition);
   const compromisedEventIds = new Set<string>();
   const missingEventIds = new Set<string>();
   const findings = new Set<string>();
@@ -240,7 +192,7 @@ export function verifyTier1AuditIntegrity(
   let previousChainHash: string | null = null;
 
   // Process entries in chain position order
-  for (const entry of sortedEntries) {
+  for (const entry of [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition)) {
     const integrityRecord = entry.integrityRecord;
     let compromised = false;
 
@@ -264,8 +216,7 @@ export function verifyTier1AuditIntegrity(
       }
 
       // Check 4: Event checksum matches stored value
-      // R12-16: Use HMAC-SHA-256 with signing key for tamper-evident verification
-      const eventChecksum = computeTier1AuditEventChecksum(entry.event, signingKey);
+      const eventChecksum = computeTier1AuditEventChecksum(entry.event);
       if (eventChecksum !== integrityRecord.eventChecksum) {
         compromised = true;
         findings.add(`audit_event_checksum_mismatch:${integrityRecord.eventId}`);
@@ -273,13 +224,12 @@ export function verifyTier1AuditIntegrity(
     }
 
     // Check 5: Chain hash can be recomputed correctly
-    // R12-16: Use HMAC-SHA-256 with signing key for tamper-evident chain verification
     const expectedChainHash = computeTier1AuditChainHash({
       chainPosition: integrityRecord.chainPosition,
       previousChainHash: integrityRecord.previousChainHash,
       eventChecksum: integrityRecord.eventChecksum,
       eventId: integrityRecord.eventId,
-    }, signingKey);
+    });
 
     if (expectedChainHash !== integrityRecord.chainHash) {
       compromised = true;
@@ -303,9 +253,20 @@ export function verifyTier1AuditIntegrity(
     compromisedEvents: compromisedEventIds.size,
     missingEvents: missingEventIds.size,
     chainBreaks,
-    latestChainHash: sortedEntries.at(-1)?.integrityRecord.chainHash ?? null,
+    latestChainHash: entries.at(-1)?.integrityRecord.chainHash ?? null,
     compromisedEventIds: Array.from(compromisedEventIds).sort(),
     missingEventIds: Array.from(missingEventIds).sort(),
     findings: Array.from(findings).sort(),
   };
+}
+
+/**
+ * Internal SHA-256 hashing utility.
+ * Uses Node.js crypto module for fast, reliable hashing.
+ *
+ * @param value - String to hash
+ * @returns Hex-encoded hash string
+ */
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }

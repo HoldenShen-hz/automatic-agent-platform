@@ -1,0 +1,147 @@
+/**
+ * Performance Test: Event Bus Throughput
+ *
+ * Establishes performance baselines for DurableEventBus operations.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { join } from "node:path";
+
+import { SqliteDatabase } from "../../src/core/storage/sqlite/sqlite-database.js";
+import { DurableEventBus } from "../../src/core/events/durable-event-bus.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import { newId, nowIso } from "../../src/core/types/ids.js";
+import { AuthoritativeTaskStore } from "../../src/core/storage/authoritative-task-store.js";
+
+test("performance: DurableEventBus.publish() meets P95 < 10ms baseline", () => {
+  const workspace = createTempWorkspace("perf-event-bus-");
+
+  try {
+    const dbPath = join(workspace, "perf-events.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const eventBus = new DurableEventBus(db, store);
+
+    // Create a task for the events
+    const taskId = newId("task");
+    const now = nowIso();
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Event bus perf test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    const latencies: number[] = [];
+    const iterations = 500;
+
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      eventBus.publish({
+        eventType: "perf:test_event",
+        taskId,
+        payload: { index: i },
+        traceId: newId("trace"),
+      });
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 10ms for publish
+    assert.ok(
+      p95Latency < 10,
+      `EventBus.publish() P95 latency ${p95Latency.toFixed(3)}ms exceeds 10ms baseline`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: Event bus can handle high-throughput publish burst", () => {
+  const workspace = createTempWorkspace("perf-event-burst-");
+
+  try {
+    const dbPath = join(workspace, "perf-burst.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const eventBus = new DurableEventBus(db, store);
+
+    // Create a task for the events
+    const taskId = newId("task");
+    const now = nowIso();
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Event bus burst test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    // Publish burst of 100 events
+    const start = performance.now();
+    db.transaction(() => {
+      for (let i = 0; i < 100; i++) {
+        eventBus.publish({
+          eventType: "perf:burst_event",
+          taskId,
+          payload: { index: i, data: "x".repeat(100) },
+          traceId: newId("trace"),
+        });
+      }
+    });
+    const end = performance.now();
+    const duration = end - start;
+    const throughput = 100 / (duration / 1000);
+
+    // Should achieve at least 500 events/second
+    assert.ok(
+      throughput > 500,
+      `Event bus burst throughput ${throughput.toFixed(0)} events/s below 500/s target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

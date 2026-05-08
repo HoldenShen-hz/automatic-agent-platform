@@ -25,7 +25,7 @@ export function buildScaleOpsRuntimeCatalog(): ScaleOpsRuntimeCatalog {
 }
 
 export function registerScaleOpsRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ScaleOpsRuntimeCatalog {
   const scaleEcosystem = registerScaleBootstrap(registry).catalog;
   const opsMaturity = registerOpsMaturityBootstrap(registry).catalog;

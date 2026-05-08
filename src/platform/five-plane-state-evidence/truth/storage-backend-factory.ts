@@ -22,8 +22,6 @@ import {
   createAsyncRepositoryRegistry,
   type AsyncRepositoryRegistry,
 } from "./async-repository-registry.js";
-import type { CasService } from "../events/cas/cas-service.js";
-import { createSqliteCasService } from "../events/cas/cas-service.js";
 
 const require = createRequire(import.meta.url);
 
@@ -82,8 +80,6 @@ export interface SqliteAuthoritativeStorageBackendHandle {
   asyncRepos: AsyncRepositoryRegistry;
   /** The SQLite database instance */
   sqlite: SqliteDatabase;
-  /** CAS service for optimistic concurrency control */
-  casService: CasService;
   /** Runs pending migrations */
   migrate(): void | Promise<void>;
   /** Closes the database connection */
@@ -370,7 +366,6 @@ export function openAuthoritativeStorageBackend(
     asyncSql: asyncAdapter,
     asyncRepos: createAsyncRepositoryRegistry(asyncAdapter),
     sqlite: db,
-    casService: createSqliteCasService(db),
     migrate() {
       db.migrate();
     },
@@ -484,7 +479,7 @@ export function openAuthoritativeStorageContext(
   const storage = openAuthoritativeStorageBackend(options);
   return {
     ...storage,
-    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)) as unknown as AuthoritativeTaskStore,
+    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)),
   };
 }
 
@@ -542,7 +537,7 @@ export async function openAsyncAuthoritativeStorageContext(
     return {
       ...storage,
       sql: shadowSqlite,
-      store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(shadowSqlite)) as unknown as AuthoritativeTaskStore,
+      store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(shadowSqlite)),
       shadowSqlite,
       async migrate(): Promise<void> {
         await storage.migrate();
@@ -555,6 +550,6 @@ export async function openAsyncAuthoritativeStorageContext(
   const storage = await openAsyncAuthoritativeStorageBackend(options);
   return {
     ...storage,
-    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)) as unknown as AuthoritativeTaskStore,
-  } as unknown as SqliteAuthoritativeStorageContext;
+    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)),
+  } as SqliteAuthoritativeStorageContext;
 }

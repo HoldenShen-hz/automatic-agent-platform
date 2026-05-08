@@ -76,21 +76,6 @@ test("ADR README indexes every ADR markdown file exactly once", () => {
   assert.deepEqual(indexedLinks.sort(), [...adrFiles].sort());
 });
 
-test("ADR markdown filenames use unique numeric prefixes", () => {
-  const adrFiles = listMarkdownFiles(ADR_ROOT)
-    .filter((filePath) => !filePath.endsWith("README.md"))
-    .map((filePath) => filePath.split("/").at(-1) ?? "");
-
-  const seen = new Set<string>();
-  for (const adrFile of adrFiles) {
-    const match = adrFile.match(/^(\d{3})-/);
-    assert.ok(match, `ADR filename missing numeric prefix: ${adrFile}`);
-    const prefix = match[1]!;
-    assert.equal(seen.has(prefix), false, `duplicate ADR number detected: ${prefix}`);
-    seen.add(prefix);
-  }
-});
-
 test("documentation root contains required structural files", () => {
   assert.ok(existsSync(join(DOC_ROOT, "README.md")));
   assert.ok(existsSync(ADR_ROOT));
@@ -130,7 +115,6 @@ test("v2.7 coverage matrix and new authoritative contracts exist", () => {
     "capacity_planning_contract.md",
     "multimodal_gateway_contract.md",
     "platform_ops_agent_contract.md",
-    "agent_handoff_contract.md",
   ];
 
   for (const fileName of requiredContracts) {

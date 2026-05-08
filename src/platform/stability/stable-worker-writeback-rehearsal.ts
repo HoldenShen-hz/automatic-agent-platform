@@ -130,8 +130,6 @@ function seedTaskExecutionWorkflowAndSession(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -290,18 +288,18 @@ async function runDuplicateScenario(outputDir: string): Promise<StableWorkerWrit
       terminalStatus: "done",
       occurredAt: "2026-04-04T12:00:11.000Z",
     });
-    const eventsResult = store.event.listEventsForTask("task-worker-writeback");
+    const events = store.event.listEventsForTask("task-worker-writeback");
     db.close();
 
     return {
       passed:
         duplicate.accepted === false &&
         duplicate.reasonCode === "execution_not_executing" &&
-        eventsResult.events.some((event) => event.eventType === "worker:writeback_rejected"),
+        events.some((event) => event.eventType === "worker:writeback_rejected"),
       summary: "duplicate writeback is rejected once the execution has already reached a terminal state",
       details: {
         duplicate,
-        eventTypes: eventsResult.events.map((event) => event.eventType),
+        events,
       },
     };
   });

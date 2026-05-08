@@ -48,17 +48,12 @@ interface EdgeRuntime {
 
 ### Conflict Resolution
 
-| Strategy | Scope | Description |
-|----------|-------|-------------|
-| `server_wins` | truth / budget / side effect objects | Server single leader write (required); complies with §25.11/§52.3 fencing requirements |
-| `last_write_wins` | projection / non-critical statistical objects | Client timestamp priority write |
-| `merge` | projection / non-critical statistical objects | Merge conflicts (can use CRDT) |
-| `manual` | all objects | Manual resolution |
-
-**Constraints**:
-- truth / budget / side effect objects must use `server_wins` (single leader write + fencing); `last_write_wins` not allowed
-- projection / non-critical statistical objects may use `last_write_wins` or `merge`
-- §25.11/§52.3 requires single leader write must use fencing token protection to prevent split-brain
+| Strategy | Description |
+|----------|-------------|
+| last_write_wins | Last write wins |
+| server_wins | Server priority |
+| merge | Merge conflicts |
+| manual | Manual resolution |
 
 ## Consequences
 
@@ -78,6 +73,6 @@ Negative:
 - [ADR-052 Multi-Region Deployment Architecture](./052-multi-region-deployment-architecture.md)
 - [ADR-031 Disaster Recovery and High Availability](./031-disaster-recovery-and-high-availability.md)
 
-## Source Section
+## Source Sections
 
 - `§62` Offline and Edge Deployment Architecture

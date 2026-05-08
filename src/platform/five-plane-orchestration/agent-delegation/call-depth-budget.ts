@@ -1,5 +1,3 @@
-import { DEFAULT_MAX_DEPTH } from "./topology-validator.js";
-
 export interface CallDepthBudgetRequest {
   readonly currentCallDepth: number;
   readonly goalDecompositionDepth: number;
@@ -9,19 +7,19 @@ export interface CallDepthBudgetRequest {
 export interface CallDepthBudgetDecision {
   readonly allowed: boolean;
   readonly effectiveCallDepth: number;
-  readonly maxCallDepth: typeof DEFAULT_MAX_DEPTH;
+  readonly maxCallDepth: 8;
   readonly reasonCode: "call_depth.allowed" | "call_depth.exceeded";
 }
 
 export class CallDepthBudget {
-  private readonly maxCallDepth = DEFAULT_MAX_DEPTH;
+  private readonly maxCallDepth = 8 as const;
 
   public evaluate(request: CallDepthBudgetRequest): CallDepthBudgetDecision {
-    // §19.2: Proper summation for call depth (not Math.max)
-    const effectiveCallDepth =
-      request.currentCallDepth +
-      request.goalDecompositionDepth +
-      request.delegationDepth;
+    const effectiveCallDepth = Math.max(
+      request.currentCallDepth,
+      request.goalDecompositionDepth,
+      request.delegationDepth,
+    );
     return {
       allowed: effectiveCallDepth <= this.maxCallDepth,
       effectiveCallDepth,

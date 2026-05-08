@@ -2,28 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getAuthoritativeTaskStoreDecoratorMetricsSnapshot,
+  resetAuthoritativeTaskStoreDecoratorMetrics,
   decorateAuthoritativeTaskStore,
   type DecoratedAuthoritativeTaskStoreOptions,
 } from "../../../../../../src/platform/state-evidence/truth/repositories/authoritative-task-store-decorator.js";
 
-test("decorateAuthoritativeTaskStore starts with empty per-instance metrics", () => {
-  const snapshot = decorateAuthoritativeTaskStore({} as any, {}).getMetricsSnapshot();
+test("getAuthoritativeTaskStoreDecoratorMetricsSnapshot returns empty object initially", () => {
+  resetAuthoritativeTaskStoreDecoratorMetrics();
+  const snapshot = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
   assert.deepEqual(snapshot, {});
 });
 
-test("resetMetrics clears only the decorated instance metrics", () => {
-  const decorated = decorateAuthoritativeTaskStore(
-    {
-      testMethod: () => "result",
-    } as any,
-    {},
-  );
-
-  decorated.testMethod();
-  assert.ok(decorated.getMetricsSnapshot().testMethod);
-
-  decorated.resetMetrics();
-  assert.deepEqual(decorated.getMetricsSnapshot(), {});
+test("resetAuthoritativeTaskStoreDecoratorMetrics clears all metrics", () => {
+  resetAuthoritativeTaskStoreDecoratorMetrics();
+  const snapshot = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  assert.deepEqual(snapshot, {});
 });
 
 test("decorateAuthoritativeTaskStore returns a Proxy", () => {
@@ -75,7 +69,6 @@ test("decorateAuthoritativeTaskStore calls method on wrapped store", () => {
 
   assert.equal(result1, 1);
   assert.equal(result2, 2);
-  assert.equal(decorated.getMetricsSnapshot().incrementAndReturn?.calls, 2);
 });
 
 test("DecoratedAuthoritativeTaskStoreOptions interface is usable", () => {

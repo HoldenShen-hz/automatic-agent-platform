@@ -38,12 +38,8 @@ import type { EventTier } from "../../contracts/types/domain.js";
 /**
  * Tier 1 event types are critical events that require reliable delivery
  * and are used for core business logic tracking.
- *
- * §28 Canonical platform events - harness runs, node runs, side effects, budget
- * Non-arch events (delegation:_/prompt:_/tenant:_) removed per R5-38
  */
 export const TIER_1_EVENT_TYPES = [
-  // Legacy core events (retained for compatibility)
   "task:status_changed",
   "workflow:step_completed",
   "decision:requested",
@@ -53,44 +49,30 @@ export const TIER_1_EVENT_TYPES = [
   "subtask:completed",
   "subtask:failed",
   "cost:limit_reached",
-  // §28 Canonical platform events - harness run lifecycle (R5-38)
-  "platform.harness_run.status_changed",
-  "platform.harness_run.created",
-  "platform.harness_run.admitted",
-  "platform.harness_run.planning",
-  "platform.harness_run.ready",
-  "platform.harness_run.pausing",
-  "platform.harness_run.replanning",
-  "platform.harness_run.compensating",
-  "platform.harness_run.aborted",
-  "platform.harness_run.completed",
-  // §28 Canonical platform events - node run lifecycle (R5-38)
-  "platform.node_run.status_changed",
-  "platform.node_run.created",
-  "platform.node_run.admitted",
-  "platform.node_run.planning",
-  "platform.node_run.ready",
-  "platform.node_run.pausing",
-  "platform.node_run.replanning",
-  "platform.node_run.completed",
-  "platform.node_run.failed",
-  "platform.node_run.compensating",
-  "platform.node_run.skipped",
-  // §28 Canonical platform events - side effect lifecycle (R5-38)
-  "platform.side_effect.status_changed",
-  "platform.side_effect.triggered",
-  "platform.side_effect.completed",
-  "platform.side_effect.failed",
-  // §28 Canonical platform events - budget lifecycle (R5-38)
-  "platform.budget.status_changed",
-  "platform.budget.reserved",
-  "platform.budget.actualized",
-  "platform.budget.exceeded",
-  "platform.budget_reconciliation.status_changed",
-  // §28 Canonical oapeflir events (R5-38)
-  "oapeflir.view.run_lifecycle",
-  "oapeflir.decision.recorded",
-  "oapeflir.phase.transition",
+  // §28 Missing namespaces
+  "delegation:created",
+  "delegation:completed",
+  "delegation:failed",
+  "prompt:injected",
+  "prompt:rendered",
+  "prompt:validation_failed",
+  "cost:budget_created",
+  "cost:budget_exceeded",
+  "cost:actualized",
+  "tenant:provisioned",
+  "tenant:suspended",
+  "tenant:deleted",
+  "pack:installed",
+  "pack:uninstalled",
+  "marketplace:listing_published",
+  "marketplace:listing_purchased",
+  "anomaly:classified",
+  "slo:breached",
+  "slo:recovered",
+  "compliance:audit_recorded",
+  "compliance:violation_detected",
+  "knowledge:document_indexed",
+  "knowledge:query_processed",
 ] as const;
 
 /**
@@ -101,10 +83,8 @@ export type Tier1EventType = (typeof TIER_1_EVENT_TYPES)[number];
 /**
  * Maps each Tier 1 event type to the list of consumers that must receive it.
  * Consumers are projections that maintain materialized views of the event data.
- * §28 Canonical platform events use truth_projector + audit_projection per R5-38
  */
 export const REQUIRED_CONSUMERS_BY_EVENT_TYPE: Record<Tier1EventType, readonly string[]> = {
-  // Legacy core events
   "task:status_changed": ["task_projection", "inspect_projection"],
   "workflow:step_completed": ["workflow_projection", "inspect_projection"],
   "decision:requested": ["approval_projection", "inspect_projection"],
@@ -114,44 +94,30 @@ export const REQUIRED_CONSUMERS_BY_EVENT_TYPE: Record<Tier1EventType, readonly s
   "subtask:completed": ["task_projection", "inspect_projection"],
   "subtask:failed": ["task_projection", "inspect_projection"],
   "cost:limit_reached": ["budget_projection", "inspect_projection"],
-  // §28 Canonical platform events - harness run (R5-38)
-  "platform.harness_run.status_changed": ["truth_projector", "audit_projection"],
-  "platform.harness_run.created": ["truth_projector", "audit_projection"],
-  "platform.harness_run.admitted": ["truth_projector", "audit_projection"],
-  "platform.harness_run.planning": ["truth_projector", "audit_projection"],
-  "platform.harness_run.ready": ["truth_projector", "audit_projection"],
-  "platform.harness_run.pausing": ["truth_projector", "audit_projection"],
-  "platform.harness_run.replanning": ["truth_projector", "audit_projection"],
-  "platform.harness_run.compensating": ["truth_projector", "audit_projection"],
-  "platform.harness_run.aborted": ["truth_projector", "audit_projection"],
-  "platform.harness_run.completed": ["truth_projector", "audit_projection"],
-  // §28 Canonical platform events - node run (R5-38)
-  "platform.node_run.status_changed": ["truth_projector", "audit_projection"],
-  "platform.node_run.created": ["truth_projector", "audit_projection"],
-  "platform.node_run.admitted": ["truth_projector", "audit_projection"],
-  "platform.node_run.planning": ["truth_projector", "audit_projection"],
-  "platform.node_run.ready": ["truth_projector", "audit_projection"],
-  "platform.node_run.pausing": ["truth_projector", "audit_projection"],
-  "platform.node_run.replanning": ["truth_projector", "audit_projection"],
-  "platform.node_run.completed": ["truth_projector", "audit_projection"],
-  "platform.node_run.failed": ["truth_projector", "audit_projection"],
-  "platform.node_run.compensating": ["truth_projector", "audit_projection"],
-  "platform.node_run.skipped": ["truth_projector", "audit_projection"],
-  // §28 Canonical platform events - side effect (R5-38)
-  "platform.side_effect.status_changed": ["truth_projector", "audit_projection"],
-  "platform.side_effect.triggered": ["truth_projector", "audit_projection"],
-  "platform.side_effect.completed": ["truth_projector", "audit_projection"],
-  "platform.side_effect.failed": ["truth_projector", "audit_projection"],
-  // §28 Canonical platform events - budget (R5-38)
-  "platform.budget.status_changed": ["truth_projector", "audit_projection"],
-  "platform.budget.reserved": ["truth_projector", "audit_projection"],
-  "platform.budget.actualized": ["truth_projector", "audit_projection"],
-  "platform.budget.exceeded": ["truth_projector", "audit_projection"],
-  "platform.budget_reconciliation.status_changed": ["truth_projector", "audit_projection"],
-  // §28 Canonical oapeflir events (R5-38)
-  "oapeflir.view.run_lifecycle": ["oapeflir_projection", "inspect_projection"],
-  "oapeflir.decision.recorded": ["oapeflir_projection", "inspect_projection"],
-  "oapeflir.phase.transition": ["oapeflir_projection", "inspect_projection"],
+  // §28 Missing namespace consumers
+  "delegation:created": ["delegation_projection", "inspect_projection"],
+  "delegation:completed": ["delegation_projection", "inspect_projection"],
+  "delegation:failed": ["delegation_projection", "inspect_projection"],
+  "prompt:injected": ["prompt_projection", "inspect_projection"],
+  "prompt:rendered": ["prompt_projection", "inspect_projection"],
+  "prompt:validation_failed": ["prompt_projection", "inspect_projection"],
+  "cost:budget_created": ["cost_dashboard", "inspect_projection"],
+  "cost:budget_exceeded": ["cost_dashboard", "inspect_projection"],
+  "cost:actualized": ["cost_dashboard", "inspect_projection"],
+  "tenant:provisioned": ["tenant_projection", "inspect_projection"],
+  "tenant:suspended": ["tenant_projection", "inspect_projection"],
+  "tenant:deleted": ["tenant_projection", "inspect_projection"],
+  "pack:installed": ["pack_projection", "inspect_projection"],
+  "pack:uninstalled": ["pack_projection", "inspect_projection"],
+  "marketplace:listing_published": ["marketplace_projection", "inspect_projection"],
+  "marketplace:listing_purchased": ["marketplace_projection", "inspect_projection"],
+  "anomaly:classified": ["incident_projection", "inspect_projection"],
+  "slo:breached": ["slo_projection", "inspect_projection"],
+  "slo:recovered": ["slo_projection", "inspect_projection"],
+  "compliance:audit_recorded": ["compliance_projection", "inspect_projection"],
+  "compliance:violation_detected": ["compliance_projection", "inspect_projection"],
+  "knowledge:document_indexed": ["knowledge_projection", "inspect_projection"],
+  "knowledge:query_processed": ["knowledge_projection", "inspect_projection"],
 };
 
 /**

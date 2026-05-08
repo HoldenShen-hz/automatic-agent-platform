@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Context
 
-v4.3 `§39-§40` requires the platform to provide natural language entry and goal decomposition engine for end users. The repository already has:
+v2.7 `§39-§40` requires the platform to provide natural language entry and goal decomposition engine for end users. The repository already has:
 
 - `src/interaction/nl-gateway`
 - `src/interaction/goal-decomposer`

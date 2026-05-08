@@ -22,13 +22,13 @@
 运行前至少检查：
 
 - 死循环检测
-- 不可达 node 检测
+- 不可达步骤检测
 - dependency 闭环检测
 - required input key 缺失
 - schema 不兼容
 - timeout / retry 缺失或非法
-- node type 与 side effect level 不一致
-- node id 唯一性检查
+- step type 与 side effect level 不一致
+- step id 唯一性检查
 - output key 重复检查
 - 未知依赖引用检查
 - OAPEFLIR stage 顺序是否合法
@@ -38,13 +38,15 @@
 ## 4. 分析结果对象
 
 - `WorkflowLintReport`
+- `StaticCompatibilityIssue`
 - `DependencyCycle`
 - `CompensationPlan`
 - `CheckpointPlan`
+- `WorkflowTemplate`
 
 ## 5. 补偿模型
 
-每个有副作用的 node 必须声明下列之一：
+每个有副作用的 step 必须声明下列之一：
 
 - `idempotent_replay`
 - `compare_and_swap_write`
@@ -71,9 +73,9 @@
 规则：
 
 - checkpoint 只能建立在 side effect 边界之后。
-- 子图恢复不得越过未完成补偿的 node。
-- partial commit 必须可审计并可回溯到对应 node group。
-- upstream node 若进入 `failed` 或 `skipped` 且依赖不可再满足，下游 node 不得无限期停留在 `blocked`；系统应有明确的级联失败或级联跳过语义。
+- 子图恢复不得越过未完成补偿的步骤。
+- partial commit 必须可审计并可回溯到对应 step group。
+- upstream step 若进入 `failed` 或 `skipped` 且依赖不可再满足，下游步骤不得无限期停留在 `blocked`；系统应有明确的级联失败或级联跳过语义。
 
 ## 6.1 模板化 workflow / recipe
 
@@ -118,7 +120,7 @@ Phase 1a：
 
 Phase 1b / 2：
 
-- unreachable node
+- unreachable step
 - more complete schema compatibility
 - compensation templates
 - partial commit orchestration

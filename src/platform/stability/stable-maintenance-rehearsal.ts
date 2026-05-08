@@ -130,7 +130,7 @@ function seedTaskAndExecution(
     executionId: string;
     traceId: string;
     title: string;
-    priority?: "low" | "normal" | "high" | "critical";
+    priority?: "low" | "normal" | "high" | "urgent";
   },
 ): void {
   const now = nowIso();
@@ -168,8 +168,6 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 60_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -357,7 +355,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
     const activeLease = leases.acquireLease({
       executionId: "exec-maintenance-active",
       workerId: "worker-maintenance-draining",
-      ttlMs: 30_000,
+      ttlMs: 60_000,
       queueName: "default",
       occurredAt: "2026-04-06T10:00:05.000Z",
     });
@@ -369,7 +367,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
     });
     const dispatched = dispatch.dispatchNext({
       queueName: "default",
-      leaseTtlMs: 30_000,
+      leaseTtlMs: 60_000,
       occurredAt: "2026-04-06T10:00:15.000Z",
     });
 
@@ -492,7 +490,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
     const previousWorker = workers.getWorker("worker-maintenance-source");
     const nextWorker = workers.getWorker("worker-maintenance-target");
     const audits = store.lease.listLeaseAudits("exec-maintenance-handover");
-    const eventsResult = store.event.listEventsForTask("task-maintenance-handover");
+    const events = store.event.listEventsForTask("task-maintenance-handover");
     db.close();
 
     const passed =
@@ -511,7 +509,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       && audits.some(
         (audit) => audit.eventType === "lease_handover" && audit.reasonCode === "maintenance_drain_handover",
       )
-      && eventsResult.events.some((event) => event.eventType === "lease:handover_recorded");
+      && events.some((event) => event.eventType === "lease:handover_recorded");
 
     return {
       passed,
@@ -530,7 +528,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
           reasonCode: audit.reasonCode,
           fencingToken: audit.fencingToken,
         })),
-        eventTypes: eventsResult.events.map((event) => event.eventType),
+        eventTypes: events.map((event) => event.eventType),
       },
     };
   });

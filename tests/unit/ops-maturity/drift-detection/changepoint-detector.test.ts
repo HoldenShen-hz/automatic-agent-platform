@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ChangepointDetectorService } from "../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
-import type { DriftWindowType } from "../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
 
 test("ChangepointDetectorService detects drift when recent mean is 10% lower than baseline", () => {
   // Baseline: 24 samples with mean = 100
@@ -17,13 +16,14 @@ test("ChangepointDetectorService detects drift when recent mean is 10% lower tha
   }));
   const samples = [...baseline, ...recent];
 
-  // Single window (1h) to match test expectations
-  const result = new ChangepointDetectorService().detect(samples, ["1h"]);
+  const result = new ChangepointDetectorService().detect(samples);
 
-  // With ["1h"] window, CUSUM is used but the -12% shift doesn't trigger detection
-  // since CUSUM requires sustained cumulative drift beyond slack parameter k
-  assert.equal(result.detected, false);
-  assert.equal(result.reasonCode, "drift.cusum_detected:normal");
+  assert.equal(result.detected, true);
+  assert.equal(result.severity, "low");
+  assert.ok(result.baselineMean > 0);
+  assert.ok(result.recentMean < result.baselineMean);
+  assert.ok(result.relativeShift < -0.10);
+  assert.equal(result.reasonCode, "drift.changepoint_detected");
 });
 
 test("ChangepointDetectorService does not detect drift when recent mean is stable relative to baseline", () => {
@@ -33,13 +33,11 @@ test("ChangepointDetectorService does not detect drift when recent mean is stabl
     score: 50,
   }));
 
-  // Single window (1h) to match test expectations
-  const result = new ChangepointDetectorService().detect(samples, ["1h"]);
+  const result = new ChangepointDetectorService().detect(samples);
 
-  // CUSUM with 1h window produces detected=false but still uses cusum reason code
   assert.equal(result.detected, false);
   assert.equal(result.severity, "none");
-  assert.equal(result.reasonCode, "drift.cusum_detected:normal");
+  assert.equal(result.reasonCode, "drift.stable");
 });
 
 test("ChangepointDetectorService does not detect drift for positive relative shift (improvement)", () => {
@@ -64,53 +62,47 @@ test("ChangepointDetectorService returns insufficient_data when samples array is
 
   assert.equal(result.detected, false);
   assert.equal(result.severity, "none");
-  assert.ok(result.reasonCode.includes("insufficient_data"));
+  assert.equal(result.reasonCode, "drift.insufficient_data");
   assert.equal(result.baselineMean, 0);
   assert.equal(result.recentMean, 0);
 });
 
 test("ChangepointDetectorService returns insufficient_data when baseline is smaller than recent window", () => {
-  // Only 2 samples total, but minSampleSize is 10 by default
+  // Only 2 samples total, but recentWindow is 3 by default
   const samples = [
     { observedAt: new Date().toISOString(), score: 10 },
     { observedAt: new Date().toISOString(), score: 20 },
   ];
 
-  // Use "7d" window which requires 168 samples (7*24*1), far exceeding our 2 samples
-  const result = new ChangepointDetectorService().detect(samples, ["7d"]);
+  const result = new ChangepointDetectorService().detect(samples, 24, 3);
 
   assert.equal(result.detected, false);
-  assert.equal(result.reasonCode, "drift.insufficient_data:7d:requires_168_samples");
+  assert.equal(result.reasonCode, "drift.insufficient_data");
 });
 
 test("ChangepointDetectorService handles only baseline samples with no room for recent window", () => {
-  // exactly 3 samples - insufficient for "7d" window (requires 168 samples)
+  // exactly 3 samples - no room for 3-sample recent window after baseline
   const samples = Array.from({ length: 3 }, () => ({
     observedAt: new Date().toISOString(),
     score: 50,
   }));
 
-  const result = new ChangepointDetectorService().detect(samples, ["7d"]);
+  const result = new ChangepointDetectorService().detect(samples, 24, 3);
 
   assert.equal(result.detected, false);
-  assert.equal(result.reasonCode, "drift.insufficient_data:7d:requires_168_samples");
+  assert.equal(result.reasonCode, "drift.insufficient_data");
 });
 
 test("ChangepointDetectorService uses custom baseline and recent windows when provided", () => {
-  // Test with default multi-window detection which aggregates across all windows
-  const samples = Array.from({ length: 30 }, (_, i) => ({
+  const samples = Array.from({ length: 10 }, (_, i) => ({
     observedAt: new Date(Date.now() - i * 3600_000).toISOString(),
-    score: i < 20 ? 100 : 10,
+    score: i < 7 ? 100 : 85,
   }));
 
-  // With default multi-window (["1h", "6h", "24h", "7d"]), the aggregation should detect
-  const result = new ChangepointDetectorService().detect(samples);
+  const result = new ChangepointDetectorService().detect(samples, 7, 3);
 
-  // Multi-window aggregation may not detect if no individual window triggers
-  // This test documents actual behavior: check for valid response structure
-  assert.ok(result.reasonCode.startsWith("drift."));
-  assert.equal(typeof result.detected, "boolean");
-  assert.equal(typeof result.severity, "string");
+  assert.equal(result.detected, true);
+  assert.equal(result.severity, "medium");
 });
 
 test("ChangepointDetectorService computes correct absolute and relative shift", () => {
@@ -145,8 +137,7 @@ test("ChangepointDetectorService detects at exact -10% threshold (boundary)", ()
 
   const result = new ChangepointDetectorService().detect(samples);
 
-  // CUSUM detection thresholds (h = 5 * baselineMean = 500) are too high for -10% shift
-  assert.equal(result.detected, false);
+  assert.equal(result.detected, true);
   assert.equal(result.relativeShift, -0.10);
 });
 
@@ -179,9 +170,8 @@ test("ChangepointDetectorService handles floating point scores with precision ed
 
   const result = new ChangepointDetectorService().detect(samples);
 
-  // CUSUM with multi-window detection doesn't trigger at -11% shift
-  assert.equal(result.detected, false);
-  assert.ok(result.reasonCode.startsWith("drift.multi_window:"));
+  assert.equal(result.detected, true);
+  assert.equal(result.reasonCode, "drift.changepoint_detected");
 });
 
 test("ChangepointDetectorService handles single sample in baseline and recent windows", () => {
@@ -190,9 +180,7 @@ test("ChangepointDetectorService handles single sample in baseline and recent wi
     { observedAt: new Date().toISOString(), score: 70 },
   ];
 
-  // Use 1h window but minSampleSize is 10, so 2 samples is insufficient
-  const result = new ChangepointDetectorService().detect(samples, ["1h"]);
+  const result = new ChangepointDetectorService().detect(samples, 1, 1);
 
-  assert.equal(result.detected, false);
-  assert.ok(result.reasonCode.includes("insufficient_data"));
+  assert.equal(result.detected, true);
 });

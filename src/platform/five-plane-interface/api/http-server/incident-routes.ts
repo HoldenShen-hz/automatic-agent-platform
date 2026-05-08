@@ -35,15 +35,13 @@ class ApiError extends AppError {
 const nonEmptyStringSchema = z.string().trim().min(1);
 
 const createIncidentSchema = z.object({
-  // R14-02: Use unified SEV naming (SEV1-4) instead of low/medium/high/critical
-  severity: z.enum(["SEV1", "SEV2", "SEV3", "SEV4"]),
+  severity: z.enum(["low", "medium", "high", "critical"]),
   title: nonEmptyStringSchema,
   linkedEvidenceRefs: z.array(z.string()).optional(),
 }).strict();
 
 const updateIncidentSchema = z.object({
-  // R14-24: Added "dismissed" status alongside acknowledge
-  status: z.enum(["open", "acknowledged", "mitigating", "resolved", "dismissed"]).optional(),
+  status: z.enum(["open", "acknowledged", "mitigating", "resolved"]).optional(),
   owner: z.string().optional(),
 }).strict();
 
@@ -64,16 +62,13 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
-        if (tenantId === undefined) {
-          throw new ApiError(403, "api.tenant_scope_required", "Cannot list incidents without a tenant scope.");
-        }
         const limit = readLimit(ctx.request, 50);
-        const incidents: IncidentCase[] = deps.incidentService.listIncidents(tenantId, limit);
-        const total = deps.incidentService.countIncidents(tenantId);
+        void tenantId;
+        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit);
 
         return buildJsonResponse(ctx.requestId, 200, {
           incidents,
-          total,
+          total: incidents.length,
         });
       },
     },
@@ -89,16 +84,9 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const incidentId = segments[2]!;
-        // #2353: Validate incidentId format to prevent arbitrary string injection
-        if (!/^[a-zA-Z0-9_-]{1,128}$/.test(incidentId)) {
-          throw new ApiError(400, "incident.invalid_id", "Incident ID contains invalid characters or is too long.");
-        }
-        const tenantId = resolveTenantScope(principal, undefined);
-        if (tenantId === undefined) {
-          throw new ApiError(403, "api.tenant_scope_required", "Cannot get incident without a tenant scope.");
-        }
 
-        const incident = deps.incidentService.getIncident(tenantId, incidentId);
+        void principal;
+        const incident = deps.incidentService.getIncident(incidentId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
         }
@@ -111,13 +99,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       pathname: "/v1/incidents",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-
-        // Idempotency key is enforced at the server level via middleware
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
         const tenantId = resolveTenantScope(principal, undefined);
 
+        void tenantId;
         const incident = deps.incidentService.openIncident({
-          tenantId: tenantId ?? null,
           severity: payload.severity as IncidentSeverity,
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
@@ -138,47 +124,21 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const incidentId = segments[2]!;
-        // #2353: Validate incidentId format to prevent arbitrary string injection
-        if (!/^[a-zA-Z0-9_-]{1,128}$/.test(incidentId)) {
-          throw new ApiError(400, "incident.invalid_id", "Incident ID contains invalid characters or is too long.");
-        }
         const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
-        const tenantId = resolveTenantScope(principal, undefined);
-        if (tenantId === undefined) {
-          throw new ApiError(403, "api.tenant_scope_required", "Cannot update incident without a tenant scope.");
-        }
 
-        const incident = deps.incidentService.getIncident(tenantId, incidentId);
+        void principal;
+        const incident = deps.incidentService.getIncident(incidentId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
         }
 
-        // If only owner is being updated (no status change), handle as owner update
-        if (payload.status === undefined && payload.owner !== undefined) {
-          // §213-2358: Owner-only update without status transition is not a valid incident update
-          // but the error message should be clear about the actual problem (not "transition to undefined")
-          throw new ApiError(400, "incident.owner_only_not_supported", "Updating only the owner without a status transition is not supported. Include a status field to transition the incident.");
-        }
-
-        // If status is undefined but owner is also undefined, nothing to do
-        if (payload.status === undefined) {
-          throw new ApiError(400, "incident.no_update_fields", "No valid update fields provided. At minimum, a status transition is required.");
-        }
-
         let updated: IncidentCase;
-        // R14-24: Added dismissed status transition alongside acknowledge
         if (payload.status === "acknowledged" && incident.status === "open") {
-          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
-          updated = deps.incidentService.acknowledge(tenantId, incidentId, payload.owner ?? "unknown");
+          updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? "unknown");
         } else if (payload.status === "mitigating") {
-          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
-          updated = deps.incidentService.startMitigation(tenantId, incidentId);
+          updated = deps.incidentService.startMitigation(incidentId);
         } else if (payload.status === "resolved") {
-          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
-          updated = deps.incidentService.resolve(tenantId, incidentId);
-        } else if (payload.status === "dismissed") {
-          // R14-24: Dismiss action for incidents
-          updated = deps.incidentService.dismiss(tenantId, incidentId);
+          updated = deps.incidentService.resolve(incidentId);
         } else {
           throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
         }

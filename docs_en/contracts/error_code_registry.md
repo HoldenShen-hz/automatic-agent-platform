@@ -12,19 +12,19 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
 - **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and release
+- **Improve**: Improvement candidate evaluation and rollout
 - **Release**: Controlled release and rollback
 
 ---
 
 ## 1. Scope
 
-This document defines the stable error code registry allowed for the current phase.
+This document defines the stable error code registry allowed for use in the current phase.
 
 Rules:
 
 - New error codes must be registered here before entering implementation.
-- Once error codes enter implementation, they cannot be freely renamed.
+- Once an error code enters implementation, it must not be arbitrarily renamed.
 
 ## 2. Naming Rules
 
@@ -44,43 +44,43 @@ Examples:
 | --- | --- | --- | --- |
 | `validation.invalid_input` | `validation` | `false` | Invalid input or missing fields |
 | `validation.schema_mismatch` | `validation` | `false` | Workflow input/output incompatible |
-| `validation.tool_metadata_missing` | `validation` | `false` | Tool missing key execution metadata |
+| `validation.tool_metadata_missing` | `validation` | `false` | Tool missing critical execution metadata |
 | `validation.tool_metadata_invalid` | `validation` | `false` | Tool execution metadata invalid |
-| `policy.approval_required` | `policy` | `false` | Human approval required |
+| `policy.approval_required` | `policy` | `false` | Manual approval required |
 | `policy.action_denied` | `policy` | `false` | Policy explicitly denied |
 | `auth.permission_denied` | `auth` | `false` | Insufficient permissions |
 | `auth.session_expired` | `auth` | `false` | Session expired |
 | `budget.budget_exceeded` | `budget` | `false` | Budget exceeded |
 | `budget.quota_exceeded` | `budget` | `false` | Quota exceeded |
-| `provider.rate_limited` | `provider` | `true` | provider 429 or equivalent rate limit |
-| `provider.temporary_unavailable` | `provider` | `true` | provider temporarily unavailable |
-| `provider.invalid_credentials` | `provider` | `false` | provider 401/403 or credential error |
-| `provider.capability_unsupported` | `provider` | `false` | provider or model does not support requested capability |
-| `provider.compaction_unavailable` | `provider` | `true` | compaction / summarize provider temporarily unavailable |
+| `provider.rate_limited` | `provider` | `true` | Provider 429 or equivalent rate limiting |
+| `provider.temporary_unavailable` | `provider` | `true` | Provider temporarily unavailable |
+| `provider.invalid_credentials` | `provider` | `false` | Provider 401/403 or credential error |
+| `provider.capability_unsupported` | `provider` | `false` | Provider or model does not support requested capability |
+| `provider.compaction_unavailable` | `provider` | `true` | Compaction/summarize provider temporarily unavailable |
 | `tool.execution_failed` | `tool` | `false` | Tool execution failed and cannot be automatically retried |
-| `tool.temporary_io_error` | `tool` | `true` | Tool encountered temporary IO problem |
-| `tool.edit_target_not_found` | `tool` | `false` | edit / patch target not found |
-| `tool.edit_multiple_candidates` | `tool` | `false` | edit / patch matched multiple candidates |
-| `tool.edit_similarity_too_low` | `tool` | `false` | edit / patch fuzzy match similarity insufficient |
-| `tool.file_lock_conflict` | `tool` | `true` | File lock conflict; can wait and retry |
+| `tool.temporary_io_error` | `tool` | `true` | Tool encountered temporary IO issue |
+| `tool.edit_target_not_found` | `tool` | `false` | Edit/patch target not found |
+| `tool.edit_multiple_candidates` | `tool` | `false` | Edit/patch matched multiple candidates |
+| `tool.edit_similarity_too_low` | `tool` | `false` | Edit/patch fuzzy match similarity too low |
+| `tool.file_lock_conflict` | `tool` | `true` | File lock conflict, can wait and retry |
 | `tool.file_lock_timeout` | `tool` | `true` | File lock wait timeout |
 | `tool.output_sanitization_failed` | `tool` | `false` | Tool output sanitization failed |
 | `tool.recovery_strategy_unknown` | `tool` | `false` | Tool declared unknown recovery strategy |
-| `sandbox.path_denied` | `sandbox` | `false` | Access path exceeds whitelist |
+| `sandbox.path_denied` | `sandbox` | `false` | Access path outside whitelist |
 | `sandbox.network_denied` | `sandbox` | `false` | Network access denied by policy |
 | `sandbox.exec_denied` | `sandbox` | `false` | Process execution denied by sandbox or policy |
 | `sandbox.isolation_broken` | `sandbox` | `false` | Isolation constraint cannot be guaranteed |
-| `storage.write_failed` | `storage` | `true` | Write storage failed |
+| `storage.write_failed` | `storage` | `true` | Storage write failed |
 | `storage.integrity_violation` | `storage` | `false` | Foreign key or integrity error |
 | `workflow.dependency_unavailable` | `workflow` | `true` | Upstream dependency temporarily unavailable |
 | `workflow.invalid_transition` | `workflow` | `false` | Illegal state transition |
 | `runtime.timeout_exceeded` | `runtime` | `false` | Execution timeout |
 | `runtime.recovery_required` | `runtime` | `true` | Recovery process required |
-| `runtime.stale_lock_detected` | `runtime` | `true` | Expired lock or stale run detected |
-| `runtime.context_overflow` | `runtime` | `true` | Context overflow requires pruning or compression |
+| `runtime.stale_lock_detected` | `runtime` | `true` | Stale lock or stale execution detected |
+| `runtime.context_overflow` | `runtime` | `true` | Context overflow, requires trimming or compression |
 | `tenant.not_found` | `tenant` | `false` | Tenant or workspace ownership not found |
-| `tenant.boundary_violation` | `tenant` | `false` | Access across tenant boundary |
-| `tenant.workspace_mismatch` | `tenant` | `false` | Workspace and tenant / org ownership inconsistent |
+| `tenant.boundary_violation` | `tenant` | `false` | Cross-tenant boundary access |
+| `tenant.workspace_mismatch` | `tenant` | `false` | Workspace does not match tenant/org ownership |
 | `monetization.entitlement_denied` | `monetization` | `false` | Entitlement explicitly denied |
 | `monetization.quota_counter_stale` | `monetization` | `true` | Quota counter delayed or inconsistent |
 | `monetization.ledger_write_failed` | `monetization` | `true` | Ledger write failed |
@@ -90,14 +90,14 @@ Examples:
 
 ## 4. Special Mapping Rules
 
-- provider `401/403` maps to `provider.invalid_credentials`
-- provider `429` maps to `provider.rate_limited`
-- provider `5xx` maps to `provider.temporary_unavailable`
+- Provider `401/403` maps to `provider.invalid_credentials`
+- Provider `429` maps to `provider.rate_limited`
+- Provider `5xx` maps to `provider.temporary_unavailable`
 - Illegal state progression maps to `workflow.invalid_transition`
 - File lock acquisition conflict maps to `tool.file_lock_conflict`
 - File lock wait timeout maps to `tool.file_lock_timeout`
 
 ## 5. Supplementary Rules
 
-- Provider sub-codes at least distinguish: `provider.context_window_exceeded`, `provider.model_not_available`, `provider.output_truncated`, `provider.capability_unsupported`.
-- Enterprise-specific error codes at least reserve: `enterprise.environment_unhealthy`, `enterprise.release_guard_failed`, `enterprise.audit_export_denied`.
+- Provider subcodes must at least differentiate: `provider.context_window_exceeded`, `provider.model_not_available`, `provider.output_truncated`, `provider.capability_unsupported`.
+- Enterprise-specific error codes must reserve at least: `enterprise.environment_unhealthy`, `enterprise.release_guard_failed`, `enterprise.audit_export_denied`.

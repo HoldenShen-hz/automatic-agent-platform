@@ -27,7 +27,7 @@ export function buildOpsMaturityBootstrap(): OpsMaturityBootstrap {
 }
 
 export function registerOpsMaturityBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): OpsMaturityBootstrap {
   registry.register<readonly OpsMaturityCapabilityBaseline[]>(OPS_MATURITY_CATALOG_SERVICE_ID, {
     init: () => listOpsMaturityCapabilityBaselines(),

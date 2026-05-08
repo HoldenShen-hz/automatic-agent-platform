@@ -1,10 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
-import { AppError, ValidationError } from "../../contracts/errors.js";
+import { ValidationError } from "../../contracts/errors.js";
 import { GrpcAdapterService, type GrpcCallResponse } from "../../interface/api/grpc-adapter-service.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export type AdapterProtocol = "rest" | "grpc" | "mq";
 
@@ -60,19 +57,6 @@ export interface AdapterExecutorOptions {
     descriptor: AdapterDescriptor,
     request: AdapterExecutionRequest,
   ) => Promise<unknown>;
-  /** R24-5 FIX: Optional DLQ event emitter for retry exhaustion events per §12.1 */
-  readonly emitDlqEvent?: (event: {
-    eventType: "adapter_retry_exhausted";
-    adapterId: string;
-    action: string;
-    taskId: string;
-    tenantId: string | null;
-    correlationId: string | null;
-    attempts: number;
-    errorCode: string;
-    lastError: string;
-    timestamp: string;
-  }) => void;
 }
 
 export class AdapterExecutor {
@@ -80,8 +64,6 @@ export class AdapterExecutor {
   private readonly fetchImpl: typeof fetch;
   private readonly grpcFactory: (descriptor: AdapterDescriptor) => GrpcAdapterService;
   private readonly mqDispatcher: AdapterExecutorOptions["mqDispatcher"];
-  /** R24-5 FIX: DLQ event emitter for retry exhaustion events per §12.1 */
-  private readonly emitDlqEvent: AdapterExecutorOptions["emitDlqEvent"];
 
   public constructor(options: AdapterExecutorOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? fetch;
@@ -95,7 +77,6 @@ export class AdapterExecutor {
       });
     });
     this.mqDispatcher = options.mqDispatcher;
-    this.emitDlqEvent = options.emitDlqEvent;
   }
 
   public register(descriptor: AdapterDescriptor): void {
@@ -175,61 +156,6 @@ export class AdapterExecutor {
       }
     }
 
-    // Retry exhaustion: emit proper error events per §12.1
-    const errorCode = lastError instanceof Error ? lastError.message : String(lastError);
-    logger.error("adapter_executor:retry_exhausted", {
-      adapterId,
-      action: request.action,
-      attempts: maxAttempts,
-      errorCode,
-      taskId: request.context.taskId,
-      tenantId: request.context.tenantId,
-    });
-
-    // Emit incident/error event for retry exhaustion
-    logger.log({
-      level: "error",
-      message: `adapter_executor:retry_exhausted`,
-      crosscuttingFabric: "reliability",
-      data: {
-        adapterId,
-        action: request.action,
-        attempts: maxAttempts,
-        errorCode,
-        taskId: request.context.taskId,
-        tenantId: request.context.tenantId,
-        correlationId: request.context.correlationId,
-      },
-    });
-
-    // R24-5 FIX: Retry exhaustion should emit incident/DLQ events per §12.1
-    const dlqEvent = {
-      eventType: "adapter_retry_exhausted" as const,
-      adapterId,
-      action: request.action,
-      taskId: request.context.taskId,
-      tenantId: request.context.tenantId ?? null,
-      correlationId: request.context.correlationId ?? null,
-      attempts: attempt,
-      errorCode,
-      lastError: lastError instanceof Error ? lastError.message : String(lastError),
-      timestamp: new Date().toISOString(),
-    };
-    // Emit to DLQ event bus if available
-    this.emitDlqEvent?.(dlqEvent);
-
-    // Emit incident event for monitoring/alerting
-    logger.log({
-      level: "error",
-      message: `adapter_executor:retry_exhausted:incident`,
-      crosscuttingFabric: "reliability",
-      data: {
-        ...dlqEvent,
-        severity: "high",
-        requiresInvestigation: true,
-      },
-    });
-
     return {
       adapterId,
       protocol: descriptor.protocol,
@@ -238,64 +164,37 @@ export class AdapterExecutor {
       attempts: attempt,
       durationMs: Date.now() - startedAt,
       output: {
-        error: errorCode,
-        error_code: "RETRY_EXHAUSTED",
-        error_detail: "Retry attempts exhausted. See incident logs for details.",
-        attempts: attempt,
-        lastError: lastError instanceof Error ? lastError.message : String(lastError),
-        _dlqEvent: dlqEvent, // Include DLQ event reference for traceability
+        error: lastError instanceof Error ? lastError.message : String(lastError),
       },
     };
   }
 
   /**
    * Check idempotency cache for a previously cached result.
-   * Uses in-memory Map with TTL for idempotency. In production, replace with Redis.
+   * In production, this would query a distributed cache (Redis) with TTL.
    */
   private async checkIdempotencyCache(
-    idempotencyKey: string,
-    attempt: number,
+    _idempotencyKey: string,
+    _attempt: number,
   ): Promise<AdapterExecutionResult | null> {
-    // Skip idempotency check on first attempt
-    if (attempt <= 1) {
-      return null;
-    }
-    const cached = this.idempotencyCache.get(idempotencyKey);
-    if (cached != null) {
-      // Expired or already used - don't return cached result
-      if (cached.expiresAt < Date.now()) {
-        this.idempotencyCache.delete(idempotencyKey);
-        return null;
-      }
-      // Mark as consumed to prevent double-use
-      this.idempotencyCache.delete(idempotencyKey);
-      return cached.result;
-    }
+    // TODO: In production, implement Redis-based idempotency check
+    // e.g., const cached = await redis.get(`idempotency:${idempotencyKey}`);
+    // return cached ? JSON.parse(cached) : null;
     return null;
   }
 
   /**
-   * Cache successful result for idempotency with TTL.
-   * Uses in-memory Map. In production, replace with Redis.
+   * Cache successful result for idempotency.
+   * In production, this would store to a distributed cache (Redis) with TTL.
    */
   private async cacheIdempotencyResult(
-    idempotencyKey: string,
-    attempt: number,
-    result: AdapterExecutionResult,
+    _idempotencyKey: string,
+    _attempt: number,
+    _result: AdapterExecutionResult,
   ): Promise<void> {
-    // Only cache successful results for idempotency
-    if (result.status !== "ok") {
-      return;
-    }
-    // TTL of 5 minutes for idempotency window
-    const TTL_MS = 5 * 60 * 1000;
-    this.idempotencyCache.set(idempotencyKey, {
-      result,
-      expiresAt: Date.now() + TTL_MS,
-    });
+    // TODO: In production, implement Redis-based caching
+    // e.g., await redis.set(`idempotency:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
   }
-
-  private readonly idempotencyCache = new Map<string, { result: AdapterExecutionResult; expiresAt: number }>();
 
   private async dispatch(descriptor: AdapterDescriptor, request: AdapterExecutionRequest): Promise<unknown> {
     switch (descriptor.protocol) {

@@ -17,32 +17,9 @@ export * from './experience-cache-service.js';
 export * from './memory-layer-model.js';
 export * from './project-memory-store.js';
 export * from './user-memory-store.js';
-export {
-  MemoryPromotionEngine,
-  type PromotionResult as MemoryPromotionResultLegacy,
-  type MemoryPromotionResult,
-} from './memory-promotion-engine.js';
+export * from './memory-promotion-engine.js';
 export * from './memory-write-request.js';
 export * from './layer-transition-service.js';
 export * from './memory-decay-service.js';
-export {
-  KnowledgePromotionService,
-  type KnowledgePromotionTier,
-  type PromotionRequest,
-  type PromotionRule,
-  type PromotionResult,
-  type PromotionResult as KnowledgePromotionResult,
-  type VerificationStatus,
-  DEFAULT_PROMOTION_RULES,
-} from './knowledge-promotion-service.js';
+export * from './knowledge-promotion-service.js';
 export * from './trust-level-service.js';
-export {
-  EvidenceService,
-  type EvidenceRecord,
-  type EvidenceCategory,
-  type EvidenceStatus,
-  type EvidenceMetadata,
-  type EvidenceQuery,
-  type LearningIntegrationResult,
-  type LearningSignal,
-} from './evidence-service.js';

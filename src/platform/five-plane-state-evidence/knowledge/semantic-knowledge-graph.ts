@@ -1,22 +1,7 @@
 import type { ArchivedKnowledgeRecord } from "./archive/knowledge-archive.js";
 
-export type KnowledgeGraphNodeType = "namespace" | "document" | "chunk" | "keyword" | "entity";
-export type KnowledgeGraphEdgeType =
-  | "contains"
-  | "shared_keyword"
-  | "same_document"
-  | "references"        // §13.9: Entity relation edge - one entity references another
-  | "derives_from"      // Knowledge derives from source
-  | "contradicts"       // Contradicting knowledge
-  | "specializes"       // Specializes/generalizes relationship
-  | "trust_boost"       // Trust propagation edge
-  | "trust_degrades"    // Trust degradation edge
-  | "learned_from"      // R13-07: Learned knowledge edge - knowledge learned from another source
-  | "failure_pattern"   // R13-07: Failure pattern edge - marks recurring failure patterns
-  | "causal_relationship" // R13-07: Causal relationship edge - cause-effect relationship
-  | "temporal_correlation" // R13-07: Temporal correlation edge - time-based correlation
-  | "sequential"       // R8-11: Sequential edge - execution ordering dependency
-  | "entity_relation";  // R8-11: Entity relation edge - direct entity relationship
+export type KnowledgeGraphNodeType = "namespace" | "document" | "chunk" | "keyword";
+export type KnowledgeGraphEdgeType = "contains" | "shared_keyword" | "same_document";
 
 export interface KnowledgeGraphNode {
   nodeId: string;
@@ -24,15 +9,6 @@ export interface KnowledgeGraphNode {
   label: string;
   namespace: string | null;
   knowledgeRef: string | null;
-  /** R16-34 FIX: §29.1 Trust Level for knowledge nodes
-   * Levels (lowest to highest):
-   * - private_unverified: raw info, no review
-   * - team_reviewed: verified by team
-   * - official: formally approved
-   * - authoritative: canonical, cannot be contested
-   * - contested: previously authoritative but now disputed
-   */
-  trustLevel: "private_unverified" | "team_reviewed" | "official" | "authoritative" | "contested";
 }
 
 export interface KnowledgeGraphEdge {
@@ -54,13 +30,6 @@ export interface KnowledgeGraphChunkConnections {
   keywords: string[];
   sharedKeywordRefs: string[];
   sameDocumentRefs: string[];
-  /** References to related entities per §13.9 */
-  entityRefs: string[];
-}
-
-export interface TrustPropagationResult {
-  propagatedNodeIds: string[];
-  trustScoreChanges: Record<string, number>;
 }
 
 function edgeId(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType): string {
@@ -95,8 +64,6 @@ export class SemanticKnowledgeGraph {
       label: record.document.namespace,
       namespace: record.document.namespace,
       knowledgeRef: null,
-      // R16-34 FIX: Namespace nodes are authoritative - they represent org boundaries
-      trustLevel: "authoritative",
     });
 
     const documentNodeId = `document:${record.document.documentId}`;
@@ -106,8 +73,6 @@ export class SemanticKnowledgeGraph {
       label: record.document.title,
       namespace: record.document.namespace,
       knowledgeRef: null,
-      // R16-34 FIX: Documents start as team_reviewed until formally approved
-      trustLevel: "team_reviewed",
     });
     this.addEdge(namespaceNodeId, documentNodeId, "contains", 1);
 
@@ -115,15 +80,12 @@ export class SemanticKnowledgeGraph {
     for (const chunk of record.chunks) {
       const chunkNodeId = `chunk:${chunk.chunkId}`;
       chunkNodeIds.push(chunkNodeId);
-      // R16-34 FIX: Derive trust level from source trust level (chunks inherit from parent document's source)
-      const derivedTrustLevel = record.source.trustLevel as KnowledgeGraphNode["trustLevel"];
       this.nodes.set(chunkNodeId, {
         nodeId: chunkNodeId,
         nodeType: "chunk",
         label: chunk.summary,
         namespace: chunk.namespace,
         knowledgeRef: `knowledge:${chunk.chunkId}`,
-        trustLevel: derivedTrustLevel ?? "private_unverified",
       });
       this.chunkByKnowledgeRef.set(`knowledge:${chunk.chunkId}`, chunkNodeId);
       this.addEdge(documentNodeId, chunkNodeId, "contains", 1);
@@ -141,8 +103,6 @@ export class SemanticKnowledgeGraph {
           label: normalizedKeyword,
           namespace: chunk.namespace,
           knowledgeRef: null,
-          // R16-34 FIX: Keywords inherit trust from their parent chunk's source
-          trustLevel: derivedTrustLevel ?? "private_unverified",
         });
         this.addEdge(chunkNodeId, keywordNodeId, "contains", 1);
         const chunkIds = this.keywordToChunkIds.get(normalizedKeyword) ?? new Set<string>();
@@ -196,7 +156,6 @@ export class SemanticKnowledgeGraph {
         .sort(),
       sharedKeywordRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "shared_keyword"),
       sameDocumentRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "same_document"),
-      entityRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "references"),
     };
   }
 
@@ -263,12 +222,7 @@ export class SemanticKnowledgeGraph {
 
     while (queue.length > 0 && collected.size < limit) {
       const currentNodeId = queue.shift()!;
-
-      // R16-33 FIX: Use adjacency index instead of iterating all edges
-      // O(V*E) -> O(V + E) by using the pre-built adjacencyByNodeId map
-      const adjacentEdges = this.adjacencyByNodeId.get(currentNodeId) ?? [];
-
-      for (const edge of adjacentEdges) {
+      for (const edge of this.edges.values()) {
         if (collected.size >= limit) {
           return;
         }
@@ -313,257 +267,7 @@ export class SemanticKnowledgeGraph {
       weight,
     });
     const adjacency = this.adjacencyByNodeId.get(fromNodeId) ?? [];
-    // R25-3 Fix: Deduplicate adjacency entries - prevent unbounded growth from duplicate edge additions
-    // Without this check, repeated upsertRecord calls cause same edge to be pushed multiple times
-    if (!adjacency.some((e) => e.edgeId === id)) {
-      adjacency.push(this.edges.get(id)!);
-      this.adjacencyByNodeId.set(fromNodeId, adjacency);
-    }
-  }
-
-  /**
-   * §13.9: Adds an entity relation edge between two nodes.
-   * Entity relations represent references between knowledge entities.
-   */
-  public addEntityRelation(
-    fromEntityRef: string,
-    toEntityRef: string,
-    relation: "references" | "derives_from" | "contradicts" | "specializes" | "entity_relation" = "references",
-    weight: number = 1.0,
-  ): void {
-    const fromNodeId = `entity:${fromEntityRef}`;
-    const toNodeId = `entity:${toEntityRef}`;
-
-    // Ensure entity nodes exist
-    if (!this.nodes.has(fromNodeId)) {
-      this.nodes.set(fromNodeId, {
-        nodeId: fromNodeId,
-        nodeType: "entity",
-        label: fromEntityRef,
-        namespace: null,
-        knowledgeRef: null,
-        // R16-34 FIX: Entity nodes default to private_unverified (unverified info)
-        trustLevel: "private_unverified",
-      });
-    }
-    if (!this.nodes.has(toNodeId)) {
-      this.nodes.set(toNodeId, {
-        nodeId: toNodeId,
-        nodeType: "entity",
-        label: toEntityRef,
-        namespace: null,
-        knowledgeRef: null,
-        // R16-34 FIX: Entity nodes default to private_unverified (unverified info)
-        trustLevel: "private_unverified",
-      });
-    }
-
-    this.addEdge(fromNodeId, toNodeId, relation, weight);
-  }
-
-  /**
-   * §13.11: Propagates trust through the knowledge graph.
-   * Trust flows through "trust_boost" edges and degrades through "trust_degrades" edges.
-   * Returns nodes whose trust scores changed.
-   */
-  public propagateTrust(seedNodeIds: readonly string[], boostAmount: number = 0.1): TrustPropagationResult {
-    const trustScoreChanges: Record<string, number> = {};
-    const propagatedNodeIds: string[] = [];
-    const visited = new Set<string>();
-    const queue = [...seedNodeIds];
-
-    // Initialize trust scores from node weights
-    const nodeTrustScores = new Map<string, number>();
-    for (const nodeId of seedNodeIds) {
-      nodeTrustScores.set(nodeId, 1.0);
-      trustScoreChanges[nodeId] = boostAmount;
-      propagatedNodeIds.push(nodeId);
-    }
-
-    // BFS propagation through trust edges
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      if (visited.has(currentId)) {
-        continue;
-      }
-      visited.add(currentId);
-
-      const currentTrust = nodeTrustScores.get(currentId) ?? 0;
-      const adjacentEdges = this.adjacencyByNodeId.get(currentId) ?? [];
-
-      for (const edge of adjacentEdges) {
-        if (edge.relation === "trust_boost") {
-          const neighborId = edge.fromNodeId === currentId ? edge.toNodeId : edge.fromNodeId;
-          const newTrust = Math.min(1.0, currentTrust + boostAmount * edge.weight);
-          const existingTrust = nodeTrustScores.get(neighborId) ?? 0;
-
-          if (newTrust > existingTrust) {
-            nodeTrustScores.set(neighborId, newTrust);
-            trustScoreChanges[neighborId] = (trustScoreChanges[neighborId] ?? 0) + (newTrust - existingTrust);
-            if (!propagatedNodeIds.includes(neighborId)) {
-              propagatedNodeIds.push(neighborId);
-            }
-            queue.push(neighborId);
-          }
-        } else if (edge.relation === "trust_degrades") {
-          const neighborId = edge.fromNodeId === currentId ? edge.toNodeId : edge.fromNodeId;
-          const newTrust = Math.max(0, currentTrust - boostAmount * edge.weight);
-          const existingTrust = nodeTrustScores.get(neighborId) ?? 1.0;
-
-          if (newTrust < existingTrust) {
-            nodeTrustScores.set(neighborId, newTrust);
-            trustScoreChanges[neighborId] = (trustScoreChanges[neighborId] ?? 0) - (existingTrust - newTrust);
-            if (!propagatedNodeIds.includes(neighborId)) {
-              propagatedNodeIds.push(neighborId);
-            }
-            queue.push(neighborId);
-          }
-        }
-      }
-    }
-
-    return { propagatedNodeIds, trustScoreChanges };
-  }
-
-  /**
-   * R8-11: Knowledge trust downgraded event handler.
-   * Handles knowledge.trust_downgraded event - demotes node trust level and triggers re-evaluation.
-   */
-  public handleTrustDowngradedEvent(
-    nodeId: string,
-    demotionLevel: "to_team_reviewed" | "to_private_unverified" | "to_contested" = "to_team_reviewed",
-  ): void {
-    const node = this.nodes.get(nodeId);
-    if (!node) {
-      return;
-    }
-
-    const oldTrust = node.trustLevel;
-    let newTrustLevel: KnowledgeGraphNode["trustLevel"] = node.trustLevel;
-
-    switch (demotionLevel) {
-      case "to_contested":
-        newTrustLevel = "contested";
-        break;
-      case "to_team_reviewed":
-        newTrustLevel = "team_reviewed";
-        break;
-      case "to_private_unverified":
-        newTrustLevel = "private_unverified";
-        break;
-    }
-
-    // Update node trust level
-    this.nodes.set(nodeId, { ...node, trustLevel: newTrustLevel });
-
-    // Create audit trail edge for the trust demotion event
-    const eventNodeId = `event:knowledge.trust_downgraded:${nodeId}:${Date.now()}`;
-    this.nodes.set(eventNodeId, {
-      nodeId: eventNodeId,
-      nodeType: "entity",
-      label: `trust_downgraded:${nodeId}`,
-      namespace: node.namespace,
-      knowledgeRef: null,
-      trustLevel: "authoritative", // Events are always authoritative
-    });
-
-    // Connect event to affected node
-    this.addEdge(eventNodeId, nodeId, "trust_degrades", 1.0);
-
-    // Propagate trust degradation to connected nodes
-    this.propagateTrust([nodeId], -0.2);
-  }
-
-  /**
-   * R8-11: Adds a sequential edge between nodes representing execution ordering.
-   */
-  public addSequentialEdge(
-    fromNodeId: string,
-    toNodeId: string,
-    weight: number = 1.0,
-  ): void {
-    this.addEdge(fromNodeId, toNodeId, "sequential", weight);
-  }
-
-  /**
-   * R8-11: Adds a direct entity relationship edge between two entities.
-   */
-  public addEntityRelationEdge(
-    fromEntityRef: string,
-    toEntityRef: string,
-    weight: number = 1.0,
-  ): void {
-    this.addEntityRelation(fromEntityRef, toEntityRef, "entity_relation", weight);
-  }
-
-  /**
-   * R8-11: Persistence layer - serializes graph state to a portable format.
-   */
-  public serialize(): string {
-    const state = {
-      nodes: [...this.nodes.entries()],
-      edges: [...this.edges.entries()],
-      adjacency: [...this.adjacencyByNodeId.entries()],
-      chunkByKnowledgeRef: [...this.chunkByKnowledgeRef.entries()],
-      keywordToChunkIds: [...this.keywordToChunkIds.entries()].map(
-        ([k, v]) => [k, [...v]] as [string, string[]],
-      ),
-      chunkToKeywordIds: [...this.chunkToKeywordIds.entries()].map(
-        ([k, v]) => [k, [...v]] as [string, string[]],
-      ),
-      timestamp: Date.now(),
-    };
-    return JSON.stringify(state);
-  }
-
-  /**
-   * R8-11: Persistence layer - deserializes graph state from a portable format.
-   */
-  public deserialize(data: string): void {
-    const state = JSON.parse(data) as {
-      nodes: [string, KnowledgeGraphNode][];
-      edges: [string, KnowledgeGraphEdge][];
-      adjacency: [string, KnowledgeGraphEdge[]][];
-      chunkByKnowledgeRef: [string, string][];
-      keywordToChunkIds: [string, string[]][];
-      chunkToKeywordIds: [string, string[]][];
-      timestamp: number;
-    };
-
-    this.nodes.clear();
-    this.edges.clear();
-    this.adjacencyByNodeId.clear();
-    this.chunkByKnowledgeRef.clear();
-    this.keywordToChunkIds.clear();
-    this.chunkToKeywordIds.clear();
-
-    for (const [id, node] of state.nodes) {
-      this.nodes.set(id, node);
-    }
-    for (const [id, edge] of state.edges) {
-      this.edges.set(id, edge);
-    }
-    for (const [nodeId, adjacents] of state.adjacency) {
-      this.adjacencyByNodeId.set(nodeId, adjacents);
-    }
-    for (const [ref, chunkId] of state.chunkByKnowledgeRef) {
-      this.chunkByKnowledgeRef.set(ref, chunkId);
-    }
-    for (const [keyword, chunkIds] of state.keywordToChunkIds) {
-      this.keywordToChunkIds.set(keyword, new Set(chunkIds));
-    }
-    for (const [chunkId, keywordIds] of state.chunkToKeywordIds) {
-      this.chunkToKeywordIds.set(chunkId, new Set(keywordIds));
-    }
-  }
-
-  /**
-   * R8-11: Persistence layer - exports graph inspection for debugging/auditing.
-   */
-  public exportInspection(): KnowledgeGraphInspection {
-    return {
-      nodes: [...this.nodes.values()],
-      edges: [...this.edges.values()],
-    };
+    adjacency.push(this.edges.get(id)!);
+    this.adjacencyByNodeId.set(fromNodeId, adjacency);
   }
 }

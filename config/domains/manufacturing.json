@@ -3,11 +3,6 @@
   "phase": "9f",
   "divisionId": "operations",
   "latencyTier": "near_realtime",
-  "riskSpec": {
-    "riskClass": "medium",
-    "reviewThreshold": "medium",
-    "maxSpendLimitUsd": 10.0
-  },
   "workflowProfile": {
     "workflowId": "manufacturing.primary",
     "rollout": "baseline"

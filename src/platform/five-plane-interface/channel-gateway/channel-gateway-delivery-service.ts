@@ -3,7 +3,6 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { z } from "zod";
 import {
   buildDeadLetterCountQuery,
   buildDeadLetterQuery,
@@ -40,18 +39,6 @@ export {
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
-/**
- * Schema for validating deserialized DB payload_json.
- * §5.2: All inter-plane boundary JSON must be schema-validated.
- * DB payload_json deserialization crosses the plane boundary and requires runtime validation.
- */
-const deliveryPayloadSchema = z.record(z.unknown());
-
-function parseDeliveryPayload(payloadJson: string): Record<string, unknown> {
-  const parsed = deliveryPayloadSchema.safeParse(JSON.parse(payloadJson));
-  return parsed.success ? parsed.data : {};
-}
-
 export class ChannelGatewayDeliveryService {
   private readonly deliveryConfig: DeliveryGuaranteeConfig;
   private readonly rateLimitConfig: RateLimitConfig;
@@ -79,18 +66,15 @@ export class ChannelGatewayDeliveryService {
   }
 
   /**
-   * Checks whether a message can be sent under rate limits for the given channel and tenant.
+   * Checks whether a message can be sent under rate limits for the given channel.
    *
-   * GW-04: Implements per-tenant per-channel rate limiting to prevent hitting provider limits.
+   * GW-04: Implements per-channel rate limiting to prevent hitting provider limits.
    * Uses a sliding window counter persisted in the database.
-   * Falls back to "global" tenant if not provided for backward compatibility.
    *
-   * @param tenantId - Tenant identifier for rate limiting (optional, defaults to "global")
    * @param channel - Channel to check
    * @returns Result indicating if allowed and current counts
    */
-  checkRateLimit(tenantId: string | undefined, channel: string): RateLimitResult {
-    const effectiveTenantId = tenantId ?? "global";
+  checkRateLimit(channel: string): RateLimitResult {
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
 
@@ -101,9 +85,9 @@ export class ChannelGatewayDeliveryService {
     const row = this.db.connection
       .prepare(
         `SELECT message_count FROM gateway_rate_limits
-         WHERE tenant_id = ? AND channel = ? AND window_start = ?`,
+         WHERE channel = ? AND window_start = ?`,
       )
-      .get(effectiveTenantId, channel, windowStart) as { message_count: number } | undefined;
+      .get(channel, windowStart) as { message_count: number } | undefined;
 
     const currentCount = row?.message_count ?? 0;
 
@@ -130,13 +114,10 @@ export class ChannelGatewayDeliveryService {
    *
    * GW-04: Updates the rate limit counter after successful send.
    * Also performs lazy cleanup of old rate limit windows.
-   * Falls back to "global" tenant if not provided for backward compatibility.
    *
-   * @param tenantId - Tenant identifier (optional, defaults to "global")
    * @param channel - Channel that was used
    */
-  recordRateLimitHit(tenantId: string | undefined, channel: string): void {
-    const effectiveTenantId = tenantId ?? "global";
+  recordRateLimitHit(channel: string): void {
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
 
@@ -145,12 +126,12 @@ export class ChannelGatewayDeliveryService {
 
     this.db.connection
       .prepare(
-        `INSERT INTO gateway_rate_limits (tenant_id, channel, window_start, message_count)
-         VALUES (?, ?, ?, 1)
-         ON CONFLICT(tenant_id, channel, window_start)
+        `INSERT INTO gateway_rate_limits (channel, window_start, message_count)
+         VALUES (?, ?, 1)
+         ON CONFLICT(channel, window_start)
          DO UPDATE SET message_count = message_count + 1`,
       )
-      .run(effectiveTenantId, channel, windowStart);
+      .run(channel, windowStart);
 
     const cutoff = new Date(now - 3600000).toISOString();
     this.db.connection
@@ -161,12 +142,10 @@ export class ChannelGatewayDeliveryService {
   /**
    * Returns current rate limit status for all configured channels.
    *
-   * @param tenantId - Tenant identifier (optional, defaults to "global")
    * @returns Current count, limit, and window for each channel
    */
-  getRateLimitStatus(tenantId?: string): Record<string, { currentCount: number; limit: number; windowMs: number }> {
+  getRateLimitStatus(): Record<string, { currentCount: number; limit: number; windowMs: number }> {
     const result: Record<string, { currentCount: number; limit: number; windowMs: number }> = {};
-    const effectiveTenantId = tenantId ?? "global";
     const now = Date.now();
 
     for (const [channel, config] of Object.entries(this.rateLimitConfig)) {
@@ -177,9 +156,9 @@ export class ChannelGatewayDeliveryService {
       const row = this.db.connection
         .prepare(
           `SELECT message_count FROM gateway_rate_limits
-           WHERE tenant_id = ? AND channel = ? AND window_start = ?`,
+           WHERE channel = ? AND window_start = ?`,
         )
-        .get(effectiveTenantId, channel, windowStart) as { message_count: number } | undefined;
+        .get(channel, windowStart) as { message_count: number } | undefined;
 
       result[channel] = {
         currentCount: row?.message_count ?? 0,
@@ -301,28 +280,25 @@ export class ChannelGatewayDeliveryService {
   /**
    * Generates a new random nonce for replay protection.
    *
-   * @param length - Length of nonce in bytes (default: 32, produces 64 hex chars = 256 bits entropy)
+   * @param length - Length of nonce in bytes (default: 32, produces 64 hex chars)
    * @returns Random nonce as hex string
    */
   generateNonce(length = 32): string {
-    // #2363: Removed .slice(0, length) which was incorrectly truncating entropy.
-    // randomBytes(32).toString("hex") produces 64 hex characters (32 bytes = 256 bits).
-    // The previous slice(0, 32) took only 32 hex chars = 16 bytes = 128 bits, halving entropy.
-    return randomBytes(length).toString("hex");
+    return randomBytes(length).toString("hex").slice(0, length);
   }
 
   /**
    * Creates a new delivery message with retry tracking.
    *
    * Initializes tracking record before delivery attempt is made.
-   * The message will remain in "pending" status until an actual
-   * delivery attempt is made via recordDeliverySuccess or recordDeliveryFailure.
+   * The message will remain in "pending_retry" status until
+   * recordDeliverySuccess or recordDeliveryFailure is called.
    *
    * @param channel - Channel for delivery
    * @param targetId - Target identifier
    * @param payload - Message payload to store for retry
    * @param maxRetries - Override default max retries
-   * @returns Initial delivery receipt with pending status
+   * @returns Initial delivery receipt
    */
   createDeliveryMessage(
     channel: string,
@@ -355,9 +331,9 @@ export class ChannelGatewayDeliveryService {
       messageId,
       channel,
       targetId,
-      status: "pending", // message created and queued; no delivery attempt made yet
+      status: "pending_retry",
       attempts: 0,
-      finalStatus: undefined, // no delivery attempt completed yet
+      finalStatus: "success", // Will be updated
       firstAttemptAt: now,
       lastAttemptAt: now,
       providerMessageId: null,
@@ -561,7 +537,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: parseDeliveryPayload(String(row.payload_json)),
+      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       createdAt: String(row.created_at),
@@ -683,8 +659,8 @@ export class ChannelGatewayDeliveryService {
         now,
         (() => {
           try {
-            const payload = parseDeliveryPayload(String(row.payload_json));
-            return typeof payload.requestUrl === "string" ? payload.requestUrl : null;
+            const payload = JSON.parse(String(row.payload_json));
+            return payload.requestUrl ?? null;
           } catch (err) {
             logger.warn("extractRequestUrl failed", { error: err });
             return null;
@@ -719,7 +695,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: parseDeliveryPayload(String(row.payload_json)),
+      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
       failureReason: String(row.failure_reason),
       lastErrorMessage: row.last_error_message as string | null,
       lastResponseStatus: row.last_response_status as number | null,
@@ -767,7 +743,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: parseDeliveryPayload(String(row.payload_json)),
+      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       nextRetryAt: (row.next_retry_at as string | null) ?? null,

@@ -11,6 +11,7 @@ import {
   createEvidenceRecord,
   createProjectionUpdate,
   type PlatformPrincipal,
+  type RequestEnvelope,
   type ControlDirective,
   type ControlDirectiveType,
   type SideEffectExpectation,
@@ -247,7 +248,7 @@ test("createExecutionPlan creates plan with required fields", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
@@ -278,7 +279,7 @@ test("createExecutionPlan applies optional fields", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
@@ -295,7 +296,7 @@ test("createExecutionPlan defaults fallbackStrategy to retry", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
@@ -315,7 +316,7 @@ test("createExecutionReceipt creates receipt with required fields", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
   );
 });
 
@@ -339,7 +340,7 @@ test("createExecutionReceipt accepts all status values", () => {
       (error: unknown) =>
         error instanceof Error
         && "code" in error
-        && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
+        && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
     );
   }
 });
@@ -372,7 +373,7 @@ test("createExecutionReceipt applies optional fields", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
   );
 });
 

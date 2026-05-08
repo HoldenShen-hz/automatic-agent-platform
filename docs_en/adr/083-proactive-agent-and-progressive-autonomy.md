@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Context
 
-v4.3 `§41-§42` requires the platform to support proactive agents and progressive autonomy. The current repository already has:
+v2.7 `§41-§42` requires the platform to support proactive agents and progressive autonomy. The current repository already has:
 
 - `src/interaction/proactive-agent`
 - `src/interaction/autonomy`
@@ -44,19 +44,12 @@ Proactive behavior must go through explicit trigger declaration, at minimum cont
 
 ### 2. Autonomy is Not a Boolean Switch, But a Level State Machine
 
-Autonomy levels must be consistent with the §42 specification model (5 levels canonical autonomy mode):
+Autonomy must distinguish at minimum:
 
-Note: §42 defines a 5-level autonomy model (manual_only/suggestion/supervised/semi_auto/full_auto), both ADR-083 and ADR-042 must align with §42's 5-level model.
-
-| Level | Name | Permission |
-|-------|------|------------|
-| 0 | manual_only | Manual operation only, no automation |
-| 1 | suggestion | Provides suggestions only, requires human confirmation |
-| 2 | supervised | Full human supervision during execution |
-| 3 | semi_auto | Semi-automatic, can auto-execute but requires human oversight |
-| 4 | full_auto | Full automation |
-
-Note: `full_auto` does not represent unlimited automation. High-risk domains default cannot enter `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
+- `manual_only`
+- `suggest_only`
+- `supervised_execute`
+- `trusted_auto_execute`
 
 Autonomy levels must be promotable, demotable, and freezable.
 

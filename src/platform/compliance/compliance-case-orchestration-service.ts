@@ -1,6 +1,7 @@
 import type { DataClassificationService } from "../control-plane/iam/data-classification-service.js";
 import type { ClassificationResult, HandlingDecision, PiiAnnotation } from "../control-plane/iam/data-classification-service.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
+import type { ComplianceGovernanceService, ComplianceEvaluationResult } from "../../org-governance/compliance-engine/compliance-governance-service.js";
 import type { ResidencyCheckResult, ResidencyPolicy } from "./data-residency/index.js";
 import { DataResidencyPolicyService } from "./data-residency/index.js";
 import type { FieldProtectionResult, FieldProtectionRule } from "./encryption/index.js";
@@ -12,37 +13,6 @@ import { DataLineageService } from "./lineage/index.js";
 
 export type ComplianceTransferStatus = "approved" | "requires_redaction" | "blocked";
 export type ComplianceErasureStatus = "ready" | "blocked";
-
-/**
- * Minimal governance evaluation result interface.
- * Defines the subset of ComplianceEvaluationResult needed by platform/compliance plane.
- * Full interface is defined in org-governance/compliance-engine/compliance-governance-service.ts.
- */
-export interface ComplianceEvaluationResult {
-  readonly orgNodeId: string;
-  readonly effectivePolicy: Record<string, unknown>;
-  readonly allowed: boolean;
-  readonly missingKeys: readonly string[];
-  readonly auditRecord: ComplianceGovernanceAuditRecord;
-}
-
-export interface ComplianceGovernanceAuditRecord {
-  readonly recordId: string | null;
-}
-
-const FAIL_CLOSED_GOVERNANCE_RECORD_ID = "governance_missing";
-
-function createMissingGovernanceResult(orgNodeId: string): ComplianceEvaluationResult {
-  return {
-    orgNodeId,
-    effectivePolicy: {},
-    allowed: false,
-    missingKeys: ["governance_evaluator_unconfigured"],
-    auditRecord: {
-      recordId: FAIL_CLOSED_GOVERNANCE_RECORD_ID,
-    },
-  };
-}
 
 export interface ComplianceTransferPackage {
   transferId: string;
@@ -73,30 +43,15 @@ export interface ComplianceErasurePackage {
 
 export interface ComplianceCaseOrchestrationServiceOptions {
   classification: DataClassificationService;
-  governance?: ComplianceGovernanceEvaluator | null;
+  governance?: ComplianceGovernanceService | null;
   encryption?: FieldEncryptionService;
   residency?: DataResidencyPolicyService;
   lineage?: DataLineageService;
   erasure?: ErasurePlanningService;
 }
 
-/**
- * Interface for compliance governance evaluation.
- * Platform/compliance plane uses this interface to call org-governance services
- * without creating a direct compile-time dependency on the org-governance module.
- */
-export interface ComplianceGovernanceEvaluator {
-  evaluate(input: {
-    actorId: string;
-    orgNodeId: string;
-    action: string;
-    requiredPolicyKeys?: readonly string[];
-    occurredAt?: string;
-  }): ComplianceEvaluationResult | null;
-}
-
 export class ComplianceCaseOrchestrationService {
-  private readonly governance: ComplianceGovernanceEvaluator | null;
+  private readonly governance: ComplianceGovernanceService | null;
   private readonly encryption: FieldEncryptionService;
   private readonly residency: DataResidencyPolicyService;
   private readonly lineage: DataLineageService;
@@ -159,6 +114,12 @@ export class ComplianceCaseOrchestrationService {
       exportContent = `[SUMMARY OF ${classification.level.toUpperCase()} CONTENT - ORIGINAL EXCLUDED]`;
       redactionApplied = true;
       reasons.push("classification_summary_applied");
+    } else if (transferDecision.action === "deny" && input.allowRedactedRestrictedTransfer === true && annotations.length > 0) {
+      exportContent = this.services.classification.redactContent(input.content, annotations);
+      redactionApplied = exportContent !== input.content;
+      if (redactionApplied) {
+        reasons.push("classification_override_redaction_applied");
+      }
     }
 
     const protectedRecord = this.encryption.protectRecord({
@@ -174,25 +135,14 @@ export class ComplianceCaseOrchestrationService {
       redacted: redactionApplied,
     });
 
-    if (!governance.allowed) {
+    if (governance != null && !governance.allowed) {
       reasons.push(...governance.missingKeys.map((key) => `governance_missing:${key}`));
     }
     if (artifactDecision.action === "deny") {
       reasons.push("artifact_handling_denied");
     }
     if (transferDecision.action === "deny" && !redactionApplied) {
-      if (input.allowRedactedRestrictedTransfer && artifactDecision.action === "summarize") {
-        // Special case: cross-worker deny but artifact allows summarize mode,
-        // and caller explicitly allows redaction of restricted content.
-        // Apply redaction so the transfer can proceed.
-        exportContent = this.services.classification.redactContent(input.content, annotations);
-        redactionApplied = exportContent !== input.content;
-        if (redactionApplied) {
-          reasons.push("classification_redaction_applied");
-        }
-      } else {
-        reasons.push("transfer_handling_denied");
-      }
+      reasons.push("transfer_handling_denied");
     }
     if (residency.decision === "deny") {
       reasons.push(`residency:${residency.reason}`);
@@ -217,7 +167,7 @@ export class ComplianceCaseOrchestrationService {
     }
 
     const status = this.resolveTransferStatus({
-      governanceAllowed: governance.allowed,
+      governanceAllowed: governance?.allowed ?? true,
       artifactDecision,
       transferDecision,
       residency,
@@ -291,7 +241,7 @@ export class ComplianceCaseOrchestrationService {
       slaHours: input.slaHours,
     });
     const blockingReasons: string[] = [];
-    if (!governance.allowed) {
+    if (governance != null && !governance.allowed) {
       blockingReasons.push(...governance.missingKeys.map((key) => `governance_missing:${key}`));
     }
     if (plan.status === "blocked_by_legal_hold") {
@@ -305,7 +255,7 @@ export class ComplianceCaseOrchestrationService {
         targetRef: plan.requestId,
         kind: step.action === "erase" ? "erased_by" : "redacted_from",
         actorRef: input.actorId,
-        policyRef: governance.auditRecord.recordId,
+        policyRef: governance?.auditRecord.recordId ?? null,
         metadata: {
           subjectRef: input.subjectRef,
           action: step.action,
@@ -334,9 +284,9 @@ export class ComplianceCaseOrchestrationService {
     action: string;
     requiredPolicyKeys?: readonly string[] | undefined;
     occurredAt: string;
-  }): ComplianceEvaluationResult {
+  }): ComplianceEvaluationResult | null {
     if (this.governance == null) {
-      return createMissingGovernanceResult(input.orgNodeId);
+      return null;
     }
     return this.governance.evaluate({
       actorId: input.actorId,
@@ -344,7 +294,7 @@ export class ComplianceCaseOrchestrationService {
       action: input.action,
       occurredAt: input.occurredAt,
       ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
-    }) ?? createMissingGovernanceResult(input.orgNodeId);
+    }) ?? null;
   }
 
   private resolveTransferStatus(input: {

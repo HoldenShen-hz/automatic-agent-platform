@@ -7,6 +7,10 @@
   "ringId": "ring1",
   "divisionId": "analytics",
   "latencyTier": "ultra_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "high",
+    "maxAutonomyLevel": "supervised"
+  },
   "riskSpec": {
     "advisoryOnly": false,
     "humanAccountable": true,
@@ -19,59 +23,24 @@
       "triggerConditions": {
         "domainId": "quant-trading"
       },
-      "planGraph": {
-        "graphId": "graph:quant-trading:primary",
-        "nodes": [
-          {
-            "nodeId": "node:quant-trading:pre-risk-check",
-            "nodeType": "tool",
-            "inputRefs": ["task:${taskId}"],
-            "outputSchemaRef": "schema:quant-trading.pre-risk-check",
-            "riskClass": "high",
-            "budgetIntent": {
-              "amount": 0.05,
-              "currency": "USD",
-              "resourceKinds": ["token", "api"]
-            },
-            "sideEffectProfile": {
-              "mayCommitExternalEffect": false,
-              "reversible": true
-            },
-            "retryPolicyRef": "retry:quant-trading.default",
-            "timeoutMs": 30000
-          },
-          {
-            "nodeId": "node:quant-trading:strategy-backtest",
-            "nodeType": "llm",
-            "inputRefs": ["node:quant-trading:pre-risk-check.output"],
-            "outputSchemaRef": "schema:quant-trading.backtest",
-            "riskClass": "high",
-            "budgetIntent": {
-              "amount": 0.15,
-              "currency": "USD",
-              "resourceKinds": ["token", "compute"]
-            },
-            "sideEffectProfile": {
-              "mayCommitExternalEffect": false,
-              "reversible": true
-            },
-            "retryPolicyRef": "retry:quant-trading.default",
-            "timeoutMs": 120000
-          }
-        ],
-        "edges": [
-          {
-            "edgeId": "edge:quant-trading:risk-to-backtest",
-            "sourceNodeId": "node:quant-trading:pre-risk-check",
-            "targetNodeId": "node:quant-trading:strategy-backtest",
-            "condition": "always"
-          }
-        ],
-        "entryNodeIds": ["node:quant-trading:pre-risk-check"],
-        "terminalNodeIds": ["node:quant-trading:strategy-backtest"],
-        "joinStrategy": "all",
-        "graphHash": "sha256:quant-trading-primary-v1"
-      }
+      "steps": [
+        {
+          "stepName": "pre_trade_risk_check",
+          "toolHints": [
+            "market_data",
+            "risk_calculator"
+          ],
+          "requiresReview": true,
+          "timeoutMs": 30000
+        },
+        {
+          "stepName": "strategy_backtest",
+          "toolHints": [
+            "strategy_backtester"
+          ],
+          "timeoutMs": 120000
+        }
+      ]
     }
   ],
   "toolBundles": [

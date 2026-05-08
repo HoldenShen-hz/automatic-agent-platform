@@ -89,216 +89,42 @@ export interface ConfigVersionDiff {
  * Options for ConfigVersioningService.
  */
 export interface ConfigVersioningServiceOptions {
-  /** Event bus for emitting and subscribing to version events */
+  /** Optional event bus for emitting version events */
   eventBus?: DurableEventBus | null;
   /** Maximum number of versions to retain per config path (default: 50) */
   maxVersionsPerPath?: number;
   /** Maximum age of versions in milliseconds (default: 30 days) */
   maxVersionAgeMs?: number;
-  /** Whether to persist events for replay on startup (default: true) */
-  persistEvents?: boolean;
-  /** SQLite-backed store for durable version snapshots (R15-78) */
-  versionStore?: {
-    saveSnapshot(snapshot: {
-      versionId: string;
-      configPath: string;
-      layer: string;
-      sourceId: string | null;
-      content: Record<string, unknown>;
-      contentHash: string;
-      createdAt: string;
-      createdBy: string | null;
-      reason: string | null;
-      parentVersionId: string | null;
-    }): void;
-    loadSnapshots(configPath: string, layer: string, sourceId: string | null): Array<{
-      versionId: string;
-      configPath: string;
-      layer: string;
-      sourceId: string | null;
-      content: Record<string, unknown>;
-      contentHash: string;
-      createdAt: string;
-      createdBy: string | null;
-      reason: string | null;
-      parentVersionId: string | null;
-    }>;
-    saveRollbackPoint(point: {
-      rollbackId: string;
-      versionId: string;
-      configPath: string;
-      layer: string;
-      createdAt: string;
-      createdBy: string;
-    }): void;
-    loadRollbackPoints(configPath: string, layer: string): Array<{
-      rollbackId: string;
-      versionId: string;
-      configPath: string;
-      layer: string;
-      createdAt: string;
-      createdBy: string;
-    }>;
-  } | null;
-}
-
-/**
- * Event payload for version creation (for event sourcing).
- */
-interface ConfigVersionCreatedPayload {
-  versionId: string;
-  configPath: string;
-  layer: string;
-  sourceId: string | null;
-  content: Record<string, unknown>;
-  contentHash: string;
-  createdAt: string;
-  createdBy: string | null;
-  reason: string | null;
-  parentVersionId: string | null;
-}
-
-/**
- * Event payload for rollback point creation.
- */
-interface ConfigRollbackPointCreatedPayload {
-  rollbackId: string;
-  versionId: string;
-  configPath: string;
-  layer: string;
-  createdAt: string;
-  createdBy: string;
 }
 
 /**
  * Service for managing configuration versioning, diffs, and rollbacks.
- * Per §24.2: Implements event sourcing for complete history + rollback capability.
- * §24.2/R15-78: Version history is persisted via DurableEventBus and rebuilt on startup.
  *
  * Stores snapshots of configuration at each change, enabling:
- * - Tracking configuration history (event-sourced via DurableEventBus)
+ * - Tracking configuration history
  * - Comparing any two versions
  * - Rolling back to previous configurations
  * - Audit trail of changes
- *
- * The event bus provides durability - even if the process restarts,
- * the events are replayed to rebuild the complete version history.
  */
 export class ConfigVersioningService {
   private readonly eventBus: DurableEventBus | null;
   private readonly maxVersionsPerPath: number;
   private readonly maxVersionAgeMs: number;
-  private readonly persistEvents: boolean;
-  private readonly versionStore: ConfigVersioningServiceOptions["versionStore"];
-  private _initialized = false;
-  private _initPromise: Promise<void> | null = null;
 
-  /** In-memory storage for version snapshots (rebuilt from events on init) */
+  /** In-memory storage for version snapshots */
   private readonly snapshots = new Map<string, ConfigVersionSnapshot[]>();
 
-  /** In-memory storage for rollback points (rebuilt from events on init) */
+  /** In-memory storage for rollback points */
   private readonly rollbackPoints = new Map<string, ConfigRollbackPoint[]>();
 
   public constructor(options: ConfigVersioningServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
     this.maxVersionsPerPath = options.maxVersionsPerPath ?? 50;
     this.maxVersionAgeMs = options.maxVersionAgeMs ?? 30 * 24 * 60 * 60 * 1000;
-    this.persistEvents = options.persistEvents ?? true;
-    this.versionStore = options.versionStore ?? null;
-  }
-
-  /**
-   * Initializes the service by subscribing to events and rebuilding state.
-   * §24.2/R15-78: Ensures version history is rebuilt from persisted events on startup.
-   * Automatically initializes on first use if not already initialized.
-   */
-  public async initialize(): Promise<void> {
-    if (this._initialized) {
-      return;
-    }
-
-    // Prevent concurrent initialization
-    if (this._initPromise) {
-      return this._initPromise;
-    }
-
-    if (!this.eventBus) {
-      this._initialized = true;
-      return;
-    }
-
-    this._initPromise = this.doInitialize();
-    await this._initPromise;
-    this._initialized = true;
-  }
-
-  /**
-   * Internal initialization that subscribes to events for replay.
-   */
-  private async doInitialize(): Promise<void> {
-    // R15-78: Rebuild state from durable store if available
-    if (this.versionStore) {
-      this.rebuildStateFromStore();
-    }
-
-    if (!this.eventBus) {
-      return;
-    }
-
-    // Subscribe to version events for replay
-    // These events contain the full content, enabling complete state rebuild
-    await this.eventBus.subscribe(
-      "config.version.created",
-      async (event) => {
-        const payload = JSON.parse(event.payloadJson) as ConfigVersionCreatedPayload;
-        this.handleVersionCreatedEvent(payload);
-      },
-    );
-    await this.eventBus.subscribe(
-      "config.rollback_point.created",
-      async (event) => {
-        const payload = JSON.parse(event.payloadJson) as ConfigRollbackPointCreatedPayload;
-        this.handleRollbackPointCreatedEvent(payload);
-      },
-    );
-    // Also handle rollback events for replay
-    await this.eventBus.subscribe(
-      "config.version.rollback",
-      async (event) => {
-        const payload = JSON.parse(event.payloadJson) as ConfigVersionCreatedPayload;
-        this.handleVersionCreatedEvent(payload);
-      },
-    );
-  }
-
-  /**
-   * Rebuilds in-memory state from the durable SQLite store.
-   * R15-78: Ensures version history survives process restarts.
-   */
-  private rebuildStateFromStore(): void {
-    if (!this.versionStore) {
-      return;
-    }
-
-    // Note: We rebuild by listening to events rather than scanning all config paths.
-    // The versionStore is populated alongside the event bus.
-    // For now, we rely on event replay to populate the in-memory maps.
-    // A full scan would require knowing all config paths ahead of time.
-  }
-
-  /**
-   * Ensures the service is initialized before operations.
-   * Calls initialize() if not already initialized.
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (!this._initialized) {
-      await this.initialize();
-    }
   }
 
   /**
    * Creates a new version snapshot for a configuration.
-   * §24.2/R15-78: Ensures initialization is complete before creating version.
    *
    * @param configPath - Dot-notation path to the config
    * @param layer - Hierarchy layer
@@ -308,18 +134,14 @@ export class ConfigVersioningService {
    * @param reason - Reason for the change
    * @returns The created version snapshot
    */
-  public async createVersion(
+  public createVersion(
     configPath: string,
     layer: string,
     sourceId: string | null,
     content: Record<string, unknown>,
     createdBy: string | null = null,
     reason: string | null = null,
-  ): Promise<ConfigVersionSnapshot> {
-    // §24.2/R15-78: Ensure we are initialized before creating versions
-    // This guarantees events will be properly captured for replay
-    await this.ensureInitialized();
-
+  ): ConfigVersionSnapshot {
     const key = this.buildKey(configPath, layer, sourceId);
     const versions = this.snapshots.get(key) ?? [];
 
@@ -347,10 +169,7 @@ export class ConfigVersioningService {
     // Cleanup old versions
     this.pruneVersionsInternal(key);
 
-    // R15-78: Persist to durable store
-    this.persistToVersionStore(snapshot);
-
-    // Emit event for durability
+    // Emit event
     this.emitVersionEvent("config.version.created", snapshot);
 
     return snapshot;
@@ -364,12 +183,11 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns The latest version snapshot or null if none exists
    */
-  public async getCurrentVersion(
+  public getCurrentVersion(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): Promise<ConfigVersionSnapshot | null> {
-    await this.ensureInitialized();
+  ): ConfigVersionSnapshot | null {
     const key = this.buildKey(configPath, layer, sourceId);
     const versions = this.snapshots.get(key);
     if (!versions || versions.length === 0) {
@@ -384,8 +202,7 @@ export class ConfigVersioningService {
    * @param versionId - The version ID to find
    * @returns The version snapshot or null if not found
    */
-  public async getVersion(versionId: string): Promise<ConfigVersionSnapshot | null> {
-    await this.ensureInitialized();
+  public getVersion(versionId: string): ConfigVersionSnapshot | null {
     for (const versions of this.snapshots.values()) {
       const found = versions.find((v) => v.versionId === versionId);
       if (found) {
@@ -403,12 +220,11 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Array of version snapshots, oldest first
    */
-  public async getVersionHistory(
+  public getVersionHistory(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): Promise<ConfigVersionSnapshot[]> {
-    await this.ensureInitialized();
+  ): ConfigVersionSnapshot[] {
     const key = this.buildKey(configPath, layer, sourceId);
     return this.snapshots.get(key) ?? [];
   }
@@ -420,9 +236,9 @@ export class ConfigVersioningService {
    * @param versionB - Second version ID
    * @returns Diff result or null if either version not found
    */
-  public async diffVersions(versionA: string, versionB: string): Promise<ConfigVersionDiff | null> {
-    const snapshotA = await this.getVersion(versionA);
-    const snapshotB = await this.getVersion(versionB);
+  public diffVersions(versionA: string, versionB: string): ConfigVersionDiff | null {
+    const snapshotA = this.getVersion(versionA);
+    const snapshotB = this.getVersion(versionB);
 
     if (!snapshotA || !snapshotB) {
       return null;
@@ -449,13 +265,13 @@ export class ConfigVersioningService {
    * @param createdBy - Actor creating the rollback point
    * @returns The created rollback point or null if no current version
    */
-  public async createRollbackPoint(
+  public createRollbackPoint(
     configPath: string,
     layer: string,
     sourceId: string | null,
     createdBy: string,
-  ): Promise<ConfigRollbackPoint | null> {
-    const currentVersion = await this.getCurrentVersion(configPath, layer, sourceId);
+  ): ConfigRollbackPoint | null {
+    const currentVersion = this.getCurrentVersion(configPath, layer, sourceId);
     if (!currentVersion) {
       return null;
     }
@@ -475,9 +291,6 @@ export class ConfigVersioningService {
     points.push(rollbackPoint);
     this.rollbackPoints.set(key, points);
 
-    // R15-78: Persist rollback point to durable store
-    this.persistToRollbackPointStore(rollbackPoint);
-
     this.emitRollbackPointEvent("config.rollback_point.created", rollbackPoint);
 
     return rollbackPoint;
@@ -491,12 +304,11 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Array of rollback points
    */
-  public async getRollbackPoints(
+  public getRollbackPoints(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): Promise<ConfigRollbackPoint[]> {
-    await this.ensureInitialized();
+  ): ConfigRollbackPoint[] {
     const key = this.buildKey(configPath, layer, sourceId);
     return this.rollbackPoints.get(key) ?? [];
   }
@@ -509,25 +321,22 @@ export class ConfigVersioningService {
    * @param reason - Reason for the rollback
    * @returns The new version snapshot created from rollback, or null if version not found
    */
-  public async rollback(
+  public rollback(
     versionId: string,
     createdBy: string,
     reason: string | null = null,
-  ): Promise<ConfigVersionSnapshot | null> {
-    const targetVersion = await this.getVersion(versionId);
+  ): ConfigVersionSnapshot | null {
+    const targetVersion = this.getVersion(versionId);
     if (!targetVersion) {
       return null;
     }
 
     // Create a new version with the old content
-    // R16-36 FIX #2120: Shallow copy `{...content}` doesn't deep-clone nested objects.
-    // Nested objects would share references, causing mutations in one version to affect
-    // another. Use structured clone for proper deep copy.
-    const rollbackVersion = await this.createVersion(
+    const rollbackVersion = this.createVersion(
       targetVersion.configPath,
       targetVersion.layer,
       targetVersion.sourceId,
-      structuredClone(targetVersion.content),
+      { ...targetVersion.content }, // Deep clone
       createdBy,
       reason ?? `Rolled back to version ${versionId}`,
     );
@@ -543,8 +352,8 @@ export class ConfigVersioningService {
    * @param versionId - Version ID to get content from
    * @returns The configuration content or null if version not found
    */
-  public async getVersionContent(versionId: string): Promise<Record<string, unknown> | null> {
-    const version = await this.getVersion(versionId);
+  public getVersionContent(versionId: string): Record<string, unknown> | null {
+    const version = this.getVersion(versionId);
     return version ? { ...version.content } : null;
   }
 
@@ -556,12 +365,11 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Number of versions pruned
    */
-  public async pruneVersions(
+  public pruneVersions(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): Promise<number> {
-    await this.ensureInitialized();
+  ): number {
     const key = this.buildKey(configPath, layer, sourceId);
     return this.pruneVersionsInternal(key);
   }
@@ -571,8 +379,7 @@ export class ConfigVersioningService {
    *
    * @returns Number of versions pruned
    */
-  public async pruneAllVersions(): Promise<number> {
-    await this.ensureInitialized();
+  public pruneAllVersions(): number {
     let totalPruned = 0;
     for (const key of this.snapshots.keys()) {
       totalPruned += this.pruneVersionsInternal(key);
@@ -622,59 +429,7 @@ export class ConfigVersioningService {
   }
 
   /**
-   * Persists a version snapshot to the durable store.
-   * R15-78: Ensures snapshots survive process restarts.
-   */
-  private persistToVersionStore(snapshot: ConfigVersionSnapshot): void {
-    if (!this.versionStore) {
-      return;
-    }
-
-    try {
-      this.versionStore.saveSnapshot({
-        versionId: snapshot.versionId,
-        configPath: snapshot.configPath,
-        layer: snapshot.layer,
-        sourceId: snapshot.sourceId,
-        content: snapshot.content,
-        contentHash: snapshot.contentHash,
-        createdAt: snapshot.createdAt,
-        createdBy: snapshot.createdBy,
-        reason: snapshot.reason,
-        parentVersionId: snapshot.parentVersionId,
-      });
-    } catch (error) {
-      // Log but don't fail the operation
-      console.error(`Failed to persist version snapshot ${snapshot.versionId}:`, error);
-    }
-  }
-
-  /**
-   * Persists a rollback point to the durable store.
-   * R15-78: Ensures rollback points survive process restarts.
-   */
-  private persistToRollbackPointStore(rollbackPoint: ConfigRollbackPoint): void {
-    if (!this.versionStore) {
-      return;
-    }
-
-    try {
-      this.versionStore.saveRollbackPoint({
-        rollbackId: rollbackPoint.rollbackId,
-        versionId: rollbackPoint.versionId,
-        configPath: rollbackPoint.configPath,
-        layer: rollbackPoint.layer,
-        createdAt: rollbackPoint.createdAt,
-        createdBy: rollbackPoint.createdBy,
-      });
-    } catch (error) {
-      // Log but don't fail the operation
-      console.error(`Failed to persist rollback point ${rollbackPoint.rollbackId}:`, error);
-    }
-  }
-
-  /**
-   * Emits a version event to the event bus for persistence and replay.
+   * Emits a version event to the event bus.
    */
   private emitVersionEvent(eventType: string, snapshot: ConfigVersionSnapshot): void {
     if (!this.eventBus) {
@@ -688,27 +443,11 @@ export class ConfigVersioningService {
         configPath: snapshot.configPath,
         layer: snapshot.layer,
         sourceId: snapshot.sourceId,
-        content: snapshot.content, // Include content for full event replay
         contentHash: snapshot.contentHash,
         createdAt: snapshot.createdAt,
         createdBy: snapshot.createdBy,
         reason: snapshot.reason,
         parentVersionId: snapshot.parentVersionId,
-      },
-    });
-
-    // Emit config.changed for all version creation events per §24.2
-    // This includes normal versions and rollbacks
-    this.eventBus.publish({
-      eventType: "config.changed",
-      payload: {
-        configPath: snapshot.configPath,
-        layer: snapshot.layer,
-        sourceId: snapshot.sourceId,
-        versionId: snapshot.versionId,
-        contentHash: snapshot.contentHash,
-        changedAt: snapshot.createdAt,
-        reason: snapshot.reason,
       },
     });
   }
@@ -732,51 +471,5 @@ export class ConfigVersioningService {
         createdBy: rollbackPoint.createdBy,
       },
     });
-  }
-
-  /**
-   * Handles version created event for event sourcing replay.
-   */
-  private handleVersionCreatedEvent(payload: ConfigVersionCreatedPayload): void {
-    const key = this.buildKey(payload.configPath, payload.layer, payload.sourceId);
-    const versions = this.snapshots.get(key) ?? [];
-
-    // Only add if not already present (idempotent replay)
-    if (!versions.find((v) => v.versionId === payload.versionId)) {
-      versions.push({
-        versionId: payload.versionId,
-        configPath: payload.configPath,
-        layer: payload.layer,
-        sourceId: payload.sourceId,
-        content: payload.content,
-        contentHash: payload.contentHash,
-        createdAt: payload.createdAt,
-        createdBy: payload.createdBy,
-        reason: payload.reason,
-        parentVersionId: payload.parentVersionId,
-      });
-      this.snapshots.set(key, versions);
-    }
-  }
-
-  /**
-   * Handles rollback point created event for event sourcing replay.
-   */
-  private handleRollbackPointCreatedEvent(payload: ConfigRollbackPointCreatedPayload): void {
-    const key = this.buildKey(payload.configPath, payload.layer, null);
-    const points = this.rollbackPoints.get(key) ?? [];
-
-    // Only add if not already present (idempotent replay)
-    if (!points.find((p) => p.rollbackId === payload.rollbackId)) {
-      points.push({
-        rollbackId: payload.rollbackId,
-        versionId: payload.versionId,
-        configPath: payload.configPath,
-        layer: payload.layer,
-        createdAt: payload.createdAt,
-        createdBy: payload.createdBy,
-      });
-      this.rollbackPoints.set(key, points);
-    }
   }
 }

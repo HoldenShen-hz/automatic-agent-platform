@@ -22,17 +22,6 @@ function createMachine(): RuntimeStateMachine {
 
 test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
   const machine = createMachine();
-  const harnessExecutionStatuses = new Set([
-    "admitted",
-    "planning",
-    "ready",
-    "running",
-    "pausing",
-    "paused",
-    "resuming",
-    "replanning",
-    "compensating",
-  ]);
 
   const validTransitions: Array<[HarnessRunStatus, HarnessRunStatus]> = [
     ["created", "admitted"],
@@ -77,7 +66,6 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
   ];
 
   for (const [from, to] of validTransitions) {
-    const needsLease = harnessExecutionStatuses.has(to);
     const run = createHarnessRun({
       harnessRunId: `run-${from}-${to}`,
       tenantId: "tenant-1",
@@ -89,8 +77,6 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
       budgetLedgerId: "ledger-1",
       status: from,
       currentSeq: 0,
-      leaseId: needsLease ? "lease-1" : undefined,
-      fencingToken: needsLease ? "fence-1" : undefined,
     });
 
     const command = {
@@ -103,8 +89,6 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      leaseId: needsLease ? "lease-1" : undefined,
-      fencingToken: needsLease ? "fence-1" : undefined,
       runVersionLockId: "rvlock-1",
       policyGuard: { allowed: true, policyProofRef: "proof-1" },
       auditRef: "audit-1",
@@ -172,8 +156,8 @@ test("RuntimeStateMachine rejects invalid HarnessRun transitions", () => {
 test("RuntimeStateMachine allows valid NodeRun transitions", () => {
   const machine = createMachine();
 
-  // Execution states require lease and fencing token - must match source definition
-  const executionStatuses = ["created", "ready", "leased", "running", "retry_wait", "awaiting_hitl", "reconciling"];
+  // Execution states require lease and fencing token
+  const executionStatuses = ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling", "succeeded", "failed"];
 
   const validTransitions: Array<[NodeRunStatus, NodeRunStatus]> = [
     ["created", "ready"],
@@ -199,6 +183,7 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
     ["retry_wait", "ready"],
     ["retry_wait", "failed"],
     ["retry_wait", "aborted"],
+    ["awaiting_hitl", "ready"],
     ["awaiting_hitl", "running"],
     ["awaiting_hitl", "failed"],
     ["awaiting_hitl", "cancelled"],
@@ -210,10 +195,6 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
 
   for (const [from, to] of validTransitions) {
     const needsLease = executionStatuses.includes(to);
-    const terminalStatuses = ["succeeded", "failed", "skipped", "cancelled", "dependency_failed", "policy_blocked", "aborted"];
-    const activeStatuses = ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling"];
-    const isTerminalFromActive = terminalStatuses.includes(to) && activeStatuses.includes(from);
-    const needsLeaseForTransition = needsLease || isTerminalFromActive;
     const nodeRun = createNodeRun({
       harnessRunId: "run-1",
       planGraphBundleId: "pgb-1",
@@ -221,8 +202,8 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
       nodeId: "node-1",
       status: from,
       currentSeq: 0,
-      leaseId: needsLeaseForTransition ? "lease-1" : undefined,
-      fencingToken: needsLeaseForTransition ? "fence-1" : undefined,
+      leaseId: needsLease ? "lease-1" : undefined,
+      fencingToken: needsLease ? "fence-1" : undefined,
     });
 
     const command = {
@@ -235,10 +216,9 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      leaseId: needsLeaseForTransition ? "lease-1" : undefined,
-      fencingToken: needsLeaseForTransition ? "fence-1" : undefined,
+      leaseId: needsLease ? "lease-1" : undefined,
+      fencingToken: needsLease ? "fence-1" : undefined,
       occurredAt: "2026-04-27T00:00:00.000Z",
-      auditRef: "audit-1",
     };
 
     const result = machine.transition(command);
@@ -339,7 +319,6 @@ test("RuntimeStateMachine allows SideEffectRecord simple transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      auditRef: "audit-1",
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);
@@ -383,8 +362,6 @@ test("RuntimeStateMachine allows SideEffectRecord commit-path transitions with s
       status: from,
       riskClass: "low",
       preCommitPolicyProofRef: {} as any,
-      leaseId: "lease-1",
-      fencingToken: "fence-1",
     });
 
     const result = machine.transition({
@@ -396,12 +373,9 @@ test("RuntimeStateMachine allows SideEffectRecord commit-path transitions with s
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      leaseId: "lease-1",
-      fencingToken: "fence-1",
       sideEffectSafety: {
         preCommitPolicyProofRef: "proof-ref-1",
       },
-      auditRef: "audit-1",
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);
@@ -486,8 +460,6 @@ test("RuntimeStateMachine allows valid BudgetLedger transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      leaseId: "lease-1",
-      fencingToken: "fence-1",
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);

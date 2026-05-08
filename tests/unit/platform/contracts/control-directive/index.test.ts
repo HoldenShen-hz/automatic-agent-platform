@@ -1,9 +1,3 @@
-/**
- * @deprecated This test suite validates the deprecated ControlDirective contract.
- * Per R6-29, these tests verify the legacy contract is properly blocked.
- * New tests should use OperationalDirective/DecisionDirective from executable-contracts instead.
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -14,20 +8,12 @@ import {
 } from "../../../../../src/platform/contracts/control-directive/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
-/**
- * @deprecated ControlDirectiveKind is deprecated per §4.3.
- * Use OperationalDirectiveType or DecisionDirectiveType instead.
- */
 test("ControlDirectiveKind accepts the canonical directive kinds", () => {
   const kinds: ControlDirectiveKind[] = ["pause", "resume", "cancel", "rollback", "escalate"];
   assert.equal(kinds.length, 5);
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- * Use createOperationalDirective or createDecisionDirective instead.
- */
-test("createControlDirective fails fast because ControlDirective is no longer canonical", () => {
+test("createControlDirective builds a canonical directive object", () => {
   assert.throws(
     () =>
       createControlDirective({
@@ -39,14 +25,10 @@ test("createControlDirective fails fast because ControlDirective is no longer ca
         executionId: "execution-1",
         metadata: { source: "console" },
       }),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective generates a directiveId when not provided", () => {
   assert.throws(
     () =>
@@ -59,13 +41,10 @@ test("createControlDirective generates a directiveId when not provided", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective uses provided directiveId", () => {
   assert.throws(
     () =>
@@ -79,13 +58,10 @@ test("createControlDirective uses provided directiveId", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective sets createdAt to nowIso when not provided", () => {
   assert.throws(
     () =>
@@ -98,13 +74,10 @@ test("createControlDirective sets createdAt to nowIso when not provided", () => 
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective uses provided createdAt timestamp", () => {
   assert.throws(
     () =>
@@ -118,7 +91,7 @@ test("createControlDirective uses provided createdAt timestamp", () => {
         metadata: {},
         createdAt: "2026-01-01T00:00:00.000Z",
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
@@ -186,9 +159,6 @@ test("createControlDirective throws when issuedBy is empty", () => {
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective allows null tenantId and executionId", () => {
   assert.throws(
     () =>
@@ -201,13 +171,10 @@ test("createControlDirective allows null tenantId and executionId", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
-/**
- * @deprecated createControlDirective is deprecated per §4.3.
- */
 test("createControlDirective accepts all directive kinds", () => {
   for (const kind of ["pause", "resume", "cancel", "rollback", "escalate"] as ControlDirectiveKind[]) {
     assert.throws(
@@ -221,15 +188,11 @@ test("createControlDirective accepts all directive kinds", () => {
           executionId: null,
           metadata: {},
         }),
-      (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
+      (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
     );
   }
 });
 
-/**
- * @deprecated ControlDirective interface is deprecated per §4.3.
- * Use OperationalDirective or DecisionDirective instead.
- */
 test("ControlDirective interface accepts all fields", () => {
   const directive: ControlDirective = {
     directiveId: "dir-123",

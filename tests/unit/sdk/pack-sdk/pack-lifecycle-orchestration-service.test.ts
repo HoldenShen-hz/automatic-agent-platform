@@ -4,27 +4,8 @@ import test from "node:test";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import {
   PackLifecycleOrchestrationService,
-  validateBusinessPackManifest as rawValidateBusinessPackManifest,
+  validateBusinessPackManifest,
 } from "../../../../src/sdk/pack-sdk/index.js";
-
-const TEST_PACK_SIGNING = {
-  keyId: "test-pack-key",
-  signature: "test-pack-signature",
-  algorithm: "ed25519",
-} as const;
-
-function validateBusinessPackManifest(
-  manifest: Parameters<typeof rawValidateBusinessPackManifest>[0],
-  options?: Parameters<typeof rawValidateBusinessPackManifest>[1],
-) {
-  return rawValidateBusinessPackManifest(
-    {
-      ...manifest,
-      signing: manifest.signing === undefined ? TEST_PACK_SIGNING : manifest.signing,
-    },
-    options,
-  );
-}
 
 function createManifest(overrides: Partial<ReturnType<typeof validateBusinessPackManifest>> = {}) {
   return validateBusinessPackManifest({
@@ -194,7 +175,7 @@ test("PackLifecycleOrchestrationService rejects publish before certification", (
   );
 });
 
-test("PackLifecycleOrchestrationService enforces 90-day minimum deprecation support window", () => {
+test("PackLifecycleOrchestrationService enforces minimum deprecation support window", () => {
   const service = new PackLifecycleOrchestrationService();
   service.registerPack({
     manifest: createManifest(),
@@ -229,7 +210,7 @@ test("PackLifecycleOrchestrationService enforces 90-day minimum deprecation supp
         owner: "ops@example.com",
         migrationGuideRef: "docs://migration/ops-pack-v1",
         effectiveAt: "2026-04-21T00:00:00.000Z",
-        supportWindowDays: 89,
+        supportWindowDays: 90,
       }),
     (error: unknown) =>
       error instanceof ValidationError && error.code === "pack_lifecycle.support_window_too_short:ops-pack@1.0.0",

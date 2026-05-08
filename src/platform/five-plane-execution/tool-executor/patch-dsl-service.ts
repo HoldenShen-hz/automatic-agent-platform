@@ -455,7 +455,6 @@ export class PatchDslService {
           allowed: false,
           normalizedPath: scopeCheck.normalizedPath,
           reasonCode: "tool.path_scope_write_denied",
-          effectiveResourceLimits: directCheck.effectiveResourceLimits,
         };
       }
       return directCheck;
@@ -482,7 +481,6 @@ export class PatchDslService {
         allowed: false,
         normalizedPath: scopeCheck.normalizedPath,
         reasonCode: "tool.path_scope_write_denied",
-        effectiveResourceLimits: parentCheck.effectiveResourceLimits,
       };
     }
 
@@ -490,7 +488,6 @@ export class PatchDslService {
       allowed: true,
       normalizedPath,
       reasonCode: null,
-      effectiveResourceLimits: parentCheck.effectiveResourceLimits,
     };
   }
 

@@ -36,7 +36,6 @@ export type RunbookStatus = "pending" | "running" | "completed" | "failed" | "sk
 export interface SliRecord {
   id: string;
   sloId: string;
-  domainId: string;
   kind: SliKind;
   value: number;
   unit: string;
@@ -46,12 +45,9 @@ export interface SliRecord {
 
 /**
  * Definition of an SLO with target and evaluation parameters.
- * §R14-06: SLO definitions must have domainId/tenantId columns
  */
 export interface SloDefinition {
   id: string;
-  domainId: string;
-  tenantId: string;
   name: string;
   description: string;
   sliKind: SliKind;
@@ -132,7 +128,6 @@ export const SLO_ALERTING_DDL = `
 CREATE TABLE IF NOT EXISTS sli_samples (
   id TEXT PRIMARY KEY,
   slo_id TEXT NOT NULL,
-  domain_id TEXT NOT NULL DEFAULT 'default',
   kind TEXT NOT NULL,
   value REAL NOT NULL,
   unit TEXT NOT NULL DEFAULT '',
@@ -140,12 +135,9 @@ CREATE TABLE IF NOT EXISTS sli_samples (
   metadata TEXT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sli_samples_slo_collected ON sli_samples(slo_id, collected_at);
-CREATE INDEX IF NOT EXISTS idx_sli_samples_domain ON sli_samples(domain_id, collected_at);
 
 CREATE TABLE IF NOT EXISTS slo_definitions (
   id TEXT PRIMARY KEY,
-  domain_id TEXT NOT NULL DEFAULT 'default',
-  tenant_id TEXT NOT NULL DEFAULT 'default',
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   sli_kind TEXT NOT NULL,
@@ -156,8 +148,6 @@ CREATE TABLE IF NOT EXISTS slo_definitions (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_slo_definitions_domain ON slo_definitions(domain_id);
-CREATE INDEX IF NOT EXISTS idx_slo_definitions_tenant ON slo_definitions(tenant_id);
 
 CREATE TABLE IF NOT EXISTS alert_rules (
   id TEXT PRIMARY KEY,

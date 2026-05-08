@@ -12,7 +12,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { AtomicLeadershipCapableRepository, HaRepository } from "./ha-repository.js";
+import type { HaRepository } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, HaCoordinatorServiceOptions, LeaderActionAuthority, LeaderActionAuthorization, LeaderLease, LeadershipAcquisitionInput, LeadershipEpoch, LeadershipQueryResult, LeadershipRenewalInput } from "./types.js";
 import { DEFAULT_LEASE_TTL_MS, EPOCH_FENCING_TOKEN_START, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "./types.js";
 
@@ -42,11 +42,8 @@ export interface HaCoordinatorServiceAsyncOptions extends HaCoordinatorServiceOp
 export class HaCoordinatorServiceAsync {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
+  private readonly fencingTokenCounter: { value: number };
   private readonly coordinatorId: string;
-  // R18-2 FIX: Cache fencing token to enable synchronous verifyWriteAuthority
-  // This is updated whenever leadership is acquired or renewed, avoiding the need
-  // for synchronous DB access in the hot path
-  private cachedFencingToken: number = EPOCH_FENCING_TOKEN_START;
 
   constructor(
     private readonly repo: HaRepository,
@@ -54,6 +51,7 @@ export class HaCoordinatorServiceAsync {
   ) {
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
+    this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
     this.coordinatorId = options?.coordinatorId ?? newId("coord");
   }
 
@@ -109,22 +107,12 @@ export class HaCoordinatorServiceAsync {
     cause?: string;
   }> {
     const { nodeId, ttlMs = this.defaultTtlMs, forceAcquire = false } = input;
-    const effectiveTtl = Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, ttlMs));
-    if (supportsAtomicLeadershipAcquisition(this.repo)) {
-      const result = await this.repo.acquireLeadershipAtomically({
-        nodeId,
-        ttlMs: effectiveTtl,
-        forceAcquire,
-      });
-      this.cachedFencingToken = result.fencingToken;
-      return result;
-    }
-
     const node = await this.getNode(nodeId);
     if (!node) {
       throw new Error("Must register node before acquiring leadership");
     }
 
+    const effectiveTtl = Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, ttlMs));
     const now = nowIso();
     const expiresAt = new Date(Date.now() + effectiveTtl).toISOString();
 
@@ -148,9 +136,7 @@ export class HaCoordinatorServiceAsync {
     }
 
     const newEpoch = currentEpoch.epoch + 1;
-    // Compatibility fallback for non-atomic mock repos only. Real SQLite/Postgres
-    // backends now provide acquireLeadershipAtomically() above.
-    const newFencingToken = await this.nextFencingToken();
+    const newFencingToken = this.nextFencingToken();
 
     const leaseId = newId("llease");
     const lease: LeaderLease = {
@@ -185,9 +171,6 @@ export class HaCoordinatorServiceAsync {
       fencingToken: newFencingToken,
     };
     await this.repo.insertEpoch(epochRecord);
-
-    // R18-2 FIX: Update cached fencing token for synchronous verification
-    this.cachedFencingToken = newFencingToken;
 
     if (currentLeader && currentLeader.nodeId !== nodeId) {
       const decision: FailoverDecision = {
@@ -233,13 +216,6 @@ export class HaCoordinatorServiceAsync {
     await this.repo.updateLeaseExpiration(currentLease.leaseId, expiresAt);
     await this.repo.updateNodeHeartbeat(nodeId);
 
-    // §209-2465: Get latestEpoch and use its fencingToken for stale-write verification
-    // Previous code referenced undefined `latestEpoch` variable
-    const latestEpoch = await this.getLatestEpoch();
-
-    // R18-2 FIX: Update cached fencing token for synchronous verification
-    this.cachedFencingToken = latestEpoch.fencingToken;
-
     const updatedLease: LeaderLease = {
       ...currentLease,
       expiresAt,
@@ -249,7 +225,7 @@ export class HaCoordinatorServiceAsync {
     return {
       renewed: true,
       lease: updatedLease,
-      fencingToken: latestEpoch.fencingToken,
+      fencingToken: currentLease.ttlMs,
     };
   }
 
@@ -509,12 +485,9 @@ export class HaCoordinatorServiceAsync {
   // ── Stale Write Rejection ──────────────────────────────────────────
 
   verifyWriteAuthority(presentedFencingToken: number): boolean {
-    // R18-2 FIX: Use cached fencing token for synchronous verification
-    // The cache is updated whenever leadership is acquired or renewed
-    // R16-16 FIX: Use > instead of >= to reject stale writes
-    // An old leader with the current token must be rejected; only a token GREATER
-    // than the current token indicates a newer epoch
-    return presentedFencingToken > this.cachedFencingToken;
+    // Note: This is synchronous because it only reads in-memory state
+    // For async validation, use queryLeadership() and check fencingToken
+    return presentedFencingToken >= this.fencingTokenCounter.value;
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────
@@ -528,23 +501,15 @@ export class HaCoordinatorServiceAsync {
   }
 
   async purgeOldFailoverDecisions(olderThanDays = 7): Promise<number> {
-    // R16-16 FIX: Actually call repo to purge old decisions instead of returning 0
-    // which was causing failover history to never be cleaned up
-    try {
-      return await this.repo.purgeOldFailoverDecisions(olderThanDays);
-    } catch {
-      // If repo method not implemented, return 0 rather than crashing
-      return 0;
-    }
+    // This would need a method in HaRepository - for now return 0
+    return 0;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────
 
-  // Compatibility fallback for non-atomic mock repos. Real backends derive the fencing
-  // token inside acquireLeadershipAtomically() under a database lock/transaction boundary.
-  private async nextFencingToken(): Promise<number> {
-    const latestEpoch = await this.getLatestEpoch();
-    return latestEpoch.fencingToken + 1;
+  private nextFencingToken(): number {
+    this.fencingTokenCounter.value += 1;
+    return this.fencingTokenCounter.value;
   }
 
   private async recordActionAudit(
@@ -569,10 +534,4 @@ export class HaCoordinatorServiceAsync {
     };
     await this.repo.recordActionAudit(entry);
   }
-}
-
-function supportsAtomicLeadershipAcquisition(
-  repo: HaRepository,
-): repo is HaRepository & AtomicLeadershipCapableRepository {
-  return typeof (repo as Partial<AtomicLeadershipCapableRepository>).acquireLeadershipAtomically === "function";
 }

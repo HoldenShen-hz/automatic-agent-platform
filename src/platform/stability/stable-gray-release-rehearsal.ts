@@ -174,8 +174,6 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 60_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",

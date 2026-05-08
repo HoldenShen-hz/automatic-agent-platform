@@ -7,15 +7,10 @@
  * Part of P2.13: Cross-plane import violations
  */
 
-import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
-
 // ─── Types shared across facades ────────────────────────────────────────────
 
-/**
- * Incident severity using unified SEV naming per §12.2.
-   */
-export type IncidentSeverity = UnifiedSeverity;
-export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved" | "dismissed";
+export type IncidentSeverity = "low" | "medium" | "high" | "critical";
+export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved";
 
 export interface IncidentCase {
   incidentId: string;
@@ -183,21 +178,16 @@ export interface KnowledgeFacadeService {
  * Abstraction for incident case operations (P5).
  */
 export interface IncidentFacadeService {
-  listIncidents(tenantId: string | undefined, limit?: number): IncidentCase[];
-  countIncidents(tenantId: string | undefined): number;
-  getIncident(tenantId: string | undefined, incidentId: string): IncidentCase | null;
+  listIncidents(limit?: number): IncidentCase[];
+  getIncident(incidentId: string): IncidentCase | null;
   openIncident(input: {
-    tenantId: string | null;
     severity: IncidentSeverity;
     title: string;
     linkedEvidenceRefs?: string[];
   }): IncidentCase;
-  // R14-17: acknowledge, startMitigation, resolve must receive tenantId to enforce tenant scoping
-  acknowledge(tenantId: string | undefined, incidentId: string, owner: string): IncidentCase;
-  startMitigation(tenantId: string | undefined, incidentId: string): IncidentCase;
-  resolve(tenantId: string | undefined, incidentId: string): IncidentCase;
-  // R14-24: dismiss action for incidents alongside acknowledge
-  dismiss(tenantId: string | undefined, incidentId: string, reason?: string): IncidentCase;
+  acknowledge(incidentId: string, owner: string): IncidentCase;
+  startMitigation(incidentId: string): IncidentCase;
+  resolve(incidentId: string): IncidentCase;
 }
 
 // ─── No-op implementations for defaults ─────────────────────────────────────
@@ -207,30 +197,22 @@ export interface IncidentFacadeService {
  * Used as a default when incidentService is not provided.
  */
 class NoOpIncidentFacadeService implements IncidentFacadeService {
-  public listIncidents(_tenantId: string | undefined, limit?: number): IncidentCase[] {
+  public listIncidents(limit?: number): IncidentCase[] {
     return [];
   }
-  public countIncidents(_tenantId: string | undefined): number {
-    return 0;
-  }
-  public getIncident(_tenantId: string | undefined, _incidentId: string): IncidentCase | null {
+  public getIncident(_incidentId: string): IncidentCase | null {
     return null;
   }
-  public openIncident(input: { tenantId: string | null; severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
+  public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  // R14-17: acknowledge, startMitigation, resolve must receive tenantId to enforce tenant scoping
-  public acknowledge(_tenantId: string | undefined, _incidentId: string, _owner: string): IncidentCase {
+  public acknowledge(_incidentId: string, _owner: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  public startMitigation(_tenantId: string | undefined, _incidentId: string): IncidentCase {
+  public startMitigation(_incidentId: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  public resolve(_tenantId: string | undefined, _incidentId: string): IncidentCase {
-    throw new Error("Incident service not configured");
-  }
-  // R14-24: dismiss action for incidents
-  public dismiss(_tenantId: string | undefined, _incidentId: string, _reason?: string): IncidentCase {
+  public resolve(_incidentId: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
 }

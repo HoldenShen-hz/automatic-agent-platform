@@ -33,10 +33,8 @@
 
 import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../control-plane/config-center/model-metadata-registry.js";
 import type { ProviderHealthSummary } from "../../shared/observability/provider-health-tracker.js";
-import type { ModelGovernanceSnapshot } from "../../contracts/types/governance.js";
+import type { ModelGovernanceSnapshot } from "../../prompt-engine/eval/prompt-model-policy-governance-service.js";
 import { AppError } from "../../contracts/errors.js";
-import type { RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
-import { newId } from "../../contracts/types/ids.js";
 
 /**
  * Classification of the type of work being performed.
@@ -47,9 +45,8 @@ export type ModelRouteClass = "default" | "classification" | "writing" | "coding
 /**
  * Risk level affects tier selection and fallback behavior.
  * Higher risk prefers more capable models.
- * §10.2: Shares RiskLevel contract with risk-control subsystem.
  */
-export type ModelRouteRiskLevel = RiskLevel;
+export type ModelRouteRiskLevel = "low" | "medium" | "high" | "critical";
 
 /**
  * Request for model routing decision
@@ -77,16 +74,6 @@ export interface ModelRouteRequest {
   maxInputPer1kUsd?: number | null;
   // Allow fallback to higher-cost tiers if needed
   allowStrongUpgrade?: boolean;
-  // §15.3: Data residency constraint - required region for model execution
-  data_residency?: string | null;
-  // §15.3: PII detection flag - input may contain personally identifiable information
-  pii_input_detected?: boolean;
-  // §15.3: PII possibility flag - output may contain personally identifiable information
-  pii_output_possible?: boolean;
-  // §15.3: Model training opt-out - data should not be used for training
-  model_training_opt_out?: boolean;
-  // §15.3: Judge independence flag - routing decision should be independent of content
-  judge_independence?: boolean;
 }
 
 /**
@@ -163,33 +150,10 @@ export interface ModelRouteDecision {
   fallbackLease: ModelRouteFallbackLease | null;
 }
 
-export interface ModelRoutingDecisionRecord {
-  readonly routingDecisionId: string;
-  readonly requestedAt: string;
-  readonly routeClass: ModelRouteClass;
-  readonly riskLevel: ModelRouteRiskLevel;
-  readonly requiredCapabilities: readonly string[];
-  readonly selectedProfileName: string;
-  readonly selectedProvider: string;
-  readonly routeReason: ModelRouteTrace["routeReason"];
-  readonly latencySloTargetMs: number;
-  readonly latencyP99Ms: number;
-  readonly dataResidencyConstraint: string | null;
-  readonly dataResidencyMet: boolean;
-  readonly fallbackLeaseIssued: boolean;
-  readonly fallbackProfileName: string | null;
-}
-
-export interface ModelRoutingPersistence {
-  persistRoutingDecision(decision: ModelRoutingDecisionRecord): void;
-}
-
 export interface ModelRoutingServiceOptions {
   registry: ModelMetadataRegistry;
   // Health status per provider
   providerHealth?: Record<string, ProviderHealthSummary>;
-  // R8-05 FIX: Optional persistence for routing decisions
-  persistence?: ModelRoutingPersistence;
 }
 
 // Internal: eligible profile with provider status attached
@@ -376,7 +340,7 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
     return a.profile.pricing.inputPer1kUsd - b.profile.pricing.inputPer1kUsd;
   }
   if (a.profile.maxOutputTokens !== b.profile.maxOutputTokens) {
-    return b.profile.maxOutputTokens - a.profile.maxOutputTokens;
+    return a.profile.maxOutputTokens - b.profile.maxOutputTokens;
   }
   return a.profileName.localeCompare(b.profileName);
 }
@@ -391,12 +355,10 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
 export class ModelRoutingService {
   private readonly registry: ModelMetadataRegistry;
   private readonly providerHealth: Record<string, ProviderHealthSummary>;
-  private readonly persistence: ModelRoutingPersistence | null;
 
   public constructor(options: ModelRoutingServiceOptions) {
     this.registry = options.registry;
     this.providerHealth = options.providerHealth ?? {};
-    this.persistence = options.persistence ?? null;
   }
 
   /**
@@ -415,7 +377,6 @@ export class ModelRoutingService {
     const riskLevel = normalizeRiskLevel(request.riskLevel);
     const requiredCapabilities = normalizeRequiredCapabilities(request.requiredCapabilities);
     const targetTierOrder = buildTargetTierOrder(routeClass, riskLevel);
-    const latencySloTargetMs = getLatencySloTarget(routeClass, riskLevel);
     const turnId = normalizeTurnId(request.turnId);
     const fallbackLease = normalizeFallbackLease(request.fallbackLease);
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
@@ -449,22 +410,6 @@ export class ModelRoutingService {
         }
         if (getGovernanceStatus(profileName) === "disabled") {
           filteredOut.push(`${profileName}:governance_disabled`);
-          return false;
-        }
-        if (request.data_residency != null && !checkDataResidency(profileName, request.data_residency, this.registry)) {
-          filteredOut.push(`${profileName}:data_residency_mismatch`);
-          return false;
-        }
-        if (request.pii_input_detected === true && !supportsBooleanConstraint(profile, provider, "piiSafe")) {
-          filteredOut.push(`${profileName}:pii_input_unsafe`);
-          return false;
-        }
-        if (request.model_training_opt_out === true && !supportsBooleanConstraint(profile, provider, "trainingOptOutSupported")) {
-          filteredOut.push(`${profileName}:training_opt_out_unsupported`);
-          return false;
-        }
-        if (request.judge_independence === true && !supportsBooleanConstraint(profile, provider, "judgeIndependent")) {
-          filteredOut.push(`${profileName}:judge_independence_unsupported`);
           return false;
         }
         return true;
@@ -671,13 +616,7 @@ export class ModelRoutingService {
         const costFiltered = maxInputPer1kUsd == null
           ? withinTier
           : withinTier.filter((candidate) => candidate.profile.pricing.inputPer1kUsd <= maxInputPer1kUsd);
-        const latencyFiltered = costFiltered.filter(
-          (candidate) => getLatencyP99(candidate.profileName, this.registry) <= latencySloTargetMs,
-        );
-        const source = latencyFiltered.length > 0 ? latencyFiltered : costFiltered;
-        if (costFiltered.length > 0 && latencyFiltered.length === 0) {
-          filteredOut.push(`${tier}:latency_slo_exceeded`);
-        }
+        const source = costFiltered;
         if (maxInputPer1kUsd != null && withinTier.length > 0 && costFiltered.length === 0) {
           costCapFallbackTriggered = true;
           costFallbackCandidate ??= withinTier[0] ?? null;
@@ -742,10 +681,10 @@ export class ModelRoutingService {
           fallbackProfileName: chosen.profileName,
           issuedAt: new Date().toISOString(),
           reason: routeReason,
-        } as ModelRouteFallbackLease
+        } satisfies ModelRouteFallbackLease
       : null;
 
-    const decision = buildDecision(
+    return buildDecision(
       chosen,
       routeReason,
       issuedTurnFallbackLease,
@@ -757,138 +696,5 @@ export class ModelRoutingService {
         turnScopedFallbackAutoRecoveryNextTurn: issuedTurnFallbackLease != null,
       },
     );
-
-    // R8-05 FIX: Persist routing decision to BudgetLedger for auditability
-    if (this.persistence != null) {
-      const routingRecord: ModelRoutingDecisionRecord = {
-        routingDecisionId: newId("routing"),
-        requestedAt: new Date().toISOString(),
-        routeClass,
-        riskLevel,
-        requiredCapabilities,
-        selectedProfileName: chosen.profileName,
-        selectedProvider: chosen.profile.provider,
-        routeReason,
-        latencySloTargetMs,
-        latencyP99Ms: getLatencyP99(chosen.profileName, this.registry),
-        dataResidencyConstraint: request.data_residency ?? null,
-        dataResidencyMet: checkDataResidency(chosen.profileName, request.data_residency, this.registry),
-        fallbackLeaseIssued: issuedTurnFallbackLease != null,
-        fallbackProfileName: issuedTurnFallbackLease?.fallbackProfileName ?? null,
-      };
-      this.persistence.persistRoutingDecision(routingRecord);
-    }
-
-    return decision;
   }
-}
-
-/**
- * R8-04 FIX: Returns the latency SLO target in milliseconds based on route class and risk level.
- * Higher risk tasks require lower latency targets.
- */
-function getLatencySloTarget(routeClass: ModelRouteClass, riskLevel: ModelRouteRiskLevel): number {
-  // Base targets in milliseconds
-  const baseTargets: Record<ModelRouteClass, number> = {
-    default: 5000,
-    classification: 2000,
-    writing: 8000,
-    coding: 10000,
-    reasoning: 15000,
-  };
-
-  const baseTarget = baseTargets[routeClass] ?? 5000;
-
-  // High/critical risk requires 50% lower latency target
-  if (riskLevel === "critical") {
-    return Math.floor(baseTarget * 0.5);
-  }
-  if (riskLevel === "high") {
-    return Math.floor(baseTarget * 0.75);
-  }
-
-  return baseTarget;
-}
-
-/**
- * R8-04 FIX: Returns the P99 latency from historical data for a profile.
- * Falls back to provider-level P99 if profile-level data unavailable.
- */
-function getLatencyP99(
-  profileName: string,
-  registry: ModelMetadataRegistry,
-): number {
-  const profile = registry.profiles[profileName];
-  if (!profile) {
-    return 0;
-  }
-
-  // Use latencyP99Ms from profile metadata if available
-  if ("latencyP99Ms" in profile && typeof profile.latencyP99Ms === "number") {
-    return profile.latencyP99Ms;
-  }
-
-  // Fall back to provider-level data
-  const provider = registry.providers[profile.provider];
-  if (provider && "latencyP99Ms" in provider && typeof provider.latencyP99Ms === "number") {
-    return provider.latencyP99Ms;
-  }
-
-  // Default fallback based on tier
-  const tierDefaults: Record<string, number> = {
-    fast: 1500,
-    balanced: 5000,
-    reasoning: 12000,
-    coding: 10000,
-  };
-
-  return tierDefaults[profile.tier] ?? 5000;
-}
-
-/**
- * R8-04 FIX: Checks if a profile meets the data residency constraint.
- * Returns true if no constraint is specified or if the profile's region matches.
- */
-function checkDataResidency(
-  profileName: string,
-  dataResidencyConstraint: string | null | undefined,
-  registry: ModelMetadataRegistry,
-): boolean {
-  // No constraint means constraint is met
-  if (!dataResidencyConstraint) {
-    return true;
-  }
-
-  const profile = registry.profiles[profileName];
-  if (!profile) {
-    return false;
-  }
-
-  // Check if profile's region matches the constraint
-  if ("region" in profile && profile.region === dataResidencyConstraint) {
-    return true;
-  }
-
-  // Check provider's region as fallback
-  const provider = registry.providers[profile.provider];
-  if (provider && "region" in provider && provider.region === dataResidencyConstraint) {
-    return true;
-  }
-
-  return false;
-}
-
-function supportsBooleanConstraint(
-  profile: ModelProfileMetadata,
-  provider: ModelMetadataRegistry["providers"][string] | undefined,
-  key: "piiSafe" | "trainingOptOutSupported" | "judgeIndependent",
-): boolean {
-  const profileValue = (profile as ModelProfileMetadata & Partial<Record<typeof key, boolean>>)[key];
-  if (typeof profileValue === "boolean") {
-    return profileValue;
-  }
-  const providerValue = provider == null
-    ? undefined
-    : (provider as typeof provider & Partial<Record<typeof key, boolean>>)[key];
-  return providerValue === true;
 }

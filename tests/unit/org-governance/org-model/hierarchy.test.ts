@@ -24,9 +24,9 @@ function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
     orgNodeId: overrides.orgNodeId ?? "node-1",
     displayName: overrides.displayName ?? "Node",
-    nodeType: overrides.nodeType ?? "tenant",
+    nodeType: overrides.nodeType ?? "company",
     parentOrgNodeId: overrides.parentOrgNodeId ?? null,
-    ownerUserIds: overrides.ownerUserIds ?? ["owner-1"],
+    ownerUserIds: overrides.ownerUserIds ?? [],
     metadata: overrides.metadata ?? {},
     active: overrides.active ?? true,
     costCenter: overrides.costCenter ?? "",
@@ -36,8 +36,8 @@ function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
 
 test("validateOrgHierarchy passes valid hierarchy", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division" }),
   ];
 
@@ -58,7 +58,7 @@ test("validateOrgHierarchy detects missing parent", () => {
 
 test("validateOrgHierarchy detects self-cycle", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "node", nodeType: "tenant", parentOrgNodeId: "node" }),
+    createNode({ orgNodeId: "node", nodeType: "company", parentOrgNodeId: "node" }),
   ];
 
   const findings = validateOrgHierarchy(nodes);
@@ -68,50 +68,50 @@ test("validateOrgHierarchy detects self-cycle", () => {
 
 test("listAncestorNodeIds returns correct ancestors", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "department", nodeType: "department", parentOrgNodeId: "division" }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "department" }),
   ];
 
   const ancestors = listAncestorNodeIds(nodes, "team");
 
-  assert.deepEqual(ancestors, ["department", "division", "tenant"]);
+  assert.deepEqual(ancestors, ["department", "division", "company"]);
 });
 
 test("listAncestorNodeIds returns empty for root node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
   ];
 
-  const ancestors = listAncestorNodeIds(nodes, "tenant");
+  const ancestors = listAncestorNodeIds(nodes, "company");
 
   assert.deepEqual(ancestors, []);
 });
 
 test("listDescendantNodeIds returns correct descendants", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division" }),
   ];
 
-  const descendants = listDescendantNodeIds(nodes, "tenant");
+  const descendants = listDescendantNodeIds(nodes, "company");
 
   assert.deepEqual(descendants.sort(), ["division", "team"]);
 });
 
 test("findRootNode returns company level node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
   ];
 
   const root = findRootNode(nodes);
 
   assert.ok(root);
-  assert.equal(root.orgNodeId, "tenant");
-  assert.equal(root.nodeType, "tenant");
+  assert.equal(root.orgNodeId, "company");
+  assert.equal(root.nodeType, "company");
 });
 
 test("findRootNode returns null for empty array", () => {
@@ -121,9 +121,9 @@ test("findRootNode returns null for empty array", () => {
 
 test("getNodesAtLevel returns nodes at specified depth", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "tenant" }),
-    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "company" }),
+    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division-a" }),
   ];
 
@@ -136,34 +136,34 @@ test("getNodesAtLevel returns nodes at specified depth", () => {
 
 test("getNodeDepth returns correct depth for each node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division" }),
   ];
 
-  assert.equal(getNodeDepth(nodes, "tenant"), 0);
+  assert.equal(getNodeDepth(nodes, "company"), 0);
   assert.equal(getNodeDepth(nodes, "division"), 1);
   assert.equal(getNodeDepth(nodes, "team"), 2);
 });
 
 test("findLowestCommonAncestor returns correct ancestor", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "tenant" }),
-    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "company" }),
+    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team-a", nodeType: "team", parentOrgNodeId: "division-a" }),
     createNode({ orgNodeId: "team-b", nodeType: "team", parentOrgNodeId: "division-b" }),
   ];
 
   const lca = findLowestCommonAncestor(nodes, "team-a", "team-b");
 
-  assert.equal(lca, "tenant");
+  assert.equal(lca, "company");
 });
 
 test("buildReportingChain returns manager chain", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant", ownerUserIds: ["ceo"] }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant", ownerUserIds: ["vp"] }),
+    createNode({ orgNodeId: "company", nodeType: "company", ownerUserIds: ["ceo"] }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company", ownerUserIds: ["vp"] }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division", ownerUserIds: ["manager"] }),
   ];
 
@@ -230,7 +230,7 @@ test("detectOrgChangeEvents detects transfer", () => {
 
 test("detectOrgChangeEvents returns empty for no changes", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "seat", nodeType: "seat", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
   ];
 
   const events = detectOrgChangeEvents(nodes, nodes);
@@ -240,16 +240,16 @@ test("detectOrgChangeEvents returns empty for no changes", () => {
 
 test("findLowestCommonAncestor returns null when no common ancestor", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "tenant" }),
-    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division-a", nodeType: "division", parentOrgNodeId: "company" }),
+    createNode({ orgNodeId: "division-b", nodeType: "division", parentOrgNodeId: "company" }),
     createNode({ orgNodeId: "team-a", nodeType: "team", parentOrgNodeId: "division-a" }),
     createNode({ orgNodeId: "team-b", nodeType: "team", parentOrgNodeId: "division-b" }),
   ];
 
-  // team-a and team-b share tenant as LCA
+  // team-a and team-b share company as LCA
   const lca1 = findLowestCommonAncestor(nodes, "team-a", "team-b");
-  assert.equal(lca1, "tenant");
+  assert.equal(lca1, "company");
 
   // node that doesn't exist returns null
   const lca2 = findLowestCommonAncestor(nodes, "team-a", "nonexistent");
@@ -258,7 +258,7 @@ test("findLowestCommonAncestor returns null when no common ancestor", () => {
 
 test("listAncestorNodeIds returns empty for nonexistent node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
   ];
 
   const ancestors = listAncestorNodeIds(nodes, "nonexistent");
@@ -268,8 +268,8 @@ test("listAncestorNodeIds returns empty for nonexistent node", () => {
 
 test("listDescendantNodeIds returns empty for leaf node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "company" }),
   ];
 
   const descendants = listDescendantNodeIds(nodes, "team");
@@ -279,17 +279,17 @@ test("listDescendantNodeIds returns empty for leaf node", () => {
 
 test("getNodeDepth returns 0 for root node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
   ];
 
-  const depth = getNodeDepth(nodes, "tenant");
+  const depth = getNodeDepth(nodes, "company");
 
   assert.equal(depth, 0);
 });
 
 test("getNodeDepth returns -1 for nonexistent node", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
   ];
 
   const depth = getNodeDepth(nodes, "nonexistent");
@@ -299,8 +299,8 @@ test("getNodeDepth returns -1 for nonexistent node", () => {
 
 test("buildReportingChain returns empty when member has no managers", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant", ownerUserIds: [] }),
-    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "tenant", ownerUserIds: [] }),
+    createNode({ orgNodeId: "company", nodeType: "company", ownerUserIds: [] }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "company", ownerUserIds: [] }),
   ];
 
   const chain = buildReportingChain(nodes, "employee", "team");
@@ -310,8 +310,8 @@ test("buildReportingChain returns empty when member has no managers", () => {
 
 test("validateOrgHierarchy handles multiple root nodes", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant-a", nodeType: "tenant" }),
-    createNode({ orgNodeId: "tenant-b", nodeType: "tenant" }),
+    createNode({ orgNodeId: "company-a", nodeType: "company" }),
+    createNode({ orgNodeId: "company-b", nodeType: "company" }),
   ];
 
   const findings = validateOrgHierarchy(nodes);
@@ -321,8 +321,8 @@ test("validateOrgHierarchy handles multiple root nodes", () => {
 
 test("getNodesAtLevel returns empty array for invalid level", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "tenant", nodeType: "tenant" }),
-    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "tenant" }),
+    createNode({ orgNodeId: "company", nodeType: "company" }),
+    createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company" }),
   ];
 
   const level99 = getNodesAtLevel(nodes, 99);

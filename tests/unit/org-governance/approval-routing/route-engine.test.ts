@@ -5,7 +5,6 @@ import {
   AmountBasedRoutingStrategy,
   OrgChartRoutingStrategy,
   resolveApprovalRoute,
-  setDefaultLegacyFxRate,
 } from "../../../../src/org-governance/approval-routing/route-engine/index.js";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 
@@ -31,14 +30,6 @@ const nodes: OrgNode[] = [
     metadata: {},
   },
 ];
-
-test.beforeEach(() => {
-  setDefaultLegacyFxRate(7.2);
-});
-
-test.afterEach(() => {
-  setDefaultLegacyFxRate(null);
-});
 
 test("AmountBasedRoutingStrategy selects higher-level approver node", () => {
   const strategy = new AmountBasedRoutingStrategy([

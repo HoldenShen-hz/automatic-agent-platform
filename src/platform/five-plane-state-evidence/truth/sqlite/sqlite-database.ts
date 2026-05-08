@@ -444,60 +444,6 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    */
   private applyCompatibleColumnMigrationIfKnown(migration: SqliteMigrationDefinition): boolean {
     switch (migration.version) {
-      case 2:
-        this.ensureColumn(
-          "worker_snapshots",
-          "cpu_pct",
-          "ALTER TABLE worker_snapshots ADD COLUMN cpu_pct REAL NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "memory_mb",
-          "ALTER TABLE worker_snapshots ADD COLUMN memory_mb REAL NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "tool_backlog_count",
-          "ALTER TABLE worker_snapshots ADD COLUMN tool_backlog_count INTEGER NOT NULL DEFAULT 0;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "current_step_id",
-          "ALTER TABLE worker_snapshots ADD COLUMN current_step_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "last_progress_at",
-          "ALTER TABLE worker_snapshots ADD COLUMN last_progress_at TEXT NULL;",
-        );
-        return true;
-      case 3:
-        this.ensureColumn(
-          "worker_snapshots",
-          "runtime_instance_id",
-          "ALTER TABLE worker_snapshots ADD COLUMN runtime_instance_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "restarted_from_runtime_instance_id",
-          "ALTER TABLE worker_snapshots ADD COLUMN restarted_from_runtime_instance_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "restart_generation",
-          "ALTER TABLE worker_snapshots ADD COLUMN restart_generation INTEGER NOT NULL DEFAULT 0;",
-        );
-        this.ensureColumn(
-          "heartbeat_snapshots",
-          "runtime_instance_id",
-          "ALTER TABLE heartbeat_snapshots ADD COLUMN runtime_instance_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "heartbeat_snapshots",
-          "restart_generation",
-          "ALTER TABLE heartbeat_snapshots ADD COLUMN restart_generation INTEGER NOT NULL DEFAULT 0;",
-        );
-        return true;
       case 5:
         this.ensureColumn(
           "worker_snapshots",
@@ -629,67 +575,8 @@ CREATE INDEX IF NOT EXISTS idx_worker_registration_challenges_worker_created_at
           "session_id",
           "ALTER TABLE events ADD COLUMN session_id TEXT NULL;",
         );
-        this.ensureColumn(
-          "events",
-          "schema_version",
-          "ALTER TABLE events ADD COLUMN schema_version TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "aggregate_id",
-          "ALTER TABLE events ADD COLUMN aggregate_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "run_id",
-          "ALTER TABLE events ADD COLUMN run_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "sequence",
-          "ALTER TABLE events ADD COLUMN sequence INTEGER NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "causation_id",
-          "ALTER TABLE events ADD COLUMN causation_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "correlation_id",
-          "ALTER TABLE events ADD COLUMN correlation_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "payload_hash",
-          "ALTER TABLE events ADD COLUMN payload_hash TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "idempotency_key",
-          "ALTER TABLE events ADD COLUMN idempotency_key TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "replay_behavior",
-          "ALTER TABLE events ADD COLUMN replay_behavior TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "principal",
-          "ALTER TABLE events ADD COLUMN principal TEXT NULL;",
-        );
-        this.ensureColumn(
-          "events",
-          "evidence_refs",
-          "ALTER TABLE events ADD COLUMN evidence_refs TEXT NULL;",
-        );
         this.connection.exec(
-          `
-CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
-CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
-`,
+          "CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);",
         );
         return true;
       case 13:
@@ -702,60 +589,6 @@ CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key)
           "worker_snapshots",
           "workspace_sync_checked_at",
           "ALTER TABLE worker_snapshots ADD COLUMN workspace_sync_checked_at TEXT NULL;",
-        );
-        return true;
-      case 48:
-        this.ensureColumn(
-          "worker_snapshots",
-          "service_identity",
-          "ALTER TABLE worker_snapshots ADD COLUMN service_identity TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "mtls_peer_fingerprint",
-          "ALTER TABLE worker_snapshots ADD COLUMN mtls_peer_fingerprint TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "allowed_node_run_tenants",
-          "ALTER TABLE worker_snapshots ADD COLUMN allowed_node_run_tenants TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "capabilities_json",
-          "ALTER TABLE worker_snapshots ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "running_executions_json",
-          "ALTER TABLE worker_snapshots ADD COLUMN running_executions_json TEXT NOT NULL DEFAULT '[]';",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "max_concurrency",
-          "ALTER TABLE worker_snapshots ADD COLUMN max_concurrency INTEGER NOT NULL DEFAULT 1;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "queue_affinity",
-          "ALTER TABLE worker_snapshots ADD COLUMN queue_affinity TEXT NULL;",
-        );
-        this.ensureColumn(
-          "worker_snapshots",
-          "version",
-          "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 0;",
-        );
-        return true;
-      case 49:
-        this.ensureColumn(
-          "execution_tickets",
-          "critical_path_rank",
-          "ALTER TABLE execution_tickets ADD COLUMN critical_path_rank INTEGER NULL;",
-        );
-        this.ensureColumn(
-          "execution_tickets",
-          "scheduler_seed",
-          "ALTER TABLE execution_tickets ADD COLUMN scheduler_seed TEXT NULL;",
         );
         return true;
       case 15:
@@ -825,34 +658,6 @@ CREATE INDEX IF NOT EXISTS idx_memories_execution_created_at
   ON memories(execution_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_layer_scope_created_at
   ON memories(memory_layer, scope, created_at DESC);
-`);
-        return true;
-      case 43:
-        this.ensureColumn(
-          "usage_events",
-          "harness_run_id",
-          "ALTER TABLE usage_events ADD COLUMN harness_run_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "usage_events",
-          "node_run_id",
-          "ALTER TABLE usage_events ADD COLUMN node_run_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "usage_events",
-          "attempt_id",
-          "ALTER TABLE usage_events ADD COLUMN attempt_id TEXT NULL;",
-        );
-        this.ensureColumn(
-          "usage_events",
-          "step_id",
-          "ALTER TABLE usage_events ADD COLUMN step_id TEXT NULL;",
-        );
-        this.connection.exec(`
-CREATE INDEX IF NOT EXISTS idx_usage_events_harness_run_captured_at
-  ON usage_events(harness_run_id, captured_at DESC);
-CREATE INDEX IF NOT EXISTS idx_usage_events_node_run_captured_at
-  ON usage_events(node_run_id, captured_at DESC);
 `);
         return true;
       case 24:

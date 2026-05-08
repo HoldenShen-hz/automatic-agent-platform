@@ -24,11 +24,11 @@
 
 - 漂移检测必须区分期望变更与异常偏移。
 - 漂移响应必须支持 `observe_only | throttle | downgrade | rollback | freeze`。
-- 响应策略必须与 release / governance 协同。
+- 响应策略必须与 rollout / governance 协同。
 
 ## 5. 测试要求
 
 - unit：fingerprint build、changepoint detect、response planning
-- integration：drift signal -> release / autonomy response
+- integration：drift signal -> rollout / autonomy response
 - contract：无 baseline 的对象不得生成误导性 drift verdict
 

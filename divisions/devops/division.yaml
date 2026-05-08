@@ -1,72 +1,31 @@
 id: devops
 version: 1
-name: IT Operations Division
-description: Infrastructure automation, deployment pipelines, monitoring, incident response, SRE practices.
-priority: 55
+name: DevOps Division
+description: CI/CD pipelines, infrastructure automation, deployment, monitoring.
+priority: 45
 default_workflow: devops_single_step
 orchestration_workflow: devops_single_step
 triggers:
   - deploy
   - deployment
+  - CI
+  - CD
+  - pipeline
   - infrastructure
   - kubernetes
   - docker
   - monitoring
-  - incident
-  - SRE
-  - it operations
-# §37: DomainDescriptor - IT Operations vertical business domain
-domain_descriptor:
-  domainId: it-operations
-  ownerOrgNodeId: org.platform
-  primaryEntities:
-    - deployments
-    - infrastructure
-    - monitoring
-    - incidents
-    - configurations
-  recipeArchetype: incident_ops
-  lifecycleState: active
-# §37: DomainRiskProfile - IT Operations risk classification
-risk_profile:
-  profileId: it-operations.risk
-  domainId: it-operations
-  riskLevel: high
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: unregulated
-# §37: DomainEvalSpec - IT Operations evaluation framework
-eval_spec:
-  domainId: it-operations
-  evalBaselines:
-    - deployment_success
-    - incident_mttr
-    - slo_compliance
-  criticalCases:
-    - failed_deployment
-    - security_misconfiguration
-    - prolonged_outage
-    - data_loss
-  acceptanceThresholds:
-    deployment_success: 95
-    incident_mttr: 90
-    slo_compliance: 99
-  adversarialScenarios:
-    - secret_exposure
-    - dependency_conflict
-    - resource_exhaustion
-    - configuration_drift
+  - dockerfile
 roles:
-  - id: sre_engineer
-    name: SRE Engineer
-    prompt: roles/devops/sre.prompt.md
-    model: balanced
-    tools: [read, bash, monitoring]
-    max_instances: 3
   - id: devops_engineer
     name: DevOps Engineer
     prompt: roles/devops/engineer.prompt.md
     model: balanced
-    tools: [read, bash, docker, kubernetes]
+    tools: [read, bash]
     max_instances: 3
+  - id: sre
+    name: Site Reliability Engineer
+    prompt: roles/devops/sre.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 2

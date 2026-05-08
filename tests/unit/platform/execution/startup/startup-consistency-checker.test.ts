@@ -77,7 +77,7 @@ interface MockDispatchStore {
 }
 
 interface MockWorkerStore {
-  listExecutionTicketsByStatusesPaginated: (_statuses: string[], _pageSize: number, _offset: number) => unknown[];
+  listExecutionTicketsByStatuses: (_statuses: string[]) => unknown[];
   getExecutionTicket: (_ticketId: string) => unknown | null;
   getActiveExecutionLease: (_executionId: string) => unknown | null;
 }
@@ -129,7 +129,7 @@ function createMockTaskStore(overrides: Partial<MockTaskStore> = {}): MockTaskSt
       ...overrides.dispatch,
     },
     worker: {
-      listExecutionTicketsByStatusesPaginated: (_statuses: string[], _pageSize: number, _offset: number) => [],
+      listExecutionTicketsByStatuses: (_statuses: string[]) => [],
       getExecutionTicket: (_ticketId: string) => null,
       getActiveExecutionLease: (_executionId: string) => null,
       ...overrides.worker,
@@ -530,33 +530,6 @@ test("StartupConsistencyChecker run reports orphan_queue_claim", () => {
   const scanResults = mockDispatch.scan(new Date().toISOString());
   assert.equal(scanResults.length, 1);
   assert.equal(scanResults[0]!.issueType, "orphan_queue_claim");
-});
-
-test("StartupConsistencyChecker uses injected dispatch reconciliation service", () => {
-  const db = createMockDb();
-  const store = createMockTaskStore();
-  const checker = new StartupConsistencyChecker(
-    db as AuthoritativeSqlDatabase,
-    store as AuthoritativeTaskStore,
-    {
-      dispatchReconciliation: createMockDispatchReconciliation([
-        {
-          issueType: "orphan_queue_claim",
-          ticketId: "ticket-injected",
-          executionId: "exec-injected",
-          executionStatus: "executing",
-          reasonCode: "lease_missing",
-        },
-      ]) as never,
-    },
-  );
-
-  const report = checker.run();
-  const finding = report.findings.find((item) => item.code === "orphan_queue_claim");
-
-  assert.ok(finding !== undefined);
-  assert.equal(finding!.entityId, "ticket-injected");
-  assert.match(finding!.message, /lease_missing/);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

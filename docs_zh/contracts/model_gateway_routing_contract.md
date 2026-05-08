@@ -15,11 +15,8 @@
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
-  harnessRunId: string | null;    // canonical 执行关联
-  nodeRunId: string | null;       // canonical 节点关联
-  attemptId: string | null;        // canonical attempt 关联
   taskId: string | null;
-  sessionId: string | null;        // gateway / conversation session 作用域
+  sessionId: string | null;
   tenantId: string | null;
   purpose: "plan" | "execute" | "evaluate" | "summarize" | "chat";
   routingStrategy:
@@ -34,12 +31,6 @@ interface ModelRouteRequest {
   maxCostUsd: number | null;
 }
 ```
-
-`sessionId` 约束：
-
-- `sessionId` 只表达 conversation / gateway 生命周期，不得替代 `harnessRunId` / `nodeRunId`。
-- 无 `sessionId` 时允许路由，但不得启用 session sticky fallback。
-- session 终止后不得继续复用旧 provider 粘性决策。
 
 ## 3. 路由结果对象
 
@@ -61,7 +52,6 @@ interface ModelRouteDecision {
 - `decisionReason` 必须包含至少一个可审计原因，如 `policy_allow`、`cost_guard`、`latency_guard`、`provider_cooldown`。
 - `compliance_constrained` 必须优先满足 residency、policy、allowlist 与 provider trust boundary，再考虑成本或延迟。
 - `hybrid` 必须显式声明其主目标与次目标，不得作为“任意自由裁量”兜底模式。
-- `sessionId` 只用于交互连续性和 provider 粘性，不得当作 truth 生命周期主键。
 
 ## 4. Fallback 与粘性
 

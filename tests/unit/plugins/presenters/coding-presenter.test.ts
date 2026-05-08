@@ -119,23 +119,6 @@ test("CodingPresenter.formatOutput summary lists completed steps", async () => {
   assert.ok(result.summary.includes("step_a, step_b"));
 });
 
-test("CodingPresenter.formatOutput prefers nodeRunId when legacy stepId is absent", async () => {
-  const plugin = createCodingPresenterPlugin();
-
-  const result = await plugin.formatOutput({
-    machineOutputs: [{
-      nodeRunId: "node_run_1",
-      outputRef: null,
-      payload: {},
-    }],
-    artifacts: [],
-    audience: "developer",
-  });
-
-  assert.ok(result.summary.includes("node_run_1"));
-  assert.ok(result.sections[0]?.includes("node_run_1"));
-});
-
 test("CodingPresenter.formatOutput citations come from artifacts", async () => {
   const plugin = createCodingPresenterPlugin();
 

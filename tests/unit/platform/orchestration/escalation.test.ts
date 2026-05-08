@@ -31,7 +31,7 @@ test("decide returns panic_stop when riskLevel is critical and affectsProduction
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "panic_stop");
-  assert.equal(decision.reasonCode, "panic.cascade_halt:test.reason");
+  assert.equal(decision.reasonCode, "escalation.critical_prod_stop");
   assert.equal(decision.requiresOperatorAction, true);
 });
 

@@ -38,8 +38,6 @@ export interface PipelineState {
   stageHistory: readonly PipelineStage[];
   startedAt: string;
   updatedAt: string;
-  escalateReason?: string;
-  failReason?: string;
 }
 
 export interface PipelineOptions {
@@ -88,27 +86,6 @@ export class RepairPipeline {
   }
 
   transitionTo(stage: PipelineStage): void {
-    // R37-2153: Validate stage is a valid target - prevent arbitrary jumps or exiting terminal states
-    const VALID_TRANSITIONS: Record<PipelineStage, readonly PipelineStage[]> = {
-      plan: ["build", "failed"],
-      build: ["review", "failed"],
-      review: ["validate", "repair", "failed"],
-      validate: ["repair", "re_validate", "release", "failed"],
-      repair: ["re_validate", "escalated", "failed"],
-      re_validate: ["release", "repair", "escalated", "failed"],
-      release: ["completed", "escalated"],
-      escalated: ["completed", "failed"],
-      completed: [],
-      failed: [],
-    };
-    const allowedTargets = VALID_TRANSITIONS[this.state.currentStage] ?? [];
-    if (!allowedTargets.includes(stage) && allowedTargets.length > 0) {
-      throw new Error(`repair.transition_invalid:${this.state.currentStage}->${stage}`);
-    }
-    // Cannot transition out of terminal states
-    if (this.state.currentStage === "completed" || this.state.currentStage === "failed") {
-      throw new Error(`repair.transition_from_terminal:${this.state.currentStage}`);
-    }
     this.state = {
       ...this.state,
       currentStage: stage,
@@ -185,7 +162,7 @@ export class RepairPipeline {
     if (shouldEscalate(context, this.state.taskCard.maxRepairRounds)) {
       return {
         action: 'escalate',
-        reason: `Failure level ${context.level} (${context.legacyLevel}): ${context.description}`,
+        reason: `Failure level ${context.level}: ${context.description}`,
       };
     }
 
@@ -211,7 +188,6 @@ export class RepairPipeline {
 
   /**
    * Handles a failed review with automatic repair decision.
-   * R37-2154: Respects repair budget to prevent infinite repair loops.
    */
   handleReviewFailure(
     failureCategory: FailureContext['category'],
@@ -228,7 +204,7 @@ export class RepairPipeline {
     if (shouldEscalate(context, this.state.taskCard.maxRepairRounds)) {
       return {
         action: 'escalate',
-        reason: `Failure level ${context.level} (${context.legacyLevel}): ${context.description}`,
+        reason: `Failure level ${context.level}: ${context.description}`,
       };
     }
 
@@ -236,14 +212,6 @@ export class RepairPipeline {
       return {
         action: 'escalate',
         reason: `Non-repairable failure: ${context.description}`,
-      };
-    }
-
-    // R37-2154: Check repair budget before allowing repair
-    if (!this.shouldRepair()) {
-      return {
-        action: 'escalate',
-        reason: 'Repair budget exhausted',
       };
     }
 
@@ -267,7 +235,6 @@ export class RepairPipeline {
       ...this.state,
       escalated: true,
       currentStage: 'escalated',
-      escalateReason: reason,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -284,7 +251,6 @@ export class RepairPipeline {
     this.state = {
       ...this.state,
       currentStage: 'failed',
-      failReason: reason,
       updatedAt: new Date().toISOString(),
     };
   }

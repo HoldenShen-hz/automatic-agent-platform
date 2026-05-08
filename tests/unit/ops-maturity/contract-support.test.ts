@@ -121,36 +121,16 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(simulateCostOptimization(100, 20), 80);
 
   assert.equal(buildOfflineExecutionRecord("edge_1", "task_1", "2026-04-20T00:00:00.000Z").syncRequired, true);
-  assert.ok(buildEdgeExecutionPlan(["a", "b"]).planGraphBundle?.graph?.nodes?.length === 2);
-  assert.equal(buildEdgeExecutionPlan(["a", "b"]).syncRequired, true);
+  assert.deepEqual(buildEdgeExecutionPlan(["a", "b"]), {
+    orderedTaskIds: ["a", "b"],
+    syncRequired: true,
+    priority: "normal",
+  });
   assert.equal(
     selectEdgeLocalModel([{ modelId: "local-vision", modalities: ["image", "text"] }], "image")?.modelId,
     "local-vision",
   );
-  assert.equal(orderEdgeSyncQueue([
-    {
-      envelopeId: "a",
-      device_id: "device-a",
-      sequence_no: 1,
-      priority: 1,
-      createdAt: "2026-04-20T00:00:00.000Z",
-      local_time_offset: 0,
-      prev_hash: null,
-      side_effect_dependency_refs: [],
-      signature: "sig-a",
-    },
-    {
-      envelopeId: "b",
-      device_id: "device-b",
-      sequence_no: 2,
-      priority: 3,
-      createdAt: "2026-04-20T00:01:00.000Z",
-      local_time_offset: 0,
-      prev_hash: null,
-      side_effect_dependency_refs: [],
-      signature: "sig-b",
-    },
-  ])[0]?.envelopeId, "b");
+  assert.equal(orderEdgeSyncQueue([{ envelopeId: "a", priority: 1 }, { envelopeId: "b", priority: 3 }])[0]?.envelopeId, "b");
 
   assert.equal(
     buildForensicSnapshot({
@@ -199,7 +179,7 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(isBreakpointHit([{ breakpointId: "bp_1", stepId: "step_2" }], "step_2"), true);
   assert.deepEqual(
     compareWorkflowRuns([{ stepId: "step_1", status: "done" }], [{ stepId: "step_1", status: "failed" }]),
-    ["step:step_1:status:done->failed"],
+    ["step:step_1:done->failed"],
   );
   assert.deepEqual(
     renderWorkflowTimeline([{ timestamp: "2026-04-20T00:00:00.000Z", label: "started" }]),

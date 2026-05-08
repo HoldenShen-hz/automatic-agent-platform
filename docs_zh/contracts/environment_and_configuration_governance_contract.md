@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -109,7 +109,7 @@
 ## 7A. 动态配置约束覆盖
 
 - 配置覆盖不能是无限制的“最后写入生效”，必须显式声明可覆盖范围。
-- 至少区分：`global`、`environment`、`tenant/workspace`、`release/cohort`、`break-glass` 五类约束层。
+- 至少区分：`global`、`environment`、`tenant/workspace`、`rollout/cohort`、`break-glass` 五类约束层。
 - 高风险对象如 provider profile、prompt bundle、policy rule、feature flag，不允许被低信任来源静默覆盖。
 - 所有 override 必须产生日志与审计证据，并可在 readiness / doctor 视图中查询。
 - unknown override source、非法约束组合或冲突链必须 fail-close。

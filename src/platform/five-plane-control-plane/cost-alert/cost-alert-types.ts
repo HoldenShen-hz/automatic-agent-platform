@@ -85,16 +85,6 @@ export interface CostEvaluationResult {
 export type CostAlertLevel = "ok" | "warning" | "critical" | "exceeded";
 
 /**
- * Backward-compatible runtime value export for legacy tests and callers.
- */
-export const CostAlertLevel = {
-  OK: "ok",
-  WARNING: "warning",
-  CRITICAL: "critical",
-  EXCEEDED: "exceeded",
-} as const;
-
-/**
  * Reason codes for cost evaluation results.
  */
 export type CostAlertReasonCode =

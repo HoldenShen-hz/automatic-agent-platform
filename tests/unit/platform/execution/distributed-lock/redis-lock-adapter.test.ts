@@ -61,7 +61,6 @@ test("RedisLockAdapter backendKind is redis", () => {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
-  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -75,7 +74,6 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
-    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,

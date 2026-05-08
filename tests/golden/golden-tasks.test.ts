@@ -19,6 +19,7 @@ test("single-task golden task suite stays stable", async () => {
     );
     const inventory = buildGoldenTaskInventoryBaseline();
 
+    assert.equal(results.length, 7);
     assert.equal(results.length, SINGLE_TASK_GOLDEN_TASKS.length);
     assert.ok(results.every((result) => result.passed));
     assert.deepEqual(inventory.missingRequiredClasses, []);

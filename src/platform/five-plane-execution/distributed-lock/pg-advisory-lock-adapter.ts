@@ -29,19 +29,13 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   }
 
   private lockKeyToAdvisoryKey(lockKey: string): bigint {
-    // R16-16 FIX: 32-bit hash has high collision probability for large key spaces
-    // Use proper hash function: compute 64-bit hash via FNV-1a algorithm
-    // FNV-1a is simpler and has better distribution than djb2
-    const FNV_OFFSET_BASIS = BigInt(14695981039346656037);
-    const FNV_PRIME = BigInt(1099511628211);
-    let hash = FNV_OFFSET_BASIS;
+    let hash = 0;
     for (let i = 0; i < lockKey.length; i += 1) {
-      const char = BigInt(lockKey.charCodeAt(i));
-      hash = hash ^ char;
-      hash = hash * FNV_PRIME;
+      const char = lockKey.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash &= hash;
     }
-    // Map to positive 63-bit range (avoid negative advisory lock keys)
-    return hash & BigInt("0x7FFFFFFFFFFFFFFF");
+    return (BigInt(Math.abs(hash)) + BigInt(2 ** 31)) % BigInt(2 ** 63);
   }
 
   private ensureConnected(): void {
@@ -69,11 +63,7 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   release(_lockKey: string, _owner: string): boolean {
     throw new LockingError("lock.pg_async_required", "lock.pg_async_required: PostgreSQL advisory lock release() requires async releaseAsync() method");
   }
-  extend(_lockKey: string, _owner: string, _additionalMs: number): LockRecord | null {
-    // R16-16 FIX: extend() was returning null (via inspect()) which silently failed.
-    // For PostgreSQL advisory locks, sync methods are not supported - use extendAsync() instead.
-    throw new LockingError("lock.pg_async_required", "lock.pg_async_required: PostgreSQL advisory lock extend() requires async extendAsync() method");
-  }
+  extend(lockKey: string, _owner: string, _additionalMs: number): LockRecord | null { return this.inspect(lockKey); }
   forceSteal(_lockKey: string, _newOwner: string, _reason: string): LockRecord {
     throw new LockingError("lock.advisory_cannot_force_steal", "PostgreSQL advisory locks must be released by the owning session; forceSteal is not supported");
   }

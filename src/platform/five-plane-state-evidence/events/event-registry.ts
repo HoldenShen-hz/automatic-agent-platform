@@ -28,7 +28,7 @@ export interface EventReplayMetadata {
   readonly replayable: boolean;
   readonly sideEffectSafeToReplay: boolean;
   readonly schemaOwner: string;
-  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden";
+  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
   readonly consumerContractTests: readonly string[];
 }
 
@@ -46,23 +46,11 @@ interface RawEventSchemaDefinition {
 }
 
 /**
- * Backward compatibility alias mapping from legacy event names to canonical platform.* events.
- * Used to ensure legacy producers continue working while migration to canonical names occurs.
- */
-export const LEGACY_TO_CANONICAL_EVENT_ALIASES: Record<string, string> = {
-  "task:status_changed": "platform.harness_run.status_changed",
-  "workflow:step_completed": "platform.node_run.completed",
-  "division:completed": "platform.harness_run.completed",
-  "division:failed": "platform.harness_run.aborted",
-};
-
-/**
  * Registry of all event schemas in the system.
  *
  * Tier 1 events (must have reliable delivery and ack):
- * - platform.harness_run.*, platform.node_run.*, platform.side_effect.*, platform.budget.*
- * - Legacy: task:status_changed, workflow:step_completed, decision:requested, decision:responded
- * - Legacy: division:completed, division:failed, subtask:completed, subtask:failed, cost:limit_reached
+ * - task:status_changed, workflow:step_completed, decision:requested, decision:responded
+ * - division:completed, division:failed, subtask:completed, subtask:failed, cost:limit_reached
  *
  * Tier 2 events (at-least-once delivery):
  * - dispatch:* events, worker:* events, takeover:* events, recovery:* events
@@ -72,7 +60,7 @@ export const LEGACY_TO_CANONICAL_EVENT_ALIASES: Record<string, string> = {
  *
  * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
  */
-const LEGACY_EVENT_SCHEMA_REGISTRY = {
+const RAW_EVENT_SCHEMA_REGISTRY = {
   "task:status_changed": {
     type: "task:status_changed",
     tier: "tier_1",
@@ -82,7 +70,7 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
   "workflow:step_completed": {
     type: "workflow:step_completed",
     tier: "tier_1",
-    producer: "multi_step_orchestration",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("workflow:step_completed"),
   },
   "decision:requested": {
@@ -100,25 +88,25 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
   "division:completed": {
     type: "division:completed",
     tier: "tier_1",
-    producer: "multi_step_orchestration",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("division:completed"),
   },
   "division:failed": {
     type: "division:failed",
     tier: "tier_1",
-    producer: "multi_step_orchestration",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("division:failed"),
   },
   "subtask:completed": {
     type: "subtask:completed",
     tier: "tier_1",
-    producer: "multi_step_orchestration",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("subtask:completed"),
   },
   "subtask:failed": {
     type: "subtask:failed",
     tier: "tier_1",
-    producer: "multi_step_orchestration",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("subtask:failed"),
   },
   "cost:limit_reached": {
@@ -259,20 +247,8 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
     producer: "domain_registry_service",
     consumers: ["inspect_projection", "feedback_projection"],
   },
-  "domain:canary": {
-    type: "domain:canary",
-    tier: "tier_2",
-    producer: "domain_registry_service",
-    consumers: ["inspect_projection", "feedback_projection"],
-  },
   "plugin:spi_registered": {
     type: "plugin:spi_registered",
-    tier: "tier_2",
-    producer: "plugin_spi_registry",
-    consumers: ["inspect_projection", "feedback_projection"],
-  },
-  "plugin:suspended": {
-    type: "plugin:suspended",
     tier: "tier_2",
     producer: "plugin_spi_registry",
     consumers: ["inspect_projection", "feedback_projection"],
@@ -392,233 +368,6 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
     producer: "performance_test",
     consumers: [],
   },
-} as const satisfies Record<string, RawEventSchemaDefinition>;
-
-// R16-29 FIX: All Tier-1 platform/oapeflir events from event-types.ts TIER_1_EVENT_TYPES
-// are now registered here with proper getRequiredConsumers() calls.
-// This ensures EVENT_SCHEMA_REGISTRY has entries for all platform.* and oapeflir.* events.
-const CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY = {
-  // §28 Platform request envelope events
-  "platform.request_envelope.admitted": {
-    type: "platform.request_envelope.admitted",
-    tier: "tier_1",
-    producer: "intake-admission-service",
-    consumers: getRequiredConsumers("platform.request_envelope.admitted"),
-  },
-  // §28 Platform harness run lifecycle events (R5-38)
-  "platform.harness_run.created": {
-    type: "platform.harness_run.created",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.created"),
-  },
-  "platform.harness_run.admitted": {
-    type: "platform.harness_run.admitted",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.admitted"),
-  },
-  "platform.harness_run.planning": {
-    type: "platform.harness_run.planning",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.planning"),
-  },
-  "platform.harness_run.ready": {
-    type: "platform.harness_run.ready",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.ready"),
-  },
-  "platform.harness_run.pausing": {
-    type: "platform.harness_run.pausing",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.pausing"),
-  },
-  "platform.harness_run.replanning": {
-    type: "platform.harness_run.replanning",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.replanning"),
-  },
-  "platform.harness_run.compensating": {
-    type: "platform.harness_run.compensating",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.compensating"),
-  },
-  "platform.harness_run.aborted": {
-    type: "platform.harness_run.aborted",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.aborted"),
-  },
-  "platform.harness_run.completed": {
-    type: "platform.harness_run.completed",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.completed"),
-  },
-  "platform.harness_run.status_changed": {
-    type: "platform.harness_run.status_changed",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.harness_run.status_changed"),
-  },
-  // §28 Platform node run lifecycle events (R5-38)
-  "platform.node_run.created": {
-    type: "platform.node_run.created",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.created"),
-  },
-  "platform.node_run.admitted": {
-    type: "platform.node_run.admitted",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.admitted"),
-  },
-  "platform.node_run.planning": {
-    type: "platform.node_run.planning",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.planning"),
-  },
-  "platform.node_run.ready": {
-    type: "platform.node_run.ready",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.ready"),
-  },
-  "platform.node_run.pausing": {
-    type: "platform.node_run.pausing",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.pausing"),
-  },
-  "platform.node_run.replanning": {
-    type: "platform.node_run.replanning",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.replanning"),
-  },
-  "platform.node_run.completed": {
-    type: "platform.node_run.completed",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.completed"),
-  },
-  "platform.node_run.failed": {
-    type: "platform.node_run.failed",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.failed"),
-  },
-  "platform.node_run.compensating": {
-    type: "platform.node_run.compensating",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.compensating"),
-  },
-  "platform.node_run.skipped": {
-    type: "platform.node_run.skipped",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.skipped"),
-  },
-  "platform.node_run.status_changed": {
-    type: "platform.node_run.status_changed",
-    tier: "tier_1",
-    producer: "runtime-state-machine",
-    consumers: getRequiredConsumers("platform.node_run.status_changed"),
-  },
-  // §28 Platform side effect lifecycle events (R5-38)
-  "platform.side_effect.triggered": {
-    type: "platform.side_effect.triggered",
-    tier: "tier_1",
-    producer: "side-effect-manager",
-    consumers: getRequiredConsumers("platform.side_effect.triggered"),
-  },
-  "platform.side_effect.completed": {
-    type: "platform.side_effect.completed",
-    tier: "tier_1",
-    producer: "side-effect-manager",
-    consumers: getRequiredConsumers("platform.side_effect.completed"),
-  },
-  "platform.side_effect.failed": {
-    type: "platform.side_effect.failed",
-    tier: "tier_1",
-    producer: "side-effect-manager",
-    consumers: getRequiredConsumers("platform.side_effect.failed"),
-  },
-  "platform.side_effect.status_changed": {
-    type: "platform.side_effect.status_changed",
-    tier: "tier_1",
-    producer: "side-effect-manager",
-    consumers: getRequiredConsumers("platform.side_effect.status_changed"),
-  },
-  // §28 Platform budget lifecycle events (R5-38)
-  "platform.budget.status_changed": {
-    type: "platform.budget.status_changed",
-    tier: "tier_1",
-    producer: "budget-allocator",
-    consumers: getRequiredConsumers("platform.budget.status_changed"),
-  },
-  "platform.budget.reserved": {
-    type: "platform.budget.reserved",
-    tier: "tier_1",
-    producer: "budget-allocator",
-    consumers: getRequiredConsumers("platform.budget.reserved"),
-  },
-  "platform.budget.actualized": {
-    type: "platform.budget.actualized",
-    tier: "tier_1",
-    producer: "budget-allocator",
-    consumers: getRequiredConsumers("platform.budget.actualized"),
-  },
-  "platform.budget.exceeded": {
-    type: "platform.budget.exceeded",
-    tier: "tier_1",
-    producer: "budget-allocator",
-    consumers: getRequiredConsumers("platform.budget.exceeded"),
-  },
-  "platform.budget_reconciliation.status_changed": {
-    type: "platform.budget_reconciliation.status_changed",
-    tier: "tier_1",
-    producer: "budget-allocator",
-    consumers: getRequiredConsumers("platform.budget_reconciliation.status_changed"),
-  },
-  "platform.graph_scheduler.decision_recorded": {
-    type: "platform.graph_scheduler.decision_recorded",
-    tier: "tier_1",
-    producer: "graph-scheduler",
-    consumers: getRequiredConsumers("platform.graph_scheduler.decision_recorded"),
-  },
-  // §28 OAPEFLIR events (R5-38)
-  "oapeflir.view.run_lifecycle": {
-    type: "oapeflir.view.run_lifecycle",
-    tier: "tier_1",
-    producer: "oapeflir-projection",
-    consumers: getRequiredConsumers("oapeflir.view.run_lifecycle"),
-  },
-  "oapeflir.decision.recorded": {
-    type: "oapeflir.decision.recorded",
-    tier: "tier_1",
-    producer: "oapeflir-projection",
-    consumers: getRequiredConsumers("oapeflir.decision.recorded"),
-  },
-  "oapeflir.phase.transition": {
-    type: "oapeflir.phase.transition",
-    tier: "tier_1",
-    producer: "oapeflir-projection",
-    consumers: getRequiredConsumers("oapeflir.phase.transition"),
-  },
-} as const satisfies Record<string, RawEventSchemaDefinition>;
-
-const RAW_EVENT_SCHEMA_REGISTRY = {
-  ...LEGACY_EVENT_SCHEMA_REGISTRY,
-  ...CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY,
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
 /**
@@ -790,223 +539,9 @@ const learningKnowledgePromotedPayloadSchema = z.object({
   traceContext: traceContextSchema.optional(),
 }).passthrough();
 
-const runtimePolicyGuardSchema = z.object({
-  allowed: z.boolean(),
-  policyProofRef: z.string(),
-}).passthrough();
-
-const runtimeBudgetPreconditionSchema = z.object({
-  reservationId: z.string(),
-  hardCapSatisfied: z.boolean(),
-}).passthrough();
-
-const runtimeSideEffectSafetySchema = z.object({
-  idempotencyKey: optionalStringSchema,
-  preCommitPolicyProofRef: optionalStringSchema,
-  humanApprovalRef: optionalStringSchema,
-  reversible: z.boolean().optional(),
-}).passthrough();
-
-const requestEnvelopeAdmittedPayloadSchema = z.object({
-  confirmedTaskSpecId: z.string(),
-  harnessRunId: z.string(),
-  runVersionLockId: z.string(),
-  clarificationSession: z.unknown().optional(),
-}).passthrough();
-
-const runtimeStatusChangedPayloadSchema = z.object({
-  aggregateType: z.string(),
-  fromStatus: z.string(),
-  toStatus: z.string(),
-  reasonCode: z.string(),
-  emittedBy: z.string(),
-  runVersionLockId: optionalStringSchema,
-  policyGuard: runtimePolicyGuardSchema.optional(),
-  budgetPrecondition: runtimeBudgetPreconditionSchema.optional(),
-  sideEffectSafety: runtimeSideEffectSafetySchema.optional(),
-  auditRef: optionalStringSchema,
-}).passthrough();
-
-const platformRuntimeEventPayloadSchema = z.object({
-  harnessRunId: optionalStringSchema,
-  nodeRunId: optionalStringSchema,
-  nodeAttemptId: optionalStringSchema,
-  sideEffectId: optionalStringSchema,
-  budgetId: optionalStringSchema,
-  budgetReservationId: optionalStringSchema,
-  budgetLedgerId: optionalStringSchema,
-  budgetReconciliationId: optionalStringSchema,
-  aggregateType: optionalStringSchema,
-  fromStatus: optionalStringSchema,
-  toStatus: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-  emittedBy: optionalStringSchema,
-  occurredAt: optionalStringSchema,
-  auditRef: optionalStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough().superRefine((payload, ctx) => {
-  if (
-    payload.harnessRunId == null
-    && payload.nodeRunId == null
-    && payload.nodeAttemptId == null
-    && payload.sideEffectId == null
-    && payload.budgetId == null
-    && payload.budgetReservationId == null
-    && payload.budgetLedgerId == null
-    && payload.budgetReconciliationId == null
-    && payload.aggregateType == null
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["aggregateType"],
-      message: "platform runtime event payload must include a canonical aggregate or runtime identifier",
-    });
-  }
-});
-
-const graphSchedulerDecisionPayloadSchema = z.object({
-  schedulerPolicy: z.string(),
-  readyNodeIds: z.array(z.string()),
-  completedNodeIds: z.array(z.string()),
-  deterministicSeed: z.string(),
-  emittedBy: z.string(),
-}).passthrough();
-
-const oapeflirPhaseTransitionPayloadSchema = z.object({
-  runId: z.string(),
-  fromPhase: z.string(),
-  toPhase: z.string(),
-  taskId: optionalNullableStringSchema,
-  occurredAt: optionalNullableStringSchema,
-}).passthrough();
-
-const oapeflirDecisionRecordedPayloadSchema = z.object({
-  decisionKind: z.string(),
-  decision: z.string(),
-  reasonCode: z.string().optional(),
-  deciderType: z.string(),
-  deciderRef: z.string(),
-  taskId: optionalNullableStringSchema,
-  occurredAt: optionalNullableStringSchema,
-}).passthrough();
-
-const oapeflirRunLifecyclePayloadSchema = z.object({
-  stage: z.string(),
-  runId: z.string(),
-  taskId: optionalNullableStringSchema,
-  occurredAt: optionalNullableStringSchema,
-}).passthrough();
-
-const oapeflirEventPayloadSchema = z.object({
-  runId: optionalStringSchema,
-  stage: optionalStringSchema,
-  fromPhase: optionalStringSchema,
-  toPhase: optionalStringSchema,
-  decisionKind: optionalStringSchema,
-  decision: optionalStringSchema,
-  deciderType: optionalStringSchema,
-  deciderRef: optionalStringSchema,
-  taskId: optionalNullableStringSchema,
-  occurredAt: optionalNullableStringSchema,
-  traceContext: traceContextSchema.optional(),
-}).passthrough().superRefine((payload, ctx) => {
-  if (
-    payload.runId == null
-    && payload.stage == null
-    && payload.fromPhase == null
-    && payload.toPhase == null
-    && payload.decisionKind == null
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["runId"],
-      message: "oapeflir payload must include runId, stage, phase transition, or decision metadata",
-    });
-  }
-});
-
-const dispatchEventPayloadSchema = z.object({
-  taskId: optionalStringSchema,
-  ticketId: optionalStringSchema,
-  executionId: optionalStringSchema,
-  decisionId: optionalStringSchema,
-  workerId: optionalStringSchema,
-  status: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-}).passthrough().superRefine((payload, ctx) => {
-  if (
-    payload.taskId == null
-    && payload.ticketId == null
-    && payload.executionId == null
-    && payload.decisionId == null
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "dispatch payload must include at least one correlation identifier",
-      path: ["taskId"],
-    });
-  }
-});
-
-const workerEventPayloadSchema = z.object({
-  workerId: z.string(),
-  ticketId: optionalStringSchema,
-  claimId: optionalStringSchema,
-  executionId: optionalStringSchema,
-  leaseId: optionalStringSchema,
-  status: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-}).passthrough();
-
-const takeoverEventPayloadSchema = z.object({
-  sessionId: z.string(),
-  taskId: optionalStringSchema,
-  action: optionalStringSchema,
-  principal: optionalStringSchema,
-  status: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-}).passthrough();
-
-const recoveryEventPayloadSchema = z.object({
-  taskId: optionalStringSchema,
-  executionId: optionalStringSchema,
-  repairId: optionalStringSchema,
-  recoveryId: optionalStringSchema,
-  decisionId: optionalStringSchema,
-  reasonCode: optionalStringSchema,
-  status: optionalStringSchema,
-}).passthrough().superRefine((payload, ctx) => {
-  if (
-    payload.taskId == null
-    && payload.executionId == null
-    && payload.repairId == null
-    && payload.recoveryId == null
-    && payload.decisionId == null
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "recovery payload must include at least one recovery identifier",
-      path: ["taskId"],
-    });
-  }
-});
-
-const skillEventPayloadSchema = z.object({
-  skillId: z.string(),
-  version: optionalStringSchema,
-  stepId: optionalStringSchema,
-  cacheKey: optionalStringSchema,
-  toolName: optionalStringSchema,
-  attempt: z.number().int().nonnegative().optional(),
-  maxAttempts: z.number().int().nonnegative().optional(),
-  stepCount: z.number().int().nonnegative().optional(),
-  errorCode: optionalStringSchema,
-  status: optionalStringSchema,
-}).passthrough();
-
 const genericEventPayloadSchema = z.record(z.unknown());
 
-const EVENT_PAYLOAD_VALIDATORS: Partial<Record<string, z.ZodType<Record<string, unknown>>>> = {
+const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<string, unknown>>>> = {
   "task:status_changed": taskStatusChangedPayloadSchema,
   "workflow:step_completed": workflowStepCompletedPayloadSchema,
   "decision:requested": decisionRequestedPayloadSchema,
@@ -1018,81 +553,14 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<string, z.ZodType<Record<string, 
   "cost:limit_reached": costLimitReachedPayloadSchema,
   "domain:registered": domainLifecyclePayloadSchema,
   "domain:activated": domainLifecyclePayloadSchema,
-  "domain:canary": domainLifecyclePayloadSchema,
   "plugin:spi_registered": pluginLifecyclePayloadSchema,
-  "plugin:suspended": pluginLifecyclePayloadSchema,
   "plugin:activated": pluginLifecyclePayloadSchema,
   "plugin:error_isolated": pluginLifecyclePayloadSchema,
   "plugin:invocation_started": pluginInvocationPayloadSchema,
   "plugin:invocation_completed": pluginInvocationPayloadSchema,
   "knowledge:chunk_indexed": knowledgeChunkIndexedPayloadSchema,
   "learning:knowledge_promoted": learningKnowledgePromotedPayloadSchema,
-  "platform.request_envelope.admitted": requestEnvelopeAdmittedPayloadSchema,
-  "platform.harness_run.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.node_run.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.side_effect.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.budget.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.budget.reserved": runtimeStatusChangedPayloadSchema,
-  "platform.budget.actualized": runtimeStatusChangedPayloadSchema,
-  "platform.budget.exceeded": runtimeStatusChangedPayloadSchema,
-  "platform.budget_ledger.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.budget_reservation.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.graph_scheduler.decision_recorded": graphSchedulerDecisionPayloadSchema,
-  "oapeflir.phase.transition": oapeflirPhaseTransitionPayloadSchema,
-  "oapeflir.decision.recorded": oapeflirDecisionRecordedPayloadSchema,
-  "oapeflir.view.run_lifecycle": oapeflirRunLifecyclePayloadSchema,
 };
-
-function getFamilyPayloadValidator(type: string): z.ZodType<Record<string, unknown>> {
-  if (type.startsWith("dispatch:")) {
-    return dispatchEventPayloadSchema;
-  }
-  if (type.startsWith("worker:")) {
-    return workerEventPayloadSchema;
-  }
-  if (type.startsWith("takeover:")) {
-    return takeoverEventPayloadSchema;
-  }
-  if (type.startsWith("recovery:")) {
-    return recoveryEventPayloadSchema;
-  }
-  if (type.startsWith("skill:")) {
-    return skillEventPayloadSchema;
-  }
-  return genericEventPayloadSchema;
-}
-
-function resolvePayloadValidator(type: string): {
-  validator: z.ZodType<Record<string, unknown>>;
-  source: "specific" | "family" | "generic";
-} {
-  const specificValidator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType];
-  if (specificValidator != null) {
-    return { validator: specificValidator, source: "specific" };
-  }
-  if (type.startsWith("dispatch:")) {
-    return { validator: dispatchEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("worker:")) {
-    return { validator: workerEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("takeover:")) {
-    return { validator: takeoverEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("recovery:")) {
-    return { validator: recoveryEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("skill:")) {
-    return { validator: skillEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("platform.")) {
-    return { validator: platformRuntimeEventPayloadSchema, source: "family" };
-  }
-  if (type.startsWith("oapeflir.")) {
-    return { validator: oapeflirEventPayloadSchema, source: "family" };
-  }
-  return { validator: genericEventPayloadSchema, source: "generic" };
-}
 
 /**
  * Processed event schema registry with defaults applied.
@@ -1109,26 +577,7 @@ export const EVENT_SCHEMA_REGISTRY: Record<KnownEventType, EventSchemaDefinition
   ]),
 ) as Record<KnownEventType, EventSchemaDefinition>;
 
-/**
- * RUNTIME_EVENT_REPLAY_METADATA - Complete registry of all platform.* and oapeflir.* events
- *
- * R16-29 FIX: All Tier-1 events from event-types.ts TIER_1_EVENT_TYPES are now registered here.
- * This ensures getEventSchema() can find the replay metadata for all platform/oapeflir events.
- *
- * R16-30 FIX: §28.2 EventEnvelope fields are now complete - every event has proper
- * replayBehavior, sourceOfTruth, and schemaOwner defined.
- *
- * §28 EventEnvelope fields covered:
- * - eventType: the canonical event name
- * - sourceOfTruth: "platform" (truth projector source) or "projection" (derived)
- * - replayable: whether event can be replayed
- * - sideEffectSafeToReplay: whether replay is safe without side effects
- * - schemaOwner: the service that owns this event's schema
- * - replayBehavior: replay_as_fact | skip_side_effect | simulate | forbidden
- * - consumerContractTests: test files that verify consumer contracts
- */
 export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> = {
-  // §28 Platform request envelope events
   "platform.request_envelope.admitted": {
     eventType: "platform.request_envelope.admitted",
     sourceOfTruth: "platform",
@@ -1137,89 +586,6 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     schemaOwner: "intake-admission-service",
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["intake-admission-service.test.ts"],
-  },
-
-  // §28 Platform harness run lifecycle events
-  "platform.harness_run.created": {
-    eventType: "platform.harness_run.created",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.admitted": {
-    eventType: "platform.harness_run.admitted",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.planning": {
-    eventType: "platform.harness_run.planning",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.ready": {
-    eventType: "platform.harness_run.ready",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.pausing": {
-    eventType: "platform.harness_run.pausing",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.replanning": {
-    eventType: "platform.harness_run.replanning",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.compensating": {
-    eventType: "platform.harness_run.compensating",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.aborted": {
-    eventType: "platform.harness_run.aborted",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.harness_run.completed": {
-    eventType: "platform.harness_run.completed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
   },
   "platform.harness_run.status_changed": {
     eventType: "platform.harness_run.status_changed",
@@ -1230,98 +596,6 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["runtime-state-machine.test.ts", "runtime-truth-repository.test.ts"],
   },
-
-  // §28 Platform node run lifecycle events
-  "platform.node_run.created": {
-    eventType: "platform.node_run.created",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.admitted": {
-    eventType: "platform.node_run.admitted",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.planning": {
-    eventType: "platform.node_run.planning",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.ready": {
-    eventType: "platform.node_run.ready",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.pausing": {
-    eventType: "platform.node_run.pausing",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.replanning": {
-    eventType: "platform.node_run.replanning",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.completed": {
-    eventType: "platform.node_run.completed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.failed": {
-    eventType: "platform.node_run.failed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.compensating": {
-    eventType: "platform.node_run.compensating",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
-  "platform.node_run.skipped": {
-    eventType: "platform.node_run.skipped",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "runtime-state-machine",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["runtime-state-machine.test.ts"],
-  },
   "platform.node_run.status_changed": {
     eventType: "platform.node_run.status_changed",
     sourceOfTruth: "platform",
@@ -1331,35 +605,6 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["runtime-state-machine.test.ts", "plan-graph-harness-runtime.test.ts"],
   },
-
-  // §28 Platform side effect lifecycle events
-  "platform.side_effect.triggered": {
-    eventType: "platform.side_effect.triggered",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: false,
-    schemaOwner: "side-effect-manager",
-    replayBehavior: "skip_side_effect",
-    consumerContractTests: ["side-effect-manager.test.ts"],
-  },
-  "platform.side_effect.completed": {
-    eventType: "platform.side_effect.completed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: false,
-    schemaOwner: "side-effect-manager",
-    replayBehavior: "skip_side_effect",
-    consumerContractTests: ["side-effect-manager.test.ts"],
-  },
-  "platform.side_effect.failed": {
-    eventType: "platform.side_effect.failed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: false,
-    schemaOwner: "side-effect-manager",
-    replayBehavior: "skip_side_effect",
-    consumerContractTests: ["side-effect-manager.test.ts"],
-  },
   "platform.side_effect.status_changed": {
     eventType: "platform.side_effect.status_changed",
     sourceOfTruth: "platform",
@@ -1368,53 +613,6 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     schemaOwner: "side-effect-manager",
     replayBehavior: "skip_side_effect",
     consumerContractTests: ["side-effect-manager.test.ts"],
-  },
-
-  // §28 Platform budget lifecycle events
-  "platform.budget.reserved": {
-    eventType: "platform.budget.reserved",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts"],
-  },
-  "platform.budget.actualized": {
-    eventType: "platform.budget.actualized",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts"],
-  },
-  "platform.budget.exceeded": {
-    eventType: "platform.budget.exceeded",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts"],
-  },
-  "platform.budget.status_changed": {
-    eventType: "platform.budget.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts"],
-  },
-  "platform.budget_reconciliation.status_changed": {
-    eventType: "platform.budget_reconciliation.status_changed",
-    sourceOfTruth: "platform",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "budget-allocator",
-    replayBehavior: "replay_as_fact",
-    consumerContractTests: ["budget-allocator.test.ts"],
   },
   "platform.budget_ledger.status_changed": {
     eventType: "platform.budget_ledger.status_changed",
@@ -1443,129 +641,61 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
   },
-
-  // §28 OAPEFLIR events
-  "oapeflir.decision.recorded": {
-    eventType: "oapeflir.decision.recorded",
-    sourceOfTruth: "projection",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "oapeflir-projection",
-    replayBehavior: "simulate",
-    consumerContractTests: ["oapeflir-projection.test.ts"],
-  },
-  "oapeflir.phase.transition": {
-    eventType: "oapeflir.phase.transition",
-    sourceOfTruth: "projection",
-    replayable: true,
-    sideEffectSafeToReplay: true,
-    schemaOwner: "oapeflir-projection",
-    replayBehavior: "simulate",
-    consumerContractTests: ["oapeflir-projection.test.ts"],
-  },
   "oapeflir.view.run_lifecycle": {
     eventType: "oapeflir.view.run_lifecycle",
     sourceOfTruth: "projection",
     replayable: true,
     sideEffectSafeToReplay: true,
     schemaOwner: "oapeflir-projection",
-    replayBehavior: "simulate",
+    replayBehavior: "simulate_projection",
     consumerContractTests: ["layered-event-inbox.test.ts"],
   },
 };
 
 /**
- * Resolves a legacy event type to its canonical equivalent.
- * Returns the original type if no alias exists.
- * @param type - The event type to resolve
- * @returns The canonical event type or original if no alias
- */
-export function resolveCanonicalEventType(type: string): string {
-  return LEGACY_TO_CANONICAL_EVENT_ALIASES[type] ?? type;
-}
-
-/**
  * Checks if an event type has a registered schema.
- * Also checks legacy aliases for backward compatibility.
  * @param type - The event type to check
  * @returns True if the event type is registered
  */
 export function hasEventSchema(type: string): boolean {
-  // Check direct registration first
-  if (type in EVENT_SCHEMA_REGISTRY || type in RUNTIME_EVENT_REPLAY_METADATA) {
-    return true;
-  }
-  // Check legacy alias
-  const canonical = LEGACY_TO_CANONICAL_EVENT_ALIASES[type];
-  if (canonical != null) {
-    return canonical in EVENT_SCHEMA_REGISTRY || canonical in RUNTIME_EVENT_REPLAY_METADATA;
-  }
-  return false;
+  return type in EVENT_SCHEMA_REGISTRY || type in RUNTIME_EVENT_REPLAY_METADATA;
 }
 
 /**
  * Gets the registered consumers for an event type.
- * Resolves legacy event types to their canonical equivalents via LEGACY_TO_CANONICAL_EVENT_ALIASES.
  * Returns empty array if event type is not found.
- *
  * @param type - The event type to get consumers for
  * @returns Array of consumer IDs
  */
 export function getRegisteredConsumers(type: string): readonly string[] {
-  // Resolve legacy aliases to canonical event types
-  const resolvedType = resolveCanonicalEventType(type);
-
-  if (resolvedType in EVENT_SCHEMA_REGISTRY) {
-    return EVENT_SCHEMA_REGISTRY[resolvedType as KnownEventType].consumers;
+  if (!hasEventSchema(type)) {
+    return [];
   }
-  if (resolvedType in RUNTIME_EVENT_REPLAY_METADATA) {
-    try {
-      return getEventSchema(resolvedType).consumers;
-    } catch {
-      // Schema validation failed for this runtime event type - return empty
-      // rather than crashing the caller.
-      return [];
-    }
-  }
-  return [];
+  return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
 }
 
 /**
  * Gets the full event schema for an event type.
- * Resolves legacy event types to their canonical equivalents via LEGACY_TO_CANONICAL_EVENT_ALIASES.
  * @param type - The event type to get the schema for
  * @returns The event schema definition
  * @throws Error if the schema is not found
  */
 export function getEventSchema(type: string): EventSchemaDefinition {
-  // Resolve legacy aliases to canonical event types
-  const resolvedType = resolveCanonicalEventType(type);
-
-  if (resolvedType in EVENT_SCHEMA_REGISTRY) {
-    return EVENT_SCHEMA_REGISTRY[resolvedType as KnownEventType];
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
   }
-  const metadata = RUNTIME_EVENT_REPLAY_METADATA[resolvedType];
+  const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
   if (metadata != null) {
-    // R16-30 FIX: Use getRequiredConsumers() from event-types.ts to get the proper
-    // consumers instead of hard-coded values. This ensures consistency with
-    // REQUIRED_CONSUMERS_BY_EVENT_TYPE defined in event-types.ts
-    const requiredConsumers = getRequiredConsumers(resolvedType);
-    const consumers = requiredConsumers.length > 0
-      ? requiredConsumers
-      : metadata.sourceOfTruth === "platform"
-        ? ["truth_projector", "audit_projection"]
-        : ["oapeflir_projection"];
-
     return {
-      type: resolvedType,
-      tier: resolvedType.startsWith("platform.") || resolvedType.startsWith("oapeflir.") ? "tier_1" : "tier_2",
+      type,
+      tier: type.startsWith("platform.") ? "tier_1" : "tier_2",
       producer: metadata.schemaOwner,
-      consumers,
-      payloadSchemaRef: buildPayloadSchemaRef(resolvedType),
+      consumers: metadata.sourceOfTruth === "platform" ? ["truth_projector", "audit_projection"] : ["oapeflir_projection"],
+      payloadSchemaRef: buildPayloadSchemaRef(type),
       compatibilityPolicy: "backward_compatible_additive",
     };
   }
-  if (!hasEventSchema(resolvedType)) {
+  if (!hasEventSchema(type)) {
     throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
       details: { eventType: type },
     });
@@ -1591,20 +721,8 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
  * at least serialize to an object record.
  */
 export function validateEventPayload(type: string, payload: unknown): Record<string, unknown> {
-  const schema = getEventSchema(type);
-  const { validator, source } = resolvePayloadValidator(type);
-  if (source === "generic" && schema.tier !== "tier_3") {
-    throw new ValidationError(
-      "event.payload_validator_missing",
-      `Missing strict payload validator for event type: ${type}`,
-      {
-        details: {
-          eventType: type,
-          eventTier: schema.tier,
-        },
-      },
-    );
-  }
+  getEventSchema(type);
+  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType] ?? genericEventPayloadSchema;
   const result = validator.safeParse(payload);
 
   if (!result.success) {
@@ -1622,15 +740,6 @@ export function validateEventPayload(type: string, payload: unknown): Record<str
   return result.data;
 }
 
-export function getPayloadValidatorSource(type: string): "specific" | "family" | "generic" {
-  if (!hasEventSchema(type)) {
-    throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
-      details: { eventType: type },
-    });
-  }
-  return resolvePayloadValidator(type).source;
-}
-
 /**
  * Builds a payload schema reference URI for an event type.
  * Format: event://{type}:/v1
@@ -1638,5 +747,5 @@ export function getPayloadValidatorSource(type: string): "specific" | "family" |
  * @returns The payload schema reference URI
  */
 function buildPayloadSchemaRef(type: string): string {
-  return `event://${type.replaceAll(":", "/").replaceAll(".", "/")}/v1`;
+  return `event://${type.replaceAll(":", "/")}/v1`;
 }

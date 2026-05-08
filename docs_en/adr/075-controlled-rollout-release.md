@@ -86,12 +86,19 @@ interface ImprovementCandidate {
   updatedAt: string;
 }
 
-// Per §56.4 LearningCandidate State Definition
 type ImprovementCandidateStatus =
-  | 'quarantine'    // Initial quarantine state
-  | 'approved'      // Approved
-  | 'rejected'      // Rejected
-  | 'released';     // Released
+  | 'candidate_created'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'evaluation_enabled'
+  | 'canary_5'
+  | 'partial_25'
+  | 'stable_75'
+  | 'stable_100'
+  | 'released'
+  | 'auto_rollback'
+  | 'rolled_back';
 ```
 
 ### 6. Autonomy Boundary
@@ -115,12 +122,12 @@ interface RolloutScheduler {
 
 ## Alternatives
 
-### Option A: Only off/suggest/shadow (Ring 1 Simplified)
+### Option A: Only off/suggest/shadow (Phase 1 Simplified)
 
 Pros: Simple implementation, low risk.
 Cons: Cannot implement progressive release, limited benefit.
 
-### Option B: 6-Level Controlled Release (Selected)
+### Option B: 6-Level Controlled Release (Chosen)
 
 Pros: Complete progressive release capability, supports automatic rollback.
 Cons: Higher implementation complexity (~500 lines of code + monitoring integration).
@@ -141,7 +148,7 @@ Cons: Higher implementation complexity (~500 lines of code + monitoring integrat
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 - `src/core/improvement/` module
 
-## Source Section
+## Source Sections
 
 - `§9` Improve Hub Design
 - `§9.1` 6-Level Controlled Release

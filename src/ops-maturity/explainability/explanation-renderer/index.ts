@@ -51,46 +51,29 @@ export function buildDecisionTree(
   };
   nodeMap.set("root", rootNode);
 
-  // Build nodes for causal links and establish parent-child relationships
-  // §165-1916 P1 FIX: Root cause - nodes were created but never linked as a tree.
-  // All nodes had children:[] so calculateDepth recursion had nothing to traverse
-  // and maxDepth stayed 0. Fix: actually build the tree structure by linking nodes.
+  // Build nodes for causal links
   for (const link of causalLinks) {
-    const sourceNodeId = `source-${link.source}`;
-    const targetNodeId = `target-${link.target}`;
     const sourceNode: DecisionTreeNode = {
-      nodeId: sourceNodeId,
+      nodeId: `source-${link.source}`,
       type: "factor",
       label: link.source,
       children: [],
     };
     const targetNode: DecisionTreeNode = {
-      nodeId: targetNodeId,
+      nodeId: `target-${link.target}`,
       type: "outcome",
       label: link.target,
       children: [],
     };
-    if (!nodeMap.has(sourceNodeId)) {
-      nodeMap.set(sourceNodeId, sourceNode);
+    if (!nodeMap.has(sourceNode.nodeId)) {
+      nodeMap.set(sourceNode.nodeId, sourceNode);
     }
-    if (!nodeMap.has(targetNodeId)) {
-      nodeMap.set(targetNodeId, targetNode);
+    if (!nodeMap.has(targetNode.nodeId)) {
+      nodeMap.set(targetNode.nodeId, targetNode);
     }
-    // Link source to target as child - this is what makes the tree traversable
-    const existingSource = nodeMap.get(sourceNodeId)!;
-    const existingTarget = nodeMap.get(targetNodeId)!;
-    nodeMap.set(sourceNodeId, { ...existingSource, children: [targetNode] });
   }
 
-  // Add evidence nodes as children of a synthetic "evidence" node
-  const evidenceParentId = "evidence-parent";
-  const evidenceParent: DecisionTreeNode = {
-    nodeId: evidenceParentId,
-    type: "factor",
-    label: "Evidence",
-    children: [],
-  };
-  nodeMap.set(evidenceParentId, evidenceParent);
+  // Add evidence nodes
   for (let i = 0; i < evidenceLabels.length; i++) {
     const evidenceNode: DecisionTreeNode = {
       nodeId: `evidence-${i}`,
@@ -98,12 +81,9 @@ export function buildDecisionTree(
       label: evidenceLabels[i]!,
     };
     nodeMap.set(evidenceNode.nodeId, evidenceNode);
-    // Link evidence as child of evidence-parent
-    const current = nodeMap.get(evidenceParentId)!;
-    nodeMap.set(evidenceParentId, { ...current, children: [...(current.children ?? []), evidenceNode] });
   }
 
-  // Add decision factor nodes as children of root
+  // Add decision factor nodes
   for (let i = 0; i < decisionFactors.length; i++) {
     const factorNode: DecisionTreeNode = {
       nodeId: `factor-${i}`,
@@ -111,24 +91,11 @@ export function buildDecisionTree(
       label: decisionFactors[i]!,
     };
     nodeMap.set(factorNode.nodeId, factorNode);
-    // Link factor as child of root
-    const current = nodeMap.get("root")!;
-    nodeMap.set("root", { ...current, children: [...(current.children ?? []), factorNode] });
   }
 
-  // Link evidence-parent as child of root
-  const rootNodeForUpdate = nodeMap.get("root")!;
-  nodeMap.set("root", { ...rootNodeForUpdate, children: [...(rootNodeForUpdate.children ?? []), nodeMap.get(evidenceParentId)!] });
-
-  // Calculate max depth via recursive traversal
+  // Calculate max depth
   let maxDepth = 0;
   const calculateDepth = (nodeId: string, depth: number): number => {
-    const node = nodeMap.get(nodeId);
-    if (node?.children && node.children.length > 0) {
-      for (const child of node.children) {
-        calculateDepth(child.nodeId, depth + 1);
-      }
-    }
     maxDepth = Math.max(maxDepth, depth);
     return depth;
   };

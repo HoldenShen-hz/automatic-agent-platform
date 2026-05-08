@@ -217,13 +217,8 @@ function resolveDbPath(env: NodeJS.ProcessEnv, cwd: string): string {
 function parseBudgetPolicyFromEnv(env: NodeJS.ProcessEnv, prefix: string): BudgetPolicy {
   return {
     maxTaskCostUsd: optionalFloatEnv(env, `${prefix}_MAX_TASK_COST_USD`) ?? 5,
-    maxPackCostUsd: optionalFloatEnv(env, `${prefix}_MAX_PACK_COST_USD`) ?? 50,
-    maxPlatformCostUsd: optionalFloatEnv(env, `${prefix}_MAX_PLATFORM_COST_USD`) ?? 5000,
     maxDailyCostUsd: optionalFloatEnv(env, `${prefix}_MAX_DAILY_COST_USD`) ?? 50,
     maxMonthlyCostUsd: optionalFloatEnv(env, `${prefix}_MAX_MONTHLY_COST_USD`) ?? 500,
-    maxModelTokens: optionalFloatEnv(env, `${prefix}_MAX_MODEL_TOKENS`) ?? 50000,
-    maxSteps: optionalFloatEnv(env, `${prefix}_MAX_STEPS`) ?? 50,
-    maxDurationMs: optionalFloatEnv(env, `${prefix}_MAX_DURATION_MS`) ?? 300000,
     warnAtRatio: optionalFloatEnv(env, `${prefix}_WARN_AT_RATIO`) ?? 0.8,
     mode: (optionalEnv(env, `${prefix}_MODE`) as BudgetPolicy["mode"] | null) ?? "supervised",
   };

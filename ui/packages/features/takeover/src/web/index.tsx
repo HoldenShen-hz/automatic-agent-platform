@@ -9,24 +9,9 @@ export function TakeoverWebView(): ReactElement {
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
-          {
-            id: "takeover-start",
-            label: "接管当前任务",
-            tone: "danger",
-            onTrigger: () => vm.takeoverCurrentTask("web-operator"),
-          },
-          {
-            id: "takeover-annotate",
-            label: "添加人工批注",
-            tone: "neutral",
-            onTrigger: () => vm.annotateCurrentSnapshot("manual-note", "web-operator"),
-          },
-          {
-            id: "takeover-resume",
-            label: "恢复自动执行",
-            tone: "accent",
-            onTrigger: () => vm.resumeAutomaticExecution("web-operator"),
-          },
+          { id: "takeover-start", label: "接管当前任务", tone: "danger" },
+          { id: "takeover-annotate", label: "添加人工批注", tone: "neutral" },
+          { id: "takeover-resume", label: "恢复自动执行", tone: "accent" },
         ]}
       />
     </FeatureScaffold>

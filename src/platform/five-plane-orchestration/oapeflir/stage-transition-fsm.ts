@@ -52,8 +52,8 @@ const STAGE_ORDER: readonly OapeflirStage[] = OAPEFLIR_STAGES;
 
 const VALID_PREDECESSORS: ReadonlyMap<OapeflirStage, readonly OapeflirStage[]> = new Map([
   ["observe", []],
-  ["assess", ["observe", "feedback"]], // §174-2022: R5-42 fix - feedback allowed to support OAPEFLIR closed loop
-  ["plan", ["assess", "feedback"]],
+  ["assess", ["observe"]],
+  ["plan", ["assess"]],
   ["execute", ["plan"]],
   ["feedback", ["execute"]],
   ["learn", ["feedback"]],
@@ -76,7 +76,6 @@ export class StageTransitionFSM {
   private currentStageIndex: number = 0;
   private readonly stageStatuses = new Map<OapeflirStage, StageStatus>();
   private readonly stageTimestamps = new Map<OapeflirStage, number>();
-  private readonly stageSkipReasons = new Map<OapeflirStage, string>();
 
   public constructor() {
     for (const stage of STAGE_ORDER) {
@@ -94,10 +93,6 @@ export class StageTransitionFSM {
 
   public getStageTimestamp(stage: OapeflirStage): number | undefined {
     return this.stageTimestamps.get(stage);
-  }
-
-  public getStageSkipReason(stage: OapeflirStage): string | undefined {
-    return this.stageSkipReasons.get(stage);
   }
 
   public canTransitionTo(targetStage: OapeflirStage): StageTransitionResult {
@@ -125,22 +120,6 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
-      // §45.7/§13.4: Allow backward transitions when current stage is a valid predecessor
-      // This supports feedback-driven replanning (feedback→plan) and other re-entry scenarios
-      // R5-42 FIX: Also allow feedback→observe backward transition to support the full
-      // OAPEFLIR closed loop where feedback can lead back to observe for re-assessment.
-      const isFeedbackToObserve = currentStage === "feedback" && targetStage === "observe";
-      const isValidPredecessor = validPredecessors.includes(currentStage);
-      const isFeedbackDrivenReplan = (currentStage === "feedback" || currentStage === "learn" || currentStage === "improve" || currentStage === "release")
-        && (targetStage === "plan" || targetStage === "assess" || targetStage === "execute");
-      if (isValidPredecessor || isFeedbackDrivenReplan || isFeedbackToObserve) {
-        return {
-          allowed: true,
-          targetStage,
-          reasonCode: isFeedbackToObserve ? "fsm.feedback_to_observe" : isFeedbackDrivenReplan ? "fsm.feedback_driven_replan" : "fsm.valid_predecessor_backward",
-          reasonCodes: [isFeedbackToObserve ? `fsm.feedback_to_observe: ${currentStage} → ${targetStage} for closed-loop reassessment` : isFeedbackDrivenReplan ? `fsm.feedback_driven_replan: ${currentStage} → ${targetStage} for replanning` : `fsm.valid_predecessor_backward: ${currentStage} → ${targetStage}`],
-        };
-      }
       return {
         allowed: false,
         targetStage,
@@ -193,14 +172,6 @@ export class StageTransitionFSM {
   public recordStageEntry(stage: OapeflirStage, status: StageStatus = "pending"): void {
     this.stageStatuses.set(stage, status);
     this.stageTimestamps.set(stage, Date.now());
-    // R19-02 fix: also update currentStageIndex so getCurrentStage() reflects the entered stage.
-    // This is critical for backward transitions during replan (feedback→plan) where we call
-    // recordStageEntry without calling recordStageCompletion first.
-    const targetIndex = STAGE_ORDER.indexOf(stage);
-    if (targetIndex >= 0 && targetIndex < this.currentStageIndex) {
-      // Entering an earlier stage (backward transition) - update index to track position
-      this.currentStageIndex = targetIndex;
-    }
   }
 
   public recordStageCompletion(stage: OapeflirStage): void {
@@ -208,23 +179,18 @@ export class StageTransitionFSM {
     this.stageTimestamps.set(stage, Date.now());
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
-    // §174-2023: R5-43 fix - cap currentStageIndex at STAGE_ORDER.length to prevent out-of-bounds
-    // When "release" is completed (stageIndex=7), setting currentStageIndex=8 would cause
-    // getNextStage() and isComplete() to return incorrect values since STAGE_ORDER[8] is undefined.
     if (stageIndex >= this.currentStageIndex) {
-      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length - 1);
+      this.currentStageIndex = stageIndex + 1;
     }
   }
 
   public recordStageSkipped(stage: OapeflirStage, reasonCode: string): void {
     this.stageStatuses.set(stage, "skipped");
     this.stageTimestamps.set(stage, Date.now());
-    this.stageSkipReasons.set(stage, reasonCode);
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
-    // §174-2023: Same fix as recordStageCompletion - cap at length-1 to prevent out-of-bounds
     if (stageIndex >= this.currentStageIndex) {
-      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length - 1);
+      this.currentStageIndex = stageIndex + 1;
     }
   }
 

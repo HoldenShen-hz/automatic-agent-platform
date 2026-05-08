@@ -3,6 +3,11 @@ import test from "node:test";
 
 import { createGrowthPresenterPlugin } from "../../../../src/plugins/presenters/growth-presenter.js";
 
+test("GrowthPresenter type exports are correct", () => {
+  const plugin = createGrowthPresenterPlugin();
+  assert.ok(plugin !== undefined);
+});
+
 test("GrowthPresenter has correct plugin metadata", () => {
   const plugin = createGrowthPresenterPlugin();
 
@@ -172,22 +177,6 @@ test("GrowthPresenter.formatOutput uses stepId as fallback for campaignName", as
   });
 
   assert.ok(result.sections[0]?.includes("fallback_step"));
-});
-
-test("GrowthPresenter.formatOutput prefers nodeRunId when campaignName is absent", async () => {
-  const plugin = createGrowthPresenterPlugin();
-
-  const result = await plugin.formatOutput({
-    machineOutputs: [{
-      nodeRunId: "node_run_campaign",
-      outputRef: null,
-      payload: { type: "campaign" },
-    }],
-    artifacts: [],
-    audience: "end_user",
-  });
-
-  assert.ok(result.sections[0]?.includes("node_run_campaign"));
 });
 
 test("GrowthPresenter.formatOutput handles empty string type as generic JSON", async () => {

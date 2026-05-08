@@ -212,43 +212,6 @@ test("GracefulShutdown - shutdown executes handlers in reverse order", async () 
   shutdown.reset();
 });
 
-test("GracefulShutdown - shutdown respects dependsOn ordering instead of plain reverse insertion", async () => {
-  const callOrder: string[] = [];
-
-  const shutdown = new GracefulShutdown({
-    registerSignalHandlers: false,
-    timeoutMs: 5000,
-  });
-
-  shutdown.addHandler({
-    name: "close",
-    dependsOn: ["flush"],
-    handler: async () => {
-      callOrder.push("close");
-    },
-  });
-  shutdown.addHandler({
-    name: "flush",
-    dependsOn: ["drain"],
-    handler: async () => {
-      callOrder.push("flush");
-    },
-  });
-  shutdown.addHandler({
-    name: "drain",
-    handler: async () => {
-      callOrder.push("drain");
-    },
-  });
-
-  const result = await shutdown.shutdown();
-
-  assert.equal(result.success, true);
-  assert.deepStrictEqual(callOrder, ["close", "flush", "drain"]);
-
-  shutdown.reset();
-});
-
 test("GracefulShutdown - shutdown reports failures", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,

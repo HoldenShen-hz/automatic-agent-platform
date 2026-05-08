@@ -14,7 +14,7 @@ function createMinimalRun(overrides: Partial<{ runId: string; domainId: string; 
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: [] },
+      toolPolicy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 1000, maxDurationMs: 60000 },

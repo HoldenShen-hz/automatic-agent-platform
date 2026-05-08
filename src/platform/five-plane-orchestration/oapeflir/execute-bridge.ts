@@ -7,9 +7,9 @@
  *
  * ## Interface Design
  *
- * The bridge translates OAPEFLIR's `PlanGraphBundle` (canonical per ADR-060/ADR-109)
- * into the runtime's execution model (`StepOutputRecord[]`) and translates the results
- * back into `DualChannelStepOutput` for consumption by the Feedback stage.
+ * The bridge translates OAPEFLIR's `Plan` / `PlanStep` domain objects into the
+ * runtime's execution model (`StepOutputRecord[]`) and translates the results back
+ * into `DualChannelStepOutput` for consumption by the Feedback stage.
  *
  * ## Two Implementation Strategies
  *
@@ -24,23 +24,8 @@
  * Part of GAP-V2-01.
  */
 
-import type { PlanStep } from "./types/plan.js";
+import type { Plan, PlanStep } from "./types/plan.js";
 import type { DualChannelStepOutput } from "./types/dual-channel-step-output.js";
-import type { PlanGraphBundle } from "../../../platform/contracts/executable-contracts/index.js";
-
-/**
- * Parent context for subgraph/child-run execution per §13.7.
- * When a plan is being executed as a subgraph of a larger plan,
- * the parent context links the child run to its parent plan/node.
- */
-export interface ParentContext {
-  /** ID of the parent PlanGraphBundle */
-  parentPlanGraphBundleId?: string;
-  /** ID of the parent node in the parent plan that spawned this subgraph */
-  parentNodeId?: string;
-  /** ID of this child run */
-  childRunId?: string;
-}
 
 /**
  * Execution context passed through the OAPEFLIR loop.
@@ -55,17 +40,13 @@ export interface ExecutionContext {
   modelId?: string;
   /** Abort signal for cancellation */
   abortSignal?: AbortSignal;
-  /** §13.7: Parent context for subgraph/child-run execution */
-  parentContext?: ParentContext;
 }
 
 /**
  * Result of executing a single plan step.
  */
 export interface StepResult {
-  nodeRunId: string;
-  /** @deprecated Use nodeRunId for canonical correlation. */
-  stepId?: string;
+  stepId: string;
   status: "succeeded" | "failed" | "skipped";
   /** Duration in milliseconds measured by the runtime */
   durationMs: number;
@@ -97,38 +78,10 @@ export interface ExecutionResult {
   totalTokenCost: number;
   /** True only if every step succeeded */
   allSucceeded: boolean;
-  /** NodeRun IDs that the runtime chose to skip (e.g. dependency not met) */
-  skippedNodeRunIds: string[];
-  /** NodeRun IDs that failed */
-  failedNodeRunIds: string[];
-}
-
-/**
- * Input for runtime plan execution.
- * R19-43 fix: Defined in P3 (orchestration) to avoid P3→P4 cross-layer import coupling.
- * P4 provides the concrete implementation via dependency injection.
- */
-export interface RuntimePlanExecutionInput {
-  readonly dbPath: string;
-  readonly planGraphBundle: PlanGraphBundle;
-  readonly contextBudgetTokens?: number;
-  /** §13.7: Parent context for subgraph/child-run execution */
-  readonly parentContext?: ParentContext;
-}
-
-/**
- * Abstraction for executing OAPEFLIR plans against a runtime backend.
- *
- * R19-43 fix: This interface is now defined in P3 (orchestration layer) to avoid
- * cross-layer direct coupling. P4 provides a concrete implementation that is
- * injected into RuntimeExecuteBridge via constructor.
- *
- * Implementations:
- * - `RuntimeExecuteBridge`: real execution via `runMultiStepOrchestration`
- * - `MockExecuteBridge`: returns predetermined values (existing behaviour)
- */
-export interface RuntimePlanExecutor {
-  (input: RuntimePlanExecutionInput): Promise<import("../../../platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js").MultiStepOrchestrationResult>;
+  /** Step IDs that the runtime chose to skip (e.g. dependency not met) */
+  skippedStepIds: string[];
+  /** Step IDs that failed */
+  failedStepIds: string[];
 }
 
 /**
@@ -147,12 +100,11 @@ export interface ExecuteBridge {
   executeStep(step: PlanStep, context: ExecutionContext): Promise<StepResult>;
 
   /**
-   * Execute a complete PlanGraphBundle (canonical per ADR-060/ADR-109).
-   * All steps in dependency order from the PlanGraph's nodes.
+   * Execute a complete plan (all steps in dependency order).
    * This is the primary entry point for the OAPEFLIR Execute phase.
    * Returns `ExecutionResult` which the loop maps to `DualChannelStepOutput[]`.
    */
-  executePlan(plan: PlanGraphBundle, context: ExecutionContext): Promise<ExecutionResult>;
+  executePlan(plan: Plan, context: ExecutionContext): Promise<ExecutionResult>;
 
   /**
    * Convert an `ExecutionResult` to `DualChannelStepOutput[]` for consumption

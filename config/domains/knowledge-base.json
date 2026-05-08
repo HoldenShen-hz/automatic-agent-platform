@@ -3,11 +3,6 @@
   "phase": "9a",
   "divisionId": "research",
   "latencyTier": "near_realtime",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "knowledge-base.primary",
     "rollout": "baseline"

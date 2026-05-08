@@ -14,19 +14,15 @@
  * - **Fencing Token**: Unique token generated per execution to prevent split-brain
  *
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
- * @see R16-35: CAS service now uses SQLite-backed SqliteCasRepository for durable storage
  */
-
-import type { SqliteDatabase } from "../../truth/sqlite/sqlite-database.js";
-import { SqliteCasRepository } from "./sqlite-cas-repository.js";
 
 /**
  * Result of a CAS operation indicating success or failure.
  */
 export interface CasResult {
   success: boolean;
-  currentValue?: string | undefined;
-  currentVersion?: number | undefined;
+  currentValue?: string;
+  currentVersion?: number;
 }
 
 /**
@@ -39,39 +35,16 @@ interface CasRecord {
 }
 
 /**
- * Interface for CAS record storage backends.
- */
-export interface CasRepository {
-  get(key: string): CasRecord | undefined;
-  set(key: string, record: CasRecord): void;
-  delete(key: string): boolean;
-  has(key: string): boolean;
-  compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult;
-  compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult;
-}
-
-/**
  * CAS Service providing optimistic concurrency control via compare-and-swap operations.
  *
  * Implements:
  * - Value-based CAS: compareAndSwap(key, expectedValue, newValue)
  * - Version-based CAS: compareAndSet(key, expectedVersion, newValue)
  * - Read operations: getValue(key), getVersion(key)
- *
- * R16-35: Now uses SQLite-backed SqliteCasRepository for durable storage
- * instead of in-memory Map which lost state on restart.
  */
 export class CasService {
-  private readonly store: CasRepository;
-
-  /**
-   * Creates a new CasService with the given repository.
-   *
-   * @param store - The storage backend for CAS records (e.g., SqliteCasRepository)
-   */
-  public constructor(store: CasRepository) {
-    this.store = store;
-  }
+  // In-memory store for CAS records (key -> { value, version, updatedAt })
+  private readonly store = new Map<string, CasRecord>();
 
   /**
    * Performs an atomic compare-and-swap operation.
@@ -84,7 +57,50 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
-    return this.store.compareAndSwap(key, expectedValue, newValue);
+    const current = this.store.get(key);
+
+    if (current === undefined) {
+      // Key doesn't exist - if expected value is empty/null, we can set it
+      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+        this.store.set(key, {
+          value: newValue,
+          version: 1,
+          updatedAt: new Date(),
+        });
+        return {
+          success: true,
+          currentValue: newValue,
+          currentVersion: 1,
+        };
+      }
+      // Key doesn't exist and expected value doesn't match
+      return {
+        success: false,
+      };
+    }
+
+    if (current.value !== expectedValue) {
+      // Value doesn't match - CAS fails
+      return {
+        success: false,
+        currentValue: current.value,
+        currentVersion: current.version,
+      };
+    }
+
+    // Value matches - perform swap
+    const newVersion = current.version + 1;
+    this.store.set(key, {
+      value: newValue,
+      version: newVersion,
+      updatedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      currentValue: newValue,
+      currentVersion: newVersion,
+    };
   }
 
   /**
@@ -98,7 +114,43 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    return this.store.compareAndSet(key, expectedVersion, newValue);
+    const current = this.store.get(key);
+
+    if (current === undefined) {
+      // Key doesn't exist - only succeeds if expected version is 0
+      if (expectedVersion === 0) {
+        this.store.set(key, {
+          value: newValue,
+          version: 1,
+          updatedAt: new Date(),
+        });
+        return { success: true, currentValue: newValue, currentVersion: 1 };
+      }
+      return { success: false };
+    }
+
+    if (current.version !== expectedVersion) {
+      // Version doesn't match - CAS fails
+      return {
+        success: false,
+        currentValue: current.value,
+        currentVersion: current.version,
+      };
+    }
+
+    // Version matches - perform update
+    const newVersion = current.version + 1;
+    this.store.set(key, {
+      value: newValue,
+      version: newVersion,
+      updatedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      currentValue: newValue,
+      currentVersion: newVersion,
+    };
   }
 
   /**
@@ -128,12 +180,9 @@ export class CasService {
    * @param value - The value to set
    */
   public setValue(key: string, value: string): void {
-    const existing = this.store.get(key);
-    // R16-16 FIX: Increment version on setValue instead of resetting to 1
-    const newVersion = existing ? existing.version + 1 : 1;
     this.store.set(key, {
       value,
-      version: newVersion,
+      version: 1,
       updatedAt: new Date(),
     });
   }
@@ -157,143 +206,4 @@ export class CasService {
   public has(key: string): boolean {
     return this.store.has(key);
   }
-}
-
-/**
- * In-memory CAS repository for testing and development.
- * This is NOT durable and should only be used in tests.
- *
- * R29-37 fix: NOTE - This in-memory Map will NOT work across multiple nodes in a
- * distributed deployment. The CAS operations are not atomic across processes.
- * For production distributed environments, this needs a Redis or PostgreSQL backend
- * that supports atomic compare-and-swap operations with proper fencing tokens.
- */
-class InMemoryCasRepository implements CasRepository {
-  private readonly store = new Map<string, CasRecord>();
-
-  public get(key: string): CasRecord | undefined {
-    return this.store.get(key);
-  }
-
-  public set(key: string, record: CasRecord): void {
-    this.store.set(key, record);
-  }
-
-  public delete(key: string): boolean {
-    return this.store.delete(key);
-  }
-
-  public has(key: string): boolean {
-    return this.store.has(key);
-  }
-
-  public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
-    const current = this.store.get(key);
-
-    if (current === undefined) {
-      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
-        // R30-05 FIX: When creating a new record, ensure version starts at 1.
-        // Note: When current is undefined (new record), version should be 1.
-        // The previous bug was that version=1 was used everywhere, even when
-        // incrementing existing records. Here we simply start at version 1
-        // for genuinely new records.
-        this.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return {
-          success: true,
-          currentValue: newValue,
-          currentVersion: 1,
-        };
-      }
-      return { success: false };
-    }
-
-    if (current.value !== expectedValue) {
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    const nextVersion = current.version + 1;
-    this.set(key, {
-      value: newValue,
-      version: nextVersion,
-      updatedAt: new Date(),
-    });
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: nextVersion,
-    };
-  }
-
-  public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    const current = this.store.get(key);
-
-    if (current === undefined) {
-      if (expectedVersion === 0) {
-        this.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return {
-          success: true,
-          currentValue: newValue,
-          currentVersion: 1,
-        };
-      }
-      return { success: false };
-    }
-
-    if (current.version !== expectedVersion) {
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    const nextVersion = current.version + 1;
-    this.set(key, {
-      value: newValue,
-      version: nextVersion,
-      updatedAt: new Date(),
-    });
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: nextVersion,
-    };
-  }
-}
-
-/**
- * Creates an in-memory CAS service (non-durable, for testing only).
- *
- * @deprecated Use createSqliteCasService in production. This function exists
- * only for backward compatibility with tests.
- */
-export function createInMemoryCasService(): CasService {
-  return new CasService(new InMemoryCasRepository());
-}
-
-/**
- * Creates a SQLite-backed CAS service for production use.
- *
- * Provides durable persistent storage for CAS records using SQLite, ensuring
- * that CAS state survives process restarts. This is the recommended factory
- * for production environments.
- *
- * @param sqliteDb - The SQLite database instance (from openAuthoritativeStorageBackend or openAuthoritativeStorageContext)
- * @returns A CasService backed by SqliteCasRepository for durable CAS operations
- * @see R22-32: Wired in production bootstrap for durable CAS state
- */
-export function createSqliteCasService(sqliteDb: SqliteDatabase): CasService {
-  return new CasService(new SqliteCasRepository(sqliteDb.connection));
 }

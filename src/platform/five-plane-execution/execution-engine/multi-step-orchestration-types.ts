@@ -1,10 +1,9 @@
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { StreamEventFrame } from "../../interface/channel-gateway/stream-bridge.js";
-import type { IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
+import type { IntakeRouter } from "../../orchestration/routing/intake-router.js";
 import type { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
 import type { AdmissionBackpressureSnapshot, AdmissionPolicy } from "../dispatcher/admission-controller.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
-import type { BudgetLedger, PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 
 export interface StepFailurePlan {
   errorCode: string;
@@ -16,15 +15,6 @@ export interface MultiStepToolExecutionInput {
   dbPath: string;
   title: string;
   request: string;
-  /**
-   * Canonical P3→P4 execution contract per INV-GRAPH-001.
-   * When provided, the runtime must consume this bundle directly instead of
-   * rebuilding a fresh graph from title/request text.
-   */
-  planGraphBundle?: PlanGraphBundle;
-  // R4-25 (INV-BUDGET-001): Budget tracking - harnessRunId from validated PlanGraphBundle
-  harnessRunId?: string;
-  budgetLedger?: BudgetLedger;
   contextBudgetTokens?: number;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;
@@ -37,7 +27,7 @@ export interface MultiStepToolExecutionInput {
 export interface MultiStepOrchestrationResult {
   snapshot: ReturnType<AuthoritativeTaskStore["loadTaskSnapshot"]>;
   streamFrames: StreamEventFrame[];
-  routing: IntakeRouteDecision;
+  routing: ReturnType<IntakeRouter["route"]>;
   plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
   compaction: ContextCompactionResult | null;
 }

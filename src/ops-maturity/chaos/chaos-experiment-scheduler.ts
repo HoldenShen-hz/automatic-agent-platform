@@ -9,79 +9,15 @@
  *
  * §68 Chaos Engineering - Experiment Scheduling + Automated Steady-State Validation
  *
- * Architecture anchor: This module implements the chaos engineering capabilities
- * described in §68, providing experiment scheduling, fault injection, and steady-state
- * validation for the ops-maturity plane.
- *
- * Note: GameDay orchestration capabilities (experiment grouping and parallel execution)
- * are implemented as part of §68 chaos engineering scope.
+ * §66 GameDay Orchestrator (P2 Enhancement for Phase 3):
+ * Current scheduleGameDay() / startGameDay() / refreshGameDayStatus() implement basic scheduling skeleton.
+ * To implement complete GameDay orchestration capability, the following are needed: real fault injection
+ * execution, integration with monitoring system for steady-state validation, multi-experiment parallel
+ * orchestration, and GameDay report generation. Currently ChaosExperimentScheduler lacks integration
+ * with external fault injection systems and real steady-state validation pipeline.
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
-
-const DEFAULT_BLAST_RADIUS_LIMITS: BlastRadiusLimits = {
-  maxAffectedServices: 1,
-  maxAffectedNodes: 1,
-  maxAffectedPercentage: 100,
-  containedToLabels: null,
-};
-
-const DEFAULT_ROLLBACK_STRATEGY: RollbackStrategy = {
-  enabled: false,
-  rollbackOnViolation: false,
-  autoRestoreDurationMs: null,
-  notificationsEnabled: false,
-};
-
-function normalizeBlastRadiusLimits(limits?: Partial<BlastRadiusLimits> | null): BlastRadiusLimits {
-  return {
-    ...DEFAULT_BLAST_RADIUS_LIMITS,
-    ...(limits ?? {}),
-    containedToLabels: limits?.containedToLabels ?? DEFAULT_BLAST_RADIUS_LIMITS.containedToLabels,
-  };
-}
-
-function normalizeRollbackStrategy(strategy?: Partial<RollbackStrategy> | null): RollbackStrategy {
-  return {
-    ...DEFAULT_ROLLBACK_STRATEGY,
-    ...(strategy ?? {}),
-  };
-}
-
-function normalizeExperimentTarget(target: ExperimentTarget): ExperimentTarget {
-  return {
-    ...target,
-    labels: target.labels ?? {},
-    blastRadius: normalizeBlastRadiusLimits(target.blastRadius),
-    rollbackStrategy: normalizeRollbackStrategy(target.rollbackStrategy),
-  };
-}
-
-/**
- * Active fault record for tracking and rollback.
- */
-interface ActiveFault {
-  experimentId: string;
-  targetId: string;
-  faultType: FaultInjection["faultType"];
-  appliedAt: string;
-  expiresAt: string;
-  rollbackToken: string;
-}
-
-/**
- * Result of applying a fault within blast radius limits.
- */
-interface FaultApplicationResult {
-  success: boolean;
-  applied: boolean;
-  blastRadiusRespecte: boolean;
-  error?: string;
-  rollbackToken?: string;
-}
 
 export interface SteadyStateHypothesis {
   name: string;
@@ -90,37 +26,10 @@ export interface SteadyStateHypothesis {
   operator: "lt" | "gt" | "eq" | "ne" | "lte" | "gte";
 }
 
-/**
- * Blast radius limits for chaos experiments.
- * §61 requires explosion radius control to limit impact scope.
- */
-export interface BlastRadiusLimits {
-  maxAffectedServices: number;
-  maxAffectedNodes: number;
-  maxAffectedPercentage: number;
-  containedToLabels: Readonly<Record<string, string>> | null;
-}
-
-/**
- * Rollback strategy for chaos experiments.
- * §61 requires automatic rollback when hypotheses fail.
- */
-export interface RollbackStrategy {
-  enabled: boolean;
-  rollbackOnViolation: boolean;
-  autoRestoreDurationMs: number | null;
-  notificationsEnabled: boolean;
-}
-
-/**
- * Experiment target with blast radius controls.
- */
 export interface ExperimentTarget {
   targetKind: "service" | "node" | "network" | "database";
   targetId: string;
   labels: Readonly<Record<string, string>>;
-  blastRadius: BlastRadiusLimits;
-  rollbackStrategy: RollbackStrategy;
 }
 
 export interface FaultInjection {
@@ -143,10 +52,6 @@ export interface ChaosExperiment {
   completedAt: string | null;
   maxDurationMs: number;
   results: readonly ExperimentResult[];
-  blastRadius: BlastRadiusLimits;
-  rollbackStrategy: RollbackStrategy;
-  autoRollbackTriggered: boolean;
-  violationDetectedAt: string | null;
 }
 
 export interface ExperimentResult {
@@ -166,8 +71,6 @@ export interface ExperimentScheduleInput {
   steadyStateHypotheses: readonly SteadyStateHypothesis[];
   scheduledAt: string;
   maxDurationMs: number;
-  blastRadius: BlastRadiusLimits;
-  rollbackStrategy: RollbackStrategy;
 }
 
 export interface GameDayScheduleInput {
@@ -199,33 +102,15 @@ export interface ChaosGameDay {
 
 export class ChaosExperimentScheduler {
   private readonly experiments = new Map<string, ChaosExperiment>();
-  // §180-2111: Removed unused steadyStateCache - it was declared but never read/written
+  private readonly steadyStateCache = new Map<string, number>();
   private readonly gameDays = new Map<string, ChaosGameDay>();
 
-  /**
-   * Tracks active faults for rollback support.
-   * Key is rollback token, value is active fault record.
-   */
-  private readonly activeFaults = new Map<string, ActiveFault>();
-
-  /**
-   * Tracks experiments with active faults for cleanup tracking.
-   */
-  private readonly experimentFaults = new Map<string, Set<string>>();
-
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
-    const normalizedTarget = normalizeExperimentTarget(input.target);
-    const normalizedBlastRadius = normalizeBlastRadiusLimits(
-      input.blastRadius ?? normalizedTarget.blastRadius,
-    );
-    const normalizedRollbackStrategy = normalizeRollbackStrategy(
-      input.rollbackStrategy ?? normalizedTarget.rollbackStrategy,
-    );
     const experiment: ChaosExperiment = {
       experimentId: newId("chaos"),
       name: input.name,
       description: input.description,
-      target: normalizedTarget,
+      target: input.target,
       fault: input.fault,
       steadyStateHypotheses: input.steadyStateHypotheses,
       status: "scheduled",
@@ -234,10 +119,6 @@ export class ChaosExperimentScheduler {
       completedAt: null,
       maxDurationMs: input.maxDurationMs,
       results: [],
-      blastRadius: normalizedBlastRadius,
-      rollbackStrategy: normalizedRollbackStrategy,
-      autoRollbackTriggered: false,
-      violationDetectedAt: null,
     };
 
     this.experiments.set(experiment.experimentId, experiment);
@@ -272,35 +153,10 @@ export class ChaosExperimentScheduler {
       message,
     };
 
-    // Replace any existing result for the same hypothesis to avoid duplicate accumulation
-    const existingIndex = experiment.results.findIndex((r) => r.steadyStateName === hypothesisName);
-    if (existingIndex !== -1) {
-      experiment.results = [
-        ...experiment.results.slice(0, existingIndex),
-        result,
-        ...experiment.results.slice(existingIndex + 1),
-      ];
-    } else {
-      experiment.results = [...experiment.results, result];
-    }
+    experiment.results = [...experiment.results, result];
 
-    // Check if hypothesis passed
-    if (!passed) {
-      experiment.violationDetectedAt = nowIso();
-      const rollbackStrategy = normalizeRollbackStrategy(experiment.rollbackStrategy);
-
-      // §61: Auto-rollback when hypothesis violation is detected
-      if (rollbackStrategy.rollbackOnViolation && rollbackStrategy.enabled) {
-        experiment.autoRollbackTriggered = true;
-        experiment.status = "violated";
-        experiment.completedAt = nowIso();
-        return;
-      }
-    }
-
-    // Check if all hypotheses have been evaluated (deduplicated by hypothesis name)
-    const uniqueHypothesisNames = new Set(experiment.results.map((r) => r.steadyStateName));
-    if (uniqueHypothesisNames.size >= experiment.steadyStateHypotheses.length) {
+    // Check if all hypotheses have been evaluated
+    if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
       const allPassed = experiment.results.every((r) => r.passed);
       experiment.status = allPassed ? "completed" : "violated";
       experiment.completedAt = nowIso();
@@ -310,197 +166,7 @@ export class ChaosExperimentScheduler {
   public injectFault(experimentId: string): FaultInjection | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "running") return null;
-
-    const result = this.applyFaultToTarget(experiment);
-
-    if (!result.success) {
-      logger.log({
-        level: "error",
-        message: "chaos:fault_injection_failed",
-        data: {
-          experimentId,
-          targetId: experiment.target.targetId,
-          faultType: experiment.fault.faultType,
-          error: result.error,
-        },
-      });
-      return null;
-    }
-
-    if (!result.applied) {
-      // Fault was within blast radius limits but not applied
-      // (e.g., target already at capacity) - still return fault info
-      return experiment.fault;
-    }
-
-    logger.log({
-      level: "info",
-      message: "chaos:fault_injected",
-      data: {
-        experimentId,
-        targetId: experiment.target.targetId,
-        faultType: experiment.fault.faultType,
-        intensity: experiment.fault.intensity,
-        durationMs: experiment.fault.durationMs,
-        blastRadiusRespected: result.blastRadiusRespecte,
-        rollbackToken: result.rollbackToken,
-      },
-    });
-
     return experiment.fault;
-  }
-
-  /**
-   * Apply fault injection to the experiment target with blast radius control.
-   * Returns a result indicating success/failure and whether fault was applied.
-   */
-  private applyFaultToTarget(experiment: ChaosExperiment): FaultApplicationResult {
-    const { target, fault, blastRadius } = experiment;
-    const effectiveTarget = normalizeExperimentTarget(target);
-    const effectiveBlastRadius = normalizeBlastRadiusLimits(blastRadius);
-
-    // Check blast radius limits before injection
-    const blastRadiusCheck = this.validateBlastRadius(effectiveTarget, effectiveBlastRadius);
-    if (!blastRadiusCheck.withinLimits) {
-      return {
-        success: false,
-        applied: false,
-        blastRadiusRespecte: false,
-        error: `Blast radius exceeded: ${blastRadiusCheck.violation}`,
-      };
-    }
-
-    // Generate rollback token for fault reversal
-    const rollbackToken = newId("fault");
-
-    // In a real implementation, this would call the fault injection subsystem
-    // (e.g., chaos-engine or fault-injection-service) to apply the fault
-    // to the target system based on experiment.target and experiment.fault.
-    // The subsystem would handle the actual fault being applied.
-    //
-    // Example real implementation:
-    //   const faultService = this.faultInjectionServiceRegistry.getService(target.targetKind);
-    //   const applicationResult = await faultService.inject({
-    //     targetId: target.targetId,
-    //     faultType: fault.faultType,
-    //     intensity: fault.intensity,
-    //     durationMs: fault.durationMs,
-    //     parameters: fault.parameters,
-    //     labels: target.labels,
-    //   });
-    //   if (!applicationResult.success) {
-    //     return { success: false, applied: false, blastRadiusRespecte: true, error: applicationResult.error };
-    //   }
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + fault.durationMs);
-
-    // Record the active fault for tracking and rollback
-    const activeFault: ActiveFault = {
-      experimentId: experiment.experimentId,
-      targetId: target.targetId,
-      faultType: fault.faultType,
-      appliedAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      rollbackToken,
-    };
-    this.activeFaults.set(rollbackToken, activeFault);
-
-    // Track fault by experiment
-    if (!this.experimentFaults.has(experiment.experimentId)) {
-      this.experimentFaults.set(experiment.experimentId, new Set());
-    }
-    this.experimentFaults.get(experiment.experimentId)!.add(rollbackToken);
-
-    // Set up automatic expiration for time-bound faults
-    if (fault.durationMs > 0 && fault.durationMs < Infinity) {
-      setTimeout(() => {
-        this.expireFault(rollbackToken, experiment.experimentId);
-      }, fault.durationMs);
-    }
-
-    return {
-      success: true,
-      applied: true,
-      blastRadiusRespecte: true,
-      rollbackToken,
-    };
-  }
-
-  /**
-   * Validate that the target configuration is within blast radius limits.
-   */
-  private validateBlastRadius(
-    target: ExperimentTarget,
-    limits: BlastRadiusLimits,
-  ): { withinLimits: boolean; violation?: string } {
-    // Check contained-to-labels constraint
-    if (limits.containedToLabels !== null) {
-      for (const [labelKey, labelValue] of Object.entries(limits.containedToLabels)) {
-        if ((target.labels ?? {})[labelKey] !== labelValue) {
-          return {
-            withinLimits: false,
-            violation: `Target label ${labelKey}=${(target.labels ?? {})[labelKey]} does not match required ${labelKey}=${labelValue}`,
-          };
-        }
-      }
-    }
-
-    // §61: Validate blast radius limits - check affected services/nodes/percentage
-    // In a real implementation, these would be validated against current cluster state
-    // to ensure the experiment does not exceed the defined blast radius.
-    // For now, we validate that the experiment target configuration itself does not
-    // request more resources than the configured limits allow.
-
-    // maxAffectedServices limit check
-    if (limits.maxAffectedServices < 1) {
-      return {
-        withinLimits: false,
-        violation: `maxAffectedServices must be at least 1, got ${limits.maxAffectedServices}`,
-      };
-    }
-
-    // maxAffectedNodes limit check
-    if (limits.maxAffectedNodes < 1) {
-      return {
-        withinLimits: false,
-        violation: `maxAffectedNodes must be at least 1, got ${limits.maxAffectedNodes}`,
-      };
-    }
-
-    // maxAffectedPercentage limit check (must be 0-100)
-    if (limits.maxAffectedPercentage < 0 || limits.maxAffectedPercentage > 100) {
-      return {
-        withinLimits: false,
-        violation: `maxAffectedPercentage must be between 0 and 100, got ${limits.maxAffectedPercentage}`,
-      };
-    }
-
-    return { withinLimits: true };
-  }
-
-  /**
-   * Expire a fault after its duration elapses (automatic cleanup).
-   */
-  private expireFault(rollbackToken: string, experimentId: string): void {
-    const fault = this.activeFaults.get(rollbackToken);
-    if (!fault) return;
-
-    // Only expire if experiment is still running
-    const experiment = this.experiments.get(experimentId);
-    if (!experiment || experiment.status !== "running") return;
-
-    this.activeFaults.delete(rollbackToken);
-    const tokens = this.experimentFaults.get(experimentId);
-    if (tokens) {
-      tokens.delete(rollbackToken);
-    }
-
-    logger.log({
-      level: "info",
-      message: "chaos:fault_expired",
-      data: { experimentId, targetId: fault.targetId, faultType: fault.faultType },
-    });
   }
 
   public autoTerminateIfNeeded(experimentId: string): boolean {
@@ -510,57 +176,13 @@ export class ChaosExperimentScheduler {
     if (experiment.startedAt) {
       const elapsed = Date.now() - new Date(experiment.startedAt).getTime();
       if (elapsed >= experiment.maxDurationMs) {
-        // R16-36 FIX #2104: autoTerminate must rollback injected faults per spec.
-        // When an experiment is terminated (whether max duration reached or
-        // hypothesis violation), the injected faults must be reversed.
         experiment.status = "cancelled";
         experiment.completedAt = nowIso();
-
-        // Rollback any injected faults for this experiment
-        this.rollbackInjectedFaults(experiment);
-
         return true;
       }
     }
 
     return false;
-  }
-
-  /**
-   * Rollback injected faults for an experiment.
-   * This reverses the effects of fault injection so the system returns to normal.
-   */
-  private rollbackInjectedFaults(experiment: ChaosExperiment): void {
-    const faultTokens = this.experimentFaults.get(experiment.experimentId);
-    if (!faultTokens || faultTokens.size === 0) return;
-
-    for (const rollbackToken of faultTokens) {
-      const activeFault = this.activeFaults.get(rollbackToken);
-      if (!activeFault) continue;
-
-      // In a real implementation, this would call the fault injection subsystem
-      // to reverse the fault using the rollback token:
-      //   const faultService = this.faultInjectionServiceRegistry.getService(activeFault.faultType);
-      //   await faultService.rollback(rollbackToken);
-      //
-      // The fault injection subsystem tracks active faults and provides rollback methods.
-
-      logger.log({
-        level: "info",
-        message: "chaos:experiment_fault_rolled_back",
-        data: {
-          experimentId: experiment.experimentId,
-          targetId: activeFault.targetId,
-          faultType: activeFault.faultType,
-          rollbackToken,
-        },
-      });
-
-      this.activeFaults.delete(rollbackToken);
-    }
-
-    this.experimentFaults.delete(experiment.experimentId);
-    experiment.autoRollbackTriggered = true;
   }
 
   public validateSteadyState(metricName: string, currentValue: number, hypothesis: SteadyStateHypothesis): boolean {
@@ -580,9 +202,9 @@ export class ChaosExperimentScheduler {
 
   public listExperiments(status?: ChaosExperiment["status"]): ChaosExperiment[] {
     if (status) {
-      return Array.from(this.experiments.values()).filter((e) => e.status === status);
+      return [...this.experiments.values()].filter((e) => e.status === status);
     }
-    return Array.from(this.experiments.values());
+    return [...this.experiments.values()];
   }
 
   public cancelExperiment(experimentId: string): boolean {

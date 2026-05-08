@@ -1,6 +1,5 @@
-import { createHash, createHmac, createVerify } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { ValidationError, SecurityError } from "../../platform/contracts/errors.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
 import type { ArtifactRef } from "../../platform/orchestration/oapeflir/ref-types.js";
 import { hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
@@ -14,12 +13,7 @@ import type {
   RegisteredPlugin,
   RetrieverKnowledgeResult,
 } from "./plugin-spi.js";
-import {
-  normalizeMachineOutputs,
-  PluginLifecycleStateSchema,
-  PluginManifestSchema,
-  PluginSignatureSchema,
-} from "./plugin-spi.js";
+import { PluginLifecycleStateSchema, PluginManifestSchema } from "./plugin-spi.js";
 import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
 
@@ -61,7 +55,7 @@ function defaultManifestFor(plugin: RegisteredPlugin): PluginManifest {
     spiTypes: [plugin.spiType],
     extensionKind: plugin.spiType === "adapter" ? "external_adapter" : "domain_plugin",
     trustLevel: "trusted",
-    publicSdkSurface: ["core/domain-registry/plugin-spi"],
+    publicSdkSurface: "core/domain-registry/plugin-spi",
     settingsSchema: {},
   });
 }
@@ -77,211 +71,6 @@ function buildContext(
     bindingId: overrides.bindingId ?? null,
     config: { ...(overrides.config ?? {}) },
   };
-}
-
-/**
- * R8-25: SignatureVerificationResult holds the result of signature verification.
- */
-export interface SignatureVerificationResult {
-  valid: boolean;
-  reason?: string;
-}
-
-/**
- * R8-25: PluginSignatureVerifier handles plugin signature verification.
- * This is a security feature to ensure plugin integrity before loading.
- */
-export interface PluginSignatureVerifier {
-  /**
-   * Verify a plugin manifest signature.
-   * @param manifest - The plugin manifest to verify
-   * @param signature - The signature to verify against
-   * @returns Verification result with valid flag and optional reason
-   */
-  verify(manifest: PluginManifest, signature: { keyId: string; signature: string; algorithm: string }): SignatureVerificationResult;
-}
-
-/**
- * R8-25: Default implementation of PluginSignatureVerifier.
- * Uses Node's crypto module for cryptographic verification.
- */
-export class DefaultPluginSignatureVerifier implements PluginSignatureVerifier {
-  private readonly publicKeys = new Map<string, string>();
-
-  constructor(publicKeys?: Record<string, string>) {
-    if (publicKeys) {
-      for (const [keyId, key] of Object.entries(publicKeys)) {
-        this.publicKeys.set(keyId, key);
-      }
-    }
-  }
-
-  /**
-   * Register a public key for signature verification.
-   */
-  registerPublicKey(keyId: string, publicKey: string): void {
-    this.publicKeys.set(keyId, publicKey);
-  }
-
-  /**
-   * Get the Node.js signature algorithm name for the given algorithm.
-   */
-  private getSignatureAlgorithm(alg: string): string {
-    switch (alg) {
-      case "RS256": return "RSA-SHA256";
-      case "RS384": return "RSA-SHA384";
-      case "RS512": return "RSA-SHA512";
-      case "ES256": return "SHA256";
-      case "ES384": return "SHA384";
-      case "ES512": return "SHA512";
-      default: return "RSA-SHA256";
-    }
-  }
-
-  /**
-   * R8-25: Verify a plugin manifest signature.
-   */
-  verify(manifest: PluginManifest, signature: { keyId: string; signature: string; algorithm: string }): SignatureVerificationResult {
-    // If no signature provided, skip verification (backward compatibility)
-    if (!signature || !signature.keyId || !signature.signature || !signature.algorithm) {
-      return { valid: true };
-    }
-
-    const publicKey = this.publicKeys.get(signature.keyId);
-    if (!publicKey) {
-      return { valid: false, reason: `plugin.signature.key_not_found: Public key '${signature.keyId}' not found` };
-    }
-
-    try {
-      // Create a canonical representation of the manifest for signing
-      const canonicalManifest = this.canonicalizeManifest(manifest);
-      const sigBuffer = Buffer.from(signature.signature, "base64");
-      const alg = this.getSignatureAlgorithm(signature.algorithm);
-
-      // Use verify based on algorithm type
-      if (signature.algorithm.startsWith("HS")) {
-        // HMAC-based verification
-        const hmac = createHmac(signature.algorithm.toLowerCase().replace("s", ""), publicKey);
-        hmac.update(canonicalManifest);
-        const expected = hmac.digest("base64");
-        const actual = signature.signature;
-        if (expected !== actual) {
-          return { valid: false, reason: "plugin.signature.invalid: HMAC signature verification failed" };
-        }
-        return { valid: true };
-      } else if (signature.algorithm.startsWith("RS") || signature.algorithm.startsWith("ES")) {
-        // RSA or ECDSA verification
-        const verifier = createVerify(alg);
-        verifier.update(canonicalManifest);
-        const isValid = verifier.verify(publicKey, sigBuffer);
-        if (!isValid) {
-          return { valid: false, reason: "plugin.signature.invalid: Signature verification failed" };
-        }
-        return { valid: true };
-      } else {
-        return { valid: false, reason: `plugin.signature.unsupported_algorithm: Unsupported algorithm '${signature.algorithm}'` };
-      }
-    } catch (error) {
-      return {
-        valid: false,
-        reason: `plugin.signature.verification_error: Signature verification error: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  }
-
-  /**
-   * Create a canonical string representation of the manifest for signing.
-   * Excludes the signature field itself to allow self-referential signing.
-   */
-  private canonicalizeManifest(manifest: PluginManifest): string {
-    // Create a copy without the signature field
-    const { signature: _sig, ...manifestWithoutSig } = manifest as PluginManifest & { signature?: unknown };
-    return JSON.stringify(manifestWithoutSig);
-  }
-}
-
-/**
- * R8-25: Global default verifier instance.
- */
-const defaultVerifier = new DefaultPluginSignatureVerifier();
-
-/**
- * R8-25: Get the global plugin signature verifier.
- */
-export function getPluginSignatureVerifier(): PluginSignatureVerifier {
-  return defaultVerifier;
-}
-
-/**
- * R8-25: Register a public key for plugin signature verification.
- */
-export function registerPluginSigningKey(keyId: string, publicKey: string): void {
-  defaultVerifier.registerPublicKey(keyId, publicKey);
-}
-
-/**
- * R8-25: Verify plugin manifest signature.
- * Throws SecurityError if verification fails.
- *
- * Security policy:
- * - Plugins with trustLevel "internal", "trusted", or "verified" may omit signature (pre-approved)
- * - Plugins with trustLevel "community" or "unverified" MUST have a valid signature
- * - If a signature is provided, it must be valid
- */
-export function verifyPluginSignature(manifest: PluginManifest): void {
-  const signature = manifest.signature;
-  if (!signature) {
-    // No signature provided - check trust level
-    const trustLevel = manifest.trustLevel;
-    if (trustLevel === "internal" || trustLevel === "trusted" || trustLevel === "verified") {
-      // Pre-approved plugins don't require signatures
-      return;
-    }
-    // Community/unverified plugins must have signatures
-    throw new SecurityError(
-      "plugin.signature.required",
-      `Plugin '${manifest.pluginId}' requires a signature due to trustLevel '${trustLevel}'`,
-      {
-        details: {
-          pluginId: manifest.pluginId,
-          trustLevel,
-        },
-      },
-    );
-  }
-
-  // Validate signature structure
-  const parseResult = PluginSignatureSchema.safeParse(signature);
-  if (!parseResult.success) {
-    throw new SecurityError(
-      "plugin.signature.invalid_structure",
-      "Plugin signature has invalid structure",
-      {
-        details: {
-          pluginId: manifest.pluginId,
-          errors: parseResult.error.errors.map(e => ({ path: e.path.join("."), message: e.message })),
-        },
-      },
-    );
-  }
-
-  const verifier = getPluginSignatureVerifier();
-  const result = verifier.verify(manifest, signature);
-
-  if (!result.valid) {
-    throw new SecurityError(
-      "plugin.signature.verification_failed",
-      `Plugin signature verification failed: ${result.reason}`,
-      {
-        details: {
-          pluginId: manifest.pluginId,
-          keyId: signature.keyId,
-          algorithm: signature.algorithm,
-          reason: result.reason,
-        },
-      },
-    );
-  }
 }
 
 export class PluginSpiRegistry {
@@ -310,9 +99,6 @@ export class PluginSpiRegistry {
           ? Array.from(new Set([plugin.domainId, ...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])]))
           : [...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])],
     });
-
-    // R8-25: Verify plugin signature before registration (security requirement)
-    verifyPluginSignature(normalizedManifest);
 
     if (!normalizedManifest.spiTypes.includes(plugin.spiType)) {
       throw new ValidationError("plugin_spi.spi_type_mismatch", "Plugin manifest does not include the plugin spi type.", {
@@ -401,7 +187,7 @@ export class PluginSpiRegistry {
         details: { pluginId, disabledReason: record.disabledReason },
       });
     }
-    if (record.lifecycleState === "active" || record.lifecycleState === "suspended") {
+    if (record.lifecycleState === "active" || record.lifecycleState === "degraded") {
       return record.plugin;
     }
     this.assertNotCoolingDown(record, "activation", context);
@@ -432,41 +218,6 @@ export class PluginSpiRegistry {
       await record.plugin.onDeactivate(context);
     }
     this.setLifecycleState(record, "inactive");
-  }
-
-  /**
-   * Suspend a plugin - puts it in suspended state per contract §4.
-   * Plugin may be resumed later without full reload.
-   */
-  public async suspend(pluginId: string, reason: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
-    const record = this.requireRecord(pluginId);
-    if (record.lifecycleState !== "active" && record.lifecycleState !== "inactive") {
-      return; // Can only suspend active/inactive plugins
-    }
-    const context = buildContext(record, overrides);
-
-    // Call the plugin's suspend hook if it exists
-    if (record.plugin.suspend) {
-      if (this.isProcessIsolatedRuntime(record)) {
-        // For isolated runtimes, suspend via the runtime host
-        await this.invokeForkedRuntime<void>(record, "suspend", context, { reason });
-      } else {
-        await record.plugin.suspend(reason);
-      }
-    }
-
-    this.setLifecycleState(record, "suspended");
-    this.eventPublisher?.publish({
-      eventType: "plugin:suspended",
-      payload: {
-        pluginId: record.manifest.pluginId,
-        domainId: context.domainId,
-        spiType: record.plugin.spiType,
-        lifecycleState: "suspended",
-        reason,
-        occurredAt: nowIso(),
-      },
-    });
   }
 
   public async unload(pluginId: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
@@ -539,7 +290,7 @@ export class PluginSpiRegistry {
     }
     return this.executeInvocation(record, context, "present", async () => {
       const presenterInput = {
-        machineOutputs: normalizeMachineOutputs(input.machineOutputs),
+        machineOutputs: input.machineOutputs,
         artifacts: input.artifacts,
         audience: input.audience,
       } as const;
@@ -626,7 +377,7 @@ export class PluginSpiRegistry {
 
   private async invokeForkedRuntime<T>(
     record: RegisteredPluginRecord,
-    action: "load" | "activate" | "health_check" | "deactivate" | "unload" | "suspend" | "retrieve" | "present" | "authenticate" | "execute",
+    action: "load" | "activate" | "health_check" | "deactivate" | "unload" | "retrieve" | "present" | "authenticate" | "execute",
     context: PluginLifecycleContext,
     input?: unknown,
   ): Promise<T> {
@@ -699,8 +450,8 @@ export class PluginSpiRegistry {
     }
     record.lastErrorAt = nowIso();
     record.lastErrorMessage = `${record.manifest.sandbox.runtimeIsolation} plugin runtime exited unexpectedly.`;
-    if (record.lifecycleState === "active" || record.lifecycleState === "loading") {
-      this.setLifecycleState(record, "suspended");
+    if (record.lifecycleState === "active" || record.lifecycleState === "loaded") {
+      this.setLifecycleState(record, "degraded");
     }
     if (record.activeInvocationCount === 0) {
       this.publishIsolationEvent(record, buildContext(record), "runtime_exit", new Error(record.lastErrorMessage));
@@ -724,38 +475,31 @@ export class PluginSpiRegistry {
   ): Promise<T> {
     return this.withInvocationPermit(record, phase, context, async () => {
       const timeoutMs = record.manifest.sandbox.timeoutMs;
-      let timer: ReturnType<typeof setTimeout> | undefined;
       const promise = Promise.resolve().then(runner);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
+        const timer = setTimeout(() => {
           clearTimeout(timer);
-          timer = undefined;
           reject(new ValidationError("plugin_spi.timeout", `Plugin ${record.manifest.pluginId} timed out during ${phase}.`, {
             category: "validation",
             source: "internal",
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
+        promise.finally(() => clearTimeout(timer)).catch(() => undefined);
       });
       try {
         return await Promise.race([promise, timeoutPromise]);
       } catch (error) {
-        // Clean up timer if still active (runner completed before timeout)
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          timer = undefined;
-        }
         if (error instanceof ValidationError) {
           throw error;
         }
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        throw new ValidationError("plugin_spi.isolated_failure", `Plugin ${record.manifest.pluginId} failed during ${phase}: ${errorMessage}`, {
+        throw new ValidationError("plugin_spi.isolated_failure", `Plugin ${record.manifest.pluginId} failed during ${phase}.`, {
           category: "validation",
           source: "internal",
           details: {
             pluginId: record.manifest.pluginId,
             phase,
-            errorMessage,
+            errorMessage: error instanceof Error ? error.message : String(error),
             domainId: context.domainId,
             bindingId: context.bindingId,
           },
@@ -780,7 +524,7 @@ export class PluginSpiRegistry {
             await record.plugin.initialize();
           }
         });
-        this.setLifecycleState(record, "loading");
+        this.setLifecycleState(record, "loaded");
       }
 
       if (record.lifecycleState !== "active") {
@@ -899,16 +643,11 @@ export class PluginSpiRegistry {
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }
-    // §198-2318: Root cause - off-by-one error: >= maxConsecutiveFailures means
-    // plugin is disabled after 3rd failure when max=3, but spec requires disabling AFTER 4th.
-    // With maxConsecutiveFailures=3: failureCount goes 1,2,3 - at 3>=3 plugin is disabled.
-    // But spec says "disable after 4 consecutive failures" means count should be 4.
-    // Fix: Use > instead of >= so plugin is disabled on the failure AFTER the threshold.
     if (record.failureCount > this.maxConsecutiveFailures) {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
     } else {
-      this.setLifecycleState(record, "suspended");
+      this.setLifecycleState(record, "degraded");
     }
     this.publishIsolationEvent(record, context, phase, error);
   }
@@ -937,7 +676,7 @@ export class PluginSpiRegistry {
     try {
       const result = await this.runSandboxed(record, phase, context, runner);
       this.resetFailureState(record);
-      if (record.lifecycleState === "suspended") {
+      if (record.lifecycleState === "degraded") {
         this.setLifecycleState(record, "active");
       }
       this.publishInvocationEvent("plugin:invocation_completed", record, context, phase, invocationId, {
@@ -1044,7 +783,6 @@ export class PluginSpiRegistry {
         pluginId: record.manifest.pluginId,
         domainId: context.domainId,
         spiType: record.plugin.spiType,
-        phase, // R23-57 FIX: phase field required by PluginIsolationEventPayload
         lifecycleState: record.lifecycleState,
         bindingId: context.bindingId,
         occurredAt: nowIso(),

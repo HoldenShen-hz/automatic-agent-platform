@@ -74,7 +74,7 @@ const createTestContext = (overrides: Partial<ExecutionContext> = {}): Execution
   taskId: "task-456",
   tenantId: "tenant-789",
   correlationId: "corr-abc",
-  sandboxTier: "read_only",
+  sandboxTier: "process",
   ...overrides,
 });
 
@@ -651,7 +651,7 @@ test("PluginExecutorService handles container sandbox tier", async () => {
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "workspace_write" });
+  const context = createTestContext({ sandboxTier: "container" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "ok");
@@ -667,7 +667,7 @@ test("PluginExecutorService handles none sandbox tier", async () => {
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "read_only" });
+  const context = createTestContext({ sandboxTier: "none" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "ok");
@@ -697,7 +697,7 @@ test("PluginExecutorService execute uses manifest timeout", async () => {
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "read_only" });
+  const context = createTestContext({ sandboxTier: "process" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "timeout");
@@ -788,7 +788,7 @@ test("PluginExecutorService passes execution context to plugin action", async ()
     taskId: "task-context-test",
     tenantId: "tenant-context-test",
     correlationId: "corr-context-test",
-    sandboxTier: "workspace_write",
+    sandboxTier: "container",
   });
 
   await service.execute("test-plugin", "retriever", context, {});

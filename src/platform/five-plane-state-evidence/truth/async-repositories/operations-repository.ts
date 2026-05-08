@@ -15,7 +15,6 @@ import type { ExecutionAuthoritativeView } from "../sqlite/authoritative-task-st
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
-import { buildTenantClause } from "../async-query-helper.js";
 import { nowIso } from "../../../contracts/types/ids.js";
 
 export class AsyncOperationsRepository {
@@ -173,11 +172,8 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      const { clause, args } = buildTenantClause(options.tenantId);
-      if (clause) {
-        conditions.push(clause);
-        parameters.push(...args);
-      }
+      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      parameters.push(options.tenantId);
     }
     if (options.metricName != null) {
       conditions.push(`metric_name = $${parameters.length + 1}`);
@@ -243,11 +239,8 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      const { clause, args } = buildTenantClause(options.tenantId);
-      if (clause) {
-        conditions.push(clause);
-        parameters.push(...args);
-      }
+      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      parameters.push(options.tenantId);
     }
     if (options.bundleType != null) {
       conditions.push(`bundle_type = $${parameters.length + 1}`);
@@ -311,11 +304,8 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      const { clause, args } = buildTenantClause(options.tenantId);
-      if (clause) {
-        conditions.push(clause);
-        parameters.push(...args);
-      }
+      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      parameters.push(options.tenantId);
     }
     if (options.datasetType != null) {
       conditions.push(`dataset_type = $${parameters.length + 1}`);

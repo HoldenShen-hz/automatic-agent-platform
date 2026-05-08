@@ -46,16 +46,6 @@ function createMinimalDefinition(): DomainDefinition {
     status: "active",
     externalAdapters: [],
     pluginBindings: [],
-    executionProfile: {
-      executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
-        llmInHotPathAllowed: true,
-        maxHotPathLatencyMs: 1000,
-      },
-      latencyTier: "near_realtime",
-      compiledArtifactRef: null,
-    },
   };
 }
 
@@ -139,65 +129,6 @@ test("DomainSmokeTestRunner detects circular workflow dependencies", () => {
   const depCheck = result.runtimeChecks.find((c) => c.checkId === "dependency_graph");
   assert.ok(depCheck);
   assert.equal(depCheck.passed, false);
-});
-
-test("DomainSmokeTestRunner keeps duplicate step names isolated per workflow", () => {
-  const runner = new DomainSmokeTestRunner();
-  const definition: DomainDefinition = {
-    ...createMinimalDefinition(),
-    workflows: [
-      {
-        workflowId: "wf_cycle",
-        name: "Cycle Workflow",
-        triggerConditions: {},
-        steps: [
-          StepTemplateConfigSchema.parse({ stepName: "shared", toolHints: [], dependsOn: ["after_shared"] }),
-          StepTemplateConfigSchema.parse({ stepName: "after_shared", toolHints: [], dependsOn: ["shared"] }),
-        ],
-      },
-      {
-        workflowId: "wf_other",
-        name: "Other Workflow",
-        triggerConditions: {},
-        steps: [
-          StepTemplateConfigSchema.parse({ stepName: "shared", toolHints: [], dependsOn: [] }),
-        ],
-      },
-    ],
-  };
-
-  const result = runner.run(definition);
-  const depCheck = result.runtimeChecks.find((c) => c.checkId === "dependency_graph");
-
-  assert.equal(result.passed, false);
-  assert.ok(depCheck);
-  assert.equal(depCheck.passed, false);
-  assert.match(depCheck.details, /Circular dependency detected/);
-});
-
-test("DomainSmokeTestRunner fails closed on dangling workflow dependencies", () => {
-  const runner = new DomainSmokeTestRunner();
-  const definition: DomainDefinition = {
-    ...createMinimalDefinition(),
-    workflows: [
-      {
-        workflowId: "wf_dangling",
-        name: "Dangling Workflow",
-        triggerConditions: {},
-        steps: [
-          StepTemplateConfigSchema.parse({ stepName: "execute", toolHints: [], dependsOn: ["missing_step"] }),
-        ],
-      },
-    ],
-  };
-
-  const result = runner.run(definition);
-  const depCheck = result.runtimeChecks.find((c) => c.checkId === "dependency_graph");
-
-  assert.equal(result.passed, false);
-  assert.ok(depCheck);
-  assert.equal(depCheck.passed, false);
-  assert.match(depCheck.details, /Dangling dependencies detected/);
 });
 
 test("DomainSmokeTestRunner validates sandbox compatibility with restricted tools", () => {

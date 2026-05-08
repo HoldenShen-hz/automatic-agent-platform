@@ -3,11 +3,6 @@
   "phase": "9e",
   "divisionId": "general_ops",
   "latencyTier": "business_day",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "education.primary",
     "rollout": "baseline"

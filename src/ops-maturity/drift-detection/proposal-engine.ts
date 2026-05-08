@@ -5,7 +5,6 @@
  * Each proposal is categorized by type and risk level.
  */
 
-import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { ReflectionRecord } from './reflection-engine.js';
 
 export type ProposalKind =
@@ -16,15 +15,12 @@ export type ProposalKind =
   | 'threshold_tuning';
 
 export type ProposalStatus =
-  | 'draft'
-  | 'review'
-  | 'staging'
+  | 'proposed'
+  | 'testing'
   | 'canary'
   | 'active'
-  | 'paused'
-  | 'deprecated'
-  | 'archived'
-  | 'retired';
+  | 'rejected'
+  | 'rolled_back';
 
 export interface ImprovementProposal {
   id: string;
@@ -65,6 +61,7 @@ export interface ProposalEngine {
 }
 
 export class SimpleProposalEngine implements ProposalEngine {
+  private proposalIdCounter = 0;
   private proposals = new Map<string, ImprovementProposal>();
 
   // Low-risk proposal kinds that can auto-promote
@@ -93,16 +90,14 @@ export class SimpleProposalEngine implements ProposalEngine {
 
   async proposeFromReflection(reflection: ReflectionRecord): Promise<ImprovementProposal[]> {
     const proposals: ImprovementProposal[] = [];
-    const now = nowIso();
+    const now = new Date().toISOString();
 
     // Determine proposal kinds based on root cause
     const rootCause = reflection.rootCause.toLowerCase();
 
-    // Use newId() instead of counter-based ID generation to avoid collision after restart.
-    // Counter-based IDs (prop_${++counter}) would conflict if the process restarts.
     if (rootCause.includes('type') || rootCause.includes('schema')) {
       proposals.push({
-        id: newId("prop"),
+        id: `prop_${++this.proposalIdCounter}`,
         title: 'Tool Routing Optimization',
         description: 'Optimize tool selection for type-safe operations',
         kind: 'tool_routing_rule',
@@ -111,17 +106,16 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Tool routing optimization based on ${reflection.evidenceIds.length} failures`,
         risk: 'low',
         evidenceIds: reflection.evidenceIds,
-        status: 'draft',
+        status: 'proposed',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.15, cost: 0.05 },
       });
     }
 
-    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('test')) {
       proposals.push({
-        id: newId("prop"),
+        id: `prop_${++this.proposalIdCounter}`,
         title: 'Improve Testing Guidelines',
         description: 'Improve testing practices guideline',
         kind: 'skill_doc',
@@ -130,36 +124,34 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Improve testing guidelines based on ${reflection.evidenceIds.length} test failures`,
         risk: 'low',
         evidenceIds: reflection.evidenceIds,
-        status: 'draft',
+        status: 'proposed',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { quality: 0.10 },
       });
     }
 
-    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('complex') || rootCause.includes('planning')) {
       proposals.push({
-        id: newId("prop"),
+        id: `prop_${++this.proposalIdCounter}`,
         title: 'Workflow Template Improvement',
         description: 'Improved complex task workflow',
         kind: 'workflow_template',
         target: 'complex_task_template',
         patch: this.generateWorkflowPatch(reflection),
         rationale: `Improve workflow template for complex tasks`,
-        risk: 'high',  // workflow_template is in MANUAL_ONLY_KINDS = requires manual approval
+        risk: 'medium',
         evidenceIds: reflection.evidenceIds,
-        status: 'draft',
+        status: 'proposed',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.20, latency: -0.10 },
       });
     }
 
-    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('security')) {
       proposals.push({
-        id: newId("prop"),
+        id: `prop_${++this.proposalIdCounter}`,
         title: 'Security Guidelines Enhancement',
         description: 'Strengthen security prompt sections',
         kind: 'prompt_patch',
@@ -168,7 +160,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Strengthen security guidelines`,
         risk: 'high',
         evidenceIds: reflection.evidenceIds,
-        status: 'draft',
+        status: 'proposed',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.30 },
@@ -186,8 +178,6 @@ export class SimpleProposalEngine implements ProposalEngine {
     return this.MANUAL_ONLY_KINDS.includes(kind);
   }
 
-  // Use newId() instead of counter-based ID generation to avoid collision after restart.
-  // Counter-based IDs (prop_${++counter}) would conflict if the process restarts.
   async create(input: {
     title: string;
     description: string;
@@ -197,8 +187,8 @@ export class SimpleProposalEngine implements ProposalEngine {
     agentId: string;
     evidenceIds: string[];
   }): Promise<ImprovementProposal> {
-    const id = newId("prop");
-    const now = nowIso();
+    const id = `prop_${++this.proposalIdCounter}`;
+    const now = new Date().toISOString();
 
     const proposal: ImprovementProposal = {
       id,
@@ -210,7 +200,7 @@ export class SimpleProposalEngine implements ProposalEngine {
       rationale: input.description,
       risk: input.risk,
       evidenceIds: input.evidenceIds,
-      status: 'draft',
+      status: 'proposed',
       createdAt: now,
       updatedAt: now,
     };
@@ -222,18 +212,18 @@ export class SimpleProposalEngine implements ProposalEngine {
   async submitForApproval(proposalId: string): Promise<void> {
     const proposal = this.proposals.get(proposalId);
     if (proposal) {
-      proposal.status = 'staging';
-      proposal.updatedAt = nowIso();
+      proposal.status = 'testing';
+      proposal.updatedAt = new Date().toISOString();
     }
   }
 
   async listPending(): Promise<ImprovementProposal[]> {
-    return Array.from(this.proposals.values()).filter((p) => p.status === 'draft');
+    return Array.from(this.proposals.values()).filter((p) => p.status === 'proposed');
   }
 
   async listActive(): Promise<ImprovementProposal[]> {
     return Array.from(this.proposals.values()).filter(
-      (p) => p.status === 'staging' || p.status === 'canary' || p.status === 'active'
+      (p) => p.status === 'testing' || p.status === 'canary' || p.status === 'active'
     );
   }
 

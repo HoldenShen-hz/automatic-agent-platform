@@ -60,20 +60,16 @@ function eventRecord(overrides: Partial<import("../../../../../../src/platform/c
 // ─── insertEvent ─────────────────────────────────────────────────────────────
 
 test("insertEvent executes INSERT with event fields", async () => {
-  const { connection, calls } = createConnection({
-    queryOneRows: [{ tenantId: "tenant-1" }],
-  });
+  const { connection, calls } = createConnection();
   const repo = new AsyncEventRepository(connection);
 
-  const record = { ...eventRecord(), tenantId: "tenant-1" };
+  const record = eventRecord();
   await repo.insertEvent(record);
 
-  assert.equal(calls.length, 2);
-  assert.equal(calls[0]!.method, "queryOne");
-  assert.ok(calls[0]!.sql.includes("FROM tasks WHERE id = $1"));
-  assert.equal(calls[1]!.method, "execute");
-  assert.ok(calls[1]!.sql.includes("INSERT INTO events"));
-  assert.deepEqual(calls[1]!.params.slice(0, 9), [
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]!.method, "execute");
+  assert.ok(calls[0]!.sql.includes("INSERT INTO events"));
+  assert.deepEqual(calls[0]!.params.slice(0, 9), [
     "evt-1",
     "task-1",
     null,
@@ -87,51 +83,25 @@ test("insertEvent executes INSERT with event fields", async () => {
 });
 
 test("insertEvent generates eventTier from eventType when not provided", async () => {
-  const { connection, calls } = createConnection({
-    queryOneRows: [{ tenantId: "tenant-1" }],
-  });
+  const { connection, calls } = createConnection();
   const repo = new AsyncEventRepository(connection);
 
-  const record = { ...eventRecord({ eventTier: undefined as any }), tenantId: "tenant-1" };
+  const record = eventRecord({ eventTier: undefined as any });
   await repo.insertEvent(record);
 
   // The repo calls getEventTier to determine tier
-  assert.equal(calls[1]!.method, "execute");
+  assert.equal(calls[0]!.method, "execute");
 });
 
 test("insertEvent returns the event record", async () => {
-  const { connection } = createConnection({
-    queryOneRows: [{ tenantId: "tenant-1" }],
-  });
+  const { connection } = createConnection();
   const repo = new AsyncEventRepository(connection);
 
-  const record = { ...eventRecord(), tenantId: "tenant-1" };
+  const record = eventRecord();
   const result = await repo.insertEvent(record);
 
   assert.equal(result.id, "evt-1");
   assert.equal(result.eventType, "task.started");
-});
-
-test("insertEvent rejects missing tenantId", async () => {
-  const { connection } = createConnection();
-  const repo = new AsyncEventRepository(connection);
-
-  await assert.rejects(
-    () => repo.insertEvent({ ...eventRecord(), tenantId: "" }),
-    /event_repository\.tenant_id_required/,
-  );
-});
-
-test("insertEvent rejects task tenant mismatch", async () => {
-  const { connection } = createConnection({
-    queryOneRows: [{ tenantId: "tenant-db" }],
-  });
-  const repo = new AsyncEventRepository(connection);
-
-  await assert.rejects(
-    () => repo.insertEvent({ ...eventRecord(), tenantId: "tenant-request" }),
-    /event_repository\.tenant_scope_mismatch/,
-  );
 });
 
 // ─── insertEventDeadLetter ───────────────────────────────────────────────────
@@ -384,45 +354,6 @@ test("listEventsForTask without tenant or limit", async () => {
 
   assert.ok(calls[0]!.sql.includes("WHERE task_id = $1"));
   assert.ok(!calls[0]!.sql.includes("INNER JOIN tasks"));
-});
-
-test("listEventsForTaskSnapshot returns stream metadata and snapshot cursor", async () => {
-  const events = [
-    eventRecord({ id: "evt-1", createdAt: "2026-04-26T10:00:00.000Z" }),
-    eventRecord({ id: "evt-2", createdAt: "2026-04-26T10:00:00.000Z" }),
-  ];
-  const { connection, calls } = createConnection({ queryRows: [events] });
-  const repo = new AsyncEventRepository(connection);
-
-  const snapshot = await repo.listEventsForTaskSnapshot("task-1");
-
-  assert.equal(snapshot.taskId, "task-1");
-  assert.equal(snapshot.streamVersion, 2);
-  assert.equal(snapshot.lastEventId, "evt-2");
-  assert.equal(snapshot.lastCreatedAt, "2026-04-26T10:00:00.000Z");
-  assert.equal(snapshot.events.length, 2);
-  assert.ok(snapshot.snapshotCursor);
-  assert.ok(calls[0]!.sql.includes("ORDER BY created_at ASC, id ASC"));
-});
-
-test("listEventsForTaskSinceCursor uses snapshot cursor as an incremental checkpoint", async () => {
-  const baselineEvents = [
-    eventRecord({ id: "evt-1", createdAt: "2026-04-26T10:00:00.000Z" }),
-    eventRecord({ id: "evt-2", createdAt: "2026-04-26T10:00:00.000Z" }),
-  ];
-  const newEvents = [
-    eventRecord({ id: "evt-3", createdAt: "2026-04-26T10:00:01.000Z" }),
-  ];
-  const { connection, calls } = createConnection({ queryRows: [baselineEvents, newEvents] });
-  const repo = new AsyncEventRepository(connection);
-
-  const snapshot = await repo.listEventsForTaskSnapshot("task-1");
-  const delta = await repo.listEventsForTaskSinceCursor("task-1", snapshot.snapshotCursor!);
-
-  assert.equal(delta.length, 1);
-  assert.equal(delta[0]!.id, "evt-3");
-  assert.ok(calls[1]!.sql.includes("(created_at > $2 OR (created_at = $2 AND id > $3))"));
-  assert.deepEqual(calls[1]!.params, ["task-1", "2026-04-26T10:00:00.000Z", "evt-2"]);
 });
 
 // ─── getEvent ─────────────────────────────────────────────────────────────────

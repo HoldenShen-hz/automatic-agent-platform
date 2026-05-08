@@ -1,17 +1,7 @@
-import {
-  resolveMachineOutputExecutionId,
-  type DomainPresenterPlugin,
-  type HumanOutput,
-  type MachineOutput,
-  type PluginLifecycleContext,
-} from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput } from "../../domains/registry/plugin-spi.js";
 
 function stringifyPayload(payload: Record<string, unknown>): string {
   return JSON.stringify(payload, null, 2);
-}
-
-function resolveMachineOutputStepId(output: MachineOutput): string {
-  return resolveMachineOutputExecutionId(output);
 }
 
 export function createCodingPresenterPlugin(): DomainPresenterPlugin {
@@ -20,18 +10,6 @@ export function createCodingPresenterPlugin(): DomainPresenterPlugin {
     domainId: "coding",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.diff", "present.summary"],
-    async onLoad(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being loaded
-    },
-    async onActivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being activated
-    },
-    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being deactivated
-    },
-    async onUnload(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being unloaded
-    },
     async initialize() {
       return undefined;
     },
@@ -42,9 +20,9 @@ export function createCodingPresenterPlugin(): DomainPresenterPlugin {
       return undefined;
     },
     async formatOutput(input): Promise<HumanOutput> {
-      const completedSteps = input.machineOutputs.map((output) => resolveMachineOutputStepId(output));
+      const completedSteps = input.machineOutputs.map((output) => output.stepId);
       const sections = input.machineOutputs.map((output) => [
-        `### ${resolveMachineOutputStepId(output)}`,
+        `### ${output.stepId}`,
         output.outputRef ? `outputRef: ${output.outputRef}` : "outputRef: inline",
         "```json",
         stringifyPayload(output.payload),

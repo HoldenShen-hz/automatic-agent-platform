@@ -5,72 +5,75 @@
 
 ## Context
 
-The platform needs an ecosystem to share and discover reusable agents, prompts, and workflows, enabling knowledge reuse and community building.
+The platform needs an open Agent marketplace where partners and the community can contribute and share Agent Packs.
 
 ## Decision
 
-### Marketplace Model
+### Marketplace Structure
 
 ```typescript
 interface MarketplaceListing {
   listing_id: string;
-  type: ListingType;  // 'agent' | 'prompt' | 'workflow' | 'domain'
-  name: string;
-  description: string;
-  author: string;
-  version: string;
-  tags: string[];
-  rating: number;
+  pack_id: string;
+  publisher: PublisherInfo;
+  category: ListingCategory;
+  pricing: PricingModel;
+  rating: Rating;
+  reviews: Review[];
   download_count: number;
-  verified: boolean;
 }
+
+type ListingCategory =
+  | 'code_development'
+  | 'content_creation'
+  | 'customer_service'
+  | 'data_analytics'
+  | 'hr'
+  | 'finance'
+  | 'custom';
 ```
 
-### Listing Types
+### Publishing Process
 
-| Type | Description |
-|------|-------------|
-| agent | Reusable agent templates |
-| prompt | Prompt templates |
-| workflow | Workflow templates |
-| domain | Domain packages |
+1. Developer creates Pack
+2. Local testing (coverage >= 80%)
+3. Submit for review
+4. Certification evaluation (Prompt Injection check)
+5. List on marketplace
 
-### Quality Gates
+### Pricing Models
 
-- Security scanning
-- Compliance review
-- Performance benchmarking
-- User rating threshold
+| Model | Description |
+|-------|-------------|
+| free | Free |
+| one_time | One-time purchase |
+| subscription | Subscription |
+| usage_based | Usage-based billing |
 
-### Discovery
+### Ratings and Rankings
 
-- Search by keywords, tags, categories
-- Recommended based on usage history
-- Featured selections by platform
-
-### Version Management
-
-- Semantic versioning
-- Changelog required
-- Breaking change warnings
+- User ratings (1-5 stars)
+- Download rankings
+- Trending charts
+- Editor's picks
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Knowledge reuse improves efficiency
-- Community building drives innovation
-- Quality gates ensure reliability
+- Open ecosystem attracts partners
+- Market mechanism incentivizes high-quality Packs
+- Certification process ensures quality
 
-Cons:
+Costs:
 
-- Marketplace maintenance overhead
-- IP and security concerns
+- Platform governance complexity
+- Quality inconsistency risk
 
-## Cross-references
+## Cross-References
 
-- [ADR-037 Business Domain Modeling and Onboarding](./037-domain-modeling-and-onboarding.md)
-- [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
+- [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
+- [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)
 
 ## Source Section
 

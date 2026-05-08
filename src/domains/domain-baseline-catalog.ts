@@ -220,34 +220,6 @@ function thresholdForMetric(metric: string, riskLevel: DomainRiskLevel): number 
 }
 
 function buildWorkflow(seed: DomainSeed) {
-  const nodes = seed.workflowStages.map((stageName, index) => ({
-    nodeId: `node:${seed.domainId}:${stageName}`,
-    nodeType: index === 0 ? "tool" as const : index === seed.workflowStages.length - 1 ? "router" as const : "llm" as const,
-    inputRefs: index === 0
-      ? [`task:${seed.domainId}:request`]
-      : [`node:${seed.domainId}:${seed.workflowStages[index - 1]!}.output`],
-    outputSchemaRef: `schema:${seed.domainId}.${stageName}`,
-    riskClass: seed.riskLevel,
-    budgetIntent: {
-      amount: seed.riskLevel === "critical" ? 0.15 : seed.riskLevel === "high" ? 0.1 : 0.05,
-      currency: "USD",
-      resourceKinds: ["token", ...(index === seed.workflowStages.length - 1 ? ["tool"] : ["compute"])],
-    },
-    sideEffectProfile: {
-      mayCommitExternalEffect: index === seed.workflowStages.length - 1,
-      reversible: seed.riskLevel !== "critical",
-    },
-    retryPolicyRef: `retry:${seed.domainId}.default`,
-    timeoutMs: seed.latencyProfile.maxResponseMinutes * 60_000,
-  }));
-  const edges = seed.workflowStages.slice(1).map((stageName, index) => ({
-    edgeId: `edge:${seed.domainId}:${seed.workflowStages[index]!}-to-${stageName}`,
-    sourceNodeId: `node:${seed.domainId}:${seed.workflowStages[index]!}`,
-    targetNodeId: `node:${seed.domainId}:${stageName}`,
-    condition: "always",
-    dependencyType: "hard" as const,
-  }));
-
   return {
     workflowId: `${seed.domainId}.primary`,
     name: `${seed.displayName} Primary Workflow`,
@@ -268,15 +240,6 @@ function buildWorkflow(seed: DomainSeed) {
       timeoutMs: seed.latencyProfile.maxResponseMinutes * 60_000,
       dependsOn: index === 0 ? [] : [seed.workflowStages[index - 1]!],
     })),
-    planGraph: {
-      graphId: `graph:${seed.domainId}:primary`,
-      nodes,
-      edges,
-      entryNodeIds: nodes.length > 0 ? [nodes[0]!.nodeId] : [],
-      terminalNodeIds: nodes.length > 0 ? [nodes[nodes.length - 1]!.nodeId] : [],
-      joinStrategy: "all" as const,
-      graphHash: `sha256:${seed.domainId}:primary:v1`,
-    },
   };
 }
 
@@ -408,13 +371,6 @@ function buildRecipes(seed: DomainSeed, workflowId: string, bundleId: string): r
       triggerPhrases: seed.tags.map((tag) => tag.replace(/-/g, " ")),
       defaultWorkflowId: workflowId,
       defaultToolBundleIds: [bundleId],
-      riskLevel: seed.riskLevel,
-      risk_profile_ref: `${seed.domainId}.risk`,
-      guardrail_overlay: `${seed.domainId}.guardrails`,
-      recommended_workflow_ids: [workflowId],
-      default_prompt_bundle_ref: `${seed.domainId}.prompts`,
-      acceptance_checklist_ref: `${seed.domainId}.acceptance`,
-      requiredApproval: seed.riskLevel === "critical" || seed.riskLevel === "high",
     },
   ];
 }
@@ -490,7 +446,7 @@ function buildDefinition(seed: DomainSeed, workflowId: string, bundleId: string,
       },
       securityLevel: securityLevelForRisk(seed.riskLevel),
     },
-    status: "canary",
+    status: "validated",
     externalAdapters: [...seed.externalAdapters],
     pluginBindings: [],
   };

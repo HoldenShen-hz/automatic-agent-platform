@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines domain modeling for `§37-§38` and the four-phase onboarding runbook, serving as the authoritative boundary for `src/domains/*`.
+This contract defines `§37-§38` domain modeling and four-phase onboarding runbook, serving as the authoritative boundary for `src/domains/*`.
 
 ## 2. Canonical Objects
 
@@ -34,14 +34,13 @@ This contract defines domain modeling for `§37-§38` and the four-phase onboard
 - `default_workflow_ids`
 - `default_knowledge_namespaces`
 - `version`
-- `latency_tier`: `low | medium | high | latency_insensitive`
 
 Rules:
 
-- Each domain must be able to independently explain its risk, knowledge, evaluation, Prompt, Recipe, and governance boundaries.
+- Each domain must be independently explainable for its risk, knowledge, evaluation, Prompt, Recipe, and governance boundaries.
 - Domains must not directly reference unregistered workflows, tool bundles, plugins, or namespaces.
 
-## 4. Onboarding Four Phases
+## 4. Four-Phase Onboarding
 
 `DomainOnboardingRecord.phase` is fixed as:
 
@@ -50,7 +49,7 @@ Rules:
 3. `security_certification`
 4. `canary_launch`
 
-Each phase records at minimum:
+Each phase must record at minimum:
 
 - `phase`
 - `status`
@@ -74,7 +73,7 @@ Each phase records at minimum:
 
 Rules:
 
-- High / `critical` risk domains must explicitly declare `advisory_only`, `human_accountable`, `deterministic_hot_path_only`; these three must not be omitted.
+- `high` / `critical` risk domains must explicitly declare `advisory_only`, `human_accountable`, `deterministic_hot_path_only`, and all three must not be omitted.
 - `risk_profile_ref` is not a decorative field; domains without a profile must not enter phases after onboarding `security_certification`.
 
 ## 6. `DomainRecipe` Minimum Fields
@@ -90,14 +89,14 @@ Rules:
 
 Rules:
 
-- `risk_profile_ref` must point to a registered `DomainRiskProfile` and cannot be replaced with inline free text.
-- `guardrail_overlay` must explicitly declare domain constraints added or tightened on top of the platform baseline, and cannot be an empty object.
+- `risk_profile_ref` must reference a registered `DomainRiskProfile` and must not be replaced with inline free text.
+- `guardrail_overlay` must explicitly declare domain constraints added or tightened on top of platform baselines and must not be an empty object.
 
 ## 7. Lifecycle Constraints
 
 - `draft -> validating -> certified -> canary -> active -> deprecated -> retired`
-- Skipping levels to enter `active` is considered a contract violation.
-- High-risk domains must by default stay in `canary` and have human approval evidence.
+- Skipping directly to `active` is considered a contract violation.
+- High-risk domains must default to staying in `canary` with human approval evidence.
 
 ## 8. Runtime Rules
 
@@ -108,16 +107,16 @@ Rules:
 ## 9. Test Requirements
 
 - unit: descriptor schema, lifecycle transition, runbook evidence validation
-- integration: domain registration, domain loading, domain upgrade / offline
-- contract: Uncertified domains are prohibited from entering runtime
+- integration: domain registration, domain loading, domain upgrade / decommission
+- contract: uncertified domains must not enter runtime
 
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-11: Recipe structure lacks risk_profile_ref and guardrail_overlay references required by architecture §38. Root cause: early documents only treated recipe as an onboarding convenience template, without treating risk binding and guardrail overlay as first-class contracts. Fix: The text now defines `DomainRecipe` minimum fields, and sets `risk_profile_ref` and `guardrail_overlay` as required.
-- T-28: DomainRiskProfile is referenced but required fields are not defined; architecture §3.2 requires high-risk domains to declare advisory_only/human_accountable/deterministic_hot_path_only. Root cause: `DomainRiskProfile` was used as an external reference noun in historical versions without being expanded into a validatable schema. Fix: The text now defines `DomainRiskProfile` minimum fields and requires high-risk domains to explicitly declare three hard constraints.
+- T-11: Recipe structure lacked risk_profile_ref and guardrail_overlay references required by architecture §38. Root cause: early documentation only treated recipe as an onboarding convenience template and did not treat risk binding and guardrail overlay layer as first-class contracts. Fix: The main text now defines `DomainRecipe` minimum fields and sets `risk_profile_ref` and `guardrail_overlay` as required.
+- T-28: DomainRiskProfile was referenced but required fields were not defined; architecture §3.2 requires high-risk domains to declare advisory_only/human_accountable/deterministic_hot_path_only. Root cause: `DomainRiskProfile` was used as an external reference noun in historical versions and was not expanded into a verifiable schema. Fix: The main text now defines `DomainRiskProfile` minimum fields and requires high-risk domains to explicitly declare the three hard constraints.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

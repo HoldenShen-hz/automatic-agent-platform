@@ -47,15 +47,10 @@ export interface WorkflowLintIssue {
     | "step.duplicate_output_key"
     | "step.invalid_timeout"
     | "step.invalid_max_attempts"
-    | "step.resource_bound_missing"
-    | "step.auth_scope_missing"
-    | "step.idempotency_missing"
-    | "step.timeout_budget_mismatch"
     | "dependency.missing_target"
     | "dependency.self_reference"
     | "dependency.duplicate"
     | "dependency.missing_input_key"
-    | "dependency.data_flow_missing"
     | "dependency.cycle"
     | "workflow.no_entrypoint";
   /** Error severity - errors prevent execution, warnings are advisory */
@@ -86,8 +81,6 @@ export interface WorkflowLintReport {
   warningCount: number;
 }
 
-export type StaticCompatibilityIssue = WorkflowLintIssue;
-
 /**
  * Normalizes a step ID by trimming whitespace.
  */
@@ -102,23 +95,6 @@ function isPositiveInteger(value: number): boolean {
   return Number.isInteger(value) && value > 0;
 }
 
-function requiresResourceBudget(step: MinimalWorkflowStep): boolean {
-  return step.nodeType === "llm"
-    || step.nodeType === "tool"
-    || step.nodeType === "compensation"
-    || step.sideEffectProfile?.mayCommitExternalEffect === true;
-}
-
-function requiresExplicitExecutionScope(step: MinimalWorkflowStep): boolean {
-  return step.nodeType === "tool"
-    || step.nodeType === "compensation"
-    || step.sideEffectProfile?.mayCommitExternalEffect === true;
-}
-
-function isDataFlowOptional(step: MinimalWorkflowStep): boolean {
-  return step.nodeType === "router" || step.nodeType === "hitl_wait" || step.nodeType === "compensation";
-}
-
 /**
  * Collects step IDs that have no dependencies (entrypoints).
  *
@@ -128,7 +104,7 @@ function isDataFlowOptional(step: MinimalWorkflowStep): boolean {
 function collectEntrypoints(steps: readonly MinimalWorkflowStep[]): string[] {
   return steps
     .filter((step) => (step.dependsOnStepIds?.length ?? 0) === 0)
-    .map((step) => step.nodeId ?? "");
+    .map((step) => step.stepId);
 }
 
 /**
@@ -145,27 +121,12 @@ function collectEntrypoints(steps: readonly MinimalWorkflowStep[]): string[] {
  */
 export class WorkflowValidator {
   /**
-   * Validates a workflow definition and returns the legacy-compatible lint report.
-   */
-  public validate(definition: MinimalWorkflowDefinition): WorkflowLintReport {
-    const issues = this.collectIssues(definition);
-    const errorCount = issues.filter((issue) => issue.severity === "error").length;
-    const warningCount = issues.length - errorCount;
-    return {
-      ok: errorCount === 0,
-      issues,
-      errorCount,
-      warningCount,
-    };
-  }
-
-  /**
-   * Validates a workflow definition and returns static compatibility issues.
+   * Validates a workflow definition and returns a detailed lint report.
    *
    * @param definition - The workflow definition to validate
-   * @returns Array of static compatibility issues found
+   * @returns Lint report with all issues found and error/warning counts
    */
-  private collectIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
+  public validate(definition: MinimalWorkflowDefinition): WorkflowLintReport {
     const issues: WorkflowLintIssue[] = [];
     const seenStepIds = new Set<string>();
     const seenOutputKeys = new Set<string>();
@@ -181,7 +142,7 @@ export class WorkflowValidator {
 
     // Pass 1: Validate individual step fields and check for duplicates
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.nodeId ?? "");
+      const stepId = normalizeStepId(step.stepId);
       const roleId = step.roleId.trim();
       const inputKeys = (step.inputKeys ?? []).map((inputKey) => inputKey.trim());
       const outputKey = step.outputKey.trim();
@@ -270,16 +231,11 @@ export class WorkflowValidator {
           ...(stepId ? { stepId } : {}),
         });
       }
-
-      issues.push(...this.validateResourceBound(step, stepId));
-      issues.push(...this.validateAuthScope(step, stepId));
-      issues.push(...this.validateIdempotency(step, stepId));
-      issues.push(...this.validateTimeoutBudget(step, stepId));
     }
 
     // Pass 2: Validate dependency references and relationships
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.nodeId ?? "");
+      const stepId = normalizeStepId(step.stepId);
       const seenDependencies = new Set<string>();
       const dependencyOutputKeys = new Set<string>();
 
@@ -321,7 +277,7 @@ export class WorkflowValidator {
 
         seenDependencies.add(normalizedDependency);
         const dependency = definition.steps.find(
-          (candidate) => normalizeStepId(candidate.nodeId ?? "") === normalizedDependency,
+          (candidate) => normalizeStepId(candidate.stepId) === normalizedDependency,
         );
         const dependencyOutputKey = dependency?.outputKey.trim();
         if (dependencyOutputKey) {
@@ -339,8 +295,6 @@ export class WorkflowValidator {
           });
         }
       }
-
-      issues.push(...this.validateDataFlow(step, stepId));
     }
 
     // Pass 3: Check for workflow-level issues (entrypoints, cycles)
@@ -354,129 +308,15 @@ export class WorkflowValidator {
 
     issues.push(...this.detectCycles(definition));
 
-    return issues;
-  }
+    const errorCount = issues.filter((issue) => issue.severity === "error").length;
+    const warningCount = issues.length - errorCount;
 
-  public validateIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
-    return this.collectIssues(definition);
-  }
-
-  /**
-   * Validates resource bound requirements for a step.
-   * Steps that require resource budgets (llm, tool, compensation, or external effects)
-   * must declare a positive budget intent with resource kinds.
-   */
-  private validateResourceBound(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
-    const issues: WorkflowLintIssue[] = [];
-
-    if (requiresResourceBudget(step)) {
-      const budgetIntent = step.budgetIntent;
-      if (budgetIntent == null || budgetIntent.amount <= 0 || budgetIntent.resourceKinds.length === 0) {
-        issues.push({
-          code: "step.resource_bound_missing",
-          severity: "error",
-          message: `Step ${stepId || "<unknown>"} must declare a positive budget intent with resource kinds.`,
-          ...(stepId ? { stepId } : {}),
-        });
-      }
-    }
-
-    return issues;
-  }
-
-  /**
-   * Validates auth scope requirements for a step.
-   * Steps that perform external execution (tool, compensation, or external effects)
-   * must declare an executionRoleId.
-   */
-  private validateAuthScope(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
-    const issues: WorkflowLintIssue[] = [];
-
-    if (requiresExplicitExecutionScope(step) && (step.executionRoleId?.trim().length ?? 0) === 0) {
-      issues.push({
-        code: "step.auth_scope_missing",
-        severity: "error",
-        message: `Step ${stepId || "<unknown>"} must declare executionRoleId for external execution scope binding.`,
-        ...(stepId ? { stepId } : {}),
-      });
-    }
-
-    return issues;
-  }
-
-  /**
-   * Validates idempotency requirements for a step.
-   * Steps that commit external effects must declare a compensation/idempotency model.
-   */
-  private validateIdempotency(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
-    const issues: WorkflowLintIssue[] = [];
-
-    if (step.sideEffectProfile?.mayCommitExternalEffect === true && step.compensationModel == null) {
-      issues.push({
-        code: "step.idempotency_missing",
-        severity: "error",
-        message: `Step ${stepId || "<unknown>"} commits external effects but declares no compensation/idempotency model.`,
-        ...(stepId ? { stepId } : {}),
-      });
-    }
-
-    return issues;
-  }
-
-  /**
-   * Validates timeout budget requirements for a step.
-   * LLM steps must budget token resources.
-   * Steps with external effects must budget api or side_effect resources.
-   */
-  private validateTimeoutBudget(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
-    const issues: WorkflowLintIssue[] = [];
-
-    if (step.nodeType === "llm" && !step.budgetIntent?.resourceKinds.includes("token")) {
-      issues.push({
-        code: "step.timeout_budget_mismatch",
-        severity: "error",
-        message: `Step ${stepId || "<unknown>"} is an LLM step and must budget token resources before execution.`,
-        ...(stepId ? { stepId } : {}),
-      });
-    }
-
-    if (
-      step.sideEffectProfile?.mayCommitExternalEffect === true
-      && step.nodeType === "tool"
-      && !(step.budgetIntent?.resourceKinds.includes("api") || step.budgetIntent?.resourceKinds.includes("side_effect"))
-    ) {
-      issues.push({
-        code: "step.timeout_budget_mismatch",
-        severity: "error",
-        message: `Step ${stepId || "<unknown>"} commits external tool effects and must budget api or side_effect resources.`,
-        ...(stepId ? { stepId } : {}),
-      });
-    }
-
-    return issues;
-  }
-
-  /**
-   * Validates data flow requirements for a step.
-   * Steps with dependencies should declare inputKeys for data flow contract.
-   */
-  private validateDataFlow(step: MinimalWorkflowStep, stepId: string): WorkflowLintIssue[] {
-    const issues: WorkflowLintIssue[] = [];
-
-    if (
-      (step.dependsOnStepIds?.length ?? 0) > 0
-      && (step.inputKeys?.length ?? 0) === 0
-      && !isDataFlowOptional(step)
-    ) {
-      issues.push({
-        code: "dependency.data_flow_missing",
-        severity: "warning",
-        message: `Step ${stepId} declares dependencies but no inputKeys/data-flow contract.`,
-        stepId,
-      });
-    }
-
-    return issues;
+    return {
+      ok: errorCount === 0,
+      issues,
+      errorCount,
+      warningCount,
+    };
   }
 
   /**
@@ -495,7 +335,7 @@ export class WorkflowValidator {
 
     // Build adjacency list from step dependencies
     for (const step of definition.steps) {
-      const stepId = normalizeStepId(step.nodeId ?? "");
+      const stepId = normalizeStepId(step.stepId);
       if (stepId.length === 0) {
         continue;
       }
@@ -554,7 +394,6 @@ export class WorkflowValidator {
  */
 export function assertWorkflowValid(definition: MinimalWorkflowDefinition): WorkflowLintReport {
   const report = new WorkflowValidator().validate(definition);
-
   if (!report.ok) {
     const firstError = report.issues.find((issue) => issue.severity === "error");
     throw new ValidationError(
@@ -564,10 +403,4 @@ export function assertWorkflowValid(definition: MinimalWorkflowDefinition): Work
     );
   }
   return report;
-}
-
-export function validateWorkflowCompatibility(
-  definition: MinimalWorkflowDefinition,
-): StaticCompatibilityIssue[] {
-  return new WorkflowValidator().validateIssues(definition);
 }

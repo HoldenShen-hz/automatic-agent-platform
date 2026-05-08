@@ -17,22 +17,6 @@ import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
 
-/**
- * Error thrown when a concurrent modification conflict is detected during worker snapshot update.
- */
-export class WorkerSnapshotConflictError extends Error {
-  public constructor(
-    public readonly workerId: string,
-    public readonly expectedVersion: number,
-    public readonly actualVersion: number,
-  ) {
-    super(
-      `Worker snapshot conflict for worker ${workerId}: expected version ${expectedVersion}, found ${actualVersion}`,
-    );
-    this.name = "WorkerSnapshotConflictError";
-  }
-}
-
 export class AsyncWorkerRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
@@ -130,23 +114,19 @@ export class AsyncWorkerRepository {
     );
   }
 
-  public async upsertWorkerSnapshot(
-  snapshot: WorkerSnapshotRecord,
-  expectedVersion: number = snapshot.version ?? 0,
-): Promise<void> {
-  const result = await asyncExecute(
-    this.conn,
-    `INSERT INTO worker_snapshots (
+  public async upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): Promise<void> {
+    await asyncExecute(
+      this.conn,
+      `INSERT INTO worker_snapshots (
         worker_id, status, placement, isolation_level, repo_version, remote_session_status,
         last_acknowledged_stream_offset, stream_resume_success_rate, credential_refresh_success_rate,
         session_consistency_check_status, session_consistency_checked_at, workspace_sync_status,
         workspace_sync_checked_at, saturation, active_lease_count, mean_startup_latency_ms,
         sandbox_success_rate, repo_cache_hit_rate, registration_verified_at, registration_challenge_id,
-        service_identity, mtls_peer_fingerprint, allowed_node_run_tenants, capabilities_json,
-        running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
+        capabilities_json, running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
         restarted_from_runtime_instance_id, restart_generation, cpu_pct, memory_mb, tool_backlog_count,
-        current_step_id, last_progress_at, last_heartbeat_at, updated_at, version
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
+        current_step_id, last_progress_at, last_heartbeat_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
       ON CONFLICT(worker_id) DO UPDATE SET
         status = excluded.status,
         placement = excluded.placement,
@@ -167,9 +147,6 @@ export class AsyncWorkerRepository {
         repo_cache_hit_rate = excluded.repo_cache_hit_rate,
         registration_verified_at = excluded.registration_verified_at,
         registration_challenge_id = excluded.registration_challenge_id,
-        service_identity = excluded.service_identity,
-        mtls_peer_fingerprint = excluded.mtls_peer_fingerprint,
-        allowed_node_run_tenants = excluded.allowed_node_run_tenants,
         capabilities_json = excluded.capabilities_json,
         running_executions_json = excluded.running_executions_json,
         max_concurrency = excluded.max_concurrency,
@@ -183,9 +160,7 @@ export class AsyncWorkerRepository {
         current_step_id = excluded.current_step_id,
         last_progress_at = excluded.last_progress_at,
         last_heartbeat_at = excluded.last_heartbeat_at,
-        updated_at = excluded.updated_at,
-        version = excluded.version + 1
-      WHERE worker_snapshots.version = excluded.version`,
+        updated_at = excluded.updated_at`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -206,9 +181,6 @@ export class AsyncWorkerRepository {
       snapshot.repoCacheHitRate ?? null,
       snapshot.registrationVerifiedAt ?? null,
       snapshot.registrationChallengeId ?? null,
-      snapshot.serviceIdentity ?? null,
-      snapshot.mtlsPeerFingerprint ?? null,
-      snapshot.allowedNodeRunTenants != null ? JSON.stringify(snapshot.allowedNodeRunTenants) : null,
       snapshot.capabilitiesJson,
       snapshot.runningExecutionsJson,
       snapshot.maxConcurrency,
@@ -223,23 +195,7 @@ export class AsyncWorkerRepository {
       snapshot.lastProgressAt,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
-      expectedVersion,
     );
-    // Check if the upsert was applied (result > 0 means version matched)
-    // If result is 0, it means the WHERE clause failed - version mismatch
-    if (result === 0) {
-      // Fetch current version to report accurate conflict info
-      const current = await asyncQueryOne<{ version: number }>(
-        this.conn,
-        `SELECT version FROM worker_snapshots WHERE worker_id = $1`,
-        snapshot.workerId,
-      );
-      throw new WorkerSnapshotConflictError(
-        snapshot.workerId,
-        expectedVersion,
-        current?.version ?? 0,
-      );
-    }
   }
 
   public async upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): Promise<void> {
@@ -318,8 +274,7 @@ export class AsyncWorkerRepository {
         current_step_id AS "currentStepId",
         last_progress_at AS "lastProgressAt",
         last_heartbeat_at AS "lastHeartbeatAt",
-        updated_at AS "updatedAt",
-        version AS "version"
+        updated_at AS "updatedAt"
        FROM worker_snapshots
        WHERE worker_id = $1`,
       workerId,
@@ -507,8 +462,7 @@ export class AsyncWorkerRepository {
        current_step_id AS "currentStepId",
        last_progress_at AS "lastProgressAt",
        last_heartbeat_at AS "lastHeartbeatAt",
-       updated_at AS "updatedAt",
-       version AS "version"
+       updated_at AS "updatedAt"
        FROM worker_snapshots`;
     if (status != null) {
       sql += ` WHERE status = $${params.length + 1}`;
@@ -559,8 +513,7 @@ export class AsyncWorkerRepository {
        current_step_id AS "currentStepId",
        last_progress_at AS "lastProgressAt",
        last_heartbeat_at AS "lastHeartbeatAt",
-       updated_at AS "updatedAt",
-       version AS "version"
+       updated_at AS "updatedAt"
        FROM worker_snapshots
        WHERE last_heartbeat_at < $1
        ORDER BY last_heartbeat_at ASC`,
@@ -787,7 +740,7 @@ export class AsyncWorkerRepository {
        updated_at AS "updatedAt"
        FROM execution_tickets
        WHERE status = 'pending'
-         AND dispatch_after <= TO_CHAR(NOW() AT TIME ZONE 'UTC', '%Y-%m-%dT%H:%M:%SZ')`;
+         AND dispatch_after <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', 'utc')`;
     if (queueName != null) {
       sql += ` AND queue_name = $${params.length + 1}`;
       params.push(queueName);
@@ -1095,25 +1048,5 @@ export class AsyncWorkerRepository {
       executionId,
     );
     return Number(result?.maxFencingToken ?? 0);
-  }
-
-  public async deleteWorkerSnapshot(workerId: string): Promise<boolean> {
-    const result = await asyncExecute(
-      this.conn,
-      `DELETE FROM worker_snapshots WHERE worker_id = $1`,
-      workerId,
-    );
-    return Number(result) > 0;
-  }
-
-  public async updateWorkerStatus(workerId: string, status: string, updatedAt: string): Promise<boolean> {
-    const result = await asyncExecute(
-      this.conn,
-      `UPDATE worker_snapshots SET status = $1, updated_at = $2 WHERE worker_id = $3`,
-      status,
-      updatedAt,
-      workerId,
-    );
-    return Number(result) > 0;
   }
 }

@@ -72,14 +72,12 @@ export class AsyncSessionRepository {
   public async insertCompactionRecord(record: CompactionRecord): Promise<void> {
     await this.conn.execute(
       `INSERT INTO compaction_records (
-        id, session_id, task_id, harness_run_id, node_run_id, stage, source_message_ids_json, summary_text, summary_ref,
+        id, session_id, task_id, stage, source_message_ids_json, summary_text, summary_ref,
         compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       record.id,
       record.sessionId,
       record.taskId,
-      record.harnessRunId,
-      record.nodeRunId,
       record.stage,
       record.sourceMessageIdsJson,
       record.summaryText,
@@ -112,15 +110,7 @@ export class AsyncSessionRepository {
   }
 
   public async listMessagesBySession(sessionId: string, limit?: number): Promise<MessageRecord[]> {
-    // R31-28 FIX: Validate limit is a safe integer before string interpolation.
-    // Root cause: LIMIT ${limit} string interpolation could be exploited if limit
-    // contained malicious values. While the type signature says number, untrusted
-    // sources could pass values like "10; DROP TABLE users;--" if not validated.
-    // Fix: Sanitize limit to ensure it's a positive finite integer.
-    const safeLimit = typeof limit === "number" && Number.isFinite(limit) && limit > 0
-      ? Math.min(Math.trunc(limit), 10000)
-      : undefined;
-    const limitClause = safeLimit !== undefined ? ` LIMIT ${safeLimit}` : "";
+    const limitClause = limit ? ` LIMIT ${limit}` : "";
     const sql = `SELECT
         id, session_id AS "sessionId", direction, message_type AS "messageType",
         content, parts_json AS "partsJson", attachments_json AS "attachmentsJson",
@@ -271,8 +261,6 @@ export class AsyncSessionRepository {
           c.id,
           c.session_id AS "sessionId",
           c.task_id AS "taskId",
-          c.harness_run_id AS "harnessRunId",
-          c.node_run_id AS "nodeRunId",
           c.stage,
           c.source_message_ids_json AS "sourceMessageIdsJson",
           c.summary_text AS "summaryText",
@@ -297,8 +285,6 @@ export class AsyncSessionRepository {
         id,
         session_id AS "sessionId",
         task_id AS "taskId",
-        harness_run_id AS "harnessRunId",
-        node_run_id AS "nodeRunId",
         stage,
         source_message_ids_json AS "sourceMessageIdsJson",
         summary_text AS "summaryText",

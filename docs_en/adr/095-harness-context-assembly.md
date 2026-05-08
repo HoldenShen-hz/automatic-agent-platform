@@ -7,7 +7,7 @@
 - **Observe**: Collect task/domain/shared context sources
 - **Assess**: Evaluate token budget and sensitive information
 - **Plan**: Assemble context block and snapshot granularity
-- **Execute**: Provide context input for Harness NodeRun execution group (note: context is assembled by NodeRun, not step; step is only a semantic projection, NodeRun/NodeAttempt is the execution layer truth)
+- **Execute**: Provide context input for Harness step
 - **Feedback**: Record context missing and compression results
 - **Learn**: Identify most valuable context sources
 - **Improve**: Optimize compression and namespace strategy
@@ -18,16 +18,16 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Context
+## Background
 
-If there is no unified assembler, Harness will repeatedly concatenate across different call paths, cannot audit, and cannot compress or replay.
+Without a unified assembler, Harness will repeatedly concatenate across different call paths, cannot be audited, and cannot compress or replay.
 
-## Decision
+## Decisions
 
-- `ContextAssembler` serves as the authoritative context assembly entry point for Harness
+- `ContextAssembler` serves as Harness's authoritative context assembly entry point
 - Must support task / domain / shared source set
 - Each loop generates `ContextSnapshot`
 
 ## Consequences
 
-- Context assembly becomes a formal capability that is testable, recoverable, and governable
+- Context assembly becomes a testable, recoverable, governable formal capability

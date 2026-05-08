@@ -144,14 +144,6 @@ export class EventOpsService {
   }
 
   /**
-   * Releases polling timers and subscriber state held by the durable event bus.
-   * Call this before closing the backing database in short-lived workflows/tests.
-   */
-  public dispose(): void {
-    this.bus.dispose();
-  }
-
-  /**
    * Lists all default Tier 1 consumer IDs in sorted order.
    * @returns Array of consumer IDs
    */

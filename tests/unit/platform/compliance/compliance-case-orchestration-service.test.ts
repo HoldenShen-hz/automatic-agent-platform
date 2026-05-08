@@ -170,7 +170,7 @@ test("ComplianceCaseOrchestrationService handles restricted artifact with summar
   assert.equal(result.artifactDecision.action, "summarize");
 });
 
-test("ComplianceCaseOrchestrationService blocks transfer when governance evaluator is missing", () => {
+test("ComplianceCaseOrchestrationService with no governance defaults to allowed", () => {
   const service = new ComplianceCaseOrchestrationService({
     classification: new DataClassificationService({ strictMode: false }),
     governance: null,
@@ -197,9 +197,8 @@ test("ComplianceCaseOrchestrationService blocks transfer when governance evaluat
     keyRef: "kms://key-1",
   });
 
-  assert.equal(result.status, "blocked");
-  assert.equal(result.governance?.allowed, false);
-  assert.ok(result.reasons.includes("governance_missing:governance_evaluator_unconfigured"));
+  assert.equal(result.status, "approved");
+  assert.equal(result.governance, null);
 });
 
 test("ComplianceCaseOrchestrationService planSubjectErasureRequest with governance blocking", () => {

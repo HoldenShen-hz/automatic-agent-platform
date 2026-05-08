@@ -3,11 +3,6 @@
   "phase": "9a",
   "divisionId": "data",
   "latencyTier": "business_day",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "data-engineering.primary",
     "rollout": "baseline"

@@ -100,7 +100,7 @@ function seedTaskAndExecution(
     taskId: string;
     executionId: string;
     traceId: string;
-    priority?: "low" | "normal" | "high" | "critical";
+    priority?: "low" | "normal" | "high" | "urgent";
   },
 ): void {
   const now = nowIso();
@@ -138,8 +138,6 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -263,7 +261,7 @@ async function runQueueReplayScenario(outputDir: string): Promise<StableQueueDel
       occurredAt: "2026-04-07T10:00:09.000Z",
     });
     const tickets = store.worker.listExecutionTicketsByExecution("exec-queue-replay");
-    const eventsResult = store.event.listEventsForTask("task-queue-replay");
+    const events = store.event.listEventsForTask("task-queue-replay");
     db.close();
 
     return {
@@ -276,7 +274,7 @@ async function runQueueReplayScenario(outputDir: string): Promise<StableQueueDel
         replayDispatch.outcome === "dispatched" &&
         replayDispatch.ticket?.id === replacementTicketId &&
         replayDispatch.worker?.workerId === "worker-queue-replay" &&
-        eventsResult.events.some((event) => event.eventType === "dispatch:ticket_requeued"),
+        events.some((event) => event.eventType === "dispatch:ticket_requeued"),
       summary: "queue replay rebuilds a dispatchable ticket from authoritative DB truth after delivery is lost",
       details: {
         created,
@@ -284,7 +282,7 @@ async function runQueueReplayScenario(outputDir: string): Promise<StableQueueDel
         repaired,
         replayDispatch,
         tickets,
-        eventTypes: eventsResult.events.map((event) => event.eventType),
+        eventTypes: events.map((event) => event.eventType),
       },
     };
   });
@@ -398,7 +396,7 @@ async function runDuplicateDeliveryScenario(outputDir: string): Promise<StableQu
     const repaired = reconcile.repair("2026-04-07T10:10:11.000Z");
     const duplicateTicket = store.worker.getExecutionTicket(duplicateTicketId);
     const worker = store.worker.getWorkerSnapshot("worker-duplicate-delivery");
-    const eventsResult = store.event.listEventsForTask("task-duplicate-delivery");
+    const events = store.event.listEventsForTask("task-duplicate-delivery");
     db.close();
 
     return {
@@ -416,8 +414,8 @@ async function runDuplicateDeliveryScenario(outputDir: string): Promise<StableQu
         ) &&
         duplicateTicket?.status === "cancelled" &&
         worker?.status === "idle" &&
-        eventsResult.events.some((event) => event.eventType === "worker:writeback_recorded") &&
-        eventsResult.events.some((event) => event.eventType === "dispatch:ticket_reconciled"),
+        events.some((event) => event.eventType === "worker:writeback_recorded") &&
+        events.some((event) => event.eventType === "dispatch:ticket_reconciled"),
       summary: "duplicate delivery is blocked by the active lease and cleaned up after authoritative terminal writeback",
       details: {
         created,
@@ -428,7 +426,7 @@ async function runDuplicateDeliveryScenario(outputDir: string): Promise<StableQu
         repaired,
         duplicateTicket,
         worker,
-        eventTypes: eventsResult.events.map((event) => event.eventType),
+        eventTypes: events.map((event) => event.eventType),
       },
     };
   });

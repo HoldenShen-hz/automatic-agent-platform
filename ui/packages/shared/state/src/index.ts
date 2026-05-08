@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createContext, createElement, useContext, useEffect, useMemo, type PropsWithChildren, type ReactElement } from "react";
 import { useStore } from "zustand";
 import {
@@ -18,10 +18,10 @@ import {
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
-import type { PlatformAdapter, SystemStatusVM } from "@aa/shared-types";
-import { AuthService, SessionGuard, TokenManager, type AuthSession, type SecureTokenStorage } from "@aa/shared-auth";
+import type { SystemStatusVM } from "@aa/shared-types";
+import { AuthService } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
-import { createApprovalsQuery, createInfiniteApprovalsQuery } from "./queries/approval-queries";
+import { createApprovalsQuery } from "./queries/approval-queries";
 import {
   createAnalyticsQuery,
   createDashboardSnapshotQuery,
@@ -29,27 +29,16 @@ import {
 } from "./queries/dashboard-queries";
 import {
   createAgentsQuery,
-  createInfiniteAgentsQuery,
-  createInfiniteIncidentsQuery,
   createIncidentsQuery,
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
-import { createInfiniteTasksQuery, createInfiniteWorkflowsQuery, createTasksQuery, createWorkflowsQuery, createWorkflowRunStepsQuery } from "./queries/task-queries";
+import { createTasksQuery, createWorkflowsQuery } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
-import {
-  createIndexedDbQueryCachePersister,
-  restorePersistedQueryClient,
-  startPersistingQueryClient,
-  type QueryCachePersister,
-  type PersistQueryClientOptions,
-} from "./query-cache-persistence";
 import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
 import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
 import { createUiStore, type UiStoreState } from "./stores/ui-store";
-import { createNotificationStore, type NotificationStoreState } from "./stores/notification-store";
-import { createThemeStore, type ThemeStoreState } from "./stores/theme-store";
 
 export type { AuthStoreState } from "./stores/auth-store";
 export { createAuthStore } from "./stores/auth-store";
@@ -59,78 +48,7 @@ export type { RealtimeStoreState } from "./stores/realtime-store";
 export { createRealtimeStore } from "./stores/realtime-store";
 export type { SyncStoreState } from "./stores/sync-store";
 export { createSyncStore } from "./stores/sync-store";
-export type { NotificationStoreState, Notification, NotificationKind } from "./stores/notification-store";
-export { createNotificationStore } from "./stores/notification-store";
-export type { ThemeStoreState, ThemeMode, ColorScheme } from "./stores/theme-store";
-export { createThemeStore } from "./stores/theme-store";
-export { CACHE_TIER_STALE_TIME, createQueryClientFactory, createTieredQueryClientFactory } from "./query-client";
-export type { QueryCachePersister, PersistQueryClientOptions } from "./query-cache-persistence";
-export {
-  createIndexedDbQueryCachePersister,
-  createMemoryQueryCachePersister,
-  persistQueryClientSnapshot,
-  restorePersistedQueryClient,
-  startPersistingQueryClient,
-} from "./query-cache-persistence";
-
-const PLATFORM_SECURE_AUTH_SESSION_KEY = "aa.auth.session";
-
-function parsePersistedAuthSession(value: string | null): AuthSession | null {
-  if (value == null) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(value) as AuthSession;
-    if (
-      typeof parsed.accessToken === "string"
-      && typeof parsed.refreshToken === "string"
-      && typeof parsed.expiresAt === "number"
-    ) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function createPlatformMirroredTokenStorage(adapter?: PlatformAdapter): SecureTokenStorage {
-  return {
-    readSession(): AuthSession | null {
-      try {
-        return parsePersistedAuthSession(globalThis.sessionStorage?.getItem(PLATFORM_SECURE_AUTH_SESSION_KEY) ?? null);
-      } catch {
-        return null;
-      }
-    },
-    writeSession(session: AuthSession): void {
-      const serialized = JSON.stringify(session);
-      try {
-        globalThis.sessionStorage?.setItem(PLATFORM_SECURE_AUTH_SESSION_KEY, serialized);
-      } catch {
-        // Ignore sessionStorage write failures; secure-store mirror still runs.
-      }
-      void adapter?.writeSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY, serialized);
-    },
-    clearSession(): void {
-      try {
-        globalThis.sessionStorage?.removeItem(PLATFORM_SECURE_AUTH_SESSION_KEY);
-      } catch {
-        // Ignore sessionStorage cleanup failures.
-      }
-      void adapter?.deleteSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY);
-    },
-  };
-}
-
-interface UiRuntimeAuthContext {
-  readonly userId: string;
-  readonly tenantId: string;
-  readonly roles: readonly string[];
-  readonly permissions: readonly string[];
-}
+export { createQueryClientFactory } from "./query-client";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
 const WsClientContext = createContext<WSClient | null>(null);
@@ -138,63 +56,54 @@ const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null
 const UiStoreContext = createContext<ReturnType<typeof createUiStore> | null>(null);
 const RealtimeStoreContext = createContext<ReturnType<typeof createRealtimeStore> | null>(null);
 const SyncStoreContext = createContext<ReturnType<typeof createSyncStore> | null>(null);
-const NotificationStoreContext = createContext<ReturnType<typeof createNotificationStore> | null>(null);
-const ThemeStoreContext = createContext<ReturnType<typeof createThemeStore> | null>(null);
 const AuthServiceContext = createContext<AuthService | null>(null);
 const SyncCoordinatorContext = createContext<SyncCoordinator | null>(null);
 const fallbackAuthStore = createAuthStore();
 const fallbackUiStore = createUiStore();
 const fallbackRealtimeStore = createRealtimeStore();
 const fallbackSyncStore = createSyncStore();
-const fallbackNotificationStore = createNotificationStore();
-const fallbackThemeStore = createThemeStore();
 
 export function UiRuntimeProvider(
-  {
-    children,
-    client,
-    queryClient,
-    tokenManager,
-    wsClient,
-    wsUrl,
-    authContext,
-    queryCachePersister,
-    platformAdapter,
-  }: PropsWithChildren<{
-    client?: RESTClient;
-    queryClient?: QueryClient;
-    tokenManager?: TokenManager;
-    wsClient?: WSClient;
-    wsUrl?: string;
-    authContext?: UiRuntimeAuthContext;
-    queryCachePersister?: QueryCachePersister;
-    platformAdapter?: PlatformAdapter;
-  }>,
+  { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
 ): ReactElement {
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
   const resolvedWsClient = wsClient ?? new InMemoryWSClient();
-  const resolvedQueryCachePersister = useMemo(
-    () => queryCachePersister ?? createIndexedDbQueryCachePersister(),
-    [queryCachePersister],
-  );
   const authStore = useMemo(() => createAuthStore(), []);
   const uiStore = useMemo(() => createUiStore(), []);
   const realtimeStore = useMemo(() => createRealtimeStore(), []);
   const syncStore = useMemo(() => createSyncStore(), []);
-  const notificationStore = useMemo(() => createNotificationStore(), []);
-  const themeStore = useMemo(() => createThemeStore(), []);
-  const resolvedTokenManager = useMemo(
-    () => tokenManager ?? new TokenManager({ storage: createPlatformMirroredTokenStorage(platformAdapter) }),
-    [platformAdapter, tokenManager],
-  );
-  const authService = useMemo(() => new AuthService(resolvedTokenManager), [resolvedTokenManager]);
-  const sessionGuard = useMemo(() => new SessionGuard(resolvedTokenManager), [resolvedTokenManager]);
+  const authService = useMemo(() => new AuthService(), []);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
   useEffect(() => {
-    let disposed = false;
-    let stopPersistingQueryCache = () => undefined;
+    const params = new URLSearchParams("access_token=ui-runtime-access&refresh_token=ui-runtime-refresh&locale=zh-CN");
+    const identity = authService.resolveIdentity(params);
+    authService.handleSsoCallback(params);
+    authStore.getState().setAuthenticated(authService.isAuthenticated());
+    authStore.getState().setLocale(identity.locale);
+    uiStore.getState().setActiveRoute("/mission-control/dashboard");
+    uiStore.getState().setActiveFeature("dashboard");
+
+    const bootstrapMutations: OfflineMutation[] = [
+      {
+        id: "bootstrap-dashboard-prefetch",
+        endpoint: "/api/v1/dashboard/prefetch",
+        method: "POST",
+        body: { scope: "mission-control" },
+        createdAt: "2026-04-23T00:00:00.000Z",
+      },
+      {
+        id: "bootstrap-approvals-prefetch",
+        endpoint: "/api/v1/approvals/prefetch",
+        method: "POST",
+        body: { queue: "primary" },
+        createdAt: "2026-04-23T00:00:01.000Z",
+      },
+    ];
+    syncCoordinator.queueMutations(bootstrapMutations);
+    syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
+
     const router = new WSEventRouter(
       resolvedWsClient,
       resolvedQueryClient,
@@ -204,125 +113,22 @@ export function UiRuntimeProvider(
       realtimeStore.getState().setWsStatus(status);
     });
 
-    const bootstrap = async (): Promise<void> => {
-      await restorePersistedQueryClient(resolvedQueryClient, resolvedQueryCachePersister);
-      if (disposed) {
-        return;
-      }
-      stopPersistingQueryCache = startPersistingQueryClient(resolvedQueryClient, {
-        persister: resolvedQueryCachePersister,
-      } satisfies PersistQueryClientOptions);
-      if (platformAdapter != null && resolvedTokenManager.getSession() == null) {
-        const secureSession = parsePersistedAuthSession(
-          await platformAdapter.readSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY),
-        );
-        if (!disposed && secureSession != null && resolvedTokenManager.getSession() == null) {
-          resolvedTokenManager.setSession(secureSession);
-        }
-      }
-      const params = new URLSearchParams(window.location.search);
-      const identity = authService.resolveIdentity(params);
-      if (params.has("code") && !authService.isAuthenticated()) {
-        try {
-          await authService.handleAuthorizationCallback(params);
-        } catch {
-          // Fail closed: do not synthesize demo credentials into the runtime.
-        }
-      }
-      if (disposed) {
-        return;
-      }
-
-      const session = authService.getSession();
-      if (platformAdapter != null) {
-        if (session == null) {
-          await platformAdapter.deleteSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY);
-        } else {
-          await platformAdapter.writeSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY, JSON.stringify(session));
-        }
-      }
-      if (session !== null && authContext != null) {
-        authStore.getState().login({
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-          expiresAt: session.expiresAt,
-          userId: authContext.userId,
-          tenantId: authContext.tenantId,
-          roles: authContext.roles,
-          permissions: authContext.permissions,
-        });
-      }
-      authStore.getState().setLocale(identity.locale);
-      uiStore.getState().setActiveRoute("/mission-control/dashboard");
-      uiStore.getState().setActiveFeature("dashboard");
-
-      const bootstrapMutations: OfflineMutation[] = [
-        {
-          id: "bootstrap-dashboard-prefetch",
-          endpoint: "/api/v1/dashboard/prefetch",
-          method: "POST",
-          body: { scope: "mission-control" },
-          createdAt: "2026-04-23T00:00:00.000Z",
-          idempotencyKey: "bootstrap-dashboard-prefetch-key",
-          retryCount: 0,
-          status: "pending",
-        },
-        {
-          id: "bootstrap-approvals-prefetch",
-          endpoint: "/api/v1/approvals/prefetch",
-          method: "POST",
-          body: { queue: "primary" },
-          createdAt: "2026-04-23T00:00:01.000Z",
-          idempotencyKey: "bootstrap-approvals-prefetch-key",
-          retryCount: 0,
-          status: "pending",
-        },
-      ];
-      syncCoordinator.queueMutations(bootstrapMutations);
-      syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
-
-      const wsToken = session?.accessToken ?? null;
-      if (wsUrl != null && wsToken != null && wsToken.length > 0) {
-        router.connect(wsUrl, wsToken);
-        router.subscribe("global");
-        router.subscribe("dashboard");
-        router.subscribe("approvals");
-        router.subscribe("incidents");
-        router.subscribe("agents");
-      }
-      resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
-      resolvedWsClient.useSseFallback();
-      realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
-      realtimeStore.getState().setSyncStatus("queued");
-    };
-
-    void bootstrap();
-
-    let warnedExpiryAt: number | null = null;
-    const notifySessionTimeoutWarning = (): void => {
-      const warning = sessionGuard.getTimeoutWarning();
-      if (warning == null || warning.expiresAt === warnedExpiryAt) {
-        return;
-      }
-      warnedExpiryAt = warning.expiresAt;
-      const expiresInMinutes = Math.max(1, Math.ceil(warning.expiresInMs / 60_000));
-      notificationStore.getState().addNotification({
-        kind: "warning",
-        title: "Session expiring soon",
-        message: `Your session will expire in ${expiresInMinutes} minute(s).`,
-      });
-    };
-    notifySessionTimeoutWarning();
-    const sessionWarningInterval = setInterval(notifySessionTimeoutWarning, 30_000);
+    router.connect("ws://local/ui", "demo-token");
+    router.subscribe("global");
+    router.subscribe("dashboard");
+    router.subscribe("approvals");
+    router.subscribe("incidents");
+    router.subscribe("agents");
+    resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
+    resolvedWsClient.useSseFallback();
+    realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
+    realtimeStore.getState().setSyncStatus("queued");
 
     return () => {
-      disposed = true;
-      stopPersistingQueryCache();
-      clearInterval(sessionWarningInterval);
       disposeStatus();
       router.disconnect();
     };
-  }, [authContext, authService, authStore, notificationStore, platformAdapter, realtimeStore, resolvedQueryCachePersister, resolvedQueryClient, resolvedTokenManager, resolvedWsClient, sessionGuard, syncCoordinator, syncStore, uiStore, wsUrl]);
+  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },
@@ -347,15 +153,7 @@ export function UiRuntimeProvider(
                 createElement(
                   SyncStoreContext.Provider,
                   { value: syncStore },
-                  createElement(
-                    NotificationStoreContext.Provider,
-                    { value: notificationStore },
-                    createElement(
-                      ThemeStoreContext.Provider,
-                      { value: themeStore },
-                      createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
-                    ),
-                  ),
+                  createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
                 ),
               ),
             ),
@@ -389,16 +187,6 @@ export function useSyncState(): SyncStoreState {
   return useStore(store, (state) => state);
 }
 
-export function useNotificationState(): NotificationStoreState {
-  const store = useContext(NotificationStoreContext) ?? fallbackNotificationStore;
-  return useStore(store, (state) => state);
-}
-
-export function useThemeState(): ThemeStoreState {
-  const store = useContext(ThemeStoreContext) ?? fallbackThemeStore;
-  return useStore(store, (state) => state);
-}
-
 export function useSystemStatus(): SystemStatusVM {
   const realtimeStore = useContext(RealtimeStoreContext) ?? fallbackRealtimeStore;
   const realtimeState = useStore(realtimeStore, (state) => state);
@@ -415,19 +203,9 @@ export function useTasksQuery() {
   return useQuery(createTasksQuery(client));
 }
 
-export function useInfiniteTasksQuery() {
-  const client = useRestClient();
-  return useInfiniteQuery(createInfiniteTasksQuery(client));
-}
-
 export function useWorkflowsQuery() {
   const client = useRestClient();
   return useQuery(createWorkflowsQuery(client));
-}
-
-export function useInfiniteWorkflowsQuery() {
-  const client = useRestClient();
-  return useInfiniteQuery(createInfiniteWorkflowsQuery(client));
 }
 
 export function useApprovalsQuery() {
@@ -435,19 +213,9 @@ export function useApprovalsQuery() {
   return useQuery(createApprovalsQuery(client));
 }
 
-export function useInfiniteApprovalsQuery() {
-  const client = useRestClient();
-  return useInfiniteQuery(createInfiniteApprovalsQuery(client));
-}
-
 export function useIncidentsQuery() {
   const client = useRestClient();
   return useQuery(createIncidentsQuery(client));
-}
-
-export function useInfiniteIncidentsQuery() {
-  const client = useRestClient();
-  return useInfiniteQuery(createInfiniteIncidentsQuery(client));
 }
 
 export function useWorkersQuery() {
@@ -463,11 +231,6 @@ export function useQueuesQuery() {
 export function useAgentsQuery() {
   const client = useRestClient();
   return useQuery(createAgentsQuery(client));
-}
-
-export function useInfiniteAgentsQuery() {
-  const client = useRestClient();
-  return useInfiniteQuery(createInfiniteAgentsQuery(client));
 }
 
 export function useAnalyticsQuery() {
@@ -553,9 +316,4 @@ export function usePreferencesQuery() {
     queryKey: ["preferences"],
     queryFn: () => fetchPreferences(client),
   });
-}
-
-export function useWorkflowRunStepsQuery(workflowRunId: string) {
-  const client = useRestClient();
-  return useQuery(createWorkflowRunStepsQuery(client, workflowRunId));
 }

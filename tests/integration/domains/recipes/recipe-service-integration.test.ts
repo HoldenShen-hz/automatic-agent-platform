@@ -16,14 +16,6 @@ test("integration: DomainRecipeService registers and retrieves recipes", () => {
     triggerPhrases: ["test", "run", "execute"],
     defaultWorkflowId: "test_workflow",
     defaultToolBundleIds: ["tools1", "tools2"],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "recipe-domain.risk",
-    guardrail_overlay: "recipe-domain.guardrails",
-    recommended_workflow_ids: ["test_workflow"],
-    default_prompt_bundle_ref: "recipe-domain.prompts",
-    acceptance_checklist_ref: "recipe-domain.acceptance",
-    requiredApproval: false,
   };
 
   service.register(recipe);
@@ -44,15 +36,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     description: "",
     triggerPhrases: ["test1"],
     defaultWorkflowId: "wf1",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "multi-domain.risk",
-    guardrail_overlay: "multi-domain.guardrails",
-    recommended_workflow_ids: ["wf1"],
-    default_prompt_bundle_ref: "multi-domain.prompts",
-    acceptance_checklist_ref: "multi-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   });
 
   service.register({
@@ -62,15 +46,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     description: "",
     triggerPhrases: ["test2"],
     defaultWorkflowId: "wf2",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "multi-domain.risk",
-    guardrail_overlay: "multi-domain.guardrails",
-    recommended_workflow_ids: ["wf2"],
-    default_prompt_bundle_ref: "multi-domain.prompts",
-    acceptance_checklist_ref: "multi-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   });
 
   service.register({
@@ -80,15 +56,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     description: "",
     triggerPhrases: ["test3"],
     defaultWorkflowId: "wf3",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "other-domain.risk",
-    guardrail_overlay: "other-domain.guardrails",
-    recommended_workflow_ids: ["wf3"],
-    default_prompt_bundle_ref: "other-domain.prompts",
-    acceptance_checklist_ref: "other-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   });
 
   const domainRecipes = service.getRecipesByDomain("multi-domain");
@@ -106,15 +74,7 @@ test("integration: DomainRecipeService matches recipe by trigger phrase", () => 
     description: "For analysis tasks",
     triggerPhrases: ["analyze", "examine", "investigate"],
     defaultWorkflowId: "analysis_wf",
-    defaultToolBundleIds: [] as string[],
-    archetype: "analytics",
-    riskLevel: "medium",
-    risk_profile_ref: "match-domain.risk",
-    guardrail_overlay: "match-domain.guardrails",
-    recommended_workflow_ids: ["analysis_wf"],
-    default_prompt_bundle_ref: "match-domain.prompts",
-    acceptance_checklist_ref: "match-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   });
 
   service.register({
@@ -124,15 +84,7 @@ test("integration: DomainRecipeService matches recipe by trigger phrase", () => 
     description: "For implementation tasks",
     triggerPhrases: ["implement", "create", "build"],
     defaultWorkflowId: "impl_wf",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "match-domain.risk",
-    guardrail_overlay: "match-domain.guardrails",
-    recommended_workflow_ids: ["impl_wf"],
-    default_prompt_bundle_ref: "match-domain.prompts",
-    acceptance_checklist_ref: "match-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   });
 
   const matched = service.matchRecipe("match-domain", "Please analyze this data");
@@ -176,7 +128,7 @@ test("integration: DomainRecipeService updates recipes and bumps version", () =>
     description: "Original description",
     triggerPhrases: ["original"],
     defaultWorkflowId: "original_wf",
-    defaultToolBundleIds: [] as string[],
+    defaultToolBundleIds: [],
   });
 
   const updated = service.update({
@@ -204,7 +156,7 @@ test("integration: DomainRecipeService deletes recipes", () => {
     description: "",
     triggerPhrases: ["delete"],
     defaultWorkflowId: "delete_wf",
-    defaultToolBundleIds: [] as string[],
+    defaultToolBundleIds: [],
   });
 
   assert.notEqual(service.getRecipe(created.recipeId), null);
@@ -266,15 +218,7 @@ test("integration: DomainRecipeService validates recipes", () => {
     description: "Valid recipe",
     triggerPhrases: ["valid", "test"],
     defaultWorkflowId: "wf",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "valid-domain.risk",
-    guardrail_overlay: "valid-domain.guardrails",
-    recommended_workflow_ids: ["wf"],
-    default_prompt_bundle_ref: "valid-domain.prompts",
-    acceptance_checklist_ref: "valid-domain.acceptance",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   };
 
   const errors = service.validate(validRecipe);
@@ -287,24 +231,12 @@ test("integration: DomainRecipeService validates recipes", () => {
     description: "",
     triggerPhrases: [],
     defaultWorkflowId: "",
-    defaultToolBundleIds: [] as string[],
-    archetype: "crud_heavy",
-    riskLevel: "medium",
-    risk_profile_ref: "",
-    guardrail_overlay: "",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "",
-    acceptance_checklist_ref: "",
-    requiredApproval: false,
+    defaultToolBundleIds: [],
   };
 
   const validationErrors = service.validate(invalidRecipe);
   assert.ok(validationErrors.length > 0);
   assert.ok(validationErrors.some((e) => e.includes("id_required") || e.includes("domain_id_required")));
-  assert.ok(validationErrors.includes("recipe.risk_profile_ref_required"));
-  assert.ok(validationErrors.includes("recipe.guardrail_overlay_required"));
-  assert.ok(validationErrors.includes("recipe.default_prompt_bundle_ref_required"));
-  assert.ok(validationErrors.includes("recipe.acceptance_checklist_ref_required"));
 });
 
 test("integration: DomainRecipeService update returns null for nonexistent", () => {

@@ -8,7 +8,7 @@ test("DataResidencyPolicyService decides allow for same region transfer", () => 
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
   };
 
@@ -28,7 +28,7 @@ test("DataResidencyPolicyService decides deny for non-allowed region", () => {
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
   };
 
@@ -48,7 +48,7 @@ test("DataResidencyPolicyService decides deny for restricted classification with
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: false,
   };
 
@@ -69,7 +69,7 @@ test("DataResidencyPolicyService decides require_redaction for restricted data w
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
   };
 
@@ -90,7 +90,7 @@ test("DataResidencyPolicyService decides require_redaction when redaction allowe
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
   };
 
@@ -110,7 +110,7 @@ test("DataResidencyPolicyService decides allow for unrestricted data to allowed 
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: true,
   };
 
@@ -150,7 +150,7 @@ test("DataResidencyPolicyService treats internal classification as non-restricte
   const policy = {
     tenantId: "tenant_1",
     allowedRegions: ["us-east-1", "eu-west-1"],
-    restrictedClassifications: ["confidential", "restricted"] as Array<"confidential" | "restricted">,
+    restrictedClassifications: ["confidential", "restricted"],
     allowRedactedTransfer: false,
   };
 

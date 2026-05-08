@@ -23,13 +23,11 @@ const result = withCliStorage((storage) => {
     case "add_workspace_member":
       return service.addWorkspaceMembership({
         workspaceId: envConfig.workspaceId ?? "",
-        callerUserId: envConfig.callerUserId ?? "",
         userId: envConfig.userId ?? "",
         role: envConfig.role ?? "",
       });
     case "create_organization":
       return service.createOrganization({
-        ownerId: envConfig.ownerId ?? "",
         displayName: envConfig.displayName ?? "",
         ...(envConfig.organizationId ? { organizationId: envConfig.organizationId } : {}),
         billingAccountId: envConfig.billingAccountId,
@@ -38,7 +36,6 @@ const result = withCliStorage((storage) => {
     case "add_organization_member":
       return service.addOrganizationMembership({
         organizationId: envConfig.organizationId ?? "",
-        callerUserId: envConfig.callerUserId ?? "",
         userId: envConfig.userId ?? "",
         role: envConfig.role ?? "",
       });

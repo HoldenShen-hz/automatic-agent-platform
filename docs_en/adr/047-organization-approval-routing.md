@@ -28,7 +28,7 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 | Type | Description |
 |------|-------------|
 | single | Single person approval |
-| multi_party | Multi-party cosign |
+| multi_party | Multi-party countersignature |
 | delegated | Delegated approval |
 | sequential_chain | Sequential approval chain |
 
@@ -40,32 +40,30 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 | escalate | Escalate after timeout |
 | auto_action | Auto-execute preset action after timeout |
 
-Note: auto_action execution must follow §10.3 risk level guard — high/critical risk levels default to deny, auto_action must not auto-execute high-risk operations without explicit approval. §2.1: When approval is delayed, "safely stop" rather than auto-execute; critical operations require break-glass + dual approval mechanism.
-
 ### Routing Rules Engine
 
-- Dynamic routing based on organizational hierarchy, roles, risk levels
+- Dynamic routing based on organizational hierarchy, roles, and risk levels
 - Supports approval delegation
-- Supports approval expedite
+- Supports approval expedited processing
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Dynamic routing adapts to organizational changes
 - Multi-type approval flows support complex scenarios
-- Timeout handling automation
+- Automated timeout handling
 
-Cons:
+Negative:
 
 - Rules engine complexity
 - Routing performance impact
 
-## Cross-references
+## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
-## Source Section
+## Source Sections
 
 - `§47` Organization Approval Routing

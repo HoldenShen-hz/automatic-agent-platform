@@ -298,7 +298,7 @@ export const skillExecutionCacheMethods = {
       durationMs: Math.max(0, Math.trunc(input.result.durationMs ?? 0)),
     };
   },
-  buildStepOutput(this: SkillExecutionService,
+  buildStepOutput(this: SkillExecutionService, 
     taskId: string,
     skill: SkillDefinition,
     cachedStep: CachedSkillStepResult,
@@ -307,7 +307,6 @@ export const skillExecutionCacheMethods = {
     return {
       id: newId("step"),
       taskId,
-      nodeRunId: newId("step"),
       stepId: cachedStep.stepId,
       roleId: `skill:${skill.skillId}`,
       status: cachedStep.status,

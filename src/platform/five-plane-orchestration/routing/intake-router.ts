@@ -30,27 +30,8 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md (intake_router)
  */
 
-import { newId, nowIso } from "../../contracts/types/ids.js";
-import {
-  createConfirmedTaskSpec,
-  createRequestEnvelopeFromConfirmedTask,
-  createTaskDraft,
-  type AmbiguityPolicy,
-  type BudgetIntent,
-  type ConfirmedTaskSpec,
-  type JsonValue,
-  type PrincipalRef,
-  type RequestEnvelope,
-  type RiskPreview,
-  type TaskDraft,
-  type TaskInputSource,
-  type UserConfirmationReceipt,
-} from "../../contracts/executable-contracts/index.js";
-import type { ClarificationSession } from "../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../../domains/governance/division-loader.js";
-import type { WorkerRegistryService } from "../../five-plane-execution/worker-pool/worker/worker-registry-service.js";
-import type { IntentParserModelGateway } from "../../../interaction/nl-gateway/intent-parser/index.js";
 
 /** Intent types for request classification */
 export type IntakeIntent =
@@ -74,51 +55,6 @@ export interface IntakeIntentClassification {
   continuation: IntakeContinuation;
   confidence: number;
   matchedRules: string[];
-}
-
-/**
- * R9-09: Capacity snapshot for a single eligible worker.
- * Contains the worker's current load and availability info.
- */
-export interface WorkerCapacitySnapshot {
-  /** Worker identifier */
-  workerId: string;
-  /** Available execution slots (maxConcurrency - running executions) */
-  availableSlots: number;
-  /** Maximum concurrent executions the worker supports */
-  maxConcurrency: number;
-  /** Current saturation ratio (0-1) */
-  saturation: number | null;
-  /** Current status of the worker */
-  status: string;
-  /** Number of active leases held by this worker */
-  activeLeaseCount: number;
-}
-
-/**
- * R9-09: Result of capability matching for routing decisions.
- * Indicates whether a capable worker was found for the selected division,
- * and includes capacity snapshots for load-aware routing.
- */
-export interface CapabilityMatchResult {
-  /** Whether a capable worker was found */
-  capableWorkerFound: boolean;
-  /** The division that was selected as the target */
-  targetDivisionId: string;
-  /** Required capabilities for the task */
-  requiredCapabilities: string[];
-  /** Number of eligible workers found with required capabilities */
-  eligibleWorkerCount: number;
-  /** R9-09: Capacity snapshots of all eligible workers (for load-aware routing) */
-  workerCapacitySnapshots?: WorkerCapacitySnapshot[];
-  /** R9-09: Total available slots across all eligible workers */
-  totalAvailableSlots?: number;
-  /** R9-09: Average saturation across eligible workers (0-1, lower is better) */
-  averageSaturation?: number | null;
-  /** Fallback reason if no capable worker found */
-  fallbackReason?: string;
-  /** R9-09: Whether the worker registry was actually queried */
-  registryQueried?: boolean;
 }
 
 /** Keywords indicating the request may need multi-step orchestration */
@@ -326,9 +262,6 @@ const FOLLOW_UP_RULES = [
 /**
  * The result of routing an intake request, containing the selected workflow
  * and division along with metadata about how the decision was made.
- *
- * R19-16 Fix: Now includes confirmedTaskSpecId for full pipeline traceability.
- * R9-09 Fix: Now includes capabilityMatch for worker capability matching.
  */
 export interface IntakeRouteDecision {
   /** ID of the workflow to execute for this request */
@@ -345,198 +278,16 @@ export interface IntakeRouteDecision {
   requiresOrchestration: boolean;
   /** Structured intake classification used to drive downstream routing/evaluation */
   classification: IntakeIntentClassification;
-  /** Confirmed task spec ID - links to the pipeline result per §5.3 */
-  confirmedTaskSpecId: string;
-  /** R9-09: Result of capability matching against worker registry */
-  capabilityMatch: CapabilityMatchResult;
 }
 
 /**
  * The input provided to the router for making a routing decision.
- *
- * R19-18 Fix: Expanded to include all required fields per §5.3:
- * - tenantId, traceId, idempotencyKey, principal, confirmedTaskSpecId
- *
- * This ensures the router works with structured input that has passed through
- * the proper pipeline: RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec
  */
 export interface IntakeRouteInput {
   /** The title/summary of the request */
   title?: string;
   /** The detailed request content or description */
   request: string;
-  /** §39.5: Prior conversation turns for context carry-across */
-  priorConversationContext?: {
-    turns: readonly {
-      turnNumber: number;
-      message: string;
-      detectedIntent: { intentType: string };
-      timestamp: string;
-    }[];
-  };
-  /** Tenant identifier per §5.3 */
-  tenantId?: string;
-  /** Trace identifier for request tracking per §5.3 */
-  traceId?: string;
-  /** Idempotency key for deduplication per §5.3 */
-  idempotencyKey?: string;
-  /** Principal reference per §5.3 */
-  principal?: PrincipalRef;
-  /** Confirmed task spec ID - the authoritative input after pipeline completion */
-  confirmedTaskSpecId?: string;
-  /** Risk preview from the admission stage */
-  riskPreview?: RiskPreview;
-  /** Authoritative intent hint produced by the NL intent parser on the intake path */
-  preferredIntent?: {
-    intent: IntakeIntent;
-    confidence: number;
-    reasoning?: string;
-    language?: string;
-    source?: string;
-  };
-  /** R9-09: Required capabilities for this task.
-   * If provided, the router will match against workers with these capabilities
-   * instead of deriving capabilities from the division's roles.
-   * Examples: "code_generation", "image_processing", "data_analysis"
-   */
-  requiredCapabilities?: string[];
-}
-
-/**
- * R19-16 Fix: Full intake pipeline input types per §5.3/§4.2
- *
- * The intake pipeline follows: RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec → RequestEnvelope
- * These types represent the inputs needed for each stage.
- */
-
-/**
- * Pipeline context passed through all intake stages per §5.3
- */
-export interface IntakePipelineContext {
-  readonly tenantId: string;
-  readonly principal: PrincipalRef;
-  readonly traceId: string;
-  readonly idempotencyKey: string;
-  readonly source: TaskInputSource;
-}
-
-/**
- * Detected ambiguity flags that may trigger clarification per §5.3
- */
-function detectAmbiguityFlags(request: string): readonly string[] {
-  const flags: string[] = [];
-
-  // Check for vague goal language
-  if (/\b(maybe|perhaps|possibly|some|several|about|roughly)\b/i.test(request)) {
-    flags.push("vague_goal_language");
-  }
-
-  // Check for high complexity input
-  if (request.length > 200) {
-    flags.push("high_complexity_goal");
-  }
-
-  return flags;
-}
-
-/**
- * Result of the full intake pipeline per §5.3/§4.2
- */
-export interface IntakePipelineResult {
-  readonly workflowId: string;
-  readonly divisionId: string;
-  readonly agentId?: string;
-  readonly routeReason: string;
-  readonly routeTrace: string[];
-  readonly requiresOrchestration: boolean;
-  readonly classification: IntakeIntentClassification;
-  readonly confirmedTaskSpecId: string;
-  readonly capabilityMatch: CapabilityMatchResult;
-  readonly taskDraft: TaskDraft;
-  readonly clarificationSession: ClarificationSession | null;
-  readonly confirmedTaskSpec: ConfirmedTaskSpec;
-  readonly requestEnvelope: RequestEnvelope;
-  readonly routeDecision: IntakeRouteDecision;
-}
-
-/**
- * R6-11: AmbiguityResolver interface per §39.3
- * Used to resolve ambiguous inputs by requesting clarification from the user
- * when intent confidence falls below threshold (0.80).
- */
-export interface AmbiguityResolver {
-  /**
-   * Determines if an input is ambiguous based on confidence and ambiguity flags.
-   * @param confidence - The classification confidence score (0-1)
-   * @param ambiguityFlags - Detected ambiguity flags from the input
-   * @returns true if the input should be routed to clarification
-   */
-  isAmbiguous(confidence: number, ambiguityFlags: readonly string[]): boolean;
-
-  /**
-   * Generates clarifying questions for ambiguous inputs.
-   * @param ambiguityFlags - Flags indicating the types of ambiguity detected
-   * @param request - The original request text
-   * @returns Array of clarifying questions to present to the user
-   */
-  generateClarifyingQuestions(ambiguityFlags: readonly string[], request: string): string[];
-}
-
-/**
- * R6-11: Default implementation of AmbiguityResolver per §39.3
- * Resolves ambiguity based on confidence threshold (0.80) and detected flags.
- */
-export class DefaultAmbiguityResolver implements AmbiguityResolver {
-  private readonly confidenceThreshold: number;
-
-  constructor(confidenceThreshold: number = 0.80) {
-    this.confidenceThreshold = confidenceThreshold;
-  }
-
-  public isAmbiguous(confidence: number, ambiguityFlags: readonly string[]): boolean {
-    // Below confidence threshold = ambiguous
-    if (confidence < this.confidenceThreshold) {
-      return true;
-    }
-    // High number of ambiguity flags also indicates ambiguity
-    if (ambiguityFlags.length >= 3) {
-      return true;
-    }
-    // Specific critical ambiguity flags
-    const criticalFlags = ["vague_goal_language", "missing_constraints", "missing_budget"];
-    if (criticalFlags.some((flag) => ambiguityFlags.includes(flag))) {
-      return true;
-    }
-    return false;
-  }
-
-  public generateClarifyingQuestions(ambiguityFlags: readonly string[], request: string): string[] {
-    const questions: string[] = [];
-
-    for (const flag of ambiguityFlags) {
-      switch (flag) {
-        case "vague_goal_language":
-          questions.push("Could you please provide more specific details about what you'd like to accomplish?");
-          break;
-        case "missing_constraints":
-          questions.push("Are there any specific constraints or requirements I should be aware of?");
-          break;
-        case "high_complexity_goal":
-          questions.push("Would you like me to break this complex request down into smaller steps?");
-          break;
-        case "missing_budget":
-          questions.push("What budget or resource constraints should I consider for this task?");
-          break;
-      }
-    }
-
-    // Add a general question if we have multiple flags
-    if (ambiguityFlags.length > 1) {
-      questions.push("Could you clarify which aspect is most important to address first?");
-    }
-
-    return questions.length > 0 ? questions : ["Could you please provide more details about your request?"];
-  }
 }
 
 /**
@@ -545,128 +296,6 @@ export class DefaultAmbiguityResolver implements AmbiguityResolver {
 export interface IntakeRouterOptions {
   /** The division registry to use for routing (defaults to global registry) */
   divisionRegistry?: DivisionRegistry | null;
-  /** R9-09: The worker registry service for capability matching (optional) */
-  workerRegistry?: WorkerRegistryService | null;
-  /** R6-11: Model gateway for LLM-based intent extraction (optional) */
-  intentModelGateway?: IntentParserModelGateway | null;
-}
-
-/**
- * LLM intent extraction result.
- */
-export interface LlmIntentResult {
-  /** Primary intent from LLM classification */
-  intent: IntakeIntent;
-  /** Confidence score from LLM (0-1) */
-  confidence: number;
-  /** Reasoning from LLM */
-  reasoning: string;
-}
-
-/**
- * Simulates LLM intent extraction for intake routing.
- * In production, this would call an actual LLM service.
- *
- * R6-11: Adds LLM intent extraction with confidence threshold (0.80) per §39.3.
- * §39.5: Uses prior conversation context for multi-turn intent resolution.
- */
-async function extractLlmIntent(
-  request: string,
-  priorContext?: IntakeRouteInput["priorConversationContext"],
-  modelGateway?: IntentParserModelGateway | null,
-): Promise<LlmIntentResult | null> {
-  // §39.5: Incorporate prior conversation turns into intent analysis
-  if (priorContext && priorContext.turns.length > 0) {
-    // Build context-aware prompt using prior conversation turns
-    const contextSummary = priorContext.turns
-      .map((t) => `[Turn ${t.turnNumber}]: ${t.message}`)
-      .join("\n");
-    // For multi-turn conversations, increase confidence for follow-up detection
-    const lastIntent = priorContext.turns[priorContext.turns.length - 1]?.detectedIntent?.intentType;
-    if (lastIntent && request.length < 50) {
-      // Short follow-up message - likely continuing the previous task
-      return {
-        intent: "clarify" as IntakeIntent,
-        confidence: 0.85,
-        reasoning: `Multi-turn follow-up from ${lastIntent} with context:\n${contextSummary}`,
-      };
-    }
-  }
-  // R6-11 FIX: Actually call LLM for intent extraction per §39.3
-  if (modelGateway != null) {
-    try {
-      const classificationPrompt = buildIntentClassificationPrompt(request, priorContext);
-      const llmResponse = await modelGateway.complete(classificationPrompt);
-      // Parse the LLM response to extract intent and confidence
-      const parsedResult = parseLlmIntentResponse(llmResponse);
-      if (parsedResult != null && parsedResult.confidence >= 0.80) {
-        return parsedResult;
-      }
-    } catch {
-      // Fall through to keyword-based classification
-    }
-  }
-  // R6-11: No LLM available - return null so caller uses keyword-based classification
-  return null;
-}
-
-/**
- * Builds a prompt for LLM-based intent classification.
- * Used by extractLlmIntent() for actual LLM calls.
- */
-function buildIntentClassificationPrompt(
-  request: string,
-  priorContext?: IntakeRouteInput["priorConversationContext"],
-): string {
-  let prompt = `Classify the intent of this request: "${request}"\n\nIntents: query, create, modify, approve, cancel, clarify, chitchat, correction\nConfidence threshold: 0.80`;
-  if (priorContext && priorContext.turns.length > 0) {
-    prompt += `\n\nPrior conversation context:\n${priorContext.turns.map((t) => `[Turn ${t.turnNumber}]: ${t.message}`).join("\n")}`;
-  }
-  return prompt;
-}
-
-/**
- * R6-11: Parses LLM response to extract intent and confidence.
- * The LLM is expected to return a structured response with intent and confidence.
- */
-function parseLlmIntentResponse(content: string): LlmIntentResult | null {
-  const lower = content.toLowerCase();
-  let intent: IntakeIntent = "query";
-  let confidence = 0.80;
-
-  // Try to extract intent from the response
-  if (lower.includes("create")) {
-    intent = "create";
-  } else if (lower.includes("modify") || lower.includes("update") || lower.includes("change")) {
-    intent = "modify";
-  } else if (lower.includes("approve") || lower.includes("approval")) {
-    intent = "approve";
-  } else if (lower.includes("cancel")) {
-    intent = "cancel";
-  } else if (lower.includes("clarify")) {
-    intent = "clarify";
-  } else if (lower.includes("chitchat") || lower.includes("chat")) {
-    intent = "chitchat";
-  } else if (lower.includes("correction")) {
-    intent = "correction";
-  } else if (lower.includes("query") || lower.includes("search") || lower.includes("find")) {
-    intent = "query";
-  }
-
-  // Try to extract confidence score from the response
-  const confidenceMatch = content.match(/confidence[:\s]*(\d+\.?\d*)/i);
-  if (confidenceMatch != null && confidenceMatch[1] != null) {
-    const parsedConfidence = Number.parseFloat(confidenceMatch[1]);
-    if (!Number.isNaN(parsedConfidence) && parsedConfidence >= 0 && parsedConfidence <= 1) {
-      confidence = parsedConfidence;
-    }
-  }
-
-  return {
-    intent,
-    confidence,
-    reasoning: content,
-  };
 }
 
 /**
@@ -677,18 +306,6 @@ function normalize(text: string | null | undefined): string {
 }
 
 /**
- * R9-09: Detailed result of capability and capacity checking.
- * Internal type used by IntakeRouter to track worker availability.
- */
-interface CapabilityCheckResult {
-  eligibleWorkerCount: number;
-  workerCapacitySnapshots: WorkerCapacitySnapshot[];
-  totalAvailableSlots: number;
-  averageSaturation: number | null;
-  registryQueried: boolean;
-}
-
-/**
  * Routes incoming requests to appropriate divisions and workflows.
  *
  * The router analyzes request content to determine:
@@ -696,696 +313,94 @@ interface CapabilityCheckResult {
  * 2. Which division should handle the request (based on trigger matching)
  * 3. Which specific workflow to execute
  *
- * R9-09: Before routing to a division, the router now verifies that at least
- * one registered worker with the required capabilities is available and has capacity.
- * If no capable worker is found, the request is routed to a fallback queue.
- *
  * Routing is deterministic and produces a trace of decisions for debugging.
  */
 export class IntakeRouter {
   private readonly divisionRegistry: DivisionRegistry | null;
-  private readonly workerRegistry: WorkerRegistryService | null;
-  // R6-11: AmbiguityResolver for handling low-confidence classifications per §39.3
-  private readonly ambiguityResolver: AmbiguityResolver;
-  // R6-11: Model gateway for LLM-based intent extraction
-  private readonly intentModelGateway: IntentParserModelGateway | null;
 
   /**
    * Creates a new intake router instance.
    *
-   * @param options - Configuration options including optional division and worker registries
+   * @param options - Configuration options including an optional division registry
    */
   public constructor(options: IntakeRouterOptions = {}) {
     this.divisionRegistry =
       options.divisionRegistry === undefined
         ? getDefaultDivisionRegistry()
         : options.divisionRegistry;
-    this.workerRegistry = options.workerRegistry ?? null;
-    // R6-11: Use DefaultAmbiguityResolver if not provided in options
-    this.ambiguityResolver = new DefaultAmbiguityResolver(0.80);
-    // R6-11: Store the intent model gateway for LLM-based intent extraction
-    this.intentModelGateway = options.intentModelGateway ?? null;
   }
 
   /**
-   * R9-09: Extracts required capabilities from a division based on its roles and tools.
+   * Routes an incoming request to the appropriate workflow and division.
    *
-   * Each role in a division may have different tools/capabilities. This method
-   * collects all unique tool capabilities from all roles in the division.
+   * The routing algorithm:
+   * 1. Normalizes the input (trim + lowercase)
+   * 2. Checks for orchestration hints (keywords like "plan", "analyze", etc.)
+   * 3. Selects the best matching division based on trigger patterns
+   * 4. Determines whether orchestration is required based on:
+   *    - Number of matched orchestration keywords (2+ triggers orchestration)
+   *    - Request length exceeding 120 characters
+   * 5. Returns the selected workflow, division, and routing metadata
    *
-   * @param division - The division to extract capabilities from
-   * @returns Array of unique capability identifiers
+   * @param input - The intake request containing title and detailed request
+   * @returns A complete routing decision with workflow, division, and trace
    */
-  private extractDivisionCapabilities(division: LoadedDivisionDefinition | null): string[] {
-    if (!division || division.roles.length === 0) {
-      return [];
-    }
+  public route(input: IntakeRouteInput): IntakeRouteDecision {
+    // Combine and normalize title and request for analysis
+    const normalized = [normalize(input.title), normalize(input.request)]
+      .filter((segment) => segment.length > 0)
+      .join(" ");
+    const routeTrace: string[] = [];
 
-    const capabilities = new Set<string>();
-    for (const role of division.roles) {
-      for (const tool of role.tools) {
-        if (tool.length > 0) {
-          capabilities.add(tool);
-        }
-      }
-    }
-    return Array.from(capabilities);
-  }
-
-  /**
-   * R9-09: Checks if any registered worker has the required capabilities and capacity.
-   *
-   * This method queries the WorkerRegistryService for eligible workers that:
-   * - Have all the required capabilities
-   * - Have available slots (capacity > 0)
-   * - Are not in draining, unavailable, quarantined, or offline states
-   *
-   * Unlike the previous implementation that only returned a count, this method
-   * now returns detailed capacity snapshots for load-aware routing decisions
-   * per Architecture §8.5.
-   *
-   * @param requiredCapabilities - Capabilities required for the task
-   * @param routeTrace - Trace array for logging
-   * @returns CapabilityCheckResult with detailed capacity information
-   */
-  private checkCapableWorkerAvailability(
-    requiredCapabilities: string[],
-    routeTrace: string[],
-  ): CapabilityCheckResult {
-    if (!this.workerRegistry) {
-      routeTrace.push("capability_check:worker_registry_not_configured");
-      routeTrace.push("capability_check:cannot_verify_worker_availability");
-      // Return empty result indicating no verified workers when registry not available
-      return {
-        eligibleWorkerCount: 0,
-        workerCapacitySnapshots: [],
-        totalAvailableSlots: 0,
-        averageSaturation: null,
-        registryQueried: false,
-      };
-    }
-
-    if (requiredCapabilities.length === 0) {
-      // When no specific capabilities required, query ALL eligible workers
-      // to ensure at least one worker with capacity exists
-      routeTrace.push("capability_check:no_specific_capabilities_required");
-      routeTrace.push("capability_check:querying_all_eligible_workers");
-    } else {
-      routeTrace.push(`capability_check:required_capabilities=[${requiredCapabilities.join(",")}]`);
-    }
-
-    const eligibleWorkers = this.workerRegistry.listEligibleWorkers({
-      requiredCapabilities,
-    });
-
-    // R9-09: Filter to only workers with actual available capacity (> 0).
-    // Workers at full capacity (availableSlots === 0) are not eligible for new work.
-    const workersWithCapacity = eligibleWorkers.filter((worker) => worker.availableSlots > 0);
-
-    const workerCapacitySnapshots: WorkerCapacitySnapshot[] = workersWithCapacity.map((worker) => ({
-      workerId: worker.workerId,
-      availableSlots: worker.availableSlots,
-      maxConcurrency: worker.maxConcurrency,
-      saturation: worker.saturation,
-      status: worker.status,
-      activeLeaseCount: worker.activeLeaseCount,
-    }));
-
-    const totalAvailableSlots = workerCapacitySnapshots.reduce(
-      (sum, snapshot) => sum + snapshot.availableSlots,
-      0,
+    // Find all orchestration hints present in the normalized input
+    const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
+    routeTrace.push(
+      matchedHints.length > 0
+        ? `matched_keywords:${matchedHints.join(",")}`
+        : "matched_keywords:none",
     );
 
-    // Calculate average saturation (lower is better, 0 = no load, 1 = fully saturated)
-    const workersWithSaturation = workerCapacitySnapshots.filter((s) => s.saturation != null);
-    const averageSaturation = workersWithSaturation.length > 0
-      ? workersWithSaturation.reduce((sum, s) => sum + (s.saturation ?? 0), 0) / workersWithSaturation.length
-      : null;
+    const classification = classifyIntent(normalized, matchedHints);
+    routeTrace.push(`intent:${classification.intent}`);
+    routeTrace.push(`continuation:${classification.continuation}`);
+    routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
+    routeTrace.push(
+      classification.matchedRules.length > 0
+        ? `matched_intent_rules:${classification.matchedRules.join(",")}`
+        : "matched_intent_rules:none",
+    );
 
-    const count = workersWithCapacity.length;
-    routeTrace.push(`capability_check:eligible_workers=${count}`);
-    routeTrace.push(`capability_check:total_available_slots=${totalAvailableSlots}`);
-    if (averageSaturation !== null) {
-      routeTrace.push(`capability_check:average_saturation=${averageSaturation.toFixed(3)}`);
+    // Select the best matching division based on trigger patterns
+    const division = this.selectDivision(normalized, routeTrace);
+
+    // Determine if orchestration is required based on complexity signals
+    if (shouldRequireOrchestration(normalized, matchedHints, classification)) {
+      // Use orchestration workflow (specific or fallback)
+      const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
+      routeTrace.push(`route:selected:${workflowId}`);
+      return {
+        workflowId,
+        divisionId: division?.id ?? "general_ops",
+        routeReason: "route.multi_step_or_high_context",
+        routeTrace,
+        requiresOrchestration: true,
+        classification,
+      };
     }
 
+    // Simple request - use the division's default workflow
+    const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
+    routeTrace.push(`route:selected:${workflowId}`);
     return {
-      eligibleWorkerCount: count,
-      workerCapacitySnapshots,
-      totalAvailableSlots,
-      averageSaturation,
-      registryQueried: true,
-    };
-  }
-
-  /**
-   * R9-09: Performs capability matching for a target division.
-   *
-   * Verifies that at least one worker with the required capabilities
-   * is available and has capacity. If no capable worker is found, the request
-   * will be routed to a fallback queue.
-   *
-   * Capability resolution order (first non-empty wins):
-   * 1. Task-level requiredCapabilities (explicit task declaration)
-   * 2. Inferred capabilities from task content (request/title analysis)
-   * 3. Division-derived capabilities (from roles' tools)
-   *
-   * @param division - The target division
-   * @param routeTrace - Trace array for logging
-   * @param taskRequiredCapabilities - Optional task-level required capabilities
-   * @param taskRequest - The task request text for capability inference
-   * @param taskTitle - Optional task title for capability inference
-   * @returns CapabilityMatchResult indicating whether a capable worker was found
-   */
-  private matchCapabilities(
-    division: LoadedDivisionDefinition | null,
-    routeTrace: string[],
-    taskRequiredCapabilities?: string[],
-    taskRequest?: string,
-    taskTitle?: string,
-  ): CapabilityMatchResult {
-    const targetDivisionId = division?.id ?? "general_ops";
-
-    // R9-09: Capability resolution in priority order
-    let requiredCapabilities: string[] = [];
-
-    if (taskRequiredCapabilities && taskRequiredCapabilities.length > 0) {
-      // Priority 1: Use explicit task-level capabilities
-      requiredCapabilities = taskRequiredCapabilities;
-      routeTrace.push(`capability_source:explicit_task_level`);
-    } else {
-      // Priority 2: Infer capabilities from task content
-      const inferredCapabilities = taskRequest
-        ? this.inferCapabilitiesFromContent(taskRequest, taskTitle, routeTrace)
-        : [];
-      if (inferredCapabilities.length > 0) {
-        requiredCapabilities = inferredCapabilities;
-        routeTrace.push(`capability_source:inferred_from_content`);
-      } else {
-        // Priority 3: Fall back to division-derived capabilities
-        requiredCapabilities = this.extractDivisionCapabilities(division);
-        routeTrace.push(`capability_source:derived_from_division`);
-      }
-    }
-
-    if (requiredCapabilities.length === 0) {
-      // When no specific capabilities required, still need to verify at least
-      // one worker with capacity exists by querying the registry
-      routeTrace.push(`capability_match:no_specific_capabilities_checking_worker_exists`);
-      const checkResult = this.checkCapableWorkerAvailability([], routeTrace);
-
-      if (!checkResult.registryQueried) {
-        // Registry not available - cannot verify, route with caution
-        routeTrace.push(`capability_match:registry_unavailable_deferring`);
-        return {
-          capableWorkerFound: true, // Assume available but mark as unverified
-          targetDivisionId,
-          requiredCapabilities: [],
-          eligibleWorkerCount: 0,
-          workerCapacitySnapshots: [],
-          totalAvailableSlots: 0,
-          averageSaturation: null,
-          registryQueried: false,
-          fallbackReason: "Worker registry unavailable - cannot verify capacity",
-        };
-      }
-
-      if (checkResult.eligibleWorkerCount === 0 || checkResult.totalAvailableSlots === 0) {
-        routeTrace.push(`capability_match:no_workers_with_capacity`);
-        routeTrace.push(`capability_match:routing_to_fallback_queue`);
-        return {
-          capableWorkerFound: false,
-          targetDivisionId,
-          requiredCapabilities: [],
-          eligibleWorkerCount: 0,
-          workerCapacitySnapshots: [],
-          totalAvailableSlots: 0,
-          averageSaturation: null,
-          registryQueried: true,
-          fallbackReason: "No workers with available capacity found in registry",
-        };
-      }
-
-      routeTrace.push(`capability_match:found=${checkResult.eligibleWorkerCount}_workers_with_capacity`);
-      return {
-        capableWorkerFound: true,
-        targetDivisionId,
-        requiredCapabilities: [],
-        eligibleWorkerCount: checkResult.eligibleWorkerCount,
-        workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
-        totalAvailableSlots: checkResult.totalAvailableSlots,
-        averageSaturation: checkResult.averageSaturation,
-        registryQueried: true,
-      };
-    }
-
-    routeTrace.push(`capability_match:required=[${requiredCapabilities.join(",")}]`);
-    const checkResult = this.checkCapableWorkerAvailability(requiredCapabilities, routeTrace);
-
-    // R9-09: Even if workers found, verify they have actual capacity
-    if (checkResult.eligibleWorkerCount === 0) {
-      routeTrace.push(`capability_match:no_capable_worker_found_for_division=${targetDivisionId}`);
-      routeTrace.push(`capability_match:routing_to_fallback_queue`);
-      return {
-        capableWorkerFound: false,
-        targetDivisionId,
-        requiredCapabilities,
-        eligibleWorkerCount: 0,
-        workerCapacitySnapshots: [],
-        totalAvailableSlots: 0,
-        averageSaturation: null,
-        registryQueried: checkResult.registryQueried,
-        fallbackReason: `No workers available with required capabilities: ${requiredCapabilities.join(", ")}`,
-      };
-    }
-
-    // R9-09: Check if any eligible workers have actual capacity
-    if (checkResult.totalAvailableSlots === 0) {
-      routeTrace.push(`capability_match:workers_found_but_no_capacity=${targetDivisionId}`);
-      routeTrace.push(`capability_match:routing_to_fallback_queue`);
-      return {
-        capableWorkerFound: false,
-        targetDivisionId,
-        requiredCapabilities,
-        eligibleWorkerCount: checkResult.eligibleWorkerCount,
-        workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
-        totalAvailableSlots: 0,
-        averageSaturation: checkResult.averageSaturation,
-        registryQueried: checkResult.registryQueried,
-        fallbackReason: `Workers with required capabilities found but all at capacity: ${requiredCapabilities.join(", ")}`,
-      };
-    }
-
-    routeTrace.push(`capability_match:found=${checkResult.eligibleWorkerCount}_capable_workers_for=${targetDivisionId}`);
-    routeTrace.push(`capability_match:total_capacity_slots=${checkResult.totalAvailableSlots}`);
-    return {
-      capableWorkerFound: true,
-      targetDivisionId,
-      requiredCapabilities,
-      eligibleWorkerCount: checkResult.eligibleWorkerCount,
-      workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
-      totalAvailableSlots: checkResult.totalAvailableSlots,
-      averageSaturation: checkResult.averageSaturation,
-      registryQueried: checkResult.registryQueried,
-    };
-  }
-
-  /**
-   * R9-09: Infers required capabilities from task content when not explicitly declared.
-   *
-   * Uses keyword matching to detect capability requirements from request text and title.
-   * This enables capability-based routing even when tasks don't explicitly declare capabilities.
-   *
-   * Examples:
-   * - "image", "photo", "picture", "screenshot" → image_processing
-   * - "code", "programming", "function", "class" → code_generation
-   * - "data", "analysis", "analytics", "metrics" → data_analysis
-   * - "document", "pdf", "write", "report" → document_generation
-   * - "test", "testing", "unit test" → test_generation
-   *
-   * @param request - The task request text
-   * @param title - Optional task title
-   * @param routeTrace - Trace array for logging
-   * @returns Inferred capabilities or empty array if no match
-   */
-  private inferCapabilitiesFromContent(
-    request: string,
-    title?: string,
-    routeTrace?: string[],
-  ): string[] {
-    const combined = [title, request].filter((s): s is string => s != null && s.length > 0).join(" ").toLowerCase();
-
-    const capabilityIndicators: Array<{ capability: string; keywords: readonly string[] }> = [
-      {
-        capability: "image_processing",
-        keywords: ["image", "photo", "picture", "screenshot", "thumbnail", "resize", "crop", "filter", "图像", "图片", "照片"],
-      },
-      {
-        capability: "code_generation",
-        keywords: ["code", "programming", "function", "class", "algorithm", "implement", "开发", "编程", "代码", "程序"],
-      },
-      {
-        capability: "data_analysis",
-        keywords: ["data", "analysis", "analytics", "metrics", "statistics", "analyze", "数据分析", "分析", "统计"],
-      },
-      {
-        capability: "document_generation",
-        keywords: ["document", "pdf", "report", "write", "draft", "summary", "文档", "报告", "生成", "写作"],
-      },
-      {
-        capability: "test_generation",
-        keywords: ["test", "testing", "unit test", "spec", "测试", "单元测试", "测试用例"],
-      },
-      {
-        capability: "web_scraping",
-        keywords: ["scrape", "crawl", "fetch", "web", "html", "website", "网页", "爬取", "抓取"],
-      },
-      {
-        capability: "api_integration",
-        keywords: ["api", "rest", "graphql", "endpoint", "http", "request", "接口", "调用"],
-      },
-      {
-        capability: "database_query",
-        keywords: ["database", "sql", "query", "db", "table", "record", "数据库", "查询", "SQL"],
-      },
-      {
-        capability: "shell_execution",
-        keywords: ["bash", "shell", "command", "script", "terminal", "console", "终端", "命令行", "脚本"],
-      },
-      {
-        capability: "file_operation",
-        keywords: ["file", "read", "write", "delete", "upload", "download", "文件", "读写", "上传下载"],
-      },
-    ];
-
-    const inferredCapabilities = new Set<string>();
-
-    for (const { capability, keywords } of capabilityIndicators) {
-      if (keywords.some((keyword) => combined.includes(keyword))) {
-        inferredCapabilities.add(capability);
-        routeTrace?.push(`capability_infer:matched=${capability}`);
-      }
-    }
-
-    if (inferredCapabilities.size > 0) {
-      routeTrace?.push(`capability_infer:total_inferred=${inferredCapabilities.size}`);
-    }
-
-    return Array.from(inferredCapabilities);
-  }
-
-  /**
- * Routes an incoming request to the appropriate workflow and division.
- *
- * R19-16 Fix: Now implements the complete intake pipeline per §5.3/§4.2:
- * - RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec → RequestEnvelope
- * - Each stage is executed in sequence, with artifacts passed to subsequent stages
- * - Routing decisions are made from the final ConfirmedTaskSpec
- *
- * The routing algorithm:
- * 1. Build pipeline context from input fields (tenantId, principal, traceId, etc.)
- * 2. Stage 1: Create TaskDraft from raw input (title, request)
- * 3. Stage 2: Detect ambiguity and create ClarificationSession if needed
- * 4. Stage 3: Create ConfirmedTaskSpec from TaskDraft + optional ClarificationSession
- * 5. Stage 4: Create RequestEnvelope from ConfirmedTaskSpec
- * 6. Use ConfirmedTaskSpec and RequestEnvelope fields for routing decisions
- * 7. Return IntakePipelineResult with all artifacts plus routing decision
- *
- * @param input - The raw intake request to process through the pipeline
- * @returns A complete pipeline result with all artifacts and routing decision
- */
-public route(input: IntakeRouteInput): IntakePipelineResult {
-  // R19-16: Build pipeline context from input fields
-  const routeTrace: string[] = [];
-
-  // Build the authoritative pipeline context
-  const pipelineContext: IntakePipelineContext = {
-    tenantId: input.tenantId ?? "default_tenant",
-    principal: input.principal ?? { principalId: "anonymous", tenantId: "default_tenant", roles: [] },
-    traceId: input.traceId ?? newId("trace"),
-    idempotencyKey: input.idempotencyKey ?? newId("idem"),
-    source: "nl", // Intake router receives natural language input
-  };
-
-  routeTrace.push(`pipeline_context:tenantId=${pipelineContext.tenantId}`);
-  routeTrace.push(`pipeline_context:traceId=${pipelineContext.traceId}`);
-  routeTrace.push(`pipeline_context:source=${pipelineContext.source}`);
-  routeTrace.push(`tenantId:${pipelineContext.tenantId}`);
-
-  // =========================================================================
-  // Stage 1: RawInput → TaskDraft
-  // =========================================================================
-  const ambiguityFlags = detectAmbiguityFlags(input.request ?? "");
-  const normalized = [normalize(input.title), normalize(input.request)]
-    .filter((segment) => segment.length > 0)
-    .join(" ");
-  const safeGoal = input.request.trim().length > 0
-    ? input.request
-    : (input.title?.trim().length ?? 0) > 0
-      ? input.title!.trim()
-      : "unspecified request";
-  const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
-  let classification = classifyIntent(normalized, matchedHints);
-
-  // Build normalized intent from classification
-  const normalizedIntent: JsonValue = {
-    goal: safeGoal,
-    title: input.title ?? safeGoal,
-    intent: classification.intent,
-    continuation: classification.continuation,
-    confidence: classification.confidence,
-  };
-
-  // Build risk preview if not provided
-  const riskPreview: RiskPreview = input.riskPreview ?? {
-    riskClass: "low",
-    reasons: [],
-  };
-
-  const taskDraft = createTaskDraft({
-    tenantId: pipelineContext.tenantId,
-    principal: pipelineContext.principal,
-    source: pipelineContext.source,
-    domainId: "general_ops", // Default domain, may be refined later
-    normalizedIntent,
-    riskPreview,
-    ambiguityPolicy: ambiguityFlags.length > 0 ? "require_confirmation" : "safe_default",
-    missingFields: [],
-  });
-
-  routeTrace.push(`stage1:taskDraft:${taskDraft.taskDraftId}`);
-  routeTrace.push(`stage1:ambiguity_flags:[${ambiguityFlags.join(",")}]`);
-  routeTrace.push(`matched_keywords:[${matchedHints.join(",")}]`);
-
-  // =========================================================================
-  // Stage 2: TaskDraft → ClarificationSession (if ambiguity detected)
-  // =========================================================================
-  let clarificationSession: ClarificationSession | null = null;
-
-  if (ambiguityFlags.length > 0) {
-    // Create a clarification session to resolve ambiguity
-    clarificationSession = {
-      sessionId: newId("clarify"),
-      taskDraftId: taskDraft.taskDraftId,
-      stage: "pending_clarification",
-      ambiguityFlags,
-      createdAt: nowIso(),
-      expiresAt: null,
-      confirmationReceipt: null,
-    };
-    routeTrace.push(`stage2:clarification_session:${clarificationSession.sessionId}`);
-    routeTrace.push(`stage2:flags_count:${clarificationSession.ambiguityFlags.length}`);
-  } else {
-    routeTrace.push("stage2:clarification_session:none");
-  }
-
-  // =========================================================================
-  // Stage 3: TaskDraft (+ ClarificationSession) → ConfirmedTaskSpec
-  // =========================================================================
-  // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
-  let useLlmClassification = false;
-
-  if (input.preferredIntent != null && input.preferredIntent.confidence >= 0.80) {
-    classification = {
-      intent: input.preferredIntent.intent,
-      continuation: "new_task" as IntakeContinuation,
-      confidence: input.preferredIntent.confidence,
-      matchedRules: [
-        `preferred_intent:${input.preferredIntent.source ?? "nl_intent_parser"}`,
-        ...(input.preferredIntent.reasoning == null ? [] : [`reasoning:${input.preferredIntent.reasoning}`]),
-        ...(input.preferredIntent.language == null ? [] : [`language:${input.preferredIntent.language}`]),
-      ],
-    };
-    useLlmClassification = true;
-    routeTrace.push(`preferred_intent:${input.preferredIntent.intent}`);
-  }
-
-  if (!useLlmClassification) {
-    routeTrace.push("llm_extraction_deferred:requires_preferred_intent");
-  }
-
-  routeTrace.push(`intent:${classification.intent}`);
-  routeTrace.push(`continuation:${classification.continuation}`);
-  routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
-  routeTrace.push(`matched_intent_rules:[${classification.matchedRules.join(",")}]`);
-
-  const riskClass = input.riskPreview?.riskClass ?? determineRiskClass(classification, normalized);
-  const confirmationReceipt = (riskClass === "high" || riskClass === "critical")
-    ? {
-      receiptId: newId("confirm"),
-      confirmedBy: pipelineContext.principal,
-      riskClass,
-      confirmedAt: nowIso(),
-      state: "pending_user_confirmation" as const,
-      timestamp: nowIso(),
-      actor: pipelineContext.principal.principalId,
-    }
-    : undefined;
-
-  // R6-11: Apply AmbiguityResolver per §39.3 to detect low-confidence classifications
-  // If classification confidence is below threshold, flag for clarification
-  const isAmbiguous = this.ambiguityResolver.isAmbiguous(classification.confidence, ambiguityFlags);
-  if (isAmbiguous && clarificationSession == null) {
-    // Create a clarification session if not already present and input is ambiguous
-    clarificationSession = {
-      sessionId: newId("clarify"),
-      taskDraftId: taskDraft.taskDraftId,
-      stage: "pending_clarification",
-      ambiguityFlags,
-      createdAt: nowIso(),
-      expiresAt: null,
-      confirmationReceipt: null,
-    };
-    routeTrace.push(`stage2_ambiguity:clarification_session:${clarificationSession.sessionId}`);
-    routeTrace.push(`stage2_ambiguity:confidence=${classification.confidence.toFixed(2)}`);
-  }
-
-  // Build the ConfirmedTaskSpec from pipeline artifacts
-  const confirmedTaskSpec = createConfirmedTaskSpec({
-    taskDraftId: taskDraft.taskDraftId,
-    tenantId: pipelineContext.tenantId,
-    principal: pipelineContext.principal,
-    domainId: taskDraft.domainId,
-    goal: safeGoal,
-    inputs: {
-      title: input.title ?? null,
-      request: input.request,
-      classification: {
-        intent: classification.intent,
-        continuation: classification.continuation,
-        confidence: classification.confidence,
-        matchedRules: [...classification.matchedRules],
-      },
-    },
-    constraintPackRef: "default_constraint_pack",
-    riskClass,
-    idempotencyKey: pipelineContext.idempotencyKey,
-    traceId: pipelineContext.traceId,
-    confirmedTaskSpecId: input.confirmedTaskSpecId ?? "",
-    ...(confirmationReceipt != null ? { confirmationReceipt } : {}),
-  });
-
-  routeTrace.push(`stage3:confirmed_task_spec:${confirmedTaskSpec.confirmedTaskSpecId}`);
-  routeTrace.push(`stage3:risk_class:${confirmedTaskSpec.riskClass}`);
-  routeTrace.push(`confirmedTaskSpecId:${confirmedTaskSpec.confirmedTaskSpecId}`);
-  routeTrace.push(`riskClass:${confirmedTaskSpec.riskClass}`);
-
-  // =========================================================================
-  // Stage 4: ConfirmedTaskSpec → RequestEnvelope
-  // =========================================================================
-  // Create a default budget intent for the request envelope
-  const budgetIntent: BudgetIntent = {
-    amount: 100,
-    currency: "credits",
-    resourceKinds: [],
-  };
-
-  const requestEnvelope = createRequestEnvelopeFromConfirmedTask({
-    confirmedTaskSpec,
-    budgetIntent,
-  });
-
-  routeTrace.push(`stage4:request_envelope:${requestEnvelope.requestId}`);
-  routeTrace.push(`stage4:budget_intent:amount=${budgetIntent.amount}`);
-
-  // =========================================================================
-  // Routing Decision (using ConfirmedTaskSpec fields)
-  // =========================================================================
-  const riskDrivenOrchestration = input.riskPreview?.riskClass === "high"
-    || input.riskPreview?.riskClass === "critical";
-
-  // Select division based on normalized input
-  const division = this.selectDivision(normalized, routeTrace);
-
-  // R9-09: Perform capability matching to verify a capable worker is available
-  // This is done BEFORE selecting the final route, to ensure we route to a
-  // division where the required capabilities can actually be fulfilled.
-  // Capability resolution: explicit → inferred from content → derived from division.
-  const capabilityMatch = this.matchCapabilities(
-    division,
-    routeTrace,
-    input.requiredCapabilities,
-    input.request,
-    input.title,
-  );
-
-  // Determine if orchestration is required based on complexity signals
-  if (riskDrivenOrchestration || shouldRequireOrchestration(normalized, matchedHints, classification)) {
-    // R9-09: If no capable worker found, route to fallback queue instead
-    const effectiveWorkflowId = capabilityMatch.capableWorkerFound
-      ? (division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration")
-      : "single_division_multi_step_orchestration";
-    const effectiveDivisionId = capabilityMatch.capableWorkerFound
-      ? (division?.id ?? "general_ops")
-      : "capability_queue";
-
-    routeTrace.push(`route:selected:${effectiveWorkflowId}`);
-    routeTrace.push(`orchestration_reason:${riskDrivenOrchestration ? "risk_class" : "complexity"}`);
-    if (!capabilityMatch.capableWorkerFound) {
-      routeTrace.push(`route:fallback_due_to_capability_match=false`);
-    }
-
-    const routeDecision: IntakeRouteDecision = {
-      workflowId: effectiveWorkflowId,
-      divisionId: effectiveDivisionId,
-      routeReason: capabilityMatch.capableWorkerFound
-        ? "route.multi_step_or_high_context"
-        : "route.capability_fallback_no_worker_available",
+      workflowId,
+      divisionId: division?.id ?? "general_ops",
+      agentId: `${division?.id ?? "general_ops"}_agent`,
+      routeReason: "route.simple_request",
       routeTrace,
-      requiresOrchestration: true,
+      requiresOrchestration: false,
       classification,
-      confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
-      capabilityMatch,
-    };
-
-    return {
-      ...routeDecision,
-      taskDraft,
-      clarificationSession,
-      confirmedTaskSpec,
-      requestEnvelope,
-      routeDecision,
     };
   }
-
-  // Simple request - use the division's default workflow
-  // R9-09: If no capable worker found, route to fallback queue
-  const effectiveWorkflowId = capabilityMatch.capableWorkerFound
-    ? (division?.defaultWorkflowId ?? "single_agent_minimal")
-    : "single_division_multi_step_orchestration";
-  const effectiveDivisionId = capabilityMatch.capableWorkerFound
-    ? (division?.id ?? "general_ops")
-    : "capability_queue";
-
-  routeTrace.push(`route:selected:${effectiveWorkflowId}`);
-  if (!capabilityMatch.capableWorkerFound) {
-    routeTrace.push(`route:fallback_due_to_capability_match=false`);
-  }
-
-  const agentId = capabilityMatch.capableWorkerFound ? `${division?.id ?? "general_ops"}_agent` : undefined;
-  const routeDecision: IntakeRouteDecision = {
-    workflowId: effectiveWorkflowId,
-    divisionId: effectiveDivisionId,
-    routeReason: capabilityMatch.capableWorkerFound
-      ? "route.simple_request"
-      : "route.capability_fallback_no_worker_available",
-    routeTrace,
-    requiresOrchestration: false,
-    classification,
-    confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
-    capabilityMatch,
-    ...(agentId != null ? { agentId } : {}),
-  };
-
-  return {
-    ...routeDecision,
-    taskDraft,
-    clarificationSession,
-    confirmedTaskSpec,
-    requestEnvelope,
-    routeDecision,
-  };
-}
 
   /**
    * Selects the best matching division for a normalized input.
@@ -1720,78 +735,4 @@ function matchesRule(
  */
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Generates a clarifying question based on an ambiguity flag.
- */
-function getClarifyingQuestion(flag: string, request: string): string {
-  switch (flag) {
-    case "vague_goal_language":
-      return "Could you please provide more specific details about what you'd like to accomplish?";
-    case "high_complexity_goal":
-      return "This request appears complex. Would you like me to break it down into smaller steps?";
-    default:
-      return `Could you clarify what you mean regarding: ${flag}?`;
-  }
-}
-
-/**
- * Determines the priority based on intent classification and normalized input.
- * Per §5.3 canonical taxonomy, elevated priorities are "high" and "critical" (not "urgent").
- */
-function determinePriority(
-  classification: IntakeIntentClassification,
-  normalizedInput: string,
-): "critical" | "high" | "normal" | "low" {
-  // Critical priority for high-impact cancel operations
-  if (classification.intent === "cancel") {
-    return "critical";
-  }
-  // High priority for certain intents and patterns
-  if (classification.intent === "approve" && /^(ship|merge|approve|confirm)/.test(normalizedInput)) {
-    return "high";
-  }
-  if (classification.intent === "correction") {
-    return "high";
-  }
-  if (classification.intent === "create" && /^(implement|build|deploy|launch)/.test(normalizedInput)) {
-    return "high";
-  }
-
-  // Low priority for chitchat
-  if (classification.intent === "chitchat") {
-    return "low";
-  }
-
-  return "normal";
-}
-
-/**
- * Determines the risk class based on intent classification and request complexity.
- */
-function determineRiskClass(
-  classification: IntakeIntentClassification,
-  normalizedInput: string,
-): "low" | "medium" | "high" | "critical" {
-  // Critical risk for high-impact operations
-  if (classification.intent === "approve" && /^(ship|merge|deploy|release)/.test(normalizedInput)) {
-    return "high";
-  }
-  if (classification.intent === "cancel") {
-    return "medium";
-  }
-
-  // High risk for create/modify operations on infrastructure
-  if ((classification.intent === "create" || classification.intent === "modify")
-      && /^(implement|build|deploy|launch|delete|drop|remove)/.test(normalizedInput)) {
-    return "medium";
-  }
-
-  // Default to low for simple queries and chitchat
-  if (classification.intent === "query" || classification.intent === "chitchat") {
-    return "low";
-  }
-
-  return "low";
 }

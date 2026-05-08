@@ -63,35 +63,10 @@ export type {
 
 // ── Service ─────────────────────────────────────────────────────────
 
-/**
- * Singleton instance of HaCoordinatorService for leader authority checks.
- * R4-36 fix: Wired into write paths to enforce leader-only authorization.
- */
-let _haCoordinatorInstance: HaCoordinatorService | null = null;
-
-/**
- * Gets the singleton HA Coordinator instance.
- * Throws if no instance has been set via setHaCoordinatorInstance().
- */
-export function getHaCoordinatorInstance(): HaCoordinatorService {
-  if (!_haCoordinatorInstance) {
-    throw new Error("HA Coordinator not initialized. Call setHaCoordinatorInstance() first.");
-  }
-  return _haCoordinatorInstance;
-}
-
-/**
- * Sets the singleton HA Coordinator instance.
- * Should be called during application startup.
- */
-export function setHaCoordinatorInstance(db: AuthoritativeSqlDatabase, options?: HaCoordinatorServiceOptions): HaCoordinatorService {
-  _haCoordinatorInstance = new HaCoordinatorService(db, options);
-  return _haCoordinatorInstance;
-}
-
 export class HaCoordinatorService {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
+  private readonly fencingTokenCounter: { value: number };
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -99,6 +74,7 @@ export class HaCoordinatorService {
   ) {
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
+    this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
   }
 
   // ── Node Management ────────────────────────────────────────────────
@@ -365,10 +341,6 @@ export class HaCoordinatorService {
       // Update node heartbeat
       this.updateNodeHeartbeat(nodeId);
 
-      // §209-2464: Get latestEpoch before using - stale-write verification
-      // requires the current epoch token to detect writes from previous leadership cycles
-      const latestEpoch = this.getLatestEpoch();
-
       const updatedLease: LeaderLease = {
         ...currentLease,
         expiresAt,
@@ -378,7 +350,7 @@ export class HaCoordinatorService {
       return {
         renewed: true,
         lease: updatedLease,
-        fencingToken: latestEpoch.fencingToken,
+        fencingToken: currentLease.ttlMs, // Return old fencing token - renewal doesn't change it
       };
     });
   }
@@ -480,22 +452,6 @@ export class HaCoordinatorService {
     const latestEpoch = this.getLatestEpoch();
     const activeLease = this.getActiveLease();
 
-    // R4-36 fix: When strictLeaderAuthority is disabled and the requesting node
-    // is not found (e.g., "system" default), fall back to checking if there's a
-    // valid leader. This allows operations from any node when not in strict mode,
-    // as long as a leader exists to provide authoritative ordering.
-    if (!node && requiredAuthority === "leader_only" && !this.strictLeaderAuthority && leader) {
-      this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, true, "fallback_to_leader");
-      return {
-        authorized: true,
-        authority: requiredAuthority,
-        reasonCode: "fallback_to_leader",
-        leaderNodeId: leader.nodeId,
-        epoch: latestEpoch.epoch,
-        fencingToken: latestEpoch.fencingToken,
-      };
-    }
-
     if (!node) {
       return {
         authorized: false,
@@ -571,24 +527,8 @@ export class HaCoordinatorService {
         };
       }
 
-      // R29-16 FIX: Add explicit null check for activeLease.
-      // Root cause: When activeLease is null, the condition `activeLease && ...` short-circuits
-      // to false, causing the code to fall through and grant authorization at line 545.
-      // This is wrong - if there's no active lease, authorization must be DENIED.
-      if (!activeLease) {
-        this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, "no_active_lease");
-        return {
-          authorized: false,
-          authority: requiredAuthority,
-          reasonCode: "no_active_lease",
-          leaderNodeId: leader.nodeId,
-          epoch: latestEpoch.epoch,
-          fencingToken: latestEpoch.fencingToken,
-        };
-      }
-
       // Check if lease is still valid
-      if (new Date(activeLease.expiresAt) <= new Date(now)) {
+      if (activeLease && new Date(activeLease.expiresAt) <= new Date(now)) {
         this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, "leadership_lease_expired");
         return {
           authorized: false,
@@ -735,22 +675,7 @@ export class HaCoordinatorService {
    */
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     const latestEpoch = this.getLatestEpoch();
-    // P0-2133: Use > instead of >= to reject stale writes. An old leader possessing
-    // the current token must be rejected; only a token GREATER than current indicates
-    // a newer epoch. Using >= would allow a stale leader with the same token to write.
-    return presentedFencingToken > latestEpoch.fencingToken;
-  }
-
-  /**
-   * Gets all expired leases (status = "active" but expires_at <= now).
-   * Used by LeaseReclaimerService to find leases that need reclamation.
-   */
-  getExpiredLeaseRows(): LeaderLease[] {
-    const now = nowIso();
-    const rows = this.db.connection
-      .prepare(`SELECT * FROM leadership_leases WHERE status = 'active' AND expires_at <= ? ORDER BY acquired_at DESC`)
-      .all(now) as RawRow[];
-    return rows.map((r) => mapLease(r));
+    return presentedFencingToken >= latestEpoch.fencingToken;
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────
@@ -763,16 +688,6 @@ export class HaCoordinatorService {
     return Number(result.changes) as number;
   }
 
-  /**
-   * Expires a specific lease by updating its status to "expired".
-   * Used by LeaseReclaimerService when reclaiming expired leases.
-   */
-  expireLease(leaseId: string): void {
-    this.db.connection
-      .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE lease_id = ?`)
-      .run(leaseId);
-  }
-
   purgeOldFailoverDecisions(olderThanDays = 7): number {
     const cutoff = new Date(Date.now() - olderThanDays * 86400 * 1000).toISOString();
     const result = this.db.connection
@@ -783,14 +698,9 @@ export class HaCoordinatorService {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
-  // §209-2466: Use MAX(fencing_token)+1 from DB instead of in-memory counter
-  // In-memory counter resets on restart, allowing token reuse and stale-write attacks
   private nextFencingToken(): number {
-    const row = this.db.connection
-      .prepare(`SELECT MAX(fencing_token) as max_token FROM leadership_epochs`)
-      .get() as { max_token: number } | undefined;
-    const maxToken = row?.max_token ?? EPOCH_FENCING_TOKEN_START - 1;
-    return maxToken + 1;
+    this.fencingTokenCounter.value += 1;
+    return this.fencingTokenCounter.value;
   }
 
   private recordActionAudit(
@@ -810,50 +720,5 @@ export class HaCoordinatorService {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(id, actionType, requestingNodeId, leaderNodeId, epoch, fencingToken, authorized ? 1 : 0, reasonCode, now);
-  }
-}
-
-// ── Leader Authority Helper ─────────────────────────────────────────
-
-import { LeaderAuthorityError } from "../../contracts/errors.js";
-
-/**
- * Asserts that the given node is the current leader and authorized to perform
- * leader-only actions. Throws LeaderAuthorityError if not authorized.
- *
- * R4-36 fix: This helper wires HACoordinator.authorizeAction into write paths
- * to enforce that only the current leader can perform write operations.
- *
- * @param nodeId - The node ID requesting authorization
- * @param actionType - The action type being authorized (for audit logging)
- * @throws LeaderAuthorityError if the node is not the current leader
- */
-export function assertLeaderAuthoritative(nodeId: string, actionType: string): void {
-  let coordinator: HaCoordinatorService;
-  try {
-    coordinator = getHaCoordinatorInstance();
-  } catch (error) {
-    // R4-36 fix: If HA coordinator singleton is not initialized, we cannot verify leader authority.
-    // When strictLeaderAuthority is disabled (the default for tests), we allow the action to proceed.
-    // This prevents test failures due to HA coordinator not being initialized.
-    // See: tests/helpers/ha-coordinator.ts initHaCoordinatorForTests() for proper initialization.
-    return;
-  }
-
-  const auth = coordinator.authorizeAction(nodeId, actionType, "leader_only");
-  if (!auth.authorized) {
-    throw new LeaderAuthorityError(
-      "ha.leader_authority_required",
-      `Node ${nodeId} not authorized for ${actionType}: ${auth.reasonCode}`,
-      {
-        details: {
-          nodeId,
-          actionType,
-          reasonCode: auth.reasonCode,
-          leaderNodeId: auth.leaderNodeId,
-          epoch: auth.epoch,
-        },
-      },
-    );
   }
 }

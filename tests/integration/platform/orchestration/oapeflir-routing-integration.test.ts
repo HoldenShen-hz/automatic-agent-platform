@@ -38,7 +38,7 @@ function makeConstraintPack(override: Partial<ConstraintPack> = {}): ConstraintP
     policyIds: ["policy_oapeflir_001"],
     approvalMode: "none",
     autonomyMode: "auto",
-    tool_policy: { allowedTools: ["bash", "read", "write"] },
+    toolPolicy: { allowedTools: ["bash", "read", "write"] },
     risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 5, maxCost: 1.0, maxDurationMs: 30000 },

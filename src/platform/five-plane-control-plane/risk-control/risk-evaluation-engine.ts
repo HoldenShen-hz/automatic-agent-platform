@@ -1,42 +1,37 @@
 /**
  * RiskEvaluationEngine
  *
- * Implements ADR-026 8-factor weighted scoring algorithm.
+ * Implements §10 risk scoring algorithm and automated risk control engine.
  *
- * ## ADR-026 8-Factor Canonical Model
+ * ## §10.2 Risk Scoring Algorithm
  *
- * risk_score = Σ(factor_weight × factor_value) / 18
+ * risk_score = Σ(factor_weight × factor_value) / max_possible_score
  *
- * Factor weights per ADR-026:
- *   operationRisk:             weight=3
- *   targetResourceCriticality: weight=3
- *   dataSensitivity:           weight=3
- *   autonomyModeRisk:          weight=2
- *   tenantImpact:              weight=2
- *   blastRadius:               weight=2
- *   historicalFailureRate:    weight=2
- *   evidenceConfidence:        weight=1
+ * Factor weights per §10.2:
+ *   step_type_risk:      weight=3  (read=1, write=3, delete=5, external_call=4)
+ *   target_system_risk:  weight=4  (internal=1, staging=2, production=5)
+ *   data_class_risk:     weight=3  (public=1, internal=2, confidential=4, restricted=5)
+ *   blast_radius:        weight=2  (single_task=1, workflow=2, tenant=3, platform=5)
+ *   prior_failure_rate:  weight=2  (0-10%=1, 10-30%=2, 30-50%=3, >50%=5)
+ *   confidence:          weight=1  (high=1, medium=3, low=5)
  *
- * Factor values are normalized to [0, 1] scale.
- * Max possible weighted score = 18 (divisor 18 produces normalized 0-1 score).
- *
- * ## Risk Level Mapping
+ * ## §10.3 Risk Level Mapping
  *
  *   0.0 - 0.25  →  low
  *   0.25 - 0.50 →  medium
  *   0.50 - 0.75 →  high
  *   0.75 - 1.00 →  critical
  *
- * ## Risk Control Actions
+ * ## §10.3 Risk Control Actions
  *
  * | risk_level | auto_execute | log_level | approval | side_effect    | evidence |
  * |------------|--------------|-----------|----------|----------------|----------|
  * | low        | ✅           | info      | no        | normal          | basic      |
- * | medium     | ❌           | warn      | standard   | normal+validate | enhanced   |
+ * | medium     | ✅           | warn      | no        | normal+validate | enhanced   |
  * | high       | ❌           | error     | required   | restricted     | complete   |
  * | critical   | ❌           | critical  | break-glass | prohibited    | legal-grade |
  *
- * @see docs_en/adr/026-risk-control-architecture.md
+ * @see docs_zh/architecture/00-platform-architecture.md §10
  */
 
 import type {
@@ -45,25 +40,21 @@ import type {
   RiskEvaluationEngineOptions,
   RiskConfig,
   RiskLevel,
-  OperationRisk,
-  TargetResourceCriticality,
-  DataSensitivity,
-  AutonomyModeRisk,
-  TenantImpact,
+  StepTypeRisk,
+  TargetSystemRisk,
+  DataClassRisk,
   BlastRadius,
-  HistoricalFailureRate,
-  EvidenceConfidence,
+  ConfidenceLevel,
   RiskLevelActionConfig,
 } from "./types.js";
 
 /**
- * Max possible weighted score = 18 (ADR-026 8-factor model)
- * operationRisk: 3×5=15, targetResourceCriticality: 3×5=15, dataSensitivity: 3×5=15
- * autonomyModeRisk: 2×5=10, tenantImpact: 2×5=10, blastRadius: 2×5=10
- * historicalFailureRate: 2×5=10, evidenceConfidence: 1×5=5
- * Total max = 18
+ * Max possible weighted score = sum of all (weight × max_value)
+ * stepTypeRisk: 3×5=15, targetSystemRisk: 4×5=20, dataClassRisk: 3×5=15
+ * blastRadius: 2×5=10, priorFailureRate: 2×5=10, confidence: 1×5=5
+ * Total max = 75
  */
-const MAX_POSSIBLE_SCORE = 18;
+const MAX_POSSIBLE_SCORE = 75;
 
 export class RiskEvaluationEngine {
   private readonly config: RiskConfig;
@@ -114,52 +105,38 @@ export class RiskEvaluationEngine {
   }
 
   /**
-   * Compute weighted factor breakdown per ADR-026 8-factor formula
+   * Compute weighted factor breakdown per §10.2 formula
    */
   private computeFactorBreakdown(
     factors: RiskEvaluationRequest["factors"],
   ): RiskEvaluationResult["factorBreakdown"] {
     const { factorWeights } = this.config;
 
-    const operationRiskValue = this.config.operationRiskValues[factors.operationRisk];
-    const targetResourceValue = this.config.targetResourceCriticalityValues[factors.targetResourceCriticality];
-    const dataSensitivityValue = this.config.dataSensitivityValues[factors.dataSensitivity];
-    const autonomyModeValue = this.config.autonomyModeRiskValues[factors.autonomyModeRisk];
-    const tenantImpactValue = this.config.tenantImpactValues[factors.tenantImpact];
+    const stepTypeValue = this.config.stepTypeRiskValues[factors.stepTypeRisk];
+    const targetValue = this.config.targetSystemRiskValues[factors.targetSystemRisk];
+    const dataClassValue = this.config.dataClassRiskValues[factors.dataClassRisk];
     const blastRadiusValue = this.config.blastRadiusValues[factors.blastRadius];
-    const historicalFailureValue = this.computeHistoricalFailureValue(factors.historicalFailureRate);
-    const evidenceConfidenceValue = this.config.evidenceConfidenceValues[factors.evidenceConfidence];
+    const priorFailureValue = this.computePriorFailureValue(factors.priorFailureRatePercent);
+    const confidenceValue = this.config.confidenceValues[factors.confidence];
 
     return [
       {
-        factor: "operationRisk",
-        value: operationRiskValue,
-        weight: factorWeights.operationRisk,
-        weightedValue: operationRiskValue * factorWeights.operationRisk,
+        factor: "stepTypeRisk",
+        value: stepTypeValue,
+        weight: factorWeights.stepTypeRisk,
+        weightedValue: stepTypeValue * factorWeights.stepTypeRisk,
       },
       {
-        factor: "targetResourceCriticality",
-        value: targetResourceValue,
-        weight: factorWeights.targetResourceCriticality,
-        weightedValue: targetResourceValue * factorWeights.targetResourceCriticality,
+        factor: "targetSystemRisk",
+        value: targetValue,
+        weight: factorWeights.targetSystemRisk,
+        weightedValue: targetValue * factorWeights.targetSystemRisk,
       },
       {
-        factor: "dataSensitivity",
-        value: dataSensitivityValue,
-        weight: factorWeights.dataSensitivity,
-        weightedValue: dataSensitivityValue * factorWeights.dataSensitivity,
-      },
-      {
-        factor: "autonomyModeRisk",
-        value: autonomyModeValue,
-        weight: factorWeights.autonomyModeRisk,
-        weightedValue: autonomyModeValue * factorWeights.autonomyModeRisk,
-      },
-      {
-        factor: "tenantImpact",
-        value: tenantImpactValue,
-        weight: factorWeights.tenantImpact,
-        weightedValue: tenantImpactValue * factorWeights.tenantImpact,
+        factor: "dataClassRisk",
+        value: dataClassValue,
+        weight: factorWeights.dataClassRisk,
+        weightedValue: dataClassValue * factorWeights.dataClassRisk,
       },
       {
         factor: "blastRadius",
@@ -168,35 +145,29 @@ export class RiskEvaluationEngine {
         weightedValue: blastRadiusValue * factorWeights.blastRadius,
       },
       {
-        factor: "historicalFailureRate",
-        value: historicalFailureValue,
-        weight: factorWeights.historicalFailureRate,
-        weightedValue: historicalFailureValue * factorWeights.historicalFailureRate,
+        factor: "priorFailureRate",
+        value: priorFailureValue,
+        weight: factorWeights.priorFailureRate,
+        weightedValue: priorFailureValue * factorWeights.priorFailureRate,
       },
       {
-        factor: "evidenceConfidence",
-        value: evidenceConfidenceValue,
-        weight: factorWeights.evidenceConfidence,
-        weightedValue: evidenceConfidenceValue * factorWeights.evidenceConfidence,
+        factor: "confidence",
+        value: confidenceValue,
+        weight: factorWeights.confidence,
+        weightedValue: confidenceValue * factorWeights.confidence,
       },
     ];
   }
 
   /**
-   * Map historical failure rate category to factor value per ADR-026
+   * Map prior failure rate percentage to factor value per §10.2
    */
-  private computeHistoricalFailureValue(category: HistoricalFailureRate): number {
-    const { historicalFailureRateThresholds } = this.config;
-    switch (category) {
-      case "low":
-        return historicalFailureRateThresholds.low.value;
-      case "medium":
-        return historicalFailureRateThresholds.medium.value;
-      case "high":
-        return historicalFailureRateThresholds.high.value;
-      case "critical":
-        return historicalFailureRateThresholds.critical.value;
-    }
+  private computePriorFailureValue(percent: number): number {
+    const { priorFailureRateThresholds } = this.config;
+    if (percent <= priorFailureRateThresholds.low.maxPercent) return priorFailureRateThresholds.low.value;
+    if (percent <= priorFailureRateThresholds.medium.maxPercent) return priorFailureRateThresholds.medium.value;
+    if (percent <= priorFailureRateThresholds.high.maxPercent) return priorFailureRateThresholds.high.value;
+    return priorFailureRateThresholds.critical.value;
   }
 
   /**
@@ -238,7 +209,7 @@ export class RiskEvaluationEngine {
         actions.push("log", "proceed");
         break;
       case "medium":
-        actions.push("log", "require_approval", "proceed_with_validation", "enhanced_monitoring");
+        actions.push("log", "proceed_with_validation", "enhanced_monitoring");
         break;
       case "high":
         actions.push("log", "block", "require_approval", "full_evidence");

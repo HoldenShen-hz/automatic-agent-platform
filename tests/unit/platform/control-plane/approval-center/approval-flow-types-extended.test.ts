@@ -96,8 +96,6 @@ test("HumanFeedback with modify_directly type", () => {
 test("FeedbackLoop interface structure", () => {
   const loop: FeedbackLoop = {
     loopId: "loop-123",
-    harnessRunId: "harness-456",
-    nodeRunId: "node-789",
     workflowRunId: "wf-456",
     stepId: "step-789",
     maxIterations: 5,
@@ -106,8 +104,6 @@ test("FeedbackLoop interface structure", () => {
   };
 
   assert.equal(loop.loopId, "loop-123");
-  assert.equal(loop.harnessRunId, "harness-456");
-  assert.equal(loop.nodeRunId, "node-789");
   assert.equal(loop.workflowRunId, "wf-456");
   assert.equal(loop.stepId, "step-789");
   assert.equal(loop.maxIterations, 5);
@@ -118,8 +114,6 @@ test("FeedbackLoop interface structure", () => {
 test("FeedbackLoop with feedback items", () => {
   const loop: FeedbackLoop = {
     loopId: "loop-123",
-    harnessRunId: "harness-456",
-    nodeRunId: "node-789",
     workflowRunId: "wf-456",
     stepId: "step-789",
     maxIterations: 5,
@@ -488,8 +482,6 @@ test("ApprovalFlowState with feedbackLoop", () => {
     delegation: null,
     feedbackLoop: {
       loopId: "loop-123",
-      harnessRunId: "harness-456",
-      nodeRunId: "node-789",
       workflowRunId: "wf-456",
       stepId: "step-789",
       maxIterations: 5,

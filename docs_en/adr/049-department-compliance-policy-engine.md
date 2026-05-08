@@ -1,23 +1,20 @@
-# ADR-049 Department Compliance Policy Engine
+# ADR-049 Department-Level Compliance Policy Engine
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Different departments (finance, R&D, marketing) have different compliance requirements. The platform needs to support department-level compliance policy customization.
+Different departments (finance, R&D, marketing) have different compliance requirements, and the platform needs to support department-level compliance policy customization.
 
 ## Decision
 
 ### CompliancePolicy Structure
 
-`§46` OrgNode hierarchy (enterprise → division → department → team → seat) requires that the binding scope field of compliance policies support all levels, not limited to department only.
-
 ```typescript
 interface CompliancePolicy {
   policy_id: string;
-  orgNodeId: string;          // §46 OrgNode reference, supports enterprise/division/department/team levels
-  orgNodeType?: OrgNodeType; // Optional: explicitly mark OrgNode type to accelerate routing
+  department_id: string;
   rules: ComplianceRule[];
   enforced: boolean;
   version: string;
@@ -46,33 +43,33 @@ interface ComplianceRule {
 ### Policy Inheritance and Override
 
 - Sub-departments inherit parent department policies
-- Sub-departments can override parent department policies (stricter)
+- Sub-departments may override parent department policies (more strict)
 - Platform-level policies cannot be overridden
 
 ### Compliance Checkpoints
 
-- Pre-execution check
-- Post-execution check
+- Pre-task execution check
+- Post-task execution check
 - Periodic scan check
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Differentiated compliance supports business needs
 - Inheritance mechanism reduces duplicate configuration
 - Checkpoint mechanism ensures compliance implementation
 
-Cons:
+Negative:
 
 - Policy management complexity
 - Override rules may cause confusion
 
-## Cross-references
+## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
-- `§49` Department Compliance Policy Engine
+- `§49` Department-Level Compliance Policy Engine

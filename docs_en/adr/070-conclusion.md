@@ -1,6 +1,6 @@
 # ADR-070 Conclusion
 
-- Status: Superseded
+- Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
@@ -36,9 +36,12 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 
 | Phase | Focus |
 |-------|-------|
-| Ring 1 | Core execution plane + stability baseline |
-| Ring 2 | Governance, recovery, durability and high-trust operations |
-| Ring 3 | Business domains, ecosystem and advanced intelligence capabilities |
+| Phase 1-2 | Core execution plane + stability |
+| Phase 3 | AI operations layer |
+| Phase 4 | Business domain onboarding |
+| Phase 5 | Intelligent interaction |
+| Phase 6 | Organization governance |
+| Phase 7 | Scaled ecosystem |
 
 ## ADR Coverage
 
@@ -47,13 +50,8 @@ This ADR series covers the complete architecture from infrastructure to operatio
 ## Key Invariants
 
 - Five-plane isolation invariant
-- `HarnessRuntime + RuntimeStateMachine` truth authority invariant
 - OAPEFLIR loop invariant
 - Constitutional principles invariant
-
-## v4.3 ADR Remediation
-
-- A-63: This ADR originally wrote `Phase 1-7` and "OAPEFLIR loop invariant" as main architecture invariants. Root cause: the summary ADR aggregated historical roadmap and cognitive models but did not distinguish between roadmap and runtime authority. Fix: The main text now uses ring terminology and explicitly closes runtime invariants to `HarnessRuntime + RuntimeStateMachine`.
 
 ## Follow-up Work
 
@@ -61,6 +59,6 @@ This ADR series covers the complete architecture from infrastructure to operatio
 - Supplement missing scenarios
 - Optimize decisions based on implementation experience
 
-## Source Section
+## Source Sections
 
 - `§70` Conclusion

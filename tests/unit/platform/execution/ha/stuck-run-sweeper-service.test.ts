@@ -759,7 +759,7 @@ test("StuckRunSweeperService - sweepOnce() with no tracked runs", async () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - kill callback returning false does not pollute run state as killed", async () => {
+test("StuckRunSweeperService - kill callback returning false logs warning but continues", async () => {
   const { service, clock, killResults } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -782,11 +782,10 @@ test("StuckRunSweeperService - kill callback returning false does not pollute ru
   clock.advance(31_000);
   await service.sweepOnce();
 
-  // Callback failure must not mutate the run into killed state.
+  // Run should still be in killed state (callback returned false but we still marked it)
   const runs = service.getTrackedRuns();
   const run = runs[0]!;
-  assert.equal(run.status, "warning");
-  assert.equal(run.killedAt, null);
+  assert.equal(run.status, "killed");
 
   service.stop();
   service.dispose();

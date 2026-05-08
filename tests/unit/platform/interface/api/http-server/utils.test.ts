@@ -355,11 +355,6 @@ test("buildJsonResponse pretty-prints JSON", () => {
   assert.ok(result.body.includes("  "));
 });
 
-test("buildJsonResponse includes x-trace-id when provided", () => {
-  const result = buildJsonResponse("req_trace", 200, { ok: true }, "trace_123");
-  assert.equal(result.headers["x-trace-id"], "trace_123");
-});
-
 // buildJsonErrorResponse tests
 
 test("buildJsonErrorResponse builds correct response", () => {
@@ -384,14 +379,6 @@ test("buildJsonErrorResponse with 500 status", () => {
   assert.equal(result.statusCode, 500);
   const parsed = JSON.parse(result.body);
   assert.equal(parsed.error.code, "api.internal_error");
-});
-
-test("buildJsonErrorResponse includes x-trace-id header when provided", () => {
-  const result = buildJsonErrorResponse("req_err_trace", 500, {
-    code: "api.internal_error",
-    message: "Something went wrong",
-  }, "trace_err_123");
-  assert.equal(result.headers["x-trace-id"], "trace_err_123");
 });
 
 // buildJsonDocumentResponse tests

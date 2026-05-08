@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  DEFAULT_OPS_DATA_BOUNDARY,
-  PlatformOpsAgentService,
-} from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import { PlatformOpsAgentService } from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 
 test("PlatformOpsAgentService requires approval before high-risk proposals become executable", () => {
   const service = new PlatformOpsAgentService({
@@ -14,7 +11,6 @@ test("PlatformOpsAgentService requires approval before high-risk proposals becom
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:incident"],
-    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
   });
 
   const proposal = service.createProposal({
@@ -44,7 +40,6 @@ test("PlatformOpsAgentService respects panic and action allow-list guardrails", 
     requiredApprovals: [],
     maxAutonomyLevel: "trusted_automation",
     evidenceRequirements: ["playbook:config"],
-    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
   });
 
   const proposal = service.createProposal({

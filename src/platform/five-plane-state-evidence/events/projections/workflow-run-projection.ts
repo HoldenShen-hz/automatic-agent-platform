@@ -37,33 +37,12 @@ export interface WorkflowRunState {
   failedSteps: string[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency.
-   * Stored as array for JSON serialization but converted to Set internally.
-   * Use processedEventIdSet() getter for O(1) lookup.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
   /** Error information if workflow failed */
   error: WorkflowError | null;
   /** Division results (parallel/branch outcomes) */
@@ -72,14 +51,6 @@ export interface WorkflowRunState {
   completedAt: string | null;
   /** Failed timestamp if workflow failed */
   failedAt: string | null;
-}
-
-/**
- * Internal state interface with Set for efficient O(1) lookups.
- * Used during event processing; serialized to WorkflowRunState for storage.
- */
-interface WorkflowRunStateInternal extends Omit<WorkflowRunState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 export type WorkflowRunStatus =
@@ -136,60 +107,11 @@ export function createEmptyWorkflowRunState(): WorkflowRunState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
     error: null,
     divisions: [],
     completedAt: null,
     failedAt: null,
   };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: WorkflowRunState): WorkflowRunStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Maximum size of processed event ID set before watermark eviction.
- * Prevents unbounded memory growth during long-running workflow replays.
- * R12-10: When set exceeds this size, oldest 10% of entries are evicted.
- */
-const MAX_PROCESSED_EVENT_ID_SET_SIZE = 10_000;
-const EVICTION_WATERMARK = 0.9; // Evict when 90% of max
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: WorkflowRunStateInternal): WorkflowRunState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
-  };
-}
-
-/**
- * Marks an event as processed and handles watermark eviction to prevent unbounded growth.
- */
-function markEventProcessed(state: WorkflowRunStateInternal, eventId: string): void {
-  state._processedEventIdSet.add(eventId);
-  // R12-10: Watermark eviction when set exceeds max size
-  if (state._processedEventIdSet.size > MAX_PROCESSED_EVENT_ID_SET_SIZE) {
-    // Evict oldest 10% of entries (first 10% of Array order, which is insertion order)
-    const entries = Array.from(state._processedEventIdSet);
-    const evictCount = Math.floor(MAX_PROCESSED_EVENT_ID_SET_SIZE * (1 - EVICTION_WATERMARK));
-    const newSet = new Set(entries.slice(evictCount));
-    state._processedEventIdSet.clear();
-    for (const entry of newSet) {
-      state._processedEventIdSet.add(entry);
-    }
-  }
 }
 
 /**
@@ -207,11 +129,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: WorkflowRunStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: WorkflowRunState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -233,14 +154,13 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as WorkflowRunState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyWorkflowRunState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyWorkflowRunState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -261,14 +181,6 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Add to timeline
   const timelineEntry: WorkflowTimelineEntry = {
@@ -280,8 +192,8 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add with watermark eviction
-  markEventProcessed(newState, event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
@@ -310,37 +222,19 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       handleTaskStatusChanged(newState, payload, event.createdAt);
       break;
 
-    case "workflow_run.created":
-      // R20-09: Always transition to running when workflow starts (not just from "pending")
-      if (newState.status === "pending" || newState.status === "paused") {
-        newState.status = "running";
-      }
-      break;
-
-    case "workflow_run.completed":
-      newState.status = "completed";
-      newState.completedAt = event.createdAt;
-      break;
-
-    case "workflow_run.failed":
-      newState.status = "failed";
-      newState.failedAt = event.createdAt;
-      // Also set error info from payload if available
-      break;
-
     default:
       // No specific handling for other event types
       break;
   }
 
-  return toSerializedState(newState) as unknown as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**
  * Handle workflow:step_completed event
  */
 function handleStepCompleted(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
 ): void {
   const stepId = payload.stepId as string | undefined;
@@ -356,7 +250,7 @@ function handleStepCompleted(
  * Handle division:completed event
  */
 function handleDivisionCompleted(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -379,7 +273,7 @@ function handleDivisionCompleted(
  * Handle division:failed event
  */
 function handleDivisionFailed(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -401,7 +295,7 @@ function handleDivisionFailed(
  * Handle subtask:completed event (maps to step completion)
  */
 function handleSubtaskCompleted(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
 ): void {
   const stepId = (payload.stepId ?? payload.subtaskId) as string | undefined;
@@ -415,14 +309,9 @@ function handleSubtaskCompleted(
 
 /**
  * Handle subtask:failed event
- * Root cause §191-2239: subtask:failed should not immediately set workflow=failed.
- * The spec requires retry/fallback paths to be explored before declaring workflow failure.
- * When a subtask fails, only mark the step as failed but keep workflow status unchanged.
- * The workflow-level failure is determined by task:status_changed events which aggregate
- * all division/subtask outcomes and apply proper fault-tolerance logic.
  */
 function handleSubtaskFailed(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -430,24 +319,21 @@ function handleSubtaskFailed(
   if (stepId && !state.failedSteps.includes(stepId)) {
     state.failedSteps = [...state.failedSteps, stepId];
   }
-  // Do not immediately mark workflow as failed - allow retry/fallback paths per spec.
-  // The workflow will be marked failed only when task:status_changed aggregates failure
-  // after all retry attempts are exhausted, not on first subtask failure.
+  state.status = "failed";
+  state.failedAt = timestamp;
   state.error = {
     code: (payload.reasonCode as string | null) ?? null,
     message: null, // subtask:failed doesn't include error message in payload
     failedStepId: stepId ?? null,
     failedAt: timestamp,
   };
-  // Do NOT set state.status = "failed" here - that happens only via task:status_changed
-  // with toStatus=failed after fault tolerance and retry paths are exhausted.
 }
 
 /**
  * Handle task:status_changed event for workflow lifecycle
  */
 function handleTaskStatusChanged(
-  state: WorkflowRunStateInternal,
+  state: WorkflowRunState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {

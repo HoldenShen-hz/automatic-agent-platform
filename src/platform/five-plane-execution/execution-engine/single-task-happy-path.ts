@@ -32,8 +32,6 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 
-import type { PlatformFactEvent } from "../../contracts/executable-contracts/index.js";
-
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
 import { HealthService } from "../../shared/observability/health-service.js";
@@ -47,10 +45,7 @@ import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-poli
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulator.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
-import { createNodeRunCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
-import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
-import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
-import type { BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import {
   AdmissionController,
   type AdmissionBackpressureSnapshot,
@@ -65,13 +60,6 @@ import {
   type LlmModelCallResult,
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
-import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
-import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
-import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { BudgetTier } from "../budget-allocator.js";
-import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -150,31 +138,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   initializeMiddleware();
   const middlewareChain = getGlobalMiddlewareChain();
 
-  // R4-26/R4-27 (INV-GRAPH-001/INV-RUN-001): RuntimeEntryGuard is mandatory at dispatch entry
-  // All execution paths must pass through PlanGraphBundle validation before writing truth
-  const entryGuard = new RuntimeEntryGuard();
-  // Verify that any event writes follow the platform.* fact event requirement
-  entryGuard.assertNoLegacyTruthWrite({ eventType: "platform.graph_scheduler.decision_recorded" });
-
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
-
-  // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
-  const harnessRunId = newId("harness_run");
-  const planGraphBundle = minimalWorkflowToPlanGraphBundle(SINGLE_AGENT_MINIMAL_WORKFLOW, harnessRunId);
-
-  // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
-  const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
-  const validatedPlanGraphBundle = guardResult.planGraphBundle;
-  // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - harnessRunId is available for budget tracking
-  const harnessRunIdFromBundle = validatedPlanGraphBundle.harnessRunId;
-  // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
-  // The budgetLedger flows to model-call-provider for BudgetAllocator.reserve() before LLM calls
-  const budgetLedger = createBudgetLedger({
-    tenantId: input.tenantId ?? "tenant:local",
-    harnessRunId: harnessRunIdFromBundle,
-    currency: "USD",
-    hardCap: 10, // matches default maxTaskCostUsd
-  });
 
   const storage = openAuthoritativeStorageContext({
     dbPath: input.dbPath,
@@ -182,32 +146,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   const db = storage.sql;
   const store = storage.store;
   storage.migrate();
-
-  // R4-26 (INV-GRAPH-001): Derive taskId FROM PlanGraphBundle - use planGraphBundleId as authoritative identifier
-  // Previously created independently with newId("task"), which violated P3→P4 contract invariant
-  const taskId = validatedPlanGraphBundle.planGraphBundleId;
-
-    // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
-    // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
-    const harnessRun = createHarnessRun({
-      tenantId: input.tenantId ?? "tenant:local",
-      traceId: `trace:${harnessRunIdFromBundle}`,
-      riskLevel: "medium",
-      ownership: { ownerId: input.tenantId ?? "tenant:local", ownerType: "tenant" },
-      confirmedTaskSpecId: `pending:${taskId}`,
-      requestEnvelopeId: `pending:${taskId}`,
-      requestHash: `request:${taskId}`,
-      constraintPackRef: validatedPlanGraphBundle.budgetPlanRef ?? `workflow:${SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId}`,
-      versionLockId: `pending:${harnessRunIdFromBundle}`,
-      budgetLedgerId: budgetLedger.budgetLedgerId,
-      harnessRunId: harnessRunIdFromBundle,
-      status: "created",
-    });
-    const runVersionLock = createRunVersionLock({
-      harnessRunId: harnessRunIdFromBundle,
-      runtimeProfileVersion: "runtime-profile:default",
-    });
-
   try {
     const artifactStore = new ArtifactStore({
       rootDir: join(dirname(input.dbPath), "artifacts"),
@@ -215,18 +153,17 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const healthService = new HealthService(db, store, DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS);
     const transitions = new TransitionService(db, store);
-    // R8-01 FIX: Initialize BudgetExecutionSessionManager for atomic reserve→execute→settle
-    // This must be created before admission evaluation to support budget reservation verification
-    const budgetSessionManager = new BudgetExecutionSessionManager();
     const admission = new AdmissionController(
       store,
       input.admissionPolicy,
       input.admissionBackpressureSnapshot ?? (() => healthService.getReport()),
-      budgetSessionManager,
     );
-    // R4-32 (INV-APPROVAL): Initialize approval policy engine for risk-proportional approval
-    const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
     const [step] = SINGLE_AGENT_MINIMAL_WORKFLOW.steps;
+    const toolExposure = new RoleToolExposureService().resolve({
+      divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
+      roleId: step!.roleId,
+      taskContext: `${input.title}\n${input.request}`,
+    });
 
     if (!step) {
       throw new ValidationError("workflow.definition_invalid", "Workflow definition is invalid: missing initial step", {
@@ -234,17 +171,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       });
     }
 
-    // R4-26 (INV-GRAPH-001): Use executionRoleId which is set by minimalWorkflowToPlanGraphBundle
-    // to preserve the original roleId after PlanNode conversion. This ensures the execution
-    // path uses the role from the PlanGraphBundle rather than relying on the original
-    // workflow definition directly.
-    const stepRoleId = step.executionRoleId ?? step.roleId;
-    const toolExposure = new RoleToolExposureService().resolve({
-      divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
-      roleId: stepRoleId,
-      taskContext: `${input.title}\n${input.request}`,
-    });
-
+    const taskId = newId("task");
     const sessionId = newId("sess");
     const executionId = newId("exec");
     const traceId = newId("trace");
@@ -254,35 +181,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const now = nowIso();
 
-    // R4-25 (INV-BUDGET-001): Compute approvalResult BEFORE budget reservation and LLM call
-    // This is evaluated early to ensure reserve-before-execute: if approval required, we skip
-    // budget reservation and LLM call to avoid wasting resources on tasks that may be blocked
-    const approvalContext: ApprovalPolicyContext = {
-      decisionId: newId("approval"),
-      taskId,
-      executionId,
-      sessionId,
-      subjectType: "agent",
-      subjectId: "agent_general_executor",
-      action: "invoke_tool",
-      riskCategory: (() => {
-          // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
-          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
-          const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
-            web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
-            batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
-          };
-          const riskLevel = riskLevels[toolName] ?? "medium";
-          return mapToolRiskToPolicyCategory(riskLevel);
-        })(),
-      mode: "auto",
-      stage: "execute",
-      estimatedCostUsd: 1,
-      metadata: { roleId: step.roleId, stepId: step.stepId },
-    };
-    const approvalResult = approvalEngine.evaluate(approvalContext);
-
-    // Try to get model call provider and make real LLM call
+    // Try to get model call provider and make real LLM call (must happen before provideContext)
     let llmResult: LlmModelCallResult | null = null;
     let stepData: Record<string, unknown>;
 
@@ -293,110 +192,45 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         result: `Single-agent happy path finished for: ${input.request}`,
         ...input.stepOutputOverride,
       };
-    } else if (!approvalResult.requiresApproval) {
-      // R4-25 (INV-BUDGET-001): Reserve budget BEFORE LLM call (reserve-before-execute pattern)
-      // This must happen before initializeModelCallProvider since model calls may happen immediately
-      const defaultBudgetPolicy: BudgetPolicy = {
-        maxTaskCostUsd: 10,
-        maxPackCostUsd: 100,
-        maxPlatformCostUsd: 10000,
-        maxDailyCostUsd: 100,
-        maxMonthlyCostUsd: 1000,
-        maxModelTokens: 100000,
-        maxSteps: 100,
-        maxDurationMs: 600000,
-        warnAtRatio: 0.8,
-        mode: "auto",
-      };
-      let budgetReservationId: string | null = null;
+    } else {
+      // Initialize model call provider if not already done
+      const modelProvider = initializeModelCallProvider({});
 
-      try {
-        const budgetSession = budgetSessionManager.reserveAndCreateSession(
-          {
-            tenantId: input.tenantId ?? "tenant:local",
-            harnessRunId: harnessRunIdFromBundle,
-            traceId,
-            emittedBy: "single_task_happy_path",
-            ledger: budgetLedger,
-            policy: defaultBudgetPolicy,
-          },
-          0, // placeholder; task not yet created at this point
-          "token",
-        );
-        budgetReservationId = budgetSession.sessionId;
-        // Mark as executing immediately since we're in the happy path
-        budgetSessionManager.markExecuting(budgetReservationId);
-      } catch (error) {
-        // Budget reservation failed - use synthetic output and return early
-        // since no LLM call has happened yet (reserve-before-execute)
-        logger.log({ level: "warn", message: `Budget reservation failed, using synthetic output`, data: { error: error instanceof Error ? error.message : String(error), title: input.title } });
-        stepData = {
-          summary: `Analyzed request for ${input.title}`,
-          result: `Single-agent happy path finished for: ${input.request}`,
-          budgetError: error instanceof Error ? error.message : String(error),
-        };
-        // R4-25 (INV-BUDGET-001): Settle budget session before returning
-        if (budgetReservationId) {
-          try {
-            budgetSessionManager.settle(budgetReservationId, 0);
-          } catch (settleError) {
-            logger.log({ level: "warn", message: "R4-25: Failed to settle budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-          }
-        }
-      }
+      if (modelProvider.hasAnyProvider()) {
+        try {
+          const messages = [
+            { role: "system" as const, content: "You are a helpful assistant that analyzes requests and produces structured outputs." },
+            { role: "user" as const, content: input.request },
+          ];
 
-      // Only proceed with LLM call if budget reservation succeeded
-      if (budgetReservationId !== null) {
-        // Initialize model call provider if not already done
-        // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId from validatedPlanGraphBundle
-        // so BudgetAllocator.reserve() is called before createCompletion()
-        const modelProvider = initializeModelCallProvider({
-          budgetLedger,
-          harnessRunId: harnessRunIdFromBundle,
-        });
+          llmResult = await modelProvider.createCompletion({
+            model: modelProvider.getDefaultModel(),
+            messages,
+            maxTokens: 1024,
+          });
 
-        if (modelProvider.hasAnyProvider()) {
-          try {
-            const messages = [
-              { role: "system" as const, content: "You are a helpful assistant that analyzes requests and produces structured outputs." },
-              { role: "user" as const, content: input.request },
-            ];
-
-            llmResult = await modelProvider.createCompletion({
-              model: modelProvider.getDefaultModel(),
-              messages,
-              maxTokens: 1024,
-            });
-
-            stepData = {
-              summary: `Analyzed request for ${input.title}`,
-              result: llmResult.content || `Analyzed: ${input.request}`,
-              modelUsed: llmResult.model,
-              provider: llmResult.provider,
-              usage: llmResult.usage,
-            };
-          } catch (llmError) {
-            // Fall back to synthetic output if LLM call fails
-            logger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
-            stepData = {
-              summary: `Analyzed request for ${input.title}`,
-              result: `Single-agent happy path finished for: ${input.request}`,
-              llmError: llmError instanceof Error ? llmError.message : String(llmError),
-            };
-            // R4-25 (INV-BUDGET-001): Settle budget session after LLM failure
-            try {
-              budgetSessionManager.settle(budgetReservationId, 0);
-            } catch (settleError) {
-              logger.log({ level: "warn", message: "R4-25: Failed to settle budget session after LLM failure", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-            }
-          }
-        } else {
-          // No LLM provider configured, use synthetic output
+          stepData = {
+            summary: `Analyzed request for ${input.title}`,
+            result: llmResult.content || `Analyzed: ${input.request}`,
+            modelUsed: llmResult.model,
+            provider: llmResult.provider,
+            usage: llmResult.usage,
+          };
+        } catch (llmError) {
+          // Fall back to synthetic output if LLM call fails
+          logger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
           stepData = {
             summary: `Analyzed request for ${input.title}`,
             result: `Single-agent happy path finished for: ${input.request}`,
+            llmError: llmError instanceof Error ? llmError.message : String(llmError),
           };
         }
+      } else {
+        // No LLM provider configured, use synthetic output
+        stepData = {
+          summary: `Analyzed request for ${input.title}`,
+          result: `Single-agent happy path finished for: ${input.request}`,
+        };
       }
     }
 
@@ -415,8 +249,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      // R4-27 (INV-RUN-001): Derive task from HarnessRun - task must reference its authorizing HarnessRun
-      harnessRunId: harnessRunIdFromBundle,
       divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
       tenantId: input.tenantId ?? null,
       title: input.title,
@@ -448,10 +280,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
-    // R4-32 (INV-APPROVAL): approvalResult is computed in outer scope for reserve-before-execute
-    // approvalResult.requiresApproval gates budget reservation and LLM call
-    // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
-    // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
@@ -466,11 +294,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       attempt: 1,
       timeoutMs: step.timeoutMs,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
-      // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
-      // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
-      requiresApproval: approvalResult.requiresApproval ? 1 : 0,
+      requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
       allowedPathsJson: JSON.stringify([]),
@@ -494,285 +318,17 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
-    // R4-28 (INV-STATE-001): Every truth mutation must append a PlatformFactEvent in the same transaction
-    const taskCreatedEvent = {
-      id: newId("evt"),
-      taskId,
-      executionId: null as string | null,
-      eventType: "platform.task.status_changed",
-      eventTier: "tier_1" as const,
-      payloadJson: JSON.stringify({
-        aggregateType: "Task",
-        fromStatus: null,
-        toStatus: "queued",
-        reasonCode: "task.created",
-        emittedBy: "single_task_happy_path",
-      }),
-      traceId,
-      createdAt: now,
-    };
-
-    const workflowCreatedEvent = {
-      id: newId("evt"),
-      taskId,
-      executionId: null as string | null,
-      eventType: "platform.workflow.status_changed",
-      eventTier: "tier_1" as const,
-      payloadJson: JSON.stringify({
-        aggregateType: "Workflow",
-        fromStatus: null,
-        toStatus: "running",
-        reasonCode: "workflow.started",
-        emittedBy: "single_task_happy_path",
-      }),
-      traceId,
-      createdAt: now,
-    };
-
-    const executionCreatedEvent = {
-      id: newId("evt"),
-      taskId,
-      executionId,
-      eventType: "platform.execution.status_changed",
-      eventTier: "tier_1" as const,
-      payloadJson: JSON.stringify({
-        aggregateType: "Execution",
-        fromStatus: null,
-        toStatus: "created",
-        reasonCode: "execution.created",
-        emittedBy: "single_task_happy_path",
-      }),
-      traceId,
-      createdAt: now,
-    };
-
-    const sessionCreatedEvent = {
-      id: newId("evt"),
-      taskId,
-      executionId: null as string | null,
-      eventType: "platform.session.status_changed",
-      eventTier: "tier_1" as const,
-      payloadJson: JSON.stringify({
-        aggregateType: "Session",
-        fromStatus: null,
-        toStatus: "open",
-        reasonCode: "session.created",
-        emittedBy: "single_task_happy_path",
-      }),
-      traceId,
-      createdAt: now,
-    };
-
-    // R4-27/R4-28 (INV-STATE-001): Emit harness_run.status_changed event to pair with HarnessRun INSERT
-    const harnessRunCreatedEvent = {
-      id: newId("evt"),
-      taskId,
-      executionId: null as string | null,
-      eventType: "platform.harness_run.status_changed",
-      eventTier: "tier_1" as const,
-      payloadJson: JSON.stringify({
-        harnessRunId: harnessRunIdFromBundle,
-        status: "created",
-        tenantId: input.tenantId ?? "tenant:local",
-        domainId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
-        occurredAt: now,
-      }),
-      traceId,
-      createdAt: now,
-    };
-
-    // R4-28 (INV-STATE-001): Assert leader authority before emitting events in transaction.
-    // Only the leader node can append events to ensure HA consistency.
-    assertLeaderAuthoritative("system", "single_task_happy_path_event_emission");
-
     db.transaction(() => {
-      // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity
-      executeQuery(
-        db.connection,
-        `INSERT INTO harness_runs (
-          harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
-          status, version_lock_id, budget_ledger_id, current_seq, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        harnessRun.harnessRunId,
-        harnessRun.tenantId,
-        harnessRun.confirmedTaskSpecId,
-        harnessRun.requestEnvelopeId,
-        harnessRun.status,
-        runVersionLock.runVersionLockId,
-        harnessRun.budgetLedgerId,
-        harnessRun.currentSeq,
-        harnessRun.updatedAt,
-      );
-      // Insert plan_graph_bundle record inside transaction for atomicity
-      executeQuery(
-        db.connection,
-        `INSERT INTO plan_graph_bundles (
-          plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?)`,
-        validatedPlanGraphBundle.planGraphBundleId,
-        harnessRunIdFromBundle,
-        validatedPlanGraphBundle.graphVersion,
-        JSON.stringify(validatedPlanGraphBundle.graph),
-        JSON.stringify(validatedPlanGraphBundle.validationReport),
-        validatedPlanGraphBundle.createdAt,
-      );
       store.task.insertTask(task);
       store.workflow.insertWorkflowState(workflow);
       store.execution.insertExecution(execution);
       store.session.insertSession(session);
-      // R4-28 (INV-STATE-001): Append PlatformFactEvents in same transaction as truth mutations
-      store.event.insertEvent(taskCreatedEvent);
-      store.event.insertEvent(workflowCreatedEvent);
-      store.event.insertEvent(executionCreatedEvent);
-      store.event.insertEvent(sessionCreatedEvent);
-      store.event.insertEvent(harnessRunCreatedEvent);
     });
-
-    // Root cause: the original approval gate tried to transition task/workflow/
-    // session/execution before their baseline truth rows existed. Persist the
-    // created records first, then block on approval if required.
-    if (approvalResult.requiresApproval) {
-      transitions.transitionTaskStatus({
-        entityKind: "task",
-        entityId: taskId,
-        fromStatus: "queued",
-        toStatus: "awaiting_decision",
-        executionId,
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionWorkflowStatus({
-        entityKind: "workflow",
-        entityId: taskId,
-        fromStatus: "running",
-        toStatus: "paused",
-        currentStepIndex: 0,
-        outputsJson: workflow.outputsJson,
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionSessionStatus({
-        entityKind: "session",
-        entityId: sessionId,
-        fromStatus: "open",
-        toStatus: "awaiting_user",
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionExecutionStatus({
-        entityKind: "execution",
-        entityId: executionId,
-        fromStatus: "created",
-        toStatus: "blocked",
-        ...createContext(traceContext, "approval.required"),
-      });
-
-      const approvalTrace = createChildTraceContext(traceContext);
-      store.event.insertEvent({
-        id: newId("evt"),
-        taskId,
-        executionId,
-        eventType: "decision:requested",
-        eventTier: "tier_1",
-        payloadJson: JSON.stringify({
-          approvalId: newId("approval"),
-          decisionId: approvalContext.decisionId,
-          taskId,
-          executionId,
-          subjectType: approvalContext.subjectType,
-          subjectId: approvalContext.subjectId,
-          action: approvalContext.action,
-          riskCategory: approvalContext.riskCategory,
-          reasonCode: approvalResult.reasonCode ?? "approval.risk_proportional_required",
-          stage: approvalContext.stage,
-          estimatedCostUsd: approvalContext.estimatedCostUsd,
-          traceContext: approvalTrace,
-        }),
-        traceId,
-        createdAt: nowIso(),
-      });
-
-      return store.operations.loadTaskSnapshot(taskId);
-    }
-
-    // R8-01 FIX: Create budget reservation BEFORE admission evaluation
-    // This implements the reserve-before-execute pattern required by admission controller
-    const defaultBudgetPolicy: BudgetPolicy = {
-      maxTaskCostUsd: 10,
-      maxPackCostUsd: 100,
-      maxPlatformCostUsd: 10000,
-      maxDailyCostUsd: 100,
-      maxMonthlyCostUsd: 1000,
-      maxModelTokens: 100000,
-      maxSteps: 100,
-      maxDurationMs: 600000,
-      warnAtRatio: 0.8,
-      mode: "auto",
-    };
-    let budgetReservationId: string | null = null;
-    try {
-      const budgetSession = budgetSessionManager.reserveAndCreateSession(
-        {
-          tenantId: input.tenantId ?? "tenant:local",
-          harnessRunId: harnessRunIdFromBundle,
-          traceId,
-          emittedBy: "single_task_happy_path",
-          ledger: budgetLedger,
-          policy: defaultBudgetPolicy,
-        },
-        task.estimatedCostUsd ?? 0,
-        "token",
-      );
-      budgetReservationId = budgetSession.sessionId;
-      // Mark as executing immediately since we're in the happy path
-      budgetSessionManager.markExecuting(budgetReservationId);
-    } catch (error) {
-      // Budget reservation failed - reject the task
-      logger.log({ level: "warn", message: `Budget reservation failed, cancelling task`, data: { error: error instanceof Error ? error.message : String(error), taskId } });
-      transitions.transitionTaskStatus({
-        entityKind: "task",
-        entityId: taskId,
-        fromStatus: "queued",
-        toStatus: "cancelled",
-        executionId,
-        ...createContext(traceContext, "budget.reservation_failed"),
-      });
-      transitions.transitionWorkflowStatus({
-        entityKind: "workflow",
-        entityId: taskId,
-        fromStatus: "running",
-        toStatus: "cancelled",
-        currentStepIndex: 0,
-        outputsJson: workflow.outputsJson,
-        ...createContext(traceContext, "budget.reservation_failed"),
-      });
-      transitions.transitionSessionStatus({
-        entityKind: "session",
-        entityId: sessionId,
-        fromStatus: "open",
-        toStatus: "cancelled",
-        ...createContext(traceContext, "budget.reservation_failed"),
-      });
-      transitions.transitionExecutionStatus({
-        entityKind: "execution",
-        entityId: executionId,
-        fromStatus: "created",
-        toStatus: "cancelled",
-        ...createContext(traceContext, "budget.reservation_failed"),
-      });
-      // R4-25 (INV-BUDGET-001): Settle budget session before returning
-      if (budgetReservationId) {
-        try {
-          budgetSessionManager.settle(budgetReservationId, 0);
-        } catch (settleError) {
-          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-        }
-      }
-      return store.operations.loadTaskSnapshot(taskId);
-    }
 
     const admissionDecision = admission.evaluate({
       priority: task.priority,
       estimatedCostUsd: task.estimatedCostUsd,
       budgetRemainingUsd: execution.budgetUsdLimit,
-      budgetReservationId,
     });
     if (admissionDecision.decision !== "allow") {
       if (admissionDecision.decision === "queue") {
@@ -838,15 +394,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         createdAt: nowIso(),
       });
 
-      // R4-25 (INV-BUDGET-001): Settle budget session before returning
-      if (budgetReservationId) {
-        try {
-          budgetSessionManager.settle(budgetReservationId, 0);
-        } catch (settleError) {
-          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-        }
-      }
-
       return store.operations.loadTaskSnapshot(taskId);
     }
 
@@ -901,29 +448,25 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.nodeId ?? step.stepId,
+      stepId: step.stepId,
     });
 
-    const validation = validateWorkflowStepOutput({ stepId: step.stepId ?? step.nodeId ?? "", ...(step.outputSchemaPath != null && { outputSchemaPath: step.outputSchemaPath }) }, stepData);
+    const validation = validateWorkflowStepOutput(step, stepData);
 
     const stepProducedAt = nowIso();
     const artifact = artifactStore.writeJsonArtifact({
       taskId,
       executionId,
-      stepId: step.stepId ?? step.nodeId ?? null,
-      kind: "node_run_snapshot",
-      fileName: `${step.nodeId}.json`,
-      content: createNodeRunCheckpoint({
-        harnessRunId: harnessRunIdFromBundle,
-        nodeRunId: step.nodeId,
-        planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
-        graphVersion: validatedPlanGraphBundle.graphVersion,
-        planGraphId: validatedPlanGraphBundle.graph.graphId,
+      stepId: step.stepId,
+      kind: "workflow_step_snapshot",
+      fileName: `${step.stepId}.json`,
+      content: createWorkflowStepCheckpoint({
         taskId,
         executionId,
+        workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
         divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
-        nodeId: step.nodeId,
-        roleId: stepRoleId,
+        stepId: step.stepId,
+        roleId: step.roleId,
         outputKey: step.outputKey,
         status: "succeeded",
         producedAt: stepProducedAt,
@@ -932,12 +475,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           source: "single_task_execution",
           request: input.request,
           routeReason: null,
-          priorNodeSummaries: [],
-          dependsOnNodeIds: [],
+          priorStepSummaries: [],
+          dependsOnStepIds: [],
         },
         resumeContext: {
-          completedNodeIds: [step.nodeId],
-          nextNodeId: null,
+          completedStepIds: [step.stepId],
+          nextStepId: null,
           outputKeys: [step.outputKey],
         },
         compensationModel: step.compensationModel ?? null,
@@ -953,8 +496,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     const stepOutput: StepOutputRecord = {
       id: newId("step"),
       taskId,
-      nodeRunId: step.nodeId,
-      stepId: step.stepId ?? step.nodeId,
+      stepId: step.stepId,
       roleId: step.roleId,
       status: "succeeded",
       dataJson: JSON.stringify(stepData),
@@ -971,7 +513,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.stepId ?? step.nodeId,
+      stepId: step.stepId,
     });
 
     db.transaction(() => {
@@ -1023,7 +565,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       taskId,
       executionId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
-      stepId: step.stepId ?? step.nodeId,
+      stepId: step.stepId,
     });
 
     transitions.transitionTaskTerminalState({
@@ -1041,15 +583,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       }),
       context: createContext(traceContext, "task.completed"),
     });
-
-    // R4-25 (INV-BUDGET-001): Settle budget session on normal completion
-    if (budgetReservationId) {
-      try {
-        budgetSessionManager.settle(budgetReservationId, 0);
-      } catch (settleError) {
-        logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-      }
-    }
 
     return store.operations.loadTaskSnapshot(taskId);
     }); // end provideContext

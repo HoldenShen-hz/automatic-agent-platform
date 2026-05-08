@@ -161,11 +161,12 @@ test("NlEntryService.buildTask creates valid request envelope", async () => {
     message: "帮我查询一下当前的任务队列状态",
   });
 
-  assert.equal(result.requestEnvelope, null);
-  assert.equal(result.confirmationRequired, true);
-  assert.equal(result.confirmationReceipt.state, "pending_user_confirmation");
-  assert.equal(result.taskDraft.rawInput, "帮我查询一下当前的任务队列状态");
-  assert.equal(result.canonicalTaskDraft.tenantId, "tenant_1");
+  assert.ok(result.requestEnvelope);
+  assert.ok(result.requestEnvelope.payload);
+  assert.equal(result.requestEnvelope.payload.title, "帮我查询一下当前的任务队列状态");
+  assert.equal(result.requestEnvelope.payload.tenantId, undefined); // payload doesn't have tenantId
+  assert.equal(result.requestEnvelope.tenantId, "tenant_1");
+  assert.equal(result.requestEnvelope.payload.userId, "user_1");
 });
 
 test("NlEntryService.buildTask includes cost estimate", async () => {

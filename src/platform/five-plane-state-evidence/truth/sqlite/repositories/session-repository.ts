@@ -30,8 +30,6 @@ import { maybeCreateTerminalSessionSummary } from "../session-summary-autogen.js
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export class SessionRepository {
-  private compactionRecordRunColumnsAvailable: boolean | null = null;
-
   public constructor(
     private readonly conn: SqliteConnection,
     private readonly dualStorage: SessionDualStorageService | null = null,
@@ -127,53 +125,27 @@ export class SessionRepository {
   }
 
   public insertCompactionRecord(record: CompactionRecord): void {
-    if (this.hasCompactionRunColumns()) {
-      this.conn
-        .prepare(
-          `INSERT INTO compaction_records (
-            id, session_id, task_id, harness_run_id, node_run_id, stage, source_message_ids_json, summary_text, summary_ref,
-            compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          record.id,
-          record.sessionId,
-          record.taskId,
-          record.harnessRunId,
-          record.nodeRunId,
-          record.stage,
-          record.sourceMessageIdsJson,
-          record.summaryText,
-          record.summaryRef,
-          record.compactionReason,
-          record.overflowTriggered,
-          record.autoTriggered,
-          record.tokenReductionEstimate,
-          record.createdAt,
-        );
-    } else {
-      this.conn
-        .prepare(
-          `INSERT INTO compaction_records (
-            id, session_id, task_id, stage, source_message_ids_json, summary_text, summary_ref,
-            compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          record.id,
-          record.sessionId,
-          record.taskId,
-          record.stage,
-          record.sourceMessageIdsJson,
-          record.summaryText,
-          record.summaryRef,
-          record.compactionReason,
-          record.overflowTriggered,
-          record.autoTriggered,
-          record.tokenReductionEstimate,
-          record.createdAt,
-        );
-    }
+    this.conn
+      .prepare(
+        `INSERT INTO compaction_records (
+          id, session_id, task_id, stage, source_message_ids_json, summary_text, summary_ref,
+          compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        record.id,
+        record.sessionId,
+        record.taskId,
+        record.stage,
+        record.sourceMessageIdsJson,
+        record.summaryText,
+        record.summaryRef,
+        record.compactionReason,
+        record.overflowTriggered,
+        record.autoTriggered,
+        record.tokenReductionEstimate,
+        record.createdAt,
+      );
     this.recordDualStorage("insertCompactionRecord", () => {
       this.dualStorage?.recordCompaction(record.sessionId, record.taskId, {
         id: record.id,
@@ -462,11 +434,6 @@ export class SessionRepository {
   }
 
   public listCompactionRecordsBySession(sessionId: string, tenantId?: string | null): CompactionRecord[] {
-    const runColumns = this.hasCompactionRunColumns();
-    const harnessRunIdSelect = runColumns ? "c.harness_run_id AS harnessRunId" : "NULL AS harnessRunId";
-    const nodeRunIdSelect = runColumns ? "c.node_run_id AS nodeRunId" : "NULL AS nodeRunId";
-    const unscopedHarnessRunIdSelect = runColumns ? "harness_run_id AS harnessRunId" : "NULL AS harnessRunId";
-    const unscopedNodeRunIdSelect = runColumns ? "node_run_id AS nodeRunId" : "NULL AS nodeRunId";
     const scopedTenantId = resolveTenantScope(tenantId);
     if (scopedTenantId !== undefined) {
       return queryAll<CompactionRecord>(
@@ -475,8 +442,6 @@ export class SessionRepository {
           c.id,
           c.session_id AS sessionId,
           c.task_id AS taskId,
-          ${harnessRunIdSelect},
-          ${nodeRunIdSelect},
           c.stage,
           c.source_message_ids_json AS sourceMessageIdsJson,
           c.summary_text AS summaryText,
@@ -501,8 +466,6 @@ export class SessionRepository {
         id,
         session_id AS sessionId,
         task_id AS taskId,
-        ${unscopedHarnessRunIdSelect},
-        ${unscopedNodeRunIdSelect},
         stage,
         source_message_ids_json AS sourceMessageIdsJson,
         summary_text AS summaryText,
@@ -531,18 +494,6 @@ export class SessionRepository {
         error: error instanceof Error ? error.message : String(error),
       });
     }
-  }
-
-  private hasCompactionRunColumns(): boolean {
-    if (this.compactionRecordRunColumnsAvailable != null) {
-      return this.compactionRecordRunColumnsAvailable;
-    }
-    const rows = this.conn.prepare(`PRAGMA table_info("compaction_records");`).all() as Array<Record<string, unknown>>;
-    const columns = new Set(rows.map((row) => String(row.name ?? "")));
-    this.compactionRecordRunColumnsAvailable =
-      columns.has("harness_run_id") &&
-      columns.has("node_run_id");
-    return this.compactionRecordRunColumnsAvailable;
   }
 }
 

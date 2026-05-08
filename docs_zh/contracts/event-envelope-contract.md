@@ -12,43 +12,28 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `schema_version` | `string` | envelope wire schema 版本；用于跨存储、跨队列与跨语言兼容 |
 | `eventId` | `string` | 事件 ID |
-| `runId` | `string` | 运行链锚点；通常为 `harnessRunId` 或与 aggregate 对齐的稳定 run 级 ID |
 | `eventType` | `string` | 事件类型 |
-| `schemaVersion` | `number` | 事件 schema 版本；v4.3 canonical 为数字版本而不是字符串 |
+| `eventVersion` | `string` | 事件 schema 版本 |
+| `idempotency_key` | `string` | 生产侧幂等键；用于 append / relay / consumer 去重 |
 | `aggregateType` | `string` | 聚合类型 |
 | `aggregateId` | `string` | 聚合 ID |
 | `aggregateSeq` | `number` | 聚合序列 |
 | `tenantId` | `string` | 租户 |
 | `traceId` | `string` | trace |
+| `causation_id` | `string?` | 直接触发该事件的上游事件或命令 ID |
+| `correlationId` | `string?` | 关联链 |
+| `partition_key` | `string` | 分区路由键；同一 truth aggregate 必须稳定路由到同一分区策略 |
+| `ttl` | `duration?` | 保留/失效提示；用于 relay、cache、view rebuild 或临时投影过期策略 |
 | `payloadHash` | `string` | payload hash |
 | `payload` | `json` | payload |
-| `replayBehavior` | `replay_as_fact \| skip_side_effect \| simulate \| forbidden` | replay 行为声明 |
 | `occurredAt` | `timestamp` | 发生时间 |
-| `idempotencyKey` | `string?` | 生产侧幂等键；用于 append / relay / consumer 去重 |
-| `causationId` | `string?` | 直接触发该事件的上游事件或命令 ID |
-| `correlationId` | `string?` | 关联链 |
-| `partitionKey` | `string?` | 分区路由键；同一 truth aggregate 应稳定路由到同一分区策略 |
-| `ttl` | `duration?` | 保留/失效提示；用于 relay、cache、view rebuild 或临时投影过期策略 |
-
-canonical 兼容映射：
-
-| legacy / wire alias | v4.3 canonical 字段 |
-| --- | --- |
-| `schema_version` | `schemaVersion` |
-| `event_version` | `schemaVersion` |
-| `idempotency_key` | `idempotencyKey` |
-| `causation_id` | `causationId` |
-| `partition_key` | `partitionKey` |
-| `payload_hash` | `payloadHash` |
-| `occurred_at` | `occurredAt` |
 
 规则：
 
-- v4.3 canonical schema 只使用 camelCase；snake_case 只允许出现在 wire adapter、导入兼容层或历史迁移说明中，不得与 canonical 字段并列定义为同一层 schema。
 - `(aggregateType, aggregateId, aggregateSeq)` 必须唯一。
-- `runId`、`schemaVersion`、`replayBehavior` 是 canonical EventEnvelope 的权威字段，不得在新实现中省略。
-- 若入口仍提供 `schema_version`、`idempotency_key` 或其他 snake_case alias，必须在进入 canonical event bus 前归一化到 camelCase。
+- `schema_version`、`idempotency_key`、`partition_key` 缺一不可；缺失时不得进入 canonical event bus。
 - `ttl` 只控制 envelope 生命周期策略，不得改变已提交 truth fact 的审计保留义务。
 - Tier 1 platform fact 必须支持 per-consumer ack 与 replay。
 - event append 必须与 truth mutation 同事务。
@@ -69,15 +54,6 @@ canonical 兼容映射：
 - `platform.decision.*`
 - `platform.hitl.*`
 - `platform.version_lock.*`
-
-补充 truth namespace（truth projector、recovery scanner、budget projector、side-effect projector 只能消费 `platform.*`）：
-
-- `platform.release.*` — release 状态变更属于 truth fact，必须使用 `platform.release.*`
-- `platform.approval.*` — approval 状态变更属于 truth fact
-- `platform.feedback.*` — feedback signal 属于 truth fact
-- `platform.learn.*` — learning 对象创建/晋升属于 truth fact
-- `platform.improve.*` — improve candidate 属于 truth fact
-- `platform.loop.*` — OAPEFLIR loop iteration 状态属于 truth fact
 
 规则：
 
@@ -108,7 +84,6 @@ canonical 兼容映射：
 | --- | --- |
 | `task.*` | legacy event；迁移后应投影或转换为 `platform.harness_run.*` |
 | `workflow.*` | legacy event；新运行事实使用 `platform.*` |
-| `release.*` / `approval.*` / `feedback.*` / `learn.*` / `improve.*` / `loop.*` | 若承载 truth fact，必须归一化到 `platform.release.*` / `platform.approval.*` / `platform.feedback.*` / `platform.learn.*` / `platform.improve.*` / `platform.loop.*`；裸 namespace 只允许作为历史投影或 adapter 输入 |
 | `oapeflir.*` | 默认 projection；只有显式 adapter 转换后才可能成为 platform fact |
 | `dispatch:*` / `worker:*` | 运行诊断或平台事实取决于注册表声明；truth consumer 只看 `platform.*` |
 
@@ -124,6 +99,6 @@ canonical 兼容映射：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-5: 缺少架构 ContractEnvelope 要求的 5 个必需字段：`schema_version/idempotency_key/causation_id/partition_key/ttl`。根因：早期文档只描述了事件事实存储字段，遗漏了 envelope 层的幂等、分区和生命周期元数据。修复：这些字段现通过 canonical `schemaVersion/idempotencyKey/causationId/partitionKey/ttl` 与 alias 映射一并冻结；snake_case 只允许作为 adapter / migration 输入，不得再和 canonical schema 混写。
+- T-5: 缺少架构 ContractEnvelope 要求的5个必需字段：schema_version/idempotency_key/causation_id/partition_key/ttl。根因：早期文档只描述了事件事实存储字段，遗漏了 envelope 层的幂等、分区和生命周期元数据。修复：这 5 个字段现已进入 `EventEnvelope` canonical 最小字段；旧 camelCase / 省略字段写法只能作为 adapter 或 migration 输入，不得作为新实现入口。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

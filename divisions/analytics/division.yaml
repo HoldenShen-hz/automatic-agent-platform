@@ -1,61 +1,22 @@
 id: analytics
 version: 1
-name: Industry Research Division
-description: Industry analysis, competitive intelligence, market research, trend analysis, regulatory tracking.
-priority: 40
+name: Analytics Division
+description: Business intelligence, metrics analysis, KPI tracking, reporting.
+priority: 30
 default_workflow: analytics_single_step
 orchestration_workflow: analytics_single_step
 triggers:
-  - industry research
-  - market analysis
-  - competitive intelligence
+  - analytics
+  - metrics
+  - KPI
+  - dashboard
+  - report
+  - business intelligence
   - trends
-  - regulatory
-  - market intelligence
-# §37: DomainDescriptor - Industry Research vertical business domain
-domain_descriptor:
-  domainId: industry-research
-  ownerOrgNodeId: org.strategy
-  primaryEntities:
-    - reports
-    - data_sources
-    - trends
-    - competitors
-    - regulatory_changes
-  recipeArchetype: research
-  lifecycleState: active
-# §37: DomainRiskProfile - Industry Research risk classification
-risk_profile:
-  profileId: industry-research.risk
-  domainId: industry-research
-  riskLevel: medium
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: lightly_regulated
-# §37: DomainEvalSpec - Industry Research evaluation framework
-eval_spec:
-  domainId: industry-research
-  evalBaselines:
-    - factual_accuracy
-    - source_coverage
-    - citation_quality
-  criticalCases:
-    - incorrect_assumptions
-    - outdated_information
-    - biased_analysis
-  acceptanceThresholds:
-    factual_accuracy: 92
-    source_coverage: 90
-    citation_quality: 88
-  adversarialScenarios:
-    - misinformation
-    - selective_data
-    - competing_bias
 roles:
   - id: bi_analyst
-    name: Industry Analyst
+    name: BI Analyst
     prompt: roles/bi_analyst.prompt.md
     model: balanced
-    tools: [read, bash, web_search]
+    tools: [read, bash]
     max_instances: 3

@@ -17,7 +17,7 @@ Related documents:
   - `Router`
   - `Planner`
   - `DivisionCoordinator`
-  - `HarnessRuntime`
+  - `WorkflowExecutor`
   - `DecisionManager`
 
 ### 2.1 Document Canonical Writing
@@ -28,8 +28,6 @@ In main documents, contracts, ADRs, and guides, control layer objects are unifor
 - `intake_router` (business alias: VP Operations)
 - `workflow_planner` (business alias: VP Orchestration)
 - `division_lead` (business alias: Lead Agent)
-- `workflow_executor` (technical alias: HarnessRuntime executor)
-- `node_run_scheduler` (technical alias: NodeRun dispatcher)
 
 Rules:
 

@@ -40,7 +40,7 @@ import type {
   WorkerSnapshotRecord,
 } from "../../../contracts/types/domain.js";
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
+import { nowIso } from "../../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { toWorkerSchedulingStatus } from "./worker-scheduling-status.js";
 
@@ -235,16 +235,10 @@ export interface VerifyRemoteWorkerRegistrationInput {
 /**
  * Parses a JSON string as an array, converting all items to strings.
  * Returns empty array if parsing fails or result is not an array.
- * R27-04 FIX: Added try/catch to handle corrupt JSON gracefully.
  */
 function parseJsonArray(value: string): string[] {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
-  } catch (err) {
-    // Log the error but return empty array instead of crashing
-    return [];
-  }
+  const parsed = JSON.parse(value) as unknown;
+  return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
 }
 
 /**
@@ -515,10 +509,9 @@ export class WorkerRegistryService {
       lastProgressAt: input.lastProgressAt ?? (input.progressMessage ? occurredAt : existing?.lastProgressAt ?? null),
       lastHeartbeatAt: occurredAt,
       updatedAt: occurredAt,
-      version: (existing?.version ?? 0) + 1,
     };
 
-    this.store.worker.upsertWorkerSnapshot(record, existing?.version ?? 0);
+    this.store.worker.upsertWorkerSnapshot(record);
     return this.toView(record);
   }
 
@@ -581,20 +574,12 @@ export class WorkerRegistryService {
       return this.toView(snapshot);
     }
 
-    // R27-06 FIX: Legacy store access used unsafe 'as' cast to access getWorker method.
-    // Instead, properly type the access or remove dead code path. The legacy method
-    // signature doesn't match our types, so we should use a safe type guard.
-    type LegacyStore = {
-      getWorker?(workerId: string): RegisteredWorkerView | null;
-      listWorkers?(): RegisteredWorkerView[];
-    };
-    const legacyStore = this.store.worker as LegacyStore;
-    const legacyWorker = legacyStore.getWorker?.(workerId);
+    const legacyWorker = (this.store.worker as { getWorker?: (workerId: string) => RegisteredWorkerView | null }).getWorker?.(workerId);
     if (legacyWorker) {
       return this.toRegisteredView(legacyWorker);
     }
 
-    const legacyWorkers = legacyStore.listWorkers?.() ?? [];
+    const legacyWorkers = (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? [];
     const fallbackWorker = legacyWorkers.find((worker) => worker.workerId === workerId);
     return fallbackWorker ? this.toRegisteredView(fallbackWorker) : null;
   }
@@ -667,76 +652,13 @@ export class WorkerRegistryService {
    * Lists workers whose heartbeat is stale (older than heartbeatTtlMs).
    *
    * @param now - Current timestamp to compare against
-   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds (default: 30000ms per §14)
+   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds
    * @returns Array of stale worker views
    */
-  public listStaleWorkers(now: string, heartbeatTtlMs: number = 30_000): RegisteredWorkerView[] {
+  public listStaleWorkers(now: string, heartbeatTtlMs: number): RegisteredWorkerView[] {
     return this.store
       .listStaleWorkerSnapshots(minusMs(now, heartbeatTtlMs))
       .map((record) => this.toView(record));
-  }
-
-  /**
-   * Detects workers with stale heartbeats and triggers recovery actions.
-   * Per §14: gap > 30s should trigger worker_heartbeat_missing event + lease_reclaim.
-   *
-   * @param now - Current timestamp to compare against
-   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds (default: 30000ms)
-   * @returns Array of stale worker IDs that were processed
-   */
-  public detectStaleHeartbeats(
-    now: string,
-    heartbeatTtlMs: number = 30_000,
-  ): readonly string[] {
-    const staleWorkers = this.listStaleWorkers(now, heartbeatTtlMs);
-    const processedWorkerIds: string[] = [];
-
-    for (const worker of staleWorkers) {
-      // R6-10: Emit worker_heartbeat_missing event for stale worker
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: null,
-        executionId: null,
-        eventType: "worker.heartbeat_missing",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          workerId: worker.workerId,
-          lastHeartbeatAt: worker.lastHeartbeatAt,
-          stalenessMs: Date.parse(now) - Date.parse(worker.lastHeartbeatAt),
-          thresholdMs: heartbeatTtlMs,
-          currentStatus: worker.status,
-        }),
-        traceId: null,
-        createdAt: now,
-      });
-
-      // R6-10: Trigger lease_reclaim for affected executions
-      const affectedExecutions = worker.runningExecutionIds;
-      for (const executionId of affectedExecutions) {
-        this.store.event.insertEvent({
-          id: newId("evt"),
-          taskId: null,
-          executionId,
-          eventType: "execution.lease_reclaim",
-          eventTier: "tier_2",
-          payloadJson: JSON.stringify({
-            workerId: worker.workerId,
-            reason: "worker_heartbeat_stale",
-            stalenessMs: Date.parse(now) - Date.parse(worker.lastHeartbeatAt),
-          }),
-          traceId: null,
-          createdAt: now,
-        });
-      }
-
-      // R11-29: Remove stale worker from registry based on heartbeat timeout
-      // Mark as offline rather than hard delete to preserve audit trail
-      this.store.worker.updateWorkerStatus(worker.workerId, "offline", now);
-
-      processedWorkerIds.push(worker.workerId);
-    }
-
-    return processedWorkerIds;
   }
 
   /**

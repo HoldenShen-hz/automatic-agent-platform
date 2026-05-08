@@ -4,8 +4,7 @@
  * Implements §22.4 Plugin lifecycle: PluginContext for runtime context injection.
  */
 
-import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { ValidationError } from "../../platform/contracts/errors.js";
+import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 export interface PluginContextConfig {
   pluginId: string;
@@ -15,11 +14,7 @@ export interface PluginContextConfig {
   tenantId?: string;
   userId?: string;
   sessionId?: string;
-  sandboxTier?: string;
-  /** §23.2: Call depth tracking to prevent infinite recursion */
-  callDepth?: number;
-  /** §23.2: Delegation depth tracking to prevent infinite plugin delegation */
-  delegationDepth?: number;
+  sandboxTier?: SandboxModeLike;
   resourceLimits?: {
     maxMemoryMb?: number;
     maxCpuMs?: number;
@@ -29,8 +24,6 @@ export interface PluginContextConfig {
 
 type NormalizedPluginContextConfig = Omit<Required<PluginContextConfig>, "sandboxTier"> & {
   sandboxTier: SandboxMode;
-  callDepth: number;
-  delegationDepth: number;
 };
 
 export interface ContextValue {
@@ -61,8 +54,6 @@ export class PluginContext {
       userId: config.userId ?? "anonymous",
       sessionId: config.sessionId ?? "none",
       sandboxTier: normalizeSandboxMode(config.sandboxTier),
-      callDepth: config.callDepth ?? 0,
-      delegationDepth: config.delegationDepth ?? 0,
       resourceLimits: config.resourceLimits ?? {},
     };
 
@@ -114,38 +105,6 @@ export class PluginContext {
   }
 
   /**
-   * Get the call depth.
-   * §23.2: Used to prevent infinite plugin call recursion
-   */
-  get callDepth(): number {
-    return this.config.callDepth;
-  }
-
-  /**
-   * Get the delegation depth.
-   * §23.2: Used to prevent infinite plugin delegation recursion
-   */
-  get delegationDepth(): number {
-    return this.config.delegationDepth;
-  }
-
-  /**
-   * Check if the current call depth exceeds the maximum allowed.
-   * §23.2: Prevents infinite recursion attacks
-   */
-  isCallDepthExceeded(maxDepth: number): boolean {
-    return this.config.callDepth >= maxDepth;
-  }
-
-  /**
-   * Check if the current delegation depth exceeds the maximum allowed.
-   * §23.2: Prevents infinite delegation recursion
-   */
-  isDelegationDepthExceeded(maxDepth: number): boolean {
-    return this.config.delegationDepth >= maxDepth;
-  }
-
-  /**
    * Get a context value by key.
    */
   get(key: string): unknown {
@@ -155,17 +114,8 @@ export class PluginContext {
 
   /**
    * Set a context value.
-   * §14: Plugins cannot override system.* keys - enforces namespace isolation.
    */
   set(key: string, value: unknown, source: ContextValue["source"] = "plugin"): void {
-    // Enforce namespace isolation: plugins cannot override system.* keys
-    if (source === "plugin" && key.startsWith("system.")) {
-      throw new ValidationError(
-        "plugin_context.namespace_violation",
-        "Plugins cannot override system.* keys",
-        { category: "security", statusCode: 403 }
-      );
-    }
     this.setValue(key, value, source);
   }
 
@@ -205,7 +155,6 @@ export class PluginContext {
 
   /**
    * Create a child context for sub-execution.
-   * §23.2: Increments call and delegation depth to track recursion
    */
   fork(overrides: Partial<PluginContextConfig>): PluginContext {
     return new PluginContext({
@@ -217,29 +166,7 @@ export class PluginContext {
       userId: overrides.userId ?? this.config.userId,
       sessionId: overrides.sessionId ?? this.config.sessionId,
       sandboxTier: overrides.sandboxTier ?? this.config.sandboxTier,
-      callDepth: overrides.callDepth ?? this.config.callDepth + 1,
-      delegationDepth: overrides.delegationDepth ?? this.config.delegationDepth,
       resourceLimits: overrides.resourceLimits ?? this.config.resourceLimits,
-    });
-  }
-
-  /**
-   * Create a delegation context for forwarding to another plugin.
-   * §23.2: Increments delegation depth to track cross-plugin delegation
-   */
-  forkForDelegation(): PluginContext {
-    return new PluginContext({
-      pluginId: this.config.pluginId,
-      packId: this.config.packId,
-      executionId: this.config.executionId,
-      taskId: this.config.taskId,
-      tenantId: this.config.tenantId,
-      userId: this.config.userId,
-      sessionId: this.config.sessionId,
-      sandboxTier: this.config.sandboxTier,
-      callDepth: this.config.callDepth,
-      delegationDepth: this.config.delegationDepth + 1,
-      resourceLimits: this.config.resourceLimits,
     });
   }
 

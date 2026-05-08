@@ -5,16 +5,16 @@
 
 ## Context
 
-The code directory structure needs to align with the five-plane architecture, facilitating developers in locating and understanding code.
+Code directory structure needs to correspond to the five-plane architecture, facilitating developers in locating and understanding code.
 
 ## Decision
 
-### 9 Major Top-Level Modules
+### 9 Top-Level Modules
 
 ```
 src/
   platform/       # Five-plane runtime core
-  domains/        # Domain descriptors, onboarding, governance
+  domains/        # Domain descriptors, onboarding, registry
   interaction/    # NL entry, goal decomposition, dashboard
   org-governance/ # Organization hierarchy, approval routing, SSO
   scale-ecosystem/# Multi-region, marketplace, integration
@@ -38,27 +38,29 @@ platform/
 
 ### Additional Directories
 
-- `core/` Compatibility layer (no new canonical runtime logic)
-- `benchmarks/` Performance tests
+- `core/` Compatibility layer (do not add new canonical runtime logic here)
+- `benchmarks/` Performance testing
 - `testing/` Test utilities
 
 ## Consequences
 
-Pros:
-
+Positive:
 - Directory structure maps clearly to architecture
-- Facilitates developers in locating code
+- Facilitates code location for developers
 - Supports large-scale team parallel development
 
-Cons:
-
+Negative:
 - Refactoring existing code requires significant cost
-- Needs to stay synchronized with documentation
+- Need to keep synchronized with documentation
 
-## Cross-references
+Trade-offs:
+- Structure vs. flexibility
+- Consistency vs. effort
 
-- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
+## Cross-References
 
-## Source Section
+- [ADR-001 Three-Layer Separation of Authority](./001-three-layer-architecture.md)
+
+## Source Sections
 
 - `§35` Recommended Code Directory Structure

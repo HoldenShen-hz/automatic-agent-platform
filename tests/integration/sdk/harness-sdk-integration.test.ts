@@ -18,12 +18,10 @@ function makeConstraintPack(): {
   constraintPack: {
     policyIds: readonly string[];
     approvalMode: "none" | "required" | "supervised";
-    autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
-    tool_policy: { allowedTools: readonly string[] };
+    autonomyMode: "manual" | "supervised" | "auto" | "full_auto";
+    toolPolicy: { allowedTools: readonly string[] };
     risk_policy: { maxRiskScore: number; escalationThreshold: number };
     output_policy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
-    sandboxRequirement: { sandboxMode: "none" | "ephemeral" | "persistent" | "network_isolated"; timeoutMs: number; allowedHosts?: readonly string[] };
-    approvalRequirement: { requiredForRiskClass: readonly ("low" | "medium" | "high" | "critical")[]; approverRoles: readonly string[]; escalationTimeoutMs: number };
     budget: { maxSteps: number; maxCost: number; maxDurationMs: number };
   };
 } {
@@ -31,16 +29,10 @@ function makeConstraintPack(): {
     constraintPack: {
       policyIds: ["default_policy"],
       approvalMode: "none",
-      autonomyMode: "semi_auto",
-      tool_policy: { allowedTools: ["bash", "read", "write"] },
+      autonomyMode: "auto",
+      toolPolicy: { allowedTools: ["bash", "read", "write"] },
       risk_policy: { maxRiskScore: 8, escalationThreshold: 7 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
-      sandboxRequirement: { sandboxMode: "none", timeoutMs: 60000 },
-      approvalRequirement: {
-        requiredForRiskClass: ["low", "medium", "high", "critical"],
-        approverRoles: ["admin"],
-        escalationTimeoutMs: 60000,
-      },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 300000 },
     },
   };

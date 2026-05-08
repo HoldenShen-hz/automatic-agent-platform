@@ -386,30 +386,6 @@ test("BillingService recordUsage increments existing quota counter", () => {
   assert.equal(result.quotaCounter?.usedQuantity, 30);
 });
 
-test("BillingService recordUsage preserves canonical runtime attribution and mirrors legacy aliases", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
-
-  service.createAccount({ accountId: "acct_attr", ownerId: "owner_attr", planId: "plan_basic" });
-
-  const result = service.recordUsage({
-    accountId: "acct_attr",
-    metricType: "task_execution",
-    quantity: 2,
-    source: "runtime",
-    harnessRunId: "harness-run-001",
-    nodeRunId: "node-run-001",
-    attemptId: "attempt-001",
-  });
-
-  assert.equal(result.usageEvent.harnessRunId, "harness-run-001");
-  assert.equal(result.usageEvent.nodeRunId, "node-run-001");
-  assert.equal(result.usageEvent.attemptId, "attempt-001");
-  assert.equal(result.usageEvent.executionId, null);
-  assert.equal(result.usageEvent.stepId, "node-run-001");
-});
-
 test("BillingService buildAccountSummary returns correct plan", () => {
   const store = createMockStore();
   const db = createMockDb();

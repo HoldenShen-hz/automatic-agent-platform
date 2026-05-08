@@ -1065,17 +1065,9 @@ export class DelegationManagerService {
     // IMPORTANT: Only delete from cache when repository is available as backup. Without repository,
     // in-memory delegations must be kept to prevent loss of delegation state.
     const terminalStatuses: readonly DelegationStatus[] = ["completed", "failed", "cancelled", "expired", "timed_out"];
-    if (terminalStatuses.includes(nextStatus) && this.delegationRepository) {
-      this.delegationStore.delete(delegation.delegationId);
-      // R9-06: Also clean up chain-related entries for this delegation
-      this.delegationRootStore.delete(delegation.delegationId);
-    } else if (terminalStatuses.includes(nextStatus)) {
-      // R9-06: No repository available - keep delegation in cache for state queries
-      this.delegationStore.set(delegation.delegationId, delegation);
-    } else {
-      // R9-06: Update in-memory cache for non-terminal states
-      this.delegationStore.set(delegation.delegationId, delegation);
-    }
+    // R9-06: Always update cache with current state - cache is kept in sync with repository
+    // for state queries. Delegations remain accessible in cache even after terminal state.
+    this.delegationStore.set(delegation.delegationId, delegation);
   }
 
   private resolveRootAgentId(parent: AgentContext): string {

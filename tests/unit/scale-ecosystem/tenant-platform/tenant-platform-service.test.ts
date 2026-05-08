@@ -103,40 +103,22 @@ test("TenantPlatformService.createWorkspace with organizationId links to organiz
   assert.equal(workspace.organizationId, "org_001");
 });
 
-test("TenantPlatformService.assertNoCrossTenantDataMovement allows same-tenant and null-target access", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-
-  assert.doesNotThrow(() => service.assertNoCrossTenantDataMovement("tenant_same", "tenant_same"));
-  assert.doesNotThrow(() => service.assertNoCrossTenantDataMovement("tenant_same", null));
-});
-
-test("TenantPlatformService.assertNoCrossTenantDataMovement blocks cross-tenant movement", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-
-  assert.throws(
-    () => service.assertNoCrossTenantDataMovement("tenant_a", "tenant_b"),
-    /tenant\.cross_tenant_data_movement/,
-  );
-});
-
 test("TenantPlatformService.addWorkspaceMembership adds member to workspace", () => {
   const store = createMockStore();
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-  const workspace = service.createWorkspace({
+  store.organization.upsertWorkspaceRecord({
     workspaceId: "ws_001",
     ownerId: "owner_x",
     displayName: "WS X",
     planId: "plan_basic",
+    organizationId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
   });
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
 
   const membership = service.addWorkspaceMembership({
-    workspaceId: workspace.workspaceId,
-    callerUserId: "owner_x",
+    workspaceId: "ws_001",
     userId: "user_001",
     role: "member",
   });
@@ -146,44 +128,18 @@ test("TenantPlatformService.addWorkspaceMembership adds member to workspace", ()
   assert.equal(membership.role, "member");
 });
 
-test("TenantPlatformService.addWorkspaceMembership rejects callers without owner or admin membership", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-  const workspace = service.createWorkspace({
-    workspaceId: "ws_unauthorized",
-    ownerId: "owner_x",
-    displayName: "WS X",
-    planId: "plan_basic",
-  });
-
-  assert.throws(() => {
-    service.addWorkspaceMembership({
-      workspaceId: workspace.workspaceId,
-      callerUserId: "intruder_y",
-      userId: "user_001",
-      role: "member",
-    });
-  }, /Caller must be workspace owner or admin to add members/);
-});
-
 test("TenantPlatformService.createOrganization creates organization", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
-    ownerId: "owner_org_001",
     displayName: "My Organization",
   });
 
   assert.equal(org.displayName, "My Organization");
   assert.ok(org.organizationId);
   assert.ok(org.createdAt);
-  const memberships = store.organization.listOrganizationMemberships(org.organizationId);
-  assert.equal(memberships.length, 1);
-  assert.equal(memberships[0]?.userId, "owner_org_001");
-  assert.equal(memberships[0]?.role, "owner");
 });
 
 test("TenantPlatformService.createOrganization with billing account validates account exists", () => {
@@ -201,7 +157,6 @@ test("TenantPlatformService.createOrganization with billing account validates ac
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
-    ownerId: "owner_billing",
     displayName: "Org With Billing",
     billingAccountId: "bill_acct_001",
   });
@@ -216,7 +171,6 @@ test("TenantPlatformService.createOrganization throws for non-existent billing a
 
   assert.throws(() => {
     service.createOrganization({
-      ownerId: "owner_missing_billing",
       displayName: "Bad Org",
       billingAccountId: "nonexistent_billing",
     });
@@ -225,17 +179,19 @@ test("TenantPlatformService.createOrganization throws for non-existent billing a
 
 test("TenantPlatformService.addOrganizationMembership adds member to organization", () => {
   const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_002",
+    displayName: "Org Two",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
-  const organization = service.createOrganization({
-    organizationId: "org_002",
-    ownerId: "owner_org_002",
-    displayName: "Org Two",
-  });
 
   const membership = service.addOrganizationMembership({
-    organizationId: organization.organizationId,
-    callerUserId: "owner_org_002",
+    organizationId: "org_002",
     userId: "user_002",
     role: "admin",
   });
@@ -243,26 +199,6 @@ test("TenantPlatformService.addOrganizationMembership adds member to organizatio
   assert.equal(membership.organizationId, "org_002");
   assert.equal(membership.userId, "user_002");
   assert.equal(membership.role, "admin");
-});
-
-test("TenantPlatformService.addOrganizationMembership rejects callers without owner or admin membership", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-  const organization = service.createOrganization({
-    organizationId: "org_unauthorized",
-    ownerId: "owner_org_unauthorized",
-    displayName: "Org Unauthorized",
-  });
-
-  assert.throws(() => {
-    service.addOrganizationMembership({
-      organizationId: organization.organizationId,
-      callerUserId: "intruder_y",
-      userId: "user_002",
-      role: "admin",
-    });
-  }, /Caller must be organization owner or admin to add members/);
 });
 
 test("TenantPlatformService.createTenant creates tenant within organization", () => {

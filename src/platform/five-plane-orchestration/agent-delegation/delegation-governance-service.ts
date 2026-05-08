@@ -25,10 +25,7 @@ export interface GovernanceRule {
 }
 
 export interface GovernanceCondition {
-  // R31-63 fix: agentType is a free-form string in AgentContext, so subjectType must also be string
-  // to enable meaningful comparison. Use subjectType for high-level classification (system/user/agent)
-  // and targetAgentType for specific agent type matching.
-  subjectType?: string;
+  subjectType?: "user" | "agent" | "system";
   targetAgentType?: string;
   delegationDepth?: number;
   permissionActions?: string[];
@@ -192,13 +189,7 @@ export class DelegationGovernanceService {
   }
 
   public addRule(rule: GovernanceRule): void {
-    // R37-2186: Prevent duplicate ruleId - update existing instead of adding
-    const existingIdx = this.rules.findIndex((r) => r.ruleId === rule.ruleId);
-    if (existingIdx >= 0) {
-      this.rules[existingIdx] = rule;
-    } else {
-      this.rules.push(rule);
-    }
+    this.rules.push(rule);
     this.rules.sort((a, b) => a.priority - b.priority);
   }
 
@@ -236,19 +227,11 @@ export class DelegationGovernanceService {
     if (condition.targetAgentType && request.delegationSpec.targetAgentType !== condition.targetAgentType) {
       return false;
     }
-    // §186-2184: delegationDepth condition - check child depth (parentDepth+1) against threshold
-    // Root cause: checking parent depth instead of child depth, and short-circuiting on any depth check
-    // Fix: check if child depth would exceed threshold, but don't short-circuit - continue evaluating
-    // all conditions with AND semantics (all must pass)
-    const childDepth = request.parentContext.delegationDepth + 1;
     if (condition.delegationDepth !== undefined) {
-      // Depth condition: match only when childDepth exceeds threshold
-      if (childDepth > condition.delegationDepth) {
-        // Depth exceeded - condition is satisfied, but don't short-circuit
-        // Continue evaluating remaining conditions (AND semantics)
-      } else {
-        return false; // Depth not exceeded - condition does not match
+      if (request.parentContext.delegationDepth >= condition.delegationDepth) {
+        return true;
       }
+      return false;
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(

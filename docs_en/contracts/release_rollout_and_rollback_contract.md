@@ -1,11 +1,11 @@
-# Release And Rollback Contract
+# Release Rollout And Rollback Contract
 
 > **OAPEFLIR Relevance**: This contract defines the OAPEFLIR Improve Hub's controlled release and rollback mechanism, corresponding to ADR-075 and ADR-018.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Release pipeline.
+This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Rollout pipeline.
 
 Related documents:
 
@@ -20,7 +20,7 @@ Related documents:
 - Unify release paths for code, config, prompt, role, skill.
 - Make any production release have controllable canary and executable rollback.
 - Make schema changes comply with forward/backward compatibility.
-- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → ReleaseRecord pipeline.
+- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → RolloutRecord pipeline.
 
 ## 3. Release Objects
 
@@ -33,55 +33,14 @@ Related documents:
 - `schema_migration`
 - `LearningObject` (corresponding to OAPEFLIR secondary chain)
 
-### 3.1 `ReleaseDecisionView`
-
-`ReleaseDecisionView` is the canonical projection object for OAPEFLIR release stage, not a truth fact.
-
-Minimum fields:
-
-- `releaseDecisionViewId`
-- `harnessRunId`
-- `candidateId`
-- `channelId`
-- `recommendedLevel`
-- `guardrailFindings`
-- `approvalRequired`
-- `derivedFromEventIds`
-- `generatedAt`
-
-Rules:
-
-- `ReleaseDecisionView` can only be derived from `platform.release.*` fact or `oapeflir.view.*` / `oapeflir.rationale.*` projection, must not be used in reverse as the release state machine.
-- This object must be traceable back to `harnessRunId` and candidate object, cannot exist merely by rollout text summary.
-
-### 3.2 `ReleaseChannel`
-
-`ReleaseChannel` is the authoritative channel definition for release target surface.
-
-Minimum fields:
-
-- `channelId`
-- `channelKind` (`shadow | canary | partial | stable`)
-- `targetScope` (`tenant | domain | region | platform`)
-- `rolloutStrategy`
-- `approvalPolicyRef`
-- `healthGateRef`
-- `rollbackPolicyRef`
-- `activeVersion`
-
-Rules:
-
-- `ReleaseChannel` expresses release target and governance gate, not equivalent to `ReleaseDecisionView`.
-- Decision view can recommend channel; only release truth path can actually advance channel status.
-
-## 4. Release Levels and ReleaseStatus
+## 4. Release Levels and RolloutStatus
 
 ### 4.1 Six-Level Controlled Release (L0-L5)
 
 Corresponding to ADR-075 §1:
 
 | Level | Name | Traffic | AI Autonomy | Human Approval |
-| --- | --- | --- | --- | --- |
+|-------|------|---------|-------------|----------------|
 | L0 | `off` | 0% | No operational authority, recording only | — |
 | L1 | `evaluate_0` | 0% (recording only) | Candidate evaluation / evidence validation | — |
 | L2 | `canary_5` | 5% | Parameter adjustment, strategy selection | critical/high require approval |
@@ -89,7 +48,7 @@ Corresponding to ADR-075 §1:
 | L4 | `stable_75` | 75% | Execute configuration changes | all must be approved |
 | L5 | `stable_100` | 100% | Fully autonomous (constrained by guardrail) | Exception escalation only |
 
-### 4.2 Release State Machine
+### 4.2 Rollout State Machine
 
 Complete state machine (see ADR-018 and ADR-075 §2):
 
@@ -116,7 +75,7 @@ released (continuous M days without issues)
 ### 4.3 Release Modes (Supplementary)
 
 | Mode | Use Case |
-| --- | --- |
+|------|----------|
 | `blue_green` | Main chain major version, need quick full-group switch |
 | `canary` | Small traffic validation |
 | `tenant_gray` | Designated tenant or division phased canary |
@@ -127,12 +86,12 @@ released (continuous M days without issues)
 Corresponding to ADR-075 §3.2:
 
 | Metric | Threshold | Window | Triggered Action |
-|------|------|------|---------|
+|--------|-----------|--------|------------------|
 | Error Rate | > 1% | 5 minutes | L4→L3 |
 | P99 Latency | > 500ms | 5 minutes | L4→L3 |
 | Success Rate | < 99% | 5 minutes | L4→L3 |
-| Continuous Failure | > 10 times | 10 minutes | Direct rollback L1 |
-| Resource Exhaustion | Memory > 90% | 1 minute | Direct rollback L1 |
+| Continuous Failure | > 10 times | 10 minutes | Direct rollback to L1 |
+| Resource Exhaustion | Memory > 90% | 1 minute | Direct rollback to L1 |
 
 ### 4.5 State Constraints
 
@@ -148,9 +107,7 @@ LearningObject(validated/promoted)
     → ImprovementCandidate(candidate_created)
     → under_review
     → approved / rejected
-    → ReleaseDecisionView
-    → ReleaseChannel gate check
-    → ReleaseRecord(evaluate_0 → canary → partial → stable → released)
+    → RolloutRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
 **Required Conditions** (R4-EVIDENCE constraint):
@@ -168,32 +125,32 @@ interface ImprovementCandidate {
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
   status: ImprovementCandidateStatus;
-  releaseLevel: ReleaseLevel;
-  metrics: ReleaseMetrics;
+  rolloutLevel: RolloutLevel;
+  metrics: RolloutMetrics;
   guardrails: ImprovementGuardrail[];
   createdAt: string;
   updatedAt: string;
 }
 
-type ReleaseLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
-## 7. ReleaseRecord Interface
+## 7. RolloutRecord Interface
 
 ```typescript
-interface ReleaseRecord {
+interface RolloutRecord {
   recordId: string;
   candidateId: string;
-  fromLevel: ReleaseLevel;
-  toLevel: ReleaseLevel;
+  fromLevel: RolloutLevel;
+  toLevel: RolloutLevel;
   triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
   triggerReason?: string;
-  metrics: ReleaseMetrics;
+  metrics: RolloutMetrics;
   auditContext: AuditContext;
   createdAt: string;
 }
 
-interface ReleaseMetrics {
+interface RolloutMetrics {
   errorRate: number;
   latencyP99: number;
   successRate: number;
@@ -248,7 +205,7 @@ Not allowed:
 Corresponding to governance/autonomy_boundary_policy.md:
 
 | Level | AI Autonomy | Human Approval Required |
-|------|------------|------------|
+|-------|-------------|------------------------|
 | L0-L1 | Fully autonomous (recording only) | Not required |
 | L2 | Parameter adjustment, strategy selection | Required for critical/high |
 | L3 | Configuration change suggestions | Required for all |

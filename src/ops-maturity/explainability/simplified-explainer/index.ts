@@ -74,26 +74,6 @@ export function simplifyExplanation(
   };
 }
 
-export class SimplifiedExplainer {
-  public simplify(input: {
-    readonly summary: string;
-    readonly factors?: ReadonlyArray<{ readonly factor: string }>;
-    readonly causalChain?: readonly string[];
-    readonly confidence?: number;
-  }): {
-    readonly plainLanguage: string;
-    readonly keyPoints: ReadonlyArray<string>;
-  } {
-    return {
-      plainLanguage: simplifyText(input.summary),
-      keyPoints: [
-        ...(input.factors?.map((item) => simplifyText(item.factor)) ?? []),
-        ...(input.causalChain?.slice(0, 2) ?? []),
-      ],
-    };
-  }
-}
-
 /**
  * Maps technical stage names to business-friendly terms.
  */
@@ -139,19 +119,6 @@ const JARGON_MAP: Record<string, string> = {
   "principal": "user account",
   "tenant": "organization",
 };
-
-/**
- * §165-1926 P2 FIX: Pre-compiled RegExp cache for jargon replacement.
- * Previously, simplifyText() created new RegExp objects on every call for each
- * jargon term, causing repeated regex compilation overhead. Now we pre-compile
- * and cache at module load time for O(1) lookups.
- */
-const JARGON_REGEX_CACHE: ReadonlyMap<string, RegExp> = new Map(
-  Object.entries(JARGON_MAP).map(([jargon]) => [
-    jargon,
-    new RegExp(jargon, "gi"),
-  ])
-);
 
 /**
  * Generates a concise headline for the explanation.
@@ -258,14 +225,12 @@ function calculateConfidence(factors: readonly string[], causalLinks: readonly C
 
 /**
  * Replaces technical jargon with simple language.
- * §165-1926 P2 FIX: Uses pre-compiled RegExp cache for performance.
  */
 function simplifyText(text: string): string {
   let simplified = text;
 
-  // Use pre-compiled regex cache instead of creating new RegExp on each call
-  for (const [jargon, regex] of JARGON_REGEX_CACHE) {
-    simplified = simplified.replace(regex, JARGON_MAP[jargon]!);
+  for (const [jargon, simple] of Object.entries(JARGON_MAP)) {
+    simplified = simplified.replace(new RegExp(jargon, "gi"), simple);
   }
 
   // Remove excessive technical detail markers

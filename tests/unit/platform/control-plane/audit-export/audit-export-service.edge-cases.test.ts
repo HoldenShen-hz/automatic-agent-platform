@@ -70,7 +70,6 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 chainHash: args[7] as string,
                 recordedAt: args[8] as string,
               };
-              console.log("  [DEBUG run INSERT] inserting:", record.eventId, "pos:", record.chainPosition, "prev:", record.previousChainHash, "hash:", record.chainHash);
               integrityRecords.set(record.eventId, record);
             } else if (sql.includes("INSERT INTO events")) {
               const record: Record<string, unknown> = {
@@ -117,22 +116,8 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
             } else if (sql.includes("ORDER BY chain_position DESC")) {
-              console.log("  [MOCK get] ORDER BY chain_position DESC - sql:", sql);
-              // Return the latest integrity record to enable chain validation.
-              // This allows insertIntegrityRecord to validate chain position sequence
-              // and previousChainHash matching.
               const values = Array.from(integrityRecords.values());
-              console.log("  [MOCK get] ORDER BY chain_position DESC - records:", values.length);
-              if (values.length === 0) return undefined;
-              const latest = values.sort((a, b) => b.chainPosition - a.chainPosition)[0];
-              console.log("  [MOCK get] ORDER BY chain_position DESC - returning:", latest.chainPosition, latest.chainHash);
-              return {
-                chain_position: latest.chainPosition,
-                chain_hash: latest.chainHash,
-              };
-            } else if (sql.includes("SELECT id FROM audit_integrity_records")) {
-              // Duplicate check - no duplicate exists in our mock
-              return undefined;
+              return values.length > 0 ? values[values.length - 1] : undefined;
             }
             return undefined;
           },
@@ -430,13 +415,10 @@ test("AuditExportService.verifyIntegrity with multiple chain breaks", () => {
     { id: "evt-3", event_type: "task:completed", event_tier: "tier_1", created_at: "2026-04-20T00:00:00.000Z" },
   ]);
 
-  // Insert integrity records with chain breaks.
-  // Records are inserted with correct previousChainHash to pass insertion validation,
-  // but verifyIntegrity will detect chain breaks because the chainHash values
-  // don't form a proper continuous chain.
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "c1", null, "h1");
-  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "c2", "h1", "h2-broken");
-  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "c3", "h3", "h3");
+  // Insert integrity records with multiple chain breaks
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "checksum-1", null, "hash-1");
+  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "checksum-2", "wrong-hash", "hash-2");
+  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "checksum-3", "wrong-hash-2", "hash-3");
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 

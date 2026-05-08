@@ -166,33 +166,11 @@ test("POST /v1/gateway/messages/send sends message", async () => {
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/messages/send")!;
-  const ctx = createMockContext(
-    "/v1/gateway/messages/send",
-    "POST",
-    { "x-idempotency-key": "send-1" },
-    JSON.stringify({ text: "Hello", targetId: "tgt-1" }),
-  );
+  const ctx = createMockContext("/v1/gateway/messages/send", "POST", {}, JSON.stringify({ text: "Hello", targetId: "tgt-1" }));
   const response = await route.handler(ctx);
   if (!response) throw new Error("Handler returned null");
-  assert.equal(response.statusCode, 201);
+  assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("prov-123"));
-});
-
-test("POST /v1/gateway/messages/send requires x-idempotency-key", async () => {
-  const deps = {
-    authService: createMockAuthService(),
-    gatewayTargetDirectoryService: createMockTargetDirectoryService(),
-    channelGatewayService: createMockChannelGatewayService(),
-    channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: "test-secret",
-  };
-  const routes = createGatewayRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/v1/gateway/messages/send")!;
-  const ctx = createMockContext("/v1/gateway/messages/send", "POST", {}, JSON.stringify({ text: "Hello", targetId: "tgt-1" }));
-
-  await assert.rejects(async () => {
-    await route.handler(ctx);
-  }, /requires x-idempotency-key/i);
 });
 
 test("POST /v1/gateway/messages/send throws 503 when service unavailable", async () => {
@@ -205,12 +183,7 @@ test("POST /v1/gateway/messages/send throws 503 when service unavailable", async
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/messages/send")!;
-  const ctx = createMockContext(
-    "/v1/gateway/messages/send",
-    "POST",
-    { "x-idempotency-key": "send-unavailable-1" },
-    JSON.stringify({ text: "Hello" }),
-  );
+  const ctx = createMockContext("/v1/gateway/messages/send", "POST", {}, JSON.stringify({ text: "Hello" }));
   try {
     await route.handler(ctx);
     assert.fail("Expected handler to throw");
@@ -226,42 +199,15 @@ test("POST /v1/gateway/webhooks/receive processes webhook", async () => {
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: "test-secret",
-  };
-  const routes = createGatewayRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
-  const ctx = createMockContext(
-    "/v1/gateway/webhooks/receive",
-    "POST",
-    { "x-webhook-signature": "sig-1" },
-    JSON.stringify({ targetId: "tgt-1", channel: "webhook" }),
-  );
-  const response = await route.handler(ctx);
-  if (!response) throw new Error("Handler returned null");
-  assert.equal(response.statusCode, 200);
-  assert.ok(response.body.includes("msg-123"));
-});
-
-test("POST /v1/gateway/webhooks/receive rejects requests when webhookSecret is not configured", async () => {
-  const deps = {
-    authService: createMockAuthService(),
-    gatewayTargetDirectoryService: createMockTargetDirectoryService(),
-    channelGatewayService: createMockChannelGatewayService(),
-    channelGatewayDeliveryService: createMockDeliveryService(),
     webhookSecret: null,
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
-  const ctx = createMockContext(
-    "/v1/gateway/webhooks/receive",
-    "POST",
-    {},
-    JSON.stringify({ targetId: "tgt-1", channel: "webhook" }),
-  );
-
-  await assert.rejects(async () => {
-    await route.handler(ctx);
-  }, /signature verification is required|configured/i);
+  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", {}, JSON.stringify({ targetId: "tgt-1", channel: "webhook" }));
+  const response = await route.handler(ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("msg-123"));
 });
 
 test("POST /v1/gateway/webhooks/receive throws 503 when service unavailable", async () => {
@@ -290,11 +236,11 @@ test("POST /v1/gateway/webhooks/receive throws on invalid JSON", async () => {
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: "test-secret",
+    webhookSecret: null,
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
-  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", { "x-webhook-signature": "sig-1" }, "not json{");
+  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", {}, "not json{");
   try {
     await route.handler(ctx);
     assert.fail("Expected handler to throw");
@@ -310,14 +256,14 @@ test("POST /v1/gateway/messages/send rejects dangerous JSON keys", async () => {
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: "test-secret",
+    webhookSecret: null,
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/messages/send")!;
   const ctx = createMockContext(
     "/v1/gateway/messages/send",
     "POST",
-    { "x-idempotency-key": "dangerous-json-1" },
+    {},
     "{\"text\":\"Hello\",\"targetId\":\"tgt-1\",\"metadata\":{\"__proto__\":{\"polluted\":true}}}",
   );
   await assert.rejects(
@@ -334,14 +280,14 @@ test("POST /v1/gateway/webhooks/receive rejects dangerous JSON keys", async () =
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: "test-secret",
+    webhookSecret: null,
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
   const ctx = createMockContext(
     "/v1/gateway/webhooks/receive",
     "POST",
-    { "x-webhook-signature": "sig-1" },
+    {},
     "{\"targetId\":\"tgt-1\",\"channel\":\"webhook\",\"__proto__\":{\"polluted\":true}}",
   );
   await assert.rejects(

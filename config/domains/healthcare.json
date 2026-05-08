@@ -1,107 +1,17 @@
 {
   "domainId": "healthcare",
-  "name": "Healthcare",
-  "description": "Clinical and healthcare workflows with strict compliance and human accountability requirements.",
-  "version": "1.0.0",
-  "status": "active",
   "ringId": "ring3",
   "divisionId": "security",
   "latencyTier": "realtime",
   "riskProfile": {
     "defaultRiskLevel": "critical",
-    "maxAutonomyLevel": "suggestion"
+    "maxAutonomyLevel": "manual"
   },
   "riskSpec": {
     "advisoryOnly": true,
     "humanAccountable": true,
     "deterministicHotPathOnly": true
   },
-  "workflows": [
-    {
-      "workflowId": "healthcare.primary",
-      "name": "Healthcare Primary Workflow",
-      "triggerConditions": {
-        "domainId": "healthcare"
-      },
-      "planGraph": {
-        "graphId": "graph:healthcare:primary",
-        "nodes": [
-          {
-            "nodeId": "node:healthcare:ehr-read",
-            "nodeType": "tool",
-            "inputRefs": ["task:${taskId}"],
-            "outputSchemaRef": "schema:healthcare.ehr-read",
-            "riskClass": "critical",
-            "budgetIntent": {
-              "amount": 0.02,
-              "currency": "USD",
-              "resourceKinds": ["token", "api"]
-            },
-            "sideEffectProfile": {
-              "mayCommitExternalEffect": false,
-              "reversible": true
-            },
-            "retryPolicyRef": "retry:healthcare.default",
-            "timeoutMs": 10000
-          },
-          {
-            "nodeId": "node:healthcare:guideline-check",
-            "nodeType": "llm",
-            "inputRefs": ["node:healthcare:ehr-read.output"],
-            "outputSchemaRef": "schema:healthcare.guideline-check",
-            "riskClass": "critical",
-            "budgetIntent": {
-              "amount": 0.05,
-              "currency": "USD",
-              "resourceKinds": ["token"]
-            },
-            "sideEffectProfile": {
-              "mayCommitExternalEffect": false,
-              "reversible": true
-            },
-            "retryPolicyRef": "retry:healthcare.default",
-            "timeoutMs": 30000
-          },
-          {
-            "nodeId": "node:healthcare:clinical-summary",
-            "nodeType": "hitl_wait",
-            "inputRefs": ["node:healthcare:guideline-check.output"],
-            "outputSchemaRef": "schema:healthcare.clinical-summary",
-            "riskClass": "critical",
-            "budgetIntent": {
-              "amount": 0.01,
-              "currency": "USD",
-              "resourceKinds": ["human"]
-            },
-            "sideEffectProfile": {
-              "mayCommitExternalEffect": false,
-              "reversible": true
-            },
-            "retryPolicyRef": "retry:healthcare.default",
-            "timeoutMs": 60000
-          }
-        ],
-        "edges": [
-          {
-            "edgeId": "edge:healthcare:ehr-to-guideline",
-            "sourceNodeId": "node:healthcare:ehr-read",
-            "targetNodeId": "node:healthcare:guideline-check",
-            "condition": "always"
-          },
-          {
-            "edgeId": "edge:healthcare:guideline-to-summary",
-            "sourceNodeId": "node:healthcare:guideline-check",
-            "targetNodeId": "node:healthcare:clinical-summary",
-            "condition": "always"
-          }
-        ],
-        "entryNodeIds": ["node:healthcare:ehr-read"],
-        "terminalNodeIds": ["node:healthcare:clinical-summary"],
-        "joinStrategy": "all",
-        "graphHash": "sha256:healthcare-primary-v1"
-      }
-    }
-  ],
   "workflowProfile": {
     "workflowId": "healthcare.primary",
     "rollout": "baseline"

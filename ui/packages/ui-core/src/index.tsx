@@ -1,41 +1,19 @@
 import type { ReactElement } from "react";
 import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
 import { createRouteGuardChain } from "@aa/shared-domain";
-import { ComponentErrorBoundary, FeatureScaffold } from "./components";
+import { FeatureScaffold } from "./components";
 import { designTokens } from "./design-tokens";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
-export {
-  CodeBlock,
-  ComponentErrorBoundary,
-  DAGVisualization,
-  FeatureScaffold,
-  FeatureWorkbench,
-  FeatureWorkbenchPanel,
-  FileAttachment,
-  KeyValueTable,
-  ListCard,
-  PieChart,
-  SLACountdown,
-  StatusPill,
-  TimelineChart,
-} from "./components";
+export { FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
-export { applyResolvedTheme, darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
-
-export interface FeatureSubPage {
-  readonly id: string;
-  readonly path: string;
-  readonly label: string;
-  readonly Component: () => ReactElement;
-}
+export { darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
 
 export interface FeatureModule {
   readonly manifest: PlatformFeatureManifest;
   readonly route: AppRoute;
   readonly Component: () => ReactElement;
-  readonly subPages?: readonly FeatureSubPage[];
 }
 
 export function createFeatureModule(config: {
@@ -50,7 +28,6 @@ export function createFeatureModule(config: {
   apiLayer?: "A" | "B" | "C";
   summary: string;
   render?: () => ReactElement;
-  subPages?: readonly FeatureSubPage[];
 }): FeatureModule {
   const platforms = config.platforms ?? ["web", "windows", "macos", "linux", "android", "ios"];
   const Component = config.render ?? (() => (
@@ -60,11 +37,6 @@ export function createFeatureModule(config: {
       </p>
     </FeatureScaffold>
   ));
-  const WrappedComponent = () => (
-    <ComponentErrorBoundary>
-      <Component />
-    </ComponentErrorBoundary>
-  );
 
   return {
     manifest: {
@@ -86,12 +58,9 @@ export function createFeatureModule(config: {
       title: config.title,
       permission: config.permission,
       platforms,
-      // P1 FIX: Enable lazy loading for all feature modules per spec §4.4.1
-      // Spec requires React.lazy for all features except / and /login
-      codeSplit: true,
+      codeSplit: false,
     },
-    Component: WrappedComponent,
-    ...(config.subPages == null ? {} : { subPages: config.subPages }),
+    Component,
   };
 }
 

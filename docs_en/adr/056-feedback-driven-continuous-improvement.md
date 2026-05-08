@@ -11,12 +11,12 @@ The platform needs to continuously learn and improve from user feedback, forming
 
 ### Feedback Types
 
-| Type | Source | Processing Method |
-|------|--------|------------------|
+| Type | Source | Processing |
+|------|--------|------------|
 | explicit | User ratings/reviews | Manual review |
 | implicit | Usage behavior analysis | Automatic learning |
 | corrective | User corrections | Pattern extraction |
-| failure | Execution failure | Root cause analysis |
+| failure | Execution failures | Root cause analysis |
 
 ### Feedback Processing Pipeline
 
@@ -27,8 +27,8 @@ Feedback Collection → Preprocessing → Classification → Pattern Recognition
 ### FeedbackHub
 
 - `FeedbackHub` collects 7 types of signals
-- `FeedbackCollector` preprocessing
-- `StrategyLearningService` pattern detection
+- `FeedbackCollector` preprocesses
+- `StrategyLearningService` detects patterns
 
 ### Learning Objects
 
@@ -46,24 +46,22 @@ interface LearningObject {
 
 - LearnHub generates LearningObject
 - ImproveHub evaluates ImprovementCandidate
-- Release six-level release (must pass P2 Release Governance gate)
-
-Note: §13.1 explicitly states that Release is a P2 decision, not OAPEFLIR self-release. The Release phase in the Learn→Improve→Release pipeline must go through P2 Release Governance gate review, and cannot be skipped.
+- Release six-tier rollout
 
 ## Consequences
 
-Pros:
+Advantages:
 
 - Closed-loop improvement mechanism
 - Data-driven optimization
-- User participation improves experience
+- User participation enhances experience
 
-Cons:
+Costs:
 
 - Feedback processing requires resources
 - Pattern recognition accuracy depends on data volume
 
-## Cross-references
+## Cross-References
 
 - [ADR-079 Feedback Hub and Seven Signal Types Preprocessing](./079-feedback-hub-signals.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)

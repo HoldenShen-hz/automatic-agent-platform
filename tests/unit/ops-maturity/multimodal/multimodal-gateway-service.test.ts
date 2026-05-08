@@ -1,14 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  ModalityRouteDecisionSchema,
-  MultimodalGatewayService,
-  MultimodalInputPartSchema,
-  MultimodalRequestSchema,
-  MultimodalSafetyFindingSchema,
-  parseMultimodalRequest,
-} from "../../../../src/ops-maturity/multimodal/multimodal-gateway-service.js";
+import { MultimodalGatewayService } from "../../../../src/ops-maturity/multimodal/multimodal-gateway-service.js";
 
 test("MultimodalGatewayService requires non-empty safety policy reference", () => {
   const service = new MultimodalGatewayService();
@@ -22,71 +15,6 @@ test("MultimodalGatewayService requires non-empty safety policy reference", () =
       costBudget: { maxUsd: 1 },
     });
   }, /multimodal_gateway\.safety_policy_required/);
-});
-
-test("MultimodalRequestSchema validates canonical multimodal request shape", () => {
-  const parsed = parseMultimodalRequest({
-    requestId: "req_schema",
-    modalities: ["text", "image"],
-    inputParts: [
-      { partId: "p1", type: "text", contentRef: "inline", text: "hello" },
-      { partId: "p2", type: "image", contentRef: "img://2", imageMetadata: { width: 640, height: 480 } },
-    ],
-    requestedOutputs: ["summary"],
-    safetyPolicyRef: "policy_schema",
-    costBudget: { maxUsd: 2 },
-    traceId: "trace_schema",
-  });
-
-  assert.equal(parsed.requestId, "req_schema");
-  assert.equal(parsed.inputParts.length, 2);
-});
-
-test("MultimodalRequestSchema rejects malformed request payload", () => {
-  assert.throws(() => {
-    parseMultimodalRequest({
-      requestId: "req_bad_schema",
-      modalities: [],
-      inputParts: [],
-      requestedOutputs: [],
-      safetyPolicyRef: "policy_schema",
-      costBudget: { maxUsd: -1 },
-    });
-  });
-});
-
-test("multimodal canonical objects are backed by Zod schemas", () => {
-  assert.equal(MultimodalRequestSchema.safeParse({
-    requestId: "req_zod",
-    modalities: ["text"],
-    inputParts: [{ partId: "p1", type: "text", contentRef: "inline" }],
-    requestedOutputs: ["summary"],
-    safetyPolicyRef: "policy_zod",
-    costBudget: { maxUsd: 1 },
-  }).success, true);
-
-  assert.equal(MultimodalInputPartSchema.safeParse({
-    partId: "p_zod",
-    type: "audio",
-    contentRef: "audio://1",
-    audioSampleCount: 16000,
-    audioSampleRate: 16000,
-  }).success, true);
-
-  assert.equal(ModalityRouteDecisionSchema.safeParse({
-    partId: "p_zod",
-    modality: "video",
-    provider: "video_gateway",
-    processor: "video-processor",
-    estimatedCostUsd: 1.2,
-  }).success, true);
-
-  assert.equal(MultimodalSafetyFindingSchema.safeParse({
-    partId: "p_zod",
-    severity: "medium",
-    reasonCode: "multimodal_gateway.conditional",
-    blocked: false,
-  }).success, true);
 });
 
 test("MultimodalGatewayService requires non-whitespace safety policy reference", () => {

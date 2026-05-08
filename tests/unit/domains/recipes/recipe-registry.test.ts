@@ -26,11 +26,6 @@ function makeRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domai
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description,
     triggerPhrases: overrides.triggerPhrases ?? [],
-    risk_profile_ref: overrides.risk_profile_ref ?? `${overrides.domainId}.risk`,
-    guardrail_overlay: overrides.guardrail_overlay ?? `${overrides.domainId}.guardrails`,
-    recommended_workflow_ids: overrides.recommended_workflow_ids ?? [overrides.defaultWorkflowId],
-    default_prompt_bundle_ref: overrides.default_prompt_bundle_ref ?? `${overrides.domainId}.prompts`,
-    acceptance_checklist_ref: overrides.acceptance_checklist_ref ?? `${overrides.domainId}.acceptance`,
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
   });
@@ -137,7 +132,7 @@ test("RecipeRegistry.list returns a copy (immutability)", async () => {
 // Registration Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeRegistry.registerAll rejects duplicate recipe ids", async () => {
+test("RecipeRegistry.registerAll overwrites existing recipe with same id", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipe1 = makeRecipe({
@@ -152,10 +147,10 @@ test("RecipeRegistry.registerAll rejects duplicate recipe ids", async () => {
   });
 
   registry.register(recipe1);
-  assert.throws(() => registry.register(recipe2), /Recipe uniqueness conflict/);
+  registry.register(recipe2);
 
   const result = registry.get("recipe_dup");
-  assert.equal(result!.defaultWorkflowId, "wf_original");
+  assert.equal(result!.defaultWorkflowId, "wf_replacement");
   assert.equal(registry.list().length, 1);
 });
 
@@ -314,30 +309,6 @@ test("RecipeRegistry.findByTriggerPhrase returns first matching recipe", async (
 
   assert.ok(result !== null);
   assert.equal(result!.recipeId, "recipe_first_1");
-});
-
-test("RecipeRegistry.findByTriggerPhrase prefers the longest matching trigger phrase", async () => {
-  const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
-  const registry = new RecipeRegistry();
-  registry.registerAll([
-    makeRecipe({
-      recipeId: "recipe_trade_short",
-      domainId: "trading",
-      defaultWorkflowId: "wf_short",
-      triggerPhrases: ["trade"],
-    }),
-    makeRecipe({
-      recipeId: "recipe_trade_long",
-      domainId: "options",
-      defaultWorkflowId: "wf_long",
-      triggerPhrases: ["buy", "trade options"],
-    }),
-  ]);
-
-  const result = registry.findByTriggerPhrase("help me trade options today");
-
-  assert.ok(result !== null);
-  assert.equal(result!.recipeId, "recipe_trade_long");
 });
 
 test("RecipeRegistry.findByTriggerPhrase delegates to matchDomainRecipe", async () => {

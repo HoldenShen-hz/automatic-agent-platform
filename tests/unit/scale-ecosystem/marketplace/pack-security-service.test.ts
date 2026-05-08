@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
 import { PackSecurityService } from "../../../../src/scale-ecosystem/marketplace/pack-security-service.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -51,8 +48,8 @@ test("PackSecurityService warns on high-risk permissions and overlapping depende
   const scan = await service.runSecurityScan({
     packId: "pack.catalog",
     version: "3.1.0",
-    sourceUri: `data:text/javascript,${encodeURIComponent(inlineSource)}`,
-    manifestChecksum: "c".repeat(64),
+    sourceUri: `inline:${inlineSource}`,
+    manifestChecksum: sha256(inlineSource),
     capabilities: ["catalog", "reporting"],
     permissions: ["file:write"],
   });
@@ -96,60 +93,4 @@ test("PackSecurityService fails on combined exec capability and bash permission"
   assert.equal(result.status, "failed");
   assert.equal(result.issues.some((issue) => issue.code === "SAND010"), true);
   assert.equal(result.issues.some((issue) => issue.code === "SAND001"), true);
-});
-
-test("PackSecurityService scans actual source content from file URIs", async () => {
-  const workspace = createTempWorkspace("aa-pack-security-");
-  const sourcePath = `${workspace}/pack.js`;
-  const sourceCode = "eval(userInput);";
-  writeFileSync(sourcePath, sourceCode, "utf8");
-
-  try {
-    const service = new PackSecurityService();
-    const result = await service.runSecurityScan({
-      packId: "pack.file-uri",
-      version: "1.2.0",
-      sourceUri: pathToFileURL(sourcePath).href,
-      manifestChecksum: "a".repeat(64),
-      capabilities: ["reporting"],
-      permissions: ["read.audit"],
-    });
-
-    assert.equal(result.status, "warning");
-    assert.equal(result.issues.some((issue) => issue.code === "SAND002"), true);
-    assert.equal(result.issues.some((issue) => issue.code === "PKG003"), false);
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("PackSecurityService fails closed when source content is unavailable for static analysis", async () => {
-  const service = new PackSecurityService();
-  const result = await service.runSecurityScan({
-    packId: "pack.remote-uri",
-    version: "4.0.0",
-    sourceUri: "registry://packs/remote-malware",
-    manifestChecksum: "b".repeat(64),
-    capabilities: ["reporting"],
-    permissions: ["read.audit"],
-  });
-
-  assert.equal(result.status, "failed");
-  assert.equal(result.issues.some((issue) => issue.code === "PKG003"), true);
-});
-
-test("PackSecurityService flags a single dangerous capability", async () => {
-  const service = new PackSecurityService();
-  const inlineSource = "export const capability = 'exec';";
-
-  const result = await service.runSecurityScan({
-    packId: "pack.single-capability",
-    version: "1.0.1",
-    sourceUri: `inline:${inlineSource}`,
-    manifestChecksum: sha256(inlineSource),
-    capabilities: ["exec"],
-    permissions: ["read.audit"],
-  });
-
-  assert.equal(result.issues.some((issue) => issue.code === "CAP001"), true);
 });

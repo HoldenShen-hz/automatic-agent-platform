@@ -47,7 +47,7 @@ test("process-tracker spawnTracked creates trackable child process", () => {
   const child = spawnTracked(tracker, "node", ["-e", "console.log('integration-test')"], undefined, "bash-tool");
 
   try {
-    assert.ok(child.pid != null && child.pid > 0, "Child process should have a valid pid");
+    assert.ok(child.pid > 0, "Child process should have a valid pid");
     assert.ok(tracker.getActiveCount() >= 0, "Tracker should track the child");
   } finally {
     tracker.killAll("SIGKILL", 100);

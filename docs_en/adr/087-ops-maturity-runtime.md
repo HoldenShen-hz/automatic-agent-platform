@@ -4,25 +4,25 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**: Signals such as interpretation, circuit breaking, lifecycle, drift, cost, debugging, multimodal, and capacity
-- **Assess**: Anomaly drift, cost optimization, capacity prediction, explanation depth, and panic recovery assessment
-- **Plan**: Debugging, reporting, edge synchronization, and self-operations strategy generation
-- **Execute**: Explanation generation, global circuit breaking, edge execution, debugging, report generation, self-operations actions
-- **Feedback**: Explanation usage, circuit breaking drills, debugging replay, capacity prediction deviation feedback
-- **Learn**: Behavior fingerprints, cost optimization, capacity trends, and operational experience accumulation
-- **Improve**: Continuous evolution of agent lifecycle, edge capabilities, and platform operations agents
-- **Release**: Phased rollout of maturity capabilities
+- **Observe**: Signals for explainability, circuit breaker, lifecycle, drift, cost, debugging, multimodal, capacity, etc.
+- **Assess**: Anomaly drift, cost optimization, capacity prediction, explainability depth, and panic recovery assessment
+- **Plan**: Debugging, reporting, edge synchronization, and self-ops strategy generation
+- **Execute**: Explanation generation, global circuit breaker, edge execution, debugging, report generation, self-ops actions
+- **Feedback**: Explanation usage, circuit breaker drills, debugging replay, capacity prediction deviation feedback
+- **Learn**: Behavior fingerprint, cost optimization, capacity trends, and ops experience accumulation
+- **Improve**: Agent lifecycle, edge capability, platform ops agent continuous evolution
+- **Release**: Maturity capability phased rollout
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
-v4.3 `§59-§69` introduces the operations maturity layer. The current repository already contains:
+v2.7 `§59-§69` introduces the ops maturity layer. The current repository already has:
 
 - `src/ops-maturity/explainability`
 - `src/ops-maturity/emergency`
@@ -36,24 +36,24 @@ v4.3 `§59-§69` introduces the operations maturity layer. The current repositor
 - `src/ops-maturity/multimodal`
 - `src/ops-maturity/platform-ops-agent`
 
-Except for `drift-detection`, most remain skeletal.
+Except for `drift-detection`, most are still skeleton implementations.
 
-## Decision
+## Decisions
 
-### 1. Operations maturity capabilities are uniformly treated as Runtime extension layers, not scattered toolboxes
+### 1. Ops maturity capabilities are uniformly treated as Runtime extension layer, not a scattered toolbox
 
-All these capabilities revolve around "how the platform runs safely, explainably, and recoverably" and must share:
+These capabilities all revolve around "how the platform runs safely, explainably, and recoverably," and must share:
 
 - evidence model
 - lifecycle
 - rollout / rollback
 - audit trail
 
-### 2. Panic, Explainability, Debug, and Report must connect to the same evidence plane
+### 2. Panic, Explainability, Debug, Report must connect to the same evidence plane
 
-All these capabilities must reuse `state-evidence` and cannot maintain private audit models.
+These capabilities must all reuse `state-evidence` and cannot each maintain private audit models.
 
-### 3. Edge, multimodal, and self-operating agents must inherit existing security and governance boundaries
+### 3. Edge, multimodal, and self-ops Agent must inherit existing security and governance boundaries
 
 New execution forms cannot bypass:
 
@@ -62,11 +62,11 @@ New execution forms cannot bypass:
 - budget
 - rollout
 
-### 4. Operations maturity capabilities must have contracts before advancing large-scale implementation
+### 4. Ops maturity capabilities must have contracts first, before large-scale implementation
 
-Because these capabilities span multiple planes, without authoritative contracts, fragmented implementations easily form.
+Because these capabilities span multiple planes, without authoritative contracts, fragmented implementations are easily formed.
 
 ## Consequences
 
-- `ops-maturity` will advance as a unified runtime extension layer, rather than evolving separately by directory
-- Subsequent priority implementation will focus on contract alignment for explainability, panic, agent lifecycle, edge runtime, and cost optimizer
+- `ops-maturity` will proceed as a unified runtime extension layer, rather than evolving directory by directory
+- Subsequent priority will be given to contract alignment for explainability, panic, agent lifecycle, edge runtime, and cost optimizer

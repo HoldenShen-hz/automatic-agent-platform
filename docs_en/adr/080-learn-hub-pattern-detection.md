@@ -20,7 +20,7 @@ The design requires supporting 3 learning types (R4-TYPES constraint): failure_p
 | `user_correction` | User correction records | `UserCorrectionDetector` |
 | `recovery_playbook` | Recovery operation playbook | `RecoveryPlaybookMiner` |
 
-**Constraint**: Ring 1 only supports these 3 types; no expansion until R4-TYPES constraint is lifted.
+**Constraint**: Phase 1 only supports these 3 types; no expansion until R4-TYPES constraint is lifted.
 
 ### 2. 4 Initial Pattern Detectors
 
@@ -55,8 +55,7 @@ interface FailureMode {
 
 interface EvidenceRef {
   signalId: string;
-  harnessRunId: string;
-  nodeRunId?: string;
+  executionId: string;
   timestamp: string;
   excerpt?: string;
 }
@@ -163,7 +162,7 @@ Feedback.signal_preprocessed
 Pros: Simple architecture.
 Cons: Cannot extract patterns, knowledge cannot accumulate.
 
-### Option B: Complete Learn Hub + 4 Detectors (Selected)
+### Option B: Complete Learn Hub + 4 Detectors (Chosen)
 
 Pros: Pattern recognition + knowledge accumulation + complete evidence chain.
 Cons: Higher implementation complexity (~1500 lines of code).
@@ -178,27 +177,17 @@ Cons: Higher implementation complexity (~1500 lines of code).
 - `learning-object-model.ts` (21 lines) defines LearningObject.
 - Events: `learning:artifact_created`, `learning:object_promoted`
 
-## Cross-References
+## Cross References
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-075 Controlled Rollout](./075-controlled-rollout-release.md)
 - [ADR-078 Knowledge Plane](./078-knowledge-plane-architecture.md)
 - `src/core/learning/` module
 
-## Source Section
+## Source Sections
 
 - `§8` Learn Hub Design
-- `§8.1` 6 Learning Content Types (Ring 1 simplified to 3)
-- `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern Interfaces
-- `§8.5` 4 Initial Failure Patterns
-- `§8.6-8.7` ExperienceDistillation / StrategyLearning
-- `§L.7` R4-TYPES constraint
-- `§L.9` R4-EVIDENCE constraint
-
-## v4.3 ADR Remediation
-
-- A-65: This ADR originally wrote `Phase 1` and `EvidenceRef.executionId` as canonical constraints. Root cause: learn hub ADR did not sync update evidence chain primary key after runtime truth rename. Fix: The main text now uses ring terminology and switches evidence chain anchor to `harnessRunId / nodeRunId`.
-- R6-47: Fixed FailurePattern/EvidenceRef interface, removed executionId association, unified using harnessRunId/nodeRunId to ensure learning objects can join truth.
+- `§8.1` 6 Learning Content Types (Phase 1 simplified to 3)
 - `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern Interfaces
 - `§8.5` 4 Initial Failure Patterns
 - `§8.6-8.7` ExperienceDistillation / StrategyLearning

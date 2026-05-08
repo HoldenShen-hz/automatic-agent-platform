@@ -85,3 +85,28 @@ test("ToolbeltAssembler case-sensitive tool matching", () => {
   assert.deepEqual(result.grantedTools, ["tool_a"]);
   assert.deepEqual(result.blockedTools, []);
 });
+
+test("ToolbeltAssembler attaches per-tool sandbox bindings for granted tools", () => {
+  const assembler = new ToolbeltAssembler();
+  const request: ToolbeltAssemblyRequest = {
+    allowedTools: ["tool_a", "tool_b"],
+    requestedTools: ["tool_a", "tool_b", "tool_c"],
+    requiredEvidence: [],
+    sandboxRequirement: {
+      sandboxMode: "network_isolated",
+      timeoutMs: 45_000,
+      allowedHosts: ["api.example.com"],
+    },
+  };
+
+  const result = assembler.assemble(request);
+
+  assert.deepEqual(result.grantedTools, ["tool_a", "tool_b"]);
+  assert.equal(result.sandboxLayer.defaultLayer, "network_isolated");
+  assert.equal(result.sandboxLayer.bindings.length, 2);
+  assert.deepEqual(
+    result.sandboxLayer.bindings.map((binding) => binding.toolName),
+    ["tool_a", "tool_b"],
+  );
+  assert.deepEqual(result.sandboxLayer.bindings[0]?.allowedHosts, ["api.example.com"]);
+});

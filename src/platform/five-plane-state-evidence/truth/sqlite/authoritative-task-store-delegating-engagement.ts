@@ -186,14 +186,6 @@ export abstract class AuthoritativeTaskStoreDelegatingEngagement extends Authori
     return this.delegateLegacy("listStaleWorkerSnapshots", "worker", "listStaleWorkerSnapshots", ...args);
   }
 
-  public override deleteWorkerSnapshot(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["deleteWorkerSnapshot"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["deleteWorkerSnapshot"]> {
-    return this.delegateLegacy("deleteWorkerSnapshot", "worker", "deleteWorkerSnapshot", ...args);
-  }
-
-  public override updateWorkerStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateWorkerStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateWorkerStatus"]> {
-    return this.delegateLegacy("updateWorkerStatus", "worker", "updateWorkerStatus", ...args);
-  }
-
   public override getCoordinatorInstanceSnapshot(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["getCoordinatorInstanceSnapshot"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["getCoordinatorInstanceSnapshot"]> {
     return this.delegateLegacyNullable("getCoordinatorInstanceSnapshot", "worker", "getCoordinatorInstanceSnapshot", ...args);
   }

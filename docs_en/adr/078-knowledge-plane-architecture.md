@@ -10,8 +10,6 @@ The learning results produced by OAPEFLIR Learn Hub need to be persistently stor
 
 The existing `knowledge/` module (23 files) has implemented a complete pipeline. This ADR formally establishes the Knowledge Plane's governance architecture and trust model.
 
-Note: ADR-078 title "Knowledge Plane" is a functional domain name (knowledge management domain), not an independent architecture plane. According to v4.3 §4 Five-Plane definition, Knowledge belongs to P5 State & Evidence (§29), a functional component within P5, not an additional sixth plane.
-
 ## Decision
 
 ### 1. KIP 5-Stage Pipeline
@@ -87,16 +85,14 @@ interface RetrievalHit {
 | `standard` | <500ms P99 | Keyword + semantic vector hybrid |
 | `deep` | <2000ms | All indexes + cross-namespace |
 
-### 5. 4-Level Trust Model (v4.3 §10 Risk Model)
+### 5. 4-Level Trust Model
 
-| Trust Level | Source | inherent_risk | trust_score | Usage |
-|---------|------|--------------|-------------|------|
-| `verified` | Human-reviewed content | low | +0.4 | Production decisions |
-| `reviewed` | Validated by LearningObjectValidator | medium | +0.2 | Improvement candidate |
-| `inferred` | System-inferred | high | 0.0 | Suggestions/reference |
-| `untrusted` | Unverified source | critical | -0.3 | Display only |
-
-trust_score = baseline(0.5) + trust_delta. Content below threshold is marked as non-referenceable. inherent_risk and trust_score are separated to ensure trust evaluation does not implicitly reduce risk.
+| Trust Level | Source | Usage |
+|---------|------|------|
+| `verified` | Human-reviewed content | Production decisions |
+| `reviewed` | Validated by LearningObjectValidator | Improvement candidate |
+| `inferred` | System-inferred | Suggestions/reference |
+| `untrusted` | Unverified source | Display only |
 
 ### 6. KnowledgeNamespace Governance
 
@@ -153,7 +149,7 @@ interface Citation {
 Pros: Optimal vector retrieval performance.
 Cons: Adds external dependency, violates §L R1-NO-EXTERNAL-RUNTIME.
 
-### Option B: Local SQLite + Vector Extension (Selected)
+### Option B: Local SQLite + Vector Extension (Chosen)
 
 Pros: No external dependencies, conforms to SQLite-first principle.
 Cons: Vector retrieval performance lower than dedicated vector databases.
@@ -168,21 +164,17 @@ Cons: Vector retrieval performance lower than dedicated vector databases.
 - `governance/source-trust-policy.ts` implements 4-level trust model.
 - New event: `learning:knowledge_promoted` (Tier 2)
 
-## Cross-References
+## Cross References
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-017 Knowledge Architecture Refactor](./017-knowledge-architecture-refactor.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 - `src/core/knowledge/` module
 
-## Source Section
+## Source Sections
 
 - `§10` Knowledge Plane Design
 - `§10.2` KIP 5-Stage Pipeline
 - `§C.1-C.7` Governance Layer Design
 - `§8.7` Learn→Knowledge Integration
 - `§L.9` R4-EVIDENCE constraint
-
-## v4.3 ADR Remediation
-
-- R6-56: Fixed Knowledge TrustLevel separation mapping. ADR-078 originally did not fully show §10 risk model's inherent_risk + trust_score separation mapping in the TrustLevel table. Fix: TrustLevel table now includes inherent_risk and trust_score two independent dimensions, explaining that trust_score = baseline(0.5) + trust_delta, and inherent_risk and trust_score separation ensures trust evaluation does not implicitly reduce risk.

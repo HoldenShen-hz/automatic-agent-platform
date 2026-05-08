@@ -284,7 +284,7 @@ test("dispatchNext skips untrusted remote workers", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // Untrusted remote worker should be filtered out
   assert.equal(result.outcome, "dispatched");
@@ -331,7 +331,7 @@ test("dispatchNext require_remote blocked by local_only placement", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   assert.equal(result.outcome, "blocked");
 });
@@ -388,7 +388,7 @@ test("dispatchNext skips blocked ticket and processes next", () => {
 
   // First ticket is blocked by backpressure, but second should be dispatched
   // Note: The backpressure affects all tickets with non-elevated priority
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // low priority is blocked, but there might not be a second dispatchable ticket
   // This test verifies the loop continues to evaluate all tickets
@@ -440,7 +440,7 @@ test("dispatchNext with includeDegraded allows degraded workers", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000, includeDegraded: true });
+  const result = service.dispatchNext({ leaseTtlMs: 60000, includeDegraded: true });
 
   assert.equal(result.outcome, "dispatched");
   assert.equal(result.worker?.workerId, "worker-1");
@@ -500,7 +500,7 @@ test("dispatchNext skips workers with remote session unready", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // Unready worker should be filtered out
   assert.equal(result.outcome, "dispatched");
@@ -558,7 +558,7 @@ test("dispatchNext skips workers missing required capabilities", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // Only worker with all capabilities should be selected
   assert.equal(result.outcome, "dispatched");
@@ -606,7 +606,7 @@ test("dispatchNext preferredWorkerId not in worker list returns no_worker", () =
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000, preferredWorkerId: "nonexistent-worker" });
+  const result = service.dispatchNext({ leaseTtlMs: 60000, preferredWorkerId: "nonexistent-worker" });
 
   assert.equal(result.outcome, "no_worker");
 });
@@ -668,7 +668,7 @@ test("createTicket creates ticket with all options specified", () => {
 
   const result = service.createTicket({
     executionId: "exec-1",
-    priority: "critical",
+    priority: "urgent",
     queueName: "special-queue",
     dispatchTarget: "prefer_remote",
     requiredIsolationLevel: "strict",
@@ -678,7 +678,7 @@ test("createTicket creates ticket with all options specified", () => {
   });
 
   assert.equal(result.outcome, "created");
-  assert.equal(result.ticket.priority, "critical");
+  assert.equal(result.ticket.priority, "urgent");
   assert.equal(result.ticket.queueName, "special-queue");
   assert.equal(result.ticket.dispatchTarget, "prefer_remote");
   assert.equal(result.ticket.requiredIsolationLevel, "strict");
@@ -728,7 +728,7 @@ test("dispatchNext with read_only_operations_only backpressure blocks ticket", (
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   assert.equal(result.outcome, "blocked");
   assert.equal(result.reasonCode, "backpressure.read_only_mode");
@@ -779,18 +779,18 @@ test("dispatchNext high priority not blocked by queue_only", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // High priority should not be blocked by queue_only backpressure
   assert.equal(result.outcome, "dispatched");
 });
 
 // ---------------------------------------------------------------------------
-// dispatchNext - critical priority not blocked by pause_non_critical
+// dispatchNext - urgent priority not blocked by pause_non_critical
 // ---------------------------------------------------------------------------
 
-test("dispatchNext critical priority not blocked by pause_non_critical", () => {
-  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "critical");
+test("dispatchNext urgent priority not blocked by pause_non_critical", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "urgent");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 
   const store = createMockStore();
@@ -798,7 +798,7 @@ test("dispatchNext critical priority not blocked by pause_non_critical", () => {
   (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
   (store.operations as any).loadExecutionAuthoritativeView = () => ({
     execution: createMockExecution("exec-1", "task-1"),
-    task: createMockTask("task-1", "critical"),
+    task: createMockTask("task-1", "urgent"),
     workflow: null,
     session: null,
     consistency: "authoritative",
@@ -830,9 +830,9 @@ test("dispatchNext critical priority not blocked by pause_non_critical", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
-  // Critical priority should not be blocked by pause_non_critical backpressure
+  // Urgent priority should not be blocked by pause_non_critical backpressure
   assert.equal(result.outcome, "dispatched");
 });
 
@@ -877,7 +877,7 @@ test("dispatchNext low priority blocked by starvation protection", () => {
 
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   // Low priority should be blocked by starvation protection
   assert.equal(result.outcome, "blocked");

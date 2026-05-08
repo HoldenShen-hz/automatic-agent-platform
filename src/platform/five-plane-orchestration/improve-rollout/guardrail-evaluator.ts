@@ -42,13 +42,8 @@ export class GuardrailEvaluator {
     if (strategyVersion.sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
-    if (
-      strategyVersion.releaseLevel === "evaluate_0"
-      && candidate.status !== "approved"
-      && candidate.status !== "shadow_running"
-      && candidate.status !== "evaluating"
-    ) {
-      reasonCodes.push("improvement.guardrail_evaluation_requires_approval");
+    if (strategyVersion.releaseLevel === "shadow" && candidate.status !== "approved" && candidate.status !== "shadow_running") {
+      reasonCodes.push("improvement.guardrail_shadow_requires_approval");
     }
 
     return {

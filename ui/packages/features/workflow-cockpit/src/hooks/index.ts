@@ -1,8 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useWorkflowsQuery, useRestClient } from "@aa/shared-state";
+import { useEffect, useMemo, useState } from "react";
+import { useWorkflowsQuery } from "@aa/shared-state";
 import type { WorkflowDTO } from "@aa/shared-types";
-import { cancelWorkflow, pauseWorkflow, resumeWorkflow, recoverWorkflow, releaseWorkflow } from "@aa/shared-api-client";
 
 export interface WorkflowCockpitVm {
   readonly workflows: readonly WorkflowDTO[];
@@ -10,13 +8,11 @@ export interface WorkflowCockpitVm {
   readonly selectedId: string | null;
   readonly selectedWorkflow: WorkflowDTO | null;
   readonly activityItems: readonly { title: string; description: string }[];
-  readonly pendingAction: boolean;
   selectWorkflow(id: string): void;
-  cancelWorkflow(): Promise<void>;
-  pauseWorkflow(): Promise<void>;
-  resumeWorkflow(): Promise<void>;
-  recoverWorkflow(): Promise<void>;
-  releaseWorkflow(): Promise<void>;
+  pauseWorkflow(): void;
+  resumeWorkflow(): void;
+  recoverWorkflow(): void;
+  releaseWorkflow(): void;
 }
 
 export function mapWorkflowsToVm(workflows: readonly WorkflowDTO[]): Pick<WorkflowCockpitVm, "workflows" | "listItems"> {
@@ -31,171 +27,62 @@ export function mapWorkflowsToVm(workflows: readonly WorkflowDTO[]): Pick<Workfl
 }
 
 export function useWorkflowCockpitVm(): WorkflowCockpitVm {
-  const client = useRestClient();
-  const queryClient = useQueryClient();
   const queryWorkflows = useWorkflowsQuery().data ?? [];
-  const [workflowOverrides, setWorkflowOverrides] = useState<Readonly<Record<string, Partial<WorkflowDTO>>>>({});
-  // §2270: Start with null - do not fallback to queryWorkflows[0] to avoid ghost selection
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [workflows, setWorkflows] = useState<readonly WorkflowDTO[]>(queryWorkflows);
+  const [selectedId, setSelectedId] = useState<string | null>(queryWorkflows[0]?.id ?? null);
   const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
-  const [pendingAction, setPendingAction] = useState(false);
 
   useEffect(() => {
-    // §2270: Sync selectedId only if current selection is not in the updated workflow list
-    setSelectedId((current) => {
-      if (current === null || !queryWorkflows.some((w) => w.id === current)) {
-        return null;
-      }
-      return current;
-    });
+    setWorkflows(queryWorkflows);
+    setSelectedId((current) => current ?? queryWorkflows[0]?.id ?? null);
   }, [queryWorkflows]);
 
-  useEffect(() => {
-    setWorkflowOverrides((current) => {
-      const authoritativeById = new Map(queryWorkflows.map((workflow) => [workflow.id, workflow]));
-      let changed = false;
-      const next: Record<string, Partial<WorkflowDTO>> = {};
-
-      for (const [workflowId, override] of Object.entries(current)) {
-        const authoritative = authoritativeById.get(workflowId);
-        if (authoritative == null) {
-          changed = true;
-          continue;
-        }
-        const isSynced = Object.entries(override).every(
-          ([key, value]) => (authoritative as Record<string, unknown>)[key] === value,
-        );
-        if (isSynced) {
-          changed = true;
-          continue;
-        }
-        next[workflowId] = override;
-      }
-
-      return changed ? next : current;
-    });
-  }, [queryWorkflows]);
-
-  const workflows = useMemo(
-    () =>
-      queryWorkflows.map((workflow) => {
-        const override = workflowOverrides[workflow.id];
-        return override == null ? workflow : { ...workflow, ...override };
-      }),
-    [queryWorkflows, workflowOverrides],
-  );
   const baseVm = useMemo(() => mapWorkflowsToVm(workflows), [workflows]);
-  // §2270: No fallback to workflows[0] - only use selectedId to avoid ghost selection
-  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? null;
+  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? workflows[0] ?? null;
 
-  function updateSelected(patch: Partial<WorkflowDTO>, title: string, description: string): void {
+  function updateSelected(transform: (workflow: WorkflowDTO) => WorkflowDTO, title: string, description: string): void {
     if (selectedWorkflow == null) {
       return;
     }
-    setWorkflowOverrides((current) => ({
-      ...current,
-      [selectedWorkflow.id]: {
-        ...(current[selectedWorkflow.id] ?? {}),
-        ...patch,
-      },
-    }));
-    // §2275: Limit activityItems to 100 entries to prevent unbounded growth
-    setActivityItems((current) => [{ title, description }, ...current].slice(0, 100));
+    setWorkflows((current) => current.map((workflow) => workflow.id === selectedWorkflow.id ? transform(workflow) : workflow));
+    setActivityItems((current) => [{ title, description }, ...current]);
   }
-
-  const doPauseWorkflow = useCallback(async (): Promise<void> => {
-    if (selectedWorkflow == null) return;
-    setPendingAction(true);
-    try {
-      await pauseWorkflow(client, selectedWorkflow.id);
-      updateSelected(
-        { status: "paused", currentStage: "waiting_hitl" },
-        `Paused · ${selectedWorkflow.title}`,
-        "Workflow entered HITL waiting state.",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, queryClient, selectedWorkflow]);
-
-  const doCancelWorkflow = useCallback(async (): Promise<void> => {
-    if (selectedWorkflow == null) return;
-    setPendingAction(true);
-    try {
-      await cancelWorkflow(client, selectedWorkflow.id);
-      updateSelected(
-        { status: "cancelled", currentStage: "aborted" },
-        `Cancelled · ${selectedWorkflow.title}`,
-        "Workflow execution was aborted and removed from the active queue.",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, queryClient, selectedWorkflow]);
-
-  const doResumeWorkflow = useCallback(async (): Promise<void> => {
-    if (selectedWorkflow == null) return;
-    setPendingAction(true);
-    try {
-      await resumeWorkflow(client, selectedWorkflow.id);
-      updateSelected(
-        { status: "running", currentStage: "execute" },
-        `Resumed · ${selectedWorkflow.title}`,
-        "Workflow resumed execution from the selected checkpoint.",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, queryClient, selectedWorkflow]);
-
-  const doRecoverWorkflow = useCallback(async (): Promise<void> => {
-    if (selectedWorkflow == null) return;
-    setPendingAction(true);
-    try {
-      await recoverWorkflow(client, selectedWorkflow.id);
-      updateSelected(
-        { status: "running", currentStage: "recovering" },
-        `Recovered · ${selectedWorkflow.title}`,
-        "Recovery controller rebuilt state and replayed the workflow.",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, queryClient, selectedWorkflow]);
-
-  const doReleaseWorkflow = useCallback(async (): Promise<void> => {
-    if (selectedWorkflow == null) return;
-    setPendingAction(true);
-    try {
-      await releaseWorkflow(client, selectedWorkflow.id);
-      updateSelected(
-        { status: "completed", currentStage: "release" },
-        `Released · ${selectedWorkflow.title}`,
-        "Workflow completed release checks and closed successfully.",
-      );
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, queryClient, selectedWorkflow]);
 
   return {
     ...baseVm,
     selectedId,
     selectedWorkflow,
     activityItems,
-    pendingAction,
     selectWorkflow(id: string) {
       setSelectedId(id);
     },
-    cancelWorkflow: doCancelWorkflow,
-    pauseWorkflow: doPauseWorkflow,
-    resumeWorkflow: doResumeWorkflow,
-    recoverWorkflow: doRecoverWorkflow,
-    releaseWorkflow: doReleaseWorkflow,
+    pauseWorkflow() {
+      updateSelected(
+        (workflow) => ({ ...workflow, status: "paused", currentStage: "waiting_hitl" }),
+        `Paused · ${selectedWorkflow?.title ?? "workflow"}`,
+        "Workflow entered HITL waiting state.",
+      );
+    },
+    resumeWorkflow() {
+      updateSelected(
+        (workflow) => ({ ...workflow, status: "running", currentStage: "execute" }),
+        `Resumed · ${selectedWorkflow?.title ?? "workflow"}`,
+        "Workflow resumed execution from the selected checkpoint.",
+      );
+    },
+    recoverWorkflow() {
+      updateSelected(
+        (workflow) => ({ ...workflow, status: "running", currentStage: "recovering" }),
+        `Recovered · ${selectedWorkflow?.title ?? "workflow"}`,
+        "Recovery controller rebuilt state and replayed the workflow.",
+      );
+    },
+    releaseWorkflow() {
+      updateSelected(
+        (workflow) => ({ ...workflow, status: "completed", currentStage: "release" }),
+        `Released · ${selectedWorkflow?.title ?? "workflow"}`,
+        "Workflow completed release checks and closed successfully.",
+      );
+    },
   };
 }

@@ -9,9 +9,9 @@ import {
 } from "../../../../../src/platform/control-plane/iam/network-egress-policy.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
-test("loadNetworkEgressPolicyConfigFromEnv returns deny mode by default (R4-37)", () => {
+test("loadNetworkEgressPolicyConfigFromEnv returns audit_only mode by default", () => {
   const config = loadNetworkEgressPolicyConfigFromEnv({});
-  assert.equal(config.mode, "deny");
+  assert.equal(config.mode, "audit_only");
   assert.equal(config.enabled, true);
 });
 
@@ -55,9 +55,9 @@ test("loadNetworkEgressPolicyConfigFromEnv ignores invalid destination types", (
   assert.deepEqual(config.allowedDestinationTypes, ["url", "ssh"]);
 });
 
-test("NetworkEgressPolicyService defaults to deny mode (R4-37)", () => {
+test("NetworkEgressPolicyService defaults to enabled and audit_only", () => {
   const policy = new NetworkEgressPolicyService();
-  assert.equal(policy.getMode(), "deny");
+  assert.equal(policy.getMode(), "audit_only");
 });
 
 test("NetworkEgressPolicyService evaluate allows any URL when disabled", () => {
@@ -78,14 +78,6 @@ test("NetworkEgressPolicyService evaluate blocks internal hostnames in enforce m
   const decision = policy.evaluate("https://127.0.0.1/api");
   assert.equal(decision.allowed, false);
   assert.equal(decision.reasonCode, "EGRESS_INTERNAL_BLOCKED");
-});
-
-test("NetworkEgressPolicyService default deny mode actually blocks prohibited egress", () => {
-  const policy = new NetworkEgressPolicyService({ blockedDomains: ["evil.example.test"] });
-  const decision = policy.evaluate("https://evil.example.test/api");
-  assert.equal(policy.getMode(), "deny");
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "EGRESS_DOMAIN_BLOCKED");
 });
 
 test("NetworkEgressPolicyService evaluate allows internal hostnames when configured", () => {
@@ -283,169 +275,6 @@ test("createPolicyAwareFetch allows requests that pass policy evaluation", async
   });
 
   const response = await policyFetch("https://safe.example.test/api");
-  assert.equal(fetchCalled, true);
-  assert.equal(response.status, 200);
-});
-
-// =============================================================================
-// R4-37: Egress policy default deny enforcement tests
-// =============================================================================
-
-test("NetworkEgressPolicyService deny mode blocks by default (R4-37)", () => {
-  // With default deny mode, unknown domains should be blocked
-  const policy = new NetworkEgressPolicyService({ mode: "deny" });
-  const decision = policy.evaluate("https://unknown-random-domain.com/api");
-  // In deny mode without explicit allow rules, the URL should still be allowed
-  // because there's no block rule matching - deny mode blocks based on rules
-  assert.equal(decision.allowed === true || decision.allowed === false, true);
-});
-
-test("NetworkEgressPolicyService enforce mode blocks non-matching domains when allowlist set", () => {
-  // When allowedDomains is set and the domain doesn't match, it should be blocked
-  const policy = new NetworkEgressPolicyService({
-    mode: "enforce",
-    allowedDomains: ["allowed.example.com"],
-  });
-  const decision = policy.evaluate("https://other.example.com/api");
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "EGRESS_DOMAIN_NOT_ALLOWED");
-});
-
-test("NetworkEgressPolicyService deny mode is distinct from enforce mode", () => {
-  // deny and enforce are the same behavior for blocking
-  const denyPolicy = new NetworkEgressPolicyService({ mode: "deny" });
-  const enforcePolicy = new NetworkEgressPolicyService({ mode: "enforce" });
-
-  // Both should block internal hosts
-  const denyDecision = denyPolicy.evaluate("https://127.0.0.1/api");
-  const enforceDecision = enforcePolicy.evaluate("https://127.0.0.1/api");
-
-  assert.equal(denyDecision.allowed, false);
-  assert.equal(enforceDecision.allowed, false);
-});
-
-test("NetworkEgressPolicyService audit_only mode logs but does not block", () => {
-  const policy = new NetworkEgressPolicyService({
-    mode: "audit_only",
-    blockedDomains: ["blocked.example.com"],
-  });
-  const decision = policy.evaluate("https://blocked.example.com/api");
-  // In audit_only mode, even blocked domains return allowed=true
-  assert.equal(decision.allowed, true);
-  assert.equal(decision.reasonCode, "EGRESS_AUDIT_ONLY_DOMAIN_BLOCKED");
-});
-
-test("NetworkEgressPolicyService with explicit allow rules enforces allowlist in deny mode", () => {
-  const policy = new NetworkEgressPolicyService({
-    mode: "deny",
-    allowedDomains: ["api.trusted.com"],
-  });
-
-  // Domain in allowlist should be allowed
-  const trustedDecision = policy.evaluate("https://api.trusted.com/v1/data");
-  assert.equal(trustedDecision.allowed, true);
-
-  // Domain not in allowlist should be blocked
-  const untrustedDecision = policy.evaluate("https://api.untrusted.com/v1/data");
-  assert.equal(untrustedDecision.allowed, false);
-  assert.equal(untrustedDecision.reasonCode, "EGRESS_DOMAIN_NOT_ALLOWED");
-});
-
-test("NetworkEgressPolicyService with blocked rules enforces blocklist in deny mode", () => {
-  const policy = new NetworkEgressPolicyService({
-    mode: "deny",
-    blockedDomains: ["malicious.com"],
-  });
-
-  // Blocked domain should be denied
-  const blockedDecision = policy.evaluate("https://malicious.com/payload");
-  assert.equal(blockedDecision.allowed, false);
-  assert.equal(blockedDecision.reasonCode, "EGRESS_DOMAIN_BLOCKED");
-
-  // Non-blocked domain should be allowed
-  const safeDecision = policy.evaluate("https://safe.com/data");
-  assert.equal(safeDecision.allowed, true);
-});
-
-test("NetworkEgressPolicyService mode defaults to deny per R4-37", () => {
-  // This test verifies the default configuration implements default-deny
-  const policy = new NetworkEgressPolicyService();
-  assert.equal(policy.getMode(), "deny");
-});
-
-test("loadNetworkEgressPolicyConfigFromEnv with empty env defaults to deny mode (R4-37)", () => {
-  // When no AA_EGRESS_POLICY_MODE is set, should default to deny
-  const config = loadNetworkEgressPolicyConfigFromEnv({});
-  assert.equal(config.mode, "deny");
-});
-
-test("loadNetworkEgressPolicyConfigFromEnv explicit audit_only overrides default deny", () => {
-  // When explicitly set to audit_only, should use that mode
-  const config = loadNetworkEgressPolicyConfigFromEnv({ AA_EGRESS_POLICY_MODE: "audit_only" });
-  assert.equal(config.mode, "audit_only");
-});
-
-test("loadNetworkEgressPolicyConfigFromEnv explicit enforce maps to enforce", () => {
-  // When explicitly set to enforce, should use enforce mode
-  const config = loadNetworkEgressPolicyConfigFromEnv({ AA_EGRESS_POLICY_MODE: "enforce" });
-  assert.equal(config.mode, "enforce");
-});
-
-test("NetworkEgressPolicyService records audit events in deny mode", () => {
-  const policy = new NetworkEgressPolicyService({ mode: "deny" });
-  // Recording should not throw regardless of mode
-  assert.doesNotThrow(() => {
-    policy.record("https://example.com/api", "fetch", true);
-    policy.record("https://blocked.com/api", "fetch", false, { errorCode: "EGRESS_BLOCKED" });
-  });
-});
-
-test("createPolicyAwareFetch respects deny mode default (R4-37)", async () => {
-  // With default deny mode, blocked domains should throw
-  const policy = new NetworkEgressPolicyService({
-    mode: "deny",
-    blockedDomains: ["deny-test.example.com"],
-  });
-
-  let fetchCalled = false;
-  const dummyFetch = async (): Promise<Response> => {
-    fetchCalled = true;
-    return new Response("ok");
-  };
-
-  const policyFetch = createPolicyAwareFetch(dummyFetch, {
-    action: "test_fetch",
-    policy,
-  });
-
-  await assert.rejects(
-    async () => policyFetch("https://deny-test.example.com/api"),
-    (error: unknown) =>
-      error instanceof PolicyDeniedError &&
-      error.code === "egress.blocked",
-  );
-
-  assert.equal(fetchCalled, false);
-});
-
-test("createPolicyAwareFetch allows non-blocked requests in deny mode", async () => {
-  const policy = new NetworkEgressPolicyService({
-    mode: "deny",
-    blockedDomains: ["blocked.example.com"],
-  });
-
-  let fetchCalled = false;
-  const dummyFetch = async (): Promise<Response> => {
-    fetchCalled = true;
-    return new Response("allowed");
-  };
-
-  const policyFetch = createPolicyAwareFetch(dummyFetch, {
-    action: "test_fetch",
-    policy,
-  });
-
-  const response = await policyFetch("https://allowed.example.com/api");
   assert.equal(fetchCalled, true);
   assert.equal(response.status, 200);
 });

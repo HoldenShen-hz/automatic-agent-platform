@@ -342,7 +342,6 @@ export class AsyncMarketplaceListingRepository {
   }
 
   public async listDownloadsByListing(listingId: string, limit = 100): Promise<PackDownloadRecord[]> {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 100;
     return asyncQueryAll<PackDownloadRecord>(
       this.conn,
       `SELECT
@@ -358,7 +357,7 @@ export class AsyncMarketplaceListingRepository {
        ORDER BY downloaded_at DESC
        LIMIT $2`,
       listingId,
-      safeLimit,
+      limit,
     );
   }
 

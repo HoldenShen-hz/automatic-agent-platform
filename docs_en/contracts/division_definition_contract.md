@@ -36,14 +36,8 @@ This contract defines the declarative configuration structure of divisions, and 
 | `plugin_refs` | `string[]?` | Allowed plugin references |
 | `knowledge_namespace` | `string?` | Knowledge namespace for this division |
 | `roles` | `RoleRef[]` | Role definition list |
-| `default_plan_blueprint_ref` | `string` | **canonical** PlanGraphBundle blueprint reference |
-| `orchestration_plan_blueprint_ref` | `string?` | **canonical** multi-step orchestration PlanGraphBundle blueprint reference |
-| `default_workflow` | `string?` | **deprecated** legacy loader alias, only for old data compatibility |
-| `orchestration_workflow` | `string?` | **deprecated** legacy loader alias, only for old data compatibility |
-
-Rules:
-- `default_plan_blueprint_ref` and `orchestration_plan_blueprint_ref` are canonical references and must point to `PlanGraphBundle`.
-- `default_workflow` / `orchestration_workflow` are retained only for backward compatibility and must not be used as primary keys for new designs.
+| `default_workflow` | `string` | Default workflow ID |
+| `orchestration_workflow` | `string?` | Multi-step orchestration workflow ID |
 
 ## 3. Trigger Rules
 
@@ -63,14 +57,10 @@ Rules:
 
 ## 5. Workflow Rules
 
-- `division.yaml` should prioritize referencing orchestration blueprints through `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref`; `default_workflow` / `orchestration_workflow` are retained only as compatibility aliases.
+- `division.yaml` references workflows declared under this division through `default_workflow` / `orchestration_workflow`.
 - Workflow definitions can be inline in loader-supported minimal definitions, or located in `workflows/` directory and loaded by loader uniformly.
 - Data is passed between steps through output keys; if rework or rollback exists, it should be explicitly expressed, not relying on implicit conventions.
 - If division declares `domain`, tool / plugin references in workflow must match that domain.
-
-## v4.3 Contract Remediation
-
-- T-72: This document originally wrote `default_workflow / orchestration_workflow` as canonical references. The root cause was that when the division contract was formed, the platform was still centered on the workflow loader, and had not switched to plan blueprint and graph execution semantics. Fix: The main text now elevates `*_plan_blueprint_ref` to the authoritative field, and the old workflow keys are retained only as loader compatibility aliases.
 
 ## 6. Boundary with HR Agent
 

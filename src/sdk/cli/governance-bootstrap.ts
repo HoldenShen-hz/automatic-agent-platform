@@ -34,7 +34,6 @@ import { WorkerRegistryService } from "../../platform/execution/worker-pool/work
 import { ProtectedGovernanceIntegrityService } from "../../platform/control-plane/config-center/protected-governance-integrity-service.js";
 import { StorageQuotaService, type StorageQuotaCategoryConfig } from "../../platform/state-evidence/truth/storage-quota-service.js";
 import { SqliteReliabilityService } from "../../platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
-import { DurableEventBus } from "../../platform/state-evidence/events/durable-event-bus.js";
 
 /**
  * Services initialized by bootstrapGovernanceServices.
@@ -124,13 +123,11 @@ export function bootstrapGovernanceServices(options: GovernanceBootstrapOptions)
   const logger = new StructuredLogger();
   const retentionService = new ObservabilityRetentionService(db);
   const health = new HealthService(db, store);
-  const configDriftEventBus = new DurableEventBus(db, store);
   const checker = new StartupConsistencyChecker(
     db,
     store,
     createDefaultStartupConsistencyCheckerOptions({
       providerSecretResolver: null,
-      configDriftEventBus,
     }),
   );
   const stalledDetector = new StalledExecutionDetector(store);
@@ -194,13 +191,11 @@ export function bootstrapGovernanceServicesWithMetrics(options: GovernanceBootst
   const retentionService = new ObservabilityRetentionService(db);
   const health = new HealthService(db, store);
   const metrics = options.metrics ?? new MetricsService(db, health);
-  const configDriftEventBus = new DurableEventBus(db, store);
   const checker = new StartupConsistencyChecker(
     db,
     store,
     createDefaultStartupConsistencyCheckerOptions({
       providerSecretResolver: null,
-      configDriftEventBus,
     }),
   );
   const stalledDetector = new StalledExecutionDetector(store);
@@ -235,3 +230,4 @@ export function bootstrapGovernanceServicesWithMetrics(options: GovernanceBootst
 
   return { health, diagnostics, doctor, checker, stalledDetector, retentionService, logger, metrics, workspaceRoot: wsRoot };
 }
+

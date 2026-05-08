@@ -13,7 +13,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { normalizeSandboxMode, type SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
+import type { SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -26,7 +26,7 @@ export type RollbackPolicy = "none" | "manual" | "automatic";
 export interface WorkflowStep {
   nodeId: string;
   /** @deprecated compatibility alias; use nodeId */
-  stepId?: string;
+  stepId: string;
   name: string;
   action: string;
   input: Record<string, unknown>;
@@ -43,17 +43,13 @@ export interface SubWorkflowContext {
   harnessRunId?: string | null;
   parentNodeRunId?: string | null;
   /** @deprecated compatibility alias; use harnessRunId */
-  executionId?: string | null;
+  executionId: string;
   taskId: string;
   tenantId: string | null;
   correlationId: string;
   /** @deprecated compatibility alias; use parentNodeRunId */
-  parentExecutionId?: string | null;
-  sandboxTier: SandboxMode;
-}
-
-export interface SubWorkflowContextInput extends Omit<SubWorkflowContext, "sandboxTier"> {
-  sandboxTier: string;
+  parentExecutionId: string | null;
+  sandboxTier: SandboxModeLike;
 }
 
 export interface SubWorkflowDefinition {
@@ -82,9 +78,7 @@ export interface WorkflowStepDefinition {
 }
 
 export interface SubWorkflowExecutionResult {
-  subWorkflowRunId: string;
-  /** @deprecated compatibility alias; use subWorkflowRunId */
-  executionId?: string;
+  executionId: string;
   harnessRunId: string | null;
   planGraphBundleId: string | null;
   workflowId: string;
@@ -108,7 +102,7 @@ export interface SubWorkflowExecutorOptions {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface WorkflowExecution {
-  subWorkflowRunId: string;
+  executionId: string;
   definition: SubWorkflowDefinition;
   context: SubWorkflowContext;
   status: WorkflowStatus;
@@ -139,22 +133,6 @@ function canonicalStepId(input: { readonly nodeId?: string | null; readonly step
   return input.nodeId?.trim() || input.stepId;
 }
 
-function resolveParentRunReference(context: Pick<SubWorkflowContext, "parentNodeRunId" | "parentExecutionId">): string | null {
-  return context.parentNodeRunId ?? context.parentExecutionId ?? null;
-}
-
-function resolveNestedDepth(context: Pick<SubWorkflowContext, "parentNodeRunId" | "parentExecutionId">): number {
-  const reference = resolveParentRunReference(context);
-  if (reference == null || reference.trim().length === 0) {
-    return 0;
-  }
-  return reference.split(":").filter((segment) => segment.length > 0).length;
-}
-
-function resolveHarnessRunId(context: Pick<SubWorkflowContext, "harnessRunId" | "executionId">): string | null {
-  return context.harnessRunId ?? context.executionId ?? null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-Workflow Executor
 // ─────────────────────────────────────────────────────────────────────────────
@@ -183,18 +161,17 @@ export class SubWorkflowExecutor {
    */
   public createWorkflow(
     definition: SubWorkflowDefinition,
-    context: SubWorkflowContextInput,
+    context: SubWorkflowContext,
   ): string {
-    const nestedDepth = resolveNestedDepth(context);
-    if (nestedDepth >= this.maxNestedDepth) {
+    if (context.parentExecutionId && context.parentExecutionId.split(":").length >= this.maxNestedDepth) {
       throw new ValidationError(
         "subworkflow_executor.max_depth_exceeded",
         `Maximum nested workflow depth (${this.maxNestedDepth}) exceeded`,
-        { details: { nestedDepth } },
+        { details: { nestedDepth: context.parentExecutionId.split(":").length } },
       );
     }
 
-    const subWorkflowRunId = newId("swf");
+    const executionId = newId("swf");
     const steps = new Map<string, WorkflowStep>();
     const stepOrder: string[] = [];
 
@@ -216,12 +193,9 @@ export class SubWorkflowExecutor {
     }
 
     const execution: WorkflowExecution = {
-      subWorkflowRunId,
+      executionId,
       definition,
-      context: {
-        ...context,
-        sandboxTier: normalizeSandboxMode(context.sandboxTier),
-      },
+      context,
       status: "created",
       steps,
       stepOrder,
@@ -231,8 +205,8 @@ export class SubWorkflowExecutor {
       checkpoints: [],
     };
 
-    this.executions.set(subWorkflowRunId, execution);
-    return subWorkflowRunId;
+    this.executions.set(executionId, execution);
+    return executionId;
   }
 
   /**
@@ -711,13 +685,12 @@ export class SubWorkflowExecutor {
     error?: string,
   ): SubWorkflowExecutionResult {
     const result: SubWorkflowExecutionResult = {
-      subWorkflowRunId: execution.subWorkflowRunId,
-      executionId: execution.subWorkflowRunId,
-      harnessRunId: resolveHarnessRunId(execution.context),
+      executionId: execution.executionId,
+      harnessRunId: execution.context.harnessRunId ?? execution.context.executionId,
       planGraphBundleId: execution.definition.workflowId,
       workflowId: execution.definition.workflowId,
       status: execution.status,
-      steps: this.getSteps(execution.subWorkflowRunId),
+      steps: this.getSteps(execution.executionId),
       durationMs: Date.now() - startTime,
       timestamp: nowIso(),
     };

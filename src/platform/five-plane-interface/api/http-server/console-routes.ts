@@ -269,7 +269,7 @@ function buildWorkflowListHtml(workflows: ReturnType<MissionControlService["list
       ${workflows
         .map(
           (workflow) =>
-            `<li><a href="/console/workflows/${encodeURIComponent(workflow.taskId)}">${escapeHtml(workflow.workflowId)}</a> :: ${escapeHtml(workflow.workflowStatus)} :: task ${escapeHtml(workflow.taskId)}</li>`,
+            `<li><a href="/console/workflows/${encodeURIComponent(workflow.taskId)}">${escapeHtml(workflow.workflowId)}</a> :: ${escapeHtml(workflow.workflowStatus)} :: task ${escapeHtml(workflow.taskId)} :: step ${workflow.currentStepIndex}</li>`,
         )
         .join("") || "<li>No workflows available</li>"}
     </ul>
@@ -290,9 +290,10 @@ function buildWorkflowCockpitHtml(cockpit: ReturnType<MissionControlService["get
     <p>Workflow: <strong>${escapeHtml(cockpit.summary.workflowId)}</strong></p>
     <p>Task: <a href="/console/tasks/${encodeURIComponent(cockpit.summary.taskId)}">${escapeHtml(cockpit.summary.taskId)}</a></p>
     <p>Status: ${escapeHtml(cockpit.summary.workflowStatus)}</p>
-    <p>Node Progress: ${cockpit.presentation?.progressPercent ?? 0}%</p>
-    <p>Active Node: ${escapeHtml(cockpit.presentation?.activeNodeRunId ?? "none")}</p>
+    <p>Current Step Index: ${cockpit.summary.currentStepIndex}</p>
+    <p>Retry Count: ${cockpit.summary.retryCount}</p>
     <p>Pending Approvals: ${cockpit.summary.pendingApprovalCount}</p>
+    <p>Resumable From Step: ${escapeHtml(cockpit.summary.resumableFromStep ?? "n/a")}</p>
     <p>Recovery Recommendation: ${escapeHtml(cockpit.inspect.runtimeRecovery.candidates[0]?.suggestedAction ?? "none")}</p>
     <section>
       <h2>Timeline</h2>
@@ -376,7 +377,7 @@ function buildAdminTakeoverHtml(view: ReturnType<MissionControlService["getAdmin
   <body>
     <h1>Admin Takeover Console</h1>
     ${buildConsoleNav("admin")}
-    <p>Task Scope: <strong>${escapeHtml(view.scope.harnessRunId)}</strong></p>
+    <p>Task Scope: <strong>${escapeHtml(view.scope.taskId)}</strong></p>
     <p>Division: ${escapeHtml(view.scope.divisionId ?? "none")}</p>
     <p>Workspace: ${escapeHtml(view.scope.workspaceId ?? "none")}</p>
     <p>Tenant: ${escapeHtml(view.scope.tenantId ?? "none")}</p>

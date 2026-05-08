@@ -5,7 +5,7 @@
 
 ## Context
 
-The execution plane (P4) is where agents actually execute tasks. It requires unified execution strategies, a registry mechanism, recovery mechanisms, and runtime patterns.
+The Execution Plane (P4) is where the Agent actually executes tasks, requiring unified execution strategies, registration mechanisms, recovery mechanisms, and runtime modes.
 
 ## Decision
 
@@ -40,20 +40,20 @@ interface ExecutionStrategy {
 State and Recovery Boundaries:
 
 - All truth state progression must go through `RuntimeStateMachine.transition(command)`.
-- Repository / recovery workers must NOT directly modify status columns of `harness_runs / node_runs / node_attempts` to express start, blocking, success, or failure.
-- Recovery actions must be determined based on `NodeAttemptReceipt`, lease, checkpoint, and evidence refs, then persisted via `RuntimeStateMachine.transition(command)`.
+- repository / recovery workers must not directly modify the status columns of `harness_runs / node_runs / node_attempts` to express start, blocked, success, or failure.
+- Recovery actions can only decide the next step based on `NodeAttemptReceipt`, lease, checkpoint, and evidence refs, then persist to truth via `RuntimeStateMachine.transition(command)`.
 
 ### ExecutorRegistry
 
-- register() - registers an executor
-- resolve() - resolves an executor by type
+- register() registers an executor
+- resolve() resolves executor by type
 - plugin-executor implementation
 
 ### 6 Built-in Executor Types
 
 | Type | Description |
 |------|-------------|
-| ToolExecutor | Tool call executor |
+| ToolExecutor | Tool invocation executor |
 | PluginExecutor | Plugin executor |
 | BrowserExecutor | Browser automation executor |
 | SubWorkflowExecutor | Sub-workflow executor |
@@ -69,29 +69,29 @@ Corresponds to the 8 PolicyMode modes, managed by PolicyCenterService.
 | Worker | Responsibility |
 |--------|----------------|
 | RuntimeRecoveryService | General recovery logic |
-| RuntimeRepairService | Repairs corrupted state |
-| RuntimeRecoveryDecisionService | Recovery decisions |
-| RuntimeRecoveryReplayService | Replays execution |
-| StalledExecutionEscalationService | Stalled execution escalation |
-| ExecutionDbQueueDisconnectRepairService | Queue disconnect repair |
+| RuntimeRepairService | Repair corrupted state |
+| RuntimeRecoveryDecisionService | Recovery decision |
+| RuntimeRecoveryReplayService | Replay execution |
+| StalledExecutionEscalationService | Stall escalation |
+| ExecutionDbQueueDisconnectRepairService | Queue disconnection repair |
 
 ## Consequences
 
-Pros:
+Benefits:
 
 - Unified execution strategy simplifies development
 - ExecutorRegistry supports extensibility
 - 6 recovery workers implement self-healing
 
-Cons:
+Costs:
 
 - Execution layer adds abstraction complexity
 - Recovery logic requires careful design
 
-## Cross-references
+## Cross References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
-- [ADR-025 Stability Architecture - Seven Layers](./025-stability-architecture-seven-layers.md)
+- [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
 
 ## Source Section
 
@@ -99,5 +99,5 @@ Cons:
 
 ## v4.3 ADR Remediation
 
-- A-3: This ADR originally only described executors, recovery workers, and execution strategy, without stating that `RuntimeStateMachine.transition(command)` is the only state change entry point. Root cause: the execution ADR followed the execution-centric repository approach. Fix: The text now includes state and recovery boundaries, clarifying that all truth state progression must go through the state machine.
-- A-11: This ADR originally simplified timeout to `default_ms / per_step_ms`. Root cause: execution strategy still used a unified step timeout model, without differentiating by node type as `NodeRun` types evolved. Fix: The text now changes timeout to `by_node_kind`, explicitly distinguishing LLM / tool / HITL nodes.
+- A-3: This ADR originally only described executors, recovery workers, and execution strategies, without stating that `RuntimeStateMachine.transition(command)` is the only state change entry point. The root cause was that the execution ADR followed an execution-centric repository approach. Fix: The text now includes state and recovery boundaries, clarifying that all truth state progression must go through the state machine.
+- A-11: This ADR originally simplified timeout to `default_ms / per_step_ms`. The root cause was that the execution strategy remained at a unified step timeout model and did not introduce node-type-based dynamic timeout as `NodeRun` types differentiated. Fix: The text now changes timeout to `by_node_kind`, explicitly distinguishing LLM / tool / HITL nodes.

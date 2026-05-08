@@ -33,7 +33,7 @@ test("harness canonical subdirectories expose runtime-aligned entrypoints", () =
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "manual",
-    tool_policy: { allowedTools: [] },
+    toolPolicy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 9, maxCost: 1, maxDurationMs: 60_000 },

@@ -172,19 +172,10 @@ test("Onboarding: task design service creates workflow for domain", () => {
       recipes: [
         {
           recipeId: "recipe_design",
-          name: "Design Recipe",
           domainId: "design_test",
-          archetype: "analytics",
-          risk_profile_ref: "risk_design",
-          guardrail_overlay: "standard",
-          default_prompt_bundle_ref: "prompt_design",
-          acceptance_checklist_ref: "check_design",
           triggerPhrases: ["design", "workflow"],
           defaultWorkflowId: "design_test.primary",
           defaultToolBundleIds: ["design_tools"],
-          riskLevel: "low",
-          recommended_workflow_ids: [],
-          requiredApproval: false,
         },
       ],
       promptLibrary: {

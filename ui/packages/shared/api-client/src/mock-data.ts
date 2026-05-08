@@ -8,11 +8,8 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
-  KnowledgeItemDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
-  PluginDTO,
-  PromptDTO,
   QueueDTO,
   RoleDTO,
   SystemConfigDTO,
@@ -37,9 +34,6 @@ export interface MockApiShape {
   readonly analytics: readonly AnalyticsMetricDTO[];
   readonly costs: readonly CostReportDTO[];
   readonly marketplace: readonly MarketplacePackDTO[];
-  readonly knowledge: readonly KnowledgeItemDTO[];
-  readonly plugins: readonly PluginDTO[];
-  readonly prompts: readonly PromptDTO[];
   readonly explanations: readonly ExplanationDTO[];
   readonly roles: readonly RoleDTO[];
   readonly featureFlags: readonly FeatureFlagDTO[];
@@ -59,34 +53,10 @@ export const defaultMockApiShape: MockApiShape = {
     activeExecutions: 12,
     approvalBacklog: 3,
     alertSummary: "2 medium alerts",
-    // §R7-15: Required metrics
-    successRate: 98.2,
-    avgDurationMs: 1250,
-    activeAgents: 8,
   },
   tasks: [
-    {
-      id: "task-1",
-      title: "春季营销活动",
-      status: "running",
-      domainId: "marketing",
-      currentStep: "launch-assets",
-      owner: "growth-ops",
-      evidenceCount: 6,
-      timelineDepth: 5,
-      resourceUsage: { cpuPercent: 62, memoryMb: 768, runtimeMinutes: 18 },
-    },
-    {
-      id: "task-2",
-      title: "量化策略检查",
-      status: "blocked",
-      domainId: "quant-trading",
-      currentStep: "approval",
-      owner: "quant-review",
-      evidenceCount: 9,
-      timelineDepth: 5,
-      resourceUsage: { cpuPercent: 41, memoryMb: 512, runtimeMinutes: 27 },
-    },
+    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
+    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
   ],
   workflows: [
     {
@@ -119,8 +89,8 @@ export const defaultMockApiShape: MockApiShape = {
     { approvalId: "approval-1", taskId: "task-2", riskLevel: "critical", reasonSummary: "策略需要人工审批" },
   ],
   incidents: [
-    { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z", domainId: "platform" },
-    { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z", domainId: "governance" },
+    { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z" },
+    { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z" },
   ],
   workers: [
     { id: "worker-1", status: "busy", queue: "dispatch", heartbeatLagMs: 140 },
@@ -147,16 +117,6 @@ export const defaultMockApiShape: MockApiShape = {
   marketplace: [
     { id: "pack-1", name: "Campaign Optimizer", category: "marketing", version: "1.4.0" },
     { id: "pack-2", name: "Risk Lens", category: "finance", version: "2.1.3" },
-  ],
-  knowledge: [
-    { id: "kb-1", title: "Launch checklist", domainId: "marketing", classification: "internal", updatedAt: "2026-04-23T16:00:00Z" },
-    { id: "kb-2", title: "Risk control playbook", domainId: "quant-trading", classification: "restricted", updatedAt: "2026-04-22T12:30:00Z" },
-  ],
-  plugins: [
-    { id: "plugin-1", name: "Risk Analyzer", provider: "automatic-agent", version: "1.2.0", status: "active" },
-  ],
-  prompts: [
-    { id: "prompt-1", name: "Incident triage", version: "2026-04-01", status: "active", owner: "platform-sre" },
   ],
   explanations: [
     { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },

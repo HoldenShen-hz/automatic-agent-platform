@@ -50,13 +50,6 @@ export interface RawDivisionConfig {
   orchestration_workflow?: unknown;
   triggers?: unknown;
   roles?: unknown;
-  // §37: DomainDescriptor structured hierarchy - supports both singular (new) and plural (legacy) forms
-  domain_descriptor?: unknown;
-  domain_descriptors?: unknown;
-  risk_profile?: unknown;
-  risk_profiles?: unknown;
-  eval_spec?: unknown;
-  eval_specs?: unknown;
 }
 
 export interface RawWorkflowStepConfig {

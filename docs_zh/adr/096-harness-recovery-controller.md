@@ -32,7 +32,3 @@ Harness 的失败恢复不能依赖调用方自由决定，否则会破坏一致
 
 - failure handling 不再分散
 - Replay、repair、resume 共享同一恢复模型
-
-## v4.3 ADR Remediation
-
-- R10-45: 已修正交付门禁术语为 `Ring 2 durable-readiness`，符合 §33 ring 口径废弃 Phase 1-9 的要求。

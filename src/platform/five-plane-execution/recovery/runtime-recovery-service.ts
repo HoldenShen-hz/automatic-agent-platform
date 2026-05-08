@@ -42,10 +42,9 @@
  */
 
 import type { ApprovalRecord, ArtifactRecord, DeadLetterRecord, EventRecord } from "../../contracts/types/domain.js";
-import type { ArtifactRef, CompensationRecord, SideEffectRecord } from "../../contracts/executable-contracts/index.js";
-import { nowIso, newId } from "../../contracts/types/ids.js";
+
+import { nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore, type RuntimeRecoveryRecord } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { RuntimeTruthRepository } from "../../state-evidence/truth/runtime-truth-repository.js";
 import {
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
@@ -62,7 +61,6 @@ import {
   ERROR_CLASS_TO_EXCEPTION_TYPE,
   CATEGORY_TO_EXCEPTION_TYPE,
 } from "./exception-recovery-types.js";
-import { CompensationManager, type CompensationContext } from "../../five-plane-execution/compensation-manager.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -75,8 +73,6 @@ export type RecoverySuggestedAction =
   | "resume_same_worker"
   /** Cancel and create a new execution ticket for retry */
   | "retry_new_ticket"
-  /** Execute saga rollback/compensation for side effects */
-  | "compensate"
   /** Requires human operator intervention to resolve */
   | "escalate_takeover"
   /** Move to dead letter queue for manual inspection */
@@ -85,24 +81,6 @@ export type RecoverySuggestedAction =
   | "cancel"
   /** No recovery action possible or necessary */
   | "none";
-
-/**
- * Result of an executed recovery action including compensation.
- */
-export interface RecoveryExecutionResult {
-  /** Whether the recovery action succeeded */
-  success: boolean;
-  /** The action that was executed */
-  action: RecoverySuggestedAction;
-  /** Compensation ID if compensation was executed */
-  compensationId?: string;
-  /** Error message if failed */
-  errorMessage?: string;
-  /** Evidence references from the recovery action */
-  evidenceRefs: ArtifactRef[];
-  /** Timestamp when the action completed */
-  completedAt: string;
-}
 
 /**
  * Represents an execution that is a candidate for recovery analysis.
@@ -190,8 +168,6 @@ export interface TaskRuntimeRecoveryView {
   requestedApprovals: ApprovalRecord[];
   /** Dead letter records associated with this task */
   deadLetters: DeadLetterRecord[];
-  /** Compensation records for executed compensations */
-  compensationRecords: CompensationRecord[];
   /** Latest stable step checkpoint available for recovery */
   latestCheckpoint: WorkflowStepCheckpointSummary | null;
   /** Recent recovery-related events (up to 10, most recent first) */
@@ -236,512 +212,27 @@ export interface DivisionRecoveryOverview {
 }
 
 /**
- * Main service for runtime recovery analysis and execution. Provides methods to
- * identify recoverable executions, build diagnostic views, generate recovery
- * overviews by division, and execute recovery actions including compensation.
+ * Main service for runtime recovery analysis. Provides methods to
+ * identify recoverable executions, build diagnostic views, and
+ * generate recovery overviews by division.
  *
- * Unlike the read-only analysis service, this service can execute recovery
- * actions via the CompensationManager. State modifications are performed here
- * and by RuntimeRepairService for consistency checks.
+ * This service is read-only - it queries the store for recovery
+ * candidates and builds analysis views but does not modify state.
+ * State modifications are performed by RuntimeRepairService.
  */
 export class RuntimeRecoveryService {
   private readonly config: ExceptionRecoveryConfig;
-  private readonly compensationManager: CompensationManager;
-  private readonly runtimeRepo: RuntimeTruthRepository | undefined;
 
   /**
    * Creates a new RuntimeRecoveryService instance.
    * @param store - The AuthoritativeTaskStore used for querying execution and task data
-   * @param compensationManager - The CompensationManager for executing compensation actions
    * @param config - Optional exception recovery configuration (defaults to loading from config/exception-recovery/default.json)
-   * @param runtimeRepo - Optional RuntimeTruthRepository for accessing SideEffectRecords during compensation
    */
   public constructor(
     private readonly store: AuthoritativeTaskStore,
-    compensationManager?: CompensationManager,
     config?: ExceptionRecoveryConfig,
-    runtimeRepo?: RuntimeTruthRepository,
   ) {
     this.config = config ?? loadExceptionRecoveryConfig();
-    this.compensationManager = compensationManager ?? new CompensationManager();
-    this.runtimeRepo = runtimeRepo;
-  }
-
-  /**
-   * Executes a recovery action for an execution candidate.
-   * Unlike the read-only analysis methods, this actually performs recovery
-   * including saga rollback/compensation when appropriate.
-   *
-   * @param executionId - The execution to recover
-   * @param action - The recovery action to execute
-   * @param operatorId - The operator executing the action (for audit)
-   * @returns Result of the recovery execution
-   */
-  public async executeRecoveryAction(
-    executionId: string,
-    action: RecoverySuggestedAction,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    const records = this.store.operations.listRuntimeRecoveryRecords(`execution_id = ?`, [executionId]);
-    const record = records[0];
-    if (!record) {
-      return {
-        success: false,
-        action,
-        errorMessage: `Execution not found: ${executionId}`,
-        evidenceRefs: [],
-        completedAt: nowIso(),
-      };
-    }
-
-    switch (action) {
-      case "resume_same_worker":
-        return this.executeResumeSameWorker(executionId, record, operatorId);
-      case "retry_new_ticket":
-        return this.executeRetryNewTicket(executionId, record, operatorId);
-      case "compensate":
-        return this.executeCompensation(executionId, record, operatorId);
-      case "move_dead_letter":
-        return this.executeMoveDeadLetter(executionId, record, operatorId);
-      case "cancel":
-        return this.executeCancel(executionId, record, operatorId);
-      case "escalate_takeover":
-        return this.executeEscalate(executionId, record, operatorId);
-      case "none":
-        return {
-          success: true,
-          action,
-          evidenceRefs: [],
-          completedAt: nowIso(),
-        };
-      default:
-        return {
-          success: false,
-          action,
-          errorMessage: `Unknown recovery action: ${action}`,
-          evidenceRefs: [],
-          completedAt: nowIso(),
-        };
-    }
-  }
-
-  /**
-   * Executes resume_same_worker recovery action.
-   */
-  private async executeResumeSameWorker(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // Emit recovery event with status transition request
-    // The actual status update is handled by the execution state transition service
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:resume_requested",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "resume_same_worker",
-        operatorId,
-        executionId,
-        targetStatus: "resuming",
-        reason: "resume_same_worker",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: true,
-      action: "resume_same_worker",
-      evidenceRefs: [],
-      completedAt: nowIso(),
-    };
-  }
-
-  /**
-   * Executes retry_new_ticket recovery action by canceling current and creating new.
-   */
-  private async executeRetryNewTicket(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // Create new execution ticket
-    const newExecutionId = newId("exec");
-
-    // Emit recovery event for retry - actual status transition handled by state transition service
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:retry_initiated",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "retry_new_ticket",
-        oldExecutionId: executionId,
-        newExecutionId,
-        operatorId,
-        reason: "retry_new_ticket",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: true,
-      action: "retry_new_ticket",
-      evidenceRefs: [],
-      completedAt: nowIso(),
-    };
-  }
-
-  /**
-   * Executes compensation/rollback for the execution's side effects.
-   * Uses the CompensationManager to execute saga rollback per §14.7.
-   *
-   * R8-02 FIX: This method now actually executes compensation using the CompensationManager,
-   * not just emits an event. It finds compensatable side effects and plans/executes
-   * compensation for each.
-   */
-  private async executeCompensation(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // R8-02 FIX: Find side effects for this execution and execute actual compensation
-    const sideEffects = this.findSideEffectsForExecution(executionId, record.taskId);
-    const compensatableEffects = sideEffects.filter((se) => this.compensationManager.isCompensatable(se));
-
-    if (compensatableEffects.length === 0) {
-      // No compensatable side effects - emit event and return
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: record.taskId,
-        sessionId: null,
-        executionId,
-        eventType: "recovery:compensation_initiated",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          action: "compensate",
-          executionId,
-          operatorId,
-          reason: "No compensatable side effects found",
-          timestamp: nowIso(),
-        }),
-        traceId: record.traceId,
-        createdAt: nowIso(),
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: null,
-        replayBehavior: null,
-        principal: operatorId,
-        evidenceRefs: [],
-      });
-
-      return {
-        success: true,
-        action: "compensate",
-        evidenceRefs: [],
-        completedAt: nowIso(),
-      };
-    }
-
-    // R8-02 FIX: Execute actual compensation for each compensatable side effect
-    const compensationContext: CompensationContext = {
-      tenantId: record.divisionId ?? "unknown",
-      traceId: record.traceId,
-      operatorId,
-      reason: "Saga rollback initiated for execution",
-    };
-
-    const compensationIds: string[] = [];
-    const evidenceRefs: ArtifactRef[] = [];
-
-    for (const sideEffect of compensatableEffects) {
-      // Validate preconditions
-      const validation = this.compensationManager.validateCompensationPreconditions(sideEffect);
-      if (!validation.valid) {
-        logger.log({
-          level: "warn",
-          message: "Compensation precondition failed",
-          data: { sideEffectId: sideEffect.sideEffectId, reason: validation.reason },
-        });
-        continue;
-      }
-
-      // R8-02 FIX: Plan and execute compensation using the CompensationManager
-      const compensationPlan = this.compensationManager.planCompensation(sideEffect, compensationContext);
-      const compensationResult = this.compensationManager.executeCompensationSteps(compensationPlan, compensationContext);
-
-      // Update compensation record with execution result
-      const compensationRecord = this.compensationManager.createCompensationRecord(
-        sideEffect.sideEffectId,
-        sideEffect.harnessRunId,
-        { artifactId: compensationPlan.compensationId, uri: `compensation://${compensationPlan.compensationId}`, kind: "compensation_plan" },
-        compensationResult.finalStatus,
-      );
-
-      // Record evidence refs from execution
-      for (const ref of compensationResult.evidenceRefs) {
-        evidenceRefs.push(ref);
-      }
-
-      // R8-02 FIX: Record the compensation execution result
-      compensationIds.push(compensationPlan.compensationId);
-
-      // Emit compensation executed event with result
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: record.taskId,
-        sessionId: null,
-        executionId,
-        eventType: "recovery:compensation_executed",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          action: "compensate",
-          executionId,
-          operatorId,
-          sideEffectId: sideEffect.sideEffectId,
-          compensationId: compensationPlan.compensationId,
-          compensationSteps: compensationPlan.steps.length,
-          success: compensationResult.success,
-          finalStatus: compensationResult.finalStatus,
-          reason: "Compensation executed for side effect",
-          timestamp: nowIso(),
-        }),
-        traceId: record.traceId,
-        createdAt: nowIso(),
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: null,
-        replayBehavior: null,
-        principal: operatorId,
-        evidenceRefs: compensationResult.evidenceRefs.map((ref) => ref.artifactId),
-      });
-    }
-
-    // Emit overall compensation initiated event
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:compensation_initiated",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "compensate",
-        executionId,
-        operatorId,
-        compensationIds,
-        compensatableCount: compensatableEffects.length,
-        reason: "Saga rollback executed for execution",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: compensationIds.length > 0,
-      action: "compensate",
-      ...(compensationIds[0] != null ? { compensationId: compensationIds[0] } : {}),
-      evidenceRefs,
-      completedAt: nowIso(),
-    };
-  }
-
-  /**
-   * R8-02 FIX: Find side effects for an execution.
-   * Uses RuntimeTruthRepository if available, otherwise falls back to empty array.
-   */
-  private findSideEffectsForExecution(executionId: string, taskId: string): SideEffectRecord[] {
-    if (!this.runtimeRepo) {
-      return [];
-    }
-
-    // Get all side effects from the runtime repository and filter by execution/task
-    // The RuntimeTruthRepository stores side effects by ID
-    const snapshot = this.runtimeRepo.snapshot();
-    return snapshot.sideEffects.filter((se) => {
-      // Match by executionId or taskId depending on what's available
-      return se.harnessRunId === executionId || (se as unknown as { taskId?: string }).taskId === taskId;
-    });
-  }
-
-  /**
-   * Executes move_dead_letter recovery action.
-   */
-  private async executeMoveDeadLetter(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // Emit recovery event for dead-letter - actual DLQ handling is done by DLQ service
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:dead_letter_initiated",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "move_dead_letter",
-        operatorId,
-        reason: "move_dead_letter",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: true,
-      action: "move_dead_letter",
-      evidenceRefs: [],
-      completedAt: nowIso(),
-    };
-  }
-
-  /**
-   * Executes cancel recovery action.
-   */
-  private async executeCancel(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // Emit recovery event for cancellation - actual status change handled by state transition service
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:cancel_initiated",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "cancel",
-        operatorId,
-        reason: "cancel",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: true,
-      action: "cancel",
-      evidenceRefs: [],
-      completedAt: nowIso(),
-    };
-  }
-
-  /**
-   * Executes escalate_takeover recovery action (no state change, just event).
-   */
-  private async executeEscalate(
-    executionId: string,
-    record: RuntimeRecoveryRecord,
-    operatorId: string,
-  ): Promise<RecoveryExecutionResult> {
-    // Emit escalation event for human operator attention
-    this.store.event.insertEvent({
-      id: newId("evt"),
-      taskId: record.taskId,
-      sessionId: null,
-      executionId,
-      eventType: "recovery:escalated",
-      eventTier: "tier_2",
-      payloadJson: JSON.stringify({
-        action: "escalate_takeover",
-        operatorId,
-        reason: "High-risk execution requires human operator intervention",
-        timestamp: nowIso(),
-      }),
-      traceId: record.traceId,
-      createdAt: nowIso(),
-      aggregateId: null,
-      runId: null,
-      sequence: null,
-      causationId: null,
-      correlationId: null,
-      payloadHash: null,
-      idempotencyKey: null,
-      replayBehavior: null,
-      principal: operatorId,
-      evidenceRefs: [],
-    });
-
-    return {
-      success: true,
-      action: "escalate_takeover",
-      evidenceRefs: [],
-      completedAt: nowIso(),
-    };
   }
 
   /**
@@ -804,7 +295,7 @@ export class RuntimeRecoveryService {
 
   public findStaleExecuting(query: LegacyStaleExecutionQuery = {}): LegacyRecoveryCandidate[] {
     const thresholdMs = Math.max(0, query.stalenessThresholdMs ?? this.config.staleExecutionThresholdMs);
-    const staleBefore = new Date(Date.now() - thresholdMs).toISOString();
+    const staleBefore = new Date(Date.now() + thresholdMs).toISOString();
     return this.listStaleRuns(staleBefore, query.tenantId).map((candidate) => ({
       ...candidate,
       errorClassification: classifyLegacyError(candidate.latestErrorCode),
@@ -832,51 +323,19 @@ export class RuntimeRecoveryService {
       });
     }
 
-    const taskEventsResult = this.store.event.listEventsForTask(taskId, tenantId);
-    // Get compensation records from events that indicate compensation was executed
-    const compensationRecords = this.findCompensationRecordsFromEvents(taskEventsResult.events);
-
+    const taskEvents = this.store.event.listEventsForTask(taskId, tenantId);
     return {
       taskId,
       divisionId: task.divisionId,
       candidates: this.store.operations.buildRuntimeRecoveryView(taskId, tenantId).map((record) => toCandidate(record, inferReason(record), this.config)),
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
-      compensationRecords,
       latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
-      recentRecoveryEvents: taskEventsResult.events
+      recentRecoveryEvents: taskEvents
         .filter((event) => event.eventType.startsWith("recovery:"))
         .slice(-10)
         .map((event) => toRecoveryEvent(event)),
     };
-  }
-
-  /**
-   * Extracts compensation records from recovery events.
-   */
-  private findCompensationRecordsFromEvents(taskEvents: EventRecord[]): CompensationRecord[] {
-    const records: CompensationRecord[] = [];
-    for (const event of taskEvents) {
-      if (event.eventType === "recovery:compensated") {
-        const payload = safeParseRecord(event.payloadJson);
-        if (payload && typeof payload.compensationId === "string") {
-          records.push({
-            compensationId: payload.compensationId,
-            sideEffectId: (payload.sideEffectId as string) ?? "",
-            harnessRunId: (payload.harnessRunId as string) ?? "",
-            planRef: {
-              artifactId: payload.compensationId,
-              uri: `compensation://${payload.compensationId}`,
-              kind: "compensation_plan",
-            },
-            status: (payload.success ? "succeeded" : "failed") as CompensationRecord["status"],
-            evidenceRefs: event.evidenceRefs?.map((ref) => ({ artifactId: ref, uri: ref })) ?? [],
-            createdAt: event.createdAt,
-          });
-        }
-      }
-    }
-    return records;
   }
 
   /**

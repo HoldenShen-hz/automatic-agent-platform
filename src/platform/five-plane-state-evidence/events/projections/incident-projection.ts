@@ -12,34 +12,7 @@
  * @see event-registry: ../event-registry.ts
  */
 
-import type { UnifiedSeverity } from "../../../contracts/types/unified-severity.js";
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
-
-/**
- * Legacy severity levels used in event payloads (e.g., ComplianceViolationDetectedPayload).
- * These must be converted to UnifiedSeverity (SEV1-4) for internal use.
- */
-type LegacySeverity = "low" | "medium" | "high" | "critical";
-
-/**
- * Converts legacy severity format to UnifiedSeverity.
- * Mapping: critical -> SEV1, high -> SEV2, medium -> SEV3, low -> SEV4
- *
- * R14-02: Event payloads may use legacy severity format, so conversion is required
- * when processing events that originate from external systems or older event schemas.
- */
-function legacySeverityToUnifiedSeverity(legacy: LegacySeverity): UnifiedSeverity {
-  switch (legacy) {
-    case "critical":
-      return "SEV1";
-    case "high":
-      return "SEV2";
-    case "medium":
-      return "SEV3";
-    case "low":
-      return "SEV4";
-  }
-}
 
 /**
  * Incident Projection State
@@ -71,32 +44,12 @@ export interface IncidentState {
   affectedRepairJobs: string[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
   /** Detected timestamp */
   detectedAt: string | null;
   /** Resolved timestamp */
@@ -111,23 +64,14 @@ export interface IncidentState {
   complianceFramework: string | null;
 }
 
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface IncidentStateInternal extends Omit<IncidentState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
-}
-
-// R14-02: Use unified SEV naming per §12.2 (SEV1-4 instead of low/medium/high/critical)
-export type IncidentSeverity = UnifiedSeverity;
+export type IncidentSeverity = "critical" | "high" | "medium" | "low";
 export type IncidentStatus =
   | "detected"
   | "acknowledged"
   | "investigating"
   | "mitigated"
   | "resolved"
-  | "cancelled"
-  | "dismissed"; // R14-24: Added dismissed status alongside acknowledged
+  | "cancelled";
 
 /**
  * Timeline entry for incident events
@@ -170,35 +114,12 @@ export function createEmptyIncidentState(): IncidentState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
     detectedAt: null,
     resolvedAt: null,
     acknowledgedAt: null,
     rootCause: null,
     description: null,
     complianceFramework: null,
-  };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: IncidentState): IncidentStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: IncidentStateInternal): IncidentState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -217,11 +138,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: IncidentStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: IncidentState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -284,14 +204,13 @@ export const incidentProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as IncidentState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyIncidentState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyIncidentState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -302,14 +221,6 @@ export const incidentProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Add to timeline
   const timelineEntry: IncidentTimelineEntry = {
@@ -322,8 +233,8 @@ export const incidentProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Extract and link affected entities
@@ -370,11 +281,6 @@ export const incidentProjectionHandler: ProjectionHandler = (
       handleIncidentCancelled(newState, payload, event.createdAt);
       break;
 
-    // R14-24: Handle dismissed status for incidents
-    case "incident:dismissed":
-      handleIncidentDismissed(newState, payload, event.createdAt);
-      break;
-
     case "compliance:violation_detected":
       handleComplianceViolation(newState, payload, event.createdAt);
       break;
@@ -395,7 +301,7 @@ export const incidentProjectionHandler: ProjectionHandler = (
  * Handle incident:created event
  */
 function handleIncidentCreated(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -421,7 +327,7 @@ function handleIncidentCreated(
  * Handle incident:acknowledged event
  */
 function handleIncidentAcknowledged(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -435,7 +341,7 @@ function handleIncidentAcknowledged(
  * Handle incident:investigating event
  */
 function handleIncidentInvestigating(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -449,7 +355,7 @@ function handleIncidentInvestigating(
  * Handle incident:mitigated event
  */
 function handleIncidentMitigated(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -463,7 +369,7 @@ function handleIncidentMitigated(
  * Handle incident:resolved event
  */
 function handleIncidentResolved(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -478,7 +384,7 @@ function handleIncidentResolved(
  * Handle incident:cancelled event
  */
 function handleIncidentCancelled(
-  state: IncidentStateInternal,
+  state: IncidentState,
   _payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -487,24 +393,10 @@ function handleIncidentCancelled(
 }
 
 /**
- * R14-24: Handle incident:dismissed event
- * Dismissed is a terminal state like resolved/cancelled but doesn't set resolvedAt
- * since the incident was not actually resolved, just dismissed as not requiring action.
- */
-function handleIncidentDismissed(
-  state: IncidentStateInternal,
-  _payload: Record<string, unknown>,
-  timestamp: string,
-): void {
-  state.status = "dismissed";
-  state.lastProjectedAt = timestamp;
-}
-
-/**
  * Handle compliance:violation_detected event (creates incident)
  */
 function handleComplianceViolation(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -512,11 +404,9 @@ function handleComplianceViolation(
     state.incidentId = (payload.violationId as string | undefined) ?? null;
   }
   if (state.severity === null) {
-    // R14-02: Convert legacy severity format (low/medium/high/critical) to UnifiedSeverity (SEV1-4)
-    // ComplianceViolationDetectedPayload uses legacy severity, so conversion is required
-    const legacySeverity = payload.severity as LegacySeverity | undefined;
-    if (legacySeverity) {
-      state.severity = legacySeverityToUnifiedSeverity(legacySeverity);
+    const severity = payload.severity as IncidentSeverity | undefined;
+    if (severity) {
+      state.severity = severity;
     }
   }
   if (state.description === null) {
@@ -539,16 +429,16 @@ function handleComplianceViolation(
  * Handle slo:breached event (creates incident)
  */
 function handleSloBreached(
-  state: IncidentStateInternal,
+  state: IncidentState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
   if (state.incidentId === null) {
     state.incidentId = (payload.sloId as string | undefined) ?? null;
   }
-  // R14-02: SLO breaches are typically SEV2 (high) severity
+  // SLO breaches are typically high severity
   if (state.severity === null) {
-    state.severity = "SEV2";
+    state.severity = "high";
   }
   if (state.description === null) {
     const sloName = payload.sloName as string | undefined;

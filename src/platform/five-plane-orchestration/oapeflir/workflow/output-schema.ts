@@ -19,16 +19,6 @@ export type WorkflowOutputSchemaProperty =
     }
   | {
       type: "boolean";
-    }
-  | {
-      type: "number";
-    }
-  | {
-      type: "array";
-      items: { type: "string" };
-    }
-  | {
-      type: "object";
     };
 
 /** Complete workflow output schema definition */
@@ -93,29 +83,6 @@ function normalizePropertySchema(
   if (property.type === "boolean") {
     return {
       type: "boolean",
-    };
-  }
-
-  if (property.type === "number") {
-    return {
-      type: "number",
-    };
-  }
-
-  if (property.type === "array") {
-    const items = property.items;
-    if (isPlainObject(items) && items.type === "string") {
-      return {
-        type: "array",
-        items: { type: "string" },
-      };
-    }
-    // Fall through to unsupported handler for other array item types
-  }
-
-  if (property.type === "object") {
-    return {
-      type: "object",
     };
   }
 
@@ -266,35 +233,6 @@ export function validateWorkflowStepOutput(
     }
 
     if (propertySchema.type === "boolean" && typeof value !== "boolean") {
-      throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
-        details: { stepId: step.stepId, key, expectedType: propertySchema.type },
-      });
-    }
-
-    if (propertySchema.type === "number" && typeof value !== "number") {
-      throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
-        details: { stepId: step.stepId, key, expectedType: propertySchema.type },
-      });
-    }
-
-    if (propertySchema.type === "array") {
-      if (!Array.isArray(value)) {
-        throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
-          details: { stepId: step.stepId, key, expectedType: propertySchema.type },
-        });
-      }
-      if (propertySchema.items.type === "string") {
-        for (const item of value) {
-          if (typeof item !== "string") {
-            throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Array item type mismatch for key: ${key}`, {
-              details: { stepId: step.stepId, key, expectedItemType: "string", actualType: typeof item },
-            });
-          }
-        }
-      }
-    }
-
-    if (propertySchema.type === "object" && !isPlainObject(value)) {
       throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
         details: { stepId: step.stepId, key, expectedType: propertySchema.type },
       });

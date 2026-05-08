@@ -16,20 +16,6 @@ test("StableRunnerOptions requires outputDir", () => {
   assert.equal(opts.outputDir, "/test/output");
 });
 
-test("StableRunner type preserves typed runner args without any casts", async () => {
-  type RunnerArgs = { outputDir: string; durationMs: number };
-  type RunnerReport = { failedScenarios: number; durationMs: number };
-  const runner = async (opts: RunnerArgs): Promise<RunnerReport> => ({
-    failedScenarios: 0,
-    durationMs: opts.durationMs,
-  });
-
-  const report = await runner({ outputDir: "/tmp/report", durationMs: 5000 });
-
-  assert.equal(report.failedScenarios, 0);
-  assert.equal(report.durationMs, 5000);
-});
-
 // ---------------------------------------------------------------------------
 // Tests for createStableCli factory options
 // ---------------------------------------------------------------------------
@@ -248,19 +234,14 @@ test("exit code is 0 when failed predicate returns false", () => {
 // Type exports verification
 // ---------------------------------------------------------------------------
 
-test("StableRunner type supports strongly typed args and report", () => {
-  type RunnerArgs = { outputDir: string; dryRun: boolean };
-  type RunnerReport = { failedScenarios: number; dryRun: boolean };
-  const runner: (opts: RunnerArgs) => RunnerReport = (opts) => ({
-    failedScenarios: 0,
-    dryRun: opts.dryRun,
-  });
-  const result = runner({ outputDir: "/test/output", dryRun: true });
-  assert.equal(result.dryRun, true);
+test("StableRunner type accepts any function with any args and any return", () => {
+  const runner: (opts: any) => any = (opts: any) => ({ result: opts });
+  const result = runner({ test: true });
+  assert.equal(result.result.test, true);
 });
 
 test("StableReportWriter type accepts path and report", () => {
-  const writer: (path: string, report: { ok: boolean }) => void = (path, report) => {
+  const writer: (path: string, report: any) => void = (path, report) => {
     assert.equal(path, "/test/path.json");
     assert.equal(report.ok, true);
   };
@@ -268,7 +249,7 @@ test("StableReportWriter type accepts path and report", () => {
 });
 
 test("FailedPredicate type accepts report and returns boolean", () => {
-  const failed: (report: { failed: boolean }) => boolean = (report) => report.failed === true;
+  const failed: (report: any) => boolean = (report) => report.failed === true;
   assert.equal(failed({ failed: true }), true);
   assert.equal(failed({ failed: false }), false);
 });

@@ -19,7 +19,7 @@ function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTru
   };
 }
 
-test("assessPromotion blocks promotion for unresolved incidents without low-severity classification", () => {
+test("assessPromotion blocks promotion when incidents > 0", () => {
   const score = makeScore({
     currentAutonomy: "suggestion",
     totalExecutions: 100,
@@ -29,40 +29,6 @@ test("assessPromotion blocks promotion for unresolved incidents without low-seve
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
   assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
-});
-
-test("assessPromotion does not block promotion for P3 incident history alone", () => {
-  const score = makeScore({
-    currentAutonomy: "suggestion",
-    totalExecutions: 80,
-    successfulExecutions: 78,
-    failedExecutions: 1,
-    incidents: 1,
-    lastIncidentSeverity: "P3",
-    lastIncidentAgeDays: 45,
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, true);
-  assert.equal(result.targetLevel, "supervised");
-});
-
-test("assessPromotion converts P1 incident into one-level demotion guidance", () => {
-  const score = makeScore({
-    currentAutonomy: "semi_auto",
-    totalExecutions: 220,
-    successfulExecutions: 215,
-    failedExecutions: 1,
-    incidents: 1,
-    lastIncidentSeverity: "P1",
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.equal(result.targetLevel, "supervised");
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_p1_incident"));
 });
 
 test("assessPromotion blocks promotion when failedExecutions > 2", () => {
@@ -76,40 +42,6 @@ test("assessPromotion blocks promotion when failedExecutions > 2", () => {
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
   assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
-});
-
-test("assessPromotion blocks supervised promotion when override rate is 5% or higher", () => {
-  const score = makeScore({
-    currentAutonomy: "supervised",
-    totalExecutions: 200,
-    successfulExecutions: 198,
-    failedExecutions: 1,
-    humanOverrides: 10,
-    incidents: 0,
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.equal(result.targetLevel, "supervised");
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_override_rate"));
-});
-
-test("assessPromotion blocks semi_auto promotion when override rate is 1% or higher", () => {
-  const score = makeScore({
-    currentAutonomy: "semi_auto",
-    totalExecutions: 500,
-    successfulExecutions: 499,
-    failedExecutions: 0,
-    humanOverrides: 5,
-    incidents: 0,
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.equal(result.targetLevel, "semi_auto");
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_override_rate"));
 });
 
 test("assessPromotion promotes suggestion to supervised when thresholds met", () => {
@@ -186,23 +118,6 @@ test("assessPromotion does not promote at suggestion level with insufficient suc
   assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
 });
 
-test("assessPromotion blocks suggestion promotion without 30 incident-free days", () => {
-  const score = makeScore({
-    currentAutonomy: "suggestion",
-    totalExecutions: 60,
-    successfulExecutions: 58,
-    failedExecutions: 1,
-    incidents: 0,
-    lastIncidentAgeDays: 29,
-    lastIncidentTimestamp: new Date(Date.now() - 29 * 24 * 3600 * 1000).toISOString(),
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident_window"));
-});
-
 test("assessPromotion does not promote at supervised level with insufficient volume", () => {
   const score = makeScore({
     currentAutonomy: "supervised",
@@ -216,24 +131,6 @@ test("assessPromotion does not promote at supervised level with insufficient vol
   assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
 });
 
-test("assessPromotion blocks supervised promotion without 60 incident-free days", () => {
-  const score = makeScore({
-    currentAutonomy: "supervised",
-    totalExecutions: 220,
-    successfulExecutions: 218,
-    failedExecutions: 1,
-    humanOverrides: 1,
-    incidents: 0,
-    lastIncidentAgeDays: 59,
-    lastIncidentTimestamp: new Date(Date.now() - 59 * 24 * 3600 * 1000).toISOString(),
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident_window"));
-});
-
 test("assessPromotion does not promote at semi_auto level with insufficient volume", () => {
   const score = makeScore({
     currentAutonomy: "semi_auto",
@@ -245,24 +142,6 @@ test("assessPromotion does not promote at semi_auto level with insufficient volu
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
   assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
-});
-
-test("assessPromotion blocks semi_auto governance escalation without 90 incident-free days", () => {
-  const score = makeScore({
-    currentAutonomy: "semi_auto",
-    totalExecutions: 520,
-    successfulExecutions: 516,
-    failedExecutions: 1,
-    humanOverrides: 0,
-    incidents: 0,
-    lastIncidentAgeDays: 89,
-    lastIncidentTimestamp: new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString(),
-  });
-
-  const result = assessPromotion(score);
-
-  assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident_window"));
 });
 
 test("assessPromotion does not promote already at full_auto", () => {

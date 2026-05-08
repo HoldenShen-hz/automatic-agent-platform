@@ -8,26 +8,26 @@ Accepted
 
 2026-04-20
 
-## Context
+## Background
 
-`§15`-`§18`, `§21`, `§23`, `§27` define LLM Provider, Prompt, Eval, Cost, HITL, Compliance, and SLO AI operations capabilities. Previously, these capabilities were scattered across provider, prompt governance, quality, budget, and approval contracts, but lacked a unified ADR explaining why the AI layer must be treated as a governable runtime rather than a common dependency.
+`§15`-`§18`, `§21`, `§23`, `§27` define AI operations capabilities such as LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO. In the past, these capabilities were respectively placed in provider, prompt governance, quality, budget, and approval contracts, but there was a lack of a unified ADR explaining why the AI layer must be treated as a governable runtime rather than a common dependency.
 
-## Decision
+## Decisions
 
 The AI operations layer adopts a unified governance model:
 
-- LLM Providers must connect through the ModelGateway abstraction with routing, failover, observability, and degradation capabilities.
-- Prompt / model / policy must all be versioned, canary-deployable, rollback-capable, and auditable.
-- Eval and quality gates are part of the release pipeline, not附属 offline reporting capabilities.
-- Token / model costs must enter the budget, metering, chargeback, and optimization closed loop.
+- LLM Provider must be connected through ModelGateway abstraction, with routing, failover, observability, and degradation capabilities.
+- Prompt / model / policy must all be versioned, canary-deployable, rollbackable, and auditable.
+- Eval and quality gates are part of the release pipeline, not an offline report ancillary capability.
+- Token / model costs must enter the budget, metering, chargeback, optimization closed loop.
 - HITL is a formal control path, not a UI interaction special case.
-- Compliance, data classification, prompt handling, and SLO / error budget jointly determine whether AI actions can be executed.
+- Compliance, data classification, prompt handling, SLO / error budget together determine whether an AI action can be executed.
 
 ## Trade-offs
 
-- We do not treat model vendor APIs as the platform's primary contract to avoid vendor lock-in.
-- We do not allow prompts to enter production directly without governance.
-- We do not allow costs to only be displayed as reports; costs must be able to participate in pre-execution budget guards and post-execution optimization.
+- Do not use the model vendor API as the platform's primary contract, to avoid vendor lock-in.
+- Do not allow prompts to directly enter production without going through governance.
+- Do not allow costs to only be displayed as reports; costs must be able to participate in pre-execution budget guards and post-execution optimization.
 
 ## Impact
 
@@ -55,14 +55,14 @@ Corresponding implementation boundaries:
 
 - Unit tests: Provider selection, prompt version policy, budget guard, quality gate.
 - Integration tests: Prompt/model release, HITL approval, cost attribution.
-- Contract tests: AI actions that fail quality gates, budget, or data classification cannot be executed.
+- Contract tests: AI actions that do not pass quality gates, budget, or data classification must not be executed.
 
-## Alternatives
+## Alternative Options
 
-1. **Treat model vendor APIs as the platform's primary contract**: Information is explicit, but increases vendor lock-in risk.
-2. **Allow prompts to enter production directly**: Reduces governance cost, but cannot guarantee quality, compliance, or security.
-3. **Costs only as report display**: Simple to implement, but costs cannot participate in pre-execution guards or post-execution optimization.
-4. **Adopt this decision**: Unified governance of AI operations layer ensures quality, security, compliance, and controllable costs.
+1. **Use the model vendor API as the platform's primary contract**: Clear information, but increases vendor lock-in risk.
+2. **Allow prompts to directly enter production**: Reduces governance cost, but cannot guarantee quality, compliance, and security.
+3. **Costs only as report display**: Simple implementation, but costs cannot participate in pre-execution guards and post-execution optimization.
+4. **Adopt this decision**: Unified governance of AI operations layer, ensuring quality, security, compliance, and cost control.
 
 ## Cross-References
 

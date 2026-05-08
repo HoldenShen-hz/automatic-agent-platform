@@ -264,18 +264,18 @@ test("topology-validator: integration with default configuration", () => {
   try {
     const validator = createTopologyValidator();
 
-    // Should use DEFAULT_MAX_DEPTH (8)
+    // Should use DEFAULT_MAX_DEPTH (3)
     assert.equal(validator.getMaxDepth(), DEFAULT_MAX_DEPTH);
 
     // Should use DEFAULT_MAX_FANOUT (10)
     assert.equal(validator.getMaxFanout(), DEFAULT_MAX_FANOUT);
 
-    // Depth 7 should be allowed (one less than default max)
-    validator.validateDepth(7);
+    // Depth 2 should be allowed (less than 3)
+    validator.validateDepth(2);
 
-    // Depth 8 should throw (equals default max)
+    // Depth 3 should throw (equals 3)
     assert.throws(
-      () => validator.validateDepth(8),
+      () => validator.validateDepth(3),
       DelegationDepthExceededError,
     );
   } finally {

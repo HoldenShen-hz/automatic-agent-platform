@@ -6,28 +6,12 @@ import {
   resetToolRegistry,
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-  setToolRegistryBudgetLedger,
   type MultiStepToolDefinition,
 } from "../../../../../src/platform/execution/dispatcher/index.js";
-import { createBudgetLedger } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Test setup and teardown
 // ---------------------------------------------------------------------------
-
-test.beforeEach(() => {
-  // R4-25: Set up budget ledger for tool execution tests
-  const ledger = createBudgetLedger({
-    tenantId: "tenant:dispatcher-test",
-    harnessRunId: "harness_run:dispatcher-test",
-    currency: "USD",
-    hardCap: 1000,
-    reservedAmount: 0,
-    settledAmount: 0,
-    releasedAmount: 0,
-  });
-  setToolRegistryBudgetLedger(ledger);
-});
 
 test.afterEach(() => {
   // Reset tool registry between tests to ensure isolation

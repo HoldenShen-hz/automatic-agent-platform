@@ -350,7 +350,6 @@ export class ConversationTemplateExecutor {
 
   /**
    * Get next step in a templated conversation
-   * Returns the conversation unchanged if template was deactivated
    */
   public next(
     conversation: TemplatedConversation,
@@ -371,15 +370,11 @@ export class ConversationTemplateExecutor {
       nextIndex = Math.min(conversation.currentStepIndex + 1, conversation.steps.length);
     }
 
-    // R16-16 FIX: Handle null return from buildTemplatedConversation
-    // if template was deactivated/deregistered
-    const result = this.buildTemplatedConversation(
+    return this.buildTemplatedConversation(
       conversation.templateId,
       nextIndex,
       updatedContext,
     );
-    // If template not found, return the conversation as-is rather than crashing
-    return result ?? conversation;
   }
 
   /**
@@ -391,37 +386,24 @@ export class ConversationTemplateExecutor {
       return null;
     }
 
-    const nextIndex = Math.min(
-      conversation.currentStepIndex + 1,
-      conversation.steps.length,
-    );
-
-    return this.buildTemplatedConversation(
-      conversation.templateId,
-      nextIndex,
-      conversation.context,
-    );
+    return this.next(conversation);
   }
 
   /**
    * Build a templated conversation from a template
-   * Returns null if template is not found (e.g., deactivated or deregistered)
    */
   private buildTemplatedConversation(
     templateIdOrTemplate: string | ConversationTemplate,
     stepIndex: number,
     context: Record<string, unknown>,
-  ): TemplatedConversation | null {
+  ): TemplatedConversation {
     const template =
       typeof templateIdOrTemplate === "string"
         ? this.registry.get(templateIdOrTemplate)
         : templateIdOrTemplate;
 
-    // R16-16 FIX: Return null instead of throwing if template not found
-    // This handles the case where a template was deactivated/deregistered
-    // after a conversation was started
     if (!template) {
-      return null;
+      throw new Error(`Template not found: ${templateIdOrTemplate}`);
     }
 
     const isComplete = stepIndex >= template.steps.length;

@@ -22,7 +22,6 @@ import { DomainRegistryService } from "../../src/domains/registry/domain-registr
 import { PluginSpiRegistry } from "../../src/domains/registry/plugin-spi-registry.js";
 import type { RetrieverKnowledgeResult } from "../../src/domains/registry/plugin-spi.js";
 import { KnowledgePlaneService } from "../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
-import { IntakeAdmissionService } from "../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
 import { seedBillingDataset } from "./billing.js";
 import { seedPerceptionDataset } from "./perception.js";
 
@@ -135,8 +134,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     lastProgressAt: nowIso,
     lastHeartbeatAt: nowIso,
     updatedAt: nowIso,
-    version: 0,
-  }, 0);
+  });
 
   let takeoverSessionId: string | null = null;
   if (executionId != null) {
@@ -158,7 +156,6 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     domainRegistry: domainRegistryService,
     pluginRegistry,
   });
-  const intakeAdmissionService = new IntakeAdmissionService();
   const artifactPlaneService = new ArtifactPlaneService();
   const authService = new ApiAuthService({
     apiKeys: [
@@ -198,9 +195,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     capabilityIds: ["knowledge.retrieve"],
     spiTypes: ["retriever"],
     extensionKind: "domain_plugin",
-    trustLevel: "verified",
-    publicSdkSurface: ["tests/mock"],
-    dependencies: [],
+    trustLevel: "trusted",
+    publicSdkSurface: "tests/mock",
     settingsSchema: {},
     sandbox: {
       timeoutMs: 1000,
@@ -232,9 +228,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     capabilityIds: ["present.output"],
     spiTypes: ["presenter"],
     extensionKind: "domain_plugin",
-    trustLevel: "verified",
-    publicSdkSurface: ["tests/mock"],
-    dependencies: [],
+    trustLevel: "trusted",
+    publicSdkSurface: "tests/mock",
     settingsSchema: {},
     sandbox: {
       timeoutMs: 1000,
@@ -289,7 +284,6 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         bindingId: "binding.retriever",
         domainId: "coding",
         pluginType: "retriever",
-        bindingRole: "retriever",
         pluginId: "plugin.coding.retriever",
         priority: 10,
         enabled: true,
@@ -319,7 +313,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "authoritative",
+    trustLevel: "verified",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -328,14 +322,14 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     body: "Retry the build after clearing stale caches.",
     namespace: "coding.repo",
     sourceType: "text",
-    trustLevel: "authoritative",
+    trustLevel: "verified",
   });
   const pluginRecord = knowledgePlaneService.ingest({
     title: "Plugin knowledge",
     body: "Plugin supplied snippet",
     namespace: "coding.repo",
     sourceType: "text",
-    trustLevel: "authoritative",
+    trustLevel: "verified",
   });
   pluginKnowledgeRef = { knowledgeRef: `knowledge:${pluginRecord.chunks[0]?.chunkId ?? "missing"}`, snippet: "Plugin supplied snippet", score: 0.9, namespace: "coding.repo", chunkId: pluginRecord.chunks[0]?.chunkId ?? "chunk:missing", documentId: "doc:plugin", matchType: "semantic" as const };
 
@@ -369,8 +363,6 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         artifactPlaneService,
         domainRegistryService,
         pluginRegistry,
-        taskStore: store,
-        intakeAdmissionService,
       });
     },
   };

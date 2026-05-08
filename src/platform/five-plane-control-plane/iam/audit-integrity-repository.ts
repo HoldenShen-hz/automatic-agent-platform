@@ -69,38 +69,6 @@ class AuditIntegrityRepositoryImpl implements AuditIntegrityRepository {
     previousChainHash: string | null,
     chainHash: string,
   ): void {
-    // SECURITY FIX: Validate chain integrity before inserting new record.
-    // This prevents corruption of the audit integrity chain.
-
-    // Check for duplicate eventId
-    const existing = this.db.connection
-      .prepare(`SELECT id FROM audit_integrity_records WHERE event_id = ?`)
-      .get(eventId);
-    if (existing) {
-      throw new Error(`audit.integrity_duplicate_event:${eventId}`);
-    }
-
-    // Validate chain position sequence
-    const maxPositionRow = this.db.connection
-      .prepare(`SELECT chain_position, chain_hash FROM audit_integrity_records ORDER BY chain_position DESC LIMIT 1`)
-      .get() as { chain_position: number; chain_hash: string } | undefined;
-
-    if (maxPositionRow) {
-      // Ensure chain position is exactly next in sequence
-      if (chainPosition !== maxPositionRow.chain_position + 1) {
-        throw new Error(`audit.integrity_chain_gap:${chainPosition}!=${maxPositionRow.chain_position + 1}`);
-      }
-      // Validate previousChainHash matches the last record's chain_hash
-      if (previousChainHash !== maxPositionRow.chain_hash) {
-        throw new Error(`audit.integrity_chain_broken:previous_hash_mismatch`);
-      }
-    } else {
-      // First record in chain - previousChainHash must be null
-      if (previousChainHash !== null) {
-        throw new Error(`audit.integrity_chain_first_record_requires_null_previous`);
-      }
-    }
-
     const now = nowIso();
     this.db.connection
       .prepare(

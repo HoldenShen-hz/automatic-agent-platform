@@ -55,7 +55,7 @@ test("secret management service registers secrets, resolves them with usage audi
 
     const resolved = await service.resolveSecret({
       secretRef: registry.secretRef,
-      requestedBy: "service.ops.release",
+      requestedBy: "ops.release",
       grantedTo: "deploy-worker",
       usagePurpose: "publish_image",
     });
@@ -150,7 +150,7 @@ test("secret management service resolves vault-managed secrets from provider-spe
 
     const resolved = await service.resolveSecret({
       secretRef: "secret://system/deploy/kubeconfig/prod",
-      requestedBy: "service.ops.deploy",
+      requestedBy: "ops.deploy",
       grantedTo: "deploy-worker",
       usagePurpose: "apply_manifest",
     });
@@ -166,7 +166,7 @@ test("secret management service resolves vault-managed secrets from provider-spe
   }
 });
 
-test("secret management service requireSecret records a minimal usage audit", async () => {
+test("secret management service can require a managed secret without creating a usage audit", async () => {
   const harness = createHarness("aa-secret-require-unit-");
   try {
     const service = new SecretManagementService(harness.db, harness.store, {
@@ -192,18 +192,13 @@ test("secret management service requireSecret records a minimal usage audit", as
       lastRotatedAt: "2026-04-01T00:00:00.000Z",
     });
 
-    const required = await service.requireSecret("secret://providers/openai/default", {
-      requestedBy: "service.providers.openai",
-    });
-    const usageAudits = harness.store.listSecretUsageAuditsBySecretRef("secret://providers/openai/default");
+    const required = await service.requireSecret("secret://providers/openai/default");
 
     assert.equal(required.metadata.providerKind, "vault");
-    assert.ok(required.metadata.auditId != null);
+    assert.equal(required.metadata.auditId, null);
     assert.equal(required.metadata.source, "vault");
     assert.equal(required.value, "sk-openai-managed-1234");
-    assert.equal(usageAudits.length, 1);
-    assert.equal(usageAudits[0]?.requestedBy, "service.providers.openai");
-    assert.equal(usageAudits[0]?.usagePurpose, "direct_secret_access");
+    assert.equal(harness.store.listSecretUsageAuditsBySecretRef("secret://providers/openai/default").length, 0);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

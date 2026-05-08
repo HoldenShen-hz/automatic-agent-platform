@@ -6,7 +6,6 @@
  */
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { globalCircuitBreakerEventBus } from "./circuit-breaker-event-bus.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -49,10 +48,6 @@ export interface CircuitBreakerOptions {
   monitorWindowMs?: number;
   /** Optional callback for state change events per §9.4 */
   onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
-  /** Minimum sample size before failure rate is considered reliable (default: 10) */
-  minSampleSize?: number;
-  /** Maximum timestamps retained per outcome window to bound memory (default: 10000) */
-  maxWindowEntries?: number;
 }
 
 /**
@@ -78,15 +73,11 @@ export interface CircuitBreakerMetrics {
  * - half_open: Testing if service has recovered, limited requests pass through
  */
 export class CircuitBreaker {
-  private static readonly DEFAULT_MAX_WINDOW_ENTRIES = 10_000;
   private readonly name: string;
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
   private readonly halfOpenSuccessThreshold: number;
   private readonly monitorWindowMs: number;
-  // §179-2097: Minimum sample size before failure rate is considered statistically reliable
-  private readonly minSampleSize: number;
-  private readonly maxWindowEntries: number;
 
   private state: CircuitBreakerState = "closed";
   private failures = 0;
@@ -98,10 +89,10 @@ export class CircuitBreaker {
   private lastFailureAt: number | null = null;
   private lastSuccessAt: number | null = null;
   private nextAttemptAt: number | null = null;
-  private readonly onStateChange: ((payload: CircuitBreakerStateChangePayload) => void) | undefined;
+  private readonly onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
 
+  // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
-  private readonly successTimestamps: number[] = [];
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
@@ -109,9 +100,7 @@ export class CircuitBreaker {
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
-    this.minSampleSize = options.minSampleSize ?? 10;
-    this.maxWindowEntries = Math.max(1, options.maxWindowEntries ?? CircuitBreaker.DEFAULT_MAX_WINDOW_ENTRIES);
-    this.onStateChange = options.onStateChange ?? undefined;
+    this.onStateChange = options.onStateChange;
   }
 
   /**
@@ -141,8 +130,10 @@ export class CircuitBreaker {
    * Record a successful call.
    */
   onSuccess(): void {
-    this.promoteToHalfOpenIfProbeWindowExpired();
-    this.onSuccessInternal();
+    const now = Date.now();
+    this.lastSuccessAt = now;
+    this.successes++;
+    this.consecutiveFailures = 0;
 
     if (this.state === "half_open") {
       this.consecutiveSuccesses++;
@@ -169,18 +160,21 @@ export class CircuitBreaker {
    * Record a failed call.
    */
   onFailure(): void {
-    this.promoteToHalfOpenIfProbeWindowExpired();
-    this.onFailureInternal();
+    const now = Date.now();
+    this.lastFailureAt = now;
+    this.failures++;
+    this.consecutiveFailures++;
+    this.consecutiveSuccesses = 0;
 
     // Track failure for rate-based opening
+    this.failureTimestamps.push(now);
+    this.pruneFailureTimestamps(now);
+
     if (this.state === "closed") {
       // Open circuit if failure threshold reached or failure rate is high
-      // §179-2097: Only consider failure rate if we have minimum sample size to be statistically reliable
-      const recentFailureRate = this.getRecentFailureRate();
-      const recentSampleCount = this.failureTimestamps.length + this.successTimestamps.length;
       if (
         this.consecutiveFailures >= this.failureThreshold ||
-        (recentSampleCount >= this.minSampleSize && recentFailureRate >= 0.5) // 50% failure rate
+        this.getRecentFailureRate() >= 0.5 // 50% failure rate
       ) {
         this.transitionTo("open");
       }
@@ -203,11 +197,15 @@ export class CircuitBreaker {
 
   /**
    * Get current circuit breaker state.
-   * Returns the effective state, accounting for time-based transitions
-   * (e.g., open -> half_open after reset timeout).
    */
   getState(): CircuitBreakerState {
-    return this.computeReadableState();
+    // Check if we should transition from open to half_open
+    if (this.state === "open" && this.nextAttemptAt !== null) {
+      if (Date.now() >= this.nextAttemptAt) {
+        this.transitionTo("half_open");
+      }
+    }
+    return this.state;
   }
 
   /**
@@ -215,7 +213,7 @@ export class CircuitBreaker {
    */
   getMetrics(): CircuitBreakerMetrics {
     return {
-      state: this.computeReadableState(),
+      state: this.getState(),
       failures: this.failures,
       successes: this.successes,
       consecutiveFailures: this.consecutiveFailures,
@@ -230,19 +228,17 @@ export class CircuitBreaker {
    * Check if circuit allows execution.
    */
   private canExecute(): boolean {
-    const readableState = this.computeReadableState();
-    if (readableState === "closed") {
+    if (this.state === "closed") {
       return true;
-    }
-
-    if (readableState === "open") {
-      return false;
     }
 
     if (this.state === "open") {
-      this.transitionTo("half_open");
-      this.halfOpenInFlight++;
-      return true;
+      if (this.nextAttemptAt !== null && Date.now() >= this.nextAttemptAt) {
+        this.transitionTo("half_open");
+        this.halfOpenInFlight++;
+        return true;
+      }
+      return false;
     }
 
     // PROV-01: half_open admits at most one probe at a time. Previously every
@@ -253,19 +249,6 @@ export class CircuitBreaker {
     }
     this.halfOpenInFlight++;
     return true;
-  }
-
-  private computeReadableState(now = Date.now()): CircuitBreakerState {
-    if (this.state === "open" && this.nextAttemptAt !== null && now >= this.nextAttemptAt) {
-      return "half_open";
-    }
-    return this.state;
-  }
-
-  private promoteToHalfOpenIfProbeWindowExpired(): void {
-    if (this.state === "open" && this.computeReadableState() === "half_open") {
-      this.transitionTo("half_open");
-    }
   }
 
   /**
@@ -291,7 +274,7 @@ export class CircuitBreaker {
       this.halfOpenInFlight = 0;
     }
 
-    // Emit state change event per §9.4 - emit to event bus AND call callback
+    // Emit state change event per §9.4
     const payload: CircuitBreakerStateChangePayload = {
       circuitName: this.name,
       oldState,
@@ -300,7 +283,6 @@ export class CircuitBreaker {
       occurredAt: new Date().toISOString(),
     };
     this.onStateChange?.(payload);
-    globalCircuitBreakerEventBus.emitStateChange(payload);
 
     logger.log({
       level: "info",
@@ -315,68 +297,26 @@ export class CircuitBreaker {
   }
 
   /**
-   * Calculate failure rate within monitoring window as a percentage (0-1).
-   * Formula: (failures_in_window / total_requests_in_window) = percentage
-   * Uses time-bucketed approach for accurate rate calculation.
+   * Calculate failure rate within monitoring window.
    */
   private getRecentFailureRate(): number {
-    const now = Date.now();
-    this.pruneFailureTimestamps(now);
-    this.pruneSuccessTimestamps(now);
+    this.pruneFailureTimestamps(Date.now());
     const recentFailures = this.failureTimestamps.length;
-    const recentSuccesses = this.successTimestamps.length;
-    // Calculate total requests in window based on successes + failures in window
-    const totalRequests = recentSuccesses + recentFailures;
-    if (totalRequests === 0) {
-      return 0;
-    }
-    // Failure rate as a percentage: failures / total requests
-    return Math.min(1, recentFailures / totalRequests);
+    const windowSeconds = this.monitorWindowMs / 1000;
+    // Approximate rate: failures per second * window
+    // If we have 3 failures in 60s, rate is low
+    // If we have 30 failures in 60s, rate is high
+    return Math.min(1, (recentFailures / windowSeconds) * 10); // Normalize to 0-1
   }
 
   /**
    * Remove old failure timestamps outside monitoring window.
    */
-  private pruneSuccessTimestamps(now: number): void {
-    const cutoff = now - this.monitorWindowMs;
-    while (this.successTimestamps.length > 0 && this.successTimestamps[0]! < cutoff) {
-      this.successTimestamps.shift();
-    }
-    this.trimWindowEntries(this.successTimestamps);
-  }
-
-  private onSuccessInternal(): void {
-    const now = Date.now();
-    this.lastSuccessAt = now;
-    this.successes++;
-    this.consecutiveFailures = 0;
-    this.successTimestamps.push(now);
-    this.pruneSuccessTimestamps(now);
-  }
-
   private pruneFailureTimestamps(now: number): void {
     const cutoff = now - this.monitorWindowMs;
     while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
       this.failureTimestamps.shift();
     }
-    this.trimWindowEntries(this.failureTimestamps);
-  }
-
-  private trimWindowEntries(timestamps: number[]): void {
-    if (timestamps.length <= this.maxWindowEntries) {
-      return;
-    }
-    timestamps.splice(0, timestamps.length - this.maxWindowEntries);
-  }
-
-  private onFailureInternal(): void {
-    const now = Date.now();
-    this.lastFailureAt = now;
-    this.failures++;
-    this.consecutiveFailures++;
-    this.consecutiveSuccesses = 0;
-    this.failureTimestamps.push(now);
-    this.pruneFailureTimestamps(now);
   }
 }
 

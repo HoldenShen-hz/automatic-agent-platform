@@ -1,100 +1,84 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
 const SCRIPT_PATH = join(process.cwd(), "scripts", "clean-dist.mjs");
 
-test("clean-dist preserves dist when AA_PRESERVE_DIST is set", async () => {
+test("clean-dist prunes stale compiled tests even when dist is preserved", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-"));
 
   try {
-    mkdirSync(join(workspace, "dist"), { recursive: true });
-    writeFileSync(join(workspace, "dist", "keep-me.txt"), "content");
+    mkdirSync(join(workspace, "scripts"), { recursive: true });
+    mkdirSync(join(workspace, "dist", "tests", "integration", "platform", "control-plane"), { recursive: true });
+    writeFileSync(join(workspace, "scripts", "clean-dist.mjs"), "");
 
-    const result = spawnSync("node", [SCRIPT_PATH], {
-      cwd: workspace,
-      env: { ...process.env, AA_PRESERVE_DIST: "1" },
-      stdio: "pipe",
-    });
-
-    assert.equal(result.status, 0);
-    assert.equal(existsSync(join(workspace, "dist", "keep-me.txt")), true);
-  } finally {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
-test("clean-dist preserves dist when AA_RUNNING_TESTS is set", async () => {
-  const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-"));
-
-  try {
-    mkdirSync(join(workspace, "dist"), { recursive: true });
-    writeFileSync(join(workspace, "dist", "keep-me.txt"), "content");
-
-    const result = spawnSync("node", [SCRIPT_PATH], {
-      cwd: workspace,
-      env: { ...process.env, AA_RUNNING_TESTS: "1" },
-      stdio: "pipe",
-    });
-
-    assert.equal(result.status, 0);
-    assert.equal(existsSync(join(workspace, "dist", "keep-me.txt")), true);
-  } finally {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
-test("clean-dist prunes stale .test.js when AA_PRUNE_DIST_TESTS is set", async () => {
-  const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-"));
-
-  try {
-    mkdirSync(join(workspace, "dist", "tests", "unit", "some-test"), { recursive: true });
-    const staleJs = join(workspace, "dist", "tests", "unit", "some-test", "stale.test.js");
+    const staleJs = join(
+      workspace,
+      "dist",
+      "tests",
+      "integration",
+      "platform",
+      "control-plane",
+      "control-plane-integration.test.js",
+    );
     const staleMap = `${staleJs}.map`;
+    const staleDts = staleJs.replace(/\.js$/, ".d.ts");
     writeFileSync(staleJs, "console.log('stale');\n");
+    writeFileSync(staleDts, "export {};\n");
     writeFileSync(
       staleMap,
       JSON.stringify({
         version: 3,
-        file: "stale.test.js",
-        sources: ["../../../../../../tests/unit/some-test/nonexistent-source.test.ts"],
+        file: "control-plane-integration.test.js",
+        sources: ["../../../../../tests/integration/platform/control-plane/control-plane-integration.test.ts"],
         names: [],
         mappings: "",
       }),
     );
 
-    const result = spawnSync("node", [SCRIPT_PATH], {
+    const liveSource = join(workspace, "tests", "integration", "platform", "control-plane");
+    mkdirSync(liveSource, { recursive: true });
+    writeFileSync(join(liveSource, "operator-governance-integration.test.ts"), "export {};\n");
+    const liveJs = join(
+      workspace,
+      "dist",
+      "tests",
+      "integration",
+      "platform",
+      "control-plane",
+      "operator-governance-integration.test.js",
+    );
+    const liveMap = `${liveJs}.map`;
+    writeFileSync(liveJs, "console.log('live');\n");
+    writeFileSync(
+      liveMap,
+      JSON.stringify({
+        version: 3,
+        file: "operator-governance-integration.test.js",
+        sources: ["../../../../../tests/integration/platform/control-plane/operator-governance-integration.test.ts"],
+        names: [],
+        mappings: "",
+      }),
+    );
+
+    execFileSync("node", [SCRIPT_PATH], {
       cwd: workspace,
-      env: { ...process.env, AA_PRESERVE_DIST: "1", AA_PRUNE_DIST_TESTS: "1" },
+      env: {
+        ...process.env,
+        AA_PRESERVE_DIST: "1",
+        AA_PRUNE_DIST_TESTS: "1",
+      },
       stdio: "pipe",
     });
 
-    assert.equal(result.status, 0);
     assert.equal(existsSync(staleJs), false);
     assert.equal(existsSync(staleMap), false);
-  } finally {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
-// Note: "clean-dist skips .test.js with valid source mappings" is covered by
-// integration-style tests in tests/integration/scripts/ that verify the actual
-// source path resolution behavior with real file layouts.
-
-test("clean-dist handles missing dist gracefully", async () => {
-  const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-"));
-
-  try {
-    const result = spawnSync("node", [SCRIPT_PATH], {
-      cwd: workspace,
-      env: { ...process.env },
-      stdio: "pipe",
-    });
-
-    assert.equal(result.status, 0);
+    assert.equal(existsSync(staleDts), false);
+    assert.equal(existsSync(liveJs), true);
+    assert.equal(existsSync(liveMap), true);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

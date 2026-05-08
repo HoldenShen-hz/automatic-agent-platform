@@ -10,12 +10,6 @@ export type FeatureGroup = "Mission Control" | "Operations" | "Governance" | "Ad
 export type FeatureKind = "implemented" | "planned";
 export type DrillDepth = 1 | 2 | 3 | 4 | 5;
 
-export interface PlatformNotificationOptions {
-  readonly body?: string;
-  readonly tag?: string;
-  readonly requireInteraction?: boolean;
-}
-
 export interface PlatformAdapter {
   readonly platform: PlatformId;
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
@@ -75,18 +69,6 @@ export interface PlatformAdapterCapabilityView {
   };
   readonly screenSecurity: {
     setEnabled(enabled: boolean): Promise<void>;
-  };
-  readonly notifications: {
-    requestPermission(): Promise<NotificationPermission>;
-    show(title: string, options?: PlatformNotificationOptions): Promise<void>;
-  };
-  readonly biometric: {
-    isAvailable(): Promise<boolean>;
-  };
-  readonly webAuthn: {
-    isSupported(): Promise<boolean>;
-    createCredential(options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null>;
-    getAssertion(options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null>;
   };
 }
 
@@ -167,10 +149,6 @@ export interface DashboardSnapshotDTO {
   readonly activeExecutions: number;
   readonly approvalBacklog: number;
   readonly alertSummary: string;
-  // §R7-15: Required metrics for dashboard
-  readonly successRate: number;        // percentage 0-100
-  readonly avgDurationMs: number;      // average execution duration in milliseconds
-  readonly activeAgents: number;      // count of active agents
 }
 
 export interface WorkflowStepDTO {
@@ -183,27 +161,10 @@ export interface WorkflowStepDTO {
 export interface WorkflowDTO {
   readonly id: string;
   readonly title: string;
-  readonly status: "draft" | "running" | "paused" | "completed" | "cancelled";
+  readonly status: "draft" | "running" | "paused" | "completed";
   readonly currentStage: string;
   readonly owner: string;
   readonly steps: readonly WorkflowStepDTO[];
-  readonly approvalNodes?: readonly ApprovalNodeDTO[];
-  readonly evidenceRefs?: readonly EvidenceRefDTO[];
-}
-
-export interface ApprovalNodeDTO {
-  readonly nodeId: string;
-  readonly title: string;
-  readonly status: "pending" | "approved" | "rejected" | "skipped";
-  readonly assignee?: string;
-  readonly decidedAt?: string;
-}
-
-export interface EvidenceRefDTO {
-  readonly refId: string;
-  readonly type: "checkpoint" | "artifact" | "log" | "trace";
-  readonly uri: string;
-  readonly description?: string;
 }
 
 export interface WorkflowRunStepDTO {
@@ -221,7 +182,6 @@ export interface IncidentDTO {
   readonly title: string;
   readonly summary: string;
   readonly createdAt: string;
-  readonly domainId?: string;
 }
 
 export interface WorkerDTO {
@@ -366,17 +326,12 @@ export interface SystemConfigDTO {
 export interface TaskDTO {
   readonly id: string;
   readonly title: string;
-  readonly status: "queued" | "running" | "paused" | "blocked" | "completed" | "failed" | "cancelled";
+  readonly status: "queued" | "running" | "blocked" | "completed" | "failed";
   readonly domainId: string;
   readonly currentStep: string;
   readonly owner?: string;
   readonly evidenceCount?: number;
   readonly timelineDepth?: number;
-  readonly resourceUsage?: {
-    readonly cpuPercent: number;
-    readonly memoryMb: number;
-    readonly runtimeMinutes: number;
-  };
 }
 
 export interface ApprovalDTO {
@@ -384,9 +339,6 @@ export interface ApprovalDTO {
   readonly taskId: string;
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly reasonSummary: string;
-  readonly deadline?: string;
-  readonly policySource?: string;
-  readonly recommendedOption?: string;
 }
 
 export interface UserPreferenceDTO {

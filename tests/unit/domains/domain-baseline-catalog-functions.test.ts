@@ -9,7 +9,6 @@ import {
   getVerticalDomainBaseline,
   listVerticalDomainBaselinesByPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
-import type { VerticalDomainId } from "../../../src/domains/domain-baseline-catalog.js";
 
 test("listVerticalDomainIds returns array of all domain IDs", () => {
   const ids = listVerticalDomainIds();
@@ -68,7 +67,7 @@ test("listVerticalDomainIds includes all canonical domain IDs", () => {
   ];
 
   for (const expectedId of expectedIds) {
-    assert.ok(ids.includes(expectedId as VerticalDomainId), `Missing domain ID: ${expectedId}`);
+    assert.ok(ids.includes(expectedId), `Missing domain ID: ${expectedId}`);
   }
 });
 

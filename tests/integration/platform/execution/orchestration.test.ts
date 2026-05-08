@@ -169,7 +169,7 @@ test("multi-step orchestration cancels new work when read-only admission backpre
     assert.equal(result.snapshot.execution, null);
     assert.deepEqual(
       result.snapshot.events.map((event) => event.eventType),
-      ["platform.graph_scheduler.decision_recorded", "workflow:planned", "task:status_changed", "admission:rejected"],
+      ["routing:decided", "workflow:planned", "task:status_changed", "admission:rejected"],
     );
     assert.equal(result.snapshot.stepOutputs.length, 0);
     assert.equal(result.streamFrames.length, 0);
@@ -389,7 +389,7 @@ test("multi-step orchestration derives queue-only admission backpressure from th
     assert.equal(result.snapshot.session?.status, "open");
     assert.deepEqual(
       result.snapshot.events.map((event) => event.eventType),
-      ["platform.graph_scheduler.decision_recorded", "workflow:planned", "admission:queued"],
+      ["routing:decided", "workflow:planned", "admission:queued"],
     );
     assert.equal(result.snapshot.events[2]?.payloadJson.includes("\"reasonCode\":\"admission.queue_backpressure\""), true);
     assert.equal(result.snapshot.stepOutputs.length, 0);

@@ -5,24 +5,11 @@
  */
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import type {
-  AtomicLeadershipAcquisitionResult,
-  AtomicLeadershipCapableRepository,
-  HaRepository,
-  LeaderActionAuditEntry,
-} from "./ha-repository.js";
-import type {
-  CoordinatorNode,
-  CoordinatorNodeStatus,
-  FailoverDecision,
-  LeaderLease,
-  LeadershipAcquisitionInput,
-  LeadershipEpoch,
-} from "./types.js";
-import { DEFAULT_LEASE_TTL_MS } from "./types.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
+import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
+import { nowIso } from "../../contracts/types/ids.js";
 
-export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapableRepository {
+export class SqliteHaRepository implements HaRepository {
   constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
   // Node Management
@@ -201,14 +188,6 @@ export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapable
       .all(limit) as unknown as unknown[]).map((r) => this.mapRowToFailoverDecision(r as FailoverDecisionRow));
   }
 
-  async purgeOldFailoverDecisions(olderThanDays: number): Promise<number> {
-    const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
-    const result = this.db.connection
-      .prepare(`DELETE FROM failover_decisions WHERE decided_at < ?`)
-      .run(cutoffDate);
-    return Number(result.changes ?? 0);
-  }
-
   // Leader Action Audit
 
   async recordActionAudit(entry: LeaderActionAuditEntry): Promise<void> {
@@ -228,127 +207,6 @@ export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapable
         entry.reasonCode,
         entry.performedAt,
       );
-  }
-
-  async acquireLeadershipAtomically(
-    input: LeadershipAcquisitionInput,
-  ): Promise<AtomicLeadershipAcquisitionResult> {
-    return this.db.transaction(() => {
-      const { nodeId, ttlMs, forceAcquire = false } = input;
-      const node = this.db.connection
-        .prepare(`SELECT * FROM coordinator_nodes WHERE node_id = ?`)
-        .get(nodeId) as CoordinatorNodeRow | undefined;
-      if (!node) {
-        throw new Error("Must register node before acquiring leadership");
-      }
-
-      const now = nowIso();
-      const effectiveTtlMs = ttlMs ?? DEFAULT_LEASE_TTL_MS;
-      const expiresAt = new Date(Date.now() + effectiveTtlMs).toISOString();
-      const currentLeaderRow = this.db.connection
-        .prepare(`SELECT * FROM coordinator_nodes WHERE is_leader = 1 LIMIT 1`)
-        .get() as CoordinatorNodeRow | undefined;
-      const currentLeader = currentLeaderRow ? this.mapRowToNode(currentLeaderRow) : null;
-      const currentLeaderLeaseRow =
-        currentLeader == null
-          ? undefined
-          : this.db.connection
-            .prepare(`SELECT * FROM leadership_leases WHERE node_id = ? AND status = 'active' ORDER BY acquired_at DESC LIMIT 1`)
-            .get(currentLeader.nodeId) as LeaderLeaseRow | undefined;
-      const currentLeaderLease = currentLeaderLeaseRow ? this.mapRowToLease(currentLeaderLeaseRow) : null;
-      const currentEpochRow = this.db.connection
-        .prepare(`SELECT * FROM leadership_epochs ORDER BY epoch DESC LIMIT 1`)
-        .get() as EpochRow | undefined;
-      const currentEpoch = currentEpochRow
-        ? this.mapRowToEpoch(currentEpochRow)
-        : {
-          epoch: 0,
-          leaderNodeId: null,
-          startedAt: now,
-          endedAt: null,
-          cause: "acquired" as const,
-          fencingToken: 0,
-        };
-
-      if (currentLeader && !forceAcquire && currentLeaderLease && currentLeader.nodeId !== nodeId) {
-        const isExpired = new Date(currentLeaderLease.expiresAt) <= new Date(now);
-        if (!isExpired) {
-          return {
-            acquired: false,
-            lease: null,
-            epoch: currentEpoch.epoch,
-            fencingToken: currentEpoch.fencingToken,
-            cause: "leadership_held_by_another_node",
-          };
-        }
-      }
-
-      const newEpoch = currentEpoch.epoch + 1;
-      const newFencingToken = currentEpoch.fencingToken + 1;
-      const lease: LeaderLease = {
-        leaseId: newId("llease"),
-        nodeId,
-        epoch: newEpoch,
-        acquiredAt: now,
-        expiresAt,
-        status: "active",
-        ttlMs: effectiveTtlMs,
-      };
-
-      this.db.connection
-        .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1`)
-        .run();
-      this.db.connection
-        .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE status = 'active'`)
-        .run();
-
-      if (currentEpoch.epoch > 0) {
-        this.db.connection
-          .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = ? WHERE epoch = ? AND ended_at IS NULL`)
-          .run(now, forceAcquire ? "preempted" : "expired", currentEpoch.epoch);
-      }
-
-      this.db.connection
-        .prepare(
-          `INSERT INTO leadership_leases (lease_id, node_id, epoch, acquired_at, expires_at, status, ttl_ms, fencing_token)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(lease.leaseId, lease.nodeId, lease.epoch, lease.acquiredAt, lease.expiresAt, lease.status, lease.ttlMs, newFencingToken);
-      this.db.connection
-        .prepare(`UPDATE coordinator_nodes SET is_leader = 1, leadership_epoch = ? WHERE node_id = ?`)
-        .run(newEpoch, nodeId);
-      this.db.connection
-        .prepare(
-          `INSERT INTO leadership_epochs (epoch, leader_node_id, started_at, ended_at, cause, fencing_token)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-        )
-        .run(newEpoch, nodeId, now, null, forceAcquire ? "preempted" : "acquired", newFencingToken);
-
-      if (currentLeader && currentLeader.nodeId !== nodeId) {
-        this.db.connection
-          .prepare(
-            `INSERT INTO failover_decisions (decision_id, old_leader_node_id, new_leader_node_id, epoch, cause, outcome, decided_at, fencing_token)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .run(
-            newId("failover"),
-            currentLeader.nodeId,
-            nodeId,
-            newEpoch,
-            forceAcquire ? "epoch_preempted" : "voluntary",
-            "leader_changed",
-            now,
-            newFencingToken,
-          );
-      }
-
-      return {
-        acquired: true,
-        lease,
-        epoch: newEpoch,
-        fencingToken: newFencingToken,
-      };
-    });
   }
 
   // Stale Detection

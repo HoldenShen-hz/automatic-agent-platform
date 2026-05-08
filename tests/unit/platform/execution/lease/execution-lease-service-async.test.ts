@@ -226,19 +226,6 @@ test("ExecutionWriteValidationResult not allowed - stale fencing token", () => {
   assert.equal(result.authoritativeFencingToken, 3);
 });
 
-test("ExecutionWriteValidationResult not allowed - lease expired", () => {
-  const result: ExecutionWriteValidationResult = {
-    allowed: false,
-    reasonCode: "lease_expired",
-    authoritativeFencingToken: 4,
-    activeLeaseId: "lease_3",
-  };
-
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "lease_expired");
-  assert.equal(result.authoritativeFencingToken, 4);
-});
-
 test("ExecutionLeaseHandoverDecision blocked structure", () => {
   const decision: ExecutionLeaseHandoverDecision = {
     outcome: "blocked",

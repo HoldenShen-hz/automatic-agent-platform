@@ -2,9 +2,7 @@ import { nowIso } from "../../platform/contracts/types/ids.js";
 import { CapacityForecasterService, forecastCapacityUsage } from "./forecaster/index.js";
 import { CapacityScenarioSimulatorService, simulateCapacityScenario, type CapacityScenarioInput } from "./simulator/index.js";
 import { CapacityTrendAnalyzerService, analyzeCapacityTrend } from "./trend-analyzer/index.js";
-import type { CapacitySnapshot as LegacyCapacitySnapshot, ForecastRequest as LegacyForecastRequest, ResourceAllocation } from "./types.js";
 
-// R9-58 fix: Added tenantId and harnessRunId to CapacitySignal for proper multi-tenant tracking
 export interface CapacitySignal {
   readonly resourceType: string;
   readonly regionId?: string;
@@ -12,8 +10,6 @@ export interface CapacitySignal {
   readonly usage: number;
   readonly queueDepth?: number;
   readonly errorBudgetBurn?: number;
-  readonly tenantId?: string;
-  readonly harnessRunId?: string;
 }
 
 export interface CapacityForecast {
@@ -82,64 +78,6 @@ export class CapacityPlanningService {
       readonly end: string;
       readonly generatedAt?: string;
     },
-  ): CapacityForecast;
-  public forecast(request: LegacyForecastRequest): {
-    readonly predictedDemand: number;
-    readonly confidenceInterval: { readonly low: number; readonly high: number };
-    readonly horizonHours: number;
-  };
-  public forecast(
-    resourceTypeOrRequest: string | LegacyForecastRequest,
-    periods?: number,
-    options?: {
-      readonly regionId?: string;
-      readonly start: string;
-      readonly end: string;
-      readonly generatedAt?: string;
-    },
-  ): CapacityForecast | {
-    readonly predictedDemand: number;
-    readonly confidenceInterval: { readonly low: number; readonly high: number };
-    readonly horizonHours: number;
-  } {
-    if (typeof resourceTypeOrRequest !== "string") {
-      const snapshots = [
-        ...resourceTypeOrRequest.historicalSnapshots,
-        resourceTypeOrRequest.currentSnapshot,
-      ];
-      const latest = snapshots.at(-1)?.activeTasks ?? 0;
-      const historicalAverage = snapshots.length === 0
-        ? latest
-        : snapshots.reduce((sum, item) => sum + item.activeTasks, 0) / snapshots.length;
-      const previous = snapshots.length >= 2 ? snapshots[snapshots.length - 2]!.activeTasks : latest;
-      const growthPerWindow = latest - previous;
-      const projected = latest + growthPerWindow * Math.max(1, Math.floor(resourceTypeOrRequest.horizonHours / 6));
-      const predictedDemand = Math.max(Math.round(historicalAverage), latest, Math.round(projected));
-      const band = Math.max(1, Math.round(predictedDemand * (1 - resourceTypeOrRequest.confidenceLevel + 0.05)));
-      return {
-        predictedDemand,
-        confidenceInterval: {
-          low: Math.max(0, predictedDemand - band),
-          high: predictedDemand + band,
-        },
-        horizonHours: resourceTypeOrRequest.horizonHours,
-      };
-    }
-    return this.forecastFromSignals(resourceTypeOrRequest, periods ?? 1, options ?? {
-      start: nowIso(),
-      end: nowIso(),
-    });
-  }
-
-  private forecastFromSignals(
-    resourceType: string,
-    periods: number,
-    options: {
-      readonly regionId?: string;
-      readonly start: string;
-      readonly end: string;
-      readonly generatedAt?: string;
-    },
   ): CapacityForecast {
     const window = this.getWindow(resourceType, options.start, options.end, options.regionId);
     if (window.length === 0) {
@@ -167,25 +105,6 @@ export class CapacityPlanningService {
       trend: trend.direction,
       generatedAt: options.generatedAt ?? nowIso(),
     };
-  }
-
-  public analyzeUtilization(snapshot: LegacyCapacitySnapshot): ResourceAllocation {
-    const utilizationPercent = Math.round(snapshot.resourceUtilization * 100);
-    const recommendations = utilizationPercent >= 85
-      ? ["scale_up"]
-      : utilizationPercent <= 40
-        ? ["optimize"]
-        : ["hold"];
-    return {
-      currentWorkers: snapshot.workerCount,
-      recommendedWorkers: utilizationPercent >= 85 ? snapshot.workerCount + 2 : snapshot.workerCount,
-      utilizationPercent,
-      recommendations,
-    };
-  }
-
-  public calculateAllocation(snapshot: LegacyCapacitySnapshot): ResourceAllocation {
-    return this.analyzeUtilization(snapshot);
   }
 
   public compareScenarios(scenarios: readonly CapacityScenario[]): Array<CapacityScenario & { readonly projectedUnits: number }> {

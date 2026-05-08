@@ -24,7 +24,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.memory.test"],
     approvalMode: "required",
     autonomyMode: "supervised",
-    tool_policy: {
+    toolPolicy: {
       allowedTools: ["read", "write", "bash"],
     },
     risk_policy: {

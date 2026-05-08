@@ -1,64 +1,34 @@
 id: content
 version: 1
-name: Creative Production Division
-description: Advertising creative generation, brand asset creation, content production, multi-modal creative workflows.
-priority: 45
+name: Content Division
+description: Article writing, copywriting, translation, SEO optimization, content operations.
+priority: 30
 default_workflow: content_single_step
 orchestration_workflow: content_single_step
 triggers:
-  - creative
-  - content generation
-  - brand asset
-  - ad creative
+  - write
+  - article
+  - blog
+  - content
   - copywriting
-  - design
-  - multimedia
-# §37: DomainDescriptor - Creative Production vertical business domain
-domain_descriptor:
-  domainId: creative-production
-  ownerOrgNodeId: org.creative
-  primaryEntities:
-    - assets
-    - briefs
-    - campaigns
-    - brand_elements
-    - creative_variants
-  recipeArchetype: creative
-  lifecycleState: canary
-# §37: DomainRiskProfile - Creative Production risk classification
-risk_profile:
-  profileId: creative-production.risk
-  domainId: creative-production
-  riskLevel: medium
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: lightly_regulated
-# §37: DomainEvalSpec - Creative Production evaluation framework
-eval_spec:
-  domainId: creative-production
-  evalBaselines:
-    - brand_safety
-    - brief_alignment
-    - creative_quality
-  criticalCases:
-    - brand_violation
-    - off_model_content
-    - copyright_infringement
-    - unintended_content
-  acceptanceThresholds:
-    brand_safety: 95
-    brief_alignment: 90
-    creative_quality: 88
-  adversarialScenarios:
-    - prompt_injection
-    - style_drift
-    - unintended_content
-    - brand_drift
+  - translate
+  - SEO
 roles:
+  - id: editor
+    name: Editor
+    prompt: roles/content/editor.prompt.md
+    model: reasoning
+    tools: [read, web_search, write]
+    max_instances: 2
   - id: writer
     name: Writer
     prompt: roles/content/writer.prompt.md
     model: balanced
     tools: [read, web_search, write]
     max_instances: 4
+  - id: translator
+    name: Translator
+    prompt: roles/content/translator.prompt.md
+    model: balanced
+    tools: [read]
+    max_instances: 2

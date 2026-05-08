@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  PostExecutionQualityGate,
-  PreReleaseQualityGate,
-} from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
+import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
 import type { ExecutionOutcomeEvaluation } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 
 test("PostExecutionQualityGate decides released when complete and passed", () => {
@@ -277,68 +274,4 @@ test("PostExecutionQualityGate returns multiple reason codes when applicable", (
 
   assert.equal(decision.accepted, true);
   assert.ok(decision.reasonCodes.includes("quality.accepted"));
-});
-
-test("PreReleaseQualityGate blocks promotion on regression or blocking incidents", () => {
-  const gate = new PreReleaseQualityGate();
-
-  const regressionDecision = gate.decide({
-    qualityScore: 0.95,
-    minimumQualityScore: 0.8,
-    regressionDetected: true,
-  });
-  const incidentDecision = gate.decide({
-    qualityScore: 0.95,
-    minimumQualityScore: 0.8,
-    blockingIncidentCount: 1,
-  });
-
-  assert.equal(regressionDecision.promotable, false);
-  assert.equal(regressionDecision.releaseStage, "blocked");
-  assert.ok(regressionDecision.reasonCodes.includes("quality.pre_release_regression_detected"));
-
-  assert.equal(incidentDecision.promotable, false);
-  assert.equal(incidentDecision.releaseStage, "blocked");
-  assert.ok(incidentDecision.reasonCodes.includes("quality.pre_release_blocking_incident"));
-});
-
-test("PreReleaseQualityGate holds promotion when evidence or threshold is missing", () => {
-  const gate = new PreReleaseQualityGate();
-
-  const missingEvidence = gate.decide({
-    qualityScore: 0.95,
-    minimumQualityScore: 0.8,
-    requiredEvidenceRefs: ["artifact://quality", "artifact://security"],
-    presentEvidenceRefs: ["artifact://quality"],
-  });
-  const belowThreshold = gate.decide({
-    qualityScore: 0.79,
-    minimumQualityScore: 0.8,
-    presentEvidenceRefs: ["artifact://quality"],
-  });
-
-  assert.equal(missingEvidence.promotable, false);
-  assert.equal(missingEvidence.releaseStage, "hold");
-  assert.deepEqual(missingEvidence.reasonCodes, ["quality.pre_release_missing_evidence:artifact://security"]);
-
-  assert.equal(belowThreshold.promotable, false);
-  assert.equal(belowThreshold.releaseStage, "hold");
-  assert.ok(belowThreshold.reasonCodes[0]?.startsWith("quality.pre_release_threshold_not_met:"));
-});
-
-test("PreReleaseQualityGate approves promotion only when critical cases and evidence pass", () => {
-  const gate = new PreReleaseQualityGate();
-
-  const decision = gate.decide({
-    qualityScore: 0.92,
-    minimumQualityScore: 0.8,
-    criticalCaseCount: 2,
-    criticalCasePassedCount: 2,
-    requiredEvidenceRefs: ["artifact://quality", "artifact://security"],
-    presentEvidenceRefs: ["artifact://quality", "artifact://security"],
-  });
-
-  assert.equal(decision.promotable, true);
-  assert.equal(decision.releaseStage, "promote");
-  assert.deepEqual(decision.reasonCodes, ["quality.pre_release_approved"]);
 });

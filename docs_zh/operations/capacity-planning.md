@@ -1,13 +1,5 @@
 # Capacity Planning
 
-本运行手册消费 `docs_zh/contracts/capacity_planning_contract.md` 中冻结的 canonical 对象，尤其是：
-
-- `CapacitySignal`：采样输入，记录 `resource_type / usage / queue_depth / error_budget_burn`
-- `CapacityForecast`：容量预测输出，必须带时间窗口与置信区间
-- `CapacityScenario`：what-if 扩缩容仿真对象
-- `CapacityAlert`：forecast 越线时的显式预警对象
-- `CapacityRecommendation`：综合成本与 SLO 风险后的建议对象
-
 ## Baseline
 
 | Scenario | Pod CPU | Pod Memory | Notes |
@@ -28,7 +20,5 @@
 
 ## Validation Loop
 1. Run `tests/integration/ops-maturity/capacity-planning-integration.test.ts` as the reproducible baseline (see `tests/unit/ops-maturity/capacity-planning-service.test.ts` for unit tests).
-2. Increase concurrency in controlled steps and persist sampled runtime metrics as `CapacitySignal`.
-3. For each target deployment size, generate at least one `CapacityForecast` and one `CapacityScenario` to compare “keep / scale out / scale down” outcomes.
-4. When predicted utilization crosses the operating threshold, emit and archive a `CapacityAlert` together with the chosen `CapacityRecommendation`.
-5. Update this document when a new release changes pod efficiency or query behavior.
+2. Increase concurrency in controlled steps and record CPU, memory, queue depth, and DB waiters.
+3. Update this document when a new release changes pod efficiency or query behavior.

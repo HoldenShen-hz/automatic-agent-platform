@@ -7,7 +7,6 @@ import type { ApprovalRecord, EventRecord } from "../../../../../src/platform/co
 import type { EventTier } from "../../../../../src/platform/contracts/types/domain/primitives.js";
 import type { ApprovalStatus } from "../../../../../src/platform/contracts/types/status.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 
 // ---------------------------------------------------------------------------
 // Mock Infrastructure
@@ -105,13 +104,10 @@ function createMockStore() {
 }
 
 function createMockDb() {
-  // Initialize HA coordinator for tests that use TransitionService
-  const { cleanup } = initHaCoordinatorForTests();
   return {
     transaction<T>(fn: () => T): T {
       return fn();
     },
-    _haCleanup: cleanup,
   } as unknown as AuthoritativeSqlDatabase;
 }
 
@@ -222,18 +218,6 @@ test("createMultiPartyRequest with executionId sets executionId", () => {
   const result = service.createMultiPartyRequest(request);
 
   assert.strictEqual(result.executionId, "exec_789");
-  assert.strictEqual(result.harnessRunId, "exec_789");
-});
-
-test("createMultiPartyRequest does not synthesize taskId into harness runtime id", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new MultiPartyApprovalService(db, store as any);
-
-  const result = service.createMultiPartyRequest(createBaseRequest());
-
-  assert.strictEqual(result.harnessRunId, null);
-  assert.strictEqual(result.executionId, null);
 });
 
 test("getPendingApproval returns null for non-existent approval", () => {

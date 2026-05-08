@@ -39,7 +39,7 @@ test("compareWorkflowRuns returns differences when step statuses differ", () => 
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, ["step:deploy:status:paused->failed"]);
+  assert.deepEqual(result, ["step:deploy:paused->failed"]);
 });
 
 test("compareWorkflowRuns reports step missing on right as 'missing'", () => {
@@ -53,7 +53,7 @@ test("compareWorkflowRuns reports step missing on right as 'missing'", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, ["step:deploy:missing_in_right"]);
+  assert.deepEqual(result, ["step:deploy:done->missing"]);
 });
 
 test("compareWorkflowRuns ignores steps only in right", () => {
@@ -67,7 +67,7 @@ test("compareWorkflowRuns ignores steps only in right", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, ["step:deploy:missing_in_left"]);
+  assert.deepEqual(result, []);
 });
 
 test("compareWorkflowRuns handles empty left array", () => {
@@ -78,7 +78,7 @@ test("compareWorkflowRuns handles empty left array", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, ["step:deploy:missing_in_left"]);
+  assert.deepEqual(result, []);
 });
 
 test("compareWorkflowRuns handles empty right array", () => {
@@ -89,7 +89,7 @@ test("compareWorkflowRuns handles empty right array", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, ["step:deploy:missing_in_right"]);
+  assert.deepEqual(result, ["step:deploy:done->missing"]);
 });
 
 test("compareWorkflowRuns handles multiple differences", () => {
@@ -107,8 +107,8 @@ test("compareWorkflowRuns handles multiple differences", () => {
   const result = compareWorkflowRuns(left, right);
 
   assert.equal(result.length, 2);
-  assert.ok(result.includes("step:test:status:passed->failed"));
-  assert.ok(result.includes("step:deploy:status:pending->skipped"));
+  assert.ok(result.includes("step:test:passed->failed"));
+  assert.ok(result.includes("step:deploy:pending->skipped"));
 });
 
 test("compareWorkflowRuns with latencyMs does not affect comparison output", () => {

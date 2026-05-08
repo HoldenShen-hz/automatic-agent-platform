@@ -24,7 +24,7 @@ export function buildGovernanceBootstrap(): GovernanceBootstrap {
 }
 
 export function registerGovernanceBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): GovernanceBootstrap {
   registry.register<readonly GovernanceCapabilityBaseline[]>(GOVERNANCE_CATALOG_SERVICE_ID, {
     init: () => listGovernanceCapabilityBaselines(),

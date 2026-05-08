@@ -129,7 +129,7 @@ function seedTaskAndExecution(
     taskId: string;
     executionId: string;
     traceId: string;
-    priority?: "low" | "normal" | "high" | "critical";
+    priority?: "low" | "normal" | "high" | "urgent";
   },
 ): void {
   const now = nowIso();
@@ -167,8 +167,6 @@ function seedTaskAndExecution(
       attempt: 1,
       timeoutMs: 60_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: "[]",
@@ -327,7 +325,7 @@ async function runRepoVersionCanaryScenario(outputDir: string): Promise<StableRo
       taskId: "task-upgrade-canary",
       executionId: "exec-upgrade-canary",
       traceId: "trace-upgrade-canary",
-      priority: "critical",
+      priority: "urgent",
     });
 
     registry.recordHeartbeat({
@@ -353,7 +351,7 @@ async function runRepoVersionCanaryScenario(outputDir: string): Promise<StableRo
 
     const ticket = dispatch.createTicket({
       executionId: "exec-upgrade-canary",
-      priority: "critical",
+      priority: "urgent",
       queueName: "default",
       requiredCapabilities: ["bash"],
       requiredRepoVersion,
@@ -444,7 +442,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       occurredAt: "2026-04-06T10:00:15.000Z",
     });
     const audits = store.lease.listLeaseAudits("exec-upgrade-handover");
-    const eventsResult = store.event.listEventsForTask("task-upgrade-handover");
+    const events = store.event.listEventsForTask("task-upgrade-handover");
     const previousWorker = store.worker.getWorkerSnapshot("worker-upgrade-source");
     const nextWorker = store.worker.getWorkerSnapshot("worker-upgrade-target");
     db.close();
@@ -460,7 +458,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
         && previousWorker?.runningExecutionsJson === "[]"
         && (nextWorker?.runningExecutionsJson.includes("exec-upgrade-handover") ?? false)
         && audits.some((audit) => audit.eventType === "lease_handover")
-        && eventsResult.events.some((event) => event.eventType === "lease:handover_recorded"),
+        && events.some((event) => event.eventType === "lease:handover_recorded"),
       summary: "step-boundary rolling upgrades can hand over active leases without losing lineage",
       details: {
         granted,
@@ -471,7 +469,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
           reasonCode: audit.reasonCode,
           fencingToken: audit.fencingToken,
         })),
-        eventTypes: eventsResult.events.map((event) => event.eventType),
+        eventTypes: events.map((event) => event.eventType),
       },
     };
   });

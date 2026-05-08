@@ -3,14 +3,10 @@
  *
  * Enforces admission policies for task execution, ensuring the system remains
  * within operational limits. Evaluates incoming task requests against:
- * - Queue depth limits (max queued tasks, critical queue headroom)
+ * - Queue depth limits (max queued tasks, urgent queue headroom)
  * - Active execution capacity
  * - Tier 1 acknowledgment backlog thresholds
  * - Budget constraints
- * - Risk class isolation routing
- * - Tenant quota limits
- * - Sandbox matching
- * - Capability class gating
  *
  * Provides decisions: allow (execute immediately), queue (wait for capacity), or reject.
  *
@@ -24,46 +20,22 @@ import type { TaskPriority } from "../../contracts/types/domain.js";
 import type { HealthStatusReport } from "../../shared/observability/health-service.js";
 
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { BudgetExecutionSessionManager, BudgetExecutionState } from "../../model-gateway/cost-tracker/budget-guard.js";
 
 export interface AdmissionPolicy {
   maxQueuedTasks: number;
   maxActiveExecutions: number;
   maxTier1AckBacklog: number;
-  criticalQueueHeadroom: number;
-  // R6-3: §14.2 scheduling factors
-  riskClassIsolationEnabled: boolean;
-  tenantQuotaEnabled: boolean;
-  sandboxMatchingEnabled: boolean;
-  capabilityClassGateEnabled: boolean;
-  maxRiskClassTasks: Record<string, number>;
-  tenantTaskQuota: number;
-  // R9-5: §14.2 poison-pill detection - max time a ticket can wait before being considered abandoned
-  maxQueueAgeMs: number;
+  urgentQueueHeadroom: number;
 }
-
-type AdmissionPolicyInput = Partial<AdmissionPolicy> & {
-  urgentQueueHeadroom?: number;
-};
 
 export interface AdmissionSnapshot {
   queuedTasks: number;
   activeExecutions: number;
   tier1AckBacklog: number;
-  // R6-3: Extended snapshot with scheduling factors
-  riskClassDistribution: Record<string, number>;
-  tenantUsage: Record<string, number>;
-  sandboxAvailability: Record<string, number>;
-  capabilityClassCapacity: Record<string, number>;
 }
 
 export interface AdmissionRequest {
   priority: TaskPriority;
-  budgetReservationId?: string; // R6-9: required for dispatch; must reserve before execute
-  riskClass?: string; // R6-3/R6-9: §14.2 scheduling factors
-  tenantId?: string; // R6-3/R6-9: §14.2 scheduling factors
-  sandboxType?: string; // R6-3/R6-9: §14.2 scheduling factors
-  requiredCapabilities?: readonly string[];
   estimatedCostUsd?: number | null;
   budgetRemainingUsd?: number | null;
 }
@@ -86,13 +58,7 @@ export interface AdmissionDecision {
     | "admission.reject_starvation_protection"
     | "admission.reject_queue_saturated"
     | "admission.reject_tier1_backlog"
-    | "admission.reject_budget_exceeded"
-    | "admission.reject_no_active_budget_reservation"
-    | "admission.reject_budget_reservation_not_active"
-    | "admission.reject_risk_class_isolation"
-    | "admission.reject_tenant_quota"
-    | "admission.reject_sandbox_matching"
-    | "admission.reject_capability_class";
+    | "admission.reject_budget_exceeded";
   snapshot: AdmissionSnapshot;
   backpressure: AdmissionBackpressureSnapshot | null;
 }
@@ -101,84 +67,25 @@ const DEFAULT_POLICY: AdmissionPolicy = {
   maxQueuedTasks: 5,
   maxActiveExecutions: 10,
   maxTier1AckBacklog: 25,
-  criticalQueueHeadroom: 2,
-  // R6-3: §14.2 scheduling factors - all enabled by default
-  riskClassIsolationEnabled: true,
-  tenantQuotaEnabled: true,
-  sandboxMatchingEnabled: true,
-  capabilityClassGateEnabled: true,
-  maxRiskClassTasks: {
-    critical: 2,
-    high: 5,
-  },
-  tenantTaskQuota: 50,
-  // R9-5: §14.2 poison-pill detection - 1 hour max queue time before abandonment
-  maxQueueAgeMs: 3600000,
+  urgentQueueHeadroom: 2,
 };
 
-// R6-8: §5.3 canonical naming - elevated priorities are "high" and "critical"
-// Keep "urgent" as a compatibility synonym so older tickets and tests keep working
-// while the canonical taxonomy continues to use "critical".
 function isPriorityElevated(priority: TaskPriority): boolean {
-  return priority === "high" || priority === "critical" || priority === "urgent";
+  return priority === "high" || priority === "urgent";
 }
 
 export class AdmissionController {
-  private readonly policy: AdmissionPolicy;
-
   public constructor(
     private readonly store: AuthoritativeTaskStore,
-    policy: AdmissionPolicyInput = DEFAULT_POLICY,
+    private readonly policy: AdmissionPolicy = DEFAULT_POLICY,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
-    private readonly budgetSessionManager?: BudgetExecutionSessionManager,
-  ) {
-    this.policy = normalizeAdmissionPolicy(policy);
-  }
+  ) {}
 
   public snapshot(): AdmissionSnapshot {
-    const base = {
+    return {
       queuedTasks: this.store.task.countQueuedTasks(),
       activeExecutions: this.store.execution.countActiveExecutions(),
       tier1AckBacklog: this.store.event.countPendingTier1Acks(),
-    };
-
-    const tasks =
-      typeof (this.store.task as { listTasks?: () => Array<{ riskClass?: string | null; tenantId?: string | null }> }).listTasks === "function"
-        ? (this.store.task as { listTasks: () => Array<{ riskClass?: string | null; tenantId?: string | null }> }).listTasks()
-        : [];
-
-    const riskClassDistribution: Record<string, number> = {};
-    const tenantUsage: Record<string, number> = {};
-    for (const task of tasks) {
-      const riskClass = task.riskClass ?? "unknown";
-      riskClassDistribution[riskClass] = (riskClassDistribution[riskClass] ?? 0) + 1;
-      const tid = task.tenantId ?? "unknown";
-      tenantUsage[tid] = (tenantUsage[tid] ?? 0) + 1;
-    }
-    if (tasks.length === 0 && base.queuedTasks > 0) {
-      riskClassDistribution.unknown = base.queuedTasks;
-    }
-
-    // Sandbox availability (would be populated from sandbox registry)
-    const sandboxAvailability: Record<string, number> = {
-      standard: 10,
-      hardened: 5,
-      strict: 2,
-    };
-
-    // Capability class capacity (would be populated from capability registry)
-    const capabilityClassCapacity: Record<string, number> = {
-      default: 20,
-      sandboxed: 10,
-      privileged: 5,
-    };
-
-    return {
-      ...base,
-      riskClassDistribution,
-      tenantUsage,
-      sandboxAvailability,
-      capabilityClassCapacity,
     };
   }
 
@@ -197,40 +104,6 @@ export class AdmissionController {
         snapshot,
         backpressure,
       };
-    }
-
-    // R6-9 FIX: §14.2 verify active budget reservation exists before dispatch
-    // No active reservation = cannot dispatch (must reserve before execute)
-    if (this.budgetSessionManager && (!request.budgetReservationId || request.budgetReservationId.trim() === "")) {
-      return {
-        decision: "reject",
-        reasonCode: "admission.reject_no_active_budget_reservation",
-        snapshot,
-        backpressure,
-      };
-    }
-
-    // R8-01 FIX: Verify the budget reservation is actually ACTIVE (not settled/released/expired)
-    // Uses atomic reserve→execute→settle state machine via BudgetExecutionSessionManager
-    if (this.budgetSessionManager && request.budgetReservationId) {
-      const session = this.budgetSessionManager.getSession(request.budgetReservationId);
-      if (!session) {
-        return {
-          decision: "reject",
-          reasonCode: "admission.reject_no_active_budget_reservation",
-          snapshot,
-          backpressure,
-        };
-      }
-      // Verify the session is in a valid state for dispatch (reserved or executing)
-      if (session.state !== BudgetExecutionState.RESERVED && session.state !== BudgetExecutionState.EXECUTING) {
-        return {
-          decision: "reject",
-          reasonCode: "admission.reject_budget_reservation_not_active",
-          snapshot,
-          backpressure,
-        };
-      }
     }
 
     if (backpressure?.degradationMode === "read_only_operations_only") {
@@ -269,63 +142,6 @@ export class AdmissionController {
       };
     }
 
-    // R6-3: §14.2 scheduling factors - risk class isolation routing
-    if (this.policy.riskClassIsolationEnabled && request.riskClass) {
-      const maxForClass = this.policy.maxRiskClassTasks[request.riskClass];
-      if (maxForClass != null) {
-        const currentCount = snapshot.riskClassDistribution[request.riskClass] ?? 0;
-        if (currentCount >= maxForClass) {
-          return {
-            decision: "reject",
-            reasonCode: "admission.reject_risk_class_isolation",
-            snapshot,
-            backpressure,
-          };
-        }
-      }
-    }
-
-    // R6-3: §14.2 scheduling factors - tenant quota
-    if (this.policy.tenantQuotaEnabled && request.tenantId) {
-      const currentTenantUsage = snapshot.tenantUsage[request.tenantId] ?? 0;
-      if (currentTenantUsage >= this.policy.tenantTaskQuota) {
-        return {
-          decision: "reject",
-          reasonCode: "admission.reject_tenant_quota",
-          snapshot,
-          backpressure,
-        };
-      }
-    }
-
-    // R6-3: §14.2 scheduling factors - sandbox matching
-    if (this.policy.sandboxMatchingEnabled && request.sandboxType) {
-      const available = snapshot.sandboxAvailability[request.sandboxType] ?? 0;
-      if (available <= 0) {
-        return {
-          decision: "reject",
-          reasonCode: "admission.reject_sandbox_matching",
-          snapshot,
-          backpressure,
-        };
-      }
-    }
-
-    // R6-3: §14.2 scheduling factors - capability class gate
-    if (this.policy.capabilityClassGateEnabled && request.requiredCapabilities) {
-      for (const cap of request.requiredCapabilities) {
-        const capacity = snapshot.capabilityClassCapacity[cap] ?? 0;
-        if (capacity <= 0) {
-          return {
-            decision: "reject",
-            reasonCode: "admission.reject_capability_class",
-            snapshot,
-            backpressure,
-          };
-        }
-      }
-    }
-
     if (snapshot.tier1AckBacklog >= this.policy.maxTier1AckBacklog) {
       return {
         decision: "reject",
@@ -347,7 +163,7 @@ export class AdmissionController {
     if (snapshot.queuedTasks >= this.policy.maxQueuedTasks) {
       if (
         isPriorityElevated(request.priority) &&
-        snapshot.queuedTasks < this.policy.maxQueuedTasks + this.policy.criticalQueueHeadroom
+        snapshot.queuedTasks < this.policy.maxQueuedTasks + this.policy.urgentQueueHeadroom
       ) {
         return {
           decision: "queue",
@@ -375,12 +191,3 @@ export class AdmissionController {
 }
 
 export { DEFAULT_POLICY as DEFAULT_ADMISSION_POLICY };
-
-function normalizeAdmissionPolicy(policy: AdmissionPolicyInput): AdmissionPolicy {
-  const criticalQueueHeadroom = policy.criticalQueueHeadroom ?? policy.urgentQueueHeadroom ?? DEFAULT_POLICY.criticalQueueHeadroom;
-  return {
-    ...DEFAULT_POLICY,
-    ...policy,
-    criticalQueueHeadroom,
-  };
-}

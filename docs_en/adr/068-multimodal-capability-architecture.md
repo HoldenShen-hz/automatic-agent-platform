@@ -78,6 +78,6 @@ Negative:
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [Platform Architecture §16 Prompt Management and Versioning](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§68` Multimodal Capability Architecture

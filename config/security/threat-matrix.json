@@ -4,21 +4,9 @@
   "owner": "platform_security",
   "dimensions": {
     "SPOOFING": ["JWT and workspace identity verification", "challenge-based worker registration"],
-    "TAMPERING": [
-      "audit hash chaining",
-      "append-only event evidence",
-      "HMAC signatures for evidence bundles",
-      "content integrity verification",
-      "state transition validation"
-    ],
+    "TAMPERING": ["audit hash chaining", "append-only event evidence"],
     "REPUDIATION": ["operator action audit evidence", "incident handoff timeline export"],
-    "INFORMATION_DISCLOSURE": [
-      "field encryption",
-      "network egress and outbound URL policies",
-      "TLS 1.2+ encryption",
-      "secret rotation policy",
-      "PII redaction in logs"
-    ],
+    "INFORMATION_DISCLOSURE": ["field encryption", "network egress and outbound URL policies"],
     "DENIAL_OF_SERVICE": ["SLO alerting", "runbook-guided containment", "rollout freeze gates"],
     "ELEVATION_OF_PRIVILEGE": ["sandbox policy enforcement", "policy engine capability checks"]
   }

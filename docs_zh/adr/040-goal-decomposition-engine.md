@@ -73,8 +73,6 @@ const CLARIFICATION_THRESHOLD = 0.7;  // 置信度 < 0.7 → 人工辅助
 const DEFAULT_MAX_DEPTH = 5;  // 最大分解深度 5 层
 ```
 
-**全局调用深度约束**：目标分解的深度限制需与 §19.2 定义的全局 `call_depth` 硬上限（默认 8）协同遵守。分解深度不得超过全局调用深度，且不得与委托局部上限相乘以规避限制（详见 §19.2 调用深度矛盾分析）。
-
 ### GoalProjection 与 HarnessRun 生命周期关系
 
 `Goal` 本身只描述分解输入；进入执行后，状态 truth 必须收敛到 `HarnessRun.status`。

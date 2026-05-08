@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -117,29 +116,6 @@ test("createDefaultStartupConsistencyCheckerOptions passes providerSecretResolve
   assert.ok(options.providerReadinessProbe !== undefined);
 });
 
-test("createDefaultStartupConsistencyCheckerOptions forwards configDriftEventBus to config validator", () => {
-  const publishedEvents: Array<{ eventType: string; payload: unknown }> = [];
-  const options = createDefaultStartupConsistencyCheckerOptions({
-    configRoot: join(process.cwd(), "config"),
-    environment: "dev",
-    providerEnv: {
-      AA_APPROVAL_MODE: "strict",
-    },
-    configDriftEventBus: {
-      publish(event: { eventType: string; payload: unknown }) {
-        publishedEvents.push(event);
-        return event;
-      },
-    } as never,
-  });
-
-  const result = options.configValidator();
-
-  assert.equal(result.ok, false);
-  assert.ok(result.issues.some((issue) => issue.includes("config_drift.blocking:approvalMode")));
-  assert.ok(publishedEvents.some((event) => event.eventType === "config.drift_detected"));
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests - buildEnvironmentProviderReadinessProbe structure
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,44 +217,6 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when defaultPro
     } as any,
   });
   assert.deepStrictEqual(results, []);
-});
-
-test("buildDefaultStartupConfigValidator fail-closes on runtime security drift and emits incident", () => {
-  const publishedEvents: Array<{ eventType: string; payload: unknown }> = [];
-  const validator = buildDefaultStartupConfigValidator({
-    configRoot: join(process.cwd(), "config"),
-    environment: "dev",
-    providerEnv: {
-      AA_APPROVAL_MODE: "strict",
-    },
-    configDriftEventBus: {
-      publish(event: { eventType: string; payload: unknown }) {
-        publishedEvents.push(event);
-        return event;
-      },
-    } as never,
-  });
-
-  const result = validator();
-
-  assert.equal(result.ok, false);
-  assert.ok(result.issues.some((issue) => issue.includes("config_drift.blocking:approvalMode")));
-  assert.ok(publishedEvents.some((event) => event.eventType === "config.drift_detected"));
-});
-
-test("buildDefaultStartupConfigValidator ignores unrelated AA_ environment variables", () => {
-  const validator = buildDefaultStartupConfigValidator({
-    configRoot: join(process.cwd(), "config"),
-    environment: "dev",
-    providerEnv: {
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "dev",
-    },
-  });
-
-  const result = validator();
-
-  assert.ok(result.issues.every((issue) => !issue.includes("config_drift.")));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

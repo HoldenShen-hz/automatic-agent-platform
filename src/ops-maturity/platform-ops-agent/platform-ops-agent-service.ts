@@ -15,11 +15,6 @@ export interface OpsDataBoundary {
   readonly businessPayloadAllowed: boolean;
 }
 
-export const DEFAULT_OPS_DATA_BOUNDARY: OpsDataBoundary = {
-  allowedPayloadTypes: ["platform_metrics", "platform_logs", "platform_config"],
-  businessPayloadAllowed: false,
-};
-
 export interface OpsAgentDefinition {
   readonly agentId: string;
   readonly specialty: string;
@@ -27,7 +22,7 @@ export interface OpsAgentDefinition {
   readonly requiredApprovals: readonly string[];
   readonly maxAutonomyLevel: OpsMaturityLevel;
   readonly evidenceRequirements: readonly string[];
-  readonly ops_data_boundary: OpsDataBoundary;
+  readonly ops_data_boundary?: OpsDataBoundary;
 }
 
 export interface OpsProposalInput {
@@ -112,7 +107,6 @@ export class PlatformOpsAgentService {
   private readonly incidentDiagnoser = new IncidentDiagnoserService();
 
   public constructor(definition: OpsAgentDefinition) {
-    assertValidOpsDataBoundary(definition.ops_data_boundary);
     this.definition = definition;
   }
 
@@ -291,20 +285,5 @@ export class PlatformOpsAgentService {
       blockedBy.push("ops_agent.autonomy_limit_reached");
     }
     return blockedBy;
-  }
-}
-
-function assertValidOpsDataBoundary(boundary: OpsDataBoundary): void {
-  const allowedPayloadTypes = new Set(["platform_metrics", "platform_logs", "platform_config"]);
-  if (boundary.businessPayloadAllowed) {
-    throw new Error("ops_agent.invalid_ops_data_boundary:business_payload_not_allowed");
-  }
-  if (boundary.allowedPayloadTypes.length === 0) {
-    throw new Error("ops_agent.invalid_ops_data_boundary:allowed_payload_types_required");
-  }
-  for (const payloadType of boundary.allowedPayloadTypes) {
-    if (!allowedPayloadTypes.has(payloadType)) {
-      throw new Error(`ops_agent.invalid_ops_data_boundary:unsupported_payload_type:${payloadType}`);
-    }
   }
 }

@@ -75,7 +75,7 @@ flowchart LR
 - `allowed_paths`
 - `allowed_tools`
 - `promotion_status`
-- `release_status`
+- `rollout_status`
 - `guardrail_reason_codes`
 
 ## 7. 工程要求

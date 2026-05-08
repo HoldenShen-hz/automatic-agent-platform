@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   PlatformWorkbenchSnapshotService,
-  isWorkbenchViewRoute,
   type WorkbenchApprovalQueueItem,
   type WorkbenchOperatorAction,
   type PlatformWorkbenchSnapshot,
@@ -117,16 +116,6 @@ test("buildSnapshot preserves operatorActions when provided", () => {
 
   assert.equal(snapshot.operatorActions.length, 1);
   assert.equal(snapshot.operatorActions[0]!.actionId, "custom_action");
-});
-
-test("default operator actions conform to /workbench/:view route pattern", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const snapshot = service.buildSnapshot({});
-
-  assert.ok(snapshot.operatorActions.length > 0);
-  for (const action of snapshot.operatorActions) {
-    assert.equal(isWorkbenchViewRoute(action.route), true);
-  }
 });
 
 test("buildSnapshot preserves sdkShortcuts when provided", () => {

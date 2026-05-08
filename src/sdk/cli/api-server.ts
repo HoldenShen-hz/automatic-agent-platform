@@ -41,7 +41,6 @@ import { loadApiServerEnv } from "../../platform/control-plane/config-center/api
 import { requireValidStartupEnv } from "../../platform/control-plane/config-center/startup-env-schema.js";
 import { TypedEventBus } from "../../platform/state-evidence/events/typed-event-bus.js";
 import { TypedEventBusPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
-import { IncidentCaseService } from "../../platform/state-evidence/incident/index.js";
 import { DomainEventFeedbackConsumer } from "../../scale-ecosystem/feedback-loop/collector/domain-event-feedback-consumer.js";
 import { InspectService } from "../../platform/shared/observability/inspect-service.js";
 import { HealthService } from "../../platform/shared/observability/health-service.js";
@@ -51,9 +50,7 @@ import { MetricsService } from "../../platform/shared/observability/metrics-serv
 import { initOtel, shutdownOtel } from "../../platform/shared/observability/otel-bootstrap.js";
 import { PrometheusMetricsExporter } from "../../platform/shared/observability/prometheus-metrics-exporter.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
-import { resetModelCallProvider } from "../../platform/execution/execution-engine/model-call-provider.js";
 import { CoordinatorLoadBalancingService } from "../../platform/execution/ha/coordinator-load-balancing-service.js";
-import { getProcessTracker, resetProcessTracker } from "../../platform/execution/resource/process-tracker.js";
 import { getGlobalGracefulShutdown } from "../../platform/execution/startup/graceful-shutdown.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import { ArtifactPublishLedger } from "../../platform/state-evidence/artifacts/artifact-publish-ledger.js";
@@ -158,51 +155,17 @@ async function main(): Promise<void> {
 
     // Initialize billing service
     const billingService = new BillingService(db, store);
-    const incidentService = new IncidentCaseService();
 
-    // Initialize authentication service - require at least one auth mechanism
-    // Per security requirements, the server must not run with all endpoints unprotected
-    // Note: jwtSecret must be a non-empty string when provided, empty string "" is NOT a valid secret
-    const hasNonEmptyJwtSecret = envConfig.jwtSecret != null && envConfig.jwtSecret.length > 0;
+    // Initialize optional authentication service if keys and secret are provided
     const authService = (() => {
-      if (envConfig.apiKeys.length > 0 && hasNonEmptyJwtSecret) {
-        const jwtSecret = envConfig.jwtSecret;
-        if (jwtSecret == null) {
-          throw new Error("AA_JWT_SECRET must be present when JWT auth is enabled");
-        }
-        return new ApiAuthService({
-          apiKeys: envConfig.apiKeys,
-          jwtSecret,
-        });
+      if (envConfig.apiKeys.length === 0 || envConfig.jwtSecret == null) {
+        return null;
       }
-      if (envConfig.apiKeys.length > 0) {
-        return new ApiAuthService({
-          apiKeys: envConfig.apiKeys,
-          jwtSecret: "", // API key only mode
-        });
-      }
-      if (hasNonEmptyJwtSecret) {
-        const jwtSecret = envConfig.jwtSecret;
-        if (jwtSecret == null) {
-          throw new Error("AA_JWT_SECRET must be present when JWT auth is enabled");
-        }
-        return new ApiAuthService({
-          apiKeys: [],
-          jwtSecret,
-        });
-      }
-      throw new Error("AA_API_KEYS or AA_JWT_SECRET must be provided - server cannot start with all endpoints unprotected");
+      return new ApiAuthService({
+        apiKeys: envConfig.apiKeys,
+        jwtSecret: envConfig.jwtSecret,
+      });
     })();
-
-    // Validate webhook secret minimum entropy to prevent weak secrets allowing webhook forgery
-    // An empty string is not a valid webhook secret - must be at least 32 characters
-    const MIN_WEBHOOK_SECRET_ENTROPY = 32;
-    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length > 0 && envConfig.webhookSecret.length < MIN_WEBHOOK_SECRET_ENTROPY) {
-      throw new Error(`AA_WEBHOOK_SECRET must be at least ${MIN_WEBHOOK_SECRET_ENTROPY} characters to prevent webhook forgery attacks`);
-    }
-    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length === 0) {
-      throw new Error("AA_WEBHOOK_SECRET cannot be empty - must be at least 32 characters or not provided at all");
-    }
 
     // Initialize the main channel gateway service with all dependencies
     const channelGateway = new ChannelGatewayService(gatewayStorage, gatewayTargets, {
@@ -236,12 +199,10 @@ async function main(): Promise<void> {
       coordinatorLoadBalancingService: coordinatorLoadBalancing,
       prometheusMetricsExporter,
       billingService,
-      incidentService,
       knowledgePlaneService: knowledgePlane,
       artifactPlaneService: artifactPlane,
       domainRegistryService: domainRegistry,
       pluginRegistry,
-      taskStore: store,
       enableWebSocket: envConfig.enableWebSocket,
     });
     const webSocketStatusRelay =
@@ -324,26 +285,6 @@ async function main(): Promise<void> {
       handler: async () => {
         await StructuredLogger.flushTransports();
         await StructuredLogger.closeTransports();
-      },
-    });
-    shutdown.addHandler({
-      name: "process_tracker",
-      handler: async () => {
-        const tracker = getProcessTracker();
-        await tracker.killAll();
-        resetProcessTracker();
-      },
-    });
-    shutdown.addHandler({
-      name: "model_call_provider",
-      handler: async () => {
-        resetModelCallProvider();
-      },
-    });
-    shutdown.addHandler({
-      name: "typed_event_bus",
-      handler: async () => {
-        typedEventBus.dispose();
       },
     });
     shutdown.addHandler({

@@ -3,42 +3,42 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Background
+## Context
 
-Intra-plane and cross-plane service calls need unified timeout, reconnection, and event delivery mechanisms to avoid single point of failure and information loss.
+Intra-plane service calls and cross-plane service calls require unified timeout, reconnection, and event delivery mechanisms to avoid single points of failure and information loss.
 
 ## Decision
 
 ### Timeout Strategy
 
-- Sync call default timeout: 5s
-- Max timeout: 30s
-- Supports header override, but not exceeding max clamp
+- Default timeout for synchronous calls: 5s
+- Maximum timeout: 30s
+- Header override supported, but must not exceed max clamp
 - Configuration unified in `config/runtime/default.json`
 
 ### Stream Reconnection Mechanism
 
 - DurableEventBus supports last_event_id recovery
-- After disconnection, automatically continues from last confirmed event
+- After disconnection, automatically resumes from the last confirmed event
 
 ### Outbox Pattern
 
-- Write events in same transaction: Business operation and event delivery must be in the same database transaction
+- Transactional event writing: Business operations and event delivery must be in the same database transaction
 - OutboxService (219 lines) implements reliable event delivery
 - Ensures events are not lost
 
 ### Phase 1 Architecture
 
-- Phase 1 is monolithic architecture
-- Intra-process calls go through direct function calls
-- Cross-process calls go through HTTP
+- Phase 1 is a monolithic architecture
+- In-process calls use direct function invocation
+- Cross-process calls use HTTP
 
 ## Consequences
 
-Advantages:
+Benefits:
 
-- Unified timeout configuration avoids requests waiting indefinitely
-- Outbox pattern guarantees event reliability
+- Unified timeout configuration prevents requests from waiting indefinitely
+- Outbox pattern ensures event reliability
 - last_event_id enables stream reconnection
 
 Costs:
@@ -49,8 +49,8 @@ Costs:
 ## Cross References
 
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
-- [ADR-012 Whether SQLite Should Be Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-012 Whether SQLite is the Sole Primary Storage for Phase 1-2](./012-sqlite-phase-1-2-primary-store.md)
 
-## Source Sections
+## Source Section
 
-- `§7` Service communication architecture
+- `§7` Service Communication Architecture

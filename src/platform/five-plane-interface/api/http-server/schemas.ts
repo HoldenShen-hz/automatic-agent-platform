@@ -160,18 +160,7 @@ const billingReconcilePayloadSchema = z.object({
 const artifactBundlePreviewPayloadSchema = z.object({
   taskId: nonEmptyStringSchema,
   domainId: nonEmptyStringSchema,
-  bundleType: z.enum([
-    "release_bundle",
-    "asset_bundle",
-    "campaign_bundle",
-    "incident",
-    "task_result",
-    "promotion_evidence",
-    "release_evidence",
-    "learning_pattern_bundle",
-    "canary_metrics",
-    "workflow_snapshot",
-  ]),
+  bundleType: z.enum(["release_bundle", "asset_bundle", "campaign_bundle", "incident_bundle"]),
   artifacts: z.array(ArtifactRecordSchema),
 }).strict();
 
@@ -302,7 +291,7 @@ export function parseBillingReconcilePayload(body: unknown): BillingReconcilePay
 export interface ArtifactBundlePreviewPayload {
   taskId: string;
   domainId: string;
-  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident" | "task_result" | "promotion_evidence" | "release_evidence" | "learning_pattern_bundle" | "canary_metrics" | "workflow_snapshot";
+  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident_bundle";
   artifacts: ArtifactRecord[];
 }
 
@@ -317,7 +306,7 @@ export function parseArtifactBundlePreviewPayload(body: unknown): ArtifactBundle
     taskId: payload.taskId,
     domainId: payload.domainId,
     bundleType: payload.bundleType,
-    artifacts: payload.artifacts as ArtifactRecord[],
+    artifacts: payload.artifacts,
   };
 }
 
@@ -368,37 +357,15 @@ const createTaskPayloadSchema = z.object({
   divisionId: nonEmptyStringSchema.optional(),
   parentId: nonEmptyStringSchema.optional(),
   inputJson: z.string().optional(),
-  priority: z.enum(["low", "normal", "high", "critical"]).optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   source: z.enum(["user", "perception", "system"]).optional(),
 }).strict();
 
 const updateTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema.optional(),
-  /**
-   * Task status aligned with HarnessRunStatus canonical 13-state per §5.5.
-   * Maps to runtime execution states: queued→admitted, pending→planning/ready,
-   * in_progress→running, awaiting_decision→hitl_wait, done→completed, failed→failed, cancelled→aborted.
-   * @see HarnessRunStatus in executable-contracts for canonical runtime states.
-   */
-  status: z.enum([
-    "created",
-    "admitted",
-    "planning",
-    "ready",
-    "running",
-    "pausing",
-    "paused",
-    "resuming",
-    "replanning",
-    "compensating",
-    "completed",
-    "failed",
-    "aborted",
-  ]).optional(),
-  priority: z.enum(["low", "normal", "high", "critical"]).optional(),
+  status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"]).optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   outputJson: z.string().optional(),
-  // R14-13: inputJson must be accepted for partial update symmetry with CREATE
-  inputJson: z.string().optional(),
 }).strict();
 
 export interface CreateTaskPayload {
@@ -406,16 +373,15 @@ export interface CreateTaskPayload {
   divisionId?: string;
   parentId?: string;
   inputJson?: string;
-  priority?: "low" | "normal" | "high" | "critical";
+  priority?: "low" | "normal" | "high" | "urgent";
   source?: "user" | "perception" | "system";
 }
 
 export interface UpdateTaskPayload {
   title?: string;
-  status?: "created" | "admitted" | "planning" | "ready" | "running" | "pausing" | "paused" | "resuming" | "replanning" | "compensating" | "completed" | "failed" | "aborted";
-  priority?: "low" | "normal" | "high" | "critical";
+  status?: "queued" | "pending" | "in_progress" | "awaiting_decision" | "done" | "failed" | "cancelled";
+  priority?: "low" | "normal" | "high" | "urgent";
   outputJson?: string;
-  inputJson?: string; // R14-13: PATCH must accept inputJson for partial update symmetry
 }
 
 export function parseCreateTaskPayload(body: unknown): CreateTaskPayload {
@@ -447,8 +413,6 @@ export function parseUpdateTaskPayload(body: unknown): UpdateTaskPayload {
     ...(payload.status != null ? { status: payload.status } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
     ...(payload.outputJson != null ? { outputJson: payload.outputJson } : {}),
-    // R14-13: inputJson update for partial task input modification
-    ...(payload.inputJson != null ? { inputJson: payload.inputJson } : {}),
   };
 }
 

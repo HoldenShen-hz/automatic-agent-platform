@@ -1,19 +1,14 @@
 import { ValidationError } from "../../contracts/errors.js";
-import { nowIso } from "../../contracts/types/ids.js";
 import {
   type BudgetLedger,
   type BudgetReservation,
-  type DecisionInputBundle,
-  type HarnessDecision,
   type HarnessRun,
   type NodeAttemptReceipt,
   type NodeRun,
   type PlatformFactEvent,
   type RunVersionLock,
   type SideEffectRecord,
-  createPlatformFactEvent,
 } from "../../contracts/executable-contracts/index.js";
-import { type EvidenceRecord } from "../../contracts/types/platform-contracts.js";
 import {
   RuntimeStateMachine,
   type RuntimeStateAggregate,
@@ -21,15 +16,8 @@ import {
   type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
 } from "../../execution/runtime-state-machine.js";
-import type { SqliteDatabase } from "./sqlite/sqlite-database.js";
-import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
-
-// R4-36 (INV-SINGLE-LEADER): Leader check helper
-const requireLeader = (action: string, nodeId = "local") => assertLeaderAuthoritative(nodeId, action);
 
 export interface RuntimeTruthRepositorySnapshot {
-  readonly version: number;
-  readonly createdAt: string;
   readonly harnessRuns: readonly HarnessRun[];
   readonly nodeRuns: readonly NodeRun[];
   readonly sideEffects: readonly SideEffectRecord[];
@@ -37,8 +25,6 @@ export interface RuntimeTruthRepositorySnapshot {
   readonly budgetReservations: readonly BudgetReservation[];
   readonly nodeAttemptReceipts: readonly NodeAttemptReceipt[];
   readonly runVersionLocks: readonly RunVersionLock[];
-  readonly decisionInputBundles: readonly DecisionInputBundle[];
-  readonly harnessDecisions: readonly HarnessDecision[];
   readonly events: readonly PlatformFactEvent[];
   readonly outbox: readonly PlatformFactEvent[];
   readonly auditRefs: readonly string[];
@@ -51,20 +37,7 @@ export interface RuntimeRepository {
   ): RuntimeTransitionResult<TAggregate>;
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
-  appendDecisionInputBundle(bundle: DecisionInputBundle): void;
-  appendHarnessDecision(decision: HarnessDecision): void;
-  appendEvidenceRecord(evidence: EvidenceRecord): void;
   snapshot(): RuntimeTruthRepositorySnapshot;
-}
-
-/**
- * Options for constructing a RuntimeTruthRepository with optional database-backed durability.
- */
-export interface RuntimeTruthRepositoryOptions {
-  /** Optional state machine instance */
-  readonly stateMachine?: RuntimeStateMachine;
-  /** Optional SQLite database for crash-safe transactional durability (R5-48) */
-  readonly sqliteDatabase?: SqliteDatabase;
 }
 
 interface RuntimeTruthRepositoryState {
@@ -75,8 +48,6 @@ interface RuntimeTruthRepositoryState {
   readonly budgetReservations: Map<string, BudgetReservation>;
   readonly nodeAttemptReceipts: Map<string, NodeAttemptReceipt>;
   readonly runVersionLocks: Map<string, RunVersionLock>;
-  readonly decisionInputBundles: Map<string, DecisionInputBundle>;
-  readonly harnessDecisions: Map<string, HarnessDecision>;
   readonly events: PlatformFactEvent[];
   readonly outbox: PlatformFactEvent[];
   readonly auditRefs: string[];
@@ -85,13 +56,9 @@ interface RuntimeTruthRepositoryState {
 export class RuntimeTruthRepository implements RuntimeRepository {
   private state: RuntimeTruthRepositoryState = createEmptyState();
   private readonly stateMachine: RuntimeStateMachine;
-  private snapshotVersion = 0;
-  /** R5-48: Optional SQLite database for real crash-safe transactions */
-  private readonly db: SqliteDatabase | undefined;
 
-  public constructor(options: RuntimeTruthRepositoryOptions = {}) {
+  public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
-    this.db = options.sqliteDatabase;
   }
 
   public seed(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
@@ -101,22 +68,13 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   public transition<TAggregate extends RuntimeStateAggregate>(
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
-    requireLeader("runtime_truth.transition");
-    // §25.3: Lease/fencing validation for HarnessRun transitions
-    if (command.aggregateType === "HarnessRun") {
-      const harnessRun = this.getHarnessRun(getAggregateId(command.aggregateType, command.aggregate as RuntimeStateAggregate) as string);
-      if (harnessRun != null) {
-        this.validateLease(command, harnessRun);
-      }
-    }
-
     return this.transaction(() => {
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
       const result = this.stateMachine.transition({
         ...command,
         aggregate: stored as TAggregate,
       });
-      this.replaceAggregate(command.aggregateType, result.aggregate);
+      this.storeAggregate(command.aggregateType, result.aggregate);
       const event = this.appendEvent(result.event);
       if (command.auditRef != null) {
         this.state.auditRefs.push(command.auditRef);
@@ -126,7 +84,6 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void {
-    requireLeader("runtime_truth.append_node_attempt_receipt");
     this.transaction(() => {
       if (this.state.nodeAttemptReceipts.has(receipt.nodeAttemptReceiptId)) {
         throw new ValidationError(
@@ -139,7 +96,6 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public appendRunVersionLock(lock: RunVersionLock): void {
-    requireLeader("runtime_truth.append_run_version_lock");
     this.transaction(() => {
       if (this.state.runVersionLocks.has(lock.runVersionLockId)) {
         throw new ValidationError(
@@ -149,140 +105,6 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       }
       this.state.runVersionLocks.set(lock.runVersionLockId, lock);
     });
-  }
-
-  /**
-   * R4-35 (INV-EVIDENCE-001): Append a DecisionInputBundle as an immutable evidence record.
-   * DecisionInputBundle captures the full decision context (model, prompt, tools, context)
-   * before a HarnessDecision is made, enabling complete audit replay.
-   */
-  public appendDecisionInputBundle(bundle: DecisionInputBundle): void {
-    requireLeader("runtime_truth.append_decision_input_bundle");
-    this.transaction(() => {
-      if (this.state.decisionInputBundles.has(bundle.decisionInputBundleId)) {
-        throw new ValidationError(
-          "runtime_truth_repository.duplicate_decision_input_bundle",
-          "DecisionInputBundle is append-only and cannot be overwritten.",
-        );
-      }
-      this.state.decisionInputBundles.set(bundle.decisionInputBundleId, bundle);
-    });
-  }
-
-  /**
-   * R4-35 (INV-EVIDENCE-001): Append a HarnessDecision as an immutable evidence record.
-   * HarnessDecision captures the model's choice (selected tool, parameters, reasoning)
-   * and is linked to its preceding DecisionInputBundle by bundleId.
-   */
-  public appendHarnessDecision(decision: HarnessDecision): void {
-    requireLeader("runtime_truth.append_harness_decision");
-    this.transaction(() => {
-      if (this.state.harnessDecisions.has(decision.harnessDecisionId)) {
-        throw new ValidationError(
-          "runtime_truth_repository.duplicate_harness_decision",
-          "HarnessDecision is append-only and cannot be overwritten.",
-        );
-      }
-      this.state.harnessDecisions.set(decision.harnessDecisionId, decision);
-    });
-  }
-
-  /**
-   * R4-35 (INV-EVIDENCE-001): Append an EvidenceRecord as an immutable PlatformFactEvent.
-   * This ensures all decisions and executions produce immutable evidence that can be
-   * audited and replayed.
-   *
-   * R5-48: When a SqliteDatabase is provided, evidence is durably persisted within a
-   * real database transaction (BEGIN IMMEDIATE / COMMIT) before returning. This ensures
-   * crash-safe durability: if the process crashes mid-flight, the transaction is rolled
-   * back and no partial evidence record is left behind.
-   */
-  public appendEvidenceRecord(evidence: EvidenceRecord): void {
-    requireLeader("runtime_truth.append_evidence_record");
-    // R4-35: Convert EvidenceRecord to PlatformFactEvent for immutable storage
-    // Evidence records are stored as platform.evidence.recorded events
-    const eventType = `platform.evidence.${evidence.category}` as `platform.${string}`;
-
-    // Get the next sequence number for this aggregate
-    const existingEvents = this.state.events.filter(
-      (e) => e.aggregateType === "EvidenceRecord" && e.aggregateId === evidence.recordId,
-    );
-    const nextSeq = existingEvents.length + 1;
-
-    const platformEvent = createPlatformFactEvent({
-      eventType,
-      aggregateType: "EvidenceRecord",
-      aggregateId: evidence.recordId,
-      aggregateSeq: nextSeq,
-      tenantId: evidence.principal.tenantId ?? "global",
-      runId: evidence.recordId, // Use recordId as runId since evidence doesn't have runId
-      traceId: evidence.traceId,
-      payload: {
-        recordId: evidence.recordId,
-        principal: evidence.principal,
-        category: evidence.category,
-        targetRef: evidence.targetRef,
-        content: evidence.content,
-        timestamp: evidence.timestamp,
-        metadata: evidence.metadata,
-      } as unknown as PlatformFactEvent["payload"],
-      occurredAt: evidence.timestamp,
-    });
-
-    // R5-48: Use real DB transaction when database is available for crash-safe durability
-    // Both DB persist AND memory update must be atomic - both inside the transaction
-    if (this.db != null) {
-      this.db.transaction(() => {
-        this.persistEventToDatabase(platformEvent);
-        this.appendEvent(platformEvent); // Must be inside transaction to maintain truth+event atomicity
-      });
-    } else {
-      this.appendEvent(platformEvent);
-    }
-  }
-
-  /**
-   * R5-48: Persist a PlatformFactEvent to the events table within the current transaction.
-   * This is only called from within a db.transaction() block.
-   *
-   * Note: The events table has many columns (task_id, session_id, execution_id, event_tier,
-   * principal, evidence_refs, etc.) that do not map directly to PlatformFactEvent fields.
-   * These are set to null when persisting - the repository tracks events in memory and
-   * the DB column mapping is a best-effort normalization for auditability.
-   */
-  private persistEventToDatabase(event: PlatformFactEvent): void {
-    if (this.db == null) {
-      return;
-    }
-    const payloadJson = JSON.stringify(event.payload);
-    this.db.connection.prepare(
-      `INSERT INTO events (id, task_id, session_id, execution_id, event_type, event_tier,
-        payload_json, trace_id, schema_version, aggregate_id, run_id, sequence,
-        causation_id, correlation_id, payload_hash, idempotency_key, replay_behavior,
-        principal, evidence_refs, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      event.eventId,
-      null, // taskId: not in PlatformFactEvent
-      null, // sessionId: not in PlatformFactEvent
-      null, // executionId: not in PlatformFactEvent
-      event.eventType,
-      null, // eventTier: not in PlatformFactEvent
-      payloadJson,
-      event.traceId,
-      event.schemaVersion,
-      event.aggregateId,
-      event.runId,
-      event.aggregateSeq,
-      event.causationId ?? null,
-      event.correlationId ?? null,
-      event.payloadHash,
-      null, // idempotencyKey: not in PlatformFactEvent
-      event.replayBehavior ?? null,
-      null, // principal: not in PlatformFactEvent
-      null, // evidenceRefs: not in PlatformFactEvent
-      event.occurredAt,
-    );
   }
 
   public getHarnessRun(harnessRunId: string): HarnessRun | null {
@@ -305,60 +127,6 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     return this.state.budgetReservations.get(budgetReservationId) ?? null;
   }
 
-  public appendBudgetReservation(reservation: BudgetReservation): void {
-    requireLeader("runtime_truth.append_budget_reservation");
-    this.transaction(() => {
-      if (this.state.budgetReservations.has(reservation.budgetReservationId)) {
-        throw new ValidationError(
-          "runtime_truth_repository.duplicate_budget_reservation",
-          "BudgetReservation is append-only and cannot be overwritten.",
-        );
-      }
-      this.state.budgetReservations.set(reservation.budgetReservationId, reservation);
-    });
-  }
-
-  public compareAndSetBudgetLedger(nextLedger: BudgetLedger, expectedVersion: number): BudgetLedger {
-    requireLeader("runtime_truth.compare_and_set_budget_ledger");
-    return this.transaction(() => {
-      const stored = this.getBudgetLedger(nextLedger.budgetLedgerId);
-      if (stored == null) {
-        throw new ValidationError(
-          "runtime_truth_repository.aggregate_not_found",
-          `Runtime aggregate not found: BudgetLedger/${nextLedger.budgetLedgerId}`,
-        );
-      }
-      if (stored.version !== expectedVersion) {
-        throw new ValidationError(
-          "runtime_truth_repository.version_cas_failed",
-          `BudgetLedger ${nextLedger.budgetLedgerId} requires current version ${expectedVersion}.`,
-          {
-            details: {
-              budgetLedgerId: nextLedger.budgetLedgerId,
-              expectedVersion,
-              currentVersion: stored.version,
-            },
-          },
-        );
-      }
-      if (nextLedger.version !== expectedVersion + 1) {
-        throw new ValidationError(
-          "runtime_truth_repository.invalid_budget_ledger_version_advance",
-          `BudgetLedger ${nextLedger.budgetLedgerId} must advance version by exactly 1.`,
-          {
-            details: {
-              budgetLedgerId: nextLedger.budgetLedgerId,
-              expectedVersion,
-              nextVersion: nextLedger.version,
-            },
-          },
-        );
-      }
-      this.replaceAggregate("BudgetLedger", nextLedger);
-      return nextLedger;
-    });
-  }
-
   public listEvents(): readonly PlatformFactEvent[] {
     return [...this.state.events];
   }
@@ -372,12 +140,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public snapshot(): RuntimeTruthRepositorySnapshot {
-    this.snapshotVersion++;
-    const version = this.snapshotVersion;
-    const createdAt = nowIso();
     return {
-      version,
-      createdAt,
       harnessRuns: [...this.state.harnessRuns.values()],
       nodeRuns: [...this.state.nodeRuns.values()],
       sideEffects: [...this.state.sideEffects.values()],
@@ -385,34 +148,17 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       budgetReservations: [...this.state.budgetReservations.values()],
       nodeAttemptReceipts: [...this.state.nodeAttemptReceipts.values()],
       runVersionLocks: [...this.state.runVersionLocks.values()],
-      decisionInputBundles: [...this.state.decisionInputBundles.values()],
-      harnessDecisions: [...this.state.harnessDecisions.values()],
       events: [...this.state.events],
       outbox: [...this.state.outbox],
       auditRefs: [...this.state.auditRefs],
     };
   }
 
-  // R5-48: Transaction wrapper using real database transactions for crash-safe durability.
-  // When a SqliteDatabase is provided, all write operations are wrapped in db.transaction(),
-  // which uses SQLite's BEGIN IMMEDIATE / COMMIT / ROLLBACK for real ACID durability.
-  // When no database is available, falls back to in-memory transactional semantics.
   private transaction<TResult>(operation: () => TResult): TResult {
-    // R5-48: Use real SQLite transaction for crash-safe durability when database is available
-    if (this.db != null) {
-      return this.db.transaction(operation);
-    }
-
-    // Fallback: in-memory transaction with audit markers (not crash-safe)
-    this.state.auditRefs.push(`BEGIN_TXN_${Date.now()}`);
-
     const before = cloneState(this.state);
     try {
-      const result = operation();
-      this.state.auditRefs.push(`COMMIT_TXN_${Date.now()}`);
-      return result;
+      return operation();
     } catch (error) {
-      this.state.auditRefs.push(`ROLLBACK_TXN_${Date.now()}`);
       this.state = before;
       throw error;
     }
@@ -448,72 +194,24 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   private storeAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
-    // Root cause §191-2234: Map.set silently overwrites existing entries, violating
-    // truth's append-only / immutable requirement. Before storing, verify no existing
-    // aggregate with same ID (append-only violation). Use setOnce pattern to ensure
-    // non-destructive inserts only.
-    const aggregateId = getAggregateId(aggregateType, aggregate);
-    const existing = this.getAggregate(aggregateType, aggregateId);
-    if (existing != null) {
-      throw new ValidationError(
-        "runtime_truth_repository.append_only_violation",
-        `Aggregate ${aggregateType}/${aggregateId} already exists and cannot be overwritten. Use transition() for updates.`,
-      );
-    }
-    // Use setOnce: check-and-set to guarantee append-only semantics
     switch (aggregateType) {
       case "HarnessRun":
-        if (this.state.harnessRuns.has((aggregate as HarnessRun).harnessRunId)) {
-          throw new ValidationError("runtime_truth_repository.append_only_violation", `HarnessRun ${(aggregate as HarnessRun).harnessRunId} already exists.`);
-        }
         this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
         return;
       case "NodeRun":
-        if (this.state.nodeRuns.has((aggregate as NodeRun).nodeRunId)) {
-          throw new ValidationError("runtime_truth_repository.append_only_violation", `NodeRun ${(aggregate as NodeRun).nodeRunId} already exists.`);
-        }
         this.state.nodeRuns.set((aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
         return;
       case "SideEffectRecord":
-        if (this.state.sideEffects.has((aggregate as SideEffectRecord).sideEffectId)) {
-          throw new ValidationError("runtime_truth_repository.append_only_violation", `SideEffectRecord ${(aggregate as SideEffectRecord).sideEffectId} already exists.`);
-        }
         this.state.sideEffects.set((aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
         return;
       case "BudgetLedger":
-        if (this.state.budgetLedgers.has((aggregate as BudgetLedger).budgetLedgerId)) {
-          throw new ValidationError("runtime_truth_repository.append_only_violation", `BudgetLedger ${(aggregate as BudgetLedger).budgetLedgerId} already exists.`);
-        }
         this.state.budgetLedgers.set((aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
         return;
       case "BudgetReservation":
-        if (this.state.budgetReservations.has((aggregate as BudgetReservation).budgetReservationId)) {
-          throw new ValidationError("runtime_truth_repository.append_only_violation", `BudgetReservation ${(aggregate as BudgetReservation).budgetReservationId} already exists.`);
-        }
         this.state.budgetReservations.set(
           (aggregate as BudgetReservation).budgetReservationId,
           aggregate as BudgetReservation,
         );
-        return;
-    }
-  }
-
-  private replaceAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
-    switch (aggregateType) {
-      case "HarnessRun":
-        this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
-        return;
-      case "NodeRun":
-        this.state.nodeRuns.set((aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
-        return;
-      case "SideEffectRecord":
-        this.state.sideEffects.set((aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
-        return;
-      case "BudgetLedger":
-        this.state.budgetLedgers.set((aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
-        return;
-      case "BudgetReservation":
-        this.state.budgetReservations.set((aggregate as BudgetReservation).budgetReservationId, aggregate as BudgetReservation);
         return;
     }
   }
@@ -543,62 +241,6 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     this.state.outbox.push(normalizedEvent);
     return normalizedEvent;
   }
-
-  // §25.3: HarnessRun writes must present the same leaseId/fencingToken that the
-  // authoritative aggregate currently holds. Admission is the transition that
-  // establishes these values; later mutations must echo them back.
-  private validateLease(
-    command: RuntimeTransitionCommand<RuntimeStateAggregate>,
-    harnessRun: HarnessRun,
-  ): void {
-    const currentLeaseId = (harnessRun as HarnessRun & { leaseId?: string }).leaseId;
-    const currentFencingToken = (harnessRun as HarnessRun & { fencingToken?: string }).fencingToken;
-    if (currentLeaseId == null && currentFencingToken == null) {
-      return;
-    }
-
-    if (command.leaseId == null || command.fencingToken == null) {
-      throw new ValidationError(
-        "runtime_truth_repository.lease_fencing_required",
-        `HarnessRun ${harnessRun.harnessRunId} requires leaseId and fencingToken for mutation`,
-        {
-          details: {
-            harnessRunId: harnessRun.harnessRunId,
-            expectedLeaseId: currentLeaseId ?? null,
-            expectedFencingToken: currentFencingToken ?? null,
-          },
-        },
-      );
-    }
-
-    if (currentLeaseId != null && command.leaseId !== currentLeaseId) {
-      throw new ValidationError(
-        "runtime_truth_repository.stale_lease_id",
-        `HarnessRun ${harnessRun.harnessRunId} leaseId mismatch`,
-        {
-          details: {
-            harnessRunId: harnessRun.harnessRunId,
-            expectedLeaseId: currentLeaseId,
-            actualLeaseId: command.leaseId,
-          },
-        },
-      );
-    }
-
-    if (currentFencingToken != null && command.fencingToken !== currentFencingToken) {
-      throw new ValidationError(
-        "runtime_truth_repository.stale_fencing_token",
-        `HarnessRun ${harnessRun.harnessRunId} fencingToken mismatch`,
-        {
-          details: {
-            harnessRunId: harnessRun.harnessRunId,
-            expectedFencingToken: currentFencingToken,
-            actualFencingToken: command.fencingToken,
-          },
-        },
-      );
-    }
-  }
 }
 
 function createEmptyState(): RuntimeTruthRepositoryState {
@@ -610,8 +252,6 @@ function createEmptyState(): RuntimeTruthRepositoryState {
     budgetReservations: new Map(),
     nodeAttemptReceipts: new Map(),
     runVersionLocks: new Map(),
-    decisionInputBundles: new Map(),
-    harnessDecisions: new Map(),
     events: [],
     outbox: [],
     auditRefs: [],
@@ -627,8 +267,6 @@ function cloneState(state: RuntimeTruthRepositoryState): RuntimeTruthRepositoryS
     budgetReservations: new Map(state.budgetReservations),
     nodeAttemptReceipts: new Map(state.nodeAttemptReceipts),
     runVersionLocks: new Map(state.runVersionLocks),
-    decisionInputBundles: new Map(state.decisionInputBundles),
-    harnessDecisions: new Map(state.harnessDecisions),
     events: [...state.events],
     outbox: [...state.outbox],
     auditRefs: [...state.auditRefs],

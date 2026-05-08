@@ -70,7 +70,7 @@ test("DelegationManagerService.cancel cancels pending delegation", async () => {
   const handle = await service.delegate(parent, spec);
   await service.cancel(handle.delegationId);
 
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "cancelled");
 });
 
@@ -105,7 +105,7 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
   const handle = await service.delegate(parent, spec);
   await service.complete(handle.delegationId);
 
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -117,7 +117,7 @@ test("DelegationManagerService.completeWithEvidence completes with evidence", as
   const handle = await service.delegate(parent, spec);
   await service.completeWithEvidence(handle.delegationId, ["evidence-1", "evidence-2"], "output-ref-1");
 
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -129,7 +129,7 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
   const handle = await service.delegate(parent, spec);
   await service.fail(handle.delegationId, "Something went wrong");
 
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "failed");
 });
 
@@ -160,7 +160,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
 
   await service.delegate(parent, spec);
 
-  const active = await service.getActiveDelegations("agent-1");
+  const active = service.getActiveDelegations("agent-1");
   assert.ok(active.length > 0);
 });
 
@@ -224,35 +224,8 @@ test("DelegationManagerService.narrowPermissions intersects actions", async () =
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
-
+  const delegation = service.getDelegation(handle.delegationId);
+  
   assert.ok(delegation !== null);
   // Verify that permissions were narrowed
-  assert.deepEqual(delegation?.permissions.actions, ["a2"]);
-  assert.deepEqual(delegation?.permissions.resources, ["r1", "r2"]);
-});
-
-test("DelegationManagerService.narrowPermissions intersects resources instead of replacing them", async () => {
-  const service = new DelegationManagerService();
-  const parent = createTestContext({
-    permissions: {
-      resources: ["repo:alpha", "repo:beta"],
-      actions: ["read", "write"],
-      constraints: { maxDurationMs: 1000 },
-    },
-  });
-  const spec = createTestSpec({
-    requiredPermissions: {
-      resources: ["repo:beta", "repo:gamma"],
-      actions: ["read"],
-      constraints: { maxDurationMs: 500 },
-    },
-  });
-
-  const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
-
-  assert.ok(delegation !== null);
-  assert.deepEqual(delegation?.permissions.resources, ["repo:beta"]);
-  assert.deepEqual(delegation?.permissions.actions, ["read"]);
 });

@@ -82,7 +82,6 @@ export interface TenantPlatformCliEnvConfig {
   dbPath: string;
   action: typeof TENANT_ACTIONS[number];
   ownerId: string | null;
-  callerUserId: string | null;
   displayName: string | null;
   planId: string | null;
   workspaceId: string | null;

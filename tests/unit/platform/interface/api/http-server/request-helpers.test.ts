@@ -58,7 +58,7 @@ test("matchRoute parses POST request", () => {
   assert.deepEqual(match.segments, ["api", "tasks"]);
 });
 
-test("matchRoute parses PUT request", () => {
+test("matchRoute returns null for non-GET/POST methods", () => {
   const request: ApiRequestLike = {
     method: "PUT",
     url: "/api/tasks/123",
@@ -66,12 +66,10 @@ test("matchRoute parses PUT request", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks/123");
-  assert.deepEqual(match.segments, ["api", "tasks", "123"]);
+  assert.equal(match, null);
 });
 
-test("matchRoute parses DELETE request", () => {
+test("matchRoute returns null for DELETE method", () => {
   const request: ApiRequestLike = {
     method: "DELETE",
     url: "/api/tasks/123",
@@ -79,9 +77,7 @@ test("matchRoute parses DELETE request", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks/123");
-  assert.deepEqual(match.segments, ["api", "tasks", "123"]);
+  assert.equal(match, null);
 });
 
 test("matchRoute defaults to GET when method is undefined", () => {

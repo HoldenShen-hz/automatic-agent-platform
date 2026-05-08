@@ -52,7 +52,7 @@ export function buildScaleOpsStartupPlan(): ScaleOpsStartupPlan {
 }
 
 export function registerScaleOpsStartupPlan(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ScaleOpsStartupPlan {
   registry.register<ScaleOpsStartupPlan>(SCALE_OPS_STARTUP_PLAN_SERVICE_ID, {
     init: () => buildScaleOpsStartupPlan(),

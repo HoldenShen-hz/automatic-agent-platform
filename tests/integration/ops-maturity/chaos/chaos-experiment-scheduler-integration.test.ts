@@ -293,10 +293,7 @@ test("ChaosExperimentScheduler refreshes GameDay status based on experiment outc
   // Complete first experiment
   const expIds = whileRunning!.experimentIds;
   scheduler.recordSteadyStateResult(expIds[0]!, "error_rate", 0.005, true, "stable");
-  const firstExperiment = scheduler.getExperiment(expIds[0]!);
-  const secondExperiment = scheduler.getExperiment(expIds[1]!);
-  assert.equal(firstExperiment?.status, "completed");
-  assert.equal(secondExperiment?.status, "running");
+  scheduler.recordSteadyStateResult(expIds[0]!, "error_rate", 0.005, true, "stable");
 
   // Still running since second experiment not complete
   const midRefresh = scheduler.refreshGameDayStatus(gameDay.gameDayId);

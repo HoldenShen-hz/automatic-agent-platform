@@ -10,32 +10,25 @@ const mockClient: ApiClientConfig = {
   baseUrl: "https://api.example.com",
   apiVersion: "v1",
   bearerToken: "test-token",
-  principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
 };
 
 const mockPlugin: PluginManifest = {
   pluginId: "plugin.test.query",
   name: "Query Plugin",
   version: "1.0.0",
-  owner: "test-owner",
-  spiTypes: ["tool"],
+  spiType: "tool",
   capabilityIds: ["query.execute", "search.execute"],
-  publicSdkSurface: ["test-plugin-query"],
-} as PluginManifest;
+};
 
 const mockPack: BusinessPackManifest = {
   packId: "test-pack",
   version: "1.0.0",
-  domainId: "testing",
+  domain: "testing",
   owner: "test@example.com",
   capabilities: [
     { capabilityKey: "query.execute", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
     { capabilityKey: "data.transform", maturity: "beta", requiredContracts: ["transform_contract"] },
   ],
-  signing: {
-    keyId: "test-key-id",
-    signature: "test-signature",
-  },
 };
 
 test("SdkWorkbenchService.createInstallPlan matches plugin capabilities to pack capabilities", () => {
@@ -82,11 +75,9 @@ test("SdkWorkbenchService.createInstallPlan handles multiple plugins", () => {
     pluginId: "plugin.test.transform",
     name: "Transform Plugin",
     version: "1.0.0",
-    owner: "test-owner",
-    spiTypes: ["adapter"],
+    spiType: "adapter",
     capabilityIds: ["data.transform"],
-    publicSdkSurface: ["test-plugin-transform"],
-  } as PluginManifest;
+  };
 
   const plan = service.createInstallPlan({
     pack: mockPack,

@@ -81,34 +81,22 @@ export class AgentVersionManager {
     const version = versions.find((v) => v.versionId === versionId);
     if (!version) return;
 
-    // R27-07 FIX: Don't mutate zod-parsed immutable objects. Instead, map to new array.
-    // Create a new version with updated deploymentSlot rather than mutating the original.
+    version.deploymentSlot = slot;
 
-    // First, record the new slot assignment before revoking the opposite slot.
-    this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
-
-    // If assigning to blue, revoke green (and vice versa) - blue-green is mutually exclusive
-    // Create new version objects instead of mutating to avoid shared reference corruption
-    const updatedVersions = versions.map((v) => {
-      if (slot === "blue" && v.deploymentSlot === "green") {
-        return { ...v, deploymentSlot: null };
-      }
-      if (slot === "green" && v.deploymentSlot === "blue") {
-        return { ...v, deploymentSlot: null };
-      }
-      if (v.versionId === versionId) {
-        return { ...v, deploymentSlot: slot };
-      }
-      return v;
-    });
-    this.versions.set(agentId, updatedVersions);
-
-    // Clean up the opposite slot assignment
+    // If assigning to blue, revoke green (and vice versa)
     if (slot === "blue") {
+      versions.forEach((v) => {
+        if (v.deploymentSlot === "green") v.deploymentSlot = null;
+      });
       this.slotAssignments.delete(`${agentId}:green` as const);
     } else {
+      versions.forEach((v) => {
+        if (v.deploymentSlot === "blue") v.deploymentSlot = null;
+      });
       this.slotAssignments.delete(`${agentId}:blue` as const);
     }
+
+    this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
   }
 
   public getActiveSlot(agentId: string, slot: DeploymentSlot): AgentVersionDetail | null {
@@ -127,15 +115,10 @@ export class AgentVersionManager {
     const latestForSlot = newestFirst(allVersions).find((v) => v.deploymentSlot === null && v.stage !== "alpha");
 
     if (latestForSlot) {
-      // Keep the opposite slot assignment intact, but persist the promoted
-      // version's own deploymentSlot so slot queries and listVersions stay consistent.
+      // Directly assign to target slot without revoking the opposite slot
+      // (blue-green deployment keeps both slots active with different versions)
+      latestForSlot.deploymentSlot = targetSlot;
       this.slotAssignments.set(`${agentId}:${targetSlot}` as const, latestForSlot.versionId);
-      this.versions.set(
-        agentId,
-        allVersions.map((version) => version.versionId === latestForSlot.versionId
-          ? { ...version, deploymentSlot: targetSlot }
-          : version),
-      );
       return this.getActiveSlot(agentId, targetSlot);
     }
 

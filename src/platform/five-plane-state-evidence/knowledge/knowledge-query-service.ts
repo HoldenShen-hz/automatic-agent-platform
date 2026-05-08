@@ -10,7 +10,6 @@
  * - Deep: full pipeline + graph traversal, <2s, topK=30
  */
 
-import { ValidationError } from "../../contracts/errors.js";
 import type { RetrievalHit } from "./knowledge-model.js";
 import { AstStructuralIndex, type AstIndexedSymbol } from "./indexing/ast-index.js";
 import { KnowledgeRetrievalService, type KnowledgeQueryOptions } from "./retrieval/knowledge-retrieval.js";
@@ -56,68 +55,6 @@ interface L1CacheEntry {
   hits: RetrievalHit[];
   timestamp: number;
   queryLevel: QueryLevel;
-}
-
-/**
- * §45.16+§50: Tenant and domain boundary validator.
- * Ensures queries cannot cross tenant or domain boundaries.
- */
-class TenantDomainValidator {
-  public validate(options: KnowledgeQueryOptions): void {
-    if (options.namespace == null && options.domainId == null) {
-      throw new ValidationError(
-        "knowledge_query.tenant_boundary_violation",
-        "Query must specify namespace or domainId for tenant isolation",
-        { details: { namespace: options.namespace, domainId: options.domainId } },
-      );
-    }
-    const principal = options.accessPrincipal ?? null;
-    if (principal == null) {
-      throw new ValidationError(
-        "knowledge_query.principal_required",
-        "Knowledge queries must include an access principal for boundary enforcement",
-        { details: { namespace: options.namespace, domainId: options.domainId } },
-      );
-    }
-
-    const roleSet = new Set(principal.roles);
-    const crossDomainAllowed = roleSet.has("admin") || roleSet.has("cross_domain_reader");
-
-    if (options.domainId != null && principal.domainId !== options.domainId && !crossDomainAllowed) {
-      throw new ValidationError(
-        "knowledge_query.domain_principal_mismatch",
-        "Requested domainId does not match the caller principal domain",
-        {
-          details: {
-            requestedDomainId: options.domainId,
-            principalDomainId: principal.domainId,
-            principalId: principal.principalId,
-          },
-        },
-      );
-    }
-
-    if (
-      options.namespace != null
-      && principal.permittedNamespaces != null
-      && principal.permittedNamespaces.length > 0
-      && !principal.permittedNamespaces.includes(options.namespace)
-      && !crossDomainAllowed
-      && principal.domainId !== options.domainId
-    ) {
-      throw new ValidationError(
-        "knowledge_query.namespace_principal_mismatch",
-        "Requested namespace is not permitted for the caller principal",
-        {
-          details: {
-            namespace: options.namespace,
-            principalId: principal.principalId,
-            principalDomainId: principal.domainId,
-          },
-        },
-      );
-    }
-  }
 }
 
 /**
@@ -178,9 +115,6 @@ class L1QueryCache {
  * const asyncHits = await service.queryAsync("API rate limits", {}, QueryLevel.Deep);
  * const suggestedLevel = service.selectQueryLevel(previousConfidence);
  * ```
- *
- * §45.16+§50: Tenant and domain boundary validation is enforced at query execution time.
- * Each query must specify a valid tenantId and domainId to prevent cross-tenant data leakage.
  */
 export class KnowledgeQueryService {
   private readonly config: KnowledgeQueryServiceConfig;
@@ -188,7 +122,6 @@ export class KnowledgeQueryService {
   private readonly retrievalService: KnowledgeRetrievalService;
   private readonly astIndex: AstStructuralIndex;
   private readonly semanticGraph: SemanticKnowledgeGraph | null;
-  private readonly tenantDomainValidator: TenantDomainValidator;
 
   /** Track last query confidence for adaptive upgrade decisions */
   private lastConfidence: number = 1.0;
@@ -198,14 +131,12 @@ export class KnowledgeQueryService {
     config: Partial<KnowledgeQueryServiceConfig> = {},
     astIndex: AstStructuralIndex = new AstStructuralIndex(),
     semanticGraph: SemanticKnowledgeGraph | null = null,
-    tenantDomainValidator: TenantDomainValidator = new TenantDomainValidator(),
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.retrievalService = retrievalService;
     this.l1Cache = new L1QueryCache(this.config.l1CacheMaxEntries, this.config.l1CacheTtlMs);
     this.astIndex = astIndex;
     this.semanticGraph = semanticGraph;
-    this.tenantDomainValidator = tenantDomainValidator;
   }
 
   /**
@@ -223,8 +154,6 @@ export class KnowledgeQueryService {
    * Synchronous query with default Standard level.
    */
   public query(keyword: string, options: KnowledgeQueryOptions = {}): RetrievalHit[] {
-    // §45.16+§50: Tenant/domain boundary validation
-    this.tenantDomainValidator.validate(options);
     return this.queryWithLevel(keyword, options, QueryLevel.Standard);
   }
 
@@ -232,8 +161,6 @@ export class KnowledgeQueryService {
    * Asynchronous query with explicit level control.
    */
   public async queryAsync(keyword: string, options: KnowledgeQueryOptions = {}, level: QueryLevel = QueryLevel.Standard): Promise<RetrievalHit[]> {
-    // §45.16+§50: Tenant/domain boundary validation
-    this.tenantDomainValidator.validate(options);
     return this.queryWithLevelAsync(keyword, options, level);
   }
 
@@ -256,11 +183,8 @@ export class KnowledgeQueryService {
       case QueryLevel.Standard:
         return this.executeStandardQuery(keyword, options);
       case QueryLevel.Deep:
-        throw new ValidationError(
-          "knowledge_query.deep_requires_async",
-          "Deep query level requires async execution via queryAsync().",
-          { details: { level: QueryLevel.Deep } },
-        );
+        // Deep requires async, fall back to sync-safe subset
+        return this.executeStandardQuery(keyword, { ...options, limit: 30 });
     }
   }
 
@@ -423,25 +347,17 @@ export class KnowledgeQueryService {
 
   /**
    * Truncate hits to max tokens by trimming snippets.
-   * Calculates total character budget and distributes across hits proportionally.
    * Note: This is a simplified token approximation (4 chars ≈ 1 token).
    */
   private truncateHits(hits: RetrievalHit[], maxTokens: number): RetrievalHit[] {
-    if (hits.length === 0) {
-      return hits;
-    }
     const maxChars = maxTokens * 4;
-    const basePerHit = Math.floor(maxChars / hits.length);
-    const remainder = maxChars % hits.length;
-
-    return hits.map((hit, index) => {
-      const perHitBudget = index < remainder ? basePerHit + 1 : basePerHit;
-      if (hit.snippet.length <= perHitBudget) {
+    return hits.map((hit) => {
+      if (hit.snippet.length <= maxChars) {
         return hit;
       }
       return {
         ...hit,
-        snippet: hit.snippet.slice(0, Math.max(0, perHitBudget - 1)) + "…",
+        snippet: hit.snippet.slice(0, maxChars) + "…",
       };
     });
   }

@@ -3,11 +3,6 @@
   "phase": "9b",
   "divisionId": "analytics",
   "latencyTier": "realtime",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "ecommerce.primary",
     "rollout": "baseline"

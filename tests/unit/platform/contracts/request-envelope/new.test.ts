@@ -7,38 +7,22 @@ import {
 } from "../../../../../src/platform/contracts/request-envelope/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
-function createBaseInput() {
-  return {
-    requestId: "req_123",
-    confirmedTaskSpecId: "taskspec_123",
-    tenantId: "tenant_abc",
-    principal: {
-      principalId: "principal_123",
-      tenantId: "tenant_abc",
-      roles: ["operator"] as const,
-    },
-    traceId: "trace_xyz",
-    idempotencyKey: "idem_123",
-    priority: 10,
-    taskId: "task_456",
-    sessionId: "sess_789",
-    mode: "sync" as const,
-    body: { action: "test" },
-  };
-}
-
 test("createRequestEnvelope builds a valid request envelope", () => {
-  const envelope = createRequestEnvelope(createBaseInput());
+  const envelope = createRequestEnvelope({
+    requestId: "req_123",
+    taskId: "task_456",
+    tenantId: "tenant_abc",
+    sessionId: "sess_789",
+    traceId: "trace_xyz",
+    mode: "sync",
+    body: { action: "test" },
+  });
 
   assert.equal(envelope.requestId, "req_123");
-  assert.equal(envelope.confirmedTaskSpecId, "taskspec_123");
   assert.equal(envelope.taskId, "task_456");
   assert.equal(envelope.tenantId, "tenant_abc");
-  assert.equal(envelope.principal.principalId, "principal_123");
   assert.equal(envelope.sessionId, "sess_789");
   assert.equal(envelope.traceId, "trace_xyz");
-  assert.equal(envelope.idempotencyKey, "idem_123");
-  assert.equal(envelope.priority, 10);
   assert.equal(envelope.mode, "sync");
   assert.deepEqual(envelope.body, { action: "test" });
   assert.ok(envelope.envelopeId.startsWith("envelope_"));
@@ -47,9 +31,11 @@ test("createRequestEnvelope builds a valid request envelope", () => {
 
 test("createRequestEnvelope generates envelopeId when not provided", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
+    requestId: "req_123",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
     mode: "async",
     body: {},
   });
@@ -59,10 +45,13 @@ test("createRequestEnvelope generates envelopeId when not provided", () => {
 
 test("createRequestEnvelope uses provided envelopeId", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     envelopeId: "custom_envelope_123",
+    requestId: "req_123",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {},
   });
 
@@ -71,9 +60,12 @@ test("createRequestEnvelope uses provided envelopeId", () => {
 
 test("createRequestEnvelope sets createdAt to nowIso when not provided", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
+    requestId: "req_123",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {},
   });
 
@@ -82,9 +74,12 @@ test("createRequestEnvelope sets createdAt to nowIso when not provided", () => {
 
 test("createRequestEnvelope uses provided createdAt timestamp", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
+    requestId: "req_123",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {},
     createdAt: "2026-06-15T12:30:00.000Z",
   });
@@ -96,8 +91,12 @@ test("createRequestEnvelope throws when requestId is empty", () => {
   assert.throws(
     () =>
       createRequestEnvelope({
-        ...createBaseInput(),
         requestId: "",
+        taskId: null,
+        tenantId: null,
+        sessionId: null,
+        traceId: null,
+        mode: "sync",
         body: {},
       }),
     ValidationError,
@@ -108,8 +107,12 @@ test("createRequestEnvelope throws when requestId is only whitespace", () => {
   assert.throws(
     () =>
       createRequestEnvelope({
-        ...createBaseInput(),
         requestId: "   ",
+        taskId: null,
+        tenantId: null,
+        sessionId: null,
+        traceId: null,
+        mode: "sync",
         body: {},
       }),
     ValidationError,
@@ -118,24 +121,29 @@ test("createRequestEnvelope throws when requestId is only whitespace", () => {
 
 test("createRequestEnvelope normalizes whitespace-only strings to null", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
+    requestId: "req_123",
     taskId: "  ",
+    tenantId: "\t",
     sessionId: "\n",
+    traceId: "   ",
+    mode: "sync",
     body: {},
   });
 
   assert.equal(envelope.taskId, null);
+  assert.equal(envelope.tenantId, null);
   assert.equal(envelope.sessionId, null);
-  assert.equal(envelope.tenantId, "tenant_abc");
-  assert.equal(envelope.traceId, "trace_xyz");
+  assert.equal(envelope.traceId, null);
 });
 
 test("createRequestEnvelope accepts sync mode", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     requestId: "req_sync",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {},
   });
 
@@ -144,10 +152,11 @@ test("createRequestEnvelope accepts sync mode", () => {
 
 test("createRequestEnvelope accepts async mode", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     requestId: "req_async",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
     mode: "async",
     body: {},
   });
@@ -157,10 +166,12 @@ test("createRequestEnvelope accepts async mode", () => {
 
 test("createRequestEnvelope accepts complex body objects", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     requestId: "req_complex",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {
       nested: {
         data: [1, 2, 3],
@@ -181,47 +192,43 @@ test("createRequestEnvelope accepts complex body objects", () => {
 
 test("createRequestEnvelope accepts all null optional fields", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     requestId: "req_minimal",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {},
   });
 
   assert.equal(envelope.taskId, null);
+  assert.equal(envelope.tenantId, null);
   assert.equal(envelope.sessionId, null);
-  assert.equal(envelope.tenantId, "tenant_abc");
-  assert.equal(envelope.traceId, "trace_xyz");
+  assert.equal(envelope.traceId, null);
 });
 
 test("createRequestEnvelope preserves non-empty string values with whitespace", () => {
   const envelope = createRequestEnvelope({
-    ...createBaseInput(),
     requestId: "req_whitespace",
     taskId: " task_id ",
+    tenantId: " tenant_id ",
     sessionId: " session_id ",
+    traceId: " trace_id ",
+    mode: "sync",
     body: {},
   });
 
   // Non-empty strings with whitespace should be preserved
   assert.equal(envelope.taskId, " task_id ");
+  assert.equal(envelope.tenantId, " tenant_id ");
   assert.equal(envelope.sessionId, " session_id ");
-  assert.equal(envelope.tenantId, "tenant_abc");
-  assert.equal(envelope.traceId, "trace_xyz");
+  assert.equal(envelope.traceId, " trace_id ");
 });
 
 test("RequestEnvelope interface accepts all fields", () => {
   const envelope: RequestEnvelope = {
     envelopeId: "env_123",
     requestId: "req_456",
-    confirmedTaskSpecId: "taskspec_456",
-    principal: {
-      principalId: "principal_456",
-      tenantId: "tenant_abc",
-      roles: ["operator"],
-    },
-    idempotencyKey: "idem_456",
-    priority: 1,
     taskId: "task_789",
     tenantId: "tenant_abc",
     sessionId: "sess_xyz",
@@ -243,10 +250,12 @@ test("RequestEnvelope supports typed body", () => {
   }
 
   const envelope = createRequestEnvelope<CustomBody>({
-    ...createBaseInput(),
     requestId: "req_typed",
     taskId: null,
+    tenantId: null,
     sessionId: null,
+    traceId: null,
+    mode: "sync",
     body: {
       operation: "deploy",
       parameters: { env: "prod", region: "us-east-1" },
@@ -262,10 +271,12 @@ test("createRequestEnvelope generates unique envelopeId each call", () => {
   const envelopes = new Set<string>();
   for (let i = 0; i < 100; i++) {
     const envelope = createRequestEnvelope({
-      ...createBaseInput(),
       requestId: `req_${i}`,
       taskId: null,
+      tenantId: null,
       sessionId: null,
+      traceId: null,
+      mode: "sync",
       body: {},
     });
     envelopes.add(envelope.envelopeId);

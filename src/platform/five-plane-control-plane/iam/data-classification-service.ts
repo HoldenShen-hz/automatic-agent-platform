@@ -11,15 +11,23 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import type { DataClassificationLevel, DataHandlingDimension } from "../../contracts/types/data-classification.js";
-
-// Re-export for backward compatibility
-export type { DataClassificationLevel, DataHandlingDimension } from "../../contracts/types/data-classification.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
 
 // ── Types ──────────────────────────────────────────────────────────────
+
+/**
+ * Classification level hierarchy (least to most restrictive):
+ * - public: No restrictions
+ * - internal: Internal use only, limited distribution
+ * - confidential: Sensitive business data, needs protection
+ * - restricted: Highly sensitive, minimal access required
+ */
+export type DataClassificationLevel = "public" | "internal" | "confidential" | "restricted";
+
+/**
+ * Dimensions along which data handling decisions are made.
+ * Each dimension represents a different context where data might flow.
+ */
+export type DataHandlingDimension = "prompt" | "logs" | "memory" | "artifact" | "cross_worker" | "debug";
 
 /**
  * Types of Personally Identifiable Information that can be detected.
@@ -206,7 +214,6 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "allow",
     cross_worker: "allow",
     debug: "allow",
-    audit: "allow",
   },
   internal: {
     prompt: "allow",
@@ -215,7 +222,6 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "allow",
     cross_worker: "audit",
     debug: "redact",
-    audit: "audit",
   },
   confidential: {
     prompt: "audit",
@@ -224,7 +230,6 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "audit",
     cross_worker: "deny",
     debug: "deny",
-    audit: "audit",
   },
   restricted: {
     prompt: "deny",
@@ -233,7 +238,6 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "summarize",
     cross_worker: "deny",
     debug: "deny",
-    audit: "deny",
   },
 };
 
@@ -664,37 +668,10 @@ export class DataClassificationService {
 
   /**
    * Clears the audit log.
-   * Requires platform_admin or service_operator role.
-   * Emits an audit-of-clear event before clearing.
-   *
-   * @param principalContext - The principal performing the clear operation
-   * @throws {Error} If caller is not authorized
+   * Use with caution - this cannot be undone.
    */
-  clearAuditLog(principalContext: { principalType: string; roles?: readonly string[] }): void {
-    const authorizedRoles = ["platform_admin", "service_operator"];
-    const hasPermission = principalContext.roles?.some((role) => authorizedRoles.includes(role)) ?? false;
-    if (!hasPermission) {
-      throw new Error("Unauthorized: clearAuditLog requires platform_admin or service_operator role");
-    }
-
-    const clearMarker: ClassificationAuditEntry = {
-      id: newId("clfsaudit"),
-      classifiedAt: nowIso(),
-      originalContent: `[audit-of-clear] Audit log cleared by ${principalContext.principalType} at ${nowIso()}`,
-      classificationLevel: "confidential",
-      dimension: "audit",
-      decision: "audit",
-      reason: "audit_log_cleared",
-      auditTrailId: newId("clfsaudit"),
-      piiAnnotations: [],
-    };
-
-    // Root cause: the previous implementation appended the audit-of-clear
-    // marker into the same mutable array and then immediately erased it with
-    // `length = 0`, leaving no immutable evidence that the clear happened.
-    // Preserve the marker as the first post-clear audit entry instead.
+  clearAuditLog(): void {
     this.auditLog.length = 0;
-    this.auditLog.push(clearMarker);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -738,24 +715,9 @@ export class DataClassificationService {
   private matchesRule(content: string, rule: DataClassificationRule): boolean {
     const lower = content.toLowerCase();
 
-    // Check patterns with ReDoS protection
+    // Check patterns
     for (const pattern of rule.patterns) {
-      // SECURITY FIX: Validate regex patterns for ReDoS vulnerabilities before use.
-      // Malicious patterns like "(a+)+$" can cause exponential backtracking.
-      if (!this.isRegexSafe(pattern)) {
-        // Log warning but don't throw - treat unsafe patterns as non-matching
-        logger.warn("data_classification.unsafe_regex_rejected", {
-          pattern,
-          ruleId: rule.id,
-        });
-        continue;
-      }
-      try {
-        if (new RegExp(pattern, "i").test(content)) return true;
-      } catch {
-        // Invalid regex - skip
-        continue;
-      }
+      if (new RegExp(pattern, "i").test(content)) return true;
     }
 
     // Check keywords
@@ -764,42 +726,5 @@ export class DataClassificationService {
     }
 
     return false;
-  }
-
-  /**
-   * Validates that a regex pattern is safe from catastrophic backtracking (ReDoS).
-   * Uses heuristic checks for dangerous constructs like nested quantifiers.
-   */
-  private isRegexSafe(pattern: string): boolean {
-    // ReDoS-prone patterns typically have:
-    // - Nested quantifiers: (a+)+, (a*)*, (a{1,})+ etc.
-    // - Overlapping alternatives: (a|a)+ etc.
-    // - Greedy quantifiers with common prefixes followed by optional content
-
-    // Check for obviously dangerous patterns with nested quantifiers
-    const dangerousPatterns = [
-      /\([^)]*[+*][^)]*\)[+*]/,  // (...)+(...)* etc.
-      /\(\.[+*]\)[+*]/,          // (.*)+ etc.
-      /\([^)]+\)\{[0-9]*,0\}\{/,  // (...)* {...} combinations
-    ];
-
-    for (const danger of dangerousPatterns) {
-      if (danger.test(pattern)) {
-        return false;
-      }
-    }
-
-    // Check for excessive repetition in character classes
-    const excessiveRepeat = /\[([^\]]{1,3})\]\+\+/;
-    if (excessiveRepeat.test(pattern)) {
-      return false;
-    }
-
-    // Patterns should have some structure - reject pure quantifiers
-    if (/^[+*]+$/.test(pattern) || /^\{[0-9,]+\}[+*]+$/.test(pattern)) {
-      return false;
-    }
-
-    return true;
   }
 }

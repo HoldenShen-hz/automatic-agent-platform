@@ -15,7 +15,7 @@ import {
 } from "../../../../../src/org-governance/org-model/org-node/index.js";
 
 test("OrgNodeTypeSchema accepts valid node types", () => {
-  const validTypes = ["tenant", "division", "department", "team", "seat"] as const;
+  const validTypes = ["company", "division", "department", "team"] as const;
   for (const nodeType of validTypes) {
     const result = OrgNodeTypeSchema.parse(nodeType);
     assert.equal(result, nodeType);
@@ -30,7 +30,7 @@ test("OrgNodeTypeSchema rejects invalid node types", () => {
 test("OrgNodeSchema parses valid org node", () => {
   const node: OrgNode = {
     orgNodeId: "node-1",
-    nodeType: "tenant",
+    nodeType: "company",
     displayName: "Acme Corp",
     parentOrgNodeId: null,
     ownerUserIds: ["user-1"],
@@ -41,8 +41,8 @@ test("OrgNodeSchema parses valid org node", () => {
   const result = OrgNodeSchema.parse(node);
   assert.equal(result.orgNodeId, "node-1");
   assert.equal(result.nodeId, "node-1");
-  assert.equal(result.nodeType, "tenant");
-  assert.equal(result.type, "tenant");
+  assert.equal(result.nodeType, "company");
+  assert.equal(result.type, "company");
   assert.equal(result.displayName, "Acme Corp");
   assert.equal(result.name, "Acme Corp");
   assert.equal(result.parentOrgNodeId, null);
@@ -61,25 +61,25 @@ test("OrgNodeSchema applies defaults", () => {
 });
 
 test("OrgNodeSchema rejects missing required fields", () => {
-  assert.throws(() => OrgNodeSchema.parse({ nodeType: "tenant" }));
+  assert.throws(() => OrgNodeSchema.parse({ nodeType: "company" }));
   assert.throws(() => OrgNodeSchema.parse({ orgNodeId: "id" }));
 });
 
-test("isLeafOrgNode returns true for seat node", () => {
-  const seatNode: OrgNode = OrgNodeSchema.parse({
-    orgNodeId: "seat-1",
-    nodeType: "seat",
-    displayName: "Engineer Seat",
-    parentOrgNodeId: "team-1",
-    ownerUserIds: ["engineer-1"],
+test("isLeafOrgNode returns true for team node", () => {
+  const teamNode: OrgNode = OrgNodeSchema.parse({
+    orgNodeId: "team-1",
+    nodeType: "team",
+    displayName: "Engineering",
+    parentOrgNodeId: "dept-1",
+    ownerUserIds: ["lead-1"],
   });
-  assert.equal(isLeafOrgNode(seatNode), true);
+  assert.equal(isLeafOrgNode(teamNode), true);
 });
 
 test("isLeafOrgNode returns false for non-team nodes", () => {
   const companyNode: OrgNode = {
     orgNodeId: "comp-1",
-    nodeType: "tenant",
+    nodeType: "company",
     displayName: "Acme",
     parentOrgNodeId: null,
     ownerUserIds: [],
@@ -91,11 +91,10 @@ test("isLeafOrgNode returns false for non-team nodes", () => {
 });
 
 test("getPlatformMapping returns correct mapping for each node type", () => {
-  assert.equal(getPlatformMapping("tenant"), "platform");
+  assert.equal(getPlatformMapping("company"), "platform");
   assert.equal(getPlatformMapping("division"), "tenant_group");
   assert.equal(getPlatformMapping("department"), "tenant");
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
-  assert.equal(getPlatformMapping("seat"), "resource/seat");
 });
 
 test("validateHierarchyDepth returns valid for empty nodes", () => {

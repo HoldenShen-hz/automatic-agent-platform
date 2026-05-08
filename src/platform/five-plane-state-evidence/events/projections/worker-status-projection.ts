@@ -55,43 +55,16 @@ export interface WorkerStatusState {
   timeline: WorkerStatusTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
   /** First claim accepted timestamp */
   firstClaimAcceptedAt: string | null;
   /** Last claim accepted timestamp */
   lastClaimAcceptedAt: string | null;
-}
-
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface WorkerStatusStateInternal extends Omit<WorkerStatusState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 export type WorkerLifecycleStatus =
@@ -138,31 +111,8 @@ export function createEmptyWorkerStatusState(): WorkerStatusState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
     firstClaimAcceptedAt: null,
     lastClaimAcceptedAt: null,
-  };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: WorkerStatusState): WorkerStatusStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: WorkerStatusStateInternal): WorkerStatusState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -181,11 +131,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: WorkerStatusStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: WorkerStatusState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -208,14 +157,13 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as WorkerStatusState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyWorkerStatusState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyWorkerStatusState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -240,14 +188,6 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Extract details for timeline
   const details: Record<string, unknown> = {};
@@ -267,8 +207,8 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
@@ -313,23 +253,11 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
       newState.status = "completed";
       break;
 
-    case "worker:registered":
-      newState.status = "idle";
-      break;
-
-    case "worker:deregistered":
-      newState.status = "dead";
-      break;
-
-    case "worker:drain_started":
-      newState.status = "idle";
-      break;
-
     default:
       break;
   }
 
-  return toSerializedState(newState) as unknown as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**

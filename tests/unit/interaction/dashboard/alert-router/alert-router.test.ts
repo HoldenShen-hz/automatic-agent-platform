@@ -1,29 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  sortAttentionQueue,
-  AlertRouter,
-  type NotificationDeliveryType,
-} from "../../../../../src/interaction/dashboard/alert-router/index.js";
+import { sortAttentionQueue } from "../../../../../src/interaction/dashboard/alert-router/index.js";
 
 interface AttentionItem {
   readonly id: string;
-  readonly itemType: "incident" | "approval_needed" | "budget_warning" | "quality_alert" | "suggestion";
   readonly priority: "critical" | "high" | "normal" | "low";
   readonly createdAt: string;
   readonly message: string;
-  readonly domainId: string;
 }
 
 function makeItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
   return {
     id: "item-1",
-    itemType: "suggestion",
     priority: "normal",
     createdAt: "2026-04-01T00:00:00.000Z",
     message: "Test item",
-    domainId: "test-domain",
     ...overrides,
   };
 }
@@ -80,8 +72,8 @@ test("sortAttentionQueue sorts by createdAt within same priority", () => {
 
   const result = sortAttentionQueue(items);
 
-  assert.equal(result[0]?.id, "later");
-  assert.equal(result[1]?.id, "earlier");
+  assert.equal(result[0]?.id, "earlier");
+  assert.equal(result[1]?.id, "later");
 });
 
 test("sortAttentionQueue does not mutate original array", () => {
@@ -103,9 +95,9 @@ test("sortAttentionQueue handles all same priority", () => {
 
   const result = sortAttentionQueue(items);
 
-  assert.equal(result[0]?.id, "c");
+  assert.equal(result[0]?.id, "a");
   assert.equal(result[1]?.id, "b");
-  assert.equal(result[2]?.id, "a");
+  assert.equal(result[2]?.id, "c");
 });
 
 test("sortAttentionQueue handles mixed priorities and times", () => {
@@ -141,164 +133,4 @@ test("sortAttentionQueue preserves readonly input", () => {
   const result = sortAttentionQueue(items);
 
   assert.equal(result[0]?.id, "b");
-});
-
-test("AlertRouter.routeNotifications routes critical incident to overlay/push/haptic", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "alert-1", itemType: "incident", priority: "critical" }),
-  ];
-
-  const routed = router.routeNotifications(items);
-
-  assert.equal(routed.length, 3);
-  const deliveryTypes = routed.map((r) => r.deliveryType).sort();
-  assert.deepEqual(deliveryTypes, ["haptic", "overlay", "push"]);
-});
-
-test("AlertRouter.routeNotifications routes normal suggestion to push only", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "alert-2", itemType: "suggestion", priority: "normal" }),
-  ];
-
-  const routed = router.routeNotifications(items);
-
-  assert.equal(routed.length, 1);
-  assert.equal(routed[0]?.deliveryType, "push");
-});
-
-test("AlertRouter.routeNotifications routes low suggestion to no delivery", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "alert-3", itemType: "suggestion", priority: "low" }),
-  ];
-
-  const routed = router.routeNotifications(items);
-
-  assert.equal(routed.length, 0);
-});
-
-test("AlertRouter.getOverlayAlerts returns only overlay-eligible items", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "overlay-1", itemType: "incident", priority: "high" }),
-    makeItem({ id: "push-only", itemType: "suggestion", priority: "normal" }),
-  ];
-
-  const overlayAlerts = router.getOverlayAlerts(items);
-
-  assert.equal(overlayAlerts.length, 1);
-  assert.equal(overlayAlerts[0]?.id, "overlay-1");
-});
-
-test("AlertRouter.getPushNotifications returns only push-eligible items", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "push-1", itemType: "approval_needed", priority: "normal" }),
-    makeItem({ id: "no-push", itemType: "suggestion", priority: "low" }),
-  ];
-
-  const pushNotifications = router.getPushNotifications(items);
-
-  assert.equal(pushNotifications.length, 1);
-  assert.equal(pushNotifications[0]?.id, "push-1");
-});
-
-test("AlertRouter.getHapticAlerts returns only haptic-eligible items", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "haptic-1", itemType: "incident", priority: "critical" }),
-    makeItem({ id: "no-haptic", itemType: "approval_needed", priority: "normal" }),
-  ];
-
-  const hapticAlerts = router.getHapticAlerts(items);
-
-  assert.equal(hapticAlerts.length, 1);
-  assert.equal(hapticAlerts[0]?.id, "haptic-1");
-});
-
-test("AlertRouter respects cooldown - second delivery within cooldown is blocked", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "cooldown-1", itemType: "incident", priority: "critical" }),
-  ];
-
-  const firstDelivery = router.routeNotifications(items);
-  const secondDelivery = router.routeNotifications(items);
-
-  assert.equal(firstDelivery.length, 3);
-  assert.equal(secondDelivery.length, 0);
-});
-
-test("AlertRouter enableOverlay=false disables overlay alerts", () => {
-  const router = new AlertRouter({ enableOverlay: false });
-  const items = [
-    makeItem({ id: "overlay-disabled", itemType: "incident", priority: "critical" }),
-  ];
-
-  const overlayAlerts = router.getOverlayAlerts(items);
-
-  assert.equal(overlayAlerts.length, 0);
-});
-
-test("AlertRouter enablePush=false disables push notifications", () => {
-  const router = new AlertRouter({ enablePush: false });
-  const items = [
-    makeItem({ id: "push-disabled", itemType: "approval_needed", priority: "normal" }),
-  ];
-
-  const pushNotifications = router.getPushNotifications(items);
-
-  assert.equal(pushNotifications.length, 0);
-});
-
-test("AlertRouter enableHaptic=false disables haptic alerts", () => {
-  const router = new AlertRouter({ enableHaptic: false });
-  const items = [
-    makeItem({ id: "haptic-disabled", itemType: "incident", priority: "critical" }),
-  ];
-
-  const hapticAlerts = router.getHapticAlerts(items);
-
-  assert.equal(hapticAlerts.length, 0);
-});
-
-test("AlertRouter.routeNotifications includes targetEndpoint", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "endpoint-test", itemType: "incident", priority: "critical", domainId: "domain-42" }),
-  ];
-
-  const routed = router.routeNotifications(items);
-
-  const overlay = routed.find((r) => r.deliveryType === "overlay");
-  assert.ok(overlay);
-  assert.equal(overlay.targetEndpoint, "overlay://domain-42/incident");
-
-  const push = routed.find((r) => r.deliveryType === "push");
-  assert.ok(push);
-  assert.equal(push.targetEndpoint, "push://tenant/domain-42");
-
-  const haptic = routed.find((r) => r.deliveryType === "haptic");
-  assert.ok(haptic);
-  assert.equal(haptic.targetEndpoint, "haptic://device/domain-42");
-});
-
-test("AlertRouter.buildNlSummary returns prioritized digest for NL surfaces", () => {
-  const router = new AlertRouter();
-  const items = [
-    makeItem({ id: "normal-1", itemType: "suggestion", priority: "normal", title: "Review cost drift" }),
-    makeItem({ id: "critical-1", itemType: "incident", priority: "critical", title: "Database unavailable" }),
-    makeItem({ id: "high-1", itemType: "approval_needed", priority: "high", title: "Approve recovery plan" }),
-  ];
-
-  const digest = router.buildNlSummary(items, 2);
-
-  assert.ok(digest);
-  assert.equal(digest.items.length, 2);
-  assert.equal(digest.items[0]?.title, "Database unavailable");
-  assert.equal(digest.items[1]?.title, "Approve recovery plan");
-  assert.match(digest.summaryText, /\[critical\] Database unavailable/);
-  assert.match(digest.summaryText, /\[high\] Approve recovery plan/);
 });

@@ -1,30 +1,30 @@
-# ADR-031 Disaster Recovery and High Availability Architecture
+# ADR-031 Disaster Recovery and High Availability
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
 ## Context
 
-Enterprise platforms must have disaster recovery capabilities to ensure rapid service restoration during data center failures. RTO and RPO are key metrics.
+Enterprise-class platforms must have disaster recovery capabilities to ensure rapid service restoration when data center failures occur. RTO and RPO are key metrics.
 
 ## Decision
 
-### HA-1 Objectives
+### HA-1 Goals
 
 | Metric | Target Value |
 |--------|--------------|
 | RTO (Recovery Time Objective) | < 1 hour |
 | RPO (Recovery Point Objective) | < 15 minutes |
-| Backup Retention Period | 90 days |
-| Drill Frequency | Monthly (15th of each month at 3am) |
+| Backup Retention | 90 days |
+| Drill Frequency | Monthly (15th, 3am) |
 
 ### Backup Strategy
 
-- Automatic daily backup at 2am
-- Backups stored in isolated storage area
-- Supports full backup and incremental backup
+- Daily 2am automatic backup
+- Backup stored in independent storage area
+- Supports full and incremental backup
 
-### DR Drills
+### DR Drill
 
 - `deploy/scripts/dr-drill.sh` (568 lines) implements DR drill script
 - Includes fault injection and recovery verification
@@ -33,26 +33,28 @@ Enterprise platforms must have disaster recovery capabilities to ensure rapid se
 
 - No single point of failure
 - Critical services deployed with multiple instances
-- Automatic failover
+- Automatic failover on failure
 
 ## Consequences
 
-Pros:
-
-- Clear RTO/RPO targets guide architecture decisions
+Positive:
+- Clear RTO/RPO targets guide architectural decisions
 - Regular drills ensure recovery capability is available
-- Backup retention policy meets compliance requirements
+- Backup retention strategy meets compliance requirements
 
-Cons:
-
+Negative:
 - Backup storage costs
 - Drills consume production resources
 
-## Cross-references
+Trade-offs:
+- Reliability vs. cost
+- Compliance vs. complexity
+
+## Cross-References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-032 Deployment Architecture](./032-deployment-architecture.md)
 
-## Source Section
+## Source Sections
 
-- `§31` Disaster Recovery and High Availability Architecture
+- `§31` Disaster Recovery and High Availability

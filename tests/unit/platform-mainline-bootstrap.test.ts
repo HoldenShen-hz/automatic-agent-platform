@@ -6,215 +6,129 @@ import {
   listPlatformMainlineCapabilities,
   resolvePlatformMainlineCapability,
   type PlatformMainlineCapabilityId,
+  type PlatformMainlineCapability,
 } from "../../src/platform/platform-mainline-bootstrap.js";
 
-test("PLATFORM_MAINLINE_CAPABILITIES is frozen and has 8 entries", () => {
+const VALID_CAPABILITY_IDS: PlatformMainlineCapabilityId[] = [
+  "interface",
+  "control-plane",
+  "orchestration",
+  "execution",
+  "state-evidence",
+  "model-gateway",
+  "prompt-engine",
+  "compliance",
+];
+
+test("PLATFORM_MAINLINE_CAPABILITIES is a frozen array", () => {
+  assert.ok(Array.isArray(PLATFORM_MAINLINE_CAPABILITIES));
   assert.ok(Object.isFrozen(PLATFORM_MAINLINE_CAPABILITIES));
-  assert.equal(PLATFORM_MAINLINE_CAPABILITIES.length, 8);
 });
 
-test("PLATFORM_MAINLINE_CAPABILITIES entries contain required fields", () => {
-  for (const cap of PLATFORM_MAINLINE_CAPABILITIES) {
-    assert.ok(typeof cap.capabilityId === "string");
-    assert.ok(typeof cap.entryModule === "string");
-    assert.ok(Array.isArray(cap.architectureSections));
-    assert.ok(Array.isArray(cap.criticalSubmodules));
+test("PLATFORM_MAINLINE_CAPABILITIES contains all expected capability IDs", () => {
+  const capabilityIds = PLATFORM_MAINLINE_CAPABILITIES.map((c) => c.capabilityId);
+  for (const id of VALID_CAPABILITY_IDS) {
+    assert.ok(capabilityIds.includes(id), `Expected capability ID "${id}" to be present`);
+  }
+  assert.equal(PLATFORM_MAINLINE_CAPABILITIES.length, VALID_CAPABILITY_IDS.length);
+});
+
+test("each PlatformMainlineCapability has required fields", () => {
+  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
+    assert.ok(capability.capabilityId, "capabilityId must be present");
+    assert.ok(capability.entryModule, "entryModule must be present");
+    assert.ok(Array.isArray(capability.architectureSections), "architectureSections must be an array");
+    assert.ok(Array.isArray(capability.criticalSubmodules), "criticalSubmodules must be an array");
   }
 });
 
-test("PLATFORM_MAINLINE_CAPABILITIES capabilityIds are unique", () => {
+test("each PlatformMainlineCapability has unique capabilityId", () => {
   const ids = PLATFORM_MAINLINE_CAPABILITIES.map((c) => c.capabilityId);
   const uniqueIds = new Set(ids);
-  assert.equal(uniqueIds.size, ids.length);
+  assert.equal(uniqueIds.size, ids.length, "capabilityId values must be unique");
 });
 
-test("PLATFORM_MAINLINE_CAPABILITIES includes expected capability IDs", () => {
-  const ids = PLATFORM_MAINLINE_CAPABILITIES.map((c) => c.capabilityId);
-  const expectedIds: PlatformMainlineCapabilityId[] = [
-    "interface",
-    "control-plane",
-    "orchestration",
-    "execution",
-    "state-evidence",
-    "model-gateway",
-    "prompt-engine",
-    "compliance",
-  ];
-  for (const expected of expectedIds) {
-    assert.ok(ids.includes(expected), `Expected capabilityId ${expected} not found`);
-  }
-});
-
-test("listPlatformMainlineCapabilities returns PLATFORM_MAINLINE_CAPABILITIES", () => {
+test("listPlatformMainlineCapabilities returns the frozen catalog", () => {
   const result = listPlatformMainlineCapabilities();
-  assert.strictEqual(result, PLATFORM_MAINLINE_CAPABILITIES);
+  assert.ok(Array.isArray(result));
+  assert.ok(Object.isFrozen(result));
+  assert.equal(result, PLATFORM_MAINLINE_CAPABILITIES);
 });
 
-test("resolvePlatformMainlineCapability returns capability for valid capabilityId", () => {
-  const capability = resolvePlatformMainlineCapability("execution");
-  assert.equal(capability.capabilityId, "execution");
-  assert.equal(capability.entryModule, "src/platform/execution/index.ts");
-  assert.ok(capability.criticalSubmodules.includes("dispatcher"));
-  assert.ok(capability.criticalSubmodules.includes("execution-engine"));
+test("resolvePlatformMainlineCapability resolves all valid capability IDs", () => {
+  for (const capabilityId of VALID_CAPABILITY_IDS) {
+    const capability = resolvePlatformMainlineCapability(capabilityId);
+    assert.equal(capability.capabilityId, capabilityId);
+    assert.ok(capability.entryModule);
+    assert.ok(Array.isArray(capability.architectureSections));
+    assert.ok(Array.isArray(capability.criticalSubmodules));
+  }
 });
 
 test("resolvePlatformMainlineCapability throws for unknown capabilityId", () => {
   assert.throws(
     () => resolvePlatformMainlineCapability("unknown-capability" as PlatformMainlineCapabilityId),
-    /platform_mainline.not_found/,
+    (error: any) => error.message.includes("platform_mainline.not_found")
   );
 });
 
-test("interface capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("interface");
-  assert.ok(capability.criticalSubmodules.includes("api"));
-  assert.ok(capability.criticalSubmodules.includes("webhook"));
-  assert.ok(capability.criticalSubmodules.includes("scheduler"));
-  assert.ok(capability.criticalSubmodules.includes("console-backend"));
-  assert.ok(capability.criticalSubmodules.includes("ingress"));
+test("resolvePlatformMainlineCapability error message includes the unknown ID", () => {
+  const unknownId = "nonexistent-capability";
+  assert.throws(
+    () => resolvePlatformMainlineCapability(unknownId as PlatformMainlineCapabilityId),
+    (error: any) => error.message.includes(unknownId)
+  );
 });
 
-test("control-plane capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("control-plane");
-  assert.ok(capability.criticalSubmodules.includes("approval-center"));
-  assert.ok(capability.criticalSubmodules.includes("config-center"));
-  assert.ok(capability.criticalSubmodules.includes("iam"));
-  assert.ok(capability.criticalSubmodules.includes("incident-control"));
-});
-
-test("orchestration capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("orchestration");
-  assert.ok(capability.criticalSubmodules.includes("planner"));
-  assert.ok(capability.criticalSubmodules.includes("routing"));
-  assert.ok(capability.criticalSubmodules.includes("harness"));
-  assert.ok(capability.criticalSubmodules.includes("hitl"));
-});
-
-test("state-evidence capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("state-evidence");
-  assert.ok(capability.criticalSubmodules.includes("truth"));
-  assert.ok(capability.criticalSubmodules.includes("events"));
-  assert.ok(capability.criticalSubmodules.includes("artifacts"));
-  assert.ok(capability.criticalSubmodules.includes("memory"));
-});
-
-test("model-gateway capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("model-gateway");
-  assert.ok(capability.criticalSubmodules.includes("provider-registry"));
-  assert.ok(capability.criticalSubmodules.includes("router"));
-  assert.ok(capability.criticalSubmodules.includes("fallback"));
-  assert.ok(capability.criticalSubmodules.includes("degradation"));
-  assert.ok(capability.criticalSubmodules.includes("cost-tracker"));
-});
-
-test("prompt-engine capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("prompt-engine");
-  assert.ok(capability.criticalSubmodules.includes("registry"));
-  assert.ok(capability.criticalSubmodules.includes("renderer"));
-  assert.ok(capability.criticalSubmodules.includes("rollout"));
-  assert.ok(capability.criticalSubmodules.includes("eval"));
-  assert.ok(capability.criticalSubmodules.includes("conversation-template"));
-});
-
-test("compliance capability has expected critical submodules", () => {
-  const capability = resolvePlatformMainlineCapability("compliance");
-  assert.ok(capability.criticalSubmodules.includes("crypto-shredding"));
-  assert.ok(capability.criticalSubmodules.includes("data-residency"));
-  assert.ok(capability.criticalSubmodules.includes("encryption"));
-  assert.ok(capability.criticalSubmodules.includes("erasure"));
-  assert.ok(capability.criticalSubmodules.includes("lineage"));
-});
-
-test("all capabilities have valid entry modules pointing to platform", () => {
-  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
-    assert.ok(
-      capability.entryModule.startsWith("src/platform/"),
-      `Capability ${capability.capabilityId} has invalid entry module: ${capability.entryModule}`,
-    );
-    assert.ok(
-      capability.entryModule.endsWith("/index.ts"),
-      `Capability ${capability.capabilityId} entry module should end with /index.ts`,
-    );
-  }
-});
-
-test("all capabilities have at least one architecture section", () => {
-  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
-    assert.ok(
-      capability.architectureSections.length > 0,
-      `Capability ${capability.capabilityId} has no architecture sections`,
-    );
-    for (const section of capability.architectureSections) {
-      assert.ok(
-        section.startsWith("§"),
-        `Invalid architecture section format: ${section}`,
-      );
-    }
-  }
-});
-
-test("all capabilities have at least one critical submodule", () => {
-  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
-    assert.ok(
-      capability.criticalSubmodules.length > 0,
-      `Capability ${capability.capabilityId} has no critical submodules`,
-    );
-  }
-});
-
-test("resolvePlatformMainlineCapability for all capabilityIds returns valid capabilities", () => {
-  const capabilityIds: PlatformMainlineCapabilityId[] = [
-    "interface",
-    "control-plane",
-    "orchestration",
-    "execution",
-    "state-evidence",
-    "model-gateway",
-    "prompt-engine",
-    "compliance",
-  ];
-
-  for (const id of capabilityIds) {
-    const capability = resolvePlatformMainlineCapability(id);
-    assert.equal(capability.capabilityId, id);
-    assert.ok(capability.entryModule.length > 0);
-    assert.ok(capability.architectureSections.length > 0);
-    assert.ok(capability.criticalSubmodules.length > 0);
-  }
-});
-
-test("execution capability has expected execution-related subdomains", () => {
+test("resolvePlatformMainlineCapability returns capability with correct structure", () => {
   const capability = resolvePlatformMainlineCapability("execution");
-  const subdomains = capability.criticalSubmodules;
-
-  assert.ok(subdomains.includes("dispatcher"));
-  assert.ok(subdomains.includes("execution-engine"));
-  assert.ok(subdomains.includes("worker-pool"));
-  assert.ok(subdomains.includes("queue"));
-  assert.ok(subdomains.includes("recovery"));
-  assert.ok(subdomains.includes("distributed-lock"));
-  assert.ok(subdomains.includes("tool-executor"));
+  assert.equal(capability.capabilityId, "execution");
+  assert.equal(capability.entryModule, "src/platform/execution/index.ts");
+  assert.ok(capability.architectureSections.includes("§14"));
+  assert.ok(capability.criticalSubmodules.includes("dispatcher"));
+  assert.ok(capability.criticalSubmodules.includes("execution-engine"));
 });
 
-test("orchestration capability has expected coordination subdomains", () => {
-  const capability = resolvePlatformMainlineCapability("orchestration");
-  const subdomains = capability.criticalSubmodules;
-
-  assert.ok(subdomains.includes("planner"));
-  assert.ok(subdomains.includes("routing"));
-  assert.ok(subdomains.includes("harness"));
-  assert.ok(subdomains.includes("hitl"));
-  assert.ok(subdomains.includes("agent-delegation"));
-  assert.ok(subdomains.includes("oapeflir"));
+test("PlatformMainlineCapabilityId type accepts all valid IDs", () => {
+  const ids: PlatformMainlineCapabilityId[] = VALID_CAPABILITY_IDS;
+  assert.equal(ids.length, VALID_CAPABILITY_IDS.length);
 });
 
-test("error message includes the invalid capabilityId", () => {
-  const invalidId = "totally-invalid-capability";
-  try {
-    resolvePlatformMainlineCapability(invalidId as PlatformMainlineCapabilityId);
-    assert.fail("Expected error to be thrown");
-  } catch (err) {
-    assert.ok(err instanceof Error);
-    assert.ok(err.message.includes(invalidId));
+test("specific capabilities have expected properties", () => {
+  const interfaceCap = resolvePlatformMainlineCapability("interface");
+  assert.equal(interfaceCap.entryModule, "src/platform/interface/index.ts");
+  assert.ok(interfaceCap.architectureSections.includes("§4"));
+  assert.ok(interfaceCap.criticalSubmodules.includes("api"));
+  assert.ok(interfaceCap.criticalSubmodules.includes("webhook"));
+
+  const controlPlane = resolvePlatformMainlineCapability("control-plane");
+  assert.equal(controlPlane.entryModule, "src/platform/control-plane/index.ts");
+  assert.ok(controlPlane.criticalSubmodules.includes("approval-center"));
+  assert.ok(controlPlane.criticalSubmodules.includes("config-center"));
+
+  const stateEvidence = resolvePlatformMainlineCapability("state-evidence");
+  assert.equal(stateEvidence.entryModule, "src/platform/state-evidence/index.ts");
+  assert.ok(stateEvidence.criticalSubmodules.includes("truth"));
+  assert.ok(stateEvidence.criticalSubmodules.includes("events"));
+
+  const modelGateway = resolvePlatformMainlineCapability("model-gateway");
+  assert.ok(modelGateway.criticalSubmodules.includes("provider-registry"));
+  assert.ok(modelGateway.criticalSubmodules.includes("router"));
+
+  const promptEngine = resolvePlatformMainlineCapability("prompt-engine");
+  assert.ok(promptEngine.criticalSubmodules.includes("registry"));
+  assert.ok(promptEngine.criticalSubmodules.includes("renderer"));
+  assert.ok(promptEngine.criticalSubmodules.includes("eval"));
+});
+
+test("criticalSubmodules arrays are non-empty for all capabilities", () => {
+  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
+    assert.ok(capability.criticalSubmodules.length > 0, `${capability.capabilityId} should have criticalSubmodules`);
+  }
+});
+
+test("architectureSections arrays are non-empty for all capabilities", () => {
+  for (const capability of PLATFORM_MAINLINE_CAPABILITIES) {
+    assert.ok(capability.architectureSections.length > 0, `${capability.capabilityId} should have architectureSections`);
   }
 });

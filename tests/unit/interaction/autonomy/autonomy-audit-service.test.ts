@@ -101,7 +101,7 @@ test("AutonomyAuditService records autonomy change events", () => {
   assert.equal(record.fromLevel, "semi_auto");
   assert.equal(record.toLevel, "full_auto");
   assert.equal(record.successRate, 0.99);
-  assert.ok(record.id.startsWith("audit_"));
+  assert.ok(record.id.startsWith("autonomy_audit_"));
   assert.ok(record.createdAt.length > 0);
 });
 

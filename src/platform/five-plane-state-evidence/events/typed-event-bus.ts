@@ -4,23 +4,6 @@ import { DurableEventBus, type EventHandler } from "./durable-event-bus.js";
 import { getEventSchema, type KnownEventType } from "./event-registry.js";
 import { AuthoritativeTaskStore } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
-import { DlqService } from "./dlq-service.js";
-import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
-
-/**
- * Circuit breaker state change event payload.
- * Defined here to avoid circular dependency with circuit-breaker module.
- */
-export interface CircuitBreakerStateChangePayload {
-  circuitName: string;
-  oldState: CircuitBreakerState;
-  newState: CircuitBreakerState;
-  nextAttemptAt: number | null;
-  occurredAt: string;
-}
-
-type CircuitBreakerState = "closed" | "open" | "half_open";
-
 import type {
   CostLimitReachedPayload,
   DecisionRequestedPayload,
@@ -34,7 +17,6 @@ import type {
   TaskStatusChangedPayload,
   DomainLifecyclePayload,
   PluginLifecycleEventPayload,
-  PluginIsolationEventPayload,
   PluginInvocationEventPayload,
   KnowledgeChunkIndexedPayload,
   LearningKnowledgePromotedPayload,
@@ -79,11 +61,9 @@ export interface TypedEventPayloadMap {
   "recovery:cancelled": RecoveryPayload;
   "domain:registered": DomainLifecyclePayload;
   "domain:activated": DomainLifecyclePayload;
-  "domain:canary": DomainLifecyclePayload;
   "plugin:spi_registered": PluginLifecycleEventPayload;
-  "plugin:suspended": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;
-  "plugin:error_isolated": PluginIsolationEventPayload;
+  "plugin:error_isolated": PluginLifecycleEventPayload;
   "plugin:invocation_started": PluginInvocationEventPayload;
   "plugin:invocation_completed": PluginInvocationEventPayload;
   "knowledge:chunk_indexed": KnowledgeChunkIndexedPayload;
@@ -164,337 +144,6 @@ export interface TypedEventPayloadMap {
   };
   // Circuit breaker state change events per §9.4
   "circuit_breaker:state_changed": CircuitBreakerStateChangePayload;
-  // §28 Canonical platform events - harness run (R5-41)
-  "platform.harness_run.status_changed": {
-    status: string;
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.created": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.admitted": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.planning": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.ready": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.pausing": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.replanning": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.compensating": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.aborted": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.harness_run.completed": {
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  // §28 Canonical platform events - node run (R5-41)
-  "platform.node_run.status_changed": {
-    status: string;
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.created": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.admitted": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.planning": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.ready": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.pausing": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.replanning": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.completed": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.failed": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.compensating": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.node_run.skipped": {
-    runId: string;
-    nodeId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  // §28 Canonical platform events - side effect (R5-41)
-  "platform.side_effect.status_changed": {
-    status: string;
-    runId: string;
-    sideEffectId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.side_effect.triggered": {
-    runId: string;
-    sideEffectId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.side_effect.completed": {
-    runId: string;
-    sideEffectId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.side_effect.failed": {
-    runId: string;
-    sideEffectId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  // §28 Canonical platform events - budget (R5-41)
-  "platform.budget.status_changed": {
-    status: string;
-    budgetId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.budget.reserved": {
-    budgetId: string;
-    amount: number;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.budget.actualized": {
-    budgetId: string;
-    amount: number;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.budget.exceeded": {
-    budgetId: string;
-    limit: number;
-    actual: number;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "platform.budget_reconciliation.status_changed": {
-    status: string;
-    reconciliationId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  // §28 OAPEFLIR events (R5-41)
-  "oapeflir.view.run_lifecycle": {
-    stage: string;
-    runId: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "oapeflir.decision.recorded": {
-    runId: string;
-    decision: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  "oapeflir.phase.transition": {
-    runId: string;
-    fromPhase: string;
-    toPhase: string;
-    taskId?: string | null;
-    occurredAt?: string | null;
-  };
-  // §5.4 Canonical UX event taxonomy - platform.ux.* namespace
-  "platform.ux.button_click": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.form_submit": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.navigation": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.wizard_step": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.workflow_build": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.dashboard_view": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.search_query": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.filter_apply": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.export_action": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.share_action": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.onboarding_complete": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
-  "platform.ux.feedback_submit": {
-    eventId: string;
-    userId: string;
-    sessionId: string | null;
-    taskId: string | null;
-    abTestGroup: string | null;
-    elementId: string | null;
-    interactionType: string;
-    metadata: Record<string, string>;
-    occurredAt: string;
-  };
   // Performance test event types - used for benchmarks only
   "perf:test_event": Record<string, unknown>;
   "perf:burst_event": Record<string, unknown>;
@@ -507,8 +156,8 @@ export interface TypedEventPayloadMap {
  * Extracts event types from the registry that are NOT in TypedEventPayloadMap.
  */
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
-// Compile-time check: if MissingTypedEventDefinitions is not never, this type will be never, causing a type error
-type _TypedEventCoverageCheck = MissingTypedEventDefinitions extends never ? true : never;
+const TYPED_EVENT_COVERAGE_CHECK: MissingTypedEventDefinitions extends never ? true : never = true;
+void TYPED_EVENT_COVERAGE_CHECK;
 
 /**
  * Union type of all event types that have typed payloads.
@@ -538,15 +187,11 @@ export interface TypedEventEnvelope<TType extends TypedEventType> {
 export class TypedEventBus {
   private readonly bus: DurableEventBus;
 
-  // R12-23 fix: Accept optional DlqService for dead-letter queue integration
-  // R16-37 fix: Use SqliteDlqRepository for persistent DLQ storage
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
-    dlqService?: DlqService,
   ) {
-    const effectiveDlqService = dlqService ?? new DlqService(new SqliteDlqRepository(db.connection));
-    this.bus = new DurableEventBus(db, store, effectiveDlqService);
+    this.bus = new DurableEventBus(db, store);
   }
 
   /**
@@ -563,64 +208,12 @@ export class TypedEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: TypedEventPayloadMap[TType];
-    // §28.1/R12-21: aggregateId for partition-by-aggregate ordering
-    aggregateId?: string | null;
-    // §28.1/R12-21: runId for monotonic sequence tracking
-    runId?: string | null;
-    // §28.1/R12-21: explicit sequence for replay ordering
-    sequence?: number | null;
-    // §28.1: principal that emitted the event
-    principal?: string | null;
   }): EventRecord {
     getEventSchema(input.eventType);
-    // Cast payload to Record<string, unknown> and spread input to pass all optional fields
-    // §28.1/R12-21: aggregateId/runId/sequence/principal for ordering and replay
-    return this.bus.publish(input as Parameters<typeof this.bus.publish>[0]);
-  }
-
-  // §28.1/R12-24: Replay events for a specific run from a given sequence number.
-  // Enables targeted replay within a run's event stream.
-  /**
-   * Replays events for a specific run from a given sequence number.
-   * Enables targeted replay within a run's event stream (R12-24).
-   * @param runId - The run identifier
-   * @param fromSequence - The sequence number to replay from (exclusive)
-   * @param consumerId - The consumer ID to replay events for
-   * @returns Promise resolving to the number of events delivered
-   */
-  public async replayFromSequence(runId: string, fromSequence: number, consumerId: string): Promise<number> {
-    // Get pending events that are part of this run and past the fromSequence
-    const pending = this.bus.pendingForConsumer(consumerId);
-    const relevantEvents = pending.filter(
-      (item) => item.event.runId === runId && (item.event.sequence ?? 0) > fromSequence,
-    );
-
-    // Reset ack state for these specific events
-    for (const item of relevantEvents) {
-      this.bus.resetAckForReplay(item.event.id, consumerId);
-    }
-
-    // Deliver the events
-    return this.bus.deliverPending(consumerId);
-  }
-
-  // §28.1/R12-25: Backpressure signal API - expose queue depth for monitoring.
-  /**
-   * Gets backpressure metrics for a consumer.
-   * Returns queue depth and high-water mark status for monitoring (R12-25).
-   * @param consumerId - The consumer ID to check
-   * @returns Backpressure metrics including pending count and high-water mark flag
-   */
-  public getBackpressureMetrics(consumerId: string): {
-    pendingCount: number;
-    isHighWaterMark: boolean;
-    highWaterMark: number;
-  } {
-    const pending = this.bus.pendingForConsumer(consumerId);
-    const pendingCount = pending.length;
-    const highWaterMark = 100; // §9.2: threshold for graduated backpressure
-    const isHighWaterMark = pendingCount >= highWaterMark;
-    return { pendingCount, isHighWaterMark, highWaterMark };
+    return this.bus.publish({
+      ...input,
+      payload: input.payload as unknown as Record<string, unknown>,
+    });
   }
 
   /**
@@ -672,12 +265,5 @@ export class TypedEventBus {
    */
   public pendingForConsumer(consumerId: string) {
     return this.bus.pendingForConsumer(consumerId);
-  }
-
-  /**
-   * Disposes the typed event bus and releases all resources.
-   */
-  public dispose(): void {
-    this.bus.dispose();
   }
 }

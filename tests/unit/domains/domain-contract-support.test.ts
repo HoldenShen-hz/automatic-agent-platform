@@ -68,7 +68,7 @@ test("domain support modules expose contract-aligned helpers", () => {
 
   assert.equal(
     matchDomainRecipe([
-      { recipeId: "release", name: "release", domainId: "coding", archetype: "incident_ops", riskLevel: "medium", triggerPhrases: ["release", "deploy"], defaultWorkflowId: "wf_release", defaultToolBundleIds: ["repo_tools"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false },
+      { recipeId: "release", domainId: "coding", triggerPhrases: ["release", "deploy"], defaultWorkflowId: "wf_release", defaultToolBundleIds: ["repo_tools"] },
     ], "Please prepare a release checklist")?.recipeId,
     "release",
   );

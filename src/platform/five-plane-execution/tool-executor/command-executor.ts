@@ -96,9 +96,7 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
     return;
   }
 
-  // Windows does not support SIGTERM for process groups; use it only for direct child.kill()
-  // Unix uses negative PID for process group SIGTERM (graceful shutdown)
-  const killSignal = "SIGTERM";
+  const killSignal = process.platform !== "win32" ? "SIGTERM" : "SIGTERM";
   const killPgid = process.platform !== "win32";
 
   try {
@@ -371,28 +369,13 @@ export class CommandExecutor {
     let stderr = "";
     let exitCode: number | null = null;
 
-    const MAX_BUFFER = 10 * 1024 * 1024; // 10MB stdout/stderr cap to prevent OOM from malicious output
-
     const effect = EffectBuilder.create("callback_invoke", `spawn:${normalizedRequest.command}`)
       .withExecute(async () => {
         return new Promise<void>((resolve, reject) => {
           child.stdout?.on("data", (chunk: Buffer) => {
-            // P0-2132: Enforce maxBuffer to prevent OOM from unbounded output accumulation
-            if (stdout.length + chunk.length > MAX_BUFFER) {
-              stdout += chunk.toString("utf8").slice(0, MAX_BUFFER - stdout.length);
-              // Truncate and reject to prevent memory exhaustion
-              reject(new Error("tool.output_exceeded_max_buffer"));
-              return;
-            }
             stdout += chunk.toString("utf8");
           });
           child.stderr?.on("data", (chunk: Buffer) => {
-            // P0-2132: Same maxBuffer enforcement for stderr
-            if (stderr.length + chunk.length > MAX_BUFFER) {
-              stderr += chunk.toString("utf8").slice(0, MAX_BUFFER - stderr.length);
-              reject(new Error("tool.output_exceeded_max_buffer"));
-              return;
-            }
             stderr += chunk.toString("utf8");
           });
           child.on("error", reject);

@@ -11,14 +11,14 @@ test("resolveTriggerActionMode returns suggest when requireConfirmation is true"
   assert.equal(mode, "suggest");
 });
 
-test("resolveTriggerActionMode returns suggest for critical risk without confirmation", () => {
+test("resolveTriggerActionMode returns silent_record for critical risk without confirmation", () => {
   const mode = resolveTriggerActionMode(false, "critical");
-  assert.equal(mode, "suggest");
+  assert.equal(mode, "silent_record");
 });
 
-test("resolveTriggerActionMode returns auto_execute only for low risk and suggest for medium/high risk without confirmation", () => {
+test("resolveTriggerActionMode returns auto_execute for low/medium risk and suggest for high risk without confirmation", () => {
   assert.equal(resolveTriggerActionMode(false, "low"), "auto_execute");
-  assert.equal(resolveTriggerActionMode(false, "medium"), "suggest");
+  assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
   assert.equal(resolveTriggerActionMode(false, "high"), "suggest");
 });
 
@@ -37,7 +37,8 @@ test("resolveTriggerActionMode suggest for high risk when confirmation required"
   assert.equal(mode, "suggest");
 });
 
-test("resolveTriggerActionMode keeps critical risk on suggest when confirmation is not required", () => {
+test("resolveTriggerActionMode silent_record for low risk when no confirmation and critical risk", () => {
+  // critical alone triggers silent_record; low risk does not override
   const mode = resolveTriggerActionMode(false, "critical");
-  assert.equal(mode, "suggest");
+  assert.equal(mode, "silent_record");
 });

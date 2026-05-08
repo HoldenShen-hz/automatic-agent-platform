@@ -110,15 +110,11 @@ test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", 
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_node_001",
-    deviceId: "device_edge_001",
     capabilities: ["bash", "edit"],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 24,
-    offlineMaxDuration: 3600,
-    keyLease: "lease_edge_001",
     allowedModels: ["model_local_001", "model_local_002"],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: true },
-    riskLevel: "low" as const,
   };
   const models = [
     { modelId: "model_local_001", modalities: ["text", "code"] as readonly string[], priority: 1 },
@@ -145,15 +141,11 @@ test("EdgeRuntimeSyncService rejects restricted data when policy denies", () => 
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_node_002",
-    deviceId: "device_edge_002",
     capabilities: [],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 24,
-    offlineMaxDuration: 1800,
-    keyLease: "lease_edge_002",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: false },
-    riskLevel: "low" as const,
   };
   const restrictedRecord = buildOfflineExecutionRecord("edge_node_002", "task_001", "2026-04-23T00:00:00.000Z");
   const internalRecord = buildOfflineExecutionRecord("edge_node_002", "task_002", "2026-04-23T01:00:00.000Z");
@@ -167,22 +159,18 @@ test("EdgeRuntimeSyncService rejects restricted data when policy denies", () => 
   assert.deepEqual(receipt.acceptedEnvelopeIds, [envelopes[1]!.envelopeId]);
   assert.equal(receipt.decisions[0]?.resolution, "reject");
   assert.equal(receipt.decisions[0]?.rationale, "edge.sync_policy_restricted_data_denied");
-  assert.equal(receipt.decisions[1]?.resolution, "accept_central");
+  assert.equal(receipt.decisions[1]?.resolution, "accept_edge");
 });
 
-test("EdgeRuntimeSyncService applies central-wins when cloud digest differs from edge digest", () => {
+test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest", () => {
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_node_003",
-    deviceId: "device_edge_003",
     capabilities: [],
     connectivityMode: "online" as const,
     maxLocalRetentionHours: 24,
-    offlineMaxDuration: 1800,
-    keyLease: "lease_edge_003",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
-    riskLevel: "low" as const,
   };
   const record = buildOfflineExecutionRecord("edge_node_003", "task_101", "2026-04-23T00:00:00.000Z");
   const envelopes = [
@@ -190,19 +178,14 @@ test("EdgeRuntimeSyncService applies central-wins when cloud digest differs from
   ];
   const cloudDigests = { [envelopes[0]!.recordId]: "cloud_digest_v1" };
   const receipt = service.sync(profile, envelopes, cloudDigests);
-  assert.deepEqual(receipt.rejectedEnvelopeIds, [envelopes[0]!.envelopeId]);
-  assert.equal(receipt.decisions[0]?.resolution, "accept_central");
-  assert.equal(receipt.decisions[0]?.rationale, "edge.sync_central_wins_policy:conflict_requires_human_review");
-  assert.ok(typeof receipt.decisions[0]?.incidentId === "string");
+  assert.deepEqual(receipt.acceptedEnvelopeIds, [envelopes[0]!.envelopeId]);
+  assert.equal(receipt.decisions[0]?.resolution, "merge");
+  assert.equal(receipt.decisions[0]?.rationale, "edge.sync_conflict_merge_required");
 });
 
 test("buildEdgeExecutionPlan creates ordered execution plan with priority", () => {
   const plan = buildEdgeExecutionPlan(["task_1", "task_2", "task_3"], "high");
-  assert.deepEqual(plan.planGraphBundle.graph.nodes.map((n) => n.nodeId), [
-    "edge_node_task_1",
-    "edge_node_task_2",
-    "edge_node_task_3",
-  ]);
+  assert.deepEqual(plan.orderedTaskIds, ["task_1", "task_2", "task_3"]);
   assert.equal(plan.syncRequired, true);
   assert.equal(plan.priority, "high");
   const planDefault = buildEdgeExecutionPlan(["task_a"]);
@@ -227,9 +210,9 @@ test("selectEdgeLocalModel selects highest priority model for modality", () => {
 
 test("orderEdgeSyncQueue orders envelopes by priority ascending", () => {
   const items = [
-    { envelopeId: "env_low", device_id: "device-low", sequence_no: 1, priority: 1, createdAt: "2026-04-23T00:00:00.000Z", local_time_offset: 0, prev_hash: null, side_effect_dependency_refs: [], signature: "sig-low" },
-    { envelopeId: "env_high", device_id: "device-high", sequence_no: 2, priority: 10, createdAt: "2026-04-23T00:01:00.000Z", local_time_offset: 0, prev_hash: null, side_effect_dependency_refs: [], signature: "sig-high" },
-    { envelopeId: "env_med", device_id: "device-med", sequence_no: 3, priority: 5, createdAt: "2026-04-23T00:02:00.000Z", local_time_offset: 0, prev_hash: null, side_effect_dependency_refs: [], signature: "sig-med" },
+    { envelopeId: "env_low", priority: 1 },
+    { envelopeId: "env_high", priority: 10 },
+    { envelopeId: "env_med", priority: 5 },
   ];
   const ordered = orderEdgeSyncQueue(items);
   assert.deepEqual(ordered.map((item: { envelopeId: string }) => item.envelopeId), ["env_high", "env_med", "env_low"]);

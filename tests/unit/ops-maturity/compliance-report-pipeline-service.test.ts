@@ -12,13 +12,6 @@ test("ComplianceReportPipelineService marks reports partial when required eviden
       requiredEvidenceTypes: ["audit_log", "control_test"],
       renderSchema: ["Template", "Evidence Coverage", "Completeness"],
       version: "2.0",
-      lockedOnGeneration: true,
-      reportVersionLock: "2.0",
-      requiredDataSources: ["audit_log", "control_test"],
-      legalVersion: "2024",
-      migrationRule: "upgrade_v2",
-      effectiveDate: "2024-01-01",
-      lastReviewDate: "2026-01-15",
     },
   ]);
 
@@ -31,7 +24,7 @@ test("ComplianceReportPipelineService marks reports partial when required eviden
 
   assert.equal(artifact.status, "partial");
   assert.deepEqual(artifact.missingEvidenceTypes, ["control_test"]);
-  assert.equal(artifact.evidenceQualityScore, 20);
+  assert.equal(artifact.evidenceQualityScore, 50);
   assert.match(artifact.markdown, /control_test: MISSING/);
   assert.equal(artifact.readOnly, true);
 
@@ -49,13 +42,6 @@ test("ComplianceReportPipelineService keeps reports generated when all evidence 
       requiredEvidenceTypes: ["audit_log", "control_test"],
       renderSchema: ["Template", "Evidence Coverage", "Completeness"],
       version: "1.1",
-      lockedOnGeneration: false,
-      reportVersionLock: "1.0",
-      requiredDataSources: ["audit_log", "control_test"],
-      legalVersion: "2023",
-      migrationRule: "upgrade_v1",
-      effectiveDate: "2023-01-01",
-      lastReviewDate: "2025-12-01",
     },
   ]);
 
@@ -68,7 +54,7 @@ test("ComplianceReportPipelineService keeps reports generated when all evidence 
     requestedBy: "auditor_2",
   });
 
-  assert.equal(artifact.status, "pending_signoff");
+  assert.equal(artifact.status, "generated");
   assert.deepEqual(artifact.missingEvidenceTypes, []);
-  assert.equal(artifact.evidenceQualityScore, 40);
+  assert.equal(artifact.evidenceQualityScore, 100);
 });

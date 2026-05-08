@@ -35,7 +35,6 @@
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { createHmac } from "node:crypto";
 import { dirname, join } from "node:path";
 
 import { DiagnosticsService } from "../shared/observability/diagnostics-service.js";
@@ -429,37 +428,10 @@ export const STABLE_EVIDENCE_PROFILES: Record<StableEvidenceProfileName, StableE
   },
 };
 
-/** Writes a value as formatted JSON to a file with cryptographic signature, creating parent directories as needed */
+/** Writes a value as formatted JSON to a file, creating parent directories as needed */
 export function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
-  // §58: Cryptographically sign evidence bundles to prevent tampering.
-  // Without HMAC/signature/hash chain, attacker can modify config without alert (issue #1953).
-  const content = JSON.stringify(value, null, 2);
-  const signature = computeHmacSignature(content);
-  const signedPayload =
-    value != null && typeof value === "object" && !Array.isArray(value)
-      ? {
-          ...(value as Record<string, unknown>),
-          evidenceSignature: signature,
-          evidenceSignedAt: new Date().toISOString(),
-        }
-      : {
-          value,
-          evidenceSignature: signature,
-          evidenceSignedAt: new Date().toISOString(),
-        };
-  writeFileSync(path, JSON.stringify(signedPayload, null, 2));
-}
-
-/**
- * Computes HMAC-SHA256 signature for evidence bundle integrity.
- * §58: Requires HMAC/signature/hash chain for tamper detection.
- */
-function computeHmacSignature(content: string): string {
-  // §58: Use HMAC-SHA256 for evidence bundle signature.
-  // In production, key should be fetched from secure key management service.
-  const hmacKey = process.env.STABLE_EVIDENCE_HMAC_KEY ?? "stable-evidence-default-dev-key";
-  return createHmac("sha256", hmacKey).update(content).digest("hex");
+  writeFileSync(path, JSON.stringify(value, null, 2));
 }
 
 /**
@@ -471,13 +443,9 @@ export function resolveStableEvidenceProfile(
   overrides: StableEvidenceBundleOptions["profileOverrides"] = {},
 ): StableEvidenceProfile {
   const base = STABLE_EVIDENCE_PROFILES[profileName];
-  // Issue #1968 P1 FIX: Preserve base profile name to prevent overrides from
-  // changing the resolved profile's identity at runtime. The name should reflect
-  // the actual profile being used, not be replaceable by caller.
   return {
     ...base,
     ...overrides,
-    name: base.name,
   };
 }
 
@@ -543,8 +511,6 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
       attempt: 1,
       timeoutMs: 1_000,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["analysis"]),

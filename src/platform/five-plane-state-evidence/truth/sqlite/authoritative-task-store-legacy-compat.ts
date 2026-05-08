@@ -44,11 +44,9 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract listTasks(...args: RepoMethodArgs<TaskRepository, "listTasks">): RepoMethodResult<TaskRepository, "listTasks">;
   public abstract updateTaskStatus(...args: RepoMethodArgs<TaskRepository, "updateTaskStatus">): RepoMethodResult<TaskRepository, "updateTaskStatus">;
   public abstract updateTaskOutput(...args: RepoMethodArgs<TaskRepository, "updateTaskOutput">): RepoMethodResult<TaskRepository, "updateTaskOutput">;
-  public abstract updateTaskOutputCas(...args: RepoMethodArgs<TaskRepository, "updateTaskOutputCas">): RepoMethodResult<TaskRepository, "updateTaskOutputCas">;
   public abstract updateTaskStatusCas(...args: RepoMethodArgs<TaskRepository, "updateTaskStatusCas">): RepoMethodResult<TaskRepository, "updateTaskStatusCas">;
   public abstract setTaskState(...args: RepoMethodArgs<TaskRepository, "setTaskState">): RepoMethodResult<TaskRepository, "setTaskState">;
   public abstract updateTaskInput(...args: RepoMethodArgs<TaskRepository, "updateTaskInput">): RepoMethodResult<TaskRepository, "updateTaskInput">;
-  public abstract updateTaskTitle(...args: RepoMethodArgs<TaskRepository, "updateTaskTitle">): RepoMethodResult<TaskRepository, "updateTaskTitle">;
   public abstract countQueuedTasks(...args: RepoMethodArgs<TaskRepository, "countQueuedTasks">): RepoMethodResult<TaskRepository, "countQueuedTasks">;
   public abstract getWorkflowState(...args: RepoMethodArgs<WorkflowRepository, "getWorkflowState">): RepoMethodResult<WorkflowRepository, "getWorkflowState">;
   public abstract listWorkflowStates(...args: RepoMethodArgs<WorkflowRepository, "listWorkflowStates">): RepoMethodResult<WorkflowRepository, "listWorkflowStates">;
@@ -149,8 +147,6 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract listAgentExecutionRecordsByTask(...args: RepoMethodArgs<WorkerRepository, "listAgentExecutionRecordsByTask">): RepoMethodResult<WorkerRepository, "listAgentExecutionRecordsByTask">;
   public abstract listWorkerSnapshots(...args: RepoMethodArgs<WorkerRepository, "listWorkerSnapshots">): RepoMethodResult<WorkerRepository, "listWorkerSnapshots">;
   public abstract listStaleWorkerSnapshots(...args: RepoMethodArgs<WorkerRepository, "listStaleWorkerSnapshots">): RepoMethodResult<WorkerRepository, "listStaleWorkerSnapshots">;
-  public abstract deleteWorkerSnapshot(...args: RepoMethodArgs<WorkerRepository, "deleteWorkerSnapshot">): RepoMethodResult<WorkerRepository, "deleteWorkerSnapshot">;
-  public abstract updateWorkerStatus(...args: RepoMethodArgs<WorkerRepository, "updateWorkerStatus">): RepoMethodResult<WorkerRepository, "updateWorkerStatus">;
   public abstract getCoordinatorInstanceSnapshot(...args: RepoMethodArgs<WorkerRepository, "getCoordinatorInstanceSnapshot">): NullableRepoMethodResult<WorkerRepository, "getCoordinatorInstanceSnapshot">;
   public abstract listCoordinatorInstanceSnapshots(...args: RepoMethodArgs<WorkerRepository, "listCoordinatorInstanceSnapshots">): RepoMethodResult<WorkerRepository, "listCoordinatorInstanceSnapshots">;
   public abstract listHeartbeatSnapshotsByExecution(...args: RepoMethodArgs<WorkerRepository, "listHeartbeatSnapshotsByExecution">): RepoMethodResult<WorkerRepository, "listHeartbeatSnapshotsByExecution">;

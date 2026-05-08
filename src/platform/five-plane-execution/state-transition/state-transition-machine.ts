@@ -38,20 +38,14 @@ export class StateTransitionMachine<TState extends string> {
 
   /**
    * Asserts that a transition is valid, throwing WorkflowStateError if not.
-   *
-   * No-op transitions (current === next) are only allowed when the state
-   * explicitly includes self in its allowed transitions list.
-   * This prevents accidental noop transitions that may indicate a logic error.
+   * Idempotent - returns without error if current === next (no-op transition).
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
-      // No-op transitions are never allowed, even if self-transition is listed
-      // in the allowed list. This matches RuntimeStateMachine behavior which
-      // always rejects no-op transitions (see assertTransitionAllowed).
-      throw new WorkflowStateError(`${this.entityKind}.noop_transition_denied`, `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`, {
-        details: { entityKind: this.entityKind, current, next },
-      });
-    } else if (!this.transitions[current]?.includes(next)) {
+      return;
+    }
+
+    if (!this.transitions[current]?.includes(next)) {
       throw new WorkflowStateError(`${this.entityKind}.invalid_transition`, `${this.entityKind}.invalid_transition: Invalid transition: ${current} -> ${next}`, {
         details: { entityKind: this.entityKind, current, next },
       });

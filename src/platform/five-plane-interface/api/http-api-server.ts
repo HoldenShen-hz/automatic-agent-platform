@@ -8,7 +8,7 @@ import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-g
 import type { ApprovalService } from "../../control-plane/approval-center/approval-service.js";
 import { ConfigRolloutService } from "../../control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../control-plane/tenant/index.js";
-import { ApiAuthService, type ApiPrincipal } from "./api-auth-service.js";
+import { ApiAuthService } from "./api-auth-service.js";
 import type { DivisionRegistry } from "../../../domains/governance/division-loader.js";
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
 import { InspectService } from "../../shared/observability/inspect-service.js";
@@ -18,17 +18,14 @@ import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";
 import { AppError } from "../../contracts/errors.js";
-import { nowIso } from "../../contracts/types/ids.js";
 import { BillingService } from "../../../scale-ecosystem/billing/billing-service.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
 import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifact-plane-service.js";
-import { WorkerRegistryService } from "../../execution/worker-pool/worker-registry-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
-import type { IntakeAdmissionService } from "../../orchestration/harness/runtime/intake-admission-service.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,
@@ -39,13 +36,6 @@ import { PackCatalogService } from "./pack-catalog-service.js";
 import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
-import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { WorkflowBuilderService } from "../../../interaction/ux/workflow-builder-service.js";
-import {
-  getGlobalIdempotencyKeyMiddleware,
-  type IdempotencyKeyMiddleware,
-} from "./middleware/idempotency-key.js";
-import { globalVersionRoutingMiddleware } from "./middleware/version-routing.js";
 import { readRequestId } from "./http-server/utils.js";
 import {
   MAX_BODY_BYTES,
@@ -110,11 +100,6 @@ export interface HttpApiServerOptions {
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
-  taskStore?: AuthoritativeTaskStore | null;
-  /** Intake admission service for task creation pipeline validation */
-  intakeAdmissionService?: IntakeAdmissionService | null;
-  /** Workflow builder service for visual workflow construction */
-  workflowBuilderService?: WorkflowBuilderService | null;
   /** Distributed rate limiter for API endpoint protection */
   rateLimiter?: DistributedRateLimiter | null;
   /** Enable WebSocket support for real-time task updates */
@@ -125,10 +110,6 @@ export interface HttpApiServerOptions {
   apiDefaultTimeoutMs?: number;
   /** Maximum allowed synchronous API timeout in milliseconds */
   apiMaxTimeoutMs?: number;
-  /** Interval for stale worker heartbeat sweeps; values <= 0 disable the monitor */
-  workerHeartbeatSweepIntervalMs?: number;
-  /** Heartbeat TTL used when detecting stale workers */
-  workerHeartbeatTtlMs?: number;
 }
 
 export interface StartServerOptions {
@@ -173,11 +154,6 @@ export class HttpApiServer {
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
-  private readonly idempotencyKeyMiddleware: IdempotencyKeyMiddleware;
-  private readonly workerRegistry: WorkerRegistryService | null;
-  private readonly workerHeartbeatSweepIntervalMs: number;
-  private readonly workerHeartbeatTtlMs: number;
-  private workerHeartbeatSweepHandle: ReturnType<typeof setInterval> | null = null;
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -191,10 +167,6 @@ export class HttpApiServer {
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
-    this.idempotencyKeyMiddleware = getGlobalIdempotencyKeyMiddleware();
-    this.workerRegistry = options.taskStore != null ? new WorkerRegistryService(options.taskStore) : null;
-    this.workerHeartbeatSweepIntervalMs = Math.max(0, Math.trunc(options.workerHeartbeatSweepIntervalMs ?? 15_000));
-    this.workerHeartbeatTtlMs = Math.max(1, Math.trunc(options.workerHeartbeatTtlMs ?? 30_000));
     const corsConfigInput: Partial<CorsConfig> = {
       allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
     };
@@ -237,9 +209,8 @@ export class HttpApiServer {
         this.server,
         this.options.authService,
       );
-      logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
+      logger.info("WebSocket bridge initialized", { path: "/ws" });
     }
-    this.startWorkerHeartbeatSweep();
 
     const address = this.server.address();
     if (address == null || typeof address === "string") {
@@ -257,7 +228,6 @@ export class HttpApiServer {
   }
 
   public async stop(): Promise<void> {
-    this.stopWorkerHeartbeatSweep();
     if (!this.server.listening) {
       return;
     }
@@ -284,45 +254,6 @@ export class HttpApiServer {
     });
   }
 
-  private startWorkerHeartbeatSweep(): void {
-    if (this.workerRegistry == null || this.workerHeartbeatSweepIntervalMs <= 0 || this.workerHeartbeatSweepHandle != null) {
-      return;
-    }
-    this.runWorkerHeartbeatSweep();
-    this.workerHeartbeatSweepHandle = setInterval(() => {
-      this.runWorkerHeartbeatSweep();
-    }, this.workerHeartbeatSweepIntervalMs);
-  }
-
-  private stopWorkerHeartbeatSweep(): void {
-    if (this.workerHeartbeatSweepHandle == null) {
-      return;
-    }
-    clearInterval(this.workerHeartbeatSweepHandle);
-    this.workerHeartbeatSweepHandle = null;
-  }
-
-  private runWorkerHeartbeatSweep(occurredAt: string = nowIso()): void {
-    if (this.workerRegistry == null) {
-      return;
-    }
-    const staleWorkerIds = this.workerRegistry.detectStaleHeartbeats(occurredAt, this.workerHeartbeatTtlMs);
-    if (staleWorkerIds.length === 0) {
-      return;
-    }
-    if (this.options.incidentService != null) {
-      for (const workerId of staleWorkerIds) {
-        this.options.incidentService.openIncident({
-          tenantId: null,
-          // R14-02: Use unified SEV naming - SEV2 corresponds to "high" severity
-          severity: "SEV2",
-          title: `Worker heartbeat missing: ${workerId}`,
-          linkedEvidenceRefs: [`worker://${workerId}`],
-        });
-      }
-    }
-  }
-
   public broadcastTaskEvent(taskId: string, event: TaskWebSocketEvent): void {
     this.webSocketBridge?.broadcastToTask(taskId, event);
   }
@@ -331,12 +262,6 @@ export class HttpApiServer {
     const startedAt = Date.now();
     const headers = normalizeHeaders(options.headers);
     const method = options.method ?? "GET";
-    const requestId = readRequestId({ method, url: options.url, headers, body: options.body ?? null });
-    // Authenticate for inject requests too so rate limiting can use principal context
-    const principal = authenticateOptionalPrincipal(
-      { method, url: options.url, headers, body: options.body ?? undefined },
-      this.options.authService ?? null,
-    );
     const response = this.decoratePayload(
       method === "OPTIONS"
         ? {
@@ -349,9 +274,8 @@ export class HttpApiServer {
             url: options.url,
             headers,
             body: options.body ?? null,
-          }, principal, {}),
+          }),
       headers.origin,
-      requestId,
     );
     this.recordPrometheusHttpMetric(method, options.url, response.statusCode, Date.now() - startedAt);
     return {
@@ -376,12 +300,6 @@ export class HttpApiServer {
     });
     let payload: ApiResponsePayload;
 
-    // Authenticate early so we can use principal/tenant for rate limiting
-    const principal = authenticateOptionalPrincipal(
-      { method: request.method, url: request.url, headers, body: undefined },
-      this.options.authService ?? null,
-    );
-
     try {
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
       if ((request.method ?? "GET") === "OPTIONS") {
@@ -394,36 +312,26 @@ export class HttpApiServer {
       // 2. Rate limiting check (non-OPTIONS only)
       else if (this.rateLimiter != null) {
         const clientIp = request.socket?.remoteAddress ?? "unknown";
-        const tenantId = principal?.tenantId ?? "anonymous";
-        const principalId = principal?.actorId ?? "anonymous";
-        // Use tenant + principal for rate limit key per §9.2
-        const rateLimitKey = `${tenantId}:${principalId}:${clientIp}`;
-        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(rateLimitKey);
-        // Attach rate limit headers to response
-        const rateLimitHeaders = this.buildRateLimitHeaders(result);
+        const endpoint = this.extractEndpointKey(request.url ?? "/");
+        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`${clientIp}:${endpoint}`);
         if (!result.allowed) {
-          payload = {
-            statusCode: 429,
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "x-request-id": requestId,
-              ...rateLimitHeaders,
-            },
-            body: JSON.stringify({
-              requestId,
-              error: {
-                code: "api.rate_limit_exceeded",
-                message: "Too many requests. Please retry later.",
-              },
-            }, null, 2),
-          };
+          payload = this.buildJsonErrorResponse(requestId, 429, {
+            code: "api.rate_limit_exceeded",
+            message: "Too many requests. Please retry later.",
+          });
+          if (result.retryAfterMs != null) {
+            payload = {
+              ...payload,
+              headers: { ...payload.headers, "retry-after-ms": String(result.retryAfterMs) },
+            };
+          }
         } else {
-          payload = await this.routeRequest(requestId, request, headers, principal, rateLimitHeaders);
+          payload = await this.routeRequest(requestId, request, headers);
         }
       }
       // 3. No rate limiter — normal routing
       else {
-        payload = await this.routeRequest(requestId, request, headers, principal, {});
+        payload = await this.routeRequest(requestId, request, headers);
       }
     } catch (error) {
       payload = this.handleError(error, requestId, {
@@ -434,7 +342,7 @@ export class HttpApiServer {
       });
     }
 
-    const finalizedPayload = this.decoratePayload(payload, headers.origin, requestId);
+    const finalizedPayload = this.decoratePayload(payload, headers.origin);
     this.recordPrometheusHttpMetric(request.method ?? "GET", request.url, payload.statusCode, Date.now() - startedAt);
     this.sendPayload(response, finalizedPayload, headers["accept-encoding"]);
   }
@@ -443,13 +351,7 @@ export class HttpApiServer {
    * Routes a request after passing rate limiting.
    * Validates body size and dispatches to the appropriate handler.
    */
-  private async routeRequest(
-    requestId: string,
-    request: IncomingMessage,
-    headers: Record<string, string | undefined>,
-    principal: ApiPrincipal | null,
-    rateLimitHeaders: Record<string, string>,
-  ): Promise<ApiResponsePayload> {
+  private async routeRequest(requestId: string, request: IncomingMessage, headers: Record<string, string | undefined>): Promise<ApiResponsePayload> {
     const contentLength = Number.parseInt(headers["content-length"] ?? "0", 10);
     if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
       return this.buildJsonErrorResponse(requestId, 413, {
@@ -457,18 +359,13 @@ export class HttpApiServer {
         message: `Request body exceeds ${MAX_BODY_BYTES} bytes.`,
       });
     }
-    // R25-13 FIX: Wrap body read with timeout to prevent slow-drip bypass.
-    // IncomingMessage has method/url/headers; body is not yet read (that's what we're reading here).
-    const body = await this.withRequestTimeout(
-      request as unknown as ApiRequestLike,
-      readIncomingBody(request),
-    );
+    const body = await readIncomingBody(request);
     return this.dispatchRequest({
       method: request.method,
       url: request.url,
       headers,
       body,
-    }, principal, rateLimitHeaders);
+    });
   }
 
   /**
@@ -484,15 +381,9 @@ export class HttpApiServer {
     }
   }
 
-  private async dispatchRequest(
-    request: ApiRequestLike,
-    principal: ApiPrincipal | null,
-    rateLimitHeaders: Record<string, string>,
-  ): Promise<ApiResponsePayload> {
+  private async dispatchRequest(request: ApiRequestLike): Promise<ApiResponsePayload> {
     const requestId = readRequestId(request);
-    const versionDecision = globalVersionRoutingMiddleware.selectVersion(
-      globalVersionRoutingMiddleware.parseAcceptVersion(request.headers["accept-version"] ?? null),
-    );
+    const principal = authenticateOptionalPrincipal(request, this.options.authService ?? null);
 
     return provideContext({
       traceId: requestId,
@@ -505,82 +396,28 @@ export class HttpApiServer {
         if (bodyBytes > MAX_BODY_BYTES) {
           throw new ApiError(413, "api.payload_too_large", "Request body exceeds 1 MB limit.");
         }
-        if (!versionDecision.acceptable) {
-          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
-            code: versionDecision.reasonCode,
-            message: "Requested API version is not supported.",
-            details: { warnings: versionDecision.warnings },
-          }, requestId), versionDecision.version);
-        }
-
-        const requestMethod = request.method ?? "GET";
-        const tenantId = principal?.tenantId ?? undefined;
-        const idempotencyKey: string | undefined = request.headers["idempotency-key"] ?? request.headers["Idempotency-Key"];
-        const requestBody = request.body;
-        // Extract pathname for path-based idempotency exemptions
-        const pathname = parseUrl(request.url ?? "/", true).pathname ?? "/";
-        const idempotencyDecision = await this.idempotencyKeyMiddleware.check({
-          method: requestMethod,
-          path: pathname,
-          idempotencyKey: idempotencyKey ?? null,
-          tenantId: tenantId ?? null,
-          body: requestBody,
-        });
-        if (!idempotencyDecision.allowed) {
-          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, idempotencyDecision.error?.statusCode ?? 400, {
-            code: idempotencyDecision.error?.code ?? "api.idempotency_denied",
-            message: idempotencyDecision.error?.message ?? "Idempotency check failed.",
-          }, requestId), versionDecision.version);
-        }
-        if (idempotencyDecision.isDuplicate && idempotencyDecision.cachedResponse) {
-          return this.withApiVersionHeader({
-            statusCode: idempotencyDecision.cachedResponse.statusCode,
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "x-request-id": requestId,
-              "x-idempotent-replay": "true",
-            },
-            body: JSON.stringify(idempotencyDecision.cachedResponse.body, null, 2),
-          }, versionDecision.version);
-        }
-
         const route = matchRoute(request);
         if (!route) {
-          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, 404, {
+          return this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
-          }, requestId), versionDecision.version);
+          });
         }
 
         const ctx: RouteContext = { request, route, requestId, principal };
-        let resolved = await this.withRequestTimeout(
+        const resolved = await this.withRequestTimeout(
           request,
           this.resolveRouteResponse(route, request, ctx),
         );
         if (resolved == null) {
-          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, 404, {
+          return this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
-          }, requestId), versionDecision.version);
+          });
         }
-        resolved = this.withApiVersionHeader(resolved, versionDecision.version);
-        if (typeof idempotencyKey === "string" && idempotencyKey.trim().length > 0) {
-          if (resolved.statusCode >= 500) {
-            await this.idempotencyKeyMiddleware.clear(idempotencyKey, tenantId);
-          } else {
-            await this.idempotencyKeyMiddleware.record({
-              method: requestMethod,
-              idempotencyKey,
-              tenantId: tenantId ?? null,
-              statusCode: resolved.statusCode,
-              responseBody: tryParseJsonBody(resolved.body),
-            });
-          }
-        }
-        // Attach rate limit headers to successful responses
-        return this.addRateLimitHeaders(resolved, rateLimitHeaders);
+        return resolved;
       } catch (error) {
-        return this.withApiVersionHeader(this.handleError(error, requestId, request), versionDecision.version);
+        return this.handleError(error, requestId, request);
       }
     });
   }
@@ -646,18 +483,10 @@ export class HttpApiServer {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     }
-    // R25-04 FIX: Include traceId and details per §7 standardized error format
-    return this.buildJsonErrorResponse(
-      requestId,
-      normalized.statusCode,
-      {
-        code: normalized.code,
-        message: normalized.message,
-        ...(normalized.traceId != null ? { traceId: normalized.traceId } : {}),
-        details: normalized.details,
-      },
-      normalized.traceId ?? undefined,
-    );
+    return this.buildJsonErrorResponse(requestId, normalized.statusCode, {
+      code: normalized.code,
+      message: normalized.message,
+    });
   }
 
   private buildRouteTable(): RouteDefinition[] {
@@ -694,9 +523,6 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
-        ...(this.options.taskStore != null ? { taskStore: this.options.taskStore } : {}),
-        ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
-        ...(this.options.workflowBuilderService != null ? { workflowBuilderService: this.options.workflowBuilderService } : {}),
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({
@@ -767,63 +593,20 @@ export class HttpApiServer {
     error: {
       code: string;
       message: string;
-      traceId?: string;
-      details?: unknown;
     },
-    traceId?: string,
   ): ApiResponsePayload {
     return {
       statusCode,
       headers: {
         "content-type": "application/json; charset=utf-8",
         "x-request-id": requestId,
-        ...(traceId ?? error.traceId ? { "x-trace-id": traceId ?? error.traceId } : {}),
       },
       body: JSON.stringify({ requestId, error }, null, 2),
     };
   }
 
-  private decoratePayload(payload: ApiResponsePayload, origin: string | undefined, requestId: string): ApiResponsePayload {
-    return decorateResponseHeaders(payload, origin, this.corsConfig, requestId);
-  }
-
-  private withApiVersionHeader(payload: ApiResponsePayload, apiVersion: string): ApiResponsePayload {
-    const normalizedApiVersion = apiVersion.trim().length > 0
-      ? apiVersion
-      : globalVersionRoutingMiddleware.getSupportedVersions()[0] ?? "v1";
-    return {
-      ...payload,
-      headers: {
-        ...payload.headers,
-        "x-api-version": normalizedApiVersion,
-      },
-    };
-  }
-
-  /**
-   * Builds rate limit headers from a rate limit check result.
-   * Returns headers conforming to IETF Rate Limit draft spec.
-   */
-  private buildRateLimitHeaders(result: RateLimitCheckResult): Record<string, string> {
-    return {
-      "x-ratelimit-limit": String(this.rateLimiter?.["maxCalls"] ?? 100),
-      "x-ratelimit-remaining": String(result.remaining),
-      "x-ratelimit-reset": String(Date.now() + (result.retryAfterMs ?? 60_000)),
-      ...(result.retryAfterMs != null ? { "retry-after": String(Math.ceil(result.retryAfterMs / 1000)) } : {}),
-    };
-  }
-
-  /**
-   * Adds rate limit headers to a response payload.
-   */
-  private addRateLimitHeaders(
-    payload: ApiResponsePayload,
-    rateLimitHeaders: Record<string, string>,
-  ): ApiResponsePayload {
-    return {
-      ...payload,
-      headers: { ...payload.headers, ...rateLimitHeaders },
-    };
+  private decoratePayload(payload: ApiResponsePayload, origin: string | undefined): ApiResponsePayload {
+    return decorateResponseHeaders(payload, origin, this.corsConfig);
   }
 
   private sendPayload(
@@ -878,12 +661,4 @@ function normalizeApiTimeout(value: number | undefined, fallback: number, max: n
     return fallback;
   }
   return Math.min(Math.trunc(value), max);
-}
-
-function tryParseJsonBody(body: string): unknown {
-  try {
-    return JSON.parse(body) as unknown;
-  } catch {
-    return body;
-  }
 }

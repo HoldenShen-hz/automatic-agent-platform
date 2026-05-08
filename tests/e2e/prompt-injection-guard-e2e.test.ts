@@ -24,17 +24,14 @@ import {
   DEFAULT_ML_CLASSIFIER_CONFIG,
   type PromptInjectionClassification,
   type PromptProtectionPlan,
-} from "../../src/platform/prompt-engine/index.js";
+} from "../../src/platform/stability/prompt-injection-guard.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
 // ---------------------------------------------------------------------------
 
 function assertHighConfidenceBlock(classification: PromptInjectionClassification, reason: string) {
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  // Classifier provides risk signals only; blocking decisions must be made by external guardrails.
-  // Therefore blocked is always false; we only assert on score and confidence.
-  assert.equal(classification.blocked, false, `Classifier alone must not hard deny: ${reason}`);
+  assert.equal(classification.blocked, true, `Should be blocked: ${reason}`);
   assert.equal(classification.confidence, "high", `Should have high confidence: ${reason}`);
   assert.ok(classification.score >= classification.threshold, `Score should meet threshold: ${reason}`);
 }
@@ -275,12 +272,9 @@ test("E2E Prompt Injection Guard: protect system prompt blocks malicious input",
     scope,
   });
 
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  // Classifier provides risk signals only; blocking decisions must be made by external guardrails.
-  // Therefore classification.blocked is always false, but riskLevel correctly reflects danger.
-  assert.equal(plan.classification.blocked, false, "Classifier alone must not hard deny per §16.5.2");
-  // allowExecution follows !classification.blocked, so it will be true (external guardrails should decide)
+  assert.equal(plan.allowExecution, false, "Malicious input should block execution");
   assert.equal(plan.riskLevel, "high", "Malicious input should have high risk");
+  assert.equal(plan.classification.blocked, true, "Classification should be blocked");
 });
 
 test("E2E Prompt Injection Guard: custom threshold affects blocking", () => {
@@ -349,8 +343,7 @@ test("E2E Prompt Injection Guard: multiple signals accumulate score", () => {
   const result = classifyPromptInjectionRisk(maliciousPrompt);
 
   assert.ok(result.matchedSignals.length >= 2, "Should detect multiple signals");
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  assert.equal(result.blocked, false, "Classifier alone must not hard deny per §16.5.2");
+  assert.equal(result.blocked, true, "Should be blocked due to high combined score");
 });
 
 test("E2E Prompt Injection Guard: low-weight signals do not alone block", () => {
@@ -415,9 +408,8 @@ test("E2E Prompt Injection Guard: complete security workflow - malicious request
   const inspection = inspectProtectedModelOutput(maliciousOutput, protection.canaryToken);
 
   // Verify the complete workflow
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  assert.equal(classification.blocked, false, "Classifier alone must not hard deny per §16.5.2");
-  // allowExecution follows !classification.blocked, so it will be true (external guardrails should decide)
+  assert.equal(classification.blocked, true, "Malicious request should be blocked");
+  assert.equal(protection.allowExecution, false, "Should not allow execution");
   assert.equal(inspection.leaked, true, "Should detect token leakage if model responded");
 });
 
@@ -439,8 +431,7 @@ test("E2E Prompt Injection Guard: custom signals can be added", () => {
   const result = classifyPromptInjectionRisk(prompt, 0.7, customConfig);
 
   assert.ok(result.matchedSignals.includes("custom_malicious"), "Should detect custom signal");
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  assert.equal(result.blocked, false, "Classifier alone must not hard deny per §16.5.2");
+  assert.equal(result.blocked, true, "Should block due to custom signal");
 });
 
 // ---------------------------------------------------------------------------
@@ -453,8 +444,7 @@ test("E2E Prompt Injection Guard: high confidence when score exceeds high thresh
 
   const result = classifyPromptInjectionRisk(prompt);
 
-  // R10-29 FIX: §16.5.2 prohibits injection classifier alone from making production hard deny.
-  assert.equal(result.blocked, false, "Classifier alone must not hard deny per §16.5.2");
+  assert.equal(result.blocked, true, "Should be blocked");
   assert.ok(result.score >= 0.85, "Score should be high for multiple signals");
 });
 

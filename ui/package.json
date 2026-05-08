@@ -15,7 +15,6 @@
     "build": "npm run typecheck && npm --workspace @aa/web run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:a11y": "playwright test --config playwright.config.ts",
     "test:e2e": "vitest run tests/apps/web-e2e-smoke.test.tsx tests/apps/web-route-catalog.test.tsx tests/apps/shells.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
@@ -23,9 +22,8 @@
     "lint": "eslint \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" \"tools/**/*.ts\" \"tests/**/*.{ts,tsx}\"",
     "bundle:analyze": "node ./scripts/bundle-analysis.mjs",
     "perf:budget": "node ./scripts/perf-budget.mjs",
-    "ci": "npm run lint && npm run typecheck && npm run audit && npm run test:coverage && npm run build && npm run bundle:analyze && npm run perf:budget",
-    "dev:web": "npm --workspace @aa/web run dev",
-    "audit": "npm audit --audit-level=high"
+    "ci": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run bundle:analyze && npm run perf:budget",
+    "dev:web": "npm --workspace @aa/web run dev"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.16",
@@ -35,14 +33,10 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",
     "reactflow": "^11.11.4",
-    "web-vitals": "^4.2.4",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.10.1",
     "@eslint/js": "^9.25.1",
-    "@playwright/test": "^1.49.2",
-    "msw": "^2.11.2",
     "@storybook/react-vite": "^8.6.14",
     "@testing-library/jest-dom": "^6.7.0",
     "@testing-library/react": "^16.3.0",

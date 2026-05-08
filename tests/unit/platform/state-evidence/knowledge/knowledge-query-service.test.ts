@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import {
   KnowledgeQueryService,
   QueryLevel,
@@ -119,17 +118,6 @@ test("queryAsync with Deep level uses graph expansion", async () => {
   );
   const hits = await service.queryAsync("test", {}, QueryLevel.Deep);
   assert.ok(hits.length >= 0);
-});
-
-test("sync deep query is rejected instead of silently falling back to standard", () => {
-  const service = new KnowledgeQueryService(createMockRetrievalService());
-
-  assert.throws(
-    () => (service as unknown as { queryWithLevel: (keyword: string, options: Record<string, unknown>, level: QueryLevel) => RetrievalHit[] })
-      .queryWithLevel("test", {}, QueryLevel.Deep),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code === "knowledge_query.deep_requires_async",
-  );
 });
 
 // =============================================================================

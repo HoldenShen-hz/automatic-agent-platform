@@ -12,16 +12,16 @@
 
 通过 OAPEFLIR 副链 `Feedback → Learn → Improve → Release` 驱动进化，并由 deterministic guardrail 控制进入生产：
 
-- HarnessRuntime 负责生命周期管理、实时监控、健康检查与指标采集。
+- Supervisor / observability 继续负责生命周期管理、实时监控、健康检查与指标采集。
 - Feedback Hub 负责把执行信号归一为结构化 `FeedbackSignal`。
 - Learn Hub 只允许 evidence-backed 学习对象进入后续阶段，并显式维护 `promotionStatus`。
 - Improve Hub 只接收 `validated/promoted` 的 LearningObject。
 - Release 在当前 phase1-4 仅允许 `off / suggest / shadow` 三档，不直接开放 canary/staged。
 - 任何变更都必须可回滚、可审计、可灰度、可暂停。
 
-## HarnessRuntime 生命周期控制
+## Supervisor 角色
 
-v4.3 §45 将所有生命周期控制收口到 HarnessRuntime：
+Supervisor 不只是监控器，还承担治理职责：
 
 - 管理 Agent 生命周期。
 - 跟踪心跳、上下文占用、工具调用和资源使用。
@@ -65,7 +65,7 @@ v4.3 §45 将所有生命周期控制收口到 HarnessRuntime：
 
 ## 告警与观测
 
-HarnessRuntime / observability 应对以下事件给出告警或通知：
+Supervisor / observability 应对以下事件给出告警或通知：
 
 - 上下文逼近阈值。
 - Agent 疑似卡死。
@@ -101,7 +101,7 @@ HarnessRuntime / observability 应对以下事件给出告警或通知：
 
 ## 交叉引用
 
-- [ADR-003 六层记忆与 KV Cache 固定前缀](./003-memory-six-layers.md)
+- [ADR-003 六层记忆与 KV Cache 固定前缀](./003-memory-seven-layers.md)
 - [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
 - [ADR-008 成本模型](./008-cost-model.md)
 
@@ -112,7 +112,3 @@ HarnessRuntime / observability 应对以下事件给出告警或通知：
 - `OAPEFLIR §9`
 - `OAPEFLIR §E.1`
 - `OAPEFLIR §L.3.2`
-
-## v4.3 ADR Remediation
-
-- R6-51: 修复生命周期所有权归属。ADR-007 原先描述 "Supervisor / observability 继续负责生命周期管理"，与 v4.3 §45 将所有生命周期控制收口到 HarnessRuntime 的决策冲突。修复：正文改为 "HarnessRuntime 负责生命周期管理、实时监控、健康检查与指标采集"。

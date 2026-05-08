@@ -1,24 +1,13 @@
 import type { OfflineMutation, OfflineMutationStore } from "./types";
 
-/** Default maximum queue capacity per §5.5 */
-const DEFAULT_MAX_CAPACITY = 1000;
-
 export class OfflineQueue {
   private readonly queue: OfflineMutation[] = [];
   private readonly readyPromise: Promise<void>;
-  private readonly maxCapacity: number;
-  private readonly store: OfflineMutationStore;
 
-  public constructor(
-    store: OfflineMutationStore = createMemoryOfflineMutationStore(),
-    maxCapacity = DEFAULT_MAX_CAPACITY,
-  ) {
-    this.store = store;
-    this.maxCapacity = maxCapacity;
+  public constructor(private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore()) {
     this.readyPromise = this.store.readAll()
       .then((mutations) => {
-        // Filter out mutations exceeding capacity on load
-        this.queue.push(...mutations.slice(0, maxCapacity));
+        this.queue.push(...mutations);
       })
       .catch(() => undefined);
   }
@@ -27,27 +16,9 @@ export class OfflineQueue {
     await this.readyPromise;
   }
 
-  /**
-   * Enqueues a mutation with capacity check per §5.5.
-   * If queue is at capacity, oldest pending mutations are evicted.
-   * P1 FIX: Wait for IndexedDB to load before adding mutation to prevent data loss.
-   * Previously, enqueue could be called before the initial readAll completed,
-   * causing persist() to overwrite unloaded data with an incomplete queue.
-   */
-  public async enqueue(mutation: OfflineMutation): Promise<void> {
-    // P1 FIX: Wait for initial IndexedDB load before accepting mutations
-    await this.readyPromise;
-
-    // Evict oldest pending mutations if at capacity
-    while (this.queue.length >= this.maxCapacity) {
-      const evicted = this.queue.shift();
-      if (evicted != null) {
-        // Log eviction for debugging (in production this would go to telemetry)
-        console.warn(`[OfflineQueue] Evicted oldest mutation due to capacity limit: ${evicted.id}`);
-      }
-    }
+  public enqueue(mutation: OfflineMutation): void {
     this.queue.push(mutation);
-    await this.persist();
+    void this.persist();
   }
 
   public drain(): OfflineMutation[] {
@@ -55,13 +26,6 @@ export class OfflineQueue {
     this.queue.length = 0;
     void this.persist();
     return drained;
-  }
-
-  public async replaceAll(mutations: readonly OfflineMutation[]): Promise<void> {
-    await this.readyPromise;
-    this.queue.length = 0;
-    this.queue.push(...mutations.slice(0, this.maxCapacity));
-    await this.persist();
   }
 
   public peek(): readonly OfflineMutation[] {
@@ -76,25 +40,9 @@ export class OfflineQueue {
     return this.queue.length === 0;
   }
 
-  public isFull(): boolean {
-    return this.queue.length >= this.maxCapacity;
-  }
-
-  public capacity(): number {
-    return this.maxCapacity;
-  }
-
   private async persist(): Promise<void> {
     await this.readyPromise;
-    try {
-      await this.store.writeAll([...this.queue]);
-    } catch (error) {
-      // §205-2414: Persist failure now throws instead of silent ignore.
-      // Root cause: Previously errors were logged but not propagated, causing mutations
-      // to remain in memory and be lost on crash. Now we throw so callers can handle.
-      console.error("[OfflineQueue] Persist failed:", error);
-      throw error;
-    }
+    await this.store.writeAll([...this.queue]);
   }
 }
 
@@ -118,22 +66,16 @@ export function createIndexedDbOfflineMutationStore(
   databaseName = "aa-ui-offline",
   storeName = "mutations",
 ): OfflineMutationStore {
-  // P2 FIX: Cache the database connection promise instead of opening fresh each time.
-  // Previously, every readAll/writeAll called openDatabase(), creating a new
-  // IDBOpenDBRequest promise. While IndexedDB may internally pool connections,
-  // this pattern creates unnecessary overhead. Caching the promise ensures
-  // the connection is opened once and reused across all operations.
-  const dbPromise = openDatabase(databaseName, storeName);
   return {
     async readAll() {
-      const db = await dbPromise;
+      const db = await openDatabase(databaseName, storeName);
       if (db == null) {
         return [];
       }
       return readSnapshot(db, storeName);
     },
     async writeAll(mutations) {
-      const db = await dbPromise;
+      const db = await openDatabase(databaseName, storeName);
       if (db == null) {
         return;
       }

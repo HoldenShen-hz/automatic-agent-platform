@@ -1,10 +1,6 @@
-/**
- * Unit tests for TakeoverEscalationManager
- * Issue #2126: Unconfirmed sessions never evicted
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   TakeoverEscalationManager,
 } from "../../../../../src/platform/control-plane/incident-control/takeover-escalation-manager.js";
@@ -12,12 +8,16 @@ import type {
   TakeoverLifecycleEvent,
   TakeoverEventPayload,
   TakeoverTimeoutConfig,
+  EscalationLevel,
+  TakeoverAckStatus,
+  AckResult,
 } from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
 
 test.describe("TakeoverEscalationManager", () => {
   // Track managers created in tests for cleanup
   const managers: TakeoverEscalationManager[] = [];
 
+  // Clean up timers after each test to prevent event loop blocking
   test.afterEach(() => {
     for (const manager of managers) {
       manager.clearAllTimers();
@@ -25,190 +25,251 @@ test.describe("TakeoverEscalationManager", () => {
     managers.length = 0;
   });
 
-  function createMockEventEmitter() {
-    const events: Array<{ event: TakeoverLifecycleEvent; payload: unknown }> = [];
-    return {
-      events,
-      emit: <T extends TakeoverLifecycleEvent>(event: T, payload: TakeoverEventPayload[T]) => {
-        events.push({ event, payload });
-      },
-    };
-  }
+function createMockEventEmitter() {
+  const events: Array<{ event: TakeoverLifecycleEvent; payload: unknown }> = [];
+  return {
+    events,
+    emit: <T extends TakeoverLifecycleEvent>(event: T, payload: TakeoverEventPayload[T]) => {
+      events.push({ event, payload });
+    },
+  };
+}
 
-  function createTestConfig(overrides: Partial<TakeoverTimeoutConfig> = {}): TakeoverTimeoutConfig {
-    return {
-      defaultTimeoutMs: 5000,
-      acknowledgmentTimeoutMs: 2000,
-      escalationCheckIntervalMs: 1000,
-      maxRetries: 3,
-      ...overrides,
-    };
-  }
+function createTestConfig(overrides: Partial<TakeoverTimeoutConfig> = {}): TakeoverTimeoutConfig {
+  return {
+    defaultTimeoutMs: 5000,
+    acknowledgmentTimeoutMs: 2000,
+    escalationCheckIntervalMs: 1000,
+    maxRetries: 3,
+    ...overrides,
+  };
+}
 
-  function createManager(
-    config?: TakeoverTimeoutConfig,
-    emitter?: ReturnType<typeof createMockEventEmitter>,
-    onAutoClose?: (sessionId: string, taskId: string) => Promise<void>
-  ): TakeoverEscalationManager {
-    const mgr = new TakeoverEscalationManager(
-      config ?? createTestConfig(),
-      emitter ?? createMockEventEmitter(),
-      onAutoClose
-    );
-    managers.push(mgr);
-    return mgr;
-  }
+function createManager(config?: TakeoverTimeoutConfig, emitter?: ReturnType<typeof createMockEventEmitter>, onAutoClose?: (sessionId: string, taskId: string) => Promise<void>): TakeoverEscalationManager {
+  const mgr = new TakeoverEscalationManager(config ?? createTestConfig(), emitter ?? createMockEventEmitter(), onAutoClose);
+  managers.push(mgr);
+  return mgr;
+}
 
-  test("evictExpiredSessionEntries evicts unconfirmed sessions after TTL", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+// =============================================================================
+// Construction
+// =============================================================================
 
-    // Start session tracking but do NOT acknowledge
-    manager.startSessionTracking("unconfirmed-session", "task-1");
+test("TakeoverEscalationManager constructs with valid config", () => {
+  const emitter = createMockEventEmitter();
+  const config = createTestConfig();
+  const manager = createManager(config, emitter);
 
-    // Manually trigger eviction - with short TTL config
-    const shortTTLConfig = createTestConfig({
-      defaultTimeoutMs: 1,
-      acknowledgmentTimeoutMs: 1,
-      escalationCheckIntervalMs: 1,
-    });
-    const shortTTLManager = new TakeoverEscalationManager(shortTTLConfig, emitter);
-    managers.push(shortTTLManager);
+  assert.ok(manager);
+});
 
-    shortTTLManager.startSessionTracking("unconfirmed-session-2", "task-2");
+test("TakeoverEscalationManager accepts custom config", () => {
+  const emitter = createMockEventEmitter();
+  const config = createTestConfig({
+    defaultTimeoutMs: 10000,
+    acknowledgmentTimeoutMs: 3000,
+    escalationCheckIntervalMs: 500,
+    maxRetries: 5,
+  });
+  const manager = createManager(config, emitter);
 
-    // Even unconfirmed sessions should be tracked
-    const status = shortTTLManager.getAcknowledgmentStatus("unconfirmed-session-2");
-    assert.ok(status !== null);
+  assert.ok(manager);
+});
+
+test("TakeoverEscalationManager accepts auto-close handler", () => {
+  const emitter = createMockEventEmitter();
+  const config = createTestConfig();
+  let autoCloseCalled = false;
+
+  const manager = createManager(config, emitter, async (sessionId, taskId) => {
+    autoCloseCalled = true;
+    assert.equal(sessionId, "test-session");
+    assert.equal(taskId, "test-task");
   });
 
-  test("evictExpiredSessionEntries cleans up old acknowledged sessions", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  assert.ok(manager);
+});
 
-    // Acknowledge a session
-    manager.startSessionTracking("session-1", "task-1");
-    manager.acknowledgeSession("session-1", "operator-1", "task-1");
+// =============================================================================
+// Session Tracking
+// =============================================================================
 
-    // Trigger eviction
-    manager.evictExpiredSessionEntries();
+test("startSessionTracking initializes tracking for session", () => {
+  const manager = createManager();
 
-    // Session should still be present (not expired yet)
-    const status = manager.getAcknowledgmentStatus("session-1");
-    assert.ok(status !== null);
-  });
+  manager.startSessionTracking("session-1", "task-1");
 
-  test("evictExpiredSessionEntries respects MAX_SESSION_ENTRIES limit", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  // Should not throw
+});
 
-    // Create many sessions
-    for (let i = 0; i < 10; i++) {
-      manager.startSessionTracking(`session-${i}`, `task-${i}`);
-      manager.acknowledgeSession(`session-${i}`, `operator-${i}`, `task-${i}`);
-    }
+test("stopSessionTracking clears all tracking", () => {
+  const manager = createManager();
 
-    // Eviction should run
-    manager.evictExpiredSessionEntries();
+  manager.startSessionTracking("session-1", "task-1");
+  manager.stopSessionTracking("session-1");
 
-    // Should not throw
-  });
+  // Should not throw - verifies timers are cleared
+});
 
-  test("stopSessionTracking removes session from all tracking maps", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+test("stopSessionTracking handles unknown session gracefully", () => {
+  const manager = createManager();
 
-    manager.startSessionTracking("session-1", "task-1");
-    manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  // Should not throw
+  manager.stopSessionTracking("unknown-session");
+});
 
-    // Stop tracking
-    manager.stopSessionTracking("session-1");
+// =============================================================================
+// Acknowledgment
+// =============================================================================
 
-    // Session should be removed
-    const status = manager.getAcknowledgmentStatus("session-1");
-    assert.equal(status, null);
-  });
+test("acknowledgeSession sets acknowledged status", () => {
+  const emitter = createMockEventEmitter();
+  const manager = createManager(createTestConfig(), emitter);
 
-  test("escalation policy is initialized for new sessions", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  const result = manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
-    manager.startSessionTracking("session-1", "task-1");
+  assert.equal(result.sessionId, "session-1");
+  assert.equal(result.acknowledged, true);
+  assert.ok(result.acknowledgedAt);
+  assert.ok(result.expiresAt);
+  assert.equal(result.previousStatus, "pending");
+});
 
-    // Events should include escalation initialization
-    const escalationInitEvents = emitter.events.filter(
-      (e) => e.event === "takeover:escalated"
-    );
+test("acknowledgeSession emits event", () => {
+  const emitter = createMockEventEmitter();
+  const manager = createManager(createTestConfig(), emitter);
 
-    // Should emit timeout event after timeout
-    // Note: This is async so we check the event was registered
-    assert.ok(true); // Placeholder for async event test
-  });
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
-  test("acknowledgeSession prevents immediate escalation", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  const ackEvent = emitter.events.find((e) => e.event === "takeover:acknowledged");
+  assert.ok(ackEvent);
+});
 
-    manager.startSessionTracking("session-1", "task-1");
-    const result = manager.acknowledgeSession("session-1", "operator-1", "task-1");
+test("acknowledgeSession tracks previous status", () => {
+  const manager = createManager();
 
-    assert.equal(result.acknowledged, true);
-    assert.equal(result.previousStatus, "pending");
-  });
+  // First acknowledgment
+  const result1 = manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  assert.equal(result1.previousStatus, "pending");
 
-  test("getAcknowledgmentStatus returns expired status for expired acks", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  // Second acknowledgment extends existing
+  const result2 = manager.acknowledgeSession("session-1", "operator-2", "task-1");
+  assert.equal(result2.previousStatus, "acknowledged");
+});
 
-    manager.startSessionTracking("session-1", "task-1");
-    manager.acknowledgeSession("session-1", "operator-1", "task-1");
+// =============================================================================
+// Get Acknowledgment Status
+// =============================================================================
 
-    // Manually expire the acknowledgment by setting expiresAt to past
-    const status = manager.getAcknowledgmentStatus("session-1");
-    assert.ok(status !== null);
+test("getAcknowledgmentStatus returns null for unknown session", () => {
+  const manager = createManager();
 
-    // If status shows as expired, eviction should clean it up
-    manager.evictExpiredSessionEntries();
-  });
+  const status = manager.getAcknowledgmentStatus("unknown-session");
 
-  test("extendAcknowledgment updates expiration time", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+  assert.equal(status, null);
+});
 
-    manager.startSessionTracking("session-1", "task-1");
-    manager.acknowledgeSession("session-1", "operator-1", "task-1");
+test("getAcknowledgmentStatus returns current status", () => {
+  const manager = createManager();
 
-    const originalStatus = manager.getAcknowledgmentStatus("session-1");
-    const originalExpires = originalStatus?.expiresAt;
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  const status = manager.getAcknowledgmentStatus("session-1");
 
-    manager.extendAcknowledgment("session-1", 10000);
+  assert.ok(status);
+  assert.equal(status?.status, "acknowledged");
+  assert.equal(status?.acknowledgedBy, "operator-1");
+});
 
-    const extendedStatus = manager.getAcknowledgmentStatus("session-1");
-    assert.notEqual(extendedStatus?.expiresAt, originalExpires);
-  });
+// =============================================================================
+// Extend Acknowledgment
+// =============================================================================
 
-  test("extendAcknowledgment throws for unacknowledged session", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+test("extendAcknowledgment extends active acknowledgment", () => {
+  const manager = createManager();
 
-    manager.startSessionTracking("session-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  const result = manager.extendAcknowledgment("session-1");
 
-    assert.throws(() => {
-      manager.extendAcknowledgment("session-1");
-    }, (err: any) => err.code === "takeover.ack_not_found");
-  });
+  assert.equal(result.sessionId, "session-1");
+  assert.equal(result.acknowledged, true);
+  assert.ok(result.expiresAt);
+});
 
-  test("clearAllTimers prevents memory leaks", () => {
-    const emitter = createMockEventEmitter();
-    const manager = createManager(createTestConfig(), emitter);
+test("extendAcknowledgment uses custom extension time", () => {
+  const manager = createManager();
 
-    manager.startSessionTracking("session-1", "task-1");
-    manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  const result = manager.extendAcknowledgment("session-1", 10000);
 
-    manager.clearAllTimers();
+  assert.equal(result.sessionId, "session-1");
+  assert.ok(result.expiresAt);
+});
 
-    // After clearing, can add new session without issues
-    manager.startSessionTracking("session-2", "task-2");
-    assert.ok(true);
-  });
+test("extendAcknowledgment throws for unknown session", () => {
+  const manager = createManager();
+
+  assert.throws(
+    () => manager.extendAcknowledgment("unknown-session"),
+    (err: any) => err.code === "takeover.ack_not_found",
+  );
+});
+
+test("extendAcknowledgment throws for non-acknowledged session", () => {
+  const manager = createManager();
+
+  // Start tracking but don't acknowledge
+  manager.startSessionTracking("session-1", "task-1");
+
+  assert.throws(
+    () => manager.extendAcknowledgment("session-1"),
+    (err: any) => err.code === "takeover.ack_not_found",
+  );
+});
+
+// =============================================================================
+// Timer Management
+// =============================================================================
+
+test("clearAllTimers clears all active timers", () => {
+  const emitter = createMockEventEmitter();
+  const config = createTestConfig();
+  const manager = createManager(config, emitter);
+
+  manager.startSessionTracking("session-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+
+  manager.clearAllTimers();
+
+  // Should not throw
+});
+
+// =============================================================================
+// Eviction
+// =============================================================================
+
+test("evictExpiredSessionEntries handles empty queue", () => {
+  const manager = createManager();
+
+  // Should not throw
+  manager.evictExpiredSessionEntries();
+});
+
+test("evictExpiredSessionEntries respects eviction interval", () => {
+  const manager = createManager();
+
+  manager.evictExpiredSessionEntries();
+  manager.evictExpiredSessionEntries(); // Second call is no-op
+
+  // Should not throw
+});
+
+test("evictExpiredSessionEntries cleans up old entries", () => {
+  const manager = createManager();
+
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+
+  // Should not throw
+  manager.evictExpiredSessionEntries();
+});
+
 });

@@ -57,7 +57,6 @@ import {
   removeExecutionId,
   toWorkerStatus,
 } from "./utils.js";
-import { MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS } from "./types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 export type {
@@ -131,15 +130,6 @@ export class ExecutionLeaseService {
           outcome: "blocked",
           reasonCode: "active_lease_exists",
           lease: activeLease,
-        };
-      }
-
-      // Enforce TTL bounds (§8.3)
-      if (input.ttlMs < MIN_LEASE_TTL_MS || input.ttlMs > MAX_LEASE_TTL_MS) {
-        return {
-          outcome: "blocked",
-          reasonCode: "ttl_out_of_bounds",
-          lease: null,
         };
       }
 
@@ -304,36 +294,12 @@ export class ExecutionLeaseService {
         };
       }
 
-      // R9-03 fix: Use CAS (compare-and-swap) to detect concurrent modifications.
-      // Re-check with the actual current status before writing (fencing).
-      const currentLease = this.store.worker.getExecutionLease(input.leaseId);
-      if (!currentLease) {
-        return {
-          outcome: "blocked",
-          reasonCode: "lease_not_found",
-          lease: null,
-        };
-      }
-      if (currentLease.status !== "active") {
+      // Can only release active leases
+      if (lease.status !== "active") {
         return {
           outcome: "blocked",
           reasonCode: "lease_not_active",
-          lease: currentLease,
-        };
-      }
-      if (currentLease.workerId !== input.workerId) {
-        return {
-          outcome: "blocked",
-          reasonCode: "worker_mismatch",
-          lease: currentLease,
-        };
-      }
-      // Detect if lease was modified by another party between our read and this write
-      if (currentLease.status !== "active" || currentLease.workerId !== input.workerId) {
-        return {
-          outcome: "blocked",
-          reasonCode: "concurrent_modification",
-          lease: currentLease,
+          lease: lease ?? null,
         };
       }
 
@@ -443,50 +409,6 @@ export class ExecutionLeaseService {
           previousLease: previousLease ?? null,
           lease: null,
         };
-      }
-
-      // R13-20: Verify new worker meets execution requirements (capabilities, isolation, repo version)
-      const ticket = this.store.worker.getActiveExecutionTicket(previousLease.executionId, execution.attempt);
-      if (ticket) {
-        // Check required capabilities
-        if (ticket.requiredCapabilitiesJson) {
-          const requiredCaps = parseJsonArray(ticket.requiredCapabilitiesJson, logger);
-          const workerCaps = parseJsonArray(nextWorker.capabilitiesJson, logger);
-          const missingCaps = requiredCaps.filter((cap) => !workerCaps.includes(cap));
-          if (missingCaps.length > 0) {
-            return {
-              outcome: "blocked",
-              reasonCode: "worker_missing_capabilities",
-              previousLease: previousLease ?? null,
-              lease: null,
-            };
-          }
-        }
-
-        // Check required isolation level
-        if (ticket.requiredIsolationLevel) {
-          const ISOLATION_ORDER: Record<string, number> = { standard: 0, hardened: 1, strict: 2 };
-          const requiredLevel = ISOLATION_ORDER[ticket.requiredIsolationLevel] ?? 0;
-          const workerLevel = ISOLATION_ORDER[nextWorker.isolationLevel ?? "standard"] ?? 0;
-          if (workerLevel < requiredLevel) {
-            return {
-              outcome: "blocked",
-              reasonCode: "worker_insufficient_isolation",
-              previousLease: previousLease ?? null,
-              lease: null,
-            };
-          }
-        }
-
-        // Check required repo version
-        if (ticket.requiredRepoVersion && nextWorker.repoVersion !== ticket.requiredRepoVersion) {
-          return {
-            outcome: "blocked",
-            reasonCode: "worker_repo_version_mismatch",
-            previousLease: previousLease ?? null,
-            lease: null,
-          };
-        }
       }
 
       const nextWorkerRunningExecutionIds = parseJsonArray(nextWorker.runningExecutionsJson, logger);
@@ -706,50 +628,6 @@ export class ExecutionLeaseService {
         return {
           allowed: false,
           reasonCode: "worker_mismatch",
-          authoritativeFencingToken,
-          activeLeaseId: activeLease.id,
-        };
-      }
-
-      // Check if lease has expired
-      if (Date.parse(activeLease.expiresAt) < Date.parse(occurredAt)) {
-        this.insertLeaseAudit({
-          executionId: activeLease.executionId,
-          leaseId: activeLease.id,
-          workerId: input.workerId,
-          fencingToken: input.fencingToken,
-          eventType: "stale_write_rejected",
-          reasonCode: "lease_expired",
-          recordedAt: occurredAt,
-        });
-
-        return {
-          allowed: false,
-          reasonCode: "lease_expired",
-          authoritativeFencingToken,
-          activeLeaseId: activeLease.id,
-        };
-      }
-
-      // R9-01/R9-08 fix: Enforce TTL bounds on validateWriteAccess per §8.3
-      // This ensures TTL validation is consistent with acquireLease
-      const nowMs = Date.parse(occurredAt);
-      const expiresAtMs = Date.parse(activeLease.expiresAt);
-      const ttlMs = expiresAtMs - Date.parse(activeLease.leasedAt);
-      if (ttlMs < MIN_LEASE_TTL_MS || ttlMs > MAX_LEASE_TTL_MS) {
-        this.insertLeaseAudit({
-          executionId: activeLease.executionId,
-          leaseId: activeLease.id,
-          workerId: input.workerId,
-          fencingToken: input.fencingToken,
-          eventType: "stale_write_rejected",
-          reasonCode: "ttl_out_of_bounds",
-          recordedAt: occurredAt,
-        });
-
-        return {
-          allowed: false,
-          reasonCode: "ttl_out_of_bounds",
           authoritativeFencingToken,
           activeLeaseId: activeLease.id,
         };

@@ -79,7 +79,7 @@ export class ACPInvariantEnforcer {
     if (!this.checkBudgetNotExceeded(message.budget_remaining, context.parentBudgetRemaining)) {
       violations.push("acp.budget_exceeded");
     }
-    if (!this.checkDepthLimit(message.depth, context.globalCallDepth - 1)) {
+    if (!this.checkDepthLimit(message.depth, context.globalCallDepth)) {
       violations.push("acp.depth_exceeded");
     }
 

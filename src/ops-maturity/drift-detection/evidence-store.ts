@@ -43,29 +43,10 @@ export interface EvidenceStatistics {
 }
 
 export class InMemoryEvidenceStore implements EvidenceStore {
-  // R28-07: MAX_RECORDS constant for bounded array with LRU eviction
-  // Evidence store has no max limit - now capped at 10,000 records with oldest-first eviction
-  private static readonly MAX_RECORDS = 10_000;
-
   private records: EvidenceRecord[] = [];
-  private readonly maxRecords: number;
-
-  constructor(maxRecords: number = InMemoryEvidenceStore.MAX_RECORDS) {
-    this.maxRecords = maxRecords;
-  }
-
-  private evictIfNeeded(): void {
-    // R28-07 fix: Evict oldest records first (LRU eviction) when limit is reached
-    // Evicts 2 records per cycle when length >= max to maintain buffer and avoid frequent eviction
-    if (this.records.length >= this.maxRecords) {
-      const removeCount = this.records.length - this.maxRecords + 2;
-      this.records = this.records.slice(removeCount);
-    }
-  }
 
   async append(record: EvidenceRecord): Promise<void> {
     this.records.push(record);
-    this.evictIfNeeded();
   }
 
   async getById(id: string): Promise<EvidenceRecord | null> {

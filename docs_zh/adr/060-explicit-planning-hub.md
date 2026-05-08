@@ -21,7 +21,7 @@ OAPEFLIR Loop 模型（ADR-016）要求 Plan 作为独立 Hub，形成 Assess→
 Plan Hub 作为 OAPEFLIR 第 3 阶段（介于 Assess 和 Execute 之间），职责为：
 
 - 接收 `UnifiedAssessment`（来自 Assess Hub）
-- 输出 `PlanGraphBundle`（作为 Execute Hub 的唯一 canonical 输入）
+- 输出 `Plan` DTO（作为 Execute Hub 的唯一输入）
 - 支持多种规划策略（linear/dag/conditional/reactive/hierarchical/multi-agent/adaptive/uncertainty-aware）
 - 维护 Plan 版本链（每次 replan 生成 version N+1）
 
@@ -53,15 +53,18 @@ interface PlanGraphBundle {
 | **R3-VERSION** | 每次 replan 必须生成 version +1，不得覆盖历史版本 |
 | **R3-NOBYPASS** | Execute 层必须拒绝无有效 Plan 的输入 |
 
-### 4. Plan→Execute 兼容桥接
+### 4. Plan→Execute 桥接
 
-运行时唯一 canonical handoff 仍然是 `PlanGraphBundle -> HarnessRuntime / NodeAttemptReceipt`。实现层可以存在本地 adapter / bridge，但它们只能作为 compatibility seam，不构成独立 contract 对象：
+通过 `RuntimeExecuteBridge` 接口实现 PlanGraphBundle 到执行引擎的解耦：
 
-- adapter 只能接收 `PlanGraphBundle`
-- adapter 只能产出 `NodeAttemptReceipt` 或其显式 projection
-- adapter 名称、类名、函数名都不得被 ADR 误写成新的 P3→P4 权威 contract
+```typescript
+interface RuntimeExecuteBridge {
+  executePlan(plan: PlanGraphBundle): Promise<NodeAttemptReceipt>;
+  validatePlanInput(plan: PlanGraphBundle): PlanValidationResult;
+}
+```
 
-换言之，`RuntimeExecuteBridge` 之类名称如果出现在实现层，只能表示局部适配器，而不是 spec/ADR 级 canonical object。
+Execute 层通过此接口接收 Plan，不得绕过。
 
 ### 5. 8 种规划策略
 
@@ -101,13 +104,12 @@ interface PlanGraphBundle {
 
 ## 后果
 
-- 新增 `src/platform/orchestration/` 模块（约 9 文件，2000 行）。
-- `PlanGraphBundle` 作为唯一 P3→P4 handoff；`RuntimeExecuteBridge` 仅保留为 compatibility seam。
+- 新增 `src/core/planning/` 模块（约 9 文件，2000 行）。
+- `RuntimeExecuteBridge` 作为 `PlanGraphBundle -> NodeAttemptReceipt` 解耦层。
 
 ## v4.3 ADR Remediation
 
 - A-61: 本 ADR 原先把 `Plan DTO` 与 `RuntimeExecuteBridge.executePlan(plan)` 写成 P3 -> P4 唯一 handoff，根因是显式规划 ADR 成型时 executable contract 还未收口到图执行模型。修复：正文现把权威输入切到 `PlanGraphBundle`，权威输出切到 `NodeAttemptReceipt`。
-- §176-2054 修复说明——原 ADR 定义了 `Plan{steps:PlanStep[]}` 作为 P3→P4 规范，但平台 spec §5.5/§13 已明确要求 `PlanGraphBundle`（DAG 结构）作为唯一 canonical 执行契约。`Plan{steps:[]}` 是旧版线性计划的遗留定义，已废弃（deprecated alias），不得作为新实现的数据结构。PlanGraphBundle 是当前唯一权威输入。
 - 阶段边界处增加 Zod schema 验证（PlanSchema）。
 - 所有重规划决策通过 `ReplanningDecision` DTO 记录审计。
 
@@ -120,5 +122,5 @@ interface PlanGraphBundle {
 ## 来源章节
 
 - `§5` Plan Hub 设计
-- `§13.5` OAPEFLIR→Harness 外部语义映射
-- `§13.8` PlanGraphBundle Schema 定义
+- `§L.6` R3 约束定义
+- `§H.2` PlanStrategySelector 决策树

@@ -46,9 +46,7 @@ interface LearningObject {
 
 - LearnHub 生成 LearningObject
 - ImproveHub 评估 ImprovementCandidate
-- Release 六级发布（须经 P2 Release Governance 门禁）
-
-注：§13.1 明确规定 Release 是 P2 决策，非 OAPEFLIR 自行发布。Learn→Improve→Release 管线中的 Release 阶段必须经 P2 Release Governance 门禁审查，不得跳过。
+- Release 六级发布
 
 ## 后果
 

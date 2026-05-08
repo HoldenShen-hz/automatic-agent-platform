@@ -16,7 +16,7 @@ import type { ApiAuthService } from "../api-auth-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
 import type { PackCatalogService } from "../pack-catalog-service.js";
-import { normalizeSandboxMode, type SandboxMode } from "../../../control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxModeLike } from "../../../control-plane/iam/sandbox-policy.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -82,7 +82,7 @@ export interface CreatePackPayload {
     optional?: boolean;
     reason?: string;
   }>;
-  sandboxTier?: SandboxMode;
+  sandboxTier?: SandboxModeLike;
 }
 
 // ─── Route Deps ─────────────────────────────────────────────────────────────

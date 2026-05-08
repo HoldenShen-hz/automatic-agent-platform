@@ -22,7 +22,7 @@ function createMockStore(overrides: {
   prechecks?: Array<{ executionId: string; allowed: number; reasonCode: string | null; resolvedBudgetUsd: number | null; resolvedTimeoutMs: number; resolvedSandboxMode: string; resolvedToolsJson: string | null; resolvedPathsJson: string | null; checkedAt: string }>;
 } = {}) {
   return {
-    listEventsForTask: (taskId: string) => ({ events: overrides.events?.filter((event) => event.taskId === taskId) ?? [] }),
+    listEventsForTask: (taskId: string) => overrides.events?.filter((event) => event.taskId === taskId) ?? [],
     task: {
       getTask: (id: string) => overrides.tasks?.find((t) => t.id === id) ?? null,
     },
@@ -37,7 +37,7 @@ function createMockStore(overrides: {
       getExecutionPrecheck: (executionId: string) => overrides.prechecks?.find((precheck) => precheck.executionId === executionId) ?? null,
     },
     event: {
-      listEventsForTask: (taskId: string) => ({ events: overrides.events?.filter((event) => event.taskId === taskId) ?? [] }),
+      listEventsForTask: (taskId: string) => overrides.events?.filter((event) => event.taskId === taskId) ?? [],
     },
     operations: {
       buildRuntimeRecoveryView: () => overrides.recoveryRecords ?? [],

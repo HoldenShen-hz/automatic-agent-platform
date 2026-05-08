@@ -3,9 +3,6 @@ import { basename, dirname, join, relative } from "node:path";
 
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { SandboxError } from "../../contracts/errors.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const logger = new StructuredLogger({ service: "storage-quota-service" });
 
 /**
  * Categories of storage that can be quota-managed.
@@ -159,15 +156,7 @@ export class StorageQuotaService {
           break;
         }
 
-        try {
-          rmSync(record.path, { force: true });
-        } catch (err) {
-          logger.warn("session_dual_storage.cleanup.rm_failed", {
-            path: record.path,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          continue;
-        }
+        rmSync(record.path, { force: true });
         totalBytes -= record.sizeBytes;
         removedFiles.push({
           path: record.path,

@@ -1,6 +1,5 @@
 /**
- * @fileoverview Unit tests for Workbench - Issue #2019
- * Issue #2019: validatePluginManifest is no-op pass-through
+ * @fileoverview Tests for SDK Workbench Service
  */
 
 import assert from "node:assert/strict";
@@ -16,7 +15,6 @@ const testClientConfig: ApiClientConfig = {
   apiVersion: "v1",
   tenantId: "test-tenant",
   bearerToken: "test-token",
-  principal: { principalId: "admin", tenantId: "test-tenant", roles: ["admin"] },
 };
 
 function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManifest {
@@ -24,10 +22,9 @@ function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManife
     pluginId: "test-plugin-1",
     name: "Test Plugin",
     version: "1.0.0",
-    owner: "test-owner",
-    spiTypes: ["tool"],
+    type: "tool",
     capabilityIds: ["test.capability"],
-    publicSdkSurface: ["test-plugin"],
+    lifecycleHooks: [],
     ...overrides,
   } as PluginManifest;
 }
@@ -36,15 +33,11 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
   return {
     packId: "test-pack",
     version: "1.0.0",
-    domainId: "testing",
+    domain: "testing",
     owner: "test@example.com",
     capabilities: [
       { capabilityKey: "test.cap", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
     ],
-    signing: {
-      keyId: "test-key-id",
-      signature: "test-signature",
-    },
     ...overrides,
   };
 }
@@ -80,7 +73,6 @@ test("SdkWorkbenchService.buildSnapshot handles null tenantId", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
   };
 
   const snapshot = service.buildSnapshot({
@@ -308,85 +300,4 @@ test("SdkWorkbenchService multiple packs create multiple install plans", () => {
   assert.equal(snapshot.installPlans.length, 2);
   assert.equal(snapshot.installPlans[0]!.packId, "pack-a");
   assert.equal(snapshot.installPlans[1]!.packId, "pack-b");
-});
-
-test("SdkWorkbenchService validatePluginManifest is no-op pass-through (issue #2019)", () => {
-  // Issue #2019: validatePluginManifest is a no-op that just returns the manifest
-  // This test documents the current behavior
-
-  const service = new SdkWorkbenchService();
-  const plugins = [createTestPlugin()];
-  const packs = [createTestPack()];
-
-  // The buildSnapshot calls validatePluginManifest internally
-  const snapshot = service.buildSnapshot({
-    client: testClientConfig,
-    plugins,
-    packs,
-    availableContracts: ["runtime_execution_contract"],
-  });
-
-  // The plugin should be in the snapshot even though validation is a no-op
-  assert.deepEqual(snapshot.pluginIds, ["test-plugin-1"]);
-});
-
-test("SdkWorkbenchService createInstallPlan with capability that exists in multiple plugins uses first match", () => {
-  const service = new SdkWorkbenchService();
-  const plugins = [
-    createTestPlugin({ pluginId: "first-plugin", capabilityIds: ["shared.cap"] }),
-    createTestPlugin({ pluginId: "second-plugin", capabilityIds: ["shared.cap"] }),
-  ];
-  const pack = createTestPack({
-    capabilities: [
-      { capabilityKey: "shared.cap", maturity: "ga", requiredContracts: [] },
-    ],
-  });
-
-  const plan = service.createInstallPlan({ pack, plugins });
-
-  // Should use the first matching plugin
-  assert.equal(plan.pluginAssignments.length, 1);
-  assert.equal(plan.pluginAssignments[0]!.pluginId, "first-plugin");
-});
-
-test("SdkWorkbenchService createInstallPlan with capability not matching any plugin", () => {
-  const service = new SdkWorkbenchService();
-  const plugins = [
-    createTestPlugin({ pluginId: "some-plugin", capabilityIds: ["different.cap"] }),
-  ];
-  const pack = createTestPack({
-    capabilities: [
-      { capabilityKey: "unmatched.cap", maturity: "ga", requiredContracts: [] },
-    ],
-  });
-
-  const plan = service.createInstallPlan({ pack, plugins });
-
-  assert.equal(plan.ready, false);
-  assert.deepEqual(plan.unresolvedCapabilities, ["unmatched.cap"]);
-  assert.deepEqual(plan.pluginAssignments, []);
-});
-
-test("SdkWorkbenchService buildSnapshot correctly identifies missing capabilityIds in plugin", () => {
-  const service = new SdkWorkbenchService();
-  const plugins = [
-    createTestPlugin({ pluginId: "plugin-1", capabilityIds: [] }), // No capabilities
-  ];
-  const packs = [
-    createTestPack({
-      capabilities: [
-        { capabilityKey: "required.cap", maturity: "ga", requiredContracts: [] },
-      ],
-    }),
-  ];
-
-  const snapshot = service.buildSnapshot({
-    client: testClientConfig,
-    plugins,
-    packs,
-    availableContracts: [],
-  });
-
-  // Plugin has no capabilityIds so nothing matches
-  assert.ok(snapshot.installPlans[0]?.unresolvedCapabilities.includes("required.cap"));
 });

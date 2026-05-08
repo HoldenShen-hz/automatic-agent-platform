@@ -252,7 +252,7 @@ export class DiagnosticsService {
       taskResult: inspect.taskResult,
       relevantMessages: this.inspectService.listSessionMessages(taskId).slice(-10),
       toolUsage: inspect.stepOutputs.map((output, index) => ({
-        stepId: output.stepId ?? "",
+        stepId: output.stepId,
         summary: output.summary,
         dataJson: output.dataJson,
         artifactsJson: output.artifactsJson,

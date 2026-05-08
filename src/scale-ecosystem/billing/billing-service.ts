@@ -1,58 +1,4 @@
 /**
- * R8-15 FIX: FX Rate Service interface for multi-currency support per §18.4
- */
-export interface FxRateService {
-  /**
-   * Gets the FX rate for converting a currency to USD.
-   * Returns the rate as multiplier (e.g., EUR/USD = 1.08 means 1 EUR = 1.08 USD)
-   */
-  getRateToUsd(currency: string): number;
-  /**
-   * Converts an amount from one currency to another.
-   */
-  convert(amount: number, fromCurrency: string, toCurrency: string): number;
-}
-
-/**
- * Default FX rate service with static rates for development/testing.
- * In production, this would be backed by a real FX rate provider.
- */
-export class StaticFxRateService implements FxRateService {
-  private readonly rates: Record<string, number>;
-
-  public constructor(rates?: Record<string, number>) {
-    this.rates = rates ?? {
-      USD: 1.0,
-      EUR: 1.08,
-      GBP: 1.27,
-      JPY: 0.0067,
-      CNY: 0.14,
-      CAD: 0.74,
-      AUD: 0.65,
-      CHF: 1.12,
-      // Add more currencies as needed
-    };
-  }
-
-  public getRateToUsd(currency: string): number {
-    return this.rates[currency] ?? 1.0;
-  }
-
-  public convert(amount: number, fromCurrency: string, toCurrency: string): number {
-    if (fromCurrency === toCurrency) {
-      return amount;
-    }
-    // Convert to USD first, then to target currency
-    const amountInUsd = amount * this.getRateToUsd(fromCurrency);
-    const targetRate = this.getRateToUsd(toCurrency);
-    if (targetRate === 0) {
-      return amountInUsd;
-    }
-    return amountInUsd / targetRate;
-  }
-}
-
-/**
  * Billing Service
  *
  * Core billing and monetization engine handling accounts, quotas, usage tracking,
@@ -104,7 +50,7 @@ import {
 import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import { BudgetAllocator, BudgetTier } from "../../platform/execution/budget-allocator.js";
+import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,
@@ -176,7 +122,6 @@ export class BillingService {
   private readonly policyVersion: string;
   private readonly paymentGateway: BillingPaymentGateway;
   private readonly budgetAllocator: BudgetAllocator;
-  private readonly fxRateService: FxRateService;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -199,8 +144,6 @@ export class BillingService {
     // Default to manual gateway if none provided
     this.paymentGateway = options.paymentGateway ?? new ManualBillingPaymentGateway();
     this.budgetAllocator = new BudgetAllocator();
-    // R8-15 FIX: Initialize FX rate service for multi-currency support
-    this.fxRateService = options.fxRateService ?? new StaticFxRateService();
     // Artifact store for exporting billing reports
     this.artifactStore = new ArtifactStore(
       options.artifactStoreOptions ?? {
@@ -342,17 +285,6 @@ export class BillingService {
           Date.parse(capturedAt) + (input.budgetControl.reservationTtlMs ?? 5 * 60 * 1000),
         ).toISOString(),
         expectedVersion: ledger.version,
-        context: {
-          tenantId: input.budgetControl.tenantId,
-          traceId: input.budgetControl.traceId ?? newId("trace"),
-          emittedBy: input.budgetControl.emittedBy ?? "BillingService",
-          tier: BudgetTier.STEP,
-          tierLimit: 0,
-          watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
-          autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
-          crossRunPriority: { priority: 0, weightFactor: 1.0 },
-          streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
-        },
       });
     }
 
@@ -364,14 +296,8 @@ export class BillingService {
       workspaceId: input.workspaceId ?? account.workspaceId,
       tenantId: input.tenantId ?? null,
       taskId: input.taskId ?? null,
-      harnessRunId: input.harnessRunId ?? input.executionId ?? null,
-      nodeRunId: input.nodeRunId ?? input.stepId ?? null,
-      attemptId: input.attemptId ?? null,
-      // Legacy executionId is still persisted as a compatibility projection,
-      // but it must not be synthesized from canonical HarnessRun ids because
-      // the old column keeps legacy FK semantics in existing stores.
       executionId: input.executionId ?? null,
-      stepId: input.stepId ?? input.nodeRunId ?? null,
+      stepId: input.stepId ?? null,
       metricType,
       quantity,
       source: input.source,
@@ -440,17 +366,10 @@ export class BillingService {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: ledgerEntry.amountUsd,
-          expectedVersion: reservedBudget.ledger.version,
           context: {
             tenantId: input.budgetControl!.tenantId,
-            traceId: input.budgetControl!.traceId ?? newId("trace"),
-            emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
-            tier: BudgetTier.PACK,
-            tierLimit: 0,
-            watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
-            autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
-            crossRunPriority: { priority: 0, weightFactor: 1.0 },
-            streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
+            traceId: input.budgetControl!.traceId,
+            emittedBy: input.budgetControl!.emittedBy,
           },
         });
     } catch (error) {
@@ -459,17 +378,10 @@ export class BillingService {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           reasonCode: "budget.billing_usage_record_failed",
-          expectedVersion: reservedBudget.ledger.version,
           context: {
             tenantId: input.budgetControl!.tenantId,
-            traceId: input.budgetControl!.traceId ?? newId("trace"),
-            emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
-            tier: BudgetTier.PACK,
-            tierLimit: 0,
-            watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
-            autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
-            crossRunPriority: { priority: 0, weightFactor: 1.0 },
-            streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
+            traceId: input.budgetControl!.traceId,
+            emittedBy: input.budgetControl!.emittedBy,
           },
         });
       }
@@ -1008,8 +920,6 @@ export class BillingService {
       id: "billing_reporting",
       parentId: null,
       rootId: "billing_reporting",
-      // R4-27 (INV-RUN-001): System placeholder task has no HarnessRun - legacy/system task
-      harnessRunId: null,
       divisionId: "system_admin",
       title: "Billing reporting",
       status: "done",

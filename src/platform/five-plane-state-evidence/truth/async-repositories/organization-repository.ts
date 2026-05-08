@@ -215,7 +215,7 @@ export class AsyncOrganizationRepository {
            created_at AS "createdAt",
            updated_at AS "updatedAt"
          FROM workspaces
-         WHERE organization_id = $1
+         WHERE organization_id IS $1
          ORDER BY updated_at DESC, workspace_id ASC
          LIMIT $2`,
         options.organizationId,
@@ -348,7 +348,7 @@ export class AsyncOrganizationRepository {
            created_at AS "createdAt",
            updated_at AS "updatedAt"
          FROM tenants
-         WHERE organization_id = $1
+         WHERE organization_id IS $1
          ORDER BY updated_at DESC, tenant_id ASC
          LIMIT $2`,
         options.organizationId,
@@ -413,7 +413,7 @@ export class AsyncOrganizationRepository {
            created_at AS "createdAt",
            updated_at AS "updatedAt"
          FROM deployment_bindings
-         WHERE tenant_id = $1
+         WHERE tenant_id IS $1
          ORDER BY updated_at DESC, binding_id ASC
          LIMIT $2`,
         options.tenantId,
@@ -474,15 +474,15 @@ export class AsyncOrganizationRepository {
       parameters.push(options.plane);
     }
     if (options.tenantId !== undefined) {
-      conditions.push(`tenant_id = $${parameters.length + 1}`);
+      conditions.push(`tenant_id IS $${parameters.length + 1}`);
       parameters.push(options.tenantId);
     }
     if (options.organizationId !== undefined) {
-      conditions.push(`organization_id = $${parameters.length + 1}`);
+      conditions.push(`organization_id IS $${parameters.length + 1}`);
       parameters.push(options.organizationId);
     }
     if (options.workspaceId !== undefined) {
-      conditions.push(`workspace_id = $${parameters.length + 1}`);
+      conditions.push(`workspace_id IS $${parameters.length + 1}`);
       parameters.push(options.workspaceId);
     }
 

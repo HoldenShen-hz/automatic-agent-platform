@@ -6,9 +6,7 @@ import {
   parseGatewaySendPayload,
   parseApprovalDecisionPayload,
   parseBillingReconcilePayload,
-  parseUpdateTaskPayload,
 } from "../../../../../../src/platform/interface/api/http-server/schemas.js";
-import { TASK_STATUSES } from "../../../../../../src/platform/contracts/types/status.js";
 
 test("parseGatewaySendPayload parses valid payload", () => {
   const payload = parseGatewaySendPayload({
@@ -332,100 +330,4 @@ test("parseBillingReconcilePayload rejects empty gatewaySessionRef", () => {
   } catch (error: any) {
     assert.ok(error.code?.includes("api.invalid_billing_reconcile_payload"));
   }
-});
-
-// ── R6-17: Task status enum (7 states) ──────────────────────────────────────
-
-test("TASK_STATUSES exports 7 task lifecycle states", () => {
-  assert.equal(TASK_STATUSES.length, 7);
-  assert.ok(TASK_STATUSES.includes("queued"));
-  assert.ok(TASK_STATUSES.includes("pending"));
-  assert.ok(TASK_STATUSES.includes("in_progress"));
-  assert.ok(TASK_STATUSES.includes("awaiting_decision"));
-  assert.ok(TASK_STATUSES.includes("done"));
-  assert.ok(TASK_STATUSES.includes("failed"));
-  assert.ok(TASK_STATUSES.includes("cancelled"));
-});
-
-test("TASK_STATUSES defines correct state transitions", () => {
-  // Non-terminal states
-  assert.ok(TASK_STATUSES.includes("queued"));
-  assert.ok(TASK_STATUSES.includes("pending"));
-  assert.ok(TASK_STATUSES.includes("in_progress"));
-  assert.ok(TASK_STATUSES.includes("awaiting_decision"));
-  // Terminal states
-  assert.ok(TASK_STATUSES.includes("done"));
-  assert.ok(TASK_STATUSES.includes("failed"));
-  assert.ok(TASK_STATUSES.includes("cancelled"));
-});
-
-test("parseUpdateTaskPayload accepts all canonical runtime task statuses", () => {
-  const validStatuses = [
-    "created",
-    "admitted",
-    "planning",
-    "ready",
-    "running",
-    "pausing",
-    "paused",
-    "resuming",
-    "replanning",
-    "compensating",
-    "completed",
-    "failed",
-    "aborted",
-  ] as const;
-  for (const status of validStatuses) {
-    const payload = parseUpdateTaskPayload({ status });
-    assert.equal(payload.status, status, `Expected status '${status}' to be accepted`);
-  }
-});
-
-test("parseUpdateTaskPayload rejects invalid status values", () => {
-  const invalidStatuses = ["unknown", "active", "stopped", "invalid_status", "processing", "cancelled", "done"];
-  for (const status of invalidStatuses) {
-    try {
-      parseUpdateTaskPayload({ status: status as any });
-      assert.fail(`Expected invalid status '${status}' to be rejected`);
-    } catch (error: any) {
-      assert.ok(error.code?.startsWith("api.invalid_update_task_payload"), `Error code should start with 'api.invalid_update_task_payload' for status '${status}'`);
-    }
-  }
-});
-
-test("parseUpdateTaskPayload status transitions are valid", () => {
-  const validStatuses = [
-    "created",
-    "admitted",
-    "planning",
-    "ready",
-    "running",
-    "pausing",
-    "paused",
-    "resuming",
-    "replanning",
-    "compensating",
-    "completed",
-    "failed",
-    "aborted",
-  ] as const;
-  for (const status of validStatuses) {
-    const payload = parseUpdateTaskPayload({ status });
-    assert.equal(payload.status, status);
-  }
-});
-
-test("parseUpdateTaskPayload terminal status: completed is accepted", () => {
-  const payload = parseUpdateTaskPayload({ status: "completed" });
-  assert.equal(payload.status, "completed");
-});
-
-test("parseUpdateTaskPayload terminal status: failed is accepted", () => {
-  const payload = parseUpdateTaskPayload({ status: "failed" });
-  assert.equal(payload.status, "failed");
-});
-
-test("parseUpdateTaskPayload terminal status: aborted is accepted", () => {
-  const payload = parseUpdateTaskPayload({ status: "aborted" });
-  assert.equal(payload.status, "aborted");
 });

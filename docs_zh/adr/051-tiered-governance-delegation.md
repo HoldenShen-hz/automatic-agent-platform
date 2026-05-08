@@ -35,12 +35,10 @@ interface DelegationScope {
 
 | 层级 | 可委托权限 |
 |------|-----------|
-| 平台级 | 全部权限（但须排除 NonOverridableInvariantRegistry） |
+| 平台级 | 全部权限 |
 | 事业群级 | 事业群内权限 |
 | 部门级 | 部门内权限 |
 | 团队级 | 有限权限 |
-
-注：§2.4 NonOverridableInvariantRegistry 不得被任何管理员或域 owner 关闭或覆盖，平台级委托权限亦须遵守此约束，不可委托 NonOverridableInvariantRegistry 的控制权。
 
 ### 约束条件
 

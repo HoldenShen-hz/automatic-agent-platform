@@ -28,39 +28,6 @@ export type HierarchicalMemoryLayer =
  */
 export type LegacyMemoryLayer = HierarchicalMemoryLayer;
 
-/**
- * §29.2: ContextTruncationReport - Required when memory is evicted.
- * "Facts cannot be silently discarded, compression requires loss report"
- */
-export interface ContextTruncationReport {
-  readonly layer: HierarchicalMemoryLayer;
-  readonly evictedRecords: readonly EvictedMemoryRecord[];
-  readonly totalEvicted: number;
-  readonly evictedSizeBytes: number;
-  readonly reason: EvictionReason;
-  readonly timestamp: string;
-}
-
-export interface EvictedMemoryRecord {
-  readonly recordId: string;
-  readonly scope: string;
-  readonly key: string;
-  readonly createdAt: string;
-  readonly lastAccessedAt: string | null;
-  readonly ttlMs: number;
-  readonly priority: number;
-  readonly qualityScore: number | null;
-  readonly importanceScore: number | null;
-}
-
-export type EvictionReason =
-  | "lru_eviction"
-  | "stale_expired"
-  | "size_limit_exceeded"
-  | "manual_truncation"
-  | "quality_below_threshold"
-  | "trust_below_threshold";
-
 export interface LayerPromotionRule {
   from: HierarchicalMemoryLayer;
   to: HierarchicalMemoryLayer;
@@ -77,13 +44,8 @@ export interface MemoryPromotionCandidate {
 }
 
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
-  // R16-38 FIX: Added runtime→session promotion rule
-  // Working memory promotes to session after sufficient hits and quality
-  { from: "runtime", to: "session", minHitCount: 2, minQualityScore: 0.5, minImportanceScore: 0.4 },
   { from: "session", to: "agent", minHitCount: 3, minQualityScore: 0.6, minImportanceScore: 0.5 },
-  // R27-20 FIX: ADR-020 specifies L3→L4 requires accessCount≥10, qualityScore≥0.8
-  // Updated from (8, 0.75) to (10, 0.8) to match ADR specification
-  { from: "agent", to: "project", minHitCount: 10, minQualityScore: 0.8, minImportanceScore: 0.65 },
+  { from: "agent", to: "project", minHitCount: 8, minQualityScore: 0.75, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 12, minQualityScore: 0.8, minImportanceScore: 0.75 },
   { from: "user", to: "evolution", minHitCount: 20, minQualityScore: 0.9, minImportanceScore: 0.85 },
 ];
@@ -139,26 +101,6 @@ export type EvictionStrategy =
 /**
  * Default TTL configurations per §29.2.
  * Maps internal scopes to architecture layer names and TTL values.
- *
- * NOTE: These rules must be consistent with LayerTransitionService's
- * DEFAULT_SIX_LAYER_TRANSITION_RULES and MemoryPromotionEngine's
- * DEFAULT_MEMORY_PROMOTION_RULES. All three define promotion thresholds.
- *
- * Inconsistencies between these rule sets constitute R25-4:
- * - memory-layer-model.ts: DEFAULT_MEMORY_PROMOTION_RULES (runtime/session/agent/project/user/evolution)
- * - layer-transition-service.ts: DEFAULT_SIX_LAYER_TRANSITION_RULES (working/session/episodic/semantic/procedural/meta)
- * - memory-promotion-engine.ts: uses DEFAULT_MEMORY_PROMOTION_RULES
- *
- * The layer names are mapped via mapMemoryScopeToLayer()/architectureLayerToScope():
- *   runtime ↔ working, session ↔ session, agent ↔ episodic,
- *   project ↔ semantic, user ↔ procedural, evolution ↔ meta
- *
- * Known discrepancies (R25-4):
- * - runtime→session: memory-layer-model has (2, 0.5, 0.4) but layer-transition-service has (3, 0.4, 0.3, 0.5h)
- * - session→agent: memory-layer-model has (3, 0.6, 0.5) but layer-transition-service has (8, 0.55, 0.5, 2h)
- * - agent→project: memory-layer-model has (8, 0.75, 0.65) but layer-transition-service has (15, 0.7, 0.65, 24h)
- * - project→user: memory-layer-model has (12, 0.8, 0.75) but layer-transition-service has (25, 0.8, 0.75, 72h)
- * - user→evolution: memory-layer-model has (20, 0.9, 0.85) but layer-transition-service has (40, 0.9, 0.85, 168h)
  */
 export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   {
@@ -336,13 +278,10 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 
   switch (strategy) {
     case "lru": {
-      const now = Date.now();
       const lastAccessed = memory.lastAccessedAt
         ? new Date(memory.lastAccessedAt).getTime()
         : new Date(memory.createdAt).getTime();
-      // Normalize to 0-1: older items get lower values (evicted first)
-      // priority = lastAccessed / now ranges from ~0 (ancient) to ~1 (just accessed)
-      return lastAccessed / now;
+      return lastAccessed;
     }
     case "quality": {
       const quality = memory.qualityScore ?? 0.5;
@@ -375,14 +314,10 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 
 /**
  * Determines if a memory should be evicted based on its layer's eviction strategy.
- * R16-39 FIX: §29.2 requires loss-report/escalation when facts are evicted.
- * Callers must check the return value and generate/log a ContextTruncationReport
- * when eviction is triggered. The eviction itself does not silently discard data.
- *
  * @param memory - The memory record to evaluate
  * @param candidateCount - Number of candidate memories in the same layer
  * @param maxLayerSize - Maximum size for this layer (optional)
- * @returns true if the memory should be evicted (caller must generate loss report)
+ * @returns True if the memory should be evicted
  */
 export function shouldEvict(
   memory: MemoryRecord,
@@ -428,127 +363,4 @@ export function cloneMemoryWithLayer(memory: MemoryRecord, layer: HierarchicalMe
     ...memory,
     scope: layer === "project" ? "project" : layer,
   };
-}
-
-/**
- * Creates a ContextTruncationReport when records are evicted from a layer.
- * §29.2: "Facts cannot be silently discarded, compression requires loss report"
- */
-export function createContextTruncationReport(
-  layer: HierarchicalMemoryLayer,
-  evictedRecords: MemoryRecord[],
-  reason: EvictionReason,
-): ContextTruncationReport {
-  const evicted: EvictedMemoryRecord[] = evictedRecords.map((record) => ({
-    recordId: record.id,
-    scope: record.scope,
-    key: record.id, // Use id as key since MemoryRecord has no key field
-    createdAt: record.createdAt,
-    lastAccessedAt: record.lastAccessedAt ?? null,
-    ttlMs: getLayerTtlConfig(record.scope as HierarchicalMemoryLayer)?.defaultTtlMs ?? 0,
-    priority: getEvictionPriority(record),
-    qualityScore: record.qualityScore ?? null,
-    importanceScore: record.importanceScore ?? null,
-  }));
-
-  // Estimate size: assume average record is ~2KB
-  const estimatedSizeBytes = evictedRecords.length * 2048;
-
-  return {
-    layer,
-    evictedRecords: evicted,
-    totalEvicted: evictedRecords.length,
-    evictedSizeBytes: estimatedSizeBytes,
-    reason,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-/**
- * Performs LRU eviction from the working (runtime) layer with ContextTruncationReport.
- * §29.2 R8-18: "Facts cannot be silently discarded, compression must include loss report"
- *
- * This function handles working layer memory eviction where the LRU strategy is applied.
- * It identifies candidates for eviction and generates a mandatory truncation report.
- *
- * @param records - Current memory records in the working layer
- * @param maxWorkingSize - Maximum number of records allowed in working layer
- * @returns Object containing the eviction report and list of evicted record IDs
- */
-export function evictFromWorkingLayer(
-  records: MemoryRecord[],
-  maxWorkingSize: number,
-): { report: ContextTruncationReport; evictedRecordIds: string[] } {
-  if (records.length <= maxWorkingSize) {
-    // No eviction needed
-    return {
-      report: createContextTruncationReport("runtime", [], "lru_eviction"),
-      evictedRecordIds: [],
-    };
-  }
-
-  // Sort by eviction priority (LRU = lowest priority = evict first)
-  const sortedRecords = [...records].sort(
-    (a, b) => getEvictionPriority(a) - getEvictionPriority(b),
-  );
-
-  // Select records to evict (keep the highest priority ones)
-  const recordsToEvict = sortedRecords.slice(0, records.length - maxWorkingSize);
-
-  // Generate the mandatory ContextTruncationReport
-  const report = createContextTruncationReport("runtime", recordsToEvict, "lru_eviction");
-
-  // Augment the report with working layer specific details per §29.2
-  const workingLayerRecords = recordsToEvict.map((record) => ({
-    recordId: record.id,
-    scope: record.scope,
-    key: record.id,
-    createdAt: record.createdAt,
-    lastAccessedAt: record.lastAccessedAt ?? null,
-    ttlMs: getLayerTtlConfig("runtime")?.defaultTtlMs ?? 60_000,
-    priority: getEvictionPriority(record),
-    qualityScore: record.qualityScore ?? null,
-    importanceScore: record.importanceScore ?? null,
-    // Working layer specific: indicate recency at time of eviction
-    ageMs: Date.now() - new Date(record.createdAt).getTime(),
-  }));
-
-  const augmentedReport: ContextTruncationReport & {
-    readonly impactMetrics: {
-      readonly contextQualityBefore: number;
-      readonly contextQualityAfter: number;
-      readonly oldestRetainedAgeMs: number | null;
-      readonly evictionStrategy: "lru";
-    };
-  } = {
-    ...report,
-    evictedRecords: workingLayerRecords as readonly EvictedMemoryRecord[],
-    impactMetrics: {
-      contextQualityBefore: calculateContextQuality(records),
-      contextQualityAfter: calculateContextQuality(records.filter((r) => !recordsToEvict.some((e) => e.id === r.id))),
-      oldestRetainedAgeMs:
-        records.length > maxWorkingSize
-          ? Math.min(...records.filter((r) => !recordsToEvict.some((e) => e.id === r.id)).map((r) => Date.now() - new Date(r.lastAccessedAt ?? r.createdAt).getTime()))
-          : null,
-      evictionStrategy: "lru",
-    },
-  };
-
-  return {
-    report: augmentedReport as ContextTruncationReport,
-    evictedRecordIds: recordsToEvict.map((r) => r.id),
-  };
-}
-
-/**
- * Calculates a simple context quality metric for records.
- * Used to demonstrate impact of eviction on context quality per §29.2.
- *
- * @param records - Memory records to evaluate
- * @returns Quality score 0-1
- */
-function calculateContextQuality(records: MemoryRecord[]): number {
-  if (records.length === 0) return 0;
-  const qualityScores = records.map((r) => r.qualityScore ?? 0.5);
-  return qualityScores.reduce((sum, q) => sum + q, 0) / qualityScores.length;
 }

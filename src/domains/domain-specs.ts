@@ -17,17 +17,12 @@ const DomainRecipeArchetypeSchemaInternal = z.enum([
 
 export const DomainLifecycleStateSchema = z.enum([
   "draft",
-  "validating",
-  "testing",
-  "certified",
-  "registered",
-  "canary",
-  "active",
-  "deprecated",
-  "retired",
-  "archived",
-  "updating",
   "validated",
+  "registered",
+  "active",
+  "updating",
+  "deprecated",
+  "archived",
 ]);
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
@@ -57,36 +52,17 @@ export const DomainCoreDescriptorSchema = z.object({
   lifecycleState: DomainLifecycleStateSchema.default("draft"),
 });
 
-const DomainRiskSpecSchemaBase = z.object({
+export const DomainRiskSpecSchema = z.object({
   domainId: z.string().min(1),
   riskClass: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   advisoryOnly: z.boolean().default(false),
   humanAccountable: z.boolean().default(false),
   deterministicHotPathOnly: z.boolean().default(false),
-  allowedCapabilityOverrides: z.array(z.string().min(1)).default([]),
-  requiredApprovalPolicies: z.array(z.string().min(1)).default([]),
   liabilityOwner: z.array(z.string().min(1)).min(1),
   compensationModel: z.array(z.enum(["refund", "reversal", "appeal", "manual_repair", "no_compensation"])).min(1),
   sideEffectTypes: z.array(z.string().min(1)).default([]),
   approvalThresholds: z.record(z.string(), z.number().nonnegative()).default({}),
 });
-
-function normalizeDomainRiskSpecInput(input: unknown): unknown {
-  if (input == null || typeof input !== "object" || Array.isArray(input)) {
-    return input;
-  }
-  const record = input as Record<string, unknown>;
-  return {
-    ...record,
-    advisoryOnly: record.advisoryOnly ?? record.advisory_only,
-    humanAccountable: record.humanAccountable ?? record.human_accountable,
-    deterministicHotPathOnly: record.deterministicHotPathOnly ?? record.deterministic_hot_path_only,
-    allowedCapabilityOverrides: record.allowedCapabilityOverrides ?? record.allowed_capability_overrides,
-    requiredApprovalPolicies: record.requiredApprovalPolicies ?? record.required_approval_policies,
-  };
-}
-
-export const DomainRiskSpecSchema = z.preprocess(normalizeDomainRiskSpecInput, DomainRiskSpecSchemaBase);
 
 export const DomainKnowledgeSpecSchema = z.object({
   domainId: z.string().min(1),
@@ -130,60 +106,6 @@ export type DomainKnowledgeSpec = z.infer<typeof DomainKnowledgeSpecSchema>;
 export type DomainEvalSpec = z.infer<typeof DomainEvalSpecSchema>;
 export type DomainGovernanceSpec = z.infer<typeof DomainGovernanceSpecSchema>;
 export type DomainInteractionSpec = z.infer<typeof DomainInteractionSpecSchema>;
-
-/**
- * ResponsibilityBoundary defines how a domain constrains agent autonomy.
- * - advisory_only: domain is informational; no blocking enforcement
- * - human_accountable: domain requires human acknowledgment before autonomous action
- * - deterministic_hot_path_only: domain permits only deterministic (non-LLM) execution in hot path
- * - fully_autonomous: domain permits full autonomous execution
- */
-export type ResponsibilityBoundary =
-  | "advisory_only"
-  | "human_accountable"
-  | "deterministic_hot_path_only"
-  | "fully_autonomous";
-
-/**
- * Maps DomainRiskSpec flags to a single ResponsibilityBoundary for runtime evaluation.
- */
-export function toResponsibilityBoundary(spec: DomainRiskSpec): ResponsibilityBoundary {
-  if (spec.deterministicHotPathOnly) {
-    return "deterministic_hot_path_only";
-  }
-  if (spec.humanAccountable) {
-    return "human_accountable";
-  }
-  if (spec.advisoryOnly) {
-    return "advisory_only";
-  }
-  return "fully_autonomous";
-}
-
-/**
- * Enforces that a given boundary level is respected at runtime.
- * Returns an error code string if violated, or null if permitted.
- */
-export function enforceResponsibilityBoundary(
-  boundary: ResponsibilityBoundary,
-  proposedAutonomy: "full_auto" | "llm_assisted" | "human_required",
-): string | null {
-  switch (boundary) {
-    case "deterministic_hot_path_only":
-      if (proposedAutonomy !== "human_required") {
-        return "domain.responsibility_boundary.deterministic_only_violation";
-      }
-      return null;
-    case "human_accountable":
-      if (proposedAutonomy === "full_auto") {
-        return "domain.responsibility_boundary.human_accountable_violation";
-      }
-      return null;
-    case "advisory_only":
-    case "fully_autonomous":
-      return null;
-  }
-}
 
 const DEFAULT_DOMAIN_RISK_SPECS = {
   healthcare: {

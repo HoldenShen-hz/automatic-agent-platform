@@ -15,5 +15,5 @@ export const RolloutMetrics = "RolloutMetrics";
 export const ImprovementCandidate = "ImprovementCandidate";
 export const RolloutRecord = "RolloutRecord";
 
-export const CANARY_ROLLOUT_STATUSES = ["evaluation_enabled", "canary_5"] as const;
-export const PROGRESIVE_ROLLOUT_STATUSES = ["partial_25", "stable_75", "stable_100", "released"] as const;
+export const CANARY_ROLLOUT_STATUSES = ["shadow", "canary_5"] as const;
+export const PROGRESIVE_ROLLOUT_STATUSES = ["partial_25", "partial_50", "partial_75", "stable"] as const;

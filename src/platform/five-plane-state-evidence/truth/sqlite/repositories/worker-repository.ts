@@ -36,8 +36,8 @@ export class WorkerRepository {
     this.snapshotRepo.insertHeartbeatSnapshot(snapshot);
   }
 
-  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion?: number): void {
-    this.snapshotRepo.upsertWorkerSnapshot(snapshot, expectedVersion ?? snapshot.version ?? 0);
+  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): void {
+    this.snapshotRepo.upsertWorkerSnapshot(snapshot);
   }
 
   public upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): void {
@@ -181,15 +181,6 @@ export class WorkerRepository {
     return this.ticketRepo.listExecutionTicketsByStatuses(statuses);
   }
 
-  // Issue #1910 P1: Paginated version for large-scale reconciliation
-  public listExecutionTicketsByStatusesPaginated(
-    statuses: ExecutionTicketRecord["status"][],
-    limit: number,
-    offset: number,
-  ): ExecutionTicketRecord[] {
-    return this.ticketRepo.listExecutionTicketsByStatusesPaginated(statuses, limit, offset);
-  }
-
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
     return this.ticketRepo.listDispatchableExecutionTickets(now, queueName);
   }
@@ -267,13 +258,5 @@ export class WorkerRepository {
 
   public getLatestFencingToken(executionId: string): number {
     return this.ticketRepo.getLatestFencingToken(executionId);
-  }
-
-  public deleteWorkerSnapshot(workerId: string): boolean {
-    return this.snapshotRepo.deleteWorkerSnapshot(workerId);
-  }
-
-  public updateWorkerStatus(workerId: string, status: string, updatedAt: string): boolean {
-    return this.snapshotRepo.updateWorkerStatus(workerId, status, updatedAt);
   }
 }

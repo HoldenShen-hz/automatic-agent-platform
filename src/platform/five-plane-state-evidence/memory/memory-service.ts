@@ -33,7 +33,6 @@ import {
   buildMemoryConsolidationSummary,
   hasExplicitMemoryBoundary,
 } from "./memory-consolidation.js";
-import { evictFromWorkingLayer } from "./memory-layer-model.js";
 import {
   normalizeMemoryContent,
   stringifyStructuredMemoryContent,
@@ -46,9 +45,6 @@ import {
   type MemoryRecallQuery,
 } from "./memory-quality.js";
 import { MemoryError } from "../../contracts/errors.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const memoryServiceLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Input for creating a memory via remember()
@@ -125,11 +121,6 @@ export class MemoryService {
   // V-02: Limit memory content size to prevent memory exhaustion
   private static readonly MAX_CONTENT_SIZE_BYTES = 1_000_000; // 1MB
 
-  // R8-18 FIX: Working layer LRU eviction requires ContextTruncationReport per §29.2
-  // "Facts cannot be silently discarded, compression requires loss report"
-  // Maximum number of records in the working (runtime/task_runtime) layer before LRU eviction
-  private static readonly MAX_WORKING_MEMORY_RECORDS = 1000;
-
   public getStore(): AuthoritativeTaskStore {
     return this.store;
   }
@@ -144,20 +135,19 @@ export class MemoryService {
    */
   public remember(input: RememberMemoryInput): MemoryRecord {
     // V-02: Validate content size before processing
-    // R5-47 FIX: Calculate actual byte size using Buffer.byteLength() instead of
-    // .length which counts UTF-16 code units. CJK characters can be 3-4 bytes each,
-    // so ".length" underestimates actual memory usage and content > 1MB can pass.
-    const contentText = typeof input.content === "string"
-      ? input.content
-      : JSON.stringify(input.content);
-    const contentSizeBytes = Buffer.byteLength(contentText, "utf8");
-    if (contentSizeBytes > MemoryService.MAX_CONTENT_SIZE_BYTES) {
-      throw new MemoryError("memory.content_too_large", `Memory content size ${contentSizeBytes} bytes exceeds maximum of ${MemoryService.MAX_CONTENT_SIZE_BYTES} bytes`, {
-        details: { contentSizeBytes, maxSize: MemoryService.MAX_CONTENT_SIZE_BYTES },
+    const contentSize = typeof input.content === "string"
+      ? input.content.length
+      : JSON.stringify(input.content).length;
+    if (contentSize > MemoryService.MAX_CONTENT_SIZE_BYTES) {
+      throw new MemoryError("memory.content_too_large", `Memory content size ${contentSize} exceeds maximum of ${MemoryService.MAX_CONTENT_SIZE_BYTES} bytes`, {
+        details: { contentSize, maxSize: MemoryService.MAX_CONTENT_SIZE_BYTES },
       });
     }
 
     // V-03: Write gate - minimum content quality check
+    const contentText = typeof input.content === "string"
+      ? input.content
+      : JSON.stringify(input.content);
     if (contentText.trim().length < 10) {
       throw new MemoryError("memory.content_too_short", `Memory content too short: minimum 10 characters required, got ${contentText.trim().length}`, {
         details: { contentLength: contentText.trim().length, minLength: 10 },
@@ -165,10 +155,7 @@ export class MemoryService {
     }
 
     // V-04: Deduplication - compute content hash and check for existing
-    // R5-46 FIX: Use full 64-char SHA-256 hash (256 bits) to avoid collision at scale.
-    // Previously truncated to 16 hex chars (64-bit) which has significant collision
-    // probability with ~10K records.
-    const contentHash = createHash("sha256").update(contentText).digest("hex");
+    const contentHash = createHash("sha256").update(contentText).digest("hex").slice(0, 16);
     const existing = this.store.memory.findMemoryByContentHash(contentHash, input.scope);
     if (existing && existing.status === "active") {
       // Update access tracking and return existing memory
@@ -221,41 +208,6 @@ export class MemoryService {
     };
 
     this.store.memory.insertMemory(record);
-
-    // R8-18 FIX: Enforce working layer capacity with ContextTruncationReport per §29.2
-    // "Facts cannot be silently discarded, compression requires loss report"
-    // Check if this is a working layer memory and enforce LRU eviction if over capacity
-    if (record.memoryLayer === "layer_3" && (record.scope === "task_runtime" || record.scope === "runtime")) {
-      const workingMemories = this.store.memory.listMemories({
-        memoryLayers: ["layer_3"],
-        scopes: ["task_runtime", "runtime"],
-        includeExpired: false,
-        includeRevoked: false,
-      });
-
-      if (workingMemories.length > MemoryService.MAX_WORKING_MEMORY_RECORDS) {
-        const { evictedRecordIds, report } = evictFromWorkingLayer(
-          workingMemories,
-          MemoryService.MAX_WORKING_MEMORY_RECORDS,
-        );
-
-        // Revoke evicted records (they are marked as revoked, not deleted)
-        for (const evictedId of evictedRecordIds) {
-          this.store.memory.revokeMemory(evictedId, nowIso(), "lru_eviction:working_layer_capacity_exceeded");
-        }
-
-        // NOTE: The report is generated and available for logging/auditing per §29.2
-        // In production, this should be sent to a logging/metrics system
-        if (evictedRecordIds.length > 0) {
-          memoryServiceLogger.warn("memory.working_layer_eviction", {
-            report,
-            evictedCount: evictedRecordIds.length,
-            remainingCount: workingMemories.length - evictedRecordIds.length,
-          });
-        }
-      }
-    }
-
     return record;
   }
 

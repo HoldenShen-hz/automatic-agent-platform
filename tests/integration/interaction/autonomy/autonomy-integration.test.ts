@@ -100,7 +100,7 @@ test("integration: ProgressiveAutonomyService and AutonomyGovernanceService comp
   assert.equal(governanceSnapshot.agentId, "composed_agent");
 });
 
-test("integration: ProgressiveAutonomyService demotes P0 incident to suggestion with audit", async () => {
+test("integration: ProgressiveAutonomyService handles P0 incident freeze with audit", async () => {
   const progressiveService = new ProgressiveAutonomyService();
   const auditService = new AutonomyAuditService();
 
@@ -125,7 +125,7 @@ test("integration: ProgressiveAutonomyService demotes P0 incident to suggestion 
 
   const auditRecords = auditService.getByAgent("incident_agent");
   assert.equal(auditRecords.length, 1);
-  assert.equal(auditRecords[0]!.toLevel, "suggestion");
+  assert.equal(auditRecords[0]!.toLevel, "frozen");
 });
 
 test("integration: ProgressiveAutonomyService P1 incident demotion with severityBasedDemotion", async () => {

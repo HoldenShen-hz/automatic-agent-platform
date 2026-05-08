@@ -27,10 +27,6 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
     return this.delegateLegacy("updateTaskOutput", "task", "updateTaskOutput", ...args);
   }
 
-  public override updateTaskOutputCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskOutputCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskOutputCas"]> {
-    return this.delegateLegacy("updateTaskOutputCas", "task", "updateTaskOutputCas", ...args);
-  }
-
   public override updateTaskStatusCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskStatusCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskStatusCas"]> {
     return this.delegateLegacy("updateTaskStatusCas", "task", "updateTaskStatusCas", ...args);
   }
@@ -41,10 +37,6 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
 
   public override updateTaskInput(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskInput"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskInput"]> {
     return this.delegateLegacy("updateTaskInput", "task", "updateTaskInput", ...args);
-  }
-
-  public override updateTaskTitle(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskTitle"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskTitle"]> {
-    return this.delegateLegacy("updateTaskTitle", "task", "updateTaskTitle", ...args);
   }
 
   public override countQueuedTasks(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["countQueuedTasks"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["countQueuedTasks"]> {

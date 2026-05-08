@@ -119,6 +119,8 @@ function countByLearningType(
     failure_pattern: 0,
     user_correction: 0,
     recovery_playbook: 0,
+    model_retraining: 0,
+    dataset_gap: 0,
   };
   for (const learningObject of learningObjects) {
     counts[learningObject.learningType] += 1;

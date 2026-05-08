@@ -15,8 +15,7 @@ export {
   SKILL_GOVERNANCE_FOUNDATION_SQL,
   TASK_TENANT_SCOPE_SQL,
   BILLING_COLLECTION_FOUNDATION_SQL,
-  PRODUCT_GOVERNANCE_TENANT_SCOPE_SQL,
-  CONFIG_VERSIONING_AND_ROLLOUT_SQL,
+  PRODUCT_GOVERNANCE_TENANT_SCOPE_SQL
 };
 
 const TENANT_DATA_NAMESPACE_FOUNDATION_SQL = `
@@ -584,102 +583,4 @@ CREATE TABLE IF NOT EXISTS dlq_records (
 CREATE INDEX IF NOT EXISTS idx_dlq_records_status ON dlq_records(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dlq_records_consumer ON dlq_records(consumer_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dlq_records_source_event ON dlq_records(source_event_id);
-`;
-
-export const BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL = `
-ALTER TABLE usage_events ADD COLUMN harness_run_id TEXT NULL;
-ALTER TABLE usage_events ADD COLUMN node_run_id TEXT NULL;
-ALTER TABLE usage_events ADD COLUMN attempt_id TEXT NULL;
-ALTER TABLE usage_events ADD COLUMN step_id TEXT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_usage_events_harness_run_captured_at
-  ON usage_events(harness_run_id, captured_at DESC);
-CREATE INDEX IF NOT EXISTS idx_usage_events_node_run_captured_at
-  ON usage_events(node_run_id, captured_at DESC);
-`;
-
-/**
- * Migration 50: Adds persistent config version snapshots and rollout tracking.
- * R15-78: ConfigVersioningService now persists version snapshots to SQLite.
- * R15-79: ConfigRolloutService now persists active rollouts to SQLite.
- */
-const CONFIG_VERSIONING_AND_ROLLOUT_SQL = `
--- Config version snapshots table for durable version history
-CREATE TABLE IF NOT EXISTS config_version_snapshots (
-  version_id TEXT PRIMARY KEY,
-  config_path TEXT NOT NULL,
-  layer TEXT NOT NULL,
-  source_id TEXT NULL,
-  content_json TEXT NOT NULL,
-  content_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  created_by TEXT NULL,
-  reason TEXT NULL,
-  parent_version_id TEXT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_config_version_snapshots_path_created
-  ON config_version_snapshots(config_path, layer, source_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_config_version_snapshots_parent
-  ON config_version_snapshots(parent_version_id);
-
--- Config rollback points table
-CREATE TABLE IF NOT EXISTS config_rollback_points (
-  rollback_id TEXT PRIMARY KEY,
-  version_id TEXT NOT NULL,
-  config_path TEXT NOT NULL,
-  layer TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  created_by TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_config_rollback_points_path
-  ON config_rollback_points(config_path, layer, created_at DESC);
-
--- Active config rollouts table for durable rollout tracking
-CREATE TABLE IF NOT EXISTS config_rollouts (
-  rollout_id TEXT PRIMARY KEY,
-  config_path TEXT NOT NULL,
-  layer TEXT NOT NULL,
-  source_id TEXT NULL,
-  stage_phase TEXT NOT NULL,
-  stage_percentage INTEGER NOT NULL,
-  stage_min_duration_ms INTEGER NOT NULL,
-  stage_auto_progress INTEGER NOT NULL DEFAULT 0,
-  started_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  target_percentage INTEGER NOT NULL,
-  current_percentage INTEGER NOT NULL,
-  metadata_json TEXT NULL,
-  health_gates_json TEXT NOT NULL,
-  last_health_check_at TEXT NULL,
-  last_health_check_passed INTEGER NULL
-);
-CREATE INDEX IF NOT EXISTS idx_config_rollouts_path
-  ON config_rollouts(config_path, layer, source_id);
-CREATE INDEX IF NOT EXISTS idx_config_rollouts_stage
-  ON config_rollouts(stage_phase, updated_at DESC);
-`;
-
-/**
- * R16-37: Migration 52 - Add extended DLQ columns for DlqService persistence.
- * Adds columns needed for ExtendedDeadLetterRecord to survive process restarts.
- */
-export const EXTENDED_DLQ_RECORDS_SQL = `
-ALTER TABLE dlq_records ADD COLUMN event_type TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN error_message TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN max_retries INTEGER NOT NULL DEFAULT 5;
-ALTER TABLE dlq_records ADD COLUMN reason TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN last_attempt_at TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN operator_action_log_json TEXT NULL;
-`;
-
-/**
- * R16-37/R31-22: Migration 53 - Add explicit first/last failure timestamps and
- * incident linkage so persisted DLQ entries satisfy the full §28.8 operator contract.
- */
-export const DLQ_INCIDENT_LINKING_SQL = `
-ALTER TABLE dlq_records ADD COLUMN first_failed_at TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN last_failed_at TEXT NULL;
-ALTER TABLE dlq_records ADD COLUMN linked_incident_id TEXT NULL;
-CREATE INDEX IF NOT EXISTS idx_dlq_records_linked_incident
-  ON dlq_records(linked_incident_id);
 `;

@@ -66,26 +66,6 @@ export class AutonomyGovernanceService {
     const trustScore = calculateTrustScore(score);
     const trustLevel = mapTrustLevel(trustScore);
     const promotion = assessPromotion(score);
-
-    // §42.2: P0/P1 incidents bypass trustScore-based demotion and require severity-based handling
-    if (score.incidents > 0 && (score.lastIncidentSeverity === "P0" || score.lastIncidentSeverity === "P1")) {
-      // Root cause: the prior implementation detected P0/P1 but discarded
-      // promotion.targetLevel when assessPromotion returned a demotion-only recommendation.
-      // That effectively neutralized severity-based governance and left the level unchanged.
-      const recommendedLevel = promotion.targetLevel;
-      return {
-        agentId,
-        capabilityId: score.capabilityId,
-        currentLevel: score.currentAutonomy,
-        recommendedLevel,
-        trustScore,
-        trustLevel,
-        promoted: compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
-          || (promotion.shouldPromote && recommendedLevel === nextAutonomyLevel(score.currentAutonomy)),
-        reasonCodes: promotion.reasonCodes,
-      };
-    }
-
     const recommendedLevel = promotion.shouldPromote
       ? promotion.targetLevel
       : trustScore < 30

@@ -22,7 +22,6 @@ import type { MemoryRecord } from "../../contracts/types/domain.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
   getLayerMetadata,
-  mapScopeToSixLayer,
   type SixLayerMemoryType,
 } from "./layer-transition-service.js";
 
@@ -42,17 +41,12 @@ export interface DecayConfig {
 
 /**
  * Default decay configs per layer
- *
- * §29.2: Working and procedural memory MUST NOT be dropped silently.
- * - Working memory: halfLifeSeconds = Infinity (no decay)
- * - Procedural memory: halfLifeSeconds = Infinity (no decay)
- * Only session, episodic, semantic layers have active decay.
  */
 export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
   working: {
-    halfLifeSeconds: Number.POSITIVE_INFINITY, // §29.2: No decay - working memory must not be dropped
-    minFreshness: 1.0,
-    decayRateMultiplier: 0.0,
+    halfLifeSeconds: 300, // 5 minutes
+    minFreshness: 0.1,
+    decayRateMultiplier: 1.0,
     accessBoostFactor: 0.1,
   },
   session: {
@@ -74,9 +68,9 @@ export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
     accessBoostFactor: 0.03,
   },
   procedural: {
-    halfLifeSeconds: Number.POSITIVE_INFINITY, // §29.2: No decay - procedural memory must not be dropped
-    minFreshness: 1.0,
-    decayRateMultiplier: 0.0,
+    halfLifeSeconds: 2592000, // 30 days
+    minFreshness: 0.3,
+    decayRateMultiplier: 0.2,
     accessBoostFactor: 0.02,
   },
   meta: {
@@ -139,12 +133,7 @@ export interface DecaySummary {
  * Calculates the freshness score for a memory
  *
  * Uses exponential decay with access boosting:
- * freshness = max(minFreshness, initial * exp(-(decayRate * age) / accessBoostMultiplier))
- * where accessBoostMultiplier = 1 + accessBoostFactor * log(1 + hitCount)
- *
- * Access boost slows decay by damping the decay rate rather than adding
- * directly to freshness, ensuring high-frequency memories still decay over
- * time without saturating at 1.0.
+ * freshness = max(minFreshness, initial * exp(-decayRate * age) * (1 + accessBoost)^hitCount)
  */
 export function calculateFreshness(
   memory: MemoryRecord,
@@ -158,23 +147,19 @@ export function calculateFreshness(
   // Base freshness starts at 1.0
   let freshness = 1.0;
 
-  // R29-36 fix: The exponential access boost (1 + factor * log(hitCount)) causes frequently
-  // accessed memories to never decay - the multiplier grows unbounded and effectively
-  // freezes freshness at 1.0. Changed to diminishing-returns function:
-  // freshness = 1 / (1 + Math.log(accessCount + 1))
-  // This ensures high-frequency memories still decay over time without saturating.
-  const hitCount = memory.hitCount ?? 0;
-  const accessBoostMultiplier = 1 / (1 + Math.log(hitCount + 1));
-
-  // Apply exponential decay based on layer half-life, with access boost slowing decay
+  // Apply exponential decay based on layer half-life
   if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
     const decayRate = Math.LN2 / config.halfLifeSeconds;
-    const effectiveDecayRate = (decayRate * config.decayRateMultiplier) / accessBoostMultiplier;
+    const effectiveDecayRate = decayRate * config.decayRateMultiplier;
     freshness = freshness * Math.exp(-effectiveDecayRate * ageSeconds);
   } else {
-    // Meta layer has no decay - freshness stays at 1.0
+    // Meta layer has no decay
     freshness = 1.0;
   }
+
+  // Apply access boost (each hit slows decay)
+  const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
+  freshness = freshness * accessBoost;
 
   // Clamp to minFreshness
   return Math.max(config.minFreshness, Math.min(1.0, freshness));
@@ -207,12 +192,7 @@ export class MemoryDecayService {
    * Gets the decay configuration for a memory's layer
    */
   public getDecayConfig(memory: MemoryRecord): DecayConfig {
-    // R5-48 FIX: mapScopeToSixLayer() must be called to convert scope string
-    // (e.g., "project", "workspace") to SixLayerMemoryType before passing to
-    // getLayerMetadata(). Previously passed memory.scope directly which bypassed
-    // the scope→layer mapping, causing "project" and other real scopes to fall
-    // back to session decay rate instead of their proper layer rates.
-    const layerMeta = getLayerMetadata(mapScopeToSixLayer(memory.scope));
+    const layerMeta = getLayerMetadata(memory.scope as SixLayerMemoryType);
     if (layerMeta) {
       const config = this.decayConfigs[layerMeta.layer];
       if (config) {
@@ -243,18 +223,14 @@ export class MemoryDecayService {
     const currentFreshness = calculateFreshness(memory, config, evaluatedAt);
     const decayAmount = Math.max(0, previousFreshness - currentFreshness);
 
-    // Use the same bounded multiplier as calculateFreshness() so audit data reflects
-    // the actual decay-rate dampening applied during freshness evaluation.
-    const hitCount = memory.hitCount ?? 0;
-    const accessBoost = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
+    // Calculate access boost
+    const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
 
     // Calculate effective decay rate
     const decayRate = config.halfLifeSeconds > 0
       ? Math.LN2 / config.halfLifeSeconds
       : 0;
-    const effectiveDecayRate = accessBoost > 0
-      ? (decayRate * config.decayRateMultiplier) / accessBoost
-      : decayRate * config.decayRateMultiplier;
+    const effectiveDecayRate = decayRate * config.decayRateMultiplier;
 
     return {
       memoryId: memory.id,

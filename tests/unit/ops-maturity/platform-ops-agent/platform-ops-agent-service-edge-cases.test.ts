@@ -7,11 +7,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import {
-  DEFAULT_OPS_DATA_BOUNDARY,
-  PlatformOpsAgentService,
-  type OpsAgentDefinition,
-} from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import { PlatformOpsAgentService, type OpsAgentDefinition } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 
 function createService(overrides: Partial<OpsAgentDefinition> = {}) {
   return new PlatformOpsAgentService({
@@ -21,7 +17,6 @@ function createService(overrides: Partial<OpsAgentDefinition> = {}) {
     requiredApprovals: [],
     maxAutonomyLevel: "trusted_automation",
     evidenceRequirements: ["evidence:test"],
-    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
     ...overrides,
   });
 }

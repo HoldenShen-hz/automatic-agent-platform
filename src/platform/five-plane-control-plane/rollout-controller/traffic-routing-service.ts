@@ -12,8 +12,6 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createOperationalDirective } from "../../contracts/control-directive/index.js";
-import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -157,10 +155,7 @@ type RawRow = Record<string, unknown>;
  * traffic shifting and health-gated promotion/rollback.
  */
 export class TrafficRoutingService {
-  constructor(
-    private readonly db: AuthoritativeSqlDatabase,
-    private readonly directiveSink: ControlPlaneDirectiveSink | null = null,
-  ) {}
+  constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
   // ── Slot Management ────────────────────────────────────────────────
 
@@ -264,14 +259,6 @@ export class TrafficRoutingService {
 
     // Apply initial weight
     this.applyTrafficWeights(fromSlot, 100 - config.initialWeightPct, toSlot, config.initialWeightPct);
-    this.emitOperationalDirective("mode_switch", initiatedBy, "rollout.canary_shift_started", {
-      shiftId: shift.id,
-      fromSlot,
-      toSlot,
-      fromWeight: shift.fromWeight,
-      toWeight: shift.toWeight,
-      stepWeights: steps,
-    });
 
     return shift;
   }
@@ -360,14 +347,6 @@ export class TrafficRoutingService {
       )
       .run(rollback.id, rollback.shiftId, rollback.trigger, rollback.fromVersion, rollback.toVersion, rollback.reason, rollback.executedAt, rollback.completedAt, rollback.success ? 1 : 0);
 
-    this.emitOperationalDirective("rollback", "system", reason, {
-      rollbackId: rollback.id,
-      shiftId,
-      trigger,
-      fromVersion,
-      toVersion,
-    });
-
     return rollback;
   }
 
@@ -439,27 +418,6 @@ export class TrafficRoutingService {
     this.db.connection
       .prepare(`UPDATE deployment_slots SET traffic_weight = ?, status = CASE WHEN ? > 0 THEN 'active' ELSE status END, updated_at = ? WHERE slot = ? AND status IN ('active', 'standby')`)
       .run(weightB, weightB, now, slotB);
-  }
-
-  private emitOperationalDirective(
-    type: "mode_switch" | "rollback",
-    principalId: string,
-    reason: string,
-    params: Record<string, unknown>,
-  ): void {
-    if (this.directiveSink == null) {
-      return;
-    }
-    this.directiveSink.emitOperationalDirective(createOperationalDirective({
-      type,
-      issuedBy: {
-        principalId,
-        tenantId: "system",
-        roles: ["release_controller"],
-      },
-      reason,
-      params,
-    }));
   }
 
   /**

@@ -52,7 +52,7 @@ export function buildInteractionGovernanceStartupPlan(): InteractionGovernanceSt
 }
 
 export function registerInteractionGovernanceStartupPlan(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): InteractionGovernanceStartupPlan {
   registry.register<InteractionGovernanceStartupPlan>(INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID, {
     init: () => buildInteractionGovernanceStartupPlan(),

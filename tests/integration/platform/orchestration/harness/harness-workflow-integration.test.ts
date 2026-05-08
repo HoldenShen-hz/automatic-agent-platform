@@ -27,7 +27,7 @@ function createWorkflowContext(prefix: string) {
   return { workspace, db, store };
 }
 
-test("Harness workflow retries same plan when required evidence is missing", () => {
+test("Harness workflow progresses through planner->generator->evaluator with guardrail escalation recorded", () => {
   const ctx = createWorkflowContext("aa-harness-wf-");
   try {
     const service = new HarnessRuntimeService();
@@ -35,7 +35,7 @@ test("Harness workflow retries same plan when required evidence is missing", () 
       policyIds: ["policy_001", "policy_002"],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: ["bash", "read", "write"] },
+      toolPolicy: { allowedTools: ["bash", "read", "write"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 70 },
       output_policy: { requiredEvidence: ["execution_trace"], redactSensitiveData: true },
       budget: { maxSteps: 20, maxCost: 2.0, maxDurationMs: 120000 },
@@ -52,16 +52,15 @@ test("Harness workflow retries same plan when required evidence is missing", () 
       producedEvidenceRefs: ["exec_trace_001"],
     });
 
-    assert.equal(run.status, "running");
-    assert.equal(run.pauseReason, null);
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.equal(run.steps.length, 3);
     assert.equal(run.steps[0]?.role, "planner");
     assert.equal(run.steps[1]?.role, "generator");
     assert.equal(run.steps[2]?.role, "evaluator");
     assert.ok(run.decision);
-    assert.equal(run.decision?.action, "retry_same_plan");
-    assert.equal(run.decision?.reasonCode, "harness.guardrail_retry_same_plan");
-    assert.equal(run.hitlRequest, null);
+    assert.equal(run.decision?.action, "escalate_to_human");
+    assert.equal(run.hitlRequest?.reason, "guardrail_or_operator_escalation");
     assert.ok(run.feedbackEnvelope);
   } finally {
     ctx.db.close();
@@ -77,7 +76,7 @@ test("Harness workflow decision logic exposes replan when evaluator score < 0.5"
       policyIds: ["policy_001"],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: ["bash"] },
+      toolPolicy: { allowedTools: ["bash"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 70 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
@@ -128,7 +127,7 @@ test("Harness workflow opens HITL review when requiresHuman is true", () => {
       policyIds: ["policy_001"],
       approvalMode: "required",
       autonomyMode: "supervised",
-      tool_policy: { allowedTools: ["bash", "write"] },
+      toolPolicy: { allowedTools: ["bash", "write"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
       output_policy: { requiredEvidence: ["security_scan"], redactSensitiveData: true },
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
@@ -181,7 +180,7 @@ test("Harness workflow resolves HITL approval and continues", () => {
       policyIds: ["policy_001"],
       approvalMode: "required",
       autonomyMode: "supervised",
-      tool_policy: { allowedTools: ["bash"] },
+      toolPolicy: { allowedTools: ["bash"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
@@ -216,7 +215,7 @@ test("Harness workflow aborts when max iterations reached", () => {
       policyIds: ["policy_001"],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: ["bash"] },
+      toolPolicy: { allowedTools: ["bash"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 70 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 3, maxCost: 1.0, maxDurationMs: 60000 },
@@ -271,7 +270,7 @@ test("Harness workflow recovers from checkpoint", () => {
       policyIds: ["policy_001"],
       approvalMode: "none",
       autonomyMode: "auto",
-      tool_policy: { allowedTools: ["bash"] },
+      toolPolicy: { allowedTools: ["bash"] },
       risk_policy: { maxRiskScore: 80, escalationThreshold: 70 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },

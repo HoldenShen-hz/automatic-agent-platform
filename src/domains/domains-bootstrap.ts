@@ -7,7 +7,6 @@ import {
 } from "./domain-baseline-catalog.js";
 
 export type { DomainBaseline, VerticalDomainPhase } from "./domain-baseline-catalog.js";
-export { listVerticalDomainBaselines, listVerticalDomainBaselinesByPhase } from "./domain-baseline-catalog.js";
 export type DomainReadinessRing = "ring1" | "ring2" | "ring3";
 
 export const DOMAINS_CATALOG_SERVICE_ID = "w5.domains.catalog";
@@ -88,7 +87,7 @@ export function buildDomainsBootstrap(): DomainsBootstrap {
 }
 
 export function registerDomainsBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsBootstrap {
   registry.register<readonly DomainBaseline[]>(DOMAINS_CATALOG_SERVICE_ID, {
     init: () => listVerticalDomainBaselines(),

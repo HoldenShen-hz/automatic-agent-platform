@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -81,32 +81,11 @@
   - `Queues`
   - `Feature Flags`
   - `Capability / Entitlement`
-- `Extended`（按需启用）
-  - `Plugin Management`
-  - `Domain Registry`
-  - `SLA Configuration`
-  - `Connector Catalog`
-  - `Agent Lifecycle`
-  - `Learning Hub`
-- `Shared Features`
-  - `Prompt Library`
-  - `Template Builder`
-  - `Evaluation Harness`
-  - `Workflow Debugger`
-  - `Cost Dashboard`
-  - `Edge Runtime`
-  - `Multi-Region`
-  - `Compliance Reporter`
-  - `Chaos Engineering`
-  - `Capacity Planner`
-  - `Workflow Debugger`
-  - `Platform Ops Agent`
 
 规则：
 
 - 当前阶段不要求一次性铺满所有页面。
 - 但导航分组应从一开始按能力域组织，而不是页面墙式平铺。
-- Extended 和 Shared Features 为按需启用的扩展模块，根据部署规模逐步启用。
 
 ## 4. 首页排序规则
 
@@ -132,8 +111,10 @@ Console 首页应按以下优先级组织：
 
 最小字段：
 
-- `harness_run_id`
-- `NodeRun` 列表（含 node_id/status/input/output）
+- `task_id`
+- `task_status`
+- `current_step`
+- `current_execution`
 - `blocked_reason?`
 - `latest_tool_call?`
 - `latest_decision?`
@@ -151,16 +132,17 @@ Console 首页应按以下优先级组织：
 
 最小字段：
 
-- `harness_run_id`
-- `plan_graph`（含 nodes/edges 图结构）
-- `NodeRun` 列表（含 node_id/status/attempts）
+- `workflow_id`
+- `workflow_status`
+- `steps`
+- `current_step_index`
 - `dependency_state`
 - `approval_nodes`
 - `evidence_refs`
 
 最小动作：
 
-- 查看 node output
+- 查看 step output
 - 查看 dependency / blocked state
 - 打开 recovery history
 - 查看 compensation / replay 证据
@@ -219,20 +201,9 @@ Console 首页应按以下优先级组织：
 
 最小动作：
 
-- 重试某个 `NodeAttempt`
-- 跳过某个 `NodeRun`
-- 注入 `override_artifact_ref`
-- 变更 `worker / model / policy` 路由
-- 触发 compensation / replay / rollback
-
-约束：
-
-- 不得再定义 `retry_step / skip_step / override_step_output` 这类 step-oriented legacy 动作名。
-- 所有 takeover 动作必须显式携带 `harness_run_id`，节点级动作还必须带 `node_run_id`。
-- workflow 图展示必须来自 `plan_graph`，不得以 `workflow_id + steps[] + current_step_index` 充当 cockpit truth。
-- `retry_node_run`
-- `skip_node_run`
-- `override_node_output`
+- `retry_step`
+- `skip_step`
+- `override_step_output`
 - `switch_worker`
 - `manual_cancel`
 - `mark_unrecoverable`
@@ -334,29 +305,3 @@ Automatic Agent 的 UI 不应首先长成“另一个聊天应用”。
 - 一个能下钻 evidence 的 Task / Workflow Cockpit
 - 一个能处理审批与解释的 Approval Center
 - 一个能接管和止损的 Admin Console
-
-## v4.3 Architecture Remediation
-
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
-
-- R16-86: 本 contract 原先未明确标注 UI 视角的 canonical entity 锚点和 legacy 映射关系，根因是 UI contract 在 v4.3 迁移期间未同步 re-baseline，仍引用旧架构的 task/execution 视图。修复：正文现明确 UI 层必须以 `HarnessRun` / `NodeRun` / `PlanGraphBundle` 为 authoritative entity，`task_id` 只作为 legacy projection 查询键，`execution` / `WorkflowState` / `TaskRecord` 仅保留兼容 alias。
-
-强制规则：UI 展示层不得反向定义 runtime truth；`TaskCockpit` / `WorkflowCockpit` 必须锚定 `harness_run_id` + `node_runs[]` 主链；`plan_graph` 展示必须使用 `PlanGraphBundle` 而非旧 `ExecutionPlan` / `WorkflowStep` 线性结构；`ApprovalCenter` 的 `task_id` 投影必须显式映射到 `harness_run_id`；所有 legacy 别名字段不得作为新实现入口。
-
-### Canonical Entity Mapping for UI Contracts
-
-| UI 旧称 | v4.3 Canonical | 备注 |
-| --- | --- | --- |
-| `task_id`（作为主键） | `harness_run_id` | UI Cockpit 锚点必须用 `harness_run_id`，`task_id` 仅作 legacy 查询兼容 |
-| `execution_id` | `harness_run_id` | `/executions/:id/inspect` 只保留兼容别名，映射到 harness_run |
-| `step_id` | `node_run_id` | Cockpit 展示 node 状态必须用 `NodeRun`，`step_id` 仅作 legacy alias |
-| `WorkflowState` | `HarnessRun` + `PlanGraphBundle` 投影 | WorkflowCockpit 状态源必须是 `HarnessRun.status` + `planGraphBundle.graph` |
-| `TaskRecord` | `HarnessRun` + `TaskInspectView` | TaskCockpit 顶层必须展示 `HarnessRun`，不得直接展示旧 TaskRecord |
-| `ExecutionPlan` | `PlanGraphBundle` | Plan graph 展示必须用 `PlanGraphBundle`，`ExecutionPlan` 仅作兼容 alias |
-
-### UI Contract 引用约束
-
-- UI contract 必须引用 v4.3 canonical contract（`harness-run-contract.md`、`plan-graph-patch-contract.md`、`node-run-attempt-receipt-contract.md`），不得引用旧 v3.x runtime 文档作为 authoritative 源。
-- OAPEFLIR 阶段视图（`current_stage_view` / `loop_iteration_view`）是投影字段，不得作为 runtime truth 使用。
-- UI 侧的 `blocked_reason` 展示必须可 drill-down 到 `NodeRun.status` + `HarnessRun` 状态机，而非只展示字符串。
-- `ApprovalCenter` 的 `task_id` 展示必须能映射到对应的 `harness_run_id`，供 operator 追溯完整执行链。

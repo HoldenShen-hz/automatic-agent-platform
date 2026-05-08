@@ -23,7 +23,7 @@ export function buildInterfacePlaneBootstrap(): InterfacePlaneBootstrap {
 }
 
 export function registerInterfacePlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): InterfacePlaneBootstrap {
   registry.register<readonly InterfaceCapabilityBaseline[]>(INTERFACE_PLANE_CATALOG_SERVICE_ID, {
     init: () => listInterfaceCapabilityBaselines(),

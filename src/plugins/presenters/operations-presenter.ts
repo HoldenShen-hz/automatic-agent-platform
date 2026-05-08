@@ -7,31 +7,17 @@
  * §G8: Operations domain — formats for "operator" and "reviewer" audiences.
  */
 
-import {
-  resolveMachineOutputExecutionId,
-  type DomainPresenterPlugin,
-  type HumanOutput,
-  type MachineOutput,
-  type PluginLifecycleContext,
-} from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput } from "../../domains/registry/plugin-spi.js";
 
-function resolveMachineOutputStepId(output: MachineOutput): string {
-  return resolveMachineOutputExecutionId(output);
-}
-
-function resolveCitation(output: MachineOutput): string {
-  return output.outputRef ?? resolveMachineOutputStepId(output);
-}
-
-function formatIncident(output: MachineOutput): string {
+function formatIncident(output: { stepId: string; payload: Record<string, unknown> }): string {
   const severity = output.payload["severity"] as string ?? "unknown";
   const system = output.payload["system"] as string ?? "unknown";
   const description = output.payload["description"] as string ?? "No description provided.";
   return `## [${severity.toUpperCase()}] ${system}\n\n${description}`;
 }
 
-function formatRunbook(output: MachineOutput): string {
-  const title = output.payload["title"] as string ?? resolveMachineOutputStepId(output);
+function formatRunbook(output: { stepId: string; payload: Record<string, unknown> }): string {
+  const title = output.payload["title"] as string ?? output.stepId;
   const steps = (output.payload["steps"] as string[]) ?? [];
   return [
     `## ${title}`,
@@ -46,18 +32,6 @@ export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
     domainId: "operations",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.incident", "present.runbook"],
-    async onLoad(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being loaded
-    },
-    async onActivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being activated
-    },
-    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being deactivated
-    },
-    async onUnload(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being unloaded
-    },
     async initialize() {
       return undefined;
     },
@@ -75,16 +49,14 @@ export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
         const type = output.payload["type"] as string ?? "generic";
         if (type === "incident") {
           sections.push(formatIncident(output));
-          citations.push(resolveCitation(output));
+          citations.push(output.outputRef ?? output.stepId);
         } else if (type === "runbook") {
           sections.push(formatRunbook(output));
-          citations.push(resolveCitation(output));
+          citations.push(output.outputRef ?? output.stepId);
         } else {
-          const stepId = resolveMachineOutputStepId(output);
           sections.push(
-            `### ${stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
+            `### ${output.stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
           );
-          citations.push(resolveCitation(output));
         }
       }
 

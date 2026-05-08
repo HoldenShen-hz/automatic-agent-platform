@@ -197,37 +197,6 @@ abstract class BasePluginRuntimeHost {
     this.pending.delete(requestId);
   }
 
-  /**
-   * R30-37 FIX: Validates an incoming IPC message matches the expected schema.
-   * Without validation, a compromised child process could inject arbitrary data
-   * that passes as a valid PluginRuntimeMessage.
-   */
-  protected isValidPluginRuntimeMessage(message: unknown): message is PluginRuntimeMessage {
-    if (message == null || typeof message !== "object") {
-      return false;
-    }
-    const record = message as Record<string, unknown>;
-    if (record.type === "ready") {
-      return typeof record.pid === "number";
-    }
-    if (record.type === "response") {
-      return (
-        typeof record.requestId === "string" &&
-        typeof record.ok === "boolean" &&
-        typeof record.pid === "number"
-      );
-    }
-    return false;
-  }
-
-  /**
-   * Emits an error from the plugin runtime host.
-   * Logs the error for diagnostics and evidence purposes.
-   */
-  protected emitError(error: Error): void {
-    console.error(`[PluginRuntimeHost ${this.pluginId}] ${error.message}`);
-  }
-
   private buildError(message: PluginRuntimeResponse): Error {
     if (!message.error) {
       return new Error(`Plugin runtime for ${this.pluginId} returned an unknown error.`);
@@ -253,13 +222,11 @@ abstract class BasePluginRuntimeHost {
 }
 
 export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
-  private stderrBuffer = "";
-
   public constructor(options: PluginRuntimeHostOptions) {
     super(
       options,
       options.isolation === "sandboxed_process"
-        ? buildEphemeralPluginRuntimeSandboxRoot(options.pluginId)
+        ? buildPluginRuntimeSandboxRoot(options.pluginId)
         : null,
     );
   }
@@ -279,24 +246,13 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         workspaceRoot: this.workspaceRoot,
         sandboxPolicy: this.sandboxPolicy,
         sandboxRoot: this.sandboxRoot,
-        childModulePath: this.childModulePath,
         env: process.env,
       }),
-      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      stdio: ["ignore", "ignore", "ignore", "ipc"],
     });
     this.attachChild(child, process.execPath, [this.childModulePath]);
-    child.stderr?.setEncoding("utf8");
-    child.stderr?.on("data", (chunk: string) => {
-      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
-    });
     child.on("message", (message: unknown) => {
-      // R30-37 FIX: Validate IPC message against schema before casting
-      // A compromised child process could inject arbitrary data without validation
-      if (this.isValidPluginRuntimeMessage(message)) {
-        this.handleMessage(message);
-      } else {
-        this.emitError(new Error(`Invalid IPC message schema from child ${this.pluginId}: ${JSON.stringify(message).slice(0, 200)}`));
-      }
+      this.handleMessage(message as PluginRuntimeMessage);
     });
   }
 
@@ -332,12 +288,6 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
       child.kill();
     });
   }
-
-  protected override handleExit(message: string): void {
-    const stderr = this.stderrBuffer.trim();
-    this.stderrBuffer = "";
-    super.handleExit(stderr.length > 0 ? `${message} stderr=${stderr}` : message);
-  }
 }
 
 export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
@@ -345,7 +295,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
   private stderrBuffer = "";
 
   public constructor(options: PluginRuntimeHostOptions) {
-    super(options, buildEphemeralPluginRuntimeSandboxRoot(options.pluginId));
+    super(options, buildPluginRuntimeSandboxRoot(options.pluginId));
   }
 
   protected spawnChild(): void {
@@ -445,7 +395,6 @@ interface BuildPluginRuntimeExecArgvOptions {
   workspaceRoot: string;
   sandboxPolicy: PluginSandboxPolicy;
   sandboxRoot: string | null;
-  childModulePath?: string;
   env: NodeJS.ProcessEnv;
 }
 
@@ -481,18 +430,10 @@ export function buildPluginRuntimeSandboxRoot(
   return resolve(baseDir, sanitizePluginIdForPath(pluginId));
 }
 
-function buildEphemeralPluginRuntimeSandboxRoot(
-  pluginId: string,
-  baseDir: string = join(process.cwd(), "data", "plugin-runtime-sandboxes"),
-): string {
-  return resolve(buildPluginRuntimeSandboxRoot(pluginId, baseDir), newId("runtime"));
-}
-
 export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOptions): string[] {
   const baseArgs = sanitizePluginRuntimeExecArgs(process.execArgv);
-  const loaderArgs = shouldUseTsxLoader(options.childModulePath) ? ["--import", "tsx"] : [];
   if (options.isolation !== "sandboxed_process") {
-    return dedupeArgs([...loaderArgs, ...baseArgs]);
+    return dedupeArgs(baseArgs);
   }
 
   const readRoots = buildSandboxReadRoots(options.workspaceRoot, baseArgs);
@@ -512,10 +453,8 @@ export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOp
   }
 
   return dedupeArgs([
-    ...loaderArgs,
     ...baseArgs,
     "--permission",
-    "--allow-worker",
     ...readRoots.map((root) => `--allow-fs-read=${root}`),
     ...writeRoots.map((root) => `--allow-fs-write=${root}`),
   ]);
@@ -609,13 +548,6 @@ function deriveReadablePathFromExecArg(arg: string): string | null {
   return null;
 }
 
-function shouldUseTsxLoader(childModulePath: string | undefined): boolean {
-  if (childModulePath == null) {
-    return false;
-  }
-  return childModulePath.endsWith(".ts") || childModulePath.endsWith(".tsx");
-}
-
 function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOptions): NodeJS.ProcessEnv {
   const forwardedKeys = [
     "PATH",
@@ -638,7 +570,6 @@ function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOpt
   env.AA_PLUGIN_RUNTIME_ISOLATION = options.isolation;
   env.AA_PLUGIN_RUNTIME_PLUGIN_ID = options.pluginId;
   env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = String(options.sandboxPolicy.allowNetworkEgress);
-  env.TSX_DISABLE_CACHE = "true";
   if (options.sandboxRoot) {
     env.AA_PLUGIN_SANDBOX_ROOT = options.sandboxRoot;
   }
@@ -707,17 +638,9 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
     );
   }
 
-  const args = rendered.slice(1);
-  if (shouldUseTsxLoader(options.childModulePath)) {
-    const childModuleIndex = args.findIndex((value) => value === options.childModulePath);
-    if (childModuleIndex !== -1) {
-      args.splice(childModuleIndex, 0, "--import", "tsx");
-    }
-  }
-
   return {
     command: rendered[0]!,
-    args,
+    args: rendered.slice(1),
   };
 }
 
@@ -725,14 +648,8 @@ function renderContainerizedToken(
   token: string,
   options: BuildContainerizedPluginRuntimeLaunchSpecOptions,
 ): string {
-  // §167-1946 SECURITY FIX: Sanitize pluginId before substitution to prevent injection.
-  // Even though pluginId originates from plugin registry, a malicious registry entry
-  // or corrupted state could provide a pluginId with shell metacharacters.
-  // Template substitution must not allow pluginId to inject new command arguments
-  // or break out of the expected argument structure.
-  const sanitizedPluginId = options.pluginId.replace(/[^a-zA-Z0-9._-]/g, "_");
   const substitutions: Record<string, string> = {
-    "{pluginId}": sanitizedPluginId,
+    "{pluginId}": options.pluginId,
     "{workspaceRoot}": options.workspaceRoot,
     "{sandboxRoot}": options.sandboxRoot ?? options.workspaceRoot,
     "{runtimeImage}": options.runtimeImage ?? "",

@@ -45,8 +45,8 @@ import type {
 // TopologyValidator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DEFAULT_MAX_DEPTH is 8", () => {
-  assert.equal(DEFAULT_MAX_DEPTH, 8);
+test("DEFAULT_MAX_DEPTH is 3", () => {
+  assert.equal(DEFAULT_MAX_DEPTH, 3);
 });
 
 test("DEFAULT_MAX_FANOUT is 10", () => {
@@ -193,7 +193,7 @@ test("ContextIsolator.isolate creates child context with incremented depth", () 
       actions: ["action-1", "action-2"],
       constraints: { maxDurationMs: 60000, maxTokens: 1000 },
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -230,7 +230,7 @@ test("ContextIsolator.isolate with sandboxed parent returns SANDBOXED isolation"
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "workspace_write",
+    sandboxTier: "container",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -375,22 +375,9 @@ test("DelegationTracker.recordDelegation creates chain entry", () => {
       actions: ["action-1"],
       constraints: {},
     },
-    grantedPermissions: {
-      resources: ["resource-1"],
-      actions: ["action-1"],
-      constraints: {},
-    },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
-    correlationId: "corr-1",
-    summary: "test delegation",
-    artifact_refs: [],
-    trust_level: 1,
-    taint_labels: [],
-    evidence_refs: [],
-    policy_outcome: "allow",
-    data_class: "public",
   };
 
   tracker.recordDelegation(delegation, "parent-1");
@@ -411,18 +398,9 @@ test("DelegationTracker.recordDelegation increments totalDelegations", () => {
     childAgentId: "child-1",
     depth: 1,
     permissions: { resources: [], actions: [], constraints: {} },
-    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
-    correlationId: "corr-1",
-    summary: "test delegation 1",
-    artifact_refs: [],
-    trust_level: 1,
-    taint_labels: [],
-    evidence_refs: [],
-    policy_outcome: "allow",
-    data_class: "public",
   };
 
   const delegation2: DelegationResult = {
@@ -431,18 +409,9 @@ test("DelegationTracker.recordDelegation increments totalDelegations", () => {
     childAgentId: "child-2",
     depth: 1,
     permissions: { resources: [], actions: [], constraints: {} },
-    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
-    correlationId: "corr-2",
-    summary: "test delegation 2",
-    artifact_refs: [],
-    trust_level: 1,
-    taint_labels: [],
-    evidence_refs: [],
-    policy_outcome: "allow",
-    data_class: "public",
   };
 
   tracker.recordDelegation(delegation1, "parent-1");
@@ -494,18 +463,9 @@ test("DelegationTracker.getMetrics returns correct values after recording", () =
     childAgentId: "child-1",
     depth: 2,
     permissions: { resources: [], actions: [], constraints: {} },
-    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
-    correlationId: "corr-1",
-    summary: "test delegation",
-    artifact_refs: [],
-    trust_level: 1,
-    taint_labels: [],
-    evidence_refs: [],
-    policy_outcome: "allow",
-    data_class: "public",
   };
 
   tracker.recordDelegation(delegation, "parent-1");
@@ -538,7 +498,7 @@ test("DelegationManagerService.delegate creates delegation handle", async () => 
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -578,7 +538,7 @@ test("DelegationManagerService.getDelegation retrieves delegation", async () => 
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -596,15 +556,15 @@ test("DelegationManagerService.getDelegation retrieves delegation", async () => 
   };
 
   const handle = await manager.delegate(parent, spec);
-  const delegation = await manager.getDelegation(handle.delegationId);
+  const delegation = manager.getDelegation(handle.delegationId);
 
   assert.ok(delegation !== null);
   assert.equal(delegation!.delegationId, handle.delegationId);
 });
 
-test("DelegationManagerService.getDelegation returns null for unknown id", async () => {
+test("DelegationManagerService.getDelegation returns null for unknown id", () => {
   const manager = createDelegationManager();
-  assert.equal(await manager.getDelegation("unknown-dlg"), null);
+  assert.equal(manager.getDelegation("unknown-dlg"), null);
 });
 
 test("DelegationManagerService.complete marks delegation as completed", async () => {
@@ -621,7 +581,7 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -641,7 +601,7 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
   const handle = await manager.delegate(parent, spec);
   await manager.complete(handle.delegationId);
 
-  const delegation = await manager.getDelegation(handle.delegationId);
+  const delegation = manager.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -670,7 +630,7 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -690,7 +650,7 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
   const handle = await manager.delegate(parent, spec);
   await manager.fail(handle.delegationId, "Something went wrong");
 
-  const delegation = await manager.getDelegation(handle.delegationId);
+  const delegation = manager.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "failed");
 });
 
@@ -708,7 +668,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -727,7 +687,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
 
   await manager.delegate(parent, spec);
 
-  const active = await manager.getActiveDelegations("parent-1");
+  const active = manager.getActiveDelegations("parent-1");
   assert.equal(active.length, 1);
   assert.equal(active[0]!.parentAgentId, "parent-1");
 });
@@ -746,7 +706,7 @@ test("DelegationManagerService.getDelegationChain returns chain", async () => {
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "read_only",
+    sandboxTier: "none",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };

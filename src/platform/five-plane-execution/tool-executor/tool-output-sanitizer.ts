@@ -15,12 +15,9 @@
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
-// R30-18 FIX: Expand ANSI regex to match all standard ANSI escape sequences, not just SGR.
-// Root cause: Previous regex only matched SGR (Select Graphic Rendition) sequences, missing
-// CSI cursor/erase sequences, OSC (Operating System Command) sequences, and other ANSI sequences.
-// Attackers could use these other sequences for terminal injection attacks.
+// Matches ANSI escape sequences: \u001b[ followed by digits and semicolons, ending with m
 // eslint-disable-next-line no-control-regex
-const ANSI_REGEX = /[\u001b\u009b][\x40-\x7e]|[\u001b\u009b\]\x8f\x91-\x97][\x20-\x7e]*(?:[\x07\x08\u001b\\]|\x9c|\x98|\x9d)?|[\u001b\u009b][P-Z\$][^\x07]*(?:\x07|\u001b\\)?/g;
+const ANSI_REGEX = /\u001b\[[0-9;]*m/g;
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const toolOutputSanitizerLogger = new StructuredLogger({ retentionLimit: 100 });
@@ -28,8 +25,7 @@ const toolOutputSanitizerLogger = new StructuredLogger({ retentionLimit: 100 });
 // Matches control characters in the C0 range (except newline and tab which are preserved)
 // Includes: NUL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS, VT, FF, CR, SO, SI, DLE, DC1, DC2, DC3, DC4, NAK, SYN, ETB, CAN, EM, SUB, ESC, FS, GS, RS, US
 // eslint-disable-next-line no-control-regex
-// R30-27 fix: Added ESC (\u001B) - bare ESC bytes could bypass sanitization
-const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u001B\u007F\u001C-\u001F]/g;
+const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u001A\u007F]/g;
 
 // Unicode Tags block characters (U+E0000 to U+E007F) used for invisible steganographic tagging
 const UNICODE_TAGS_REGEX = /[\u{E0000}-\u{E007F}]/gu;

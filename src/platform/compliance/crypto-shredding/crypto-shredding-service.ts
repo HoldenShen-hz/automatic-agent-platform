@@ -42,8 +42,6 @@ export interface ShredResult {
   status: "completed" | "no_dek_found";
   /** All DEKs associated with the subject (including rotated ones) */
   affectedDekCount: number;
-  /** Historical DEK ids destroyed by this shred operation */
-  previousDekIds?: string[];
 }
 
 /**
@@ -79,6 +77,7 @@ export interface EncryptRecordResult {
   encryptions: Array<{
     fieldPath: string;
     dekId: string;
+    originalValue: string;
   }>;
 }
 
@@ -198,7 +197,6 @@ export class CryptoShreddingService {
       shreddedAt,
       status: destroyedDekId ? "completed" : "no_dek_found",
       affectedDekCount: previousDekIds.length,
-      previousDekIds,
     };
   }
 
@@ -251,6 +249,7 @@ export class CryptoShreddingService {
       encryptions.push({
         fieldPath: fieldSpec.fieldPath,
         dekId: result.dekId,
+        originalValue: value,
       });
     }
 

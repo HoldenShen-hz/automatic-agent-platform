@@ -5,7 +5,7 @@
 
 ## Context
 
-Platform administrators cannot manage all affairs. Governance authority needs to be delegated to subordinate organizations.
+Platform administrators cannot manage all affairs, and governance authority needs to be delegated to subordinate organizations.
 
 ## Decision
 
@@ -15,7 +15,7 @@ Platform administrators cannot manage all affairs. Governance authority needs to
 interface GovernanceDelegation {
   delegation_id: string;
   delegator_id: string;       // Delegator
-  delegate_id: string;         // Delegate
+  delegate_id: string;         // Delegatee
   scope: DelegationScope;
   permissions: Permission[];
   constraints: DelegationConstraint[];
@@ -33,16 +33,14 @@ interface DelegationScope {
 
 ### Delegation Levels
 
-| Level | Delegatable Permissions |
-|-------|-------------------------|
-| Platform level | All permissions (but must exclude NonOverridableInvariantRegistry) |
-| Business group level | Permissions within business group |
-| Department level | Permissions within department |
-| Team level | Limited permissions |
+| Level | Delegable Permissions |
+|-------|----------------------|
+| Platform Level | All permissions |
+| Business Group Level | Permissions within business group |
+| Department Level | Permissions within department |
+| Team Level | Limited permissions |
 
-Note: §2.4 NonOverridableInvariantRegistry cannot be disabled or overridden by any administrator or domain owner. Platform-level delegation permissions must also comply with this constraint, and cannot delegate control of NonOverridableInvariantRegistry.
-
-### Constraint Types
+### Constraints
 
 | Constraint Type | Description |
 |-----------------|-------------|
@@ -53,28 +51,28 @@ Note: §2.4 NonOverridableInvariantRegistry cannot be disabled or overridden by 
 
 ### Delegation Audit
 
-- All delegation operations recorded in audit log
+- All delegation operations recorded in audit logs
 - Delegation relationship changes notify both parties
-- Regular review of delegation validity
+- Periodic review of delegation validity
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Distributed governance improves efficiency
 - Constraint mechanism prevents permission abuse
 - Audit tracking ensures compliance
 
-Cons:
+Negative:
 
 - Delegation relationships are complex
-- Permission recovery requires complete process
+- Permission revocation requires complete process
 
-## Cross-references
+## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§51` Tiered Governance Delegation

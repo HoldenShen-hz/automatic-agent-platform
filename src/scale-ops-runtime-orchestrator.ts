@@ -62,7 +62,7 @@ function buildDependencyServiceIds(
 }
 
 export class ScaleOpsRuntimeOrchestrator {
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
 
   public prepare(): ScaleOpsStartupPlan {
     registerScaleBootstrap(this.registry);
@@ -113,7 +113,7 @@ export class ScaleOpsRuntimeOrchestrator {
 }
 
 export function registerScaleOpsRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ScaleOpsRuntimeOrchestrator {
   registerScaleBootstrap(registry);
   registerOpsMaturityBootstrap(registry);

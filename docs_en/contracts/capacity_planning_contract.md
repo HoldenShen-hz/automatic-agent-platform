@@ -10,9 +10,8 @@ This contract defines `§67`'s capacity tracking, forecasting models, and what-i
 - `CapacityForecast`
 - `CapacityScenario`
 - `CapacityRecommendation`
-- `CapacityAlert`
 
-## 3. `CapacitySignal` Minimum Fields
+## 3. CapacitySignal Minimum Fields
 
 - `resource_type`
 - `region_id?`
@@ -20,26 +19,6 @@ This contract defines `§67`'s capacity tracking, forecasting models, and what-i
 - `usage`
 - `queue_depth?`
 - `error_budget_burn?`
-
-## 4. `CapacityAlert` Output Object
-
-`CapacityAlert` is generated when predicted capacity breaches a threshold within the forecast horizon.
-
-Minimum fields:
-
-- `alert_id` — unique identifier
-- `resource_type` — type of resource (cpu, memory, storage, bandwidth, etc.)
-- `region_id?` — optional region
-- `forecast_horizon` — time window for predicted breach
-- `predicted_value` — predicted usage value
-- `threshold_value` — threshold that would be breached
-- `severity` (`warning | critical`)
-- `recommended_action` — mitigation recommendation
-- `created_at` — alert generation time
-
-Rules:
-- `CapacityAlert` is an output of forecast threshold evaluation; it is not a `CapacitySignal` input.
-- Alerts must reference the underlying `CapacityForecast` that triggered them.
 
 ## 4. Rules
 

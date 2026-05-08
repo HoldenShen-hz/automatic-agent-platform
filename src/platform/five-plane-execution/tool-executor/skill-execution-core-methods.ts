@@ -56,25 +56,8 @@ import {
 } from "./skill-execution-support.js";
 
 import type { SkillExecutionService } from "./skill-execution-service.js";
-import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
 
 const skillExecutionLogger = new StructuredLogger({ retentionLimit: 100 });
-
-// R4-34 (INV-POLICY-001): Module-level PolicyEngine for tool execution pre-check
-// This ensures policy rules are enforced at execution time, not just at admission
-const DEFAULT_BUDGET_POLICY = {
-  maxTaskCostUsd: 10,
-  maxPackCostUsd: 100,
-  maxPlatformCostUsd: 10000,
-  maxDailyCostUsd: 100,
-  maxMonthlyCostUsd: 1000,
-  maxModelTokens: 100000,
-  maxSteps: 100,
-  maxDurationMs: 600000,
-  warnAtRatio: 0.8,
-  mode: "auto" as const,
-};
-const skillPolicyEngine = new PolicyEngine({ budgetPolicy: DEFAULT_BUDGET_POLICY });
 
 export const skillExecutionCoreMethods = {
   async execute(this: SkillExecutionService, input: SkillExecutionRequest): Promise<SkillExecutionResult> {
@@ -522,7 +505,7 @@ export const skillExecutionCoreMethods = {
       cache: storedCacheMetadata,
     };
   },
-  async executeToolCallWithPolicy(this: SkillExecutionService,
+  async executeToolCallWithPolicy(this: SkillExecutionService, 
     request: Omit<SkillToolCallRequest, "timeoutMs" | "recoveryStrategy">,
     metadata: ToolExecutionMetadata | null,
   ): Promise<SkillToolCallResult> {
@@ -531,57 +514,6 @@ export const skillExecutionCoreMethods = {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     try {
-      // R4-34 (INV-POLICY-001): PolicyEngine pre-check before tool execution
-      // This ensures policy rules are enforced at execution time, not just at admission
-      const riskLevel = metadata?.riskLevel ?? "medium";
-      const riskCategory = mapToolRiskToPolicyCategory(riskLevel);
-      const policyDecision = skillPolicyEngine.evaluate({
-        decisionId: `skill_tool_${request.executionId}_${request.stepId}_${Date.now()}`,
-        taskId: request.taskId,
-        executionId: request.executionId,
-        subjectType: "agent",
-        subjectId: request.skillId,
-        action: "invoke_tool",
-        riskCategory,
-        mode: "auto",
-        metadata: {
-          toolName: request.toolName,
-          skillId: request.skillId,
-          stepId: request.stepId,
-          args: JSON.stringify(request.input).slice(0, 200),
-        },
-      });
-
-      if (policyDecision.decision === "deny") {
-        // R4-34: Policy denied - return failure instead of executing
-        return this.normalizeToolCallResult(
-          {
-            success: false,
-            status: "blocked",
-            summary: `Tool ${request.toolName} denied by policy: ${policyDecision.reasonCode}`,
-            errorCode: "tool.policy_denied",
-            errorSource: "security",
-          },
-          metadata,
-          startedAtMs,
-        );
-      }
-
-      if (policyDecision.decision === "escalate_for_approval") {
-        // R4-34: Approval required - return failure with escalation info
-        return this.normalizeToolCallResult(
-          {
-            success: false,
-            status: "blocked",
-            summary: `Tool ${request.toolName} requires approval: ${policyDecision.reasonCode}`,
-            errorCode: "tool.approval_required",
-            errorSource: "security",
-          },
-          metadata,
-          startedAtMs,
-        );
-      }
-
       const result = await new Promise<SkillToolCallResult>((resolveResult, rejectResult) => {
         timer = setTimeout(() => {
           resolveResult(

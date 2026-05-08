@@ -243,8 +243,8 @@ export class RuntimeRecoveryReplayService {
     const view = this.recoveryService.buildRuntimeRecoveryView(taskId);
 
     // Get all recovery events for this task, sorted chronologically
-    const taskEventsResult = this.store.listEventsForTask(taskId);
-    const recoveryEvents = taskEventsResult.events
+    const recoveryEvents = this.store
+      .listEventsForTask(taskId)
       .filter((event) => event.eventType.startsWith("recovery:"))
       .sort(compareRecoveryEventOrder);
 
@@ -301,8 +301,7 @@ export class RuntimeRecoveryReplayService {
     }
 
     // Build task report and find the specific execution's report
-    const report = this.buildTaskReplayReport(execution.taskId, generatedAt);
-    return report.executions.find((r) => r.executionId === executionId)!;
+    return this.buildTaskReplayReport(execution.taskId, generatedAt).executions.find((report) => report.executionId === executionId)!;
   }
 
   /**

@@ -23,16 +23,12 @@ import {
   type TestCase,
 } from "../../../../src/sdk/plugin-sdk/plugin-test-harness.js";
 
-test("definePlugin creates valid plugin definition", async () => {
-  const plugin = await definePlugin({
+test("definePlugin creates valid plugin definition", () => {
+  const plugin = definePlugin({
     pluginId: "my-pack.query-tool",
     name: "Query Tool",
     version: "1.0.0",
     type: "tool",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute a query",
@@ -48,16 +44,12 @@ test("definePlugin creates valid plugin definition", async () => {
   assert.equal(plugin.capabilities.length, 1);
 });
 
-test("definePlugin trims whitespace from inputs", async () => {
-  const plugin = await definePlugin({
+test("definePlugin trims whitespace from inputs", () => {
+  const plugin = definePlugin({
     pluginId: "  trimmed-id  ",
     name: "  Trimmed Name  ",
     version: "  1.0.0  ",
     type: "tool",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Test",
@@ -71,66 +63,50 @@ test("definePlugin trims whitespace from inputs", async () => {
   assert.equal(plugin.version, "1.0.0");
 });
 
-test("definePlugin throws on missing pluginId", async () => {
-  await assert.rejects(
-    async () => definePlugin({
+test("definePlugin throws on missing pluginId", () => {
+  assert.throws(
+    () => definePlugin({
       pluginId: "",
       name: "Test",
       version: "1.0.0",
       type: "tool",
-      spiTypes: ["tool"],
-      domainIds: [],
-      sbomRef: null,
-      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [{ name: "test", description: "Test capability", inputSchema: {}, outputSchema: {} }],
     }),
     /plugin_id/i,
   );
 });
 
-test("definePlugin throws on missing type", async () => {
-  await assert.rejects(
-    async () => definePlugin({
+test("definePlugin throws on missing type", () => {
+  assert.throws(
+    () => definePlugin({
       pluginId: "test-plugin",
       name: "Test",
       version: "1.0.0",
       type: undefined as any,
-      spiTypes: ["tool"],
-      domainIds: [],
-      sbomRef: null,
-      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [{ name: "test", description: "Test capability", inputSchema: {}, outputSchema: {} }],
     }),
     /type/i,
   );
 });
 
-test("definePlugin throws on empty capabilities", async () => {
-  await assert.rejects(
-    async () => definePlugin({
+test("definePlugin throws on empty capabilities", () => {
+  assert.throws(
+    () => definePlugin({
       pluginId: "test-plugin",
       name: "Test",
       version: "1.0.0",
       type: "tool",
-      spiTypes: ["tool"],
-      domainIds: [],
-      sbomRef: null,
-      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [],
     }),
     /capabilities/i,
   );
 });
 
-test("defineTool creates tool plugin with type=tool", async () => {
-  const tool = await defineTool({
+test("defineTool creates tool plugin with type=tool", () => {
+  const tool = defineTool({
     pluginId: "my-pack.my-tool",
     name: "My Tool",
     version: "1.0.0",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -142,15 +118,11 @@ test("defineTool creates tool plugin with type=tool", async () => {
   assert.equal(tool.type, "tool");
 });
 
-test("defineAdapter creates adapter plugin with type=adapter", async () => {
-  const adapter = await defineAdapter({
+test("defineAdapter creates adapter plugin with type=adapter", () => {
+  const adapter = defineAdapter({
     pluginId: "my-pack.my-adapter",
     name: "My Adapter",
     version: "1.0.0",
-    spiTypes: ["adapter"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "adapt",
       description: "Adapt",
@@ -162,15 +134,11 @@ test("defineAdapter creates adapter plugin with type=adapter", async () => {
   assert.equal(adapter.type, "adapter");
 });
 
-test("defineRetriever creates retriever plugin with type=retriever", async () => {
-  const retriever = await defineRetriever({
+test("defineRetriever creates retriever plugin with type=retriever", () => {
+  const retriever = defineRetriever({
     pluginId: "my-pack.my-retriever",
     name: "My Retriever",
     version: "1.0.0",
-    spiTypes: ["retriever"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "retrieve",
       description: "Retrieve",
@@ -182,15 +150,11 @@ test("defineRetriever creates retriever plugin with type=retriever", async () =>
   assert.equal(retriever.type, "retriever");
 });
 
-test("defineEvaluator creates evaluator plugin with type=evaluator", async () => {
-  const evaluator = await defineEvaluator({
+test("defineEvaluator creates evaluator plugin with type=evaluator", () => {
+  const evaluator = defineEvaluator({
     pluginId: "my-pack.my-evaluator",
     name: "My Evaluator",
     version: "1.0.0",
-    spiTypes: ["evaluator"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "evaluate",
       description: "Evaluate",
@@ -244,14 +208,10 @@ test("PluginContext.toRecord returns plain object", () => {
 });
 
 test("PluginTestHarness.runCases executes test cases", async () => {
-  const plugin = await defineTool({
+  const plugin = defineTool({
     pluginId: "test-tool",
     name: "Test Tool",
     version: "1.0.0",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -272,14 +232,10 @@ test("PluginTestHarness.runCases executes test cases", async () => {
 });
 
 test("PluginTestHarness.runCases calculates coverage", async () => {
-  const plugin = await defineTool({
+  const plugin = defineTool({
     pluginId: "coverage-test-tool",
     name: "Coverage Test Tool",
     version: "1.0.0",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -298,15 +254,11 @@ test("PluginTestHarness.runCases calculates coverage", async () => {
   assert.ok(report.coveragePercent >= 0);
 });
 
-test("PluginTestHarness.createContext creates plugin context", async () => {
-  const plugin = await defineTool({
+test("PluginTestHarness.createContext creates plugin context", () => {
+  const plugin = defineTool({
     pluginId: "context-test-tool",
     name: "Context Test Tool",
     version: "1.0.0",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -321,16 +273,12 @@ test("PluginTestHarness.createContext creates plugin context", async () => {
   assert.equal(ctx.taskId, "task-123");
 });
 
-test("validatePluginDefinition validates and returns plugin", async () => {
-  const plugin = await definePlugin({
+test("validatePluginDefinition validates and returns plugin", () => {
+  const plugin = definePlugin({
     pluginId: "validation-test",
     name: "Validation Test",
     version: "1.0.0",
     type: "tool",
-    spiTypes: ["tool"],
-    domainIds: [],
-    sbomRef: null,
-    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -339,6 +287,6 @@ test("validatePluginDefinition validates and returns plugin", async () => {
     }],
   });
 
-  const validated = await validatePluginDefinition(plugin);
+  const validated = validatePluginDefinition(plugin);
   assert.equal(validated.pluginId, plugin.pluginId);
 });

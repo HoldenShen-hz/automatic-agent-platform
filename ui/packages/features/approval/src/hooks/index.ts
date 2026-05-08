@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ApprovalDTO } from "@aa/shared-types";
-import { useApprovalsQuery, useRestClient } from "@aa/shared-state";
-import { approveApproval, rejectApproval, delegateApproval, requestMoreContextApproval } from "@aa/shared-api-client"; // §210-2493: add requestMoreContextApproval
+import { useApprovalsQuery } from "@aa/shared-state";
 
 export interface ApprovalCenterVm {
   readonly approvals: readonly ApprovalDTO[];
@@ -10,12 +9,10 @@ export interface ApprovalCenterVm {
   readonly selectedApproval: ApprovalDTO | null;
   readonly actionHistory: readonly { title: string; description: string }[];
   readonly queueDepth: number;
-  readonly pendingAction: boolean;
   selectApproval(id: string): void;
-  approve(): Promise<void>;
-  reject(): Promise<void>;
-  delegate(target: string): Promise<void>;
-  requestMoreContext(): Promise<void>;
+  approve(): void;
+  reject(): void;
+  delegate(target: string): void;
 }
 
 export function mapApprovalsToVm(approvals: readonly ApprovalDTO[]): Pick<ApprovalCenterVm, "approvals" | "queueItems" | "queueDepth"> {
@@ -31,7 +28,6 @@ export function mapApprovalsToVm(approvals: readonly ApprovalDTO[]): Pick<Approv
 }
 
 export function useApprovalCenterVm(): ApprovalCenterVm {
-  const client = useRestClient();
   const queryApprovals = useApprovalsQuery().data ?? [];
   const approvalFeedVersion = queryApprovals
     .map((approval) => `${approval.approvalId}:${approval.taskId}:${approval.riskLevel}:${approval.reasonSummary}`)
@@ -39,7 +35,6 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
   const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(queryApprovals);
   const [selectedId, setSelectedId] = useState<string | null>(queryApprovals[0]?.approvalId ?? null);
   const [actionHistory, setActionHistory] = useState<readonly { title: string; description: string }[]>([]);
-  const [pendingAction, setPendingAction] = useState(false);
 
   useEffect(() => {
     setApprovals(queryApprovals);
@@ -58,73 +53,40 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     setSelectedId(nextApprovals[0]?.approvalId ?? null);
   }
 
-  const approve = useCallback(async (): Promise<void> => {
-    if (selectedApproval == null) return;
-    setPendingAction(true);
-    const previousApprovals = approvals;
-    const previousSelectedId = selectedId;
-    const previousActionHistory = actionHistory;
-    const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
-    try {
-      setApprovals(nextApprovals);
-      resolveNextSelection(nextApprovals);
-      setActionHistory((history) => [
-        {
-          title: `Approved · ${selectedApproval.taskId}`,
-          description: `${selectedApproval.riskLevel} risk request processed through HITL workflow.`,
-        },
-        ...history,
-      ]);
-      await approveApproval(client, selectedApproval.approvalId);
-    } catch (error) {
-      setApprovals(previousApprovals);
-      setSelectedId(previousSelectedId);
-      setActionHistory(previousActionHistory);
-      throw error;
-    } finally {
-      setPendingAction(false);
+  function removeSelected(decision: string): void {
+    if (selectedApproval == null) {
+      return;
     }
-  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
-
-  const reject = useCallback(async (): Promise<void> => {
-    if (selectedApproval == null) return;
-    setPendingAction(true);
-    const previousApprovals = approvals;
-    const previousSelectedId = selectedId;
-    const previousActionHistory = actionHistory;
     const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
-    try {
-      setApprovals(nextApprovals);
-      resolveNextSelection(nextApprovals);
-      setActionHistory((history) => [
-        {
-          title: `Rejected · ${selectedApproval.taskId}`,
-          description: `${selectedApproval.riskLevel} risk request processed through HITL workflow.`,
-        },
-        ...history,
-      ]);
-      await rejectApproval(client, selectedApproval.approvalId);
-    } catch (error) {
-      setApprovals(previousApprovals);
-      setSelectedId(previousSelectedId);
-      setActionHistory(previousActionHistory);
-      throw error;
-    } finally {
-      setPendingAction(false);
-    }
-  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
+    setApprovals(nextApprovals);
+    resolveNextSelection(nextApprovals);
+    setActionHistory((history) => [
+      {
+        title: `${decision} · ${selectedApproval.taskId}`,
+        description: `${selectedApproval.riskLevel} risk request processed through HITL workflow.`,
+      },
+      ...history,
+    ]);
+  }
 
-  const delegate = useCallback(async (target: string): Promise<void> => {
-    if (selectedApproval == null) return;
-    setPendingAction(true);
-    const previousApprovals = approvals;
-    const previousSelectedId = selectedId;
-    const previousActionHistory = actionHistory;
-    const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
-    try {
-      setApprovals(nextApprovals);
-      resolveNextSelection(nextApprovals);
-      await delegateApproval(client, selectedApproval.approvalId, target);
+  return {
+    ...baseVm,
+    selectedId,
+    selectedApproval,
+    actionHistory,
+    selectApproval(id: string) {
+      setSelectedId(id);
+    },
+    approve() {
+      removeSelected("Approved");
+    },
+    reject() {
+      removeSelected("Rejected");
+    },
+    delegate(target: string) {
+      if (selectedApproval == null) {
+        return;
+      }
       setActionHistory((history) => [
         {
           title: `Delegated · ${selectedApproval.taskId}`,
@@ -132,48 +94,6 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
         },
         ...history,
       ]);
-    } catch (error) {
-      setApprovals(previousApprovals);
-      setSelectedId(previousSelectedId);
-      setActionHistory(previousActionHistory);
-      throw error;
-    } finally {
-      setPendingAction(false);
-    }
-  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
-
-  const requestMoreContext = useCallback(async (): Promise<void> => {
-    // §4.6.2: request_more_context action - asks the execution engine for additional context
-    if (selectedApproval == null) return;
-    setPendingAction(true);
-    try {
-      // §210-2493: Root cause - requestMoreContextApproval was listed in imports but never defined in shared-api-client
-      // Fix: call the newly added requestMoreContextApproval API
-      await requestMoreContextApproval(client, selectedApproval.approvalId);
-      setActionHistory((history) => [
-        {
-          title: `Requested Context · ${selectedApproval.taskId}`,
-          description: "Additional context has been requested from the execution engine.",
-        },
-        ...history,
-      ]);
-    } finally {
-      setPendingAction(false);
-    }
-  }, [client, selectedApproval]);
-
-  return {
-    ...baseVm,
-    selectedId,
-    selectedApproval,
-    actionHistory,
-    pendingAction,
-    selectApproval(id: string) {
-      setSelectedId(id);
     },
-    approve,
-    reject,
-    delegate,
-    requestMoreContext,
   };
 }

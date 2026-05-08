@@ -7,7 +7,6 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { z } from "zod";
 import { countDocumentPages } from "./document-parser/index.js";
 import { normalizeImageAspectRatio, type ImageMetadata } from "./image-processor/index.js";
 import { resolveInputModality } from "./modality-router/index.js";
@@ -23,22 +22,22 @@ export interface MultimodalInputPart {
   readonly type: string;
   readonly contentRef: string;
   readonly provenance?: {
-    readonly c2pa?: string | undefined;
-    readonly watermark?: string | undefined;
-    readonly hash?: string | undefined;
-    readonly license?: string | undefined;
-  } | undefined;
-  readonly artifactRef?: string | undefined;
-  readonly safetyLabels?: readonly string[] | undefined;
-  readonly mimeType?: string | undefined;
-  readonly costKey?: string | undefined;
-  readonly text?: string | undefined;
-  readonly imageMetadata?: ImageMetadata | undefined;
-  readonly videoMetadata?: VideoMetadata | undefined;
-  readonly audioSampleCount?: number | undefined;
-  readonly audioSampleRate?: number | undefined;
-  readonly documentChunks?: readonly string[] | undefined;
-  readonly dataClassification?: "public" | "internal" | "restricted" | undefined;
+    readonly c2pa?: string;
+    readonly watermark?: string;
+    readonly hash?: string;
+    readonly license?: string;
+  };
+  readonly artifactRef?: string;
+  readonly safetyLabels?: readonly string[];
+  readonly mimeType?: string;
+  readonly costKey?: string;
+  readonly text?: string;
+  readonly imageMetadata?: ImageMetadata;
+  readonly videoMetadata?: VideoMetadata;
+  readonly audioSampleCount?: number;
+  readonly audioSampleRate?: number;
+  readonly documentChunks?: readonly string[];
+  readonly dataClassification?: "public" | "internal" | "restricted";
 }
 
 export interface MultimodalRequest {
@@ -50,7 +49,7 @@ export interface MultimodalRequest {
   readonly costBudget: {
     readonly maxUsd: number;
   };
-  readonly traceId?: string | undefined;
+  readonly traceId?: string;
 }
 
 export interface ModalityRouteDecision {
@@ -66,9 +65,9 @@ export interface MultimodalSafetyFinding {
   readonly severity: "low" | "medium" | "high";
   readonly reasonCode: string;
   readonly blocked: boolean;
-  readonly confidence?: number | undefined;
-  readonly policyDecision?: string | undefined;
-  readonly appealPath?: string | undefined;
+  readonly confidence?: number;
+  readonly policyDecision?: string;
+  readonly appealPath?: string;
 }
 
 export interface MultimodalGatewayResult {
@@ -87,88 +86,6 @@ export interface MultimodalGatewayResult {
   readonly createdAt: string;
 }
 
-const MultimodalPartTypeSchema = z.enum(["text", "image", "audio", "document", "video"]);
-const DataClassificationSchema = z.enum(["public", "internal", "restricted"]);
-
-const ImageMetadataSchema = z.object({
-  width: z.number().finite().nonnegative(),
-  height: z.number().finite().nonnegative(),
-});
-
-const VideoMetadataSchema = z.object({
-  durationMs: z.number().finite().nonnegative(),
-  width: z.number().finite().nonnegative(),
-  height: z.number().finite().nonnegative(),
-  codec: z.string().min(1),
-});
-
-const MultimodalProvenanceSchema = z.object({
-  c2pa: z.string().min(1).optional(),
-  watermark: z.string().min(1).optional(),
-  hash: z.string().min(1).optional(),
-  license: z.string().min(1).optional(),
-}).strict();
-
-export const MultimodalInputPartSchema = z.object({
-  partId: z.string().min(1),
-  type: z.string().min(1),
-  contentRef: z.string().min(1),
-  provenance: MultimodalProvenanceSchema.optional(),
-  artifactRef: z.string().min(1).optional(),
-  safetyLabels: z.array(z.string().min(1)).optional(),
-  mimeType: z.string().min(1).optional(),
-  costKey: z.string().min(1).optional(),
-  text: z.string().optional(),
-  imageMetadata: ImageMetadataSchema.optional(),
-  videoMetadata: VideoMetadataSchema.optional(),
-  audioSampleCount: z.number().int().nonnegative().optional(),
-  audioSampleRate: z.number().int().positive().optional(),
-  documentChunks: z.array(z.string()).optional(),
-  dataClassification: DataClassificationSchema.optional(),
-}).strict();
-
-export const MultimodalRequestSchema = z.object({
-  requestId: z.string().min(1),
-  modalities: z.array(MultimodalPartTypeSchema).min(1),
-  inputParts: z.array(MultimodalInputPartSchema).min(1),
-  requestedOutputs: z.array(z.string().min(1)).min(1),
-  safetyPolicyRef: z.string(),
-  costBudget: z.object({
-    maxUsd: z.number().finite().nonnegative(),
-  }).strict(),
-  traceId: z.string().min(1).optional(),
-}).strict();
-
-export const ModalityRouteDecisionSchema = z.object({
-  partId: z.string().min(1),
-  modality: MultimodalPartTypeSchema,
-  provider: z.string().min(1),
-  processor: z.string().min(1),
-  estimatedCostUsd: z.number().finite().nonnegative(),
-}).strict();
-
-export const MultimodalSafetyFindingSchema = z.object({
-  partId: z.string().min(1),
-  severity: z.enum(["low", "medium", "high"]),
-  reasonCode: z.string().min(1),
-  blocked: z.boolean(),
-  confidence: z.number().finite().min(0).max(1).optional(),
-  policyDecision: z.string().min(1).optional(),
-  appealPath: z.string().min(1).optional(),
-}).strict();
-
-export function parseMultimodalRequest(value: unknown): MultimodalRequest {
-  return MultimodalRequestSchema.parse(value);
-}
-
-export function parseModalityRouteDecision(value: unknown): ModalityRouteDecision {
-  return ModalityRouteDecisionSchema.parse(value);
-}
-
-export function parseMultimodalSafetyFinding(value: unknown): MultimodalSafetyFinding {
-  return MultimodalSafetyFindingSchema.parse(value);
-}
-
 const PROVIDER_BY_MODALITY: Record<MultimodalPartType, { provider: string; processor: string; unitCostUsd: number }> = {
   text: { provider: "text_gateway", processor: "text-normalizer", unitCostUsd: 0.01 },
   image: { provider: "vision_gateway", processor: "image-processor", unitCostUsd: 0.08 },
@@ -181,57 +98,55 @@ export class MultimodalGatewayService {
   public constructor(private readonly videoProcessor: VideoProcessor = new VideoProcessor()) {}
 
   public handle(request: MultimodalRequest, createdAt = nowIso()): MultimodalGatewayResult {
-    const parsedRequest = parseMultimodalRequest(request);
-
-    if (parsedRequest.safetyPolicyRef.trim().length === 0) {
-      throw new Error(`multimodal_gateway.safety_policy_required:${parsedRequest.requestId}`);
+    if (request.safetyPolicyRef.trim().length === 0) {
+      throw new Error(`multimodal_gateway.safety_policy_required:${request.requestId}`);
     }
 
     const routeDecisions: ModalityRouteDecision[] = [];
     const normalizedInputs: MultimodalGatewayResult["normalizedInputs"][number][] = [];
     const safetyFindings: MultimodalSafetyFinding[] = [];
 
-    for (const part of parsedRequest.inputParts) {
+    for (const part of request.inputParts) {
       const modality = resolveInputModality(part.type);
       if (modality === "unsupported") {
         throw new Error(`multimodal_gateway.unsupported_modality:${part.type}`);
       }
-      if (!parsedRequest.modalities.includes(modality)) {
+      if (!request.modalities.includes(modality)) {
         throw new Error(`multimodal_gateway.modality_not_declared:${modality}`);
       }
 
       const route = PROVIDER_BY_MODALITY[modality];
       const processedVideo = modality === "video" ? this.resolveProcessedVideo(part) : null;
       const estimatedCostUsd = this.estimatePartCost(part, modality, route.unitCostUsd, processedVideo);
-      routeDecisions.push(parseModalityRouteDecision({
+      routeDecisions.push({
         partId: part.partId,
         modality,
         provider: route.provider,
         processor: route.processor,
         estimatedCostUsd,
-      }));
+      });
       normalizedInputs.push({
         partId: part.partId,
         modality,
         summary: this.summarizePart(part, modality, processedVideo),
       });
-      safetyFindings.push(...this.evaluateSafety(part, modality, processedVideo).map(parseMultimodalSafetyFinding));
+      safetyFindings.push(...this.evaluateSafety(part, modality, processedVideo));
     }
 
     const estimatedCostUsd = Number(routeDecisions.reduce((sum, item) => sum + item.estimatedCostUsd, 0).toFixed(4));
-    if (estimatedCostUsd > parsedRequest.costBudget.maxUsd) {
-      safetyFindings.push(parseMultimodalSafetyFinding({
-        partId: parsedRequest.requestId,
+    if (estimatedCostUsd > request.costBudget.maxUsd) {
+      safetyFindings.push({
+        partId: request.requestId,
         severity: "high",
         reasonCode: "multimodal_gateway.cost_budget_exceeded",
         blocked: true,
-      }));
+      });
     }
 
     return {
       gatewayRunId: newId("multimodal_run"),
-      requestId: parsedRequest.requestId,
-      traceId: parsedRequest.traceId ?? newId("trace"),
+      requestId: request.requestId,
+      traceId: request.traceId ?? newId("trace"),
       routeDecisions,
       safetyFindings,
       blocked: safetyFindings.some((item) => item.blocked),

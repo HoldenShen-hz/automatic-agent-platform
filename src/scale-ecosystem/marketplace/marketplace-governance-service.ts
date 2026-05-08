@@ -39,7 +39,6 @@ import type {
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { PolicyDeniedError, StorageError, ValidationError } from "../../platform/contracts/errors.js";
-import { getCertificationGateService, type CertificationResult } from "./certification/certification-gate-service.js";
 
 /** Input for registering a new extension package */
 export interface RegisterExtensionPackageInput {
@@ -79,13 +78,6 @@ export interface RegisterExtensionPackageInput {
   lifecycleState?: ExtensionLifecycleState;
   /** Whether review is required before publication */
   reviewRequired?: boolean;
-  // §55.1 Quality & Security Gate
-  /** Whether SBOM (Software Bill of Materials) has been verified */
-  sbomVerified?: boolean;
-  /** Whether sandbox certificate has been verified */
-  sandboxCertVerified?: boolean;
-  /** Whether egress policy compliance has been verified */
-  egressPolicyCompliant?: boolean;
   /** Creation timestamp override */
   createdAt?: string;
   /** Update timestamp override */
@@ -168,22 +160,6 @@ export interface RetireExtensionInput {
   tenantId?: string | null;
   reasonCode: string;
   retiredAt?: string;
-}
-
-/**
- * Per §55.5, sunset phase blocks new installations for 180 days.
- * After sunset period, packages can be retired.
- */
-export interface SunsetExtensionInput {
-  packageId: string;
-  tenantId?: string | null;
-  reasonCode: string;
-  migrationTarget?: string | null;
-  replacementSuggestions?: readonly string[];
-  /** Migration threshold percentage (0-100), default 95 per §55.5 */
-  migrationThreshold?: number;
-  sunsetStartsAt?: string;
-  sunsetEndsAt?: string;
 }
 
 /** Entry in the marketplace catalog */
@@ -401,10 +377,6 @@ export class MarketplaceGovernanceService {
       manifestChecksum: assertChecksum(input.manifestChecksum, "marketplace.invalid_manifest_checksum"),
       lifecycleState: input.lifecycleState ?? "installed",
       reviewRequired: input.reviewRequired === false ? 0 : 1,
-      // §55.1 Quality & Security Gate fields
-      sbomVerified: input.sbomVerified === true ? 1 : 0,
-      sandboxCertVerified: input.sandboxCertVerified === true ? 1 : 0,
-      egressPolicyCompliant: input.egressPolicyCompliant === true ? 1 : 0,
       createdAt,
       updatedAt,
     };
@@ -524,52 +496,46 @@ export class MarketplaceGovernanceService {
     const reviewRecord = input.reviewId == null
       ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
       : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
-    if (input.reviewId != null && reviewRecord == null) {
-      throw new StorageError("marketplace.review_not_found", "marketplace.review_not_found", {
-        statusCode: 404,
-        retryable: false,
-        details: { reviewId: input.reviewId, packageId: packageRecord.packageId },
-      });
-    }
 
-    // Root cause: The original flow required a review for every package; the first partial
-    // fix relaxed the gate but still assumed reviewRecord/reviewId were always present,
-    // which made exempt internal publications crash at runtime.
-    const requiresReview = packageRecord.trustLevel !== "internal" || packageRecord.reviewRequired === 1;
-    if (requiresReview && reviewRecord == null) {
+    // Review is required if the package has reviewRequired flag
+    if (reviewRecord == null) {
       throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
         retryable: false,
         details: { packageId: packageRecord.packageId },
       });
     }
 
-    // Package must be approved before publication (only if review was required)
-    if (requiresReview && reviewRecord!.status !== "approved") {
+    // Package must be approved before publication
+    if (reviewRecord.status !== "approved") {
       throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
         retryable: false,
         details: {
           packageId: packageRecord.packageId,
-          reviewId: reviewRecord!.reviewId,
-          reviewStatus: reviewRecord!.status,
+          reviewId: reviewRecord.reviewId,
+          reviewStatus: reviewRecord.status,
         },
       });
     }
 
-    const publishedAt = input.publishedAt == null ? nowIso() : assertTimestamp(input.publishedAt, "marketplace.invalid_published_at");
-    const effectiveReview = requiresReview
-      ? reviewRecord!
-      : reviewRecord?.status === "approved"
-      ? reviewRecord
-      : this.createPublicationExemptionReview(packageRecord, publishedAt);
-
     // Review must match the package being published
-    if (effectiveReview.packageId !== packageRecord.packageId) {
+    if (reviewRecord.packageId !== packageRecord.packageId) {
       throw new ValidationError("marketplace.review_package_mismatch", "marketplace.review_package_mismatch", {
         retryable: false,
         details: {
           packageId: packageRecord.packageId,
-          reviewPackageId: effectiveReview.packageId,
-          reviewId: effectiveReview.reviewId,
+          reviewPackageId: reviewRecord.packageId,
+          reviewId: reviewRecord.reviewId,
+        },
+      });
+    }
+
+    // Check review requirement if package has reviewRequired flag
+    if (packageRecord.reviewRequired === 1 && reviewRecord.status !== "approved") {
+      throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          reviewId: reviewRecord.reviewId,
         },
       });
     }
@@ -585,58 +551,6 @@ export class MarketplaceGovernanceService {
       });
     }
 
-    // §55.1 Quality & Security Gate: SBOM verification required for publication
-    if (packageRecord.trustLevel !== "internal" && packageRecord.sbomVerified !== 1) {
-      throw new PolicyDeniedError("marketplace.sbom_required", "marketplace.sbom_required", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          trustLevel: packageRecord.trustLevel,
-        },
-      });
-    }
-
-    // §55.1 Quality & Security Gate: Sandbox certificate required for publication
-    if (packageRecord.trustLevel !== "internal" && packageRecord.sandboxCertVerified !== 1) {
-      throw new PolicyDeniedError("marketplace.sandbox_cert_required", "marketplace.sandbox_cert_required", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          trustLevel: packageRecord.trustLevel,
-        },
-      });
-    }
-
-    // §55.1 Quality & Security Gate: Egress policy compliance required for publication
-    if (packageRecord.trustLevel !== "internal" && packageRecord.egressPolicyCompliant !== 1) {
-      throw new PolicyDeniedError("marketplace.egress_policy_required", "marketplace.egress_policy_required", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          trustLevel: packageRecord.trustLevel,
-        },
-      });
-    }
-
-    // §55: Certification gate - validate agent/pack certification before release
-    const certGate = getCertificationGateService();
-    const packageId = packageRecord.packageId;
-    const usesAgentCertification =
-      packageRecord.packageType === "tool" || packageRecord.extensionId.toLowerCase().includes("agent");
-    const certResult: CertificationResult = usesAgentCertification
-      ? certGate.validateAgentCertification(packageId)
-      : certGate.validatePackCertification(packageId);
-    if (!certResult.allowed) {
-      throw new PolicyDeniedError("marketplace.certification_required", `Package does not meet certification requirements: ${certResult.reasons.join(", ")}`, {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          blockedBy: certResult.blockedBy,
-          reasons: certResult.reasons,
-        },
-      });
-    }
-
     // Cannot publish if already has an active publication
     if (this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined) != null) {
       throw new PolicyDeniedError("marketplace.package_already_published", "marketplace.package_already_published", {
@@ -645,13 +559,14 @@ export class MarketplaceGovernanceService {
       });
     }
 
+    const publishedAt = input.publishedAt == null ? nowIso() : assertTimestamp(input.publishedAt, "marketplace.invalid_published_at");
     const publication: MarketplacePublicationRecord = {
       publicationId: input.publicationId == null
         ? newId("pub")
         : assertSimpleIdentifier(input.publicationId, "marketplace.invalid_publication_id"),
       tenantId: packageRecord.tenantId,
       packageId: packageRecord.packageId,
-      reviewId: effectiveReview.reviewId,
+      reviewId: reviewRecord.reviewId,
       channel: assertSimpleIdentifier(input.channel ?? "marketplace_public", "marketplace.invalid_channel"),
       status: "published",
       compatibilityMatrixJson: packageRecord.compatibilityJson,
@@ -685,15 +600,6 @@ export class MarketplaceGovernanceService {
       });
     }
 
-    // Root cause: No check for current status - can revoke already-revoked publications
-    // Fix: Check if publication is already revoked/deprecated/retired
-    if (existing.status === "revoked" || existing.status === "deprecated" || existing.status === "retired") {
-      throw new PolicyDeniedError("marketplace.publication_already_inactive", "Publication is already revoked/deprecated/retired", {
-        retryable: false,
-        details: { publicationId: input.publicationId, currentStatus: existing.status },
-      });
-    }
-
     const revokedAt = input.revokedAt == null ? nowIso() : assertTimestamp(input.revokedAt, "marketplace.invalid_revoked_at");
     const updated: MarketplacePublicationRecord = {
       ...existing,
@@ -703,28 +609,6 @@ export class MarketplaceGovernanceService {
     };
     this.store.marketplace.upsertMarketplacePublication(updated);
     return updated;
-  }
-
-  private createPublicationExemptionReview(
-    packageRecord: ExtensionPackageRecord,
-    decidedAt: string,
-  ): MarketplaceReviewRecord {
-    const permissions = JSON.parse(packageRecord.permissionsJson) as string[];
-    const exemptionReview: MarketplaceReviewRecord = {
-      reviewId: newId("review"),
-      tenantId: packageRecord.tenantId,
-      packageId: packageRecord.packageId,
-      status: "approved",
-      submitter: "system",
-      reviewer: "system",
-      decisionReasonCode: "review_exempt_internal_package",
-      findingsJson: JSON.stringify(["internal package published under explicit review exemption"]),
-      permissionSurfaceHash: hashPermissionSurface(permissions),
-      submittedAt: decidedAt,
-      decidedAt,
-    };
-    this.store.marketplace.upsertMarketplaceReview(exemptionReview);
-    return exemptionReview;
   }
 
   public deprecatePackage(input: DeprecateExtensionInput): ExtensionPackageRecord {
@@ -772,63 +656,6 @@ export class MarketplaceGovernanceService {
         status: "retired",
         revocationReasonCode: assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_retirement_reason"),
         updatedAt: retiredAt,
-      });
-    }
-    return updatedPackage;
-  }
-
-  /**
-   * Sunset a package - blocks new installations for 180 days per §55.5.
-   *
-   * During sunset period:
-   * - New installations are blocked (migration_threshold must be >= 95%)
-   * - Existing installations continue to work
-   * - After sunset period ends, package can be retired
-   *
-   * @param input - Sunset parameters
-   * @returns The updated package record
-   */
-  public sunsetPackage(input: SunsetExtensionInput): ExtensionPackageRecord {
-    const packageRecord = this.requirePackage(input.packageId, input.tenantId);
-    const now = nowIso();
-    const sunsetStartsAt = input.sunsetStartsAt == null ? now : assertTimestamp(input.sunsetStartsAt, "marketplace.invalid_sunset_starts_at");
-
-    // §55.5: sunset period is 180 days, ends automatically
-    const sunsetEndsAt = input.sunsetEndsAt ?? (() => {
-      const ends = new Date(sunsetStartsAt);
-      ends.setDate(ends.getDate() + 180);
-      return ends.toISOString();
-    })();
-
-    const migrationThreshold = input.migrationThreshold ?? 95;
-    if (migrationThreshold < 95) {
-      throw new PolicyDeniedError("marketplace.migration_threshold_too_low", "marketplace.migration_threshold_too_low", {
-        retryable: false,
-        details: { packageId: input.packageId, migrationThreshold, minimumRequired: 95 },
-      });
-    }
-
-    const updatedPackage: ExtensionPackageRecord = {
-      ...packageRecord,
-      lifecycleState: "sunset",
-      updatedAt: now,
-    };
-    this.store.marketplace.upsertExtensionPackage(updatedPackage);
-
-    const publication = this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined);
-    if (publication != null) {
-      this.store.marketplace.upsertMarketplacePublication({
-        ...publication,
-        status: "sunset",
-        revocationReasonCode: [
-          assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_sunset_reason"),
-          `migration_threshold:${migrationThreshold}`,
-          `sunset_starts:${sunsetStartsAt}`,
-          `sunset_ends:${sunsetEndsAt}`,
-          input.migrationTarget == null ? null : `migration_target:${assertSimpleIdentifier(input.migrationTarget, "marketplace.invalid_migration_target")}`,
-          ...(input.replacementSuggestions ?? []).map((item) => `replacement:${assertSimpleIdentifier(item, "marketplace.invalid_replacement_suggestion")}`),
-        ].filter((item): item is string => item != null).join("|"),
-        updatedAt: now,
       });
     }
     return updatedPackage;

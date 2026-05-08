@@ -7,7 +7,7 @@
 
 Multi-agent 场景下，agent 之间需要传递执行上下文（状态、计划、摘要）。当前实现使用自然语言 `priorSummaries` 传递，缺少结构化序列化和 token budget 控制。
 
-架构 handoff 子章节定义了四层 Handoff 模型，本 ADR 正式采用该模型。
+§12 定义了四层 Handoff 模型，本 ADR 正式采用该模型。
 
 ## 决策
 
@@ -32,12 +32,6 @@ interface HandoffSerializer {
   truncate(content: string, budgetTokens: number): string;
 }
 ```
-
-当前 canonical 交接 / 委托 contract 见 [agent_handoff_contract.md](../contracts/agent_handoff_contract.md)。其中：
-
-- 回执锚点使用 `NodeAttemptReceipt` / `HarnessRun` / `NodeRun`。
-- 委托请求使用 `DelegationRequest` / `DelegationReceipt` / `ACPMessage`。
-- handoff 载荷使用 `AgentHandoff` 分层对象，并受 depth / budget / data boundary 约束。
 
 ### Token Budget 分配策略
 
@@ -71,9 +65,8 @@ interface HandoffSerializer {
 
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-060 显式规划中心](./060-explicit-planning-hub.md)
-- [Agent Handoff Contract](../contracts/agent_handoff_contract.md)
 
 ## 来源章节
 
-- `§13 OAPEFLIR / Harness 协作与交接子章节`
-- `§59 可解释性与交接审计要求`
+- `§12 Agent Handoff`
+- `§13 OAPEFLIR Loop`

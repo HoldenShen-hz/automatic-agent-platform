@@ -12,11 +12,10 @@ export class FreshnessTracker {
     const ageMs = now.getTime() - new Date(source.freshnessTimestamp).getTime();
     const daysOld = Math.max(0, Math.floor(ageMs / (24 * 60 * 60 * 1000)));
     const stale = daysOld > namespace.freshnessPolicy.maxAgeDays;
-    const effectiveTrust = stale ? "team_reviewed" : source.trustLevel;
     return {
       stale,
       daysOld,
-      effectiveTrustLevel: effectiveTrust,
+      effectiveTrustLevel: stale && source.trustLevel === "verified" ? "reviewed" : source.trustLevel,
       action: stale ? namespace.freshnessPolicy.staleAction : null,
     };
   }

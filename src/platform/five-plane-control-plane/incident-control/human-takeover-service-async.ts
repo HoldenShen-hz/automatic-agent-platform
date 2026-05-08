@@ -33,7 +33,6 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { HumanTakeoverService, type TakeoverActionResult } from "./human-takeover-service.js";
 import { TakeoverQueueManager, type TakeoverQueueConfig } from "./takeover-queue-manager.js";
 import { TakeoverEscalationManager } from "./takeover-escalation-manager.js";
-import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 const require = createRequire(import.meta.url);
 
@@ -56,8 +55,6 @@ export interface TakeoverRequestEntry {
   payload: TakeoverRequestPayload;
   status: TakeoverRequestStatus;
   attempts: number;
-  /** R14-9: Time when this request can be retried (Unix timestamp in ms) */
-  nextRetryTime: number;
   lastError?: string;
 }
 
@@ -120,8 +117,6 @@ export interface TakeoverRequestResult {
  */
 export interface TakeoverAckStatus {
   sessionId: string;
-  /** §181-2126: Track creation time to enable eviction of unacknowledged sessions */
-  createdAt: string;
   acknowledgedAt: string | null;
   expiresAt: string | null;
   status: "pending" | "acknowledged" | "expired";
@@ -320,11 +315,9 @@ export class HumanTakeoverServiceAsync {
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
     config: Partial<HumanTakeoverServiceAsyncConfig> = {},
-    directiveSink?: ControlPlaneDirectiveSink | null,
   ) {
     const { HumanTakeoverService: SyncService } = require("./human-takeover-service.js");
-    // R14-8: Pass directiveSink to sync service so it can emit directives
-    this.sync = new SyncService(db, store, directiveSink);
+    this.sync = new SyncService(db, store);
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -342,16 +335,12 @@ export class HumanTakeoverServiceAsync {
     };
     this.queueManager = new TakeoverQueueManager(queueConfig, eventEmitter);
 
-    // Initialize escalation manager with auto-close and escalation action handlers
+    // Initialize escalation manager with auto-close handler
     this.escalationManager = new TakeoverEscalationManager(
       this.config.timeoutConfig,
       eventEmitter,
       async (sessionId, taskId) => {
         await this.handleAutoClose(sessionId, taskId);
-      },
-      // R14-14: Handle escalation actions (notify next level, create incidents, etc.)
-      async (sessionId, taskId, level, reason) => {
-        await this.handleEscalationAction(sessionId, taskId, level, reason);
       },
     );
   }
@@ -490,14 +479,10 @@ export class HumanTakeoverServiceAsync {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       entry.lastError = errorMessage;
+      entry.status = entry.attempts >= this.config.timeoutConfig.maxRetries ? "failed" : "pending";
 
       if (entry.attempts >= this.config.timeoutConfig.maxRetries) {
-        entry.status = "failed";
         this.queueManager.removeEntry(requestId);
-      } else {
-        // R14-9: Set retry time with exponential backoff
-        entry.status = "pending";
-        this.queueManager.setRetryTime(requestId, this.config.backoffDelayMs);
       }
 
       this.emit("takeover:request_processed", {
@@ -670,52 +655,6 @@ export class HumanTakeoverServiceAsync {
     }
   }
 
-  /**
-   * R14-14: Handles escalation actions when a session is escalated to a new level.
-   * Different levels trigger different actions:
-   * - operator: Initial level, no action needed
-   * - supervisor: Notify supervisor of pending takeover
-   * - admin: Notify admin and create incident
-   * - auto_close: Session will be closed by handleAutoClose
-   */
-  private async handleEscalationAction(
-    sessionId: string,
-    taskId: string,
-    level: EscalationLevel,
-    reason: string,
-  ): Promise<void> {
-    this.logger.log({
-      level: "warn",
-      message: "takeover.escalation_action",
-      data: { sessionId, taskId, level, reason },
-    });
-
-    // Log the escalation action for monitoring/alerting
-    // In a production system, this would trigger:
-    // - For supervisor: page/supervisor notification
-    // - For admin: create incident and page admin
-    // For now, we just log it
-    switch (level) {
-      case "supervisor":
-        this.logger.log({
-          level: "warn",
-          message: "takeover.escalated_to_supervisor",
-          data: { sessionId, taskId },
-        });
-        break;
-      case "admin":
-        this.logger.log({
-          level: "error",
-          message: "takeover.escalated_to_admin",
-          data: { sessionId, taskId },
-        });
-        break;
-      case "auto_close":
-        // auto_close is handled by handleAutoClose
-        break;
-    }
-  }
-
   // -------------------------------------------------------------------------
   // Event Emission
   // -------------------------------------------------------------------------
@@ -782,17 +721,6 @@ export class HumanTakeoverServiceAsync {
     const loop = async (): Promise<void> => {
       while (this.processingLoopActive && !this.abortController.signal.aborted) {
         try {
-          // R14-13: Expire requests that have been pending too long
-          const maxPendingTimeMs = this.config.timeoutConfig.defaultTimeoutMs * 2; // Allow 2x the normal timeout
-          const expiredCount = this.queueManager.expireTimedOutRequests(maxPendingTimeMs);
-          if (expiredCount > 0) {
-            this.logger.log({
-              level: "warn",
-              message: "takeover.requests_expired",
-              data: { count: expiredCount },
-            });
-          }
-
           let processed = 0;
           while (
             processed < this.config.processingConcurrency &&

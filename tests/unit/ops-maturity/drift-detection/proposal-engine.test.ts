@@ -21,7 +21,7 @@ test("SimpleProposalEngine.create creates a proposal", async () => {
   assert.equal(proposal.kind, "tool_routing_rule");
   assert.equal(proposal.target, "test_target");
   assert.equal(proposal.risk, "low");
-  assert.equal(proposal.status, "draft");
+  assert.equal(proposal.status, "proposed");
   assert.ok(proposal.id.startsWith("prop_"));
 });
 
@@ -46,10 +46,10 @@ test("SimpleProposalEngine.create increments ID counter", async () => {
     evidenceIds: [],
   });
 
-  // Verify IDs are unique (newId() generates random IDs, not counters)
-  assert.ok(p1.id.startsWith("prop_"));
-  assert.ok(p2.id.startsWith("prop_"));
-  assert.notEqual(p1.id, p2.id);
+  // Parse IDs to compare
+  const id1 = parseInt(p1.id.replace("prop_", ""));
+  const id2 = parseInt(p2.id.replace("prop_", ""));
+  assert.ok(id2 > id1);
 });
 
 test("SimpleProposalEngine.submitForApproval changes status to testing", async () => {
@@ -71,10 +71,10 @@ test("SimpleProposalEngine.submitForApproval changes status to testing", async (
 
   const active = await engine.listActive();
   assert.equal(active.length, 1); // Now in "testing" status which is included in active
-  assert.equal(active[0]!.status, "staging");
+  assert.equal(active[0]!.status, "testing");
 });
 
-test("SimpleProposalEngine.listPending returns only draft proposals", async () => {
+test("SimpleProposalEngine.listPending returns only proposed proposals", async () => {
   const engine = new SimpleProposalEngine();
   await engine.create({
     title: "Pending",
@@ -195,8 +195,7 @@ test("SimpleProposalEngine.proposeFromReflection handles complex root cause", as
   const proposals = await engine.proposeFromReflection(reflection);
   const workflowProposal = proposals.find(p => p.kind === "workflow_template");
   assert.ok(workflowProposal !== undefined);
-  // workflow_template is in MANUAL_ONLY_KINDS, so risk is 'high' (requires manual approval)
-  assert.equal(workflowProposal!.risk, "high");
+  assert.equal(workflowProposal!.risk, "medium");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles security root cause", async () => {
@@ -292,7 +291,7 @@ test("ImprovementProposal interface supports all status values", async () => {
   });
 
   // Verify all expected status values are possible
-  const validStatuses = ["draft", "review", "staging", "canary", "active", "paused", "deprecated", "archived", "retired"];
+  const validStatuses = ["proposed", "testing", "canary", "active", "rejected", "rolled_back"];
   assert.ok(validStatuses.includes(proposal.status));
 });
 

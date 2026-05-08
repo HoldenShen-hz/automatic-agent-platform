@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   parent_id TEXT NULL,
   root_id TEXT NOT NULL,
-  harness_run_id TEXT NULL,
   division_id TEXT NULL,
   title TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -203,45 +202,4 @@ CREATE INDEX IF NOT EXISTS idx_agent_execution_records_agent_updated_at ON agent
 
 CREATE TABLE IF NOT EXISTS worker_snapshots (
   worker_id TEXT PRIMARY KEY,
-  status TEXT NOT NULL,
-  placement TEXT NOT NULL DEFAULT 'local',
-  isolation_level TEXT NOT NULL DEFAULT 'standard',
-  repo_version TEXT NULL,
-  remote_session_status TEXT NULL,
-  last_acknowledged_stream_offset TEXT NULL,
-  stream_resume_success_rate REAL NULL,
-  credential_refresh_success_rate REAL NULL,
-  session_consistency_check_status TEXT NULL,
-  session_consistency_checked_at TEXT NULL,
-  workspace_sync_status TEXT NULL,
-  workspace_sync_checked_at TEXT NULL,
-  saturation REAL NULL,
-  active_lease_count INTEGER NOT NULL DEFAULT 0,
-  mean_startup_latency_ms INTEGER NULL,
-  sandbox_success_rate REAL NULL,
-  repo_cache_hit_rate REAL NULL,
-  registration_verified_at TEXT NULL,
-  registration_challenge_id TEXT NULL,
-  service_identity TEXT NULL,
-  mtls_peer_fingerprint TEXT NULL,
-  allowed_node_run_tenants TEXT NULL,
-  capabilities_json TEXT NOT NULL DEFAULT '[]',
-  running_executions_json TEXT NOT NULL DEFAULT '[]',
-  max_concurrency INTEGER NOT NULL DEFAULT 1,
-  queue_affinity TEXT NULL,
-  runtime_instance_id TEXT NULL,
-  restarted_from_runtime_instance_id TEXT NULL,
-  restart_generation INTEGER NOT NULL DEFAULT 0,
-  cpu_pct REAL NULL,
-  memory_mb REAL NULL,
-  tool_backlog_count INTEGER NOT NULL DEFAULT 0,
-  current_step_id TEXT NULL,
-  last_progress_at TEXT NULL,
-  last_heartbeat_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS idx_worker_snapshots_status_updated_at ON worker_snapshots(status, updated_at);
-CREATE INDEX IF NOT EXISTS idx_worker_snapshots_heartbeat ON worker_snapshots(last_heartbeat_at);
 `;

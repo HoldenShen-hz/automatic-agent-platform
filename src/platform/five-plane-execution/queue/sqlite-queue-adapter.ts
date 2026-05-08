@@ -1,6 +1,5 @@
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 import {
   DEFAULT_RETRY_POLICY,
@@ -61,9 +60,6 @@ export class SqliteQueueAdapter implements QueueAdapter {
         job.idempotencyKey, job.createdAt, job.updatedAt, job.completedAt,
       );
 
-    // R29-11: Record queue enqueue metric
-    runtimeMetricsRegistry.recordQueueEnqueue(input.queueName);
-
     return job;
   }
 
@@ -86,9 +82,6 @@ export class SqliteQueueAdapter implements QueueAdapter {
     job.attempts += 1;
     job.updatedAt = now;
 
-    // R29-11: Record queue dequeue metric
-    runtimeMetricsRegistry.recordQueueDequeue(queueName);
-
     const jobId = job.id;
     return {
       job,
@@ -107,14 +100,10 @@ export class SqliteQueueAdapter implements QueueAdapter {
           this.db.connection
             .prepare(`UPDATE queue_jobs SET status = 'dead_letter', last_error = ?, updated_at = ? WHERE id = ?`)
             .run(error ?? "max_attempts_exceeded", ts, jobId);
-          // R29-11: Record queue failure (max attempts exceeded)
-          runtimeMetricsRegistry.recordQueueFailure(queueName, "max_attempts_exceeded");
         } else {
           this.db.connection
             .prepare(`UPDATE queue_jobs SET status = 'waiting', last_error = ?, updated_at = ? WHERE id = ?`)
             .run(error ?? null, ts, jobId);
-          // R29-11: Record queue failure (requeue)
-          runtimeMetricsRegistry.recordQueueFailure(queueName, "requeued");
         }
       },
     };

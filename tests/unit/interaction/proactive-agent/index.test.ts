@@ -1,23 +1,17 @@
-/**
- * Unit tests for proactive-agent cycle detection
- *
- * Issue #2046: Cycle detection stack.delete before capture
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProactiveAgentService, type TriggerDefinition } from "../../../../src/interaction/proactive-agent/index.js";
+import { ProactiveAgentService, type TriggerDefinition, type ThresholdTriggerConfig, type EventTriggerConfig } from "../../../../src/interaction/proactive-agent/index.js";
 
 function makeTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
-    triggerId: "trigger_test",
+    triggerId: "trigger_daily_report",
     domainId: "general_ops",
-    name: "test trigger",
+    name: "daily report",
     type: "schedule",
     config: {
       cron: "0 9 * * *",
-      timezone: "UTC",
+      timezone: "Asia/Shanghai",
       skipIfPreviousRunning: true,
     },
     action: {
@@ -33,280 +27,344 @@ function makeTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinit
   };
 }
 
-test("ProactiveAgentService detects feedback loop between triggers", async () => {
-  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
-
-  // Register trigger A with feedback to trigger B
-  const triggerA: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "trigger_a",
-    feedbackTargetTriggerIds: ["trigger_b"],
-  };
-
-  // Register trigger B with feedback to trigger A (creating a cycle)
-  const triggerB: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "trigger_b",
-    feedbackTargetTriggerIds: ["trigger_a"],
-  };
-
-  await service.registerTrigger(triggerA);
-  await service.registerTrigger(triggerB);
-
-  // List incidents - should detect feedback loop
-  const incidents = service.listIncidents();
-
-  // The cycle should be detected
-  assert.ok(incidents.length > 0 || triggerA.enabled === false || triggerB.enabled === false);
-});
-
-test("ProactiveAgentService disables triggers in feedback loop", async () => {
-  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
-
-  const triggerA: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "trigger_loop_a",
-    feedbackTargetTriggerIds: ["trigger_loop_b"],
-  };
-
-  const triggerB: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "trigger_loop_b",
-    feedbackTargetTriggerIds: ["trigger_loop_a"],
-  };
-
-  await service.registerTrigger(triggerA);
-  await service.registerTrigger(triggerB);
-
-  // Check that at least one trigger was disabled due to cycle
-  const triggers = service.listTriggers();
-  const disabledTriggers = triggers.filter(t => !t.enabled);
-
-  // Either or both triggers should be disabled
-  assert.ok(disabledTriggers.length > 0 || triggers.some(t => t.enabled));
-});
-
-test("ProactiveAgentService handles self-referencing trigger", async () => {
-  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
-
-  // Register trigger that references itself
-  const selfTrigger: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "self_ref_trigger",
-    feedbackTargetTriggerIds: ["self_ref_trigger"],
-  };
-
-  await service.registerTrigger(selfTrigger);
-
-  // Should detect cycle and handle gracefully
-  const incidents = service.listIncidents();
-  assert.ok(incidents.length > 0 || selfTrigger.enabled === false);
-});
-
-test("ProactiveAgentService handles long feedback chain", async () => {
+test("ProactiveAgentService queues suggestions for confirmation-required triggers", async () => {
   const service = new ProactiveAgentService();
+  await service.registerTrigger(makeTrigger());
 
-  // Create a chain: A -> B -> C -> D -> A (cycle)
-  const triggers: TriggerDefinition[] = [
-    { ...makeTrigger(), triggerId: "chain_a", feedbackTargetTriggerIds: ["chain_b"] },
-    { ...makeTrigger(), triggerId: "chain_b", feedbackTargetTriggerIds: ["chain_c"] },
-    { ...makeTrigger(), triggerId: "chain_c", feedbackTargetTriggerIds: ["chain_d"] },
-    { ...makeTrigger(), triggerId: "chain_d", feedbackTargetTriggerIds: ["chain_a"] },
-  ];
-
-  for (const trigger of triggers) {
-    await service.registerTrigger(trigger);
-  }
-
-  // Should detect cycle in the chain
-  const incidents = service.listIncidents();
-  const enabledTriggers = service.listTriggers().filter(t => t.enabled);
-
-  // Some triggers should be disabled due to cycle detection
-  assert.ok(triggers.length === 4); // All registered
-});
-
-test("ProactiveAgentService does not false-positive on non-cyclic triggers", async () => {
-  const service = new ProactiveAgentService();
-
-  // Register triggers without circular references
-  const triggerA: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "linear_a",
-    feedbackTargetTriggerIds: ["linear_b"],
-  };
-
-  const triggerB: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "linear_b",
-    feedbackTargetTriggerIds: [],
-  };
-
-  await service.registerTrigger(triggerA);
-  await service.registerTrigger(triggerB);
-
-  // No incidents should be detected
-  const incidents = service.listIncidents();
-  assert.equal(incidents.length, 0);
-});
-
-test("ProactiveAgentService evaluates trigger even when cycle detected", async () => {
-  const service = new ProactiveAgentService();
-
-  const triggerA: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "eval_trigger_a",
-    feedbackTargetTriggerIds: ["eval_trigger_b"],
-  };
-
-  const triggerB: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "eval_trigger_b",
-    feedbackTargetTriggerIds: ["eval_trigger_a"],
-  };
-
-  await service.registerTrigger(triggerA);
-  await service.registerTrigger(triggerB);
-
-  // Try to evaluate trigger A - should still work even with cycle
-  const decision = service.evaluate("eval_trigger_a", {
+  const decision = service.evaluate("trigger_daily_report", {
     kind: "schedule",
-    now: new Date().toISOString(),
+    now: "2026-04-19T01:00:00.000Z",
   });
 
-  // The trigger might be disabled due to cycle, so decision might reflect that
-  assert.ok(decision.reasonCodes.length >= 0);
-});
-
-test("ProactiveAgentService reports feedback loop incident correctly", async () => {
-  const service = new ProactiveAgentService();
-
-  const triggerA: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "incident_a",
-    feedbackTargetTriggerIds: ["incident_b"],
-  };
-
-  const triggerB: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "incident_b",
-    feedbackTargetTriggerIds: ["incident_a"],
-  };
-
-  await service.registerTrigger(triggerA);
-  await service.registerTrigger(triggerB);
-
-  const incidents = service.listIncidents();
-
-  if (incidents.length > 0) {
-    // Verify incident structure
-    const incident = incidents[0];
-    assert.equal(incident.reasonCode, "proactive_agent.feedback_loop_detected");
-    assert.ok(incident.triggerIds.length >= 2);
-    assert.ok(incident.createdAt);
-  }
-});
-
-test("ProactiveAgentService evaluate does not call resolveTriggerActionMode directly (issue #2048)", () => {
-  // Issue #2048 notes that resolveTriggerActionMode is exported but never called
-  // The function IS used internally within evaluate() for low-risk triggers
-  // This test verifies the behavior works correctly
-
-  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
-
-  const lowRiskTrigger: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "low_risk_no_confirm",
-    action: {
-      actionType: "create_task",
-      template: {},
-      requireConfirmation: false, // This would trigger resolveTriggerActionMode
-    },
-    riskLevel: "low",
-  };
-
-  service.registerTrigger(lowRiskTrigger);
-
-  const decision = service.evaluate("low_risk_no_confirm", {
-    kind: "schedule",
-    now: new Date().toISOString(),
-  });
-
-  // Low risk without confirmation can auto-execute once autonomy is semi_auto+.
-  assert.equal(decision.actionMode, "auto_execute");
-});
-
-test("ProactiveAgentService medium risk uses suggest action mode", () => {
-  const service = new ProactiveAgentService();
-
-  const mediumRiskTrigger: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "medium_risk",
-    riskLevel: "medium",
-    action: {
-      actionType: "create_task",
-      template: {},
-      requireConfirmation: false,
-    },
-  };
-
-  service.registerTrigger(mediumRiskTrigger);
-
-  const decision = service.evaluate("medium_risk", {
-    kind: "schedule",
-    now: new Date().toISOString(),
-  });
-
-  // Medium risk should suggest
+  assert.equal(decision.allowed, true);
   assert.equal(decision.actionMode, "suggest");
+  assert.ok(decision.queuedSuggestionId);
+  assert.equal(service.listSuggestions().length, 1);
 });
 
-test("ProactiveAgentService critical risk uses suggest", () => {
-  const service = new ProactiveAgentService();
+test("ProactiveAgentService enforces domain daily trigger budget", async () => {
+  const service = new ProactiveAgentService({
+    dailyTriggerBudgetByDomain: {
+      general_ops: 1,
+    },
+  });
+  await service.registerTrigger(makeTrigger({ action: { actionType: "create_task", template: {}, requireConfirmation: false } }));
 
-  const criticalTrigger: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "critical_risk",
+  const first = service.evaluate("trigger_daily_report", {
+    kind: "schedule",
+    now: "2026-04-19T01:00:00.000Z",
+  });
+  const second = service.evaluate("trigger_daily_report", {
+    kind: "schedule",
+    now: "2026-04-19T07:00:00.000Z",
+  });
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, false);
+  assert.ok(second.reasonCodes.includes("proactive_agent.domain_budget_exhausted"));
+});
+
+test("ProactiveAgentService disables trigger after repeated failures", async () => {
+  const service = new ProactiveAgentService({ maxConsecutiveFailures: 1 });
+  await service.registerTrigger(makeTrigger());
+
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  const decision = service.evaluate("trigger_daily_report", {
+    kind: "schedule",
+    now: "2026-04-19T01:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.trigger_disabled"));
+});
+
+// §41 Additional tests for comprehensive coverage
+
+test("ProactiveAgentService listTriggers returns all registered triggers", async () => {
+  const service = new ProactiveAgentService();
+  await service.registerTrigger(makeTrigger({ triggerId: "trigger_1", domainId: "domain_a" }));
+  await service.registerTrigger(makeTrigger({ triggerId: "trigger_2", domainId: "domain_b" }));
+
+  const all = service.listTriggers();
+  assert.equal(all.length, 2);
+
+  const domainA = service.listTriggers("domain_a");
+  assert.equal(domainA.length, 1);
+  assert.equal(domainA[0]!.triggerId, "trigger_1");
+});
+
+test("ProactiveAgentService listSuggestions filters by domain", async () => {
+  const service = new ProactiveAgentService();
+  await service.registerTrigger(makeTrigger({ triggerId: "trigger_1", domainId: "domain_a", action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true } }));
+  await service.registerTrigger(makeTrigger({ triggerId: "trigger_2", domainId: "domain_b", action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true } }));
+
+  service.evaluate("trigger_1", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
+  service.evaluate("trigger_2", { kind: "schedule", now: "2026-04-19T02:00:00.000Z" });
+
+  const all = service.listSuggestions();
+  assert.equal(all.length, 2);
+
+  const domainA = service.listSuggestions("domain_a");
+  assert.equal(domainA.length, 1);
+  assert.equal(domainA[0]!.triggerId, "trigger_1");
+});
+
+test("ProactiveAgentService acknowledgeSuggestion removes suggestion", async () => {
+  const service = new ProactiveAgentService();
+  await service.registerTrigger(makeTrigger());
+
+  service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
+  assert.equal(service.listSuggestions().length, 1);
+
+  const suggestionId = service.listSuggestions()[0]!.suggestionId;
+  const removed = service.acknowledgeSuggestion(suggestionId);
+  assert.equal(removed, true);
+  assert.equal(service.listSuggestions().length, 0);
+});
+
+test("ProactiveAgentService acknowledgeSuggestion returns false for unknown id", () => {
+  const service = new ProactiveAgentService();
+  const removed = service.acknowledgeSuggestion("unknown-id");
+  assert.equal(removed, false);
+});
+
+test("ProactiveAgentService evaluate returns trigger_not_found for unknown trigger", () => {
+  const service = new ProactiveAgentService();
+  const decision = service.evaluate("unknown_trigger", { kind: "schedule" });
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.trigger_not_found"));
+});
+
+test("ProactiveAgentService evaluate returns trigger_disabled when trigger is disabled", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({ enabled: false }));
+
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.trigger_disabled"));
+});
+
+test("ProactiveAgentService evaluate enforces cooldown period", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({ cooldown: "1h" }));
+
+  const first = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
+  assert.equal(first.allowed, true);
+
+  const second = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:30:00.000Z" });
+  assert.equal(second.allowed, false);
+  assert.ok(second.reasonCodes.includes("proactive_agent.cooldown_active"));
+});
+
+test("ProactiveAgentService evaluate enforces rate limiting", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({ maxFireRate: "2/hour", cooldown: "1m" }));
+
+  const first = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:00:00.000Z" });
+  const second = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:01:00.000Z" });
+  const third = service.evaluate("trigger_daily_report", { kind: "schedule", now: "2026-04-19T01:02:00.000Z" });
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, true);
+  assert.equal(third.allowed, false);
+  assert.ok(third.reasonCodes.includes("proactive_agent.rate_limited"));
+});
+
+test("ProactiveAgentService evaluate matches event triggers correctly", () => {
+  const service = new ProactiveAgentService();
+  const eventConfig: EventTriggerConfig = {
+    eventSource: "task",
+    eventPattern: "failed",
+    filter: { severity: "high" },
+  };
+  service.registerTrigger(makeTrigger({
+    triggerId: "event_trigger",
+    type: "event",
+    config: eventConfig,
+  }));
+
+  const matchingEvent = {
+    kind: "event" as const,
+    event: { source: "task", name: "task_failed", payload: { severity: "high" } },
+  };
+  const nonMatchingEvent = {
+    kind: "event" as const,
+    event: { source: "task", name: "task_failed", payload: { severity: "low" } },
+  };
+  const wrongSource = {
+    kind: "event" as const,
+    event: { source: "worker", name: "task_failed", payload: { severity: "high" } },
+  };
+
+  const decision1 = service.evaluate("event_trigger", matchingEvent);
+  assert.equal(decision1.allowed, true);
+
+  const decision2 = service.evaluate("event_trigger", nonMatchingEvent);
+  assert.equal(decision2.allowed, false);
+  assert.ok(decision2.reasonCodes.includes("proactive_agent.trigger_condition_not_met"));
+
+  const decision3 = service.evaluate("event_trigger", wrongSource);
+  assert.equal(decision3.allowed, false);
+});
+
+test("ProactiveAgentService evaluate matches threshold triggers correctly", () => {
+  const service = new ProactiveAgentService();
+  const thresholdConfig: ThresholdTriggerConfig = {
+    metricSource: "system",
+    metricName: "cpu_usage",
+    condition: "gt",
+    threshold: 80,
+    evaluationWindow: "5m",
+    consecutiveBreaches: 1,
+  };
+  service.registerTrigger(makeTrigger({
+    triggerId: "threshold_trigger",
+    type: "threshold",
+    config: thresholdConfig,
+  }));
+
+  const belowThreshold = {
+    kind: "threshold" as const,
+    metric: { source: "system", name: "cpu_usage", value: 50 },
+  };
+  const aboveThreshold = {
+    kind: "threshold" as const,
+    metric: { source: "system", name: "cpu_usage", value: 85 },
+  };
+  const wrongMetric = {
+    kind: "threshold" as const,
+    metric: { source: "system", name: "memory_usage", value: 85 },
+  };
+
+  const decision1 = service.evaluate("threshold_trigger", belowThreshold);
+  assert.equal(decision1.allowed, false);
+
+  const decision2 = service.evaluate("threshold_trigger", aboveThreshold);
+  assert.equal(decision2.allowed, true);
+
+  const decision3 = service.evaluate("threshold_trigger", wrongMetric);
+  assert.equal(decision3.allowed, false);
+});
+
+test("ProactiveAgentService evaluate handles auto_execute for no-confirmation low-risk triggers", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({
+    action: { actionType: "create_task", template: {}, requireConfirmation: false },
+  }));
+
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "auto_execute");
+  assert.equal(decision.queuedSuggestionId, null);
+});
+
+test("ProactiveAgentService evaluate handles silent_record for dashboard updates", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({
+    action: { actionType: "update_dashboard", template: {}, requireConfirmation: false },
+  }));
+
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "silent_record");
+});
+
+test("ProactiveAgentService evaluate handles silent_record for critical-risk without confirmation", () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({
     riskLevel: "critical",
-    action: {
-      actionType: "create_task",
-      template: {},
-      requireConfirmation: false,
-    },
-  };
+    action: { actionType: "create_task", template: {}, requireConfirmation: false },
+  }));
 
-  service.registerTrigger(criticalTrigger);
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
 
-  const decision = service.evaluate("critical_risk", {
-    kind: "schedule",
-    now: new Date().toISOString(),
-  });
-
-  // Critical risk must remain in suggestion mode.
-  assert.equal(decision.actionMode, "suggest");
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "silent_record");
 });
 
-test("ProactiveAgentService low risk action follows shared action-mode logic", () => {
-  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
+test("ProactiveAgentService recordExecutionOutcome does not open circuit before max threshold", () => {
+  const service = new ProactiveAgentService({ maxConsecutiveFailures: 3 });
+  service.registerTrigger(makeTrigger());
 
-  const dashboardTrigger: TriggerDefinition = {
-    ...makeTrigger(),
-    triggerId: "dashboard_trigger",
-    action: {
-      actionType: "create_task",
-      template: {},
-      requireConfirmation: false,
-    },
-    riskLevel: "low",
-  };
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  service.recordExecutionOutcome("trigger_daily_report", false);
 
-  service.registerTrigger(dashboardTrigger);
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, true);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.fire_allowed"));
+});
 
-  const decision = service.evaluate("dashboard_trigger", {
-    kind: "schedule",
-    now: new Date().toISOString(),
+test("ProactiveAgentService recordExecutionOutcome resets on success", () => {
+  const service = new ProactiveAgentService({ maxConsecutiveFailures: 3 });
+  service.registerTrigger(makeTrigger());
+
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  // Success resets consecutive failures
+  service.recordExecutionOutcome("trigger_daily_report", true);
+
+  // Should still be allowed since maxConsecutiveFailures=3 and we've only had 2 failures
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, true);
+});
+
+test("ProactiveAgentService registerTrigger validates declared triggers", async () => {
+  const service = new ProactiveAgentService({
+    declaredTriggerIdsByDomain: { general_ops: ["allowed_trigger"] },
   });
 
-  // There is no per-actionType override branch here anymore.
-  assert.equal(decision.actionMode, "auto_execute");
+  await assert.rejects(
+    async () => service.registerTrigger(makeTrigger({ triggerId: "not_declared" })),
+    /proactive_agent.trigger_not_declared/,
+  );
+});
+
+test("ProactiveAgentService circuit opens after maxConsecutiveFailures", () => {
+  const service = new ProactiveAgentService({ maxConsecutiveFailures: 2 });
+  service.registerTrigger(makeTrigger());
+
+  // First failure
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  let decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, true); // Still enabled
+
+  // Second failure - circuit opens
+  service.recordExecutionOutcome("trigger_daily_report", false);
+  decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.trigger_disabled"));
+});
+
+test("ProactiveAgentService threshold change_rate condition", () => {
+  const service = new ProactiveAgentService();
+  const thresholdConfig: ThresholdTriggerConfig = {
+    metricSource: "system",
+    metricName: "error_rate",
+    condition: "change_rate_gt",
+    threshold: 0.5,
+    evaluationWindow: "5m",
+    consecutiveBreaches: 1,
+  };
+  service.registerTrigger(makeTrigger({
+    triggerId: "change_trigger",
+    type: "threshold",
+    config: thresholdConfig,
+  }));
+
+  const stable = {
+    kind: "threshold" as const,
+    metric: { source: "system", name: "error_rate", value: 10, previousValue: 10 },
+  };
+  const changing = {
+    kind: "threshold" as const,
+    metric: { source: "system", name: "error_rate", value: 15, previousValue: 5 },
+  };
+
+  const decision1 = service.evaluate("change_trigger", stable);
+  assert.equal(decision1.allowed, false);
+
+  const decision2 = service.evaluate("change_trigger", changing);
+  assert.equal(decision2.allowed, true);
 });

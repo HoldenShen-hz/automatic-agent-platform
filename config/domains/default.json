@@ -4,45 +4,29 @@
       "domainId": "coding",
       "name": "Coding",
       "description": "Coding workflows, tools, and plugin bindings.",
-      "version": "1.0.0",
-      "riskSpec": {
-        "advisoryOnly": false,
-        "humanAccountable": false,
-        "deterministicHotPathOnly": false
-      },
+      "version": 1,
       "workflows": [
         {
           "workflowId": "coding-default",
           "name": "Coding Default Workflow",
           "triggerConditions": {},
-          "planGraph": {
-            "graphId": "graph:coding:default",
-            "nodes": [
-              {
-                "nodeId": "node:coding:analyze",
-                "nodeType": "llm",
-                "inputRefs": ["task:${taskId}"],
-                "outputSchemaRef": "schema:coding.analyze",
-                "riskClass": "low",
-                "budgetIntent": {
-                  "amount": 0.1,
-                  "currency": "USD",
-                  "resourceKinds": ["token"]
-                },
-                "sideEffectProfile": {
-                  "mayCommitExternalEffect": false,
-                  "reversible": true
-                },
-                "retryPolicyRef": "retry:coding.default",
-                "timeoutMs": 60000
-              }
-            ],
-            "edges": [],
-            "entryNodeIds": ["node:coding:analyze"],
-            "terminalNodeIds": ["node:coding:analyze"],
-            "joinStrategy": "all",
-            "graphHash": "coding-default-workflow-hash"
-          }
+          "steps": [
+            {
+              "stepName": "analyze",
+              "toolHints": ["repo_map", "static_analysis"],
+              "modelHints": {
+                "preferredModel": "MiniMax-M2.7"
+              },
+              "outputSchema": null,
+              "retryPolicy": {
+                "maxRetries": 1,
+                "backoffMs": 250
+              },
+              "requiresReview": false,
+              "timeoutMs": 60000,
+              "dependsOn": []
+            }
+          ]
         }
       ],
       "toolBundles": [
@@ -92,19 +76,7 @@
           "contractId": "coding.patch",
           "name": "Coding Patch Output",
           "schema": {
-            "type": "object",
-            "properties": {
-              "patch": {
-                "type": "string",
-                "description": "The patch content to apply"
-              },
-              "filesChanged": {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "List of files modified by the patch"
-              }
-            },
-            "required": ["patch"]
+            "type": "object"
           },
           "validationLevel": "strict"
         }
@@ -121,9 +93,9 @@
           "maxTokensPerTask": 12000,
           "maxCostPerTask": 10
         },
-        "securityLevel": "elevated"
+        "securityLevel": "standard"
       },
-      "status": "active",
+      "status": "testing",
       "externalAdapters": ["github"],
       "pluginBindings": [
         {

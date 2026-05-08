@@ -6,7 +6,6 @@
  */
 
 import type { AutonomyLevel, AutonomyChangeEvent } from "./index.js";
-import { newId } from "../../platform/contracts/types/ids.js";
 
 export interface AutonomyAuditRecord {
   id: string;
@@ -32,23 +31,12 @@ export interface AutonomyAuditSummary {
   lastChangeAt: string | null;
 }
 
-interface LegacyAutonomyDecisionRecord {
-  readonly decisionId: string;
-  readonly taskId: string;
-  readonly level: string;
-  readonly reason: string;
-  readonly timestamp: string;
-  readonly actor: string;
-}
-
 export class AutonomyAuditService {
   private readonly records: AutonomyAuditRecord[] = [];
-  private readonly legacyTrail: LegacyAutonomyDecisionRecord[] = [];
 
   public recordChange(event: AutonomyChangeEvent): AutonomyAuditRecord {
-    // §42: Use ULID for globally unique, time-sortable IDs across distributed instances
     const record: AutonomyAuditRecord = {
-      id: newId("audit"),
+      id: `autonomy_audit_${this.records.length + 1}`,
       agentId: event.agentId,
       capabilityId: event.capabilityId,
       eventType: event.eventType,
@@ -64,14 +52,6 @@ export class AutonomyAuditService {
     };
     this.records.push(record);
     return record;
-  }
-
-  public record(decision: LegacyAutonomyDecisionRecord): void {
-    this.legacyTrail.push({ ...decision });
-  }
-
-  public getTrail(taskId: string): LegacyAutonomyDecisionRecord[] {
-    return this.legacyTrail.filter((item) => item.taskId === taskId);
   }
 
   public getByAgent(agentId: string): AutonomyAuditRecord[] {

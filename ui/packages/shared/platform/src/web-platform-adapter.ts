@@ -1,23 +1,23 @@
-import type { PlatformNotificationOptions } from "@aa/shared-types";
-import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter";
+import { DefaultPlatformAdapter } from "./base-platform-adapter";
 
 export class WebPlatformAdapter extends DefaultPlatformAdapter {
-  public constructor(options: Omit<PlatformAdapterFactoryOptions, "platform"> = {}) {
-    const screenSecurityDefault = options.screenSecurityDefault ?? true;
-    super("web", {
-      ...options,
-      screenSecurityDefault,
-    });
-
-    if (typeof document !== "undefined") {
-      document.documentElement.dataset.aaScreenSecurity = screenSecurityDefault ? "enabled" : "disabled";
-    }
+  public constructor() {
+    super("web");
   }
 
-  // NOTE: Secure storage delegates to DefaultPlatformAdapter's in-memory store.
-  // localStorage is NOT used for sensitive data as it is XSS-vulnerable (UP-6).
-  // In production, sensitive data should be stored in platform-native secure storage
-  // (e.g., Keychain on iOS, Keystore on Android) via the bridge.
+  public override async readSecureValue(key: string): Promise<string | null> {
+    return globalThis.localStorage?.getItem(`aa.secure.${key}`) ?? super.readSecureValue(key);
+  }
+
+  public override async writeSecureValue(key: string, value: string): Promise<void> {
+    globalThis.localStorage?.setItem(`aa.secure.${key}`, value);
+    await super.writeSecureValue(key, value);
+  }
+
+  public override async deleteSecureValue(key: string): Promise<void> {
+    globalThis.localStorage?.removeItem(`aa.secure.${key}`);
+    await super.deleteSecureValue(key);
+  }
 
   public override async copyToClipboard(text: string): Promise<void> {
     await globalThis.navigator?.clipboard?.writeText?.(text);
@@ -25,16 +25,11 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   }
 
   public override async readFile(path: string): Promise<string> {
-    // P0 FIX: Do not use localStorage for file reads per UP-6.
-    // localStorage is XSS-accessible and not safe for any data.
-    // Delegate to in-memory store only, which is the secure default.
-    return super.readFile(path);
+    return globalThis.localStorage?.getItem(`aa.file.${path}`) ?? super.readFile(path);
   }
 
   public override async writeFile(path: string, contents: string): Promise<void> {
-    // P0 FIX: Do not use localStorage for file writes per UP-6.
-    // localStorage is XSS-accessible and not safe for any data.
-    // Delegate to in-memory store only, which is the secure default.
+    globalThis.localStorage?.setItem(`aa.file.${path}`, contents);
     await super.writeFile(path, contents);
   }
 
@@ -96,52 +91,5 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
       document.documentElement.dataset.aaScreenSecurity = enabled ? "enabled" : "disabled";
     }
     this.setScreenSecurityState(enabled);
-  }
-
-  public override async requestNotificationPermission(): Promise<NotificationPermission> {
-    if (typeof Notification === "undefined") {
-      return "denied";
-    }
-    return Notification.requestPermission();
-  }
-
-  public override async showNotification(title: string, options?: PlatformNotificationOptions): Promise<void> {
-    const permission = typeof Notification === "undefined"
-      ? "denied"
-      : (Notification.permission === "granted" ? "granted" : await this.requestNotificationPermission());
-    if (permission === "granted" && typeof Notification !== "undefined") {
-      new Notification(title, options);
-    }
-    await super.showNotification(title, options);
-  }
-
-  public override async isBiometricAvailable(): Promise<boolean> {
-    const platformAuthenticator = globalThis.PublicKeyCredential as typeof PublicKeyCredential & {
-      isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
-    };
-    if (typeof platformAuthenticator?.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
-      return false;
-    }
-    return platformAuthenticator.isUserVerifyingPlatformAuthenticatorAvailable();
-  }
-
-  public override async isWebAuthnSupported(): Promise<boolean> {
-    return typeof globalThis.PublicKeyCredential !== "undefined" && typeof globalThis.navigator?.credentials !== "undefined";
-  }
-
-  public override async createWebAuthnCredential(options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null> {
-    if (!await this.isWebAuthnSupported()) {
-      return null;
-    }
-    const credential = await globalThis.navigator.credentials.create({ publicKey: options });
-    return credential instanceof PublicKeyCredential ? credential : null;
-  }
-
-  public override async getWebAuthnAssertion(options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null> {
-    if (!await this.isWebAuthnSupported()) {
-      return null;
-    }
-    const credential = await globalThis.navigator.credentials.get({ publicKey: options });
-    return credential instanceof PublicKeyCredential ? credential : null;
   }
 }

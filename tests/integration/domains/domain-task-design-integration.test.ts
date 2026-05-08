@@ -8,19 +8,10 @@ test("integration: domain support modules flow into a single domain task design 
     recipes: [
       {
         recipeId: "recipe_bugfix",
-        name: "Bugfix Recipe",
         domainId: "coding",
         triggerPhrases: ["bug"],
-        archetype: "incident_ops",
-        risk_profile_ref: "risk_coding",
-        guardrail_overlay: "standard",
-        default_prompt_bundle_ref: "prompt_bugfix",
-        acceptance_checklist_ref: "check_bugfix",
         defaultWorkflowId: "wf_bugfix",
         defaultToolBundleIds: ["repo_tools", "test_tools"],
-        riskLevel: "low",
-        recommended_workflow_ids: [],
-        requiredApproval: false,
       },
     ],
     promptLibrary: {

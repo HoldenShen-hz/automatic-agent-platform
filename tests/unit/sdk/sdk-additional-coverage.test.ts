@@ -21,33 +21,7 @@ import {
 } from "../../../src/sdk/plugin-sdk/plugin-context.js";
 import { PackLifecycleOrchestrationService } from "../../../src/sdk/pack-sdk/pack-lifecycle-orchestration-service.js";
 import { PackTestLocalService } from "../../../src/sdk/pack-sdk/pack-test-local-service.js";
-import { validateBusinessPackManifest as rawValidateBusinessPackManifest } from "../../../src/sdk/pack-sdk/pack-manifest.js";
-
-const mockPrincipal = {
-  subject: "user_123",
-  tenantId: "tenant_abc",
-  roles: ["admin"],
-  principalId: "user_123",
-};
-
-const TEST_PACK_SIGNING = {
-  keyId: "test-pack-key",
-  signature: "test-pack-signature",
-  algorithm: "ed25519",
-} as const;
-
-function validateBusinessPackManifest(
-  manifest: Parameters<typeof rawValidateBusinessPackManifest>[0],
-  options?: Parameters<typeof rawValidateBusinessPackManifest>[1],
-) {
-  return rawValidateBusinessPackManifest(
-    {
-      ...manifest,
-      signing: manifest.signing === undefined ? TEST_PACK_SIGNING : manifest.signing,
-    },
-    options,
-  );
-}
+import { validateBusinessPackManifest } from "../../../src/sdk/pack-sdk/pack-manifest.js";
 
 // ============================================================================
 // buildAuthHeaders edge cases
@@ -58,7 +32,6 @@ test("buildAuthHeaders throws for token with only whitespace", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "   ",
-    principal: mockPrincipal,
   };
   assert.throws(
     () => buildAuthHeaders(config),
@@ -71,7 +44,6 @@ test("buildAuthHeaders throws for empty bearer token", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "",
-    principal: mockPrincipal,
   };
   assert.throws(
     () => buildAuthHeaders(config),
@@ -84,7 +56,6 @@ test("buildAuthHeaders trims whitespace from bearer token", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "  token-with-spaces  ",
-    principal: mockPrincipal,
   };
   const headers = buildAuthHeaders(config);
   assert.equal(headers["authorization"], "Bearer token-with-spaces");
@@ -99,7 +70,6 @@ test("buildApiUrl handles path with leading and trailing slashes", () => {
     baseUrl: "https://api.example.com/",
     apiVersion: "/v1/",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users/" });
   assert.ok(url.includes("/v1/users"));
@@ -110,7 +80,6 @@ test("buildApiUrl handles query with null values", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users", query: { active: null } });
   assert.ok(!url.includes("active"));
@@ -121,7 +90,6 @@ test("buildApiUrl handles query with undefined values", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users", query: { page: undefined } });
   assert.ok(!url.includes("page"));
@@ -132,7 +100,6 @@ test("buildApiUrl does not add tenantId when not set", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users" });
   assert.ok(!url.includes("tenantId"));
@@ -144,7 +111,6 @@ test("buildApiUrl does not add tenantId when empty string", () => {
     apiVersion: "v1",
     tenantId: "",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users" });
   assert.ok(!url.includes("tenantId"));
@@ -155,7 +121,6 @@ test("buildApiUrl handles baseUrl with multiple trailing slashes", () => {
     baseUrl: "https://api.example.com///",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const url = buildApiUrl(config, { path: "/users" });
   assert.ok(url.startsWith("https://api.example.com/"));
@@ -171,7 +136,6 @@ test("createApiClient throws for empty baseUrl", () => {
     baseUrl: "",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   assert.throws(
     () => createApiClient(config),
@@ -184,7 +148,6 @@ test("createApiClient throws for whitespace baseUrl", () => {
     baseUrl: "   ",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   assert.throws(
     () => createApiClient(config),
@@ -197,7 +160,6 @@ test("createApiClient throws for empty apiVersion", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   assert.throws(
     () => createApiClient(config),
@@ -213,7 +175,6 @@ test("createApiClient creates client with all options", () => {
     bearerToken: "test-token",
     timeoutMs: 30000,
     maxRetries: 5,
-    principal: mockPrincipal,
   };
   const client = createApiClient(config);
   assert.ok(client instanceof RetryableApiClient);
@@ -228,7 +189,6 @@ test("RetryableApiClient exposes patch method for partial updates", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: mockPrincipal,
   };
   const client = new RetryableApiClient(config);
 
@@ -364,7 +324,6 @@ test("PackLifecycleOrchestrationService handles testing with all passing criteri
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -395,7 +354,6 @@ test("PackLifecycleOrchestrationService handles testing with some failing criter
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -427,7 +385,6 @@ test("PackLifecycleOrchestrationService handles testing with coverage exactly 80
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -458,7 +415,6 @@ test("PackLifecycleOrchestrationService handles testing with failing eval", () =
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -489,7 +445,6 @@ test("PackLifecycleOrchestrationService handles testing with failing staging", (
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -520,7 +475,6 @@ test("PackLifecycleOrchestrationService handles certification with security revi
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -561,7 +515,6 @@ test("PackLifecycleOrchestrationService handles certification with risk review f
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
-      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],

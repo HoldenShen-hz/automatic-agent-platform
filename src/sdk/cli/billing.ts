@@ -45,56 +45,6 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 /**
- * Redaction wrapper for sensitive string values like API keys and secrets.
- * When the secret is accessed (e.g., for logging), it returns "[REDACTED]" instead of the actual value.
- * This prevents accidental credential leakage in logs or error messages.
- * The actual value is only accessible via getSecretValue() for internal API use.
- */
-class RedactedString {
-  private readonly redacted = "[REDACTED]";
-  public constructor(private readonly value: string) {}
-
-  /**
-   * Returns the actual secret value - use with caution and only when needed for API calls.
-   */
-  getSecretValue(): string {
-    return this.value;
-  }
-
-  /**
-   * Returns the redacted value for safe logging/output.
-   */
-  toString(): string {
-    return this.redacted;
-  }
-
-  /**
-   * Returns the redacted value (alias for toString()).
-   */
-  valueOf(): string {
-    return this.redacted;
-  }
-
-  /**
-   * Check if the secret value is truthy.
-   */
-  isPresent(): boolean {
-    return this.value.length > 0;
-  }
-}
-
-/**
- * Wrapper for Stripe secret key that prevents accidental credential leakage.
- * The actual secret is only accessible via getSecretValue() for Stripe API calls.
- * Any logging, toString(), or JSON serialization will show "[REDACTED]".
- */
-function wrapStripeSecretKey(secretKey: string): { secretKey: string | RedactedString } {
-  return {
-    secretKey: secretKey.length > 0 ? secretKey : new RedactedString(secretKey),
-  };
-}
-
-/**
  * Creates a payment gateway instance based on CLI environment configuration.
  *
  * @param envConfig - The billing CLI environment configuration
@@ -107,9 +57,6 @@ function createPaymentGateway(envConfig: ReturnType<typeof loadBillingCliEnv>): 
       throw new ValidationError("billing.missing_stripe_gateway_env", "billing.missing_stripe_gateway_env");
     }
     return new StripeBillingPaymentGateway({
-      // NOTE: Stripe SDK requires the actual secret key string at runtime.
-      // The secret is obtained from secure environment configuration (not hardcoded).
-      // Output redaction is applied in main() to prevent credential leakage in logs.
       secretKey: envConfig.stripeSecretKey,
       successUrl: envConfig.stripeSuccessUrl,
       cancelUrl: envConfig.stripeCancelUrl,
@@ -257,38 +204,7 @@ async function main(): Promise<void> {
     }
   }, { dbPath });
 
-  // Redact sensitive values from output to prevent credential leakage
-  process.stdout.write(`${JSON.stringify(redactSensitiveValues(result), null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 await main();
-
-/**
- * Redact sensitive values from billing result to prevent credential leakage.
- * Redacts Stripe secret keys, Paddle API keys, and similar credentials.
- */
-function redactSensitiveValues(obj: unknown): unknown {
-  if (obj == null || typeof obj !== "object") {
-    return obj;
-  }
-
-  const REDACTED = "[REDACTED]";
-  const sensitiveKeys = ["secretKey", "apiKey", "secret", "password", "token", "credential"];
-
-  if (Array.isArray(obj)) {
-    return obj.map(redactSensitiveValues);
-  }
-
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    const lowerKey = key.toLowerCase();
-    if (sensitiveKeys.some((sk) => lowerKey.includes(sk)) && typeof value === "string" && value.length > 0) {
-      result[key] = REDACTED;
-    } else if (typeof value === "object" && value !== null) {
-      result[key] = redactSensitiveValues(value);
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
-}

@@ -5,7 +5,7 @@ import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/
 
 test("resolveCompliancePolicyForNode returns merged policy for a leaf node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "team", nodeType: "team", displayName: "Backend", parentOrgNodeId: "dept", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "member", nodeType: "member", displayName: "Alice", parentOrgNodeId: "team", ownerUserIds: ["user-1"], active: true, costCenter: "", metadata: {} },
@@ -65,12 +65,12 @@ test("resolveCompliancePolicyForNode returns empty object when node has no polic
 
   const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
 
-  assert.deepStrictEqual(result, { _denyByDefault: true });
+  assert.deepStrictEqual(result, {});
 });
 
 test("resolveCompliancePolicyForNode handles node with no parent", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "member", nodeType: "seat", displayName: "Bob", parentOrgNodeId: null, ownerUserIds: ["user-2"], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "member", nodeType: "member", displayName: "Bob", parentOrgNodeId: null, ownerUserIds: ["user-2"], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {
@@ -84,7 +84,7 @@ test("resolveCompliancePolicyForNode handles node with no parent", () => {
 
 test("resolveCompliancePolicyForNode returns multiple policies from single node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {

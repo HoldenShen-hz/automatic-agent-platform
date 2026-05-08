@@ -1,15 +1,15 @@
-## 2026-04-29 复核结论
+## 2026-04-28 复核结论
 
 以下状态矩阵覆盖本文件原始发现的当前实况；原始分项清单保留在后文作为历史发现快照。判定依据只采信实际源码、配置与 contract/ADR/spec 文本，不再使用 closure test、closure script 或 supersede 占位说明。
 
 | 主题 | 当前状态 | 根因 | 当前证据 |
 | --- | --- | --- | --- |
-| S1 OAPEFLIR 身份危机 | 已修复 | 根因是 OAPEFLIR spec/ADR 曾把认知投影视图写成 runtime truth，v4.3 迁移初期只改了局部 contract，引用链没有一起收口。 | 本轮已把 `docs_zh/architecture/oapeflir-v4.4-executable-spec.md` 中的 `NodeRun / PlanGraph / Graph Scheduler / OapeflirEvent / Budget / SideEffect / Reconciliation` 独立 schema 改成 canonical pointer + 解释性约束，标题也从 `Executable Specification Edition` 去权威化为 `Reference Draft`。 |
-| S2 废弃术语迁移未执行 | 已修复 | 根因不是“还有几个旧词”这么简单，而是 v3 `workflow/execution/stepId` 兼容层长期停留在一等模型位置，代码、contract、ADR 各自继续复用旧键，迁移没有形成单一 canonical 边界。 | 本轮已把 `src/platform/state-evidence/events/projections/workflow-timeline-projection.ts`、`src/domains/registry/plugin-spi.ts`、`src/scale-ecosystem/billing/billing-service.ts`、`src/ops-maturity/workflow-debugger/`、`src/platform/five-plane-control-plane/approval-center/approval-service.ts`、`src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.ts`、`src/platform/five-plane-control-plane/approval-center/approval-flow-engine.ts`、`src/platform/five-plane-control-plane/approval-center/escalation-manager.ts`、`src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.ts`、`src/domains/business-pack/pack-migration-service.ts` 收敛到 canonical-first：`harnessRunId / nodeRunId / subWorkflowRunId / nodeId` 为主，旧键只保留可选兼容 alias。 |
-| S3 RuntimeStateMachine 被绕过 | 已修复 | 根因是 Harness / delegation / replay 曾各自维护局部状态，导致运行态修改散落在业务逻辑里。 | 复核实际文件后，`src/platform/five-plane-orchestration/harness/index.ts` 的 `runLoop()` 已经经由 `transitionRunStatus()` 驱动状态迁移；`src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.ts` 已改为状态机路径；`src/platform/five-plane-execution/ha/replay-worker.ts` 有 `assertReplayPolicySafe()` 门禁。 |
-| S4 Sandbox 含 `none` 档位 | 已修复 | 根因是 sandbox canonical tier 只在安全策略层定义，但业务包、插件 SDK、delegation 上下文长期直接暴露 legacy alias，兼容输入与 canonical 输出没有分层。 | `src/sdk/plugin-sdk/plugin-definition.ts`、`src/sdk/plugin-sdk/plugin-context.ts`、`src/platform/five-plane-orchestration/agent-delegation/delegation-types.ts`、`src/platform/interface/api/pack-catalog-service.ts` 已全部收敛到 canonical 4 档；`src/domains/business-pack/business-pack-manifest.ts` 与 `src/platform/control-plane/iam/sandbox-policy.ts` 只在 ingress normalization 层保留 `process/container` 兼容映射，不再把旧值暴露为运行时/public type。 |
-| S5 Budget 保护缺失 | 已修复 | 根因已从“完全没有 reservation”转为“预算职责分散”: orchestration 先做门禁、执行方再单独预留，失败时缺少统一 release/settle 生命周期，导致重复预留与泄漏风险。 | `src/platform/model-gateway/cost-tracker/budget-guard.ts` 现负责执行前门禁；`src/platform/execution/budget-allocator.ts` 已具备 `reserve/settle/release` 生命周期；`src/interaction/goal-decomposer/llm-plan-generator.ts`、`src/scale-ecosystem/billing/billing-service.ts` 失败即释放 reservation；本轮进一步修复 `src/interaction/goal-decomposer/index.ts`，移除与 generator 重复的上层 reservation。 |
-| S6 Trust Score 绕过安全边界 | 原发现已过时 | 根因是此前审计基于旧快照，未反映后续已落地的风险封顶、升级审批和高风险触发限流逻辑。 | `src/interaction/autonomy/trust-scorer/index.ts` 只有在 `checkInherentRisk()` 通过时才允许 `fully_trusted -> full_auto`；`src/interaction/autonomy/promotion-engine/index.ts` 明确阻止 `semi_auto -> full_auto` 自动提升；`src/interaction/proactive-agent/trigger-engine/index.ts` 对 `medium/high` 风险返回 `suggest`，不是 `auto_execute`。 |
+| S1 OAPEFLIR 身份危机 | 已修复 | 根因是 OAPEFLIR spec/ADR 曾把认知投影视图写成 runtime truth，v4.3 迁移初期只改了局部 contract，引用链没有一起收口。 | `docs_zh/architecture/oapeflir-v4.4-executable-spec.md` 已降为 `Reference Draft`；`docs_zh/adr/070-conclusion.md`、`072-oapeflir-testing-strategy.md`、`066-plugin-spi-framework.md` 以及 `docs_zh/contracts/workflow_debugger_contract.md`、`plugin_spi_contract.md` 已把 OAPEFLIR 明确收回为 projection/view。 |
+| S2 废弃术语迁移未执行 | 部分修复 | 根因不是“还有几个旧词”这么简单，而是 v3 `workflow/execution/stepId` 兼容层长期停留在一等模型位置，代码、contract、ADR 各自继续复用旧键，迁移没有形成单一 canonical 边界。 | 本轮已把 `src/platform/execution/plugin-executor/sub-workflow-executor.ts` 收敛为 `nodeId` 内部主键、`src/platform/state-evidence/events/projections/workflow-timeline-projection.ts` 补上 `planGraphBundleId / harnessRunId / nodeId` canonical 轴、`src/domains/registry/plugin-spi.ts` 把 `stepId/workflowId` 降为 alias；但 `src/scale-ecosystem/billing/types.ts` 及后文 2.4 / 3.4 所列部分 contract/ADR 残留仍未完全迁移。 |
+| S3 RuntimeStateMachine 被绕过 | 已修复 | 根因是 Harness / delegation / replay 曾各自维护局部状态，导致运行态修改散落在业务逻辑里。 | 复核实际文件后，`src/platform/orchestration/harness/index.ts` 的 `runLoop()` 已经经由 `transitionRunStatus()` 驱动状态迁移；`src/platform/orchestration/agent-delegation/delegation-manager.service.ts` 已改为状态机路径；`src/platform/execution/ha/replay-worker.ts` 有 `assertReplayPolicySafe()` 门禁。 |
+| S4 Sandbox 含 `none` 档位 | 部分修复 | 根因是 sandbox canonical tier 只在安全策略层定义，但业务包、插件 SDK、delegation 上下文长期直接暴露 legacy alias，兼容输入与 canonical 输出没有分层。 | 本次已把 `src/sdk/plugin-sdk/plugin-definition.ts`、`src/sdk/plugin-sdk/plugin-context.ts`、`src/platform/orchestration/agent-delegation/delegation-types.ts` 的公共类型收敛到 canonical 4 档；但 `src/platform/control-plane/iam/sandbox-policy.ts` 与 `src/domains/business-pack/business-pack-manifest.ts` 仍保留 alias 兼容解析，所以不能宣称“完全消失”。 |
+| S5 Budget 保护缺失 | 部分修复 | 根因已从“完全没有 reservation”转为“预算职责分散”: orchestration 先做门禁、执行方再单独预留，失败时缺少统一 release/settle 生命周期，导致重复预留与泄漏风险。 | `src/platform/model-gateway/cost-tracker/budget-guard.ts` 现负责执行前门禁；本次补齐 `src/platform/execution/budget-allocator.ts` 的 `release()`，并把 `src/interaction/goal-decomposer/llm-plan-generator.ts`、`src/scale-ecosystem/billing/billing-service.ts` 改为失败即释放 reservation；`src/interaction/goal-decomposer/index.ts` 不再在上层重复预留。 |
+| S6 Trust Score 绕过安全边界 | 原发现已过时 | 根因是此前审计基于旧快照，未反映后续已落地的风险封顶和 full-auto 禁止逻辑。 | `src/interaction/autonomy/trust-scorer/index.ts` 把 `fully_trusted` 映射到 `semi_auto`；`src/interaction/autonomy/promotion-engine/index.ts` 明确阻止 `semi_auto -> full_auto` 自动提升；`src/interaction/proactive-agent/trigger-engine/index.ts` 对 `high` 风险返回 `suggest`，不是 `auto_execute`。 |
 | S7 域风险规格缺失 | 已修复 | 根因是高风险域先完成 baseline onboarding，治理约束后来才补，导致风险规格在模型层缺席。 | `src/domains/domain-specs.ts` 已包含 `advisoryOnly / humanAccountable / deterministicHotPathOnly`，并内置 `healthcare / quant-trading / financial-services / legal` 的默认 `DomainRiskSpec`。 |
 | S8 存储 Schema 基于废弃对象 | 已修复 | 根因是存储合同直接复用了 v3 单机表模型，后来 runtime truth 表族补进后，文档没有同步换主链。 | `docs_zh/contracts/storage_schema_contract.md` 现以 `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_*` 为 authoritative truth，并显式把 `executions` 等旧表降级为 projection / compatibility。 |
 | S9 Phase 1-9 仍作为 canonical 分期 | 已修复 | 根因是上一轮所谓 ring migration 只改了展示层，`domains` 的 canonical bootstrap service id 和依赖链仍然绑在历史 phase 上。 | 本次已把 `src/domains/domains-bootstrap.ts`、`src/domains-runtime-catalog.ts`、`src/domains-startup-plan.ts`、`src/domains-runtime-orchestrator.ts` 收敛到 `ring1 / ring2 / ring3` 作为 runtime truth；legacy `9a-9f` 仅保留为 bootstrap 输入映射。 |
@@ -23,203 +23,978 @@
 - 本轮仅执行定向验证，不执行全量测试；已验证 `domains` ring 启动、`provider-registry` 请求上下文、budget allocator / llm plan generator、SDK / delegation sandbox，以及 `sub-workflow-executor / workflow-timeline-projection / plugin-spi` 兼容边界迁移相关测试。
 
 ## 系统性问题总结
-以下分项覆盖本文件原始 1-12 章的当前复核结论。旧的长表格已整体移除，因为其中大量条目已经过时，继续保留会把“历史快照”误读成“当前待修列表”。
 
-| 状态 | 含义 |
-| --- | --- |
-| 已修复 | 当前源码 / contract / ADR 已与主架构收口，旧发现不再成立。 |
-| 部分修复 | 主链已纠正，但仍有残留兼容层或文档定义需要继续清理。 |
-| 原发现已过时 | 原结论基于旧快照；当前文件内容已不能支持该指控。 |
-| 移出本审计范围 | 属架构主文档自身一致性问题，不应继续作为 implementation consistency 问题挂账。 |
+| #   | 系统性主题                                                                                            | 严重度   | 影响范围                                 |
+| --- | ----------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------- |
+| S1  | OAPEFLIR 身份危机：v4.4 Spec 自定义全套 Runtime 对象与状态机，与主架构"仅投影"定位根本冲突            | CRITICAL | spec + 10+ ADR + 5+ contract             |
+| S2  | v3→v4 术语迁移未执行：ExecutionPlan/ControlDirective/stepId/executionId/workflow_run 仍作为 canonical | CRITICAL | ~60% contract + ~40% ADR + ~30% code     |
+| S3  | RuntimeStateMachine 被绕过：Harness/Delegation/Recovery 直接修改 status                               | HIGH     | 核心运行时代码                           |
+| S4  | Sandbox 含 "none" 档位：架构只允许4档，代码含5档(含none)                                              | HIGH     | 3+ 模块                                  |
+| S5  | Budget 保护缺失：多处 LLM/执行调用无 BudgetReservation 前置                                           | HIGH     | billing + goal-decomposer + budget-guard |
+| S6  | Trust Score 可绕过安全边界：直接映射 full_auto 无 inherent risk 检查                                  | CRITICAL | autonomy + promotion-engine              |
+| S7  | 域风险规格缺失：高危域(量化/金融/医疗/法务)无 DomainRiskSpec                                          | HIGH     | 4+ 域                                    |
+| S8  | 存储 Schema 基于废弃对象：DDL 以 executions 表为核心，无 canonical truth 表                           | CRITICAL | storage_schema_contract                  |
+| S9  | Phase 1-9 仍作为 canonical 分期：Ring 1/2/3 未落地                                                    | HIGH     | config + ADR + code                      |
+| S10 | Saga 语义缺失：org-governance saga 无实际 compensate/rollback                                         | HIGH     | org-governance                           |
 
-### 1. 代码 vs 架构
+---
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 1.1 RuntimeStateMachine 被绕过 | 已修复 | 早期 Harness / delegation / replay 各自维护局部状态，状态迁移散落在业务逻辑。 | `src/platform/five-plane-orchestration/harness/index.ts` 已通过状态机路径推进；`src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.ts` 已转到状态机语义；`src/platform/five-plane-execution/ha/replay-worker.ts` 有 replay 安全门禁。 | 无。 |
-| 1.2 废弃合约作为一等公民导出 | 原发现已过时 | v3 兼容导出曾没有明确降级，后来 contract barrel 补了 deprecated / compatibility 边界。 | `src/platform/contracts/execution-plan/index.ts`、`control-directive/index.ts`、`execution-receipt/index.ts`、`types/platform-contracts.ts` 已不再把旧对象当新实现入口。 | 无。 |
-| 1.3 Budget 保护缺失 | 已修复 | 根因已从“完全缺失”转为“门禁与 reservation 生命周期拆散”，导致重复预留与失败泄漏。 | `src/platform/model-gateway/cost-tracker/budget-guard.ts` 负责预算门禁；`src/platform/execution/budget-allocator.ts` 具备 `reserve/settle/release`；`src/interaction/goal-decomposer/llm-plan-generator.ts`、`src/scale-ecosystem/billing/billing-service.ts` 已在失败路径释放；本轮进一步修复 `src/interaction/goal-decomposer/index.ts`，移除与 generator 重复的 reservation。 | 无。 |
-| 1.4 Trust Score 绕过安全边界 | 原发现已过时 | 原审计基于未含风险封顶逻辑的旧实现。 | `src/interaction/autonomy/trust-scorer/index.ts` 已把 `full_auto` 限定在 `checkInherentRisk()` 通过的低风险路径；`promotion-engine/index.ts` 阻止自动晋升到 `full_auto`；`proactive-agent/trigger-engine/index.ts` 对高风险路径不再默认自动执行。 | 无。 |
-| 1.5 Sandbox `none` 档位 | 已修复 | 旧系统把 ingress 兼容值和 runtime/public type 混在一起。 | `src/sdk/plugin-sdk/plugin-definition.ts`、`plugin-context.ts`、`src/platform/five-plane-orchestration/agent-delegation/delegation-types.ts`、`src/platform/interface/api/pack-catalog-service.ts` 已收敛到 canonical 4 档；`src/domains/business-pack/business-pack-manifest.ts` 和 `src/platform/control-plane/iam/sandbox-policy.ts` 只在 normalization 入口接受 `process/container` 映射。 | 无。 |
-| 1.6 域风险规格缺失 | 已修复 | 高风险域先完成 baseline onboarding，治理规格后来补。 | `src/domains/domain-specs.ts` 已补 `advisoryOnly / humanAccountable / deterministicHotPathOnly`，`config/domains/quant-trading.json`、`config/domains/healthcare.json` 已含 `riskSpec`。 | 无。 |
-| 1.7 Saga 无实际补偿 | 已修复 | 早期 saga 只有回执拼装，没有真实执行 handler 和补偿路径。 | `src/org-governance/org-model/org-governance-saga.ts`、`knowledge-boundary/chinese-wall-access-saga.ts`、`delegated-governance/governance-delegation-revocation-saga.ts` 均已具备 prepare/commit/compensate 语义。 | 无。 |
-| 1.8 废弃术语在非 legacy 代码中使用 | 已修复 | v3→v4 迁移没有一次性完成，根因在于 approval / escalation / feedback loop / sub-workflow / migration 这些边界模型长期把 `workflowRunId / executionId / stepId` 作为必填或伪 canonical 字段，甚至会把 `taskId` 误写成 run id、把 `nodeId` 反向伪造成 `stepId`。 | 本轮已修复 `src/platform/state-evidence/events/projections/workflow-timeline-projection.ts`、`src/domains/registry/plugin-spi.ts`、`src/scale-ecosystem/billing/billing-service.ts` 的 canonical 轴，并把 `src/ops-maturity/workflow-debugger/` 改成 `nodeRunId / planGraphId / harnessRunId` 为主；`src/platform/five-plane-control-plane/approval-center/approval-service.ts` 与 `multi-party-approval-service.ts` 不再把 `taskId` 写入 runtime run 字段，且会为旧记录回填 `harnessRunId`；`approval-flow-engine.ts` 与 `escalation-manager.ts` 现在以 `harnessRunId / nodeRunId` 为主；`src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.ts` 把 `executionId / parentExecutionId / stepId` 降为可选兼容 alias；`src/domains/business-pack/pack-migration-service.ts` 以 `nodeId` 为主且不再伪造回滚 `stepId`。 | 无。 |
-| 1.9 HarnessRun 接口重复定义且不一致 | 已修复 | `HarnessRun` 主体已切到 canonical 合约，但内部 runtime state 与 decision 投影长期没有把 decision linkage 一并补齐。 | `src/platform/five-plane-orchestration/harness/index.ts` 现已在 `HarnessDecision` 中补齐 `harnessDecisionId / decisionInputBundleId / decisionKind / decision / deciderType / deciderRef / reasonCode`，并通过 canonical builder 生成 decision linkage；新增定向验证 `tests/unit/platform/orchestration/harness/harness-decision-contract.test.ts` 已覆盖。 | 无。 |
-| 1.10 其他 | 已修复 | 根因不在隔离本身，而在 goal decomposer 到 planner/harness 的编排边界停在 projection receipt，没有实际落入执行主链。 | `src/interaction/goal-decomposer/index.ts` 现已在分解完成后直接 materialize `HarnessRun + PlanGraphBundle`，并通过 `PlanGraphHarnessRuntime.executeNext()` 进入 canonical harness execution entry；结果对象新增 `harnessRouting`，`plannerHandoff` 也补齐 `harnessRunId / planGraphBundleId / initialNodeRunId`。 | 无。 |
+## 1. 代码 vs 架构
 
-### 2. Contract 文档 vs 架构
+### 1.1 CRITICAL — RuntimeStateMachine 被绕过
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 2.1 存储 Schema 基于废弃对象 | 已修复 | 存储合同长期沿用 v3 单机表模型，truth 表族补进后文档未同步换主链。 | `docs_zh/contracts/storage_schema_contract.md` 已以 `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_*` 为权威表族。 | 无。 |
-| 2.2 runtime_state_machine_contract 以废弃对象为权威 | 已修复 | 旧 contract 把 `ExecutionStatus / WorkflowStatus` 当 truth 状态机。 | `docs_zh/contracts/runtime_state_machine_contract.md` 已显式把旧状态降为 legacy / projection，并把强制规则收敛到 `RuntimeStateMachine.transition()`、`PlanGraphBundle`、`NodeAttemptReceipt`。 | 无。 |
-| 2.3 事件命名空间错误 | 已修复 | 旧文档把 `workflow.* / task.* / execution.*` 当 truth event。 | `docs_zh/contracts/event_bus_contract.md` 及相关 event contract 已将 truth 事件收敛到 `platform.*`，并把 OAPEFLIR 明确为 `oapeflir.view.*`。 | 无。 |
-| 2.4 使用废弃 ID 作为 canonical key | 已修复 | 大量 contract 在 v4.3 后仍沿用 execution/workflow/step 主键。 | `api_surface_contract.md`、`artifact_unified_model_contract.md`、`cost_and_budget_contract.md`、`policy_engine_contract.md` 等已改为 `harness_run_id / node_run_id / attempt_id` 主链。 | 无。 |
-| 2.5 关键 contract 缺少 canonical 字段 | 已修复 | 部分 contract 直接暴露 table-shaped 字段，未补齐执行链主键。 | `node-run-attempt-receipt-contract.md`、`event_bus_contract.md`、`plugin_spi_contract.md` 已补齐 `harnessRunId / planGraphBundleId / graphVersion / idempotency_key / payloadHash` 等字段。 | 无。 |
-| 2.6 workflow_debugger_contract 基于废弃模型 | 已修复 | 旧调试合同承接 workflow debugger 原型，没有迁到 harness/node 语义。 | `docs_zh/contracts/workflow_debugger_contract.md` 已改到 `HarnessRun / NodeRun / PlanGraph` 锚点，并显式写出 remediation。 | 无。 |
-| 2.7 其他 contract 问题 | 已修复 | 多份边缘 contract 长期没有随 canonical contract 一起重写。 | `admin_console_and_human_takeover_contract.md`、`agent_definition_lifecycle_contract.md`、`division_definition_contract.md`、`sla_tier_contract.md`、`knowledge_boundary_and_federated_search_contract.md`、`execution_plane_contract.md` 已补 state machine / harness-node / SLA 证据链约束。 | 无。 |
+| 位置                                                                                            | 问题                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/platform/orchestration/harness/index.ts:627-696`                                           | `runLoop()` 直接用 spread 修改 status (`status: "running"/"aborted"/"completed"/"waiting_hitl"`)，完全绕过 RuntimeStateMachine.transition() |
+| `src/platform/orchestration/agent-delegation/delegation-manager.service.ts:180,195,246,251,343` | 直接赋值 `delegation.status = "cancelled"` 等，绕过状态机                                                                                   |
+| `src/platform/execution/ha/replay-worker.ts:39-77`                                              | ReplayWorker 无 ReplaySandboxPolicy 守卫，违反 INV-REPLAY-001（replay 不得产生真实副作用）                                                  |
 
-### 3. ADR vs 架构
+### 1.2 CRITICAL — 废弃合约作为一等公民导出
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 3.1 ADR 定义与架构冲突的 canonical 对象 | 原发现已过时 | 早期 ADR 记录的是迁移前的设计草案，后续已加入 remediation 而原审计未刷新。 | `docs_zh/adr/060-explicit-planning-hub.md` 已转为 `PlanGraphBundle -> NodeAttemptReceipt`；`065-workflow-visual-debugger.md` 已改 harness/node 锚点；`070-conclusion.md` 已使用 ring 口径。 | 无。 |
-| 3.2 Phase 分期未迁移到 Ring | 已修复 | Phase 术语曾长期残留在 roadmap 和 domain 引导文档。 | `docs_zh/adr/033-phased-roadmap.md`、`070-conclusion.md`、`080-learn-hub-pattern-detection.md` 已改为 Ring 语义或显式降级为历史映射。 | 无。 |
-| 3.3 OAPEFLIR 被当作 Runtime | 原发现已过时 | 多份 ADR 曾把 OAPEFLIR 当执行主链描述，后续已回收到投影语义。 | `docs_zh/adr/072-oapeflir-testing-strategy.md`、`066-plugin-spi-framework.md` 等已把 OAPEFLIR 改写为 projection / rationale。 | 无。 |
-| 3.4 废弃术语作为 canonical | 已修复 | ADR 层主体此前已改完，剩余问题实际上是实现兼容层仍把旧别名暴露为一等字段，导致 ADR 看起来像“还不能完全收口”。 | 现在实现边界也已收口，`docs_zh/adr/079-feedback-hub-signals.md`、`080-learn-hub-pattern-detection.md` 与真实实现都以 `harnessRunId / nodeRunId` 为主；`019-agent-handoff-four-layer-protocol.md`、`022-api-contract-and-versioning.md` 等不再与实现形成反向牵制。 | 无。 |
-| 3.5 SLA 前置条件缺失 | 已修复 | 旧 ADR 只有等级承诺，没有把 failover/quorum/演练证据写成前提。 | `docs_zh/adr/054-sla-tiered-guarantees.md` 已明确：99.99% 仅限专用部署层级，且必须具备自动 failover、quorum、容量预留与演练证据。 | 无。 |
+| 位置                                                        | 问题                                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `src/platform/contracts/execution-plan/index.ts`            | 定义 `ExecutionPlan` + 线性 `steps: ExecutionPlanStep[]` 作为活跃合约（架构要求 deprecated only）                        |
+| `src/platform/contracts/control-directive/index.ts`         | 定义 `ControlDirective` + `createControlDirective()` 工厂（架构 v4.3 废弃，须用 OperationalDirective/DecisionDirective） |
+| `src/platform/contracts/execution-receipt/index.ts`         | 定义 `ExecutionReceipt` + `stepId` 字段（架构要求 NodeAttemptReceipt + nodeRunId/attemptId）                             |
+| `src/platform/contracts/types/platform-contracts.ts:70-205` | 完整定义 ExecutionPlan/ControlDirective/ExecutionReceipt 接口 + createExecutionPlan() 工厂                               |
+| `src/platform/contracts/types/platform-contracts.ts:55-62`  | SideEffectRecord 仅4状态(proposed/committed/rolled_back/failed)，缺 ambiguous/reconciling/confirming                     |
 
-### 4. OAPEFLIR v4.4 Spec vs 主架构
+### 1.3 HIGH — Budget 保护缺失
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 4.1 Spec 自定义 Runtime truth 对象 | 已修复 | spec 曾把 migration input 和 runtime truth 混写，导致同一对象出现双份定义。 | `docs_zh/architecture/oapeflir-v4.4-executable-spec.md` 现已把 `NodeRun / AttemptLineage / PlanGraphBundle / PlanGraph / PlanNode / PlanEdge` 改成 canonical pointer，不再保留并行 truth schema。 | 无。 |
-| 4.2 Spec 定义其他平面的对象 | 已修复 | 预算、side effect、reconciliation 等章节从旧草案直接带进了 reference draft。 | `§12 / §15 / §16 / §17` 现均改成 `Canonical Pointer + 解释性约束` 结构，删除了独立 `Graph Scheduler / Budget / SideEffect / Reconciliation` 类型定义。 | 无。 |
-| 4.3 Spec 仍带独立权威信号 | 已修复 | 命名和附录没有完全去权威化，容易被误读为平行权威域。 | 标题已改为 `Reference Draft`，`§14.1` 已改成 projection event envelope 指针，`ADR-OAPEFLIR-*` 前缀清单也已去掉。 | 无。 |
+| 位置                                                            | 问题                                                                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/platform/model-gateway/cost-tracker/budget-guard.ts:51-77` | BudgetGuard 是事后检查，非执行前原子 BudgetReservation，违反 INV-BUDGET-001 |
+| `src/interaction/goal-decomposer/index.ts:248-349`              | 调用 LLM 生成计划时无 budget reservation                                    |
+| `src/interaction/goal-decomposer/llm-plan-generator.ts:39-46`   | LLM complete() 调用无预算守卫                                               |
+| `src/scale-ecosystem/billing/billing-service.ts:260-277`        | recordUsage 事后记账，无 BudgetReservation 前置                             |
 
-### 5. Config / Bootstrap vs 架构
+### 1.4 CRITICAL — Trust Score 绕过安全边界
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 5.1 域配置用废弃 Phase 且缺风险规格 | 已修复 | 早期 domain config 沿用 phase 编排且缺 `riskSpec`。 | `config/domains/quant-trading.json` 已使用 `ringId: ring1` 且含 `riskSpec`；`config/domains/healthcare.json` 已使用 `ringId: ring3` 且含 `riskProfile + riskSpec`。 | 无。 |
-| 5.2 Bootstrap / Catalog 用废弃分期 | 已修复 | runtime catalog / startup plan 曾把 phase 当 canonical bootstrap key。 | `src/domains-runtime-catalog.ts`、`src/domains-startup-plan.ts`、`src/index.ts` 已全部改为 `ring1 / ring2 / ring3`。 | 无。 |
-| 5.3 五平面结构不完整 | 已修复 | X1 横切平面原先只在架构图里存在，没有落到 bootstrap 顺序。 | `src/platform/five-plane-startup-plan.ts`、`src/platform-architecture-bootstrap.ts` 已明确 `P5 -> X1 -> P2 -> P3 -> P4 -> P1`。 | 无。 |
+| 位置                                                          | 问题                                                                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `src/interaction/autonomy/trust-scorer/index.ts:25-39`        | `mapTrustLevelToAutonomyLevel` 将 fully_trusted 直接映射 full_auto，无 inherent risk/compliance/sandbox 检查 |
+| `src/interaction/autonomy/index.ts:240-248`                   | `decideLevel()` 仅按成功率/量提升 full_auto，不查询固有风险                                                  |
+| `src/interaction/autonomy/promotion-engine/index.ts:30-31`    | 500次/99%成功即提升 full_auto，high/critical 域可被自动提升越过安全边界                                      |
+| `src/interaction/autonomy/index.ts:252-261`                   | `applyDomainRiskAutonomyCap` 只用硬编码列表限 high→semi_auto，不查 DomainRiskSpec，critical 域无 cap         |
+| `src/interaction/proactive-agent/trigger-engine/index.ts:1-9` | high-risk action 在 requireConfirmation=false 时返回 auto_execute（架构要求 default deny）                   |
 
-### 6. AI 运营层代码 vs 架构（原 7.*）
+### 1.5 HIGH — Sandbox "none" 档位
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 6.1 Model gateway 请求上下文 / abort / streaming 预算 | 已修复 | 旧 provider 接口未统一 trace/tenant/cost/abort 上下文。 | `src/platform/model-gateway/provider-registry/unified-chat-provider.ts` 已要求 `traceId / tenantId / costTag / abortSignal`；OpenAI / Anthropic / MiniMax provider 已透传中断信号。 | 无。 |
-| 6.2 Prompt defense / eval 门禁 | 已修复 | 旧 prompt/eval 实现只覆盖局部静态规则，没有风险级别样本门禁与独立 judge。 | `src/platform/prompt-engine/prompt-injection-guard.ts` 已切到 shared guard 链；`eval-dataset-judge-service.ts` 已强制 `critical=200 / high=100 / medium=50` 样本下限、`criticalPassRate==100%` 硬门禁、cross-provider judge 独立性检查。 | 无。 |
-| 6.3 Plugin runtime 治理 | 已修复 | 插件运行时原先缺污染传播、撤回分级和递归深度防护。 | `src/plugins/builtin-plugin-registry.ts` 已有 `DataTaintPropagation` 与 `BundleRevocationSeverity`；`src/sdk/plugin-sdk/plugin-context.ts` 已有 `callDepth / delegationDepth`。 | 无。 |
-| 6.4 Budget / chargeback / prompt lifecycle | 已修复 | 预算层级、归因字段和 prompt 生命周期曾分别停留在半迁移状态。 | `budget-guard.ts` 已支持 task/pack/platform；`chargeback-service.ts` 本轮补齐 `fxRateToBase / costSource` 归因链；`prompt-engine/registry/` 已支持 `deprecated` 生命周期。 | 无。 |
+| 位置                                                                 | 问题                                                                |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `src/domains/business-pack/business-pack-manifest.ts:73,236`         | SandboxTier 含 "none"（Zod schema 也含）；架构只定义4档无 none      |
+| `src/sdk/plugin-sdk/plugin-definition.ts:26`                         | sandboxTier 含 "none"                                               |
+| `src/sdk/plugin-sdk/plugin-context.ts:15`                            | sandboxTier 含 "none"                                               |
+| `src/platform/orchestration/agent-delegation/delegation-types.ts:19` | sandboxTier 含 "none"/"process"/"container"（非 canonical 4档命名） |
 
-### 7. 其余 Contract / ADR / 深层实现条目（原 8.* / 9.* / 11.* / 12.*）
+### 1.6 HIGH — 域风险规格缺失
 
-| 条目 | 当前状态 | 根因 | 当前证据 | 剩余缺口 |
-| --- | --- | --- | --- | --- |
-| 7.1 原 8.* 剩余 contract 条目 | 已修复 | 旧 contract 零散继承 execution/workflow/step 语义，没有随 v4.3 truth contract 同步。 | `runtime_state_machine_contract.md`、`cost_and_budget_contract.md`、`task_and_workflow_contract.md`、`policy_engine_contract.md`、`execution_plane_contract.md`、`observability_contract.md`、`plugin_spi_contract.md` 已统一到 `PlanGraphBundle / HarnessRun / NodeRun / NodeAttemptReceipt`。 | 无。 |
-| 7.2 原 9.* 架构文档内部一致性 | 移出本审计范围 | 这组问题属于 `00-platform-architecture.md` 主文档自身一致性，不是实现与架构之间的不一致。 | 本轮不再把 9.* 当成 implementation closure 证据，也不再据此宣称代码未修。 | 如需继续，应单开 architecture-doc consistency audit。 |
-| 7.3 原 11.* Harness Runtime 深层实现缺口 | 原发现已过时 | 旧审计基于缺少 HITL / context / guardrail / memory / decision bundle 的早期 harness 快照。 | `src/platform/five-plane-orchestration/harness/hitl-runtime.ts` 已有 `inspect / patch / override / takeover / resume` 与 `HumanResponsibilityRecord`；`src/platform/five-plane-orchestration/harness/index.ts` 已有 `PromptExecutionRecord`、`DecisionInputBundle`、`taintPolicy / rankingPolicy / redactionPolicy`、canonical `autonomyMode`；`src/platform/five-plane-orchestration/harness/guardrails/guardrail-engine.ts` 已有 input/tool/evidence/risk/budget/memory 层检查。 | 本轮未发现还能支撑旧 11.* 长表的证据。 |
-| 7.4 原 12.* 组织治理 + 规模生态深层缺口 | 已修复 | 这组条目在最近几轮已经陆续落到真实实现，但旧审计正文没有同步收口。 | `multi-region/region-router`、`failover-controller`、`connector-registry`、`sla-engine`、`compliance-engine`、`quota-enforcer`、`cross-region-routing-service`、`billing/types.ts` 等文件已具备原审计要求的字段或执行链。 | 无。 |
+| 位置                                | 问题                                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `src/domains/domain-specs.ts:55-61` | DomainRiskSpecSchema 缺 advisory_only/human_accountable/deterministic_hot_path_only |
+| `src/domains/quant-trading/`        | 无 DomainRiskSpec 声明（high-risk 金融域）                                          |
+| `src/domains/financial-services/`   | 无 DomainRiskSpec 声明                                                              |
+| `src/domains/healthcare/`           | 无 DomainRiskSpec 声明（arch 明确要求 advisory_only）                               |
+| `src/domains/legal/`                | 无 DomainRiskSpec 声明                                                              |
 
-### 本轮新增实修
+### 1.7 HIGH — Saga 无实际补偿
 
-| 位置 | 根因 | 修复 |
-| --- | --- | --- |
-| `src/interaction/goal-decomposer/index.ts` | 上层 `GoalDecompositionService` 在做预算门禁时又重复尝试 reservation，而 `llm-plan-generator` 已负责 `reserve/settle/release`，导致双重预留和泄漏风险。 | 改为只做 `BudgetGuard.evaluateExecutionChain()` 门禁，不再在上层创建 reservation。 |
-| `src/platform/five-plane-orchestration/harness/index.ts` | Harness runtime 的本地 decision projection 长期只保留 `action / reasonCodes / confidence`，没有把 executable contract 要求的 decision linkage 一起 materialize。 | `decide()` 现通过 canonical builder 生成 `DecisionInputBundle + HarnessDecision`，并把 canonical linkage 回填到本地 decision projection。 |
-| `src/interaction/goal-decomposer/index.ts` | planner handoff 一直停在 `TaskGraphDraft + PlannerHandoffReceipt` 投影，没有真正进入 harness 主链。 | 分解完成后立即 materialize `HarnessRun + PlanGraphBundle`，并通过 `PlanGraphHarnessRuntime.executeNext()` 生成首个 node execution receipt。 |
-| `src/ops-maturity/workflow-debugger/` | debugger 代码虽然 contract 已迁移，但内部比较器 / 断点 / trace 仍默认以 `stepId / workflowId / executionId` 做主键，导致 compatibility 名称重新污染新逻辑。 | `run-comparator`、`breakpoint-manager`、`workflow-debugger-service`、`execution-tracer` 现已改成 `nodeRunId / planGraphId / harnessRunId` 为主，旧键只保留兼容别名。 |
-| `src/platform/five-plane-control-plane/approval-center/approval-service.ts` | approval request 的 canonical runtime id 长期没有在读取旧记录时回填，且 repository `executionId` 字段会在缺 run id 时被误用为 `taskId` 语义。 | 读取旧请求时会回填 `harnessRunId`，持久化时不再把 `taskId` 冒充 runtime run id。 |
-| `src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.ts` | multi-party approval 延续了同样的 run-id 混用问题，继续把 legacy alias 当一等入口。 | 创建与持久化 multi-party request 时改为 canonical-first，`executionId` 只保留兼容别名。 |
-| `src/platform/five-plane-control-plane/approval-center/approval-flow-engine.ts` | approval flow 创建反馈环时直接混用 `workflowRunId / stepId` 与 `harnessRunId / nodeRunId`，compatibility alias 没有在入口先收敛。 | 增加 `normalizeRuntimeContext()`，统一先归一化到 `harnessRunId / nodeRunId`，并在检查升级条件时优先传播 canonical runtime id。 |
-| `src/platform/five-plane-control-plane/approval-center/escalation-manager.ts` | escalation context 只有 `executionId`，导致升级链路仍把 legacy execution 语义当公共上下文主轴。 | `EscalationContext` 新增 `harnessRunId / nodeRunId`，`executionId` 降为兼容 alias，timeout/quorum context 和通知 metadata 也改为 canonical-first。 |
-| `src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.ts` | 该兼容执行器虽然已用 `nodeId` 索引步骤，但运行实例仍把 `executionId` 当内部主键，且嵌套深度校验仍依赖 `parentExecutionId`。 | 内部执行态改为 `subWorkflowRunId` 主键，结果对象新增 `subWorkflowRunId`，`executionId / parentExecutionId / stepId` 均降为可选兼容别名，嵌套深度优先按 canonical parent reference 计算。 |
-| `src/domains/business-pack/pack-migration-service.ts` | migration 执行和回滚顺序一直按 `stepId` 记录，且 rollback trace 会把 `nodeId` 反向伪造成 `stepId`，持续强化旧术语。 | 执行历史与回滚顺序改为按 `nodeId` 记录，回滚 trace 只在真实存在 legacy label 时才回填 `stepId`。 |
-| `src/platform/model-gateway/cost-tracker/chargeback-service.ts` | `ChargebackAllocation` contract 要求 `costSource`，但实现组装 allocation 时没有填充，导致多币种归因链缺少来源。 | 增加 `resolveCostSource()`，优先取 `resource.metadata.costSource`，缺省回退到 `resourceType`。 |
-| `tests/unit/platform/model-gateway/cost-tracker/chargeback-service.test.ts` | 旧测试仍假设 `buildReport()` 返回“最后一份报表原币种”，与当前“统一折算到 baseCurrency”语义冲突。 | 将断言改为验证默认 `baseCurrency=USD`，避免继续把旧语义当现状。 |
+| 位置                                                                                     | 问题                                                                |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `src/org-governance/org-model/org-governance-saga.ts:17-39`                              | execute() 只分类步骤，无 prepare→commit→compensate 编排；失败无回滚 |
+| `src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts:14-23`                | execute() 返回 rolled_back 但不执行实际补偿/撤销                    |
+| `src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts:17-31` | 无四阶段(prepare/commit/compensate/audit)语义                       |
 
-### 本轮定向验证
+### 1.8 MED — 废弃术语在非 legacy 代码中使用
 
-- `./node_modules/.bin/tsx --test tests/unit/interaction/goal-decomposer/index.test.ts tests/unit/interaction/goal-decomposer.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/platform/model-gateway/cost-tracker/chargeback-service.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/platform/orchestration/harness/harness-decision-contract.test.ts tests/unit/interaction/goal-decomposer/harness-routing.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/ops-maturity/workflow-debugger/run-comparator/index.test.ts tests/unit/ops-maturity/workflow-debugger/execution-tracer.test.ts tests/unit/ops-maturity/workflow-debugger-service.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/platform/control-plane/approval-center/approval-flow-runtime-context.test.ts tests/unit/platform/execution/plugin-executor/sub-workflow-canonical-ids.test.ts tests/unit/domains/business-pack/pack-migration-canonical-node-ids.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/platform/control-plane/approval-center/approval-service-class.test.ts tests/unit/platform/control-plane/approval-center/multi-party-approval-service.test.ts tests/unit/platform/control-plane/approval-center/approval-flow-runtime-context.test.ts tests/unit/platform/control-plane/approval-center/approval-flow-engine.test.ts tests/unit/platform/control-plane/approval-center/approval-flow-engine-escalation.test.ts tests/unit/platform/control-plane/approval-center/approval-flow-types-extended.test.ts tests/unit/platform/orchestration/hitl/escalation-manager.test.ts tests/unit/platform/execution/plugin-executor/sub-workflow-canonical-ids.test.ts tests/unit/domains/business-pack/pack-migration-canonical-node-ids.test.ts`
-- `./node_modules/.bin/tsx --test tests/unit/platform/control-plane/approval-center/*.test.ts tests/unit/platform/execution/plugin-executor/sub-workflow-*.test.ts`
+| 位置                                                                                     | 术语问题                                                  |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `src/platform/state-evidence/events/event-registry.ts:73-109`                            | producer = "workflow_runtime"（应为 HarnessRuntime）      |
+| `src/platform/state-evidence/events/projections/workflow-timeline-projection.ts:282-398` | 消费 workflow_run.created/failed/completed 事件作为 truth |
+| `src/platform/control-plane/approval-center/approval-flow-engine.ts:114`                 | workflowRunId 在审批记录中                                |
+| `src/platform/contracts/types/domain/billing-types.ts:124`                               | UsageEventRecord 用 stepId 做成本归因                     |
+| `src/platform/execution/plugin-executor/sub-workflow-executor.ts:20-36`                  | 定义 WorkflowStep/stepId，线性步骤执行                    |
+| `src/ops-maturity/edge-runtime/edge-orchestrator/index.ts`                               | 定义 EdgeExecutionPlan（应为 PlanGraphBundle）            |
+| `src/ops-maturity/edge-runtime/edge-runtime-sync-service.ts:45`                          | 定义 EdgeExecutionReceipt（应为 NodeAttemptReceipt）      |
+| `src/ops-maturity/platform-ops-agent/platform-ops-agent-service.ts:52`                   | 定义 OpsExecutionReceipt                                  |
+| `src/ops-maturity/workflow-debugger/` (全模块)                                           | 基于 stepId/workflow_id 构建，无 NodeRun/HarnessRun 概念  |
+| `src/scale-ecosystem/billing/types.ts:61`                                                | RecordUsageInput 有 stepId 字段                           |
+| `src/domains/registry/plugin-spi.ts:8`                                                   | MachineOutput.stepId                                      |
+| `src/domains/business-pack/pack-migration-service.ts:24,51,90`                           | Migration plan 全程用 stepId                              |
 
-## 逐条重审附录（每条后附结论与依据）
+### 1.9 MED — HarnessRun 接口重复定义且不一致
 
-说明：
+| 位置                                                  | 问题                                                                                                 |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/platform/orchestration/harness/index.ts:168-198` | 本地 HarnessRun 用 runId（非 harnessRunId），含 sleeping/waiting_hitl/recovering 等非 canonical 状态 |
+| `src/platform/orchestration/harness/index.ts:160-166` | 本地 HarnessDecision 缺 decisionInputBundleId/deciderType/deciderRef/reasonCode                      |
 
-- 本附录不重复改写前文根因；前文表格中的“根因”仍是每条的主说明。
-- 本附录只补充用户要求的逐条“结论 + 依据”。
-- `不改代码` 不等于跳过，而是表示本轮复核确认原发现已经失效、属于文档证据失真，或属于审计范围外问题，因此只回写依据，不做伪代码修复。
+### 1.10 MED — 其他
 
-### 汇总主题 S1-S10
+| 位置                                                                        | 问题                                                                        |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/org-governance/knowledge-boundary/knowledge-boundary-service.ts:48-66` | evaluateAccess 无 tenantId 参数（架构要求租户级隔离）                       |
+| `src/org-governance/knowledge-boundary/knowledge-federator.ts:36-82`        | 联邦搜索无租户隔离，仅按 orgNodeId 过滤                                     |
+| `src/interaction/goal-decomposer/index.ts:248-349`                          | 产出 TaskGraphDraft 但不经 HarnessRuntime 路由                              |
+| `src/platform/orchestration/harness/index.ts` (runLoop)                     | HarnessRun 接口无 planGraphBundle 字段，runLoop 不生成/校验 PlanGraphBundle |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| S1 | 已修复 | OAPEFLIR spec 已降级为 `Reference Draft`，并将运行时对象改为 canonical pointer。 | 文档回写，无新增代码。 |
-| S2 | 已修复 | approval/debugger/sub-workflow/migration 等边界已 canonical-first，旧键只作 alias。 | 延续既有代码修复，补充审计依据。 |
-| S3 | 已修复 | Harness、delegation、replay 已走状态机或 replay 门禁。 | 回写真实路径到 five-plane 目录。 |
-| S4 | 已修复 | sandbox public/runtime 类型已收敛为 canonical 四档，legacy 值只在 ingress 归一化。 | 回写真实路径到 five-plane 目录。 |
-| S5 | 已修复 | `BudgetGuard` 负责门禁，`BudgetAllocator` 负责 `reserve/settle/release`，goal decomposer 已去掉重复 reservation。 | 保留代码修复结论并补足依据。 |
-| S6 | 原发现已过时，不改代码 | 当前实现并非“TrustScore 直接越过安全边界”：低风险才可能映射到 `full_auto`，自动晋升被阻断，高风险主动触发被降到 `suggest`。 | 改正审计文案，避免把“有条件 full_auto”误写成“完全禁止 full_auto”。 |
-| S7 | 已修复 | `DomainRiskSpec` 与高风险域默认约束、域配置中的 `riskSpec` 都已存在。 | 无新增代码。 |
-| S8 | 已修复 | 存储 contract 已以 `harness_runs / node_runs / budget_*` 为 truth。 | 无新增代码。 |
-| S9 | 已修复 | runtime bootstrap/readiness 已以 `ring1/ring2/ring3` 为 canonical，`9a-9f` 仅历史映射。 | 无新增代码。 |
-| S10 | 已修复 | 三类 saga 都具备 `prepare/commit/compensate/audit` 与回执证据。 | 无新增代码。 |
+---
 
-### 1. 代码 vs 架构
+## 2. Contract 文档 vs 架构
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 1.1 | 已修复 | `src/platform/five-plane-orchestration/harness/index.ts`、`agent-delegation/delegation-manager.service.ts`、`src/platform/five-plane-execution/ha/replay-worker.ts` 已形成状态机/回放门禁闭环。 | 仅修正文档证据路径。 |
-| 1.2 | 原发现已过时，不改代码 | legacy contract barrel 已显式降级，旧对象不再作为 canonical 入口。 | 补依据，不做伪修复。 |
-| 1.3 | 已修复 | `BudgetGuard` + `BudgetAllocator` + generator 失败释放 已形成预算主链；goal decomposer 的重复 reservation 已移除。 | 保留代码修复结论。 |
-| 1.4 | 原发现已过时，不改代码 | `trust-scorer` 只有在 inherent risk 通过时才允许 `full_auto`；`promotion-engine` 阻止自动晋升；trigger engine 对中高风险只给 `suggest`。 | 改正文案，不改代码。 |
-| 1.5 | 已修复 | sandbox canonical 四档已统一；legacy `process/container` 只在 normalization 层接受。 | 仅修正文档证据路径。 |
-| 1.6 | 已修复 | `domain-specs.ts` 与高风险域 JSON 都已有 `riskSpec` 与责任边界。 | 无新增代码。 |
-| 1.7 | 已修复 | 三类 saga 都具备补偿与 execution receipt。 | 无新增代码。 |
-| 1.8 | 已修复 | approval/debugger/sub-workflow/pack migration 等边界已切到 `harnessRunId/nodeRunId/nodeId` 主轴。 | 保留既有代码修复。 |
-| 1.9 | 已修复 | Harness decision projection 已补 canonical linkage，且有 `harness-decision-contract` 定向测试。 | 仅修正文档证据路径。 |
-| 1.10 | 已修复 | goal decomposer 已 materialize `HarnessRun + PlanGraphBundle` 并进入 `PlanGraphHarnessRuntime.executeNext()`。 | 无新增代码。 |
+### 2.1 CRITICAL — 存储 Schema 基于废弃对象
 
-### 2. Contract 文档 vs 架构
+| Contract                             | 问题                                                                                                                                                        |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage_schema_contract.md:§15 DDL` | DDL 以 `executions` 表为核心 PK，7张表 FK 到 execution_id；无 harness_runs/plan_graph_bundles/node_runs/node_attempts/budget_ledgers canonical truth 表 DDL |
+| `storage_schema_contract.md:§6`      | workflow_step_outputs 用 step_id TEXT NOT NULL + UNIQUE(task_id, step_id)                                                                                   |
+| `storage_schema_contract.md:§5`      | workflow_state 用 current_step_index INTEGER + resumable_from_step TEXT（线性模型）                                                                         |
+| `storage_schema_contract.md:§11`     | events 表用 execution_id FK，无 harness_run_id/node_run_id 列                                                                                               |
+| `storage_schema_contract.md:§15`     | node_attempt_receipts PK 用 node_attempt_receipt_id（T-46 已废弃，应为 receiptId）                                                                          |
+| `storage_schema_contract.md:§15`     | event_consumer_acks DDL 遗漏 §11 要求的 attempt_count 列                                                                                                    |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 2.1 | 已修复 | 存储 contract 已以 truth 表族为权威。 | 无新增代码。 |
-| 2.2 | 已修复 | runtime state machine contract 已将 `ExecutionStatus/WorkflowStatus` 降为 legacy。 | 无新增代码。 |
-| 2.3 | 已修复 | truth 事件已统一为 `platform.*`，OAPEFLIR 事件明确为 view/projection。 | 无新增代码。 |
-| 2.4 | 已修复 | 多份 contract 已改为 `harness_run_id/node_run_id/attempt_id` 主链。 | 无新增代码。 |
-| 2.5 | 已修复 | 关键 contract 已补 `harnessRunId/planGraphBundleId/graphVersion/idempotency_key/payloadHash`。 | 无新增代码。 |
-| 2.6 | 已修复 | workflow debugger contract 已锚定到 `HarnessRun / NodeRun / PlanGraph`。 | 无新增代码。 |
-| 2.7 | 已修复 | 边缘 contract 已补 state machine、harness-node、SLA 前提约束。 | 无新增代码。 |
+### 2.2 CRITICAL — runtime_state_machine_contract 以废弃对象为权威
 
-### 3. ADR vs 架构
+| Contract                                | 问题                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------ |
+| `runtime_state_machine_contract.md:§6`  | ExecutionStatus 对齐 executions.status，将废弃实体当权威                       |
+| `runtime_state_machine_contract.md:§3`  | WorkflowStatus 独立状态机，未标记为 projection-only                            |
+| `runtime_state_machine_contract.md:§1`  | 用 "Phase 1a" 限定 scope（应为 Ring 1）                                        |
+| `runtime_state_machine_contract.md:§1A` | OAPEFLIR 8-stage state machine 作为 truth-grade 状态机（应为 projection-only） |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 3.1 | 原发现已过时，不改代码 | ADR 已在后续轮次回写到 `PlanGraphBundle -> NodeAttemptReceipt`、harness/node、ring 口径。 | 补依据，不改代码。 |
-| 3.2 | 已修复 | roadmap/learn hub/conclusion 已统一为 ring 语义。 | 无新增代码。 |
-| 3.3 | 原发现已过时，不改代码 | OAPEFLIR 在 ADR 中已回收到 projection/rationale，不再描述为执行真相。 | 补依据，不改代码。 |
-| 3.4 | 已修复 | ADR 与实现都已切到 `harnessRunId/nodeRunId` 主轴。 | 无新增代码。 |
-| 3.5 | 已修复 | SLA ADR 已把 failover/quorum/演练证据写成前置条件。 | 无新增代码。 |
+### 2.3 HIGH — 事件命名空间错误
 
-### 4. OAPEFLIR v4.4 Spec vs 主架构
+| Contract                                          | 问题                                                                                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `event_bus_contract.md:§6`                        | task.status_changed/workflow.started/workflow.step_completed/workflow.failed 作为 Phase 1a 稳定事件（应为 platform.\* 命名空间） |
+| `event_registry_and_ops_threshold_contract.md:§4` | task._/workflow._/execution.\* 注册为 Tier 1 truth 事件                                                                          |
+| `event_reliability_matrix_contract.md:§3`         | 同上                                                                                                                             |
+| `event_bus_contract.md:§6`                        | oapeflir.observe._/oapeflir.assess._/oapeflir.plan._ 未用 oapeflir.view._ 前缀                                                   |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 4.1 | 已修复 | runtime truth 对象已改为 canonical pointer，不再双份定义。 | 无新增代码。 |
-| 4.2 | 已修复 | budget/side effect/reconciliation 等章节已删并行类型定义，只保留 pointer + 解释约束。 | 无新增代码。 |
-| 4.3 | 已修复 | 标题、附录和 event envelope 都已去权威化。 | 无新增代码。 |
+### 2.4 HIGH — 使用废弃 ID 作为 canonical key
 
-### 5. Config / Bootstrap vs 架构
+| Contract                                             | 问题                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `api_surface_contract.md:§3`                         | GET /executions/:executionId/inspect 用废弃 executionId；无 /harness-runs/ 端点 |
+| `artifact_unified_model_contract.md:§3.1`            | ArtifactRecord 用 executionId/planId（应为 harnessRunId/planGraphId）           |
+| `file_lock_contract.md:§3.1-3.2`                     | FileLockRequest/Record 用 execution_id/holder_execution_id                      |
+| `debug_inspect_health_backpressure_contract.md:§3.2` | TaskInspectView 用 workflow_state + executions[]                                |
+| `artifact_store_contract.md:§3`                      | ArtifactRecord 仅 task_id，缺 harness_run_id/node_run_id                        |
+| `audit_lineage_and_retention_contract.md:§5`         | 用 execution_id，缺 harness_run_id/node_run_id                                  |
+| `cost_and_budget_contract.md:§4`                     | CostEvent 用 task_id 为主键，harness_run_id/node_run_id 为 optional             |
+| `gateway_message_contract.md:§5`                     | DecisionRequest 用 task_id                                                      |
+| `gateway_streaming_contract.md:§3`                   | StreamEvent 用 task_id                                                          |
+| `policy_engine_contract.md:§3.1`                     | PolicyDecisionRequest 用 execution_id                                           |
+| `runtime_execution_contract.md:§3`                   | ExecutionEnvelope 含 workflow_id                                                |
+| `explainability_and_stage_rationale_contract.md:§3`  | StageRationale 用 task_id 为主键                                                |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 5.1 | 已修复 | 高风险域 config 已使用 `ringId` 且带 `riskSpec`。 | 无新增代码。 |
-| 5.2 | 已修复 | `domains-runtime-catalog.ts`、`domains-startup-plan.ts`、`index.ts` 已统一 ring 启动。 | 无新增代码。 |
-| 5.3 | 已修复 | `five-plane-startup-plan` 与 `platform-architecture-bootstrap` 已落实 `P5 -> X1 -> P2 -> P3 -> P4 -> P1`。 | 无新增代码。 |
+### 2.5 HIGH — 关键 Contract 缺失 canonical 字段
 
-### 6. AI 运营层代码 vs 架构
+| Contract                                  | 问题                                                                                            |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `node-run-attempt-receipt-contract.md:§4` | NodeAttemptReceipt 缺 harnessRunId/planGraphBundleId/graphVersion/duration（架构§5.3 明确要求） |
+| `event_bus_contract.md:§3`                | EventEnvelope 缺 schema_version/idempotency_key/causation_id/partition_key/ttl/payloadHash      |
+| `plugin_spi_contract.md:§2.4`             | DomainPresenterPlugin.present() 接收废弃 DualChannelStepOutput 而非 NodeAttemptReceipt          |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 6.1 | 已修复 | unified chat provider 已要求 `traceId/tenantId/costTag/abortSignal`，并支持流式预算与 chunk 校验。 | 无新增代码。 |
-| 6.2 | 已修复 | prompt injection guard 已是链式防御；eval 已有风险分级样本下限、hard gate、cross-provider 独立性。 | 无新增代码。 |
-| 6.3 | 已修复 | plugin registry 与 SDK context 已有 `DataTaintPropagation`、`BundleRevocationSeverity`、`callDepth/delegationDepth`。 | 无新增代码。 |
-| 6.4 | 已修复 | budget hierarchy、chargeback `fxRateToBase/costSource`、prompt lifecycle `deprecated` 已全部落地。 | 无新增代码。 |
+### 2.6 HIGH — workflow_debugger_contract 完全基于废弃模型
 
-### 7. 其余 Contract / ADR / 深层实现条目
+| Contract                               | 问题                                                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `workflow_debugger_contract.md` (全文) | 用 workflow_id/step_selector 作为 breakpoint 锚点；无 HarnessRun/NodeRun/PlanGraph 引用；无 v4.3 remediation |
 
-| 条目 | 结论 | 依据 | 本轮动作 |
-| --- | --- | --- | --- |
-| 7.1 | 已修复 | 原 8.* 相关 contract 已统一到 `PlanGraphBundle / HarnessRun / NodeRun / NodeAttemptReceipt`。 | 无新增代码。 |
-| 7.2 | 移出本审计范围，不改代码 | 该组是 `00-platform-architecture.md` 自身一致性问题，不是 implementation consistency gap。 | 只保留范围依据。 |
-| 7.3 | 原发现已过时，不改代码 | Harness runtime 早期缺口已被 HITL、context policy、decision bundle、guardrails 五层等实现覆盖。 | 纠正文档证据路径，不改代码。 |
-| 7.4 | 已修复 | 组织治理与规模生态的深层字段/执行链已在 `region-router`、`sla-engine`、`compliance-engine`、`quota-enforcer` 等文件落地。 | 无新增代码。 |
+### 2.7 MED — 其他 Contract 问题
+
+| Contract                                              | 问题                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `admin_console_and_human_takeover_contract.md:§4`     | Human takeover 用 step 语义，不要求 RuntimeStateMachine.transition()，无 budget reservation |
+| `agent_definition_lifecycle_contract.md:§3`           | lifecycle_state 迁移无 RuntimeStateMachine enforcement                                      |
+| `division_definition_contract.md:§2`                  | default_workflow/orchestration_workflow 作为 canonical reference                            |
+| `sla_tier_contract.md`                                | 无 HarnessRun/NodeRun 集成点，无 v4.3 remediation                                           |
+| `knowledge_boundary_and_federated_search_contract.md` | FederatedSearchRequest 缺 harnessRunId/nodeRunId 审计链                                     |
+| `execution_plane_contract.md:§17`                     | 引用不存在的 governance_control_plane_contract.md                                           |
+
+---
+
+## 3. ADR vs 架构
+
+### 3.1 HIGH — ADR 定义与架构冲突的 canonical 对象
+
+| ADR                               | 问题                                                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `060-explicit-planning-hub.md`    | 定义 Plan DTO + PlanStep[] 线性步骤 + RuntimeExecuteBridge.executePlan()；与 PlanGraphBundle 根本冲突 |
+| `060:R3 constraints`              | "Execute 层只能接收 Plan DTO"——架构要求 P4 只接收 PlanGraphBundle                                     |
+| `065-workflow-visual-debugger.md` | 全文用 workflow_id/current_step/WorkflowDAGView/StepInspector（废弃对象）                             |
+| `070-conclusion.md:演进路线`      | 用 Phase 1-7 路线图（架构明确废弃为历史映射）                                                         |
+| `070-conclusion.md:关键不变量`    | "OAPEFLIR 循环不变"作为 key invariant（应为 HarnessRuntime + RuntimeStateMachine）                    |
+
+### 3.2 HIGH — Phase 分期未迁移至 Ring
+
+| ADR                                     | 问题                               |
+| --------------------------------------- | ---------------------------------- |
+| `033-phased-roadmap.md`                 | 定义 Phase 1-7 为 canonical 路线图 |
+| `003-memory-seven-layers.md`            | MVP 用 Phase 1/2/3/4               |
+| `011-effect-ts-adoption.md`             | Phase 1a/1b                        |
+| `012-sqlite-phase-1-2-primary-store.md` | Phase 1/2                          |
+| `013-eventemitter-phase-2-boundary.md`  | Phase 2                            |
+| `075-controlled-rollout-release.md`     | "Phase 1 简化版"                   |
+| `080-learn-hub-pattern-detection.md`    | "Phase 1 仅支持这 3 类"            |
+| `096-harness-recovery-controller.md`    | "phase 8b 门禁"                    |
+
+### 3.3 MED — OAPEFLIR 被当作 Runtime
+
+| ADR                                        | 问题                                                                  |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `072-oapeflir-testing-strategy.md:E2E`     | 把 OAPEFLIR 当可执行 8 阶段链测试"无阶段被跳过"                       |
+| `072:Test 3`                               | "新 Plan 从失败步骤后继续"用废弃 step 术语                            |
+| `066-plugin-spi-framework.md:OAPEFLIR关联` | 描述 OAPEFLIR 为"正式扩展机制"（应为 projection）                     |
+| 10+ ADR boilerplate                        | OAPEFLIR Execute 描述为"步骤执行与 Dual-Channel 输出"（应为认知投影） |
+
+### 3.4 MED — 废弃术语作为 canonical
+
+| ADR                                               | 问题                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| `019-agent-handoff-four-layer-protocol.md`        | buildFromStepResult(result: StepResult) 用废弃 StepResult/stepId |
+| `022-api-contract-and-versioning.md`              | /api/v1/workflow-runs 作为 canonical 端点                        |
+| `028-incident-and-event-handling-architecture.md` | Span "service → operation → step"（应为 nodeRun/nodeAttempt）    |
+| `079-feedback-hub-signals.md`                     | FeedbackSignal 用 executionId 替代 harnessRunId/nodeRunId        |
+| `080-learn-hub-pattern-detection.md`              | EvidenceRef 用 executionId/signalId                              |
+| `094-harness-durable-execution.md:OAPEFLIR关联`   | "Execute: 落盘 run、step、decision"用 step 作为 truth 单元       |
+| `095-harness-context-assembly.md:OAPEFLIR关联`    | "Execute: 为 Harness step 提供上下文输入"                        |
+
+### 3.5 LOW — SLA 前置条件缺失
+
+| ADR                                     | 问题                                                          |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `054-sla-tiered-guarantees.md:platinum` | 提供 99.99% SLA 但未声明自动 failover/quorum/演练证据前置条件 |
+
+---
+
+## 4. OAPEFLIR v4.4 Spec vs 主架构
+
+### 4.1 CRITICAL — Spec 自定义全套 Runtime 对象
+
+| 章节                | 问题                                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| §3 "总体运行架构"   | OAPEFLIR 作为与 HarnessRuntime 平行的 Runtime Overlay，含 "Node Execution Runtime"            |
+| §5 "NodeRun 状态机" | 定义完整 NodeRunStatus enum + transition rules（应属 RuntimeStateMachine 独有）               |
+| §5.4 rule 4         | 声称 "由 OAPEFLIR 拥有的节点状态"（OAPEFLIR 不拥有任何 truth 状态）                           |
+| §7 "PlanGraph 契约" | 定义 PlanGraphBundle/PlanGraph/PlanNode/PlanEdge 全套 schema（应属 P3→P4 canonical contract） |
+| §2.1 Execute stage  | 声称产出 NodeRun / NodeAttemptReceipt（这些是 P4 执行对象，不是 OAPEFLIR 输出）               |
+| §0 "核心结论"       | 声称 OAPEFLIR 定义"什么状态可迁移/什么图可执行/什么副作用可提交"                              |
+
+### 4.2 HIGH — Spec 定义属于其他平面的对象
+
+| 章节                     | 问题                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| §12 "Graph Scheduler"    | 定义 ReadyNodeSchedulingPolicy 类型 + 5条调度规则（属 P4 HarnessRuntime）       |
+| §15 "Budget Ledger"      | 定义 BudgetLedger/BudgetReservation 类型（属 P5 BudgetAllocator）               |
+| §16 "SideEffect Manager" | 定义 SideEffectRecord/Status/ExecutionContract/ReversibilityProfile（属 P4/P5） |
+| §17 "Reconciliation"     | 定义 ReconciliationRecord/Status（属 P5）                                       |
+
+### 4.3 MED — 其他冲突
+
+| 章节                    | 问题                                                                       |
+| ----------------------- | -------------------------------------------------------------------------- |
+| §34 Error Code          | OapeflirError 类型（架构前缀为 PLATFORM.{plane}.{component}.{category}）   |
+| §37 Capability Matrix   | Core/Durable/Governed/Enterprise/Learning 分级（不对齐 Ring 1/2/3）        |
+| §41 ADR                 | 18个 ADR-OAPEFLIR-\* 前缀（暗示 OAPEFLIR 独立权威域）                      |
+| §14.1 OapeflirEvent     | 独立 event envelope 类型（可能被当作 truth source，违反 invariant）        |
+| §20 LLM Decision Record | isolated_reexecution_replay 作为 first-class mode（架构默认 trace replay） |
+| §Title                  | "Executable Specification"（与 "仅作为迁移输入" 定位冲突）                 |
+
+---
+
+## 5. Config / Bootstrap vs 架构
+
+### 5.1 CRITICAL — 域配置用废弃 Phase + 缺风险规格
+
+| 文件                                  | 问题                                           |
+| ------------------------------------- | ---------------------------------------------- |
+| `config/domains/quant-trading.json:7` | "phase": "9b"（应为 Ring）                     |
+| `config/domains/healthcare.json:3`    | "phase": "9e"（应为 Ring）                     |
+| `config/domains/quant-trading.json`   | 缺 riskProfile/riskSpec 块（high-risk 金融域） |
+| `config/domains/healthcare.json`      | 缺 riskProfile/riskSpec 块（critical-risk 域） |
+
+### 5.2 HIGH — Bootstrap / Catalog 用废弃分期
+
+| 文件                                   | 问题                                                    |
+| -------------------------------------- | ------------------------------------------------------- |
+| `src/domains-runtime-catalog.ts:12-17` | phase9a-phase9f 命名                                    |
+| `src/domains-startup-plan.ts:27`       | DOMAIN_PHASES 用 "9a"-"9f"                              |
+| `src/index.ts:49-54`                   | PlatformRootSummary.capabilityCounts 用 phase9a-phase9f |
+
+### 5.3 HIGH — 五平面结构不完整
+
+| 文件                                         | 问题                                                |
+| -------------------------------------------- | --------------------------------------------------- |
+| `src/platform/five-plane-startup-plan.ts:29` | FivePlaneStartupStepId 只定义 P1-P5，缺 X1 横切平面 |
+| `src/platform-architecture-bootstrap.ts`     | 无显式 P1-P5 + X1 平面标识                          |
+
+### 7. AI 运营层代码 vs 架构（§15-§23）
+
+| #     | 严重度   | 代码位置                                         | 问题                                                                                                |
+| ----- | -------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| R2-1  | CRITICAL | model-gateway/unified-chat-provider.ts           | ChatCompletionRequest 缺 traceId/tenantId/costTag 必填字段，架构 §15.2 明确要求                     |
+| R2-2  | CRITICAL | model-gateway/unified-chat-provider.ts stream()  | 无 AbortSignal / 增量预算扣减 / partial response validation，架构 §15.4 要求流式预算实时控制        |
+| R2-3  | CRITICAL | prompt-engine/prompt-injection-guard.ts          | PromptInjectionDefenseChain 为单层正则，无架构 §20.3 要求的多层链编排器(regex→classifier→LLM judge) |
+| R2-4  | CRITICAL | prompt-engine/eval/                              | EvalDataset 无按风险级别最小样本数校验，架构 §21.5 要求 critical≥200/high≥100/medium≥50             |
+| R2-5  | CRITICAL | plugins/builtin-plugin-registry.ts               | 插件系统无 DataTaintPropagation 追踪，架构 §23.4 要求跨插件数据污染标记传递                         |
+| R2-6  | HIGH     | model-gateway/cost-tracker/budget-guard.ts       | BudgetPolicy 仅支持 task 级预算，缺架构 §18 要求的 platform/pack/step 三级预算层次                  |
+| R2-7  | HIGH     | model-gateway/cost-tracker/chargeback-service.ts | ChargebackAllocation 缺 fx_rate/cost_source 字段，架构 §18.7 要求多币种归因                         |
+| R2-8  | HIGH     | prompt-engine/registry/                          | Prompt lifecycle 缺 deprecated 阶段，架构 §20.6 定义 draft→active→deprecated→archived 四阶段        |
+| R2-9  | HIGH     | plugins/builtin-plugin-registry.ts               | 无 BundleRevocationSeverity 机制，架构 §23.6 要求插件撤回严重度分级                                 |
+| R2-10 | HIGH     | prompt-engine/eval/                              | LLM-as-Judge 无按风险级别独立性强制（高风险需外部独立评审），架构 §21.7 明确要求                    |
+| R2-11 | HIGH     | plugins/ PluginContext                           | 无 call_depth/delegation_depth 追踪，架构 §23.2 要求防止插件无限递归委托                            |
+| R2-12 | HIGH     | prompt-engine/eval/                              | critical_case_pass==100% 只加 finding 不阻断发布，架构 §21.5 要求作为硬门禁                         |
+
+### 8. 剩余 Contract vs 架构
+
+| #     | 严重度 | 文件                                                    | 问题                                                                                                                                      |
+| ----- | ------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| R2-13 | HIGH   | runtime_state_machine_contract.md                       | §6 ExecutionStatus 8态机与架构 §25.8 NodeRun 14态生命周期冲突，缺 admitted/planning/ready/pausing/replanning/compensating                 |
+| R2-14 | HIGH   | runtime_state_machine_contract.md                       | §3 WorkflowStatus 7态缺架构 13态 HarnessRun 的 created/admitted/planning/ready/pausing/replanning/compensating/aborted                    |
+| R2-15 | HIGH   | cost_and_budget_contract.md                             | §4 CostEvent 以 task_id 为必填但 harness_run_id 为可选，架构 §18 以 HarnessRun 为预算主体                                                 |
+| R2-16 | HIGH   | cost_and_budget_contract.md                             | §7.4 隐式成本归属仍用废弃 execution_id，应为 node_run_id/attempt_id                                                                       |
+| R2-17 | MEDIUM | cost_and_budget_contract.md                             | §4 CostEvent 缺 budget_reservation_id，架构 §18.3 要求 reserve-before-execute 链接                                                        |
+| R2-18 | MEDIUM | task_and_workflow_contract.md                           | §6-§7 WorkflowStep/StepOutput 以 step_id 为主键，应为 node_run_id                                                                         |
+| R2-19 | MEDIUM | policy_engine_contract.md                               | §3.1 PolicyDecisionRequest 用废弃 execution_id                                                                                            |
+| R2-20 | MEDIUM | execution_plane_contract.md                             | §8 ExecutionTicket isolation_level 用废弃 standard/hardened/strict，应为 read_only/workspace_write/scoped_external_access/restricted_exec |
+| R2-21 | MEDIUM | model_gateway_routing_contract.md                       | ModelRouteRequest 缺 harness_run_id/node_run_id，无法满足 INV-BUDGET-001 预算门禁                                                         |
+| R2-22 | MEDIUM | observability_contract.md                               | §3 LogEvent 缺 harness_run_id/node_run_id 必填字段                                                                                        |
+| R2-23 | LOW    | plugin_spi_contract.md vs tool_skill_plugin_contract.md | 生命周期钩子命名互相矛盾（initialize/activate vs onLoad/onActivate）                                                                      |
+| R2-24 | MEDIUM | runtime_state_machine_contract.md                       | 用 ExecutionStatus 名称而非 canonical NodeRun.status                                                                                      |
+
+### 9. 架构文档内部一致性
+
+| #     | 严重度 | 位置            | 问题                                                                       |
+| ----- | ------ | --------------- | -------------------------------------------------------------------------- |
+| R2-25 | HIGH   | §45.13 vs §25.8 | HarnessRun 状态数矛盾：§45.13 定义 6态，§25.8 定义 13态                    |
+| R2-26 | HIGH   | §45.13 vs §58.6 | finalDecision 取值矛盾：§45.13 允许 4值，§58.6 HarnessDecision 列出 6值    |
+| R2-27 | HIGH   | §58.6           | 标题称"六种裁决"但表格实际列出 10种，自相矛盾                              |
+| R2-28 | MEDIUM | §45.7 vs §58.6  | LoopController 决策类型：§45.7 列 5种，§58.6 要求 6种（缺 downgrade_mode） |
+| R2-29 | MEDIUM | §45.9           | Generator WorkProduct 仍用废弃 step_id 字段                                |
+| R2-30 | MEDIUM | §59.2           | ExplanationRequest 用废弃 workflow_id/step_id                              |
+| R2-31 | MEDIUM | §35             | contracts/ 目录结构含废弃命名子目录（execution-plan/、workflow-run/）      |
+| R2-32 | LOW    | §36.3           | 仍用 Phase 1-9 作为 canonical 成功标准，与 Ring 1/2/3 体系矛盾             |
+
+
+### 11. Harness Runtime 深层实现缺口（§45）
+
+| #     | 严重度   | 文件                                         | 问题                                                                                                                                    |
+| ----- | -------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-1  | CRITICAL | orchestration/harness/guardrail-engine.ts    | 护栏仅 policy/risk/tool/evidence/budget 5层；§45.20 要求 Input(注入防御)/Planning/Tool/Memory/Output 五层——Input 和 Memory 护栏完全缺失 |
+| R3-2  | CRITICAL | orchestration/harness/hitl-runtime.ts        | 仅支持 open/resolve(approve/reject)；§45.18 要求 5种 HITL：Inspect/Patch/Override/Takeover/Resume 含完整状态机                          |
+| R3-3  | CRITICAL | orchestration/harness/index.ts               | HumanResponsibilityRecord(§45.27) 未实现——每次 HITL 操作需产出 actor/action/scope/rationale/beforeRef/afterRef/expiresAt/auditRef       |
+| R3-4  | HIGH     | orchestration/harness/index.ts               | autonomyMode 用 manual/supervised/auto/full_auto；§42.1 要求 suggestion/supervised/semi_auto/full_auto                                  |
+| R3-5  | HIGH     | orchestration/harness/index.ts               | HarnessRun 缺 §45.13 要求的 tenantId/goal/mode/riskLevel/ownership/auditRefs/traceId 7字段                                              |
+| R3-6  | HIGH     | orchestration/harness/index.ts               | HarnessStep 缺 §45.13 要求的 nodeRunRefs/rationale/evidenceRefs/toolCalls/latency/cost/error/nextAction 8字段                           |
+| R3-7  | HIGH     | orchestration/harness/index.ts               | HarnessDecision 仅 6值；§58.6 要求追加 quarantine/revoke_approval/pause_for_external/require_revalidation                               |
+| R3-8  | HIGH     | orchestration/harness/toolbelt-assembler.ts  | 仅做 allowed/blocked 集合交集；§45.4 要求 6步装配：domain→constraint→risk→budget→security→reliability                                   |
+| R3-9  | HIGH     | orchestration/harness/recovery-controller.ts | 仅处理 3种故障；§45.11 要求 5种含 llm_provider_unavailable/budget_exhausted/platform_panic                                              |
+| R3-10 | HIGH     | orchestration/harness/memory-manager.ts      | 命名空间 run/domain/shared 无治理；§45.16 要求 Working/Long-term/Shared 含晋升/降级策略+防自我强化                                      |
+| R3-11 | HIGH     | orchestration/harness/index.ts               | assertInvariants 仅检查 budget/state；§45.21 定义 10项不变量（INV-1~INV-10）均未强制                                                    |
+| R3-12 | HIGH     | orchestration/harness/index.ts               | PromptExecutionRecord(§45.24) 未实现——需冻结 promptVersion/modelRoute/inputHash/outputHash/contextSnapshotRef/guardrailResult/usage     |
+| R3-13 | HIGH     | orchestration/harness/index.ts               | DecisionInputBundle(§45.25) 未实现——决策前需冻结 evaluator/policy/budget/risk/node/sideEffect/hitl/guardrail 状态                       |
+| R3-14 | MEDIUM   | orchestration/harness/context-assembler.ts   | 直接复制源对象；§45.5 要求 token budget trimming + relevance scoring + freshness scoring + trust filtering                              |
+| R3-15 | MEDIUM   | orchestration/harness/index.ts               | ContextAssemblyContract(§45.23) 未实现——需 per-role context 隔离含 taintPolicy/rankingPolicy/redactionPolicy                            |
+
+### 12. 组织治理 + 规模生态深层缺口（§46-§57）
+
+| #     | 严重度   | 文件                                                          | 问题                                                                                                                                                                    |
+| ----- | -------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-16 | CRITICAL | scale-ecosystem/multi-region/region-router/                   | RegionDescriptor 缺 provider/endpoints/dataResidencyPolicy；status 用 active/degraded/disabled 而非架构要求 active/standby/draining                                     |
+| R3-17 | CRITICAL | scale-ecosystem/multi-region/failover-controller/             | 无 fencing epoch；§52.3 要求 failover 提升 epoch，旧 leader 恢复后只能 follower 加入                                                                                    |
+| R3-18 | CRITICAL | scale-ecosystem/integration/connector-registry/               | ConnectorManifest 缺整个 ConnectorCapabilityProfile(§57.1)：actionRiskProfiles/permissionProbes/quotaProbes/credentialRotationPolicy                                    |
+| R3-19 | HIGH     | scale-ecosystem/sla-engine/tier-resolver/                     | SlaTierSchema 缺 §54.1 要求的 availability/externalP95/internalP99/approvalLatencySlo/incidentResponseSlo/costMultiplier/supportLevel                                   |
+| R3-20 | HIGH     | scale-ecosystem/sla-engine/sla-operations-service.ts          | 无按 workflow class 拆分 SLA（§54.3 要求 deterministic/LLM-assisted/HITL-waiting 分别承诺）                                                                             |
+| R3-21 | HIGH     | scale-ecosystem/marketplace/catalog/                          | 用 listingId 代替 §55.2 entryId，缺 packId/rating/installCount；certificationStatus 枚举不匹配                                                                          |
+| R3-22 | HIGH     | org-governance/compliance-engine/framework-catalog.ts         | auditRequirements 是 string[] 而非 §49.1 要求的 AuditSpec[]（含 frequency/evidenceType/retentionPeriod）                                                                |
+| R3-23 | HIGH     | org-governance/compliance-engine/inheritance/                 | 无 PolicyStrictnessComparator(§49.2)；不可比策略静默 fallback 到 Math.min 而非进入合规审批                                                                              |
+| R3-24 | HIGH     | org-governance/approval-routing/route-engine/                 | applySodPolicy 未阻止同链互批(§47.1)——同一审批链两人可互相审批对方请求                                                                                                  |
+| R3-25 | HIGH     | org-governance/knowledge-boundary/chinese-wall-access-saga.ts | 缺 §50.3 两阶段提交（prepare lock→atomic commit→failure reconciliation）；仅做简单 pass/fail 分类                                                                       |
+| R3-26 | HIGH     | scale-ecosystem/resource-manager/quota-enforcer/              | QuotaPolicy 单维度；§53.2 要求 7维 MultiResourceQuotaVector（worker_concurrency/tool_qps/model_tpm/model_rpm/budget_amount/approval_capacity/storage_io）全部通过才准入 |
+| R3-27 | MEDIUM   | org-governance/delegated-governance/                          | GovernanceDelegationRevocationSaga 缺级联范围(§51.1)：需覆盖 pending approval/active session/secret lease/worker lease/scheduled trigger                                |
+| R3-28 | MEDIUM   | org-governance/org-model/org-governance-saga.ts               | §46.3 要求 commit 固定序(identity→approval→budget→domain→agent)含 OrgGovernanceSagaReceipt；实际无序无 receipt                                                          |
+| R3-29 | MEDIUM   | org-governance/sso-scim/identity-sync-service.ts              | DLQ 仅记录无重试；§48.2 要求 retry/backoff + 每日对账 + IdentityReconciliationReport                                                                                    |
+| R3-30 | MEDIUM   | scale-ecosystem/multi-region/cross-region-routing-service.ts  | 跨境传输仅 boolean allowCrossBorder；§52.4 要求 5步链：JurisdictionClassifier→TransferImpactAssessor→MechanismSelector→DataMinimizer→OutputScanner                      |
+| R3-31 | MEDIUM   | scale-ecosystem/billing/types.ts                              | RecordUsageInput 单 metricType；§53.2 要求多维准入守卫                                                                                                                  |
+| R3-32 | MEDIUM   | org-governance/knowledge-boundary/sharing-gate/               | evaluateKnowledgeShare 返回 boolean；§50.3 要求经 CrossBoundaryTransform（脱敏/摘要/字段过滤）                                                                          |
+
+### 13. 运维成熟度 + SDK 缺口（§51-§69）
+
+| #     | 严重度 | 文件                                                        | 问题                                                                                                                                    |
+| ----- | ------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-33 | HIGH   | ops-maturity/explainability/explanation-pipeline-service.ts | StageRationale 缺 §59.3 的 rationaleId/alternatives/confidence/decisionInputRef/versionLockRef/visibilityLabels/renderedExplanation     |
+| R3-34 | HIGH   | ops-maturity/emergency/platform-panic-service.ts            | PlatformPanicDirective 缺 §60.1 severity(full/partial)/reconfirmationAfterSeconds/rollbackStrategy                                      |
+| R3-35 | HIGH   | ops-maturity/agent-lifecycle/agent-registry/                | AgentLifecycleState 缺 removed 态(§61.3 要求9态)；transitions 缺 archived→removed 和 paused→canary                                      |
+| R3-36 | HIGH   | ops-maturity/edge-runtime/edge-runtime-sync-service.ts      | EdgeRuntimeProfile 缺 §62.2 deviceId/offlineMaxDuration/keyLease/risk_level≤medium 门禁                                                 |
+| R3-37 | HIGH   | ops-maturity/edge-runtime/sync-queue/                       | EdgeSyncEnvelope 缺 §62.3 device_id/sequence_no/prev_hash/side_effect_dependency_refs/signature/local_time_offset                       |
+| R3-38 | HIGH   | sdk/client-sdk/api-client.ts                                | 未发送 §22.2 要求的 X-Platform-Version/X-SDK-Version/X-Contract-Version 版本握手头                                                      |
+| R3-39 | HIGH   | sdk/cli/index.ts                                            | 缺 §22.3 要求的 pack create/test/validate/publish CLI 命令                                                                              |
+| R3-40 | MEDIUM | ops-maturity/edge-runtime/                                  | 冲突解决含 accept_edge；§62.3 要求 central wins + 生成 Incident 人工审查                                                                |
+| R3-41 | MEDIUM | sdk/pack-sdk/pack-manifest.ts                               | BusinessPackManifest 缺 §22.2 sdk_semver/platform_min_version/platform_max_version/contract_test_generator                              |
+| R3-42 | MEDIUM | ops-maturity/cost-optimizer/                                | CostAttributionRecord 用单一 amountUsd；§64.1 要求 7维分解(llm/tool/compute/storage/egress/humanReview/total)                           |
+| R3-43 | MEDIUM | ops-maturity/compliance-reporter/                           | 缺 ControlCoverageReport + GapAnalyzer(§66.2)；evidence-to-control mapping 缺 controlId/freshness/owner/exception                       |
+| R3-44 | MEDIUM | ops-maturity/chaos/                                         | 缺 PanicDrillReport(§60.4)：ingress_block_time/execution_quiescence_time/plane_ack_success_rate 等                                      |
+| R3-45 | MEDIUM | ops-maturity/multimodal/                                    | MultimodalInputPart 缺 §68.2 provenance(C2PA/watermark/hash/license)/artifactRef；SafetyFinding 缺 confidence/policyDecision/appealPath |
+| R3-46 | MEDIUM | ops-maturity/drift-detection/cross-agent-analyzer/          | 不产出 CrossAgentDriftAlert(§63.4)；缺 alert severity + anti-gaming 区分                                                                |
+| R3-47 | MEDIUM | ops-maturity/platform-ops-agent/                            | OpsAgentDefinition 缺 §69.1 ops_data_boundary 声明（仅平台指标/日志/配置，禁止业务 payload）                                            |
+| R3-48 | LOW    | ops-maturity/capacity-planner/                              | failoverReservePercent 硬编码 15%；§67.2 要求按 SLA tier 动态 N+1                                                                       |
+| R3-49 | LOW    | sdk/harness-sdk/                                            | 缺 traceReplay/sideEffectReconciliation 方法(§22)                                                                                       |
+| R3-50 | LOW    | sdk/admin-sdk/                                              | 缺 triggerPanic/resumePanic/manageAgentLifecycle/rotateSecrets(§22.1)                                                                   |
+
+### 14. ADR 与架构矛盾（新发现）
+
+| #     | 严重度 | ADR     | 问题                                                                                                                                                 |
+| ----- | ------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-51 | HIGH   | ADR-060 | 定义 Plan DTO + RuntimeExecuteBridge 作为 P3→P4 contract；§5.3/INV-GRAPH-001 要求 PlanGraphBundle 为唯一 canonical P3→P4 交接物                      |
+| R3-52 | HIGH   | ADR-061 | 生命周期 6态(draft/testing/staging/production/deprecated/retired)；§61.3 要求 9态，缺 canary/active/paused/archived/removed，多出 production/retired |
+| R3-53 | HIGH   | ADR-054 | Platinum 承诺 99.99%；§54.2 限定 99.95%（99.99% 仅在专用部署档单独承诺）                                                                             |
+| R3-54 | HIGH   | ADR-042 | 自治等级 supervised/assisted/partial_auto/high_auto/full_auto(5级)；§42.1 仅 suggestion/supervised/semi_auto/full_auto(4级)                          |
+| R3-55 | HIGH   | ADR-083 | 又一套自治命名 manual_only/suggest_only/supervised_execute/trusted_auto_execute——第三套互不兼容                                                      |
+| R3-56 | MEDIUM | ADR-058 | GlobalCircuitBreaker.open_duration_ms 隐含 TTL 自动解除；§60.3 明确禁止 Panic TTL 自动解除，恢复需人工双人确认                                       |
+| R3-57 | MEDIUM | ADR-022 | 暴露 /api/v1/workflow-runs 为 canonical API；§5.5 声明 workflow_run 仅为 query projection                                                            |
+| R3-58 | MEDIUM | ADR-065 | 用 WorkflowDAGView/StepInspector 全为废弃概念，无 v4.3 remediation                                                                                   |
+| R3-59 | MEDIUM | ADR-040 | goal decomposition MAX_DEPTH=5 未引用全局 call_depth 硬帽=8 及反乘法规则(§19.2)                                                                      |
+| R3-60 | MEDIUM | ADR-062 | 边缘同步列 last_write_wins 为合法策略；§25.11 真相数据要求单主写入，LWW 违反不变量                                                                   |
+| R3-61 | MEDIUM | ADR-060 | 引用 §L.6/§H.2 节——架构 v4.3 无此节号，cross-ref 失效                                                                                                |
+| R3-62 | LOW    | ADR-003 | 标题"六层"文件名"seven-layers"实际架构和 ADR-020 均为六层——命名全面混乱                                                                              |
+| R3-63 | LOW    | ADR-075 | ImprovementCandidate 12态机无架构支撑；§56.4 LearningCandidate 仅 quarantine/approved/rejected/released                                              |
+| R3-64 | LOW    | ADR-019 | 声称源节 §12 "Agent Handoff"；实际 §12 是"异常事件处理架构"——section ref 错误                                                                        |
+
+### 15. 剩余 Contract 深层缺口
+
+| #     | 严重度 | 文件                                               | 问题                                                                                                                                                |
+| ----- | ------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3-65 | HIGH   | typed_event_bus_contract.md                        | OAPEFLIR 事件 payload 全部用 task_id/workflow_id/execution_id；§5.5 要求 harnessRunId/nodeRunId/planGraphId                                         |
+| R3-66 | HIGH   | typed_event_bus_contract.md                        | PlanCreatedPayload 用 step_count 暗示线性步骤；§5 要求 PlanGraph(图结构)                                                                            |
+| R3-67 | HIGH   | typed_event_bus_contract.md                        | ExecutionCompletedPayload 定义 execution_id/outcome/output_refs 为执行结果模型；与 §5 NodeAttemptReceipt(receiptId/nodeRunId/attemptId/status) 冲突 |
+| R3-68 | HIGH   | explainability_and_stage_rationale_contract.md     | StageRationale 仅 7字段；§59.3 要求 11字段(缺 rationaleId/decisionInputRef/versionLockRef/visibilityLabels/confidence/alternatives)                 |
+| R3-69 | HIGH   | workflow_debugger_contract.md                      | BreakpointDefinition 用 workflow_id/step_selector；§5.5 应为 harnessRunId/nodeRunId                                                                 |
+| R3-70 | HIGH   | startup_consistency_and_recovery_drill_contract.md | 一致性矩阵用 current_step_index/workflow_state；应为 HarnessRun.status/NodeRun.status/PlanGraph                                                     |
+| R3-71 | MEDIUM | budget-ledger-contract.md                          | BudgetReservation.resourceKind 枚举缺 §18 要求的 storage/bandwidth/memory                                                                           |
+| R3-72 | MEDIUM | naming_and_engineering_boundary_contract.md        | §2 列 WorkflowExecutor 为 canonical 工程名；§5 canonical 入口为 HarnessRuntime                                                                      |
+| R3-73 | MEDIUM | admin_console_and_human_takeover_contract.md       | takeover 操作用步骤语言(修改下一步/跳过某步/重试某步)；§5.5 操作粒度为 NodeRun                                                                      |
+| R3-74 | MEDIUM | nl_entry_and_goal_decomposition_contract.md        | IntentParseResult 含 suggested_workflow_id；§5 所有执行为 HarnessRun，NL 应建议 domain/pack/recipe                                                  |
+| R3-75 | MEDIUM | typed_event_bus_contract.md                        | OAPEFLIR payload 缺 derivedFromEventId；event-envelope-contract §4 要求声明 derivation source                                                       |
+| R3-76 | MEDIUM | governance_control_plane_contract.md               | §15A release_transition_gate 值 off/suggest/shadow 与 §61.3 lifecycle 9态不映射                                                                     |
+| R3-77 | MEDIUM | explainability_and_stage_rationale_contract.md     | ExplanationDepth 用 brief/standard/audit；§59.4 要求 L1 Summary/L2 Reasoning/L3 Forensic                                                            |
+| R3-78 | LOW    | typed_event_bus_contract.md                        | ReplanTriggeredPayload 用 old_version/new_version 未引用 GraphPatch(baseGraphVersion→newGraphVersion)                                               |
+| R3-79 | LOW    | capacity_planning_contract.md                      | 缺 CapacityAlert 输出对象(§67.2 要求 forecast 超阈值时产出)                                                                                         |
+| R3-80 | LOW    | explainability_and_stage_rationale_contract.md     | 无 remediation section；未引用 §59 "解释不可篡改纳入 Evidence Plane" + "解释必须 permission-aware" 
+
+### 17. Platform Contracts 层根本性问题
+
+| #     | 严重度   | 文件                                           | 问题                                                                                                                                                   |
+| ----- | -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R4-1  | CRITICAL | platform/contracts/control-directive/          | ControlDirective 仍作为第一级导出活跃消费；§5.2 明确废弃，canonical 替代 OperationalDirective/DecisionDirective 全代码库不存在                         |
+| R4-2  | CRITICAL | platform/contracts/execution-plan/             | ExecutionPlan 用线性 steps[] 作为活跃 contract；§5.3 禁止线性步骤，PlanGraphBundle(graph nodes/edges) 为唯一 P3→P4 交接物                              |
+| R4-3  | CRITICAL | platform/contracts/execution-receipt/          | ExecutionReceipt 以 stepId 为主键仍为活跃 contract；§5.5 canonical 为 NodeAttemptReceipt(nodeRunId+attemptId)                                          |
+| R4-4  | CRITICAL | platform/contracts/types/platform-contracts.ts | 同文件含第二份 ExecutionPlan + ExecutionReceipt + ControlDirective 定义——两套废弃 contract 并行存在                                                    |
+| R4-5  | CRITICAL | platform/five-plane-\*/                        | 架构 §4 要求五平面目录(P1-P5)，**实际无 five-plane-\* 目录**——平面分离在结构上不可强制                                                                 |
+| R4-6  | HIGH     | platform/contracts/executable-contracts/       | NodeAttemptReceipt 缺 harnessRunId/planGraphId/graphVersion/duration/error_detail(§5.3 必填)                                                           |
+| R4-7  | HIGH     | platform/contracts/request-envelope/           | RequestEnvelope 缺 confirmedTaskSpecId/principal(typed)/idempotencyKey/priority(§5.3 intake pipeline)                                                  |
+| R4-8  | HIGH     | platform/contracts/state-command/              | StateCommand 无 leaseId/fencingToken/event/principal——无法满足 INV-STATE-001                                                                           |
+| R4-9  | HIGH     | platform/contracts/                            | 缺 EventAppendCommand/AuditAppendCommand/ArtifactWriteCommand 三个 §5.3 inter-plane 契约模块                                                           |
+| R4-10 | HIGH     | platform/contracts/types/platform-contracts.ts | SideEffectRecord 仅 4态(proposed/committed/rolled_back/failed)；executable-contracts 定义 16态——两套冲突共存                                           |
+| R4-11 | MEDIUM   | platform/contracts/executable-contracts/       | LEGACY_CONTRACT_NAMES 列表无强制机制——无 deprecation warning/re-export guard/CI lint 阻止新代码导入废弃模块                                            |
+| R4-12 | MEDIUM   | platform/contracts/index.ts                    | Barrel 导出优先废弃类型(requestEnvelopeContract)而非 executable-contracts——激励消费废弃接口                                                            |
+| R4-13 | MEDIUM   | platform/contracts/executable-contracts/       | EventEnvelope 缺必填 runId(§28.1)；replayBehavior 为 optional(§28.1 要求 explicitly declared)；eventVersion 为 string 而非 §28.1 numeric schemaVersion |
+| R4-14 | MEDIUM   | platform/control-plane/                        | P2 模块无任何 OperationalDirective/DecisionDirective 发射或消费——P2→P3/P4 治理门禁结构性缺失                                                           |
+
+### 18. Execution + State-Evidence 平面缺口（§13-§14）
+
+| #     | 严重度 | 文件                                                   | 问题                                                                                                                          |
+| ----- | ------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| R4-15 | HIGH   | execution/state-transition/transition-service.ts       | 并行 legacy TransitionService 直接操作 task/workflow/session/execution 状态，完全绕过 RuntimeStateMachine——INV-STATE-001 旁路 |
+| R4-16 | HIGH   | execution/runtime-state-machine.ts                     | RuntimeTransitionCommand 缺 commandId(UUID)/entityType/entityId/principal(§5.3 必填)                                          |
+| R4-17 | HIGH   | execution/recovery/                                    | 无 RecoveryCadence/RecoveryReport 类型；§14.7 要求每个 Recovery Worker 声明检查间隔+产出报告                                  |
+| R4-18 | HIGH   | state-evidence/checkpoints/workflow-step-checkpoint.ts | Checkpoint 用 stepId/workflowId/executionId 而非 harnessRunId/nodeRunId/planGraphId                                           |
+| R4-19 | MEDIUM | execution/state-transition/state-transition-machine.ts | 允许 no-op transition(current==next 静默返回)；RuntimeStateMachine 明确拒绝——两套机器行为矛盾                                 |
+| R4-20 | MEDIUM | execution/recovery/replay-boundary-guard.ts            | 仅实现 trace_replay/reexecution_replay 两种模式；§28.5 定义三种含 projection_replay                                           |
+| R4-21 | MEDIUM | execution/run-termination-cleanup.ts                   | 始终返回 complete:true 无实际清理；§14.10 要求发射 cleanup_completed/cleanup_failed 事件                                      |
+| R4-22 | MEDIUM | execution/run-termination-cleanup.ts                   | CleanupResourceKind 缺 callback 类型(§14.10 清理序列含"cancel pending callbacks")                                             |
+| R4-23 | MEDIUM | execution/budget-allocator.ts                          | reserve() 不经 RuntimeStateMachine.transition()；§25.9 预算变更需同 CAS+event 事务路径                                        |
+| R4-24 | MEDIUM | execution/queue/bounded-dispatch-event.ts              | BoundedDispatchEvent 缺 nodeRunId/tenantId/traceId/ordering_policy_version/queue_class(§14.9)                                 |
+
+### 19. 核心不变量未强制执行（最严重系统性问题）
+
+| #     | 严重度   | 不变量                                               | 旁路证据                                                                                                                                                                              |
+| ----- | -------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R4-25 | CRITICAL | INV-BUDGET-001 reserve-before-execute                | single-task-happy-path 和 multi-step-agent-round-loop 所有 LLM/Tool 调用无 BudgetReservation；BudgetAllocator.reserve() 存在但从未在执行路径调用；仅 AdmissionController 做粗粒度估算 |
+| R4-26 | CRITICAL | INV-GRAPH-001 PlanGraphBundle 为唯一 P3→P4 contract  | 实际执行路径(single-task-happy-path/multi-step-orchestration) 创建 TaskRecord+WorkflowState+线性步骤直接执行，无 PlanGraphBundle；RuntimeEntryGuard 存在但从未被调用                  |
+| R4-27 | CRITICAL | INV-RUN-001 HarnessRuntime 唯一执行入口              | 两个主执行路径均不创建 HarnessRun；用 legacy TaskRecord/ExecutionRecord 直接执行；RuntimeEntryGuard 未接入任何 dispatch 路径                                                          |
+| R4-28 | CRITICAL | INV-STATE-001 Truth mutation 必须同事务 append event | single-task-happy-path 插入 task/workflow/execution 不 append PlatformFactEvent；用 legacy TransitionService 而非 RuntimeStateMachine                                                 |
+| R4-29 | CRITICAL | INV-REPLAY-001 Replay 禁止产生真实副作用             | ReplayWorker 委托 replayService 但不调用 ReplayBoundaryGuard；无 ReplaySandboxPolicy 实现                                                                                             |
+| R4-30 | HIGH     | INV-FENCING fencing token on state writes            | RuntimeStateMachine.assertLeaseAndFencing() 仅检查 NodeRun；HarnessRun/SideEffectRecord/BudgetLedger 跳过 fencing；legacy 路径完全绕过                                                |
+| R4-31 | HIGH     | INV-SANDBOX 无 sandbox 不执行                        | executeToolCall()/executeAgentRoundLoop() 无 sandbox policy 检查；todo_write 硬编码空策略 {allow:[],deny:[]} 从不 enforce                                                             |
+| R4-32 | HIGH     | INV-APPROVAL risk-proportional approval              | single-task-happy-path 硬编码 requiresApproval:0；multi-step-supervisor 同；PolicyEngine 未接入执行路径                                                                               |
+| R4-33 | HIGH     | INV-SIDEEFFECT-001 ambiguous→reconciliation          | 无执行路径创建 SideEffectRecord；web_fetch/web_search 产生真实副作用但未记录/追踪/调和                                                                                                |
+| R4-34 | HIGH     | INV-POLICY-001 deny-by-default                       | executeToolCall 用硬编码 switch-case dispatch，无 PolicyEngine/CapabilityGate 前置检查                                                                                                |
+| R4-35 | HIGH     | All decisions→immutable evidence                     | LLM 调用和 tool 执行不产出 EvidenceRecord/DecisionInputBundle/HarnessDecision                                                                                                         |
+| R4-36 | MEDIUM   | INV-SINGLE-LEADER                                    | 主执行路径直接 SQLite store.\* 写入无 leader check；HACoordinator 未接入                                                                                                              |
+
+### 20. 安全/可观测/错误处理跨切面
+
+| #     | 严重度   | 文件/领域                                           | 问题                                                                               |
+| ----- | -------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| R4-37 | CRITICAL | control-plane/iam/network-egress-policy.ts          | 默认 mode="audit_only"——egress 违规仅日志不阻断(§11.5 要求 deny 为正式安全事件)    |
+| R4-38 | CRITICAL | interaction/dashboard/dashboard-websocket-server.ts | registerClient() 无鉴权/无 tenantId/无 principal(§11.1 要求所有操作关联 principal) |
+| R4-39 | HIGH     | 全 src/                                             | DataTaintPropagation(§11.6) 零实现——taint_label 从不出现在代码中                   |
+| R4-40 | HIGH     | model-gateway/unified-chat-provider.ts              | LLM 调用无 principal/tenantId/audit/PolicyOutcome(§11.1-11.2)                      |
+| R4-41 | HIGH     | model-gateway/circuit-breaker.ts                    | 状态变更仅写日志不发 event bus 事件(§9.4)                                          |
+| R4-42 | HIGH     | shared/observability/runtime-metrics-registry.ts    | 10+ canonical harness.\* 指标仅 1个被记录(§12.4)                                   |
+| R4-43 | HIGH     | shared/observability/structured-logger.ts           | 缺 crosscutting_fabric 字段(§12.4 要求 reliability/security/governance 分类)       |
+| R4-44 | HIGH     | execution/plugin-executor/adapter-executor.ts       | retry 用固定延迟无 exponential backoff 无 jitter 无幂等检查(§9.3)                  |
+| R4-45 | MEDIUM   | interaction/ux/conversation-history-service.ts      | tenant 隔离依赖后置 client-side filter 而非查询级隔离(§9.1)                        |
+| R4-46 | MEDIUM   | model-gateway/unified-chat-provider.ts              | createChatCompletion 不传播 traceId/spanId(§12.7 断链)                             |
+| R4-47 | MEDIUM   | model-gateway/degradation-controller.ts             | 降级切换不发 OperationalDirective 不与 mode 合成链交互(§9.5)                       |
+| R4-48 | MEDIUM   | execution/plugin-executor/adapter-executor.ts       | retry 耗尽静默返回 error 无 incident/DLQ/error_code(§12.1)                         |
+| R4-49 | LOW      | model-gateway/circuit-breaker.ts                    | failure rate 公式无成功数分母——阈值比较数学错误                                    |
+
+### 21. 测试/配置/引导对齐
+
+| #     | 严重度   | 文件/领域                          | 问题                                                                                                                                                                                                                               |
+| ----- | -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R4-50 | CRITICAL | tests/invariants/                  | §2.4 要求 9个 invariant test 文件——**全部不存在**(truth-event-atomicity/harness-run-authority/plan-graph-only-dispatch/budget-reserve-before-execute/no-side-effect-in-replay/side-effect-ambiguous-reconciles/deny-by-default 等) |
+| R4-51 | CRITICAL | tests/                             | INV-BUDGET-001 零测试覆盖                                                                                                                                                                                                          |
+| R4-52 | CRITICAL | tests/                             | INV-REPLAY-001 零测试覆盖                                                                                                                                                                                                          |
+| R4-53 | CRITICAL | tests/                             | INV-SIDEEFFECT-001 零测试覆盖                                                                                                                                                                                                      |
+| R4-54 | CRITICAL | tests/                             | INV-POLICY-001 零测试覆盖                                                                                                                                                                                                          |
+| R4-55 | HIGH     | config/runtime/default.json        | 用废弃 defaultStepTimeoutMs；无 canonical 状态机/五平面/RuntimeStateMachine 配置——仅 7字段 stub                                                                                                                                    |
+| R4-56 | HIGH     | config/risk/default.json           | 用废弃 stepTypeRisk/stepTypeRiskValues；无 §28 Event Registry/DLQ 模型对齐                                                                                                                                                         |
+| R4-57 | HIGH     | config/domains/\*.json             | 域 workflow 配置用线性 steps[] + stepName——§13/§45 要求 PlanGraph                                                                                                                                                                  |
+| R4-58 | HIGH     | config/domains/\*.json             | 无 DomainRiskSpec(advisory_only/human_accountable/deterministic_hot_path_only)——quant-trading 高危域无风险声明                                                                                                                     |
+| R4-59 | HIGH     | platform-architecture-bootstrap.ts | 注册为扁平目录无强制启动序(§7 要求 P5→X1→P2→P3→P4→P1)                                                                                                                                                                              |
+| R4-60 | MEDIUM   | platform-architecture-types.ts     | 无 canonical runtime 对象类型(HarnessRun/NodeRun/PlanGraphBundle/BudgetReservation)——仅基础设施类型                                                                                                                                |
+| R4-61 | MEDIUM   | domains-runtime-catalog.ts         | 仍用 phase9a-9f 旧分期(§33 明确"仅历史映射"，canonical 为 Ring 1/2/3)                                                                                                                                                              |
+| R4-62 | MEDIUM   | index.ts                           | main() 无架构启动不变量检查(ArchitectureInvariantRegistry/NonOverridableInvariantRegistry §2.4)                                                                                                                                    |
+| R4-63 | MEDIUM   | index.ts                           | runPlatformRootDemo 用 snapshot.workflow.currentStepIndex/stepOutputs 废弃对象作为主输出                                                                                                                                           |
+| R4-64 | MEDIUM   | tests/                             | 无 contract-naming-consistency.test.ts(§6.4 要求 CI lint 扫描废弃术语)  
+
+### 23. OAPEFLIR 编排循环实现缺口（§13/§45/§58）
+
+| #     | 严重度   | 文件                                            | 问题                                                                                                                    |
+| ----- | -------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| R5-1  | CRITICAL | orchestration/oapeflir/oapeflir-loop-service.ts | Plan 阶段产出线性 Plan{steps[]}——非 PlanGraphBundle(§13.7 "Plan must be Graph")                                         |
+| R5-2  | CRITICAL | orchestration/oapeflir/oapeflir-loop-service.ts | run() 是单程管线(O→A→P→E→F→L→I→R→return)；replanDecision 计算后无重入——不是循环(§45.7 要求重入 Plan/Execute)            |
+| R5-3  | CRITICAL | orchestration/oapeflir/oapeflir-loop-service.ts | 未集成 StageTransitionFSM——FSM 为死代码；阶段转换无校验                                                                 |
+| R5-4  | CRITICAL | orchestration/oapeflir/oapeflir-loop-service.ts | 未集成 HarnessLoopController——无 max-iteration/max-replan/max-duration/max-cost 守卫                                    |
+| R5-5  | HIGH     | orchestration/harness/index.ts decide()         | 无 downgrade_mode 决策分支(§58.6 要求 6种基础决策)                                                                      |
+| R5-6  | HIGH     | orchestration/oapeflir/assessment-service.ts    | Assess 不消费/产出 ConstraintPack/EffectivePolicySnapshot/RiskAssessment(§13.1.1)                                       |
+| R5-7  | HIGH     | orchestration/oapeflir/oapeflir-loop-service.ts | Evaluator 产出 ExecutionOutcomeEvaluation 而非 §45.10 EvaluationReport(passed/score/issues[]/recommendation/confidence) |
+| R5-8  | HIGH     | orchestration/oapeflir/oapeflir-loop-service.ts | Release 阶段调 PolicyRolloutService.start() 无 EvaluationGate/approval/canary/rollback(§13.14)                          |
+| R5-9  | HIGH     | orchestration/planner/plan-builder.ts           | 无 Graph Normalization/Validation/Risk Propagation/Worst-Path Analysis(§13.9-13.12)                                     |
+| R5-10 | HIGH     | orchestration/oapeflir/stage-transition-fsm.ts  | FSM 禁止所有后向转换——replan 在结构上不可能(§45.7/§13.4 要求 feedback→plan)                                             |
+| R5-11 | HIGH     | orchestration/oapeflir/oapeflir-loop-service.ts | Observer 仅合并 TaskSituation+SystemSituation；缺事件流/目标分解/记忆/前次运行上下文(§45.8)                             |
+| R5-12 | MEDIUM   | orchestration/oapeflir/oapeflir-loop-service.ts | Replan 无 GraphPatch 产出(§13.13 要求 baseGraphVersion+operations[]+compatibilityReport)                                |
+| R5-13 | MEDIUM   | orchestration/oapeflir/oapeflir-loop-service.ts | Execute 用 flat ExecuteBridge 无 subgraph/child-run 支持(§13.7 要求子任务/委托显式建模)                                 |
+| R5-14 | LOW      | orchestration/oapeflir/oapeflir-loop-service.ts | OapeflirLoopResult 无 HarnessDecision 字段——OAPEFLIR 层与 Harness 决策模型断连                                          |
+
+### 24. NL 入口 + 目标分解 + 主动代理缺口（§8/§19/§40-§42）
+
+| #     | 严重度   | 文件                                           | 问题                                                                                           |
+| ----- | -------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| R5-15 | CRITICAL | interaction/nl-gateway/index.ts                | pending_user_confirmation 状态仍发射 RequestEnvelope(§39.2 要求仅 confirmed TaskSpec 方可产生) |
+| R5-16 | CRITICAL | interaction/nl-gateway/index.ts                | 无独立 classify_risk 管线阶段(§39.2 要求作为独立准入门禁)                                      |
+| R5-17 | HIGH     | interaction/nl-gateway/index.ts                | DetectedIntent.intentType 缺 "why"(§39 新增解释查询类型)                                       |
+| R5-18 | HIGH     | interaction/goal-decomposer/index.ts           | 无委托链深度限制(§19.2 max=3)和全局 call_depth 硬帽(=8)；无反乘法守卫                          |
+| R5-19 | HIGH     | interaction/goal-decomposer/index.ts           | 无预算按比例分配到子任务(§40.2)；无风险传播到子任务                                            |
+| R5-20 | HIGH     | interaction/goal-decomposer/index.ts           | GoalLifecycleState 缺 partially_completed(§40.5)                                               |
+| R5-21 | HIGH     | interaction/autonomy/index.ts                  | TrustScore 范围 0-100；§42.1 要求 0-1000                                                       |
+| R5-22 | HIGH     | interaction/autonomy/index.ts                  | 晋升规则无时间窗口 incident-free 检查(§42.2 要求 30d/60d/90d 零事件)                           |
+| R5-23 | HIGH     | interaction/autonomy/index.ts                  | 无成本超预算 200% 降级规则(§42.2)                                                              |
+| R5-24 | HIGH     | interaction/proactive-agent/index.ts           | medium 风险主动动作可 auto_execute(§41.1 禁止 medium+ 直接执行)                                |
+| R5-25 | HIGH     | interaction/proactive-agent/trigger-engine/    | resolveTriggerActionMode() 同样对 medium/high 返回 auto_execute(§41.1 违规)                    |
+| R5-26 | MEDIUM   | interaction/autonomy/index.ts                  | TrustDecayWorker 无 180d 无执行→suggestion 降级(§42.3)；无 30d 冻结晋升                        |
+| R5-27 | MEDIUM   | interaction/autonomy/index.ts                  | 自治等级不与主动触发器联动(§42.5 要求 semi_auto 以上才允许自动执行)                            |
+| R5-28 | MEDIUM   | interaction/goal-decomposer/index.ts           | 无能力验证(§40.2 要求验证目标域暴露所需 DomainCapability)；无权限收窄传播                      |
+| R5-29 | MEDIUM   | interaction/proactive-agent/index.ts           | batch_window 配置存在但 evaluate() 无事件批量聚合(§41.4)                                       |
+| R5-30 | MEDIUM   | interaction/nl-gateway/index.ts                | ClarificationState 无 rounds/maxRounds 追踪——可能无限澄清循环(§39.5)                           |
+| R5-31 | LOW      | interaction/ux/conversation-history-service.ts | restricted/regulated 对话数据写入 long-term memory(§39.6 要求仅存 session memory)              |
+| R5-32 | LOW      | interaction/nl-gateway/index.ts                | UserConfirmationReceipt 缺 scope/time/riskPreviewVersion(§39.3 审计匹配要求)                   |
+
+### 25. 事件流 + API Surface 缺口（§6/§28）
+
+| #     | 严重度   | 文件                                             | 问题                                                                                                                                                          |
+| ----- | -------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R5-33 | CRITICAL | platform/contracts/types/domain/session-types.ts | EventRecord 缺 §28.1 必填字段：schemaVersion/aggregateId/runId/sequence/replayBehavior/principal/evidenceRefs                                                 |
+| R5-34 | CRITICAL | platform/state-evidence/events/event-registry.ts | 两套不互通事件注册表共存：legacy task:_ colon 命名空间 vs canonical platform._ dot 命名空间；platform.\* 无 Tier-1 路由/Zod 验证/typed payload                |
+| R5-35 | CRITICAL | platform/interface/api/http-server/              | 无 /api/v1/harness-runs 及子资源路由(§6 canonical API)；仅有 legacy /v1/tasks                                                                                 |
+| R5-36 | HIGH     | platform/interface/api/http-server/              | 缺 /api/v1/replay-sessions(§28.5 MVP)；admin routes 缺所有写方法(PUT config/POST panic-directives/POST resume-directives)                                     |
+| R5-37 | HIGH     | state-evidence/events/durable-event-bus.ts       | publish() 不持久化 aggregateId/runId/sequence/schemaVersion——replay ordering 不可能(§28.5)                                                                    |
+| R5-38 | HIGH     | state-evidence/events/event-types.ts             | Tier-1 列表含非架构事件(delegation:_/prompt:_/tenant:_)但缺架构核心事实(platform.harness_run._/platform.node*run.*/platform.side*effect.*/platform.budget.\*) |
+| R5-39 | MEDIUM   | platform/interface/api/http-server/              | WebSocket 绑定 /ws 而非 §6 要求的 /ws/v1/stream；task-routes 用 /v1/tasks 无 /api/ 前缀                                                                       |
+| R5-40 | MEDIUM   | state-evidence/events/event-registry.ts          | replayBehavior 用 simulate_projection 而非 §28.1 canonical simulate                                                                                           |
+| R5-41 | MEDIUM   | state-evidence/events/typed-event-bus.ts         | TypedEventPayloadMap 不含 platform._/oapeflir._ 事件——编译时类型检查静默排除所有 canonical 运行时事件                                                         |
+
+### 26. 委托 + 版本锁 + 记忆 + Truth 深层缺口（§19/§24/§25/§29）
+
+| #     | 严重度 | 文件                                                           | 问题                                                                                                        |
+| ----- | ------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| R5-42 | HIGH   | orchestration/agent-delegation/delegation-types.ts             | DelegationResult 缺 §19.1 必填：summary/artifact_refs/trust_level/taint_labels/evidence_refs/policy_outcome |
+| R5-43 | HIGH   | orchestration/agent-delegation/collaboration-protocol/types.ts | ACP 消息缺 §19.1 必填：delegationId/childRunId/capabilityIntersection/budgetCap/dataBoundary/deadline       |
+| R5-44 | HIGH   | state-evidence/truth/runtime-truth-repository.ts               | transition() 对 HarnessRun 无 lease/fencing 验证(§25.3)                                                     |
+| R5-45 | HIGH   | orchestration/agent-delegation/delegation-types.ts             | DelegationResult 无 taint_labels/data_class——跨委托数据分类链断裂                                           |
+| R5-46 | MEDIUM | orchestration/agent-delegation/call-depth-budget.ts            | 用 Math.max() 非求和——全局深度限制=8 实际无效(§19.2)                                                        |
+| R5-47 | MEDIUM | orchestration/agent-delegation/delegation-manager.service.ts   | delegate() 不调 CallDepthBudget.evaluate()——直接委托绕过深度检查                                            |
+| R5-48 | MEDIUM | state-evidence/truth/runtime-truth-repository.ts               | transaction() 内存 clone-and-rollback 无数据库事务——truth+event 原子性无崩溃安全(§25.6)                     |
+| R5-49 | MEDIUM | state-evidence/knowledge/knowledge-query-service.ts            | 查询无 tenant/domain 边界校验(§45.16+§50)                                                                   |
+| R5-50 | MEDIUM | state-evidence/memory/memory-decay-service.ts                  | working/procedural 施加指数衰减——§29.2 禁止静默丢弃 working、禁止丢弃 procedural                            |
+| R5-51 | MEDIUM | orchestration/agent-delegation/delegation-types.ts             | 仅 pipeline/negotiation 模式；缺 §19.1 broadcast+AggregationPolicy                                          |
+| R5-52 | MEDIUM | orchestration/agent-delegation/delegation-types.ts             | DelegationStatus 缺 discovery/bid/awarded(§19.1 竞标)                                                       |
+| R5-53 | MEDIUM | interface/api/middleware/sdk-version-handshake.ts              | 缺 platform_min_version 兼容检查(§24)                                                                       |
+| R5-54 | LOW    | control-plane/config-center/config-versioning-service.ts       | 发 config.version.created 非 §24.2 config.changed 热加载事件                                                |
+
+### 27. ADR 与架构矛盾（第二批）
+
+| #     | 严重度   | ADR                 | 问题                                                                                                                  |
+| ----- | -------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| R5-55 | CRITICAL | ADR-026             | 风险因子模型(8因子/权重/18分制)与 §10.2 canonical(impact×4/irreversibility×4/…)完全不兼容                             |
+| R5-56 | CRITICAL | ADR-001             | 将 OAPEFLIR 映射为活跃编排循环(OapeflirLoopService 编排 8 阶段)；§13/§45 明确 OAPEFLIR 仅为 StageRationale/Audit View |
+| R5-57 | HIGH     | ADR-039             | 定义 cancel_task intent；§6.3 明确移除——调用方必须用 abort/pause/panic kill                                           |
+| R5-58 | HIGH     | ADR-001             | 三层 CEO/VP 架构作为 Accepted 决策无 remediation；v4.3 §4 已用五平面+X1 替代                                          |
+| R5-59 | HIGH     | ADR-002             | "事业部" YAML division 模型无 remediation；v4.3 用 DomainDescriptor+BusinessPack+DomainRiskSpec                       |
+| R5-60 | HIGH     | ADR-004             | workflow 数据传递仍用 WorkflowState/StepOutput(§5.5 废弃)无 remediation                                               |
+| R5-61 | HIGH     | ADR-034             | ADR freeze 规则"不允许直接修改已冻结内容"——v4.3 remediation 过程直接修改 30+ ADR 违反此规则                           |
+| R5-62 | HIGH     | ADR-041             | TriggerAction.create_task 直接创建任务绕过 §5.3 intake pipeline(TaskDraft→ConfirmedTaskSpec→RequestEnvelope)          |
+| R5-63 | MEDIUM   | ADR-006/008/005/002 | 源节引用全部指向旧版节号(§7/§8/§2)——v4.3 对应节已完全更替；cross-ref 批量失效                                         |
+| R5-64 | MEDIUM   | ADR-028             | trace span 用 "service→operation→step"——step 为废弃术语(§5.5)                                                         |
+| R5-65 | MEDIUM   | ADR-066             | 引用不存在的 §B/§G appendix；v4.3 无此附录                                                                            |
+| R5-66 | MEDIUM   | ADR-046             | 用 CEO/VP 作为治理层级——v4.3 §46-§51 用 OrgNode 层次                                                                  |
+| R5-67 | MEDIUM   | ADR-047             | auto_action 超时自动执行无风险级别守卫(§10.3 high/critical 默认 deny)                                                   |
+
+
+
+### 29. Intake 准入 + Dispatcher 调度缺口（§5.3/§14/§25.4）
+
+| #     | 严重度 | 文件                                                      | 问题                                                                                                     |
+| ----- | ------ | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| R6-1  | HIGH   | orchestration/harness/runtime/intake-admission-service.ts | §5.3 ClarificationSession 阶段完全缺失；admit() 直接 RawTaskInput→TaskDraft→ConfirmedTaskSpec 无澄清循环 |
+| R6-2  | HIGH   | orchestration/harness/runtime/intake-admission-service.ts | high/critical 任务不强制 UserConfirmationReceipt(§39.6)——confirmationReceipt 可选且 critical 时仍放行    |
+| R6-3  | HIGH   | execution/dispatcher/admission-controller.ts              | 缺 §14.2 调度因子：无 risk-class 隔离路由/无 tenant-quota/无 sandbox 匹配/无 capability-class 门禁       |
+| R6-4  | HIGH   | execution/dispatcher/                                     | 无确定性图调度器(§14.9)——应按 priority/risk_class/critical_path_rank/created_order/scheduler_seed 调度   |
+| R6-5  | HIGH   | execution/dispatcher/                                     | 缺 §14.9 emergency lane(critical NodeRun 独立通道)                                                       |
+| R6-6  | HIGH   | execution/dispatcher/                                     | 缺 dispatch_backpressure_rejected 事件+DLQ 集成(§14.9)                                                   |
+| R6-7  | HIGH   | execution/dispatcher/                                     | §14.9 scheduler events 缺 ready_set/selected_node_ids/ordering_policy_version/worker_pool_snapshot_ref   |
+| R6-8  | MEDIUM | execution/dispatcher/admission-controller.ts              | priority 用 "urgent" 而非 §5.3 canonical "critical"                                                      |
+| R6-9  | MEDIUM | execution/dispatcher/                                     | dispatch 前不验证 budget reservation 存在(§14.2 无 active reservation 不得调度)                          |
+| R6-10 | MEDIUM | execution/worker-pool/worker-registry-service.ts          | 无 heartbeat staleness 检测(§14: gap>30s 触发 worker_heartbeat_missing 事件+lease_reclaim)               |
+| R6-11 | MEDIUM | orchestration/routing/intake-router.ts                    | 仅关键词匹配无 LLM intent extraction/confidence threshold(0.80)/AmbiguityResolver(§39.3)                 |
+| R6-12 | MEDIUM | orchestration/harness/runtime/intake-admission-service.ts | policyGuard.allowed 硬编码 true——§25.4/§45.2 准入时策略/能力/风险检查为虚设                              |
+
+### 30. 类型系统 + API 序列化 + 共享层问题
+
+| #     | 严重度   | 文件                                                       | 问题                                                                                                             |
+| ----- | -------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| R6-13 | CRITICAL | harness/index.ts vs contracts/executable-contracts/        | 两套冲突 HarnessRun 接口(runId+steps[] vs harnessRunId+confirmedTaskSpecId+currentSeq)——无统一 re-export/adapter |
+| R6-14 | CRITICAL | contracts/control-directive/ + types/platform-contracts.ts | 两套不兼容 ControlDirective(kind enum vs type enum)——废弃类型双重存在且无 canonical 替代                         |
+| R6-15 | CRITICAL | contracts/execution-plan/ + types/platform-contracts.ts    | 两套 ExecutionPlan(均线性 steps[])——废弃类型双重可构造无 @deprecated 注解                                        |
+| R6-16 | CRITICAL | interface/api/http-server/task-routes.ts                   | POST /v1/tasks 接受 {title,priority,source} 完全绕过 §5.3 intake pipeline                                        |
+| R6-17 | HIGH     | interface/api/http-server/schemas.ts                       | Task status 枚举(queued/pending/in_progress/done/failed/cancelled)无法表示 canonical 13态 HarnessRunStatus       |
+| R6-18 | HIGH     | 全 src/                                                    | OperationalDirective/DecisionDirective 零实现/零 schema/零 import——§5.2 contract 矩阵完全未落地                  |
+| R6-19 | HIGH     | 全 src/ 870+ 处                                            | stepId 仍为普遍执行标识(plugin-spi/域注册/presenter/migration/SDK)——§5.5 仅允许作 legacy projection              |
+| R6-20 | HIGH     | harness/index.ts:174                                       | HarnessRun 含 steps:HarnessStep[] 为第一级字段——§5.5 HarnessStep 仅为 semantic projection，嵌入使违规天然化      |
+| R6-21 | MEDIUM   | execution/lease/execution-lease-service-async.ts:502       | `as any` cast 在 lease audit 关键路径——绕过类型安全                                                              |
+| R6-22 | MEDIUM   | ops-maturity/edge-runtime/edge-orchestrator/               | EdgeExecutionPlan 用线性 orderedTaskIds 而非 PlanGraph(§4.4)                                                     |
+| R6-23 | MEDIUM   | contracts/executable-contracts/schemas.ts:650              | validateExecutableContract() 返回 unknown——校验后无类型收窄                                                      |
+| R6-24 | MEDIUM   | orchestration/harness/runtime/runtime-entry-guard.ts       | assertNoLegacyTruthWrite() 仅运行时拦截——无编译时 @deprecated/no import 强制                                     |
+
+### 31. 测试体系编码错误模型（阻断迁移）
+
+| #     | 严重度   | 文件                                                | 问题                                                                                                                       |
+| ----- | -------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| R6-25 | CRITICAL | tests/unit/platform/contracts/execution-plan/       | 400+ 行验证 createExecutionPlan/ExecutionPlanStep+stepId 为正确行为——将废弃 contract 作为正确性基线                        |
+| R6-26 | CRITICAL | tests/e2e/multi-step-workflow-comprehensive.test.ts | 7个场景全部驱动 WorkflowState CRUD 线性步骤模型——迁移到 canonical 会破坏全部 e2e                                           |
+| R6-27 | CRITICAL | tests/e2e/multi-step-task-execution.test.ts         | 18+ WorkflowState 调用断言线性步进——编码废弃执行模型为正确                                                                 |
+| R6-28 | CRITICAL | tests/e2e/critical-workflows.test.ts                | 16+ WorkflowState 调用断言废弃状态转换(running→paused→completed)                                                           |
+| R6-29 | CRITICAL | tests/unit/platform/contracts/control-directive/    | 50+ 断言验证 createControlDirective 为正确——废弃 contract 有完整回归保护                                                   |
+| R6-30 | HIGH     | tests/integration/platform/contracts/               | 集成测试导入并验证 createExecutionPlan+createControlDirective 流——作为回归门禁阻止废弃删除                                 |
+| R6-31 | HIGH     | tests/golden/workflow-validation.test.ts            | golden snapshot 编码线性 steps[]+stepId+dependsOnStepIds——PlanGraph 迁移会破坏快照                                         |
+| R6-32 | HIGH     | tests/helpers/fixtures/base.ts+composite.ts         | 所有 fixture 工厂产出 TaskRecord+ExecutionRecord 无 HarnessRun/NodeRun/PlanGraphBundle/BudgetReservation                   |
+| R6-33 | HIGH     | tests/e2e/oapeflir-full-loop.test.ts                | E2E 用 stepId-based PlanStep/StepResult 驱动 OAPEFLIR 为执行运行时(§2.4 OAPEFLIR 不为 truth source)                        |
+| R6-34 | HIGH     | tests/e2e/ 全部                                     | 零 e2e 测试走 canonical intake pipeline；零 e2e 测试验证 BudgetReservation 前置；零 e2e 测试验证 SideEffectRecord 生命周期 |
+
+### 32. 剩余 Contract 批量缺口
+
+| #     | 严重度   | 文件                                                                                                | 问题                                                                                                                   |
+| ----- | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| R6-35 | CRITICAL | event_bus_contract.md                                                                               | 事件名 task.status*changed/workflow.step_completed/execution.* 与架构 platform.harness*run.*/platform.node_run.\* 冲突 |
+| R6-36 | CRITICAL | event_registry_and_ops_threshold_contract.md                                                        | 阈值规则绑定 execution._ 废弃事件类型——ops 告警无法捕获 canonical platform._ 事件                                      |
+| R6-37 | CRITICAL | result_envelope_contract.md                                                                         | buildTaskResultEnvelope(task, stepOutputs, artifacts) 完全基于 pre-v4.3 模型                                           |
+| R6-38 | CRITICAL | debug_inspect_health_backpressure_contract.md                                                       | TaskInspectView.executions[] + /executions/:executionId/inspect 全为废弃实体                                           |
+| R6-39 | HIGH     | data_plane_contract.md                                                                              | ArtifactRef.source_execution_id 应为 source_harness_run_id/source_node_run_id                                          |
+| R6-40 | HIGH     | app_error_contract.md                                                                               | AppError.execution_id 用 legacy 标识符                                                                                 |
+| R6-41 | HIGH     | audit_lineage_and_retention_contract.md                                                             | 审计记录用 execution_id 无 harness_run_id/node_run_id——谱系链断裂                                                      |
+| R6-42 | HIGH     | context_compaction_and_overflow_contract.md                                                         | CompactionRecord 用 session_id/task_id 无 harness_run_id/node_run_id                                                   |
+| R6-43 | HIGH     | workflow_io_compatibility_precheck_contract.md                                                      | 主字段 workflow_id/step_id 无 PlanGraphBundle/NodeRun                                                                  |
+| R6-44 | HIGH     | knowledge_spi_contract.md                                                                           | 无 harness_run_id 集成；TrustLevel 4级未引用 §29 知识边界规则                                                          |
+| R6-45 | MEDIUM   | sla_tier_contract.md / quota_preemption / multimodal_gateway / org_hierarchy / feedback_improvement | 均不足 60行，缺 ContractEnvelope compliance + remediation section                                                      |
+
+### 33. ADR 与架构矛盾（第三批）
+
+| #     | 严重度   | ADR     | 问题                                                                                                                  |
+| ----- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| R6-46 | CRITICAL | ADR-079 | FeedbackSignal 用 taskId+executionId 为关联键；v4.3 canonical 为 harnessRunId/nodeRunId——学习对象无法 join truth      |
+| R6-47 | CRITICAL | ADR-080 | FailurePattern/EvidenceRef 用 executionId——同 R6-46，Learning 子系统与 truth 断连                                     |
+| R6-48 | CRITICAL | ADR-033 | Status Accepted 定义 Phase 1-7 为 canonical roadmap 含 evaluatePhaseAdvance() gate；§33 明确仅历史映射——应 Superseded |
+| R6-49 | HIGH     | ADR-038 | Canary stages CANARY_5/20/50/100 与 ADR-075 canonical rollout 态(canary_5/partial_25/50/75/stable) 冲突               |
+| R6-50 | HIGH     | ADR-009 | 用 src/core/ 作为 canonical 目录+workflow_state 作为恢复表——v4.3 §35 用 src/platform/ + harness_runs                  |
+| R6-51 | HIGH     | ADR-007 | "Supervisor" 拥有重启/暂停/升级/终止 Agent 权限——v4.3 §45 将全部生命周期控制归 HarnessRuntime                         |
+| R6-52 | HIGH     | ADR-070 | Status Accepted 列 Phase 1-7 + "OAPEFLIR 循环不变" 无 v4.3 限定(仅 projection)——应 Superseded                         |
+| R6-53 | HIGH     | ADR-041 | TriggerAction.create_task 绕过 §5.3 intake pipeline                                                                   |
+| R6-54 | MEDIUM   | ADR-069 | OpsCapability 含 restart_service/scale_up_down 直接执行——未经 HarnessRuntime+PlanGraphBundle                          |
+| R6-55 | MEDIUM   | ADR-072 | 测试矩阵按 OAPEFLIR 模块目录组织而非 v4.3 canonical runtime 模块                                                      |
+| R6-56 | MEDIUM   | ADR-078 | Knowledge TrustLevel 无 §10 risk model inherent_risk+trust_score 分离映射——可能隐式降低风险                           |
+
+
+### 35. UI Monorepo 实现 vs UI 架构规格（§1-§7）
+
+| #     | 严重度 | 文件/领域                                        | 问题                                                                                           |
+| ----- | ------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| R7-1  | P0     | ui/apps/web/src/feature-registry.ts              | 27个 feature 全部 eager import 无 code split；§4.4.1 要求除 / 和 /login 外全部 React.lazy      |
+| R7-2  | P0     | ui/vitest.config.ts                              | 覆盖率阈值(lines:30%/branches:20%) 远低于 §7.2.6(shared≥90%/ui-core≥80%/features≥70%/apps≥50%) |
+| R7-3  | P0     | ui/scripts/perf-budget.mjs                       | JS chunk 550KB/total 1200KB——§7.3.1 要求 main<200KB gz/lazy chunk<100KB gz(超 2.75-5.5x)       |
+| R7-4  | P1     | ui/apps/web/src/app-shell.tsx                    | 路由为扁平单路径——无 §4.4.1 L2-L5 嵌套下钻路由(/tasks/:id/evidence 等)                         |
+| R7-5  | P1     | ui/packages/features/                            | 缺 feature-flags 模块(§4.1 Admin 下独立路由 /admin/feature-flags)                              |
+| R7-6  | P1     | ui/packages/features/settings/                   | Settings 无子路由导航——§4.2.9 定义 8个子页面均缺失                                             |
+| R7-7  | P1     | ui/packages/shared/api-client/                   | 缺 /api/v1/meta/contract-version 端点(§1.8 契约版本协商)                                       |
+| R7-8  | P1     | ui/packages/shared/api-client/ws-event-router.ts | 缺 nl.clarification_needed 事件映射(§5.3)                                                      |
+| R7-9  | P1     | ui/ root                                         | 缺 Playwright/Detox/Spectron/axe-core 依赖(§7.2.4 E2E+无障碍测试)                              |
+| R7-10 | P1     | ui/packages/shared/i18n/                         | 仅 4个翻译 key/2 locale——§6.4 要求全模块覆盖                                                   |
+| R7-11 | P2     | ui/packages/ui-core/src/design-tokens/           | 无 primitive/semantic token 分层(§6.3.1)                                                       |
+| R7-12 | P2     | ui/apps/web/src/app-shell.tsx                    | 路由守卫硬编码 demo 权限——§4.4.3 要求 5层动态 guard chain                                      |
+| R7-13 | P2     | ui/packages/shared/api-client/rest-client.ts     | 缺 Idempotency-Key header 支持(§5.6.4)                                                         |
+| R7-14 | P2     | ui/pnpm-workspace.yaml + turbo.json              | 与 §2.2 ADR 选定的 npm workspaces 冲突——vestigial 配置                                         |
+
+### 36. 后端 UI 服务 vs UI 架构规格（§4-§5）
+
+| #     | 严重度 | 文件/领域                                              | 问题                                                                                                                 |
+| ----- | ------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| R7-15 | P0     | src/interaction/dashboard/dashboard-projection-service | 仅产出 totalTasks/tasksByStatus 等 4字段；UI spec §4.7.7 要求 success_rate/avg_duration_ms/active_agents 等 10+ 字段 |
+| R7-16 | P0     | src/interaction/dashboard/dashboard-websocket-server   | WS 消息类型 dashboard_delta/snapshot 与 UI spec task.status_changed/approval.resolved 等 domain event 模型不匹配     |
+| R7-17 | P0     | src/interaction/dashboard/dashboard-websocket-server   | 订阅模型为 dashboard-ID-based；UI spec 要求 channel-based (global/task:{id}/approvals/admin)                         |
+| R7-18 | P1     | src/interaction/dashboard/                             | DashboardProjectionService 与 DashboardWebSocketServer 未集成（有 TODO）                                             |
+| R7-19 | P1     | src/interaction/dashboard/metric-aggregator/           | 仅覆盖 ~15% 所需指标；UI spec 4层 28面板要求完整 metric 集                                                           |
+| R7-20 | P1     | src/interaction/dashboard/health-scorer/               | 返回单一数值；UI spec StabilityPanelView 要求 8字段（uptime/error_rate/p99 等）                                      |
+| R7-21 | P1     | src/interaction/dashboard/alert-router/                | 仅排序；无实时路由/overlay/push/haptic 通知                                                                          |
+| R7-22 | P1     | src/platform/interface/api/mission-control-service     | MissionControlSnapshot DTO 与 UI spec Dashboard wireframe 字段不匹配                                                 |
+| R7-23 | P1     | src/platform/interface/api/mission-control-service     | getWorkflowCockpit() 返回 inspect-oriented shape 而非 UI spec presentation shape                                     |
+| R7-24 | P1     | src/platform/interface/api/mission-control-service     | getStabilityPanel() 返回数组而非 UI spec 要求的标量计数                                                              |
+| R7-25 | P1     | src/interaction/ux/workflow-builder-service            | 仅内部方法无 REST 端点；UI spec 要求 CRUD + validate + publish API                                                   |
+| R7-26 | P1     | src/interaction/ux/conversation-history-service        | 缺 clarificationState/riskPreview/actionOptions[] 字段                                                               |
+| R7-27 | P1     | src/interaction/ux/conversation-history-service        | 无 WS 事件发射；UI spec 要求 nl.clarification_needed 实时推送                                                        |
+| R7-28 | P2     | src/interaction/ux/ux-event-tracking-service           | 硬编码 "test:many_events" 事件类型；无 §5.4 规定的 standard event taxonomy                                           |
+| R7-29 | P2     | src/interaction/ux/platform-workbench-snapshot-service | 路由与 UI spec §4.4.1 /workbench/:view 不匹配                                                                        |
+| R7-30 | P2     | src/interaction/dashboard/                             | DashboardAggregationService 与 DashboardProjectionService 两套并行未集成                                             |
+
+### 37. UI 相关 Contract/ADR 与 UI 架构矛盾
+
+| #     | 严重度 | 文件/领域                                                     | 问题                                                                                         |
+| ----- | ------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| R7-31 | P0     | docs_zh/contracts/ui_console_and_cockpit_contract             | TaskCockpit 用 task_id/task_status/current_step——均为废弃术语（应为 harness_run_id/NodeRun） |
+| R7-32 | P0     | docs_zh/contracts/ui_console_and_cockpit_contract             | WorkflowCockpit 用 workflow_id/steps/current_step_index——废弃线性模型                        |
+| R7-33 | P0     | docs_zh/contracts/ui_console_and_cockpit_contract             | AdminTakeoverConsole 用 retry_step/skip_step/override_step_output——废弃操作                  |
+| R7-34 | P1     | docs_zh/contracts/admin_console_and_human_takeover_contract   | 同样使用步骤语言(step_id/step_status)而非 PlanGraph NodeRun                                  |
+| R7-35 | P1     | docs_zh/contracts/ui_console_and_cockpit_contract             | Contract 导航仅 4组；UI spec 有 Extended/Shared Features 含 12+ 模块                         |
+| R7-36 | P1     | docs_zh/contracts/gateway_message_contract                    | 无 console WebSocket 推送协议定义                                                            |
+| R7-37 | P1     | docs_zh/contracts/dashboard_and_operator_experience_contract  | WorkflowBuilderDraft.steps 用线性模型——应为 DAG nodes/edges                                  |
+| R7-38 | P1     | docs_zh/contracts/hitl_experience_and_explainability_contract | 用废弃 step 术语（step_id/step_output/step_retry）                                           |
+| R7-39 | P2     | ui/docs/adr/                                                  | 仅 placeholder README；UI spec 引用的 ADR-UI-001~009 全部不存在                              |
+| R7-40 | P2     | docs_zh/contracts/sdk_surface_contract                        | 无 MissionControlService typed 端点定义                                                      |
+
+### 38. 剩余平台缺口（API 网关/安全/可靠性）
+
+| #     | 严重度 | 文件/领域                                    | 问题                                                                         |
+| ----- | ------ | -------------------------------------------- | ---------------------------------------------------------------------------- |
+| R7-41 | P0     | src/platform/interface/api/middleware/       | 无 rate-limiting middleware；§9.2 要求 per-endpoint-class 速率限制           |
+| R7-42 | P0     | src/platform/interface/api/middleware/       | 无 Idempotency-Key middleware；§6.2 要求幂等保证                             |
+| R7-43 | P0     | src/platform/interface/api/http-server/      | 响应缺 X-Trace-Id header；§6.2 要求全链路追踪透传                            |
+| R7-44 | P0     | src/platform/contracts/                      | 无 inter-plane ContractEnvelope 签名验证；§5.2 要求签名+版本校验             |
+| R7-45 | P0     | src/platform/                                | 无 bulkhead isolation pattern；§9.1 要求平面间故障隔离                       |
+| R7-46 | P0     | src/platform/control-plane/iam/              | SAML 实现缺 X.509 trust-chain 验证/C14N/encrypted assertion（安全关键 TODO） |
+| R7-47 | P1     | src/platform/interface/api/                  | 无 API 版本路由/协商机制；§6.4 要求 Accept-Version header 路由               |
+| R7-48 | P1     | src/platform/stability/                      | 仅 rehearsal runner 无可复用可靠性库（circuit-breaker/retry/timeout 均缺失） |
+| R7-49 | P1     | src/platform/interface/api/middleware/       | CORS 默认 allowedOrigins:["*"] + credentials:true——安全反模式                |
+| R7-50 | P1     | src/platform/execution/worker-pool/          | WorkerDrainProtocol 40行 stub 缺 §8.2 drain-quiesce-terminate 三阶段行为     |
+| R7-51 | P1     | src/org-governance/                          | 治理控制台缺持久审计日志 + RBAC 检查（标注 TODO）                            |
+| R7-52 | P2     | src/platform/shared/stability/ vs stability/ | 重复模块树；职责边界不清                                                     |
+
+
+### 40. 平台核心深层缺口（Model Gateway / Planner / Recovery / Evidence）
+
+| #     | 严重度 | 文件/领域                                                             | 问题                                                                                                                                |
+| ----- | ------ | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| R8-01 | P0     | src/platform/model-gateway/cost-tracker/budget-guard.ts               | Budget 检查为无状态比较；§18.3 要求原子 reserve→execute→settle + BudgetReservation 状态机；并发可超支                               |
+| R8-02 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts           | Recovery 服务只读——分类故障并建议动作但从不执行；无 saga rollback/compensation executor/CompensationRecord                          |
+| R8-03 | P0     | src/platform/orchestration/planner/plan-builder.ts                    | 构建 legacy Plan(steps array) 而非 PlanGraphBundle DAG；无 §13.9 图规范化/§13.11 风险传播/§13.12 最坏路径分析                       |
+| R8-04 | P1     | src/platform/model-gateway/provider-registry/model-routing-service.ts | 无延迟 SLO 强制；缺 latency_optimized 路由策略/P99 追踪/data_residency/pii_input_detected 约束                                      |
+| R8-05 | P1     | src/platform/model-gateway/provider-registry/model-routing-service.ts | 路由决策仅内存——无持久化到 BudgetLedger 或 evidence store；缺模型选择审计轨迹                                                       |
+| R8-06 | P1     | src/platform/model-gateway/degradation/degradation-controller.ts      | getFallbackCandidates() 返回空数组使 D1 降级死代码；递归 route() 可栈溢出                                                           |
+| R8-07 | P1     | src/platform/model-gateway/provider-registry/circuit-breaker.ts       | 失败率公式 `(failures/windowSec)*10` 非百分比；50% 阈值(§9.4)语义错误                                                               |
+| R8-08 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts                   | runAbTest() 使用硬编码分数(0.85/0.90)模拟评估；无真实 LLM 调用/统计显著性检验                                                       |
+| R8-09 | P1     | src/platform/state-evidence/events/event-registry.ts                  | 主事件类型用 legacy 命名(task:status_changed)；canonical platform.harness_run.\* 未接入主注册表                                     |
+| R8-10 | P1     | src/platform/state-evidence/checkpoints/                              | Checkpoint 基于 workflow-step 而非 NodeRun/NodeAttempt；缺 graphVersion/planGraphId 无法与 PlanGraph 对齐                           |
+| R8-11 | P1     | src/platform/state-evidence/knowledge/semantic-knowledge-graph.ts     | 仅3种边类型(contains/shared_keyword/same_document)；缺实体关系边/信任传播/knowledge.trust_downgraded 事件；纯内存无持久层           |
+| R8-12 | P1     | src/platform/orchestration/planner/plan-evaluator.ts                  | 成本估算为 `steps.length * 1000` 硬编码常数；无 token 估算/并行分支检测(§13.8)/风险加权成本                                         |
+| R8-13 | P1     | src/platform/orchestration/planner/plan-dag-validator.ts              | 仅验证环/自依赖/缺失依赖；不检查入口/终端节点存在性/executor 可用性/risk/budget/tool/sandbox 完整性(§13.10)                         |
+| R8-14 | P1     | src/platform/execution/recovery/failure-classification.ts             | 分类器针对 coding-agent 错误(schema_error/lint_error/test_failure)；非通用平台恢复分类器(§9.6 异常分类法)                           |
+| R8-15 | P2     | src/platform/model-gateway/cost-tracker/chargeback-service.ts         | 无多币种/汇率支持；§18.4 要求 original_currency/base_currency/FX snapshot                                                           |
+| R8-16 | P2     | src/platform/model-gateway/fallback/index.ts                          | Fallback 选最便宜健康替代；无有序回退链(primary→secondary→tertiary) §15.4                                                           |
+| R8-17 | P2     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts            | 管线 draft→review→staging→shadow→canary_5→partial_25→50→75→stable；§16.3 仅 canary(5%)→canary(20%)→stable；多余阶段无自动回滚质量门 |
+| R8-18 | P2     | src/platform/state-evidence/memory/memory-layer-model.ts              | working 层 LRU 驱逐无 ContextTruncationReport；§29.2 要求"事实不可静默丢弃，压缩需附损失报告"                                       |
+
+### 41. SDK / 插件 / 域注册 / 多区域 / 运维成熟度
+
+| #     | 严重度 | 文件/领域                                                       | 问题                                                                                                        |
+| ----- | ------ | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| R8-19 | P0     | src/sdk/client-sdk/api-client.ts                                | 无 ContractEnvelope 包装；§5.2 要求所有 inter-plane 消息含 schemaVersion/commandId/correlationId/signature  |
+| R8-20 | P0     | src/sdk/client-sdk/                                             | 无事件订阅/流式 API；§6/§28 要求 typed event subscription(PlatformFactEvent/ProjectionUpdate/run lifecycle) |
+| R8-21 | P0     | src/sdk/harness-sdk/index.ts                                    | appendStep() 仍用 stage 字符串路由；不产出 NodeAttemptReceipt(§5.3)；nodeRunId/planGraphId 塞入 inputs bag  |
+| R8-22 | P1     | src/sdk/harness-sdk/index.ts                                    | 无 PlanGraphBundle 构建/验证 API；§22 SDK 须暴露图级规划操作                                                |
+| R8-23 | P1     | src/sdk/admin-sdk/index.ts                                      | 无 OperationalDirective/DecisionDirective typed 方法；pauseHarnessRun/abortHarnessRun 绕过指令信封模型      |
+| R8-24 | P1     | src/plugins/builtin-plugin-registry.ts                          | 内置插件无 PluginManifest；§10 要求 owner/trustLevel/sbomRef/publicSdkSurface                               |
+| R8-25 | P1     | src/plugins/adapters/github-adapter.ts                          | 插件加载无签名验证；§10 要求 signing.keyId/signature/algorithm 验证后才激活                                 |
+| R8-26 | P1     | src/plugins/ (所有内置插件)                                     | 无完整生命周期钩子；仅 initialize/healthCheck/shutdown，缺 onLoad/onActivate/onDeactivate/onUnload(§10)     |
+| R8-27 | P0     | src/domains/registry/domain-model.ts                            | 无 DomainManifest 类型；§37 要求含 capability matrix/risk classification/schema registry 引用               |
+| R8-28 | P1     | src/domains/domain-specs.ts                                     | DomainRiskSpecSchema 缺 advisory_only/human_accountable/deterministic_hot_path_only 字段(§3.2 责任边界)     |
+| R8-29 | P1     | src/domains/registry/                                           | 无专用 SchemaRegistry；§37 要求域输入/输出 schema 版本管理+兼容性检查                                       |
+| R8-30 | P1     | src/domains/registry/domain-registry-service.ts                 | register() 自动 validated→registered 无冒烟测试门控；§37 要求验证门                                         |
+| R8-31 | P2     | src/domains/registry/domain-model.ts:45                         | WorkflowConfigSchema.steps 为线性 z.array(StepTemplateConfigSchema)——§13 禁止复杂任务使用线性步骤           |
+| R8-32 | P1     | src/scale-ecosystem/multi-region/                               | 无 fencing token/single-leader 写强制；§25.11/§52.3 要求 truth/budget/side-effect 写仅通过 fencing 单领导者 |
+| R8-33 | P1     | src/scale-ecosystem/multi-region/cdc-replication-service.ts     | CDC 复制无冲突解决；applyBatch() 盲目应用事件无 epoch/版本 fencing 检查                                     |
+| R8-34 | P2     | src/scale-ecosystem/tenant-platform/tenant-platform-service.ts  | 无 Chinese Wall 强制/跨租户数据移动阻断(§50 知识域隔离)                                                     |
+| R8-35 | P1     | src/ops-maturity/workflow-debugger/workflow-debugger-service.ts | Debugger 使用 stepId/workflowId 术语而非 nodeRunId/planGraphId(§65)                                         |
+| R8-36 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts | Time-travel 用 stepId/executionId 作主键；应为 nodeRunId/harnessRunId(§5.5)                                 |
+| R8-37 | P2     | src/ops-maturity/explainability/                                | 无 StageRationale/OAPEFLIR 投影消费；§59 要求渲染 OAPEFLIR StageRationale 为审计解释                        |
+| R8-38 | P2     | src/ops-maturity/edge-runtime/                                  | Edge orchestrator 为单文件 stub；缺 §62 离线能力/本地模型执行/sync-queue+冲突解决/确定性回退                |
+| R8-39 | P2     | src/ops-maturity/                                               | 无 OpsMaturityScore 聚合模型；§69 要求跨 drift/compliance/cost/explainability 维度评分                      |
+| R8-40 | P1     | src/sdk/plugin-sdk/plugin-test-harness.ts                       | executePlugin() 全 mock 返回硬编码响应；§22.4 测试 harness 须在沙盒中执行真实插件生命周期                   |
+| R8-41 | P2     | src/scale-ecosystem/marketplace/                                | 无 AgentCertification/PackCertificationGate；§55 发布前须经安全扫描/eval gate/SBOM 认证管线                 |
+| R8-42 | P2     | src/sdk/plugin-sdk/plugin-definition.ts:26                      | PluginSecurityConfig.sandboxTier 含 "none"；§10 插件默认不信任——"none" 违反 INV-POLICY-001                  |
+
+### 42. UI 深层缺口（组件库 / 无障碍 / 原生壳 / 离线 / 工具链）
+
+| #     | 严重度 | 文件/领域                                               | 问题                                                                                                          |
+| ----- | ------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| R8-43 | P0     | ui/packages/shared/auth/src/auth-service.ts             | 无 token refresh 逻辑；§5.4.4 要求到期前 60s 主动静默刷新+并发锁+401→redirect                                 |
+| R8-44 | P0     | ui/packages/shared/auth/src/auth-service.ts             | 无 PKCE 支持；handleSsoCallback 直接从 URL 参数读 token 无 code_verifier/code_challenge/授权码交换            |
+| R8-45 | P0     | ui/packages/shared/platform/src/web-platform-adapter.ts | Token 明文存入 localStorage；§6.5.2 要求 HttpOnly Secure Cookie 或 memory-only                                |
+| R8-46 | P1     | ui/packages/ui-core/src/components/                     | 极少 ARIA 覆盖；§6.4.3+§6.4.5 要求全交互元素含 role/aria-live/aria-label；ListCard/KeyValueTable/按钮均缺     |
+| R8-47 | P1     | ui/packages/ui-core/src/components/                     | 无键盘焦点管理；§6.4.3 要求可见焦点环；designTokens.shadows.focusRing 已定义但组件未消费                      |
+| R8-48 | P1     | ui/packages/ui-core/src/design-tokens/                  | 扁平 token 结构无 primitive/semantic/domain 分层；缺 risk-level/autonomy-level/status/domain 色阶(§6.3.1)     |
+| R8-49 | P1     | ui/packages/ui-core/                                    | 无动画系统/prefers-reduced-motion 支持；§6.4.3 + §6.3.1 要求 animation.ts 含 fast/normal/slow/easing          |
+| R8-50 | P1     | ui/packages/ui-core/src/components/                     | 组件库严重不完整；§6.3.2 要求 50+ 组件(8类)；当前仅 7个(StatusPill/ListCard/KeyValueTable/FeatureScaffold 等) |
+| R8-51 | P1     | ui/packages/ui-core/src/themes/                         | Theme 为 JS 对象非 CSS Custom Properties；§6.3.3 要求 CSS vars + prefers-color-scheme media query             |
+| R8-52 | P1     | ui/tools/mock-server/src/index.ts                       | Mock server 仅覆盖 3端点(dashboard/tasks/workflows)；§5.2 定义 30+ 端点；缺 approval/agent/policy/WS mock     |
+| R8-53 | P1     | ui/tools/codegen/src/index.ts                           | Codegen 仅生成路径常量；§5.4.3 要求 typed endpoint 函数+query key factories+DTO 类型                          |
+| R8-54 | P1     | ui/apps/mobile/src/App.tsx                              | 移动平台硬编码 android；§2.5.5/2.5.6 要求 Android+iOS 支持；无运行时平台检测                                  |
+| R8-55 | P2     | ui/apps/electron-win/, ui/apps/tauri-\*/                | 无自动更新机制；§7.1.5+§2.5.2 要求 electron-updater/Sparkle/Tauri updater；桌面壳为清单 stub                  |
+| R8-56 | P2     | ui/packages/shared/sync/src/offline-queue.ts            | OfflineMutation 缺 idempotencyKey/retryCount/status 字段(§5.4.5)                                              |
+| R8-57 | P2     | ui/packages/shared/sync/src/conflict-resolver.ts        | 仅 server_wins/local_wins/shallow-merge；§5.5.4 要求数据类型特定冲突解决(CAS/幂等/先到先得)                   |
+| R8-58 | P2     | ui/packages/features/\*/src/index.tsx                   | 无 Error Boundary；§5.6 要求 P0-P3 错误分级+fallback UI；单组件崩溃拖垮全应用                                 |
+| R8-59 | P2     | ui/apps/tauri-macos/, ui/apps/tauri-linux/              | 无 Tauri 原生集成(Keychain/native menu/Spotlight/D-Bus/XDG/Wayland)；src-tauri/ 无 main.rs                    |
+| R8-60 | P2     | ui/packages/ui-core/src/charts/                         | 图表无表格替代视图；§6.4.3 要求所有图表提供 table fallback 供屏幕阅读器使用                                   |
+
+### 43. ADR / Contract 新发现矛盾与缺失
+
+| #     | 严重度 | 文件/领域                                                   | 问题                                                                                                                                                                           |
+| ----- | ------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R8-61 | P0     | docs_zh/adr/066-\*.md (×2)                                  | ADR-066 编号重复：compliance-report-auto-generation 与 plugin-spi-framework 共用同一编号                                                                                       |
+| R8-62 | P0     | docs_zh/adr/060-explicit-planning-hub.md                    | 定义 Plan DTO(planId/taskId/steps:PlanStep[]/DAGStructure) 作为 P3→P4 canonical contract；v4.3 用 PlanGraphBundle/PlanGraph/PlanNode/PlanEdge——完全不同对象名；未标 superseded |
+| R8-63 | P0     | docs_zh/adr/033-phased-roadmap.md                           | 定义 7-Phase 路线图；v4.3 §33 已替换为 Ring 1/2/3 模型；ADR 仍 Accepted 无 Ring 引用                                                                                           |
+| R8-64 | P1     | docs_zh/contracts/event-envelope-contract.md                | 同一 schema 内混合 snake_case(schema_version/idempotency_key) 和 camelCase(eventId/eventType)                                                                                  |
+| R8-65 | P1     | docs_zh/contracts/event_bus_contract.md                     | Legacy EventEnvelope 用 task_id 作关联字段；v4.3 要求 harnessRunId + aggregate 关联；parallel schema 未重定向                                                                  |
+| R8-66 | P1     | docs_zh/adr/019-agent-handoff-four-layer-protocol.md        | HandoffSerializer.buildFromStepResult(result: StepResult) 引用废弃类型；v4.3 用 NodeAttemptReceipt                                                                             |
+| R8-67 | P1     | 缺失 contract: Agent Delegation / Multi-Agent Collaboration | §19 定义完整委托协议(DelegationRequest/DelegationReceipt/depth C1-C7)；无对应 contract 文件                                                                                    |
+| R8-68 | P1     | docs_zh/contracts/task-intake-request-contract.md           | TaskDraft/ConfirmedTaskSpec 无 domainId 字段；§30/§37 要求每个进入执行的任务携带已验证 domain_id                                                                               |
+| R8-69 | P1     | docs_zh/contracts/harness-run-contract.md                   | HarnessRun 有 tenantId 无 domainId；§37 要求域绑定用于风险覆盖/知识边界/prompt 库选择                                                                                          |
+| R8-70 | P1     | 缺失 contract: ReleaseDecisionView / ReleaseChannel         | §13 列 ReleaseDecisionView 为 canonical OAPEFLIR 投影对象；ADR-091 要求 ReleaseChannel；均无 contract                                                                          |
+| R8-71 | P1     | docs_zh/adr/012-sqlite-phase-1-2-primary-store.md           | 仍 Accepted 范围为 "Phase 1a/1b"；v4.3 用 Ring 1 MVP；退出条件未映射到 Ring 边界                                                                                               |
+| R8-72 | P1     | docs_zh/adr/013-eventemitter-phase-2-boundary.md            | 同上——范围 "Phase 1a/1b/Phase 2" 无 Ring 映射；退出触发器("Phase 2 是否替换")已无定义                                                                                          |
+| R8-73 | P2     | docs_zh/contracts/typed_event_bus_contract.md §3A           | 所有 OAPEFLIR 事件载荷用 task_id/workflow_id 作主关联字段；v4.3 用 harnessRunId+aggregate 关联                                                                                 |
+| R8-74 | P2     | docs_zh/adr/072-oapeflir-testing-strategy.md                | 测试 OAPEFLIR 为独立执行管线("O→A→P→E→F happy path" E2E)；v4.3 降级 OAPEFLIR 为仅投影/视图                                                                                     |
+| R8-75 | P2     | docs_zh/contracts/runtime_state_machine_contract.md §1A     | 定义 OapeflirStage 为工作流级状态机(observe→assess→plan→...)；v4.3 说 OAPEFLIR 阶段仅为投影非状态机转换                                                                        |
+| R8-76 | P2     | docs_zh/adr/002-division-system.md                          | 用"事业部"建模(division_id)；v4.3 §37/§46 用 DomainDescriptor+OrgUnit；ADR 仍 Accepted 未标废弃                                                                                |
+| R8-77 | P2     | docs_zh/contracts/task_and_workflow_contract.md             | WorkflowState 含 division_id 必填字段；v4.3 canonical 对象(HarnessRun/TaskDraft/RequestEnvelope)无此字段                                                                       |
+
+### 45. 执行平面深层缺陷（Lease / Dispatch / State-Transition / Delegation）
+
+| #     | 严重度 | 文件/领域                                                                                 | 问题                                                                                                                                     |
+| ----- | ------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| R9-01 | P0     | src/platform/execution/lease/execution-lease-service.ts:556-663                           | validateWriteAccess 不检查 expiresAt vs 当前时间；TTL 过期但未回收的 lease 仍允许写入(§8.3 stale detection)                              |
+| R9-02 | P0     | src/platform/execution/state-transition/transition-service.ts:500-526                     | TaskTerminalTransitionService.apply() 用非 CAS 更新(updateTaskStatus/updateWorkflowState)；并发终态转换可互相覆盖，违反 RT-01 不变量     |
+| R9-03 | P0     | src/platform/execution/lease/execution-lease-service-async.ts:247-289                     | releaseLeaseSync 不检查 lease.status!=="active"；已过期/已回收 lease 可被重新释放，破坏审计轨迹+双释放 worker slot                       |
+| R9-04 | P1     | src/platform/execution/state-transition/transition-service.ts:110-119                     | EXECUTION_TRANSITIONS 仅定义 8态；§45.13 要求 13态(缺 queued/dispatching/paused/recovering/timed_out)                                    |
+| R9-05 | P1     | src/platform/execution/dispatcher/execution-dispatch-service.ts:223-251                   | 无 poison-pill 检测；永久无匹配 worker 的 ticket 无限循环消耗扫描时间，无失败计数/重试限制/死信机制                                      |
+| R9-06 | P1     | src/platform/orchestration/agent-delegation/delegation-manager.service.ts:55-76           | 所有委托状态(delegationStore/chainStore)纯内存 Map；进程重启丢失活跃委托链；SQLite delegation-repository 存在但从未接入                  |
+| R9-07 | P1     | src/platform/orchestration/agent-delegation/delegation-manager.service.ts:405-428         | narrowPermissions 将父资源替换为子请求资源(非交集)；子 agent 可请求父未持有的资源，违反 §19 信任继承/仅收窄规则                          |
+| R9-08 | P1     | src/platform/execution/lease/types.ts vs execution-lease-service.ts                       | MIN_LEASE_TTL_MS(5s)/MAX_LEASE_TTL_MS(30s) 定义但 acquireLease 从不强制；可传入 ttlMs:1 或 999999999(§8.3 TTL bounds)                    |
+| R9-09 | P1     | src/platform/orchestration/routing/intake-router.ts                                       | 路由纯关键词匹配无 capability matching；§8.5 要求匹配 worker/agent 能力注册+容量                                                         |
+| R9-10 | P1     | src/platform/execution/dispatcher/execution-dispatch-service.ts:227                       | 每 ticket 迭代实例化新 HealthService(backpressureSnapshot==null时)；O(n) 健康扫描+同批次票据间背压决策不一致                             |
+| R9-11 | P2     | src/platform/orchestration/agent-delegation/call-depth-budget.ts vs topology-validator.ts | maxCallDepth=8 vs DEFAULT_MAX_DEPTH=3 两套独立深度限制互不协调；§19 要求单一权威深度限制                                                 |
+| R9-12 | P2     | src/platform/state-evidence/truth/async-repositories/event-repository.ts                  | 无投影版本化；listEventsForTask 返回原始事件无 snapshot cursor/版本戳；每次读全量重放(§4.2 snapshot optimization)                        |
+| R9-13 | P2     | src/platform/orchestration/routing/agent-team-service.ts:146                              | 执行循环硬编码 ["plan","build","review","validate","repair","validate","release"]；低风险单文件变更仍走完整 7阶段(§8.5 adaptive routing) |
+
+### 46. OAPEFLIR / Harness / Bootstrap 深层问题
+
+| #     | 严重度 | 文件/领域                                                                   | 问题                                                                                                                            |
+| ----- | ------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| R9-14 | P0     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:210            | OAPEFLIR 含直接执行逻辑(executeViaBridge 调用 executeBridge.executePlan)；§45 规定仅投影/视图，执行须委托执行平面               |
+| R9-15 | P0     | src/index.ts:179-189                                                        | buildPlatformRootSummary 初始化所有平面目录无依赖顺序；§2 要求 control-plane→state-evidence→execution→orchestration→interaction |
+| R9-16 | P1     | src/platform/orchestration/oapeflir/ (loop-service vs stage-transition-fsm) | StageTransitionFSM 完整实现(236行)但从未被 OapeflirLoopService.run() 实例化/咨询；FSM 为死代码，阶段顺序无强制                  |
+| R9-17 | P1     | src/platform/orchestration/oapeflir/assessment-service.ts:65                | routingDecision.division 硬编码 "coding"；非编码域任务永远被误路由                                                              |
+| R9-18 | P1     | src/platform/orchestration/oapeflir/final-response.ts:27-48                 | FinalResponse 接口 10字段；§A.3 要求 13字段(缺 executionDurationMs/modelId/retryCount)                                          |
+| R9-19 | P1     | config/runtime/default.json                                                 | 仅 7字段；缺 §8 要求的 healthCheckIntervalMs/shutdownGracePeriodMs/logLevel/metricsEnabled/tracingEnabled/retryPolicy           |
+| R9-20 | P1     | src/platform/orchestration/harness/index.ts:57-77                           | ConstraintPack 混合 camelCase(toolPolicy) 和 snake_case(risk_policy/output_policy)；序列化不一致                                |
+| R9-21 | P1     | src/platform/orchestration/harness/hitl-runtime.ts:18                       | HitlRuntime 所有请求存内存 Map 无持久化；进程重启丢失全部待审批请求(§45 要求 HITL 状态存活崩溃)                                 |
+| R9-22 | P1     | src/platform/orchestration/harness/recovery-controller.ts:12-31             | handleFailure 恢复期间不发事件到 state-evidence plane；§45 要求所有生命周期转换有 evidence 记录                                 |
+| R9-23 | P1     | src/platform-architecture-bootstrap.ts:128-148                              | registerPlatformArchitectureServices 注册后立即 get() 无健康/就绪门控；init 失败静默传播                                        |
+| R9-24 | P1     | config/risk/default.json:2                                                  | $schema 指向 .ts 文件非 JSON Schema；运行时无法做 JSON Schema 验证                                                              |
+| R9-25 | P2     | config/domains/default.json:98                                              | domain status:"testing" 非 canonical(§11: draft/active/deprecated/retired)                                                      |
+| R9-26 | P2     | config/domains/default.json:7                                               | domain version:1(integer)；§11 要求 semver string("1.0.0") 用于兼容性检查                                                       |
+| R9-27 | P2     | src/platform/orchestration/harness/oapeflir-harness-mapping.ts:24           | hitl_operator 映射到 OAPEFLIR "assess" 阶段；§45 HITL 是 feedback/gate 机制非自动风险评估                                       |
+| R9-28 | P2     | src/platform/orchestration/harness/guardrails/guardrail-engine.ts:91-95     | 永远不返回 retry_same_plan；HarnessDecisionAction 联合含此值但护栏无法触发                                                      |
+| R9-29 | P2     | src/platform/orchestration/oapeflir/runtime-execute-bridge.ts:228           | 动态 import ../../../core/runtime/orchestrator/index.js——路径在 src/platform/ 外部；耦合未声明的 core/ 模块                     |
+| R9-30 | P2     | tests/integration/                                                          | 无跨平面事件传播/事件溯源重放/OAPEFLIR FSM 验证/PlanGraph 执行集成测试；§45 核心行为零覆盖                                      |
+
+### 47. 组织治理 / NL 交互 / 自治引擎深层问题
+
+| #     | 严重度 | 文件/领域                                                     | 问题                                                                                                                                             |
+| ----- | ------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R9-31 | P0     | src/org-governance/org-model/org-governance-saga.ts           | §46.3 要求 OrgGovernanceSaga 冻结 orgVersion+计算影响差异+有序子步骤+补偿；实现为 stub 仅按类型分组无实际逻辑                                    |
+| R9-32 | P0     | src/interaction/nl-gateway/index.ts:722                       | §39.6 规定仅 confirmed TaskSpec 可生成 RequestEnvelope；buildTask() 在 confirmationReceipt.state="pending_user_confirmation" 时即预构建 envelope |
+| R9-33 | P1     | src/org-governance/approval-routing/route-engine/index.ts:155 | §47.1 要求 parallel 会签+sequential 逐级审批模式；仅实现单线性链无并行/会签                                                                      |
+| R9-34 | P1     | src/org-governance/approval-routing/route-engine/index.ts:257 | normalizeThresholdCny 硬编码 USD→CNY 汇率 7.2；§47.2 要求 base_currency+FX snapshot                                                              |
+| R9-35 | P1     | src/org-governance/approval-routing/route-engine/index.ts:46  | ApprovalRouteSnapshot 无 expiresAt；§47.3 要求 expiry/revocation/commit-time revalidation                                                        |
+| R9-36 | P1     | src/org-governance/approval-routing/escalation/index.ts       | 超时升级用静态 escalateToApproverId 不遍历 OrgTree；§47.1 要求向上走组织层级                                                                     |
+| R9-37 | P1     | src/org-governance/compliance-engine/inheritance/index.ts     | §49.2 要求 PolicyStrictnessComparator+不可比策略进入 compliance approval；用硬编码启发式无比较器接口                                             |
+| R9-38 | P1     | src/org-governance/compliance-engine/                         | §49 要求 ComplianceExceptionWorkflow(scope/expiresAt/compensating controls) + EvidenceQualityScore/ControlCoverageReport——全部未实现             |
+| R9-39 | P1     | src/org-governance/compliance-engine/evidence-collector.ts    | §49.3 要求定期自动证据收集(季度 SOX/持续 HIPAA)；实现仅按需调用无调度器/周期/新鲜度强制                                                          |
+| R9-40 | P1     | src/interaction/nl-gateway/index.ts:161                       | UserConfirmationReceipt 仅 not_required/pending 两态；缺 confirmed 态+risk preview version/scope/actor/timestamp(§39)                            |
+| R9-41 | P1     | src/interaction/nl-gateway/index.ts:480                       | §39 high/critical 指令须 dry-run preview；buildRiskPreview 纯关键词匹配无实际 dry-run 执行/副作用预览                                            |
+| R9-42 | P1     | src/interaction/goal-decomposer/index.ts                      | §40.2 要求 capability validation+risk propagation through task graph；无 DomainDescriptor 能力检查；风险逐节点不传播                             |
+| R9-43 | P1     | src/interaction/autonomy/promotion-engine/index.ts:27-31      | §42.2 要求 human override rate <5%/<1% 才可升级；assessPromotion 仅检查 totalExecutions/successRate 从不评估 override rate                       |
+| R9-44 | P1     | src/interaction/autonomy/index.ts:329                         | §42.2 要求 domain_owner/platform_team 审批升级；所有升级 approvedBy:"auto" 无审批门                                                              |
+| R9-45 | P2     | src/interaction/autonomy/promotion-engine/index.ts:24-31      | §42.2 要求 per-level 无事件窗口(30d/60d/90d)；仅全局 incidents>0 检查无时间窗约束                                                                |
+| R9-46 | P2     | src/interaction/goal-decomposer/index.ts:368                  | §40.3 模板匹配应用 DomainRecipe(§37.7)；detectTemplate 用 5个硬编码正则无 DomainRecipe/DomainDescriptor 集成                                     |
+| R9-47 | P2     | src/interaction/proactive-agent/index.ts:76                   | §41.5 Suggestion 管线(Context Builder→Generator→Queue→dashboard)；enqueueSuggestion 无上下文构建/质量评分                                        |
+
+### 48. Contract 深层矛盾与缺口（新发现）
+
+| #     | 严重度 | 文件/领域                                                               | 问题                                                                                                                                                                                                         |
+| ----- | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R9-48 | P0     | docs_zh/contracts/platform_panic_and_resume_contract.md §3              | PlatformPanicDirective 含可选 expires_at TTL；§2.4 不变量明确"Panic 不得 TTL 自动解除，恢复必须人工确认"                                                                                                     |
+| R9-49 | P1     | docs_zh/contracts/observability_contract.md §3                          | LogEvent 用 task_id? 作主关联键缺 harness_run_id/node_run_id/attempt_id；§5.5 要求 HarnessRun 为 canonical 关联                                                                                              |
+| R9-50 | P1     | docs_zh/contracts/model_gateway_routing_contract.md §2                  | ModelRouteRequest 用 taskId 无 harnessRunId/nodeRunId；INV-BUDGET-001 要求 harnessRunId 才能验证预算预留                                                                                                     |
+| R9-51 | P1     | docs_zh/contracts/budget-ledger-contract.md §3                          | BudgetReservation.resourceKind 枚举(token/tool/api/compute/human/side_effect/other)与 §53 ResourceKind(worker_concurrency/tool_qps/model_tpm/model_rpm/budget_amount/approval_capacity/storage_io)完全不匹配 |
+| R9-52 | P1     | docs_zh/contracts/side-effect-reconciliation-contract.md §2             | SideEffectStatus 枚举缺 approved/committed/confirming/manual_review_required/compensation_required 态；多出 reserved 态(§14.11 无此态)                                                                       |
+| R9-53 | P1     | docs_zh/contracts/cost_and_budget_contract.md §4                        | CostEvent 以 task_id 为必填主键，harness_run_id/node_run_id/attempt_id 为可选；与 budget-ledger(要求 harnessRunId)对接断裂                                                                                   |
+| R9-54 | P1     | docs_zh/contracts/cost_and_budget_contract.md §3                        | BudgetPolicy.runtime_mode 8态(full_auto/supervised_auto/read_only/no-write/...) 与 sandbox_and_auth_contract §3 4态(read_only/workspace_write/scoped_external_access/restricted_exec)完全不重叠              |
+| R9-55 | P1     | docs_zh/contracts/workflow_static_analysis_and_compensation_contract.md | 全文使用 step 术语("不可达步骤检测"/"step id 唯一性检查"/"每个有副作用的 step")；v4.3 用 PlanNode/nodeId；无迁移段                                                                                           |
+| R9-56 | P2     | docs_zh/contracts/multimodal_gateway_contract.md                        | MultimodalRequest 缺 harnessRunId/nodeRunId/tenantId/traceId(§5.2 ContractEnvelope 必填)；无 BudgetReservation 引用                                                                                          |
+| R9-57 | P2     | docs_zh/contracts/connector_framework_contract.md                       | ConnectorExecutionRequest/Result 无最小字段定义；缺 harnessRunId/nodeRunId/sideEffectId 关联(§14.11 外部写须注册 SideEffectRecord)                                                                           |
+| R9-58 | P2     | docs_zh/contracts/capacity_planning_contract.md                         | CapacitySignal 无 tenantId/harnessRunId；resource_type 为 plain string 未对齐 §53 ResourceKind canonical 枚举                                                                                                |
+| R9-59 | P2     | docs_zh/contracts/gateway_streaming_contract.md §3                      | StreamEvent 用 task_id 作主关联键无 harness_run_id/node_run_id；§6.8 legacy task 端点须解析到 harnessRunId                                                                                                   |
+| R9-60 | P2     | docs_zh/contracts/observability_contract.md §4.3                        | StageMetricSample/LoopIterationTrace 携带 task_id? 作关联字段但 T-47 remediation 降级 OAPEFLIR 指标为 view-only——定位矛盾                                                                                    |
+| R9-61 | P2     | docs_zh/contracts/plugin_spi_contract.md §2.4                           | DomainPresenterPlugin.present() 接受 DualChannelStepOutput(含 Step 的废弃类型)；v4.3 用 NodeAttemptReceipt                                                                                                   |

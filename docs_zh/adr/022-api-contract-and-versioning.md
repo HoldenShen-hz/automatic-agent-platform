@@ -17,7 +17,7 @@
 | GET/DELETE | /api/v1/tasks/{id} | 单任务操作 |
 | GET | /api/v1/harness-runs | Harness 运行列表 |
 | GET | /api/v1/node-runs | Node 运行列表 |
-| GET | /api/v1/workflow-runs | 查询投影（legacy 兼容） |
+| GET | /api/v1/workflow-runs | legacy 兼容列表 |
 | GET/POST | /api/v1/approvals | 审批管理 |
 | GET | /api/v1/incidents | 事件查看 |
 | GET/POST | /api/v1/knowledge | 知识管理 |

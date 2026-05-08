@@ -65,7 +65,7 @@ function extractInputOutput(signal: FeedbackSignal): { input: string; output: st
     ? payload["input"]
     : typeof payload["taskDescription"] === "string"
       ? payload["taskDescription"]
-      : signal.taskId ?? signal.harnessRunId;
+      : signal.taskId;
 
   const output = typeof payload["output"] === "string"
     ? payload["output"]
@@ -85,7 +85,7 @@ function signalToExport(signal: FeedbackSignal, feedbackType: string): FeedbackT
   }
 
   return {
-    taskId: signal.taskId ?? signal.harnessRunId,
+    taskId: signal.taskId,
     input,
     output,
     feedbackType,

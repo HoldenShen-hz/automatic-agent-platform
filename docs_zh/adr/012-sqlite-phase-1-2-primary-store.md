@@ -1,11 +1,11 @@
-# ADR-012 SQLite 是否作为 Ring 1 MVP / Ring 2 Readiness 默认主存储
+# ADR-012 SQLite 是否作为 Ring 1-2 默认主存储
 
 - 状态：Accepted
 - 决策日期：2026-04-03
 
 ## 背景
 
-平台当前仍处于 Ring 1 MVP 到 Ring 2 readiness 的基础闭环阶段，优先目标是把任务、workflow、execution、approval、event、session、recovery 路径跑稳，而不是一开始就上分层数据平面或多租户事务基础设施。
+平台当前还处于 Phase 1a / 1b 的基础闭环阶段，优先目标是把任务、workflow、execution、approval、event、session、recovery 路径跑稳，而不是一开始就上分层数据平面或多租户事务基础设施。
 
 需要决策的问题是：
 
@@ -18,7 +18,7 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 
 同时明确边界：
 
-- SQLite 继续承担当前 Ring 1 / Ring 2 早期最主要的单机 authoritative 事务存储。
+- SQLite 继续承担当前阶段最主要的单机 authoritative 事务存储。
 - PostgreSQL 后端可以作为受控替代实现存在，用于双写演练、并发验证和后续迁移准备，但不得绕过既有 storage contract。
 - artifact 主体仍可存文件系统或对象存储，但索引和事实状态以 SQLite 为准。
 - 进入更复杂的数据平面后，再按 `data_plane_contract.md` 演进为分层存储。
@@ -53,13 +53,13 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 ### 方案 C：当前决策方案
 
 - SQLite 继续作为唯一主事务存储
-- 明确并发、背压和 Ring 边界
+- 明确并发、背压和 Phase 边界
 - 后续再通过 ADR 和 contract 正式升级
 
 ## 选择这个方案的原因
 
 - 当前阶段最需要的是低运维成本、高可复制性和本地可调试性。
-- SQLite 足以支撑 Ring 1 MVP 的单机闭环，并为 Ring 2 readiness 提供可审计的单机权威存储。
+- SQLite 足以支撑 Phase 1a / 1b 的单机闭环。
 - 现在先把状态、事件、审批、恢复和存储 schema 收紧，比提前上更重数据库更关键。
 - 项目已经有清晰的数据平面演进文档，不会因为当前选择 SQLite 就丢掉后续升级路径。
 
@@ -77,7 +77,7 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 只要系统仍满足以下条件，就继续维持本决策：
 
 - 单机为主
-- Ring 1 MVP / Ring 2 readiness 主链为主
+- Phase 1a / 1b 主链为主
 - 并发规模仍受控
 - 多租户、远程 worker、分析平面尚未进入正式实现
 
@@ -114,7 +114,7 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 代价：
 
 - 并发和扩展性有明确上限。
-- Ring 2 之后若能力继续扩张，必须认真规划迁移，不可无限拖延。
+- Phase 2 以后若能力继续扩张，必须认真规划迁移，不可无限拖延。
 
 ## 当前实现对齐
 
@@ -131,7 +131,7 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 ## 交叉引用
 
 - [ADR-009 部署与运维](./009-deployment-ops.md)
-- [ADR-013 EventEmitter 是否继续使用到 Ring 2 Readiness](./013-eventemitter-phase-2-boundary.md)
+- [ADR-013 EventEmitter 是否继续使用到 Phase 2](./013-eventemitter-phase-2-boundary.md)
 - [ADR-011 Effect-TS 是否作为核心运行时基础](./011-effect-ts-adoption.md)
 
 ## 来源章节
@@ -140,7 +140,3 @@ Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 - `runtime_repository_and_migration_contract.md`
 - `state_transition_matrix_contract.md`
 - `data_plane_contract.md`
-
-## v4.3 Ring Remediation
-
-- R8-71: 本 ADR 原先把适用范围写成 `Phase 1a / 1b / Phase 2`，根因是仓库从 phase 口径迁到 ring 口径后，该 ADR 只重写了主体语义，没有同步重写适用边界。修复：正文现统一收敛到 `Ring 1 MVP / Ring 2 readiness`，phase 仅保留为历史迁移语义。

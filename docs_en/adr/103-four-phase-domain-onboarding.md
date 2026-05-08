@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect domain modeling and dependency input
+- **Observe**: Collect domain modeling and dependency inputs
 - **Assess**: Check readiness and certification requirements
-- **Plan**: Plan four phases: modeling, development, certification, canary
-- **Execute**: Advance onboarding phase by phase
+- **Plan**: Plan four phases: modeling, development, certification, gradual rollout
+- **Execute**: Progress onboarding phase by phase
 - **Feedback**: Accumulate structured evidence at each phase
 - **Learn**: Review onboarding patterns
-- **Improve**: Optimize onboarding gate
-- **Release**: Only after canary passes can active status be entered
+- **Improve**: Optimize onboarding gates
+- **Release**: Only enters active after gradual rollout passes
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-If domain onboarding has no fixed phases, governance, testing, or canary verification will be skipped.
+If domain onboarding has no fixed phases, governance, testing, or gradual rollout verification will be skipped.
 
 ## Decision
 
@@ -29,9 +29,9 @@ Domain onboarding is fixed to four phases:
 1. Modeling
 2. Development
 3. Certification
-4. Canary
+4. Gradual Rollout
 
 ## Consequences
 
-- Onboarding no longer depends on verbal processes
+- Onboarding no longer relies on verbal processes
 - Domain readiness and rollout have consistent gates

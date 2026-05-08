@@ -1,7 +1,6 @@
 import { newId } from "../../contracts/types/ids.js";
-import { createPlanGraphBundle, type PlanGraphBundle, type GraphValidationReport, type GraphRiskFinding, type GraphWorstPathAnalysis, type RiskPreview, type PlanNode } from "../../contracts/executable-contracts/index.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
-import { createAssessmentRef, parsePlan, type PlanStep, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
+import { createAssessmentRef, parsePlan, type Plan, type PlanStep, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
 import { TaskDecompositionService } from "./task-decomposition-service.js";
 import { PlanDagValidator } from "./plan-dag-validator.js";
 import { PlanStrategySelector } from "./plan-strategy-selector.js";
@@ -12,8 +11,6 @@ export interface PlanBuilderInput {
   workflow: PlannedWorkflow;
   version?: number;
   parentVersion?: number;
-  harnessRunId?: string; // R8-03: Required for PlanGraphBundle generation
-  riskProfile?: RiskPreview; // R8-03: Optional risk profile for the plan
 }
 
 export class PlanBuilder {
@@ -21,268 +18,46 @@ export class PlanBuilder {
   private readonly dagValidator = new PlanDagValidator();
   private readonly strategySelector = new PlanStrategySelector();
 
-  /**
-   * R8-03 FIX: Build returns PlanGraphBundle with DAG structure and node_run_id references.
-   *
-   * Previously built legacy Plan with steps[] array. Now produces proper PlanGraphBundle
-   * with PlanNode nodes that have unique node IDs (node_run_id references) for budget
-   * reservation linking per §13.7.
-   */
-  public build(input: PlanBuilderInput): PlanGraphBundle {
-    const harnessRunId = input.harnessRunId ?? newId("harness_run");
+  public build(input: PlanBuilderInput): Plan {
     const decomposed = this.decomposition.decompose(input.workflow);
-
-    // R8-03 FIX: Build PlanStep[] for validation, then convert to PlanNode[] with node_run_id
-    const steps: PlanStep[] = decomposed.map((item, index) => {
-      const execStep = input.workflow.executionSteps[index];
-      return {
-        stepId: execStep?.stepId ?? `step_${index + 1}`,
-        action: item.toolNames[0] ?? (index === 0 ? "read" : "execute"),
-        title: item.title,
-        inputs: {
-          ownerRoleId: item.ownerRoleId,
-          inputKeys: [...(execStep?.inputKeys ?? [])],
-          riskClass: "medium", // §13.10: Required field for DAG validation
-          budget: 1000, // §13.10: Required field for DAG validation
-        },
-        outputs: execStep?.outputKey != null ? [execStep.outputKey] : [],
-        dependencies: item.dependsOn,
-        status: "pending" as const,
-        timeout: execStep?.timeoutMs ?? 60000,
-        retryPolicy: {
-          maxRetries: Math.max(0, (execStep?.maxAttempts ?? 1) - 1),
-          backoffMs: 250 * (index + 1),
-        },
-        executor: execStep?.agentId ?? `agent_${item.ownerRoleId}`, // §13.10: Required field for DAG validation
-        sandboxMode: "unsandboxed" as const, // §13.10: Required field for DAG validation
-      };
-    });
-
-    const dagValidation = this.dagValidator.validate(steps);
-    // R20-01: Enforce DAG validation results - fail invalid plans with cycles/missing deps
-    if (!dagValidation.valid || dagValidation.orderedSteps.length === 0) {
-      // Cycle or structural issues detected - cannot produce valid plan
-      // Throw to force replan/rejection rather than silently proceeding with invalid plan
-      throw new Error(`Invalid plan: ${dagValidation.issues.join("; ")}`);
-    }
-
-    // R8-03 FIX: Convert steps to PlanNode[] with proper node_run_id references
-    // Each node gets a unique nodeId that can be referenced by budget reservations
-    const planId = newId("plan");
-    const nodes: PlanNode[] = dagValidation.orderedSteps.map((step) => ({
-      nodeId: step.stepId, // This is the node_run_id reference used by BudgetReservation
-      nodeType: "tool" as const,
-      inputRefs: step.dependencies,
-      outputSchemaRef: `schema:plan.step.${step.stepId}`,
-      riskClass: "medium" as const,
-      budgetIntent: {
-        amount: 1000,
-        currency: "USD",
-        resourceKinds: ["compute"] as const,
+    const steps: PlanStep[] = decomposed.map((item, index) => ({
+      stepId: input.workflow.executionSteps[index]?.stepId ?? `step_${index + 1}`,
+      action: item.toolNames[0] ?? (index === 0 ? "read" : "execute"),
+      title: item.title,
+      inputs: {
+        ownerRoleId: item.ownerRoleId,
+        inputKeys: [...(input.workflow.executionSteps[index]?.inputKeys ?? [])],
       },
-      sideEffectProfile: {
-        mayCommitExternalEffect: false,
-        reversible: true,
+      outputs: input.workflow.executionSteps[index]?.outputKey != null ? [input.workflow.executionSteps[index].outputKey] : [],
+      dependencies: item.dependsOn,
+      status: "pending",
+      timeout: input.workflow.executionSteps[index]?.timeoutMs ?? 60000,
+      retryPolicy: {
+        maxRetries: Math.max(0, (input.workflow.executionSteps[index]?.maxAttempts ?? 1) - 1),
+        backoffMs: 250 * (index + 1),
       },
-      retryPolicyRef: `retry:plan.${step.stepId}`,
-      timeoutMs: step.timeout,
     }));
 
-    // Build edges from step dependencies
-    const edges = dagValidation.orderedSteps.flatMap((step) =>
-      step.dependencies.map((depId) => ({
-        edgeId: newId("plan_edge"),
-        fromNodeId: depId,
-        toNodeId: step.stepId,
-        condition: { type: "always" as const },
-        dependencyType: "hard" as const,
-      })),
-    );
-
-    // Entry nodes are steps with no dependencies
-    const entryNodeIds = dagValidation.orderedSteps
-      .filter((step) => step.dependencies.length === 0)
-      .map((step) => step.stepId);
-
-    // Terminal nodes are steps that no other step depends on
-    const dependentStepIds = new Set(dagValidation.orderedSteps.flatMap((step) => step.dependencies));
-    const terminalNodeIds = dagValidation.orderedSteps
-      .filter((step) => !dependentStepIds.has(step.stepId))
-      .map((step) => step.stepId);
-
+    const dagValidation = this.dagValidator.validate(steps);
     const strategy = this.strategySelector.select(input);
-    const graphHash = [harnessRunId, planId, input.version ?? 1, nodes.length].join(":");
 
-    // §13.10: Extended validation
-    const validationReport = this.performExtendedValidation(dagValidation.orderedSteps);
-
-    // §13.11: Risk propagation
-    const riskPropagation = this.computeRiskPropagation(nodes, dagValidation.orderedSteps);
-
-    // §13.12: Worst-path analysis
-    const worstPath = this.dagValidator.analyzeWorstPath(dagValidation.orderedSteps);
-
-    const graphValidationReport: GraphValidationReport = {
-      valid: validationReport.valid,
-      findings: validationReport.issues,
-      normalizedNodeIds: nodes.map((n) => n.nodeId),
-      riskPropagation,
-      ...(worstPath
-        ? {
-            worstPath: {
-              pathNodeIds: worstPath.pathNodeIds,
-              riskClass: "medium" as const,
-              estimatedBudgetAmount: worstPath.estimatedCost / 1000,
-              timeoutMs: worstPath.estimatedTimeoutMs,
-            },
-          }
-        : {}),
-    };
-
-    return createPlanGraphBundle({
-      harnessRunId,
-      graph: {
-        graphId: newId("plan_graph"),
-        nodes,
-        edges,
-        entryNodeIds,
-        terminalNodeIds,
-        joinStrategy: "all",
-        graphHash,
-      },
-      schedulerPolicy: {
-        policyId: "scheduler:oapeflir.deterministic_fifo",
-        strategy: "deterministic_fifo",
-      },
-      budgetPlanRef: `budget:plan.${planId}`,
-      riskProfile: input.riskProfile ?? { riskClass: "medium", reasons: ["plan_builder.default"] },
-      validationReport: graphValidationReport,
+    return parsePlan({
+      planId: newId("plan"),
+      taskId: input.observation.taskId,
+      assessmentRef: createAssessmentRef(input.assessment),
+      version: input.version ?? 1,
+      strategy: input.version != null && input.version > 1 ? "replanned" : strategy,
+      steps: dagValidation.orderedSteps,
+      createdAt: Date.now(),
+      parentVersion: input.parentVersion,
     });
   }
 
-  /**
-   * Build a PlanGraphBundle from workflow inputs.
-   * §13.7: Plan must be Graph (PlanGraphBundle), not linear Plan{steps[]}
-   * §13.9: Graph Normalization
-   * §13.11: Risk Propagation
-   * §13.12: Worst-Path Analysis
-   *
-   * R8-03 NOTE: This method is now essentially an alias for build() since build()
-   * already returns PlanGraphBundle. It is kept for backward compatibility.
-   */
-  public buildGraphBundle(input: PlanBuilderInput & {
-    harnessRunId: string;
-    riskProfile?: RiskPreview;
-  }): PlanGraphBundle {
-    // R8-03: build() now returns PlanGraphBundle directly, so just call it
+  public replan(previousPlan: Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">): Plan {
     return this.build({
       ...input,
-      harnessRunId: input.harnessRunId,
-      ...(input.riskProfile !== undefined ? { riskProfile: input.riskProfile } : {}),
-    });
-  }
-
-  /**
-   * §13.10: Extended validation beyond basic DAG structure.
-   * Checks: entry node existence, terminal node existence,
-   * executor availability, risk/budget/tool/sandbox completeness.
-   */
-  private performExtendedValidation(steps: readonly PlanStep[]): {
-    valid: boolean;
-    issues: string[];
-  } {
-    const issues: string[] = [];
-
-    if (steps.length === 0) {
-      issues.push("planning.empty_plan");
-      return { valid: false, issues };
-    }
-
-    // Check entry nodes exist
-    const hasEntryNodes = steps.some((step) => step.dependencies.length === 0);
-    if (!hasEntryNodes) {
-      issues.push("planning.no_entry_node");
-    }
-
-    // Check terminal nodes exist
-    const dependentIds = new Set(steps.flatMap((step) => step.dependencies));
-    const hasTerminalNodes = steps.some((step) => !dependentIds.has(step.stepId));
-    if (!hasTerminalNodes) {
-      issues.push("planning.no_terminal_node");
-    }
-
-    // Validate step-level completeness
-    for (const step of steps) {
-      if (!step.title?.trim()) {
-        issues.push(`planning.missing_title:${step.stepId}`);
-      }
-      if (step.timeout <= 0) {
-        issues.push(`planning.invalid_timeout:${step.stepId}`);
-      }
-      if (step.retryPolicy.maxRetries < 0) {
-        issues.push(`planning.invalid_retry_max:${step.stepId}`);
-      }
-    }
-
-    return {
-      valid: issues.length === 0,
-      issues,
-    };
-  }
-
-  /**
-   * §13.11: Compute risk propagation through the DAG.
-   * Identifies nodes that inherit high/critical risk from predecessors.
-   */
-  private computeRiskPropagation(
-    nodes: readonly { nodeId: string; riskClass: string }[],
-    steps: readonly PlanStep[],
-  ): GraphRiskFinding[] {
-    const findings: GraphRiskFinding[] = [];
-    const stepById = new Map(steps.map((step) => [step.stepId, step]));
-    const outgoing = new Map<string, string[]>();
-
-    for (const step of steps) {
-      outgoing.set(step.stepId, []);
-    }
-    for (const step of steps) {
-      for (const depId of step.dependencies) {
-        outgoing.get(depId)?.push(step.stepId);
-      }
-    }
-
-    for (const step of steps) {
-      const stepInputs = step.inputs as Record<string, unknown> | undefined;
-      if (stepInputs?.riskClass === "critical" || stepInputs?.riskClass === "high") {
-        const dependents = outgoing.get(step.stepId) ?? [];
-        for (const depId of dependents) {
-          const depStep = stepById.get(depId);
-          if (depStep) {
-            const depInputs = depStep.inputs as Record<string, unknown> | undefined;
-            if (!depInputs?.riskClass) {
-              findings.push({
-                nodeId: depId,
-                inheritedRiskClass: stepInputs.riskClass as "high" | "critical",
-                reasons: [`inherited_from:${step.stepId}`],
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return findings;
-  }
-
-  /**
-   * R5-1 FIX: replan() now accepts PlanGraphBundle instead of legacy Plan.
-   * Returns PlanGraphBundle with proper DAG structure per §13.7.
-   */
-  public replan(previousPlan: PlanGraphBundle, input: Omit<PlanBuilderInput, "version" | "parentVersion">): PlanGraphBundle {
-    return this.build({
-      ...input,
-      version: previousPlan.graphVersion + 1,
-      parentVersion: previousPlan.graphVersion,
+      version: previousPlan.version + 1,
+      parentVersion: previousPlan.version,
     });
   }
 }

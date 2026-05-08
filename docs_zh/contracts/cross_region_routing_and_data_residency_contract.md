@@ -33,15 +33,6 @@
 - `recovery_topology`
 - `blocked_regions`
 
-## 4.1 `ReplicationPolicy` 最小字段
-
-- `policy_id`
-- `primary_region_id`
-- `replica_region_ids`
-- `replication_mode`：`sync_quorum | async_eventual`
-- `max_replication_lag_seconds`
-- `failover_mode`：`manual | guarded_auto`
-
 ## 5. 规则
 
 - 数据驻留优先于延迟最优。

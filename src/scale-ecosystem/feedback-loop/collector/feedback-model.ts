@@ -6,9 +6,6 @@ export const FeedbackBatchOutcomeSchema = z.enum(["completed", "failed", "repair
 
 export const FeedbackBatchSchema = z.object({
   feedbackId: z.string().min(1),
-  // R26-14 FIX: canonical correlation keys are harnessRunId/nodeRunId (not taskId/executionId)
-  harnessRunId: z.string().nullable().default(null),
-  nodeRunId: z.string().nullable().default(null),
   taskId: z.string().min(1),
   executionId: z.string().nullable().default(null),
   planId: z.string().nullable().default(null),

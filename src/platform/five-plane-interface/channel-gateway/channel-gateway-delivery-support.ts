@@ -25,9 +25,9 @@ export interface DeliveryReceipt {
   messageId: string;
   channel: string;
   targetId: string;
-  status: "delivered" | "failed" | "pending_retry" | "pending";
+  status: "delivered" | "failed" | "pending_retry";
   attempts: number;
-  finalStatus: "success" | "permanent_failure" | "exhausted_retries" | undefined;
+  finalStatus: "success" | "permanent_failure" | "exhausted_retries";
   firstAttemptAt: string;
   lastAttemptAt: string;
   providerMessageId: string | null;
@@ -132,14 +132,13 @@ CREATE INDEX IF NOT EXISTS idx_gateway_dead_letters_channel ON gateway_dead_lett
 CREATE INDEX IF NOT EXISTS idx_gateway_dead_letters_first_failed ON gateway_dead_letters(first_failed_at);
 
 CREATE TABLE IF NOT EXISTS gateway_rate_limits (
-  tenant_id TEXT NOT NULL,
   channel TEXT NOT NULL,
   window_start TEXT NOT NULL,
   message_count INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (tenant_id, channel, window_start)
+  PRIMARY KEY (channel, window_start)
 );
 
-CREATE INDEX IF NOT EXISTS idx_gateway_rate_limits_tenant_channel_window ON gateway_rate_limits(tenant_id, channel, window_start);
+CREATE INDEX IF NOT EXISTS idx_gateway_rate_limits_channel_window ON gateway_rate_limits(channel, window_start);
 `;
 
 export const DEFAULT_DELIVERY_CONFIG: DeliveryGuaranteeConfig = {

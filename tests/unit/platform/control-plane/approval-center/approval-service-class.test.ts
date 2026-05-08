@@ -15,8 +15,6 @@ import type { EventTier } from "../../../../../src/platform/contracts/types/doma
 import type { ApprovalStatus } from "../../../../../src/platform/contracts/types/status.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { ControlPlaneDirectiveSink } from "../../../../../src/platform/control-plane/control-plane-directive-sink.js";
-import { initHaCoordinatorForTests, resetHaCoordinatorInstance } from "../../../../helpers/ha-coordinator.js";
 
 // ---------------------------------------------------------------------------
 // Mock Infrastructure
@@ -110,13 +108,10 @@ function createMockStore() {
 }
 
 function createMockDb() {
-  // Initialize HA coordinator for tests that use TransitionService
-  const { cleanup } = initHaCoordinatorForTests();
   return {
     transaction<T>(fn: () => T): T {
       return fn();
     },
-    _haCleanup: cleanup,
   } as unknown as AuthoritativeSqlDatabase;
 }
 
@@ -168,37 +163,6 @@ test("ApprovalService.createRequest creates request with generated ID", () => {
   assert.ok(result.createdAt);
 });
 
-test("ApprovalService.applyDecision emits canonical DecisionDirective", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const emitted: Array<{ kind: "decision"; directive: Record<string, unknown> }> = [];
-  const directiveSink: ControlPlaneDirectiveSink = {
-    emitOperationalDirective() {},
-    emitDecisionDirective(directive) {
-      emitted.push({ kind: "decision", directive: directive as unknown as Record<string, unknown> });
-    },
-  };
-  const service = new ApprovalService(db, store as any, undefined, directiveSink);
-
-  const created = service.createRequest({
-    ...createBaseRequest(),
-    harnessRunId: "hrun_123",
-    nodeRunId: "nrun_456",
-    context: { tenantId: "tenant_abc" },
-  });
-
-  // Clear directives emitted during createRequest (emitApprovalRequestDirective)
-  emitted.length = 0;
-
-  service.applyDecision(createValidDecision(created.approvalId));
-
-  assert.equal(emitted.length, 1);
-  assert.equal(emitted[0]?.directive.type, "approve");
-  assert.equal(emitted[0]?.directive.targetRef, `approval:${created.approvalId}`);
-  assert.equal(emitted[0]?.directive.scope?.harnessRunId, "hrun_123");
-  assert.equal(emitted[0]?.directive.scope?.nodeRunId, "nrun_456");
-});
-
 test("ApprovalService.createRequest sets executionId to null when not provided", () => {
   const store = createMockStore();
   const db = createMockDb();
@@ -216,7 +180,6 @@ test("ApprovalService.createRequest sets executionId to null when not provided",
   const result = service.createRequest(request);
 
   assert.strictEqual(result.executionId, null);
-  assert.strictEqual(result.harnessRunId, null);
 });
 
 test("ApprovalService.createRequest preserves executionId when provided", () => {
@@ -229,30 +192,6 @@ test("ApprovalService.createRequest preserves executionId when provided", () => 
   const result = service.createRequest(request);
 
   assert.strictEqual(result.executionId, "exec_789");
-  assert.strictEqual(result.harnessRunId, "exec_789");
-});
-
-test("ApprovalService.getApproval backfills canonical harnessRunId from legacy persisted executionId", () => {
-  const store = createMockStore();
-  const db = createMockDb();
-  const service = new ApprovalService(db, store as any);
-
-  const created = service.createRequest(createBaseRequest());
-  const persisted = store.approval.getApproval(created.approvalId);
-  assert.ok(persisted);
-
-  store.approval.updateApprovalRequest({
-    id: created.approvalId,
-    requestJson: JSON.stringify({
-      ...JSON.parse(persisted!.requestJson),
-      harnessRunId: undefined,
-      executionId: "legacy-run-123",
-    }),
-  });
-
-  const approval = service.getApproval(created.approvalId);
-  assert.equal(approval?.request.harnessRunId, "legacy-run-123");
-  assert.equal(approval?.request.executionId, "legacy-run-123");
 });
 
 test("ApprovalService.createRequest stores approval in repository", () => {

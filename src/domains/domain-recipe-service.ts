@@ -194,9 +194,6 @@ export class DomainRecipeService {
   public register(recipe: DomainRecipe): void {
     this.recipes.set(recipe.recipeId, recipe);
     this.initializeVersionHistory(recipe.recipeId);
-    if ((this.versions.get(recipe.recipeId) ?? []).length === 0) {
-      this.recordVersion(recipe.recipeId, "1.0.0", "Initial registration");
-    }
   }
 
   public getRecipe(recipeId: string): DomainRecipe | null {
@@ -228,13 +225,6 @@ export class DomainRecipeService {
       triggerPhrases: [...request.triggerPhrases],
       defaultWorkflowId: request.defaultWorkflowId,
       defaultToolBundleIds: [...(request.defaultToolBundleIds ?? [])],
-      riskLevel: "medium",
-      risk_profile_ref: `${request.domainId}.risk`,
-      guardrail_overlay: `${request.domainId}.guardrails`,
-      recommended_workflow_ids: [request.defaultWorkflowId],
-      default_prompt_bundle_ref: `${request.domainId}.prompts`,
-      acceptance_checklist_ref: `${request.domainId}.acceptance`,
-      requiredApproval: false,
     };
 
     this.recipes.set(recipe.recipeId, recipe);
@@ -326,35 +316,8 @@ export class DomainRecipeService {
       errors.push("recipe.default_workflow_id_required");
     }
 
-    if (!recipe.risk_profile_ref || recipe.risk_profile_ref.trim().length === 0) {
-      errors.push("recipe.risk_profile_ref_required");
-    }
-
-    if (!recipe.guardrail_overlay || recipe.guardrail_overlay.trim().length === 0) {
-      errors.push("recipe.guardrail_overlay_required");
-    }
-
-    if (!recipe.default_prompt_bundle_ref || recipe.default_prompt_bundle_ref.trim().length === 0) {
-      errors.push("recipe.default_prompt_bundle_ref_required");
-    }
-
-    if (!recipe.acceptance_checklist_ref || recipe.acceptance_checklist_ref.trim().length === 0) {
-      errors.push("recipe.acceptance_checklist_ref_required");
-    }
-
     if (recipe.triggerPhrases.length === 0) {
       errors.push("recipe.trigger_phrases_required");
-    }
-
-    if (!Array.isArray(recipe.recommended_workflow_ids)) {
-      errors.push("recipe.recommended_workflow_ids_required");
-    } else {
-      for (const workflowId of recipe.recommended_workflow_ids) {
-        if (workflowId.trim().length === 0) {
-          errors.push("recipe.recommended_workflow_id_invalid");
-          break;
-        }
-      }
     }
 
     for (const phrase of recipe.triggerPhrases) {
@@ -397,6 +360,6 @@ export class DomainRecipeService {
     const parts = version.split(".");
     const major = Number.parseInt(parts[0] ?? "1", 10);
     const minor = Number.parseInt(parts[1] ?? "0", 10);
-    return `${major}.${minor + 1}.0`;
+    return `${major}.${minor + 1}`;
   }
 }

@@ -25,7 +25,7 @@ class ApiError extends AppError {
 }
 
 export function readRequestId(request: ApiRequestLike): string {
-  const candidate = request.headers["x-correlation-id"] ?? request.headers["x-request-id"];
+  const candidate = request.headers["x-request-id"];
   if (typeof candidate === "string" && candidate.trim().length > 0) {
     return candidate.trim();
   }
@@ -89,17 +89,8 @@ export function readQueryParam(
   return value;
 }
 
-export function readJsonBody(body: unknown): unknown {
-  if (body == null) {
-    return {};
-  }
-  if (typeof body === "object") {
-    return body;
-  }
-  if (typeof body !== "string") {
-    throw new ApiError(400, "api.invalid_json", "Request body must be valid JSON.");
-  }
-  if (body.length === 0) {
+export function readJsonBody(body: string | null | undefined): unknown {
+  if (body == null || body.length === 0) {
     return {};
   }
   try {
@@ -173,13 +164,12 @@ export function validateTaskId(taskId: string | undefined, location: string): st
   return taskId;
 }
 
-export function buildJsonResponse(requestId: string, statusCode: number, payload: unknown, traceId?: string): ApiResponsePayload {
+export function buildJsonResponse(requestId: string, statusCode: number, payload: unknown): ApiResponsePayload {
   return {
     statusCode,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-request-id": requestId,
-      ...(traceId ? { "x-trace-id": traceId } : {}),
     },
       body: JSON.stringify({ requestId, data: payload }, null, 2),
   };
@@ -191,22 +181,14 @@ export function buildJsonErrorResponse(
   error: {
     code: string;
     message: string;
-    traceId?: string | null;
-    details?: Record<string, unknown> | null;
   },
-  traceIdHeader?: string | null,
 ): ApiResponsePayload {
-  const headers: Record<string, string> = {
-    "content-type": "application/json; charset=utf-8",
-    "x-request-id": requestId,
-  };
-  // R25-04 FIX: Include traceId in response header per §7 standardized error format
-  if (traceIdHeader) {
-    headers["x-trace-id"] = traceIdHeader;
-  }
   return {
     statusCode,
-    headers,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "x-request-id": requestId,
+    },
     body: JSON.stringify({ requestId, error }, null, 2),
   };
 }

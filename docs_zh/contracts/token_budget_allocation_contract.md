@@ -36,7 +36,7 @@
 - OAPEFLIR 各 stage 的 budget 必须可单独观测，至少覆盖 `observe / assess / plan / execute / feedback / learn / improve / release`。
 - knowledge retrieval 若启用，必须单独受 `per_knowledge_retrieval_budget` 限制，不能隐式吞掉 execute 或 feedback 预算。
 - KV cache 的 fixed prefix / domain block / variable suffix 必须拆分预算，不能把全部上下文当成一个可任意挤压的桶。
-- Improve / Release 阶段若需要额外评估或 release 试跑，必须从独立 stage budget 扣减，而不是回写 execute 阶段成本。
+- Improve / Release 阶段若需要额外评估或 rollout 试跑，必须从独立 stage budget 扣减，而不是回写 execute 阶段成本。
 
 ## 4A. 与 `BudgetReservation` 状态机的绑定
 

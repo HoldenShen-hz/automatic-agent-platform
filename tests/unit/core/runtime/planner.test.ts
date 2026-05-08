@@ -18,23 +18,6 @@ import {
   safeParseToolResult,
 } from "../../../../src/core/runtime/planner/index.js";
 
-// Mock BudgetLedger for tests
-const mockBudgetLedger = {
-  budgetLedgerId: "test-ledger-1",
-  tenantId: "test-tenant",
-  harnessRunId: "test-harness-1",
-  currency: "USD",
-  hardCap: 1000,
-  softCap: 800,
-  reservedAmount: 0,
-  settledAmount: 0,
-  releasedAmount: 0,
-  status: "open" as const,
-  version: 1,
-};
-
-const mockHarnessRunId = "test-harness-1";
-
 test("parseOptionalPositiveInteger returns value for valid positive integers", () => {
   assert.equal(parseOptionalPositiveInteger(1), 1);
   assert.equal(parseOptionalPositiveInteger(42), 42);
@@ -192,8 +175,6 @@ test("fallbackStepOutput handles intake_triage step", () => {
     request: "Analyze this request",
     priorSummaries: [],
     routingReason: "initial_intake",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("triage") || result.summary.includes("intake"));
@@ -207,8 +188,6 @@ test("fallbackStepOutput handles draft_solution step", () => {
     request: "Create a solution",
     priorSummaries: ["Prior step 1 completed"],
     routingReason: "triage_complete",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("draft") || result.summary.includes("solution"));
@@ -222,8 +201,6 @@ test("fallbackStepOutput handles final_review step", () => {
     request: "Review the output",
     priorSummaries: ["Step 1", "Step 2"],
     routingReason: "review_requested",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("review") || result.summary.includes("final"));
@@ -237,8 +214,6 @@ test("fallbackStepOutput handles unknown step type", () => {
     request: "Custom request",
     priorSummaries: [],
     routingReason: "custom",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("custom_step"));
@@ -252,8 +227,6 @@ test("fallbackStepOutput returns correct structure", () => {
     request: "Test",
     priorSummaries: [],
     routingReason: "test",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(typeof result.summary === "string");
@@ -271,8 +244,6 @@ test("buildStepOutput returns expected structure", async () => {
     request: "Test request",
     priorSummaries: [],
     routingReason: "testing",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = await buildStepOutput(input);
   assert.ok(typeof result.summary === "string");
@@ -287,8 +258,6 @@ test("executeAgentRoundLoop returns fallback when no model provider", async () =
     priorSummaries: [],
     routingReason: "test",
     maxIterations: 1,
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = await executeAgentRoundLoop(input);
   assert.equal(result.finishReason, "stop");
@@ -305,8 +274,6 @@ test("executeAgentRoundLoop with explicit tools parameter", async () => {
     routingReason: "testing",
     tools: [],
     maxIterations: 1,
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = await executeAgentRoundLoop(input);
   assert.ok(result !== null);
@@ -320,8 +287,6 @@ test("executeAgentRoundLoop maxIterations defaults to 10", async () => {
     request: "Test",
     priorSummaries: [],
     routingReason: "test",
-    harnessRunId: mockHarnessRunId,
-    budgetLedger: mockBudgetLedger,
   };
   const result = await executeAgentRoundLoop(input);
   assert.equal(result.iterations, 0);

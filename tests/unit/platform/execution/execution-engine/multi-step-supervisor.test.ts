@@ -42,56 +42,7 @@ import {
   executeStepLoop,
   type StepSupervisorContext,
 } from "../../../../../src/platform/execution/execution-engine/multi-step-supervisor.js";
-import type { PlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
-
-function createMockPlanGraphBundle(overrides: Partial<PlanGraphBundle> = {}): PlanGraphBundle {
-  const now = Date.now();
-  return {
-    harnessRunId: "test-hrun-001",
-    planGraphBundleId: "bundle-001",
-    graphVersion: 1,
-    createdAt: now - 60000,
-    graph: {
-      graphId: "graph-001",
-      nodes: [
-        {
-          nodeId: "step_1",
-          nodeType: "tool",
-          inputRefs: [],
-          outputSchemaRef: "schema_1",
-          riskClass: "low",
-          budgetIntent: { amount: 100, currency: "USD", resourceKinds: ["token"] },
-          sideEffectProfile: { mayCommitExternalEffect: false, reversible: false },
-          retryPolicyRef: "retry_1",
-          timeoutMs: 30000,
-        },
-        {
-          nodeId: "step_2",
-          nodeType: "tool",
-          inputRefs: ["output_1"],
-          outputSchemaRef: "schema_2",
-          riskClass: "low",
-          budgetIntent: { amount: 100, currency: "USD", resourceKinds: ["token"] },
-          sideEffectProfile: { mayCommitExternalEffect: false, reversible: false },
-          retryPolicyRef: "retry_2",
-          timeoutMs: 30000,
-        },
-      ],
-      edges: [{ edgeId: "edge_1", fromNodeId: "step_1", toNodeId: "step_2", condition: true, dependencyType: "hard" }],
-      entryNodeIds: ["step_1"],
-      terminalNodeIds: ["step_2"],
-      joinStrategy: "all",
-      graphHash: "hash_test",
-    },
-    schedulerPolicy: { policyId: "policy_001", strategy: "priority_then_fifo" },
-    budgetPlanRef: "budget-001",
-    riskProfile: { riskClass: "medium" as const, riskScore: 0.5 },
-    validationReport: { valid: true, findings: [] },
-    artifactRefs: [],
-    ...overrides,
-  } as PlanGraphBundle;
-}
 
 // =============================================================================
 // Mock Dependencies Factory
@@ -313,7 +264,6 @@ function createMockStepSupervisorContext(overrides: Partial<StepSupervisorContex
       classification: { intent: "query", continuation: "new_task", confidence: 0.8, matchedRules: [] },
     },
     plannedWorkflow: createMockPlannedWorkflow(),
-    validatedPlanGraphBundle: createMockPlanGraphBundle(),
     outputs: {},
     stepOutputs: [],
     toolExposureService: createMockRoleToolExposureService(),
@@ -334,19 +284,6 @@ function createMockInput(overrides: Partial<MultiStepToolExecutionInput> = {}): 
     dbPath: "/tmp/test.db",
     title: "Test Multi-Step",
     request: "Test request",
-    budgetLedger: {
-      budgetLedgerId: "bl_test_001",
-      tenantId: "tenant_test",
-      harnessRunId: "test-hrun-001",
-      currency: "USD",
-      hardCap: 10000,
-      softCap: 8000,
-      reservedAmount: 0,
-      settledAmount: 0,
-      releasedAmount: 0,
-      status: "open" as const,
-      version: 1,
-    },
     ...overrides,
   } as MultiStepToolExecutionInput;
 }

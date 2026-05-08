@@ -28,19 +28,17 @@
 
 `SideEffectStatus`：
 
-- `proposed` — 副作用已声明，等待 budget reservation
-- `reserved` — budget 已预留，待 commit
-- `claimed` — 已抢占执行窗口（§14.11）
-- `executing` — 执行中
-- `awaiting_confirmation` — 等待外部确认（§14.11）
-- `confirmed` — 已确认完成
-- `ambiguous` — 外部状态不确定
-- `reconciling` — 对账中
-- `compensating` — 补偿中
-- `compensated` — 补偿完成
-- `failed` — 执行失败
-- `revoked` — 已撤销
-- `expired` — 已过期
+- `proposed`
+- `reserved`
+- `committing`
+- `confirmed`
+- `ambiguous`
+- `reconciling`
+- `compensating`
+- `compensated`
+- `failed`
+- `revoked`
+- `expired`
 
 ## 3. ReconciliationRecord
 

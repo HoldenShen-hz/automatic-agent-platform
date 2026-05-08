@@ -22,7 +22,7 @@
 
 ## 背景
 
-v4.3 `§39-§40` 要求平台面向最终用户提供自然语言入口和目标分解引擎。仓库已存在：
+v2.7 `§39-§40` 要求平台面向最终用户提供自然语言入口和目标分解引擎。仓库已存在：
 
 - `src/interaction/nl-gateway`
 - `src/interaction/goal-decomposer`

@@ -68,9 +68,10 @@ interface StructuredLog {
 
 ### Trace span 层级
 
-- span 语义应按 `service -> operation -> node_run -> node_attempt` 组织（v4.3 §5.5 废弃 step 术语）
+- span 语义应按 `service -> operation -> node_run -> node_attempt` 组织，旧 `step` 术语仅允许出现在兼容投影视图中。
+
 - OTel SDK 实现分布式追踪
-- span 层级：service → operation → node_run → node_attempt
+- span 层级：service → operation → step
 
 ## 后果
 
@@ -92,9 +93,4 @@ interface StructuredLog {
 
 ## 来源章节
 
-注：v4.3 迁移后，原 §12 异常事件处理章节已拆分到可观测性与事件模型相关章节。
-
-v4.3 有效引用：
-- `§28` EventEnvelope 与事件事实面
-- `§59` Explainability / StageRationale / Trace 语义
-- `§63` 观测与告警
+- `§12` 异常事件处理架构

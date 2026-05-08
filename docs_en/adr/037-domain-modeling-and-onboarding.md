@@ -5,7 +5,7 @@
 
 ## Context
 
-Different business domains (finance, HR, customer service, code development, etc.) vary greatly in risk level, knowledge structure, tool ecosystem, and evaluation criteria. The platform needs a structured domain modeling framework.
+Different business domains (finance, HR, customer service, code development, etc.) have huge differences in risk levels, knowledge structures, tool ecosystems, and evaluation standards. The platform needs a structured domain modeling framework.
 
 ## Decision
 
@@ -34,30 +34,30 @@ interface DomainDescriptor {
 
 | Type | Description |
 |------|-------------|
-| quant_trading | Quantitative trading |
+| quant_trading | Quantitative Trading |
 | ecommerce | E-commerce |
-| ad_promotion | Advertising promotion |
-| financial_services | Financial services |
-| data_processing | Data processing |
-| code_development | Code development |
-| user_operations | User operations |
-| industry_research | Industry research |
-| academic_research | Academic research |
-| enterprise_knowledge | Enterprise knowledge base |
+| ad_promotion | Advertising Promotion |
+| financial_services | Financial Services |
+| data_processing | Data Processing |
+| code_development | Code Development |
+| user_operations | User Operations |
+| industry_research | Industry Research |
+| academic_research | Academic Research |
+| enterprise_knowledge | Enterprise Knowledge Base |
 | finance | Finance |
 | legal | Legal |
-| live_streaming | Live streaming |
-| ad_creative_production | Ad creative production |
-| game_development | Game development |
-| game_publishing | Game publishing |
-| human_resources | Human resources |
-| supply_chain_logistics | Supply chain and logistics |
+| live_streaming | Live Streaming |
+| ad_creative_production | Ad Creative Production |
+| game_development | Game Development |
+| game_publishing | Game Publishing |
+| human_resources | Human Resources |
+| supply_chain_logistics | Supply Chain and Logistics |
 | healthcare | Healthcare |
-| education_training | Education and training |
-| customer_service | Customer service |
-| content_moderation_safety | Content moderation and safety |
-| it_ops_sre_devops | IT Ops SRE/DevOps |
-| marketing_brand | Marketing and brand |
+| education_training | Education and Training |
+| customer_service | Customer Service |
+| content_moderation_safety | Content Moderation and Safety |
+| it_ops_sre_devops | IT Operations SRE/DevOps |
+| marketing_brand | Marketing and Brand |
 
 ### Domain Risk Profile
 
@@ -81,31 +81,29 @@ interface DomainDescriptor {
 
 ### CLI Commands
 
-- `domain init` - initialize
-- `domain validate` - validate
+- `domain init` - Initialize
+- `domain validate` - Validate
 
 ## Consequences
 
-Pros:
-
-- Structured modeling enables the platform to understand domain differences
+Positive:
+- Structured modeling enables platform to understand domain differences
 - Override mechanism supports customization
 - CLI tools simplify onboarding
 
-Cons:
-
-- DomainDescriptor has high complexity
-- Domain modeling requires domain expert participation
+Negative:
+- DomainDescriptor complexity is high
+- Domain modeling requires domain expert involvement
 
 ## v4.3 ADR Remediation
 
-- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. Root cause: when the domain modeling ADR was formed, it still leaned towards product market segmentation, and did not expand as the main architecture took 24 vertical domains as the unified metamodel instantiation entry point. Fix: The text now converges `DomainClass` to 24 vertical domain types, aligned with the main architecture `§71-§94` domain directory.
+- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture `§71-§94`.
 
-## Cross-references
+## Cross-References
 
 - [ADR-030 Runtime Execution Plane](./030-runtime-execution-plane.md)
 - [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
 
-## Source Section
+## Source Sections
 
 - `§37` Business Domain Modeling and Onboarding Architecture

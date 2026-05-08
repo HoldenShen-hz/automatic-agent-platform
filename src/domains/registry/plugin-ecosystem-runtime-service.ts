@@ -86,7 +86,6 @@ export class PluginEcosystemRuntimeService {
         findings.push(`connector not prod-ready: ${target.connectorId}`);
       }
     }
-    const allPluginsHealthy = pluginTargets.every((target) => target.healthy);
     return {
       planId: newId("ecosystem_plan"),
       domainId: input.domainId,
@@ -94,7 +93,7 @@ export class PluginEcosystemRuntimeService {
       environment: input.environment,
       pluginTargets,
       connectorTargets,
-      ready: findings.length === 0 && allPluginsHealthy && domain.status === "active",
+      ready: findings.length === 0 && domain.status === "active",
       findings,
     };
   }
@@ -106,15 +105,7 @@ export class PluginEcosystemRuntimeService {
     connectorIds?: readonly string[];
     autoBindConnectors?: boolean;
   }): Promise<EcosystemRuntimeActivation> {
-    // §198-2308: buildPlan called once - store result and use throughout activation
-    const plan = this.buildPlan({
-      domainId: input.domainId,
-      tenantId: input.tenantId,
-      environment: input.environment,
-      ...(input.connectorIds !== undefined ? { connectorIds: input.connectorIds } : {}),
-    });
-    // §198-2309: Check plugin lifecycle states - plugins not in "active" or "validated" are not ready
-    // Root cause: registered/loading/inactive/unloaded plugins were being treated as ready
+    const plan = this.buildPlan(input);
     const activatedPluginIds: string[] = [];
     for (const binding of this.domains.getPluginBindings(input.domainId)) {
       await this.plugins.ensureActive(binding.pluginId, {
@@ -140,7 +131,7 @@ export class PluginEcosystemRuntimeService {
     }
     return {
       activationId: newId("ecosystem_activation"),
-      plan,
+      plan: this.buildPlan(input),
       activatedPluginIds,
       connectorBindings,
     };
@@ -157,9 +148,7 @@ function toPluginTarget(
     pluginId,
     pluginType,
     lifecycleState: record?.lifecycleState ?? "missing",
-    // §198-2309: Only fully active plugins count as runtime-ready.
-    // registered/loading/inactive/unloaded/suspended all fail the readiness gate.
-    healthy: record != null && record.lifecycleState === "active",
+    healthy: record != null && record.lifecycleState !== "disabled" && record.lifecycleState !== "degraded",
     runtimeIsolation: record?.manifest.sandbox.runtimeIsolation ?? "unknown",
     domainId,
   };

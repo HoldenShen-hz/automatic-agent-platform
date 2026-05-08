@@ -119,8 +119,6 @@ function seedExecution(
       attempt: input.attempt ?? 1,
       timeoutMs: 1_500,
       budgetUsdLimit: 1,
-      budgetReservationId: null,
-      budgetLedgerId: null,
       requiresApproval: input.requiresApproval ?? 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["analysis"]),
@@ -163,7 +161,7 @@ function seedExecution(
   });
 }
 
-async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
+function seedCrossDivisionRecoveryDataset(dbPath: string): void {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
@@ -238,7 +236,7 @@ async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
   });
 
   const decisions = new RuntimeRecoveryDecisionService(db, store);
-  await decisions.apply("exec-engineering-dead-letter-drill", "stable_cross_division_recovery_drill");
+  decisions.apply("exec-engineering-dead-letter-drill", "stable_cross_division_recovery_drill");
 
   db.close();
 }
@@ -249,7 +247,7 @@ async function runCrossDivisionOverviewScenario(
   return measureScenario("cross_division_overview", async () => {
     const dbPath = join(outputDir, "cross-division-overview.db");
     rmSync(dbPath, { force: true });
-    await seedCrossDivisionRecoveryDataset(dbPath);
+    seedCrossDivisionRecoveryDataset(dbPath);
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);
@@ -294,7 +292,7 @@ async function runCrossDivisionReplayScenario(
   return measureScenario("cross_division_replay_matrix", async () => {
     const dbPath = join(outputDir, "cross-division-replay.db");
     rmSync(dbPath, { force: true });
-    await seedCrossDivisionRecoveryDataset(dbPath);
+    seedCrossDivisionRecoveryDataset(dbPath);
 
     const db = new SqliteDatabase(dbPath);
     const store = new AuthoritativeTaskStore(db);

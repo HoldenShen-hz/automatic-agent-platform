@@ -18,12 +18,6 @@ export interface WorkbenchOperatorAction {
   readonly requiredRole: "viewer" | "operator" | "admin";
 }
 
-export const WORKBENCH_VIEW_ROUTE_PATTERN = /^\/workbench\/[a-z0-9-]+$/;
-
-export function isWorkbenchViewRoute(route: string): boolean {
-  return WORKBENCH_VIEW_ROUTE_PATTERN.test(route);
-}
-
 export interface PlatformWorkbenchSnapshot {
   readonly generatedAt: string;
   readonly onboarding: GuidedOnboardingSession | null;
@@ -79,28 +73,24 @@ export class PlatformWorkbenchSnapshotService {
 
 function defaultOperatorActions(attentionQueue: readonly AttentionItem[]): readonly WorkbenchOperatorAction[] {
   const hasCriticalAttention = attentionQueue.some((item) => item.priority === "critical");
-  const actions = [
+  return [
     {
       actionId: "open_approvals",
       label: "Open Approval Queue",
-      route: "/workbench/approvals",
+      route: "/console/approvals",
       requiredRole: "viewer",
     },
     {
       actionId: "open_stability",
       label: "Open Stability Panel",
-      route: "/workbench/stability",
+      route: "/console/stability",
       requiredRole: "operator",
     },
     {
       actionId: hasCriticalAttention ? "open_takeover_console" : "open_task_board",
       label: hasCriticalAttention ? "Open Takeover Console" : "Open Task Board",
-      route: hasCriticalAttention ? "/workbench/takeover" : "/workbench/tasks",
+      route: hasCriticalAttention ? "/console/admin/tasks" : "/console",
       requiredRole: hasCriticalAttention ? "admin" : "operator",
     },
-  ] as const satisfies WorkbenchOperatorAction[];
-  if (actions.some((action) => !isWorkbenchViewRoute(action.route))) {
-    throw new Error("workbench.invalid_view_route");
-  }
-  return actions;
+  ];
 }

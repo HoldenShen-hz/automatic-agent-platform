@@ -154,7 +154,7 @@ export class KnowledgeIngestionPipeline {
       namespace: input.namespace,
       language: input.language ?? null,
       tags: [...(input.tags ?? [])],
-      trustLevel: input.trustLevel ?? "private_unverified",
+      trustLevel: input.trustLevel ?? "community",
       freshnessTimestamp: timestamp,
       checksum: contentHash,
       chunking: input.chunking,
@@ -166,9 +166,7 @@ export class KnowledgeIngestionPipeline {
       version: 1,
       tags: [...(input.tags ?? [])],
       domainScope: [input.namespace.split("/")[0] ?? "shared"],
-      // R5-45 FIX: Per spec quarantine+promotion lifecycle, start in draft state.
-      // A separate promotion step (verification/approval) is required to move to "indexed".
-      status: "draft",
+      status: "indexed",
       namespace: input.namespace,
       mimeType: "text/plain",
       rawText: input.body,
@@ -219,18 +217,9 @@ export class KnowledgeIngestionPipeline {
   }
 
   private createChunks(body: string, chunking?: ChunkingConfig): Array<{ content: string; section?: string }> {
-    if (!chunking) {
+    if (!chunking || chunking.mode === "fixed" || chunking.mode === "semantic") {
       return chunkFixed(body).map((content) => ({ content }));
     }
-    if (chunking.mode === "fixed") {
-      return chunkFixed(body).map((content) => ({ content }));
-    }
-    if (chunking.mode === "semantic") {
-      // Semantic chunking requires a dedicated implementation; fall back to section-aware
-      // which provides reasonable semantic boundaries via heading detection
-      return chunkSectionAware(body);
-    }
-    // section-aware is the default for unknown modes
     return chunkSectionAware(body);
   }
 }

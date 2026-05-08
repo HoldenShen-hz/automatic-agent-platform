@@ -1,9 +1,4 @@
-/**
- * Unit tests for BillingServiceAsync
- *
- * @see src/scale-ecosystem/billing/billing-service-async.ts
- */
-
+// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -117,7 +112,7 @@ function createMockStore() {
     },
     task: {
       getTask: () => null,
-      insertTask: (task) => {},
+      insertTask: (task) => { },
     },
     artifact: {
       insertArtifact: (record) => artifacts.push(record),
@@ -125,15 +120,15 @@ function createMockStore() {
   };
 }
 
-function createMockDb(): AuthoritativeSqlDatabase {
+function createMockDb() {
   return {
     transaction: (fn) => fn(),
     filePath: "/tmp/test.db",
-  } as unknown as AuthoritativeSqlDatabase;
+  };
 }
 
 test("BillingServiceAsync createAccount returns Promise", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -150,7 +145,7 @@ test("BillingServiceAsync createAccount returns Promise", async () => {
 });
 
 test("BillingServiceAsync createAccount with custom id", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -165,7 +160,7 @@ test("BillingServiceAsync createAccount with custom id", async () => {
 });
 
 test("BillingServiceAsync evaluateEntitlement returns Promise", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -183,7 +178,7 @@ test("BillingServiceAsync evaluateEntitlement returns Promise", async () => {
 });
 
 test("BillingServiceAsync evaluateEntitlement denies feature not in plan", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -198,7 +193,7 @@ test("BillingServiceAsync evaluateEntitlement denies feature not in plan", async
 });
 
 test("BillingServiceAsync recordUsage returns Promise", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -219,7 +214,7 @@ test("BillingServiceAsync recordUsage returns Promise", async () => {
 });
 
 test("BillingServiceAsync recordUsage accumulates quota", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -243,7 +238,7 @@ test("BillingServiceAsync recordUsage accumulates quota", async () => {
 });
 
 test("BillingServiceAsync evaluateEntitlement with metric quota check", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -262,7 +257,7 @@ test("BillingServiceAsync evaluateEntitlement with metric quota check", async ()
 });
 
 test("BillingServiceAsync multiple operations in sequence", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -298,7 +293,7 @@ test("BillingServiceAsync multiple operations in sequence", async () => {
 });
 
 test("BillingServiceAsync throws for non-existent account", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 
@@ -311,7 +306,7 @@ test("BillingServiceAsync throws for non-existent account", async () => {
 });
 
 test("BillingServiceAsync createAccount with optional fields", async () => {
-  const store = createMockStore() as unknown as AuthoritativeTaskStore;
+  const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
 

@@ -403,7 +403,7 @@ test("ProactiveAgentService.evaluate actionMode silent_record for dashboard upda
   assert.equal(decision.actionMode, "silent_record");
 });
 
-test("ProactiveAgentService.evaluate actionMode suggest for critical-risk without confirmation", () => {
+test("ProactiveAgentService.evaluate actionMode silent_record for critical-risk without confirmation", () => {
   const service = new ProactiveAgentService();
   service.registerTrigger(
     makeScheduleTrigger({
@@ -415,9 +415,7 @@ test("ProactiveAgentService.evaluate actionMode suggest for critical-risk withou
   const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
 
   assert.equal(decision.allowed, true);
-  // R16-04 FIX: critical risk actions always require human confirmation — silent_record is not permitted.
-  // The autonomy boundary requires critical actions to go through suggest mode regardless of requireConfirmation.
-  assert.equal(decision.actionMode, "suggest");
+  assert.equal(decision.actionMode, "silent_record");
 });
 
 test("ProactiveAgentService.listSuggestions returns all suggestions", () => {

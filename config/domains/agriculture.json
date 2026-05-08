@@ -3,11 +3,6 @@
   "phase": "9f",
   "divisionId": "operations",
   "latencyTier": "business_day",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "agriculture.primary",
     "rollout": "baseline"

@@ -204,9 +204,8 @@ export class DekStore {
       replacedMetadata.replacesDekId = dekId;
     }
 
-    // R16-36 FIX #2086: Do NOT delete key from memory when marking as rotated.
-    // Rotated DEKs must remain usable for decrypting existing data.
-    // Only destroy() should delete the key.
+    // Remove key from memory when rotated (but keep metadata for decryption of old data)
+    this.keys.delete(dekId);
 
     logger.log({
       level: "info",
@@ -384,9 +383,7 @@ export class DekManager {
     return {
       ciphertext,
       dekId: dek.dekId,
-      // §179-2094: Return the actual IV used for encryption, not the stale DEK metadata IV.
-      // The DEK metadata IV (dek.iv) may be outdated after key rotation; use the fresh IV.
-      iv: iv.toString("hex"),
+      iv: dek.iv,
     };
   }
 
@@ -394,15 +391,6 @@ export class DekManager {
    * Decrypts data using the specified DEK.
    */
   public async decrypt(dekId: string, ciphertext: string): Promise<string> {
-    const parts = ciphertext.split(":");
-    if (parts.length !== 3) {
-      throw new AppError("dek.invalid_ciphertext", "Invalid ciphertext format", {
-        statusCode: 400,
-        category: "validation",
-        source: "internal",
-      });
-    }
-
     const metadata = await this.store.getMetadata(dekId);
     if (!metadata) {
       throw new AppError("dek.not_found", `DEK ${dekId} not found`, {
@@ -426,6 +414,15 @@ export class DekManager {
       throw new AppError("dek.key_unavailable", `Key for DEK ${dekId} is not available`, {
         statusCode: 500,
         category: "storage",
+        source: "internal",
+      });
+    }
+
+    const parts = ciphertext.split(":");
+    if (parts.length !== 3) {
+      throw new AppError("dek.invalid_ciphertext", "Invalid ciphertext format", {
+        statusCode: 400,
+        category: "validation",
         source: "internal",
       });
     }

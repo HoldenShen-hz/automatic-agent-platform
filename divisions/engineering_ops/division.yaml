@@ -1,8 +1,8 @@
 id: engineering_ops
 version: 1
-name: Coding Division
-description: Software change delivery, code implementation, bug fixes, code review, and CI/CD integration.
-priority: 60
+name: Engineering Operations
+description: Handles software implementation, fixes, and code review workflows.
+priority: 50
 default_workflow: engineering_single_agent_minimal
 orchestration_workflow: engineering_multi_step_delivery
 triggers:
@@ -12,50 +12,6 @@ triggers:
   - fix
   - bug
   - refactor
-  - PR
-  - merge
-# §37: DomainDescriptor - Coding vertical business domain
-domain_descriptor:
-  domainId: coding
-  ownerOrgNodeId: org.eng
-  primaryEntities:
-    - code
-    - patches
-    - reviews
-    - commits
-    - pull_requests
-  recipeArchetype: crud_heavy
-  lifecycleState: active
-# §37: DomainRiskProfile - Coding risk classification
-risk_profile:
-  profileId: coding.risk
-  domainId: coding
-  riskLevel: high
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: unregulated
-# §37: DomainEvalSpec - Coding evaluation framework
-eval_spec:
-  domainId: coding
-  evalBaselines:
-    - code_quality
-    - test_pass_rate
-    - regression_rate
-  criticalCases:
-    - regression
-    - security_vulnerability
-    - broken_build
-    - failed_tests
-  acceptanceThresholds:
-    code_quality: 90
-    test_pass_rate: 95
-    regression_rate: 95
-  adversarialScenarios:
-    - edge_case_bug
-    - security_exploit
-    - dependency_conflict
-    - malicious_code
 roles:
   - id: engineer
     name: Engineer

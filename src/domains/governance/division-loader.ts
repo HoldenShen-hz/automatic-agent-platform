@@ -91,7 +91,7 @@ export interface LoadedDivisionDefinition {
   triggers: string[];
   /** ID of the default workflow for this division */
   defaultWorkflowId: string;
-  /** ID of the orchestration workflow (if any) for this division */
+  /** ID of the orchestration workflow (if any) for multi-step requests */
   orchestrationWorkflowId: string | null;
   /** All roles defined in this division */
   roles: DivisionRoleDefinition[];
@@ -99,72 +99,7 @@ export interface LoadedDivisionDefinition {
   workflows: MinimalWorkflowDefinition[];
   /** Absolute filesystem path to the division's root directory */
   rootPath: string;
-  /** R19-15: Resource quotas for this division */
-  quotas?: readonly DivisionResourceQuota[];
-  // §37: DomainDescriptor structured hierarchy
-  /** Domain descriptor containing core domain information */
-  domainDescriptor?: DomainDescriptor;
-  /** Risk profile for this domain */
-  riskProfile?: DomainRiskProfile;
-  /** Evaluation specification for this domain */
-  evalSpec?: DomainEvalSpec;
 }
-
-/**
- * §37: DomainDescriptor - Core domain information per vertical business domain.
- */
-export interface DomainDescriptor {
-  /** Unique domain identifier */
-  domainId: string;
-  /** Owner organization node ID */
-  ownerOrgNodeId: string;
-  /** Primary entities this domain operates on */
-  primaryEntities: string[];
-  /** Recipe archetype for this domain */
-  recipeArchetype: string;
-  /** Lifecycle state */
-  lifecycleState: DomainLifecycleState;
-}
-
-/**
- * §37: DomainRiskProfile - Risk classification for this domain.
- */
-export interface DomainRiskProfile {
-  /** Profile identifier */
-  profileId: string;
-  /** Associated domain ID */
-  domainId: string;
-  /** Risk classification level */
-  riskLevel: DomainRiskLevel;
-  /** Whether this domain is advisory only */
-  advisoryOnly: boolean;
-  /** Whether human accountability is required */
-  humanAccountable: boolean;
-  /** Whether only deterministic hot path is allowed */
-  deterministicHotPathOnly: boolean;
-  /** Regulatory classification */
-  regulatoryClass: string;
-}
-
-/**
- * §37: DomainEvalSpec - Evaluation specifications for this domain.
- */
-export interface DomainEvalSpec {
-  /** Domain identifier */
-  domainId: string;
-  /** Evaluation baselines */
-  evalBaselines: string[];
-  /** Critical cases requiring special handling */
-  criticalCases: string[];
-  /** Acceptance thresholds for metrics */
-  acceptanceThresholds: Record<string, number>;
-  /** Adversarial scenarios to test */
-  adversarialScenarios: string[];
-}
-
-type DomainLifecycleState = "draft" | "validating" | "testing" | "certified" | "registered" | "canary" | "active" | "deprecated" | "retired" | "archived" | "updating" | "validated";
-
-type DomainRiskLevel = "low" | "medium" | "high" | "critical";
 
 /**
  * Registry containing all loaded divisions and their associated workflows.
@@ -178,33 +113,6 @@ export interface DivisionRegistry {
 }
 
 /**
- * R19-15: Resource quota constraints for a division.
- */
-export interface DivisionResourceQuota {
-  /** Quota ID */
-  readonly quotaId: string;
-  /** Division this quota applies to */
-  readonly divisionId: string;
-  /** Type of resource being quota'd */
-  readonly resourceType: "cpu" | "memory" | "concurrent_tasks" | "storage" | "api_calls";
-  /** Maximum allowed value */
-  readonly maxValue: number;
-  /** Current usage (tracked by runtime) */
-  readonly currentUsage: number;
-  /** Warning threshold (percentage) */
-  readonly warningThreshold: number;
-}
-
-/**
- * R19-15: Result of resource quota resolution.
- */
-export interface ResourceQuotaResolutionResult {
-  readonly resolved: boolean;
-  readonly quotas: readonly DivisionResourceQuota[];
-  readonly violations: readonly string[];
-}
-
-/**
  * Configuration options for the DivisionLoader.
  */
 export interface DivisionLoaderOptions {
@@ -214,8 +122,6 @@ export interface DivisionLoaderOptions {
   sandboxPolicy?: SandboxPolicy;
   /** Enables workflows whose steps execute across multiple divisions. Defaults to false. */
   allowCrossDivisionDag?: boolean;
-  /** Enable resource quota validation. Defaults to true. */
-  enableResourceQuotaValidation?: boolean;
 }
 
 export interface ConfiguredDivisionRegistryOptions extends DivisionLoaderOptions {
@@ -253,7 +159,6 @@ export class DivisionLoader {
   private readonly divisionsRoot: string;
   private readonly sandboxPolicy: SandboxPolicy;
   private readonly allowCrossDivisionDag: boolean;
-  private readonly enableResourceQuotaValidation: boolean;
 
   /**
    * Creates a new division loader instance.
@@ -265,166 +170,6 @@ export class DivisionLoader {
     // Default policy should encompass the resolved divisions root, even when running from dist/.
     this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(resolve(this.divisionsRoot, ".."));
     this.allowCrossDivisionDag = options.allowCrossDivisionDag ?? false;
-    this.enableResourceQuotaValidation = options.enableResourceQuotaValidation ?? true;
-  }
-
-  /**
-   * R19-15: Resolves resource quotas for a division.
-   *
-   * This method validates and resolves resource quotas based on:
-   * - Division's defined quotas
-   * - Role requirements
-   * - Workflow step requirements
-   * - Global limits from platform configuration
-   */
-  public resolveResourceQuotas(division: LoadedDivisionDefinition): ResourceQuotaResolutionResult {
-    const violations: string[] = [];
-
-    // Default quotas that apply to all divisions
-    const defaultQuotas: readonly DivisionResourceQuota[] = [
-      {
-        quotaId: `quota_${division.id}_concurrent_tasks`,
-        divisionId: division.id,
-        resourceType: "concurrent_tasks",
-        maxValue: 100,
-        currentUsage: 0,
-        warningThreshold: 80,
-      },
-      {
-        quotaId: `quota_${division.id}_storage`,
-        divisionId: division.id,
-        resourceType: "storage",
-        maxValue: 10 * 1024 * 1024 * 1024, // 10 GB
-        currentUsage: 0,
-        warningThreshold: 80,
-      },
-    ];
-
-    // Calculate quotas based on role requirements
-    const roleBasedQuotas = this.calculateRoleResourceQuotas(division);
-
-    // Calculate quotas based on workflow requirements
-    const workflowBasedQuotas = this.calculateWorkflowResourceQuotas(division);
-
-    // Combine all quotas, with division-specific quotas taking precedence
-    const allQuotas = this.mergeQuotas([...defaultQuotas, ...roleBasedQuotas, ...workflowBasedQuotas, ...(division.quotas ?? [])]);
-
-    // Validate quotas don't exceed platform limits
-    const validatedQuotas = this.validateQuotaLimits(allQuotas, violations);
-
-    return {
-      resolved: violations.length === 0,
-      quotas: validatedQuotas,
-      violations,
-    };
-  }
-
-  private calculateRoleResourceQuotas(division: LoadedDivisionDefinition): DivisionResourceQuota[] {
-    const quotas: DivisionResourceQuota[] = [];
-    const roleCount = division.roles.length;
-
-    // Calculate concurrent task quota based on role count and maxInstances
-    let maxConcurrentTasks = 0;
-    for (const role of division.roles) {
-      const instances = role.maxInstances ?? 1;
-      maxConcurrentTasks += instances;
-    }
-
-    // Add a buffer for dynamic role spawning
-    maxConcurrentTasks = Math.ceil(maxConcurrentTasks * 1.2);
-
-    quotas.push({
-      quotaId: `quota_${division.id}_role_concurrent_tasks`,
-      divisionId: division.id,
-      resourceType: "concurrent_tasks",
-      maxValue: maxConcurrentTasks,
-      currentUsage: 0,
-      warningThreshold: 85,
-    });
-
-    return quotas;
-  }
-
-  private calculateWorkflowResourceQuotas(division: LoadedDivisionDefinition): DivisionResourceQuota[] {
-    const quotas: DivisionResourceQuota[] = [];
-    let totalTimeoutMs = 0;
-
-    for (const workflow of division.workflows) {
-      for (const step of workflow.steps) {
-        totalTimeoutMs += step.timeoutMs > 0 ? step.timeoutMs : 300000; // default 5 min
-      }
-    }
-
-    // Convert total workflow time to an approximate concurrent task requirement
-    // Assume average workflow takes 1 minute and they can run in parallel
-    const estimatedConcurrentWorkflows = Math.ceil(totalTimeoutMs / 60000);
-
-    quotas.push({
-      quotaId: `quota_${division.id}_workflow_concurrent`,
-      divisionId: division.id,
-      resourceType: "concurrent_tasks",
-      maxValue: Math.max(estimatedConcurrentWorkflows, 10),
-      currentUsage: 0,
-      warningThreshold: 75,
-    });
-
-    return quotas;
-  }
-
-  private mergeQuotas(quotas: readonly DivisionResourceQuota[]): DivisionResourceQuota[] {
-    const merged = new Map<string, DivisionResourceQuota>();
-
-    for (const quota of quotas) {
-      const key = `${quota.divisionId}:${quota.resourceType}`;
-      const existing = merged.get(key);
-
-      if (existing) {
-        // Keep the higher maxValue (less restrictive)
-        merged.set(key, {
-          ...existing,
-          maxValue: Math.max(existing.maxValue, quota.maxValue),
-          warningThreshold: Math.min(existing.warningThreshold, quota.warningThreshold),
-        });
-      } else {
-        merged.set(key, quota);
-      }
-    }
-
-    return [...merged.values()];
-  }
-
-  private validateQuotaLimits(
-    quotas: readonly DivisionResourceQuota[],
-    violations: string[],
-  ): DivisionResourceQuota[] {
-    // Platform-level limits that should not be exceeded
-    const PLATFORM_LIMITS: Record<string, number> = {
-      cpu: 1000,
-      memory: 1024 * 1024 * 1024 * 1024, // 1 TB
-      concurrent_tasks: 10000,
-      storage: 100 * 1024 * 1024 * 1024 * 1024, // 100 GB
-      api_calls: 1000000,
-    };
-
-    const validated: DivisionResourceQuota[] = [];
-
-    for (const quota of quotas) {
-      const platformLimit = PLATFORM_LIMITS[quota.resourceType];
-      if (platformLimit !== undefined && quota.maxValue > platformLimit) {
-        violations.push(
-          `division.quota_exceeds_platform_limit:${quota.divisionId}:${quota.resourceType}:${quota.maxValue}>${platformLimit}`,
-        );
-        // Cap at platform limit
-        validated.push({
-          ...quota,
-          maxValue: platformLimit,
-        });
-      } else {
-        validated.push(quota);
-      }
-    }
-
-    return validated;
   }
 
   /**
@@ -472,14 +217,8 @@ export class DivisionLoader {
         continue;
       }
 
-      const divisionPath = join(rootCheck.normalizedPath, entry.name);
-      // Skip directories that don't have a division.yaml (incomplete divisions)
-      if (!existsSync(join(divisionPath, "division.yaml"))) {
-        continue;
-      }
-
       // Load and validate the division from its subdirectory
-      const division = this.loadDivision(divisionPath, effectivePolicy);
+      const division = this.loadDivision(join(rootCheck.normalizedPath, entry.name), effectivePolicy);
 
       // Check for duplicate division IDs across all divisions
       if (divisions.has(division.id)) {
@@ -582,50 +321,15 @@ export class DivisionLoader {
       }
 
       // Lint the workflow for structural validity
-      const report = new WorkflowValidator().validate(workflow);
-      const errors = report.issues.filter((issue) => issue.severity === "error");
-      if (errors.length > 0) {
-        const firstError = errors[0]!;
+      const lintReport = new WorkflowValidator().validate(workflow);
+      if (!lintReport.ok) {
+        const firstError = lintReport.issues.find((issue) => issue.severity === "error");
         throwDivisionWorkflowError("workflow.invalid", {
           workflowId: workflow.workflowId,
-          reasonCode: firstError.code ?? "unknown",
+          reasonCode: firstError?.code ?? "unknown",
         });
       }
     }
-
-    // R19-15: Resolve and validate resource quotas for the division
-    const provisionalDivision: LoadedDivisionDefinition = {
-      id: divisionConfig.id,
-      version: String(divisionConfig.version ?? "1"),
-      name: divisionConfig.name,
-      description:
-        typeof divisionConfig.description === "string" ? divisionConfig.description : "",
-      priority: toInteger(divisionConfig.priority, 100),
-      triggers: toStringArray(divisionConfig.triggers),
-      defaultWorkflowId: divisionConfig.default_workflow,
-      orchestrationWorkflowId,
-      roles,
-      workflows,
-      rootPath: divisionRoot,
-    };
-
-    let resolvedQuotas: readonly DivisionResourceQuota[] = [];
-    if (this.enableResourceQuotaValidation) {
-      const quotaResult = this.resolveResourceQuotas(provisionalDivision);
-      resolvedQuotas = quotaResult.quotas;
-      // Log violations but don't fail loading - quotas can be adjusted
-      if (quotaResult.violations.length > 0) {
-        logger.warn("division.quota_violations", {
-          divisionId: divisionConfig.id,
-          violations: quotaResult.violations,
-        });
-      }
-    }
-
-    // §37: Parse DomainDescriptor, DomainRiskProfile, and DomainEvalSpec from division config
-    const domainDescriptor = this.parseDomainDescriptor(divisionConfig.domain_descriptor, divisionConfig.id);
-    const riskProfile = this.parseRiskProfile(divisionConfig.risk_profile, divisionConfig.id);
-    const evalSpec = this.parseEvalSpec(divisionConfig.eval_spec, divisionConfig.id);
 
     // Construct and return the fully loaded division definition
     return {
@@ -641,94 +345,7 @@ export class DivisionLoader {
       roles,
       workflows,
       rootPath: divisionRoot,
-      quotas: resolvedQuotas,
-      ...(domainDescriptor !== undefined && { domainDescriptor }),
-      ...(riskProfile !== undefined && { riskProfile }),
-      ...(evalSpec !== undefined && { evalSpec }),
     };
-  }
-
-  /**
-   * Parses the domain_descriptor field from division.yaml into a DomainDescriptor.
-   * §37: DomainDescriptor contains core domain information.
-   */
-  private parseDomainDescriptor(raw: unknown, divisionId: string): DomainDescriptor | undefined {
-    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-      return undefined;
-    }
-    const desc = raw as Record<string, unknown>;
-    return {
-      domainId: typeof desc.domainId === "string" ? desc.domainId : divisionId,
-      ownerOrgNodeId: typeof desc.ownerOrgNodeId === "string" ? desc.ownerOrgNodeId : "",
-      primaryEntities: toStringArray(desc.primaryEntities),
-      recipeArchetype: typeof desc.recipeArchetype === "string" ? desc.recipeArchetype : "crud_heavy",
-      lifecycleState: this.normalizeLifecycleState(desc.lifecycleState),
-    };
-  }
-
-  /**
-   * Parses the risk_profile field from division.yaml into a DomainRiskProfile.
-   * §37: DomainRiskProfile contains risk classification information.
-   */
-  private parseRiskProfile(raw: unknown, divisionId: string): DomainRiskProfile | undefined {
-    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-      return undefined;
-    }
-    const profile = raw as Record<string, unknown>;
-    return {
-      profileId: typeof profile.profileId === "string" ? profile.profileId : `${divisionId}.risk`,
-      domainId: typeof profile.domainId === "string" ? profile.domainId : divisionId,
-      riskLevel: this.normalizeRiskLevel(profile.riskLevel),
-      advisoryOnly: typeof profile.advisoryOnly === "boolean" ? profile.advisoryOnly : false,
-      humanAccountable: typeof profile.humanAccountable === "boolean" ? profile.humanAccountable : false,
-      deterministicHotPathOnly: typeof profile.deterministicHotPathOnly === "boolean" ? profile.deterministicHotPathOnly : false,
-      regulatoryClass: typeof profile.regulatoryClass === "string" ? profile.regulatoryClass : "lightly_regulated",
-    };
-  }
-
-  /**
-   * Parses the eval_spec field from division.yaml into a DomainEvalSpec.
-   * §37: DomainEvalSpec contains evaluation specifications.
-   */
-  private parseEvalSpec(raw: unknown, divisionId: string): DomainEvalSpec | undefined {
-    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-      return undefined;
-    }
-    const spec = raw as Record<string, unknown>;
-    const acceptanceThresholds: Record<string, number> = {};
-    if (spec.acceptanceThresholds != null && typeof spec.acceptanceThresholds === "object" && !Array.isArray(spec.acceptanceThresholds)) {
-      const thresholds = spec.acceptanceThresholds as Record<string, unknown>;
-      for (const [key, value] of Object.entries(thresholds)) {
-        if (typeof value === "number") {
-          acceptanceThresholds[key] = value;
-        }
-      }
-    }
-    return {
-      domainId: typeof spec.domainId === "string" ? spec.domainId : divisionId,
-      evalBaselines: toStringArray(spec.evalBaselines),
-      criticalCases: toStringArray(spec.criticalCases),
-      acceptanceThresholds,
-      adversarialScenarios: toStringArray(spec.adversarialScenarios),
-    };
-  }
-
-  private normalizeLifecycleState(value: unknown): DomainLifecycleState {
-    const validStates: DomainLifecycleState[] = [
-      "draft", "validating", "testing", "certified", "registered",
-      "canary", "active", "deprecated", "retired", "archived", "updating", "validated",
-    ];
-    if (typeof value === "string" && validStates.includes(value as DomainLifecycleState)) {
-      return value as DomainLifecycleState;
-    }
-    return "draft";
-  }
-
-  private normalizeRiskLevel(value: unknown): DomainRiskLevel {
-    if (typeof value === "string" && ["low", "medium", "high", "critical"].includes(value)) {
-      return value as DomainRiskLevel;
-    }
-    return "medium";
   }
 
   /**
@@ -865,12 +482,6 @@ export class DivisionLoader {
       throwDivisionValidationError("division.invalid_shape", { sourcePath });
     }
 
-    // §37: Normalize domain_descriptor - support both singular (new) and plural (legacy) forms
-    // If plural form exists (legacy), extract the first element for backward compatibility
-    const domainDescriptor = parsed.domain_descriptor ?? this.extractFirstFromArray(parsed.domain_descriptors);
-    const riskProfile = parsed.risk_profile ?? this.extractFirstFromArray(parsed.risk_profiles);
-    const evalSpec = parsed.eval_spec ?? this.extractFirstFromArray(parsed.eval_specs);
-
     return {
       id: expectNonEmptyString(parsed.id, `division.id_missing:${sourcePath}`),
       version: parsed.version,
@@ -884,22 +495,7 @@ export class DivisionLoader {
       orchestration_workflow: parsed.orchestration_workflow,
       triggers: parsed.triggers,
       roles: parsed.roles,
-      // §37: DomainDescriptor structured hierarchy
-      domain_descriptor: domainDescriptor,
-      risk_profile: riskProfile,
-      eval_spec: evalSpec,
     };
-  }
-
-  /**
-   * Extracts the first element from an array if the value is an array.
-   * Used for backward compatibility with legacy plural YAML keys.
-   */
-  private extractFirstFromArray(value: unknown): unknown {
-    if (Array.isArray(value) && value.length > 0) {
-      return value[0];
-    }
-    return undefined;
   }
 
   /**
@@ -946,7 +542,6 @@ export class DivisionLoader {
     policy: SandboxPolicy,
   ): MinimalWorkflowStep {
     return {
-      nodeId: expectNonEmptyString(entry.step_id, `workflow.step_id_missing:${sourcePath}:${index}`),
       stepId: expectNonEmptyString(entry.step_id, `workflow.step_id_missing:${sourcePath}:${index}`),
       divisionId:
         typeof entry.division_id === "string" && entry.division_id.trim().length > 0
@@ -1051,7 +646,7 @@ export class DivisionLoader {
 
         for (const step of workflow.steps) {
           const hasDependencies = (step.dependsOnStepIds?.length ?? 0) > 0;
-          const isReferenced = referencedBy.has(step.stepId ?? "");
+          const isReferenced = referencedBy.has(step.stepId);
           if (!hasDependencies && !isReferenced && workflow.steps.length > 1) {
             throwDivisionWorkflowError("workflow.orphaned_step", {
               workflowId: workflow.workflowId,
@@ -1066,15 +661,15 @@ export class DivisionLoader {
 
         const graph = new Map<string, Set<string>>();
         for (const step of workflow.steps) {
-          graph.set(step.stepId ?? "", new Set<string>());
+          graph.set(step.stepId, new Set<string>());
         }
         for (const step of workflow.steps) {
           for (const dependencyStepId of step.dependsOnStepIds ?? []) {
             if (!stepIds.has(dependencyStepId)) {
               continue;
             }
-            graph.get(step.stepId ?? "")?.add(dependencyStepId);
-            graph.get(dependencyStepId)?.add(step.stepId ?? "");
+            graph.get(step.stepId)?.add(dependencyStepId);
+            graph.get(dependencyStepId)?.add(step.stepId);
           }
         }
 
@@ -1094,7 +689,7 @@ export class DivisionLoader {
           }
         }
 
-        const disconnectedStep = workflow.steps.find((step) => !visited.has(step.stepId ?? ""));
+        const disconnectedStep = workflow.steps.find((step) => !visited.has(step.stepId));
         if (disconnectedStep) {
           throwDivisionWorkflowError("workflow.disconnected_step", {
             workflowId: workflow.workflowId,

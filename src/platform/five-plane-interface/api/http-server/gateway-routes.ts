@@ -92,28 +92,20 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
       pathname: "/v1/gateway/messages/send",
       handler: async (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-
-        // Idempotency key is enforced at the server level via middleware (see EXEMPT_PATHS)
-        // This route requires idempotency key - it is NOT in the exempt list
-
         const channelGatewayService = deps.channelGatewayService;
         if (channelGatewayService == null) {
           throw new ApiError(503, "api.gateway_delivery_unavailable", "Channel gateway service is not configured.");
         }
         const payload = parseGatewaySendPayload(readValidatedJsonBody(ctx.request.body, (body) => body));
         const receipt = await channelGatewayService.sendMessage(payload);
-
-        // #2359: POST that creates a resource should return 201 Created
-        const responseData = {
+        return buildJsonResponse(ctx.requestId, 200, {
           deliveredAt: receipt.deliveredAt,
           channel: receipt.channel,
           targetId: receipt.targetId,
           externalTargetId: receipt.externalTargetId,
           requestUrl: receipt.requestUrl,
           providerMessageId: receipt.providerMessageId,
-        };
-
-        return buildJsonResponse(ctx.requestId, 201, responseData);
+        });
       },
     },
     {
@@ -134,24 +126,19 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         const nonce = ctx.request.headers["x-webhook-nonce"] as string | undefined ?? null;
 
         const webhookSecret = deps.webhookSecret ?? null;
-        if (webhookSecret == null) {
-          logger.error("WEBHOOK SECURITY MISCONFIGURATION: signature provided but webhookSecret is not configured. Rejecting request.", {
-            hasSignature: Boolean(signature),
-            hasTimestamp: !!timestamp,
-          });
-          throw new ApiError(503, "gateway.signature_config_missing", "Webhook signature verification is required but webhookSecret is not configured.");
-        }
-        if (!signature) {
-          throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
-        }
-        const signatureResult = deliveryService.verifySignature(
-          payloadText,
-          signature,
-          timestamp,
-          { secret: webhookSecret, toleranceSeconds: 300 },
-        );
-        if (!signatureResult.valid) {
-          throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
+        if (webhookSecret != null) {
+          if (!signature) {
+            throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
+          }
+          const signatureResult = deliveryService.verifySignature(
+            payloadText,
+            signature,
+            timestamp,
+            { secret: webhookSecret, toleranceSeconds: 300 },
+          );
+          if (!signatureResult.valid) {
+            throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
+          }
         }
 
         if (nonce) {

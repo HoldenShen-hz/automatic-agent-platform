@@ -8,11 +8,8 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
-  KnowledgeItemDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
-  PluginDTO,
-  PromptDTO,
   QueueDTO,
   RoleDTO,
   SystemConfigDTO,
@@ -25,7 +22,7 @@ import type {
   WorkflowDTO,
 } from "@aa/shared-types";
 import { defaultMockApiShape, type MockApiShape } from "./mock-data";
-import { DEFAULT_ACCEPT_VERSIONS, type RestClientInterceptor, type RestClientRequest, type RestClientResponse } from "./interceptors";
+import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors";
 
 export interface TransportResponse<T> {
   readonly status: number;
@@ -38,7 +35,7 @@ export interface RESTClient {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
   put<T>(path: string, body: unknown): Promise<T>;
-  patch<T>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T>;
+  patch<T>(path: string, body: unknown): Promise<T>;
   delete<T>(path: string): Promise<T>;
 }
 
@@ -49,47 +46,13 @@ export interface HttpTransportOptions {
   readonly fallbackToMock?: boolean;
 }
 
-export type RestUiAction =
-  | "redirect_to_login"
-  | "access_denied"
-  | "backoff_and_retry"
-  | "version_mismatch"
-  | "generic_error";
-
-export class RestHttpError extends Error {
-  public constructor(
-    message: string,
-    public readonly status: number,
-    public readonly uiAction: RestUiAction,
-    public readonly retryAfterMs: number | null = null,
-  ) {
-    super(message);
-    this.name = "RestHttpError";
-  }
-}
-
 export class MockTransport {
   public constructor(private readonly data: MockApiShape = defaultMockApiShape) {}
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
-    // P1 FIX: Respect HTTP method - return appropriate status codes for each method
-    // This ensures POST/DELETE requests don't return GET-like 200 data
-    const method = request.method;
     const payload = this.resolve(request.path, request.body);
-
-    // Return appropriate status based on HTTP method
-    let status = 200;
-    if (method === "POST") {
-      status = 201; // Created
-    } else if (method === "PUT" || method === "PATCH") {
-      status = 200; // OK for update
-    } else if (method === "DELETE") {
-      status = 204; // No Content for successful delete
-    }
-    // GET returns 200
-
     return {
-      status,
+      status: 200,
       data: payload as T,
     };
   }
@@ -106,9 +69,6 @@ export class MockTransport {
     | readonly AnalyticsMetricDTO[]
     | readonly CostReportDTO[]
     | readonly MarketplacePackDTO[]
-    | readonly KnowledgeItemDTO[]
-    | readonly PluginDTO[]
-    | readonly PromptDTO[]
     | readonly ExplanationDTO[]
     | readonly RoleDTO[]
     | readonly FeatureFlagDTO[]
@@ -153,15 +113,6 @@ export class MockTransport {
     if (path.includes("/marketplace")) {
       return this.data.marketplace;
     }
-    if (path.includes("/knowledge")) {
-      return this.data.knowledge;
-    }
-    if (path.includes("/plugins")) {
-      return this.data.plugins;
-    }
-    if (path.includes("/prompts")) {
-      return this.data.prompts;
-    }
     if (path.includes("/explanations")) {
       return this.data.explanations;
     }
@@ -196,112 +147,13 @@ export class MockTransport {
   }
 }
 
-export interface CircuitBreakerState {
-  readonly failures: number;
-  readonly lastFailure: number;
-  readonly state: "closed" | "open" | "half-open";
-}
-
-const DEFAULT_RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelayMs: 200,
-  maxDelayMs: 5000,
-  retryableStatuses: new Set([408, 429, 500, 502, 503, 504]),
-};
-
-function isRetryableError(status: number): boolean {
-  return DEFAULT_RETRY_CONFIG.retryableStatuses.has(status);
-}
-
-function calculateBackoffDelay(attempt: number, jitter: number): number {
-  const exponentialDelay = Math.min(
-    DEFAULT_RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt),
-    DEFAULT_RETRY_CONFIG.maxDelayMs,
-  );
-  const jitterOffset = exponentialDelay * jitter;
-  return Math.floor(exponentialDelay + jitterOffset);
-}
-
-function mapStatusToUiAction(status: number): RestUiAction {
-  if (status === 401) {
-    return "redirect_to_login";
-  }
-  if (status === 403) {
-    return "access_denied";
-  }
-  if (status === 406) {
-    return "version_mismatch";
-  }
-  if (status === 408 || status === 429 || status >= 500) {
-    return "backoff_and_retry";
-  }
-  return "generic_error";
-}
-
-function parseRetryAfterMs(headers: Headers): number | null {
-  const retryAfter = headers.get("retry-after");
-  if (retryAfter == null) {
-    return null;
-  }
-  const seconds = Number(retryAfter);
-  if (Number.isFinite(seconds)) {
-    return Math.max(0, seconds * 1000);
-  }
-  const dateMs = Date.parse(retryAfter);
-  if (Number.isNaN(dateMs)) {
-    return null;
-  }
-  return Math.max(0, dateMs - Date.now());
-}
-
-function unwrapApiEnvelope<T>(payload: unknown): T {
-  if (
-    payload != null
-    && typeof payload === "object"
-    && "requestId" in payload
-    && typeof (payload as { requestId?: unknown }).requestId === "string"
-    && "data" in payload
-  ) {
-    return (payload as { data: T }).data;
-  }
-  return payload as T;
-}
-
 export class HttpTransport {
   private readonly fetchImplementation: typeof fetch;
   private readonly fallbackTransport: MockTransport | null;
-  private circuitBreaker: CircuitBreakerState = { failures: 0, lastFailure: 0, state: "closed" };
-  private readonly circuitBreakerThreshold = 5;
-  private readonly circuitBreakerResetMs = 30000;
 
   public constructor(private readonly options: HttpTransportOptions) {
     this.fetchImplementation = options.fetchImplementation ?? globalThis.fetch.bind(globalThis);
     this.fallbackTransport = options.fallbackToMock === true ? new MockTransport() : null;
-  }
-
-  private shouldRetry(): boolean {
-    const now = Date.now();
-    if (this.circuitBreaker.state === "open") {
-      if (now - this.circuitBreaker.lastFailure > this.circuitBreakerResetMs) {
-        this.circuitBreaker = { ...this.circuitBreaker, state: "half-open" };
-        return true;
-      }
-      return false;
-    }
-    return true;
-  }
-
-  private recordFailure(): void {
-    const newFailures = this.circuitBreaker.failures + 1;
-    if (newFailures >= this.circuitBreakerThreshold) {
-      this.circuitBreaker = { failures: newFailures, lastFailure: Date.now(), state: "open" };
-    } else {
-      this.circuitBreaker = { ...this.circuitBreaker, failures: newFailures, lastFailure: Date.now() };
-    }
-  }
-
-  private recordSuccess(): void {
-    this.circuitBreaker = { failures: 0, lastFailure: 0, state: "closed" };
   }
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
@@ -311,106 +163,37 @@ export class HttpTransport {
     const requestBody = request.body == null ? null : JSON.stringify(request.body);
     const requestHeaders = new Headers({
       "content-type": "application/json",
-      "Accept-Version": DEFAULT_ACCEPT_VERSIONS.join(","),
       ...(this.options.headers ?? {}),
       ...Object.fromEntries(request.headers.entries()),
     });
 
-    if (!this.shouldRetry()) {
+    try {
+      const response = await this.fetchImplementation(url, {
+        method: request.method,
+        headers: requestHeaders,
+        body: requestBody,
+      });
+
+      if (!response.ok) {
+        throw new Error(`rest.http_error:${response.status}`);
+      }
+
+      return {
+        status: response.status,
+        data: (await response.json()) as T,
+      };
+    } catch (error) {
       if (this.fallbackTransport != null) {
         return this.fallbackTransport.send(request);
       }
-      throw new Error("rest.circuit_open:Circuit breaker is open");
+      throw error;
     }
-
-    let lastError: Error | undefined;
-    for (let attempt = 0; attempt <= DEFAULT_RETRY_CONFIG.maxRetries; attempt++) {
-      try {
-        const response = await this.fetchImplementation(url, {
-          method: request.method,
-          headers: requestHeaders,
-          body: requestBody,
-        });
-
-        if (!response.ok) {
-          // Handle 406 Not Acceptable - server doesn't support requested version
-          if (response.status === 406) {
-            this.recordFailure();
-            throw new RestHttpError(
-              "rest.version_not_supported:Server contract version not supported",
-              406,
-              "version_mismatch",
-            );
-          }
-          if (isRetryableError(response.status) && attempt < DEFAULT_RETRY_CONFIG.maxRetries) {
-            const jitter = Math.random() * 0.3 - 0.15;
-            const delay = calculateBackoffDelay(attempt, jitter);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            lastError = new RestHttpError(
-              `rest.http_error:${response.status}`,
-              response.status,
-              mapStatusToUiAction(response.status),
-              parseRetryAfterMs(response.headers),
-            );
-            continue;
-          }
-          this.recordFailure();
-          throw new RestHttpError(
-            `rest.http_error:${response.status}`,
-            response.status,
-            mapStatusToUiAction(response.status),
-            parseRetryAfterMs(response.headers),
-          );
-        }
-
-        this.recordSuccess();
-        const payload = await response.json();
-        return {
-          status: response.status,
-          data: unwrapApiEnvelope<T>(payload),
-        };
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (attempt < DEFAULT_RETRY_CONFIG.maxRetries) {
-          const jitter = Math.random() * 0.3 - 0.15;
-          const delay = calculateBackoffDelay(attempt, jitter);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    if (this.fallbackTransport != null) {
-      return this.fallbackTransport.send(request);
-    }
-    throw lastError;
   }
-}
-
-/**
- * Creates the default transport for DefaultRESTClient.
- * Uses HttpTransport with base URL from VITE_API_BASE_URL env var if available,
- * otherwise falls back to MockTransport for development/testing.
- */
-function createDefaultTransport(): RestTransport {
-  const baseUrl = typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL;
-  if (baseUrl != null && baseUrl.length > 0) {
-    return (request) => new HttpTransport({ baseUrl }).send(request);
-  }
-  if (typeof window !== "undefined" && typeof window.location?.origin === "string" && window.location.origin.length > 0) {
-    return (request) => new HttpTransport({
-      baseUrl: `${window.location.origin}/api/v1`,
-      fallbackToMock: false,
-    }).send(request);
-  }
-  return (request) => new HttpTransport({
-    baseUrl: "/api/v1",
-    fallbackToMock: false,
-  }).send(request);
 }
 
 export class DefaultRESTClient implements RESTClient {
   public constructor(
-    private readonly transport: RestTransport = createDefaultTransport(),
+    private readonly transport: RestTransport = (request) => new MockTransport().send(request),
     private readonly interceptors: readonly RestClientInterceptor[] = [],
   ) {}
 
@@ -426,14 +209,8 @@ export class DefaultRESTClient implements RESTClient {
     return this.request<T>({ path, method: "PUT", headers: new Headers(), body });
   }
 
-  public patch<T>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T> {
-    const headers = new Headers();
-    if (extraHeaders != null) {
-      for (const [key, value] of Object.entries(extraHeaders)) {
-        headers.set(key, value);
-      }
-    }
-    return this.request<T>({ path, method: "PATCH", headers, body });
+  public patch<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>({ path, method: "PATCH", headers: new Headers(), body });
   }
 
   public delete<T>(path: string): Promise<T> {
@@ -468,13 +245,5 @@ export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>)
       fallbackToMock: options?.fallbackToMock ?? true,
     }).send(request));
   }
-  const runtimeBaseUrl = typeof window !== "undefined" && typeof window.location?.origin === "string" && window.location.origin.length > 0
-    ? `${window.location.origin}/api/v1`
-    : "/api/v1";
-  return new DefaultRESTClient((request) => new HttpTransport({
-    baseUrl: runtimeBaseUrl,
-    fallbackToMock: options?.fallbackToMock ?? false,
-    ...(options?.headers == null ? {} : { headers: options.headers }),
-    ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
-  }).send(request));
+  return new DefaultRESTClient((request) => new MockTransport().send(request));
 }

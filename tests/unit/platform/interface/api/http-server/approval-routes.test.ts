@@ -13,70 +13,22 @@ function createMockApprovalService(): ApprovalService {
   } as unknown as ApprovalService;
 }
 
-function createMockInspectService(options?: {
-  allowedActorIds?: string[];
-  tenantId?: string | null;
-}): InspectService {
-  const allowedActorIds = options?.allowedActorIds ?? ["actor-1"];
-  const tenantId = options?.tenantId ?? null;
+function createMockInspectService(): InspectService {
   return {
     queryDecisionInspectSummaries: () => [
       { decisionId: "appr-1", decisionType: "approval", status: "requested", taskId: "task-1", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: null },
     ],
-    getApprovalInspectView: (approvalId: string) => ({
-      task: { id: "task-1", title: "Task 1", status: "queued", tenantId } as never,
-      workflowState: null,
-      execution: null,
-      session: null,
-      approval: {
-        id: approvalId,
-        taskId: "task-1",
-        executionId: null,
-        status: "requested",
-        requestJson: JSON.stringify({
-          approvalId,
-          taskId: "task-1",
-          sourceAgentId: "agent-1",
-          reason: "Need review",
-          riskLevel: "medium",
-          options: ["approve", "reject"],
-          context: { allowedActorIds },
-          timeoutPolicy: "reject",
-          createdAt: "2026-04-16T00:00:00.000Z",
-        }),
-        responseJson: null,
-        timeoutPolicy: "reject",
-        createdAt: "2026-04-16T00:00:00.000Z",
-        respondedAt: null,
-      },
-      approvals: [],
-      operatorActions: [],
-      agentExecution: null,
-      dispatchDecisions: [],
-      remoteRoutingSummary: null,
-      leaseHandoverSummary: null,
-      recentEvents: [],
-      stepResults: [],
-      taskResult: null,
-      artifacts: [],
-      runtimeRecovery: null,
+    getApprovalInspectView: () => ({
+      approval: { id: "appr-1", taskId: "task-1", decisionType: "approval", status: "completed", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: "2026-04-16T01:00:00.000Z" },
       timeline: { entries: [] },
     }),
   } as unknown as InspectService;
 }
 
-function createMockAuthService(
-  roles: string[] = ["viewer", "operator"],
-  options?: { actorId?: string; tenantId?: string | null },
-): ApiAuthService {
+function createMockAuthService(roles: string[] = ["viewer", "operator"]): ApiAuthService {
   return {
     requireRole: (headers: Record<string, string | undefined>, role: string) => {
-      return {
-        actorId: options?.actorId ?? "actor-1",
-        roles: roles as ("viewer" | "operator" | "admin")[],
-        authMethod: "api_key",
-        tenantId: options?.tenantId ?? null,
-      };
+      return { actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId: null };
     },
   } as unknown as ApiAuthService;
 }

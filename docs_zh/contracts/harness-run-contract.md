@@ -12,7 +12,6 @@
 | --- | --- | --- |
 | `harnessRunId` | `string` | 运行 ID |
 | `tenantId` | `string` | 租户 |
-| `domainId` | `string` | canonical 域绑定；用于风险覆盖、知识边界、prompt/tool 选择与域级审计聚合 |
 | `confirmedTaskSpecId` | `string` | 来源任务规格 |
 | `requestEnvelopeId` | `string` | admission 请求 |
 | `requestHash` | `string` | 幂等 hash |
@@ -54,14 +53,12 @@
 - 每次 truth mutation 必须同事务追加 `platform.*` fact event。
 - `replanning` 只能通过 `GraphPatch` 追加表达，不得覆盖历史 `PlanGraphBundle`。
 - `compensating` 不代表原运行成功；补偿事实写入 `CompensationRecord`。
-- `domainId` 是 run truth 的一部分，不允许依赖 `tenantId`、`constraintPackRef` 或 UI division 投影在运行时反推。
 
 ## 5. Projection 规则
 
 - `workflow_run` 只允许作为 read model / query projection。
 - OAPEFLIR run lifecycle 只能由 `HarnessRun` + `OapeflirViewEvent` 派生。
 - UI 可显示阶段状态，但不得反向写入 `HarnessRun.status`。
-- projection 若展示 `divisionId`、`domainHint` 或业务别名，必须保留 `domainId -> legacy alias` 的显式映射，不能覆盖 canonical run 绑定。
 
 ## 6. Legacy / Deprecated 映射
 

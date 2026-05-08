@@ -8,11 +8,6 @@ import {
 function mockRegion(overrides: Partial<RegionDescriptor> = {}): RegionDescriptor {
   return {
     regionId: "region-1",
-    provider: "aws",
-    endpoints: {
-      api: "https://api.example.com",
-    },
-    dataResidencyPolicy: "regional",
     countryCode: "US",
     jurisdiction: "US",
     capabilities: [],
@@ -35,9 +30,9 @@ test("selectPreferredRegion returns lowest latency region", () => {
   assert.strictEqual(result?.regionId, "low-latency");
 });
 
-test("selectPreferredRegion ignores draining regions", () => {
+test("selectPreferredRegion ignores disabled regions", () => {
   const regions = [
-    mockRegion({ regionId: "draining", status: "draining", latencyScore: 10 }),
+    mockRegion({ regionId: "disabled", status: "disabled", latencyScore: 10 }),
     mockRegion({ regionId: "enabled", latencyScore: 100 }),
   ];
 
@@ -63,10 +58,10 @@ test("selectPreferredRegion returns null for empty array", () => {
   assert.strictEqual(result, null);
 });
 
-test("selectPreferredRegion returns null when all regions are draining", () => {
+test("selectPreferredRegion returns null when all regions disabled", () => {
   const regions = [
-    mockRegion({ status: "draining" }),
-    mockRegion({ status: "draining" }),
+    mockRegion({ status: "disabled" }),
+    mockRegion({ status: "disabled" }),
   ];
 
   const result = selectPreferredRegion(regions);
@@ -74,15 +69,15 @@ test("selectPreferredRegion returns null when all regions are draining", () => {
   assert.strictEqual(result, null);
 });
 
-test("selectPreferredRegion keeps standby regions selectable", () => {
+test("selectPreferredRegion handles degraded status as not disabled", () => {
   const regions = [
-    mockRegion({ regionId: "standby", status: "standby", latencyScore: 50 }),
+    mockRegion({ regionId: "degraded", status: "degraded", latencyScore: 50 }),
     mockRegion({ regionId: "active", status: "active", latencyScore: 100 }),
   ];
 
   const result = selectPreferredRegion(regions);
 
-  assert.strictEqual(result?.regionId, "standby");
+  assert.strictEqual(result?.regionId, "degraded");
 });
 
 test("selectPreferredRegion uses default latency of 0 when not specified", () => {

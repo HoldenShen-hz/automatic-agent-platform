@@ -14,7 +14,7 @@ describe("platform shells", () => {
     expect(tauriMacosManifest.platform).toBe("macos");
     expect(tauriMacosManifest.supportsDeepLink).toBe(true);
     expect(tauriLinuxManifest.platform).toBe("linux");
-    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(false);
+    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(true);
     expect(mobileShellManifest.platforms).toEqual(["android", "ios"]);
     expect(mobileShellManifest.supportsScreenSecurity).toBe(true);
   });
@@ -30,15 +30,13 @@ describe("platform shells", () => {
   });
 
   it("declares mobile tab and modal navigation for phase 3 flows", () => {
-    expect(mobileNavigation.tabs.map((screen) => screen.id)).toEqual(
-      expect.arrayContaining([
-        "dashboard",
-        "tasks",
-        "approvals",
-        "conversation",
-        "settings",
-      ]),
-    );
+    expect(mobileNavigation.tabs.map((screen) => screen.id)).toEqual([
+      "dashboard",
+      "tasks",
+      "approvals",
+      "conversation",
+      "settings",
+    ]);
     expect(mobileNavigation.modalFlows.some((screen) => screen.id === "hitl")).toBe(true);
   });
 

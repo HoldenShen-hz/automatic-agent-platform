@@ -58,39 +58,12 @@ export interface GovernanceState {
   timeline: GovernanceTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
-}
-
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface GovernanceStateInternal extends Omit<GovernanceState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 export type GovernanceActionType =
@@ -156,29 +129,6 @@ export function createEmptyGovernanceState(): GovernanceState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
-  };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: GovernanceState): GovernanceStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: GovernanceStateInternal): GovernanceState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -197,11 +147,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: GovernanceStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: GovernanceState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -250,10 +199,13 @@ function mapEventToActionType(eventType: string, payload: Record<string, unknown
     case "decision:escalated":
       return "escalation_triggered";
     default:
-      // §191-2247: Removed incorrect inference logic. The string includes() checks
-      // were semantically wrong (e.g., "policy:deleted" -> "policy_updated",
-      // "compliance:resolved" -> "compliance_violation"). Unknown events should
-      // return null to indicate no matching action type, not guess incorrectly.
+      // Try to infer from payload
+      if (eventType.includes("policy")) return "policy_updated";
+      if (eventType.includes("approval") || eventType.includes("decision")) return "approval_granted";
+      if (eventType.includes("delegation")) return "delegation_created";
+      if (eventType.includes("compliance") || eventType.includes("violation")) return "compliance_violation";
+      if (eventType.includes("permission")) return "permission_granted";
+      if (eventType.includes("role")) return "role_assigned";
       return null;
   }
 }
@@ -278,14 +230,13 @@ export const governanceProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as GovernanceState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyGovernanceState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyGovernanceState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -319,14 +270,6 @@ export const governanceProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Update action type
   if (newState.actionType === null) {
@@ -352,8 +295,8 @@ export const governanceProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Update metadata
@@ -457,16 +400,11 @@ export const governanceProjectionHandler: ProjectionHandler = (
       break;
 
     default:
-      // R20-10: Unknown approval/decision events should NOT default to approval_granted
-      // Set status to "denied" if the event type suggests it, otherwise leave actionType null
-      if (event.eventType.includes("rejected") || event.eventType.includes("denied") || event.eventType.includes("expired") || event.eventType.includes("cancelled")) {
-        newState.status = "denied";
-        newState.approved = false;
-      }
+      // No specific handling
       break;
   }
 
-  return toSerializedState(newState) as unknown as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**

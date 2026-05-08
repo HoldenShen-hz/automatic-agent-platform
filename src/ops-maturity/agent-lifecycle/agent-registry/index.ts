@@ -142,14 +142,7 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   ["canary", ["active", "staging", "paused"]],
   ["active", ["paused", "deprecated"]],
   ["paused", ["active", "deprecated", "canary"]],
-  ["deprecated", ["archived", "paused"]],
-  // R16-36 FIX #2103: deprecated→active is not allowed. This transition bypasses
-  // all stage gates (testing→staging→canary) and allows returning directly to
-  // production without proper validation. Deprecated agents must go through
-  // archived first, then can be re-promoted through the full pipeline if needed.
-  // R27-26 FIX: archived→active also bypasses stage gates. Archived agents must
-  // either be removed or go through the full re-promotion pipeline (draft→testing→...)
-  // to ensure proper re-validation before returning to production.
+  ["deprecated", ["archived", "active"]],
   ["archived", ["removed"]],
   ["removed", []],
 ]);
@@ -176,5 +169,5 @@ export function canAutoPromote(state: AgentLifecycleState): boolean {
  * Checks if agent is in a terminal state.
  */
 export function isTerminalState(state: AgentLifecycleState): boolean {
-  return state === "removed";
+  return state === "archived";
 }

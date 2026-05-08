@@ -29,7 +29,7 @@ const createTestContext = (overrides: Partial<BrowserExecutionContext> = {}): Br
   tenantId: "tenant-789",
   correlationId: "corr-abc",
   sessionId: null,
-  sandboxTier: "workspace_write",
+  sandboxTier: "container",
   ...overrides,
 });
 

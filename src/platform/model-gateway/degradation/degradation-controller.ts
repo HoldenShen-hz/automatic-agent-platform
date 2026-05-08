@@ -15,14 +15,10 @@
  */
 
 import { AppError, ProviderError } from "../../contracts/errors.js";
-import { createOperationalDirective, type OperationalDirective } from "../../contracts/control-directive/index.js";
 import type { ModelGatewayCacheEntry, ModelGatewayCacheService } from "../cache/index.js";
 import type { ModelFallbackCandidate, ModelGatewayFallbackService } from "../fallback/index.js";
 import type { PromptTemplateRecord } from "../../prompt-engine/registry/index.js";
 import type { UnifiedChatProvider } from "../provider-registry/unified-chat-provider.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Degradation levels in order of severity.
@@ -66,8 +62,6 @@ export interface DegradationConfig {
   deescalateErrorRateThreshold: number;
   /** Latency P99 threshold to trigger escalation (ms) */
   escalateLatencyP99Ms: number;
-  /** R16-22 FIX: §15.6 TTFT P99 threshold - separate from general P99 latency (10s = 10000ms) */
-  escalateTtftP99Ms: number;
   /** Minimum consecutive healthy evaluations before de-escalation */
   deescalateMinHealthyCount: number;
   /** Maximum degradation level for automatic de-escalation */
@@ -103,11 +97,7 @@ export interface LLMDegradationResponse {
 export const DEFAULT_DEGRADATION_CONFIG: DegradationConfig = {
   escalateErrorRateThreshold: 50,
   deescalateErrorRateThreshold: 5,
-  // R16-22 FIX: §15.6 separates TTFT from P99 latency - TTFT threshold is 10s (10000ms)
-  // P99 latency threshold remains at 5000ms for general latency escalation
   escalateLatencyP99Ms: 5000,
-  // TTFT P99 threshold per §15.6 - separate from general P99 latency
-  escalateTtftP99Ms: 10000,
   deescalateMinHealthyCount: 3,
   maxAutoDeescalateLevel: DegradationLevel.D0,
 };
@@ -147,7 +137,6 @@ export class DegradationController {
   private currentLevel: DegradationLevel = DegradationLevel.D0;
   private consecutiveHealthyCount: number = 0;
   private lastEscalationReason: string | null = null;
-  private static readonly MAX_ROUTE_RECURSION_DEPTH: number = 5;
 
   private readonly config: DegradationConfig;
   private readonly primaryProvider: UnifiedChatProvider;
@@ -155,8 +144,6 @@ export class DegradationController {
   private readonly fallbackService: ModelGatewayFallbackService;
   private readonly cacheService: ModelGatewayCacheService<string>;
   private readonly templates: Record<string, string>;
-  /** §9.5: Event bus emitter for OperationalDirective on degradation state changes */
-  private readonly eventBusEmitter: ((eventType: string, payload: unknown) => void) | null;
 
   constructor(options: {
     primaryProvider: UnifiedChatProvider;
@@ -165,7 +152,6 @@ export class DegradationController {
     cacheService: ModelGatewayCacheService<string>;
     templates?: Record<string, string>;
     config?: Partial<DegradationConfig>;
-    eventBusEmitter?: (eventType: string, payload: unknown) => void;
   }) {
     this.primaryProvider = options.primaryProvider;
     this.fallbackProvider = options.fallbackProvider ?? null;
@@ -173,7 +159,6 @@ export class DegradationController {
     this.cacheService = options.cacheService;
     this.templates = { ...DEFAULT_TEMPLATE_RESPONSES, ...(options.templates ?? {}) };
     this.config = { ...DEFAULT_DEGRADATION_CONFIG, ...options.config };
-    this.eventBusEmitter = options.eventBusEmitter ?? null;
   }
 
   /**
@@ -200,53 +185,28 @@ export class DegradationController {
    * D4: Service unavailable error
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
-    return this.routeWithDepth(request, 0);
-  }
-
-  private async routeWithDepth(
-    request: LLMDegradationRequest,
-    recursionDepth: number,
-  ): Promise<LLMDegradationResponse> {
     switch (this.currentLevel) {
       case DegradationLevel.D0:
-        return this.routeD0(request, recursionDepth);
+        return this.routeD0(request);
 
       case DegradationLevel.D1:
-        return this.routeD1(request, recursionDepth);
+        return this.routeD1(request);
 
       case DegradationLevel.D2:
-        return this.routeD2(request, recursionDepth);
+        return this.routeD2(request);
 
       case DegradationLevel.D3:
-        return this.routeD3(request, recursionDepth);
+        return this.routeD3(request);
 
       case DegradationLevel.D4:
-        return this.routeD4(request, recursionDepth);
+        return this.routeD4(request);
     }
-  }
-
-  private routeAfterEscalation(
-    request: LLMDegradationRequest,
-    recursionDepth: number,
-  ): Promise<LLMDegradationResponse> {
-    if (recursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
-      this.currentLevel = DegradationLevel.D4;
-      throw new ProviderError(
-        "degradation.max_recursion_exceeded",
-        "LLM service failed after maximum retry attempts due to sustained degradation.",
-        { retryable: true, details: { recursionDepth } },
-      );
-    }
-    return this.routeWithDepth(request, recursionDepth);
   }
 
   /**
    * D0: Normal operation with primary model.
    */
-  private async routeD0(
-    request: LLMDegradationRequest,
-    recursionDepth: number,
-  ): Promise<LLMDegradationResponse> {
+  private async routeD0(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     try {
       const response = await this.primaryProvider.createChatCompletion({
         model: request.model,
@@ -279,22 +239,20 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
-      return this.routeAfterEscalation(request, recursionDepth + 1);
+      // Retry with new level
+      return this.route(request);
     }
   }
 
   /**
    * D1: Fallback to alternative model.
    */
-  private async routeD1(
-    request: LLMDegradationRequest,
-    recursionDepth: number,
-  ): Promise<LLMDegradationResponse> {
+  private async routeD1(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     const fallbackProfile = this.selectFallbackProfile(request.model);
     if (fallbackProfile == null) {
       // No fallback available, escalate to D2
       this.escalate();
-      return this.routeAfterEscalation(request, recursionDepth + 1);
+      return this.route(request);
     }
 
     try {
@@ -318,17 +276,18 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
-      return this.routeAfterEscalation(request, recursionDepth + 1);
+      // Retry with new level
+      return this.route(request);
     }
   }
 
   /**
    * D2: Serve cached responses when available.
    */
-  private async routeD2(request: LLMDegradationRequest, recursionDepth: number): Promise<LLMDegradationResponse> {
+  private async routeD2(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     if (!request.semanticKey) {
       // No cache key, fall through to D3
-      return this.routeD3(request, recursionDepth);
+      return this.routeD3(request);
     }
 
     const cached = this.cacheService.get(request.semanticKey);
@@ -342,14 +301,14 @@ export class DegradationController {
       };
     }
 
-    // No cache hit, fall through to D3 with incremented recursion depth
-    return this.routeD3(request, recursionDepth);
+    // No cache hit, fall through to D3
+    return this.routeD3(request);
   }
 
   /**
    * D3: Return template-based responses.
    */
-  private async routeD3(request: LLMDegradationRequest, recursionDepth: number): Promise<LLMDegradationResponse> {
+  private async routeD3(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     const templateKey = getTemplateKey(request.taskType);
     const content = this.templates[templateKey] ?? DEFAULT_TEMPLATE_RESPONSES["default"]!;
 
@@ -365,7 +324,7 @@ export class DegradationController {
   /**
    * D4: Reject service (service unavailable).
    */
-  private async routeD4(_request: LLMDegradationRequest, _recursionDepth: number): Promise<LLMDegradationResponse> {
+  private async routeD4(_request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     throw new ProviderError(
       "degradation.service_unavailable",
       "LLM service is currently unavailable due to sustained high error rates. Please retry later.",
@@ -380,7 +339,7 @@ export class DegradationController {
     primaryProfileName: string,
   ): ModelFallbackCandidate | null {
     // Consult the fallback service for available candidates
-    const candidates = this.getFallbackCandidates(primaryProfileName);
+    const candidates = this.getFallbackCandidates();
     if (candidates.length === 0) {
       return null;
     }
@@ -399,147 +358,29 @@ export class DegradationController {
 
   /**
    * Gets available fallback candidates from all providers.
-   * Returns providers that are not the primary and are currently healthy.
+   * This would typically be enhanced to read from a provider registry.
    */
-  private getFallbackCandidates(primaryProfileName: string): ModelFallbackCandidate[] {
-    // §179-2090 FIX: getFallbackCandidates() was hardcoded to return [].
-    // Root cause: The method was not implemented - it always returned empty array,
-    // causing D1 degradation level to never find any fallback candidates.
-    // Fix: Actually query available profiles from providers.
-    const candidates: ModelFallbackCandidate[] = [];
-
-    // Get available profiles from the fallback provider if configured,
-    // otherwise query the primary provider for alternative profiles
-    const provider = this.fallbackProvider ?? this.primaryProvider;
-    const availableProfiles = provider.getAvailableProfiles();
-
-    // Filter out the primary profile and convert to ModelFallbackCandidate format
-    for (const profile of availableProfiles) {
-      if (profile.profileName !== primaryProfileName) {
-        candidates.push({
-          profileName: profile.profileName,
-          provider: profile.provider as ModelFallbackCandidate["provider"],
-          tier: profile.tier as ModelFallbackCandidate["tier"],
-          healthy: true,
-          inputCostPer1kUsd: this.estimateInputCost(profile.profileName),
-        });
-      }
-    }
-
-    return candidates;
-  }
-
-  /**
-   * Estimates input cost per 1k tokens based on provider and model.
-   */
-  private estimateInputCost(modelName: string): number {
-    const modelLower = modelName.toLowerCase();
-    if (modelLower.includes("opus") || modelLower.includes("gpt-4o") || modelLower.includes("MiniMax-M2.7")) {
-      return 0.003; // Premium models
-    }
-    if (modelLower.includes("sonnet") || modelLower.includes("gpt-4-turbo") || modelLower.includes("MiniMax-M2")) {
-      return 0.0015; // Mid-tier models
-    }
-    return 0.0005; // Fast/cheap models
+  private getFallbackCandidates(): ModelFallbackCandidate[] {
+    return [];
   }
 
   /**
    * Escalates to the next degradation level.
-   * Emits OperationalDirective per §9.5 for mode synthesis chain interaction.
    */
   public escalate(): void {
     if (this.currentLevel < DegradationLevel.D4) {
-      const oldLevel = this.currentLevel;
       this.currentLevel++;
       this.consecutiveHealthyCount = 0;
-
-      // Emit OperationalDirective per §9.5
-      const directive = createOperationalDirective({
-        operationalDirectiveId: `degradation_escalate_${Date.now()}`,
-        issuedBy: {
-          principalId: "degradation_controller",
-          tenantId: "system",
-          roles: ["system"],
-        },
-        type: "mode_switch",
-        scope: {},
-        reason: this.lastEscalationReason ?? "health_threshold_exceeded",
-        params: {
-          previousLevel: oldLevel,
-          newLevel: this.currentLevel,
-          action: "escalate",
-        },
-      });
-
-      // Emit to event bus per §9.5
-      this.eventBusEmitter?.("degradation:escalate", {
-        oldLevel,
-        newLevel: this.currentLevel,
-        directive,
-        reason: this.lastEscalationReason,
-      });
-
-      logger.log({
-        level: "warn",
-        message: "degradation:escalate",
-        crosscuttingFabric: "reliability",
-        data: {
-          oldLevel,
-          newLevel: this.currentLevel,
-          directive,
-          reason: this.lastEscalationReason,
-        },
-      });
     }
   }
 
   /**
    * De-escalates to the previous degradation level if health criteria are met.
-   * Emits OperationalDirective per §9.5 for mode synthesis chain interaction.
    */
   public deescalate(): void {
     if (this.currentLevel > DegradationLevel.D0) {
-      const oldLevel = this.currentLevel;
       this.currentLevel--;
       this.consecutiveHealthyCount = 0;
-
-      // Emit OperationalDirective per §9.5
-      const directive = createOperationalDirective({
-        operationalDirectiveId: `degradation_deescalate_${Date.now()}`,
-        issuedBy: {
-          principalId: "degradation_controller",
-          tenantId: "system",
-          roles: ["system"],
-        },
-        type: "mode_switch",
-        scope: {},
-        reason: "health_recovered",
-        params: {
-          previousLevel: oldLevel,
-          newLevel: this.currentLevel,
-          action: "deescalate",
-        },
-      });
-
-      // Emit to event bus per §9.5
-      this.eventBusEmitter?.("degradation:deescalate", {
-        oldLevel,
-        newLevel: this.currentLevel,
-        directive,
-        reason: "health_recovered",
-      });
-
-      logger.log({
-        level: "info",
-        message: "degradation:deescalate",
-        crosscuttingFabric: "reliability",
-        data: {
-          oldLevel,
-          newLevel: this.currentLevel,
-          directive,
-          reason: "health_recovered",
-        },
-      });
     }
   }
 
@@ -557,16 +398,14 @@ export class DegradationController {
     const { errorRate, latencyP99Ms, ttftP99Ms } = metrics;
 
     // Check for escalation conditions
-    // R16-22 FIX: §15.6 separates TTFT from P99 latency - use configurable TTFT threshold
-    // TTFT >10s (or configured escalateTtftP99Ms) triggers escalation
-    const ttftThreshold = (this.config as { escalateTtftP99Ms?: number }).escalateTtftP99Ms ?? 10000;
-    if (ttftP99Ms > ttftThreshold) {
+    // §15: TTFT >10s triggers escalation
+    if (ttftP99Ms > 10000) {
       if (this.currentLevel < DegradationLevel.D4) {
         this.escalate();
         return {
           action: "escalate",
           newLevel: this.currentLevel,
-          reason: `ttft_p99:${ttftP99Ms}ms exceeds threshold:${ttftThreshold}ms`,
+          reason: `ttft_p99:${ttftP99Ms}ms`,
         };
       }
     }
@@ -587,26 +426,18 @@ export class DegradationController {
     }
 
     // Check for de-escalation conditions
-    // §179-2096: De-escalation must also verify latency P99 is below threshold,
-    // not just error rate. Previously ignored latency P99 which could allow
-    // de-escalation even when latency is still degraded.
     const shouldDeescalate =
       errorRate < this.config.deescalateErrorRateThreshold &&
-      latencyP99Ms < this.config.escalateLatencyP99Ms &&
       this.currentLevel > this.config.maxAutoDeescalateLevel;
 
     if (shouldDeescalate) {
       this.consecutiveHealthyCount++;
       if (this.consecutiveHealthyCount >= this.config.deescalateMinHealthyCount) {
-        // R29-41 FIX: Capture consecutiveHealthyCount BEFORE deescalate() resets it to 0.
-        // Root cause: deescalate() sets consecutiveHealthyCount=0, then the reason string
-        // was using the reset value showing "recovered_after_0_checks" instead of actual count.
-        const recoveryCount = this.consecutiveHealthyCount;
         this.deescalate();
         return {
           action: "deescalate",
           newLevel: this.currentLevel,
-          reason: `recovered_after_${recoveryCount}_checks`,
+          reason: `recovered_after_${this.consecutiveHealthyCount}_checks`,
         };
       }
       return {

@@ -29,32 +29,12 @@
 - SLA 证据至少要能回链到 `harness_run_id`、`node_run_id` 与对应 `NodeAttemptReceipt`。
 - `platinum` 等级只有在 failover、quorum、演练与容量保留证据全部就绪时才能对外承诺。
 
-## 4A. HarnessRun / NodeRun 集成点
-
-| 集成场景 | 必填字段 | 说明 |
-| --- | --- | --- |
-| SLA 承诺绑定 | `harness_run_id`、`tier_id` | 每个 HarnessRun 必须携带 SLA tier 标识 |
-| 延迟追踪 | `harness_run_id`、`node_run_id`、`queued_at`、`started_at`、`completed_at` | 用于计算队列等待与执行延迟 |
-| 成功率统计 | `harness_run_id`、`node_run_id`、`attempt_id`、`status` | 按 `NodeAttemptReceipt.status` 聚合 |
-| 预算关联 | `harness_run_id`、`node_run_id`、`budget_reservation_id` | 用于 SLA 成本核算 |
-| 断点回链 | `harness_run_id`、`node_run_id`、`receipt_id` | `SlaBreachRecord` 必须引用 `NodeAttemptReceipt` |
-
-**v4.3 Remediation**：原文档仅声明"回链到 HarnessRun/NodeRun"，未明确集成字段列表。修复：正文现补充上表，明确每种集成场景的必填字段，确保实现侧有一致锚点。
-
 ## 5. 测试要求
 
 - unit：tier resolution、breach classification
 - integration：SLA-aware scheduling
 - contract：已承诺 tier 的对象必须保留可审计的 SLO 证据
 
-## 6. 兼容与导出规则
-
-- `SlaTier`、`SlaCommitment`、`SlaBreachRecord` 对外导出时，必须保留 `harness_run_id`、`node_run_id`、`receipt_id` 这一组最小关联锚点。
-- 若上层 API 仍暴露 legacy `execution_id`，只能作为查询 alias，不得覆盖 canonical `HarnessRun / NodeRun` 关联链。
-- 高等级 SLA 的 breach 证据包必须能导出队列等待、执行时长、attempt receipt 与恢复动作引用。
-
 ## v4.3 Contract Remediation
 
 - T-73: 本文原先只定义 SLA 等级本身，没有绑定运行链证据与高等级前置条件，根因是 SLA contract 先写了业务承诺，后补 runtime 可验证性。修复：正文现要求 SLA 证据回链到 `HarnessRun / NodeRun / NodeAttemptReceipt`，并把 `platinum` 前置条件显式化。
-
-强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger / BudgetReservation / BudgetSettlement`。

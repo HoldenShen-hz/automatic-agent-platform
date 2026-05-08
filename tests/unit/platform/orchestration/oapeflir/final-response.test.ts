@@ -14,9 +14,6 @@ test("FinalResponse structure", () => {
       sections: [],
       citations: [],
     },
-    executionDurationMs: 1250,
-    modelId: "claude-sonnet-4",
-    retryCount: 0,
     artifacts: ["artifact:art_1", "artifact:art_2"],
     citations: [],
     confidenceScore: 0.95,
@@ -26,8 +23,6 @@ test("FinalResponse structure", () => {
 
   assert.equal(response.taskId, "task_123");
   assert.equal(response.human.summary, "Task completed successfully");
-  assert.equal(response.executionDurationMs, 1250);
-  assert.equal(response.modelId, "claude-sonnet-4");
   assert.equal(response.artifacts.length, 2);
   assert.equal(response.citations.length, 0);
 });
@@ -43,9 +38,6 @@ test("FinalResponse with empty arrays", () => {
       sections: [],
       citations: [],
     },
-    executionDurationMs: 0,
-    modelId: "local-simulated",
-    retryCount: 0,
     artifacts: [],
     citations: [],
     confidenceScore: 0.5,
@@ -68,9 +60,6 @@ test("FinalResponse with citations", () => {
       sections: [],
       citations: ["evidence:sig_1"],
     },
-    executionDurationMs: 2400,
-    modelId: "gpt-5",
-    retryCount: 1,
     artifacts: ["artifact:clean"],
     citations: [],
     confidenceScore: 1.0,
@@ -79,6 +68,5 @@ test("FinalResponse with citations", () => {
   };
 
   assert.equal(response.human.summary, "Clean execution");
-  assert.equal(response.retryCount, 1);
   assert.equal(response.artifacts.length, 1);
 });

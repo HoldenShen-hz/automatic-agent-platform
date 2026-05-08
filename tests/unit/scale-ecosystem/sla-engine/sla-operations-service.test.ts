@@ -48,7 +48,6 @@ test("SlaOperationsService.evaluate selects highest priority tier when none sele
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: null,
-    workflowClass: "deterministic",
     observation: createTestObservation(),
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -71,7 +70,6 @@ test("SlaOperationsService.evaluate uses selectedTierId when provided", () => {
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "silver",
-    workflowClass: "deterministic",
     observation: createTestObservation(),
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -91,7 +89,6 @@ test("SlaOperationsService.evaluate detects latency breach", () => {
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "deterministic",
     observation: createTestObservation({ latencyMs: 600 }), // exceeds 500ms target
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -113,7 +110,6 @@ test("SlaOperationsService.evaluate detects success rate breach", () => {
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "deterministic",
     observation: createTestObservation({ successRate: 0.98 }), // below 0.999 target
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -135,7 +131,6 @@ test("SlaOperationsService.evaluate detects queue wait breach", () => {
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "deterministic",
     observation: createTestObservation({ queueWaitMs: 2500 }), // exceeds 2000ms max
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -156,7 +151,6 @@ test("SlaOperationsService.evaluate returns no breaches when within commitment",
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "llm_assisted",
     observation: createTestObservation({ latencyMs: 400, successRate: 1.0, queueWaitMs: 1500 }),
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -177,7 +171,6 @@ test("SlaOperationsService.evaluate calculates reserved capacity", () => {
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "deterministic",
     observation: createTestObservation(),
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),
@@ -202,7 +195,6 @@ test("SlaOperationsService.evaluate handles custom reserved capacity plan", () =
   const request: SlaOperationsRequest = {
     tiers,
     selectedTierId: "gold",
-    workflowClass: "deterministic",
     observation: createTestObservation(),
     reservedCapacityPlan: customPlan,
     totalCapacityUnits: 100,
@@ -220,7 +212,6 @@ test("SlaOperationsService.evaluate handles empty tiers", () => {
   const request: SlaOperationsRequest = {
     tiers: [],
     selectedTierId: null,
-    workflowClass: "deterministic",
     observation: createTestObservation(),
     totalCapacityUnits: 100,
     observedAt: new Date().toISOString(),

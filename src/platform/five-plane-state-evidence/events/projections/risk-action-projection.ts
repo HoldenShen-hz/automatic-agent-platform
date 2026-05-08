@@ -61,39 +61,12 @@ export interface RiskActionState {
   timeline: RiskActionTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
-}
-
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface RiskActionStateInternal extends Omit<RiskActionState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 export type RiskActionType = "allow" | "deny" | "block" | "escalate" | "review" | "quarantine";
@@ -143,29 +116,6 @@ export function createEmptyRiskActionState(): RiskActionState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
-  };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: RiskActionState): RiskActionStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: RiskActionStateInternal): RiskActionState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -184,11 +134,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: RiskActionStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: RiskActionState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -219,14 +168,13 @@ export const riskActionProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as RiskActionState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyRiskActionState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyRiskActionState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -255,14 +203,6 @@ export const riskActionProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Extract details for timeline
   const details: Record<string, unknown> = {};
@@ -283,8 +223,8 @@ export const riskActionProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Update risk metadata

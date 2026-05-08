@@ -31,7 +31,6 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { EventRecord } from "../../contracts/types/domain.js";
-import { z } from "zod";
 
 /**
  * Event types that can be dropped from the replay buffer when it exceeds max size.
@@ -39,46 +38,6 @@ import { z } from "zod";
  * Critical events like "completed", "failed", and "approval_requested" are always retained.
  */
 const DROPPABLE_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>(["status_changed", "progress", "message_delta"]);
-
-/**
- * R12-09 FIX: Priority-based eviction for replay buffer.
- * Lower priority number = lower priority = evicted first.
- * Priority order: status_changed (1) < progress (2) < message_delta (3)
- */
-const EVENT_DROP_PRIORITY: Record<StreamEventFrame["eventType"], number> = {
-  status_changed: 1,
-  progress: 2,
-  message_delta: 3,
-  artifact_ready: 999,
-  approval_requested: 999,
-  completed: 999,
-  failed: 999,
-};
-
-/**
- * Event types that must never be evicted from the replay buffer.
- * These events carry terminal outcomes or explicit operator handoff.
- */
-const CRITICAL_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>([
-  "completed",
-  "failed",
-  "approval_requested",
-  "artifact_ready",
-]);
-
-/**
- * Schema for validating event payload JSON in mapEventType.
- * §5.2: All inter-plane boundary JSON must be schema-validated.
- */
-const taskStatusChangedPayloadSchema = z.object({
-  toStatus: z.string().optional(),
-});
-
-/**
- * Schema for validating event payload JSON in emitFromEvent.
- * §5.2: All inter-plane boundary JSON must be schema-validated.
- */
-const genericEventPayloadSchema = z.record(z.unknown());
 
 /**
  * A single frame in the event stream.
@@ -121,11 +80,6 @@ export interface StreamBridgeOptions {
    * @defaultValue 100
    */
   maxReplayFrames?: number;
-  /**
-   * Maximum allowed lag before a client is considered a slow consumer.
-   * @defaultValue 10
-   */
-  slowConsumerLagThreshold?: number;
 }
 
 /**
@@ -190,9 +144,7 @@ export interface SseFrame {
 function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
   switch (event.eventType) {
     case "task:status_changed": {
-      // §5.2: Schema-validated parsing at inter-plane boundary
-      const parsed = taskStatusChangedPayloadSchema.safeParse(JSON.parse(event.payloadJson));
-      const payload = parsed.success ? parsed.data : { toStatus: undefined };
+      const payload = JSON.parse(event.payloadJson) as { toStatus?: string };
       if (payload.toStatus === "done") {
         return "completed";
       }
@@ -213,12 +165,6 @@ function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
 }
 
 /**
- * §10: Transport connection state for gateway_streaming contract compliance.
- * Tracks the state of transport connections to detect reconnection and failure scenarios.
- */
-export type TransportState = "connected" | "reconnecting" | "failed";
-
-/**
  * Manages event streams with replay capabilities.
  *
  * StreamBridge provides the infrastructure for SSE (Server-Sent Events) streaming.
@@ -230,51 +176,12 @@ export type TransportState = "connected" | "reconnecting" | "failed";
  * - When buffer is full, droppable events are evicted (oldest first)
  * - Critical events (completed, failed, approval_requested) are never dropped
  * - Dropped sequence numbers are tracked to allow clients to detect gaps
- *
- * §7.1: Per-connection backpressure:
- * - Tracks connected clients per stream
- * - Detects slow consumers based on client cursor lag
- * - Emits stream_gap events when clients fall behind
- * - Supports dropping low-priority frames for slow consumers
  */
 export class StreamBridge {
   private readonly options: Required<StreamBridgeOptions>;
   private readonly nextSequenceByStream = new Map<string, number>();
   private readonly replayBuffer = new Map<string, StreamEventFrame[]>();
   private readonly droppedBeforeSequenceByStream = new Map<string, number>();
-
-  // §7.1: Per-connection tracking for backpressure and slow-consumer detection
-  /** Map of streamId -> Set of connected client IDs */
-  private readonly connectedClientsByStream = new Map<string, Set<string>>();
-  /** Map of clientId -> last acknowledged sequence number for that client */
-  private readonly clientLastSequence = new Map<string, number>();
-  /** Map of clientId -> streamId they are subscribed to */
-  private readonly clientStreamSubscription = new Map<string, string>();
-  /** Threshold for slow consumer detection - max sequence lag before marking as slow */
-  private readonly slowConsumerLagThreshold: number;
-
-  // §10: Transport state tracking for gateway_streaming contract compliance
-  /** Transport connection state per stream */
-  private readonly transportStateByStream = new Map<string, TransportState>();
-
-  /**
-   * Gets the current transport state for a stream.
-   * @param streamId - The stream to check
-   * @returns Current transport state
-   */
-  public getTransportState(streamId: string): TransportState {
-    return this.transportStateByStream.get(streamId) ?? "connected";
-  }
-
-  /**
-   * Sets the transport state for a stream.
-   * §10: Must be called when transport state changes (connected/reconnecting/failed).
-   * @param streamId - The stream to update
-   * @param state - New transport state
-   */
-  public setTransportState(streamId: string, state: TransportState): void {
-    this.transportStateByStream.set(streamId, state);
-  }
 
   /**
    * Creates a new StreamBridge instance.
@@ -283,163 +190,7 @@ export class StreamBridge {
   public constructor(options: StreamBridgeOptions = {}) {
     this.options = {
       maxReplayFrames: options.maxReplayFrames ?? 100,
-      slowConsumerLagThreshold: options.slowConsumerLagThreshold ?? 10,
     };
-    this.slowConsumerLagThreshold = this.options.slowConsumerLagThreshold;
-  }
-
-  // §7.1: Per-connection client management
-
-  /**
-   * Registers a client connection to a stream.
-   * @param clientId - Unique identifier for the client
-   * @param streamId - The stream to connect to
-   * @param lastSequence - Last sequence number the client has received (for replay)
-   */
-  public registerClient(clientId: string, streamId: string, lastSequence: number = 0): void {
-    if (!this.connectedClientsByStream.has(streamId)) {
-      this.connectedClientsByStream.set(streamId, new Set());
-    }
-    this.connectedClientsByStream.get(streamId)!.add(clientId);
-    this.clientLastSequence.set(clientId, lastSequence);
-    this.clientStreamSubscription.set(clientId, streamId);
-  }
-
-  /**
-   * Unregisters a client from its stream.
-   * @param clientId - Unique identifier for the client
-   */
-  public unregisterClient(clientId: string): void {
-    const streamId = this.clientStreamSubscription.get(clientId);
-    if (streamId) {
-      this.connectedClientsByStream.get(streamId)?.delete(clientId);
-      // Clean up empty sets and associated stream data
-      if (this.connectedClientsByStream.get(streamId)?.size === 0) {
-        this.connectedClientsByStream.delete(streamId);
-        // #2361: Clean up stream maps to prevent unbounded growth
-        this.nextSequenceByStream.delete(streamId);
-        this.replayBuffer.delete(streamId);
-        this.droppedBeforeSequenceByStream.delete(streamId);
-        this.transportStateByStream.delete(streamId);
-      }
-    }
-    this.clientLastSequence.delete(clientId);
-    this.clientStreamSubscription.delete(clientId);
-  }
-
-  /**
-   * #2361: Closes a stream and cleans up all associated data.
-   * Call this method when a stream is no longer needed to prevent memory leaks
-   * from unbounded map growth.
-   * @param streamId - The stream to close
-   */
-  public closeStream(streamId: string): void {
-    for (const [clientId, subscribedStreamId] of this.clientStreamSubscription.entries()) {
-      if (subscribedStreamId === streamId) {
-        this.clientStreamSubscription.delete(clientId);
-        this.clientLastSequence.delete(clientId);
-      }
-    }
-    this.nextSequenceByStream.delete(streamId);
-    this.replayBuffer.delete(streamId);
-    this.droppedBeforeSequenceByStream.delete(streamId);
-    this.connectedClientsByStream.delete(streamId);
-    this.transportStateByStream.delete(streamId);
-  }
-
-  /**
-   * R20-35: Disposes the stream bridge and cleans up all streams.
-   * Call this during shutdown to prevent per-stream maps from growing unbounded.
-   */
-  public dispose(): void {
-    this.nextSequenceByStream.clear();
-    this.replayBuffer.clear();
-    this.droppedBeforeSequenceByStream.clear();
-    this.connectedClientsByStream.clear();
-    this.clientLastSequence.clear();
-    this.clientStreamSubscription.clear();
-    this.transportStateByStream.clear();
-  }
-
-  /**
-   * Updates a client's last acknowledged sequence number.
-   * Called by clients to report their cursor position.
-   * @param clientId - Unique identifier for the client
-   * @param sequence - Last sequence number received by client
-   */
-  public updateClientCursor(clientId: string, sequence: number): void {
-    this.clientLastSequence.set(clientId, sequence);
-  }
-
-  /**
-   * §7.1: Checks if a client is a slow consumer based on sequence lag.
-   * A client is considered slow if their acknowledged sequence is more than
-   * slowConsumerLagThreshold behind the current stream sequence.
-   * @param clientId - Unique identifier for the client
-   * @returns true if the client is lagging behind
-   */
-  public isSlowConsumer(clientId: string): boolean {
-    const streamId = this.clientStreamSubscription.get(clientId);
-    if (!streamId) return false;
-
-    const currentSequence = this.nextSequenceByStream.get(streamId) ?? 0;
-    const clientSequence = this.clientLastSequence.get(clientId) ?? 0;
-    const lag = currentSequence - clientSequence;
-
-    return lag > this.slowConsumerLagThreshold;
-  }
-
-  /**
-   * §7.1: Gets all slow consumers for a given stream.
-   * @param streamId - The stream to check
-   * @returns Array of client IDs that are slow consumers
-   */
-  public getSlowConsumers(streamId: string): string[] {
-    const clients = this.connectedClientsByStream.get(streamId) ?? new Set();
-    const slowClients: string[] = [];
-
-    for (const clientId of clients) {
-      if (this.isSlowConsumer(clientId)) {
-        slowClients.push(clientId);
-      }
-    }
-
-    return slowClients;
-  }
-
-  /**
-   * §7.1: Detects and returns stream gap information for a client.
-   * A gap exists when the client's last sequence is behind what we'd expect.
-   * @param clientId - Unique identifier for the client
-   * @returns Gap info if a gap is detected, null otherwise
-   */
-  public detectStreamGap(clientId: string): { fromSequence: number; toSequence: number; gapSize: number } | null {
-    const streamId = this.clientStreamSubscription.get(clientId);
-    if (!streamId) return null;
-
-    const currentSequence = this.nextSequenceByStream.get(streamId) ?? 0;
-    const clientSequence = this.clientLastSequence.get(clientId) ?? 0;
-    const droppedBefore = this.droppedBeforeSequenceByStream.get(streamId) ?? 0;
-
-    // If client's sequence is less than the oldest available, there's a gap
-    if (clientSequence < droppedBefore) {
-      return {
-        fromSequence: clientSequence,
-        toSequence: droppedBefore,
-        gapSize: droppedBefore - clientSequence,
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Gets the number of connected clients for a stream.
-   * @param streamId - The stream to check
-   * @returns Number of connected clients
-   */
-  public getConnectedClientCount(streamId: string): number {
-    return this.connectedClientsByStream.get(streamId)?.size ?? 0;
   }
 
   /**
@@ -492,15 +243,12 @@ export class StreamBridge {
    * @returns The emitted frame with assigned sequence number
    */
   public emitFromEvent(input: { streamId: string; channel: string; event: EventRecord }): StreamEventFrame {
-    // §5.2: Schema-validated parsing at inter-plane boundary
-    const parsed = genericEventPayloadSchema.safeParse(JSON.parse(input.event.payloadJson));
-    const payload = parsed.success ? parsed.data : {};
     return this.emitFrame({
       streamId: input.streamId,
       taskId: input.event.taskId ?? "unknown_task",
       channel: input.channel,
       eventType: mapEventType(input.event),
-      payload,
+      payload: JSON.parse(input.event.payloadJson) as Record<string, unknown>,
       createdAt: input.event.createdAt,
     });
   }
@@ -621,55 +369,25 @@ export class StreamBridge {
   /**
    * Appends a frame to the replay buffer, evicting old frames if necessary.
    *
-   * R12-09 FIX: Priority-based eviction instead of simple FIFO.
-   * When the buffer exceeds maxReplayFrames, it evicts the LOWEST priority
-   * droppable frame (status_changed first, then progress, then message_delta).
-   * Critical events (completed, failed, approval_requested, artifact_ready) are
-   * NEVER dropped. If all buffered frames are critical, the new frame is
-   * dropped instead.
+   * When the buffer exceeds maxReplayFrames, it attempts to drop the oldest
+   * frame that is marked as droppable. If no droppable frames exist, it drops
+   * the oldest frame regardless of type. Critical events (completed, failed,
+   * approval_requested) are preserved by checking the type before dropping.
    *
    * @param frame - The frame to append
    */
   private appendToReplayBuffer(frame: StreamEventFrame): void {
     const next = [...(this.replayBuffer.get(frame.streamId) ?? []), frame];
 
-    // If buffer exceeds limit, evict based on priority (lowest priority first)
     while (next.length > this.options.maxReplayFrames) {
-      // Find ALL droppable candidates and select the lowest priority one
-      // R12-09 fix: priority-based eviction instead of findIndex which just
-      // finds the first droppable (oldest), not the lowest priority droppable
-      let lowestPriorityIndex = -1;
-      let lowestPriority = Infinity;
-
-      for (let i = 0; i < next.length; i++) {
-        const candidate = next[i]!;
-        if (DROPPABLE_EVENT_TYPES.has(candidate.eventType)) {
-          const priority = EVENT_DROP_PRIORITY[candidate.eventType] ?? 999;
-          if (priority < lowestPriority) {
-            lowestPriority = priority;
-            lowestPriorityIndex = i;
-          }
-        }
-      }
-
-      // Only drop if we found a droppable frame; never drop critical events
-      if (lowestPriorityIndex >= 0) {
-        const removed = next.splice(lowestPriorityIndex, 1)[0];
-        if (removed != null) {
-          // Track the lowest dropped sequence so clients know buffer was truncated
-          const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;
-          this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
-        }
-      } else {
-        // When the buffer contains only critical events, keep the full critical
-        // history even if it temporarily exceeds maxReplayFrames.
-        if (CRITICAL_EVENT_TYPES.has(frame.eventType)) {
-          break;
-        }
-        // If the newest frame is droppable and all retained frames are critical,
-        // discard the new frame instead of evicting critical history.
-        next.pop();
-        break;
+      // Find the first droppable frame (search from oldest)
+      const indexToDrop = next.findIndex((candidate) => DROPPABLE_EVENT_TYPES.has(candidate.eventType));
+      // If no droppable found, fall back to oldest (index 0)
+      const removed = next.splice(indexToDrop >= 0 ? indexToDrop : 0, 1)[0];
+      if (removed != null) {
+        // Track the lowest dropped sequence so clients know buffer was truncated
+        const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;
+        this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
       }
     }
 

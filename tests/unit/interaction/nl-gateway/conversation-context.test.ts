@@ -238,8 +238,8 @@ test("ConversationContextManager maxTurns is set correctly for task types", () =
   const manager = new ConversationContextManager();
 
   const ctxDefault = manager.getContext("tenant_1", "user_1");
-  const ctxTaskCreate = manager.getContext("tenant_1", "user_2", "task_create");
-  const ctxTaskQuery = manager.getContext("tenant_1", "user_3", "task_query");
+  const ctxTaskCreate = manager.getContext("tenant_1", "user_1", "task_create");
+  const ctxTaskQuery = manager.getContext("tenant_1", "user_1", "task_query");
 
   assert.equal(ctxDefault.maxTurns, 10);
   assert.equal(ctxTaskCreate.maxTurns, 15);

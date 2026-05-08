@@ -24,7 +24,7 @@ export function buildModelGatewayBootstrap(): ModelGatewayBootstrap {
 }
 
 export function registerModelGatewayBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ModelGatewayBootstrap {
   registry.register<readonly ModelGatewayCapabilityBaseline[]>(MODEL_GATEWAY_CATALOG_SERVICE_ID, {
     init: () => listModelGatewayCapabilityBaselines(),

@@ -86,12 +86,19 @@ interface ImprovementCandidate {
   updatedAt: string;
 }
 
-// 根据 §56.4 LearningCandidate 状态定义
 type ImprovementCandidateStatus =
-  | 'quarantine'    // 初始隔离状态
-  | 'approved'      // 已批准
-  | 'rejected'      // 已拒绝
-  | 'released';     // 已发布
+  | 'candidate_created'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'evaluation_enabled'
+  | 'canary_5'
+  | 'partial_25'
+  | 'stable_75'
+  | 'stable_100'
+  | 'released'
+  | 'auto_rollback'
+  | 'rolled_back';
 ```
 
 ### 6. Autonomy Boundary（自主边界）

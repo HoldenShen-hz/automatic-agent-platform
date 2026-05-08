@@ -7,10 +7,6 @@
 
 The platform needs to predict capacity requirements and cost trends, supporting proactive scaling decisions.
 
-## Ring Annotation
-
-**Ring 3 — Enterprise** (§33). Capacity planning and cost prediction is a core capability for scaled operations, corresponding to Ring 3 (Enterprise) completion stage. Ring 1 MVP stage does not require a complete capacity prediction engine, but must reserve capacity data collection interfaces to avoid missing telemetry in future expansion.
-
 ## Decision
 
 ### Capacity Metrics
@@ -63,10 +59,10 @@ interface MetricPrediction {
 
 | Dimension | Prediction Factors |
 |-----------|-------------------|
-| LLM cost | Token consumption × unit price |
-| Compute cost | Instances × unit price × duration |
-| Storage cost | Storage volume × unit price |
-| Network cost | Traffic × unit price |
+| LLM cost | Token consumption x unit price |
+| Compute cost | Instances x unit price x duration |
+| Storage cost | Storage volume x unit price |
+| Network cost | Traffic x unit price |
 
 ### Capacity Planning Reports
 
@@ -93,6 +89,6 @@ Negative:
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-064 Cost Attribution and Optimization Engine](./064-cost-attribution-and-optimization-engine.md)
 
-## Source Section
+## Source Sections
 
 - `§67` Capacity Planning and Cost Prediction Engine

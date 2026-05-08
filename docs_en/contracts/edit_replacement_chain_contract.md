@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -12,14 +12,14 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
 - **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and release
+- **Improve**: Improvement candidate evaluation and rollout
 - **Release**: Controlled release and rollback
 
 ---
 
 ## 1. Scope
 
-This contract defines the multi-level matching chain for `edit / patch / replace` class tools to locate old content and apply replacements.
+This contract defines the multi-level matching chain when edit / patch / replace tools locate old content and apply replacements.
 
 Related documents:
 
@@ -28,29 +28,29 @@ Related documents:
 - `tool_output_sanitization_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-The multi-level matching chain must simultaneously solve two types of problems:
+Multi-level matching chain must simultaneously solve two types of problems:
 
-- LLM-generated `old_string` has slight whitespace, indentation, newline deviations from the actual file.
-- To improve success rate, fuzzy replacement cannot be amplified into silent mis-editing risk.
+- LLM-generated `old_string` has slight whitespace, indentation, newline deviations from real file.
+- To improve success rate, cannot directly magnify fuzzy replacement into silent mischange risk.
 
 ## 3. Core Principles
 
-- The matching chain must try in fixed order, stopping at first success.
-- The more fuzzy the matching level, the stricter the security constraints must be.
-- Any non-exact replacement must leave a warning and audit record.
-- When it cannot be uniquely located, it must fail, not "guess a similar location".
+- Matching chain must try in fixed order, stopping at first success.
+- The more fuzzy the match level, the stricter the security constraints must be.
+- Any non-exact replacement must leave warning and audit record.
+- When cannot uniquely locate, must fail, not "guess a similar place."
 
-## 4. `EditReplacementAttempt`
+## 4. EditReplacementAttempt
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | Matching level |
+| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | Match level |
 | `matched` | `boolean` | Whether successfully located |
-| `candidate_count` | `number` | Number of candidates |
+| `candidate_count` | `number` | Candidate count |
 | `similarity_score` | `number?` | Fuzzy match score |
-| `warning_codes` | `string[]` | Risk warnings |
+| `warning_codes` | `string[]` | Risk hints |
 | `applied_range` | `string?` | Change location |
 
 ## 5. Multi-Level Matching Chain
@@ -72,8 +72,8 @@ flowchart TD
 
 ### 5.1 Level 1 `exact`
 
-- Exact string match
-- No normalization performed
+- Exact string matching
+- No normalization
 - If uniquely matched, apply directly
 
 ### 5.2 Level 2 `whitespace_normalized`
@@ -85,36 +85,36 @@ flowchart TD
 ### 5.3 Level 3 `indentation_normalized`
 
 - Strip common indentation before matching
-- Suitable for code block entire indentation changes
-- Should preserve the current indentation style of the target file after replacement
+- Applicable to code block overall indentation changes
+- Should preserve current indentation style of target file after replacement
 
 ### 5.4 Level 4 `fuzzy`
 
 - Only attempted after levels 1-3 all fail
 - Requires `similarity_score >= 0.85`
 - Must have only one unique candidate
-- On success, must record warning: `fuzzy_edit_applied`
+- Must record warning on success: `fuzzy_edit_applied`
 
 ### 5.5 Level 5 `context_anchored`
 
-- First narrow candidate area using before/after anchors, then do fuzzy match
-- Only effective in a unique anchor window
-- On success, must record stronger warning: `anchored_fuzzy_edit_applied`
+- First narrow candidate area using before/after anchors, then do fuzzy matching
+- Only effective in unique anchor window
+- Must record stronger warning on success: `anchored_fuzzy_edit_applied`
 
-## 6. Explicitly Not Done
+## 6. Currently Explicitly Not Doing
 
 Phase 1a / 1b does not do:
 
 - AST-aware replacement
-- tree-sitter-level structured node positioning
+- Tree-sitter level structured node locating
 - Cross-file semantic rewriting
 
-If these capabilities are to be introduced, they should enter Phase 2 with a separate ADR or contract.
+If these capabilities are to be introduced, should enter Phase 2 and separately add ADR or contract.
 
 ## 7. Security Constraints
 
 - If multiple candidates appear for the same request, must fail and return conflict information.
-- Any fuzzy success result should return a warning for upper-layer messages or logs to prompt human review.
+- Any fuzzy success result should return warning for upper layer message or log to prompt human review.
 - Multi-level matching chain is not allowed on binary / non-text files.
 - Must hold `write` lock before applying replacement.
 
@@ -129,16 +129,16 @@ Suggested stable error codes:
 
 Rules:
 
-- Target not found and "multiple targets found" must report errors separately.
+- Target not found and "found multiple targets" must report errors separately.
 - Similarity below threshold should explicitly fail, not silently downgrade and apply.
 
 ## 9. Idempotency and Recovery
 
-- If the file content after replacement already equals the expected result, it can be considered idempotent success.
-- Before recovery retry, should re-read the target file rather than directly reuse old candidate ranges.
-- Fuzzy / anchored level retries must not continue using old scores after the file has changed.
+- If file content after replacement already equals expected result, can be treated as idempotent success.
+- Before recovery retry, should re-read target file first, not directly reuse old candidate range.
+- Retry at fuzzy / anchored level must not continue using old scores after file has changed.
 
-## 10. Phase Boundaries
+## 10. Phase Boundary
 
 Phase 1a does:
 
@@ -151,6 +151,6 @@ Phase 1b does:
 - `fuzzy`
 - `context_anchored`
 
-## 11. Conclusion
+## 11. Closure Conclusion
 
-Improving edit success rate cannot rely on "daring to change more", but on a matching chain that tightens order, explicitly states risks, and fails explainably.
+Improving edit success rate cannot rely on "being bolder," but on a matching chain that tightens order, shows risks explicitly, and fails explainably.

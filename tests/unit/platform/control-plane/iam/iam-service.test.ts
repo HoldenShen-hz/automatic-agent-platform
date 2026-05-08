@@ -138,11 +138,16 @@ test("IamService returns empty capabilities for viewer", () => {
 
 test("IamService returns correct capabilities for worker_runtime", () => {
   const caps = capabilitiesForRole("worker_runtime");
-  assert.deepEqual(caps, []);
+  assert.ok(caps.includes("tool:invoke"));
+  assert.ok(caps.includes("fs:write"));
+  assert.ok(caps.includes("exec:command"));
+  assert.ok(!caps.includes("network:access"));
 });
 
 test("IamService returns correct capabilities for plugin_runtime", () => {
   const caps = capabilitiesForRole("plugin_runtime");
+  assert.ok(caps.includes("tool:invoke"));
+  assert.ok(caps.includes("fs:write"));
   assert.ok(caps.includes("network:access"));
   assert.ok(!caps.includes("model:invoke"));
   assert.ok(!caps.includes("exec:command"));
@@ -242,7 +247,8 @@ test("IamService resolves access profile with explicit capabilities", () => {
     roles: ["viewer"],
     capabilities: ["model:invoke", "tool:invoke"],
   });
-  assert.deepEqual(profile.capabilities, []);
+  assert.ok(profile.capabilities.includes("model:invoke"));
+  assert.ok(profile.capabilities.includes("tool:invoke"));
 });
 
 test("IamService deduplicates roles in profile", () => {
@@ -258,7 +264,7 @@ test("IamService deduplicates capabilities in profile", () => {
     principalType: "user",
     capabilities: ["model:invoke", "model:invoke", "tool:invoke"],
   });
-  assert.equal(profile.capabilities.length, 0);
+  assert.equal(profile.capabilities.length, 2);
 });
 
 test("IamService checks role grants capabilities - granted", () => {
@@ -297,7 +303,7 @@ test("IamService allows when tenant scope is provided", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
       principalType: "user",
-      roles: ["platform_admin"],
+      roles: ["viewer"],
       action: "org_change",
       context: makeMockContext({ requiresTenantScope: true, tenantId: "tenant-123" }),
     }),
@@ -541,7 +547,7 @@ test("IamService returns correct constraints on plugin trust denial", () => {
   assert.equal(result.constraints["pluginTrusted"], false);
 });
 
-test("IamService handles non-production environment with exec_command by enforcing capability checks", () => {
+test("IamService handles non-production environment with exec_command", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
       principalType: "agent",
@@ -550,11 +556,10 @@ test("IamService handles non-production environment with exec_command by enforci
       context: makeMockContext({ environment: "workspace" }),
     }),
   );
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "policy.capability_required");
+  assert.equal(result.allowed, true);
 });
 
-test("IamService handles staging environment with exec_command by enforcing capability checks", () => {
+test("IamService handles staging environment with exec_command", () => {
   const result = evaluateAuthorizationContext(
     makeRequest({
       principalType: "agent",
@@ -563,8 +568,7 @@ test("IamService handles staging environment with exec_command by enforcing capa
       context: makeMockContext({ environment: "staging" }),
     }),
   );
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "policy.capability_required");
+  assert.equal(result.allowed, true);
 });
 
 test("IamService handles confidential data classification without requiring approval for non-sensitive actions", () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ValidationError, NetworkError } from "../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../src/platform/contracts/errors.js";
 import {
   buildApiUrl,
   buildAuthHeaders,
@@ -106,15 +106,7 @@ test("createApiClient throws ValidationError when apiVersion is whitespace only"
 });
 
 test("createApiClient returns RetryableApiClient with valid config", () => {
-  const config: ApiClientConfig = {
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    principal: {
-      principalId: "test-principal",
-      tenantId: "test-tenant",
-      roles: ["test-role"],
-    },
-  };
+  const config: ApiClientConfig = { baseUrl: "https://api.example.com", apiVersion: "v1" };
   const client = createApiClient(config);
   assert.ok(client instanceof RetryableApiClient);
 });
@@ -431,11 +423,6 @@ test("RetryableApiClient throws after max retries exhausted on persistent 5xx", 
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: {
-      principalId: "test-principal",
-      tenantId: "test-tenant",
-      roles: ["test-role"],
-    },
   };
   const client = new RetryableApiClient(config, { maxRetries: 2, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
 
@@ -447,12 +434,9 @@ test("RetryableApiClient throws after max retries exhausted on persistent 5xx", 
     });
 
   try {
-    // After max retries, the 503 response throws a NetworkError
-    await client.get("/users/1");
-    assert.fail("Expected NetworkError to be thrown");
-  } catch (error) {
-    assert.ok(error instanceof NetworkError);
-    assert.equal(error.code, "client_sdk.server_error");
+    // After max retries, the 503 response is returned (not thrown)
+    const result = await client.get("/users/1");
+    assert.equal(result.status, 503);
   } finally {
     globalThis.fetch = originalFetch;
   }

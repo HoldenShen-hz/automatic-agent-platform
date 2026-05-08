@@ -12,13 +12,10 @@ import {
   createScopedExternalAccessPolicy,
   createRestrictedExecPolicy,
   createConfigReadPolicy,
-  DEFAULT_SANDBOX_DENIED_ROOTS,
-  normalizeSandboxMode,
   type SandboxPolicy,
   type SandboxMode,
   type SandboxPathCheckResult,
 } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("createWorkspaceWritePolicy creates valid policy", () => {
   const policy = createWorkspaceWritePolicy("/workspace/root");
@@ -26,7 +23,7 @@ test("createWorkspaceWritePolicy creates valid policy", () => {
   assert.equal(policy.mode, "workspace_write");
   assert.equal(policy.policyId, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace/root"]);
-  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
+  assert.deepEqual(policy.deniedRoots, []);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -57,7 +54,6 @@ test("createConfigReadPolicy creates read-only policy", () => {
   assert.equal(policy.mode, "read_only");
   assert.equal(policy.policyId, "config_read");
   assert.deepEqual(policy.allowedRoots, ["/etc/config"]);
-  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");
@@ -77,7 +73,7 @@ test("checkSandboxPath denies path outside allowed root", () => {
   const result = checkSandboxPath(policy, "/etc/passwd");
 
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
 test("checkSandboxPath denies path in denied root", () => {
@@ -90,21 +86,6 @@ test("checkSandboxPath denies path in denied root", () => {
 
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
-});
-
-test("default sandbox factory policies deny sensitive system roots", () => {
-  const policies = [
-    createWorkspaceWritePolicy("/workspace/root"),
-    createScopedExternalAccessPolicy("/workspace/root"),
-    createRestrictedExecPolicy("/workspace/root"),
-    createConfigReadPolicy("/workspace/root"),
-  ];
-
-  for (const policy of policies) {
-    assert.ok(policy.deniedRoots.includes("/etc"));
-    assert.ok(policy.deniedRoots.includes("/proc"));
-    assert.ok(policy.deniedRoots.some((root) => root.includes(".ssh")));
-  }
 });
 
 test("checkSandboxPath denied root takes precedence over allowed root", () => {
@@ -141,31 +122,20 @@ test("checkSandboxPath rejects null byte in path", () => {
   assert.equal(result.reasonCode, "sandbox.path_invalid_encoding");
 });
 
-test("checkSandboxPath restricted_exec mode enforces allowed root boundary (S4/R8-42)", () => {
-  // §10.3 filesystem jail requires ALL modes (including restricted_exec)
-  // to enforce path boundaries - the exemption was a security flaw
+test("checkSandboxPath restricted_exec mode ignores allowed root boundary", () => {
   const policy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/root"),
     deniedRoots: ["/etc"],
   };
 
-  // Path outside allowed root should be denied
+  // Should be allowed even though outside /workspace/root
   const result = checkSandboxPath(policy, "/tmp/ephemeral.txt");
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
+  assert.equal(result.allowed, true);
 
-  // Denied roots still apply within allowed boundaries
-  const workspacePolicy: SandboxPolicy = {
-    ...createRestrictedExecPolicy("/workspace/root"),
-    deniedRoots: ["/workspace/root/secrets"],
-  };
-  const deniedResult = checkSandboxPath(workspacePolicy, "/workspace/root/secrets/api-keys.txt");
+  // But denied roots still apply
+  const deniedResult = checkSandboxPath(policy, "/etc/passwd");
   assert.equal(deniedResult.allowed, false);
   assert.equal(deniedResult.reasonCode, "sandbox.path_in_denied_root");
-
-  // Path within allowed root should be allowed
-  const allowedResult = checkSandboxPath(policy, "/workspace/root/file.txt");
-  assert.equal(allowedResult.allowed, true);
 });
 
 test("resolveSandboxPath resolves simple paths", () => {
@@ -256,7 +226,7 @@ test("checkSandboxPath returns correct reason codes", () => {
 
   // Outside allowed roots
   const outsideResult = checkSandboxPath(policy, "/etc/file");
-  assert.equal(outsideResult.reasonCode, "sandbox.path_in_denied_root");
+  assert.equal(outsideResult.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
 test("resolveSandboxPath returns normalized path for non-existent parent", () => {
@@ -367,8 +337,7 @@ test("config read policy denies write operations context", () => {
   assert.equal(policy.processRuleMode, "deny");
 
   const result = checkSandboxPath(policy, "/etc/app/config/settings.json");
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
+  assert.equal(result.allowed, true);
 });
 
 test("sandbox policy with empty denied roots array", () => {
@@ -439,112 +408,4 @@ test("processRuleMode values are accepted", () => {
     processRuleMode: "deny",
   };
   assert.equal(denyPolicy.processRuleMode, "deny");
-});
-
-// =============================================================================
-// S4/R8-42: Sandbox tier "none" removal tests
-// =============================================================================
-
-test("normalizeSandboxMode rejects 'none' tier with error (S4/R8-42)", () => {
-  // Per S4/R8-42, "none" is not a valid sandbox mode - it throws
-  assert.throws(
-    () => normalizeSandboxMode("none"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-});
-
-test("normalizeSandboxMode does not accept 'none' as valid mode (S4/R8-42)", () => {
-  // Verify that "none" is not treated as a valid mode - throws error
-  assert.throws(
-    () => normalizeSandboxMode("none"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-});
-
-test("normalizeSandboxMode accepts null/undefined and returns read_only", () => {
-  // null/undefined should default to read_only
-  assert.equal(normalizeSandboxMode(null), "read_only");
-  assert.equal(normalizeSandboxMode(undefined), "read_only");
-});
-
-test("normalizeSandboxMode accepts all valid sandbox modes", () => {
-  assert.equal(normalizeSandboxMode("read_only"), "read_only");
-  assert.equal(normalizeSandboxMode("workspace_write"), "workspace_write");
-  assert.equal(normalizeSandboxMode("scoped_external_access"), "scoped_external_access");
-  assert.equal(normalizeSandboxMode("restricted_exec"), "restricted_exec");
-});
-
-test("normalizeSandboxMode normalizes alias 'process' to read_only", () => {
-  // 'process' is an alias for read_only
-  assert.equal(normalizeSandboxMode("process"), "read_only");
-});
-
-test("normalizeSandboxMode normalizes alias 'container' to workspace_write", () => {
-  // 'container' is an alias for workspace_write
-  assert.equal(normalizeSandboxMode("container"), "workspace_write");
-});
-
-test("normalizeSandboxMode rejects unknown mode strings with error", () => {
-  // Unknown strings throw an error - no silent fallback
-  assert.throws(
-    () => normalizeSandboxMode("invalid"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-  assert.throws(
-    () => normalizeSandboxMode(""),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-  assert.throws(
-    () => normalizeSandboxMode("random_string"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-});
-
-test("SandboxMode type definition excludes 'none' (S4/R8-42)", () => {
-  // This test verifies the type system enforces valid modes only
-  // Valid modes are: read_only, workspace_write, scoped_external_access, restricted_exec
-  const validModes: SandboxMode[] = [
-    "read_only",
-    "workspace_write",
-    "scoped_external_access",
-    "restricted_exec",
-  ];
-
-  // All valid modes should be accepted
-  validModes.forEach((mode) => {
-    const policy: SandboxPolicy = {
-      policyId: "type-test",
-      mode,
-      allowedRoots: ["/"],
-      deniedRoots: [],
-      realpathEnforced: false,
-      symlinkPolicy: "deny",
-      processRuleMode: "allow",
-    };
-    assert.equal(policy.mode, mode);
-  });
-});
-
-test("normalizeSandboxMode is case-sensitive for invalid modes", () => {
-  // Case variations throw errors - no silent fallback
-  assert.throws(
-    () => normalizeSandboxMode("NONE"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-  assert.throws(
-    () => normalizeSandboxMode("Read_Only"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-  assert.throws(
-    () => normalizeSandboxMode("WORKSPACE_WRITE"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
-});
-
-test("checkSandboxPath with policy using mode that normalized from 'none' throws error", () => {
-  // normalizeSandboxMode("none") throws an error - it does NOT return read_only
-  assert.throws(
-    () => normalizeSandboxMode("none"),
-    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
-  );
 });

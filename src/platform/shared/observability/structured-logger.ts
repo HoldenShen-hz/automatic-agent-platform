@@ -26,7 +26,6 @@
 
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
@@ -40,17 +39,12 @@ export type CrosscuttingFabricCategory = "reliability" | "security" | "governanc
  * Structured log entry with level, message, optional correlation IDs
  * (taskId, agentId, sessionId, stepId, traceId), optional data payload,
  * and ISO timestamp.
- *
- * §5.2: correlationId and causationId both support causal chain tracing.
- * - correlationId: groups related log entries (same request/operation)
- * - causationId: identifies the direct cause (previous event/action that triggered this)
  */
 export interface StructuredLogEntry {
   level: StructuredLogLevel;
   message: string;
   service: string;
   plane?: StructuredPlane;
-  /** Crosscutting fabric classification per §12.4: reliability/security/governance */
   crosscuttingFabric?: CrosscuttingFabricCategory;
   taskId?: string;
   agentId?: string;
@@ -60,12 +54,6 @@ export interface StructuredLogEntry {
   spanId?: string;
   parentSpanId?: string;
   correlationId?: string;
-  /** §5.2: Causation ID for causal chain tracing - the event/action that caused this entry */
-  causationId?: string;
-  /** Tenant identifier per §7.1: every log entry must include tenantId for multi-tenant isolation */
-  tenantId?: string;
-  /** Harness run identifier per §7.1: every log entry must include harnessRunId for test correlation */
-  harnessRunId?: string;
   data?: Record<string, unknown> | null;
   structuredPayload?: Record<string, unknown>;
   createdAt: string;
@@ -95,8 +83,6 @@ export interface StructuredLoggerOptions {
   plane?: StructuredPlane;
   planeSourceFile?: string;
   service?: string;
-  /** Minimum log level for filtering (default: debug = all logs pass through) */
-  minLogLevel?: StructuredLogLevel;
 }
 
 type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "service" | "structuredPayload"> & {
@@ -116,21 +102,26 @@ type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "
  * @throws Error if the path is absolute, contains traversal sequences, or escapes baseDir
  */
 function safePath(userPath: string, baseDir: string): string {
+  // Block absolute paths - they cannot be within a relative base directory
+  if (isAbsolute(userPath)) {
+    throw new Error("path_traversal.blocked_absolute_path");
+  }
+
+  // Normalize the path to resolve any ".." or "." sequences
   const normalized = normalize(userPath);
-  if (normalized.split(sep).includes("..")) {
+
+  // Block any path that still contains traversal markers after normalization
+  if (normalized.includes("..")) {
     throw new Error("path_traversal.blocked_traversal_sequence");
   }
 
+  // Reject paths that normalize to escape the base directory
+  const fullPath = join(baseDir, normalized);
+  const resolvedFullPath = resolve(fullPath);
   const resolvedBaseDir = resolve(baseDir);
-  const resolvedFullPath = isAbsolute(normalized)
-    ? resolve(normalized)
-    : resolve(join(baseDir, normalized));
-  const resolvedTempDir = resolve(tmpdir());
 
   // Ensure the resolved path is still within the base directory
-  const withinBaseDir = resolvedFullPath === resolvedBaseDir || resolvedFullPath.startsWith(resolvedBaseDir + sep);
-  const withinTempDir = resolvedFullPath === resolvedTempDir || resolvedFullPath.startsWith(resolvedTempDir + sep);
-  if (!withinBaseDir && !withinTempDir) {
+  if (!resolvedFullPath.startsWith(resolvedBaseDir + sep)) {
     throw new Error("path_traversal.blocked_escape_from_base");
   }
 
@@ -151,7 +142,6 @@ export class StructuredLogger {
   private readonly retentionLimit: number;
   private readonly plane: StructuredPlane;
   private readonly service: string;
-  private readonly minLogLevel: StructuredLogLevel;
   private head: number = 0;
   private count: number = 0;
   private droppedEntryCount: number = 0;
@@ -249,7 +239,6 @@ export class StructuredLogger {
     this.service = normalizeStructuredService(options.service ?? options.planeSourceFile);
     // Pre-allocate buffer for O(1) insertion
     this.buffer = new Array(this.retentionLimit);
-    this.minLogLevel = options.minLogLevel ?? "debug";
   }
 
   /**
@@ -274,13 +263,6 @@ export class StructuredLogger {
       readStringField(rawData, "correlationId") ??
       traceId ??
       activeTelemetryContext?.traceId;
-    // §5.2: causationId for causal chain tracing - the event/action that caused this entry
-    const causationId = entry.causationId ?? readStringField(rawData, "causationId");
-    // §7.1: tenantId and harnessRunId are required for every log entry
-    const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
-    const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
-    // §12.4: crosscuttingFabric classification for reliability/security/governance categorization
-    const crosscuttingFabric = entry.crosscuttingFabric ?? readStringField(rawData, "crosscuttingFabric") as CrosscuttingFabricCategory | undefined;
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = rawData;
@@ -297,19 +279,10 @@ export class StructuredLogger {
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
-      ...(causationId !== undefined && causationId !== null ? { causationId } : {}),
-      ...(tenantId !== undefined ? { tenantId } : {}),
-      ...(harnessRunId !== undefined ? { harnessRunId } : {}),
-      ...(crosscuttingFabric !== undefined ? { crosscuttingFabric } : {}),
       ...(data !== undefined ? { data, structuredPayload: data } : {}),
       createdAt: timestamp,
       timestamp,
     };
-
-    // Filter out entries below the minimum log level
-    if (!this.passesLevelFilter(entry.level)) {
-      return record;
-    }
 
     if (this.retentionLimit > 0) {
       // If buffer is full, track overflow
@@ -464,17 +437,10 @@ export class StructuredLogger {
     }
   }
 
-  private static rotationScheduled = false;
-  // R16-36 FIX #2139: Static mutex to serialize rotation scheduling across all instances.
-  // Without this, concurrent logging from multiple instances could trigger simultaneous
-  // rotations, causing file corruption. The mutex ensures only one rotation runs at a time.
-  private static rotationMutex: boolean = false;
+  private rotationScheduled = false;
 
   private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
-    // R16-36 FIX #2139: Use mutex to prevent concurrent rotations.
-    // Without this, multiple logger instances could trigger rotation simultaneously,
-    // leading to file corruption (e.g., renaming the same file twice).
-    if (StructuredLogger.rotationScheduled || StructuredLogger.rotationMutex || sink.maxBytes == null) {
+    if (this.rotationScheduled || sink.maxBytes == null) {
       return;
     }
 
@@ -493,9 +459,7 @@ export class StructuredLogger {
     }
 
     // Schedule async rotation
-    // R16-36 FIX #2139: Acquire mutex before scheduling rotation to prevent concurrent rotations
-    StructuredLogger.rotationMutex = true;
-    StructuredLogger.rotationScheduled = true;
+    this.rotationScheduled = true;
     setImmediate(() => this.performRotation(sink));
   }
 
@@ -508,8 +472,7 @@ export class StructuredLogger {
         } catch {
           // File may not exist
         }
-        StructuredLogger.rotationScheduled = false;
-        StructuredLogger.rotationMutex = false;
+        this.rotationScheduled = false;
         return;
       }
 
@@ -538,25 +501,8 @@ export class StructuredLogger {
     } catch {
       // Rotation errors should not affect logging
     } finally {
-      StructuredLogger.rotationScheduled = false;
-      StructuredLogger.rotationMutex = false;
+      this.rotationScheduled = false;
     }
-  }
-
-  /**
-   * Checks if a log level passes the minimum log level filter.
-   * @param level - The log level to check
-   * @returns True if the level should be processed (passes filter)
-   */
-  private passesLevelFilter(level: StructuredLogLevel): boolean {
-    const LEVEL_PRIORITY: Record<StructuredLogLevel, number> = {
-      debug: 0,
-      info: 1,
-      warn: 2,
-      error: 3,
-      fatal: 4,
-    };
-    return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[this.minLogLevel];
   }
 }
 

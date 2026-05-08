@@ -106,7 +106,6 @@ test("MultiStepOrchestrationResult type structure", () => {
         continuation: "new_task",
         matchedRules: [],
       },
-      confirmedTaskSpecId: "task_spec_test",
     },
     plannedWorkflow: {
       workflow: {} as any,

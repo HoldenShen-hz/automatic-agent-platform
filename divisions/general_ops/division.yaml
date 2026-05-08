@@ -1,76 +1,32 @@
 id: general_ops
 version: 1
-name: Executive Assistant Division
-description: Calendar management, meeting preparation, travel planning, briefing, task coordination for executives.
-priority: 25
+name: General Operations
+description: General purpose fallback division for research, summaries, and operational requests.
+priority: 10
 default_workflow: single_agent_minimal
 orchestration_workflow: phase1b_single_division_orchestration
 triggers:
-  - calendar
-  - schedule
-  - meeting
-  - travel
-  - briefing
-  - executive
-  - assistant
-# §37: DomainDescriptor - Executive Assistant vertical business domain
-domain_descriptor:
-  domainId: executive-assistant
-  ownerOrgNodeId: org.exec
-  primaryEntities:
-    - calendars
-    - briefs
-    - followups
-    - travel_plans
-    - meetings
-  recipeArchetype: conversational
-  lifecycleState: canary
-# §37: DomainRiskProfile - Executive Assistant risk classification
-risk_profile:
-  profileId: executive-assistant.risk
-  domainId: executive-assistant
-  riskLevel: medium
-  advisoryOnly: false
-  humanAccountable: false
-  deterministicHotPathOnly: false
-  regulatoryClass: unregulated
-# §37: DomainEvalSpec - Executive Assistant evaluation framework
-eval_spec:
-  domainId: executive-assistant
-  evalBaselines:
-    - brief_accuracy
-    - scheduling_conflict_rate
-    - task_completion_rate
-  criticalCases:
-    - incorrect_brief
-    - double_booking
-    - missed_deadline
-    - priority_confusion
-  acceptanceThresholds:
-    brief_accuracy: 95
-    scheduling_conflict_rate: 2
-    task_completion_rate: 90
-  adversarialScenarios:
-    - calendar_conflict
-    - priority_inversion
-    - context_loss
-    - scheduling_chaos
+  - summarize
+  - summary
+  - research
+  - analyze
+  - review
 roles:
   - id: general_executor
     name: General Executor
     prompt: roles/general_executor.prompt.md
     model: balanced
-    tools: [read, write, web_search]
+    tools: [read, bash]
     max_instances: 3
   - id: intake_router
     name: Intake Router
     prompt: roles/intake_router.prompt.md
     model: balanced
-    tools: [read, write]
+    tools: [read]
     max_instances: 2
   - id: workflow_planner
     name: Workflow Planner
     prompt: roles/workflow_planner.prompt.md
-    model: balanced
-    tools: [read, write]
+    model: reasoning
+    tools: [read]
     max_instances: 2

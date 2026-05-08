@@ -4,27 +4,8 @@ import test from "node:test";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import {
   PackLifecycleOrchestrationService,
-  validateBusinessPackManifest as rawValidateBusinessPackManifest,
+  validateBusinessPackManifest,
 } from "../../../../src/sdk/pack-sdk/index.js";
-
-const TEST_PACK_SIGNING = {
-  keyId: "test-pack-key",
-  signature: "test-pack-signature",
-  algorithm: "ed25519",
-} as const;
-
-function validateBusinessPackManifest(
-  manifest: Parameters<typeof rawValidateBusinessPackManifest>[0],
-  options?: Parameters<typeof rawValidateBusinessPackManifest>[1],
-) {
-  return rawValidateBusinessPackManifest(
-    {
-      ...manifest,
-      signing: manifest.signing === undefined ? TEST_PACK_SIGNING : manifest.signing,
-    },
-    options,
-  );
-}
 
 function createManifest(overrides: Partial<Parameters<typeof validateBusinessPackManifest>[0]> = {}) {
   return validateBusinessPackManifest({

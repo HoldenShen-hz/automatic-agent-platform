@@ -105,7 +105,6 @@ export interface WorkerWritebackDecision {
     | "lease_not_found"
     | "no_active_lease"
     | "stale_fencing_token"
-    | "ttl_out_of_bounds"
     | "worker_mismatch"
     | "lease_mismatch"
     | "lease_expired"

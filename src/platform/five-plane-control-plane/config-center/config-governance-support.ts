@@ -85,7 +85,6 @@ export type ConfigFieldSchema =
 /**
  * Schema for the bootstrap configuration layer.
  * Contains fundamental application settings.
- * §24.2/R15-75: Must include dependencyOrder, healthCheckTimeout, degradationPolicy, readinessGates.
  */
 export const BOOTSTRAP_LAYER_SCHEMA: ConfigFieldSchema = {
   kind: "object",
@@ -94,32 +93,6 @@ export const BOOTSTRAP_LAYER_SCHEMA: ConfigFieldSchema = {
     appName: { kind: "string", issue: "config.invalid_bootstrap.appName", minLength: 1 },
     phase: { kind: "string", issue: "config.invalid_bootstrap.phase", minLength: 1 },
     stableCoreEnabled: { kind: "boolean", issue: "config.invalid_bootstrap.stableCoreEnabled" },
-    dependencyOrder: {
-      kind: "array",
-      issue: "config.invalid_bootstrap.dependencyOrder",
-      minLength: 1,
-      element: { kind: "string", minLength: 1 },
-    },
-    healthCheckTimeoutMs: {
-      kind: "number",
-      issue: "config.invalid_bootstrap.healthCheckTimeoutMs",
-      minExclusive: 0,
-    },
-    degradationPolicy: {
-      kind: "object",
-      issue: "config.invalid_bootstrap.degradationPolicy",
-      shape: {
-        onRegistryLookupFailure: { kind: "string", issue: "config.invalid_bootstrap.degradationPolicy.onRegistryLookupFailure", minLength: 1 },
-        onOptionalServiceFailure: { kind: "string", issue: "config.invalid_bootstrap.degradationPolicy.onOptionalServiceFailure", minLength: 1 },
-        onCriticalServiceFailure: { kind: "string", issue: "config.invalid_bootstrap.degradationPolicy.onCriticalServiceFailure", minLength: 1 },
-      },
-    },
-    readinessGates: {
-      kind: "array",
-      issue: "config.invalid_bootstrap.readinessGates",
-      minLength: 1,
-      element: { kind: "string", minLength: 1 },
-    },
   },
 };
 

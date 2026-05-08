@@ -4,8 +4,8 @@ import { ConversationWebView } from "./web";
 const conversationFeature = createFeatureModule({
   id: "conversation",
   title: "NL Conversation",
-  group: "Mission Control",
-  path: "/mission-control/conversation",
+  group: "Extended",
+  path: "/extended/conversation",
   permission: "authenticated",
   status: "Implemented/Internal",
   summary: "NL 对话、追问、计划确认与执行闭环。",

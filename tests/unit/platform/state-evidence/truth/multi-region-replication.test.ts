@@ -272,44 +272,6 @@ test("CrossRegionTruthLeader validates all conditions in order", () => {
   assert.equal(decision.reasonCode, "truth_leader.fencing_token_mismatch");
 });
 
-test("CDCReplicationService validateLeaderFencingToken rejects stale leader epoch after epoch is recorded", () => {
-  const service = new CDCReplicationService();
-
-  service.recordEntityEpoch("tenant:truth", 7, "us-east");
-
-  const stale = service.validateLeaderFencingToken("tenant:truth", {
-    epoch: 6,
-    regionId: "us-west",
-  });
-  const current = service.validateLeaderFencingToken("tenant:truth", {
-    epoch: 7,
-    regionId: "us-east",
-  });
-
-  assert.equal(stale.valid, false);
-  assert.match(stale.reason ?? "", /stale_leader_epoch/);
-  assert.equal(current.valid, true);
-  assert.equal(current.reason, null);
-});
-
-test("CDCReplicationService applyBatch filters stale epoch events before conflict resolution", () => {
-  const service = new CDCReplicationService();
-  service.recordEntityEpoch("tenant:cdc", 5, "us-east");
-
-  const localEvents = [
-    createReplicationEvent({ id: "local-5", taskId: "task-1", sequence: 5, epoch: 5 }),
-  ];
-  const remoteEvents = [
-    createReplicationEvent({ id: "remote-stale", taskId: "task-2", sequence: 6, epoch: 4 }),
-    createReplicationEvent({ id: "remote-fresh", taskId: "task-3", sequence: 7, epoch: 5 }),
-  ];
-
-  const merged = service.applyBatch("tenant:cdc", localEvents, remoteEvents);
-
-  assert.equal(merged.some((event) => event.id === "remote-stale"), false);
-  assert.equal(merged.some((event) => event.id === "remote-fresh"), true);
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // CDCReplicationService Tests - Multi-Region Checkpoint Tracking
 // ─────────────────────────────────────────────────────────────────────────────
@@ -474,34 +436,33 @@ test("CDCReplicationService.isEnabled returns false when disabled", () => {
   assert.equal(enabled, false);
 });
 
-test("CDCReplicationService.getReplicationLag returns zero when no checkpoint exists", () => {
+test("CDCReplicationService.getReplicationLag returns total events when no checkpoint", () => {
   const service = new CDCReplicationService();
 
   const lag = service.getReplicationLag("unknown", "unknown", 100);
 
-  assert.equal(lag, 0);
+  assert.equal(lag, 100);
 });
 
-test("CDCReplicationService.getReplicationLag returns time-based lag after confirmation", () => {
+test("CDCReplicationService.getReplicationLag calculates correct lag after confirmation", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
-  const fiveSecondsAgo = new Date(Date.now() - 5_000).toISOString();
 
+  // Confirm batch up to sequence 50
   const batch: CDCReplicationBatch = {
     batchId: "batch-1",
     sourceRegionId: "us-west-2",
     targetRegionId: "eu-west-1",
-    events: [createReplicationEvent({ id: "event-50", sequence: 50, createdAt: fiveSecondsAgo })],
+    events: [createReplicationEvent({ id: "event-50", sequence: 50 })],
     startSequence: 50,
     endSequence: 50,
-    createdAt: fiveSecondsAgo,
+    createdAt: "2026-04-20T00:00:00.000Z",
   };
   service.confirmBatch("us-west-2", "eu-west-1", batch);
 
   const lag = service.getReplicationLag("us-west-2", "eu-west-1", 100);
 
-  assert.ok(lag >= 4_000);
-  assert.ok(lag < 60_000);
+  assert.equal(lag, 50);
 });
 
 test("CDCReplicationService.getReplicationLag returns zero when caught up", () => {
@@ -591,7 +552,7 @@ test("MultiRegionReplicationCoordinator.getRegionReplications returns all config
 // End-to-End Multi-Region Replication Scenarios
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("Multi-region replication end-to-end: register, prepare, confirm, verify time-based lag", () => {
+test("Multi-region replication end-to-end: register, prepare, confirm, verify lag", () => {
   const service = new CDCReplicationService();
 
   // Register replication pair
@@ -600,15 +561,15 @@ test("Multi-region replication end-to-end: register, prepare, confirm, verify ti
     targetRegionId: "us-west",
   }));
 
-  // Initial state - no replicated event timestamp yet, lag is not measurable.
+  // Initial state - no checkpoint, lag equals total events
   let lag = service.getReplicationLag("us-east", "us-west", 100);
-  assert.equal(lag, 0);
+  assert.equal(lag, 100);
 
   // Prepare first batch
   const batch1 = service.prepareBatch("us-east", "us-west", [
-    createReplicationEvent({ id: "event-1", sequence: 1, createdAt: new Date(Date.now() - 3_000).toISOString() }),
-    createReplicationEvent({ id: "event-2", sequence: 2, createdAt: new Date(Date.now() - 2_000).toISOString() }),
-    createReplicationEvent({ id: "event-3", sequence: 3, createdAt: new Date(Date.now() - 1_000).toISOString() }),
+    createReplicationEvent({ id: "event-1", sequence: 1 }),
+    createReplicationEvent({ id: "event-2", sequence: 2 }),
+    createReplicationEvent({ id: "event-3", sequence: 3 }),
   ]);
   assert.ok(batch1 !== null);
   assert.equal(batch1!.events.length, 3);
@@ -616,9 +577,9 @@ test("Multi-region replication end-to-end: register, prepare, confirm, verify ti
   // Confirm first batch
   service.confirmBatch("us-east", "us-west", batch1!);
 
-  // Lag is now time-based and should be non-negative once a checkpoint exists.
+  // Lag should now be reduced
   lag = service.getReplicationLag("us-east", "us-west", 100);
-  assert.ok(lag >= 0);
+  assert.equal(lag, 97);
 
   // Prepare second batch
   const batch2 = service.prepareBatch("us-east", "us-west", [
@@ -631,13 +592,15 @@ test("Multi-region replication end-to-end: register, prepare, confirm, verify ti
   // Confirm second batch
   service.confirmBatch("us-east", "us-west", batch2!);
 
-  // Additional confirmations keep lag measurable and non-negative.
+  // Lag should be further reduced
   lag = service.getReplicationLag("us-east", "us-west", 100);
-  assert.ok(lag >= 0);
+  assert.equal(lag, 95);
 
-  // Current implementation updates checkpoints without leaving residual queued work.
+  // Status remains syncing because batches remain in queue after confirmBatch
+  // (confirmBatch updates checkpoint but does not dequeue)
+  // This is expected behavior - queue persists until explicitly pruned
   const status = service.getStatus("us-east", "us-west");
-  assert.equal(status, "idle");
+  assert.equal(status, "syncing");
 });
 
 test("Multi-region replication handles concurrent regional pairs", () => {
@@ -672,8 +635,8 @@ test("Multi-region replication handles concurrent regional pairs", () => {
   // us-east should have reduced lag, ap-south should not
   const usEastLag = service.getReplicationLag("us-east", "eu-west", 100);
   const apSouthLag = service.getReplicationLag("ap-south", "eu-west", 100);
-  assert.ok(usEastLag >= 0);
-  assert.equal(apSouthLag, 0);
+  assert.equal(usEastLag, 99);
+  assert.equal(apSouthLag, 100);
 });
 
 test("Multi-region replication validates region pair keys correctly", () => {

@@ -68,13 +68,11 @@ function createMockAuthService(): ApiAuthService {
 }
 
 function createMockContext(pathname = "/tasks", segments: string[] = [], headers: Record<string, string | undefined> = {}): RouteContext {
-  const normalizedPathname = pathname.startsWith("/v1/") ? `/api${pathname}` : pathname;
-  const normalizedSegments = segments[0] === "v1" ? ["api", ...segments] : segments;
-  const routePathname = normalizedPathname.split("?")[0] ?? normalizedPathname;
+  const routePathname = pathname.split("?")[0] ?? pathname;
   return {
     requestId: "req-123",
-    request: { method: "GET", url: normalizedPathname, headers, body: null } as never,
-    route: { pathname: routePathname, segments: normalizedSegments },
+    request: { method: "GET", url: pathname, headers, body: null } as never,
+    route: { pathname: routePathname, segments },
     principal: null,
   };
 }

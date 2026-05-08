@@ -1,22 +1,8 @@
 /**
- * E2E Workflow Timeout Flow Tests (MIGRATED)
+ * E2E Workflow Timeout Flow Tests
  *
- * End-to-end tests covering workflow timeout scenarios using the canonical
- * runMultiStepOrchestration API with stepFailureInjection.
- *
- * MIGRATION: R18-17, R18-18, R18-19
- * These tests have been migrated from the legacy insertWorkflowState API
- * to the canonical runMultiStepOrchestration API.
- *
- * OLD PATTERN (DEPRECATED):
- *   - createE2EHarness() with manual store.insertWorkflowState()
- *   - Manual workflow state manipulation via store.updateWorkflowState()
- *   - Direct TransitionService calls for state setup
- *
- * NEW PATTERN (CANONICAL):
- *   - runMultiStepOrchestration() handles full lifecycle
- *   - stepFailureInjection for timeout simulation
- *   - stepFailurePlans for error code configuration
+ * End-to-end tests covering workflow timeout scenarios using the centralized
+ * createE2EHarness() helper.
  *
  * Coverage:
  * 1. Execution timeout mid-workflow marks workflow failed
@@ -27,20 +13,34 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { join } from "node:path";
-import { existsSync, unlinkSync } from "node:fs";
 
-import { runMultiStepOrchestration, type MultiStepToolExecutionInput } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import type { ExecutionStatus, TaskStatus } from "../../src/platform/contracts/types/status.js";
+import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 
-/**
- * Helper to create a temporary database path for the test.
- */
-function createTestDbPath(prefix: string): string {
-  return join("/tmp", `${prefix}-${Date.now()}.db`);
+// ---------------------------------------------------------------------------
+// Helper Functions
+// ---------------------------------------------------------------------------
+
+function makeTaskCommand(
+  taskId: string,
+  fromStatus: TaskStatus,
+  toStatus: TaskStatus,
+  traceId: string,
+  executionId: string | null = null,
+) {
+  return {
+    entityKind: "task" as const,
+    entityId: taskId,
+    fromStatus,
+    toStatus,
+    executionId,
+    reasonCode: "e2e_timeout",
+    traceId,
+    actorType: "system" as const,
+    occurredAt: nowIso(),
+  };
 }
 
 function makeExecCommand(
@@ -66,47 +66,130 @@ function makeExecCommand(
 // ---------------------------------------------------------------------------
 
 test("E2E Workflow Timeout: execution timeout mid-workflow marks workflow as failed", async () => {
-  const dbPath = createTestDbPath("e2e-wf-timeout-fail");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout failure test",
-    request: "Run a multi-step workflow that will timeout at step 2",
-    stepFailureInjection: new Set(["step_2"]),
-    stepFailurePlans: {
-      "step_2": [{ errorCode: "execution.timeout", summary: "Execution timed out after 5000ms" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-wf-timeout-fail-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    // Verify task reached failed state
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+    // Setup: Workflow running at step 2
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout failure test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 5000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 2,
+        status: "running",
+        outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Execution times out
+    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
+
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "e2e_timeout", "Should have timeout error");
+
+    // Workflow also marked as failed
+    let workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "running", "Workflow still running until terminal state");
+
+    // Task reaches terminal failed state
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "execution.timeout" }),
+      outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
+      context: {
+        reasonCode: "execution.timeout",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "failed", "Workflow should be failed after timeout");
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed");
     assert.equal(task?.errorCode, "execution.timeout", "Task should have timeout error code");
 
-    // Verify execution is also failed
-    const execution = result.snapshot.execution;
-    if (execution) {
-      assert.ok(
-        execution.status === "failed" || execution.status === "cancelled",
-        `Execution should be in failure state, got ${execution.status}`
-      );
-    }
-
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -115,69 +198,126 @@ test("E2E Workflow Timeout: execution timeout mid-workflow marks workflow as fai
 // ---------------------------------------------------------------------------
 
 test("E2E Workflow Timeout: partial outputs preserved when execution times out", async () => {
-  const dbPath = createTestDbPath("e2e-wf-timeout-outputs");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_0",
-      dependencies: [],
-      outputs: ["step0_data"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_1",
-      dependencies: ["step_0"],
-      outputs: ["step1_data"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_2",
-      dependencies: ["step_1"],
-      outputs: ["step2_data"],
-      timeout: 3000,
-      retryPolicy: { maxRetries: 0 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout outputs preservation test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepOutputOverrides: {
-      step_0: { step0_data: "initial" },
-      step_1: { step1_data: "processing" },
-    },
-    stepFailureInjection: new Set(["step_2"]),
-    stepFailurePlans: {
-      "step_2": [{ errorCode: "execution.timeout", summary: "Execution timed out" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-wf-timeout-outputs-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    // Verify workflow captured partial outputs
-    const workflow = result.snapshot.workflow;
-    assert.ok(workflow, "Should have workflow state");
+    // Setup: Multi-step workflow at step 3 with completed steps 0-2
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout outputs preservation test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
 
-    // Task should reflect partial completion
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 3000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 3,
+        status: "running",
+        outputsJson: JSON.stringify({
+          step0_data: "initial",
+          step1_data: "processing",
+          step2_data: "ready",
+        }),
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Execution times out
+    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
+
+    // Record partial outputs in workflow before terminal state
+    harness.db.transaction(() => {
+      harness.store.updateWorkflowRecoveryState({
+        taskId,
+        status: "failed",
+        currentStepIndex: 3,
+        outputsJson: JSON.stringify({
+          step0_data: "initial",
+          step1_data: "processing",
+          step2_data: "ready",
+        }),
+        updatedAt: nowIso(),
+        resumableFromStep: "step3",
+        retryCount: 0,
+        lastErrorCode: "execution.timeout",
+      });
+    });
+
+    let workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "failed", "Workflow should be failed");
+    const outputs = JSON.parse(workflow!.outputsJson);
+    assert.equal(outputs.step0_data, "initial", "Step 0 output should be preserved");
+    assert.equal(outputs.step1_data, "processing", "Step 1 output should be preserved");
+    assert.equal(outputs.step2_data, "ready", "Step 2 output should be preserved");
+    assert.equal(workflow?.lastErrorCode, "execution.timeout", "Error code should be recorded");
+    assert.equal(workflow?.resumableFromStep, "step3", "Resumable from step 3");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -186,68 +326,200 @@ test("E2E Workflow Timeout: partial outputs preserved when execution times out",
 // ---------------------------------------------------------------------------
 
 test("E2E Workflow Timeout: retry execution preserves workflow position", async () => {
-  const dbPath = createTestDbPath("e2e-wf-timeout-retry");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_0",
-      dependencies: [],
-      outputs: ["step0"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 1 },
-    },
-    {
-      stepId: "step_1",
-      dependencies: ["step_0"],
-      outputs: ["step1"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 1 },
-    },
-    {
-      stepId: "step_2",
-      dependencies: ["step_1"],
-      outputs: ["step2"],
-      timeout: 3000,
-      retryPolicy: { maxRetries: 1 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout retry test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepOutputOverrides: {
-      step_0: { step0: "done" },
-      step_1: { step1: "done" },
-    },
-    stepFailureInjection: new Set(["step_2"]),
-    stepFailurePlans: {
-      "step_2": [{ errorCode: "execution.timeout", summary: "Execution timed out" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-wf-timeout-retry-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "done" || task?.status === "failed" || task?.status === "cancelled",
-      `Task should reach terminal state, got ${task?.status}`
-    );
+    // Setup: Task with execution at step 2 that will timeout
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout retry test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
 
-    // Workflow should reflect retry state
-    const workflow = result.snapshot.workflow;
-    assert.ok(workflow, "Should have workflow state");
+      // First execution times out at step 2
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 3000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "execution.timeout",
+        lastErrorMessage: "Execution timed out",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Workflow state shows progress at step 2, resumable
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 2,
+        status: "running",
+        outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
+        lastErrorCode: "execution.timeout",
+        retryCount: 0,
+        resumableFromStep: "step2",
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify first execution failed with timeout
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.lastErrorCode, "execution.timeout", "Should have timeout error");
+
+    let workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.currentStepIndex, 2, "Workflow should be at step 2");
+    assert.equal(workflow?.resumableFromStep, "step2", "Should be resumable from step 2");
+
+    // Create retry execution
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: executionId1,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 10000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Verify retry execution references parent
+    const exec2 = harness.store.getExecution(executionId2);
+    assert.equal(exec2?.status, "executing", "Retry execution should be running");
+    assert.equal(exec2?.parentExecutionId, executionId1, "Should reference parent execution");
+    assert.equal(exec2?.attempt, 2, "Should be attempt 2");
+
+    // Workflow recovery state updated for retry
+    harness.db.transaction(() => {
+      harness.store.updateWorkflowRecoveryState({
+        taskId,
+        status: "running",
+        currentStepIndex: 2,
+        outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
+        updatedAt: nowIso(),
+        resumableFromStep: "step2",
+        retryCount: 1,
+        lastErrorCode: "execution.timeout",
+      });
+    });
+
+    workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.resumableFromStep, "step2", "Still resumable from step 2");
+    assert.equal(workflow?.retryCount, 1, "Retry count should be incremented");
+
+    // Complete step 2 and workflow
+    harness.db.transaction(() => {
+      harness.store.updateWorkflowState(
+        taskId,
+        "completed",
+        3,
+        JSON.stringify({ step0: "done", step1: "done", step2: "done" }),
+        nowIso(),
+        null,
+      );
+    });
+
+    // Complete retry execution and task
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "completed",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "completed after retry" }),
+      outputsJson: JSON.stringify({ step0: "done", step1: "done", step2: "done" }),
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after successful retry");
+
+    workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "completed", "Workflow should be completed");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -256,38 +528,113 @@ test("E2E Workflow Timeout: retry execution preserves workflow position", async 
 // ---------------------------------------------------------------------------
 
 test("E2E Workflow Timeout: task fails gracefully with proper error code on timeout", async () => {
-  const dbPath = createTestDbPath("e2e-wf-timeout-graceful");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Graceful timeout test",
-    request: "Run a workflow that will timeout gracefully",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "execution.timeout", summary: "Execution timed out after 5000ms" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-wf-timeout-graceful-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+    // Setup
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Graceful timeout test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 5000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Execution times out
+    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
+
+    // Task reaches failed terminal state with timeout error
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "Execution timed out after 5000ms" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "execution.timeout",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed");
     assert.equal(task?.errorCode, "execution.timeout", "Task should have timeout error code");
     assert.ok(task?.completedAt, "Task should have completedAt timestamp");
 
+    const exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "execution.timeout", "Execution error code should match");
+
+    const session = harness.store.getSession(sessionId);
+    assert.equal(session?.status, "failed", "Session should be failed");
+
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -416,58 +763,3 @@ test("E2E Workflow Timeout: execution timeout with approval required yields to b
     harness.cleanup();
   }
 });
-
-// ============================================================================
-// MIGRATION DOCUMENTATION
-// ============================================================================
-//
-// LEGACY CODE (DEPRECATED - shown for reference only):
-// ---------------------------------------------------------------------------
-//
-//   function createE2EHarness(prefix: string) {
-//     const harness = createE2EHarness("aa-e2e-wf-timeout-");
-//     harness.db.transaction(() => {
-//       harness.store.insertTask({ ... });
-//       harness.store.insertExecution({ ... });
-//       harness.store.insertWorkflowState({   // <-- LEGACY API
-//         taskId, workflowId: "multi_step_wf", currentStepIndex: 2,
-//         status: "running", outputsJson: JSON.stringify({ step0: "done", step1: "done" }), ...
-//       });
-//     });
-//     // Then manually update workflow state...
-//     harness.db.transaction(() => {
-//       harness.store.updateWorkflowRecoveryState({   // <-- LEGACY API
-//         taskId, status: "failed", currentStepIndex: 3,
-//         outputsJson: ..., lastErrorCode: "execution.timeout", ...
-//       });
-//     });
-//   });
-//
-// CANONICAL CODE (CURRENT):
-// ---------------------------------------------------------------------------
-//
-//   const input: MultiStepToolExecutionInput = {
-//     dbPath,
-//     title: "Timeout test",
-//     request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-//     stepOutputOverrides: { "step_0": {...}, "step_1": {...} },
-//     stepFailureInjection: new Set(["step_2"]),
-//     stepFailurePlans: {
-//       "step_2": [{ errorCode: "execution.timeout", summary: "Timeout message" }],
-//     },
-//   };
-//
-//   const result = await runMultiStepOrchestration(input);
-//   // result.snapshot.task, result.snapshot.workflow, etc.
-//
-// KEY DIFFERENCES:
-//   1. No need to manually insert/update workflow state
-//   2. runMultiStepOrchestration handles timeout injection
-//   3. Partial outputs captured via stepOutputOverrides
-//   4. Workflow position preserved automatically for retry
-//
-// NOTES:
-//   - Test 5 (approval required) still uses harness for TransitionService
-//     because approval flow requires direct store access
-//
-// See docs_zh/migrations/e2e-workflow-state-migration.md for full migration guide.

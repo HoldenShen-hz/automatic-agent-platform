@@ -5,7 +5,7 @@
 
 ## Context
 
-New business domains onboarding to the platform require standardized processes and checklists to ensure onboarding quality.
+New business domain onboarding to the platform requires standardized processes and checklists to ensure onboarding quality.
 
 ## Decision
 
@@ -13,11 +13,11 @@ New business domains onboarding to the platform require standardized processes a
 
 | Phase | Description | Gate |
 |-------|-------------|------|
-| Gate 0 | Preparation phase | - |
-| Gate 1 | Development complete | ≥5 few-shot + eval ≥20 items |
-| Gate 2 | Testing passed | Coverage ≥80% |
-| Gate 3 | Certification passed | Prompt Injection 100% |
-| Gate 4 | Canary release | canary_5 → partial_25 → 50 → 75 → stable |
+| Gate 0 | Preparation | - |
+| Gate 1 | Development Complete | ≥5 few-shot + eval ≥20 items |
+| Gate 2 | Tests Passed | Coverage ≥80% |
+| Gate 3 | Certification Passed | Prompt Injection 100% |
+| Gate 4 | Canary Release | CANARY_5 → CANARY_20 → CANARY_50 → CANARY_100 |
 
 ### Gate 1 Detailed Requirements
 
@@ -33,42 +33,44 @@ New business domains onboarding to the platform require standardized processes a
 ### Gate 3 Detailed Requirements
 
 - `requirePromptInjectionCoverage: true` - Prompt Injection coverage 100%
-- Release is directly blocked when regression suite is not fully passed
+- Regression set failing to fully pass directly blocks release
 
 ### Canary Release Configuration
 
-Reference canonical rollout states from [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md):
+```typescript
+const CANARY_STAGES = [5, 20, 50, 100];  // Percentages
+const DEFAULT_CANARY_PERCENT = 10;        // Default 10%
+```
+
+### Drift Detection Rollout
 
 | Phase | Traffic |
 |-------|---------|
-| canary_5 | 5% |
-| partial_25 | 25% |
-| 50 | 50% |
-| 75 | 75% |
+| shadow | 0% |
+| canary | 5% |
+| partial | 25% |
 | stable | 100% |
 
 ## Consequences
 
-Pros:
-
+Positive:
 - Standardized onboarding process ensures quality
 - Gate mechanism prevents inferior domains from onboarding
 - Progressive release reduces risk
 
-Cons:
-
-- Onboarding process is relatively heavy
+Negative:
+- Onboarding process is heavy
 - Gate checks require tool support
 
-## Cross-references
+Trade-offs:
+- Quality vs. velocity
+- Safety vs. effort
 
-- [ADR-037 Business Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
+## Cross-References
+
+- [ADR-037 Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## Source Section
+## Source Sections
 
-- `§38` Business Domain Onboarding Runbook
-
-## v4.3 ADR Remediation
-
-- R6-49: Fixed canary stage definition conflict. ADR-038 originally defined CANARY_5/20/50/100 conflicting with ADR-075 canonical rollout states (canary_5/partial_25/50/75/stable). Fix: Unified to reference ADR-075's canonical definition.
+- `§38` Four-Phase Onboarding Runbook

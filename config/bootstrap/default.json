@@ -1,53 +1,5 @@
 {
   "appName": "automatic-agent-system",
-  "phase": "ring_1",
-  "stableCoreEnabled": true,
-  // §171-1990: Bootstrap required strict dependency order enforcement per spec startup sequence P5→X1→P2→P3→P4→P1
-  "dependencyOrder": ["P5", "X1", "P2", "P3", "P4", "P1"],
-  "healthCheckTimeoutMs": 15000,
-  "degradationPolicy": {
-    "onRegistryLookupFailure": "graceful_degradation",
-    "onOptionalServiceFailure": "continue_with_warning",
-    "onCriticalServiceFailure": "fail_closed"
-  },
-  "readinessGates": [
-    // §171-1990: Readiness gates enforce that each plane initializes in dependency order
-    // before dependent planes may start. No plane registers until its dependencies are healthy.
-    "state_evidence_ready",    // P5 must be healthy first (truth, events, checkpoints)
-    "event_bus_ready",         // X1 cross-cutting fabric depends on P5
-    "control_plane_ready",     // P2 control plane depends on X1
-    "orchestration_ready",     // P3 orchestration depends on P2
-    "execution_ready"          // P4/P1 execution depends on P3
-  ],
-  // §171-1990: Tier declarations mirror the platform startup plane hierarchy
-  "tiers": [
-    { "tier": "foundation",    "planes": ["P5", "X1"],    "maxStartupDurationMs": 30000 },
-    { "tier": "control",       "planes": ["P2"],          "maxStartupDurationMs": 20000 },
-    { "tier": "orchestration", "planes": ["P3"],          "maxStartupDurationMs": 20000 },
-    { "tier": "execution",     "planes": ["P4", "P1"],    "maxStartupDurationMs": 15000 }
-  ],
-  // §213-1991: Hot reload configuration for runtime config updates without restart
-  "hotReload": {
-    "enabled": true,
-    "watchPaths": ["config/runtime", "config/policies"],
-    "debounceMs": 500,
-    "onConfigChange": "restart_services"
-  },
-  // §213-1991: Impact analysis configuration for change risk assessment
-  "impactAnalysis": {
-    "enabled": true,
-    "scope": ["config", "contracts", "architecture"],
-    "thresholds": {
-      "riskScore": 0.7,
-      "affectedServicesPercent": 0.25
-    }
-  },
-  // §213-1991: Canary deployment configuration for safe rollout
-  "canary": {
-    "enabled": true,
-    "initialTrafficPercent": 5,
-    "gradualRollout": true,
-    "autoRollback": true,
-    "metricsToWatch": ["error_rate", "latency_p99", "availability"]
-  }
+  "phase": "phase_1a",
+  "stableCoreEnabled": true
 }

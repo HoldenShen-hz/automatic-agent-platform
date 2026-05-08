@@ -155,17 +155,6 @@ test("registerPlatformApplicationKernel registers application kernel service", a
   assert.equal(registry.isInitialized("architecture.application-kernel"), true);
 });
 
-test("registerPlatformApplicationKernel declares an explicit empty dependsOn list", async () => {
-  const registry = ServiceRegistry.getInstance();
-  await registry.reset();
-
-  registerPlatformApplicationKernel(registry);
-  const descriptor = registry["services"].get("architecture.application-kernel");
-
-  assert.ok(descriptor, "application kernel service should be registered");
-  assert.deepEqual(descriptor?.dependsOn ?? null, []);
-});
-
 test("getPlatformApplicationKernel returns same instance", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();

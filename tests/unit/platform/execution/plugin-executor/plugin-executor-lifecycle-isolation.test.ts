@@ -241,7 +241,7 @@ test("PluginExecutorService.execute() handles plugin action that throws non-Erro
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "read_only",
+    sandboxTier: "process",
   }, {});
 
   assert.equal(result.status, "error");
@@ -269,7 +269,7 @@ test("PluginExecutorService.execute() tracks error count on failure", async () =
       taskId: "task-1",
       tenantId: null,
       correlationId: "corr-1",
-      sandboxTier: "read_only",
+      sandboxTier: "process",
     }, {});
   }
 
@@ -295,12 +295,10 @@ test("PluginExecutorService.listPlugins() returns empty array when no plugins", 
 
 test("PluginExecutorService registers plugins with all sandbox tiers", async () => {
   const service = new PluginExecutorService();
-  // Note: 'none' is disallowed by INV-POLICY-001 (deny-by-default)
-  // Valid tiers: read_only, workspace_write, restricted_exec, scoped_external_access
-  const tiers: Array<"read_only" | "workspace_write" | "restricted_exec" | "scoped_external_access"> = [
-    "read_only",
-    "workspace_write",
-    "restricted_exec",
+  const tiers: Array<"none" | "process" | "container" | "scoped_external_access"> = [
+    "none",
+    "process",
+    "container",
     "scoped_external_access",
   ];
 
@@ -357,7 +355,7 @@ test("PluginExecutorService handles manifest without sandbox config", async () =
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "read_only",
+    sandboxTier: "process",
   }, {});
 
   assert.equal(result.status, "ok");
@@ -366,8 +364,7 @@ test("PluginExecutorService handles manifest without sandbox config", async () =
 test("PluginExecutorService handles plugin with empty spiTypes", async () => {
   const service = new PluginExecutorService();
 
-  // Use non-empty spiTypes that doesn't include the action being called
-  const manifest = createTestManifest({ spiTypes: ["validator", "planner"] });
+  const manifest = createTestManifest({ spiTypes: [] });
   const hooks = createTestHooks();
 
   service.register(manifest, hooks);
@@ -379,7 +376,7 @@ test("PluginExecutorService handles plugin with empty spiTypes", async () => {
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "read_only" as const,
+    sandboxTier: "process" as const,
   };
 
   await assert.rejects(
@@ -760,7 +757,7 @@ test("BrowserExecutor handles inactive session gracefully", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const sessionId = executor.createSession(context);
@@ -783,7 +780,7 @@ test("BrowserExecutor.createSession() creates unique session IDs", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const id1 = executor.createSession(context);
@@ -800,7 +797,7 @@ test("BrowserExecutor.getExecutionLog() returns copy of results", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const sessionId = executor.createSession(context);
@@ -907,7 +904,7 @@ test("SubWorkflowExecutor handles checkpointing disabled", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -935,7 +932,7 @@ test("SubWorkflowExecutor handles max nested depth boundary", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: "parent:level1:level2:level3",
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -961,7 +958,7 @@ test("SubWorkflowExecutor.getStep() returns null for unknown step", async () => 
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1003,7 +1000,7 @@ test("SubWorkflowExecutor.skipStep() throws for completed step", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1043,7 +1040,7 @@ test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1072,7 +1069,7 @@ test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async (
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1104,7 +1101,7 @@ test("SubWorkflowExecutor.cancelWorkflow() handles completed workflow", async ()
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1133,7 +1130,7 @@ test("SubWorkflowExecutor.pauseWorkflow() handles completed workflow", async () 
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1162,7 +1159,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for no rollback policy"
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {
@@ -1211,7 +1208,7 @@ test("SubWorkflowExecutor.getExecutionLog() returns copy of results", async () =
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "workspace_write" as const,
+    sandboxTier: "container" as const,
   };
 
   const definition = {

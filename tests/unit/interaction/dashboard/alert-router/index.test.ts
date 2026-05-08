@@ -29,9 +29,9 @@ test("sortAttentionQueue sorts by createdAt within same priority", () => {
 
   const sorted = sortAttentionQueue(items);
 
-  assert.equal(sorted[0]!.title, "Third");
+  assert.equal(sorted[0]!.title, "First");
   assert.equal(sorted[1]!.title, "Second");
-  assert.equal(sorted[2]!.title, "First");
+  assert.equal(sorted[2]!.title, "Third");
 });
 
 test("sortAttentionQueue does not mutate original array", () => {

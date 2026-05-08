@@ -1,279 +1,330 @@
-/**
- * Unit tests for FencingTokenService - Issue #2026
- *
- * Tests that verify fencing token parsing handles UUID execution IDs correctly.
- * Issue #2026: fencing-token-service.ts:100-110 - Fencing token parsed by '-', UUID split wrongly
- *
- * The bug was that the token format used "-" as separator, which caused issues when
- * parsing UUID executionIds (which contain hyphens).
- *
- * Fixed format uses "::" as separator (FENCING_TOKEN_SEPARATOR = "::").
- */
-
-import assert from "node:assert/strict";
-import test from "node:test";
-
-import { FencingTokenService } from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
-
-test.beforeEach(() => {
-  const service = new FencingTokenService("test-node");
-  service.clearAllFences();
-});
-
-test.afterEach(() => {
-  const service = new FencingTokenService("test-node");
-  service.clearAllFences();
-});
-
-test("FencingTokenService generates token with :: separator (not -)", () => {
-  const service = new FencingTokenService("node1");
-
-  const token = service.generateFencingToken("exec-123", "node1");
-
-  // Token should use :: separator
-  const parts = token.split("::");
-  assert.equal(parts.length, 4, "Token should have 4 parts separated by ::");
-  assert.equal(parts[0], "exec-123", "executionId should be preserved");
-  assert.equal(parts[1], "node1", "nodeId should be preserved");
-});
-
-test("FencingTokenService handles UUID executionId without splitting wrongly - Issue #2026", () => {
-  const service = new FencingTokenService("test-node");
-
-  // Generate token with a UUID-like execution ID
-  const uuidExecutionId = "550e8400-e29b-41d4-a716-446655440000";
-  const token = service.generateFencingToken(uuidExecutionId, "test-node");
-
-  // Validate should correctly parse UUID with hyphens
-  const result = service.validateFencingToken(token, "test-node");
-
-  assert.equal(result.valid, true, "UUID execution ID should parse correctly");
-  assert.equal(result.executionId, uuidExecutionId, "executionId should match UUID");
-  assert.equal(result.owner, "test-node");
-});
-
-test("FencingTokenService handles executionId with multiple hyphens", () => {
-  const service = new FencingTokenService("node1");
-
-  // Execution ID with multiple hyphenated segments
-  const executionId = "exec-123-456-789-abc-def";
-  const token = service.generateFencingToken(executionId, "node1");
-
-  const result = service.validateFencingToken(token, "node1");
-
-  assert.equal(result.valid, true, "multi-hyphen execution ID should parse correctly");
-  assert.equal(result.executionId, executionId, "full executionId should be preserved");
-});
-
-test("FencingTokenService.validateFencingToken rejects malformed tokens", () => {
-  const service = new FencingTokenService("test-node");
-
-  // Too few parts (only 3, needs 4)
-  const malformedToken = "exec::node::counter"; // missing timestamp part
-  const result = service.validateFencingToken(malformedToken, "test-node");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reason, "Token format invalid");
-});
-
-test("FencingTokenService.validateFencingToken handles empty executionId part", () => {
-  const service = new FencingTokenService("node1");
-
-  // Create token with empty executionId component
-  const malformedToken = "::node1::1::1234567890";
-  const result = service.validateFencingToken(malformedToken, "node1");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reason, "Token format invalid");
-});
-
-test("FencingTokenService.validateFencingToken rejects empty token", () => {
-  const service = new FencingTokenService("test-node");
-
-  const result = service.validateFencingToken("", "test-node");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reason, "Empty or invalid token");
-});
-
-test("FencingTokenService.validateFencingToken rejects whitespace-only token", () => {
-  const service = new FencingTokenService("test-node");
-
-  const result = service.validateFencingToken("   ", "test-node");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.reason, "Token format invalid");
-});
-
-test("FencingTokenService.validateFencingToken rejects token with wrong owner", () => {
-  const service = new FencingTokenService("node1");
-
-  const token = service.generateFencingToken("exec123", "node1");
-  const result = service.validateFencingToken(token, "different-node");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.owner, "node1");
-  assert.equal(result.reason, "Token not owned by expected owner");
-});
-
-test("FencingTokenService.validateFencingToken returns valid for correct owner", () => {
-  const service = new FencingTokenService("node1");
-
-  const token = service.generateFencingToken("exec123", "node1");
-  const result = service.validateFencingToken(token, "node1");
-
-  assert.equal(result.valid, true);
-  assert.equal(result.executionId, "exec123");
-  assert.equal(result.owner, "node1");
-});
-
-test("FencingTokenService.acquireFence and releaseFence work with hyphenated executionId", () => {
-  const service = new FencingTokenService("test-node");
-  const execId = "execution-123-456";
-
-  // Acquire fence
-  const fence = service.acquireFence(execId, "exclusive");
-  assert.ok(fence !== null, "should acquire fence");
-  assert.equal(fence.executionId, execId);
-  assert.equal(fence.mode, "exclusive");
-
-  // Check fence is held
-  assert.equal(service.isFenceHeld(execId), true);
-
-  // Release fence
-  const released = service.releaseFence(execId);
-  assert.equal(released, true);
-
-  // Check fence is released
-  assert.equal(service.isFenceHeld(execId), false);
-});
-
-test("FencingTokenService.acquireFence exclusive blocks other nodes", () => {
-  const service1 = new FencingTokenService("node1");
-  const service2 = new FencingTokenService("node2");
-
-  service1.clearAllFences();
-  service2.clearAllFences();
-
-  const execId = "shared-exec-789";
-
-  // Node1 acquires exclusive fence
-  const fence1 = service1.acquireFence(execId, "exclusive");
-  assert.ok(fence1 !== null, "node1 should acquire fence");
-
-  // Node2 cannot acquire exclusive fence for same execution
-  const fence2 = service2.acquireFence(execId, "exclusive");
-  assert.equal(fence2, null, "node2 should be blocked");
-
-  // But node2 can acquire shared fence
-  service1.releaseFence(execId);
-  const fence1Shared = service1.acquireFence(execId, "shared");
-  assert.ok(fence1Shared !== null);
-
-  const fence2Shared = service2.acquireFence(execId, "shared");
-  assert.ok(fence2Shared !== null, "shared fence should allow multiple holders");
-});
-
-test("FencingTokenService.getFenceInfo returns correct info", () => {
-  const service = new FencingTokenService("my-node");
-  service.clearAllFences();
-
-  const execId = "exec-info-test";
-  const fence = service.acquireFence(execId, "exclusive");
-  assert.ok(fence !== null);
-
-  const info = service.getFenceInfo(execId);
-  assert.ok(info !== undefined, "should have fence info");
-  assert.equal(info!.executionId, execId);
-  assert.equal(info!.ownerNodeId, "my-node");
-  assert.equal(info!.mode, "exclusive");
-});
-
-test("FencingTokenService.clearAllFences removes all fences", () => {
-  const service = new FencingTokenService("test-node");
-
-  service.acquireFence("exec1", "exclusive");
-  service.acquireFence("exec2", "shared");
-
-  assert.ok(service.getActiveFenceCount() > 0, "should have active fences");
-
-  service.clearAllFences();
-
-  assert.equal(service.getActiveFenceCount(), 0, "should have no active fences after clear");
-});
-
-test("FencingTokenService.getActiveFenceCount returns correct count", () => {
-  const service = new FencingTokenService("test-node");
-
-  assert.equal(service.getActiveFenceCount(), 0);
-  service.acquireFence("exec1", "exclusive");
-  assert.equal(service.getActiveFenceCount(), 1);
-  service.acquireFence("exec2", "exclusive");
-  assert.equal(service.getActiveFenceCount(), 2);
-});
-
-test("FencingTokenService.getNodeId returns configured node ID", () => {
-  const service = new FencingTokenService("custom-node");
-  assert.equal(service.getNodeId(), "custom-node");
-});
-
-test("FencingTokenService default node ID is 'default-node'", () => {
-  const service = new FencingTokenService();
-  assert.equal(service.getNodeId(), "default-node");
-});
-
-test("FencingTokenService generates unique tokens on multiple calls", () => {
-  const service = new FencingTokenService("node1");
-
-  const token1 = service.generateFencingToken("exec1", "node1");
-  const token2 = service.generateFencingToken("exec1", "node1");
-
-  assert.notEqual(token1, token2, "Tokens should be unique");
-  assert.ok(token1.includes("exec1"));
-  assert.ok(token2.includes("exec1"));
-});
-
-test("FencingTokenService shares a monotonic counter across service instances", () => {
-  const service1 = new FencingTokenService("node1");
-  const service2 = new FencingTokenService("node2");
-
-  const token1 = service1.generateFencingToken("exec-shared", "node1");
-  const token2 = service2.generateFencingToken("exec-shared", "node2");
-
-  const counter1 = Number.parseInt(token1.split("::")[2] ?? "", 10);
-  const counter2 = Number.parseInt(token2.split("::")[2] ?? "", 10);
-
-  assert.ok(Number.isFinite(counter1));
-  assert.ok(Number.isFinite(counter2));
-  assert.ok(counter2 > counter1, "counter should increase across instances");
-});
-
-test("FencingTokenService validateFencingToken parses all token components", () => {
-  const service = new FencingTokenService("node1");
-
-  const token = service.generateFencingToken("my-execution-id-123", "my-node");
-
-  const result = service.validateFencingToken(token, "my-node");
-
-  assert.equal(result.valid, true);
-  assert.equal(result.executionId, "my-execution-id-123");
-  assert.equal(result.owner, "my-node");
-});
-
-test("FencingTokenService fence expires after TTL", () => {
-  const service = new FencingTokenService("node1");
-
-  // Manually create an expired fence by manipulating the static map
-  // This is a workaround since we can't easily control time in tests
-  const execId = "expiring-exec";
-
-  const fence = service.acquireFence(execId, "exclusive");
-  assert.ok(fence !== null);
-
-  // Verify fence is held
-  assert.equal(service.isFenceHeld(execId), true);
-
-  // Release and verify
-  service.releaseFence(execId);
-  assert.equal(service.isFenceHeld(execId), false);
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert";
+import {
+  FencingTokenService,
+  type FenceMode,
+  type FenceInfo,
+  type FencingTokenValidation,
+} from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
+
+describe("FencingTokenService", () => {
+  let service: FencingTokenService;
+
+  beforeEach(() => {
+    service = new FencingTokenService("test-node");
+  });
+
+  afterEach(() => {
+    service.clearAllFences();
+  });
+
+  describe("constructor", () => {
+    it("should use default node ID when not provided", () => {
+      const defaultService = new FencingTokenService();
+      assert.strictEqual(defaultService.getNodeId(), "default-node");
+    });
+
+    it("should use provided node ID", () => {
+      const customService = new FencingTokenService("custom-node-id");
+      assert.strictEqual(customService.getNodeId(), "custom-node-id");
+    });
+  });
+
+  describe("generateFencingToken", () => {
+    it("should generate unique tokens for different executions", () => {
+      const token1 = service.generateFencingToken("exec-1", "node-1");
+      const token2 = service.generateFencingToken("exec-2", "node-1");
+
+      assert.notStrictEqual(token1, token2);
+    });
+
+    it("should include execution ID in token", () => {
+      const token = service.generateFencingToken("exec-123", "node-1");
+
+      assert.ok(token.startsWith("exec-123-"), "Token should start with execution ID");
+    });
+
+    it("should include node ID in token", () => {
+      const token = service.generateFencingToken("exec-1", "node-specific");
+
+      assert.ok(token.includes("-node-specific-"), "Token should include node ID");
+    });
+
+    it("should generate monotonically increasing tokens", () => {
+      const token1 = service.generateFencingToken("exec1", "node1");
+      const token2 = service.generateFencingToken("exec1", "node1");
+
+      // Extract counter from tokens (format: executionId-nodeId-counter-timestamp)
+      const parts1 = token1.split("-");
+      const parts2 = token2.split("-");
+      assert.ok(parts1.length >= 3, "Token should have at least 3 parts");
+      assert.ok(parts2.length >= 3, "Token should have at least 3 parts");
+      const counter1 = parseInt(parts1[2]!, 10);
+      const counter2 = parseInt(parts2[2]!, 10);
+
+      assert.ok(counter2 > counter1, "Counter should increase");
+    });
+
+    it("should include timestamp in token", () => {
+      const token = service.generateFencingToken("exec-1", "node-1");
+      const parts = token.split("-");
+
+      assert.ok(parts.length >= 4, "Token should have at least 4 parts");
+      const timestamp = parseInt(parts[3]!, 10);
+      assert.ok(timestamp > 0, "Timestamp should be a positive number");
+    });
+  });
+
+  describe("validateFencingToken", () => {
+    it("should return valid for a properly formatted token", () => {
+      const token = service.generateFencingToken("exec123", "testnode");
+      const result = service.validateFencingToken(token, "testnode");
+
+      assert.strictEqual(result.valid, true);
+      assert.strictEqual(result.executionId, "exec123");
+      assert.strictEqual(result.owner, "testnode");
+    });
+
+    it("should return invalid for empty token", () => {
+      const result = service.validateFencingToken("", "test-node");
+
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.reason, "Empty or invalid token");
+    });
+
+    it("should return invalid for null token", () => {
+      const result = service.validateFencingToken(null as any, "test-node");
+
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.reason, "Empty or invalid token");
+    });
+
+    it("should return invalid for token with too few parts", () => {
+      const result = service.validateFencingToken("invalid-token", "test-node");
+
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.reason, "Token format invalid");
+    });
+
+    it("should return invalid when owner does not match", () => {
+      const token = service.generateFencingToken("exec123", "node1");
+      const result = service.validateFencingToken(token, "differentNode");
+
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.owner, "node1");
+      assert.strictEqual(result.reason, "Token not owned by expected owner");
+    });
+
+    it("should return invalid when execution ID part is empty", () => {
+      // Manually create a malformed token
+      const malformedToken = "-node-1-1-12345";
+      const result = service.validateFencingToken(malformedToken, "node-1");
+
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.reason, "Token format invalid");
+    });
+  });
+
+  describe("acquireFence", () => {
+    it("should acquire a shared fence successfully", () => {
+      const result = service.acquireFence("exec-123", "shared");
+
+      assert.ok(result !== null);
+      assert.strictEqual(result.executionId, "exec-123");
+      assert.strictEqual(result.mode, "shared");
+      assert.strictEqual(result.ownerNodeId, "test-node");
+      assert.ok(result.fenceToken.length > 0);
+      assert.ok(result.acquiredAt instanceof Date);
+      assert.strictEqual(result.expiresAt, null);
+    });
+
+    it("should acquire an exclusive fence successfully", () => {
+      const result = service.acquireFence("exec-456", "exclusive");
+
+      assert.ok(result !== null);
+      assert.strictEqual(result.executionId, "exec-456");
+      assert.strictEqual(result.mode, "exclusive");
+    });
+
+    it("should allow multiple shared fences for same execution", () => {
+      const service1 = new FencingTokenService("node-1");
+      const service2 = new FencingTokenService("node-2");
+
+      const fence1 = service1.acquireFence("exec-shared", "shared");
+      const fence2 = service2.acquireFence("exec-shared", "shared");
+
+      assert.ok(fence1 !== null);
+      assert.ok(fence2 !== null);
+    });
+
+    it("should reject exclusive fence when another node holds exclusive", () => {
+      const service1 = new FencingTokenService("node-1");
+      const service2 = new FencingTokenService("node-2");
+
+      // Node 1 acquires exclusive
+      const fence1 = service1.acquireFence("exec-exclusive", "exclusive");
+      assert.ok(fence1 !== null);
+
+      // Node 2 tries to acquire exclusive - should fail
+      const fence2 = service2.acquireFence("exec-exclusive", "exclusive");
+      assert.strictEqual(fence2, null);
+    });
+
+    it("should reject exclusive fence when another node holds any fence", () => {
+      const service1 = new FencingTokenService("node-1");
+      const service2 = new FencingTokenService("node-2");
+
+      // Node 1 acquires shared
+      const fence1 = service1.acquireFence("exec-any", "shared");
+      assert.ok(fence1 !== null);
+
+      // Node 2 tries to acquire exclusive - should fail
+      const fence2 = service2.acquireFence("exec-any", "exclusive");
+      assert.strictEqual(fence2, null);
+    });
+
+    it("should allow same node to acquire multiple fences", () => {
+      const fence1 = service.acquireFence("exec-1", "shared");
+      const fence2 = service.acquireFence("exec-2", "shared");
+
+      assert.ok(fence1 !== null);
+      assert.ok(fence2 !== null);
+      assert.strictEqual(service.getActiveFenceCount(), 2);
+    });
+  });
+
+  describe("releaseFence", () => {
+    it("should release a held fence", () => {
+      service.acquireFence("exec-release", "shared");
+      assert.strictEqual(service.isFenceHeld("exec-release"), true);
+
+      const released = service.releaseFence("exec-release");
+      assert.strictEqual(released, true);
+      assert.strictEqual(service.isFenceHeld("exec-release"), false);
+    });
+
+    it("should return false when releasing non-existent fence", () => {
+      const result = service.releaseFence("non-existent-exec");
+      assert.strictEqual(result, false);
+    });
+
+    it("should allow re-acquiring after release", () => {
+      service.acquireFence("exec-reacquire", "shared");
+      service.releaseFence("exec-reacquire");
+
+      const fence = service.acquireFence("exec-reacquire", "shared");
+      assert.ok(fence !== null);
+    });
+  });
+
+  describe("isFenceHeld", () => {
+    it("should return true when fence is held", () => {
+      service.acquireFence("exec-held", "shared");
+      assert.strictEqual(service.isFenceHeld("exec-held"), true);
+    });
+
+    it("should return false when fence is not held", () => {
+      assert.strictEqual(service.isFenceHeld("exec-not-held"), false);
+    });
+
+    it("should return false after fence is released", () => {
+      service.acquireFence("exec-released", "shared");
+      service.releaseFence("exec-released");
+      assert.strictEqual(service.isFenceHeld("exec-released"), false);
+    });
+  });
+
+  describe("getFenceInfo", () => {
+    it("should return fence info when fence is held", () => {
+      const fence = service.acquireFence("exec-info", "exclusive");
+      const info = service.getFenceInfo("exec-info");
+
+      assert.ok(info !== undefined);
+      assert.strictEqual(info?.executionId, "exec-info");
+      assert.strictEqual(info?.mode, "exclusive");
+      assert.strictEqual(info?.ownerNodeId, "test-node");
+    });
+
+    it("should return undefined when fence is not held", () => {
+      const info = service.getFenceInfo("non-existent");
+      assert.strictEqual(info, undefined);
+    });
+  });
+
+  describe("clearAllFences", () => {
+    it("should clear all active fences", () => {
+      service.acquireFence("exec-1", "shared");
+      service.acquireFence("exec-2", "shared");
+      assert.strictEqual(service.getActiveFenceCount(), 2);
+
+      service.clearAllFences();
+      assert.strictEqual(service.getActiveFenceCount(), 0);
+    });
+  });
+
+  describe("getActiveFenceCount", () => {
+    it("should return 0 initially", () => {
+      assert.strictEqual(service.getActiveFenceCount(), 0);
+    });
+
+    it("should return correct count after acquiring fences", () => {
+      service.acquireFence("exec-1", "shared");
+      service.acquireFence("exec-2", "shared");
+      service.acquireFence("exec-3", "shared");
+
+      assert.strictEqual(service.getActiveFenceCount(), 3);
+    });
+
+    it("should decrement after releasing fences", () => {
+      service.acquireFence("exec-1", "shared");
+      service.acquireFence("exec-2", "shared");
+
+      service.releaseFence("exec-1");
+      assert.strictEqual(service.getActiveFenceCount(), 1);
+    });
+  });
+
+  describe("type exports", () => {
+    it("should export FenceMode type correctly", () => {
+      // FenceMode should be "shared" | "exclusive"
+      const mode: FenceMode = "shared";
+      assert.strictEqual(mode, "shared");
+    });
+
+    it("should export FenceInfo interface structure", () => {
+      const fenceInfo: FenceInfo = {
+        executionId: "exec-123",
+        mode: "exclusive",
+        fenceToken: "token-abc",
+        ownerNodeId: "node-1",
+        acquiredAt: new Date(),
+        expiresAt: null,
+      };
+
+      assert.strictEqual(fenceInfo.executionId, "exec-123");
+      assert.strictEqual(fenceInfo.mode, "exclusive");
+      assert.strictEqual(fenceInfo.ownerNodeId, "node-1");
+    });
+
+    it("should export FencingTokenValidation interface structure", () => {
+      const validation: FencingTokenValidation = {
+        valid: true,
+        executionId: "exec-123",
+        owner: "node-1",
+      };
+
+      assert.strictEqual(validation.valid, true);
+      assert.strictEqual(validation.executionId, "exec-123");
+    });
+
+    it("should export FencingTokenValidation with error structure", () => {
+      const validation: FencingTokenValidation = {
+        valid: false,
+        reason: "Token not owned by expected owner",
+      };
+
+      assert.strictEqual(validation.valid, false);
+      assert.strictEqual(validation.reason, "Token not owned by expected owner");
+    });
+  });
 });

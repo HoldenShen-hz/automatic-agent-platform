@@ -147,8 +147,6 @@ function createMockStore(overrides: {
     worker: {
       listExecutionTicketsByStatuses: (statuses: string[]) =>
         dispatchReconciliationIssues.filter(t => statuses.includes(t.status)),
-      listExecutionTicketsByStatusesPaginated: (statuses: string[], _limit: number, _offset: number) =>
-        dispatchReconciliationIssues.filter(t => statuses.includes(t.status)),
       listWorkerSnapshots: () => normalizedWorkerSnapshots,
       getWorkerSnapshot: (workerId: string) =>
         normalizedWorkerSnapshots.find((w) => w.workerId === workerId) ?? null,

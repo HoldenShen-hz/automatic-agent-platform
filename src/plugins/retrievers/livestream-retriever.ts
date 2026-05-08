@@ -7,7 +7,7 @@
  * §G8: Livestream domain — M2 Phase 5 (high complexity, needs OBS/Stream integration).
  */
 
-import type { DomainRetrieverPlugin, PluginLifecycleContext, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
+import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 
 /**
  * Build a search query from the intent and context.
@@ -33,18 +33,6 @@ export function createLivestreamRetrieverPlugin(): DomainRetrieverPlugin {
     domainId: "livestream",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "livestream.obs_search"],
-    async onLoad(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being loaded
-    },
-    async onActivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being activated
-    },
-    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being deactivated
-    },
-    async onUnload(_context: PluginLifecycleContext): Promise<void> {
-      // Plugin is being unloaded
-    },
     async initialize() {
       // No-op: knowledge plane is available immediately
     },

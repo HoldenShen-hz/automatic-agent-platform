@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -57,8 +57,7 @@
 - `description`
 - `applicable_roles`
 - `required_tools`
-- `plan_graph_ref`
-- `entry_node_ids`
+- `steps`
 - `version`
 - `model_profile_name?`
 - `activation_conditions?`
@@ -69,7 +68,6 @@
 约束：
 
 - skill 只能编排已授权工具，不能隐式扩权。
-- skill 的执行结构必须引用 `PlanGraph`/entry nodes，不得把线性 `steps[]` 当作 canonical 执行模型。
 - 若 step 声明 `model_overrides`，override 目标工具也必须已在允许集合内。
 - 未满足 `activation_conditions` / `activation_paths` 的 skill 可以保留在 registry 中，但默认不进入模型可见面。
 

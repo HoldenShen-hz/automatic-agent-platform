@@ -15,28 +15,6 @@ export interface IdentitySyncSnapshot {
   readonly conflictReports: readonly IdentitySyncConflictReport[];
   readonly sessionRevocationPlans: readonly SessionRevocationPlan[];
   readonly agentFreezeDirectives: readonly AgentFreezeDirective[];
-  readonly reconciliationReport: IdentityReconciliationReport | null;
-}
-
-export interface IdentityReconciliationReport {
-  readonly reportId: string;
-  readonly generatedAt: string;
-  readonly periodStart: string;
-  readonly periodEnd: string;
-  readonly totalDlqRecords: number;
-  readonly retryAttempted: number;
-  readonly retrySucceeded: number;
-  readonly retryFailed: number;
-  readonly backoffApplied: readonly IdentitySyncDlqBackoffEntry[];
-  readonly reconciledSubjects: readonly string[];
-  readonly unreconciledSubjects: readonly string[];
-}
-
-export interface IdentitySyncDlqBackoffEntry {
-  readonly dlqId: string;
-  readonly retryCount: number;
-  readonly nextRetryAt: string;
-  readonly backoffMs: number;
 }
 
 export interface IdentitySyncDlqRecord {
@@ -44,9 +22,6 @@ export interface IdentitySyncDlqRecord {
   readonly eventType: string;
   readonly failureCode: "schema_validation_failed" | "event_id_conflict";
   readonly failureDetail: string;
-  readonly retryCount: number;
-  readonly nextRetryAt: string | null;
-  readonly lastRetryAt: string | null;
 }
 
 export interface IdentitySyncConflictReport {
@@ -81,16 +56,8 @@ export interface IdentitySyncBootstrapOptions {
   readonly deconfiguredSubjectIds?: readonly string[];
 }
 
-const BASE_BACKOFF_MS = 1000;
-const MAX_BACKOFF_MS = 60000;
-
-function computeBackoffMs(retryCount: number): number {
-  return Math.min(BASE_BACKOFF_MS * Math.pow(2, retryCount), MAX_BACKOFF_MS);
-}
-
 export class IdentitySyncService {
   private readonly activeSubjects = new Set<string>();
-  private readonly dlqBackoffEntries = new Map<string, IdentitySyncDlqBackoffEntry>();
 
   public bootstrap(
     oidc: OidcProviderConfig,
@@ -113,9 +80,6 @@ export class IdentitySyncService {
           eventType: candidate?.action ?? "unknown",
           failureCode: "schema_validation_failed",
           failureDetail: parsed.error.issues.map((issue) => issue.message).join("; "),
-          retryCount: 0,
-          nextRetryAt: null,
-          lastRetryAt: null,
         });
         continue;
       }
@@ -134,9 +98,6 @@ export class IdentitySyncService {
           eventType: accepted.action,
           failureCode: "event_id_conflict",
           failureDetail: `Conflicting payload for eventId ${accepted.eventId}`,
-          retryCount: 0,
-          nextRetryAt: null,
-          lastRetryAt: null,
         });
         continue;
       }
@@ -183,118 +144,15 @@ export class IdentitySyncService {
       } satisfies AgentFreezeDirective];
     });
 
-    // Process DLQ records with retry/backoff and generate reconciliation report
-    const nowIso = new Date().toISOString();
-    const periodStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { processedRecords, retryQueue } = this.processDlqWithRetry(dlqRecords, nowIso);
-    const reconciliationReport = this.generateDailyReconciliation(
-      processedRecords,
-      periodStart,
-      nowIso,
-    );
-
     return {
       oidcAuthorizationUrl: buildOidcAuthorizationUrl(oidc, newId("oidc_state")),
       samlAudience: buildSamlAudience(saml),
       appliedScimEvents,
       activeSubjects: [...this.activeSubjects].sort(),
-      dlqRecords: processedRecords,
+      dlqRecords,
       conflictReports,
       sessionRevocationPlans,
       agentFreezeDirectives,
-      reconciliationReport,
-    };
-  }
-
-  public processDlqWithRetry(
-    dlqRecords: readonly IdentitySyncDlqRecord[],
-    nowIso: string,
-  ): { processedRecords: IdentitySyncDlqRecord[]; retryQueue: IdentitySyncDlqRecord[] } {
-    const processedRecords: IdentitySyncDlqRecord[] = [];
-    const retryQueue: IdentitySyncDlqRecord[] = [];
-
-    for (const record of dlqRecords) {
-      if (record.retryCount >= 3) {
-        // Max retries reached, keep in DLQ but mark as exhausted
-        processedRecords.push({ ...record, nextRetryAt: null });
-        continue;
-      }
-
-      const shouldRetry = record.nextRetryAt == null || record.nextRetryAt <= nowIso;
-      if (shouldRetry) {
-        const updated = this.retryDlqRecord(record, nowIso);
-        processedRecords.push(updated);
-        retryQueue.push(updated);
-      } else {
-        processedRecords.push(record);
-      }
-    }
-
-    return { processedRecords, retryQueue };
-  }
-
-  public retryDlqRecord(dlqRecord: IdentitySyncDlqRecord, nowIso: string): IdentitySyncDlqRecord {
-    const backoffEntry = this.dlqBackoffEntries.get(dlqRecord.dlqId);
-    const retryCount = (backoffEntry?.retryCount ?? 0) + 1;
-    const backoffMs = computeBackoffMs(retryCount);
-    const nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
-
-    this.dlqBackoffEntries.set(dlqRecord.dlqId, {
-      dlqId: dlqRecord.dlqId,
-      retryCount,
-      nextRetryAt,
-      backoffMs,
-    });
-
-    return {
-      ...dlqRecord,
-      retryCount,
-      nextRetryAt,
-      lastRetryAt: nowIso,
-    };
-  }
-
-  public generateDailyReconciliation(
-    dlqRecords: readonly IdentitySyncDlqRecord[],
-    periodStart: string,
-    periodEnd: string,
-  ): IdentityReconciliationReport {
-    let retryAttempted = 0;
-    let retrySucceeded = 0;
-    let retryFailed = 0;
-    const backoffApplied: IdentitySyncDlqBackoffEntry[] = [];
-    const reconciledSubjects: string[] = [];
-    const unreconciledSubjects: string[] = [];
-
-    for (const record of dlqRecords) {
-      if (record.retryCount > 0) {
-        retryAttempted++;
-        const backoffEntry = this.dlqBackoffEntries.get(record.dlqId);
-        if (backoffEntry) {
-          backoffApplied.push(backoffEntry);
-        }
-        if (record.retryCount >= 3) {
-          retryFailed++;
-          unreconciledSubjects.push(record.eventType);
-        } else {
-          retrySucceeded++;
-          reconciledSubjects.push(record.eventType);
-        }
-      }
-    }
-
-    return {
-      reportId: newId("identity_reconciliation"),
-      generatedAt: new Date().toISOString(),
-      periodStart,
-      periodEnd,
-      totalDlqRecords: dlqRecords.length,
-      retryAttempted,
-      retrySucceeded,
-      retryFailed,
-      backoffApplied,
-      reconciledSubjects,
-      unreconciledSubjects,
     };
   }
 }

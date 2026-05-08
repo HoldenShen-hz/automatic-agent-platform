@@ -7,7 +7,6 @@ import {
   type FenceMode,
   type FenceInfo,
   type FencingTokenValidation,
-  createInMemoryCasService,
 } from "../../../../../../src/platform/state-evidence/events/cas/index.js";
 
 test("events/cas/index exports CasService", () => {
@@ -75,9 +74,8 @@ test("events/cas/index exports FencingTokenValidation with invalid result", () =
 });
 
 test("CasService creates instance", () => {
-  const service = createInMemoryCasService();
+  const service = new CasService();
   assert.ok(service !== undefined);
-  assert.ok(service instanceof CasService);
 });
 
 test("FencingTokenService creates instance with custom node ID", () => {

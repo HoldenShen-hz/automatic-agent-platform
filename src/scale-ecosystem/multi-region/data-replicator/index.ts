@@ -71,18 +71,12 @@ export class ReplicationEventBuffer {
   private buffer: ReplicationEvent[] = [];
   private readonly maxSize: number;
   private readonly flushIntervalMs: number;
-  private readonly autoFlushHandler: ((events: readonly ReplicationEvent[]) => Promise<void> | void) | null;
   private lastFlushAt: number = Date.now();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  public constructor(
-    maxSize = 1000,
-    flushIntervalMs: number = 5000,
-    autoFlushHandler: ((events: readonly ReplicationEvent[]) => Promise<void> | void) | null = null,
-  ) {
+  public constructor(maxSize = 1000, flushIntervalMs = 5000) {
     this.maxSize = maxSize;
     this.flushIntervalMs = flushIntervalMs;
-    this.autoFlushHandler = autoFlushHandler;
   }
 
   public add(event: ReplicationEvent): boolean {
@@ -105,11 +99,6 @@ export class ReplicationEventBuffer {
     return events;
   }
 
-  private requeue(events: readonly ReplicationEvent[]): void {
-    this.buffer = [...events, ...this.buffer];
-    this.scheduleFlush();
-  }
-
   public size(): number {
     return this.buffer.length;
   }
@@ -121,19 +110,8 @@ export class ReplicationEventBuffer {
   private scheduleFlush(): void {
     if (this.timer || this.buffer.length === 0) return;
     this.timer = setTimeout(() => {
-      this.timer = null;
-      const events = this.flush();
-      if (events.length > 0) {
-        if (this.autoFlushHandler == null) {
-          this.requeue(events);
-          return;
-        }
-        Promise.resolve(this.autoFlushHandler(events)).catch(() => {
-          this.requeue(events);
-        });
-      }
+      this.flush();
     }, this.flushIntervalMs);
-    this.timer.unref?.();
   }
 }
 
@@ -161,16 +139,7 @@ export class DataReplicatorService {
     this.config = { ...config };
     this.emit = config.emit ?? (() => {});
     for (const regionId of config.targetRegionIds) {
-      this.buffers.set(
-        regionId,
-        new ReplicationEventBuffer(
-          this.config.batchSize,
-          this.config.flushIntervalMs,
-          async (events) => {
-            await this.processEvents(regionId, events);
-          },
-        ),
-      );
+      this.buffers.set(regionId, new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs));
     }
   }
 
@@ -190,23 +159,15 @@ export class DataReplicatorService {
 
   /**
    * Record a replication event
-   * Per R15-54: checks shouldReplicateToRegion() to enforce residency policy
    */
   public recordEvent(
     targetRegionId: string,
     aggregateType: string,
     aggregateId: string,
     payload: unknown,
-  ): ReplicationEvent | null {
-    // Check if replication to this region is allowed by policy
-    if (!shouldReplicateToRegion(this.config.policy, targetRegionId)) {
-      return null;
-    }
-
+  ): ReplicationEvent {
     const event: ReplicationEvent = {
-      // Root cause: Date.now() + Math.random() causes ID collisions under high concurrency
-      // Fix: Use crypto.randomUUID() for globally unique, collision-free IDs
-      eventId: `repl_${globalThis.crypto.randomUUID()}`,
+      eventId: `repl_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       aggregateType,
@@ -242,10 +203,6 @@ export class DataReplicatorService {
     }
 
     const events = buffer.flush();
-    return this.processEvents(targetRegionId, events);
-  }
-
-  private async processEvents(targetRegionId: string, events: readonly ReplicationEvent[]): Promise<ReplicationResult> {
     if (events.length === 0) {
       return {
         success: true,
@@ -265,44 +222,28 @@ export class DataReplicatorService {
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
         // Retry logic
-        let retrySucceeded = false;
         for (let attempt = 1; attempt < this.config.retryAttempts; attempt++) {
           try {
             await this.sendToTarget(targetRegionId, event);
+            lastSequence++;
             errors.pop(); // Remove the error we just resolved
-            retrySucceeded = true;
             break;
           } catch {
             // Continue to next retry
           }
         }
-        // §187-2198: After successful retry, increment sequence to account for this event
-        // Root cause: retry success was not incrementing lastSequence, causing sequence gaps
-        // Fix: increment lastSequence after successful retry (only once per event)
-        if (retrySucceeded) {
-          lastSequence++;
-        }
       }
     }
 
-    // Update checkpoint with actual pending count
-    // §187-2197: pendingCount should reflect events that failed and need retry, not errors.length
-    // Root cause: errors.length only counts currently failing events, but pendingCount should
-    // include ALL events that haven't been confirmed by target (including those with errors)
-    // pendingCount = events that were attempted but not yet confirmed successful
+    // Update checkpoint
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
-    const existingCheckpoint = this.checkpoints.get(checkpointKey);
-    const baseSequence = existingCheckpoint?.sequenceNumber ?? 0;
-    // Use events.length - lastSequence to get actual pending (events not yet confirmed)
-    const actualPendingCount = events.length - lastSequence;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
-      // Use persistent base sequence + lastSequence to get confirmed sequence
-      sequenceNumber: baseSequence + lastSequence,
+      sequenceNumber: lastSequence,
       timestamp: nowIso(),
-      pendingCount: Math.max(0, actualPendingCount),
+      pendingCount: events.length,
     });
 
     return {

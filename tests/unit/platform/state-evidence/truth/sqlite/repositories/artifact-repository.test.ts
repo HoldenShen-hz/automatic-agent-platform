@@ -30,7 +30,6 @@ test("ArtifactRepository inserts artifact", () => {
     artifactId: "artifact_1",
     taskId: "task_1",
     executionId: "exec_1",
-    nodeRunId: "node_run_1",
     stepId: "step_1",
     kind: "output",
     storagePath: "/artifacts/output_1.json",

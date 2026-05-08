@@ -17,7 +17,6 @@ import {
   type DeploymentSlot,
   type RollbackTrigger,
 } from "../../../../../src/platform/control-plane/rollout-controller/traffic-routing-service.js";
-import type { ControlPlaneDirectiveSink } from "../../../../../src/platform/control-plane/control-plane-directive-sink.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 
 /**
@@ -175,28 +174,6 @@ test("startCanaryShift applies initial traffic weights", () => {
   assert.equal(green.trafficWeight, 5);
 });
 
-test("startCanaryShift emits canonical OperationalDirective", () => {
-  const db = createTestDb();
-  const directives: Record<string, unknown>[] = [];
-  const directiveSink: ControlPlaneDirectiveSink = {
-    emitOperationalDirective(directive) {
-      directives.push(directive as unknown as Record<string, unknown>);
-    },
-    emitDecisionDirective() {},
-  };
-  const service = new TrafficRoutingService(db, directiveSink);
-
-  service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
-
-  const shift = service.startCanaryShift("blue", "green", DEFAULT_CANARY_CONFIG, "release_bot");
-
-  assert.equal(directives.length, 1);
-  assert.equal(directives[0]?.type, "mode_switch");
-  assert.equal(directives[0]?.issuedBy?.principalId, "release_bot");
-  assert.equal(directives[0]?.params?.shiftId, shift.id);
-});
-
 test("startCanaryShift respects custom canary config", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);
@@ -247,28 +224,6 @@ test("advanceShift returns null for non-existent shift", () => {
 
   const result = service.advanceShift("nonexistent_shift_id");
   assert.equal(result, null);
-});
-
-test("rollbackShift emits rollback OperationalDirective", () => {
-  const db = createTestDb();
-  const directives: Record<string, unknown>[] = [];
-  const directiveSink: ControlPlaneDirectiveSink = {
-    emitOperationalDirective(directive) {
-      directives.push(directive as unknown as Record<string, unknown>);
-    },
-    emitDecisionDirective() {},
-  };
-  const service = new TrafficRoutingService(db, directiveSink);
-
-  service.registerSlot("blue", "v1.0.0", 1);
-  service.registerSlot("green", "v2.0.0", 1);
-  const shift = service.startCanaryShift("blue", "green");
-
-  const rollback = service.rollbackShift(shift.id, "manual", "operator.rollback");
-
-  assert.equal(rollback.shiftId, shift.id);
-  assert.equal(directives.at(-1)?.type, "rollback");
-  assert.equal(directives.at(-1)?.params?.shiftId, shift.id);
 });
 
 test("advanceShift completes the shift when all steps are done", () => {

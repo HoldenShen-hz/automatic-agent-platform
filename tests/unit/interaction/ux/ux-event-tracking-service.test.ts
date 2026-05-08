@@ -363,7 +363,7 @@ test("UxEventTrackingService with event publisher publishes events", () => {
   const mockPublisher = {
     publish: (event: any) => {
       published = true;
-      assert.equal(event.eventType, "platform.ux.button_click");
+      assert.equal(event.eventType, "test:many_events");
     },
   };
 

@@ -16,9 +16,6 @@ export const SlaTierSchema = z.object({
   maxQueueWaitMs: z.number().int().nonnegative().optional().default(3000),
   preemptionPriority: z.number().int().nonnegative().optional().default(0),
   reservedCapacityPercent: z.number().min(0).max(100).optional().default(0),
-  // §54.3/R15-72: SLA breach detection requires execution timeout and dependency availability constraints
-  maxExecutionTimeoutRate: z.number().min(0).max(1).optional().default(0.05),
-  minDependencyAvailability: z.number().min(0).max(1).optional().default(0.99),
 });
 
 export type SlaTier = z.input<typeof SlaTierSchema>;

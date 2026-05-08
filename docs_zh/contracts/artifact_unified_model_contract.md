@@ -19,7 +19,7 @@
 - 明确用户可读结果与文件产物不是同一种对象。
 - 统一中间结构输出和最终交付物的边界。
 - 为 inspect、replay、download、retention 提供统一语义。
-- 支持 OAPEFLIR 8 阶段的 artifact 追踪（Plan/Execute/Learn/Improve/Release）。
+- 支持 OAPEFLIR 8 阶段的 artifact 追踪（Plan/Execute/Learn/Improve/Rollout）。
 
 ## 3. 统一对象
 
@@ -50,7 +50,7 @@ interface ArtifactRecord {
 
 interface ArtifactRef {
   refId: string;
-  targetType: 'feedback' | 'learning' | 'improvement' | 'release' | 'execution';
+  targetType: 'feedback' | 'learning' | 'improvement' | 'rollout' | 'execution';
   targetId: string;
 }
 ```
@@ -71,7 +71,7 @@ interface ArtifactRef {
 - `feedback_snapshot`
 - `learning_object_bundle`         // OAPEFLIR Learn Hub
 - `improvement_candidate_bundle`  // OAPEFLIR Improve Hub
-- `release_evidence`             // OAPEFLIR Release
+- `rollout_evidence`             // OAPEFLIR Rollout
 - `policy_explain_export`
 - `plan_dag_export`              // OAPEFLIR Plan Hub
 - `execution_output`             // OAPEFLIR Execute Hub
@@ -83,7 +83,7 @@ interface ArtifactRef {
 - `promotion_evidence`
 - `release_evidence`
 - `learning_pattern_bundle`     // OAPEFLIR Learn Hub
-- `canary_metrics`              // OAPEFLIR Release canary metrics
+- `canary_metrics`              // OAPEFLIR Rollout
 
 `publishStatus` 生命周期：
 
@@ -105,7 +105,7 @@ interface ArtifactRef {
 - Plan artifact 必须能追踪到原始 assessment 和 strategy。
 - Execute artifact 必须包含 DualChannelStepOutput 引用。
 - Learning artifact 必须包含 evidence 链接（R4-EVIDENCE 约束）。
-- Release artifact 必须包含 metrics 快照。
+- Rollout artifact 必须包含 metrics 快照。
 - Artifact 10MB bundle 限制和 7 天自动归档规则（§D.7）。
 
 ## 6. 收口结论

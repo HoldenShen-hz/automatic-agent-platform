@@ -3,8 +3,6 @@
  *
  * Factory functions for creating complex test states that involve
  * multiple related entities with specific relationships.
- *
- * R6-32 FIX: Added canonical composite fixtures for HarnessRun+PlanGraphBundle+NodeRun.
  */
 
 import { nowIso } from "../../../src/platform/contracts/types/ids.js";
@@ -13,22 +11,6 @@ import type {
   ExecutionRecord,
   ApprovalRecord,
 } from "../../../src/platform/contracts/types/domain.js";
-import type {
-  HarnessRun,
-  PlanGraphBundle,
-  PlanNode,
-  PlanEdge,
-  NodeRun,
-  BudgetLedger,
-  BudgetReservation,
-} from "../../../src/platform/contracts/executable-contracts/index.js";
-import {
-  createMinimalHarnessRun,
-  createMinimalPlanGraphBundle,
-  createMinimalNodeRun,
-  createMinimalBudgetLedger,
-  createMinimalBudgetReservation,
-} from "./base.js";
 
 const DEFAULT_NOW = nowIso();
 
@@ -242,122 +224,4 @@ export function createFailedTask(
   };
 
   return { task, execution };
-}
-
-// =============================================================================
-// R6-32 FIX: Canonical Model Composite Fixtures
-// These replace the deprecated TaskRecord+ExecutionRecord pattern.
-// =============================================================================
-
-/**
- * Creates a complete HarnessRun with PlanGraphBundle ready for execution.
- * Use this when testing multi-step orchestration flows.
- */
-export function createCompleteHarnessRun(
-  harnessRunId: string,
-  confirmedTaskSpecId: string,
-  options: {
-    status?: "created" | "admitted" | "planning" | "ready" | "running";
-    nodeIds?: string[];
-  } = {},
-): {
-  harnessRun: HarnessRun;
-  planGraphBundle: PlanGraphBundle;
-  budgetLedger: BudgetLedger;
-  nodeRuns: NodeRun[];
-} {
-  const { status = "created", nodeIds = ["init", "process", "final"] } = options;
-
-  // Build nodes and edges for the graph
-  const nodes = nodeIds.map((nodeId, idx) => ({
-    nodeId,
-    nodeType: "tool" as const,
-    inputRefs: idx > 0 ? [nodeIds[idx - 1]] : ([] as readonly string[]),
-    outputSchemaRef: "schema://test",
-    riskClass: "low" as const,
-    budgetIntent: { amount: 100, currency: "USD", resourceKinds: ["token"] as const },
-    sideEffectProfile: { mayCommitExternalEffect: false, reversible: false },
-    retryPolicyRef: "retry:default",
-    timeoutMs: 30000,
-  }));
-
-  const edges = nodeIds.slice(1).map((nodeId, idx) => ({
-    edgeId: `edge-${nodeIds[idx]}-${nodeId}`,
-    fromNodeId: nodeIds[idx],
-    toNodeId: nodeId,
-    condition: true as const,
-    dependencyType: "hard" as const,
-  }));
-
-  // Build graph directly with the correct structure
-  const graph: PlanGraphBundle["graph"] = {
-    graphId: `graph-${harnessRunId}`,
-    nodes: nodes as readonly PlanNode[],
-    edges: edges as readonly PlanEdge[],
-    entryNodeIds: [nodeIds[0]] as readonly string[],
-    terminalNodeIds: [nodeIds[nodeIds.length - 1]] as readonly string[],
-    joinStrategy: "all",
-    graphHash: `hash-${harnessRunId}`,
-  };
-
-  const planGraphBundle = createMinimalPlanGraphBundle(harnessRunId);
-
-  const harnessRun = createMinimalHarnessRun({
-    harnessRunId,
-    confirmedTaskSpecId,
-    status,
-    planGraphBundleId: planGraphBundle.planGraphBundleId,
-  });
-
-  const budgetLedger = createMinimalBudgetLedger(harnessRunId);
-
-  const nodeRuns = nodes.map((node) =>
-    createMinimalNodeRun(harnessRunId, planGraphBundle.planGraphBundleId, {
-      nodeId: node.nodeId,
-    }),
-  );
-
-  return {
-    harnessRun,
-    planGraphBundle: {
-      ...planGraphBundle,
-      graph,
-    },
-    budgetLedger,
-    nodeRuns,
-  };
-}
-
-/**
- * Creates a harness run with active budget reservation for a specific node.
- * Use this when testing budget-guarded execution flows.
- */
-export function createBudgetReservedHarnessRun(
-  harnessRunId: string,
-  nodeRunId: string,
-  options: {
-    amount?: number;
-    resourceKind?: "token" | "tool" | "api" | "compute";
-  } = {},
-): {
-  harnessRun: HarnessRun;
-  planGraphBundle: PlanGraphBundle;
-  budgetLedger: BudgetLedger;
-  budgetReservation: BudgetReservation;
-} {
-  const { amount = 100, resourceKind = "token" } = options;
-
-  const harnessRun = createMinimalHarnessRun({ harnessRunId, status: "running" });
-  const planGraphBundle = createMinimalPlanGraphBundle(harnessRunId);
-  const budgetLedger = createMinimalBudgetLedger(harnessRunId, {
-    reservedAmount: amount,
-    status: "open",
-  });
-  const budgetReservation = createMinimalBudgetReservation(budgetLedger.budgetLedgerId, harnessRunId, {
-    nodeRunId,
-    amount,
-    resourceKind: resourceKind as BudgetReservation["resourceKind"],
-  });
-
-  return { harnessRun, planGraphBundle, budgetLedger, budgetReservation };
 }

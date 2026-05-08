@@ -5,7 +5,7 @@
 
 ## Context
 
-Agent is composed of multiple loosely coupled components, lacking unified version and lifecycle management.
+Agents are composed of multiple loosely coupled components, lacking unified version and lifecycle management.
 
 ## Decision
 
@@ -38,12 +38,9 @@ interface AgentComponent {
 | draft | Draft |
 | testing | Testing |
 | staging | Staging |
-| canary | Canary release |
-| active | Production |
-| paused | Paused |
+| production | Production |
 | deprecated | Deprecated |
-| archived | Archived |
-| removed | Deleted |
+| retired | Retired |
 
 ### Version Management
 
@@ -54,27 +51,27 @@ interface AgentComponent {
 ### Deployment Management
 
 - Blue-green deployment
-- Canary release
+- Canary releases
 - Rollback capability
 
 ### Component Dependencies
 
-- Dependency graph
+- Dependency relationship graph
 - Version compatibility matrix
 - Upgrade impact analysis
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Unified management improves maintainability
 - Versioning supports rollback
 - Dependency management prevents conflicts
 
-Negative:
+Costs:
 
 - Component version coordination is complex
-- Lifecycle state machine maintenance cost
+- Lifecycle state machine maintenance costs
 
 ## Cross-References
 

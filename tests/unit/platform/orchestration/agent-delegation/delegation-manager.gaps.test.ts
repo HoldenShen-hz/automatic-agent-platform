@@ -71,7 +71,7 @@ test("DelegationManagerService permission narrowing with empty child actions", a
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   // With empty child actions, parent actions should be used
   assert.ok(delegation?.permissions.actions.length > 0);
@@ -95,7 +95,7 @@ test("DelegationManagerService permission narrowing with empty parent actions", 
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   // Intersection of empty parent and child should be empty
   assert.ok(Array.isArray(delegation?.permissions.actions));
@@ -125,7 +125,7 @@ test("DelegationManagerService permission narrowing takes more restrictive durat
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   // Should take the more restrictive value (30000)
   assert.equal(delegation?.permissions.constraints.maxDurationMs, 30000);
@@ -155,7 +155,7 @@ test("DelegationManagerService permission narrowing takes more restrictive token
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   // Should take the more restrictive value (50000)
   assert.equal(delegation?.permissions.constraints.maxTokens, 50000);
@@ -186,7 +186,7 @@ test("DelegationManagerService permission narrowing merges constraints", async (
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   assert.equal(delegation?.permissions.constraints.maxDurationMs, 30000);
   assert.ok(delegation?.permissions.constraints.allowedDomains?.includes("api.example.com"));
@@ -204,7 +204,7 @@ test("DelegationManagerService permission narrowing uses parent resources when c
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
 
   // Should use parent resources
   assert.ok(delegation?.permissions.resources.length > 0);
@@ -267,7 +267,7 @@ test("DelegationManagerService getActiveDelegations excludes completed", async (
 
   await service.complete(handle1.delegationId);
 
-  const active = await service.getActiveDelegations("parent-agent");
+  const active = service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -282,7 +282,7 @@ test("DelegationManagerService getActiveDelegations excludes failed", async () =
 
   await service.fail(handle1.delegationId, "test error");
 
-  const active = await service.getActiveDelegations("parent-agent");
+  const active = service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -297,7 +297,7 @@ test("DelegationManagerService getActiveDelegations excludes cancelled", async (
 
   await service.cancel(handle1.delegationId);
 
-  const active = await service.getActiveDelegations("parent-agent");
+  const active = service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -306,7 +306,7 @@ test("DelegationManagerService getActiveDelegations excludes cancelled", async (
 test("DelegationManagerService getActiveDelegations returns empty for unknown agent", async () => {
   const service = createDelegationManager();
 
-  const active = await service.getActiveDelegations("unknown-agent");
+  const active = service.getActiveDelegations("unknown-agent");
 
   assert.equal(active.length, 0);
 });
@@ -323,7 +323,7 @@ test("DelegationManagerService uses defaultTimeout when spec timeout is zero", a
   const handle = await service.delegate(parent, spec);
 
   // Should use defaultTimeout of 120000ms (2 minutes)
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn > 100000); // At least 100 seconds
 });
@@ -336,7 +336,7 @@ test("DelegationManagerService uses spec timeout when positive", async () => {
   const handle = await service.delegate(parent, spec);
 
   // Should use spec timeout of 10000ms
-  const delegation = await service.getDelegation(handle.delegationId);
+  const delegation = service.getDelegation(handle.delegationId);
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn < 20000); // Less than 20 seconds
 });
@@ -371,40 +371,34 @@ test("DelegationManagerService each delegation gets unique correlationId", async
 // Factory Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDelegationManager without options uses defaults", async () => {
+test("createDelegationManager without options uses defaults", () => {
   const service = createDelegationManager();
 
-  // Should use DEFAULT_MAX_DEPTH from topology validator (8)
-  // and governance depth limit (5) - the more restrictive one wins
-  const parent = createParentContext({ delegationDepth: 4 });
+  // Should use DEFAULT_MAX_DEPTH from topology validator
+  const parent = createParentContext({ delegationDepth: 3 });
   const spec = createDelegationSpec();
 
-  // Depth 4+1=5 equals governance limit, should be allowed
-  const handle = await service.delegate(parent, spec);
-  assert.equal(handle.depth, 5);
-
-  // Now test that depth 5+1=6 exceeds governance limit
-  const parentAtDepth5 = createParentContext({ delegationDepth: 5 });
-  await assert.rejects(
-    async () => service.delegate(parentAtDepth5, spec),
+  // Depth 3 should fail with default maxDepth of 3
+  return assert.rejects(
+    async () => service.delegate(parent, spec),
     Error,
   );
 });
 
-test("createDelegationManager with custom options", async () => {
+test("createDelegationManager with custom options", () => {
   const service = createDelegationManager({
     maxDepth: 10,
     maxFanout: 5,
     defaultTimeout: 60000,
   });
 
-  // Governance enforces max depth 5, so parent at depth 4 (child=5) is allowed
-  const parent = createParentContext({ delegationDepth: 4 });
+  const parent = createParentContext({ delegationDepth: 5 });
   const spec = createDelegationSpec();
 
-  // Child depth 5 equals governance limit - should be allowed
-  const handle = await service.delegate(parent, spec);
-  assert.equal(handle.depth, 5);
+  // Depth 5 should be allowed with maxDepth of 10
+  return service.delegate(parent, spec).then((handle) => {
+    assert.equal(handle.depth, 6);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,19 +411,11 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
 
   const handle = await service.delegate(parent, createDelegationSpec());
 
-  // Build a valid message first - validateCollaborationMessage uses ACPMessageSchema.parse
-  // so we need to provide all required fields per collaboration-protocol/types.ts
-  const validMessage = {
+  const invalidMessage = {
     messageId: "msg-1",
     messageType: "completion_report" as const,
     correlation_id: "corr-1",
     parent_run_id: handle.delegationId,
-    delegationId: handle.delegationId, // Required field from ACPMessageSchema
-    childRunId: "child-run-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 1000,
-    dataBoundary: "boundary-1",
-    deadline: new Date(Date.now() + 60000).toISOString(),
     depth: 10, // Exceeds depth limit
     sender_agent_id: handle.childAgentId,
     receiver_agent_id: handle.parentAgentId,
@@ -437,7 +423,7 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
     risk_level: 99, // Exceeds risk limit
     budget_remaining: 200, // Exceeds budget
     trace_id: "trace-1",
-    payload: { evidence: ["some-evidence"] }, // Non-empty evidence
+    payload: { evidence: [] }, // Empty evidence - invalid
     timestamp: "2026-04-22T00:00:00.000Z",
   };
 
@@ -449,7 +435,7 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
     globalCallDepth: 5,
   };
 
-  const result = service.validateCollaborationMessage(validMessage, context);
+  const result = service.validateCollaborationMessage(invalidMessage, context);
 
   assert.equal(result.accepted, false);
   assert.ok(result.violations.length > 0);

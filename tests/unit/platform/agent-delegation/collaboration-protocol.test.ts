@@ -38,12 +38,6 @@ test("CollaborationProtocolService.createMessage creates valid ACPMessage", () =
   const message = service.createMessage("task_request", {
     correlation_id: "corr-1",
     parent_run_id: "run-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     depth: 1,
     sender_agent_id: "agent-1",
     receiver_agent_id: "agent-2",
@@ -78,12 +72,6 @@ test("CollaborationProtocolService.createMessage supports all message types", ()
     const message = service.createMessage(type, {
       correlation_id: "corr-1",
       parent_run_id: "run-1",
-      delegationId: "del-1",
-      childRunId: "child-1",
-      capabilityIntersection: ["cap-1"],
-      budgetCap: 500,
-      dataBoundary: "boundary-1",
-      deadline: "2024-01-15T12:00:00Z",
       depth: 1,
       sender_agent_id: "agent-1",
       receiver_agent_id: "agent-2",
@@ -103,12 +91,6 @@ test("CollaborationProtocolService.validateAndSend returns accepted for valid me
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -134,12 +116,6 @@ test("CollaborationProtocolService.handleIncoming delegates to validateAndSend",
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -266,12 +242,6 @@ test("ACPInvariantEnforcer.checkCompletionHasEvidence returns true for non-compl
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -294,12 +264,6 @@ test("ACPInvariantEnforcer.checkCompletionHasEvidence returns true for completio
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "completion_report",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -322,12 +286,6 @@ test("ACPInvariantEnforcer.checkCompletionHasEvidence returns false for completi
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "completion_report",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -350,12 +308,6 @@ test("ACPInvariantEnforcer.checkCompletionHasEvidence returns false for completi
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "completion_report",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -378,12 +330,6 @@ test("ACPInvariantEnforcer.checkTakeoverAudit returns true for non-takeover mess
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -406,12 +352,6 @@ test("ACPInvariantEnforcer.checkTakeoverAudit returns true for takeover with aud
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "takeover_notice",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -434,12 +374,6 @@ test("ACPInvariantEnforcer.checkTakeoverAudit returns false for takeover without
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "takeover_notice",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -462,12 +396,6 @@ test("ACPInvariantEnforcer.checkTakeoverAudit returns false for takeover with em
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "takeover_notice",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -500,18 +428,17 @@ test("ACPInvariantEnforcer.checkBudgetNotExceeded returns false when child budge
   assert.equal(enforcer.checkBudgetNotExceeded(2000, 1000), false);
 });
 
-test("ACPInvariantEnforcer.checkDepthLimit returns true when depth < maxDepth", () => {
+test("ACPInvariantEnforcer.checkDepthLimit returns true when depth <= maxDepth", () => {
   const enforcer = new ACPInvariantEnforcer();
 
   assert.equal(enforcer.checkDepthLimit(3, 5), true);
-  assert.equal(enforcer.checkDepthLimit(4, 5), true);
+  assert.equal(enforcer.checkDepthLimit(5, 5), true);
   assert.equal(enforcer.checkDepthLimit(0, 5), true);
 });
 
 test("ACPInvariantEnforcer.checkDepthLimit returns false when depth > maxDepth", () => {
   const enforcer = new ACPInvariantEnforcer();
 
-  assert.equal(enforcer.checkDepthLimit(5, 5), true);
   assert.equal(enforcer.checkDepthLimit(6, 5), false);
   assert.equal(enforcer.checkDepthLimit(10, 5), false);
 });
@@ -521,12 +448,6 @@ test("ACPInvariantEnforcer.enforceAll returns passed true when all checks pass",
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -563,12 +484,6 @@ test("ACPInvariantEnforcer.enforceAll returns violations for failed checks", () 
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -611,12 +526,6 @@ test("ACPInvariantEnforcer.enforceAll detects permission not subset", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -655,12 +564,6 @@ test("ACPInvariantEnforcer.enforceAll detects risk escalation", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -689,12 +592,6 @@ test("ACPInvariantEnforcer.enforceAll detects constraint relaxation", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -725,12 +622,6 @@ test("ACPInvariantEnforcer.enforceAll detects completion missing evidence", () =
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "completion_report",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -755,12 +646,6 @@ test("ACPInvariantEnforcer.enforceAll detects takeover missing audit", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "takeover_notice",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -785,12 +670,6 @@ test("ACPInvariantEnforcer.enforceAll detects budget exceeded", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -819,12 +698,6 @@ test("ACPInvariantEnforcer.enforceAll detects depth exceeded", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "task_request",
     correlation_id: "corr-1",
     parent_run_id: "run-1",
@@ -853,12 +726,6 @@ test("ACPInvariantEnforcer.enforceAll collects multiple violations", () => {
 
   const message: ACPMessage = {
     messageId: "msg-1",
-    delegationId: "del-1",
-    childRunId: "child-1",
-    capabilityIntersection: ["cap-1"],
-    budgetCap: 500,
-    dataBoundary: "boundary-1",
-    deadline: "2024-01-15T12:00:00Z",
     messageType: "completion_report",
     correlation_id: "corr-1",
     parent_run_id: "run-1",

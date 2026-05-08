@@ -43,12 +43,7 @@ export class MultiLevelCacheStore implements CacheStore {
         hitCount: 0,
         sizeBytes: 0,
       };
-      // §58: Do not silently swallow errors - attacker can modify config without alert (issue #1954).
-      // Best-effort cache backfill should still log failures for security auditing.
-      await this.l1.set(namespace, key, l2Result.value, backfillMeta).catch((err: unknown) => {
-        // Log error for security audit but don't fail the request
-        console.error("Cache L1 backfill failed:", err instanceof Error ? err.message : String(err));
-      });
+      await this.l1.set(namespace, key, l2Result.value, backfillMeta).catch(() => {/* best effort */});
       return { ...l2Result, layer: 'L2' };
     }
 
@@ -65,12 +60,7 @@ export class MultiLevelCacheStore implements CacheStore {
         hitCount: 0,
         sizeBytes: 0,
       };
-      // §58: Do not silently swallow errors - attacker can modify config without alert (issue #1954).
-      // Best-effort cache backfill should still log failures for security auditing.
-      await this.l1.set(namespace, key, l3Result.value, backfillMeta).catch((err: unknown) => {
-        // Log error for security audit but don't fail the request
-        console.error("Cache L1 backfill from L3 failed:", err instanceof Error ? err.message : String(err));
-      });
+      await this.l1.set(namespace, key, l3Result.value, backfillMeta).catch(() => {/* best effort */});
       return { ...l3Result, layer: 'L3' };
     }
 

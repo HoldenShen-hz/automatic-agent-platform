@@ -1,14 +1,14 @@
 # Knowledge SPI Contract
 
-> **OAPEFLIR Association**: This contract defines the SPI interface of the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
-> **Update date**: 2026-04-17
+> **OAPEFLIR Relevance**: This contract defines the SPI interfaces for the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
+> **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the Service Provider Interface (SPI) of the Knowledge Plane, including KIP 5-stage pipeline, three index types, and three-level query normalization interfaces.
+This contract defines the Service Provider Interface (SPI) for the Knowledge Plane, including the KIP 5-stage pipeline, three index types, and three-level query normalization interfaces.
 
 Related documents:
-- `artifact_store_contract.md`: Boundary between Knowledge and Artifact.
+- `artifact_store_contract.md`: Boundaries between Knowledge and Artifact.
 - [ADR-078 Knowledge Plane Architecture](../adr/078-knowledge-plane-architecture.md)
 
 ## 2. KIP 5-Stage Pipeline
@@ -16,16 +16,16 @@ Related documents:
 ```
 Intake → Extraction → Archive → Index → Query
   ↓        ↓           ↓         ↓       ↓
-Raw doc  Semantic   Cold store  3 indexes  3-level
-         extraction           3-level    query
+Raw Doc  Semantic    Cold      Three   Three
+         Extraction  Storage   Indexes Queries
 ```
 
 | Stage | Component | Responsibility |
-|------|------|------|
+|-------|-----------|----------------|
 | Intake | `KnowledgeIngestionPipeline` | Receives raw documents, format validation |
 | Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
 | Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
-| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index maintenance |
+| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index types maintenance |
 | Query | `KnowledgeQueryService` | Quick/Standard/Deep three-level query |
 
 ## 3. Core Interfaces
@@ -37,8 +37,6 @@ interface KnowledgeSource {
   sourceId: string;
   type: 'user_input' | 'system_generated' | 'external_api' | 'file_import';
   uri: string;
-  harnessRunId?: string;     // canonical execution context
-  nodeRunId?: string;        // canonical node context
   trustLevel: TrustLevel;
   ingestedAt: string;
 }
@@ -64,7 +62,7 @@ interface KnowledgeDocument {
 interface KnowledgeChunk {
   chunkId: string;
   content: string;
-  embedding?: number[];  // vector representation
+  embedding?: number[];  // Vector representation
   metadata: Record<string, unknown>;
 }
 ```
@@ -120,7 +118,7 @@ interface SemanticVectorStore {
 }
 ```
 
-**Current status**: Using SHA-256 hash pseudo-vector (`local-hash-v1:` prefix).
+**Current Status**: Using SHA-256 hash pseudo-vectors (`local-hash-v1:` prefix).
 
 ### 4.3 ASTIndex
 
@@ -140,10 +138,10 @@ interface ASTIndex {
 ## 5. KnowledgeQueryService Three-Level Query SPI
 
 | Level | Response Time Target | Retrieval Scope |
-|------|------------|---------|
-| `quick` | <100ms P99 | Keywords only (L1 cache) |
-| `standard` | <500ms P99 | Keywords + semantic vector hybrid |
-| `deep` | <2000ms | All indexes + cross namespace |
+|-------|---------------------|-----------------|
+| `quick` | <100ms P99 | Keyword index only (L1 cache) |
+| `standard` | <500ms P99 | Keyword + semantic vector hybrid |
+| `deep` | <2000ms | All indexes + cross-namespace |
 
 ```typescript
 enum QueryLevel {
@@ -191,24 +189,18 @@ interface RetrievalHit {
 }
 ```
 
-## 6. 4-Level Trust Model (Aligned with §29 Knowledge Boundary Rules)
+## 6. 4-Level Trust Model
 
-| Trust Level | Source | Use | §29 Correspondence |
-|---------|------|------|---------|
-| `verified` | Human-reviewed content | Production decisions | §29.3 allows use in high-risk domains |
-| `reviewed` | LearningObjectValidator verified | Improvement candidates | §29.2 TrustLevel propagation rule |
-| `inferred` | System inferred | Suggestions/references | §29.1 Default trust level |
-| `untrusted` | Unverified source | Display only | §29.3 prohibited for critical domains |
-
-Constraints:
-
-- TrustLevel must be determined at intake and must not propagate degraded ( §29.2).
-- `verified` content can be used for high/critical risk domain decisions; `untrusted` must not be used in production ( §29.3).
-- Knowledge boundary check must verify TrustLevel matches domain risk at query time.
+| Trust Level | Source | Usage |
+|-------------|--------|-------|
+| `verified` | Human-reviewed content | Production decisions |
+| `reviewed` | LearningObjectValidator verified | Improvement candidates |
+| `inferred` | System-inferred | Suggestions/references |
+| `untrusted` | Unverified source | Display only |
 
 ## 7. Learn→Knowledge Integration
 
-LearningObject is injected into knowledge plane through `KnowledgePromotionService`:
+LearningObject is injected into the knowledge plane through `KnowledgePromotionService`:
 
 ```typescript
 interface KnowledgePromotionService {
@@ -228,7 +220,7 @@ interface PromotionRecord {
 }
 ```
 
-**Data flow**:
+**Data Flow**:
 ```
 FailurePatternMiner.mine()
     → LearningObject { kind: "failure_pattern", evidence: [...] }
@@ -244,13 +236,9 @@ FailurePatternMiner.mine()
 
 ## 8. Constraints
 
-- **Quick mode**: Must not access SemanticVectorStore or KeywordIndex, only query L1 cache.
-- **Standard mode**: Must not execute graph traversal or AST query.
-- **Deep mode**: Must include semantic similarity sorting topK=30, optional graph expansion.
-- **Namespace isolation**: Cross-namespace query must be authorized through KnowledgeAccessControl.
+- **Quick Mode**: Must not access SemanticVectorStore or KeywordIndex, only query L1 cache.
+- **Standard Mode**: Must not execute graph traversal or AST queries.
+- **Deep Mode**: Must include semantic similarity ranking topK=30, optional graph expansion.
+- **Namespace Isolation**: Cross-namespace queries must be authorized through KnowledgeAccessControl.
 - **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef links.
-- **TrustLevel propagation**: trustLevel must be determined at intake and must not degrade.
-
-## v4.3 Contract Remediation
-
-- T-44: Early version of Knowledge SPI lacked `harness_run_id` integration fields; `KnowledgeSource.harnessRunId` / `nodeRunId` now added. TrustLevel 4-level model formally defined in §29 knowledge boundary rules; Section 6 of this document aligns with §29 correspondence; new implementations must follow TrustLevel propagation constraints and must not degrade.
+- **Trust Level Propagation**: trustLevel must be determined at intake time, no demotion allowed.

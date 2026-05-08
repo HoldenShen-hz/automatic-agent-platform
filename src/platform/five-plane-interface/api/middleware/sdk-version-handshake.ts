@@ -12,7 +12,7 @@ export interface SdkVersionHandshakeRequest {
 export interface SdkVersionHandshakeDecision {
   readonly accepted: boolean;
   readonly statusCode: 200 | 426;
-  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required" | "sdk.platform_incompatible";
+  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required";
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly warnings: readonly string[];
 }
@@ -23,7 +23,6 @@ export class SdkVersionHandshakeService {
   public evaluate(request: SdkVersionHandshakeRequest): SdkVersionHandshakeDecision {
     const sdkVersion = this.header(request.headers, "x-sdk-version");
     const contractVersion = this.header(request.headers, "x-contract-version");
-    const platformMinVersion = this.header(request.headers, "x-platform-min-version");
     const warnings: string[] = [];
 
     if (contractVersion != null && contractVersion !== this.policy.contractVersion) {
@@ -37,17 +36,6 @@ export class SdkVersionHandshakeService {
         reasonCode: "sdk.upgrade_required",
         responseHeaders: this.buildHeaders("upgrade_required"),
         warnings,
-      };
-    }
-
-    // §24: platform_min_version compatibility check
-    if (platformMinVersion != null && this.compareSemver(platformMinVersion, this.policy.platformVersion) > 0) {
-      return {
-        accepted: false,
-        statusCode: 426,
-        reasonCode: "sdk.platform_incompatible",
-        responseHeaders: this.buildHeaders("platform_incompatible"),
-        warnings: [...warnings, `platform_min_version=${platformMinVersion};platform_version=${this.policy.platformVersion}`],
       };
     }
 
@@ -95,18 +83,6 @@ export class SdkVersionHandshakeService {
   }
 
   private parse(version: string): readonly number[] {
-    // R30-33 FIX: Validate each version part is a positive integer, not just parseable.
-    // Root cause: parseInt("a", 10) returns NaN, which was coerced to 0 via || 0.
-    // This allowed malicious version "a.b.c" to parse as [0,0,0], potentially bypassing
-    // minimum version checks when minVersion is also low.
-    // Fix: Reject non-numeric parts instead of treating them as 0.
-    return version.split(".").slice(0, 3).map((part) => {
-      const parsed = Number.parseInt(part, 10);
-      // Only accept positive integers; NaN or negative values are invalid versions
-      if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
-        return -1; // Invalid part signals version parse failure
-      }
-      return parsed;
-    });
+    return version.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
   }
 }

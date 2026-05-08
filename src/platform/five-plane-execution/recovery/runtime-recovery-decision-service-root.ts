@@ -107,7 +107,7 @@ export class RuntimeRecoveryDecisionService {
    * @returns The recovery decision record
    * @throws Error if execution or candidate not found
    */
-  public async decide(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): Promise<RecoveryDecisionRecord> {
+  public decide(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): RecoveryDecisionRecord {
     const execution = this.store.dispatch.getExecution(executionId);
     if (!execution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
@@ -117,8 +117,9 @@ export class RuntimeRecoveryDecisionService {
     }
 
     // Find the recovery candidate for this execution
-    const view = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-    const candidate = view.candidates.find((item) => item.executionId === executionId);
+    const candidate = this.recoveryService
+      .buildRuntimeRecoveryView(execution.taskId)
+      .candidates.find((item) => item.executionId === executionId);
     if (!candidate) {
       throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
         details: { executionId },
@@ -157,7 +158,7 @@ export class RuntimeRecoveryDecisionService {
    * @returns Result containing the decision, dead letter (if any), and applied status
    * @throws Error if execution or candidate not found
    */
-  public async apply(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): Promise<RecoveryDecisionApplyResult> {
+  public apply(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): RecoveryDecisionApplyResult {
     const execution = this.store.dispatch.getExecution(executionId);
     if (!execution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
@@ -167,8 +168,9 @@ export class RuntimeRecoveryDecisionService {
     }
 
     // Find the recovery candidate for this execution
-    const view = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-    const candidate = view.candidates.find((item) => item.executionId === executionId);
+    const candidate = this.recoveryService
+      .buildRuntimeRecoveryView(execution.taskId)
+      .candidates.find((item) => item.executionId === executionId);
     if (!candidate) {
       throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
         details: { executionId },

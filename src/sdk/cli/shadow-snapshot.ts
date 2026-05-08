@@ -29,31 +29,24 @@ import { loadShadowSnapshotCliEnv } from "../../platform/control-plane/config-ce
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { ShadowSnapshotService } from "../../platform/execution/tool-executor/shadow-snapshot-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+const envConfig = loadShadowSnapshotCliEnv();
 
-let envConfig: ReturnType<typeof loadShadowSnapshotCliEnv> | null = null;
-let service: ShadowSnapshotService | null = null;
-
-function getService(): ShadowSnapshotService {
-  if (service) return service;
-  // Deferred initialization - load environment only when actually needed
-  // This avoids module-level side effects that break lazy loading and testing
-  envConfig ??= loadShadowSnapshotCliEnv();
-  service = new ShadowSnapshotService({
-    workspaceRoot: envConfig.workspaceRoot,
-    shadowRoot: envConfig.shadowRoot,
-    sandboxPolicy: createWorkspaceWritePolicy(envConfig.shadowRoot),
-    ...(envConfig.maxEntryBytes != null ? { maxEntryBytes: envConfig.maxEntryBytes } : {}),
-    ...(envConfig.excludedPaths != null ? { excludedPaths: envConfig.excludedPaths } : {}),
-  });
-  return service;
-}
+const service = new ShadowSnapshotService({
+  workspaceRoot: envConfig.workspaceRoot,
+  shadowRoot: envConfig.shadowRoot,
+  sandboxPolicy: createWorkspaceWritePolicy(envConfig.workspaceRoot),
+  ...(envConfig.maxEntryBytes != null
+    ? { maxEntryBytes: envConfig.maxEntryBytes }
+    : {}),
+  ...(envConfig.excludedPaths != null
+    ? { excludedPaths: envConfig.excludedPaths }
+    : {}),
+});
 
 let output: unknown;
-// R31-43 FIX: Deferred env loading to avoid module-level side effects
-const resolvedEnvConfig = envConfig ?? (envConfig = loadShadowSnapshotCliEnv(), envConfig);
-switch (resolvedEnvConfig.action) {
+switch (envConfig.action) {
   case "create":
-    output = getService().createSnapshot({
+    output = service.createSnapshot({
       ...(envConfig.snapshotId != null ? { snapshotId: envConfig.snapshotId } : {}),
       ...(envConfig.label != null ? { label: envConfig.label } : {}),
       ...(envConfig.reasonCode != null ? { reasonCode: envConfig.reasonCode } : {}),
@@ -61,18 +54,18 @@ switch (resolvedEnvConfig.action) {
     });
     break;
   case "list":
-    output = getService().listSnapshots();
+    output = service.listSnapshots();
     break;
   case "restore":
-    if (resolvedEnvConfig.snapshotId == null) {
+    if (envConfig.snapshotId == null) {
       throw new ValidationError("missing_env:AA_SHADOW_SNAPSHOT_ID", "missing_env:AA_SHADOW_SNAPSHOT_ID");
     }
-    output = getService().restoreSnapshot({
-      snapshotId: resolvedEnvConfig.snapshotId,
+    output = service.restoreSnapshot({
+      snapshotId: envConfig.snapshotId,
     });
     break;
   default:
-    throw new ValidationError(`unknown_shadow_snapshot_action:${resolvedEnvConfig.action}`, `unknown_shadow_snapshot_action:${resolvedEnvConfig.action}`);
+    throw new ValidationError(`unknown_shadow_snapshot_action:${envConfig.action}`, `unknown_shadow_snapshot_action:${envConfig.action}`);
 }
 
 process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);

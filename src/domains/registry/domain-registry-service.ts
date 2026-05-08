@@ -3,16 +3,14 @@ import type { TypedEventPublisher } from "../../platform/state-evidence/events/t
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import type { DomainDefinition, OutputContractConfig, ToolBundleConfig, WorkflowConfig } from "./domain-model.js";
 import type { PluginBinding } from "./domain-model.js";
-import { DomainDefinitionSchema, DomainDescriptorBundleSchema } from "./domain-model.js";
+import { DomainDefinitionSchema } from "./domain-model.js";
 import { ContractRegistry } from "./contract-registry.js";
 import { DomainSmokeTestRunner, type DomainSmokeTestResult } from "./domain-smoke-test.js";
 import { PluginSpiRegistry } from "./plugin-spi-registry.js";
 import { ToolBundleRegistry } from "./tool-bundle-registry.js";
 import { WorkflowRegistry } from "./workflow-registry.js";
-import { SchemaRegistry, getSchemaRegistry } from "./schema-registry.js";
 
 export interface DomainRegistryServiceOptions {
-  tenantId?: string;
   installedPluginIds?: readonly string[];
   healthyPluginIds?: readonly string[];
   pluginRegistry?: PluginSpiRegistry;
@@ -30,88 +28,41 @@ export class DomainRegistryService {
   private readonly toolBundleRegistry = new ToolBundleRegistry();
   private readonly contractRegistry = new ContractRegistry();
   private readonly smokeTests = new DomainSmokeTestRunner();
-  private readonly schemaRegistry: SchemaRegistry;
-  private readonly tenantId: string | null;
 
   public constructor(options: DomainRegistryServiceOptions = {}) {
     this.pluginRegistry = options.pluginRegistry ?? null;
     this.installedPluginIds = new Set(options.installedPluginIds ?? []);
     this.healthyPluginIds = new Set(options.healthyPluginIds ?? options.installedPluginIds ?? []);
     this.eventPublisher = options.eventPublisher ?? null;
-    this.schemaRegistry = getSchemaRegistry();
-    this.tenantId = options.tenantId ?? null;
   }
 
   public register(input: DomainDefinition): DomainDefinition {
-    // R15-1: Validate domain descriptor schema
     const parsed = DomainDefinitionSchema.parse(input);
-    // If descriptors are provided, validate the descriptor bundle schema
-    if (input.descriptors) {
-      try {
-        DomainDescriptorBundleSchema.parse(input.descriptors);
-      } catch (descriptorError) {
-        throw this.validationError(
-          "domain_registry.invalid_descriptors",
-          "Domain descriptor bundle validation failed.",
-        );
-      }
-    }
-    const preservesTestingStatus = input.status === "testing";
-    const isAutoPromoted = parsed.status === "validated" && !preservesTestingStatus;
-    const normalized = isAutoPromoted
+    const normalized = parsed.status === "validated"
       ? { ...parsed, status: "registered" as const }
       : parsed;
     const normalizedBindings = normalized.pluginBindings.map((binding, index) =>
-      normalizePluginBinding(binding as PluginBinding, input.pluginBindings[index] as PluginBinding | undefined),
+      normalizePluginBinding(binding, input.pluginBindings[index]),
     );
     const normalizedDefinition: DomainDefinition = {
       ...normalized,
       pluginBindings: normalizedBindings,
-      ...(normalized.executionProfile !== undefined ? { executionProfile: normalized.executionProfile } : {}),
-    } as DomainDefinition;
+    };
     this.validateDefinition(normalizedDefinition);
-    if (isAutoPromoted) {
-      const smoke = this.smokeTests.run(normalizedDefinition);
-      if (!smoke.passed) {
-        throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during registration.", {
-          category: "validation",
-          source: "internal",
-          details: { issues: smoke.issues },
-        });
-      }
-    }
-
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);
     this.contractRegistry.registerAll(normalizedDefinition.outputContracts);
-
-    // §2314: Publish domain:validated→registered promotion event when auto-promoting
-    // Root cause: validated→registered promotion was not publishing any event
-    // Fix: Publish domain:registered with status="registered" to indicate the promotion occurred
-    if (isAutoPromoted) {
-      this.eventPublisher?.publish({
-        eventType: "domain:registered",
-        payload: {
-          domainId: normalizedDefinition.domainId,
-          status: "registered",
-          capabilityCount: normalizedDefinition.pluginBindings.length,
-          pluginCount: normalizedDefinition.pluginBindings.length,
-          occurredAt: nowIso(),
-        },
-      });
-    } else {
-      this.eventPublisher?.publish({
-        eventType: "domain:registered",
-        payload: {
-          domainId: normalizedDefinition.domainId,
-          status: normalizedDefinition.status,
-          capabilityCount: normalizedDefinition.pluginBindings.length,
-          pluginCount: normalizedDefinition.pluginBindings.length,
-          occurredAt: nowIso(),
-        },
-      });
-    }
+    this.eventPublisher?.publish({
+      eventType: "domain:registered",
+      payload: {
+        domainId: normalizedDefinition.domainId,
+        status: normalizedDefinition.status,
+        capabilityCount: normalizedDefinition.pluginBindings.length,
+        pluginCount: normalizedDefinition.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
     return normalizedDefinition;
   }
 
@@ -120,43 +71,14 @@ export class DomainRegistryService {
     return this.smokeTests.run(definition);
   }
 
-  /**
-   * §37.10: Activate a domain. Domains must go through canary state.
-   * Valid path: registered → canary → active (or updating → canary → active)
-   *
-   * The canary flag enables staged rollout validation before full activation.
-   */
-  public activate(domainId: string, canary: boolean = false): DomainDefinition {
+  public activate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (canary) {
-      if (current.status === "registered" || current.status === "updating" || current.status === "validated" || current.status === "testing") {
-        const updated: DomainDefinition = { ...current, status: "canary" };
-        this.registry.set(domainId, updated);
-        this.eventPublisher?.publish({
-          eventType: "domain:canary",
-          payload: {
-            domainId,
-            status: "canary",
-            occurredAt: nowIso(),
-          },
-        });
-        return updated;
-      }
-      if (current.status !== "canary") {
-        throw new ValidationError("domain_registry.invalid_canary_state", "Canary promotion requires domain to be in registered, updating, or canary state.", {
-          category: "validation",
-          source: "internal",
-          details: { currentStatus: current.status },
-        });
-      }
-    } else {
-      if (current.status !== "canary" && current.status !== "validated" && current.status !== "testing") {
-        throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from canary state. Use canary=true first.", {
-          category: "validation",
-          source: "internal",
-          details: { currentStatus: current.status },
-        });
-      }
+    if (current.status !== "registered") {
+      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
     }
     const smoke = this.smokeTests.run(current);
     if (!smoke.passed) {
@@ -183,160 +105,17 @@ export class DomainRegistryService {
 
   public deprecate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    // §37.10: Only active domains can transition to deprecated
-    if (current.status !== "active") {
-      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
-    }
     const updated: DomainDefinition = { ...current, status: "deprecated" };
     this.registry.set(domainId, updated);
     return updated;
   }
 
-  /**
-   * R15-3: Deactivate a domain. Active domains transition to inactive state.
-   * Emits domain.deactivated event for observability.
-   */
-  public deactivate(domainId: string): DomainDefinition {
-    const current = this.getOrThrow(domainId);
-    if (current.status !== "active" && current.status !== "canary" && current.status !== "updating") {
-      throw new ValidationError("domain_registry.invalid_deactivate_state", "Domains can only be deactivated from active, canary, or updating state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
-    }
-    const updated: DomainDefinition = { ...current, status: current.status }; // Status unchanged
-    this.registry.set(domainId, updated);
-    // R15-3: Emit domain.deactivated event
-    this.eventPublisher?.publish({
-      // @ts-expect-error R15-3: domain:deactivated event not yet in base registry
-      eventType: "domain:deactivated",
-      payload: {
-        domainId,
-        status: current.status,
-        previousStatus: current.status,
-        occurredAt: nowIso(),
-      },
-    });
-    return updated;
-  }
-
-  /**
-   * §37.10: Transition domain to updating state (Active→Updating→Active).
-   * During updating state, domain modifications are allowed but executions
-   * may be queued or redirected.
-   */
-  public updating(domainId: string): DomainDefinition {
-    const current = this.getOrThrow(domainId);
-    if (current.status !== "active") {
-      throw new ValidationError("domain_registry.invalid_updating_state", "Domains can only enter updating state from active state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
-    }
-    const updated: DomainDefinition = { ...current, status: "updating" };
-    this.registry.set(domainId, updated);
-    this.eventPublisher?.publish({
-      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
-      eventType: "domain:updating",
-      payload: {
-        domainId,
-        status: "updating",
-        occurredAt: nowIso(),
-      },
-    });
-    return updated;
-  }
-
-  /**
-   * §37.10: Complete the update cycle and return domain to active state (Updating→Active).
-   * Validates the domain is still viable after modifications.
-   */
-  public completeUpdate(domainId: string): DomainDefinition {
-    const current = this.getOrThrow(domainId);
-    if (current.status !== "updating") {
-      throw new ValidationError("domain_registry.invalid_complete_update_state", "Domains can only complete update from updating state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
-    }
-    const smoke = this.smokeTests.run(current);
-    if (!smoke.passed) {
-      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during update completion.", {
-        category: "validation",
-        source: "internal",
-        details: { issues: smoke.issues },
-      });
-    }
-    const updated: DomainDefinition = { ...current, status: "active" };
-    this.registry.set(domainId, updated);
-    this.eventPublisher?.publish({
-      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
-      eventType: "domain:updated",
-      payload: {
-        domainId,
-        status: "active",
-        occurredAt: nowIso(),
-      },
-    });
-    return updated;
-  }
-
-  /**
-   * §37.10: Archive a deprecated domain. Archived domains are read-only
-   * and no longer eligible for activation.
-   */
-  public archive(domainId: string): DomainDefinition {
-    const current = this.getOrThrow(domainId);
-    if (current.status !== "deprecated") {
-      throw new ValidationError("domain_registry.invalid_archive_state", "Domains can only be archived from deprecated state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
-    }
-    const updated: DomainDefinition = { ...current, status: "archived" };
-    this.registry.set(domainId, updated);
-    this.eventPublisher?.publish({
-      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
-      eventType: "domain:archived",
-      payload: {
-        domainId,
-        status: "archived",
-        occurredAt: nowIso(),
-      },
-    });
-    return updated;
-  }
-
   public get(domainId: string): DomainDefinition | null {
-    const domain = this.registry.get(domainId) ?? null;
-    // R15-4: Check tenant isolation if tenantId is configured
-    if (domain && this.tenantId !== null) {
-      const domainTenantId = (domain as Record<string, unknown>).tenantId as string | undefined;
-      if (domainTenantId !== undefined && domainTenantId !== this.tenantId) {
-        return null;
-      }
-    }
-    return domain;
+    return this.registry.get(domainId) ?? null;
   }
 
   public list(): DomainDefinition[] {
-    const domains = [...this.registry.values()];
-    // R15-5: Filter by tenant if tenantId is configured
-    if (this.tenantId !== null) {
-      return domains.filter((domain) => {
-        const domainTenantId = (domain as Record<string, unknown>).tenantId as string | undefined;
-        return domainTenantId === undefined || domainTenantId === this.tenantId;
-      });
-    }
-    return domains;
+    return [...this.registry.values()];
   }
 
   public listActive(): DomainDefinition[] {
@@ -420,13 +199,6 @@ export class DomainRegistryService {
     const existing = this.knowledgeNamespacesByDomain.get(ownerDomainId) ?? new Set<string>();
     existing.add(namespace);
     this.knowledgeNamespacesByDomain.set(ownerDomainId, existing);
-  }
-
-  /**
-   * §37: Returns the schema registry for domain input/output schema version management.
-   */
-  public getSchemaRegistry(): SchemaRegistry {
-    return this.schemaRegistry;
   }
 
   private getOrThrow(domainId: string): DomainDefinition {

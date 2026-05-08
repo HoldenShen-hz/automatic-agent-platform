@@ -1,6 +1,6 @@
 # OAPEFLIR v4.4 完整版
 
-## Reference Draft：认知/治理语义与迁移输入规范
+## Executable Specification Edition：认知/治理语义与迁移输入规范
 
 > **版本**：v4.4  
 > **状态**：Reference Draft（迁移输入；非权威运行时基线）  
@@ -215,13 +215,60 @@ type OapeflirTraceProjection = {
 
 # 5. NodeRun 生命周期投影（引用 canonical contract）
 
-## 5.1 Canonical Pointer
+## 5.1 NodeRun
 
-`NodeRun / NodeAttempt / NodeAttemptReceipt / NodeRunStatus` 的字段与状态集不再在本 spec 重新定义，统一引用：
+> 本节只引用 `node-run-attempt-receipt-contract.md` 的 canonical 形状作为迁移输入摘要；NodeRun 真正的状态集与合法跃迁权威不在 OAPEFLIR spec 内定义。
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `docs_zh/contracts/node-run-attempt-receipt-contract.md`
-- `docs_zh/contracts/runtime_state_machine_contract.md`
+```ts
+type NodeRun = {
+  nodeRunId: string;
+  harnessRunId: string;
+  planGraphBundleId: string;
+  graphVersion: number;
+  nodeId: string;
+
+  status: NodeRunStatus;
+
+  attemptLineage: AttemptLineage;
+
+  inputContextRef?: string;
+  outputRef?: string;
+
+  leaseRef?: string;
+  executorRef?: string;
+
+  startedAt?: string;
+  completedAt?: string;
+  failedAt?: string;
+  cancelledAt?: string;
+
+  sideEffectRefs: string[];
+  evaluationReportRef?: string;
+
+  error?: AppError;
+  evidenceRefs: string[];
+};
+```
+
+## 5.2 NodeRunStatus
+
+```ts
+type NodeRunStatus =
+  | "created"
+  | "ready"
+  | "leased"
+  | "running"
+  | "retry_wait"
+  | "awaiting_hitl"
+  | "reconciling"
+  | "succeeded"
+  | "failed"
+  | "skipped"
+  | "cancelled"
+  | "dependency_failed"
+  | "policy_blocked"
+  | "aborted";
+```
 
 ## 5.3 Node 状态迁移
 
@@ -255,12 +302,23 @@ retry_wait
 
 ## 5.5 AttemptLineage
 
-Attempt lineage 只保留概念约束，不再在这里维护第二份 schema。其设计意图是：
+```ts
+type AttemptLineage = {
+  originalNodeRunId: string;
+  attemptId: string;
+  attemptIndex: number;
 
-```text
-- retry/redrive 必须 append-only
-- lineage 必须能追溯 original node run
-- replay 只能消费既有 lineage fact，不得重写历史
+  previousAttemptId?: string;
+  redriveId?: string;
+
+  retryReason?: string;
+  triggeredBy:
+    | "runtime_retry"
+    | "evaluator_retry"
+    | "human_redrive"
+    | "repair_worker"
+    | "replay_simulation";
+};
 ```
 
 ---
@@ -293,20 +351,130 @@ join / merge
 
 # 7. PlanGraph 契约
 
-## 7.1 Canonical Pointer
+## 7.1 PlanGraphBundle
 
-`PlanGraphBundle / PlanGraph / PlanNode / PlanEdge` 的 schema 已收敛到：
+```ts
+type PlanGraphBundle = {
+  planGraphId: string;
+  runId: string;
+  graphVersion: number;
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `src/platform/orchestration/harness/runtime/plan-graph-harness-runtime.ts`
-- `docs_zh/contracts/task_and_workflow_contract.md`
+  graph: PlanGraph;
 
-OAPEFLIR 在这里只保留对 graph 的解释性要求：
+  normalizationReport: GraphNormalizationReport;
+  validationReport: GraphValidationReport;
+  riskPropagationReport: GraphRiskPropagationReport;
+  worstPathAnalysis: GraphWorstPathAnalysis;
 
-```text
-- plan 必须是 graph，而不是线性 step list
-- graph 必须先 normalize / validate / freeze，再进入 HarnessRuntime
-- 风险传播、worst-path 和 scheduler rationale 都只能解释 canonical graph fact
+  generatedBy: "planner_agent" | "human_operator" | "template";
+
+  promptExecutionRef?: string;
+  modelDecisionRef?: string;
+
+  createdAt: string;
+  evidenceRefs: string[];
+};
+```
+
+## 7.2 PlanGraph
+
+```ts
+type PlanGraph = {
+  nodes: PlanNode[];
+  edges: PlanEdge[];
+
+  entryNodeIds: string[];
+  terminalNodeIds: string[];
+
+  variables: GraphVariable[];
+
+  schedulerPolicy: ReadyNodeSchedulingPolicy;
+
+  graphConstraints: {
+    maxNodes: number;
+    maxDepth: number;
+    maxParallelism: number;
+    maxLoopIterations: number;
+    allowCycles: false;
+  };
+};
+```
+
+## 7.3 PlanNode
+
+```ts
+type PlanNode = {
+  nodeId: string;
+
+  kind:
+    | "llm_call"
+    | "tool_call"
+    | "verify"
+    | "human_gate"
+    | "decision"
+    | "join"
+    | "branch"
+    | "subgraph"
+    | "sub_agent"
+    | "wait"
+    | "side_effect_commit"
+    | "compensation"
+    | "finalize";
+
+  displayName: string;
+
+  inputRefs: string[];
+  outputRefs: string[];
+
+  requiredCapabilities: string[];
+  requiredTools?: string[];
+
+  riskLevel: RiskLevel;
+  dataClass: DataClass;
+
+  timeoutMs: number;
+  retryPolicyRef?: string;
+  compensationNodeId?: string;
+
+  successCriteria: SuccessCriterion[];
+
+  debug?: {
+    category: string;
+    expectedDurationMs?: number;
+    expectedCost?: number;
+    owner?: string;
+    troubleshootingGuideRef?: string;
+  };
+};
+```
+
+## 7.4 PlanEdge
+
+```ts
+type PlanEdge = {
+  edgeId: string;
+  fromNodeId: string;
+  toNodeId: string;
+
+  type:
+    | "control"
+    | "data"
+    | "condition"
+    | "error"
+    | "compensation"
+    | "human_resume";
+
+  condition?: {
+    expression: string;
+    evaluator: "deterministic" | "policy" | "llm_judge_for_noncritical_only";
+  };
+
+  dataMapping?: {
+    fromOutput: string;
+    toInput: string;
+    transform?: string;
+  };
+};
 ```
 
 ---
@@ -446,21 +614,41 @@ type GraphWorstPathAnalysis = {
 
 Graph Scheduler 属于 `HarnessRuntime` 的 P4 执行职责；OAPEFLIR 只消费调度事实并生成 scheduler rationale / view。
 
-## 12.1 Canonical Pointer
+## 12.1 ReadyNodeSchedulingPolicy
 
-本节不再定义独立 scheduler schema。调度权威已经收敛到：
+```ts
+type ReadyNodeSchedulingPolicy = {
+  primary:
+    | "topological_order"
+    | "priority_first"
+    | "critical_path_first"
+    | "risk_low_first"
+    | "deadline_first";
 
-- `src/platform/orchestration/harness/runtime/plan-graph-harness-runtime.ts`
-- `src/platform/contracts/executable-contracts/index.ts` 中的 `ReadyNodeSchedulingPolicy`
-- `docs_zh/architecture/00-platform-architecture.md` 的 HarnessRuntime 主链
+  secondary:
+    | "node_id_lexical"
+    | "stable_hash"
+    | "created_order";
 
-OAPEFLIR 在这里只保留解释性约束：
+  deterministicTieBreaker: "stable_hash";
+
+  concurrencyLimit: {
+    maxGlobalReadyNodes: number;
+    maxPerRiskLevel: Record<RiskLevel, number>;
+    maxPerTool: Record<string, number>;
+    maxPerTenant: number;
+  };
+};
+```
+
+## 12.2 调度硬规则
 
 ```text
-1. 调度必须 deterministic。
-2. 同一 graph + 同一 event history，不得因为 projection 层重算而改变 ready node 顺序。
-3. replay 只能复用既有 scheduler decision fact，不得在 OAPEFLIR 层重新择序。
-4. scheduler rationale 只能解释主链已记录的 `platform.graph_scheduler.decision_recorded` 事实。
+1. Graph Scheduler 必须 deterministic。
+2. 同一 graph + 同一 runtime seed + 同一 event history，必须得到相同调度顺序。
+3. parallel node 也必须稳定排序。
+4. replay 时不得重新选择调度顺序。
+5. 调度决策必须记录为 `platform.scheduler.decision_recorded` 事件。
 ```
 
 ---
@@ -535,24 +723,40 @@ type GraphPatchCompatibilityReport = {
 
 # 14. Event Registry
 
-## 14.1 Projection Event Envelope（引用 canonical event）
+## 14.1 OapeflirEvent
 
-本节不再定义独立 `OapeflirEvent` truth schema。OAPEFLIR 事件只能是对 canonical platform event 的投影包裹，字段权威来源为：
+```ts
+type OapeflirEvent = {
+  eventId: string;
+  eventType: OapeflirEventType;
+  eventVersion: number;
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `src/platform/state-evidence/events/`
-- `docs_zh/contracts/runtime_event_registry_contract.md`
+  runId: string;
+  nodeRunId?: string;
 
-允许保留的只有 projection 解释字段，例如：
+  sequence: number;
+  causationId?: string;
+  correlationId: string;
 
-```text
-- oapeflirPhase
-- rationaleClass
-- replayInterpretation
-- learningVisibility
+  occurredAt: string;
+  recordedAt: string;
+
+  principal: PrincipalRef;
+  traceId: string;
+
+  payload: unknown;
+  payloadHash: string;
+
+  replayBehavior:
+    | "replay_state_transition"
+    | "replay_decision"
+    | "reuse_recorded_result"
+    | "ignore_projection_only"
+    | "forbidden";
+
+  idempotencyKey: string;
+};
 ```
-
-这些解释字段不得替代 `eventId / aggregateId / aggregateSeq / traceId / payloadHash` 等主链事实字段。
 
 ## 14.2 Event Type 分层
 
@@ -612,15 +816,57 @@ type OapeflirProjectionEventType =
 
 Budget truth 归属 P5/Budget 服务；HarnessRuntime 只能通过 `BudgetReservation` / `BudgetSettlement` 与之交互。OAPEFLIR 不拥有独立 budget state。
 
-## 15.1 Canonical Pointer
+## 15.1 BudgetLedger
 
-本节不再定义独立 `BudgetLedger / BudgetReservation` 类型。预算权威来源为：
+```ts
+type BudgetLedger = {
+  harnessRunId: string;
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `src/platform/model-gateway/cost-tracker/`
-- `docs_zh/contracts/cost_and_budget_contract.md`
+  reservedCost: number;
+  actualCost: number;
+  remainingCost: number;
 
-## 15.2 Budget 解释性约束
+  reservedTokens: number;
+  actualTokens: number;
+
+  reservedToolCalls: number;
+  actualToolCalls: number;
+
+  reservationRecords: BudgetReservation[];
+
+  exhausted: boolean;
+};
+```
+
+## 15.2 BudgetReservation
+
+```ts
+type BudgetReservation = {
+  reservationId: string;
+
+  scope:
+    | "run"
+    | "node"
+    | "tool_call"
+    | "llm_call"
+    | "side_effect"
+    | "evaluation";
+
+  amount: number;
+
+  status:
+    | "reserved"
+    | "consumed"
+    | "released"
+    | "expired";
+
+  createdAt: string;
+  consumedAt?: string;
+  releasedAt?: string;
+};
+```
+
+## 15.3 Budget 硬规则
 
 ```text
 1. LLM call 前必须 reserve budget。
@@ -638,15 +884,144 @@ Budget truth 归属 P5/Budget 服务；HarnessRuntime 只能通过 `BudgetReserv
 
 SideEffect 由 HarnessRuntime 在 P4 主链中受控推进；OAPEFLIR 只能消费 side-effect fact 并生成解释性投影，不拥有独立 side effect commit authority。
 
-## 16.1 Canonical Pointer
+## 16.1 SideEffectRecord
 
-本节不再定义独立 `SideEffectRecord / SideEffectStatus / SideEffectExecutionContract / ReversibilityProfile` 类型。副作用权威来源为：
+```ts
+type SideEffectRecord = {
+  sideEffectId: string;
+  runId: string;
+  nodeRunId: string;
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `docs_zh/contracts/execution_plane_contract.md`
-- `docs_zh/contracts/runtime_state_machine_contract.md`
+  type: SideEffectType;
 
-## 16.2 SideEffect 提交流程
+  status: SideEffectStatus;
+
+  deliveryContract: SideEffectExecutionContract;
+  reversibilityProfile: ReversibilityProfile;
+
+  proposedPayloadRef: string;
+  approvedPayloadRef?: string;
+
+  externalRequestId?: string;
+  externalReceiptId?: string;
+
+  confirmationRef?: string;
+  reconciliationRef?: string;
+
+  compensationRef?: string;
+
+  evidenceRefs: string[];
+};
+```
+
+## 16.2 SideEffectType
+
+```ts
+type SideEffectType =
+  | "file_write"
+  | "db_write"
+  | "api_write"
+  | "message_send"
+  | "email_send"
+  | "sms_send"
+  | "payment"
+  | "order_submit"
+  | "content_publish"
+  | "deployment"
+  | "permission_change"
+  | "credential_rotation"
+  | "data_export"
+  | "data_delete"
+  | "user_notification"
+  | "financial_transaction"
+  | "production_config_change"
+  | "model_release"
+  | "policy_release";
+```
+
+## 16.3 SideEffectStatus
+
+```ts
+type SideEffectStatus =
+  | "proposed"
+  | "policy_checking"
+  | "approval_required"
+  | "approved"
+  | "denied"
+  | "committing"
+  | "committed"
+  | "confirming"
+  | "confirmed"
+  | "ambiguous"
+  | "failed"
+  | "compensating"
+  | "compensated"
+  | "manual_reconciliation_required";
+```
+
+## 16.4 SideEffectExecutionContract
+
+```ts
+type SideEffectDeliverySemantics =
+  | "at_most_once"
+  | "at_least_once"
+  | "effectively_once_with_idempotency"
+  | "manual_once";
+
+type SideEffectExecutionContract = {
+  sideEffectType: SideEffectType;
+
+  deliverySemantics: SideEffectDeliverySemantics;
+
+  idempotencyRequired: boolean;
+  externalIdempotencySupported: boolean;
+
+  duplicateDetectionMethod:
+    | "idempotency_key"
+    | "external_receipt_id"
+    | "business_key"
+    | "content_hash"
+    | "manual_review";
+
+  confirmationMethod:
+    | "read_after_write"
+    | "webhook_callback"
+    | "external_receipt_id"
+    | "audit_log_query"
+    | "manual_confirmation";
+
+  duplicateResolution:
+    | "ignore_duplicate"
+    | "merge"
+    | "compensate_duplicate"
+    | "manual_reconciliation";
+};
+```
+
+## 16.5 ReversibilityProfile
+
+```ts
+type ReversibilityProfile = {
+  technicalReversibility:
+    | "reversible"
+    | "partially_reversible"
+    | "irreversible";
+
+  businessReversibility:
+    | "reversible"
+    | "compensatable"
+    | "costly_compensation"
+    | "irreversible";
+
+  legalReversibility:
+    | "no_legal_effect"
+    | "requires_notice"
+    | "requires_regulatory_record"
+    | "irreversible_legal_effect";
+};
+```
+
+## 16.6 SideEffect 提交流程
 
 ```text
 Executor Output
@@ -675,15 +1050,44 @@ Executor Output
 
 # 17. Reconciliation State Machine
 
-## 17.1 Canonical Pointer
+## 17.1 ReconciliationRecord
 
-本节不再定义独立 `ReconciliationRecord` truth schema。对账权威来源为：
+```ts
+type ReconciliationStatus =
+  | "pending"
+  | "checking_external_state"
+  | "matched_confirmed"
+  | "matched_failed"
+  | "ambiguous"
+  | "requires_manual_review"
+  | "resolved"
+  | "expired";
 
-- `src/platform/contracts/executable-contracts/index.ts`
-- `src/platform/orchestration/harness/runtime/`
-- `docs_zh/contracts/execution_plane_contract.md`
+type ReconciliationRecord = {
+  reconciliationId: string;
+  sideEffectId: string;
+  runId: string;
+  nodeRunId: string;
 
-## 17.2 Reconciliation 解释性约束
+  status: ReconciliationStatus;
+
+  attempts: number;
+  maxAttempts: number;
+
+  externalStateRefs: string[];
+  evidenceRefs: string[];
+
+  resolution?:
+    | "confirm_side_effect"
+    | "mark_failed"
+    | "compensate"
+    | "manual_resolution"
+    | "abort_run"
+    | "continue_with_warning";
+};
+```
+
+## 17.2 Reconciliation 硬规则
 
 ```text
 1. ambiguous 不得自动转 confirmed。
@@ -1837,27 +2241,27 @@ Prompt / Policy 改进不能直接上线
 
 ---
 
-# 41. v4.4 迁移参考主题（非独立 ADR 命名空间）
+# 41. v4.4 必须冻结的 ADR
 
 ```text
-PlanGraph is the executable planning truth
-Event Registry is the replay truth source
-Deterministic graph scheduling is owned by HarnessRuntime
-Terminal state is immutable
-Retry lineage is append-only
-Side-effect delivery semantics are canonical contract owned
-Ambiguous external state requires reconciliation
-DecisionInputBundle must freeze before decision
-Budget reservation must precede LLM and tool execution
-Context assembly is role-scoped
-Prompt role isolation is mandatory
-Memory writes are governance-controlled
-HITL requires a responsibility record
-Run version lock is authoritative
-Learning candidates must be quarantined before release
-Evaluation gate precedes online change
-LLM judge cannot override deterministic failure
-Replay never produces real side effect
+ADR-OAPEFLIR-Plan-Is-Graph
+ADR-OAPEFLIR-Event-Registry-As-Source-Of-Replay
+ADR-OAPEFLIR-Deterministic-Graph-Scheduler
+ADR-OAPEFLIR-Terminal-State-Immutability
+ADR-OAPEFLIR-Retry-Append-Only-Lineage
+ADR-OAPEFLIR-SideEffect-Delivery-Semantics
+ADR-OAPEFLIR-Reconciliation-For-Ambiguous-External-State
+ADR-OAPEFLIR-DecisionInputBundle-Frozen-Before-Decision
+ADR-OAPEFLIR-Budget-Reservation-Before-LLM-And-Tool
+ADR-OAPEFLIR-ContextAssembly-Per-Role
+ADR-OAPEFLIR-Prompt-Role-Isolation
+ADR-OAPEFLIR-Memory-Write-Governance
+ADR-OAPEFLIR-HITL-Responsibility-Record
+ADR-OAPEFLIR-Run-Version-Lock
+ADR-OAPEFLIR-Learning-Quarantine-Before-Release
+ADR-OAPEFLIR-Evaluation-Gate-Before-Online-Change
+ADR-OAPEFLIR-LLM-Judge-Cannot-Override-Deterministic-Failure
+ADR-OAPEFLIR-Replay-Never-Produces-Real-SideEffect
 ```
 
 ---

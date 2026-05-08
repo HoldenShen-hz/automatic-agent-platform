@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -51,7 +51,7 @@
 | Feedback / Learn | 中 | 允许基于 evidence 重建，但不得重复消费已终态对象 |
 | 文件生成节点 | 中 | 校验 artifact 后跳过或重跑 |
 | Improve candidate evaluation | 低 | 默认阻断自动恢复，需 guardrail / lineage 校验 |
-| Release transition | 低 | 默认阻断自动恢复，优先人工确认或受控 rollback |
+| Release rollout transition | 低 | 默认阻断自动恢复，优先人工确认或受控 rollback |
 | 外部副作用节点 | 低 | 默认阻断自动恢复 |
 | 审批等待节点 | 高 | 重建等待态 |
 | 流式展示节点 | 中 | 可回放阶段性结果，不重建全部 chunk |

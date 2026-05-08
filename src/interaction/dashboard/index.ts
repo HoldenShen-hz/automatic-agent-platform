@@ -1,30 +1,13 @@
 export * from "./dashboard-projection-service.js";
-export * from "./dashboard-websocket-server.js";
-export { sortAttentionQueue } from "./alert-router/index.js";
 
 import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../platform/shared/observability/system-situation-model.js";
-import { sortAttentionQueue } from "./alert-router/index.js";
 
 export interface DashboardSnapshot {
   readonly generatedAt: string;
-  // Legacy 4-field subset (backward compat)
   readonly workflowBacklog: number;
   readonly incidentCount: number;
   readonly budgetAlerts: number;
-  // UI spec §4.7.7 required fields (R7-15 fix: was only 4 fields, now matches 10+ UI spec requirement)
-  readonly successRate: number;
-  readonly avgDurationMs: number;
-  readonly activeAgents: number;
-  readonly queueDepth: number;
-  readonly errorRate: number;
-  readonly p50LatencyMs: number;
-  readonly p99LatencyMs: number;
-  readonly budgetUtilizationPercent: number;
-  readonly approvalPendingCount: number;
-  readonly systemHealthScore: number;
-  readonly tasksByStatus: Readonly<Record<string, number>>;
-  readonly incidentsByPriority: Readonly<Record<string, number>>;
 }
 
 export interface DashboardPort {
@@ -132,12 +115,6 @@ export interface DashboardAggregationServiceOptions {
   readonly activeGoals?: readonly { goalId: string; progressPercent: number }[];
   readonly suggestions?: readonly AttentionItem[];
   readonly metricRegistry?: readonly MetricRegistryEntry[];
-  readonly projectionService?: DashboardProjectionService;
-}
-
-export interface DashboardProjectionService {
-  processProjectionUpdate(record: { projectionName: string; entityRef: string; state: Record<string, unknown> }): { deltaId: string; timestamp: string; changes: readonly { changeType: string; entityId: string; previousValue: unknown; newValue: unknown }[]; affectedMetrics: readonly string[] } | null;
-  consumePendingDeltas(): readonly { deltaId: string; timestamp: string; changes: readonly { changeType: string; entityId: string; previousValue: unknown; newValue: unknown }[]; affectedMetrics: readonly string[] }[];
 }
 
 export interface MetricRegistryEntry {
@@ -193,15 +170,6 @@ function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function buildTasksByStatus(tasks: readonly TaskBoardItem[]): Readonly<Record<string, number>> {
-  const map: Record<string, number> = {};
-  for (const task of tasks) {
-    const status = task.taskStatus ?? "unknown";
-    map[status] = (map[status] ?? 0) + 1;
-  }
-  return map;
-}
-
 function buildAgentCards(items: readonly TaskBoardItem[]): AgentHealthCard[] {
   const grouped = new Map<string, TaskBoardItem[]>();
   for (const item of items) {
@@ -212,9 +180,7 @@ function buildAgentCards(items: readonly TaskBoardItem[]): AgentHealthCard[] {
     const failures = groupedItems.filter((item) => item.taskStatus === "failed").length;
     const completed = groupedItems.filter((item) => item.taskStatus === "done").length;
     const total = groupedItems.length;
-    // §43: successRate excludes pending/in_progress - only completed vs failed counts
-    const settled = completed + failures;
-    const successRate = settled === 0 ? 1 : completed / settled;
+    const successRate = total === 0 ? 1 : completed / total;
     return {
       agentId: `agent:${domainId}:${index + 1}`,
       domainId,
@@ -236,7 +202,6 @@ export class DashboardAggregationService implements DashboardPort {
   private readonly activeGoals: readonly { goalId: string; progressPercent: number }[];
   private readonly suggestions: readonly AttentionItem[];
   private readonly metricRegistry: readonly MetricRegistryEntry[];
-  private readonly projectionService: DashboardProjectionService | undefined;
 
   public constructor(private readonly options: DashboardAggregationServiceOptions) {
     this.now = options.currentTime ?? (() => new Date().toISOString());
@@ -245,58 +210,25 @@ export class DashboardAggregationService implements DashboardPort {
     this.activeGoals = options.activeGoals ?? [];
     this.suggestions = options.suggestions ?? [];
     this.metricRegistry = options.metricRegistry ?? DEFAULT_METRIC_REGISTRY;
-    this.projectionService = options.projectionService;
   }
 
   public async getSnapshot(): Promise<DashboardSnapshot> {
     const tasks = this.options.taskSource.list(100);
     const system = this.options.systemSource.build();
     const attention = this.buildAttentionQueue(tasks, system);
-
-    // Compute full UI spec §4.7.7 required fields (R7-15 fix)
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((item) => item.taskStatus === "done").length;
-    const failedTasks = tasks.filter((item) => item.taskStatus === "failed").length;
-    const inProgressTasks = tasks.filter((item) => item.taskStatus === "in_progress").length;
-    const pendingTasks = tasks.filter((item) => item.taskStatus === "pending").length;
-    const successRate = totalTasks > 0 ? completedTasks / totalTasks : 1.0;
-    const errorRate = totalTasks > 0 ? failedTasks / totalTasks : 0;
-    const queueDepth = totalTasks - completedTasks - failedTasks;
-    const tasksByStatus = buildTasksByStatus(tasks);
-
     return {
       generatedAt: this.now(),
       workflowBacklog: tasks.filter((item) => item.taskStatus !== "done").length,
       incidentCount: attention.filter((item) => item.itemType === "incident").length,
       budgetAlerts: attention.filter((item) => item.itemType === "budget_warning").length,
-      // UI spec §4.7.7 required fields
-      successRate: Number(successRate.toFixed(4)),
-      avgDurationMs: system.queueBacklog.degraded ? 2000 : 250,
-      activeAgents: inProgressTasks,
-      queueDepth,
-      errorRate: Number(errorRate.toFixed(4)),
-      p50LatencyMs: system.queueBacklog.degraded ? 2000 : 250,
-      p99LatencyMs: system.queueBacklog.degraded ? 5000 : 1000,
-      budgetUtilizationPercent: 0,
-      approvalPendingCount: pendingTasks,
-      systemHealthScore: system.healthStatus === "ok" ? 92 : system.healthStatus === "degraded" ? 75 : 58,
-      tasksByStatus,
-      incidentsByPriority: {},
     };
   }
 
   public buildOperatorDashboard(limit = 25): OperatorDashboard {
     const tasks = this.options.taskSource.list(limit);
     const system = this.options.systemSource.build();
-    let attentionQueue = this.buildAttentionQueue(tasks, system);
+    const attentionQueue = this.buildAttentionQueue(tasks, system);
     const recentCompletions = tasks.filter((item) => item.taskStatus === "done").slice(0, 5);
-
-    // Integrate projection deltas from DashboardProjectionService (R7-30 fix)
-    if (this.projectionService) {
-      const pendingDeltas = this.projectionService.consumePendingDeltas();
-      attentionQueue = this.mergeProjectionDeltas(attentionQueue, pendingDeltas);
-    }
-
     const summary: DailySummary = {
       tasksCompleted: recentCompletions.length,
       tasksInProgress: tasks.filter((item) => item.taskStatus === "in_progress").length,
@@ -467,7 +399,7 @@ export class DashboardAggregationService implements DashboardPort {
       });
     }
 
-    return sortAttentionQueue([...queue, ...this.suggestions]);
+    return [...queue, ...this.suggestions].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   private buildActionControls(
@@ -487,101 +419,5 @@ export class DashboardAggregationService implements DashboardPort {
           : "dashboard.action_low_risk",
       };
     });
-  }
-
-  /**
-   * Integrates pending deltas from DashboardProjectionService into attention queue.
-   * Root cause fix for R7-30: DashboardAggregationService and DashboardProjectionService
-   * were two parallel systems not integrated.
-   */
-  private mergeProjectionDeltas(
-    attentionQueue: AttentionItem[],
-    pendingDeltas: readonly {
-      deltaId: string;
-      timestamp: string;
-      changes: readonly {
-        changeType: string;
-        entityId: string;
-        previousValue: unknown;
-        newValue: unknown;
-      }[];
-      affectedMetrics: readonly string[];
-    }[],
-  ): AttentionItem[] {
-    if (pendingDeltas.length === 0) {
-      return attentionQueue;
-    }
-
-    // Apply delta-driven updates to attention queue
-    const updatedQueue = [...attentionQueue];
-    for (const delta of pendingDeltas) {
-      for (const change of delta.changes) {
-        // Map projection changes to attention items
-        switch (change.changeType) {
-          case "task_failed": {
-            const existing = updatedQueue.find(
-              (item) => item.title.includes(change.entityId) && item.itemType === "incident",
-            );
-            if (!existing) {
-              updatedQueue.push({
-                itemType: "incident",
-                priority: "high",
-                title: `Task failed: ${change.entityId}`,
-                description: `Delta ${delta.deltaId} indicates failure`,
-                actionOptions: ["inspect", "retry"],
-                actionControls: this.buildActionControls("incident", "high", ["inspect", "retry"]),
-                createdAt: delta.timestamp,
-                domainId: "platform",
-              });
-            }
-            break;
-          }
-          case "task_completed": {
-            // Remove resolved incidents from attention queue
-            const idx = updatedQueue.findIndex(
-              (item) => item.itemType === "incident" && item.title.includes(change.entityId),
-            );
-            if (idx >= 0) {
-              updatedQueue.splice(idx, 1);
-            }
-            break;
-          }
-          case "incident_opened": {
-            updatedQueue.push({
-              itemType: "incident",
-              priority: "high",
-              title: `Incident: ${change.entityId}`,
-              description: `New incident from delta ${delta.deltaId}`,
-              actionOptions: ["inspect", "resolve"],
-              actionControls: this.buildActionControls("incident", "high", ["inspect", "resolve"]),
-              createdAt: delta.timestamp,
-              domainId: "platform",
-            });
-            break;
-          }
-          case "system_health_changed": {
-            const existingHealthIdx = updatedQueue.findIndex(
-              (item) => item.itemType === "incident" && item.title.includes("Platform health"),
-            );
-            if (existingHealthIdx >= 0) {
-              updatedQueue.splice(existingHealthIdx, 1);
-            }
-            updatedQueue.push({
-              itemType: "incident",
-              priority: "high",
-              title: "Platform health degraded",
-              description: `System health changed per delta ${delta.deltaId}`,
-              actionOptions: ["open_ops_dashboard", "run_doctor"],
-              actionControls: this.buildActionControls("incident", "high", ["open_ops_dashboard", "run_doctor"]),
-              createdAt: delta.timestamp,
-              domainId: "platform",
-            });
-            break;
-          }
-        }
-      }
-    }
-
-    return sortAttentionQueue(updatedQueue);
   }
 }

@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -49,9 +49,9 @@
 - `GET /executions/:executionId/inspect` (legacy compat alias)
 - `GET /approvals/:approvalId/inspect`
 - `POST /approvals/:approvalId/decision`
-- `GET /releases/:releaseId/inspect`
-- `POST /releases/:releaseId/advance`
-- `POST /releases/:releaseId/rollback`
+- `GET /rollouts/:rolloutId/inspect`
+- `POST /rollouts/:rolloutId/advance`
+- `POST /rollouts/:rolloutId/rollback`
 - `GET /feedback/:taskId`
 - `GET /divisions`
 - `GET /knowledge/namespaces`
@@ -88,7 +88,7 @@
 - OpenAPI 应由 schema 生成，不维护手写漂移版本。
 - health / inspect 的状态语义与字段命名以 `debug_inspect_health_backpressure_contract.md` 为准。
 - CLI、Web Console、TUI、管理工具若消费同一服务面，应优先共享同一 versioned API / SDK surface，而不是各自维护隐式私有协议。
-- release / feedback / timeline 类接口若当前部署未启用相应能力，应返回显式 `not_enabled` 或受控 `404` 语义，不得伪装成成功空对象。
+- rollout / feedback / timeline 类接口若当前部署未启用相应能力，应返回显式 `not_enabled` 或受控 `404` 语义，不得伪装成成功空对象。
 - knowledge / domain / plugin / artifact plane 接口若当前部署未启用相应能力，应返回显式 `not_enabled`，而不是静默空列表。
 
 ## 5. 补充规则

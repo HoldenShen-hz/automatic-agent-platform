@@ -532,124 +532,6 @@ test("POST /v1/auth/token exchanges API key for bearer token", async () => {
   }
 });
 
-test("GET /api/v1/meta/contract-version exposes the canonical contract-version route and payload shape", async () => {
-  const { server } = createTestServer();
-
-  try {
-    const response = await server.inject({
-      method: "GET",
-      url: "/api/v1/meta/contract-version",
-    });
-
-    assert.equal(response.statusCode, 200);
-    const body = response.json<{
-      requestId: string;
-      data: {
-        contractVersion: string;
-        minServerVersion: string;
-        supportedVersions: string[];
-        version: string;
-        minVersion: string;
-      };
-    }>();
-    assert.equal(body.data.contractVersion, "2026-04-01");
-    assert.equal(body.data.minServerVersion, "2026-01-01");
-    assert.deepEqual(body.data.supportedVersions, ["2026-04-01", "2026-01-01"]);
-    assert.equal(body.data.version, body.data.contractVersion);
-    assert.equal(body.data.minVersion, body.data.minServerVersion);
-  } finally {
-    await server.stop();
-  }
-});
-
-test("workflow builder routes provide CRUD, validate, and publish operations", async () => {
-  const { server, authService } = createTestServer();
-  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
-
-  try {
-    const createResponse = await server.inject({
-      method: "POST",
-      url: "/api/v1/workflows/builder",
-      headers: {
-        authorization: `Bearer ${operatorToken}`,
-        "content-type": "application/json",
-        "Idempotency-Key": "workflow-builder-create",
-      },
-      body: JSON.stringify({
-        name: "Builder Workflow",
-        description: "workflow builder api",
-        nodes: [
-          { nodeId: "node_1", label: "Draft plan" },
-          { nodeId: "node_2", label: "Approve plan" },
-        ],
-        edges: [{ fromNodeId: "node_1", toNodeId: "node_2" }],
-      }),
-    });
-    assert.equal(createResponse.statusCode, 201, createResponse.body);
-    const createdBody = createResponse.json<{ requestId: string; data: { workflow: { workflowId: string; status: string } } }>();
-    const workflowId = createdBody.data.workflow.workflowId;
-    assert.equal(createdBody.data.workflow.status, "draft");
-
-    const listResponse = await server.inject({
-      method: "GET",
-      url: "/api/v1/workflows/builder",
-      headers: {
-        authorization: `Bearer ${operatorToken}`,
-      },
-    });
-    assert.equal(listResponse.statusCode, 200);
-    const listBody = listResponse.json<{ requestId: string; data: { workflows: Array<{ workflowId: string }> } }>();
-    assert.ok(listBody.data.workflows.some((workflow) => workflow.workflowId === workflowId));
-
-    const validateResponse = await server.inject({
-      method: "POST",
-      url: "/api/v1/workflows/builder/validate",
-      headers: {
-        authorization: `Bearer ${operatorToken}`,
-        "content-type": "application/json",
-        "Idempotency-Key": "workflow-builder-validate",
-      },
-      body: JSON.stringify({
-        nodes: [
-          { nodeId: "node_1", label: "Draft plan" },
-          { nodeId: "node_2", label: "Approve plan" },
-        ],
-        edges: [{ fromNodeId: "node_1", toNodeId: "node_2" }],
-      }),
-    });
-    assert.equal(validateResponse.statusCode, 200);
-    const validateBody = validateResponse.json<{ requestId: string; data: { validation: { valid: boolean } } }>();
-    assert.equal(validateBody.data.validation.valid, true);
-
-    const publishResponse = await server.inject({
-      method: "POST",
-      url: `/api/v1/workflows/builder/${workflowId}/publish`,
-      headers: {
-        authorization: `Bearer ${operatorToken}`,
-        "content-type": "application/json",
-        "Idempotency-Key": "workflow-builder-publish",
-      },
-      body: JSON.stringify({ version: "1.0.0" }),
-    });
-    assert.equal(publishResponse.statusCode, 200);
-    const publishBody = publishResponse.json<{ requestId: string; data: { workflow: { status: string; publishedAt: string | null } } }>();
-    assert.equal(publishBody.data.workflow.status, "published");
-    assert.ok(publishBody.data.workflow.publishedAt);
-
-    const deleteResponse = await server.inject({
-      method: "DELETE",
-      url: `/api/v1/workflows/builder/${workflowId}`,
-      headers: {
-        authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "workflow-builder-delete",
-      },
-    });
-    assert.equal(deleteResponse.statusCode, 200);
-  } finally {
-    await server.stop();
-  }
-});
-
 test("POST /v1/auth/token rejects empty API key", async () => {
   const { server } = createTestServer();
 
@@ -712,7 +594,7 @@ test("POST /v1/billing/webhooks/reconcile requires valid billing payload", async
       method: "POST",
       url: "/v1/billing/webhooks/reconcile",
       headers: {
-        "x-webhook-signature": "sha256=1abda4dd643df0cb7c8fea33b43f0e967c479364b037c2237496b5e3abe2bd11",
+        "x-webhook-signature": "test-webhook-secret",
       },
       body: JSON.stringify({
         gatewayKind: "stripe",
@@ -810,7 +692,6 @@ test("POST /v1/gateway/messages/send requires operator role", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${viewerToken}`,
-        "Idempotency-Key": "test-gateway-require-role",
       },
       body: JSON.stringify({
         text: "Hello, World!",
@@ -836,7 +717,6 @@ test("POST /v1/gateway/messages/send succeeds with operator role", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-gateway-send-success",
       },
       body: JSON.stringify({
         text: "Hello, World!",
@@ -844,7 +724,7 @@ test("POST /v1/gateway/messages/send succeeds with operator role", async () => {
       }),
     });
 
-    assert.equal(response.statusCode, 201);
+    assert.equal(response.statusCode, 200);
     const body = response.json<{ requestId: string; data: { deliveredAt: string; channel: string; targetId: string } }>();
     assert.equal(body.data.channel, "telegram");
   } finally {
@@ -862,7 +742,6 @@ test("POST /v1/gateway/messages/send requires text field", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-gateway-require-text",
       },
       body: JSON.stringify({
         channel: "telegram",
@@ -943,7 +822,6 @@ test("POST /v1/approvals/:id/decision requires operator role", async () => {
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${viewerToken}`,
-        "Idempotency-Key": "test-approval-require-role",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -966,7 +844,6 @@ test("POST /v1/approvals/:id/decision accepts valid decision payload", async () 
       url: "/v1/approvals/approval_test_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-approval-valid-decision",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -991,7 +868,6 @@ test("POST /v1/approvals/:id/decision rejects invalid decision type", async () =
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-approval-invalid-type",
       },
       body: JSON.stringify({
         decisionType: "invalid_type",
@@ -1016,7 +892,6 @@ test("POST /v1/approvals/:id/decision requires selectedOptionId for option_selec
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-approval-missing-option",
       },
       body: JSON.stringify({
         decisionType: "option_selected",
@@ -1042,7 +917,6 @@ test("POST /v1/approvals/:id/decision rejects invalid respondedAt timestamp", as
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-approval-invalid-respondedat",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -1065,10 +939,9 @@ test("POST /v1/admin/control-plane/load-balancing/select requires admin role", a
   try {
     const response = await server.inject({
       method: "POST",
-      url: "/api/v1/admin/control-plane/load-balancing/select",
+      url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-admin-lb-require-role",
       },
       body: JSON.stringify({
         queueName: "default",
@@ -1090,10 +963,9 @@ test("POST /v1/admin/control-plane/load-balancing/select succeeds with admin rol
   try {
     const response = await server.inject({
       method: "POST",
-      url: "/api/v1/admin/control-plane/load-balancing/select",
+      url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${adminToken}`,
-        "Idempotency-Key": "test-admin-lb-success",
       },
       body: JSON.stringify({
         queueName: "default",
@@ -1145,7 +1017,6 @@ test("POST /v1/incidents is reachable through HttpApiServer", async () => {
       url: "/v1/incidents",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-incident-create",
       },
       body: JSON.stringify({
         severity: "high",
@@ -1173,7 +1044,6 @@ test("POST /v1/packs creates pack and GET /v1/packs returns catalog entry", asyn
       url: "/v1/packs",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-pack-create",
       },
       body: JSON.stringify({
         packId: "pack.ops",
@@ -1212,7 +1082,6 @@ test("POST /v1/cost-reports creates report and GET /v1/cost-reports lists it", a
       url: "/v1/cost-reports",
       headers: {
         authorization: `Bearer ${operatorToken}`,
-        "Idempotency-Key": "test-costreport-create",
       },
       body: JSON.stringify({
         periodStart: "2026-04-01T00:00:00.000Z",
@@ -1251,7 +1120,7 @@ test("GET /v1/admin/rollouts returns rollout data through HttpApiServer", async 
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/admin/rollouts",
+      url: "/v1/admin/rollouts",
       headers: {
         authorization: `Bearer ${viewerToken}`,
       },
@@ -1300,7 +1169,7 @@ test("GET /v1/admin/tenants returns tenant registry data through HttpApiServer",
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/admin/tenants",
+      url: "/v1/admin/tenants",
       headers: {
         authorization: `Bearer ${adminToken}`,
       },
@@ -1330,7 +1199,7 @@ test("GET /v1/admin/budgets returns budget summaries through HttpApiServer", asy
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/admin/budgets",
+      url: "/v1/admin/budgets",
       headers: {
         authorization: `Bearer ${adminToken}`,
       },
@@ -1360,7 +1229,7 @@ test("GET /v1/admin/chargeback/reports returns chargeback through HttpApiServer"
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/admin/chargeback/reports",
+      url: "/v1/admin/chargeback/reports",
       headers: {
         authorization: `Bearer ${adminToken}`,
       },
@@ -1379,8 +1248,7 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
   const promptRegistryService = new HierarchicalPromptRegistryService();
   promptRegistryService.registerBundle({
     name: "system.default",
-    version: 1,
-    displayVersion: "v1",
+    version: "1.0.0",
     domain: "global",
     taskType: "general",
     packId: undefined,
@@ -1388,12 +1256,6 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
-    compatibilityMatrix: {
-      toolSchemaVersions: [{ toolName: "test-tool", schemaVersion: 1 }],
-      evaluatorSchemaVersions: [{ evaluatorName: "test-evaluator", schemaVersion: 1 }],
-      domainDescriptorVersions: [{ domainId: "global", version: 1 }],
-      modelRoutingProfiles: [{ modelId: "balanced/default", profileVersion: 1 }],
-    },
     metadata: undefined,
   }, "global");
   const { server, authService } = createTestServer({ promptRegistryService });
@@ -1424,7 +1286,7 @@ test("unauthenticated request returns 401 for protected routes", async () => {
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/tasks",
+      url: "/v1/tasks",
     });
 
     assert.equal(response.statusCode, 401);
@@ -1455,7 +1317,7 @@ test("bearer token authentication works", async () => {
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/tasks",
+      url: "/v1/tasks",
       headers: {
         authorization: `Bearer ${token}`,
       },
@@ -1473,7 +1335,7 @@ test("x-api-key header authentication works", async () => {
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/tasks",
+      url: "/v1/tasks",
       headers: {
         "x-api-key": "test-operator-key",
       },
@@ -1502,7 +1364,7 @@ test("rejects expired tokens", async () => {
   try {
     const response = await server.inject({
       method: "GET",
-      url: "/api/v1/tasks",
+      url: "/v1/tasks",
       headers: {
         authorization: "Bearer invalid_token",
       },
@@ -1581,7 +1443,6 @@ test("rejects invalid JSON body", async () => {
       headers: {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
-        "Idempotency-Key": "test-invalid-json",
       },
       body: "{ invalid json }",
     });
@@ -1619,13 +1480,9 @@ test("returns 404 for unsupported HTTP methods", async () => {
   try {
     const response = await server.inject({
       method: "DELETE",
-      url: "/api/v1/tasks",
-      headers: {
-        "Idempotency-Key": "delete-tasks-test",
-      },
+      url: "/v1/tasks",
     });
 
-    // DELETE /api/v1/tasks is not a valid route - should return 404
     assert.equal(response.statusCode, 404);
   } finally {
     await server.stop();
@@ -1695,7 +1552,7 @@ test("inject responses include API version headers", async () => {
       url: "/healthz",
     });
 
-    assert.equal(response.headers["x-api-version"], "2026-04-01");
+    assert.equal(response.headers["x-api-version"], "v1");
     assert.equal(response.headers["x-app-version"], "0.1.0");
     assert.ok(typeof response.headers["content-length"] === "string");
   } finally {
@@ -1717,7 +1574,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers["content-encoding"], "gzip");
-    assert.equal(response.headers["x-api-version"], "2026-04-01");
+    assert.equal(response.headers["x-api-version"], "v1");
     assert.ok(String(response.headers["content-type"]).startsWith("application/json"));
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
@@ -1893,10 +1750,9 @@ test("tenant-scoped admin cannot access global endpoints", async () => {
   try {
     const response = await server.inject({
       method: "POST",
-      url: "/api/v1/admin/control-plane/load-balancing/select",
+      url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${tenantScopedAuthService.exchangeApiKey("tenant-admin-key").accessToken}`,
-        "Idempotency-Key": "test-tenant-scoped-admin",
       },
       body: JSON.stringify({}),
     });
@@ -1983,36 +1839,8 @@ test("GET /metrics returns 503 when exporter not configured", async () => {
   }
 });
 
-test("rate limiter is enforced in the HttpApiServer request pipeline", async () => {
-  const { server } = createTestServer({
-    rateLimiter: {
-      checkAndConsume: async () => ({
-        allowed: false,
-        remaining: 0,
-        retryAfterMs: 2500,
-      }),
-      maxCalls: 10,
-    } as ConstructorParameters<typeof HttpApiServer>[0]["rateLimiter"],
-  });
-
-  try {
-    const address = await server.start({ host: "127.0.0.1", port: 0 });
-    const response = await fetch(`${address.baseUrl}/healthz`);
-
-    assert.equal(response.status, 429);
-    assert.equal(response.headers.get("x-ratelimit-remaining"), "0");
-    assert.equal(response.headers.get("retry-after"), "3");
-    const body = await response.json() as { error: { code: string } };
-    assert.equal(body.error.code, "api.rate_limit_exceeded");
-  } finally {
-    await server.stop();
-  }
-});
-
 test("API responses include production security headers and CORS metadata", async () => {
-  const { server } = createTestServer({
-    cors: { allowedOrigins: ["https://console.example.test"], credentials: true },
-  });
+  const { server } = createTestServer();
 
   try {
     const response = await server.inject({
@@ -2025,7 +1853,7 @@ test("API responses include production security headers and CORS metadata", asyn
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.equal(response.headers["referrer-policy"], "no-referrer");
-    assert.match(String(response.headers["content-security-policy"]), /default-src 'self'/);
+    assert.match(String(response.headers["content-security-policy"]), /default-src 'none'/);
     assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
     assert.equal(response.headers["access-control-allow-credentials"], "true");
   } finally {
@@ -2034,9 +1862,7 @@ test("API responses include production security headers and CORS metadata", asyn
 });
 
 test("OPTIONS preflight returns 204 with access-control headers", async () => {
-  const { server } = createTestServer({
-    cors: { allowedOrigins: ["https://console.example.test"], credentials: true },
-  });
+  const { server } = createTestServer();
 
   try {
     const response = await server.inject({

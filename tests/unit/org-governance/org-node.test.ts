@@ -12,10 +12,10 @@ import {
 } from "../../../src/org-governance/org-model/org-node/index.js";
 
 test("OrgNodeTypeSchema accepts canonical node types only", () => {
-  for (const type of ["tenant", "division", "department", "team", "seat"] as const) {
+  for (const type of ["company", "division", "department", "team"] as const) {
     assert.equal(OrgNodeTypeSchema.parse(type), type);
   }
-  assert.throws(() => OrgNodeTypeSchema.parse("company"));
+  assert.throws(() => OrgNodeTypeSchema.parse("member"));
 });
 
 test("OrgNodeSchema preserves legacy aliases and canonical fields", () => {
@@ -32,31 +32,30 @@ test("OrgNodeSchema preserves legacy aliases and canonical fields", () => {
   assert.equal(node.parentNodeId, "dept-1");
 });
 
-test("isLeafOrgNode treats seat as leaf org node", () => {
+test("isLeafOrgNode treats team as leaf org node", () => {
   assert.equal(isLeafOrgNode({
-    orgNodeId: "seat-1",
-    nodeType: "seat",
-    displayName: "Engineer Seat",
-    parentOrgNodeId: "team-1",
-    ownerUserIds: ["engineer-1"],
+    orgNodeId: "team-1",
+    nodeType: "team",
+    displayName: "Platform",
+    parentOrgNodeId: "dept-1",
+    ownerUserIds: ["lead-1"],
     active: true,
     costCenter: "",
     metadata: {},
   }), true);
 });
 
-test("getPlatformMapping follows canonical five-level mapping", () => {
-  assert.equal(getPlatformMapping("tenant"), "platform");
+test("getPlatformMapping follows canonical four-level mapping", () => {
+  assert.equal(getPlatformMapping("company"), "platform");
   assert.equal(getPlatformMapping("division"), "tenant_group");
   assert.equal(getPlatformMapping("department"), "tenant");
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
-  assert.equal(getPlatformMapping("seat"), "resource/seat");
 });
 
 test("validateHierarchyDepth enforces four-level maximum", () => {
   const valid = validateHierarchyDepth([
-    { orgNodeId: "tenant", nodeType: "tenant", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "tenant", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "company", nodeType: "company", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "company", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "dept", nodeType: "department", displayName: "Eng", parentOrgNodeId: "division", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "team", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ]);
@@ -64,8 +63,8 @@ test("validateHierarchyDepth enforces four-level maximum", () => {
   assert.equal(valid.depth, 4);
 
   const invalid = validateHierarchyDepth([
-    { orgNodeId: "tenant", nodeType: "tenant", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "tenant", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "company", nodeType: "company", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "company", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "dept", nodeType: "department", displayName: "Eng", parentOrgNodeId: "division", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "team", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "team-child", nodeType: "team", displayName: "Overflow", parentOrgNodeId: "team", ownerUserIds: [], active: true, costCenter: "", metadata: {} },

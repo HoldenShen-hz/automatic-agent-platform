@@ -57,9 +57,3 @@ Route input must include at minimum:
 - unit: organization tree, route matching, limit matrix
 - integration: approval request routing and escalation across organizations
 - contract: high-risk requests without organization affiliation must not auto-route to approved
-
-## v4.3 Contract Remediation
-
-- T-45B: The early version of this document only froze organization tree and approval routing minimum objects, did not add v4.3 remediation, and did not align dynamic approval with canonical runtime object chain. Fix: This document preserves `OrgNode / ApprovalRouteDecision` minimum fields and completes the remediation section, requiring high-risk approval routing results to be traceable back to runtime context or associated requests corresponding to `harness_run_id` / `node_run_id`.
-
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger / BudgetReservation / BudgetSettlement`.

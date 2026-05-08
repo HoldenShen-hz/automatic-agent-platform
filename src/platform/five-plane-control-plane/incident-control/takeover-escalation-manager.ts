@@ -26,12 +26,6 @@ import type { HumanTakeoverService } from "./human-takeover-service.js";
 type AutoCloseHandler = (sessionId: string, taskId: string) => Promise<void>;
 
 /**
- * R14-14: Callback type for escalation action handling.
- * Called when a session is escalated to a new level.
- */
-type EscalationActionHandler = (sessionId: string, taskId: string, level: EscalationLevel, reason: string) => Promise<void>;
-
-/**
  * Emitter interface for lifecycle events.
  */
 interface TakeoverEventEmitter {
@@ -72,7 +66,6 @@ export class TakeoverEscalationManager {
     private readonly config: TakeoverTimeoutConfig,
     private readonly eventEmitter: TakeoverEventEmitter,
     private readonly onAutoClose?: AutoCloseHandler,
-    private readonly onEscalationAction?: EscalationActionHandler,
   ) {}
 
   /**
@@ -81,7 +74,6 @@ export class TakeoverEscalationManager {
   public startSessionTracking(sessionId: string, taskId: string): void {
     this.ackStatuses.set(sessionId, {
       sessionId,
-      createdAt: nowIso(), // §181-2126: Track creation time for unacknowledged session eviction
       acknowledgedAt: null,
       expiresAt: null,
       status: "pending",
@@ -266,11 +258,6 @@ export class TakeoverEscalationManager {
       data: { sessionId, taskId, fromLevel: previousLevel, toLevel: nextLevel, reason },
     });
 
-    // R14-14: Trigger escalation action for the new level
-    if (this.onEscalationAction) {
-      await this.onEscalationAction(sessionId, taskId, nextLevel, reason);
-    }
-
     if (nextLevel !== "auto_close") {
       this.scheduleEscalationCheck(sessionId, taskId);
     } else if (this.onAutoClose) {
@@ -317,7 +304,6 @@ export class TakeoverEscalationManager {
 
     const ackStatus: TakeoverAckStatus = {
       sessionId,
-      createdAt: now,
       acknowledgedAt: now,
       expiresAt,
       status: "acknowledged",
@@ -415,29 +401,12 @@ export class TakeoverEscalationManager {
     this.lastEvictionTime = now;
 
     const expiryThreshold = now - this.SESSION_TTL_MS;
-
-    // §181-2126: Track session creation times for unacknowledged session eviction
-    const sessionCreationTimes = new Map<string, number>();
-    for (const [sessionId, status] of this.ackStatuses) {
-      sessionCreationTimes.set(sessionId, status.createdAt ? new Date(status.createdAt).getTime() : now);
-    }
     const entriesToDelete: string[] = [];
 
     for (const [sessionId, status] of this.ackStatuses) {
-      // §181-2126: Evict sessions that are either acknowledged AND expired,
-      // OR never acknowledged and past the expiry threshold.
-      // Previously, only acknowledged sessions were checked, causing unacknowledged
-      // sessions to never be evicted (memory leak).
       if (status.acknowledgedAt) {
         const ackTime = new Date(status.acknowledgedAt).getTime();
         if (ackTime < expiryThreshold) {
-          entriesToDelete.push(sessionId);
-        }
-      } else {
-        // Unacknowledged sessions: evict if the session start time is past expiry
-        const createdAt = sessionCreationTimes.get(sessionId) ?? now;
-        const sessionAge = now - createdAt;
-        if (sessionAge > this.SESSION_TTL_MS) {
           entriesToDelete.push(sessionId);
         }
       }

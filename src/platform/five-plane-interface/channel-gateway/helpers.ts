@@ -34,15 +34,13 @@ export function readTrackedDeliveryPayload(payload: Record<string, unknown>): Tr
   if (typeof payload.text !== "string" || payload.text.trim().length === 0) {
     return null;
   }
-  const targetId = payload.targetId.trim();
-  const text = payload.text.trim();
   const metadata = payload.metadata;
   if (metadata != null && (typeof metadata !== "object" || Array.isArray(metadata))) {
     return null;
   }
   return {
-    targetId,
-    text,
+    targetId: payload.targetId,
+    text: payload.text,
     ...(metadata != null ? { metadata: metadata as Record<string, unknown> } : {}),
   };
 }

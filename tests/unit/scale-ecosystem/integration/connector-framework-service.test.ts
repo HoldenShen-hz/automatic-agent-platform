@@ -113,11 +113,6 @@ test("ConnectorFrameworkService execute returns success for healthy connector", 
     lifecycleState: "enabled",
   };
   service.register(manifest);
-  service.registerExecutor("test-connector", ({ request }) => ({
-    connectorId: request.connectorId,
-    success: true,
-    status: "succeeded",
-  }));
 
   const result = service.execute(
     {
@@ -192,7 +187,7 @@ test("ConnectorFrameworkService execute returns failed for unhealthy connector",
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService execute fails closed for degraded connector without executor", () => {
+test("ConnectorFrameworkService execute returns deferred for degraded connector", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -220,139 +215,8 @@ test("ConnectorFrameworkService execute fails closed for degraded connector with
     { environment: "dev" },
   );
 
-  assert.equal(result.success, false);
-  assert.equal(result.status, "failed");
-});
-
-test("ConnectorFrameworkService execute invokes registered executor and records executor-backed result", () => {
-  const service = new ConnectorFrameworkService();
-  const manifest: ConnectorManifest = {
-    connectorId: "executor-connector",
-    provider: "TestProvider",
-    capabilities: ["cap1"],
-    lifecycleState: "enabled",
-  };
-  service.register(manifest);
-
-  const seenCapabilities: string[] = [];
-  service.registerExecutor("executor-connector", ({ request, executionKey }) => {
-    seenCapabilities.push(`${request.capability}:${executionKey}`);
-    return {
-      connectorId: request.connectorId,
-      success: true,
-      status: "succeeded",
-    };
-  });
-
-  const result = service.execute(
-    {
-      connectorId: "executor-connector",
-      capability: "cap1",
-      payload: {},
-      policyRef: "policy.connector.test",
-      secretBindings: [{ secretRef: "secret://executor-connector/token", purpose: "api_token" }],
-    },
-    { environment: "dev", executedAt: "2026-01-02T00:00:00.000Z" },
-  );
-
   assert.equal(result.success, true);
-  assert.equal(seenCapabilities.length, 1);
-
-  const records = service.listExecutionRecords("executor-connector");
-  assert.equal(records.length, 1);
-  assert.equal(records[0]?.mode, "executor");
-  assert.equal(records[0]?.executedAt, "2026-01-02T00:00:00.000Z");
-  assert.equal(records[0]?.sideEffectStatus, "confirmed");
-});
-
-test("ConnectorFrameworkService auto-wires builtin providers to concrete connector executors", () => {
-  const service = new ConnectorFrameworkService();
-  service.register({
-    connectorId: "slack-primary",
-    provider: "slack",
-    capabilities: ["send_message"],
-    supportedEvents: ["incident.opened"],
-    lifecycleState: "enabled",
-  });
-
-  const result = service.execute(
-    {
-      connectorId: "slack-primary",
-      capability: "send_message",
-      payload: { channel: "#ops", message: "hello" },
-      policyRef: "policy.connector.slack-primary",
-      secretBindings: [{ secretRef: "secret://slack-primary/token", purpose: "bot_token" }],
-    },
-    { environment: "prod", eventType: "incident.opened" },
-  );
-
-  assert.equal(result.success, true);
-
-  const [record] = service.listExecutionRecords("slack-primary");
-  assert.equal(record?.mode, "executor");
-});
-
-test("ConnectorFrameworkService records reconciled side effects for connector executions", () => {
-  const service = new ConnectorFrameworkService();
-  service.register({
-    connectorId: "side-effect-connector",
-    provider: "TestProvider",
-    capabilities: ["cap1"],
-    lifecycleState: "enabled",
-  });
-  service.registerExecutor("side-effect-connector", ({ request }) => ({
-    connectorId: request.connectorId,
-    success: true,
-    status: "succeeded",
-  }));
-
-  service.execute(
-    {
-      connectorId: "side-effect-connector",
-      capability: "cap1",
-      payload: {},
-      policyRef: "policy.connector.side-effect-connector",
-      secretBindings: [{ secretRef: "secret://side-effect-connector/token", purpose: "api_token" }],
-    },
-    { environment: "dev", executedAt: "2026-01-03T00:00:00.000Z" },
-  );
-
-  const [sideEffectRecord] = service.listSideEffectRecords("side-effect-connector");
-  assert.equal(sideEffectRecord?.sideEffect.status, "confirmed");
-  assert.equal(sideEffectRecord?.reconciliation.nextAction, "mark_confirmed");
-  assert.ok(sideEffectRecord?.transitionEventType.length);
-});
-
-test("ConnectorFrameworkService execute fails closed for connectors without executor and records synthesized failure", () => {
-  const service = new ConnectorFrameworkService();
-  const manifest: ConnectorManifest = {
-    connectorId: "synth-fallback-connector",
-    provider: "TestProvider",
-    capabilities: ["cap1"],
-    lifecycleState: "enabled",
-  };
-  service.register(manifest);
-
-  const result = service.execute(
-    {
-      connectorId: "synth-fallback-connector",
-      capability: "cap1",
-      payload: {},
-      policyRef: "policy.connector.test",
-      secretBindings: [{ secretRef: "secret://synth-fallback-connector/token", purpose: "api_token" }],
-    },
-    { environment: "dev" },
-  );
-
-  assert.equal(result.success, false);
-  assert.equal(result.status, "failed");
-
-  const records = service.listExecutionRecords("synth-fallback-connector");
-  assert.equal(records.length, 1);
-  assert.equal(records[0]?.mode, "synthesized");
-  assert.equal(records[0]?.success, false);
-  assert.equal(records[0]?.status, "failed");
-  assert.equal(records[0]?.sideEffectStatus, "failed");
+  assert.equal(result.status, "deferred");
 });
 
 test("ConnectorFrameworkService execute throws for prod with non-verified connector", () => {

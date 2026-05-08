@@ -110,7 +110,6 @@ test("updateDelegation updates status field", async () => {
 
   await repo.updateDelegation({
     delegationId: "dlg-1",
-    expectedStatus: "active",
     status: "completed",
     updatedAt: now,
   });
@@ -119,8 +118,6 @@ test("updateDelegation updates status field", async () => {
   assert.equal(calls[0]!.method, "execute");
   assert.ok(calls[0]!.sql.includes("UPDATE delegations"));
   assert.ok(calls[0]!.sql.includes("status = $"));
-  assert.ok(calls[0]!.sql.includes("AND status = $"));
-  assert.equal(calls[0]!.params.at(-1), "active");
 });
 
 test("updateDelegation updates resultRef field", async () => {
@@ -129,14 +126,12 @@ test("updateDelegation updates resultRef field", async () => {
 
   await repo.updateDelegation({
     delegationId: "dlg-1",
-    expectedStatus: "active",
     resultRef: "output_ref_123",
     updatedAt: now,
   });
 
   assert.equal(calls.length, 1);
   assert.ok(calls[0]!.sql.includes("result_ref = $"));
-  assert.ok(!calls[0]!.sql.includes("AND status = $"));
 });
 
 test("updateDelegation updates both status and resultRef", async () => {
@@ -145,7 +140,6 @@ test("updateDelegation updates both status and resultRef", async () => {
 
   await repo.updateDelegation({
     delegationId: "dlg-1",
-    expectedStatus: "active",
     status: "failed",
     resultRef: "error_ref",
     updatedAt: now,
@@ -154,8 +148,6 @@ test("updateDelegation updates both status and resultRef", async () => {
   assert.equal(calls.length, 1);
   assert.ok(calls[0]!.sql.includes("status = $"));
   assert.ok(calls[0]!.sql.includes("result_ref = $"));
-  assert.ok(calls[0]!.sql.includes("AND status = $"));
-  assert.equal(calls[0]!.params.at(-1), "active");
 });
 
 test("updateDelegation returns row count", async () => {
@@ -164,7 +156,6 @@ test("updateDelegation returns row count", async () => {
 
   const count = await repo.updateDelegation({
     delegationId: "dlg-1",
-    expectedStatus: "active",
     updatedAt: now,
   });
 

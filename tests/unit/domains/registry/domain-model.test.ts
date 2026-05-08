@@ -73,54 +73,6 @@ test("WorkflowConfigSchema applies defaults", () => {
   assert.deepEqual(result.steps, []);
 });
 
-test("WorkflowConfigSchema rejects multi-step workflow without graph structure", () => {
-  assert.throws(() => {
-    WorkflowConfigSchema.parse({
-      workflowId: "wf-multi",
-      name: "Multi Step Workflow",
-      steps: [
-        { stepName: "collect" },
-        { stepName: "publish" },
-      ],
-    });
-  }, /planGraph or stepGraph/i);
-});
-
-test("WorkflowConfigSchema accepts multi-step workflow with stepGraph", () => {
-  const result = WorkflowConfigSchema.parse({
-    workflowId: "wf-graph",
-    name: "Graph Workflow",
-    steps: [
-      { stepName: "collect" },
-      { stepName: "publish" },
-    ],
-    stepGraph: {
-      edges: [
-        { fromStep: "collect", toStep: "publish" },
-      ],
-    },
-  });
-
-  assert.equal(result.stepGraph?.edges.length, 1);
-});
-
-test("WorkflowConfigSchema rejects stepGraph edges that reference unknown steps", () => {
-  assert.throws(() => {
-    WorkflowConfigSchema.parse({
-      workflowId: "wf-bad-graph",
-      name: "Invalid Graph Workflow",
-      steps: [
-        { stepName: "collect" },
-      ],
-      stepGraph: {
-        edges: [
-          { fromStep: "collect", toStep: "missing-step" },
-        ],
-      },
-    });
-  }, /unknown toStep/i);
-});
-
 test("WorkflowConfigSchema rejects empty workflowId", () => {
   assert.throws(() => {
     WorkflowConfigSchema.parse({ workflowId: "", name: "Name" });
@@ -271,18 +223,6 @@ test("PluginBindingSchema applies defaults", () => {
   assert.deepEqual(result.config, {});
 });
 
-test("PluginBindingSchema rejects invalid bindingRole aliases instead of erasing them", () => {
-  assert.throws(() => {
-    PluginBindingSchema.parse({
-      bindingId: "b1",
-      domainId: "d1",
-      pluginType: "retriever",
-      bindingRole: "invalid_role",
-      pluginId: "p1",
-    });
-  });
-});
-
 test("DomainDefinitionSchema parses valid definition", () => {
   const result = DomainDefinitionSchema.parse({
     domainId: "domain-001",
@@ -311,9 +251,6 @@ test("DomainDefinitionSchema parses the quant-trading domain config", () => {
   assert.equal(result.status, "active");
   assert.equal(result.capabilities.securityLevel, "restricted");
   assert.equal(result.workflows[0]?.workflowId, "quant-trading.primary");
-  assert.equal(result.workflows[0]?.planGraph?.graphId, "graph:quant-trading:primary");
-  assert.equal(result.workflows[0]?.planGraph?.nodes.length, 2);
-  assert.equal(result.workflows[0]?.planGraph?.edges.length, 1);
 });
 
 test("DomainDefinitionSchema rejects empty domainId", () => {

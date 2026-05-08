@@ -53,14 +53,6 @@ interface ServiceRegistration<T> {
   teardown?: ServiceTeardownFn<T>;
   /** List of service IDs that this service depends on */
   dependsOn?: string[];
-  /**
-   * Optional health check function that verifies the service is ready.
-   * Called after init() and before the service instance is returned/cached.
-   * Should return true if healthy, false otherwise.
-   * Can return a Promise for async health checks.
-   * If not provided, service is considered healthy by default.
-   */
-  healthCheck?: () => boolean | Promise<boolean>;
 }
 
 /**
@@ -97,15 +89,6 @@ export class ServiceRegistry {
   }
 
   /**
-   * Creates a new scoped registry instance for multi-tenant/multi-worker isolation.
-   * Unlike getInstance(), this always returns a fresh registry that is NOT the global singleton.
-   * Use this for isolated contexts (tests, per-tenant workers, etc.).
-   */
-  public static createScoped(): ServiceRegistry {
-    return new ServiceRegistry();
-  }
-
-  /**
    * Registers bootstrap wiring that should be replayed for every fresh registry instance.
    */
   public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {
@@ -125,38 +108,33 @@ export class ServiceRegistry {
    * then resets the singleton so the next getInstance() returns a fresh registry.
    */
   public async reset(): Promise<void> {
-    // R20-31 FIX: Use sequential teardown to respect service dependencies.
-    // Previously used Promise.all(parallel) which could cause issues when a service
-    // being torn down depends on another service that hasn't been torn down yet.
-    // Teardown in reverse topological order (dependents first), like teardownAll().
-    const sorted = this.topologicalSort();
-    const reversed = [...sorted].reverse();
-
-    for (const name of reversed) {
-      const instance = this.instances.get(name);
-      if (instance !== undefined) {
-        const registration = this.services.get(name);
-        if (registration?.teardown) {
-          try {
-            const result = registration.teardown(instance);
-            if (result instanceof Promise) {
-              await result.catch((err: unknown) => {
-                logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-              });
-            }
-          } catch (err) {
-            logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-          }
-        }
-      }
-    }
-
-    // Only clear after teardown completes
+    const teardownEntries = [...this.instances].map(([name, instance]) => ({
+      name,
+      instance,
+      registration: this.services.get(name),
+    }));
     this.instances.clear();
     this.services.clear();
     this.initializing.clear();
     ServiceRegistry.liveRegistries.delete(this);
     ServiceRegistry._instance = null;
+
+    const pending: Promise<void>[] = [];
+    for (const { name, instance, registration } of teardownEntries) {
+      if (registration?.teardown) {
+        try {
+          const result = registration.teardown(instance);
+          if (result instanceof Promise) {
+            pending.push(result.catch((err: unknown) => {
+              logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+            }));
+          }
+        } catch (err) {
+          logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+        }
+      }
+    }
+    await Promise.all(pending);
   }
 
   /**
@@ -165,6 +143,9 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
+    if (!this.instances.has(name)) {
+      this.instances.delete(name);
+    }
     this.services.set(name, registration as ServiceRegistration<unknown>);
   }
 
@@ -187,13 +168,6 @@ export class ServiceRegistry {
     // Already initialized - return cached
     const cached = this.instances.get(name) as T | undefined;
     if (cached !== undefined) return cached;
-    if (visiting.has(name)) {
-      throw new InternalAppError(
-        "service_registry.circular_dependency",
-        `service_registry.circular_dependency: Circular dependency detected while resolving "${name}"`,
-        { source: "internal", details: { serviceName: name } },
-      );
-    }
     if (this.initializing.has(name)) {
       throw new InternalAppError(
         "service_registry.circular_dependency",
@@ -213,70 +187,28 @@ export class ServiceRegistry {
     }
 
     // Initialize transitive dependencies first (depth-first)
-    if (registration.dependsOn) {
+    if (registration.dependsOn && !visiting.has(name)) {
       visiting.add(name);
       try {
         for (const dep of registration.dependsOn) {
-          if (!this.services.has(dep)) {
-            continue;
+          if (this.services.has(dep) && !visiting.has(dep)) {
+            this.getRecursive(dep, visiting);
           }
-          if (visiting.has(dep)) {
-            throw new InternalAppError(
-              "service_registry.circular_dependency",
-              `service_registry.circular_dependency: Circular dependency detected between "${name}" and "${dep}"`,
-              { source: "internal", details: { serviceName: name, dependencyName: dep } },
-            );
-          }
-          this.getRecursive(dep, visiting);
         }
       } finally {
         visiting.delete(name);
       }
     }
 
-    // Initialize this service
+    // Initialize this service and cache
     this.initializing.add(name);
-    let instance: T;
     try {
-      instance = registration.init() as T;
+      const instance = registration.init() as T;
+      this.instances.set(name, instance);
+      return instance;
     } finally {
       this.initializing.delete(name);
     }
-
-    // R9-23: Cache instance BEFORE health check so that if healthCheck() calls get()
-    // on the same service, it finds the cached instance and returns without recursion.
-    // The instance is only returned/usable if healthCheck passes.
-    this.instances.set(name, instance);
-
-    // Health gate - verify service is ready before returning
-    if (registration.healthCheck !== undefined) {
-      const healthy = registration.healthCheck();
-      if (healthy instanceof Promise) {
-        throw new InternalAppError(
-          "service_registry.async_health_check",
-          `service_registry.async_health_check: Async healthCheck not yet supported for "${name}"`,
-          { source: "internal", details: { serviceName: name } },
-        );
-      }
-      if (!healthy) {
-        // Remove from cache since health check failed
-        this.instances.delete(name);
-        throw new InternalAppError(
-          "service_registry.unhealthy",
-          `service_registry.unhealthy: Service "${name}" failed health check and is not ready`,
-          { source: "internal", details: { serviceName: name } },
-        );
-      }
-    }
-
-    return instance;
-  }
-
-  /**
-   * Checks whether a service is registered.
-   */
-  public has(name: string): boolean {
-    return this.services.has(name);
   }
 
   /**
@@ -302,6 +234,7 @@ export class ServiceRegistry {
     // Get services in reverse topological order (dependents first)
     const sorted = this.topologicalSort();
     const reversed = [...sorted].reverse();
+    const pending: Promise<void>[] = [];
 
     for (const name of reversed) {
       const instance = this.instances.get(name);
@@ -311,9 +244,9 @@ export class ServiceRegistry {
           try {
             const result = registration.teardown(instance);
             if (result instanceof Promise) {
-              await result.catch((err: unknown) => {
+              pending.push(result.catch((err: unknown) => {
                 logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-              });
+              }));
             }
           } catch (err) {
             logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
@@ -322,6 +255,7 @@ export class ServiceRegistry {
       }
     }
     this.instances.clear();
+    await Promise.all(pending);
   }
 
   /**
@@ -380,15 +314,11 @@ export class ServiceRegistry {
 
     // Check for cycles - if not all services are in result, there's a cycle
     if (result.length !== serviceNames.length) {
-      const unsortedServices = serviceNames.filter(n => !result.includes(n));
-      // P1-2135: Throw instead of warn so cycled services are NOT silently skipped.
-      // Skipping teardown of cycled services would leak resources (DB connections,
-      // file handles, pending async operations). Throw to force the cycle to be fixed.
-      throw new InternalAppError(
-        "service_registry.circular_dependency",
-        `service_registry.circular_dependency: Circular dependency detected in topological sort`,
-        { source: "internal", details: { unsortedServices } },
-      );
+      logger.log({
+        level: "warn",
+        message: "ServiceRegistry: circular dependency detected in topological sort",
+        data: { unsortedServices: serviceNames.filter(n => !result.includes(n)) },
+      });
     }
 
     return result;

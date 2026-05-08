@@ -23,9 +23,9 @@ test("mapHarnessStepToOapeflirPhase maps evaluator/evaluate to feedback phase", 
   assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "other"), "feedback");
 });
 
-test("mapHarnessStepToOapeflirPhase maps hitl_operator to feedback phase", () => {
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "review"), "feedback");
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "anything"), "feedback");
+test("mapHarnessStepToOapeflirPhase maps hitl_operator to assess phase", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "review"), "assess");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "anything"), "assess");
 });
 
 test("mapHarnessStepToOapeflirPhase maps loop_controller to improve phase", () => {
@@ -45,7 +45,7 @@ test("mapHarnessStepToOapeflirPhase returns correct phase mappings", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("planner", "any"), "plan");
   assert.equal(mapHarnessStepToOapeflirPhase("generator", "any"), "execute");
   assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "any"), "feedback");
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "any"), "feedback");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "any"), "assess");
   assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "any"), "improve");
 });
 
@@ -75,9 +75,9 @@ test("mapHarnessStepToOapeflirPhase stage equality checks before role checks", (
   assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "evaluate"), "feedback");
 
   // For unrecognized stage values, role-based checks kick in
-  // hitl_operator returns "feedback" for non-plan/execute/evaluate stages
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "other"), "feedback");
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", ""), "feedback");
+  // hitl_operator returns "assess" for non-plan/execute/evaluate stages
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "other"), "assess");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", ""), "assess");
 
   // loop_controller returns "improve" for non-plan/execute/evaluate stages
   assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "other"), "improve");
@@ -106,10 +106,11 @@ test("mapHarnessStepToOapeflirPhase returns all valid OapeflirSemanticPhase valu
     }
   }
 
-  // Should return plan, execute, feedback, improve, observe
+  // Should return plan, execute, feedback, assess, improve, observe
   assert.ok(allPhases.has("plan"));
   assert.ok(allPhases.has("execute"));
   assert.ok(allPhases.has("feedback"));
+  assert.ok(allPhases.has("assess"));
   assert.ok(allPhases.has("improve"));
   assert.ok(allPhases.has("observe"));
 });

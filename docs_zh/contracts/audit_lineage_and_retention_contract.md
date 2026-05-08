@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -42,7 +42,7 @@
 - `data_lineage_evidence`
 - `release_bundle_evidence`
 - `strategy_version_evidence`
-- `release_evidence`
+- `rollout_evidence`
 - `feedback_lineage_evidence`
 - `knowledge_provenance_evidence`
 - `memory_promotion_evidence`
@@ -71,16 +71,12 @@
 - `task_id?`
 - `harness_run_id?`
 - `node_run_id?`
+- `execution_id?`（legacy query key）
 - `action`
 - `resource_ref`
 - `decision_ref?`
 - `version_ref?`
 - `created_at`
-
-规则：
-
-- `harness_run_id` / `node_run_id` 为 canonical 关联键，用于谱系追踪。
-- `execution_id` 为 legacy 查询键，仅用于向后兼容，不得作为新增审计记录的主关联字段。
 
 ## 6. 数据保留分层
 
@@ -151,17 +147,13 @@ flowchart LR
 - 指定租户审计包
 - 指定时间窗安全事件
 - prompt/model/policy 版本对应关系
-- `release` 的完整 lineage
+- feedback -> learning -> improvement -> rollout 的完整 lineage
 
 ## 10. 收口结论
 
-工业级系统不只要”能记日志”，还要能证明：
+工业级系统不只要“能记日志”，还要能证明：
 
 - 谁做的
 - 用了什么版本
 - 为什么被允许
 - 数据从哪里来，流向哪里去
-
-## v4.3 Contract Remediation
-
-- T-41: 早期审计记录以 `execution_id` 为主关联字段。v4.3 canonical 关联链为 `harness_run_id` / `node_run_id`；新增审计记录必须使用 canonical 字段，不得以 `execution_id` 为主关联键。`execution_id` 仅用于向后兼容查询。

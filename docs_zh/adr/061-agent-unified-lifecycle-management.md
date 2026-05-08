@@ -38,12 +38,9 @@ interface AgentComponent {
 | draft | 草稿 |
 | testing | 测试中 |
 | staging | 预发布 |
-| canary | 金丝雀发布 |
-| active | 正式运行 |
-| paused | 暂停 |
+| production | 生产 |
 | deprecated | 废弃 |
-| archived | 归档 |
-| removed | 已删除 |
+| retired | 退役 |
 
 ### 版本管理
 

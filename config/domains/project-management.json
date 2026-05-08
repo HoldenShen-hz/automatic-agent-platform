@@ -3,11 +3,6 @@
   "phase": "9d",
   "divisionId": "operations",
   "latencyTier": "near_realtime",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "project-management.primary",
     "rollout": "baseline"

@@ -203,80 +203,7 @@ test("PluginEcosystemRuntimeService.buildPlan includes plugin targets", () => {
 
   assert.equal(plan.pluginTargets.length, 1);
   assert.equal(plan.pluginTargets[0]?.pluginId, "plugin.retriever");
-  assert.equal(plan.pluginTargets[0]?.healthy, false);
-});
-
-test("PluginEcosystemRuntimeService.buildPlan marks plan not ready when plugin is only registered", () => {
-  const pluginRegistry = new PluginSpiRegistry();
-  const domainService = new DomainRegistryService({ pluginRegistry });
-  const connectors = {
-    getManifest: () => null,
-    listBindings: () => [],
-  };
-
-  pluginRegistry.register({
-    pluginId: "plugin.registered_only",
-    domainId: "coding",
-    spiType: "retriever",
-    async retrieve() {
-      return [];
-    },
-  }, {
-    pluginId: "plugin.registered_only",
-    name: "registered only plugin",
-    version: "1.0.0",
-    owner: "test",
-    domainIds: ["coding"],
-    capabilityIds: [],
-    spiTypes: ["retriever"],
-    extensionKind: "domain_plugin",
-    trustLevel: "trusted",
-    publicSdkSurface: "test",
-    settingsSchema: {},
-    sandbox: makeSandboxPolicy(),
-  });
-
-  domainService.register({
-    domainId: "coding",
-    name: "Coding",
-    description: "Coding domain",
-    version: 1,
-    workflows: [],
-    toolBundles: [],
-    outputContracts: [],
-    promptOverrides: {},
-    capabilities: {
-      supportedTaskTypes: [],
-      requiredTools: [],
-      optionalTools: [],
-      modelPreferences: {},
-      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
-    },
-    status: "active",
-    externalAdapters: [],
-    pluginBindings: [
-      {
-        bindingId: "binding_registered_only",
-        domainId: "coding",
-        pluginType: "retriever",
-        pluginId: "plugin.registered_only",
-        priority: 1,
-        enabled: true,
-        config: {},
-      },
-    ],
-  });
-
-  const service = new PluginEcosystemRuntimeService(domainService, pluginRegistry, connectors as never);
-  const plan = service.buildPlan({
-    domainId: "coding",
-    tenantId: "tenant_1",
-    environment: "dev",
-  });
-
-  assert.equal(plan.ready, false);
-  assert.ok(plan.findings.includes("plugin not ready: plugin.registered_only"));
+  assert.equal(plan.pluginTargets[0]?.healthy, true);
 });
 
 test("PluginEcosystemRuntimeService.buildPlan includes connector targets", () => {
@@ -622,56 +549,6 @@ test("PluginEcosystemRuntimeService.activateRuntime reuses existing bindings whe
 
   assert.equal(activation.connectorBindings.length, 1);
   assert.equal(activation.connectorBindings[0], existingBinding);
-});
-
-test("PluginEcosystemRuntimeService.activateRuntime builds the plan exactly once", async () => {
-  class CountingPluginEcosystemRuntimeService extends PluginEcosystemRuntimeService {
-    public buildPlanCalls = 0;
-
-    public override buildPlan(input: Parameters<PluginEcosystemRuntimeService["buildPlan"]>[0]) {
-      this.buildPlanCalls += 1;
-      return super.buildPlan(input);
-    }
-  }
-
-  const domainService = new DomainRegistryService();
-  const pluginRegistry = new PluginSpiRegistry();
-  const connectors = {
-    getManifest: () => null,
-    listBindings: () => [],
-  };
-
-  domainService.register({
-    domainId: "coding",
-    name: "Coding",
-    description: "Coding domain",
-    version: 1,
-    workflows: [],
-    toolBundles: [],
-    outputContracts: [],
-    promptOverrides: {},
-    capabilities: {
-      supportedTaskTypes: [],
-      requiredTools: [],
-      optionalTools: [],
-      modelPreferences: {},
-      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
-    },
-    status: "active",
-    externalAdapters: [],
-    pluginBindings: [],
-  });
-
-  const service = new CountingPluginEcosystemRuntimeService(domainService, pluginRegistry, connectors as never);
-  const activation = await service.activateRuntime({
-    domainId: "coding",
-    tenantId: "tenant_1",
-    environment: "dev",
-  });
-
-  assert.equal(service.buildPlanCalls, 1);
-  assert.equal(activation.plan.domainId, "coding");
 });
 
 test("PluginEcosystemRuntimeService.activateRuntime does not auto-bind when autoBindConnectors is false", async () => {

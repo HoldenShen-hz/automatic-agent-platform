@@ -1,5 +1,4 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { resolveTriggerActionMode } from "./trigger-engine/index.js";
 
 export interface ProactiveTrigger {
   readonly triggerId: string;
@@ -74,33 +73,6 @@ export interface TriggerFireDecision {
   readonly queuedSuggestionId: string | null;
 }
 
-export interface ProactiveSuggestionContext {
-  readonly triggerType: CanonicalTriggerType;
-  readonly riskLevel: TriggerDefinition["riskLevel"];
-  readonly sourceSummary: string;
-  readonly matchedSignal: string | null;
-  readonly targetDomainId: string;
-  readonly requireConfirmation: boolean;
-}
-
-/**
- * §47 R9-22: Situation awareness data for proactive agent context
- */
-export interface SituationAwareness {
-  /** Current system load percentage */
-  readonly systemLoadPercent: number | null;
-  /** Current active execution count */
-  readonly activeExecutionsCount: number | null;
-  /** Recent error rate percentage */
-  readonly recentErrorRatePercent: number | null;
-  /** Whether system is in maintenance mode */
-  readonly isInMaintenanceMode: boolean;
-  /** Time since last successful trigger execution */
-  readonly timeSinceLastSuccessMs: number | null;
-  /** Number of pending suggestions in queue */
-  readonly pendingSuggestionsCount: number | null;
-}
-
 export interface ProactiveSuggestion {
   readonly suggestionId: string;
   readonly triggerId: string;
@@ -108,8 +80,6 @@ export interface ProactiveSuggestion {
   readonly createdAt: string;
   readonly title: string;
   readonly action: TriggerAction;
-  readonly context: ProactiveSuggestionContext;
-  readonly qualityScore: number;
 }
 
 export interface ProactiveBudgetPool {
@@ -130,23 +100,6 @@ export interface ProactiveAgentServiceOptions {
   readonly maxConsecutiveFailures?: number;
   readonly dailyTriggerBudgetByDomain?: Readonly<Record<string, number>>;
   readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
-  /** §42.5: Current autonomy level to check before auto_execution (requires semi_auto+ for medium+ risk) */
-  readonly currentAutonomyLevel?: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
-  /** §41.1: Optional domain descriptor validator - validates trigger attributes against domain capabilities */
-  readonly domainDescriptorValidator?: (
-    domainId: string,
-    trigger: TriggerDefinition,
-  ) => readonly string[] | null;
-  /** R9-22: Optional situation awareness provider for runtime context */
-  readonly situationAwarenessProvider?: SituationAwarenessProvider | null;
-}
-
-/**
- * R9-22: Provider interface for situation awareness data
- */
-export interface SituationAwarenessProvider {
-  /** Get current situation awareness snapshot */
-  getSituationAwareness(): SituationAwareness;
 }
 
 interface TriggerRuntimeState {
@@ -155,17 +108,6 @@ interface TriggerRuntimeState {
   fireTimestamps: string[];
   consecutiveFailures: number;
   fireCount: number;
-  pendingBatch: TriggerBatchState | null;
-}
-
-interface TriggerBatchState {
-  openedAt: string;
-  lastEventAt: string;
-  events: {
-    source: string;
-    name: string;
-    payload?: Record<string, unknown>;
-  }[];
 }
 
 function parseDurationMs(raw: string): number {
@@ -255,72 +197,6 @@ function normalizeTriggerType(type: TriggerType): CanonicalTriggerType {
   return type;
 }
 
-function buildSuggestionContext(
-  trigger: TriggerDefinition,
-  input: TriggerEvaluationInput,
-): ProactiveSuggestionContext {
-  const normalizedType = normalizeTriggerType(trigger.type);
-  if ((normalizedType === "event" || normalizedType === "webhook") && input.event != null) {
-    return {
-      triggerType: normalizedType,
-      riskLevel: trigger.riskLevel,
-      sourceSummary: `${input.event.source}:${input.event.name}`,
-      matchedSignal: input.event.payload == null ? null : JSON.stringify(input.event.payload),
-      targetDomainId: trigger.domainId,
-      requireConfirmation: trigger.action.requireConfirmation,
-    };
-  }
-
-  if (normalizedType === "condition" && input.metric != null) {
-    const previousValue = input.metric.previousValue == null ? "" : ` (prev ${input.metric.previousValue})`;
-    return {
-      triggerType: normalizedType,
-      riskLevel: trigger.riskLevel,
-      sourceSummary: `${input.metric.source}:${input.metric.name}`,
-      matchedSignal: `${input.metric.value}${previousValue}`,
-      targetDomainId: trigger.domainId,
-      requireConfirmation: trigger.action.requireConfirmation,
-    };
-  }
-
-  return {
-    triggerType: normalizedType,
-    riskLevel: trigger.riskLevel,
-    sourceSummary: trigger.name,
-    matchedSignal: null,
-    targetDomainId: trigger.domainId,
-    requireConfirmation: trigger.action.requireConfirmation,
-  };
-}
-
-function generateSuggestionTitle(trigger: TriggerDefinition, context: ProactiveSuggestionContext): string {
-  const riskLabel = context.riskLevel === "critical" ? "critical" : context.riskLevel;
-  if (context.matchedSignal != null && context.matchedSignal.length > 0) {
-    return `[${riskLabel}] ${trigger.name}: ${context.sourceSummary}`;
-  }
-  return `[${riskLabel}] ${trigger.name}`;
-}
-
-function scoreSuggestionQuality(trigger: TriggerDefinition, context: ProactiveSuggestionContext): number {
-  let score = 0.4;
-  if (context.matchedSignal != null && context.matchedSignal.length > 0) {
-    score += 0.2;
-  }
-  if (Object.keys(trigger.action.template).length > 0) {
-    score += 0.15;
-  }
-  if (trigger.boundAgentId != null) {
-    score += 0.1;
-  }
-  if (trigger.feedbackTargetTriggerIds != null && trigger.feedbackTargetTriggerIds.length > 0) {
-    score += 0.05;
-  }
-  if (trigger.riskLevel === "low") {
-    score += 0.05;
-  }
-  return Number(Math.min(1, score).toFixed(4));
-}
-
 export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly states = new Map<string, TriggerRuntimeState>();
   private readonly suggestions = new Map<string, ProactiveSuggestion>();
@@ -330,24 +206,12 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly dailyTriggerUsage = new Map<string, number>();
   private readonly budgetPoolsByDomain: Readonly<Record<string, ProactiveBudgetPool>>;
   private readonly incidents: ProactiveIncident[] = [];
-  /** §42.5: Current autonomy level for trigger-autonomy linkage */
-  private readonly currentAutonomyLevel: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
-  /** §41.1: Domain descriptor validator for trigger attribute validation */
-  private readonly domainDescriptorValidator: (
-    domainId: string,
-    trigger: TriggerDefinition,
-  ) => readonly string[] | null;
-  /** R9-22: Situation awareness provider for runtime context */
-  private readonly situationAwarenessProvider: SituationAwarenessProvider | null;
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
-    this.currentAutonomyLevel = options.currentAutonomyLevel ?? "supervised";
-    this.domainDescriptorValidator = options.domainDescriptorValidator ?? (() => null);
-    this.situationAwarenessProvider = options.situationAwarenessProvider ?? null;
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -356,20 +220,12 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (declared != null && !declared.includes(definition.triggerId)) {
       throw new Error(`proactive_agent.trigger_not_declared:${definition.domainId}:${definition.triggerId}`);
     }
-    // §41.1: Validate trigger attributes against DomainDescriptor capabilities
-    const validationErrors = this.domainDescriptorValidator(definition.domainId, definition);
-    if (validationErrors != null && validationErrors.length > 0) {
-      throw new Error(
-        `proactive_agent.domain_descriptor_validation_failed:${definition.domainId}:${definition.triggerId}:${validationErrors.join(",")}`,
-      );
-    }
     this.states.set(definition.triggerId, {
       trigger: definition,
       lastFiredAt: null,
       fireTimestamps: [],
       consecutiveFailures: 0,
       fireCount: 0,
-      pendingBatch: null,
     });
     this.detectFeedbackLoop(definition.triggerId);
   }
@@ -388,10 +244,6 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
   public listIncidents(): ProactiveIncident[] {
     return [...this.incidents];
-  }
-
-  public getTrigger(triggerId: string): TriggerDefinition | null {
-    return this.states.get(triggerId)?.trigger ?? null;
   }
 
   public evaluate(triggerId: string, input: TriggerEvaluationInput): TriggerFireDecision {
@@ -415,10 +267,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
     const budgetPool = this.budgetPoolsByDomain[state.trigger.domainId];
     if (budgetPool != null) {
-      // §41.1: Use the configured userInitiatedReserveRatio; proactive budget is whatever remains
-      // after user-initiated reserve is deducted from totalDailyBudget.
-      const reserveRatio = Math.max(0, Math.min(1, budgetPool.userInitiatedReserveRatio));
-      const proactiveBudgetCap = Math.floor(budgetPool.totalDailyBudget * (1 - reserveRatio));
+      const proactiveBudgetCap = Math.floor(
+        budgetPool.totalDailyBudget * (1 - Math.max(0.6, budgetPool.userInitiatedReserveRatio)),
+      );
       if ((this.dailyTriggerUsage.get(usageKey) ?? 0) >= proactiveBudgetCap) {
         reasons.push("proactive_agent.user_initiated_reserve_protected");
       }
@@ -447,48 +298,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       reasons.push("proactive_agent.trigger_condition_not_met");
     }
 
-    let actionMode = resolveTriggerActionMode(
-      state.trigger.action.requireConfirmation,
-      state.trigger.riskLevel,
-      state.trigger.action.actionType,
-    );
-
-    // R9-22: Check situation awareness before allowing execution
-    if (this.situationAwarenessProvider != null) {
-      const awareness = this.situationAwarenessProvider.getSituationAwareness();
-      // If system is in maintenance mode, block auto-execution
-      if (awareness.isInMaintenanceMode && actionMode === "auto_execute") {
-        reasons.push("proactive_agent.system_in_maintenance_mode");
-        actionMode = "suggest";
-      }
-      // If error rate is too high, be more conservative
-      if (awareness.recentErrorRatePercent != null && awareness.recentErrorRatePercent > 10 && state.trigger.riskLevel !== "low") {
-        reasons.push("proactive_agent.elevated_error_rate");
-        if (actionMode === "auto_execute") {
-          actionMode = "suggest";
-        }
-      }
-      // If system load is very high, downgrade auto-execute to suggest
-      if (awareness.systemLoadPercent != null && awareness.systemLoadPercent > 90 && actionMode === "auto_execute") {
-        reasons.push("proactive_agent.high_system_load");
-        actionMode = "suggest";
-      }
-    }
-
     if (reasons.length > 0) {
       return {
         allowed: false,
         reasonCodes: reasons,
-        actionMode: "silent_record",
-        queuedSuggestionId: null,
-      };
-    }
-
-    const effectiveInput = this.resolveBatchWindowInput(state, input, now);
-    if (effectiveInput == null) {
-      return {
-        allowed: false,
-        reasonCodes: ["proactive_agent.batch_window_collecting"],
         actionMode: "silent_record",
         queuedSuggestionId: null,
       };
@@ -500,24 +313,18 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
-
-    // §42.5: Autonomy level must be semi_auto+ for auto_execute
-    // If autonomy is suggestion/supervised/frozen, downgrade auto_execute to suggest
-    // Low-risk triggers are exempt - they can auto_execute even in supervised mode
-    const autoExecutePermitted = this.currentAutonomyLevel === "semi_auto"
-      || this.currentAutonomyLevel === "full_auto";
-    if (!autoExecutePermitted && actionMode === "auto_execute" && state.trigger.riskLevel !== "low") {
-      actionMode = "suggest";
-    }
-
-    const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger, effectiveInput) : null;
+    const actionMode = state.trigger.action.requireConfirmation
+      ? "suggest"
+      : state.trigger.riskLevel === "critical"
+        ? "silent_record"
+        : state.trigger.action.actionType === "update_dashboard"
+          ? "silent_record"
+          : "auto_execute";
+    const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {
       allowed: true,
-      reasonCodes: [
-        "proactive_agent.fire_allowed",
-        ...(effectiveInput !== input ? ["proactive_agent.batch_window_aggregated"] : []),
-      ],
+      reasonCodes: ["proactive_agent.fire_allowed"],
       actionMode,
       queuedSuggestionId,
     };
@@ -541,171 +348,6 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     return this.suggestions.delete(suggestionId);
   }
 
-  public async evaluateTriggers(event: {
-    readonly triggerId: string;
-    readonly context: Record<string, unknown>;
-  }): Promise<Array<{ readonly triggerId: string; readonly actionType: string; readonly actionMode: TriggerFireDecision["actionMode"] }>> {
-    const trigger = this.getTrigger(event.triggerId);
-    if (trigger == null) {
-      return [];
-    }
-    const metricValue = Number(
-      event.context.cpuPercent
-      ?? event.context.cpu_percent
-      ?? event.context.memoryPercent
-      ?? event.context.value
-      ?? 0,
-    );
-    const metricName = typeof trigger.config === "object" && "metricName" in trigger.config
-      ? trigger.config.metricName
-      : "metric";
-    const decision = this.evaluate(trigger.triggerId, {
-      kind: trigger.type,
-      now: new Date().toISOString(),
-      metric: {
-        source: "compat",
-        name: metricName,
-        value: metricValue,
-      },
-    });
-    if (!decision.allowed) {
-      return [];
-    }
-    return [{
-      triggerId: trigger.triggerId,
-      actionType: trigger.action.actionType,
-      actionMode: decision.actionMode,
-    }];
-  }
-
-  public getScheduledTriggers(): TriggerDefinition[] {
-    return this.listTriggers().filter((trigger) => trigger.type === "schedule");
-  }
-
-  /**
-   * §47: ProactiveSuggestion pipeline with full stage decomposition.
-   *
-   * Pipeline stages:
-   * 1. Context Builder - builds suggestion context from trigger and input
-   * 2. Generator - generates the suggestion with metadata
-   * 3. Queue - enqueues suggestion for later processing
-   * 4. Quality Scoring - computes quality score for ranking/prioritization
-   */
-  private buildSuggestionPipeline(
-    trigger: TriggerDefinition,
-    input: TriggerEvaluationInput,
-  ): { context: ProactiveSuggestionContext; suggestion: ProactiveSuggestion } {
-    // Stage 1: Context Builder
-    const context = this.buildSuggestionContext(trigger, input);
-
-    // Stage 2: Generator - creates the suggestion object
-    const suggestionId = newId("suggestion");
-    const title = this.generateSuggestionTitle(trigger, context);
-
-    // Stage 3: Queue (enqueue) - suggestion is stored in suggestions map
-    // Stage 4: Quality Scoring - compute quality score before creating suggestion
-    const qualityScore = this.scoreSuggestionQuality(trigger, context);
-
-    const suggestion: ProactiveSuggestion = {
-      suggestionId,
-      triggerId: trigger.triggerId,
-      domainId: trigger.domainId,
-      createdAt: nowIso(),
-      title,
-      action: trigger.action,
-      context,
-      qualityScore,
-    };
-
-    // Enqueue to the queue
-    this.suggestions.set(suggestionId, suggestion);
-
-    return { context, suggestion };
-  }
-
-  /**
-   * Stage 1: Context Builder - builds suggestion context from trigger and input
-   */
-  private buildSuggestionContext(
-    trigger: TriggerDefinition,
-    input: TriggerEvaluationInput,
-  ): ProactiveSuggestionContext {
-    const normalizedType = normalizeTriggerType(trigger.type);
-    if ((normalizedType === "event" || normalizedType === "webhook") && input.event != null) {
-      return {
-        triggerType: normalizedType,
-        riskLevel: trigger.riskLevel,
-        sourceSummary: `${input.event.source}:${input.event.name}`,
-        matchedSignal: input.event.payload == null ? null : JSON.stringify(input.event.payload),
-        targetDomainId: trigger.domainId,
-        requireConfirmation: trigger.action.requireConfirmation,
-      };
-    }
-
-    if (normalizedType === "condition" && input.metric != null) {
-      const previousValue = input.metric.previousValue == null ? "" : ` (prev ${input.metric.previousValue})`;
-      return {
-        triggerType: normalizedType,
-        riskLevel: trigger.riskLevel,
-        sourceSummary: `${input.metric.source}:${input.metric.name}`,
-        matchedSignal: `${input.metric.value}${previousValue}`,
-        targetDomainId: trigger.domainId,
-        requireConfirmation: trigger.action.requireConfirmation,
-      };
-    }
-
-    return {
-      triggerType: normalizedType,
-      riskLevel: trigger.riskLevel,
-      sourceSummary: trigger.name,
-      matchedSignal: null,
-      targetDomainId: trigger.domainId,
-      requireConfirmation: trigger.action.requireConfirmation,
-    };
-  }
-
-  /**
-   * Stage 2: Generator - generates suggestion title
-   */
-  private generateSuggestionTitle(trigger: TriggerDefinition, context: ProactiveSuggestionContext): string {
-    const riskLabel = context.riskLevel === "critical" ? "critical" : context.riskLevel;
-    if (context.matchedSignal != null && context.matchedSignal.length > 0) {
-      return `[${riskLabel}] ${trigger.name}: ${context.sourceSummary}`;
-    }
-    return `[${riskLabel}] ${trigger.name}`;
-  }
-
-  /**
-   * Stage 4: Quality Scoring - computes quality score for suggestion ranking
-   */
-  private scoreSuggestionQuality(trigger: TriggerDefinition, context: ProactiveSuggestionContext): number {
-    let score = 0.4;
-    if (context.matchedSignal != null && context.matchedSignal.length > 0) {
-      score += 0.2;
-    }
-    if (Object.keys(trigger.action.template).length > 0) {
-      score += 0.15;
-    }
-    if (trigger.boundAgentId != null) {
-      score += 0.1;
-    }
-    if (trigger.feedbackTargetTriggerIds != null && trigger.feedbackTargetTriggerIds.length > 0) {
-      score += 0.05;
-    }
-    if (trigger.riskLevel === "low") {
-      score += 0.05;
-    }
-    return Number(Math.min(1, score).toFixed(4));
-  }
-
-  /**
-   * Stage 3: Queue - enqueues suggestion for later processing
-   */
-  private enqueueSuggestionToQueue(suggestion: ProactiveSuggestion): string {
-    this.suggestions.set(suggestion.suggestionId, suggestion);
-    return suggestion.suggestionId;
-  }
-
   private matchesTrigger(trigger: TriggerDefinition, input: TriggerEvaluationInput): boolean {
     if (normalizeTriggerType(trigger.type) !== normalizeTriggerType(input.kind)) {
       return false;
@@ -714,7 +356,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (normalizeTriggerType(trigger.type) === "event" || normalizeTriggerType(trigger.type) === "webhook") {
       const config = trigger.config as EventTriggerConfig;
       return input.event?.source === config.eventSource
-        && input.event?.name?.includes(config.eventPattern)
+        && input.event.name.includes(config.eventPattern)
         && Object.entries(config.filter).every(([key, value]) => String(input.event?.payload?.[key] ?? "") === value);
     }
 
@@ -728,92 +370,30 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       if (config.condition === "lt") return metric.value < config.threshold;
       if (config.condition === "eq") return metric.value === config.threshold;
       if (metric.previousValue == null) return false;
-      // R32-27 FIX: change_rate_gt must compute relative change abs(v-prev)/prev, not absolute diff
-      // Special case: prev===0 means infinite change rate if v!=0 (any non-zero from zero is significant)
-      if (metric.previousValue === 0) {
-        return metric.value !== 0;
-      }
-      return Math.abs(metric.value - metric.previousValue) / metric.previousValue > config.threshold;
+      return Math.abs(metric.value - metric.previousValue) > config.threshold;
     }
 
     return true;
   }
 
-  private enqueueSuggestion(trigger: TriggerDefinition, input: TriggerEvaluationInput): string {
-    // §47: Use the full pipeline with Context Builder, Generator, Queue, and Quality Scoring
-    const { suggestion } = this.buildSuggestionPipeline(trigger, input);
-    return suggestion.suggestionId;
-  }
-
-  private resolveBatchWindowInput(
-    state: TriggerRuntimeState,
-    input: TriggerEvaluationInput,
-    now: number,
-  ): TriggerEvaluationInput | null {
-    const normalizedType = normalizeTriggerType(state.trigger.type);
-    if ((normalizedType !== "event" && normalizedType !== "webhook") || input.event == null) {
-      return input;
-    }
-
-    const batchWindow = (state.trigger.config as EventTriggerConfig).batchWindow;
-    const batchWindowMs = batchWindow == null ? 0 : parseDurationMs(batchWindow);
-    if (batchWindowMs <= 0) {
-      return input;
-    }
-
-    const timestamp = new Date(now).toISOString();
-    const eventSample = {
-      source: input.event.source,
-      name: input.event.name,
-      ...(input.event.payload == null ? {} : { payload: input.event.payload }),
-    };
-
-    if (state.pendingBatch == null) {
-      state.pendingBatch = {
-        openedAt: timestamp,
-        lastEventAt: timestamp,
-        events: [eventSample],
-      };
-      return null;
-    }
-
-    state.pendingBatch.events.push(eventSample);
-    state.pendingBatch.lastEventAt = timestamp;
-    const openedAt = new Date(state.pendingBatch.openedAt).getTime();
-    if (now - openedAt < batchWindowMs) {
-      return null;
-    }
-
-    const batch = state.pendingBatch;
-    state.pendingBatch = null;
-    const [firstEvent] = batch.events;
-    if (firstEvent == null) {
-      return input;
-    }
-
-    return {
-      ...input,
-      event: {
-        source: firstEvent.source,
-        name: firstEvent.name,
-        payload: {
-          batchCount: batch.events.length,
-          batchWindow,
-          events: batch.events.slice(0, 5),
-        },
-      },
-    };
+  private enqueueSuggestion(trigger: TriggerDefinition): string {
+    const suggestionId = newId("suggestion");
+    this.suggestions.set(suggestionId, {
+      suggestionId,
+      triggerId: trigger.triggerId,
+      domainId: trigger.domainId,
+      createdAt: nowIso(),
+      title: `Suggestion from trigger ${trigger.name}`,
+      action: trigger.action,
+    });
+    return suggestionId;
   }
 
   private detectFeedbackLoop(triggerId: string): void {
     const visited = new Set<string>();
     const stack = new Set<string>();
-    // R16-20 FIX: Track only the cycle members, not the entire ancestry path
-    const cycleMembers = new Set<string>();
     const hasCycle = (currentId: string): boolean => {
       if (stack.has(currentId)) {
-        // Found a cycle — currentId is the cycle entry point; stack contains the rest
-        cycleMembers.add(currentId);
         return true;
       }
       if (visited.has(currentId)) {
@@ -821,38 +401,25 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       }
       visited.add(currentId);
       stack.add(currentId);
-      try {
-        const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
-        for (const nextId of targets) {
-          if (hasCycle(nextId)) {
-            // If this node is in the cycle (not just an ancestor), mark it
-            if (stack.has(nextId)) {
-              cycleMembers.add(currentId);
-            }
-            return true;
-          }
+      const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
+      for (const nextId of targets) {
+        if (hasCycle(nextId)) {
+          return true;
         }
-        return false;
-      } finally {
-        // Root cause §175-2046: stack.delete was outside try/catch, so if the recursive
-        // call threw or returned true, stack.delete still ran after the try block.
-        // But worse: when hasCycle returned true (cycle detected), we returned true immediately
-        // without cleaning up the stack frame. The finally ensures cleanup happens regardless
-        // of which return path was taken.
-        stack.delete(currentId);
       }
+      stack.delete(currentId);
+      return false;
     };
     if (!hasCycle(triggerId)) {
       return;
     }
-    // Only disable the triggers that are actually part of the cycle, not the whole ancestry path
     this.incidents.push({
       incidentId: newId("proactive_incident"),
-      triggerIds: [...cycleMembers],
+      triggerIds: [...stack],
       reasonCode: "proactive_agent.feedback_loop_detected",
       createdAt: nowIso(),
     });
-    for (const loopTriggerId of cycleMembers) {
+    for (const loopTriggerId of stack) {
       const state = this.states.get(loopTriggerId);
       if (state != null) {
         state.trigger = {

@@ -33,7 +33,7 @@ Minimum fields:
 - `harnessRunId`
 - `nodeRunId?`
 - `amount`
-- `resourceKind` (`token | tool | api | compute | human | side_effect | storage | bandwidth | memory | other`)
+- `resourceKind` (`token | tool | api | compute | human | side_effect | other`)
 - `status` (`reserved | settled | released | expired | rejected`)
 - `expiresAt`
 - `createdAt`

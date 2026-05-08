@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Background
+## Context
 
 The platform runtime generates a large number of events and alerts, requiring unified event classification, severity levels, detection rules, and alert routing mechanisms.
 
@@ -23,7 +23,7 @@ The platform runtime generates a large number of events and alerts, requiring un
 ### SEV1-SEV4 Severity Levels
 
 | Level | Description | SLA Response Time |
-|-------|-------------|------------------|
+|-------|-------------|-------------------|
 | SEV1 | Platform unavailable | 15 minutes |
 | SEV2 | Core functionality impaired | 30 minutes |
 | SEV3 | Non-core functionality abnormal | 2 hours |
@@ -43,16 +43,16 @@ interface DetectionRule {
 
 ### 5 Built-in Detection Rules
 
-1. Heartbeat missing detection
+1. Heartbeat absence detection
 2. Timeout spike detection
 3. Projection latency detection
 4. Security violation detection
-5. Full-platform failure detection
+5. Platform-wide failure detection
 
 ### 10 Core Metrics
 
-- Collected through OTel integration
-- Support Prometheus export
+- Collected via OTel integration
+- Supports Prometheus export
 
 ### StructuredLog Interface
 
@@ -68,17 +68,16 @@ interface StructuredLog {
 
 ### Trace Span Hierarchy
 
-- Span semantics should be organized by `service -> operation -> node_run -> node_attempt` (v4.3 §5.5 deprecated step terminology)
 - OTel SDK implements distributed tracing
-- Span hierarchy: service → operation → node_run → node_attempt
+- Span hierarchy: service → operation → step
 
 ## Consequences
 
-Advantages:
+Benefits:
 
 - Unified event classification facilitates analysis and response
 - Tiered alerting ensures critical issues are prioritized
-- StructuredLog facilitates log retrieval and analysis
+- StructuredLog facilitates log search and analysis
 
 Costs:
 
@@ -90,11 +89,6 @@ Costs:
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 - [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
 
-## Source Sections
+## Source Section
 
-Note: After v4.3 migration, original §12 incident event handling chapter has been split to observability and event model related chapters.
-
-v4.3 valid references:
-- `§28` EventEnvelope and event fact plane
-- `§59` Explainability / StageRationale / Trace semantics
-- `§63` Observability and alerting
+- `§12` Incident and Event Handling Architecture

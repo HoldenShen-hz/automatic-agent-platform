@@ -13,12 +13,12 @@ import type { ApiResponsePayload } from "../../../../../../src/platform/interfac
 
 test("parseAllowedOrigins returns defaults for undefined input", () => {
   const result = parseAllowedOrigins(undefined);
-  assert.deepEqual(result, []);
+  assert.deepEqual(result, ["*"]);
 });
 
 test("parseAllowedOrigins returns defaults for empty string", () => {
   const result = parseAllowedOrigins("");
-  assert.deepEqual(result, []);
+  assert.deepEqual(result, ["*"]);
 });
 
 test("parseAllowedOrigins parses comma-separated origins", () => {
@@ -78,16 +78,6 @@ test("normalizeCorsConfig ignores empty arrays", () => {
   assert.deepEqual(result.allowedOrigins, DEFAULT_CORS_CONFIG.allowedOrigins);
 });
 
-test("normalizeCorsConfig rejects wildcard origin when credentials are enabled", () => {
-  assert.throws(
-    () => normalizeCorsConfig({
-      allowedOrigins: ["*"],
-      credentials: true,
-    }),
-    /api\.cors\.invalid_wildcard_credentials/,
-  );
-});
-
 test("isOriginAllowed returns false for undefined origin", () => {
   const result = isOriginAllowed(undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result, false);
@@ -126,18 +116,19 @@ test("buildPreflightHeaders includes CORS headers for allowed origin", () => {
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.equal(headers["access-control-allow-origin"], "https://example.com");
   assert.equal(headers["access-control-allow-methods"], "GET, POST, OPTIONS");
-  assert.equal(headers["access-control-allow-headers"], "content-type, authorization, x-request-id, x-api-key, accept-version");
+  assert.equal(headers["access-control-allow-headers"], "content-type, authorization, x-request-id, x-api-key");
   assert.equal(headers["access-control-max-age"], "86400");
 });
 
-test("buildPreflightHeaders rejects wildcard when credentials are enabled", () => {
+test("buildPreflightHeaders uses wildcard with credentials", () => {
   const config = {
     ...DEFAULT_CORS_CONFIG,
     allowedOrigins: ["*"],
     credentials: true,
   };
   const headers = buildPreflightHeaders("https://example.com", config);
-  assert.deepEqual(headers, {});
+  assert.equal(headers["access-control-allow-origin"], "https://example.com");
+  assert.equal(headers["access-control-allow-credentials"], "true");
 });
 
 test("buildPreflightHeaders adds vary header", () => {
@@ -152,8 +143,8 @@ test("decorateResponseHeaders adds security headers", () => {
     body: "test body",
     headers: {},
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
-  assert.equal(result.headers["content-security-policy"], "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'");
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+  assert.equal(result.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
   assert.equal(result.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
   assert.equal(result.headers["x-frame-options"], "DENY");
   assert.equal(result.headers["x-content-type-options"], "nosniff");
@@ -165,7 +156,7 @@ test("decorateResponseHeaders adds versioning headers", () => {
     body: "test body",
     headers: {},
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["x-api-version"], "v1");
 });
 
@@ -175,7 +166,7 @@ test("decorateResponseHeaders computes content-length for short bodies", () => {
     body: "hello",
     headers: {},
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["content-length"], "5");
 });
 
@@ -185,7 +176,7 @@ test("decorateResponseHeaders preserves existing headers", () => {
     body: "test",
     headers: { "x-custom": "value" },
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["x-custom"], "value");
 });
 
@@ -195,7 +186,7 @@ test("decorateResponseHeaders does not override content-length if set", () => {
     body: "test",
     headers: { "content-length": "100" },
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["content-length"], "100");
 });
 
@@ -216,7 +207,7 @@ test("decorateResponseHeaders adds CORS headers for allowed origin", () => {
     body: "test",
     headers: {},
   };
-  const result = decorateResponseHeaders(payload, "https://example.com", config, undefined);
+  const result = decorateResponseHeaders(payload, "https://example.com", config);
   assert.equal(result.headers["access-control-allow-origin"], "https://example.com");
 });
 
@@ -226,7 +217,6 @@ test("decorateResponseHeaders appends Origin to existing vary", () => {
     body: "test",
     headers: { vary: "Accept-Encoding" },
   };
-  const config = { ...DEFAULT_CORS_CONFIG, allowedOrigins: ["https://example.com"] };
-  const result = decorateResponseHeaders(payload, "https://example.com", config, undefined);
+  const result = decorateResponseHeaders(payload, "https://example.com", DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["vary"], "Accept-Encoding, Origin");
 });

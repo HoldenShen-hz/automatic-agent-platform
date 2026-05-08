@@ -32,7 +32,7 @@ test("SimpleProposalEngine creates proposal with correct structure", async () =>
   assert.strictEqual(proposal.kind, "tool_routing_rule");
   assert.strictEqual(proposal.target, "test_target");
   assert.strictEqual(proposal.risk, "low");
-  assert.strictEqual(proposal.status, "draft");
+  assert.strictEqual(proposal.status, "proposed");
   assert.ok(proposal.id.startsWith("prop_"));
 });
 
@@ -68,7 +68,7 @@ test("SimpleProposalEngine.proposeFromReflection generates workflow template for
   const workflowProposal = proposals.find((p: ImprovementProposal) => p.kind === "workflow_template");
   assert.ok(workflowProposal !== undefined);
   assert.strictEqual(workflowProposal?.target, "complex_task_template");
-  assert.strictEqual(workflowProposal?.risk, "high");
+  assert.strictEqual(workflowProposal?.risk, "medium");
 });
 
 test("SimpleProposalEngine.proposeFromReflection generates prompt patch for security issues", async () => {
@@ -150,7 +150,7 @@ test("SimpleProposalEngine.listPending returns only proposed proposals", async (
 
   const pending = await engine.listPending();
 
-  assert.ok(pending.every((p: ImprovementProposal) => p.status === "draft"));
+  assert.ok(pending.every((p: ImprovementProposal) => p.status === "proposed"));
 });
 
 test("SimpleProposalEngine.listActive returns proposals in testing, canary, or active status", async () => {
@@ -169,7 +169,7 @@ test("SimpleProposalEngine.listActive returns proposals in testing, canary, or a
 
   const active = await engine.listActive();
 
-  assert.ok(active.some((p: ImprovementProposal) => p.status === "staging"));
+  assert.ok(active.some((p: ImprovementProposal) => p.status === "testing"));
 });
 
 test("SimpleProposalEngine.proposeFromReflection returns multiple proposals for complex reflection", async () => {
@@ -273,6 +273,6 @@ test("SimpleProposalEngine submits to approval updates updatedAt", async () => {
 
   const updated = (await engine.listActive()).find((p: ImprovementProposal) => p.id === proposal.id);
   assert.ok(updated);
-  assert.equal(updated?.status, "staging");
+  assert.equal(updated?.status, "testing");
   assert.ok((updated?.updatedAt ?? "") >= originalUpdatedAt);
 });

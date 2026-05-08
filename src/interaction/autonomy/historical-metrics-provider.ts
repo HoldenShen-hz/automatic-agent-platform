@@ -47,11 +47,10 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
           e.created_at
          FROM executions e
          WHERE e.agent_id = ?
-           AND e.capability_id = ?
            AND e.created_at >= ?
          ORDER BY e.created_at DESC`,
       )
-      .all(input.agentId, input.capabilityId, windowStartIso) as Array<{
+      .all(input.agentId, windowStartIso) as Array<{
         status: ExecutionStatus;
         requires_approval: number;
         last_error_code: string | null;
@@ -62,10 +61,10 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
     const successfulExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "succeeded").length;
     const failedExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
     const humanOverrides = rows.filter((r: { requires_approval: number }) => r.requires_approval === 1).length;
-    // §42: incidents are failed executions, not any execution that happened to log an error code.
-    const incidents = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
-    const lastIncidentRow = rows.find((r: { status: ExecutionStatus }) => r.status === "failed");
-    const lastIncidentAt = lastIncidentRow?.created_at ?? null;
+    const incidents = rows.filter((r: { last_error_code: string | null }) => r.last_error_code !== null).length;
+
+    const lastErrorRow = rows.find((r: { last_error_code: string | null }) => r.last_error_code !== null);
+    const lastIncidentAt = lastErrorRow?.created_at ?? null;
 
     return {
       totalExecutions,
@@ -82,10 +81,6 @@ export function toCapabilityTrustScore(
   metrics: ExecutionMetrics,
   input: HistoricalMetricsInput,
 ): CapabilityTrustScore {
-  // §42: lastExecutionAgeDays - calculate days since last execution
-  const lastExecutionAgeDays = metrics.lastIncidentAt
-    ? Math.floor((Date.now() - new Date(metrics.lastIncidentAt).getTime()) / (1000 * 60 * 60 * 24))
-    : null;
   return {
     capabilityId: input.capabilityId,
     currentAutonomy: input.currentAutonomy,
@@ -98,9 +93,5 @@ export function toCapabilityTrustScore(
     lastIncidentAgeDays: metrics.lastIncidentAt
       ? Math.floor((Date.now() - new Date(metrics.lastIncidentAt).getTime()) / (1000 * 60 * 60 * 24))
       : null,
-    // §42.2: costOverruns - no cost data in metrics provider, default to 0
-    costOverruns: 0,
-    // §42.3: lastExecutionAgeDays - track inactivity for trust decay
-    lastExecutionAgeDays,
   };
 }

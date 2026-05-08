@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 
 import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
@@ -6,13 +7,17 @@ import { EvolutionMvpService } from "../../../../src/ops-maturity/drift-detectio
 import { ExperienceCacheService } from "../../../../src/platform/state-evidence/memory/experience-cache-service.js";
 import { MemoryService } from "../../../../src/platform/state-evidence/memory/memory-service.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { initHaCoordinatorForTests } from "../../../helpers/ha-coordinator.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
 test("EvolutionMvpService applies approved budget adjustment proposals and resolves effective policy", () => {
-  const { db, cleanup } = initHaCoordinatorForTests();
+  const workspace = createTempWorkspace("aa-evolution-budget-");
+  const dbPath = join(workspace, "evolution-budget.db");
 
   try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const approvalService = new ApprovalService(db, store);
     const memoryService = new MemoryService(store);
@@ -76,15 +81,20 @@ test("EvolutionMvpService applies approved budget adjustment proposals and resol
 
     assert.ok(resolved.sourceProposalId);
     assert.ok(resolved.policy.maxTaskCostUsd > 5);
+
+    db.close();
   } finally {
-    cleanup();
+    cleanupPath(workspace);
   }
 });
 
 test("EvolutionMvpService promotes experience into memory and supports rollback", () => {
-  const { db, cleanup } = initHaCoordinatorForTests();
+  const workspace = createTempWorkspace("aa-evolution-experience-");
+  const dbPath = join(workspace, "evolution-experience.db");
 
   try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const approvalService = new ApprovalService(db, store);
     const memoryService = new MemoryService(store);
@@ -165,7 +175,9 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       evaluatedAt: "2026-04-08T15:04:00.000Z",
     });
     assert.equal(recalledAfterRollback.length, 0);
+
+    db.close();
   } finally {
-    cleanup();
+    cleanupPath(workspace);
   }
 });

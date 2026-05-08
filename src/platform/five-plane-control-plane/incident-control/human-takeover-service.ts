@@ -22,7 +22,6 @@ import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
 import { createRecoverySession, isSessionTerminalStatus } from "../../contracts/types/status.js";
-import { ValidationError } from "../../contracts/errors.js";
 import {
   executionTerminalForTask,
   normalizeInputJson,
@@ -36,8 +35,6 @@ import {
   throwTakeoverWorkflowError,
   workflowTerminalForTask,
 } from "./human-takeover-support.js";
-import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
-import { createOperationalDirective } from "../../contracts/control-directive/index.js";
 
 /**
  * Result of a takeover action operation.
@@ -63,7 +60,6 @@ export class HumanTakeoverService {
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
-    private readonly directiveSink?: ControlPlaneDirectiveSink | null,
   ) {}
 
   /**
@@ -123,9 +119,6 @@ export class HumanTakeoverService {
         createdAt: now,
       });
     });
-
-    // R14-4: Emit pause OperationalDirective when human takeover session is opened
-    this.emitPauseDirective(input.taskId, snapshot.execution?.id ?? null, input.operatorId, input.reasonCode);
 
     return {
       taskId: input.taskId,
@@ -317,7 +310,7 @@ export class HumanTakeoverService {
         currentStepIndex: target.stepIndex,
         outputsJson: workflow.outputsJson,
         updatedAt: now,
-        resumableFromStep: target.step.stepId ?? null,
+        resumableFromStep: target.step.stepId,
         retryCount: workflow.retryCount,
         lastErrorCode: workflow.lastErrorCode,
       });
@@ -363,11 +356,7 @@ export class HumanTakeoverService {
       const normalizedOutputJson = normalizeJson(input.outputJson, "takeover.output_json_invalid");
       const parsedOutput = JSON.parse(normalizedOutputJson) as unknown;
       const status = input.status ?? "succeeded";
-
-      // R14-6/R14-7: Validate step output before storing
-      this.validateStepOutput(parsedOutput, target.step.stepId!, status);
-
-      const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId!, parsedOutput);
+      const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId, parsedOutput);
 
       // Store the output keyed by the step's outputKey
       outputs[target.step.outputKey] = parsedOutput;
@@ -375,9 +364,8 @@ export class HumanTakeoverService {
       // Insert step output record with manual override flag
       this.store.workflow.insertStepOutput({
         id: newId("step"),
-        nodeRunId: newId("noderun"),
         taskId: snapshot.task.id,
-        stepId: target.step.stepId!,
+        stepId: target.step.stepId,
         roleId: target.step.roleId,
         status,
         dataJson: normalizedOutputJson,
@@ -471,9 +459,8 @@ export class HumanTakeoverService {
 
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
-        nodeRunId: newId("noderun"),
         taskId: snapshot.task.id,
-        stepId: step.stepId!,
+        stepId: step.stepId,
         roleId: step.roleId,
         status: "partial_success",
         dataJson: JSON.stringify(manualOutput),
@@ -507,7 +494,7 @@ export class HumanTakeoverService {
       // Handle terminal vs. non-terminal skip differently
       if (reachedTerminal) {
         // Final step skipped - complete the task with done status
-        this.store.task.updateTaskOutput(snapshot.task.id, "done", JSON.stringify(manualOutput), now);
+        this.store.task.updateTaskOutput(snapshot.task.id, JSON.stringify(manualOutput), now);
         this.store.task.setTaskState({
           taskId: snapshot.task.id,
           status: "done",
@@ -534,14 +521,13 @@ export class HumanTakeoverService {
         this.store.event.createTier1StatusEvent({
           taskId: snapshot.task.id,
           executionId: snapshot.execution?.id ?? null,
-          eventType: "platform.harness_run.status_changed",
+          eventType: "task:status_changed",
           traceId: newId("trace"),
           payload: {
-            aggregateType: "harness_run",
             fromStatus: snapshot.task.status,
             toStatus: "done",
             reasonCode: input.reasonCode,
-            emittedBy: "human_takeover_service",
+            occurredAt: now,
           },
         });
         this.store.approval.closeTakeoverSession(session.id, now);
@@ -592,7 +578,7 @@ export class HumanTakeoverService {
 
       // Optionally update task output
       if (input.outputJson) {
-        this.store.task.updateTaskOutput(snapshot.task.id, input.terminalStatus, input.outputJson, now);
+        this.store.task.updateTaskOutput(snapshot.task.id, input.outputJson, now);
       }
 
       // Set task to the terminal state
@@ -634,18 +620,18 @@ export class HumanTakeoverService {
       }
       this.store.approval.closeTakeoverSession(session.id, now);
 
-      // Emit harness run status changed event with manual override flag
+      // Emit task status changed event with manual override flag
       this.store.event.createTier1StatusEvent({
         taskId: snapshot.task.id,
         executionId: snapshot.execution?.id ?? null,
-        eventType: "platform.harness_run.status_changed",
+        eventType: "task:status_changed",
         traceId: newId("trace"),
         payload: {
-          aggregateType: "harness_run",
           fromStatus: snapshot.task.status,
           toStatus: input.terminalStatus,
           reasonCode: input.reasonCode,
-          emittedBy: "human_takeover_service",
+          occurredAt: now,
+          manualOverride: true,
         },
       });
 
@@ -656,17 +642,6 @@ export class HumanTakeoverService {
         executionId: snapshot.execution?.id ?? null,
       };
     }, input.tenantId);
-
-    // R14-5/R14-15: Emit resume OperationalDirective only if task is not reaching a terminal state
-    // Resume should only be emitted if the task can continue execution
-    const terminalStatuses: readonly TaskTerminalStatus[] = ["done", "failed", "cancelled"];
-    const shouldResume = !terminalStatuses.includes(input.terminalStatus);
-
-    if (shouldResume) {
-      const sessionRecord = this.store.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
-      const session: TakeoverSessionRecord = sessionRecord as TakeoverSessionRecord;
-      this.emitResumeDirective(session.taskId, session.executionId, session.operatorId, input.reasonCode);
-    }
   }
 
   /**
@@ -761,127 +736,6 @@ export class HumanTakeoverService {
       });
     }
     return session;
-  }
-
-  /**
-   * R14-4: Emits a pause OperationalDirective when human takeover session is opened.
-   * This notifies downstream systems that execution should be paused.
-   */
-  private emitPauseDirective(taskId: string, executionId: string | null, operatorId: string, reasonCode: string): void {
-    if (this.directiveSink == null) {
-      return;
-    }
-
-    const directive = createOperationalDirective({
-      type: "pause",
-      scope: {
-        ...(executionId != null ? { harnessRunId: executionId } : {}),
-      },
-      issuedBy: {
-        principalId: operatorId,
-        tenantId: "tenant:local",
-        roles: ["human_operator"],
-      },
-      reason: `human_takeover:${reasonCode}`,
-      params: {
-        taskId,
-        executionId,
-        operatorId,
-        takeoverAction: "pause",
-      },
-    });
-    this.directiveSink.emitOperationalDirective(directive);
-  }
-
-  /**
-   * R14-5: Emits a resume OperationalDirective when human takeover is resolved.
-   * This notifies downstream systems that execution can resume.
-   */
-  private emitResumeDirective(taskId: string, executionId: string | null, operatorId: string, reasonCode: string): void {
-    if (this.directiveSink == null) {
-      return;
-    }
-
-    const directive = createOperationalDirective({
-      type: "resume",
-      scope: {
-        ...(executionId != null ? { harnessRunId: executionId } : {}),
-      },
-      issuedBy: {
-        principalId: operatorId,
-        tenantId: "tenant:local",
-        roles: ["human_operator"],
-      },
-      reason: `human_takeover_resolved:${reasonCode}`,
-      params: {
-        taskId,
-        executionId,
-        operatorId,
-        takeoverAction: "resume",
-      },
-    });
-    this.directiveSink.emitOperationalDirective(directive);
-  }
-
-  /**
-   * R14-6/R14-7: Validates step output before storing.
-   * Ensures the output is a non-null object and conforms to basic validation rules.
-   * Throws ValidationError if the output is invalid.
-   */
-  private validateStepOutput(output: unknown, stepId: string, status: StepOutputRecord["status"]): void {
-    // Null/undefined is only allowed for skipped steps
-    if (output == null) {
-      if (status !== "skipped" && status !== "partial_success") {
-        throw new ValidationError(
-          "takeover.step_output_invalid",
-          "Step output cannot be null or undefined unless explicitly skipped",
-          { retryable: false, details: { stepId, status } },
-        );
-      }
-      return;
-    }
-
-    // Output must be an object (not an array) for most step types
-    if (Array.isArray(output)) {
-      throw new ValidationError(
-        "takeover.step_output_invalid",
-        "Step output cannot be an array",
-        { retryable: false, details: { stepId, outputType: "array" } },
-      );
-    }
-
-    if (typeof output !== "object") {
-      throw new ValidationError(
-        "takeover.step_output_invalid",
-        "Step output must be an object",
-        { retryable: false, details: { stepId, outputType: typeof output } },
-      );
-    }
-
-    // For failed steps, allow error-like objects
-    if (status === "failed") {
-      const errorObj = output as Record<string, unknown>;
-      if (typeof errorObj.error !== "string" && typeof errorObj.message !== "string") {
-        throw new ValidationError(
-          "takeover.step_output_invalid",
-          "Failed step output must contain an 'error' or 'message' field",
-          { retryable: false, details: { stepId } },
-        );
-      }
-    }
-
-    // For succeeded steps, ensure basic structure is present
-    if (status === "succeeded" || status === "partial_success") {
-      const outputObj = output as Record<string, unknown>;
-      // Allow any object structure for succeeded steps, but warn if it's empty
-      if (Object.keys(outputObj).length === 0 && status === "succeeded") {
-        throw new ValidationError(
-          "takeover.step_output_invalid",
-          "Succeeded step output cannot be an empty object",
-          { retryable: false, details: { stepId } },
-        );
-      }
-    }
   }
 
 }

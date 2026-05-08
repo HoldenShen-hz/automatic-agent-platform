@@ -176,8 +176,8 @@ export interface RecoveryPayload {
 export interface DomainLifecyclePayload {
   domainId: string;
   status: string;
-  capabilityCount?: number;
-  pluginCount?: number;
+  capabilityCount: number;
+  pluginCount: number;
   occurredAt: string;
 }
 
@@ -188,21 +188,6 @@ export interface PluginLifecycleEventPayload {
   lifecycleState: string;
   bindingId?: string | null;
   occurredAt: string;
-  reason?: string | null;
-  reasonCode?: string | null;
-  errorMessage?: string | null;
-}
-
-// R23-57 FIX: Add PluginIsolationEventPayload with required phase field per contract
-export interface PluginIsolationEventPayload {
-  pluginId: string;
-  domainId: string | null;
-  spiType: string;
-  phase: string; // Required field per §5.4 contract - indicates isolation stage
-  lifecycleState: string;
-  bindingId?: string | null;
-  occurredAt: string;
-  reason?: string | null;
   reasonCode?: string | null;
   errorMessage?: string | null;
 }

@@ -9,10 +9,10 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Release state machine (ADR-075)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
 
 ---
@@ -20,13 +20,13 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-17
 
-## Background
+## Context
 
-The §F design document defines six Memory planes (L1-L6) and inter-layer promotion rules. Current `memory/` implements L1-L3 (RuntimeCache / Session / Agent), L4-L6 (Project / User / Evolution) are missing, and there is no automatic promotion engine.
+The §F design document defines six-layer Memory planes (L1-L6) and inter-layer promotion rules. Current `memory/` implements L1-L3 (RuntimeCache / Session / Agent), with L4-L6 (Project / User / Evolution) missing and no automatic promotion engine.
 
 ## Decision
 
-### Six Memory Planes
+### Six-Layer Memory Planes
 
 | Layer | Name | Granularity | TTL | Storage Location |
 |-------|------|------------|-----|------------------|
@@ -41,9 +41,9 @@ The §F design document defines six Memory planes (L1-L6) and inter-layer promot
 
 | Promotion Path | Trigger Condition | Check Frequency |
 |----------------|-------------------|-----------------|
-| L2 → L3 | accessCount ≥ 3 **AND** qualityScore ≥ 0.6 | Hourly batch |
-| L3 → L4 | accessCount ≥ 10 **AND** qualityScore ≥ 0.8 | Hourly batch |
-| L4 → L5 | accessCount ≥ 20 **AND** qualityScore ≥ 0.85 | Daily batch |
+| L2 → L3 | accessCount ≥ 3 **and** qualityScore ≥ 0.6 | Hourly batch |
+| L3 → L4 | accessCount ≥ 10 **and** qualityScore ≥ 0.8 | Hourly batch |
+| L4 → L5 | accessCount ≥ 20 **and** qualityScore ≥ 0.85 | Daily batch |
 | L5 → L6 | manual promotion only | — |
 
 ### MemoryPromotionEngine Interface
@@ -52,7 +52,7 @@ The §F design document defines six Memory planes (L1-L6) and inter-layer promot
 interface MemoryPromotionEngine {
   // Evaluate whether a single record meets promotion conditions
   evaluatePromotion(entry: MemoryRecord): PromotionDecision;
-  // Batch scan and execute promotion
+  // Batch scan and execute promotions
   runPromotionCycle(): Promise<PromotionResult>;
   // Demotion rules (reverse)
   evaluateDemotion(entry: MemoryRecord): DemotionDecision;
@@ -62,13 +62,13 @@ interface MemoryPromotionEngine {
 ### Current Implementation Status
 
 - `src/core/memory/memory-service.ts`: L1-L3 implemented.
-- `src/core/memory/memory-layer-model.ts`: Pending creation (layer definition).
-- `src/core/memory/memory-promotion-engine.ts`: Pending creation (promotion engine).
-- `src/core/memory/project-memory-store.ts`: Pending creation (L4).
-- `src/core/memory/user-memory-store.ts`: Pending creation (L5).
+- `src/core/memory/memory-layer-model.ts`: To be created (layer definition).
+- `src/core/memory/memory-promotion-engine.ts`: To be created (promotion engine).
+- `src/core/memory/project-memory-store.ts`: To be created (L4).
+- `src/core/memory/user-memory-store.ts`: To be created (L5).
 
 ## Consequences
 
-- Six-layer Memory model gives the system a complete lifecycle from "execution-time cache" to "long-term knowledge precipitation".
-- L4-L6 is infrastructure for implementing "project memory" and "user preference learning".
-- Promotion rules ensure high-frequency, high-quality memories automatically enter more persistent layers, low-value memories naturally decay.
+- The six-layer Memory model gives the system a complete lifecycle from "execution-time cache" to "long-term knowledge precipitation".
+- L4-L6 is the infrastructure for implementing "project memory" and "user preference learning".
+- Promotion rules ensure high-frequency, high-quality memories automatically enter more persistent layers, while low-value memories naturally decay.

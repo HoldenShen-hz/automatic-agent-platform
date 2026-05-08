@@ -74,7 +74,7 @@ test("UserExperienceOrchestrationService bootstrap creates guided session with f
   assert.deepEqual(result.guidedSession.completedSteps, ["business_type", "capability_setup", "risk_setup", "activation"]);
 });
 
-test("UserExperienceOrchestrationService bootstrap returns wizard with mode-appropriate steps", async () => {
+test("UserExperienceOrchestrationService bootstrap returns wizard with steps", async () => {
   const service = new UserExperienceOrchestrationService();
   const result = await service.bootstrap({
     session: { userId: "user_1", tenantId: "tenant_1" },
@@ -90,11 +90,11 @@ test("UserExperienceOrchestrationService bootstrap returns wizard with mode-appr
     components: [],
   });
 
-  assert.equal(result.wizard.steps.length, 2);
+  assert.equal(result.wizard.steps.length, 4);
   assert.ok(result.wizard.recommendedDomains !== undefined);
 });
 
-test("UserExperienceOrchestrationService bootstrap returns draft plan graph", async () => {
+test("UserExperienceOrchestrationService bootstrap returns draft with steps", async () => {
   const service = new UserExperienceOrchestrationService();
   const result = await service.bootstrap({
     session: { userId: "user_1", tenantId: "tenant_1" },
@@ -110,8 +110,7 @@ test("UserExperienceOrchestrationService bootstrap returns draft plan graph", as
     components: [],
   });
 
-  assert.equal(result.draft.planGraph.nodes.length, 3);
-  assert.equal(result.draft.planGraph.edges.length, 2);
+  assert.equal(result.draft.steps.length, 3);
   assert.ok(result.draft.draftId !== undefined);
   assert.equal(result.draft.ownerUserId, "user_1");
 });

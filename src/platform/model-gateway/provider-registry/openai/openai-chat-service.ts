@@ -421,6 +421,7 @@ export class OpenAIChatService {
       let finalFinishReason: string = "stop";
       const accumulatedToolCalls: OpenAIFunctionCallResult[] = [];
       let accumulatedUsage: OpenAIUsage | null = null;
+      let firstChunk = true;
 
       try {
         while (true) {
@@ -462,18 +463,16 @@ export class OpenAIChatService {
 
                 if (choice.delta !== undefined) {
                   // Streaming chunk
-                  // R27-03 FIX: In SSE streaming, finish_reason is only set on the FINAL chunk,
-                  // not on intermediate chunks. We must track finalFinishReason across ALL chunks
-                  // and only set it when choice.finish_reason is non-null (final chunk indicator).
-                  if (choice.finish_reason != null) {
-                    finalFinishReason = choice.finish_reason;
+                  if (firstChunk) {
+                    firstChunk = false;
+                    finalFinishReason = choice.finish_reason ?? "stop";
                   }
 
                   if (choice.delta.content) {
                     accumulatedContent += choice.delta.content;
                   }
                   if (choice.delta.refusal) {
-                    accumulatedRefusal = (accumulatedRefusal ?? "") + choice.delta.refusal;
+                    accumulatedRefusal = choice.delta.refusal;
                   }
                   if (choice.delta.tool_calls) {
                     for (const tc of choice.delta.tool_calls) {

@@ -132,12 +132,12 @@ Phase 1a / 1b 建议至少维护：
 |--------------|---------|------|
 | Observe | 最新观察信号 | Assess 依赖 |
 | Assess | UnifiedAssessment 结果 | Plan 依赖 |
-| Plan | PlanGraphBundle + graphVersion | Execute 依赖（R3-SINGLE 约束） |
+| Plan | Plan DTO + version | Execute 依赖（R3-SINGLE 约束） |
 | Execute | DualChannelStepOutput | Feedback 依赖 |
 | Feedback | FeedbackSignal[] | Learn 证据链（R4-EVIDENCE） |
 | Learn | LearningObject + evidence | Improve 依赖 |
-| Improve | ImprovementCandidate | Release 依赖 |
-| Release | ReleaseRecord | 审计追溯 |
+| Improve | ImprovementCandidate | Rollout 依赖 |
+| Rollout | RolloutRecord | 审计追溯 |
 
 ## 9. `CompactionRecord`
 
@@ -146,8 +146,6 @@ Phase 1a / 1b 建议至少维护：
 | `compaction_id` | `string` | 压缩记录 ID |
 | `session_id` | `string` | 所属会话 |
 | `task_id` | `string` | 所属任务 |
-| `harness_run_id?` | `string` | 关联 HarnessRun（canonical） |
-| `node_run_id?` | `string` | 关联 NodeRun（canonical） |
 | `stage` | `trim \| summarize` | 所处阶段 |
 | `source_message_ids` | `string[]` | 被覆盖消息 |
 | `summary_ref` | `string?` | 摘要引用 |
@@ -227,8 +225,4 @@ Phase 1b 做：
 
 ## 14. 收口结论
 
-上下文溢出的正确应对方式不是”更早更频繁地总结”，而是先用最低成本的裁剪回收空间，再把真正需要保留的长期语义交给 compaction。
-
-## v4.3 Contract Remediation
-
-- T-42: `CompactionRecord` 早期以 `session_id` / `task_id` 为关联键。v4.3 canonical 关联链为 `harness_run_id` / `node_run_id`；现有记录应逐步迁移到 canonical 字段，新增记录必须使用 canonical 字段。新实现不得再以 `session_id` / `task_id` 为主关联键。
+上下文溢出的正确应对方式不是“更早更频繁地总结”，而是先用最低成本的裁剪回收空间，再把真正需要保留的长期语义交给 compaction。

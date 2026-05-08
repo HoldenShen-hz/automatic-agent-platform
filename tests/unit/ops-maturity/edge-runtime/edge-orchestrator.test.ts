@@ -9,21 +9,14 @@ import {
 test("buildEdgeExecutionPlan creates plan with correct taskIds", () => {
   const plan = buildEdgeExecutionPlan(["task_1", "task_2", "task_3"]);
 
-  // R6-22 FIX: Edge execution plan now uses planGraphBundle.graph.nodes with edge_node_ prefix
-  assert.deepEqual(
-    plan.planGraphBundle.graph.nodes.map((n) => n.nodeId),
-    ["edge_node_task_1", "edge_node_task_2", "edge_node_task_3"],
-  );
+  assert.deepEqual(plan.orderedTaskIds, ["task_1", "task_2", "task_3"]);
   assert.equal(plan.syncRequired, true);
   assert.equal(plan.priority, "normal");
 });
 
 test("buildEdgeExecutionPlan preserves task order", () => {
   const plan = buildEdgeExecutionPlan(["task_c", "task_a", "task_b"]);
-  assert.deepEqual(
-    plan.planGraphBundle.graph.nodes.map((n) => n.nodeId),
-    ["edge_node_task_c", "edge_node_task_a", "edge_node_task_b"],
-  );
+  assert.deepEqual(plan.orderedTaskIds, ["task_c", "task_a", "task_b"]);
 });
 
 test("buildEdgeExecutionPlan defaults priority to normal", () => {
@@ -46,13 +39,16 @@ test("buildEdgeExecutionPlan always requires sync", () => {
 
 test("buildEdgeExecutionPlan returns empty array for empty input", () => {
   const plan = buildEdgeExecutionPlan([]);
-  // R6-22 FIX: Empty input produces graph with no nodes
-  assert.deepEqual(plan.planGraphBundle.graph.nodes, []);
+  assert.deepEqual(plan.orderedTaskIds, []);
 });
 
 test("EdgeExecutionPlan type shape is correct", () => {
-  // R6-22 FIX: EdgeExecutionPlan now uses planGraphBundle structure
-  const plan = buildEdgeExecutionPlan(["task_1"], "high");
-  assert.equal(plan.planGraphBundle.graph.nodes.length, 1);
+  const plan: EdgeExecutionPlan = {
+    orderedTaskIds: ["task_1", "task_2"],
+    syncRequired: true,
+    priority: "high",
+  };
+
+  assert.deepEqual(plan.orderedTaskIds, ["task_1", "task_2"]);
   assert.equal(plan.priority, "high");
 });

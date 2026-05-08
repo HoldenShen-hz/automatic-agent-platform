@@ -70,7 +70,7 @@ function buildDependencyServiceIds(
 }
 
 export class AiOperationsRuntimeOrchestrator {
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
 
   public prepare(): AiOperationsStartupPlan {
     registerModelGatewayBootstrap(this.registry);
@@ -123,7 +123,7 @@ export class AiOperationsRuntimeOrchestrator {
 }
 
 export function registerAiOperationsRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): AiOperationsRuntimeOrchestrator {
   registerModelGatewayBootstrap(registry);
   registerPromptEngineBootstrap(registry);

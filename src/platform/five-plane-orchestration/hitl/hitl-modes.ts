@@ -6,25 +6,13 @@ export const HITL_MODES = [
   "collaborative_edit",
   "informed_confirmation",
   "circuit_breaker_human",
-  "modify_and_approve",
-  "override_decision",
-  "force_terminate",
 ] as const;
 
 export type HitlMode = typeof HITL_MODES[number];
 
-/**
- * HITL 5 capabilities (§45.18) mapped to HITL modes:
- * - modify_and_approve: human modifies plan before auto-execution proceeds
- * - override_decision: human overrides a prior automatic or human decision
- * - force_terminate: human immediately terminates the execution
- */
-export type HitlCapability = "modify_and_approve" | "override_decision" | "force_terminate";
-
 export interface HitlModeConstraint {
   readonly mode: HitlMode;
   readonly summary: string;
-  readonly capability?: HitlCapability;
 }
 
 export function validateHitlModeRequest(input: {
@@ -75,38 +63,5 @@ export function validateHitlModeRequest(input: {
         throw new Error("hitl_mode.circuit_breaker_auto_approve_forbidden");
       }
       return { mode: input.mode, summary: "Circuit-breaker mode requires a blocking human decision." };
-    case "modify_and_approve":
-      if (input.options.length < 1) {
-        throw new Error("hitl_mode.modify_and_approve_requires_option");
-      }
-      return {
-        mode: input.mode,
-        summary: "Human modifies plan before auto-execution proceeds.",
-        capability: "modify_and_approve",
-      };
-    case "override_decision":
-      if (input.options.length < 1) {
-        throw new Error("hitl_mode.override_decision_requires_option");
-      }
-      if (typeof input.context?.priorDecisionRef !== "string") {
-        throw new Error("hitl_mode.override_decision_requires_prior_decision_ref");
-      }
-      return {
-        mode: input.mode,
-        summary: "Human overrides a prior automatic or human decision.",
-        capability: "override_decision",
-      };
-    case "force_terminate":
-      if (input.options.length < 1) {
-        throw new Error("hitl_mode.force_terminate_requires_option");
-      }
-      if (input.riskLevel !== "critical" && input.riskLevel !== "high") {
-        throw new Error("hitl_mode.force_terminate_requires_high_risk");
-      }
-      return {
-        mode: input.mode,
-        summary: "Human immediately terminates the execution.",
-        capability: "force_terminate",
-      };
   }
 }

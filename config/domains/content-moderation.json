@@ -3,11 +3,6 @@
   "phase": "9d",
   "divisionId": "security",
   "latencyTier": "realtime",
-  "riskSpec": {
-    "advisoryOnly": false,
-    "humanAccountable": false,
-    "deterministicHotPathOnly": false
-  },
   "workflowProfile": {
     "workflowId": "content-moderation.primary",
     "rollout": "baseline"

@@ -8,7 +8,7 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "manual",
-    tool_policy: { allowedTools: [] },
+    toolPolicy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: {

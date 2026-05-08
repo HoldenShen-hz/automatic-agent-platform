@@ -32,9 +32,8 @@
 
 规则：
 
-- `lifecycle_state` 变更**必须**通过 `RuntimeStateMachine.transition({ target: 'lifecycle_state', newState: X })` 执行，**禁止**直接覆写状态字段。
-- `active -> deprecated -> retired` 迁移**必须**绑定 release / evidence / retirement 审计记录。
-- 任何绕过状态机的直接赋值操作视为违反 INV-LIFECYCLE-001，必须在代码审查时拦截。
+- `lifecycle_state` 变更必须通过显式 transition service 执行，禁止直接覆写状态字段。
+- `active -> deprecated -> retired` 迁移必须绑定 rollout / evidence / retirement 审计记录。
 
 ## 4. `AgentVersion` 最小字段
 
@@ -49,9 +48,9 @@
 ## 5. 测试要求
 
 - unit：agent lifecycle、version snapshot integrity
-- integration：agent release / rollback / retirement
+- integration：agent rollout / rollback / retirement
 - contract：已退役 agent 不得被新任务绑定
 
 ## v4.3 Contract Remediation
 
-- T-71: 本文原先只给出了状态枚举，没有定义受控迁移路径，根因是 agent lifecycle contract 先冻结了数据形状，后补治理链，导致实现侧容易直接写字段。修复：正文现明确 lifecycle 只能通过受控 transition service 推进，并要求绑定 release 与 retirement 审计证据。
+- T-71: 本文原先只给出了状态枚举，没有定义受控迁移路径，根因是 agent lifecycle contract 先冻结了数据形状，后补治理链，导致实现侧容易直接写字段。修复：正文现明确 lifecycle 只能通过受控 transition service 推进，并要求绑定 rollout 与 retirement 审计证据。

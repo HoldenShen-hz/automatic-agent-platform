@@ -91,7 +91,7 @@ authoritative schema 至少包含以下核心表：
 - `learning_objects`
 - `improvement_candidates`
 - `strategy_versions`
-- `release_records`
+- `rollout_records`
 - `knowledge_entries`
 - `knowledge_semantic_vectors`
 
@@ -108,7 +108,7 @@ authoritative schema 至少包含以下核心表：
 | `learning_objects` | `id`、`source_refs_json`、`promotion_status`、`quality_score?`、`created_at` |
 | `improvement_candidates` | `id`、`change_scope`、`strategy_version?`、`status`、`created_at` |
 | `strategy_versions` | `id`、`version`、`diff_ref?`、`status`、`created_at` |
-| `release_records` | `id`、`strategy_version`、`stage`、`status`、`metrics_json?`、`created_at` |
+| `rollout_records` | `id`、`strategy_version`、`stage`、`status`、`metrics_json?`、`created_at` |
 | `knowledge_entries` | `id`、`namespace`、`trust_tier`、`freshness_state`、`source_ref?`、`created_at` |
 | `knowledge_semantic_vectors` | `knowledge_ref`、`chunk_id`、`document_id`、`namespace`、`embedding_id?`、`embedding_model`、`embedding`、`updated_at` |
 
@@ -143,20 +143,17 @@ authoritative schema 至少包含以下核心表：
 
 ## 5. `workflow_state` 表最小列
 
-> **v4.3 迁移说明**：`workflow_state` 已降为 projection-only 表，不再作为 runtime truth。真实执行状态以 `harness_runs.status`、`node_runs.status` 和 `PlanGraphBundle` 为准。
-
 | 列名 | 类型 | 说明 |
 | --- | --- | --- |
 | `task_id` | `TEXT PRIMARY KEY` | 关联任务 |
 | `division_id` | `TEXT NOT NULL` | 归属事业部 |
 | `workflow_id` | `TEXT NOT NULL` | workflow ID |
-| `plan_graph_bundle_id` | `TEXT NULL` | 关联 PlanGraph bundle（投影锚点） |
-| `current_node_id` | `TEXT NULL` | 当前节点 ID（替代 linear current_step_index） |
+| `current_step_index` | `INTEGER NOT NULL` | 当前步骤索引 |
 | `status` | `TEXT NOT NULL` | workflow 状态 |
 | `outputs_json` | `TEXT NOT NULL` | 输出快照 |
 | `last_error_code` | `TEXT NULL` | 最近错误码 |
 | `retry_count` | `INTEGER NOT NULL DEFAULT 0` | 重试次数 |
-| `loop_iteration` | `INTEGER NOT NULL DEFAULT 0` | OAPEFLIR 循环轮次 |
+| `resumable_from_step` | `TEXT NULL` | 可恢复步骤 |
 | `started_at` | `TEXT NOT NULL` | 开始时间 |
 | `updated_at` | `TEXT NOT NULL` | 更新时间 |
 
@@ -169,7 +166,7 @@ authoritative schema 至少包含以下核心表：
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NOT NULL`
-- `node_run_id TEXT NOT NULL`
+- `step_id TEXT NOT NULL`
 - `role_id TEXT NOT NULL`
 - `status TEXT NOT NULL`
 - `data_json TEXT NOT NULL`
@@ -183,7 +180,7 @@ authoritative schema 至少包含以下核心表：
 索引要求：
 
 - `idx_step_outputs_task_id`
-- `idx_step_outputs_node_run UNIQUE(task_id, node_run_id)`
+- `idx_step_outputs_task_step UNIQUE(task_id, step_id)`
 
 ## 7. `harness_runs` / `plan_graph_bundles` / `node_runs` / `node_attempts` / `node_attempt_receipts`
 
@@ -250,7 +247,7 @@ authoritative schema 至少包含以下核心表：
 
 `node_attempt_receipts` 最小列：
 
-- `receipt_id TEXT PRIMARY KEY`
+- `node_attempt_receipt_id TEXT PRIMARY KEY`
 - `node_attempt_id TEXT NOT NULL`
 - `node_run_id TEXT NOT NULL`
 - `receipt_kind TEXT NOT NULL`
@@ -353,8 +350,6 @@ authoritative schema 至少包含以下核心表：
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NULL`
 - `execution_id TEXT NULL`
-- `harness_run_id TEXT NULL`
-- `node_run_id TEXT NULL`
 - `event_type TEXT NOT NULL`
 - `event_tier TEXT NOT NULL`
 - `payload_json TEXT NOT NULL`
@@ -482,7 +477,7 @@ Phase 1a 明确采用以下策略：
 
 - `Current`：`harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` 为 runtime truth；`tasks / workflow / approvals / events / artifacts / memories` 等为混合 projection/evidence 表。
 - `Transition`：扩展表族可先以 append-only、shadow write、reporting-only 或 evidence-only 方式接入。
-- `Target`：`feedback / learning / improvement / release / knowledge / high-order memory` 成为稳定治理对象并与 typed ref / lineage 全面对齐。
+- `Target`：`feedback / learning / improvement / rollout / knowledge / high-order memory` 成为稳定治理对象并与 typed ref / lineage 全面对齐。
 
 因此：
 
@@ -523,13 +518,12 @@ CREATE TABLE IF NOT EXISTS workflow_state (
   task_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
   division_id TEXT NOT NULL,
   workflow_id TEXT NOT NULL,
-  plan_graph_bundle_id TEXT NULL,
-  current_node_id TEXT NULL,
+  current_step_index INTEGER NOT NULL,
   status TEXT NOT NULL,
   outputs_json TEXT NOT NULL,
   last_error_code TEXT NULL,
   retry_count INTEGER NOT NULL DEFAULT 0,
-  loop_iteration INTEGER NOT NULL DEFAULT 0,
+  resumable_from_step TEXT NULL,
   started_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -542,7 +536,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_state_updated_at
 CREATE TABLE IF NOT EXISTS workflow_step_outputs (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  node_run_id TEXT NOT NULL,
+  step_id TEXT NOT NULL,
   role_id TEXT NOT NULL,
   status TEXT NOT NULL,
   data_json TEXT NOT NULL,
@@ -556,8 +550,8 @@ CREATE TABLE IF NOT EXISTS workflow_step_outputs (
 
 CREATE INDEX IF NOT EXISTS idx_step_outputs_task_id
   ON workflow_step_outputs(task_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_step_outputs_task_node_run
-  ON workflow_step_outputs(task_id, node_run_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_step_outputs_task_step
+  ON workflow_step_outputs(task_id, step_id);
 
 CREATE TABLE IF NOT EXISTS executions (
   id TEXT PRIMARY KEY,
@@ -681,8 +675,6 @@ CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   task_id TEXT NULL,
   execution_id TEXT NULL,
-  harness_run_id TEXT NULL,
-  node_run_id TEXT NULL,
   event_type TEXT NOT NULL,
   event_tier TEXT NOT NULL,
   payload_json TEXT NOT NULL,
@@ -706,8 +698,7 @@ CREATE TABLE IF NOT EXISTS event_consumer_acks (
   status TEXT NOT NULL,
   last_attempt_at TEXT NULL,
   acked_at TEXT NULL,
-  error_code TEXT NULL,
-  attempt_count INTEGER NOT NULL DEFAULT 0
+  error_code TEXT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_consumer_event_consumer
@@ -778,138 +769,6 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
   created_at TEXT NOT NULL
 );
 ```
-
--- ============================================================
--- v4.3 Canonical Truth Tables (Ring 1 authoritative runtime)
--- These tables are the authoritative source for runtime execution state.
--- They supersede legacy executions table as truth-of-record.
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS harness_runs (
-  harness_run_id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL,
-  confirmed_task_spec_id TEXT NOT NULL,
-  request_envelope_id TEXT NOT NULL,
-  request_hash TEXT NOT NULL,
-  status TEXT NOT NULL,
-  constraint_pack_ref TEXT NOT NULL,
-  version_lock_id TEXT NOT NULL,
-  plan_graph_bundle_id TEXT NULL,
-  budget_ledger_id TEXT NOT NULL,
-  current_seq INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  terminal_at TEXT NULL,
-  terminal_reason TEXT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_harness_runs_request_hash
-  ON harness_runs(request_hash);
-CREATE INDEX IF NOT EXISTS idx_harness_runs_tenant_status
-  ON harness_runs(tenant_id, status);
-
-CREATE TABLE IF NOT EXISTS plan_graph_bundles (
-  plan_graph_bundle_id TEXT PRIMARY KEY,
-  harness_run_id TEXT NOT NULL REFERENCES harness_runs(harness_run_id) ON DELETE CASCADE,
-  graph_version INTEGER NOT NULL,
-  graph_json TEXT NOT NULL,
-  scheduler_policy_json TEXT NOT NULL,
-  budget_json TEXT NOT NULL,
-  risk_profile_json TEXT NOT NULL,
-  validation_report_json TEXT NOT NULL,
-  artifact_refs_json TEXT NULL,
-  created_at TEXT NOT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_plan_graph_bundle_run_version
-  ON plan_graph_bundles(harness_run_id, graph_version);
-
-CREATE TABLE IF NOT EXISTS node_runs (
-  node_run_id TEXT PRIMARY KEY,
-  harness_run_id TEXT NOT NULL REFERENCES harness_runs(harness_run_id) ON DELETE CASCADE,
-  plan_graph_bundle_id TEXT NOT NULL REFERENCES plan_graph_bundles(plan_graph_bundle_id) ON DELETE CASCADE,
-  graph_version INTEGER NOT NULL,
-  node_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  attempt_count INTEGER NOT NULL DEFAULT 0,
-  lease_id TEXT NULL,
-  fencing_token TEXT NULL,
-  current_seq INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  terminal_reason TEXT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_node_runs_harness_status
-  ON node_runs(harness_run_id, status);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_node_runs_bundle_node
-  ON node_runs(plan_graph_bundle_id, node_id, graph_version);
-
-CREATE TABLE IF NOT EXISTS node_attempts (
-  node_attempt_id TEXT PRIMARY KEY,
-  node_run_id TEXT NOT NULL REFERENCES node_runs(node_run_id) ON DELETE CASCADE,
-  attempt_no INTEGER NOT NULL,
-  attempt_kind TEXT NOT NULL,
-  executor_ref TEXT NOT NULL,
-  input_snapshot_ref TEXT NOT NULL,
-  started_at TEXT NOT NULL,
-  completed_at TEXT NULL,
-  receipt_id TEXT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_node_attempts_node_run_attempt
-  ON node_attempts(node_run_id, attempt_no);
-
-CREATE TABLE IF NOT EXISTS node_attempt_receipts (
-  receipt_id TEXT PRIMARY KEY,
-  node_attempt_id TEXT NOT NULL REFERENCES node_attempts(node_attempt_id) ON DELETE CASCADE,
-  node_run_id TEXT NOT NULL REFERENCES node_runs(node_run_id) ON DELETE CASCADE,
-  receipt_kind TEXT NOT NULL,
-  status TEXT NOT NULL,
-  output_ref TEXT NULL,
-  error_json TEXT NULL,
-  side_effect_refs_json TEXT NULL,
-  budget_settlement_refs_json TEXT NULL,
-  evidence_refs_json TEXT NULL,
-  produced_at TEXT NOT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_node_attempt_receipts_attempt
-  ON node_attempt_receipts(node_attempt_id);
-
-CREATE TABLE IF NOT EXISTS budget_ledgers (
-  budget_ledger_id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL,
-  harness_run_id TEXT NOT NULL REFERENCES harness_runs(harness_run_id) ON DELETE CASCADE,
-  currency TEXT NOT NULL,
-  hard_cap REAL NOT NULL,
-  soft_cap REAL NULL,
-  reserved_amount REAL NOT NULL DEFAULT 0,
-  settled_amount REAL NOT NULL DEFAULT 0,
-  released_amount REAL NOT NULL DEFAULT 0,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_ledgers_harness_run
-  ON budget_ledgers(harness_run_id);
-
-CREATE TABLE IF NOT EXISTS budget_reservations (
-  budget_reservation_id TEXT PRIMARY KEY,
-  budget_ledger_id TEXT NOT NULL REFERENCES budget_ledgers(budget_ledger_id) ON DELETE CASCADE,
-  harness_run_id TEXT NOT NULL REFERENCES harness_runs(harness_run_id) ON DELETE CASCADE,
-  node_run_id TEXT NULL REFERENCES node_runs(node_run_id) ON DELETE SET NULL,
-  amount REAL NOT NULL,
-  resource_kind TEXT NOT NULL,
-  status TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_budget_reservations_ledger_status
-  ON budget_reservations(budget_ledger_id, status);
-CREATE INDEX IF NOT EXISTS idx_budget_reservations_node_run
-  ON budget_reservations(node_run_id);
 
 ## 16. Runtime 存储边界
 

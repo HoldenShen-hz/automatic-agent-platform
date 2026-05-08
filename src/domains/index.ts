@@ -9,17 +9,15 @@ export * from "../domains-runtime-orchestrator.js";
 export * from "../domains-startup-plan.js";
 export * from "./coding/index.js";
 export * from "./domain-descriptor-orchestration-service.js";
-export { DomainEvalSpec } from "./domain-specs.js";
+export * from "./domain-specs.js";
 export * from "./domain-task-design-service.js";
 export * from "./eval-framework/index.js";
-export { DomainRiskProfile } from "./governance/index.js";
+export * from "./governance/index.js";
 export * from "./interaction-policy/index.js";
 export * from "./knowledge-schema/index.js";
 export * from "./operations/index.js";
 export * from "./prompt-library/index.js";
 export * from "./recipes/index.js";
-export {
-  computeDomainRiskLevel,
-} from "./risk-profile/index.js";
+export * from "./risk-profile/index.js";
 export * from "./registry/index.js";
 export * from "./roadmap/index.js";

@@ -55,27 +55,14 @@ function readConcurrency(envName, fallback) {
 
 function listFilesRecursively(rootPath) {
   const results = [];
-  const pending = [rootPath];
-
-  while (pending.length > 0) {
-    const currentPath = pending.pop();
-    if (currentPath == null) {
+  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+    const fullPath = join(rootPath, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...listFilesRecursively(fullPath));
       continue;
     }
-
-    for (const entry of readdirSync(currentPath, { withFileTypes: true })) {
-      const fullPath = join(currentPath, entry.name);
-      if (entry.isSymbolicLink()) {
-        continue;
-      }
-      if (entry.isDirectory()) {
-        pending.push(fullPath);
-        continue;
-      }
-      results.push(fullPath);
-    }
+    results.push(fullPath);
   }
-
   return results;
 }
 

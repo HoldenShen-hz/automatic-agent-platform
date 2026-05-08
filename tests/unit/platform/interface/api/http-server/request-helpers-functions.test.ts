@@ -45,8 +45,8 @@ test("matchRoute parses OPTIONS request", () => {
   assert.equal(result.pathname, "/health");
 });
 
-test("matchRoute rejects invalid HTTP methods", () => {
-  const methods = ["HEAD", "TRACE", "CONNECT", "foobar"];
+test("matchRoute rejects non-GET/POST/OPTIONS methods", () => {
+  const methods = ["PUT", "DELETE", "PATCH", "HEAD"];
   for (const method of methods) {
     const request: ApiRequestLike = {
       method,
@@ -56,21 +56,6 @@ test("matchRoute rejects invalid HTTP methods", () => {
     };
     const result = matchRoute(request);
     assert.equal(result, null, `Expected null for method ${method}`);
-  }
-});
-
-test("matchRoute accepts standard REST methods", () => {
-  const methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"];
-  for (const method of methods) {
-    const request: ApiRequestLike = {
-      method,
-      url: "/v1/tasks",
-      headers: {},
-      body: null,
-    };
-    const result = matchRoute(request);
-    assert.ok(result != null, `Expected non-null for method ${method}`);
-    assert.equal(result.pathname, "/v1/tasks");
   }
 });
 

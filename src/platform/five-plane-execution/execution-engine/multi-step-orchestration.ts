@@ -20,7 +20,7 @@ import {
   type AdmissionBackpressureSnapshot,
   type AdmissionPolicy,
 } from "../dispatcher/admission-controller.js";
-import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests, initializeToolRegistryWithRepository, setToolRegistryHarnessRunId, setToolRegistryBudgetLedger } from "../dispatcher/index.js";
+import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests } from "../dispatcher/index.js";
 import { provideContext } from "./runtime-context.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
@@ -28,7 +28,7 @@ import { openAuthoritativeStorageContext } from "../../state-evidence/truth/stor
 import { HealthService } from "../../shared/observability/health-service.js";
 import { createChildTraceContext, createRootTraceContext, injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ensureMessagePartsJson } from "../../model-gateway/messages/message-parts.js";
-import { IntakeRouter, type IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
+import { IntakeRouter } from "../../orchestration/routing/intake-router.js";
 import { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
 import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workflow-validator.js";
 import { StreamBridge } from "../../interface/channel-gateway/stream-bridge.js";
@@ -38,21 +38,6 @@ import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
 } from "./multi-step-orchestration-types.js";
-import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
-import { HarnessRuntimeService } from "../../orchestration/harness/runtime/index.js";
-import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration/harness/runtime/plan-graph-harness-runtime.js";
-import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import { createBudgetLedger, createHarnessRun, createRunVersionLock, type PlanNode } from "../../contracts/executable-contracts/index.js";
-import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
-import { ServiceRegistry } from "../../shared/lifecycle/service-registry.js";
-import { getRuntimeTruthRepository, RUNTIME_TRUTH_REPOSITORY_SERVICE_ID } from "../../five-plane-state-evidence/state-evidence-plane-bootstrap.js";
-import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
-import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { BudgetTier } from "../budget-allocator.js";
-import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
-
-const logger = new StructuredLogger({ retentionLimit: 100 });
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
@@ -61,172 +46,45 @@ const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
 
 const OAPEFLIR_PLAN_PREFIX = "oapeflir://plan ";
 
-function buildSyntheticPipelineResult(routeDecision: IntakeRouteDecision) {
-  const now = nowIso();
-  const confirmedTaskSpecId = routeDecision.confirmedTaskSpecId;
-  const requestId = `request_envelope:${confirmedTaskSpecId}`;
-  return {
-    taskDraft: {
-      taskDraftId: `task_draft:${confirmedTaskSpecId}`,
-      tenantId: "tenant:local",
-      principal: {
-        principalId: "system:intake-router",
-        tenantId: "tenant:local",
-        roles: ["system"],
-      },
-      source: "cli" as const,
-      domainId: routeDecision.divisionId,
-      normalizedIntent: { intent: routeDecision.classification.intent },
-      missingFields: [],
-      riskPreview: { riskClass: "medium" as const, reasons: [] },
-      ambiguityPolicy: "require_confirmation" as const,
-      createdAt: now,
-    },
-    clarificationSession: null,
-    confirmedTaskSpec: {
-      confirmedTaskSpecId,
-      taskDraftId: `task_draft:${confirmedTaskSpecId}`,
-      tenantId: "tenant:local",
-      principal: {
-        principalId: "system:intake-router",
-        tenantId: "tenant:local",
-        roles: ["system"],
-      },
-      domainId: routeDecision.divisionId,
-      goal: routeDecision.routeReason,
-      inputs: {},
-      constraintPackRef: `constraint_pack:${routeDecision.divisionId}`,
-      riskClass: "medium" as const,
-      idempotencyKey: confirmedTaskSpecId,
-      traceId: confirmedTaskSpecId,
-      createdAt: now,
-    },
-    requestEnvelope: {
-      requestId,
-      confirmedTaskSpecId,
-      tenantId: "tenant:local",
-      principal: {
-        principalId: "system:intake-router",
-        tenantId: "tenant:local",
-        roles: ["system"],
-      },
-      domainId: routeDecision.divisionId,
-      traceId: confirmedTaskSpecId,
-      idempotencyKey: confirmedTaskSpecId,
-      priority: 0,
-      requestHash: `request_hash:${confirmedTaskSpecId}`,
-      constraintPackRef: `constraint_pack:${routeDecision.divisionId}`,
-      budgetIntent: { amount: 0, currency: "USD", resourceKinds: ["token"] as const },
-      policyContext: {},
-      artifactRefs: [],
-      submittedAt: now,
-    },
-    routeDecision,
-  };
-}
-
 function isOapeflirPlanRequest(request: string): boolean {
   return request.startsWith(OAPEFLIR_PLAN_PREFIX);
 }
 
-function normalizeExecutionRequest(input: MultiStepToolExecutionInput): string {
-  const trimmedRequest = input.request.trim();
-  if (trimmedRequest.length > 0) {
-    return trimmedRequest;
-  }
-  const trimmedTitle = input.title.trim();
-  if (trimmedTitle.length > 0) {
-    return trimmedTitle;
-  }
-  return input.request;
-}
-
-// R19-09 fix: Changed return type from PlanStep[] to PlanNode[] to preserve rich metadata
-// Previously deserialized to PlanStep[] which lost riskClass, budgetIntent, sideEffectProfile, etc.
-function deserializeOapeflirPlan(request: string): import("../../contracts/executable-contracts/index.js").PlanNode[] {
+function deserializeOapeflirPlan(request: string): import("../../orchestration/oapeflir/types/plan.js").PlanStep[] {
   const json = request.slice(OAPEFLIR_PLAN_PREFIX.length);
-  const parsed = JSON.parse(json) as unknown[];
-  // R19-09 fix: Handle legacy test format that uses stepId/timeout instead of nodeId/timeoutMs
-  return (parsed as unknown[]).map((item) => {
-    const node = item as Record<string, unknown>;
-    return {
-      nodeId: (node.nodeId as string ?? node.stepId) as string,
-      nodeType: (node.nodeType as import("../../contracts/executable-contracts/index.js").PlanNodeType) ?? "llm",
-      inputRefs: (node.inputRefs as string[] | undefined) ?? (node.dependencies as string[] | undefined) ?? [],
-      outputSchemaRef: (node.outputSchemaRef as string | undefined) ?? "schema:step.output",
-      riskClass: (node.riskClass as import("../../contracts/executable-contracts/index.js").RiskClass | undefined) ?? "medium",
-      budgetIntent: (node.budgetIntent as { amount: number; currency: string; resourceKinds: readonly import("../../contracts/executable-contracts/index.js").BudgetResourceKind[] } | undefined) ?? { amount: 0.01, currency: "USD", resourceKinds: ["token", "compute"] as const },
-      sideEffectProfile: (node.sideEffectProfile as { mayCommitExternalEffect: boolean; reversible: boolean } | undefined) ?? { mayCommitExternalEffect: false, reversible: true },
-      retryPolicyRef: (
-        (node.retryPolicyRef as string | undefined)
-        ?? (
-          (node.retryPolicy as { maxRetries: number } | undefined)?.maxRetries === 0
-            ? "retry:never"
-            : "retry:default"
-        )
-      ),
-      // R19-09 fix: Preserve retryPolicy for maxAttempts calculation in oapeflirStepToMinimalStep
-      ...(node.retryPolicy != null ? { retryPolicy: node.retryPolicy } : {}),
-      // R19-09 fix: Handle both timeoutMs (canonical) and timeout (legacy test format)
-      timeoutMs: (node.timeoutMs as number | undefined) ?? (node.timeout as number | undefined) ?? 60000,
-    };
-  });
+  return JSON.parse(json) as import("../../orchestration/oapeflir/types/plan.js").PlanStep[];
 }
 
-// R19-09 fix: Updated to accept PlanNode and preserve rich metadata
-// Previously resolved from PlanStep which lacked nodeType, riskClass, budgetIntent, etc.
-function resolveOapeflirRoleId(_node: import("../../contracts/executable-contracts/index.js").PlanNode): string {
+function resolveOapeflirRoleId(_step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): string {
   return "general_executor";
 }
 
-// R19-09 fix: Changed parameter type from PlanStep to PlanNode and preserves rich metadata
-// Previously converted PlanStep which lost nodeType, riskClass, budgetIntent, sideEffectProfile, retryPolicyRef
-// R6-19 fix: nodeId is now canonical per §5.5, stepId is deprecated legacy projection
-function oapeflirStepToMinimalStep(node: import("../../contracts/executable-contracts/index.js").PlanNode): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
-  // R19-09 fix: Compute maxAttempts from legacy retryPolicy when present
-  // For legacy format (retryPolicy: { maxRetries: N }), derive maxAttempts = maxRetries + 1
-  const legacyRetryPolicy = (node as { retryPolicy?: { maxRetries: number } }).retryPolicy;
-  const maxAttempts = legacyRetryPolicy != null ? legacyRetryPolicy.maxRetries + 1 : 1;
-
+function oapeflirStepToMinimalStep(step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
   return {
-    nodeId: node.nodeId,
-    // R6-19 fix: stepId is deprecated per §5.5, only use for legacy compatibility
-    stepId: node.nodeId,
-    roleId: resolveOapeflirRoleId(node),
-    outputKey: `output_${node.nodeId}`,
-    inputKeys: node.inputRefs,
-    // R19-09 fix: Handle both timeoutMs (canonical PlanNode) and timeout (legacy test format)
-    timeoutMs: node.timeoutMs ?? (node as { timeout?: number }).timeout ?? 60000,
-    maxAttempts,
-    dependsOnStepIds: node.inputRefs, // Note: PlanNode.inputRefs are step dependencies
-    // R19-09 fix: Preserve rich metadata from PlanNode
-    nodeType: node.nodeType,
-    riskClass: node.riskClass,
-    budgetIntent: node.budgetIntent,
-    sideEffectProfile: node.sideEffectProfile,
-    retryPolicyRef: node.retryPolicyRef,
+    stepId: step.stepId,
+    roleId: resolveOapeflirRoleId(step),
+    outputKey: step.outputs?.[0] ?? `output_${step.stepId}`,
+    inputKeys: step.dependencies,
+    timeoutMs: step.timeout,
+    maxAttempts: Math.max(1, step.retryPolicy.maxRetries + 1),
+    dependsOnStepIds: step.dependencies,
   };
 }
 
-// R19-09 fix: Changed parameter type from PlanStep[] to PlanNode[] to preserve rich metadata
-// The PlanGraphBundle's validated PlanNode[] now flows through without losing metadata
 function buildOapeflirPlannedWorkflow(
-  nodes: import("../../contracts/executable-contracts/index.js").PlanNode[],
+  steps: import("../../orchestration/oapeflir/types/plan.js").PlanStep[],
   planId: string,
 ): import("../../orchestration/routing/workflow-planner.js").PlannedWorkflow {
   const workflowDef: import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: `oapeflir_${planId}`,
     divisionId: "general_ops",
-    steps: nodes.map(oapeflirStepToMinimalStep),
+    steps: steps.map(oapeflirStepToMinimalStep),
   };
 
   const executionSteps: import("../../orchestration/routing/workflow-planner.js").PlannedExecutionStep[] = workflowDef.steps.map((step) => {
     const stepDeps = step.dependsOnStepIds ?? [];
-    // R6-19 fix: nodeId is canonical per §5.5, stepId is deprecated legacy projection
     return {
-      nodeId: step.nodeId,
-      // R6-19 fix: stepId retained for legacy compatibility only
-      stepId: step.stepId ?? step.nodeId ?? "",
+      stepId: step.stepId,
       divisionId: step.divisionId ?? workflowDef.divisionId,
       roleId: step.roleId,
       inputKeys: step.inputKeys ?? [],
@@ -271,7 +129,6 @@ function createContext(
 export {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-  setToolRegistryBudgetLedger,
 };
 
 export type {
@@ -281,47 +138,12 @@ export type {
 } from "./multi-step-orchestration-types.js";
 
 export async function runMultiStepOrchestration(input: MultiStepToolExecutionInput): Promise<MultiStepOrchestrationResult> {
-  // R4-26/R4-27 (INV-GRAPH-001/INV-RUN-001): RuntimeEntryGuard is mandatory at dispatch entry
-  // All execution paths must pass through PlanGraphBundle validation before writing truth
-  const entryGuard = new RuntimeEntryGuard();
-  entryGuard.assertNoLegacyTruthWrite({ eventType: "platform.graph_scheduler.decision_recorded" });
-  input.request = normalizeExecutionRequest(input);
-
-  // Reset the tool registry to ensure clean state for this orchestration run
-  resetMultiStepToolRegistryForTests();
-
-  // R4-33/R4-35: Get RuntimeTruthRepository from bootstrap-level singleton service registry
-  // Previously this was created per-orchestration-run here, which violated bootstrap architecture
-  const runtimeTruthRepository = getRuntimeTruthRepository(ServiceRegistry.getInstance());
-  initializeToolRegistryWithRepository(runtimeTruthRepository);
+  const { resetToolRegistry } = await import("../dispatcher/index.js");
+  resetToolRegistry();
 
   let plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
-  let routing: IntakeRouteDecision;
-  let validatedPlanGraphBundle:
-    import("../../contracts/executable-contracts/index.js").PlanGraphBundle;
-  if (input.planGraphBundle != null) {
-    const guardResult = entryGuard.assertPlanGraphBundleOnly(input.planGraphBundle);
-    validatedPlanGraphBundle = guardResult.planGraphBundle;
-    plannedWorkflow = buildOapeflirPlannedWorkflow(
-      [...validatedPlanGraphBundle.graph.nodes] as PlanNode[],
-      validatedPlanGraphBundle.planGraphBundleId,
-    );
-    routing = {
-      workflowId: plannedWorkflow.workflow.workflowId,
-      divisionId: plannedWorkflow.workflow.divisionId,
-      routeReason: "plan_graph_bundle",
-      routeTrace: ["plan_graph_bundle:provided"],
-      requiresOrchestration: true,
-      classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: ["plan_graph_bundle"] as string[] },
-      confirmedTaskSpecId: `plan_graph_bundle:${validatedPlanGraphBundle.planGraphBundleId}`,
-      capabilityMatch: {
-        capableWorkerFound: true,
-        targetDivisionId: plannedWorkflow.workflow.divisionId,
-        requiredCapabilities: [],
-        eligibleWorkerCount: Math.max(1, validatedPlanGraphBundle.graph.nodes.length),
-      },
-    };
-  } else if (isOapeflirPlanRequest(input.request)) {
+  let routing: ReturnType<IntakeRouter["route"]>;
+  if (isOapeflirPlanRequest(input.request)) {
     const oapeflirSteps = deserializeOapeflirPlan(input.request);
     plannedWorkflow = buildOapeflirPlannedWorkflow(oapeflirSteps, input.title);
     routing = {
@@ -331,107 +153,19 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       routeTrace: ["oapeflir_bridge:bypass"],
       requiresOrchestration: true,
       classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: [] as string[] },
-      confirmedTaskSpecId: `oapeflir:${plannedWorkflow.workflow.workflowId}`,
-      capabilityMatch: {
-        capableWorkerFound: true,
-        targetDivisionId: plannedWorkflow.workflow.divisionId,
-        requiredCapabilities: [],
-        eligibleWorkerCount: 1,
-      },
     };
   } else {
     const router = new IntakeRouter();
-    const routingResult = await router.route({ title: input.title, request: input.request });
-    routing = routingResult.routeDecision;
+    routing = router.route({ title: input.title, request: input.request });
     const planner = new WorkflowPlanner();
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);
   }
 
-  // R8-5 (INV-ROUTING-001): Persist routing decision for auditing
-  // The routing decision contains domain/executor selection which must be auditable
-  // R4-36 (INV-SINGLE-LEADER): Leader election check before write operations
-  const traceId = newId("trace");
-  const routingPrincipal = createPlatformPrincipal({ actorId: "intake-router", tenantId: "tenant:local" });
-  const routingEvidence = createEvidenceRecord({
-    traceId,
-    principal: routingPrincipal,
-    category: "decision",
-    targetRef: `workflow:${routing.workflowId}`,
-    content: {
-      workflowId: routing.workflowId,
-      divisionId: routing.divisionId,
-      routeReason: routing.routeReason,
-      routeTrace: routing.routeTrace,
-      requiresOrchestration: routing.requiresOrchestration,
-      confirmedTaskSpecId: routing.confirmedTaskSpecId,
-      classification: routing.classification,
-    } as unknown as Record<string, unknown>,
-    metadata: { source: "multi-step-orchestration", version: "1.0" },
-  });
-  runtimeTruthRepository.appendEvidenceRecord(routingEvidence);
-
-  // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
-  // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
-  if (input.planGraphBundle == null) {
-    const harnessRunId = newId("harness_run");
-    const planGraphBundle = minimalWorkflowToPlanGraphBundle(plannedWorkflow.workflow, harnessRunId);
-    const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
-    validatedPlanGraphBundle = guardResult.planGraphBundle;
-  }
-  // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - the harnessRunId is now available for budget tracking
-  // Note: validatedPlanGraphBundle is guaranteed to be assigned by this point (assigned at line 282 or 358)
-  const harnessRunIdFromBundle = validatedPlanGraphBundle!.harnessRunId;
-  const tenantId = "tenant:local";
-  // R4-33: Set harnessRunId on tool registry for correlating SideEffectRecords
-  setToolRegistryHarnessRunId(harnessRunIdFromBundle);
-
-  // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
-  // The budgetLedger flows through executeStepLoop to multi-step-agent-round-loop to model-call-provider
-  const budgetLedger = createBudgetLedger({
-    tenantId,
-    harnessRunId: harnessRunIdFromBundle,
-    currency: "USD",
-    hardCap: 10, // matches default maxTaskCostUsd
-  });
-
-  // R4-25 (INV-BUDGET-001): Set budget ledger on tool registry for reserve→execute→settle pattern
-  setToolRegistryBudgetLedger(budgetLedger);
-
   const storage = openAuthoritativeStorageContext({ dbPath: input.dbPath });
   const db = storage.sql;
   const store = storage.store;
   storage.migrate();
-
-  // R4-36: Check leadership before first write operation
-  // Leader check requires async setup that is not available in sync execution path
-  // The HACoordinator integration is deferred to runtime initialization
-  // R4-36 is addressed at the dispatch level where leader election is checked
-
-  const taskId = validatedPlanGraphBundle!.planGraphBundleId;
-  const sessionId = newId("sess");
-
-  // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
-  // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
-  const harnessRun = createHarnessRun({
-    tenantId,
-    traceId,
-    riskLevel: routing.classification.intent === "approve" ? "high" : "medium",
-    ownership: { ownerId: tenantId, ownerType: "tenant" },
-    domainId: plannedWorkflow.workflow.divisionId,
-    confirmedTaskSpecId: `pending:${taskId}`,
-    requestEnvelopeId: `pending:${taskId}`,
-    requestHash: `request:${taskId}`,
-    constraintPackRef: validatedPlanGraphBundle!.budgetPlanRef ?? `workflow:${plannedWorkflow.workflow.workflowId}`,
-    versionLockId: `pending:${harnessRunIdFromBundle}`,
-    budgetLedgerId: budgetLedger.budgetLedgerId,
-    harnessRunId: harnessRunIdFromBundle,
-    status: "created",
-  });
-  const runVersionLock = createRunVersionLock({
-    harnessRunId: harnessRunIdFromBundle,
-    runtimeProfileVersion: "runtime-profile:default",
-  });
 
   try {
     const artifactStore = new ArtifactStore({
@@ -443,18 +177,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     const backpressureSnapshot =
       (input.admissionBackpressureSnapshot as (() => AdmissionBackpressureSnapshot | null) | undefined)
       ?? (() => healthService.getReport());
-    // R4-25 (INV-BUDGET-001): Initialize BudgetExecutionSessionManager for atomic reserve→execute→settle
-    // This must be created before admission evaluation to support budget reservation verification
-    const budgetSessionManager = new BudgetExecutionSessionManager();
     const admission = new AdmissionController(
       store,
       input.admissionPolicy as AdmissionPolicy | undefined,
       backpressureSnapshot,
-      budgetSessionManager,
     );
     const contextCompaction = new ContextCompactionService(db, store);
     const streamBridge = new StreamBridge();
 
+    const taskId = newId("task");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
     const traceContext = createRootTraceContext({ traceId, correlationId: taskId });
     const now = nowIso();
 
@@ -470,8 +203,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         id: taskId,
         parentId: null,
         rootId: taskId,
-        // R4-27 (INV-RUN-001): Derive task from HarnessRun - task must reference its authorizing HarnessRun
-        harnessRunId: harnessRunIdFromBundle,
         divisionId: plannedWorkflow.workflow.divisionId,
         title: input.title,
         status: "queued",
@@ -512,41 +243,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         updatedAt: now,
       };
 
-      // R4-28 (INV-STATE-001): Assert leader authority before emitting events in transaction.
-      // Only the leader node can append events to ensure HA consistency.
-      assertLeaderAuthoritative("system", "multi_step_orchestration_event_emission");
-
       db.transaction(() => {
-        // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity
-        executeQuery(
-          db.connection,
-          `INSERT INTO harness_runs (
-            harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
-            status, version_lock_id, budget_ledger_id, current_seq, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          harnessRun.harnessRunId,
-          harnessRun.tenantId,
-          harnessRun.confirmedTaskSpecId,
-          harnessRun.requestEnvelopeId,
-          harnessRun.status,
-          runVersionLock.runVersionLockId,
-          harnessRun.budgetLedgerId,
-          harnessRun.currentSeq,
-          harnessRun.updatedAt,
-        );
-        // Insert plan_graph_bundle record inside transaction for atomicity
-        executeQuery(
-          db.connection,
-          `INSERT INTO plan_graph_bundles (
-            plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?)`,
-          validatedPlanGraphBundle.planGraphBundleId,
-          harnessRunIdFromBundle,
-          validatedPlanGraphBundle.graphVersion,
-          JSON.stringify(validatedPlanGraphBundle.graph),
-          JSON.stringify(validatedPlanGraphBundle.validationReport),
-          validatedPlanGraphBundle.createdAt,
-        );
         store.task.insertTask(task);
         store.workflow.insertWorkflowState(workflow);
         store.session.insertSession(session);
@@ -573,32 +270,20 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         };
         store.session.insertMessage({ ...planMessage, partsJson: ensureMessagePartsJson(planMessage) });
 
-        // R4-27 (INV-RUN-001): Emit harness_run.status_changed event when HarnessRun is created
-        // This pairs with the harness_runs INSERT to ensure truth mutation is
-        // paired with the corresponding platform.* event within the same transaction
         store.event.insertEvent({
           id: newId("evt"),
           taskId,
           executionId: null,
-          eventType: "platform.harness_run.status_changed",
-          eventTier: "tier_1",
-          payloadJson: JSON.stringify({
-            harnessRunId: harnessRunIdFromBundle,
-            status: "created",
-            tenantId,
-            domainId: plannedWorkflow.workflow.divisionId,
-            occurredAt: nowIso(),
-          }),
+          eventType: "routing:decided",
+          payloadJson: JSON.stringify(routing),
           traceId,
           createdAt: nowIso(),
         });
-
         store.event.insertEvent({
           id: newId("evt"),
           taskId,
           executionId: null,
           eventType: "workflow:planned",
-          eventTier: "tier_2",
           payloadJson: JSON.stringify(injectTraceContext({
             workflowId: plannedWorkflow.workflow.workflowId,
             planReason: plannedWorkflow.planReason,
@@ -609,65 +294,10 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         });
       });
 
-      // R8-01 FIX: Create budget reservation BEFORE admission evaluation
-      // This implements the reserve-before-execute pattern required by INV-BUDGET-001
-      const defaultBudgetPolicy: BudgetPolicy = {
-        maxTaskCostUsd: 10,
-        maxPackCostUsd: 100,
-        maxPlatformCostUsd: 10000,
-        maxDailyCostUsd: 100,
-        maxMonthlyCostUsd: 1000,
-        maxModelTokens: 100000,
-        maxSteps: 100,
-        maxDurationMs: 600000,
-        warnAtRatio: 0.8,
-        mode: "auto",
-      };
-      let budgetReservationId: string | null = null;
-      try {
-        const budgetSession = budgetSessionManager.reserveAndCreateSession(
-          {
-            tenantId,
-            harnessRunId: harnessRunIdFromBundle,
-            traceId,
-            emittedBy: "multi_step_orchestration",
-            ledger: budgetLedger,
-            policy: defaultBudgetPolicy,
-          },
-          task.estimatedCostUsd ?? 0.05,
-          "token",
-        );
-        budgetReservationId = budgetSession.sessionId;
-        // Mark as executing immediately since we're in the main execution path
-        budgetSessionManager.markExecuting(budgetReservationId);
-      } catch (error) {
-        // Budget reservation failed - reject the task
-        logger.log({ level: "warn", message: `Budget reservation failed, cancelling task`, data: { error: error instanceof Error ? error.message : String(error), taskId } });
-        transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "queued", toStatus: "cancelled", executionId: null, ...createContext(traceContext, "budget.reservation_failed") });
-        transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "cancelled", currentStepIndex: 0, outputsJson: workflow.outputsJson, ...createContext(traceContext, "budget.reservation_failed") });
-        transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "open", toStatus: "cancelled", ...createContext(traceContext, "budget.reservation_failed") });
-        // R4-25 (INV-BUDGET-001): Settle budget session before returning
-        if (budgetReservationId) {
-          try {
-            budgetSessionManager.settle(budgetReservationId, 0);
-          } catch (settleError) {
-            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-          }
-        }
-        return {
-          snapshot: store.operations.loadTaskSnapshot(taskId),
-          streamFrames: [],
-          routing,
-          plannedWorkflow,
-          compaction: null,
-        };
-      }
-
       const admissionDecision = admission.evaluate({
         priority: task.priority,
         estimatedCostUsd: task.estimatedCostUsd,
-        budgetRemainingUsd: task.estimatedCostUsd,
-        budgetReservationId,
+        budgetRemainingUsd: plannedWorkflow.executionSteps.length,
       });
 
       if (admissionDecision.decision !== "allow") {
@@ -695,14 +325,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           traceId,
           createdAt: nowIso(),
         });
-        // R4-25 (INV-BUDGET-001): Settle budget session before returning
-        if (budgetReservationId) {
-          try {
-            budgetSessionManager.settle(budgetReservationId, 0);
-          } catch (settleError) {
-            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-          }
-        }
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: [],
@@ -724,15 +346,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       let workflowRetryCount = 0;
       let workflowLastErrorCode: string | null = null;
       let blockedForDecision = false;
-      let skippedNodeIds = new Set<string>();
-      let failedNodeIds = new Set<string>();
       let skippedStepIds = new Set<string>();
       let failedStepIds = new Set<string>();
-
-      // R4-25 (INV-BUDGET-001): Propagate budget context through input to executeStepLoop
-      // The harnessRunId and budgetLedger from validatedPlanGraphBundle flow to multi-step-supervisor
-      input.harnessRunId = harnessRunIdFromBundle;
-      input.budgetLedger = budgetLedger;
 
       const stepResult = await executeStepLoop(
         {
@@ -745,7 +360,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           input,
           routing,
           plannedWorkflow,
-          validatedPlanGraphBundle,
           outputs,
           stepOutputs,
           toolExposureService,
@@ -754,8 +368,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           workflowRetryCount,
           workflowLastErrorCode,
           blockedForDecision,
-          skippedNodeIds: skippedStepIds,
-          failedNodeIds: failedStepIds,
           skippedStepIds,
           failedStepIds,
         },
@@ -771,27 +383,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         },
       );
 
-      const result = stepResult;
-      outputs = result.outputs;
-      stepOutputs = result.stepOutputs;
-      latestCompaction = result.latestCompaction;
-      workflowRetryCount = result.workflowRetryCount;
-      workflowLastErrorCode = result.workflowLastErrorCode;
-      blockedForDecision = result.blockedForDecision;
-      skippedNodeIds = result.skippedNodeIds;
-      failedNodeIds = result.failedNodeIds;
-      skippedStepIds = result.skippedStepIds ?? skippedNodeIds ?? new Set<string>();
-      failedStepIds = result.failedStepIds ?? failedNodeIds ?? new Set<string>();
+      ({ outputs, stepOutputs, latestCompaction, workflowRetryCount, workflowLastErrorCode, blockedForDecision, skippedStepIds, failedStepIds } = stepResult);
 
       if (blockedForDecision) {
-        // R4-25 (INV-BUDGET-001): Settle budget session before returning
-        if (budgetReservationId) {
-          try {
-            budgetSessionManager.settle(budgetReservationId, 0);
-          } catch (settleError) {
-            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-          }
-        }
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: streamBridge.replayAfterSequence(streamId, 0),
@@ -821,9 +415,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
 
       const finalOutput = (outputs.final as Record<string, unknown> | undefined) ?? outputs;
       const allStepsFailedOrSkipped = plannedWorkflow.executionSteps.every(
-        (step) => failedNodeIds.has(step.nodeId) || skippedNodeIds.has(step.nodeId),
+        (step) => failedStepIds.has(step.stepId) || skippedStepIds.has(step.stepId),
       );
-      const workflowFailed = failedNodeIds.size > 0 || allStepsFailedOrSkipped;
+      const workflowFailed = failedStepIds.size > 0 || allStepsFailedOrSkipped;
       const lastExecution = store.execution.listExecutionsByTask(taskId).at(-1);
       const lastExecutionId = lastExecution?.id ?? newId("exec");
 
@@ -832,12 +426,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "failed", executionId: lastExecutionId, ...ctx });
         transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "failed", currentStepIndex: plannedWorkflow.executionSteps.length, outputsJson: JSON.stringify(outputs), ...ctx });
         transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "failed", ...ctx });
-        store.task.updateTaskOutput(
-          taskId,
-          "failed",
-          JSON.stringify({ error: workflowLastErrorCode ?? "workflow.step_failed", failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] }),
-          ctx.occurredAt,
-        );
+        store.task.updateTaskOutput(taskId, JSON.stringify({ error: workflowLastErrorCode ?? "workflow.step_failed", failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] }), ctx.occurredAt);
       } else {
         transitions.transitionTaskTerminalState({
           taskId,
@@ -852,15 +441,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           outputsJson: JSON.stringify(outputs),
           context: createContext(traceContext, "task.completed"),
         });
-      }
-
-      // R4-25 (INV-BUDGET-001): Settle budget session on normal completion
-      if (budgetReservationId) {
-        try {
-          budgetSessionManager.settle(budgetReservationId, 0);
-        } catch (settleError) {
-          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
-        }
       }
 
       return {

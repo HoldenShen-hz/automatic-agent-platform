@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -61,14 +61,13 @@ Decision 呈现最小结构：
 
 ## 4. 人工接管动作
 
-- 手动修正 `HarnessRun` 上下文快照或补充 `context_artifact_ref`
-- 手动为某个 `NodeRun` 注入 `override_artifact_ref`
-- 手动重试指定 `NodeAttempt`
-- 手动跳过指定 `NodeRun`
-- 手动指定 worker / execution lane
-- 手动降级 `UnifiedRuntimeMode`
-- 结束 `HarnessRun` 并归档原因
-- 标记 `HarnessRun` / `NodeRun` 不可恢复
+- 手动改上下文
+- 手动替换步骤输出
+- 手动重试指定 step
+- 手动指定 worker
+- 手动降级运行模式
+- 结束任务并归档原因
+- 标记任务不可恢复
 
 ## 5. 可解释性对象
 
@@ -90,7 +89,7 @@ Decision 呈现最小结构：
 - 为什么批准、拒绝或要求双审批
 - 为什么某个 feedback signal 被采纳或忽略
 - 为什么某个 improvement candidate 被接受或拒绝
-- 为什么 release 被推进、暂停或回滚
+- 为什么 rollout 被推进、暂停或回滚
 
 权限 / 策略解释最少应包含：
 
@@ -120,11 +119,3 @@ Decision 呈现最小结构：
 - 降噪后的审批体验
 - 正式的人类接管入口
 - 可审计、可读懂的关键决策解释
-
-## v4.3 Architecture Remediation
-
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
-
-- R16-86: 本 contract 定义 HITL 审批与人工接管，但未明确接管动作必须锚定 v4.3 canonical entity。修复：正文现明确人工接管动作必须作用于 `HarnessRun` / `NodeRun` / `NodeAttempt`，不得以旧 `execution_id` / `step_id` 作为权威作用域；审批展示的 `task_id` 必须能映射到对应 `harness_run_id`。
-
-强制规则：所有改变运行态的 takeover 动作必须通过 `RuntimeStateMachine.transition(command)` 并携带 `harness_run_id` / `node_run_id` 作用域；`DecisionExplanation` / `TakeoverJustification` 必须引用 v4.3 canonical entity，不得引用旧 `TaskRecord` / `ExecutionReceipt` 作为 truth source。

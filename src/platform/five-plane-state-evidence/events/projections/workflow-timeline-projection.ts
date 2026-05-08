@@ -56,32 +56,12 @@ export interface WorkflowTimelineState {
   statusTransitions: StatusTransitionEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency.
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
   /** Workflow started at */
   startedAt: string | null;
   /** Workflow completed at */
@@ -201,9 +181,6 @@ export function createEmptyWorkflowTimelineState(): WorkflowTimelineState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
-    lagMs: null,
-    stale: false,
     startedAt: null,
     completedAt: null,
     failedAt: null,
@@ -232,39 +209,10 @@ function extractNodeId(payload: Record<string, unknown>): string | null {
 }
 
 /**
- * Internal state interface with Set for efficient O(1) lookups.
- * Used during event processing; serialized to WorkflowTimelineState for storage.
+ * Checks if an event has already been processed (idempotency check)
  */
-interface WorkflowTimelineStateInternal extends Omit<WorkflowTimelineState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: WorkflowTimelineState): WorkflowTimelineStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: WorkflowTimelineStateInternal): WorkflowTimelineState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
-  };
-}
-
-/**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
- */
-function isEventProcessed(state: WorkflowTimelineStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -295,14 +243,13 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as WorkflowTimelineState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyWorkflowTimelineState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyWorkflowTimelineState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -345,15 +292,6 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    // Stale threshold: 5 minutes (300000ms)
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Extract details
   const details: Record<string, unknown> = {};
@@ -379,8 +317,8 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   };
   newState.events = [...newState.events, eventEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
@@ -567,7 +505,7 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return toSerializedState(newState) as unknown as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**

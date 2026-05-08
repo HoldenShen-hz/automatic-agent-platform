@@ -17,7 +17,7 @@ import { existsSync, unlinkSync } from "node:fs";
 import {
   runMultiStepOrchestration,
   type MultiStepToolExecutionInput,
-} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
+} from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -140,7 +140,7 @@ test("deserializeOapeflirPlan handles single step plan", async () => {
   cleanupDb(dbPath);
 
   const planSteps = [
-    { nodeId: "only_step", nodeType: "llm" as const, inputRefs: [], outputSchemaRef: "schema:only_step.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { stepId: "only_step", dependencies: [], timeout: 30000, retryPolicy: { maxRetries: 0 } },
   ];
 
   const input: MultiStepToolExecutionInput = {
@@ -164,7 +164,7 @@ test("deserializeOapeflirPlan handles step with no dependencies", async () => {
   cleanupDb(dbPath);
 
   const planSteps = [
-    { nodeId: "step_a", nodeType: "llm" as const, inputRefs: [], outputSchemaRef: "schema:step_a.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 60000 },
+    { stepId: "step_a", dependencies: [], outputs: ["out_a"], timeout: 60000, retryPolicy: { maxRetries: 0 } },
   ];
 
   const input: MultiStepToolExecutionInput = {
@@ -187,7 +187,7 @@ test("deserializeOapeflirPlan handles step with multiple dependencies", async ()
   cleanupDb(dbPath);
 
   const planSteps = [
-    { nodeId: "step_final", nodeType: "llm" as const, inputRefs: ["dep_a", "dep_b", "dep_c"], outputSchemaRef: "schema:step_final.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 120000 },
+    { stepId: "step_final", dependencies: ["dep_a", "dep_b", "dep_c"], outputs: ["final_out"], timeout: 120000, retryPolicy: { maxRetries: 2 } },
   ];
 
   const input: MultiStepToolExecutionInput = {
@@ -478,7 +478,7 @@ test("buildOapeflirPlannedWorkflow with inputKeys mapping", async () => {
   cleanupDb(dbPath);
 
   const planSteps = [
-    { nodeId: "input_step", nodeType: "tool_call" as const, inputRefs: ["dep1", "dep2"], outputSchemaRef: "schema:input_step.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { stepId: "input_step", dependencies: ["dep1", "dep2"], inputKeys: ["dep1", "dep2"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
   ];
 
   const input: MultiStepToolExecutionInput = {
@@ -501,7 +501,7 @@ test("buildOapeflirPlannedWorkflow with dependencyTypes set to hard", async () =
   cleanupDb(dbPath);
 
   const planSteps = [
-    { nodeId: "types_step", nodeType: "tool_call" as const, inputRefs: ["dep1"], outputSchemaRef: "schema:types_step.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { stepId: "types_step", dependencies: ["dep1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
   ];
 
   const input: MultiStepToolExecutionInput = {

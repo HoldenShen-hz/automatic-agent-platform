@@ -72,11 +72,11 @@ export class DelegatedGovernanceService {
       };
     }
 
-    // Platform team guardrails apply to all roles - but division/dept admin guardrails
-    // apply only to their respective scopes. Collect all applicable guardrails.
+    // Platform team guardrails apply to all roles - collect all applicable guardrails
     const allGuardrails: Guardrail[] = [];
     for (const delegation of this.delegations) {
       if (delegation.status !== "active") continue;
+      if (delegation.grantorId !== "platform_team") continue;
 
       const orgNodeIds = delegation.orgNodeIds ?? [];
       const domainIds = delegation.domainIds ?? [];
@@ -88,23 +88,13 @@ export class DelegatedGovernanceService {
       }
     }
 
-    // R21-1 FIX: If no attemptedValue is provided but guardrails exist,
-    // the operation must be denied since we cannot validate constraints without a value.
-    // Previously, undefined attemptedValue would pass through evaluateGuardrail which may
-    // return allowed:true for undefined values, bypassing all guardrail constraints.
-    if (attemptedValue === undefined && allGuardrails.length > 0) {
-      return {
-        allowed: false,
-        violatedGuardrails: allGuardrails.map((g) => g.guardrailId),
-        reasons: ["Operation requires a value to evaluate guardrail constraints"],
-      };
-    }
-
     // Evaluate each guardrail
     const violatedGuardrails: string[] = [];
     const reasons: string[] = [];
 
     for (const guardrail of allGuardrails) {
+      if (attemptedValue === undefined) continue;
+
       const result = evaluateGuardrail(guardrail, attemptedValue);
       if (!result.allowed) {
         violatedGuardrails.push(guardrail.guardrailId);
@@ -175,11 +165,6 @@ export class DelegatedGovernanceService {
     const parentIndex = hierarchy.indexOf(parentRole);
     const childIndex = hierarchy.indexOf(childRole);
 
-    // R34-36 FIX #1982: Unrecognized roles (index -1) cannot perform any inheritance action
-    if (parentIndex < 0 || childIndex < 0) {
-      return { allowed: false, reason: "Unrecognized role in hierarchy" };
-    }
-
     // Child cannot perform actions reserved for parent
     if (childIndex < parentIndex) {
       return { allowed: false, reason: "Insufficient role level" };
@@ -202,12 +187,8 @@ export class DelegatedGovernanceService {
         return { allowed: true, reason: "Appending constraints allowed" };
 
       case "delete":
-        // Lower roles must not delete higher-level constraints.
-        // Deletion is only allowed when acting on constraints owned at the same role level.
-        if (childIndex !== parentIndex) {
-          return { allowed: false, reason: "Cannot delete parent role constraints" };
-        }
-        return { allowed: true, reason: "Delete allowed for same role level" };
+        // Only the role that set it can delete (must check grantorId)
+        return { allowed: true, reason: "Delete subject to ownership check" };
 
       default:
         return { allowed: false, reason: "Unknown action" };

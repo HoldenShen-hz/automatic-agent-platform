@@ -198,11 +198,9 @@ export class InspectService {
 
   public queryTaskInspectSummaries(query: TaskInspectQuery = {}): TaskInspectSummary[] {
     const limit = normalizeLimit(query.limit, 25);
-    // R14-18: Pass tenantId to store's listTasks for SQL-level filtering instead of
-    // fetching all 200 items and filtering in memory. This reduces memory usage and
-    // improves performance significantly for multi-tenant deployments.
     return this.store
-      .listTasks(limit, query.tenantId ?? undefined)
+      .listTasks()
+      .filter((task) => query.tenantId === undefined || (task.tenantId ?? null) === query.tenantId)
       .map((task) => this.buildTaskInspectSummary(task))
       .filter((summary) => {
         if (query.taskStatus && summary.taskStatus !== query.taskStatus) {
@@ -221,7 +219,8 @@ export class InspectService {
           return query.hasPendingApproval ? summary.pendingApprovalCount > 0 : summary.pendingApprovalCount === 0;
         }
         return true;
-      });
+      })
+      .slice(0, limit);
   }
 
   public queryWorkflowInspectSummaries(query: WorkflowInspectQuery = {}): WorkflowInspectSummary[] {
@@ -374,8 +373,7 @@ export class InspectService {
     const executions = this.store.execution.listExecutionsByTask(task.id);
     const approvals = this.store.approval.listApprovalsByTask(task.id);
     const session = this.store.operations.loadTaskSnapshot(task.id).session;
-    const eventSnapshot = this.store.event.listEventsForTaskSnapshot(task.id);
-    const events = eventSnapshot.events;
+    const events = this.store.event.listEventsForTask(task.id);
 
     return {
       taskId: task.id,
@@ -405,8 +403,7 @@ export class InspectService {
 
     const executions = this.store.execution.listExecutionsByTask(workflow.taskId);
     const approvals = this.store.approval.listApprovalsByTask(workflow.taskId);
-    const eventSnapshot = this.store.event.listEventsForTaskSnapshot(workflow.taskId);
-    const events = eventSnapshot.events;
+    const events = this.store.event.listEventsForTask(workflow.taskId);
 
     return {
       taskId: workflow.taskId,
@@ -448,8 +445,9 @@ export class InspectService {
         respondedAt: approval.respondedAt,
       };
     });
-    const dispatchEventSnapshot = this.store.event.listEventsForTaskSnapshot(taskId);
-    const dispatchDecisions = dispatchEventSnapshot.events.flatMap((event) => {
+    const dispatchDecisions = this.store
+      .listEventsForTask(taskId)
+      .flatMap((event) => {
         const decision = parseDispatchDecisionTraceFromEvent(event);
         if (!decision) {
           return [];

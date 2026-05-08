@@ -51,32 +51,12 @@ export interface ApprovalQueueState {
   timeline: ApprovalQueueTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /**
-   * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
-   */
+  /** Set of processed event IDs for idempotency */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
-  /**
-   * Timestamp when this projection was last updated.
-   * Used for freshness monitoring and stale projection detection.
-   */
-  lastProjectedAt: string | null;
-  /**
-   * Lag in milliseconds between event time and projection update.
-   * Computed as: now - lastProjectedAt.
-   * Used for freshness monitoring per §28.6.
-   */
-  lagMs: number | null;
-  /**
-   * Whether this projection is considered stale.
-   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
-   * Used for freshness monitoring per §28.6/§25.5.
-   */
-  stale: boolean;
   /** Decision type */
   decisionType: string | null;
   /** Selected option ID */
@@ -89,13 +69,6 @@ export interface ApprovalQueueState {
   cascadeSourceApprovalId: string | null;
   /** Session ID for cascade denials */
   cascadeSessionId: string | null;
-}
-
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface ApprovalQueueStateInternal extends Omit<ApprovalQueueState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 export type ApprovalQueueStatus =
@@ -139,35 +112,12 @@ export function createEmptyApprovalQueueState(): ApprovalQueueState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
-    lastProjectedAt: null,
     decisionType: null,
     selectedOptionId: null,
     inputText: null,
     cascadeDeny: false,
     cascadeSourceApprovalId: null,
     cascadeSessionId: null,
-    lagMs: null,
-    stale: false,
-  };
-}
-
-/**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: ApprovalQueueState): ApprovalQueueStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: ApprovalQueueStateInternal): ApprovalQueueState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -186,11 +136,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check).
- * Uses O(1) Set lookup for efficiency.
+ * Checks if an event has already been processed (idempotency check)
  */
-function isEventProcessed(state: ApprovalQueueStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: ApprovalQueueState, eventId: string): boolean {
+  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -212,14 +161,13 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null, convert to internal state with Set for O(1) lookup
+  // Initialize state if null
   const currentState = state as unknown as ApprovalQueueState | null;
-  const baseState = currentState ? { ...currentState } : createEmptyApprovalQueueState();
-  const newState = toInternalState(baseState);
+  const newState = currentState ? { ...currentState } : createEmptyApprovalQueueState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return toSerializedState(newState) as unknown as Record<string, unknown>;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -243,14 +191,6 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
-  newState.lastProjectedAt = event.createdAt;
-  // Compute lagMs and stale flag per §28.6/§25.5
-  if (event.createdAt) {
-    const eventTime = new Date(event.createdAt).getTime();
-    const now = Date.now();
-    newState.lagMs = now - eventTime;
-    newState.stale = newState.lagMs > 300000;
-  }
 
   // Add to timeline
   const timelineEntry: ApprovalQueueTimelineEntry = {
@@ -262,8 +202,8 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed
+  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
   newState.eventCount = newState.eventCount + 1;
 
   // Extract multi-party counts from context if available
@@ -299,29 +239,19 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
       handleDecisionRejected(newState, payload, event.createdAt);
       break;
 
-    case "decision:expired":
-      newState.status = "expired";
-      newState.respondedAt = event.createdAt;
-      break;
-
-    case "decision:cancelled":
-      newState.status = "cancelled";
-      newState.respondedAt = event.createdAt;
-      break;
-
     default:
       // No specific handling for other event types
       break;
   }
 
-  return toSerializedState(newState) as unknown as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**
  * Handle decision:requested event
  */
 function handleDecisionRequested(
-  state: ApprovalQueueStateInternal,
+  state: ApprovalQueueState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -346,7 +276,7 @@ function handleDecisionRequested(
  * Handle decision:responded event
  */
 function handleDecisionResponded(
-  state: ApprovalQueueStateInternal,
+  state: ApprovalQueueState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -357,7 +287,7 @@ function handleDecisionResponded(
     state.approvalsReceived = 1;
   } else if (decisionType === "rejected") {
     state.status = "rejected";
-    state.rejectionsReceived = state.rejectionsReceived + 1;
+    state.rejectionsReceived = 1;
   } else if (decisionType === "expired") {
     state.status = "expired";
   } else if (decisionType === "text_input") {
@@ -381,7 +311,7 @@ function handleDecisionResponded(
  * Handle decision:partial_approval event (multi-party progress)
  */
 function handlePartialApproval(
-  state: ApprovalQueueStateInternal,
+  state: ApprovalQueueState,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -401,7 +331,7 @@ function handlePartialApproval(
  * Handle decision:approved event (multi-party final)
  */
 function handleDecisionApproved(
-  state: ApprovalQueueStateInternal,
+  state: ApprovalQueueState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -418,12 +348,12 @@ function handleDecisionApproved(
  * Handle decision:rejected event (multi-party final)
  */
 function handleDecisionRejected(
-  state: ApprovalQueueStateInternal,
+  state: ApprovalQueueState,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
   state.status = "rejected";
-  state.rejectionsReceived = state.rejectionsReceived + 1;
+  state.rejectionsReceived = state.approvalsRequired;
   if (state.respondedAt === null) {
     state.respondedAt = timestamp;
   }

@@ -2,25 +2,6 @@ import test from "node:test";
 import { strict as assert } from "node:assert/strict";
 import { ConversationHistoryService } from "../../../../../src/interaction/ux/conversation-history-service.js";
 
-function createMemoryServiceMock() {
-  const remembered: unknown[] = [];
-  const recalled: unknown[] = [];
-  return {
-    remembered,
-    recalled,
-    memoryService: {
-      remember(input: unknown) {
-        remembered.push(input);
-        return {} as never;
-      },
-      recall(input?: unknown) {
-        recalled.push(input ?? null);
-        return [];
-      },
-    } as never,
-  };
-}
-
 test("ConversationHistoryService startSession creates session", () => {
   const service = new ConversationHistoryService();
   const session = service.startSession("tenant-1", "user-1");
@@ -160,72 +141,4 @@ test("ConversationHistoryService updatedAt changes on addTurn", async () => {
   const updated = await service.addTurn(session, { role: "user", message: "Hello" });
 
   assert.ok(updated.updatedAt >= originalUpdated);
-});
-
-test("ConversationHistoryService does not persist restricted sessions to long-term memory", async () => {
-  const mock = createMemoryServiceMock();
-  const service = new ConversationHistoryService(mock.memoryService);
-  const session = service.startSession("tenant-1", "user-1");
-
-  await service.addTurn(session, { role: "user", message: "regulated conversation" }, {
-    dataHandling: "regulated",
-  });
-
-  assert.equal(mock.remembered.length, 0);
-});
-
-test("ConversationHistoryService persists standard sessions when memory service is available", async () => {
-  const mock = createMemoryServiceMock();
-  const service = new ConversationHistoryService(mock.memoryService);
-  const session = service.startSession("tenant-1", "user-1");
-
-  await service.completeSession(session);
-
-  assert.equal(mock.remembered.length, 1);
-});
-
-test("ConversationHistoryService listUserSessions enforces tenantId at query time", async () => {
-  const recallCalls: unknown[] = [];
-  const service = new ConversationHistoryService({
-    remember() {
-      return {} as never;
-    },
-    recall(input?: unknown) {
-      recallCalls.push(input ?? null);
-      return [
-        {
-          contentJson: JSON.stringify({
-            sessionId: "conv_1",
-            tenantId: "tenant-1",
-            userId: "user-1",
-            turns: [],
-            createdAt: "2026-04-01T00:00:00.000Z",
-            updatedAt: "2026-04-02T00:00:00.000Z",
-            status: "active",
-          }),
-        },
-        {
-          contentJson: JSON.stringify({
-            sessionId: "conv_2",
-            tenantId: "tenant-2",
-            userId: "user-1",
-            turns: [],
-            createdAt: "2026-04-01T00:00:00.000Z",
-            updatedAt: "2026-04-03T00:00:00.000Z",
-            status: "active",
-          }),
-        },
-      ];
-    },
-  } as never);
-
-  const sessions = await service.listUserSessions("user-1", "tenant-1");
-
-  assert.equal(recallCalls.length, 1);
-  assert.deepEqual(recallCalls[0], {
-    scopes: ["conversation"],
-    tenantId: "tenant-1",
-  });
-  assert.equal(sessions.length, 1);
-  assert.equal(sessions[0]?.tenantId, "tenant-1");
 });

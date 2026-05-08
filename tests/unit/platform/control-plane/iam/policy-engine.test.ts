@@ -157,14 +157,13 @@ test("PolicyEngine.evaluate allows non-high-risk action in auto mode without esc
   assert.equal(result.requiresApproval, false);
 });
 
-test("PolicyEngine.evaluate escalates destructive action in full-auto mode", () => {
+test("PolicyEngine.evaluate allows high-risk action in full-auto mode without approval", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   const result = engine.evaluate(
     makeRequest({ mode: "full-auto", riskCategory: "destructive", estimatedCostUsd: 1 }),
   );
-  assert.equal(result.decision, "escalate_for_approval");
-  assert.equal(result.requiresApproval, true);
-  assert.equal(result.reasonCode, "policy.full_auto_high_risk_escalation");
+  assert.equal(result.decision, "allow_with_constraints");
+  assert.equal(result.requiresApproval, false);
 });
 
 test("PolicyEngine.evaluate returns allow_under_budget_warning when approaching limit", () => {

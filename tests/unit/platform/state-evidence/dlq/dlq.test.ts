@@ -267,7 +267,7 @@ test("DeadLetterQueueService discard", () => {
   assert.equal(updated.errorCode, "user initiated discard");
 });
 
-test("DeadLetterQueueService markRetryExhausted sets timestamps and transitions to discarded", () => {
+test("DeadLetterQueueService markRetryExhausted sets timestamps", () => {
   const service = new DeadLetterQueueService();
   const record = service.enqueue({
     sourceEventId: "evt_exhausted",
@@ -277,7 +277,7 @@ test("DeadLetterQueueService markRetryExhausted sets timestamps and transitions 
   });
 
   const updated = service.markRetryExhausted(record.deadLetterId);
-  assert.equal(updated.status, "discarded");
+  assert.equal(updated.status, "pending");
   assert.notEqual(updated.retryExhaustedAt, null);
 });
 

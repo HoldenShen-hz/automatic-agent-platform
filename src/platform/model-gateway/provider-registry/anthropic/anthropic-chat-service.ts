@@ -464,17 +464,8 @@ export class AnthropicChatService {
                   accumulatedContent += parsed.delta.text;
                 }
               } else if (parsed.type === "message_delta") {
-                // R27-10 FIX: message_delta contains stop_reason and usage on final delta
-                // Accumulate usage from all message_delta events
                 if (parsed.usage) {
                   accumulatedUsage = parsed.usage;
-                }
-                // Extract stop_reason from message_delta if present
-                if (parsed.delta && "stop_reason" in parsed.delta && parsed.delta.stop_reason) {
-                  finalStopReason = parsed.delta.stop_reason as typeof finalStopReason;
-                }
-                if (parsed.delta && "stop_sequence" in parsed.delta && parsed.delta.stop_sequence) {
-                  finalStopSequence = parsed.delta.stop_sequence as typeof finalStopSequence;
                 }
                 if (parsed.delta?.type === "text_delta") {
                   // already accumulated above

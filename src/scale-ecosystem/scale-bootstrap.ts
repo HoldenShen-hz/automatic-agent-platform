@@ -24,7 +24,7 @@ export function buildScaleBootstrap(): ScaleBootstrap {
 }
 
 export function registerScaleBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): ScaleBootstrap {
   registry.register<readonly ScaleCapabilityBaseline[]>(SCALE_CATALOG_SERVICE_ID, {
     init: () => listScaleCapabilityBaselines(),

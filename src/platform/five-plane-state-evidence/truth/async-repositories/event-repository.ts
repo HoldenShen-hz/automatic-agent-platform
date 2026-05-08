@@ -8,94 +8,20 @@ import type { EventConsumerAckRecord, EventDeadLetterRecord, EventRecord } from 
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
-import { buildTenantClause } from "../async-query-helper.js";
 
 const EVENT_COLS = `id, task_id AS "taskId", session_id AS "sessionId", execution_id AS "executionId",
         event_type AS "eventType", event_tier AS "eventTier", payload_json AS "payloadJson",
         trace_id AS "traceId", created_at AS "createdAt"`;
 
-export interface TaskEventStreamSnapshot {
-  taskId: string;
-  tenantId: string | null;
-  events: EventRecord[];
-  streamVersion: number;
-  snapshotCursor: string | null;
-  lastEventId: string | null;
-  lastCreatedAt: string | null;
-}
-
-/**
- * R9-12 FIX: Result type for listEventsForTask with projection versioning.
- * Enables efficient incremental event rebuilding via snapshot cursor.
- */
-export interface TaskEventListResult {
-  events: EventRecord[];
-  streamVersion: number;
-  snapshotCursor: string | null;
-  lastEventId: string | null;
-  lastCreatedAt: string | null;
-}
-
-type AsyncEventInsertInput = Omit<EventRecord, "eventTier" | "sessionId"> & {
-  eventTier?: EventRecord["eventTier"];
-  sessionId?: string | null;
-  tenantId: string;
-};
-
-function encodeEventStreamCursor(event: Pick<EventRecord, "id" | "createdAt">): string {
-  return Buffer.from(JSON.stringify({ id: event.id, createdAt: event.createdAt }), "utf8").toString("base64url");
-}
-
-function decodeEventStreamCursor(cursor: string): { id: string; createdAt: string } {
-  const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
-    id?: unknown;
-    createdAt?: unknown;
-  };
-  if (typeof parsed.id !== "string" || typeof parsed.createdAt !== "string") {
-    throw new Error("event_repository.invalid_snapshot_cursor");
-  }
-  return {
-    id: parsed.id,
-    createdAt: parsed.createdAt,
-  };
-}
-
 export class AsyncEventRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
-  private async assertTenantScopeForEvent(input: {
-    taskId: string | null;
-    tenantId: string;
-  }): Promise<void> {
-    if (input.tenantId.trim().length === 0) {
-      throw new Error("event_repository.tenant_id_required");
-    }
-    if (input.taskId == null) {
-      return;
-    }
-    const taskScope = await asyncQueryOne<{ tenantId: string }>(
-      this.conn,
-      `SELECT tenant_id AS "tenantId" FROM tasks WHERE id = $1`,
-      input.taskId,
-    );
-    if (taskScope == null) {
-      throw new Error(`event_repository.task_not_found_for_tenant_scope:${input.taskId}`);
-    }
-    if (taskScope.tenantId !== input.tenantId) {
-      throw new Error(
-        `event_repository.tenant_scope_mismatch:${input.taskId}:${input.tenantId}:${taskScope.tenantId}`,
-      );
-    }
-  }
-
   public async insertEvent(
-    event: AsyncEventInsertInput,
+    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
+      eventTier?: EventRecord["eventTier"];
+      sessionId?: string | null;
+    },
   ): Promise<EventRecord> {
-    const tenantId = event.tenantId.trim();
-    await this.assertTenantScopeForEvent({
-      taskId: event.taskId ?? null,
-      tenantId,
-    });
     const record: EventRecord = {
       id: event.id,
       taskId: event.taskId ?? null,
@@ -231,115 +157,30 @@ export class AsyncEventRepository {
     );
   }
 
-  public async listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): Promise<TaskEventListResult> {
-    let events: EventRecord[];
+  public async listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): Promise<EventRecord[]> {
     if (typeof tenantIdOrLimit === "number") {
-      events = await asyncQueryAll<EventRecord>(
+      return asyncQueryAll<EventRecord>(
         this.conn,
-        `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2`,
+        `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1 ORDER BY created_at DESC LIMIT $2`,
         taskId, tenantIdOrLimit,
       );
-    } else {
-      const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
-      if (scopedTenantId !== undefined) {
-        events = await asyncQueryAll<EventRecord>(
-          this.conn,
-          `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
-            e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
-            e.trace_id AS "traceId", e.created_at AS "createdAt"
-           FROM events e INNER JOIN tasks t ON t.id = e.task_id WHERE e.task_id = $1 AND t.tenant_id = $2 ORDER BY e.created_at ASC, e.id ASC`,
-          taskId, scopedTenantId,
-        );
-      } else {
-        events = await asyncQueryAll<EventRecord>(
-          this.conn,
-          `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1 ORDER BY created_at ASC, id ASC`,
-          taskId,
-        );
-      }
     }
-    const lastEvent = events.at(-1) ?? null;
-    return {
-      events,
-      streamVersion: events.length,
-      snapshotCursor: lastEvent ? encodeEventStreamCursor(lastEvent) : null,
-      lastEventId: lastEvent?.id ?? null,
-      lastCreatedAt: lastEvent?.createdAt ?? null,
-    };
-  }
-
-  public async listEventsForTaskSnapshot(taskId: string, tenantId?: string | null): Promise<TaskEventStreamSnapshot> {
-    const result = await this.listEventsForTask(taskId, tenantId);
-    return {
-      taskId,
-      tenantId: resolveTenantScope(tenantId) ?? null,
-      events: result.events,
-      streamVersion: result.streamVersion,
-      snapshotCursor: result.snapshotCursor,
-      lastEventId: result.lastEventId,
-      lastCreatedAt: result.lastCreatedAt,
-    };
-  }
-
-  public async listEventsForTaskSinceCursor(taskId: string, snapshotCursor: string, tenantId?: string | null): Promise<EventRecord[]> {
-    const cursor = decodeEventStreamCursor(snapshotCursor);
-    const scopedTenantId = resolveTenantScope(tenantId);
+    const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
     if (scopedTenantId !== undefined) {
       return asyncQueryAll<EventRecord>(
         this.conn,
         `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
           e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
           e.trace_id AS "traceId", e.created_at AS "createdAt"
-         FROM events e
-         INNER JOIN tasks t ON t.id = e.task_id
-         WHERE e.task_id = $1
-           AND t.tenant_id = $2
-           AND (e.created_at > $3 OR (e.created_at = $3 AND e.id > $4))
-         ORDER BY e.created_at ASC, e.id ASC`,
-        taskId,
-        scopedTenantId,
-        cursor.createdAt,
-        cursor.id,
+         FROM events e INNER JOIN tasks t ON t.id = e.task_id WHERE e.task_id = $1 AND t.tenant_id = $2 ORDER BY e.created_at ASC`,
+        taskId, scopedTenantId,
       );
     }
     return asyncQueryAll<EventRecord>(
       this.conn,
-      `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE task_id = $1
-         AND (created_at > $2 OR (created_at = $2 AND id > $3))
-       ORDER BY created_at ASC, id ASC`,
+      `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1 ORDER BY created_at ASC`,
       taskId,
-      cursor.createdAt,
-      cursor.id,
     );
-  }
-
-  // R13-12 FIX: Implement getEventsByTenantId for multi-tenant isolation queries.
-  // Tenant isolation is maintained via JOIN with tasks table.
-  public async listEventsByTenantId(tenantId: string, limit?: number, cursor?: string | null): Promise<EventRecord[]> {
-    let sql = `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
-        e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
-        e.trace_id AS "traceId", e.created_at AS "createdAt"
-       FROM events e
-       INNER JOIN tasks t ON t.id = e.task_id
-       WHERE t.tenant_id = $1`;
-    const params: unknown[] = [tenantId];
-
-    if (cursor !== undefined && cursor !== null) {
-      const cursorData = decodeEventStreamCursor(cursor);
-      sql += ` AND (e.created_at > $${params.length + 1} OR (e.created_at = $${params.length + 1} AND e.id > $${params.length + 2}))`;
-      params.push(cursorData.createdAt, cursorData.createdAt, cursorData.id);
-    }
-
-    sql += ` ORDER BY e.created_at ASC, e.id ASC`;
-
-    if (limit !== undefined) {
-      sql += ` LIMIT $${params.length + 1}`;
-      params.push(limit);
-    }
-
-    return asyncQueryAll<EventRecord>(this.conn, sql, ...params);
   }
 
   public async getEvent(eventId: string): Promise<EventRecord | null> {
@@ -349,28 +190,6 @@ export class AsyncEventRepository {
       eventId,
     );
     return result ?? null;
-  }
-
-  // R13-10 FIX: Implement getEventsByCorrelationId for workflow linking.
-  // correlation_id links events belonging to the same workflow or business transaction.
-  public async listEventsByCorrelationId(correlationId: string, limit?: number): Promise<EventRecord[]> {
-    let sql = `SELECT ${EVENT_COLS} FROM events WHERE correlation_id = $1 ORDER BY created_at ASC, id ASC`;
-    if (limit !== undefined) {
-      sql += ` LIMIT $2`;
-      return asyncQueryAll<EventRecord>(this.conn, sql, correlationId, limit);
-    }
-    return asyncQueryAll<EventRecord>(this.conn, sql, correlationId);
-  }
-
-  // R13-11 FIX: Implement getEventsByCausationId for cause-effect chain tracking.
-  // causation_id links an event to its originating event (the cause).
-  public async listEventsByCausationId(causationId: string, limit?: number): Promise<EventRecord[]> {
-    let sql = `SELECT ${EVENT_COLS} FROM events WHERE causation_id = $1 ORDER BY created_at ASC, id ASC`;
-    if (limit !== undefined) {
-      sql += ` LIMIT $2`;
-      return asyncQueryAll<EventRecord>(this.conn, sql, causationId, limit);
-    }
-    return asyncQueryAll<EventRecord>(this.conn, sql, causationId);
   }
 
   public async countPendingTier1Acks(): Promise<number> {
@@ -387,71 +206,5 @@ export class AsyncEventRepository {
       `SELECT COUNT(*) AS count FROM events e JOIN event_consumer_acks a ON a.event_id = e.id WHERE e.event_tier = 'tier_1' AND a.status = 'failed'`,
     );
     return Number(result?.count ?? 0);
-  }
-
-  /**
-   * R12-04: Get all events for a specific HarnessRun.
-   * Events are filtered by run_id matching the harness run ID.
-   * Tenant filtering is applied when tenantId is provided.
-   */
-  public async getHarnessRunEvents(harnessRunId: string, tenantId?: string | null): Promise<EventRecord[]> {
-    const scopedTenantId = resolveTenantScope(tenantId);
-    if (scopedTenantId !== undefined) {
-      // R12-07: Use buildTenantClause helper for consistent tenant filtering
-      const tenantClause = buildTenantClause(scopedTenantId, 2);
-      return asyncQueryAll<EventRecord>(
-        this.conn,
-        `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
-          e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
-          e.trace_id AS "traceId", e.created_at AS "createdAt"
-         FROM events e
-         INNER JOIN tasks t ON t.id = e.task_id
-         WHERE e.run_id = $1 ${tenantClause.clause}
-         ORDER BY e.created_at ASC, e.id ASC`,
-        harnessRunId,
-        ...tenantClause.args,
-      );
-    }
-    return asyncQueryAll<EventRecord>(
-      this.conn,
-      `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE run_id = $1
-       ORDER BY created_at ASC, id ASC`,
-      harnessRunId,
-    );
-  }
-
-  /**
-   * R12-05: Get all events for a specific NodeRun.
-   * Events are filtered by run_id matching the node run ID.
-   * Tenant filtering is applied when tenantId is provided.
-   */
-  public async getNodeRunEvents(nodeRunId: string, tenantId?: string | null): Promise<EventRecord[]> {
-    const scopedTenantId = resolveTenantScope(tenantId);
-    if (scopedTenantId !== undefined) {
-      // R12-07: Use buildTenantClause helper for consistent tenant filtering
-      const tenantClause = buildTenantClause(scopedTenantId, 2);
-      return asyncQueryAll<EventRecord>(
-        this.conn,
-        `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
-          e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
-          e.trace_id AS "traceId", e.created_at AS "createdAt"
-         FROM events e
-         INNER JOIN tasks t ON t.id = e.task_id
-         WHERE e.run_id = $1 ${tenantClause.clause}
-         ORDER BY e.created_at ASC, e.id ASC`,
-        nodeRunId,
-        ...tenantClause.args,
-      );
-    }
-    return asyncQueryAll<EventRecord>(
-      this.conn,
-      `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE run_id = $1
-       ORDER BY created_at ASC, id ASC`,
-      nodeRunId,
-    );
   }
 }

@@ -16,9 +16,7 @@ export type TraceStatus = "active" | "paused" | "completed" | "aborted";
 
 export interface TraceEvent {
   readonly eventId: string;
-  readonly nodeRunId: string;
-  /** @deprecated compatibility alias; use nodeRunId */
-  readonly stepId?: string;
+  readonly stepId: string;
   readonly eventType: "enter" | "exit" | "error" | "variable_change" | "checkpoint";
   readonly timestamp: string;
   readonly durationMs: number | null;
@@ -27,12 +25,8 @@ export interface TraceEvent {
 
 export interface ExecutionTrace {
   readonly traceId: string;
-  readonly planGraphId: string;
-  readonly harnessRunId: string;
-  /** @deprecated compatibility alias; use planGraphId */
-  readonly workflowId?: string;
-  /** @deprecated compatibility alias; use harnessRunId */
-  readonly executionId?: string;
+  readonly workflowId: string;
+  readonly executionId: string;
   readonly status: TraceStatus;
   readonly events: readonly TraceEvent[];
   readonly startedAt: string;
@@ -41,8 +35,6 @@ export interface ExecutionTrace {
 }
 
 export interface TraceFilter {
-  readonly nodeRunId?: string;
-  /** @deprecated compatibility alias; use nodeRunId */
   readonly stepId?: string;
   readonly eventType?: TraceEvent["eventType"];
   readonly fromTimestamp?: string;
@@ -62,7 +54,6 @@ export class ExecutionTracer {
   private activeTraces = new Map<string, ExecutionTrace>();
   private activeEvents = new Map<string, TraceEvent[]>();
   private traceStartTimes = new Map<string, number>();
-  private eventStartTimes = new Map<string, number>();
 
   public constructor(options: ExecutionTracerOptions = {}) {
     this.maxEventsPerTrace = options.maxEventsPerTrace ?? 10_000;
@@ -70,17 +61,15 @@ export class ExecutionTracer {
     this.measurePerformance = options.measurePerformance ?? true;
   }
 
-  public startTrace(planGraphId: string, harnessRunId: string): ExecutionTrace {
+  public startTrace(workflowId: string, executionId: string): ExecutionTrace {
     const traceId = newId("trace");
     const startedAt = nowIso();
     this.traceStartTimes.set(traceId, Date.now());
 
     const trace: ExecutionTrace = {
       traceId,
-      planGraphId,
-      harnessRunId,
-      workflowId: planGraphId,
-      executionId: harnessRunId,
+      workflowId,
+      executionId,
       status: "active",
       events: [],
       startedAt,
@@ -96,7 +85,7 @@ export class ExecutionTracer {
 
   public recordEvent(
     traceId: string,
-    nodeRunId: string,
+    stepId: string,
     eventType: TraceEvent["eventType"],
     metadata: Record<string, unknown> = {},
   ): TraceEvent | null {
@@ -110,26 +99,12 @@ export class ExecutionTracer {
       return null;
     }
 
-    const now = Date.now();
-    const eventKey = `${traceId}:${nodeRunId}`;
-    let durationMs: number | null = null;
-
-    if (this.measurePerformance) {
-      if (eventType === "enter") {
-        this.eventStartTimes.set(eventKey, now);
-      } else if (eventType === "exit" || eventType === "error") {
-        const eventStartTime = this.eventStartTimes.get(eventKey);
-        if (eventStartTime != null) {
-          durationMs = Math.max(0, now - eventStartTime);
-          this.eventStartTimes.delete(eventKey);
-        }
-      }
-    }
+    const startTime = this.traceStartTimes.get(traceId) ?? Date.now();
+    const durationMs = this.measurePerformance ? Date.now() - startTime : null;
 
     const event: TraceEvent = {
       eventId: newId("evt"),
-      nodeRunId,
-      stepId: nodeRunId,
+      stepId,
       eventType,
       timestamp: nowIso(),
       durationMs,
@@ -187,13 +162,9 @@ export class ExecutionTracer {
       totalDurationMs,
     };
 
-    // §165-1914 P1 FIX: Remove from activeTraces/activeEvents to prevent memory leak.
-    // Previously the trace was only marked completed but remained in the maps forever,
-    // causing unbounded memory growth as traces never got cleaned up.
-    this.activeTraces.delete(traceId);
+    this.activeTraces.set(traceId, updated);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
-    this.eventStartTimes.delete(traceId);
 
     return updated;
   }
@@ -212,17 +183,14 @@ export class ExecutionTracer {
       totalDurationMs: null,
     };
 
-    // §165-1914 P1 FIX: Remove from activeTraces/activeEvents to prevent memory leak.
-    this.activeTraces.delete(traceId);
+    this.activeTraces.set(traceId, updated);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
-    this.eventStartTimes.delete(traceId);
 
     return updated;
   }
 
   public getTrace(traceId: string): ExecutionTrace | null {
-    // First check active traces
     const trace = this.activeTraces.get(traceId);
     if (trace) {
       return {
@@ -231,12 +199,15 @@ export class ExecutionTracer {
       };
     }
 
-    // §165-1915 P1 FIX: Second branch was unconditionally returning null even when
-    // a completed trace existed. Since stopTrace/abortTrace remove traces from activeTraces
-    // but transfer events to the returned object, returning null here is correct ONLY when
-    // the trace has been fully stopped and its events already collected into the result.
-    // The original bug comment was misleading - this is the normal completion path,
-    // not an error condition.
+    // Check completed/aborted traces - return with current events
+    const events = this.activeEvents.get(traceId);
+    if (events) {
+      return {
+        ...trace!,
+        events: [...events],
+      };
+    }
+
     return null;
   }
 
@@ -249,8 +220,7 @@ export class ExecutionTracer {
     const events = this.activeEvents.get(traceId) ?? trace.events ?? [];
 
     return events.filter((event) => {
-      const filterNodeRunId = filter.nodeRunId ?? filter.stepId;
-      if (filterNodeRunId && event.nodeRunId !== filterNodeRunId && event.stepId !== filterNodeRunId) {
+      if (filter.stepId && event.stepId !== filter.stepId) {
         return false;
       }
       if (filter.eventType && event.eventType !== filter.eventType) {
@@ -266,22 +236,12 @@ export class ExecutionTracer {
     });
   }
 
-  public getTracesByPlanGraph(planGraphId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.planGraphId === planGraphId || t.workflowId === planGraphId);
-  }
-
-  public getTracesByHarnessRun(harnessRunId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.harnessRunId === harnessRunId || t.executionId === harnessRunId);
-  }
-
-  /** @deprecated use getTracesByPlanGraph */
   public getTracesByWorkflow(workflowId: string): readonly ExecutionTrace[] {
-    return this.getTracesByPlanGraph(workflowId);
+    return [...this.activeTraces.values()].filter((t) => t.workflowId === workflowId);
   }
 
-  /** @deprecated use getTracesByHarnessRun */
   public getTracesByExecution(executionId: string): readonly ExecutionTrace[] {
-    return this.getTracesByHarnessRun(executionId);
+    return [...this.activeTraces.values()].filter((t) => t.executionId === executionId);
   }
 
   public getActiveTraceCount(): number {
@@ -292,6 +252,5 @@ export class ExecutionTracer {
     this.activeTraces.clear();
     this.activeEvents.clear();
     this.traceStartTimes.clear();
-    this.eventStartTimes.clear();
   }
 }

@@ -1,6 +1,6 @@
 # Plugin SPI Contract
 
-> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Domain Registry 的 Plugin SPI 接口体系，对应 ADR-071。
+> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Domain Registry 的 Plugin SPI 接口体系，对应 ADR-066。
 > **更新日期**：2026-04-17
 
 ## 1. 范围
@@ -10,7 +10,7 @@
 相关文档：
 - `tool_skill_plugin_contract.md`：Tool/Skill/Plugin 的关系。
 - `sandbox_and_auth_contract.md`：Plugin 沙箱安全边界。
-- [ADR-071 Plugin SPI Framework](../adr/071-plugin-spi-framework.md)
+- [ADR-066 Plugin SPI Framework](../adr/066-plugin-spi-framework.md)
 
 ## 2. 四种 OAPEFLIR Domain Plugin SPI 接口
 
@@ -27,11 +27,11 @@ interface DomainRetrieverPlugin {
   // 检索相关知识
   retrieve(request: RetrievalRequest): Promise<RetrievalHit[]>;
 
-  // 生命周期（canonical hook 名称：onLoad / onActivate / onDeactivate / onUnload）
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+  // 生命周期
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface RetrievalRequest {
@@ -56,11 +56,10 @@ interface DomainValidatorPlugin {
   // 验证输入/输出
   validate(input: unknown, context: ValidationContext): Promise<ValidationResult>;
 
-  // 生命周期（canonical hook 名称）
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface ValidationContext {
@@ -102,11 +101,10 @@ interface DomainPlannerPlugin {
   // 为特定 domain 生成计划
   plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
-  // 生命周期（canonical hook 名称）
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface UnifiedAssessment {
@@ -131,14 +129,12 @@ interface DomainPresenterPlugin {
   readonly domainId: string;
 
   // 格式化输出
-  // §R11-61: 必须使用 NodeAttemptReceipt（不是废弃的 DualChannelStepOutput）
   present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>;
 
-  // 生命周期（canonical hook 名称）
-  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
-  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface OutputFormat {
@@ -155,11 +151,7 @@ interface PresentedOutput {
 }
 ```
 
-`NodeAttemptReceipt` 必须携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
-
-**废弃警告**：`DualChannelStepOutput` 已被废弃，不得作为 Plugin 边界类型传递。必须使用 `NodeAttemptReceipt` 作为 present() 的唯一输入类型。
-
-**R11-61 FIX**: `DomainPresenterPlugin.present()` 方法签名已确认使用 `NodeAttemptReceipt`（不是废弃的 `DualChannelStepOutput`）。
+`NodeAttemptReceipt` 至少要携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
 
 ## 3. ExternalAdapterPlugin（8 种适配类型）
 
@@ -176,8 +168,6 @@ interface PresentedOutput {
 
 ## 4. PluginSpiRegistry 生命周期状态机
 
-> **生命周期钩子统一说明**：Plugin SPI 接口使用 canonical 钩子名称 `onLoad / onActivate / onDeactivate / onUnload`（对齐 tool_skill_plugin_contract.md）。PluginSpiRegistry 的方法是 registry-level 操作，不等同于 plugin 自身的生命周期钩子。
-
 ```typescript
 class PluginSpiRegistry {
   // 状态：unregistered → loading → registered → initialized → active ↔ suspended → inactive → unloaded
@@ -185,10 +175,10 @@ class PluginSpiRegistry {
   // 注册插件
   register(plugin: BasePlugin): void;
 
-  // 初始化插件（调用 plugin.onLoad）
+  // 初始化插件
   async initialize(pluginId: string, config: PluginConfig): Promise<void>;
 
-  // 激活插件（调用 plugin.onActivate）
+  // 激活插件
   async activate(pluginId: string): Promise<void>;
 
   // 按类型查找
@@ -200,10 +190,10 @@ class PluginSpiRegistry {
   // 批量执行（fan-out）
   async invokeAll(type: PluginType, method: string, args: unknown[]): Promise<unknown[]>;
 
-  // 挂起插件（调用 plugin.onDeactivate）
+  // 挂起插件
   async suspend(pluginId: string): Promise<void>;
 
-  // 停用插件（调用 plugin.onUnload）
+  // 停用插件
   async deactivate(pluginId: string): Promise<void>;
 
   // 卸载插件

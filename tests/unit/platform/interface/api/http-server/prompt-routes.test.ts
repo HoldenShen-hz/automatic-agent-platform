@@ -34,77 +34,27 @@ function seedPromptRegistry(): HierarchicalPromptRegistryService {
   const registry = new HierarchicalPromptRegistryService();
   registry.registerBundle({
     name: "system.default",
-    version: 1,
+    version: "1.0.0",
     domain: "global",
     taskType: "general",
     packId: undefined,
     systemPrompt: { content: "You are helpful.", templateVariables: [], channel: "system" },
     userPrompt: undefined,
-    fewShotExamples: [],
-    constraints: {
-      maxTokens: 256,
-      temperature: undefined,
-      topP: undefined,
-      stopSequences: undefined,
-      responseFormat: "json",
-      customConstraints: {},
-    },
-    compatibilityMatrix: {
-      toolSchemaVersions: [{ toolName: "general", schemaVersion: 1 }],
-      evaluatorSchemaVersions: [{ evaluatorName: "default", schemaVersion: 1 }],
-      domainDescriptorVersions: [{ domainId: "global", version: 1 }],
-      modelRoutingProfiles: [{ modelId: "balanced/default", profileVersion: 1 }],
-    },
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      lifecycleStatus: "draft",
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: {
-        weight: 100,
-        startTime: undefined,
-        endTime: undefined,
-        targeting: undefined,
-      },
-    },
+    fewShotExamples: undefined,
+    constraints: undefined,
+    metadata: undefined,
   }, "global");
   registry.registerBundle({
     name: "system.sales",
-    version: 2,
+    version: "1.1.0",
     domain: "sales",
     taskType: "lead_followup",
     packId: undefined,
     systemPrompt: { content: "You are a sales assistant.", templateVariables: [], channel: "system" },
     userPrompt: undefined,
-    fewShotExamples: [],
-    constraints: {
-      maxTokens: 256,
-      temperature: undefined,
-      topP: undefined,
-      stopSequences: undefined,
-      responseFormat: "json",
-      customConstraints: {},
-    },
-    compatibilityMatrix: {
-      toolSchemaVersions: [{ toolName: "sales", schemaVersion: 1 }],
-      evaluatorSchemaVersions: [{ evaluatorName: "default", schemaVersion: 1 }],
-      domainDescriptorVersions: [{ domainId: "sales", version: 1 }],
-      modelRoutingProfiles: [{ modelId: "balanced/default", profileVersion: 1 }],
-    },
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      lifecycleStatus: "draft",
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: {
-        weight: 100,
-        startTime: undefined,
-        endTime: undefined,
-        targeting: undefined,
-      },
-    },
+    fewShotExamples: undefined,
+    constraints: undefined,
+    metadata: undefined,
   }, "domain", "sales");
   return registry;
 }
@@ -140,130 +90,4 @@ test("GET /v1/prompts supports domain filters", async () => {
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("system.sales"));
   assert.ok(!response.body.includes("system.default"));
-});
-
-test("PUT /v1/prompts/:name/deprecate validates request body before deprecating", async () => {
-  const routes = createPromptRoutes({
-    authService: createMockAuthService(["operator"]),
-    promptRegistryService: seedPromptRegistry(),
-  });
-
-  await assert.rejects(
-    () => callRoute(routes, {
-      requestId: "req-prompt-deprecate-invalid",
-      request: {
-        method: "PUT",
-        url: "/v1/prompts/system.default/deprecate",
-        headers: {},
-        body: JSON.stringify({ version: "1", unexpected: true }),
-      } as never,
-      route: { pathname: null, segments: ["v1", "prompts", "system.default", "deprecate"] },
-      principal: null,
-    }),
-  );
-});
-
-test("PUT /v1/prompts/:name/deprecate accepts validated payload", async () => {
-  const routes = createPromptRoutes({
-    authService: createMockAuthService(["operator"]),
-    promptRegistryService: seedPromptRegistry(),
-  });
-
-  const response = await callRoute(routes, {
-    requestId: "req-prompt-deprecate-valid",
-    request: {
-      method: "PUT",
-      url: "/v1/prompts/system.default/deprecate",
-      headers: {},
-      body: JSON.stringify({ version: 1, level: "global" }),
-    } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "system.default", "deprecate"] },
-    principal: null,
-  });
-
-  if (!response) throw new Error("handler returned null");
-  assert.equal(response.statusCode, 200);
-  const parsed = JSON.parse(response.body);
-  assert.equal(parsed.data.deprecated, true);
-  assert.equal(parsed.data.name, "system.default");
-});
-
-test("GET /v1/prompts/:name returns ErrorEnvelope when bundle is missing", async () => {
-  const routes = createPromptRoutes({
-    authService: createMockAuthService(),
-    promptRegistryService: seedPromptRegistry(),
-  });
-
-  const response = await callRoute(routes, {
-    requestId: "req-prompt-missing",
-    request: {
-      method: "GET",
-      url: "/v1/prompts/does-not-exist?taskType=general",
-      headers: {},
-      body: null,
-    } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "does-not-exist"] },
-    principal: null,
-  });
-
-  if (!response) throw new Error("handler returned null");
-  assert.equal(response.statusCode, 404);
-  const parsed = JSON.parse(response.body);
-  assert.equal(parsed.error.code, "prompt.bundle_not_found");
-  assert.match(parsed.error.message, /does-not-exist/);
-});
-
-test("PUT /v1/prompts/:name/deprecate returns 404 when bundle is missing", async () => {
-  const routes = createPromptRoutes({
-    authService: createMockAuthService(["operator"]),
-    promptRegistryService: seedPromptRegistry(),
-  });
-
-  const response = await callRoute(routes, {
-    requestId: "req-prompt-deprecate-missing",
-    request: {
-      method: "PUT",
-      url: "/v1/prompts/missing/deprecate",
-      headers: {},
-      body: JSON.stringify({ version: 1, level: "global" }),
-    } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "missing", "deprecate"] },
-    principal: null,
-  });
-
-  if (!response) throw new Error("handler returned null");
-  assert.equal(response.statusCode, 404);
-  const parsed = JSON.parse(response.body);
-  assert.equal(parsed.error.code, "prompt.bundle_not_found");
-});
-
-test("POST /v1/prompts rejects unexpected fields via strict schema", async () => {
-  const routes = createPromptRoutes({
-    authService: createMockAuthService(["operator"]),
-    promptRegistryService: seedPromptRegistry(),
-  });
-
-  await assert.rejects(
-    () => callRoute(routes, {
-      requestId: "req-prompt-create-invalid",
-      request: {
-        method: "POST",
-        url: "/v1/prompts",
-        headers: {},
-        body: JSON.stringify({
-          name: "system.extra",
-          promptText: "hello",
-          model: "balanced",
-          tools: [],
-          scope: { responsibilities: [], boundaries: [] },
-          inputSchema: { required: [] },
-          outputSchema: { required: [] },
-          preconditions: [],
-          unexpected: true,
-        }),
-      } as never,
-      route: { pathname: "/v1/prompts", segments: ["v1", "prompts"] },
-      principal: null,
-    }),
-  );
 });

@@ -5,7 +5,7 @@ import { KnowledgeNamespaceSchema } from "../../platform/state-evidence/knowledg
 import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
-import { DomainDefinitionSchema, type DomainDefinition } from "./domain-model.js";
+import { DomainDefinitionSchema } from "./domain-model.js";
 import { DomainRegistryService } from "./domain-registry-service.js";
 import { PluginManifestSchema } from "./plugin-spi.js";
 import { PluginSpiRegistry } from "./plugin-spi-registry.js";
@@ -73,7 +73,7 @@ export function bootstrapConfiguredRegistries(options: RegistryBootstrapOptions 
   const domainLayer = normalizeObject(config.layers.domains) as DomainLayerShape;
   const domains = Array.isArray(domainLayer.domains) ? domainLayer.domains : [];
   for (const domainInput of domains) {
-    domainRegistry.register(DomainDefinitionSchema.parse(domainInput) as DomainDefinition);
+    domainRegistry.register(DomainDefinitionSchema.parse(domainInput));
   }
 
   const knowledgeLayer = normalizeObject(config.layers.knowledge) as KnowledgeLayerShape;

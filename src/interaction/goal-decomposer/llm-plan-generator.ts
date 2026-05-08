@@ -1,21 +1,10 @@
-import type { CostEstimate } from "../../platform/contracts/types/cost.js";
 import type { UnifiedChatProvider } from "../../platform/model-gateway/provider-registry/index.js";
 import type {
   BudgetLedger,
   BudgetResourceKind,
 } from "../../platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../platform/five-plane-execution/budget-allocator.js";
+import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
 import type { Goal, PlannedTask, TaskDependency } from "./index.js";
-
-// Default budget allocator context settings for goal decomposition
-const DEFAULT_BUDGET_CONTEXT: Omit<BudgetAllocatorContext, "tenantId" | "traceId" | "emittedBy"> = {
-  tier: BudgetTier.STEP,
-  tierLimit: 100,
-  watermarkAlert: { warningThreshold: 0.7, criticalThreshold: 0.9, hardCapThreshold: 1.0 },
-  autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.1 },
-  crossRunPriority: { priority: 0, weightFactor: 1.0 },
-  streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 5000 },
-};
 
 export interface LlmPlan {
   readonly tasks: readonly PlannedTask[];
@@ -39,7 +28,6 @@ export interface UnifiedChatPlanGeneratorOptions {
     readonly emittedBy: string;
     readonly expiresAt?: string;
     readonly resourceKind?: BudgetResourceKind;
-    readonly fencingToken?: string;
   };
 }
 
@@ -76,13 +64,6 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         resourceKind: this.options.budgetControl.resourceKind ?? "token",
         expiresAt: this.options.budgetControl.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         expectedVersion: this.options.budgetControl.ledger.version,
-        context: {
-          ...DEFAULT_BUDGET_CONTEXT,
-          tenantId: this.options.budgetControl.tenantId,
-          traceId: this.options.budgetControl.traceId,
-          emittedBy: this.options.budgetControl.emittedBy,
-          ...(this.options.budgetControl.fencingToken !== undefined ? { fencingToken: this.options.budgetControl.fencingToken } : {}),
-        },
       });
 
     try {
@@ -96,65 +77,42 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         ...(this.options.budgetControl?.tenantId !== undefined ? { tenantId: this.options.budgetControl.tenantId } : {}),
         costTag: "goal_decomposer.llm_plan",
       });
-      const parsed = this.parsePlan(response, goal);
+      const parsed = this.parsePlan(response);
       if (reservedBudget != null) {
         allocator.settle({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
-          expectedVersion: reservedBudget.ledger.version,
           actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
           context: {
-            ...DEFAULT_BUDGET_CONTEXT,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
-            ...(this.options.budgetControl!.fencingToken !== undefined ? { fencingToken: this.options.budgetControl!.fencingToken } : {}),
           },
         });
       }
 
       return {
-        tasks: parsed.tasks.map((task, index) => {
-          // §40.2: Proportional budget allocation to subtasks
-          const totalTaskCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
-          const taskProportion = totalTaskCost > 0 ? task.estimatedCostUsd / totalTaskCost : 1 / parsed.tasks.length;
-          const goalBudgetLimit = this.options.budgetControl?.estimatedCostUsd ?? 0;
-          const taskBudgetAllocation = goalBudgetLimit > 0 ? goalBudgetLimit * taskProportion : 0;
-
-          // Derive confidence from response completeness and cost ratio
-          const confidence: CostEstimate["confidence"] =
-            task.estimatedCostUsd > 0 && taskProportion > 0.05 ? "medium" : "low";
-
-          return {
-            taskId: `${goal.goalId}:llm:${index + 1}`,
-            domainId: task.domainId,
-            description: task.description,
-            inputs: {
-              goalDescription: goal.description,
-              successCriteria: goal.successCriteria,
-              constraints: goal.constraints,
-              deadline: goal.deadline ?? null,
-            },
-            expectedOutputs: task.expectedOutputs,
-            delegationMode: task.delegationMode,
-            estimatedDuration: task.estimatedDuration,
-            estimatedCost: {
-              estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
-              confidence,
-              sampleCount: confidence === "medium" ? 3 : 1,
-              divisionId: null,
-              basedOn: "default" as const,
-            },
-            constraintEnvelope: {
-              budgetLimitUsd: taskBudgetAllocation > 0 ? Number(taskBudgetAllocation.toFixed(4)) : null,
-              ...((taskBudgetAllocation > 0) ? { budgetAllocations: [{ taskId: `${goal.goalId}:llm:${index + 1}`, budgetUsd: Number(taskBudgetAllocation.toFixed(4)), riskMultiplier: 1.0 }] } : {}),
-              riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
-              requiresApproval: false,
-              requiredPermissions: [],
-              requiredCapabilities: [],
-            },
-          };
-        }),
+        tasks: parsed.tasks.map((task, index) => ({
+          taskId: `${goal.goalId}:llm:${index + 1}`,
+          domainId: task.domainId,
+          description: task.description,
+          inputs: {
+            goalDescription: goal.description,
+            successCriteria: goal.successCriteria,
+            constraints: goal.constraints,
+            deadline: goal.deadline ?? null,
+          },
+          expectedOutputs: task.expectedOutputs,
+          delegationMode: task.delegationMode,
+          estimatedDuration: task.estimatedDuration,
+          estimatedCost: {
+            estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
+            confidence: "low",
+            sampleCount: 0,
+            divisionId: null,
+            basedOn: "default",
+          },
+        })),
         dependencyGraph: parsed.dependencyGraph.map((edge) => ({
           ...edge,
           fromTask: this.normalizeTaskReference(goal.goalId, edge.fromTask),
@@ -166,14 +124,11 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         allocator.release({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
-          expectedVersion: reservedBudget.ledger.version,
           reasonCode: "budget.goal_decomposer_llm_plan_failed",
           context: {
-            ...DEFAULT_BUDGET_CONTEXT,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
-            ...(this.options.budgetControl!.fencingToken !== undefined ? { fencingToken: this.options.budgetControl!.fencingToken } : {}),
           },
         });
       }
@@ -214,7 +169,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     );
   }
 
-  private parsePlan(response: string, goal: Goal): SerializablePlan {
+  private parsePlan(response: string): SerializablePlan {
     const trimmed = response.trim();
     const normalized = trimmed.startsWith("```")
       ? trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")
@@ -223,122 +178,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
       throw new Error("goal_decomposer.invalid_llm_plan_shape");
     }
-    // R32-28 FIX: validate and coerce estimatedCostUsd — LLM may return non-numeric (e.g. "0.05" or malformed)
-    for (const task of parsed.tasks) {
-      const cost = Number(task.estimatedCostUsd);
-      if (!Number.isFinite(cost)) {
-        throw new Error(`goal_decomposer.invalid_task_cost:${task.description?.slice(0, 20)}`);
-      }
-      // Mutate in place so later toFixed() calls always succeed
-      (task as { estimatedCostUsd: number }).estimatedCostUsd = cost;
-    }
-
-    // R23-11: Validate DAG validity, capability availability, risk propagation, and budget feasibility
-    const taskIds = new Set(parsed.tasks.map((_, i) => `${goal.goalId}:llm:${i + 1}`));
-
-    // 1. DAG validity: ensure all dependencies reference valid tasks and check for cycles
-    const visited = new Set<string>();
-    const stack = new Set<string>();
-    const adjacency = new Map<string, string[]>();
-
-    for (const edge of parsed.dependencyGraph) {
-      const from = this.normalizeTaskReference(goal.goalId, edge.fromTask);
-      const to = this.normalizeTaskReference(goal.goalId, edge.toTask);
-      if (!taskIds.has(from)) {
-        throw new Error(`goal_decomposer.invalid_dependency_from:${edge.fromTask}`);
-      }
-      if (!taskIds.has(to)) {
-        throw new Error(`goal_decomposer.invalid_dependency_to:${edge.toTask}`);
-      }
-      if (!adjacency.has(from)) adjacency.set(from, []);
-      adjacency.get(from)!.push(to);
-    }
-
-    // Cycle detection via DFS
-    const hasCycle = (node: string, visiting: Set<string>, visited: Set<string>): boolean => {
-      if (visiting.has(node)) return true;
-      if (visited.has(node)) return false;
-      visiting.add(node);
-      for (const neighbor of adjacency.get(node) ?? []) {
-        if (hasCycle(neighbor, visiting, visited)) return true;
-      }
-      visiting.delete(node);
-      visited.add(node);
-      return false;
-    };
-
-    for (const taskId of taskIds) {
-      if (hasCycle(taskId, new Set(), new Set())) {
-        throw new Error("goal_decomposer.cyclic_dependency_graph");
-      }
-    }
-
-    // 2. Capability availability: ensure each task has required capabilities
-    for (const task of parsed.tasks) {
-      if (!task.domainId || typeof task.domainId !== "string") {
-        throw new Error(`goal_decomposer.missing_domain_id:${task.description?.slice(0, 20)}`);
-      }
-    }
-
-    // 3. Risk propagation: validate riskTolerance consistency across tasks
-    const riskToleranceMap: Record<string, string> = {
-      low: "1",
-      medium: "2",
-      high: "3",
-    };
-    let maxRisk = 0;
-    for (const task of parsed.tasks) {
-      const riskLvl = riskToleranceMap[task.delegationMode === "manual" ? "high" : task.delegationMode === "supervised" ? "medium" : "low"] ?? "1";
-      maxRisk = Math.max(maxRisk, parseInt(riskLvl));
-    }
-    // Propagate risk: if any task has high risk, ensure budget accommodates escalation
-    if (maxRisk >= 3) {
-      const totalCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
-      const goalBudget = this.options.budgetControl?.estimatedCostUsd ?? 0;
-      if (goalBudget > 0 && totalCost > goalBudget * 0.9) {
-        throw new Error("goal_decomposer.risk_budget_infeasible");
-      }
-    }
-
-    // 4. Budget feasibility: ensure total estimated cost does not exceed goal budget
-    const totalEstimatedCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
-    const goalBudgetLimit = this.options.budgetControl?.estimatedCostUsd ?? 0;
-    if (goalBudgetLimit > 0 && totalEstimatedCost > goalBudgetLimit) {
-      throw new Error("goal_decomposer.exceeds_goal_budget");
-    }
-
     return parsed;
-  }
-
-  /**
-   * R5-28: Normalizes LLM output to ensure consistent format and quality.
-   * Handles common LLM output issues like extra whitespace, markdown formatting,
-   * and non-standard JSON structures.
-   */
-  private normalizeLlmOutput(rawOutput: string): string {
-    // Remove leading/trailing whitespace
-    let normalized = rawOutput.trim();
-
-    // Remove markdown code blocks if present
-    if (normalized.startsWith("```")) {
-      normalized = normalized
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "");
-    }
-
-    // Remove any leading/trailing whitespace after code block removal
-    normalized = normalized.trim();
-
-    // Handle cases where LLM might wrap JSON in quotes
-    if (normalized.startsWith('"') && normalized.endsWith('"')) {
-      try {
-        normalized = JSON.parse(normalized);
-      } catch {
-        // Not a quoted string, keep as-is
-      }
-    }
-
-    return normalized;
   }
 
   private normalizeTaskReference(goalId: string, ref: string): string {

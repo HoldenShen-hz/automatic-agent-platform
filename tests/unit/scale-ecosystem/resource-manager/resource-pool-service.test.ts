@@ -1,12 +1,12 @@
 /**
- * Unit tests for ResourcePoolService - resource allocation focus
+ * Unit tests for ResourcePoolService
  *
  * @see src/scale-ecosystem/resource-manager/resource-pool-service.ts
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ResourcePoolService, type ResourcePool } from "../../../../src/scale-ecosystem/resource-manager/resource-pool-service.js";
+import { ResourcePoolService, ResourcePoolSchema, type ResourcePool } from "../../../../src/scale-ecosystem/resource-manager/resource-pool-service.js";
 
 function createTestPool(overrides: Partial<ResourcePool> = {}): ResourcePool {
   return {
@@ -14,157 +14,105 @@ function createTestPool(overrides: Partial<ResourcePool> = {}): ResourcePool {
     resourceType: overrides.resourceType ?? "compute_units",
     capacityUnits: overrides.capacityUnits ?? 100,
     allocatedUnits: overrides.allocatedUnits ?? 0,
-    burstUnits: overrides.burstUnits ?? 0,
+    burstUnits: overrides.burstUnits ?? 20,
   };
 }
 
-test("acquireResources allocates from pool when capacity available", () => {
+test("ResourcePoolService.registerPool parses and stores pool", () => {
   const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, burstUnits: 20 }));
+  const pool = createTestPool();
 
-  // allocate is the actual method; acquireResources maps to it
+  const registered = service.registerPool(pool);
+
+  assert.equal(registered.poolId, "pool-1");
+  assert.equal(registered.capacityUnits, 100);
+});
+
+test("ResourcePoolService.registerPool applies defaults", () => {
+  const service = new ResourcePoolService();
+  const pool = {
+    poolId: "pool-1",
+    resourceType: "compute_units",
+    capacityUnits: 100,
+    allocatedUnits: 0,
+    burstUnits: 0,
+  };
+
+  const registered = service.registerPool(pool);
+
+  assert.equal(registered.allocatedUnits, 0);
+  assert.equal(registered.burstUnits, 0);
+});
+
+test("ResourcePoolService.allocate grants when capacity available", () => {
+  const service = new ResourcePoolService();
+  service.registerPool(createTestPool({ capacityUnits: 100, burstUnits: 20 }));
+
   const allocation = service.allocate("pool-1", "consumer-1", 50);
 
   assert.equal(allocation.granted, true);
-  assert.equal(allocation.poolId, "pool-1");
-  assert.equal(allocation.consumerId, "consumer-1");
   assert.equal(allocation.units, 50);
   assert.deepEqual(allocation.reasonCodes, ["resource_pool.allocated"]);
-
-  // verify pool state updated
-  const pool = service.getPool("pool-1");
-  assert.equal(pool?.allocatedUnits, 50);
 });
 
-test("releaseResources returns units to pool", () => {
+test("ResourcePoolService.allocate uses burst when base capacity exceeded", () => {
   const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 50 }));
+  service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 90, burstUnits: 20 }));
 
-  // release is the actual method; releaseResources maps to it
+  const allocation = service.allocate("pool-1", "consumer-1", 20);
+
+  assert.equal(allocation.granted, true);
+});
+
+test("ResourcePoolService.allocate denies when burst capacity exceeded", () => {
+  const service = new ResourcePoolService();
+  service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 100, burstUnits: 20 }));
+
+  const allocation = service.allocate("pool-1", "consumer-1", 25);
+
+  assert.equal(allocation.granted, false);
+  assert.deepEqual(allocation.reasonCodes, ["resource_pool.capacity_exceeded"]);
+});
+
+test("ResourcePoolService.allocate updates allocatedUnits", () => {
+  const service = new ResourcePoolService();
+  service.registerPool(createTestPool({ capacityUnits: 100 }));
+
+  service.allocate("pool-1", "consumer-1", 30);
+  // 70 remaining, request 40, should succeed
+  const second = service.allocate("pool-1", "consumer-2", 40);
+
+  assert.equal(second.granted, true);
+});
+
+test("ResourcePoolService.release reduces allocatedUnits", () => {
+  const service = new ResourcePoolService();
+  service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 60 }));
+
   const updated = service.release("pool-1", 30);
 
-  assert.equal(updated.allocatedUnits, 20);
-
-  const pool = service.getPool("pool-1");
-  assert.equal(pool?.allocatedUnits, 20);
+  assert.equal(updated.allocatedUnits, 30);
 });
 
-test("releaseResources clamps to zero when releasing more than allocated", () => {
+test("ResourcePoolService.release clamps to zero", () => {
   const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 10 }));
+  service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 10 }));
 
   const updated = service.release("pool-1", 50);
 
   assert.equal(updated.allocatedUnits, 0);
 });
 
-test("pool respects maxCapacity - allocation within capacity succeeds", () => {
+test("ResourcePoolService.getPool returns pool when registered", () => {
   const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 0 }));
-
-  const allocation = service.allocate("pool-1", "consumer-1", 100);
-
-  assert.equal(allocation.granted, true);
-  const pool = service.getPool("pool-1");
-  assert.equal(pool?.allocatedUnits, 100);
-});
-
-test("pool respects maxCapacity - allocation at capacity boundary succeeds", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 90, burstUnits: 10 }));
-
-  // 10 available (100 - 90 = 10), request exactly 10
-  const allocation = service.allocate("pool-1", "consumer-1", 10);
-
-  assert.equal(allocation.granted, true);
-});
-
-test("allocation fails when at capacity", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 100 }));
-
-  const allocation = service.allocate("pool-1", "consumer-1", 1);
-
-  assert.equal(allocation.granted, false);
-  assert.equal(allocation.units, 1);
-  assert.deepEqual(allocation.reasonCodes, ["resource_pool.capacity_exceeded"]);
-});
-
-test("allocation fails when exceeding capacity even with burst available", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 115, burstUnits: 20 }));
-
-  // available = 100 + 20 - 115 = 5, request 10
-  const allocation = service.allocate("pool-1", "consumer-1", 10);
-
-  assert.equal(allocation.granted, false);
-  assert.deepEqual(allocation.reasonCodes, ["resource_pool.capacity_exceeded"]);
-});
-
-test("burst capacity allows allocation beyond base capacity", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 100, burstUnits: 20 }));
-
-  // base at capacity, but 20 burst available
-  const allocation = service.allocate("pool-1", "consumer-1", 15);
-
-  assert.equal(allocation.granted, true);
-  assert.equal(allocation.units, 15);
+  service.registerPool(createTestPool({ poolId: "pool-1" }));
 
   const pool = service.getPool("pool-1");
-  assert.equal(pool?.allocatedUnits, 115);
+
+  assert.equal(pool?.poolId, "pool-1");
 });
 
-test("multiple consumers can acquire resources up to capacity", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100 }));
-
-  const alloc1 = service.allocate("pool-1", "consumer-1", 30);
-  const alloc2 = service.allocate("pool-1", "consumer-2", 30);
-  const alloc3 = service.allocate("pool-1", "consumer-3", 30);
-
-  assert.equal(alloc1.granted, true);
-  assert.equal(alloc2.granted, true);
-  assert.equal(alloc3.granted, true);
-
-  const pool = service.getPool("pool-1");
-  assert.equal(pool?.allocatedUnits, 90);
-});
-
-test("fourth consumer blocked when capacity exhausted after three allocations", () => {
-  const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100 }));
-
-  service.allocate("pool-1", "consumer-1", 30);
-  service.allocate("pool-1", "consumer-2", 30);
-  service.allocate("pool-1", "consumer-3", 30);
-
-  // 10 remaining, request 20
-  const blocked = service.allocate("pool-1", "consumer-4", 20);
-
-  assert.equal(blocked.granted, false);
-  assert.deepEqual(blocked.reasonCodes, ["resource_pool.capacity_exceeded"]);
-});
-
-test("unknown pool throws on allocate", () => {
-  const service = new ResourcePoolService();
-
-  assert.throws(
-    () => service.allocate("nonexistent", "consumer-1", 10),
-    /resource_pool.not_found/
-  );
-});
-
-test("unknown pool throws on release", () => {
-  const service = new ResourcePoolService();
-
-  assert.throws(
-    () => service.release("nonexistent", 10),
-    /resource_pool.not_found/
-  );
-});
-
-test("getPool returns null for unregistered pool", () => {
+test("ResourcePoolService.getPool returns null when not found", () => {
   const service = new ResourcePoolService();
 
   const pool = service.getPool("nonexistent");
@@ -172,29 +120,44 @@ test("getPool returns null for unregistered pool", () => {
   assert.equal(pool, null);
 });
 
-test("getPool returns registered pool with correct state", () => {
+test("ResourcePoolService.allocate throws for unknown pool", () => {
   const service = new ResourcePoolService();
-  service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 25 }));
 
-  const pool = service.getPool("pool-1");
-
-  assert.notEqual(pool, null);
-  assert.equal(pool?.poolId, "pool-1");
-  assert.equal(pool?.capacityUnits, 100);
-  assert.equal(pool?.allocatedUnits, 25);
+  assert.throws(() => service.allocate("unknown", "consumer", 10), /resource_pool.not_found/);
 });
 
-test("registerPool stores pool and applies schema defaults", () => {
+test("ResourcePoolService.release throws for unknown pool", () => {
   const service = new ResourcePoolService();
-  const pool = service.registerPool({
+
+  assert.throws(() => service.release("unknown", 10), /resource_pool.not_found/);
+});
+
+test("ResourcePoolSchema parses valid pool", () => {
+  const result = ResourcePoolSchema.safeParse({
     poolId: "pool-1",
     resourceType: "gpu_units",
     capacityUnits: 50,
   });
 
-  assert.equal(pool.poolId, "pool-1");
-  assert.equal(pool.resourceType, "gpu_units");
-  assert.equal(pool.capacityUnits, 50);
-  assert.equal(pool.allocatedUnits, 0);
-  assert.equal(pool.burstUnits, 0);
+  assert.equal(result.success, true);
+});
+
+test("ResourcePoolSchema rejects empty poolId", () => {
+  const result = ResourcePoolSchema.safeParse({
+    poolId: "",
+    resourceType: "gpu_units",
+    capacityUnits: 50,
+  });
+
+  assert.equal(result.success, false);
+});
+
+test("ResourcePoolSchema rejects negative capacity", () => {
+  const result = ResourcePoolSchema.safeParse({
+    poolId: "pool-1",
+    resourceType: "gpu_units",
+    capacityUnits: -10,
+  });
+
+  assert.equal(result.success, false);
 });

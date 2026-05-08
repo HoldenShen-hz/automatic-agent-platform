@@ -1,21 +1,12 @@
-import type { WSClient } from "@aa/shared-api-client";
-import {
-  ConversationClient,
-  type ConversationStatus,
-  type ConversationMessage,
-  type ConversationSnapshot,
-} from "@aa/shared-nl-client";
-import { useEffect, useRef, useState } from "react";
+import { ConversationClient, type ConversationStatus } from "@aa/shared-nl-client";
+import { useMemo, useState } from "react";
 
 export interface ConversationVm {
   readonly messages: readonly { role: string; content: string }[];
-  readonly attachments: readonly { id: string; name: string; sizeLabel: string }[];
   readonly status: ConversationStatus;
   readonly draft: string;
   readonly planReady: boolean;
   readonly executionReady: boolean;
-  readonly isStreaming: boolean;
-  attachFiles(files: FileList | readonly { name: string; size: number }[]): void;
   setDraft(value: string): void;
   sendPrompt(): void;
   buildPlan(): void;
@@ -24,125 +15,52 @@ export interface ConversationVm {
   requestClarification(): void;
 }
 
-export interface ConversationVmOptions {
-  readonly wsClient?: WSClient;
-  readonly userId?: string;
-}
-
-const STORAGE_KEY = "aa-conversation-messages";
-
-// §2276: Persist messages to sessionStorage so remount restores history
-function loadPersistedMessages(): ConversationMessage[] {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistMessages(messages: readonly ConversationMessage[]): void {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  } catch {
-    // Storage unavailable
-  }
-}
-
-function formatFileSize(size: number): string {
-  if (size >= 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  }
-  if (size >= 1024) {
-    return `${Math.round(size / 1024)} KB`;
-  }
-  return `${size} B`;
-}
-
-/**
- * §4.6.1: Subscribe to nl.session.updated / nl.plan.created events for real-time updates.
- * WS streaming is the primary path; in-memory ConversationClient is only for local fallback.
- */
-export function useConversationVm(options: ConversationVmOptions = {}): ConversationVm {
-  const { wsClient, userId } = options;
-  const clientRef = useRef<ConversationClient | null>(null);
-  // §2276: Initialize from persisted storage to survive remount
-  const [messages, setMessages] = useState<readonly ConversationMessage[]>(loadPersistedMessages);
-  const [status, setStatus] = useState<ConversationStatus>("idle");
-  const [draft, setDraftState] = useState("帮我发起营销活动");
-  const [attachments, setAttachments] = useState<readonly { id: string; name: string; sizeLabel: string }[]>([]);
+export function useConversationVm(): ConversationVm {
+  const client = useMemo(() => new ConversationClient(), []);
+  const [messages, setMessages] = useState(client.listMessages());
+  const [status, setStatus] = useState<ConversationStatus>(client.getStatus());
+  const [draft, setDraft] = useState("帮我发起营销活动");
   const [planReady, setPlanReady] = useState(false);
   const [executionReady, setExecutionReady] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
 
-  function applySnapshot(snapshot: ConversationSnapshot): void {
-    setMessages(snapshot.messages);
-    persistMessages(snapshot.messages);
-    setStatus(snapshot.status);
-    setPlanReady(snapshot.planReady);
-    setExecutionReady(snapshot.executionReady);
-    setIsStreaming(snapshot.isStreaming);
+  function syncState(nextPlanReady: boolean, nextExecutionReady: boolean): void {
+    setMessages([...client.listMessages()]);
+    setStatus(client.getStatus());
+    setPlanReady(nextPlanReady);
+    setExecutionReady(nextExecutionReady);
   }
-
-  useEffect(() => {
-    clientRef.current?.dispose();
-    const client = new ConversationClient({
-      ...(wsClient != null && userId != null ? { transport: wsClient, userId } : {}),
-      initialMessages: loadPersistedMessages(),
-      onStateChange: applySnapshot,
-    });
-    clientRef.current = client;
-    applySnapshot(client.getSnapshot());
-
-    return () => {
-      client.dispose();
-      if (clientRef.current === client) {
-        clientRef.current = null;
-      }
-    };
-  }, [wsClient, userId]);
 
   return {
     messages,
-    attachments,
     status,
     draft,
     planReady,
     executionReady,
-    isStreaming,
-    attachFiles(files) {
-      const normalized = Array.from(files).map((file, index) => ({
-        id: `attachment-${Date.now()}-${index}`,
-        name: file.name,
-        sizeLabel: formatFileSize(file.size),
-      }));
-      setAttachments((current) => [...current, ...normalized]);
-    },
     setDraft(value: string) {
-      setDraftState(value);
+      setDraft(value);
     },
     sendPrompt() {
-      clientRef.current?.send(draft);
-      setAttachments([]);
+      client.send(draft);
+      client.requestClarification("已解析请求，请确认预算上限、时区和投放窗口。");
+      syncState(false, false);
     },
     buildPlan() {
-      clientRef.current?.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");
+      client.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");
+      client.confirm("计划已生成，是否确认进入执行？");
+      syncState(true, false);
     },
     confirmPlan() {
-      clientRef.current?.confirm("用户已确认计划，系统进入执行前检查。");
+      client.confirm("用户已确认计划，系统进入执行前检查。");
+      syncState(planReady, true);
     },
     executePlan() {
-      if (wsClient != null && userId != null) {
-        clientRef.current?.execute("系统开始执行计划。");
-      } else {
-        // P0 FIX: Execution requires a valid WS connection to the control plane.
-        // Local in-memory simulation bypasses the intake pipeline (P1→P2 invariant).
-        // User must establish a backend connection before executing.
-        clientRef.current?.requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
-      }
+      client.execute("任务已进入执行态，开始创建 campaign 并分配预算。");
+      client.pushAssistant("执行完成：活动草案已创建，指标回传已接通。");
+      syncState(true, true);
     },
     requestClarification() {
-      clientRef.current?.requestClarification("预算上限和投放时区还不清楚，请确认。");
+      client.requestClarification("预算上限和投放时区还不清楚，请确认。");
+      syncState(planReady, executionReady);
     },
   };
 }

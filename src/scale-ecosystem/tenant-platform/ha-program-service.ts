@@ -181,15 +181,11 @@ export class HaProgramService {
     ];
 
     // Determine overall status based on component readiness
-    const allReady = components.every((component) => component.ready);
-    // Root cause: The condition "=== 'coordinator' || 'postgres'" always evaluates to truthy
-    // because string 'postgres' is truthy. The expression is parsed as:
-    // (component.componentId === "coordinator") || ("postgres")
-    // Fix: Add explicit parentheses to group the OR condition inside the AND with !component.ready
-    const hasCriticalNotReady = components.some(
-      (component) => !component.ready && (component.componentId === "coordinator" || component.componentId === "postgres"),
-    );
-    const overallStatus = allReady ? "pass" : hasCriticalNotReady ? "fail" : "warning";
+    const overallStatus = components.every((component) => component.ready)
+      ? "pass"
+      : components.some((component) => component.componentId === "coordinator" || component.componentId === "postgres")
+        ? "fail"
+        : "warning";
 
     return {
       reportId: newId("ha_program"),

@@ -263,7 +263,7 @@ export class RuntimeRecoveryService {
       });
     }
 
-    const taskEventsResult = this.store.event.listEventsForTask(taskId, tenantId);
+    const taskEvents = this.store.event.listEventsForTask(taskId, tenantId);
     return {
       taskId,
       divisionId: task.divisionId,
@@ -271,7 +271,7 @@ export class RuntimeRecoveryService {
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
       latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
-      recentRecoveryEvents: taskEventsResult.events
+      recentRecoveryEvents: taskEvents
         .filter((event) => event.eventType.startsWith("recovery:"))
         .slice(-10)
         .map((event) => toRecoveryEvent(event)),

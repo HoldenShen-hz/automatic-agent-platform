@@ -9,22 +9,21 @@
 
 ## 决策
 
-### 自主权等级（§42 五级模型 + 冻结态）
+### 自主权等级
 
 | 等级 | 名称 | 权限 |
 |------|------|------|
-| 0 | suggestion | 仅提供建议，需人工确认 |
-| 1 | supervised | 人工监督执行 |
-| 2 | semi_auto | 半自动，可自动执行但需人工监督 |
-| 3 | full_auto | 完全自动化 |
-| freeze | frozen | 冻结，需人工恢复 |
+| 0 | supervised | 完全人工监督 |
+| 1 | assisted | 辅助建议 |
+| 2 | partial_auto | 部分自动化 |
+| 3 | high_auto | 高度自动化 |
+| 4 | full_auto | 完全自动化 |
 
 规则：
 
 - `full_auto` 不代表无限制自动化。
 - 高危域默认不得进入 `full_auto`，除非存在显式 `DomainRiskSpec` / `DomainRiskProfile` 允许并附带人工责任边界。
 - 若 domain 被标记为 `advisory_only`、`human_accountable` 或 `deterministic_hot_path_only`，则自治等级上限必须低于 `full_auto`。
-- `frozen` 不参与常规晋升梯子，只能通过人工恢复回到 `suggestion`。
 
 ### 晋升规则
 
@@ -69,4 +68,4 @@
 
 ## v4.3 ADR Remediation
 
-- A-34: 本 ADR 原先把自治梯子写成 `manual_only -> suggestion -> supervised -> semi_auto -> full_auto`，根因是早期文档把用户感知的交互模式和 runtime protection mode 混成一套等级。修复：正文现把 interaction autonomy 收敛到 `suggestion / supervised / semi_auto / full_auto / frozen`，并要求通过单独治理链映射到 runtime mode。
+- A-34: 本 ADR 原先把 level 4 `full_auto` 写成“完全自动化”，根因是渐进式自主权 ADR 把自治等级误写成无限授权梯子，没有跟高危域风险覆盖规则绑定。修复：正文现明确高危域默认不得 `full_auto`，除非有显式 `DomainRiskSpec / DomainRiskProfile` 允许。

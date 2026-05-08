@@ -35,7 +35,7 @@ export function buildAiOperationsRuntimeCatalog(): AiOperationsRuntimeCatalog {
 }
 
 export function registerAiOperationsRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): AiOperationsRuntimeCatalog {
   const modelGateway = registerModelGatewayBootstrap(registry).catalog;
   const promptEngine = registerPromptEngineBootstrap(registry).catalog;

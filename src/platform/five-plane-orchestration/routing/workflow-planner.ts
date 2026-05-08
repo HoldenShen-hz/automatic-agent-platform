@@ -41,16 +41,8 @@ import { StorageError } from "../../contracts/errors.js";
  * and runtime parameters derived from the workflow definition.
  */
 export interface PlannedExecutionStep {
-  /**
-   * Canonical node identifier per §5.5.
-   * This is the primary identifier for execution correlation.
-   */
-  nodeId: string;
-  /**
-   * @deprecated Legacy step identifier per §5.5.
-   * Use nodeId for canonical correlation. Retained for backward compatibility.
-   */
-  stepId?: string;
+  /** Unique identifier for this step within the workflow */
+  stepId: string;
   /** Division that owns the step execution */
   divisionId: string;
   /** ID of the role that will execute this step */
@@ -63,12 +55,9 @@ export interface PlannedExecutionStep {
   outputKey: string;
   /** Schema path used to validate the step output before it is committed */
   outputSchemaPath?: string | null;
-  /**
-   * @deprecated Use dependsOnNodeIds per §5.5.
-   * IDs of nodes that must complete before this node begins
-   */
+  /** IDs of steps that must complete before this step begins */
   dependsOnStepIds: readonly string[];
-  /** Dependency type per upstream node ID ("hard" default, "soft" allows null fallback) */
+  /** Dependency type per upstream step ID ("hard" default, "soft" allows null fallback) */
   dependencyTypes: Readonly<Record<string, "hard" | "soft">>;
   /** Maximum time in milliseconds before this step times out */
   timeoutMs: number;
@@ -117,8 +106,7 @@ function toAgentId(roleId: string): string {
  */
 function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep): PlannedExecutionStep {
   return {
-    nodeId: step.nodeId,
-    stepId: step.stepId ?? step.nodeId,
+    stepId: step.stepId,
     divisionId: step.divisionId ?? workflowDivisionId,
     roleId: step.roleId,
     inputKeys: step.inputKeys ?? [],
@@ -141,92 +129,6 @@ function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep):
   };
 }
 
-function buildWorkflowValidationError(
-  workflowId: string,
-  code: string,
-  details: Record<string, unknown>,
-): StorageError {
-  return new StorageError(
-    code,
-    code,
-    {
-      statusCode: 400,
-      retryable: false,
-      details: {
-        workflowId,
-        ...details,
-      },
-    },
-  );
-}
-
-function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSteps: readonly PlannedExecutionStep[]): void {
-  const stepIds = new Set<string>();
-  const inDegree = new Map<string, number>();
-  const adjacency = new Map<string, string[]>();
-
-  for (const step of executionSteps) {
-    if (stepIds.has(step.nodeId)) {
-      throw buildWorkflowValidationError(
-        workflow.workflowId,
-        "workflow.duplicate_step_id",
-        { stepId: step.nodeId },
-      );
-    }
-    stepIds.add(step.nodeId);
-    inDegree.set(step.nodeId, 0);
-    adjacency.set(step.nodeId, []);
-  }
-
-  for (const step of executionSteps) {
-    for (const dependencyStepId of step.dependsOnStepIds) {
-      if (!stepIds.has(dependencyStepId)) {
-        throw buildWorkflowValidationError(
-          workflow.workflowId,
-          "workflow.missing_dependency",
-          {
-            stepId: step.nodeId,
-            dependencyStepId,
-          },
-        );
-      }
-      adjacency.get(dependencyStepId)?.push(step.nodeId);
-      inDegree.set(step.nodeId, (inDegree.get(step.nodeId) ?? 0) + 1);
-    }
-  }
-
-  const queue: string[] = [];
-  for (const [stepId, degree] of inDegree.entries()) {
-    if (degree === 0) {
-      queue.push(stepId);
-    }
-  }
-
-  let visitedCount = 0;
-  while (queue.length > 0) {
-    const currentStepId = queue.shift()!;
-    visitedCount += 1;
-    for (const downstreamStepId of adjacency.get(currentStepId) ?? []) {
-      const nextDegree = (inDegree.get(downstreamStepId) ?? 0) - 1;
-      inDegree.set(downstreamStepId, nextDegree);
-      if (nextDegree === 0) {
-        queue.push(downstreamStepId);
-      }
-    }
-  }
-
-  if (visitedCount !== executionSteps.length) {
-    const cyclicStepIds = executionSteps
-      .map((step) => step.nodeId)
-      .filter((stepId) => (inDegree.get(stepId) ?? 0) > 0);
-    throw buildWorkflowValidationError(
-      workflow.workflowId,
-      "workflow.cyclic_dependency",
-      { cyclicStepIds },
-    );
-  }
-}
-
 /**
  * Creates execution plans from workflow definitions.
  *
@@ -239,10 +141,6 @@ function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSte
  * The resulting PlannedWorkflow can be passed directly to the execution runtime.
  */
 export class WorkflowPlanner {
-  public constructor(
-    private readonly definitionResolver: (workflowId: string) => MinimalWorkflowDefinition | null = getWorkflowDefinition,
-  ) {}
-
   /**
    * Creates an execution plan for a workflow.
    *
@@ -252,7 +150,7 @@ export class WorkflowPlanner {
    */
   public plan(input: WorkflowPlannerInput): PlannedWorkflow {
     // Retrieve the workflow definition from the global registry
-    const workflow = this.definitionResolver(input.workflowId);
+    const workflow = getWorkflowDefinition(input.workflowId);
     if (!workflow) {
       throw new StorageError(`workflow.not_found:${input.workflowId}`, `workflow.not_found:${input.workflowId}`, {
         statusCode: 404,
@@ -263,11 +161,10 @@ export class WorkflowPlanner {
 
     // Transform all workflow steps into execution steps
     const executionSteps = workflow.steps.map((step) => toExecutionStep(workflow.divisionId, step));
-    validateWorkflowGraph(workflow, executionSteps);
 
     // Build dependency edges: for each step, create edges from its dependencies to itself
     const dependencyEdges = executionSteps.flatMap((step) =>
-      step.dependsOnStepIds.map((fromStepId) => ({ fromStepId, toStepId: step.nodeId })),
+      step.dependsOnStepIds.map((fromStepId) => ({ fromStepId, toStepId: step.stepId })),
     );
 
     return {

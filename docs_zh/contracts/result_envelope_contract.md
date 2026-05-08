@@ -55,28 +55,26 @@ Reduce lateral proliferation of result objects through unified result envelope:
 
 ## 4A. Builder Semantics
 
-### 4A.1 HarnessRun Result Builder
+### 4A.1 Task Result Builder
 
-`buildHarnessRunResultEnvelope(harnessRun, nodeRunResults, planGraphBundle, artifacts)` projects HarnessRun status to result envelope:
+`buildTaskResultEnvelope(task, stepOutputs, artifacts)` projects task status to result envelope:
 
-- `completed` -> `success`, `failed` -> `error`, `aborted` -> `error`, others -> `partial`
-- If HarnessRun has no node runs, no output, no artifact, return `null` (do not generate empty envelope).
-- `human_summary` extraction priority: `nodeRunResults[].summary` -> `planGraphBundle.metadata.summary` -> HarnessRun goal -> harnessRunId.
-- `error.message` extraction priority: last failed NodeRun error message -> HarnessRun failure reason -> harnessRunId.
-- `metrics` aggregates all NodeRun durationMs, tokenCost, and computeCost.
-- Result envelope must project `harness_run_id`, `node_run_ids[]`, and `plan_graph_bundle_id` when present.
-- If HarnessRun has recorded `current_stage` or `loop_iteration`, result envelope must project the same named field.
+- `done` -> `success`, `failed | cancelled` -> `error`, others -> `partial`
+- If task has no output, no step output, no artifact, return `null` (do not generate empty envelope).
+- `human_summary` extraction priority: `outputJson.summary` -> `outputJson.humanSummary` -> `outputJson.result` -> last step's summary -> task title.
+- `error.message` extraction priority: `outputJson.error.message` (deep path) -> `outputJson.summary` -> `task.title`.
+- `metrics` aggregates all step's `tokenCost` and `durationMs`.
+- If task / workflow has recorded `current_stage` or `loop_iteration`, result envelope must project the same named field.
 
-### 4A.2 NodeRun Result Builder
+### 4A.2 Step Result Builder
 
-`buildNodeRunResultEnvelope(nodeRun, nodeAttemptReceipts, artifacts)` projects NodeRun output to result envelope:
+`buildStepResultEnvelope(stepOutput, artifacts)` projects step output to result envelope:
 
-- `completed` -> `success`, `failed` -> `error`, others -> `partial`
-- `warnings` source: append warnings, validation failures, validation warnings when NodeRun status is `partial_success`.
-- If NodeRun output has declared `stage`, result envelope must pass through that `stage`.
-- Must include `node_run_id` and `harness_run_id` as correlation fields.
+- `succeeded` -> `success`, `failed` -> `error`, others -> `partial`
+- `warnings` source: append warnings, validation failures, validation warnings when step status is `partial_success`.
+- If step output has declared `stage`, result envelope must pass through that `stage`.
 
-### 4A.3 Feedback Result Builder
+### 4A.4 Feedback Result Builder
 
 `buildFeedbackResultEnvelope(feedbackSignals, artifacts)` at minimum should:
 
@@ -85,13 +83,13 @@ Reduce lateral proliferation of result objects through unified result envelope:
 - Aggregate positive/negative, correction, quality metrics into `structured_data / metrics`
 - If no consumable feedback, should return explicit empty set instead of omitting fields
 
-### 4A.5 Release Result Builder
+### 4A.5 Rollout Result Builder
 
-`buildReleaseResultEnvelope(releaseRecord, artifacts)` at minimum should:
+`buildRolloutResultEnvelope(rolloutRecord, artifacts)` at minimum should:
 
 - Use `stage=release`
-- Expose release / strategy / approval references in `ref_ids`
-- Project current release level, status, metrics to `structured_data`
+- Expose rollout / strategy / approval references in `ref_ids`
+- Project current rollout level, status, metrics to `structured_data`
 - Current phase1-4 authoritative scope only allows `off / suggest / shadow`
 
 ### 4A.3 Artifact Merging
@@ -100,10 +98,6 @@ Reduce lateral proliferation of result objects through unified result envelope:
 - Deduplication strategy: prioritize deduplication by `id`; if id is missing, deduplicate by `uri + createdAt` composite key.
 - During merge, ref attributes (like stepId, lineage) and record attributes (like sizeBytes, checksum) do shallow merge.
 
-## v4.3 Contract Remediation
-
-- T-37: 早期版本引用 `buildTaskResultEnvelope` 作为主构建入口。v4.3 canonical 构建器为 `buildHarnessRunResultEnvelope` / `buildNodeRunResultEnvelope`，投影到 `HarnessRun -> NodeRun` 链而非 `Task -> Execution` 旧模型。
-
-## 5. 收口结论
+## 5. Closure Conclusion
 
 Unified result envelope allows display, audit, API, and recovery logic to face the same result shell, rather than being dragged by the number of concrete result types.

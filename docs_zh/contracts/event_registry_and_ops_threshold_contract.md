@@ -37,34 +37,29 @@
 
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
-| `platform.harness_run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.harness_run.admitted` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.harness_run.status_changed` | `tier1` | harness runtime | gateway, observability, recovery scan | 是 | 是 |
-| `platform.harness_run.completed` | `tier1` | harness runtime | supervisor, transition service, observability | 是 | 是 |
-| `platform.harness_run.aborted` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
-| `platform.node_run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node_run.admitted` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node_run.status_changed` | `tier1` | harness runtime | orchestrator, observability, recovery scan | 是 | 是 |
-| `platform.node_run.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
-| `platform.node_run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
-| `platform.node_run.output_recorded` | `tier1` | harness runtime | orchestrator, observability | 是 | 是 |
-| `platform.budget.reservation_created` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
-| `platform.budget.reservation_released` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
-| `platform.budget.exhausted` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
-| `platform.approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
-| `platform.approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
-| `platform.improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
-| `platform.release.started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `platform.release.completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `platform.release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
+| `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
+| `platform.harness.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
+| `platform.harness.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
+| `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
+| `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
+| `execution.succeeded` | `tier1` | runtime | transition service, observability | 是 | 是 |
+| `execution.failed` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
+| `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
 | `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
-| `platform.feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
-| `platform.learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
-| `platform.learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
-| `platform.improve.candidate_proposed` | `tier2` | improve hub | observability, inspect projection | 否 | 建议 |
-| `platform.loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
+| `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
+| `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
+| `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
+| `improve.candidate_proposed` | `tier2` | improve hub | observability, inspect projection | 否 | 建议 |
+| `improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
+| `release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
+| `loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
 | `gateway.message_received` | `tier2` | gateway adapter | runtime, observability | 否 | 建议 |
 | `gateway.message_sent` | `tier2` | gateway adapter | observability | 否 | 否 |
 | `tool.call_started` | `tier2` | tool executor | observability | 否 | 否 |
@@ -73,30 +68,30 @@
 | `stream.chunk_emitted` | `tier3` | gateway streaming bridge | UI / channel client | 否 | 否 |
 | `heartbeat.sampled` | `tier3` | supervisor / runtime | observability | 否 | 否 |
 | `dispatch:ticket_created` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
-| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
+| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | ��议 |
 | `dispatch:decision_recorded` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:ticket_reconciled` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_requeued` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
-| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | 建议 |
+| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | ��议 |
 | `worker:claim_rejected` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:heartbeat_recorded` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:writeback_recorded` | `tier2` | execution worker writeback service | inspect_projection | 否 | 建议 |
 | `worker:writeback_rejected` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `worker:lease_released_after_writeback` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `takeover:session_opened` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
-| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
-| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建议 |
-| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
+| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | ��议 |
+| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建��� |
+| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建�� |
 | `recovery:dead_lettered` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
 | `recovery:cancelled` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 否 |
 | `skill:execution_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
+| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | �� |
 | `skill:cache_hit` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:cache_stored` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:retry_scheduled` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_succeeded` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
+| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | ��� | 否 |
 | `skill:execution_completed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 
 ## 5. 消费者规范
@@ -122,7 +117,7 @@ Tier 1 的标准消费者至少包括：
 
 按领域分组：
 
-- **OAPEFLIR / release 事件**（`oapeflir.view.*`、`platform.feedback.*`、`platform.learn.*`、`platform.improve.*`、`platform.release.*`、`platform.loop.*`）：由各 hub 或 truth path 生产，投射到闭环时间线、反馈链和 release 诊断视图。
+- **OAPEFLIR 事件**（`oapeflir.*`、`feedback.*`、`learn.*`、`improve.*`、`release.*`、`loop.*`）：由各 hub 生产，投射到闭环时间线、反馈链和 rollout 诊断视图。
 - **dispatch 事件**（`dispatch:*`）：由 `execution_dispatch_service` 或 `execution_dispatch_reconciliation_service` 生产，投射到 dispatch decision trace 与 ticket 状态。
 - **worker 事件**（`worker:*`）：由 `execution_worker_handshake_service` 和 `execution_worker_writeback_service` 生产，投射到 worker lease 状态与 fencing audit。
 - **takeover 事件**（`takeover:*`）：由 `human_takeover_service` 生产，投射到人工接管审计链。
@@ -210,10 +205,6 @@ Phase 1b 做：
 - 跨区域事件复制
 - 企业级事件保留策略
 
-## v4.3 Contract Remediation
-
-- T-36: 本文早期版本使用 `execution._` 前缀事件（如 `execution.started`）。v4.3 以 `platform.harness_run.*` / `platform.node_run.*` 为 canonical truth。旧 `execution.*` 事件仅保留兼容 alias，新实现不得再生产 `execution.*` truth fact。
-
 ## 10. 收口结论
 
-事件系统是否可靠，不只取决于”事件会不会发出去”，而取决于有没有一张稳定注册表说明谁该收到、多久该收到、没收到时系统会怎么反应。
+事件系统是否可靠，不只取决于“事件会不会发出去”，而取决于有没有一张稳定注册表说明谁该收到、多久该收到、没收到时系统会怎么反应。

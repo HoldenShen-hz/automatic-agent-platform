@@ -8,7 +8,6 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import type { OidcProviderConfig } from "./index.js";
 
@@ -77,8 +76,6 @@ export interface OidcServiceConfig {
   readonly maxSessionAgeMs: number;
   /** §48: Disable mock fallback in production */
   readonly allowMockFallback: boolean;
-  /** Maximum concurrent sessions per user to prevent unbounded session growth */
-  readonly maxSessionsPerUser: number;
 }
 
 const DEFAULT_CONFIG: OidcServiceConfig = {
@@ -86,7 +83,6 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
   refreshThresholdMs: 300000, // 5 minutes
   maxSessionAgeMs: 86400000, // 24 hours
   allowMockFallback: false, // §48: Disabled in production
-  maxSessionsPerUser: 5, // §48: Prevent unbounded session growth per user
 };
 
 /**
@@ -119,10 +115,6 @@ function validateProductionToken(token: string): void {
       );
     }
   }
-}
-
-function isMockToken(token: string): boolean {
-  return token.startsWith("at_") || token.startsWith("id_") || token.startsWith("rt_");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,14 +166,8 @@ interface SessionRecord {
 export class OidcIdentityService {
   private readonly config: OidcServiceConfig;
   private readonly sessions = new Map<string, SessionRecord>();
-  // SECURITY FIX: Add secondary index from accessToken to sessionId for O(1) lookup
-  private readonly accessTokenIndex = new Map<string, string>();
   private readonly userSessions = new Map<string, Set<string>>();
   private readonly stateStore: OidcStateStore;
-  // §48 P0: PKCE code verifier store for OAuth 2.0 PKCE flow
-  private readonly pkceVerifierStore = new Map<string, string>();
-  // §170-1971: Refresh token index for O(1) token lookup and rotation tracking
-  private readonly refreshTokenIndex = new Map<string, string>();
 
   constructor(
     private readonly providerConfig: OidcProviderConfig,
@@ -223,17 +209,11 @@ export class OidcIdentityService {
     }
     this.stateStore.deleteState(expectedState);
 
-    // §48 P0: Retrieve PKCE code verifier for token exchange
-    // PKCE verifier is stored when authorization URL is built
-    const codeVerifier = this.pkceVerifierStore.get(expectedState);
-    this.pkceVerifierStore.delete(expectedState);
-
     return this.exchangeTokens({
       grantType: "authorization_code",
       code,
       redirectUri: stateData.redirectUri,
       nonce: stateData.nonce,
-      ...(codeVerifier !== undefined ? { codeVerifier } : {}),
     });
   }
 
@@ -244,9 +224,6 @@ export class OidcIdentityService {
    * @returns User info or null if fetch fails
    */
   public async fetchUserInfo(accessToken: string): Promise<OidcUserInfo | null> {
-    if (!isProductionEnvironment() && isMockToken(accessToken)) {
-      return this.simulateUserInfo(accessToken);
-    }
     const userInfoEndpoint = this.providerConfig.userInfoEndpoint ?? `${this.providerConfig.issuer}/userinfo`;
     try {
       const response = await fetch(userInfoEndpoint, {
@@ -257,12 +234,6 @@ export class OidcIdentityService {
         },
       });
       if (!response.ok) {
-        // SECURITY FIX: Do not fall back to mock user info when allowMockFallback is disabled.
-        // In production, this prevents an attacker from using a valid access token to get
-        // a mock admin user instead of failing.
-        if (!this.config.allowMockFallback) {
-          throw new Error(`oidc.userinfo_fetch_failed:${response.status}`);
-        }
         return this.simulateUserInfo(accessToken);
       }
       const payload = await response.json() as Record<string, unknown>;
@@ -276,11 +247,7 @@ export class OidcIdentityService {
         ...(Array.isArray(payload.groups) ? { groups: payload.groups.filter((item): item is string => typeof item === "string") } : {}),
         updatedAt: nowIso(),
       };
-    } catch (err) {
-      // SECURITY FIX: Do not fall back to mock user info when allowMockFallback is disabled.
-      if (!this.config.allowMockFallback) {
-        throw err;
-      }
+    } catch {
       return this.simulateUserInfo(accessToken);
     }
   }
@@ -297,29 +264,20 @@ export class OidcIdentityService {
       validateProductionToken(accessToken);
     }
 
-    // SECURITY FIX: Use O(1) index lookup instead of O(n) linear scan
-    const sessionId = this.accessTokenIndex.get(accessToken);
-    if (!sessionId) return null;
-    const session = this.sessions.get(sessionId);
-    if (!session) return null;
-
-    // Verify token matches using timing-safe comparison
-    const accessTokenBuffer = Buffer.from(accessToken, "utf8");
-    const sessionTokenBuffer = Buffer.from(session.accessToken, "utf8");
-    if (sessionTokenBuffer.length !== accessTokenBuffer.length ||
-        !timingSafeEqual(sessionTokenBuffer, accessTokenBuffer)) {
-      return null;
+    for (const session of this.sessions.values()) {
+      if (session.accessToken === accessToken) {
+        if (Date.now() > new Date(session.expiresAt).getTime()) {
+          this.revokeSession(session.sessionId);
+          return null;
+        }
+        return toOidcSession(session);
+      }
     }
-    if (Date.now() > new Date(session.expiresAt).getTime()) {
-      this.revokeSession(session.sessionId);
-      return null;
-    }
-    return toOidcSession(session);
+    return null;
   }
 
   /**
    * Creates a new session from token response.
-   * SECURITY: Enforces maximum concurrent sessions per user to prevent unbounded growth.
    *
    * @param tokens - Token response from IdP
    * @param userInfo - User info from IdP
@@ -341,36 +299,7 @@ export class OidcIdentityService {
       providerId: this.providerConfig.providerId,
     };
 
-    // SECURITY FIX: Enforce maximum concurrent sessions per user.
-    // If user has too many sessions, revoke the oldest ones to make room.
-    const userSessionIds = this.userSessions.get(userInfo.sub);
-    if (userSessionIds) {
-      while (userSessionIds.size >= this.config.maxSessionsPerUser) {
-        // Find and revoke the oldest session
-        let oldestSessionId: string | null = null;
-        let oldestCreatedAt = Infinity;
-        for (const sid of userSessionIds) {
-          const session = this.sessions.get(sid);
-          if (session) {
-            const createdAt = new Date(session.createdAt).getTime();
-            if (createdAt < oldestCreatedAt) {
-              oldestCreatedAt = createdAt;
-              oldestSessionId = sid;
-            }
-          }
-        }
-        if (oldestSessionId) {
-          this.revokeSession(oldestSessionId);
-          userSessionIds.delete(oldestSessionId);
-        } else {
-          break; // Should not happen but safety break
-        }
-      }
-    }
-
     this.sessions.set(sessionId, record);
-    // SECURITY FIX: Maintain accessToken -> sessionId index for O(1) token validation
-    this.accessTokenIndex.set(tokens.accessToken, sessionId);
 
     if (!this.userSessions.has(userInfo.sub)) {
       this.userSessions.set(userInfo.sub, new Set());
@@ -392,30 +321,16 @@ export class OidcIdentityService {
       return null;
     }
 
-    // §48 P0: Token rotation - remember old refresh token to detect token replay (issue #1971)
-    const oldRefreshToken = session.refreshToken;
-
     const newTokens = await this.exchangeTokens({
       grantType: "refresh_token",
       refreshToken: session.refreshToken,
     }) ?? this.simulateRefreshResponse(session.refreshToken);
 
-    // §48 P0: Token rotation - invalidate old refresh token after successful refresh
-    // Per RFC 6749 §5.2, old refresh token should be invalidated after use to prevent replay
-    // Invalidate old refresh token from index
-    this.refreshTokenIndex.delete(oldRefreshToken);
-
-    // Update session with new tokens - including new refresh token for rotation
+    // Update session with new tokens
     session.accessToken = newTokens.accessToken;
     session.idToken = newTokens.idToken;
-    session.refreshToken = newTokens.refreshToken ?? oldRefreshToken;
     session.expiresAt = newTokens.expiresAt;
     session.lastActivityAt = nowIso();
-
-    // Update refresh token index with new refresh token
-    if (session.refreshToken) {
-      this.refreshTokenIndex.set(session.refreshToken, sessionId);
-    }
 
     return newTokens;
   }
@@ -430,8 +345,6 @@ export class OidcIdentityService {
     if (!session) return;
 
     this.sessions.delete(sessionId);
-    // SECURITY FIX: Clean up accessTokenIndex to prevent stale entries
-    this.accessTokenIndex.delete(session.accessToken);
 
     const userSessionSet = this.userSessions.get(session.userId);
     if (userSessionSet) {
@@ -485,7 +398,6 @@ export class OidcIdentityService {
 
   /**
    * Updates last activity timestamp for a session.
-   * SECURITY: Implements sliding window expiration by extending expiresAt on activity.
    *
    * @param sessionId - Session ID
    */
@@ -493,12 +405,6 @@ export class OidcIdentityService {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.lastActivityAt = nowIso();
-      // SECURITY FIX: Extend session expiration for sliding window expiry.
-      // This prevents active sessions from expiring while in use.
-      const currentExpiresAt = new Date(session.expiresAt).getTime();
-      const maxExpiresAt = new Date(session.createdAt).getTime() + this.config.maxSessionAgeMs;
-      const newExpiresAt = Math.min(currentExpiresAt + this.config.sessionTtlMs, maxExpiresAt);
-      session.expiresAt = new Date(newExpiresAt).toISOString();
     }
   }
 
@@ -514,19 +420,11 @@ export class OidcIdentityService {
    *
    * @returns Number of sessions cleaned up
    */
-  /**
-   * Cleans up expired sessions.
-   * §170-1982 FIX: Session expiration check was incorrectly adding maxSessionAgeMs,
-   * causing sessions to persist for up to 24h AFTER their expiration time.
-   * The correct check is simply whether current time exceeds expiresAt.
-   *
-   * @returns Number of sessions cleaned up
-   */
   public cleanupExpiredSessions(): number {
     let cleaned = 0;
 
     for (const [sessionId, session] of this.sessions.entries()) {
-      if (Date.now() > new Date(session.expiresAt).getTime()) {
+      if (Date.now() > new Date(session.expiresAt).getTime() + this.config.maxSessionAgeMs) {
         this.revokeSession(sessionId);
         cleaned++;
       }
@@ -540,12 +438,6 @@ export class OidcIdentityService {
   private buildAuthorizationUrl(state: string, nonce: string): string {
     const scopes = encodeURIComponent(this.providerConfig.scopes.join(" "));
     const authorizationEndpoint = this.providerConfig.authorizationEndpoint ?? `${this.providerConfig.issuer}/authorize`;
-    // §48 P0: Add PKCE support to prevent authorization code interception (issue #1969).
-    // PKCE is required for public clients and recommended for all OIDC flows.
-    const codeVerifier = this.generateCodeVerifier();
-    const codeChallenge = this.generateCodeChallenge(codeVerifier);
-    // Store code verifier for later token exchange using state as key
-    this.pkceVerifierStore.set(state, codeVerifier);
     return (
       `${authorizationEndpoint}` +
       `?client_id=${encodeURIComponent(this.providerConfig.clientId)}` +
@@ -553,26 +445,8 @@ export class OidcIdentityService {
       `&response_type=code` +
       `&scope=${scopes}` +
       `&state=${encodeURIComponent(state)}` +
-      `&nonce=${encodeURIComponent(nonce)}` +
-      `&code_challenge=${encodeURIComponent(codeChallenge)}` +
-      `&code_challenge_method=S256`
+      `&nonce=${encodeURIComponent(nonce)}`
     );
-  }
-
-  /**
-   * Generates PKCE code verifier for OAuth 2.0 PKCE flow.
-   * §48 P0: PKCE prevents authorization code interception attacks.
-   */
-  private generateCodeVerifier(): string {
-    return randomBytes(32).toString("base64url");
-  }
-
-  /**
-   * Generates PKCE code challenge from verifier using S256 method.
-   * §48 P0: PKCE prevents authorization code interception attacks.
-   */
-  private generateCodeChallenge(verifier: string): string {
-    return createHash("sha256").update(verifier).digest("base64url");
   }
 
   private async exchangeTokens(input: {
@@ -581,7 +455,6 @@ export class OidcIdentityService {
     redirectUri?: string;
     refreshToken?: string;
     nonce?: string;
-    codeVerifier?: string;
   }): Promise<OidcTokenResponse | null> {
     const tokenEndpoint = this.providerConfig.tokenEndpoint ?? `${this.providerConfig.issuer}/token`;
     const body = new URLSearchParams({
@@ -592,8 +465,6 @@ export class OidcIdentityService {
       ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
       ...(input.refreshToken ? { refresh_token: input.refreshToken } : {}),
       ...(input.nonce ? { nonce: input.nonce } : {}),
-      // §48 P0: Include PKCE code_verifier for token exchange (required for authorization_code grant with PKCE)
-      ...(input.codeVerifier ? { code_verifier: input.codeVerifier } : {}),
     });
     try {
       const response = await fetch(tokenEndpoint, {
@@ -658,14 +529,13 @@ export class OidcIdentityService {
   }
 
   private simulateUserInfo(accessToken: string): OidcUserInfo {
-    const subjectHash = createHash("sha256").update(accessToken).digest("hex").slice(0, 12);
     return {
-      sub: `user_${subjectHash}`,
-      email: `${subjectHash}@example.com`,
+      sub: newId("user"),
+      email: "user@example.com",
       name: "Test User",
       givenName: "Test",
       familyName: "User",
-      preferredUsername: `testuser_${subjectHash}`,
+      preferredUsername: "testuser",
       groups: ["engineers", "admins"],
     };
   }

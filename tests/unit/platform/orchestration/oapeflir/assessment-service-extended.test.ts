@@ -48,11 +48,10 @@ test("AssessmentService assigns small model for trivial complexity", () => {
 test("AssessmentService assigns medium model for moderate complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 20 }, (_, i) => `file${i}.ts`),
-    userIntent: { raw: "maybe update a batch of files", normalized: "maybe update a batch of files", confidence: 0.5 },
+    fileRefs: ["file1.ts", "file2.ts", "file3.ts", "file4.ts"],
+    blockers: [],
   }));
 
-  assert.equal(result.complexity, "moderate");
   assert.equal(result.resourceAllocation.modelClass, "medium");
   assert.equal(result.resourceAllocation.maxTokens, 5000);
 });
@@ -61,10 +60,9 @@ test("AssessmentService assigns large model for complex complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
     fileRefs: Array.from({ length: 10 }, (_, i) => `file${i}.ts`),
-    blockers: [{ description: "critical blocker", severity: "critical" }],
+    blockers: [{ description: "blocker1", severity: "high" }],
   }));
 
-  assert.equal(result.complexity, "complex");
   assert.equal(result.resourceAllocation.modelClass, "large");
   assert.equal(result.resourceAllocation.maxTokens, 8000);
   assert.equal(result.resourceAllocation.timeoutMs, 120000);
@@ -73,11 +71,10 @@ test("AssessmentService assigns large model for complex complexity", () => {
 test("AssessmentService assigns large model for critical complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 40 }, (_, i) => `file${i}.ts`),
-    blockers: [{ description: "critical blocker", severity: "critical" }],
+    fileRefs: Array.from({ length: 20 }, (_, i) => `file${i}.ts`),
+    blockers: [],
   }));
 
-  assert.equal(result.complexity, "critical");
   assert.equal(result.resourceAllocation.modelClass, "large");
   assert.equal(result.resourceAllocation.maxTokens, 12000);
   assert.equal(result.resourceAllocation.timeoutMs, 180000);
@@ -90,10 +87,9 @@ test("AssessmentService assigns large model for critical complexity", () => {
 test("AssessmentService suggests produce_explicit_plan for non-trivial", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 16 }, (_, i) => `file${i}.ts`),
+    fileRefs: ["file1.ts", "file2.ts"],
   }));
 
-  assert.equal(result.complexity, "simple");
   assert.ok(result.suggestedActions.includes("produce_explicit_plan"));
 });
 
@@ -377,11 +373,9 @@ test("AssessmentService sets single-step workflow for trivial complexity", () =>
 test("AssessmentService sets multi-step workflow for non-trivial complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 20 }, (_, i) => `file${i}.ts`),
-    userIntent: { raw: "maybe refactor this area", normalized: "maybe refactor this area", confidence: 0.5 },
+    fileRefs: ["file1.ts", "file2.ts", "file3.ts", "file4.ts"],
   }));
 
-  assert.equal(result.complexity, "moderate");
   assert.equal(result.routingDecision.workflow, "multi-step");
 });
 
@@ -406,15 +400,6 @@ test("AssessmentService routing decision includes file count", () => {
   assert.ok(result.routingDecision.rationale.includes("files=3"));
 });
 
-test("AssessmentService derives a non-coding routing division for operations domains", () => {
-  const service = new AssessmentService();
-  const result = service.assess(createMinimalSituation({
-    domainId: "general_ops",
-  }));
-
-  assert.equal(result.routingDecision.division, "ops");
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Complexity Derivation Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,7 +407,6 @@ test("AssessmentService derives a non-coding routing division for operations dom
 test("AssessmentService derives critical complexity from risk", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 40 }, (_, i) => `file${i}.ts`),
     blockers: [{ description: "critical risk", severity: "critical" }],
   }));
 
@@ -432,18 +416,18 @@ test("AssessmentService derives critical complexity from risk", () => {
 test("AssessmentService derives complex complexity from high risk", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 30 }, (_, i) => `file${i}.ts`),
     blockers: [{ description: "high risk", severity: "high" }],
   }));
 
   assert.equal(result.complexity, "complex");
 });
 
-test("AssessmentService derives moderate complexity from combined file and memory pressure", () => {
+test("AssessmentService derives moderate complexity from memory", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 20 }, (_, i) => `file${i}.ts`),
-    relevantMemory: Array.from({ length: 20 }, (_, i) => `memory_entry_${i}`),
+    fileRefs: [],
+    relevantMemory: ["memory_entry_1"],
+    blockers: [],
   }));
 
   assert.equal(result.complexity, "moderate");
@@ -452,59 +436,9 @@ test("AssessmentService derives moderate complexity from combined file and memor
 test("AssessmentService derives simple complexity from file count", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: Array.from({ length: 16 }, (_, i) => `file${i}.ts`),
+    fileRefs: ["file1.ts", "file2.ts"],
+    blockers: [],
   }));
 
   assert.equal(result.complexity, "simple");
-});
-
-test("AssessmentService incorporates constraint pack and policy snapshot into risk and routing", () => {
-  const service = new AssessmentService();
-  const result = service.assess({
-    taskSituation: createMinimalSituation({
-      environmentContext: {
-        nodeVersion: "22.0",
-        platform: "darwin",
-        workingDirectory: "/tmp",
-        availableTools: ["read", "deploy"],
-      },
-    }),
-    constraintPack: {
-      constraintPackId: "cp-1",
-      policyIds: ["policy-1"],
-      approvalMode: "required",
-      autonomyMode: "suggestion",
-      budgetEnvelope: { maxSteps: 2, maxTokens: 500, maxWallClockMs: 60_000 },
-    } as any,
-    effectivePolicySnapshot: {
-      snapshotId: "policy-snapshot-1",
-      requiredApprovalLevel: "admin",
-      blockedTools: ["deploy"],
-      forcedExecutionMode: "manual",
-    },
-  });
-
-  assert.equal(result.risk, "critical");
-  assert.equal(result.executionMode, "manual");
-  assert.equal(result.approvalPolicy.level, "admin");
-  assert.ok(result.riskAssessment.factors.includes("approval_mode_required"));
-  assert.ok(result.riskAssessment.factors.includes("autonomy_mode_suggestion"));
-  assert.ok(result.riskAssessment.factors.includes("tight_budget_envelope"));
-  assert.ok(result.riskAssessment.factors.includes("blocked_tools:deploy"));
-  assert.ok(result.routingDecision.rationale.includes("constraintPack=policy-1"));
-  assert.ok(result.routingDecision.rationale.includes("policySnapshot=policy-snapshot-1"));
-});
-
-test("AssessmentService propagates inherited risk factors into the canonical assessment", () => {
-  const service = new AssessmentService();
-  const result = service.assess({
-    taskSituation: createMinimalSituation(),
-    inheritedRiskAssessment: {
-      level: "medium",
-      factors: ["upstream_sensitive_context"],
-    },
-  });
-
-  assert.equal(result.risk, "medium");
-  assert.ok(result.riskAssessment.factors.includes("inherited:upstream_sensitive_context"));
 });

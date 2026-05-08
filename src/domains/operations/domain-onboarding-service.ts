@@ -69,8 +69,7 @@ export class DomainOnboardingService {
     if (nextPhase == null) {
       this.sessions.set(domainId, replaced);
       this.promoteDomainToRegisteredIfNeeded(domainId);
-      this.registry.activate(domainId, true);
-      this.registry.activate(domainId, false);
+      this.registry.activate(domainId);
       return this.get(domainId);
     }
 

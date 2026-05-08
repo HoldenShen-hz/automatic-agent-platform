@@ -13,4 +13,3 @@ export * as tenant from "./tenant/index.js";
 
 export * from "./control-plane-baseline.js";
 export * from "./control-plane-bootstrap.js";
-export * from "./control-plane-directive-sink.js";

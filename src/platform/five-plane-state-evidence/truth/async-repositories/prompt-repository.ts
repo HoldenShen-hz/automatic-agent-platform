@@ -188,7 +188,7 @@ export class AsyncPromptRepository {
           created_at AS "createdAt",
           updated_at AS "updatedAt"
          FROM prompt_bundles
-         WHERE domain = $1 AND task_type = $2 AND deprecated = false
+         WHERE domain = $1 AND task_type = $2 AND deprecated = 0
          ORDER BY created_at DESC`,
         domain,
         taskType,
@@ -212,7 +212,7 @@ export class AsyncPromptRepository {
         created_at AS "createdAt",
         updated_at AS "updatedAt"
        FROM prompt_bundles
-       WHERE domain = $1 AND deprecated = false
+       WHERE domain = $1 AND deprecated = 0
        ORDER BY created_at DESC`,
       domain,
     );
@@ -237,7 +237,7 @@ export class AsyncPromptRepository {
         created_at AS "createdAt",
         updated_at AS "updatedAt"
        FROM prompt_bundles
-       WHERE deprecated = false
+       WHERE deprecated = 0
        ORDER BY domain, task_type, name`,
     );
   }
@@ -264,16 +264,14 @@ export class AsyncPromptRepository {
   }
 
   public async setCurrentVersion(bundleId: string, versionId: string): Promise<number> {
-    // First, unset is_current for all versions of this bundle
     await asyncExecute(
       this.conn,
-      `UPDATE prompt_versions SET is_current = false WHERE bundle_id = $1`,
+      `UPDATE prompt_versions SET is_current = 0 WHERE bundle_id = $1`,
       bundleId,
     );
-    // Then, set is_current for the target version
     return asyncExecute(
       this.conn,
-      `UPDATE prompt_versions SET is_current = true WHERE version_id = $1`,
+      `UPDATE prompt_versions SET is_current = 1 WHERE version_id = $1`,
       versionId,
     );
   }
@@ -328,7 +326,7 @@ export class AsyncPromptRepository {
         created_at AS "createdAt",
         deprecated_at AS "deprecatedAt"
        FROM prompt_versions
-       WHERE bundle_id = $1 AND is_current = true`,
+       WHERE bundle_id = $1 AND is_current = 1`,
       bundleId,
     );
     return result ?? null;

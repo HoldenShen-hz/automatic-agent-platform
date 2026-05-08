@@ -136,11 +136,11 @@ test("SelfServiceGovernanceConsole.revokeDelegation rejects non-grantor callers"
     revocable: true,
   });
 
-  const result = console.revokeDelegation(delegation.delegationId, { actorId: "random-user", role: "platform_team" });
+  const result = console.revokeDelegation(delegation.delegationId, { actorId: "random-user", role: "team_lead" });
 
   assert.strictEqual(result.success, false);
   assert.ok(result.error?.includes("permission_denied"));
-  assert.strictEqual(console.getDelegation(delegation.delegationId, { actorId: "random-user", role: "platform_team" })?.status, "active");
+  assert.strictEqual(console.getDelegation(delegation.delegationId, { actorId: "random-user", role: "team_lead" })?.status, "active");
 });
 
 test("SelfServiceGovernanceConsole.listDelegationsForGrantee returns only active delegations", () => {
@@ -181,9 +181,9 @@ test("SelfServiceGovernanceConsole.listDelegationsForGrantee excludes revoked de
     expiresAt: "2025-12-31T23:59:59Z",
   });
 
-  console.revokeDelegation(delegation.delegationId, "grantor-1");
+  console.revokeDelegation(delegation.delegationId, { actorId: "grantor-1", role: "platform_team" });
 
-  const delegations = console.listDelegationsForGrantee("grantee-1");
+  const delegations = console.listDelegationsForGrantee("grantee-1", { actorId: "grantor-1", role: "platform_team" });
 
   assert.strictEqual(delegations.length, 0);
 });
@@ -306,7 +306,7 @@ test("SelfServiceGovernanceConsole.reviewDelegation returns delegation and logs 
   });
 
   const beforeCount = auditLogStore.list().length;
-  const result = console.reviewDelegation(delegation.delegationId, "reviewer-1");
+  const result = console.reviewDelegation(delegation.delegationId, { actorId: "reviewer-1", role: "platform_team" });
   const afterCount = auditLogStore.list().length;
 
   assert.ok(result !== null);

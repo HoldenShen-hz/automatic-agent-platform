@@ -214,8 +214,6 @@ export class FeedbackQualityGrader {
       for (const id of sig.sourceSignalIds) {
         result.push({
           signalId: id,
-          harnessRunId: sig.taskId,
-          nodeRunId: sig.evidenceRefs[0] ?? id,
           taskId: sig.taskId,
           source: "execution",
           category: sig.learningType === "failure_pattern" ? "failure"
@@ -226,13 +224,6 @@ export class FeedbackQualityGrader {
           payload: { reasonCode: sig.learningType },
           stepOutputRefs: sig.evidenceRefs,
           timestamp: sig.generatedAt,
-          trustScore: {
-            overallScore: 0.5,
-            sourceCredibility: 0.6,
-            historicalAccuracy: 0.5,
-            attackSurface: 0.4,
-          },
-          evidenceRefs: sig.evidenceRefs,
         });
       }
       return result;

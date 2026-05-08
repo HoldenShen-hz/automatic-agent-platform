@@ -157,7 +157,7 @@ export class WorkflowRepository {
       .run(
         canonical.id,
         canonical.taskId,
-        canonical.stepId ?? null,
+        canonical.stepId,
         canonical.roleId,
         canonical.status,
         canonical.dataJson,

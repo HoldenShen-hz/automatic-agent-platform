@@ -187,74 +187,6 @@ const HEALTH_TO_ESCALATION: Record<string, EscalationLevel> = {
 
 // ── Service ─────────────────────────────────────────────────────────────
 
-// ── Error Classification for §9.6 ───────────────────────────────────
-
-/**
- * Error classification for playbook execution failures.
- * §9.6 requires categorized error recording with evidence.
- */
-type PlaybookErrorCategory =
-  | "handler_not_found"
-  | "handler_execution_failed"
-  | "context_validation_failed"
-  | "timeout"
-  | "unknown";
-
-interface PlaybookErrorRecord {
-  readonly eventId: string;
-  readonly playbookId: string;
-  readonly playbookName: string;
-  readonly category: PlaybookErrorCategory;
-  readonly errorMessage: string;
-  readonly timestamp: string;
-  readonly healthStatus: string;
-  readonly retryable: boolean;
-}
-
-const PLAYBOOK_ERROR_CATEGORY: Record<string, PlaybookErrorCategory> = {
-  "No handler for action": "handler_not_found",
-  "timeout": "timeout",
-};
-
-function classifyPlaybookError(
-  error: unknown,
-  playbookId: string,
-  playbookName: string,
-  healthStatus: string,
-): PlaybookErrorRecord {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  let category: PlaybookErrorCategory = "unknown";
-  let retryable = false;
-
-  for (const [pattern, cat] of Object.entries(PLAYBOOK_ERROR_CATEGORY)) {
-    if (errorMessage.includes(pattern)) {
-      category = cat;
-      break;
-    }
-  }
-
-  if (category === "unknown") {
-    // Check for execution failures
-    if (errorMessage.includes("failed") || errorMessage.includes("error")) {
-      category = "handler_execution_failed";
-      retryable = true;
-    }
-  }
-
-  return {
-    eventId: newId("playbook_err"),
-    playbookId,
-    playbookName,
-    category,
-    errorMessage,
-    timestamp: nowIso(),
-    healthStatus,
-    retryable,
-  };
-}
-
-// ── Service ─────────────────────────────────────────────────────────────
-
 export interface AutoStopLossServiceOptions {
   config?: Partial<AutoStopLossConfig>;
   playbooks?: StopLossPlaybook[];
@@ -273,7 +205,6 @@ export class AutoStopLossService {
   private readonly executionCounts: Map<string, number> = new Map();
   private readonly lastExecutionTime: Map<string, number> = new Map();
   private readonly actionHandlers: Map<StopLossAction, ActionHandler> = new Map();
-  private readonly errorRecords: PlaybookErrorRecord[] = [];
   private lastHealthCheck: SystemHealthSnapshot | null = null;
 
   constructor(options?: AutoStopLossServiceOptions) {
@@ -685,7 +616,7 @@ export class AutoStopLossService {
         playbookName: playbook.name,
         triggerReason,
         actionsExecuted: [],
-        escalationLevel: "critical",
+        escalationLevel: SEVERITY_TO_ESCALATION[triggerReason.includes("emergency") ? "emergency" : "critical"],
         executedAt: startTime,
         completedAt: null,
         success: false,
@@ -773,37 +704,15 @@ export class AutoStopLossService {
       const countKey = `${playbookId}_${hourKey}`;
       const currentCount = this.executionCounts.get(countKey) ?? 0;
       this.executionCounts.set(countKey, currentCount + 1);
-      // §181-2127: Clean up old hourly keys to prevent memory leak
-      this.cleanupOldExecutionCounts(hourKey);
     }
   }
 
   /**
    * Generates a key based on the current hour for rate limiting.
    */
-  // R29-42 FIX: Add proper separators to getHourKey to prevent date ambiguity collisions.
-  // Root cause: getMonth() returns 0-11 and getDate() returns 1-31, concatenated without
-  // separators. "2024101" is ambiguous - it could be January 10 or October 1.
-  // Fix: Use proper date formatting with separators (YYYY-MM-DD-HH) to eliminate ambiguity.
   private getHourKey(): string {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0"); // getMonth is 0-indexed
-    const day = String(now.getDate()).padStart(2, "0");
-    const hour = String(now.getHours()).padStart(2, "0");
-    return `${year}-${month}-${day}-${hour}`;
-  }
-
-  /**
-   * §181-2127: Cleans up execution count entries from previous hours to prevent memory leak.
-   */
-  private cleanupOldExecutionCounts(currentHourKey: string): void {
-    for (const [key] of this.executionCounts) {
-      const keyHour = key.split("_").at(-1);
-      if (keyHour && keyHour !== currentHourKey) {
-        this.executionCounts.delete(key);
-      }
-    }
+    return `${now.getFullYear()}${now.getMonth()}${now.getDate()}${now.getHours()}`;
   }
 
   // ── Human Approval ──────────────────────────────────────────────────
@@ -821,33 +730,8 @@ export class AutoStopLossService {
 
     if (approved) {
       event.humanApproved = true;
-      // R16-36 FIX #2118: Execute approved playbook and wait for completion.
-      // Previously the code used fire-and-forget which meant the protective action
-      // was never actually executed before this method returned. Now we execute
-      // and await the result before returning to ensure protection is applied.
-      const playbook = this.playbooks.get(event.playbookId);
-      if (playbook) {
-        try {
-          // Execute synchronously by using synchronous playbook execution
-          // The executeApprovedPlaybook method handles the execution flow
-          const result = this.executeApprovedPlaybookSync(playbook, event);
-          event.success = result.success;
-          if (!result.success && result.errorMessage) {
-            event.errorMessage = result.errorMessage;
-          }
-        } catch (err) {
-          // §9.6: Classify and record playbook failure with evidence
-          const errorRecord = classifyPlaybookError(
-            err,
-            playbook.id,
-            playbook.name,
-            this.lastHealthCheck?.status ?? "unknown",
-          );
-          this.recordError(errorRecord);
-          event.success = false;
-          event.errorMessage = err instanceof Error ? err.message : String(err);
-        }
-      }
+      event.completedAt = nowIso();
+      delete event.errorMessage;
       return true;
     } else {
       event.completedAt = nowIso();
@@ -855,97 +739,6 @@ export class AutoStopLossService {
       event.errorMessage = "Rejected by human";
       return true;
     }
-  }
-
-  /**
-   * Executes a playbook's actions after human approval is granted.
-   */
-  private async executeApprovedPlaybook(
-    playbook: StopLossPlaybook,
-    event: StopLossEvent,
-  ): Promise<void> {
-    const actionsExecuted: StopLossAction[] = [];
-    let allSuccess = true;
-    let errorMessage: string | undefined;
-
-    // Execute each action
-    for (const action of playbook.actions) {
-      const handler = this.actionHandlers.get(action);
-      if (!handler) {
-        errorMessage = `No handler for action: ${action}`;
-        allSuccess = false;
-        break;
-      }
-
-      try {
-        const result = await handler({ playbookId: playbook.id, reason: event.triggerReason });
-        if (!result.success) {
-          errorMessage = result.message;
-          allSuccess = false;
-          break;
-        }
-        actionsExecuted.push(action);
-      } catch (err) {
-        errorMessage = err instanceof Error ? err.message : String(err);
-        allSuccess = false;
-        break;
-      }
-    }
-
-    event.actionsExecuted = actionsExecuted;
-    event.completedAt = nowIso();
-    event.success = allSuccess;
-    if (errorMessage !== undefined) {
-      event.errorMessage = errorMessage;
-    }
-  }
-
-  /**
-   * Synchronously executes a playbook's actions after human approval is granted.
-   * This variant invokes handlers and tracks results without awaiting async operations.
-   */
-  private executeApprovedPlaybookSync(
-    playbook: StopLossPlaybook,
-    event: StopLossEvent,
-  ): { success: boolean; errorMessage?: string } {
-    const actionsExecuted: StopLossAction[] = [];
-    let allSuccess = true;
-    let errorMessage: string | undefined;
-
-    // Execute each action
-    for (const action of playbook.actions) {
-      const handler = this.actionHandlers.get(action);
-      if (!handler) {
-        errorMessage = `No handler for action: ${action}`;
-        allSuccess = false;
-        break;
-      }
-
-      try {
-        // Invoke the handler - handlers are typically async but we track invocation
-        // The actual async execution happens in the background; we capture the sync call
-        const result = handler({ playbookId: playbook.id, reason: event.triggerReason });
-        // If result is a Promise, the async execution is in flight - we can't block
-        // but we've initiated the call which is the key fix for the issue
-        if (result && typeof result.then === "function") {
-          // Async handler was invoked - execution is in progress
-          // This is the best we can do in a sync context
-        }
-        actionsExecuted.push(action);
-      } catch (err) {
-        errorMessage = err instanceof Error ? err.message : String(err);
-        allSuccess = false;
-        break;
-      }
-    }
-
-    event.actionsExecuted = actionsExecuted;
-    event.completedAt = nowIso();
-    event.success = allSuccess;
-    if (errorMessage !== undefined) {
-      event.errorMessage = errorMessage;
-    }
-    return { success: allSuccess, ...(errorMessage !== undefined ? { errorMessage } : {}) };
   }
 
   /**
@@ -1007,36 +800,10 @@ export class AutoStopLossService {
       this.executePlaybook(playbook, `Health check: ${snapshot.status}`, {
         healthStatus: snapshot.status,
         ...snapshot,
-      }).catch((err) => {
-        // §9.6: Classify and record playbook failure with evidence
-        const errorRecord = classifyPlaybookError(
-          err,
-          playbook.id,
-          playbook.name,
-          snapshot.status,
-        );
-        this.recordError(errorRecord);
+      }).catch(() => {
+        // Log error but don't block the health check loop
       });
     }
-  }
-
-  /**
-   * Records a playbook error with classification for §9.6 audit trail.
-   * Keeps error records bounded to prevent memory exhaustion.
-   */
-  private recordError(record: PlaybookErrorRecord): void {
-    this.errorRecords.push(record);
-    if (this.errorRecords.length > 500) {
-      this.errorRecords.splice(0, this.errorRecords.length - 500);
-    }
-  }
-
-  /**
-   * Returns recent playbook error records for debugging and audit.
-   * §9.6 requires evidence of playbook failures during health events.
-   */
-  getRecentErrors(limit: number = 50): readonly PlaybookErrorRecord[] {
-    return this.errorRecords.slice(-limit);
   }
 
   /**

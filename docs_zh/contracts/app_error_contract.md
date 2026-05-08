@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -37,14 +37,9 @@
 | `task_id?` | `string` | 关联任务（兼容投影） |
 | `harness_run_id?` | `string` | 关联 HarnessRun |
 | `node_run_id?` | `string` | 关联 NodeRun |
-| `execution_id?` | `string` | legacy 兼容字段，仅用于向后查询历史错误记录 |
+| `execution_id?` | `string` | legacy execution 投影键 |
 | `caused_by?` | `string` | 上游错误码或异常引用 |
 | `occurred_at` | `timestamp` | 发生时间 |
-
-规则：
-
-- `harness_run_id` / `node_run_id` 为 canonical 关联键，`execution_id` 为 legacy 查询键，仅用于兼容历史数据查询。
-- 新增错误记录必须使用 canonical 关联键，不得依赖 `execution_id` 作为主关联字段。
 
 ## 3. 统一规则
 
@@ -88,17 +83,19 @@
 - `ToolExecutionError`
 - `SandboxError`
 - `StorageError`
-- `HarnessRunError`
-- `NodeRunError`
+- `WorkflowStateError`
 - `RuntimeTimeoutError`
 - `TenantBoundaryError`
 - `MonetizationError`
 - `InternalAppError`
 
-## v4.3 Contract Remediation
+## 7. 关联文档
 
-- T-40: 早期 `AppError` 以 `execution_id` 为主关联键。v4.3 canonical 关联链为 `harness_run_id` / `node_run_id`；`execution_id` 降为 legacy 兼容字段，用于向后查询历史错误记录。新实现不得再以 `execution_id` 为主关联键。
+- `error_code_registry.md`
+- `runtime_execution_contract.md`
+- `approval_and_hitl_contract.md`
+- `tool_and_provider_execution_contract.md`
 
-## 9. 收口结论
+## 8. 收口结论
 
 错误模型的核心不是“多定义几个异常类”，而是确保系统任何一层的失败都能被统一分类、统一呈现、统一恢复。

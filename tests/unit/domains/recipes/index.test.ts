@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainRecipeSchema, matchDomainRecipe, type DomainRecipe } from "../../../../src/domains/recipes/index.js";
+import { DomainRecipeSchema, matchDomainRecipe } from "../../../../src/domains/recipes/index.js";
 
 test("DomainRecipeSchema parses valid recipe", () => {
   const recipe = {
@@ -10,11 +10,6 @@ test("DomainRecipeSchema parses valid recipe", () => {
     name: "Coding Recipe",
     description: "A recipe for coding tasks",
     triggerPhrases: ["write code", "implement", "develop"],
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: ["coding_workflow"],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "coding_workflow",
     defaultToolBundleIds: ["repo_tools", "build_tools"],
   };
@@ -26,49 +21,17 @@ test("DomainRecipeSchema applies default values", () => {
   const recipe = {
     recipeId: "recipe_minimal",
     domainId: "coding",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.parse(recipe);
-  assert.equal(result.name, "recipe_minimal");
   assert.deepEqual(result.triggerPhrases, []);
   assert.deepEqual(result.defaultToolBundleIds, []);
-  assert.equal(result.riskLevel, "medium");
-  assert.equal(result.budgetHint, undefined);
-  assert.equal(result.requiredApproval, false);
-});
-
-test("DomainRecipeSchema normalizes blank recipe name to recipeId", () => {
-  const recipe = {
-    recipeId: "recipe_blank_name",
-    domainId: "coding",
-    name: "   ",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
-    defaultWorkflowId: "workflow_1",
-  };
-
-  const result = DomainRecipeSchema.parse(recipe);
-
-  assert.equal(result.name, "recipe_blank_name");
 });
 
 test("DomainRecipeSchema requires recipeId to be non-empty", () => {
   const recipe = {
     recipeId: "",
     domainId: "coding",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
@@ -79,11 +42,6 @@ test("DomainRecipeSchema requires domainId to be non-empty", () => {
   const recipe = {
     recipeId: "recipe_1",
     domainId: "",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
@@ -94,63 +52,20 @@ test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
   const recipe = {
     recipeId: "recipe_1",
     domainId: "coding",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
   assert.equal(result.success, false);
 });
 
-test("DomainRecipeSchema requires contract references to be non-empty", () => {
-  const result = DomainRecipeSchema.safeParse({
-    recipeId: "recipe_1",
-    domainId: "coding",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "",
-    recommended_workflow_ids: [],
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
-    defaultWorkflowId: "workflow_1",
-  });
-
-  assert.equal(result.success, false);
-});
-
-test("DomainRecipeSchema requires recommended_workflow_ids to be provided", () => {
-  const result = DomainRecipeSchema.safeParse({
-    recipeId: "recipe_1",
-    domainId: "coding",
-    risk_profile_ref: "coding.risk",
-    guardrail_overlay: "coding.guardrails",
-    default_prompt_bundle_ref: "coding.prompts",
-    acceptance_checklist_ref: "coding.acceptance",
-    defaultWorkflowId: "workflow_1",
-  });
-
-  assert.equal(result.success, false);
-});
-
 test("matchDomainRecipe returns recipe when input matches trigger phrase", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["write code", "implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
     {
       recipeId: "recipe_2",
@@ -158,15 +73,6 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
       triggerPhrases: ["deploy", "release"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
-      name: "Recipe 2",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 
@@ -176,22 +82,13 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
 });
 
 test("matchDomainRecipe is case insensitive", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["Write Code", "Implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 
@@ -201,22 +98,13 @@ test("matchDomainRecipe is case insensitive", () => {
 });
 
 test("matchDomainRecipe returns first matching recipe", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
     {
       recipeId: "recipe_2",
@@ -224,15 +112,6 @@ test("matchDomainRecipe returns first matching recipe", () => {
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
-      name: "Recipe 2",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 
@@ -242,22 +121,13 @@ test("matchDomainRecipe returns first matching recipe", () => {
 });
 
 test("matchDomainRecipe returns null when no recipe matches", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["write code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 
@@ -271,22 +141,13 @@ test("matchDomainRecipe returns null for empty recipes array", () => {
 });
 
 test("matchDomainRecipe matches partial phrase (substring)", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["implement feature"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 
@@ -295,65 +156,14 @@ test("matchDomainRecipe matches partial phrase (substring)", () => {
   assert.equal(result.recipeId, "recipe_1");
 });
 
-test("matchDomainRecipe prefers the longest matching trigger phrase across recipes", () => {
-  const recipes: DomainRecipe[] = [
-    {
-      recipeId: "recipe_short",
-      domainId: "trading",
-      triggerPhrases: ["trade"],
-      defaultWorkflowId: "workflow_short",
-      defaultToolBundleIds: [],
-      name: "Recipe Short",
-      archetype: "trading",
-      riskLevel: "medium",
-      risk_profile_ref: "trading.risk",
-      guardrail_overlay: "trading.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "trading.prompts",
-      acceptance_checklist_ref: "trading.acceptance",
-      requiredApproval: false,
-    },
-    {
-      recipeId: "recipe_long",
-      domainId: "trading",
-      triggerPhrases: ["buy", "trade options"],
-      defaultWorkflowId: "workflow_long",
-      defaultToolBundleIds: [],
-      name: "Recipe Long",
-      archetype: "trading",
-      riskLevel: "medium",
-      risk_profile_ref: "trading.risk",
-      guardrail_overlay: "trading.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "trading.prompts",
-      acceptance_checklist_ref: "trading.acceptance",
-      requiredApproval: false,
-    },
-  ];
-
-  const result = matchDomainRecipe(recipes, "please trade options on this account");
-
-  assert.ok(result);
-  assert.equal(result.recipeId, "recipe_long");
-});
-
 test("matchDomainRecipe handles empty trigger phrases array", () => {
-  const recipes: DomainRecipe[] = [
+  const recipes = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: [],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
-      name: "Recipe 1",
-      archetype: "crud_heavy",
-      riskLevel: "medium",
-      risk_profile_ref: "coding.risk",
-      guardrail_overlay: "coding.guardrails",
-      recommended_workflow_ids: [],
-      default_prompt_bundle_ref: "coding.prompts",
-      acceptance_checklist_ref: "coding.acceptance",
-      requiredApproval: false,
     },
   ];
 

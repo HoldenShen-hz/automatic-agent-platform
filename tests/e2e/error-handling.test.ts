@@ -1,22 +1,10 @@
 /**
- * E2E Error Handling Tests (MIGRATED)
+ * E2E Error Handling Tests
  *
- * End-to-end tests covering error handling scenarios using the canonical
- * runMultiStepOrchestration API with stepFailureInjection and stepFailurePlans.
- *
- * MIGRATION: R18-17, R18-18, R18-19
- * These tests have been migrated from the legacy insertWorkflowState API
- * to the canonical runMultiStepOrchestration API.
- *
- * OLD PATTERN (DEPRECATED):
- *   - createE2EHarness() with manual store.insertWorkflowState()
- *   - Manual workflow state manipulation via store.updateWorkflowState()
- *   - Direct TransitionService calls for state setup
- *
- * NEW PATTERN (CANONICAL):
- *   - runMultiStepOrchestration() handles full lifecycle
- *   - stepFailureInjection for controlling which steps fail
- *   - stepFailurePlans for defining failure error codes and messages
+ * End-to-end tests covering error handling scenarios using the centralized
+ * createE2EHarness() helper. These tests verify the complete integration path
+ * for error conditions including timeouts, worker failures, resource exhaustion,
+ * and network failures.
  *
  * Error scenarios tested:
  * 1. Task execution timeout handling
@@ -27,16 +15,33 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { join } from "node:path";
-import { existsSync, unlinkSync } from "node:fs";
 
-import { runMultiStepOrchestration, type MultiStepToolExecutionInput } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { createE2EHarness } from "../helpers/e2e-harness.js";
+import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
+import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
+import type { ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 
-/**
- * Helper to create a temporary database path for the test.
- */
-function createTestDbPath(prefix: string): string {
-  return join("/tmp", `${prefix}-${Date.now()}.db`);
+// ---------------------------------------------------------------------------
+// Helper Functions
+// ---------------------------------------------------------------------------
+
+function makeExecCommand(
+  executionId: string,
+  fromStatus: ExecutionStatus,
+  toStatus: ExecutionStatus,
+  traceId: string,
+  reasonCode: string = "e2e_error_handling",
+) {
+  return {
+    entityKind: "execution" as const,
+    entityId: executionId,
+    fromStatus,
+    toStatus,
+    reasonCode,
+    traceId,
+    actorType: "agent" as const,
+    occurredAt: nowIso(),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -44,85 +49,263 @@ function createTestDbPath(prefix: string): string {
 // ---------------------------------------------------------------------------
 
 test("E2E Error: task execution times out and transitions to failed state", async () => {
-  const dbPath = createTestDbPath("e2e-timeout");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout test task",
-    request: "Run a workflow that will timeout",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "execution.timeout", summary: "Task execution timed out" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-timeout-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
+
+    // Setup: Create task and execution in running state
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout test task",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 5000, // 5 second timeout for test
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify execution is still running
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "executing", "Execution should be executing");
+
+    // Simulate timeout: execution transitions to failed with timeout error code
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "execution.timeout"),
+    );
+
+    exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed after timeout");
+    assert.equal(exec?.lastErrorCode, "execution.timeout", "Execution should have timeout error code");
+
+    // Task reaches failed terminal state via timeout
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "execution.timeout" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "execution.timeout",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
 
     // Verify task reached failed state
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed after timeout");
     assert.equal(task?.errorCode, "execution.timeout", "Task should have timeout error code");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
 test("E2E Error: execution timeout triggers retry when maxRetries > 0", async () => {
-  const dbPath = createTestDbPath("e2e-timeout-retry");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_retry",
-      dependencies: [],
-      outputs: ["result"],
-      timeout: 5000,
-      retryPolicy: { maxRetries: 1 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout retry test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepFailureInjection: new Set(["step_retry"]),
-    stepFailurePlans: {
-      "step_retry": [{ errorCode: "execution.timeout", summary: "Execution timed out" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-timeout-retry-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    // Verify task outcome
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
+    // Setup: Create task with retry-enabled execution
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout retry test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
 
-    // Execution may succeed after retry or fail depending on retry configuration
-    assert.ok(
-      task?.status === "done" || task?.status === "failed" || task?.status === "cancelled",
-      `Task should reach terminal state, got ${task?.status}`
-    );
+      // First execution times out with retry available
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 5000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "execution.timeout",
+        lastErrorMessage: "Task execution timed out",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify first execution failed with timeout
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.lastErrorCode, "execution.timeout", "First execution should have timeout error");
+
+    // Create retry execution
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId1,
+        agentId: "agent-timeout",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 10000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Verify retry execution is running
+    const exec2 = harness.store.getExecution(executionId2);
+    assert.equal(exec2?.status, "executing", "Retry execution should be executing");
+    assert.equal(exec2?.attempt, 2, "Retry execution should be attempt 2");
+    assert.equal(exec2?.parentExecutionId, executionId1, "Retry should reference parent execution");
+
+    // Retry succeeds
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    // Complete task
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "completed after retry" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after successful retry");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -131,75 +314,270 @@ test("E2E Error: execution timeout triggers retry when maxRetries > 0", async ()
 // ---------------------------------------------------------------------------
 
 test("E2E Error: worker failure marks execution as failed and triggers recovery", async () => {
-  const dbPath = createTestDbPath("e2e-worker-failure");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Worker failure test",
-    request: "Run a workflow that will fail due to worker failure",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "worker.failure", summary: "Worker process failed" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-worker-failure-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    // Verify task reached failed state
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
+    // Setup: Create task in running state
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Worker failure test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-worker-1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Simulate worker failure: execution fails with worker error
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "worker.failure"),
     );
+
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "worker.failure", "Execution should have worker failure error");
+
+    // Task reaches failed state
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "worker.failure" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "worker.failure",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed after worker failure");
     assert.equal(task?.errorCode, "worker.failure", "Task should have worker failure error code");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
 test("E2E Error: worker becomes unavailable and execution is superseded", async () => {
-  const dbPath = createTestDbPath("e2e-worker-unavailable");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  // Note: This test requires direct store manipulation for lease testing
-  // which is not yet supported via runMultiStepOrchestration
-  // For now, we test the failure scenario
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Worker unavailable test",
-    request: "Run a workflow that will fail due to worker unavailability",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "worker.unavailable", summary: "Worker no longer available" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-worker-unavailable-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+    // Setup: Task with execution on worker that becomes unavailable
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Worker unavailable test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      // First execution on worker that becomes unavailable
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-unavailable",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "blocked",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Worker becomes unavailable - first execution gets superseded
+    ts.transitionExecutionStatus(makeExecCommand(executionId1, "blocked", "superseded", traceId1));
+
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "superseded", "First execution should be superseded");
+
+    // New execution on different worker
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId1,
+        agentId: "agent-available",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    const exec2 = harness.store.getExecution(executionId2);
+    assert.equal(exec2?.status, "executing", "Second execution should be executing");
+    assert.equal(exec2?.agentId, "agent-available", "Second execution should be on available worker");
+
+    // Complete the recovery execution
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "recovered on new worker" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after worker recovery");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -208,71 +586,328 @@ test("E2E Error: worker becomes unavailable and execution is superseded", async 
 // ---------------------------------------------------------------------------
 
 test("E2E Error: memory exhaustion causes execution failure", async () => {
-  const dbPath = createTestDbPath("e2e-memory-exhaust");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Memory exhaustion test",
-    request: "Run a memory-intensive workflow that will fail",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "resource.memory_exhausted", summary: "Memory limit exceeded" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-resource-exhaust-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
+    // Setup: Task running with significant resource usage
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Memory exhaustion test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: JSON.stringify({ memory_intensive: true }),
+        normalizedInputJson: JSON.stringify({ memory_intensive: true }),
+        outputJson: null,
+        estimatedCostUsd: 0.05,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-memory",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Memory exhaustion - execution fails with resource error
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "resource.memory_exhausted"),
     );
-    assert.equal(task?.errorCode, "resource.memory_exhausted", "Task should have memory exhaustion error");
+
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "resource.memory_exhausted", "Should have memory exhaustion error");
+
+    // Task reaches failed terminal state
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "resource.memory_exhausted" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "resource.memory_exhausted",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed after memory exhaustion");
+    assert.equal(task?.errorCode, "resource.memory_exhausted", "Task should have resource exhaustion error");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
+  }
+});
+
+test("E2E Error: budget exhaustion prevents execution start", async () => {
+  const harness = createE2EHarness("aa-e2e-budget-exhaust-");
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
+
+    // Setup: Task has entered execution orchestration, but the execution fails before work starts
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Budget exhaustion test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 10.0, // High estimated cost
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-budget",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "created", // Not yet started
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 0.01, // Very low budget limit
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "open",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Budget check fails - execution cancelled due to insufficient budget
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "created", "failed", traceId, "budget.exhausted"),
+    );
+
+    const exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed due to budget exhaustion");
+    assert.equal(exec?.lastErrorCode, "budget.exhausted", "Should have budget exhausted error");
+
+    // Task reaches failed state
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "open",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "budget.exhausted" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "budget.exhausted",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed due to budget exhaustion");
+    assert.equal(task?.errorCode, "budget.exhausted", "Task should have budget exhausted error");
+
+  } finally {
+    harness.cleanup();
   }
 });
 
 test("E2E Error: disk space exhaustion triggers workflow failure", async () => {
-  const dbPath = createTestDbPath("e2e-disk-exhaust");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Disk exhaustion test",
-    request: "Run a file-intensive workflow that will fail due to disk exhaustion",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "resource.disk_exhausted", summary: "Disk space exhausted" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-disk-exhaust-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
+    // Setup: Task with large file operations
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Disk exhaustion test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: JSON.stringify({ file_operations: ["large_file_1gb"] }),
+        normalizedInputJson: JSON.stringify({ file_operations: ["large_file_1gb"] }),
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-disk",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Disk exhaustion - execution fails
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "resource.disk_exhausted"),
     );
 
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "resource.disk_exhausted", "Should have disk exhaustion error");
+
+    // Task fails
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "resource.disk_exhausted" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "resource.disk_exhausted",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed after disk exhaustion");
+
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -281,126 +916,417 @@ test("E2E Error: disk space exhaustion triggers workflow failure", async () => {
 // ---------------------------------------------------------------------------
 
 test("E2E Error: network failure causes provider error and execution retries", async () => {
-  const dbPath = createTestDbPath("e2e-network-failure");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_network",
-      dependencies: [],
-      outputs: ["result"],
-      timeout: 60000,
-      retryPolicy: { maxRetries: 1 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Network failure test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepFailureInjection: new Set(["step_network"]),
-    stepFailurePlans: {
-      "step_network": [{ errorCode: "provider.network_failure", summary: "Connection to AI provider timed out" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-network-failure-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "done" || task?.status === "failed" || task?.status === "cancelled",
-      `Task should reach terminal state, got ${task?.status}`
-    );
+    // Setup: Task with provider-dependent workflow
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Network failure test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      // First execution fails due to network issue
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-network",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "provider.network_failure",
+        lastErrorMessage: "Connection to AI provider timed out",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: "provider.network_failure",
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify first execution failed with network error
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.lastErrorCode, "provider.network_failure", "Should have network failure error");
+
+    // Retry execution
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId1,
+        agentId: "agent-network",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Update workflow state for retry
+    harness.db.transaction(() => {
+      harness.store.updateWorkflowState(
+        taskId,
+        "running",
+        0,
+        "{}",
+        nowIso(),
+        null,
+      );
+    });
+
+    // Retry succeeds
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    // Complete task
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "completed after network recovery" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after network recovery");
+
+    const workflow = harness.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "completed", "Workflow should be completed after retry");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
 test("E2E Error: persistent network failure exhausts retries and marks task failed", async () => {
-  const dbPath = createTestDbPath("e2e-network-persistent");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Persistent network failure test",
-    request: "Run a workflow that will fail due to persistent network issues",
-    stepFailureInjection: new Set(["step_0", "step_1", "step_2"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "provider.network_failure", summary: "Persistent connection failure to AI provider" }],
-      "step_1": [{ errorCode: "provider.network_failure", summary: "Persistent connection failure to AI provider" }],
-      "step_2": [{ errorCode: "provider.network_failure", summary: "Persistent connection failure to AI provider" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-network-persistent-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
-    );
+    // Setup: Task with execution that will exhaust retries
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Persistent network failure test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      // Execution with no retries remaining
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-network",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId,
+        attempt: 3,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0, // No retries left
+        retryBackoff: "none",
+        lastErrorCode: "provider.network_failure",
+        lastErrorMessage: "Persistent connection failure to AI provider",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Execution failed with persistent network error
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "provider.network_failure", "Should have persistent network error");
+
+    // Task reaches failed terminal state
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "provider.network_failure", attempts: 3 }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "provider.network_failure",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed after persistent network failure");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
 test("E2E Error: transient external error is retryable", async () => {
-  const dbPath = createTestDbPath("e2e-transient-error");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_transient",
-      dependencies: [],
-      outputs: ["result"],
-      timeout: 60000,
-      retryPolicy: { maxRetries: 1 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Transient error retry test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepFailureInjection: new Set(["step_transient"]),
-    stepFailurePlans: {
-      "step_transient": [{ errorCode: "external.transient_failure", summary: "Temporary external service unavailable" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-transient-error-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "done" || task?.status === "failed" || task?.status === "cancelled",
-      `Task should reach terminal state, got ${task?.status}`
-    );
+    // Setup
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Transient error retry test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      // First execution fails with transient error
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-transient",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "external.transient_failure",
+        lastErrorMessage: "Temporary external service unavailable",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify transient error is retryable
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.lastErrorCode, "external.transient_failure", "Should have transient error");
+
+    // Create retry execution
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId1,
+        agentId: "agent-transient",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Retry succeeds
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "recovered from transient error" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after transient error recovery");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
@@ -409,115 +1335,249 @@ test("E2E Error: transient external error is retryable", async () => {
 // ---------------------------------------------------------------------------
 
 test("E2E Error: timeout combined with worker failure leads to failed state", async () => {
-  const dbPath = createTestDbPath("e2e-timeout-worker");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Timeout + worker failure test",
-    request: "Run a workflow that will timeout and then fail",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "execution.timeout", summary: "Execution timed out after 5000ms" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-timeout-worker-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const sessionId = newId("sess");
+    const traceId = newId("trace");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in failure state, got ${task?.status}`
+    // Setup
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Timeout + worker failure test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      harness.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-combined",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 5000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Both timeout and worker failure occur - execution fails
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "execution.timeout"),
     );
 
+    let exec = harness.store.getExecution(executionId);
+    assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.equal(exec?.lastErrorCode, "execution.timeout", "Should have timeout error (primary)");
+
+    // Task fails
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "failed",
+      terminalStatus: "failed",
+      taskOutputJson: JSON.stringify({ error: "execution.timeout" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "execution.timeout",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "failed", "Task should be failed");
+
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
 
 test("E2E Error: multiple resource exhaustion errors in sequence", async () => {
-  const dbPath = createTestDbPath("e2e-multi-resource");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Multi-resource exhaustion test",
-    request: "Run a workflow that will fail with multiple resource errors",
-    stepFailureInjection: new Set(["step_0"]),
-    stepFailurePlans: {
-      "step_0": [{ errorCode: "resource.memory_exhausted", summary: "Memory limit exceeded" }],
-    },
-  };
-
+  const harness = createE2EHarness("aa-e2e-multi-resource-");
   try {
-    const result = await runMultiStepOrchestration(input);
+    const taskId = newId("task");
+    const executionId1 = newId("exec1");
+    const executionId2 = newId("exec2");
+    const sessionId = newId("sess");
+    const traceId1 = newId("trace1");
+    const traceId2 = newId("trace2");
+    const ts = new TransitionService(harness.db, harness.store);
+    const now = nowIso();
 
-    const task = result.snapshot.task;
-    assert.ok(task, "Should have task");
-    assert.ok(
-      task?.status === "failed" || task?.status === "cancelled",
-      `Task should reach terminal state, got ${task?.status}`
-    );
+    // Setup with multiple retries
+    harness.db.transaction(() => {
+      harness.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Multi-resource exhaustion test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      // First attempt fails with memory exhaustion
+      harness.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: "agent-resource",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "resource.memory_exhausted",
+        lastErrorMessage: "Memory limit exceeded",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      harness.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // First execution failed with memory error
+    let exec1 = harness.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.lastErrorCode, "resource.memory_exhausted", "Should have memory error");
+
+    // Retry execution
+    harness.db.transaction(() => {
+      harness.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId1,
+        agentId: "agent-resource",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Second execution succeeds
+    ts.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+
+    ts.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId: executionId2,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "recovered after memory issue" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId2,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    const task = harness.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should complete after recovery");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    harness.cleanup();
   }
 });
-
-// ============================================================================
-// MIGRATION DOCUMENTATION
-// ============================================================================
-//
-// LEGACY CODE (DEPRECATED - shown for reference only):
-// ---------------------------------------------------------------------------
-//
-//   function createE2EHarness(prefix: string) {
-//     const harness = createE2EHarness("aa-e2e-timeout-");
-//     harness.db.transaction(() => {
-//       harness.store.insertTask({ ... });
-//       harness.store.insertExecution({ ... });
-//       harness.store.insertWorkflowState({   // <-- LEGACY API
-//         taskId, workflowId, currentStepIndex: 0,
-//         status: "running", outputsJson: "{}", ...
-//       });
-//     });
-//     // Then manually update workflow state...
-//     harness.store.updateWorkflowState(taskId, "running", 1, ...);
-//   });
-//
-// CANONICAL CODE (CURRENT):
-// ---------------------------------------------------------------------------
-//
-//   const input: MultiStepToolExecutionInput = {
-//     dbPath,
-//     title: "Test workflow",
-//     request: "Describe the workflow task",
-//     stepFailureInjection: new Set(["step_0"]),
-//     stepFailurePlans: {
-//       "step_0": [{ errorCode: "execution.timeout", summary: "Timeout message" }],
-//     },
-//   };
-//
-//   const result = await runMultiStepOrchestration(input);
-//   // result.snapshot.task, result.snapshot.workflow, etc.
-//
-// KEY DIFFERENCES:
-//   1. No need to create harness with database/store/transitions
-//   2. runMultiStepOrchestration handles full lifecycle
-//   3. Failures injected via stepFailureInjection
-//   4. Error codes defined via stepFailurePlans
-//   5. Result provides snapshot with all entity state
-//
-// See docs_zh/migrations/e2e-workflow-state-migration.md for full migration guide.

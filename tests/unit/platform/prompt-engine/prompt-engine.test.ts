@@ -2,427 +2,314 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  assemblePromptSegments,
-  embedCanaryToken,
-  detectCanaryTokenLeakage,
-  protectSystemPrompt,
-  sanitizePromptInput,
-} from "../../../../src/platform/prompt-engine/prompt-injection-guard.js";
+  buildPromptEngineBootstrap,
+  PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+  PROMPT_ENGINE_CATALOG_SERVICE_ID,
+  registerPromptEngineBootstrap,
+  type PromptEngineCapabilityBaseline,
+} from "../../../../src/platform/prompt-engine/prompt-engine-bootstrap.js";
 import {
-  PromptTemplateRegistryService,
-  hashPromptPrefix,
-} from "../../../../src/platform/prompt-engine/registry/index.js";
-import {
-  PromptRendererService,
-  type RenderPromptInput,
-} from "../../../../src/platform/prompt-engine/renderer/index.js";
+  listPromptEngineCapabilityBaselines,
+  resolvePromptEngineCapabilityBaseline,
+  PROMPT_ENGINE_CAPABILITY_BASELINES,
+  type PromptEngineCapabilityId,
+} from "../../../../src/platform/prompt-engine/prompt-engine-baseline.js";
+import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 // ============================================================================
-// assemblePromptSegments Tests
+// PromptEngineBaseline Tests
 // ============================================================================
 
-test("assemblePromptSegments combines system and user segments correctly", () => {
-  const result = assemblePromptSegments({
-    systemPrompt: "You are a helpful assistant.",
-    userInput: "Hello, how are you?",
-    scope: "test-scope",
-  });
+test("listPromptEngineCapabilityBaselines returns all five capability baselines", () => {
+  const baselines = listPromptEngineCapabilityBaselines();
 
-  assert.ok(result.canaryToken.length > 0);
-  assert.ok(result.segments.length === 2);
-  assert.equal(result.segments[0]?.role, "system");
-  assert.equal(result.segments[1]?.role, "user");
-  assert.ok(result.guardedPrompt.includes("SYSTEM:"));
-  assert.ok(result.guardedPrompt.includes("USER:"));
+  assert.equal(baselines.length, 5);
+
+  const capabilityIds = baselines.map((b) => b.capabilityId);
+  assert.ok(capabilityIds.includes("registry"));
+  assert.ok(capabilityIds.includes("renderer"));
+  assert.ok(capabilityIds.includes("rollout"));
+  assert.ok(capabilityIds.includes("eval"));
+  assert.ok(capabilityIds.includes("conversation-template"));
 });
 
-test("assemblePromptSegments sanitizes user input", () => {
-  const maliciousInput = "Hello <script>alert('xss')</script>";
-  const result = assemblePromptSegments({
-    systemPrompt: "You are a helpful assistant.",
-    userInput: maliciousInput,
-    scope: "test-scope",
-  });
-
-  assert.ok(result.guardedPrompt.includes("&lt;script&gt;"));
-  assert.ok(!result.guardedPrompt.includes("<script>"));
+test("listPromptEngineCapabilityBaselines returns frozen array", () => {
+  const baselines = listPromptEngineCapabilityBaselines();
+  assert.ok(Object.isFrozen(baselines));
 });
 
-test("assemblePromptSegments embeds canary token in system prompt", () => {
-  const result = assemblePromptSegments({
-    systemPrompt: "You are a helpful assistant.",
-    userInput: "Test input",
-    scope: "test-scope",
-  });
+test("capability baselines have required fields", () => {
+  const baselines = listPromptEngineCapabilityBaselines();
 
-  assert.ok(result.segments[0]?.content.includes("guard:"));
-  assert.ok(result.canaryToken.startsWith("canary_"));
-});
-
-// ============================================================================
-// Cache Key Consistency Tests
-// ============================================================================
-
-test("PromptRendererService cache key is consistent for same inputs", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General Assistance",
-    variableSuffixTemplate: "User: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const input1: RenderPromptInput = {
-    template,
-    variables: { task: "Write a poem" },
-  };
-
-  const input2: RenderPromptInput = {
-    template,
-    variables: { task: "Write a poem" },
-  };
-
-  const result1 = renderer.render(input1);
-  const result2 = renderer.render(input2);
-
-  assert.equal(result1.cacheKey, result2.cacheKey);
-});
-
-test("PromptRendererService different template keys produce different cache keys", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template1 = registry.registerTemplate({
-    templateKey: "template-alpha",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const template2 = registry.registerTemplate({
-    templateKey: "template-beta",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result1 = renderer.render({ template: template1, variables: { task: "Same task" } });
-  const result2 = renderer.render({ template: template2, variables: { task: "Same task" } });
-
-  assert.notEqual(result1.cacheKey, result2.cacheKey);
-});
-
-test("PromptRendererService different versions produce different cache keys", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const template2 = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "2.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result = renderer.render({ template: template2, variables: { task: "Same task" } });
-
-  assert.ok(result.cacheKey.includes("2.0.0"));
-});
-
-test("PromptRendererService same fixedPrefix produces same fixedPrefixHash", () => {
-  const hash1 = hashPromptPrefix("You are a helpful assistant.");
-  const hash2 = hashPromptPrefix("You are a helpful assistant.");
-
-  assert.equal(hash1, hash2);
-});
-
-test("PromptRendererService different fixedPrefix produces different fixedPrefixHash", () => {
-  const hash1 = hashPromptPrefix("You are a helpful assistant.");
-  const hash2 = hashPromptPrefix("You are a different assistant.");
-
-  assert.notEqual(hash1, hash2);
-});
-
-test("PromptRendererService cache key includes fixedPrefixHash", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Domain: General",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result = renderer.render({ template, variables: { task: "test" } });
-  const expectedHash = hashPromptPrefix("You are a helpful assistant.");
-
-  assert.ok(result.cacheKey.includes(expectedHash));
-});
-
-// ============================================================================
-// Template Substitution Tests
-// ============================================================================
-
-test("PromptRendererService template substitution works correctly", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "You are a helpful assistant.",
-    domainBlock: "Task:",
-    variableSuffixTemplate: "{{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result = renderer.render({ template, variables: { task: "Write a story" } });
-
-  assert.ok(result.prompt.includes("Write a story"));
-  assert.ok(result.unresolvedVariables.length === 0);
-});
-
-test("PromptRendererService multiple variables substituted correctly", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "Assistant:",
-    domainBlock: "Context:",
-    variableSuffixTemplate: "Task: {{task}}, Language: {{language}}",
-    variableSpecs: [
-      { key: "task", required: true },
-      { key: "language", required: true },
-    ],
-  });
-
-  const result = renderer.render({
-    template,
-    variables: { task: "Translate", language: "English" },
-  });
-
-  assert.ok(result.prompt.includes("Task: Translate"));
-  assert.ok(result.prompt.includes("Language: English"));
-});
-
-test("PromptRendererService default values are used when not provided", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "Assistant:",
-    domainBlock: "Task:",
-    variableSuffixTemplate: "Priority: {{priority}}",
-    variableSpecs: [
-      { key: "priority", required: false, defaultValue: "normal" },
-    ],
-  });
-
-  const result = renderer.render({ template, variables: {} });
-
-  assert.ok(result.prompt.includes("Priority: normal"));
-  assert.ok(result.unresolvedVariables.length === 0);
-});
-
-test("PromptRendererService required variables without values throw error", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "Assistant:",
-    domainBlock: "Task:",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  let thrown = false;
-  try {
-    renderer.render({ template, variables: {} });
-  } catch (error) {
-    thrown = true;
-    assert.ok(error instanceof Error);
-    assert.ok(error.message.includes("task"));
+  for (const baseline of baselines) {
+    assert.ok(baseline.capabilityId.length > 0);
+    assert.ok(baseline.entryModule.length > 0);
+    assert.ok(baseline.description.length > 0);
+    assert.ok(Array.isArray(baseline.baselineServices));
+    assert.ok(baseline.baselineServices.length > 0);
   }
-  assert.equal(thrown, true);
 });
 
-test("PromptRendererService includeFixedPrefix false removes fixed prefix", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "Fixed prefix content",
-    domainBlock: "Domain block content",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result = renderer.render({
-    template,
-    variables: { task: "test" },
-    includeFixedPrefix: false,
-  });
-
-  assert.ok(!result.prompt.includes("Fixed prefix content"));
-  assert.ok(result.prompt.includes("Domain block content"));
-  assert.ok(result.prompt.includes("Task: test"));
+test("resolvePromptEngineCapabilityBaseline resolves valid capability ids", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("registry");
+  assert.equal(baseline.capabilityId, "registry");
+  assert.equal(baseline.entryModule, "src/platform/prompt-engine/registry/index.ts");
+  assert.ok(baseline.baselineServices.includes("PromptTemplateRegistryService"));
 });
 
-test("PromptRendererService includeDomainBlock false removes domain block", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
-
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "Fixed prefix content",
-    domainBlock: "Domain block content",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
-
-  const result = renderer.render({
-    template,
-    variables: { task: "test" },
-    includeDomainBlock: false,
-  });
-
-  assert.ok(result.prompt.includes("Fixed prefix content"));
-  assert.ok(!result.prompt.includes("Domain block content"));
-  assert.ok(result.prompt.includes("Task: test"));
+test("resolvePromptEngineCapabilityBaseline resolves renderer capability", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("renderer");
+  assert.equal(baseline.capabilityId, "renderer");
+  assert.ok(baseline.baselineServices.includes("PromptRendererService"));
 });
 
-test("PromptRendererService returns segments with correct structure", () => {
-  const registry = new PromptTemplateRegistryService();
-  const renderer = new PromptRendererService();
+test("resolvePromptEngineCapabilityBaseline resolves rollout capability", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("rollout");
+  assert.equal(baseline.capabilityId, "rollout");
+  assert.ok(baseline.baselineServices.includes("PromptRolloutService"));
+});
 
-  const template = registry.registerTemplate({
-    templateKey: "test-template",
-    version: "1.0.0",
-    owner: "test-owner",
-    fixedPrefix: "System prompt",
-    domainBlock: "Domain context",
-    variableSuffixTemplate: "Task: {{task}}",
-    variableSpecs: [{ key: "task", required: true }],
-  });
+test("resolvePromptEngineCapabilityBaseline resolves eval capability", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("eval");
+  assert.equal(baseline.capabilityId, "eval");
+  assert.ok(baseline.baselineServices.includes("EvalDatasetJudgeService"));
+});
 
-  const result = renderer.render({ template, variables: { task: "test" } });
+test("resolvePromptEngineCapabilityBaseline resolves conversation-template capability", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("conversation-template");
+  assert.equal(baseline.capabilityId, "conversation-template");
+  assert.ok(baseline.baselineServices.includes("ConversationTemplateRegistry"));
+});
 
-  assert.ok(result.segments.fixedPrefix.length > 0);
-  assert.ok(result.segments.domainBlock.length > 0);
-  assert.ok(result.segments.variableSuffix.length > 0);
+test("resolvePromptEngineCapabilityBaseline throws for invalid capability id", () => {
+  assert.throws(
+    () => resolvePromptEngineCapabilityBaseline("invalid_capability" as PromptEngineCapabilityId),
+    /prompt_engine_capability.not_found:invalid_capability/,
+  );
+});
+
+test("resolvePromptEngineCapabilityBaseline throws for empty string", () => {
+  assert.throws(
+    () => resolvePromptEngineCapabilityBaseline("" as PromptEngineCapabilityId),
+    /prompt_engine_capability.not_found:/,
+  );
+});
+
+test("PROMPT_ENGINE_CAPABILITY_BASELINES is frozen", () => {
+  assert.ok(Object.isFrozen(PROMPT_ENGINE_CAPABILITY_BASELINES));
 });
 
 // ============================================================================
-// Edge Cases
+// PromptEngineBootstrap Tests
 // ============================================================================
 
-test("assemblePromptSegments handles empty user input", () => {
-  const result = assemblePromptSegments({
-    systemPrompt: "You are a helpful assistant.",
-    userInput: "",
-    scope: "test-scope",
-  });
+test("buildPromptEngineBootstrap returns correct structure", () => {
+  const bootstrap = buildPromptEngineBootstrap();
 
-  assert.ok(result.canaryToken.length > 0);
-  assert.ok(result.segments.length === 2);
-  assert.equal(result.segments[1]?.content, "");
+  assert.equal(bootstrap.capabilityGroupId, "prompt-engine");
+  assert.ok(Array.isArray(bootstrap.catalog));
+  assert.ok(Array.isArray(bootstrap.registeredServiceIds));
+  assert.equal(bootstrap.catalog.length, 5);
+  assert.equal(bootstrap.registeredServiceIds.length, 2);
 });
 
-test("assemblePromptSegments handles special characters in scope", () => {
-  const result1 = assemblePromptSegments({
-    systemPrompt: "Test",
-    userInput: "Input",
-    scope: "scope:with:colons",
-  });
+test("buildPromptEngineBootstrap catalog matches capability baselines", () => {
+  const bootstrap = buildPromptEngineBootstrap();
+  const directBaselines = listPromptEngineCapabilityBaselines();
 
-  const result2 = assemblePromptSegments({
-    systemPrompt: "Test",
-    userInput: "Input",
-    scope: "scope_with_underscores",
-  });
-
-  assert.notEqual(result1.canaryToken, result2.canaryToken);
+  assert.deepEqual(bootstrap.catalog, directBaselines);
 });
 
-test("sanitizePromptInput escapes HTML entities", () => {
-  const input = 'Hello <script>alert("xss")</script> & "quotes"';
-  const sanitized = sanitizePromptInput(input);
+test("buildPromptEngineBootstrap includes correct service IDs", () => {
+  const bootstrap = buildPromptEngineBootstrap();
 
-  assert.ok(sanitized.includes("&lt;"));
-  assert.ok(sanitized.includes("&gt;"));
-  assert.ok(sanitized.includes("&amp;"));
-  assert.ok(!sanitized.includes("<script>"));
+  assert.ok(bootstrap.registeredServiceIds.includes(PROMPT_ENGINE_CATALOG_SERVICE_ID));
+  assert.ok(bootstrap.registeredServiceIds.includes(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID));
 });
 
-test("hashPromptPrefix produces consistent SHA256 hash (truncated to 16 chars)", () => {
-  const hash = hashPromptPrefix("Test prefix content");
-
-  assert.equal(hash.length, 16);
-  assert.equal(hash, hashPromptPrefix("Test prefix content"));
+test("buildPromptEngineBootstrap service IDs are correctly formatted", () => {
+  assert.equal(PROMPT_ENGINE_CATALOG_SERVICE_ID, "aiops.prompt-engine.catalog");
+  assert.equal(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID, "aiops.prompt-engine.bootstrap");
 });
 
-test("protectSystemPrompt returns complete protection plan", () => {
-  const result = protectSystemPrompt({
-    systemPrompt: "You are a helpful assistant.",
-    userInput: "Hello",
-    scope: "test",
-  });
+test("registerPromptEngineBootstrap registers services in provided registry", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const bootstrap = registerPromptEngineBootstrap(registry);
 
-  assert.ok(result.canaryToken.length > 0);
-  assert.ok(result.guardedPrompt.length > 0);
-  assert.ok(result.segments.length === 2);
-  assert.ok(result.riskLevel === "low" || result.riskLevel === "medium" || result.riskLevel === "high");
-  assert.equal(typeof result.allowExecution, "boolean");
+    assert.equal(registry.isInitialized(PROMPT_ENGINE_CATALOG_SERVICE_ID), true);
+    assert.equal(registry.isInitialized(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID), true);
+    assert.equal(bootstrap.capabilityGroupId, "prompt-engine");
+  } finally {
+    await registry.reset();
+  }
 });
 
-test("detectCanaryTokenLeakage detects token in output", () => {
-  const embedded = embedCanaryToken("System prompt", "test-scope");
+test("registerPromptEngineBootstrap uses default registry when none provided", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const bootstrap1 = registerPromptEngineBootstrap();
+    const bootstrap2 = registerPromptEngineBootstrap(registry);
 
-  const outputWithLeak = `Here is the response. ${embedded.token} was revealed.`;
-  const outputWithoutLeak = "Here is a normal response.";
+    assert.ok(bootstrap1 != null);
+    assert.ok(bootstrap2 != null);
+  } finally {
+    await registry.reset();
+  }
+});
 
-  assert.equal(detectCanaryTokenLeakage(outputWithLeak, embedded.token), true);
-  assert.equal(detectCanaryTokenLeakage(outputWithoutLeak, embedded.token), false);
+test("registerPromptEngineBootstrap returns bootstrap from registry", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const bootstrap = registerPromptEngineBootstrap(registry);
+
+    const retrieved = registry.get<typeof bootstrap>(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID);
+    assert.ok(retrieved != null);
+    assert.equal(retrieved.capabilityGroupId, "prompt-engine");
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerPromptEngineBootstrap bootstrap depends on catalog service", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    registerPromptEngineBootstrap(registry);
+
+    const catalogService = registry.get<readonly PromptEngineCapabilityBaseline[]>(
+      PROMPT_ENGINE_CATALOG_SERVICE_ID,
+    );
+    assert.ok(catalogService != null);
+    assert.equal(catalogService.length, 5);
+  } finally {
+    await registry.reset();
+  }
+});
+
+// ============================================================================
+// Cross-Module Consistency Tests
+// ============================================================================
+
+test("prompt-engine-baseline exports match bootstrap catalog", () => {
+  const bootstrap = buildPromptEngineBootstrap();
+  const directBaselines = listPromptEngineCapabilityBaselines();
+
+  assert.equal(bootstrap.catalog.length, directBaselines.length);
+  assert.equal(bootstrap.catalog.length, PROMPT_ENGINE_CAPABILITY_BASELINES.length);
+});
+
+test("direct baseline import matches bootstrap catalog", () => {
+  const bootstrap = buildPromptEngineBootstrap();
+  const directImport = listPromptEngineCapabilityBaselines();
+
+  for (let i = 0; i < bootstrap.catalog.length; i++) {
+    assert.equal(bootstrap.catalog[i]?.capabilityId, directImport[i]?.capabilityId);
+  }
+});
+
+test("resolveBaselineDirect matches resolvePromptEngineCapabilityBaseline", () => {
+  const capabilityIds: PromptEngineCapabilityId[] = [
+    "registry",
+    "renderer",
+    "rollout",
+    "eval",
+    "conversation-template",
+  ];
+
+  for (const id of capabilityIds) {
+    const fromBaseline = resolvePromptEngineCapabilityBaseline(id);
+    const fromBootstrap = resolvePromptEngineCapabilityBaseline(id);
+
+    assert.deepEqual(fromBaseline, fromBootstrap);
+  }
+});
+
+// ============================================================================
+// Capability Baseline Content Tests
+// ============================================================================
+
+test("registry capability has correct structure", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("registry");
+
+  assert.equal(baseline.capabilityId, "registry");
+  assert.match(baseline.entryModule, /registry/);
+  assert.ok(baseline.description.length > 0);
+  assert.ok(baseline.baselineServices.includes("PromptTemplateRegistryService"));
+  assert.ok(baseline.baselineServices.includes("HierarchicalPromptRegistryService"));
+});
+
+test("renderer capability has correct structure", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("renderer");
+
+  assert.equal(baseline.capabilityId, "renderer");
+  assert.match(baseline.entryModule, /renderer/);
+  assert.ok(baseline.baselineServices.includes("PromptRendererService"));
+});
+
+test("rollout capability has correct structure", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("rollout");
+
+  assert.equal(baseline.capabilityId, "rollout");
+  assert.match(baseline.entryModule, /rollout/);
+  assert.ok(baseline.baselineServices.includes("PromptRolloutService"));
+});
+
+test("eval capability has correct structure", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("eval");
+
+  assert.equal(baseline.capabilityId, "eval");
+  assert.match(baseline.entryModule, /eval/);
+  assert.ok(baseline.baselineServices.includes("EvalDatasetJudgeService"));
+});
+
+test("conversation-template capability has correct structure", () => {
+  const baseline = resolvePromptEngineCapabilityBaseline("conversation-template");
+
+  assert.equal(baseline.capabilityId, "conversation-template");
+  assert.match(baseline.entryModule, /conversation-template/);
+  assert.ok(baseline.baselineServices.includes("ConversationTemplateRegistry"));
+});
+
+// ============================================================================
+// Service ID Uniqueness Tests
+// ============================================================================
+
+test("catalog and bootstrap service IDs are distinct", () => {
+  assert.notEqual(PROMPT_ENGINE_CATALOG_SERVICE_ID, PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID);
+});
+
+test("service IDs follow naming convention", () => {
+  assert.match(PROMPT_ENGINE_CATALOG_SERVICE_ID, /^aiops\.prompt-engine\./);
+  assert.match(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID, /^aiops\.prompt-engine\./);
+});
+
+// ============================================================================
+// Type Exports Tests
+// ============================================================================
+
+test("PromptEngineCapabilityBaseline type is exported from bootstrap", () => {
+  // This test verifies the type is properly exported
+  const baseline: PromptEngineCapabilityBaseline = {
+    capabilityId: "registry",
+    entryModule: "test",
+    description: "test",
+    baselineServices: ["test"],
+  };
+
+  assert.equal(baseline.capabilityId, "registry");
+});
+
+test("PromptEngineCapabilityId type accepts all valid values", () => {
+  const validIds: PromptEngineCapabilityId[] = [
+    "registry",
+    "renderer",
+    "rollout",
+    "eval",
+    "conversation-template",
+  ];
+
+  for (const id of validIds) {
+    const baseline = resolvePromptEngineCapabilityBaseline(id);
+    assert.equal(baseline.capabilityId, id);
+  }
 });

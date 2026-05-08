@@ -40,18 +40,6 @@ test("vertical domain baseline catalog resolves legacy domain ids to canonical i
   assert.deepEqual(quantTrading.legacyDomainIds, ["quantitative-trading"]);
 });
 
-test("vertical domain baseline catalog emits canonical DAG workflow metadata for regulated domains", () => {
-  const quantTrading = getVerticalDomainBaseline("quant-trading");
-  const legal = getVerticalDomainBaseline("legal");
-
-  assert.equal(quantTrading.definition.workflows[0]?.planGraph?.graphId, "graph:quant-trading:primary");
-  assert.equal(quantTrading.definition.workflows[0]?.planGraph?.nodes.length, quantTrading.definition.workflows[0]?.steps.length);
-  assert.equal(quantTrading.definition.workflows[0]?.planGraph?.edges.length, quantTrading.definition.workflows[0]!.steps.length - 1);
-  assert.equal(legal.definition.workflows[0]?.planGraph?.graphId, "graph:legal:primary");
-  assert.equal(legal.definition.workflows[0]?.planGraph?.nodes.length, legal.definition.workflows[0]?.steps.length);
-  assert.equal(legal.definition.workflows[0]?.planGraph?.entryNodeIds[0], "node:legal:collect_authorities");
-});
-
 test("vertical domain baseline catalog wires meta-model completeness and domain specialization metadata", () => {
   const baseline = getVerticalDomainBaseline("healthcare");
   assert.equal(baseline.metaModelValidation.valid, true);

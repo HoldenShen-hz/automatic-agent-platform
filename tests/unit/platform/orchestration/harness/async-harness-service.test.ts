@@ -8,7 +8,7 @@ function createConstraintPack(overrides = {}): ConstraintPack {
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "auto",
-    tool_policy: { allowedTools: [] },
+    toolPolicy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },

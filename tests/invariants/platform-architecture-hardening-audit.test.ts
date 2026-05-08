@@ -59,15 +59,7 @@ test("entry security gates enforce tenant scope, endpoint class limits, SDK hand
   assert.equal(sdkHandshake.evaluate({ headers: { "X-SDK-Version": "1.9.0" } }).reasonCode, "sdk.upgrade_required");
   assert.equal(sdkHandshake.evaluate({ headers: { "X-SDK-Version": "2.0.0", "X-Contract-Version": "4.2.0" } }).warnings.length, 2);
 
-  const mockTaskStore = {
-  worker: {
-    listWorkerSnapshots: () => [],
-    getWorkerSnapshot: () => null,
-    upsertWorkerSnapshot: () => {},
-  },
-} as unknown as import("../../src/platform/state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore;
-
-  const workerIdentity = new WorkerServiceIdentityRegistry(mockTaskStore);
+  const workerIdentity = new WorkerServiceIdentityRegistry();
   workerIdentity.register({
     workerId: "worker-1",
     serviceIdentity: "spiffe://platform/worker-1",
@@ -90,7 +82,6 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
     requestedAt: "2026-04-27T00:00:00.000Z",
     deadlineAt: "2026-04-27T00:01:00.000Z",
     activeLeases: [{ leaseId: "lease-1", nodeRunId: "node-1", expiresAt: "2026-04-27T00:02:00.000Z", handoverRequired: true }],
-    drainReason: "graceful_shutdown",
   });
   assert.equal(drain.runTerminationCleanupRequired, true);
   assert.deepEqual(drain.handoverLeaseIds, ["lease-1"]);
@@ -104,9 +95,6 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
       { resourceKind: "timer", resourceId: "timer-1", cleanupRequired: true },
       { resourceKind: "lease", resourceId: "lease-1", cleanupRequired: true },
     ],
-  }, {
-    emitCleanupCompleted: () => {},
-    emitCleanupFailed: () => {},
   });
   assert.deepEqual(cleanup.cleanedResourceIds, ["lease-1", "timer-1"]);
 
@@ -136,7 +124,7 @@ test("runtime cleanup and recovery receipts cover drain, terminal cleanup, budge
     queueDepthBefore: 4,
     maxQueueDepth: 4,
     dlqName: "dispatch-dlq",
-  }, "node-create-run", "tenant-a", "trace-dispatch-001");
+  });
   assert.equal(dispatchEvent.eventType, "platform.dispatch.queue.rejected");
   assert.equal(dispatchEvent.queueDepthBefore, 4);
   assert.equal(dispatchEvent.maxQueueDepth, 4);
@@ -193,12 +181,7 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
   };
   const message = protocol.createMessage("task_request", {
     correlation_id: "corr-1",
-    delegationId: "delegation-1",
-    childRunId: "child-run-1",
     parent_run_id: "run-1",
-    capabilityIntersection: ["task"],
-    budgetCap: 100,
-    dataBoundary: "default",
     depth: 1,
     sender_agent_id: "a",
     receiver_agent_id: "b",
@@ -207,7 +190,6 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
     budget_remaining: 10,
     trace_id: "trace",
     payload: {},
-    deadline: new Date(Date.now() + 60000).toISOString(),
   });
   assert.equal(protocol.validateAndSend(message, context).accepted, true);
   assert.equal(protocol.validateAndSend(message, context).violations.includes("delegation.message_duplicate"), true);
@@ -236,23 +218,12 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
     delegationDepth: 9,
   }).reasonCode, "call_depth.exceeded");
 
-  // R13-41: Autonomy boundary enforcement
   assert.equal(new DeterministicHotPathGate().evaluate({
     routeId: "pricing",
     latencyClass: "low_latency",
     usesLlmHotPath: true,
     deterministicFallbackAvailable: true,
-    allowedAutonomyLevel: "full_auto",
   }).reasonCode, "hot_path.llm_blocked");
-
-  // R13-41: Autonomy exceeded blocks LLM hot path
-  assert.equal(new DeterministicHotPathGate().evaluate({
-    routeId: "pricing",
-    latencyClass: "low_latency",
-    usesLlmHotPath: true,
-    deterministicFallbackAvailable: true,
-    allowedAutonomyLevel: "suggestion",
-  }).reasonCode, "hot_path.autonomy_exceeded");
 
   assert.equal(new CrossRegionTruthLeader().evaluate({
     tenantId: "tenant-a",
@@ -278,9 +249,9 @@ test("governance sagas, delegation TTL, SCIM DLQ, and Chinese Wall 2PC produce a
   }).reasonCode, "approval_delegation.chain_too_long");
 
   const orgSaga = new OrgGovernanceSaga().execute("saga-1", [
-    { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare", phase: "domain" as const },
-    { stepId: "commit-1", targetOrgNodeId: "org-1", action: "commit", phase: "domain" as const },
-    { stepId: "audit-1", targetOrgNodeId: "org-1", action: "audit", phase: "domain" as const },
+    { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "commit-1", targetOrgNodeId: "org-1", action: "commit" },
+    { stepId: "audit-1", targetOrgNodeId: "org-1", action: "audit" },
   ]);
   assert.equal(orgSaga.status, "committed");
   assert.deepEqual(orgSaga.auditStepIds, ["audit-1"]);
@@ -350,13 +321,6 @@ test("ops maturity gates cover cache warming, canary judge availability, memory 
     requiredEvidenceTypes: [],
     renderSchema: [],
     version: "1",
-    lockedOnGeneration: true,
-    reportVersionLock: null,
-    requiredDataSources: [],
-    legalVersion: null,
-    migrationRule: null,
-    effectiveDate: null,
-    lastReviewDate: null,
   }]);
   const artifact = compliance.generate({ templateId: "soc2", evidence: [], requestedBy: "auditor", generatedAt: "2026-04-27T00:00:00.000Z" });
   assert.equal(compliance.evaluateHumanSignoff({

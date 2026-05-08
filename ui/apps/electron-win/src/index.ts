@@ -26,6 +26,3 @@ export function createElectronWinAdapter(base: PlatformAdapter): PlatformAdapter
 export function createElectronWinDefaultAdapter(): PlatformAdapter {
   return createDesktopPlatformAdapter("windows");
 }
-
-// §185-2163: Export install function for use in preload.ts context bridge setup
-export { installElectronBridge } from "./preload.js";

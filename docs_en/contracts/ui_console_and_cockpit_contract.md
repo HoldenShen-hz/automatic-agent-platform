@@ -111,8 +111,10 @@ Console homepage should be organized by the following priorities:
 
 Minimum fields:
 
-- `harness_run_id`
-- `NodeRun` list (with node_id/status/input/output)
+- `task_id`
+- `task_status`
+- `current_step`
+- `current_execution`
 - `blocked_reason?`
 - `latest_tool_call?`
 - `latest_decision?`
@@ -130,9 +132,10 @@ Minimum actions:
 
 Minimum fields:
 
-- `harness_run_id`
-- `plan_graph` (with nodes/edges graph structure)
-- `NodeRun` list (with node_id/status/attempts)
+- `workflow_id`
+- `workflow_status`
+- `steps`
+- `current_step_index`
 - `dependency_state`
 - `approval_nodes`
 - `evidence_refs`
@@ -198,9 +201,9 @@ Minimum fields:
 
 Minimum actions:
 
-- `retry_node_run`
-- `skip_node_run`
-- `override_node_output`
+- `retry_step`
+- `skip_step`
+- `override_step_output`
 - `switch_worker`
 - `manual_cancel`
 - `mark_unrecoverable`

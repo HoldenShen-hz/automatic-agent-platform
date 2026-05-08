@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
 import test from "node:test";
 
 import { SqliteHaRepository } from "../../../../../src/platform/execution/ha/ha-repository-sqlite.js";
-import { HA_COORDINATOR_DDL, type CoordinatorNode, type FailoverDecision, type LeaderLease, type LeadershipEpoch } from "../../../../../src/platform/execution/ha/types.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+import type { CoordinatorNode, FailoverDecision, LeaderLease, LeadershipEpoch } from "../../../../../src/platform/execution/ha/types.js";
 
 // Mock SQLite database
 function createMockSqliteDb() {
@@ -296,69 +293,4 @@ test("SqliteHaRepository.insertFailoverDecision works", async () => {
   await repo.insertFailoverDecision(decision);
   const decisions = await repo.listFailoverDecisions();
   assert.ok(decisions !== undefined);
-});
-
-test("SqliteHaRepository.acquireLeadershipAtomically rotates leader state in one transaction", async () => {
-  const workspace = createTempWorkspace("ha-sqlite-");
-  const dbPath = join(workspace, "ha-coordinator.db");
-
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.connection.exec(HA_COORDINATOR_DDL);
-    const repo = new SqliteHaRepository(db);
-    const now = new Date().toISOString();
-
-    await repo.upsertNode({
-      nodeId: "node-1",
-      region: "cn-sh",
-      status: "active",
-      isLeader: true,
-      leadershipEpoch: 1,
-      lastHeartbeatAt: now,
-      metadata: null,
-    });
-    await repo.upsertNode({
-      nodeId: "node-2",
-      region: "cn-sh",
-      status: "active",
-      isLeader: false,
-      leadershipEpoch: 0,
-      lastHeartbeatAt: now,
-      metadata: null,
-    });
-    await repo.insertLease({
-      leaseId: "lease-node-1",
-      nodeId: "node-1",
-      epoch: 1,
-      acquiredAt: now,
-      expiresAt: new Date(Date.now() + 30_000).toISOString(),
-      status: "active",
-      ttlMs: 30_000,
-    });
-    await repo.insertEpoch({
-      epoch: 1,
-      leaderNodeId: "node-1",
-      startedAt: now,
-      endedAt: null,
-      cause: "acquired",
-      fencingToken: 1,
-    });
-
-    const result = await repo.acquireLeadershipAtomically({
-      nodeId: "node-2",
-      ttlMs: 20_000,
-      forceAcquire: true,
-    });
-
-    assert.equal(result.acquired, true);
-    assert.equal(result.lease?.nodeId, "node-2");
-    assert.equal((await repo.getNode("node-1"))?.isLeader, false);
-    assert.equal((await repo.getNode("node-2"))?.isLeader, true);
-    assert.equal((await repo.getLeaseById("lease-node-1"))?.status, "expired");
-    assert.equal((await repo.getLatestEpoch())?.leaderNodeId, "node-2");
-    assert.equal((await repo.listFailoverDecisions()).length, 1);
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
 });

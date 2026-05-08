@@ -5,7 +5,7 @@
 
 ## Context
 
-When multiple business lines run concurrently, resource competition occurs. A fair and effective resource allocation mechanism is needed.
+When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
 
 ## Decision
 
@@ -27,8 +27,6 @@ interface ResourceAllocation {
 }
 ```
 
-Note: ResourcePool / ResourceAllocation (reserved/used) integrates with §1.5 frozen BudgetLedger / BudgetReservation / BudgetSettlement — ResourcePool is responsible for runtime compute resource quotas, BudgetLedger is responsible for financial budget settlement. The two are linked via `tenant_id`, with BudgetSettlement as the sole settlement exit. ResourcePool must not land quotas alone (must be validated via BudgetLedger). The original parallel model (each landing independently) has been abolished.
-
 ### Resource Types
 
 | Type | Description |
@@ -39,10 +37,10 @@ Note: ResourcePool / ResourceAllocation (reserved/used) integrates with §1.5 fr
 | api_quota | API call quota |
 | llm_token | LLM Token quota |
 
-### Scheduling Strategies
+### Scheduling Policies
 
-| Strategy | Description |
-|----------|-------------|
+| Policy | Description |
+|--------|-------------|
 | priority | Priority first |
 | fair_share | Fair sharing |
 | fifo | First in, first out |
@@ -57,18 +55,18 @@ Note: ResourcePool / ResourceAllocation (reserved/used) integrates with §1.5 fr
 
 ## Consequences
 
-Pros:
+Advantages:
 
 - Fair resource allocation prevents starvation
-- Priority mechanism guarantees critical business
+- Priority mechanism ensures critical business needs
 - Dynamic adjustment adapts to load changes
 
-Cons:
+Costs:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead
 
-## Cross-references
+## Cross-References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)

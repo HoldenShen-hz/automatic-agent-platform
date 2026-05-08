@@ -3,17 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!--
-      CSP delivered via <meta> tag for static SPA hosting compatibility.
-      NOTE: frame-ancestors, report-uri, and report-to are IGNORED in <meta> tags
-      per CSP spec - they MUST be delivered via HTTP Response Headers.
-      For production, configure your CDN/reverse-proxy to set:
-        Content-Security-Policy: default-src 'self'; connect-src 'self' https: ws: wss:; img-src 'self' data: https:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; report-to csp-endpoint
-      frame-ancestors 'none' prevents clickjacking; report-to forwards violation reports.
-    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' https: ws: wss:; img-src 'self' data: https:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+      content="default-src 'self'; connect-src 'self' https: ws: wss:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
     />
     <meta name="aa-csrf-token" content="ui-runtime-csrf-token" />
     <title>Automatic Agent Platform UI</title>

@@ -114,21 +114,12 @@ export interface FeedbackLoop {
   harnessRunId: string;
   nodeRunId: string;
   /** @deprecated legacy workflow projection identifier; use harnessRunId */
-  workflowRunId?: string | undefined;
+  workflowRunId: string;
   /** @deprecated legacy step projection identifier; use nodeRunId */
-  stepId?: string | undefined;
+  stepId: string;
   maxIterations: number;
   currentIteration: number;
   humanFeedback: HumanFeedback[];
-}
-
-interface ApprovalFlowRuntimeContext {
-  readonly harnessRunId: string;
-  readonly nodeRunId: string;
-  /** @deprecated compatibility alias; use harnessRunId */
-  readonly workflowRunId?: string;
-  /** @deprecated compatibility alias; use nodeRunId */
-  readonly stepId?: string;
 }
 
 /**
@@ -234,30 +225,6 @@ export class ApprovalFlowEngine {
     this.escalationManager = escalationManager ?? new EscalationManager();
   }
 
-  private normalizeRuntimeContext(
-    request: ApprovalRequest,
-    options: {
-      harnessRunId?: string;
-      nodeRunId?: string;
-      workflowRunId?: string;
-      stepId?: string;
-    } | undefined,
-  ): ApprovalFlowRuntimeContext {
-    const harnessRunId =
-      options?.harnessRunId ??
-      options?.workflowRunId ??
-      request.harnessRunId ??
-      request.executionId ??
-      request.taskId;
-    const nodeRunId = options?.nodeRunId ?? options?.stepId ?? request.nodeRunId ?? "";
-    return {
-      harnessRunId,
-      nodeRunId,
-      workflowRunId: harnessRunId,
-      stepId: nodeRunId,
-    };
-  }
-
   /**
    * C-11: Evict expired approval flows to prevent memory leaks.
    */
@@ -348,13 +315,14 @@ export class ApprovalFlowEngine {
     // Initialize feedback loop if configured
     let feedbackLoop: FeedbackLoop | null = null;
     if (effectiveConfig.feedbackLoop) {
-      const runtimeContext = this.normalizeRuntimeContext(request, options);
+      const harnessRunId = options?.harnessRunId ?? options?.workflowRunId ?? request.taskId;
+      const nodeRunId = options?.nodeRunId ?? options?.stepId ?? "";
       feedbackLoop = {
         loopId: newId("feedback"),
-        harnessRunId: runtimeContext.harnessRunId,
-        nodeRunId: runtimeContext.nodeRunId,
-        workflowRunId: runtimeContext.workflowRunId,
-        stepId: runtimeContext.stepId,
+        harnessRunId,
+        nodeRunId,
+        workflowRunId: harnessRunId,
+        stepId: nodeRunId,
         maxIterations: effectiveConfig.feedbackLoop.maxIterations,
         currentIteration: 0,
         humanFeedback: [],
@@ -576,12 +544,12 @@ export class ApprovalFlowEngine {
    * @param ttlMs - Optional TTL override
    * @returns The created delegation or error
    */
-  public async delegateApproval(
+  public delegateApproval(
     flowId: string,
     fromApprover: string,
     toApprover: string,
     ttlMs?: number,
-  ): Promise<{ success: boolean; delegation?: Delegation; error?: string }> {
+  ): { success: boolean; delegation?: Delegation; error?: string } {
     const flow = this.flows.get(flowId);
     if (!flow) {
       return { success: false, error: "Flow not found" };
@@ -604,7 +572,7 @@ export class ApprovalFlowEngine {
     if (flow.delegation) {
       // Reset TTL on existing delegation
       try {
-        delegation = await this.escalationManager.resetDelegationTtl(flow.delegation, ttlMs);
+        delegation = this.escalationManager.resetDelegationTtl(flow.delegation, ttlMs);
         flow.delegation = delegation;
       } catch (err) {
         return {
@@ -615,7 +583,7 @@ export class ApprovalFlowEngine {
     } else {
       // Create new delegation
       try {
-        delegation = await this.escalationManager.createDelegation(
+        delegation = this.escalationManager.createDelegation(
           fromApprover,
           toApprover,
           flow.request.approvalId,
@@ -676,8 +644,6 @@ export class ApprovalFlowEngine {
       return {
         approvalId: flow.request.approvalId,
         taskId: flow.request.taskId,
-        harnessRunId: flow.feedbackLoop?.harnessRunId ?? flow.request.harnessRunId ?? flow.request.executionId ?? null,
-        nodeRunId: flow.feedbackLoop?.nodeRunId ?? flow.request.nodeRunId ?? null,
         executionId: flow.request.executionId ?? null,
         currentLevel,
         reason: EscalationReason.TIMEOUT,
@@ -701,8 +667,6 @@ export class ApprovalFlowEngine {
           return {
             approvalId: flow.request.approvalId,
             taskId: flow.request.taskId,
-            harnessRunId: flow.feedbackLoop?.harnessRunId ?? flow.request.harnessRunId ?? flow.request.executionId ?? null,
-            nodeRunId: flow.feedbackLoop?.nodeRunId ?? flow.request.nodeRunId ?? null,
             executionId: flow.request.executionId ?? null,
             currentLevel,
             reason: EscalationReason.QUORUM_NOT_MET,

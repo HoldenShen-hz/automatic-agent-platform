@@ -62,7 +62,7 @@ export class AsyncReleaseRepository {
         registry_lease_id, registry_lease_status, registry_lease_expires_at, registry_lease_revoked_at,
         publish_workflow_run_id, publish_workflow_run_url, build_command, publish_command, command_results_json,
         task_id, json_artifact_uri, markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
       record.executionId,
       record.bundleId,
       record.environment,
@@ -102,7 +102,7 @@ export class AsyncReleaseRepository {
         deployment_secret_resolved, publish_workflow_run_id, publish_workflow_run_url, deploy_workflow_run_id,
         deploy_workflow_run_url, execution_mode, publish_command, deploy_command, command_results_json,
         release_bundle_id, task_id, json_artifact_uri, markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
       record.executionId,
       record.environment,
       record.version,
@@ -223,16 +223,9 @@ export class AsyncReleaseRepository {
          exported_at AS "exportedAt"
        FROM release_bundles`;
     if (options.environment !== undefined) {
-      if (options.environment === null) {
-        return asyncQueryAll<ReleaseBundleRecord>(
-          this.conn,
-          `${sql} WHERE environment IS NULL ORDER BY exported_at DESC, bundle_id DESC LIMIT $1`,
-          safeLimit,
-        );
-      }
       return asyncQueryAll<ReleaseBundleRecord>(
         this.conn,
-        `${sql} WHERE environment = $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
+        `${sql} WHERE environment IS $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
         options.environment,
         safeLimit,
       );

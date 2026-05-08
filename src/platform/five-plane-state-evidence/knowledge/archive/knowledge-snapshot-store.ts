@@ -21,9 +21,6 @@ export class KnowledgeSnapshotStore {
   private readonly snapshotPath: string;
 
   public constructor(options: KnowledgeSnapshotStoreOptions) {
-    if (options.snapshotPath.includes("\0")) {
-      throw new Error("knowledge_snapshot_store.path_traversal_denied: null_byte");
-    }
     if (options.snapshotPath.split(/[\\/]+/).includes("..")) {
       throw new Error(`knowledge_snapshot_store.path_traversal_denied: ${options.snapshotPath}`);
     }

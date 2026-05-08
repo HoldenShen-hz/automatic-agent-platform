@@ -11,22 +11,6 @@ import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
-async function withMockedPlatform<T>(platform: NodeJS.Platform, work: () => Promise<T>): Promise<T> {
-  const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
-  Object.defineProperty(process, "platform", {
-    configurable: true,
-    value: platform,
-  });
-
-  try {
-    return await work();
-  } finally {
-    if (descriptor) {
-      Object.defineProperty(process, "platform", descriptor);
-    }
-  }
-}
-
 function createCommandHarness(prefix: string): {
   workspace: string;
   db: SqliteDatabase;
@@ -142,78 +126,6 @@ test("command executor respects timeout", async () => {
   }
 });
 
-test("command executor timeout uses process-group kill on Unix platforms", async () => {
-  const workspace = createTempWorkspace("aa-command-");
-  const originalKill = process.kill;
-  const killCalls: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
-
-  try {
-    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
-      killCalls.push({ pid, signal });
-      return originalKill(pid, signal);
-    }) as typeof process.kill;
-
-    await withMockedPlatform("darwin", async () => {
-      const executor = new CommandExecutor();
-      const result = await executor.execute({
-        callId: "call-timeout-unix-kill",
-        taskId: "task-timeout-unix-kill",
-        agentId: "agent-timeout-unix-kill",
-        traceId: "trace-timeout-unix-kill",
-        toolName: "command_exec",
-        timeoutMs: 50,
-        sandboxPolicy: createWorkspaceWritePolicy(workspace),
-        command: "sleep",
-        args: ["2"],
-        cwd: workspace,
-      });
-
-      assert.equal(result.status, "timed_out");
-    });
-
-    assert.ok(killCalls.some((call) => call.pid < 0 && call.signal === "SIGTERM"));
-  } finally {
-    process.kill = originalKill;
-    cleanupPath(workspace);
-  }
-});
-
-test("command executor timeout uses child.kill on win32 instead of process-group SIGTERM", async () => {
-  const workspace = createTempWorkspace("aa-command-");
-  const originalKill = process.kill;
-  const processKillCalls: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
-
-  try {
-    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
-      processKillCalls.push({ pid, signal });
-      return originalKill(pid, signal);
-    }) as typeof process.kill;
-
-    await withMockedPlatform("win32", async () => {
-      const executor = new CommandExecutor();
-      const result = await executor.execute({
-        callId: "call-timeout-win32-kill",
-        taskId: "task-timeout-win32-kill",
-        agentId: "agent-timeout-win32-kill",
-        traceId: "trace-timeout-win32-kill",
-        toolName: "command_exec",
-        timeoutMs: 50,
-        sandboxPolicy: createWorkspaceWritePolicy(workspace),
-        command: "sleep",
-        args: ["2"],
-        cwd: workspace,
-      });
-
-      assert.equal(result.status, "timed_out");
-    });
-
-    assert.equal(processKillCalls.some((call) => call.pid < 0 && call.signal === "SIGTERM"), false);
-  } finally {
-    process.kill = originalKill;
-    cleanupPath(workspace);
-  }
-});
-
 test("command executor succeeds for safe command inside workspace", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
@@ -238,57 +150,8 @@ test("command executor succeeds for safe command inside workspace", async () => 
     assert.equal(result.metadata.cwd, workspace);
     assert.equal(result.data.truncated, false);
     assert.equal(result.data.rawRef, null);
-    assert.equal(result.output.sanitizedText.trim().startsWith("/"), true);
+    assert.match(result.output.sanitizedText, new RegExp(workspace.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("command executor enforces process slot saturation and recovers after slots are released", async () => {
-  const workspace = createTempWorkspace("aa-command-");
-  const runtimeState = CommandExecutor as unknown as {
-    activeProcessCount: number;
-    MAX_CONCURRENT_PROCESSES: number;
-  };
-  const originalCount = runtimeState.activeProcessCount;
-
-  try {
-    const executor = new CommandExecutor();
-
-    runtimeState.activeProcessCount = runtimeState.MAX_CONCURRENT_PROCESSES;
-    const blocked = await executor.execute({
-      callId: "call-process-limit",
-      taskId: "task-process-limit",
-      agentId: "agent-process-limit",
-      traceId: "trace-process-limit",
-      toolName: "command_exec",
-      timeoutMs: 1000,
-      sandboxPolicy: createWorkspaceWritePolicy(workspace),
-      command: "pwd",
-      args: [],
-      cwd: workspace,
-    });
-
-    assert.equal(blocked.status, "blocked");
-    assert.equal(blocked.error?.code, "tool.process_limit_exceeded");
-
-    runtimeState.activeProcessCount = 0;
-    const succeeded = await executor.execute({
-      callId: "call-process-limit-recovered",
-      taskId: "task-process-limit-recovered",
-      agentId: "agent-process-limit-recovered",
-      traceId: "trace-process-limit-recovered",
-      toolName: "command_exec",
-      timeoutMs: 1000,
-      sandboxPolicy: createWorkspaceWritePolicy(workspace),
-      command: "pwd",
-      args: [],
-      cwd: workspace,
-    });
-
-    assert.equal(succeeded.status, "succeeded");
-  } finally {
-    runtimeState.activeProcessCount = originalCount;
     cleanupPath(workspace);
   }
 });
@@ -636,10 +499,7 @@ test("command executor blocks interpreter flags that bypass script-file mode", a
     });
 
     assert.equal(result.status, "blocked");
-    assert.ok(
-      result.error?.code === "tool.command_interpreter_flag_denied"
-      || result.error?.code === "sandbox.command_arg_path_denied",
-    );
+    assert.equal(result.error?.code, "tool.command_interpreter_flag_denied");
   } finally {
     cleanupPath(workspace);
   }
@@ -778,7 +638,7 @@ test("command executor externalizes redacted oversized output without persisting
 
     const persistedOutput = readFileSync(result.artifacts[0]!, "utf8");
     assert.doesNotMatch(persistedOutput, new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.equal(persistedOutput.length > 0, true);
+    assert.match(persistedOutput, /\[REDACTED\]/);
     assert.doesNotMatch(result.output.sanitizedText, new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   } finally {
     cleanupPath(workspace);

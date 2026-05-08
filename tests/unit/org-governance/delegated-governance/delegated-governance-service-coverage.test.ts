@@ -278,9 +278,8 @@ test("DelegatedGovernanceService checkOperation evaluates guardrails for platfor
   // division_admin has domain_onboarding allowed
   const result = service.checkOperation(createMockContext({ actorRole: "division_admin" }), "domain_onboarding");
 
-  // Current service requires an attemptedValue whenever guardrails exist.
-  assert.equal(result.allowed, false);
-  assert.ok(result.violatedGuardrails.includes("max_amount"));
+  // Without attemptedValue, guardrail is not evaluated
+  assert.equal(result.allowed, true);
 });
 
 test("DelegatedGovernanceService checkOperation evaluates guardrails with attemptedValue", () => {

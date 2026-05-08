@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PlatformPanicService } from "../../../src/ops-maturity/emergency/platform-panic-service.js";
-import {
-  DEFAULT_OPS_DATA_BOUNDARY,
-  PlatformOpsAgentService,
-} from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import { PlatformOpsAgentService } from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 
 test("integration: panic blocks ops execution until resume and approval complete", () => {
   const panicService = new PlatformPanicService();
@@ -16,7 +13,6 @@ test("integration: panic blocks ops execution until resume and approval complete
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:runtime"],
-    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
   });
 
   panicService.activate({

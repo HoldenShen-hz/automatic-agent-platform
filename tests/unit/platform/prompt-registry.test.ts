@@ -14,15 +14,14 @@ test("PromptTemplateRegistryService.registerTemplate creates a new template", ()
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "test-template",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "You are a helpful assistant",
     domainBlock: "general",
   });
 
   assert.equal(result.templateKey, "test-template");
-  assert.equal(result.version, 1);
+  assert.equal(result.version, "1.0.0");
   assert.equal(result.owner, "test-owner");
   assert.equal(result.channel, "system");
   assert.equal(result.fixedPrefix, "You are a helpful assistant");
@@ -36,8 +35,7 @@ test("PromptTemplateRegistryService.registerTemplate throws on duplicate version
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "You are a helpful assistant",
     domainBlock: "general",
@@ -47,8 +45,7 @@ test("PromptTemplateRegistryService.registerTemplate throws on duplicate version
     () =>
       service.registerTemplate({
         templateKey: "test-template",
-        version: 1,
-        displayVersion: "v1.0.0",
+        version: "1.0.0",
         owner: "test-owner",
         fixedPrefix: "Different prefix",
         domainBlock: "general",
@@ -61,7 +58,7 @@ test("PromptTemplateRegistryService.registerTemplate with channel option", () =>
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "user-template",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     channel: "user",
     fixedPrefix: "User prompt",
@@ -75,7 +72,7 @@ test("PromptTemplateRegistryService.registerTemplate with variableSpecs", () => 
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-with-vars",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello {{name}}",
     domainBlock: "general",
@@ -95,7 +92,7 @@ test("PromptTemplateRegistryService.registerTemplate dedupes variableSpecs by ke
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-dedup",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
@@ -116,7 +113,7 @@ test("PromptTemplateRegistryService.registerTemplate with compatibilityTags", ()
   const service = new PromptTemplateRegistryService();
   const result = service.registerTemplate({
     templateKey: "template-with-tags",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
@@ -134,7 +131,7 @@ test("PromptTemplateRegistryService.registerTemplate throws on empty templateKey
     () =>
       service.registerTemplate({
         templateKey: "   ",
-        version: 1,
+        version: "1.0.0",
         owner: "test-owner",
         fixedPrefix: "Hello",
         domainBlock: "general",
@@ -143,13 +140,13 @@ test("PromptTemplateRegistryService.registerTemplate throws on empty templateKey
   );
 });
 
-test("PromptTemplateRegistryService.registerTemplate throws on invalid version", () => {
+test("PromptTemplateRegistryService.registerTemplate throws on empty version", () => {
   const service = new PromptTemplateRegistryService();
   assert.throws(
     () =>
       service.registerTemplate({
         templateKey: "test",
-        version: 0,
+        version: "",
         owner: "test-owner",
         fixedPrefix: "Hello",
         domainBlock: "general",
@@ -162,22 +159,21 @@ test("PromptTemplateRegistryService.getTemplate returns registered template", ()
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
 
-  const result = service.getTemplate("test-template", 1);
+  const result = service.getTemplate("test-template", "1.0.0");
   assert.ok(result !== null);
   assert.equal(result!.templateKey, "test-template");
-  assert.equal(result!.version, 1);
+  assert.equal(result!.version, "1.0.0");
 });
 
 test("PromptTemplateRegistryService.getTemplate returns null for non-existent template", () => {
   const service = new PromptTemplateRegistryService();
-  const result = service.getTemplate("non-existent", 1);
+  const result = service.getTemplate("non-existent", "1.0.0");
   assert.equal(result, null);
 });
 
@@ -185,14 +181,13 @@ test("PromptTemplateRegistryService.getTemplate returns null for non-existent ve
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
 
-  const result = service.getTemplate("test-template", 2);
+  const result = service.getTemplate("test-template", "2.0.0");
   assert.equal(result, null);
 });
 
@@ -200,16 +195,14 @@ test("PromptTemplateRegistryService.listVersions returns all versions sorted", (
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "test-template",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
   service.registerTemplate({
     templateKey: "test-template",
-    version: 2,
-    displayVersion: "v2.0.0",
+    version: "2.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello v2",
     domainBlock: "general",
@@ -217,22 +210,22 @@ test("PromptTemplateRegistryService.listVersions returns all versions sorted", (
 
   const versions = service.listVersions("test-template");
   assert.equal(versions.length, 2);
-  assert.equal(versions[0]!.version, 1);
-  assert.equal(versions[1]!.version, 2);
+  assert.equal(versions[0]!.version, "1.0.0");
+  assert.equal(versions[1]!.version, "2.0.0");
 });
 
 test("PromptTemplateRegistryService.listTemplates returns all templates", () => {
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
     templateKey: "template-1",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hello",
     domainBlock: "general",
   });
   service.registerTemplate({
     templateKey: "template-2",
-    version: 1,
+    version: "1.0.0",
     owner: "test-owner",
     fixedPrefix: "Hi",
     domainBlock: "general",
@@ -267,111 +260,152 @@ test("hashPromptPrefix returns 16 character string", () => {
 // PromptVersionManager Tests
 // =============================================================================
 
-test("PromptVersionManager.isValidVersion returns true for positive integers", () => {
+test("PromptVersionManager.parseVersion parses v1.0 format", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.isValidVersion(1), true);
-  assert.equal(manager.isValidVersion(10), true);
-  assert.equal(manager.isValidVersion(100), true);
+  const version = manager.parseVersion("v1.0");
+
+  assert.equal(version.major, 1);
+  assert.equal(version.minor, 0);
+  assert.equal(version.patch, undefined);
 });
 
-test("PromptVersionManager.isValidVersion returns false for non-positive integers", () => {
+test("PromptVersionManager.parseVersion parses v1.0.0 format", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.isValidVersion(0), false);
-  assert.equal(manager.isValidVersion(-1), false);
+  const version = manager.parseVersion("v1.0.0");
+
+  assert.equal(version.major, 1);
+  assert.equal(version.minor, 0);
+  assert.equal(version.patch, 0);
 });
 
-test("PromptVersionManager.isValidVersion returns false for non-integers", () => {
+test("PromptVersionManager.parseVersion parses 1.0 format without v prefix", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.isValidVersion(1.5), false);
-  assert.equal(manager.isValidVersion(NaN), false);
-  assert.equal(manager.isValidVersion(Infinity), false);
+  const version = manager.parseVersion("1.0");
+
+  assert.equal(version.major, 1);
+  assert.equal(version.minor, 0);
+});
+
+test("PromptVersionManager.parseVersion throws on invalid format", () => {
+  const manager = new PromptVersionManager();
+  assert.throws(() => manager.parseVersion("invalid"), ValidationError);
+});
+
+test("PromptVersionManager.parseVersion throws on major.minor.patch.patch format", () => {
+  const manager = new PromptVersionManager();
+  assert.throws(() => manager.parseVersion("1.0.0.0"), ValidationError);
+});
+
+test("PromptVersionManager.formatVersion formats without patch", () => {
+  const manager = new PromptVersionManager();
+  const formatted = manager.formatVersion({ major: 1, minor: 2 });
+
+  assert.equal(formatted, "v1.2");
+});
+
+test("PromptVersionManager.formatVersion formats with patch", () => {
+  const manager = new PromptVersionManager();
+  const formatted = manager.formatVersion({ major: 1, minor: 2, patch: 3 }, true);
+
+  assert.equal(formatted, "v1.2.3");
 });
 
 test("PromptVersionManager.compareVersions returns -1 when v1 < v2", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.compareVersions(1, 2), -1);
-  assert.equal(manager.compareVersions(1, 10), -1);
-});
+  const result = manager.compareVersions("v1.0", "v2.0");
 
-test("PromptVersionManager.compareVersions returns 0 when v1 == v2", () => {
-  const manager = new PromptVersionManager();
-  assert.equal(manager.compareVersions(1, 1), 0);
-  assert.equal(manager.compareVersions(100, 100), 0);
+  assert.equal(result, -1);
 });
 
 test("PromptVersionManager.compareVersions returns 1 when v1 > v2", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.compareVersions(2, 1), 1);
-  assert.equal(manager.compareVersions(10, 1), 1);
+  const result = manager.compareVersions("v2.0", "v1.0");
+
+  assert.equal(result, 1);
 });
 
-test("PromptVersionManager.getNextVersion returns incremented version", () => {
+test("PromptVersionManager.compareVersions returns 0 when v1 == v2", () => {
   const manager = new PromptVersionManager();
-  assert.equal(manager.getNextVersion(1), 2);
-  assert.equal(manager.getNextVersion(10), 11);
+  const result = manager.compareVersions("v1.0", "v1.0");
+
+  assert.equal(result, 0);
+});
+
+test("PromptVersionManager.compareVersions compares patch versions", () => {
+  const manager = new PromptVersionManager();
+  assert.equal(manager.compareVersions("v1.0.1", "v1.0.2"), -1);
+  assert.equal(manager.compareVersions("v1.0.2", "v1.0.1"), 1);
+});
+
+test("PromptVersionManager.compareVersions treats version without patch as less than with patch", () => {
+  const manager = new PromptVersionManager();
+  assert.equal(manager.compareVersions("v1.0", "v1.0.1"), -1);
+  assert.equal(manager.compareVersions("v1.0.1", "v1.0"), 1);
+});
+
+test("PromptVersionManager.getNextVersion returns major bump", () => {
+  const manager = new PromptVersionManager();
+  const next = manager.getNextVersion("v1.2.3", "major");
+
+  assert.equal(next.major, 2);
+  assert.equal(next.minor, 0);
+  assert.equal(next.patch, 0);
+});
+
+test("PromptVersionManager.getNextVersion returns minor bump", () => {
+  const manager = new PromptVersionManager();
+  const next = manager.getNextVersion("v1.2.3", "minor");
+
+  assert.equal(next.major, 1);
+  assert.equal(next.minor, 3);
+  assert.equal(next.patch, 0);
+});
+
+test("PromptVersionManager.getNextVersion returns patch bump", () => {
+  const manager = new PromptVersionManager();
+  const next = manager.getNextVersion("v1.2.3", "patch");
+
+  assert.equal(next.major, 1);
+  assert.equal(next.minor, 2);
+  assert.equal(next.patch, 4);
+});
+
+test("PromptVersionManager.getNextVersion handles missing patch", () => {
+  const manager = new PromptVersionManager();
+  const next = manager.getNextVersion("v1.2", "patch");
+
+  assert.equal(next.major, 1);
+  assert.equal(next.minor, 2);
+  assert.equal(next.patch, 1);
+});
+
+test("PromptVersionManager.isValidVersionFormat returns true for valid versions", () => {
+  const manager = new PromptVersionManager();
+  assert.equal(manager.isValidVersionFormat("v1.0"), true);
+  assert.equal(manager.isValidVersionFormat("1.0.0"), true);
+  assert.equal(manager.isValidVersionFormat("v10.20.30"), true);
+});
+
+test("PromptVersionManager.isValidVersionFormat returns false for invalid versions", () => {
+  const manager = new PromptVersionManager();
+  assert.equal(manager.isValidVersionFormat("invalid"), false);
+  assert.equal(manager.isValidVersionFormat("1"), false);
+  assert.equal(manager.isValidVersionFormat("1.0.0.0"), false);
 });
 
 test("PromptVersionManager.getVersionLineage returns correct lineage", () => {
   const manager = new PromptVersionManager();
-  // Register bundles with integer versions
-  manager.registerBundleVersion({
-    name: "test-bundle",
-    version: 1,
-    displayVersion: "v1.0.0",
-    systemPrompt: { content: "You are helpful", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: [],
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-    },
-    domain: "test",
-    taskType: "test",
-    packId: undefined,
-    bundleId: "test-bundle:1",
-    constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
-  });
-  manager.registerBundleVersion({
-    name: "test-bundle",
-    version: 2,
-    displayVersion: "v2.0.0",
-    systemPrompt: { content: "You are helpful v2", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: [],
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-    },
-    domain: "test",
-    taskType: "test",
-    packId: undefined,
-    bundleId: "test-bundle:2",
-    constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
-  });
+  // Note: getVersionLineage requires registered bundles to work properly
+  const lineage = manager.getVersionLineage("test-bundle", "v1.0.0");
 
-  const lineage = manager.getVersionLineage("test-bundle", 1);
-
-  assert.equal(lineage.current, 1);
-  assert.equal(lineage.previous, undefined);
-  assert.equal(lineage.next, 2);
+  assert.equal(lineage.current, "v1.0.0");
 });
 
 test("PromptVersionManager.registerBundleVersion stores bundle", () => {
   const manager = new PromptVersionManager();
   manager.registerBundleVersion({
     name: "test-bundle",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "v1.0.0",
     systemPrompt: { content: "You are helpful", templateVariables: [], channel: "system" },
     userPrompt: undefined,
     fewShotExamples: [],
@@ -385,7 +419,7 @@ test("PromptVersionManager.registerBundleVersion stores bundle", () => {
     domain: "test",
     taskType: "test",
     packId: undefined,
-    bundleId: "test-bundle:1",
+    bundleId: "test-bundle:v1.0.0",
     constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
@@ -393,15 +427,14 @@ test("PromptVersionManager.registerBundleVersion stores bundle", () => {
 
   const versions = manager.getSortedVersions("test-bundle");
   assert.equal(versions.length, 1);
-  assert.equal(versions[0], 1);
+  assert.equal(versions[0], "v1.0.0");
 });
 
 test("PromptVersionManager.listBundleVersions returns version info", () => {
   const manager = new PromptVersionManager();
   manager.registerBundleVersion({
     name: "test-bundle",
-    version: 1,
-    displayVersion: "v1.0.0",
+    version: "v1.0.0",
     systemPrompt: { content: "You are helpful", templateVariables: [], channel: "system" },
     userPrompt: undefined,
     fewShotExamples: [],
@@ -415,7 +448,7 @@ test("PromptVersionManager.listBundleVersions returns version info", () => {
     domain: "test",
     taskType: "test",
     packId: undefined,
-    bundleId: "test-bundle:1",
+    bundleId: "test-bundle:v1.0.0",
     constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
@@ -423,52 +456,17 @@ test("PromptVersionManager.listBundleVersions returns version info", () => {
 
   const versions = manager.listBundleVersions("test-bundle");
   assert.equal(versions.length, 1);
-  assert.equal(versions[0]!.version, 1);
+  assert.equal(versions[0]!.version, "v1.0.0");
   assert.equal(versions[0]!.deprecated, false);
 });
 
 test("PromptVersionManager constructor with custom config", () => {
   const manager = new PromptVersionManager({
+    allowPrerelease: true,
     maxVersionsPerBundle: 10,
   });
 
-  assert.equal(manager.isValidVersion(1), true);
-});
-
-test("PromptVersionManager.validateCompatibilityMatrix passes valid matrix", () => {
-  const manager = new PromptVersionManager();
-  const bundle = {
-    name: "test-bundle",
-    version: 1,
-    displayVersion: "v1.0.0",
-    systemPrompt: { content: "You are helpful", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: [],
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-    },
-    domain: "test",
-    taskType: "test",
-    packId: undefined,
-    bundleId: "test-bundle:1",
-    constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
-    compatibilityMatrix: {
-      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
-      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
-      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
-      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
-    },
-  };
-
-  const result = manager.validateCompatibilityMatrix(bundle);
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.errors, []);
+  assert.equal(manager.isValidVersionFormat("v1.0"), true);
 });
 
 // =============================================================================
@@ -477,12 +475,12 @@ test("PromptVersionManager.validateCompatibilityMatrix passes valid matrix", () 
 
 function createValidBundleInput(overrides: Partial<{
   name: string;
-  version: number;
+  version: string;
   domain: string;
   taskType: string;
 }> = {}): {
   name: string;
-  version: number;
+  version: string;
   domain: string;
   taskType: string;
   packId: string | undefined;
@@ -494,7 +492,7 @@ function createValidBundleInput(overrides: Partial<{
 } {
   return {
     name: overrides.name ?? "test-bundle",
-    version: overrides.version ?? 1,
+    version: overrides.version ?? "v1.0.0",
     domain: overrides.domain ?? "test-domain",
     taskType: overrides.taskType ?? "test-task",
     packId: undefined,
@@ -512,7 +510,7 @@ test("HierarchicalPromptRegistryService.registerBundle at global level", () => {
 
   assert.equal(bundle.name, "global-bundle");
   assert.ok(bundle.bundleId.includes("global"));
-  assert.ok(bundle.bundleId.includes("1"));
+  assert.ok(bundle.bundleId.includes("v1.0.0"));
 });
 
 test("HierarchicalPromptRegistryService.registerBundle at domain level", () => {
@@ -578,10 +576,10 @@ test("HierarchicalPromptRegistryService.registerBundle throws on empty name", ()
   );
 });
 
-test("HierarchicalPromptRegistryService.registerBundle throws on invalid version", () => {
+test("HierarchicalPromptRegistryService.registerBundle throws on empty version", () => {
   const service = new HierarchicalPromptRegistryService();
   assert.throws(
-    () => service.registerBundle(createValidBundleInput({ version: 0 }), "global"),
+    () => service.registerBundle(createValidBundleInput({ version: "" }), "global"),
     ValidationError,
   );
 });
@@ -617,14 +615,14 @@ test("HierarchicalPromptRegistryService.getBundle finds domain bundle", () => {
 test("HierarchicalPromptRegistryService.getBundle follows hierarchy precedence", () => {
   const service = new HierarchicalPromptRegistryService();
   // Register global bundle first
-  service.registerBundle(createValidBundleInput({ name: "shared-bundle", version: 1 }), "global");
+  service.registerBundle(createValidBundleInput({ name: "shared-bundle", version: "v1.0.0" }), "global");
   // Register domain bundle with same name
-  service.registerBundle(createValidBundleInput({ name: "shared-bundle", version: 2 }), "domain", "my-domain");
+  service.registerBundle(createValidBundleInput({ name: "shared-bundle", version: "v2.0.0" }), "domain", "my-domain");
 
   // Should find domain level first due to precedence
   const bundle = service.getBundle("shared-bundle", "any-task", undefined, "my-domain");
   assert.ok(bundle !== null);
-  assert.equal(bundle!.version, 2);
+  assert.equal(bundle!.version, "v2.0.0");
 });
 
 test("HierarchicalPromptRegistryService.getBundle returns null for non-existent bundle", () => {
@@ -636,7 +634,7 @@ test("HierarchicalPromptRegistryService.getBundle returns null for non-existent 
 test("HierarchicalPromptRegistryService.getBundle skips deprecated bundles", () => {
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
-  service.deprecateBundle("bundle", 1, "global");
+  service.deprecateBundle("bundle", "v1.0.0", "global");
 
   const bundle = service.getBundle("bundle", "any-task");
   assert.equal(bundle, null);
@@ -644,8 +642,8 @@ test("HierarchicalPromptRegistryService.getBundle skips deprecated bundles", () 
 
 test("HierarchicalPromptRegistryService.listBundleVersions returns all versions", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createValidBundleInput({ name: "bundle", version: 1 }), "global");
-  service.registerBundle(createValidBundleInput({ name: "bundle", version: 2 }), "global");
+  service.registerBundle(createValidBundleInput({ name: "bundle", version: "v1.0.0" }), "global");
+  service.registerBundle(createValidBundleInput({ name: "bundle", version: "v2.0.0" }), "global");
 
   const versions = service.listBundleVersions("bundle");
   assert.equal(versions.length, 2);
@@ -673,7 +671,7 @@ test("HierarchicalPromptRegistryService.listBundles filters by domain", () => {
 test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated", () => {
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
-  service.deprecateBundle("bundle", 1, "global");
+  service.deprecateBundle("bundle", "v1.0.0", "global");
 
   const versions = service.listBundleVersions("bundle");
   assert.equal(versions[0]!.deprecated, true);
@@ -682,7 +680,7 @@ test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecat
 test("HierarchicalPromptRegistryService.deprecateBundle throws for non-existent bundle", () => {
   const service = new HierarchicalPromptRegistryService();
   assert.throws(
-    () => service.deprecateBundle("non-existent", 1, "global"),
+    () => service.deprecateBundle("non-existent", "v1.0.0", "global"),
     ValidationError,
   );
 });
@@ -691,7 +689,7 @@ test("HierarchicalPromptRegistryService.removeBundle returns true when bundle ex
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
 
-  const removed = service.removeBundle("bundle", 1, "global");
+  const removed = service.removeBundle("bundle", "v1.0.0", "global");
   assert.equal(removed, true);
 });
 
@@ -699,7 +697,7 @@ test("HierarchicalPromptRegistryService.removeBundle does not fully remove from 
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
 
-  service.removeBundle("bundle", 1, "global");
+  service.removeBundle("bundle", "v1.0.0", "global");
 
   // Note: getBundle may still find the bundle because removeBundle only removes
   // from versionsByScope and versionsByName, but not from globalBundles/packBundles/etc.

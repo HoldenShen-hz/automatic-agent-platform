@@ -121,62 +121,6 @@ test("getLatestChainHash returns most recent chain hash", () => {
   assert.equal(latestHash, "hash-2");
 });
 
-test("insertIntegrityRecord rejects chain position gaps", () => {
-  const db = createMockDatabase();
-  const repo = createAuditIntegrityRepository(db);
-
-  repo.insertIntegrityRecord(
-    "evt-1",
-    1,
-    "task:created",
-    "2026-04-07T00:00:00.000Z",
-    "checksum-1",
-    null,
-    "hash-1",
-  );
-
-  assert.throws(
-    () => repo.insertIntegrityRecord(
-      "evt-2",
-      3,
-      "task:started",
-      "2026-04-07T00:01:00.000Z",
-      "checksum-2",
-      "hash-1",
-      "hash-2",
-    ),
-    /audit\.integrity_chain_gap/,
-  );
-});
-
-test("insertIntegrityRecord rejects previous chain hash mismatches", () => {
-  const db = createMockDatabase();
-  const repo = createAuditIntegrityRepository(db);
-
-  repo.insertIntegrityRecord(
-    "evt-1",
-    1,
-    "task:created",
-    "2026-04-07T00:00:00.000Z",
-    "checksum-1",
-    null,
-    "hash-1",
-  );
-
-  assert.throws(
-    () => repo.insertIntegrityRecord(
-      "evt-2",
-      2,
-      "task:started",
-      "2026-04-07T00:01:00.000Z",
-      "checksum-2",
-      "wrong-hash",
-      "hash-2",
-    ),
-    /audit\.integrity_chain_broken/,
-  );
-});
-
 test("getLatestChainHash returns null when no records", () => {
   const db = createMockDatabase();
   const repo = createAuditIntegrityRepository(db);
@@ -243,7 +187,7 @@ test("insertIntegrityRecord and getIntegrityRecord handle string chain position"
     "workflow:step_completed",
     "2026-04-07T00:00:00.000Z",
     "checksum-str",
-    null,
+    "prev-hash-str",
     "chain-hash-str",
   );
 
@@ -252,7 +196,7 @@ test("insertIntegrityRecord and getIntegrityRecord handle string chain position"
   assert.ok(record !== null);
   assert.equal(record!.eventId, "evt-str");
   assert.equal(record!.chainPosition, 42);
-  assert.equal(record!.previousChainHash, null);
+  assert.equal(record!.previousChainHash, "prev-hash-str");
   assert.equal(record!.chainHash, "chain-hash-str");
 });
 

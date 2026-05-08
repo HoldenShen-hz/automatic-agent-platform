@@ -16,13 +16,12 @@ export class AsyncArtifactRepository {
   public async insertArtifact(artifact: ArtifactRecord): Promise<void> {
     await this.conn.execute(
       `INSERT INTO artifacts (
-        artifact_id, task_id, execution_id, node_run_id, step_id, kind, storage_path, file_name,
-        mime_type, size_bytes, checksum, lineage_json, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        artifact_id, task_id, execution_id, step_id, kind, storage_path, file_name, mime_type,
+        size_bytes, checksum, lineage_json, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       artifact.artifactId,
       artifact.taskId,
       artifact.executionId,
-      artifact.nodeRunId ?? null,
       artifact.stepId,
       artifact.kind,
       artifact.storagePath,
@@ -45,7 +44,6 @@ export class AsyncArtifactRepository {
         artifact_id AS "artifactId",
         task_id AS "taskId",
         execution_id AS "executionId",
-        node_run_id AS "nodeRunId",
         step_id AS "stepId",
         kind,
         storage_path AS "storagePath",
@@ -74,7 +72,6 @@ export class AsyncArtifactRepository {
           a.artifact_id AS "artifactId",
           a.task_id AS "taskId",
           a.execution_id AS "executionId",
-          a.node_run_id AS "nodeRunId",
           a.step_id AS "stepId",
           a.kind,
           a.storage_path AS "storagePath",
@@ -99,7 +96,6 @@ export class AsyncArtifactRepository {
         artifact_id AS "artifactId",
         task_id AS "taskId",
         execution_id AS "executionId",
-        node_run_id AS "nodeRunId",
         step_id AS "stepId",
         kind,
         storage_path AS "storagePath",

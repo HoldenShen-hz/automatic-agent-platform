@@ -261,7 +261,7 @@ export class KnowledgeRetrievalService {
       chunkId: chunkRecord.chunk.chunkId,
       documentId: chunkRecord.record.document.documentId,
       score: finalScore,
-      matchType: directMatch ? "keyword" : graphBoost > 0 ? "structural" : semanticSimilarity >= SEMANTIC_MATCH_THRESHOLD ? "semantic" : "semantic",
+      matchType: directMatch ? "keyword" : semanticSimilarity >= SEMANTIC_MATCH_THRESHOLD ? "semantic" : graphBoost > 0 ? "structural" : "semantic",
       snippet: chunkRecord.chunk.summary,
       namespace: chunkRecord.chunk.namespace,
       knowledgeRef,
@@ -293,8 +293,9 @@ export class KnowledgeRetrievalService {
     keyword: string,
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
-    // Sync path does not support pgvector backend - fall back to local archive iteration
-    // when vector store is not available, to maintain sync fallback semantics
+    if (this.semanticVectorStore) {
+      return [];
+    }
     const queryEmbedding = buildSemanticEmbedding(keyword);
     if (!queryEmbedding) {
       return [];

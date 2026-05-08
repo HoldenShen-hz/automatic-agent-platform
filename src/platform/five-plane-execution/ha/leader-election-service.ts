@@ -172,7 +172,7 @@ export class LeaderElectionService {
         this.nodeMetadata,
       );
 
-      // For HA_1, skip leader election (single-node mode)
+      // For HA-1, skip leader election (single-node mode)
       if (this.config.haLevel === "HA_1") {
         const acquiredAt = nowIso();
         this.currentEpoch = Math.max(this.currentEpoch, 1);
@@ -191,21 +191,6 @@ export class LeaderElectionService {
           nodeId: this.effectiveNodeId,
           isSingleNode: true,
         });
-
-        // Start heartbeat and renewal loop for single-node mode to prevent lease expiration
-        this.startHeartbeat();
-        // §209-2474: HA_1 still needs renewal timer - set a positive interval
-        // Previously leaseRenewalIntervalMs=0 caused startRenewalLoop to skip, so
-        // the lease never got renewed and would expire after ttlMs with no renewal attempt
-        const ha1RenewalIntervalMs = this.config.leaseRenewalIntervalMs > 0
-          ? this.config.leaseRenewalIntervalMs
-          : 5_000; // Default to 5s for HA_1
-        if (ha1RenewalIntervalMs > 0) {
-          this.renewalIntervalHandle = setInterval(() => {
-            this.renewLeadership();
-          }, ha1RenewalIntervalMs);
-          this.renewalIntervalHandle.unref?.();
-        }
         return;
       }
 
@@ -527,7 +512,6 @@ export class LeaderElectionService {
     this.renewalIntervalHandle = setInterval(() => {
       this.renewLeadership();
     }, this.config.leaseRenewalIntervalMs);
-    this.renewalIntervalHandle.unref?.(); // P1-2140: Allow process to exit even if renewal loop is running
 
     logger.log({
       level: "debug",
@@ -561,7 +545,6 @@ export class LeaderElectionService {
     this.heartbeatIntervalHandle = setInterval(() => {
       this.coordinator.updateNodeHeartbeat(this.effectiveNodeId, "active");
     }, 5_000);
-    this.heartbeatIntervalHandle.unref?.(); // P1-2141: Allow process to exit even if heartbeat is running
   }
 
   /**

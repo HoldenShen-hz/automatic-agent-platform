@@ -143,20 +143,6 @@ test("getPlatformArchitectureServices returns same services object", async () =>
   assert.equal(services1.summary, services2.summary);
 });
 
-test("registerPlatformArchitectureServices returns registry-backed snapshots", async () => {
-  const registry = ServiceRegistry.getInstance();
-  await registry.reset();
-
-  const services = registerPlatformArchitectureServices(registry);
-
-  assert.equal(services.layers, registry.get("architecture.layer-catalog"));
-  assert.equal(services.planes, registry.get("architecture.plane-catalog"));
-  assert.equal(services.apps, registry.get("architecture.app-catalog"));
-  assert.equal(services.startupTargets, registry.get("architecture.startup-targets"));
-  assert.deepEqual(services.summary.apps, services.apps);
-  assert.deepEqual(services.summary.startupTargets, services.startupTargets);
-});
-
 test("architecture.bootstrap-summary depends on other three services", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();

@@ -62,25 +62,8 @@ export class FluentdTransport implements LogTransport {
       this.reconnectTimer = null;
     }
     this.reconnectAttempts = 0;
-    // R27-13 FIX: Drain loop has no write error handling - mid-way failure loses entries.
-    // Add error handling for each write operation in the drain loop.
     for (const buffered of this.buffer) {
-      try {
-        const canContinue = this.socket?.write(buffered);
-        if (!canContinue) {
-          // Write returned false (buffer full), stop sending and wait for drain
-          break;
-        }
-      } catch (err) {
-        // R27-13: Mid-way write failure - log error and stop draining remaining entries
-        this.logger.error("fluentd.write_error", {
-          error: err instanceof Error ? err.message : String(err),
-          remainingEntries: this.buffer.length,
-          host: this.config.host,
-          port: this.config.port,
-        });
-        break;
-      }
+      this.socket?.write(buffered);
     }
     this.buffer = [];
   }
@@ -132,29 +115,12 @@ export class FluentdTransport implements LogTransport {
   }
 
   async flush(): Promise<void> {
-    const socket = this.socket;
-    if (!socket) {
-      return Promise.resolve();
-    }
-    // R27-01 FIX: The "drain" event only fires when a previous write() returned false
-    // (buffer full). If the socket is currently writable, drain will never fire and
-    // we would deadlock waiting for it. Since drain only matters after a write that
-    // returned false, if we're currently writable we can resolve immediately.
-    if (socket.writable) {
-      return Promise.resolve();
-    }
-    // Socket is not writable (experiencing backpressure), must wait for drain
     return new Promise((resolve) => {
-      const onDrain = () => {
-        clearTimeout(timeout);
-        socket.removeListener?.("drain", onDrain);
+      if (this.socket?.writable) {
+        this.socket.once("drain", resolve);
+      } else {
         resolve();
-      };
-      const timeout = setTimeout(() => {
-        socket.removeListener?.("drain", onDrain);
-        resolve();
-      }, 5000);
-      socket.once?.("drain", onDrain);
+      }
     });
   }
 

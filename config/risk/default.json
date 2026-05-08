@@ -1,71 +1,54 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Canonical risk configuration aligned with ADR-026 8-factor/18-point model",
+  "$schema": "../../../src/platform/contracts/types/schemas/config-schema.ts",
   "riskCategories": [
     "operational",
     "financial",
     "compliance",
     "reputational",
     "safety",
-    "strategic",
-    "ai",
-    "data"
+    "strategic"
   ],
   "factorWeights": {
-    "operationRisk": 3,
-    "targetResourceCriticality": 3,
-    "dataSensitivity": 3,
-    "autonomyModeRisk": 2,
-    "tenantImpact": 2,
+    "stepTypeRisk": 3,
+    "targetSystemRisk": 4,
+    "dataClassRisk": 3,
     "blastRadius": 2,
-    "historicalFailureRate": 2,
-    "evidenceConfidence": 1
+    "priorFailureRate": 2,
+    "confidence": 1
   },
-  "operationRiskValues": {
-    "read": 0.2,
-    "write": 0.6,
-    "delete": 1.0,
-    "external_call": 0.8
+  "stepTypeRiskValues": {
+    "read": 1,
+    "write": 3,
+    "delete": 5,
+    "external_call": 4
   },
-  "targetResourceCriticalityValues": {
-    "internal": 0.2,
-    "staging": 0.4,
-    "production": 1.0
+  "targetSystemRiskValues": {
+    "internal": 1,
+    "staging": 2,
+    "production": 5
   },
-  "dataSensitivityValues": {
-    "public": 0.2,
-    "internal": 0.4,
-    "confidential": 0.8,
-    "restricted": 1.0
-  },
-  "autonomyModeRiskValues": {
-    "full_auto": 0.2,
-    "semi_auto": 0.4,
-    "supervised": 0.6,
-    "suggestion": 1.0
-  },
-  "tenantImpactValues": {
-    "single_task": 0.2,
-    "workflow": 0.4,
-    "tenant": 0.6,
-    "platform": 1.0
+  "dataClassRiskValues": {
+    "public": 1,
+    "internal": 2,
+    "confidential": 4,
+    "restricted": 5
   },
   "blastRadiusValues": {
-    "single_task": 0.2,
-    "workflow": 0.4,
-    "tenant": 0.6,
-    "platform": 1.0
+    "single_task": 1,
+    "workflow": 2,
+    "tenant": 3,
+    "platform": 5
   },
-  "historicalFailureRateThresholds": {
-    "low": { "maxPercent": 10, "value": 0.2 },
-    "medium": { "maxPercent": 30, "value": 0.4 },
-    "high": { "maxPercent": 50, "value": 0.6 },
-    "critical": { "maxPercent": 100, "value": 1.0 }
+  "priorFailureRateThresholds": {
+    "low": { "maxPercent": 10, "value": 1 },
+    "medium": { "maxPercent": 30, "value": 2 },
+    "high": { "maxPercent": 50, "value": 3 },
+    "critical": { "maxPercent": 100, "value": 5 }
   },
-  "evidenceConfidenceValues": {
-    "high": 0.2,
-    "medium": 0.6,
-    "low": 1.0
+  "confidenceValues": {
+    "high": 1,
+    "medium": 3,
+    "low": 5
   },
   "riskLevelThresholds": {
     "low": 0.25,
@@ -82,10 +65,9 @@
       "evidenceLevel": "basic"
     },
     "medium": {
-      "autoExecute": false,
+      "autoExecute": true,
       "logLevel": "warn",
-      "requiresApproval": true,
-      "approvalType": "standard",
+      "requiresApproval": false,
       "sideEffect": "normal_with_validation",
       "evidenceLevel": "enhanced"
     },
@@ -93,7 +75,6 @@
       "autoExecute": false,
       "logLevel": "error",
       "requiresApproval": true,
-      "approvalType": "standard",
       "sideEffect": "restricted",
       "evidenceLevel": "full"
     },
@@ -104,60 +85,6 @@
       "approvalType": "break_glass",
       "sideEffect": "prohibited",
       "evidenceLevel": "legal"
-    }
-  },
-  "eventRegistry": {
-    "namespace": "platform.risk",
-    "tier1Events": [
-      "risk.assessment.completed",
-      "risk.level.changed",
-      "risk.breach.detected"
-    ],
-    "dlqModel": {
-      "enabled": true,
-      "maxRetries": 3,
-      "retryBackoffMs": 5000,
-      "deadLetterActions": [
-        "alert",
-        "block_execution",
-        "require_approval"
-      ]
-    }
-  },
-  "autonomyRiskCaps": {
-    "critical": "suggestion",
-    "high": "semi_auto",
-    "medium": "supervised",
-    "low": "full_auto"
-  },
-  "domainRiskDefaults": {
-    "healthcare": {
-      "riskLevel": "critical",
-      "maxAutonomy": "suggestion",
-      "advisoryOnly": true,
-      "humanAccountable": true,
-      "deterministicHotPathOnly": true
-    },
-    "quant_trading": {
-      "riskLevel": "high",
-      "maxAutonomy": "supervised",
-      "advisoryOnly": false,
-      "humanAccountable": true,
-      "deterministicHotPathOnly": true
-    },
-    "financial_services": {
-      "riskLevel": "high",
-      "maxAutonomy": "supervised",
-      "advisoryOnly": false,
-      "humanAccountable": true,
-      "deterministicHotPathOnly": false
-    },
-    "legal": {
-      "riskLevel": "high",
-      "maxAutonomy": "supervised",
-      "advisoryOnly": false,
-      "humanAccountable": true,
-      "deterministicHotPathOnly": false
     }
   }
 }

@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 release
+- **Improve**：改进候选评估与 rollout
 - **Release**：受控发布与回滚
 
 ---
@@ -96,8 +96,8 @@ Phase 1a / 1b 至少要做到：
 - `acquireLock(request)`
 - `renewLock(lockId, now)`
 - `releaseLock(lockId)`
-- `releaseAllByHarnessRun(harnessRunId)`
-- `listLocksByHarnessRun(harnessRunId)`
+- `releaseAllByExecution(executionId)`
+- `listLocksByExecution(executionId)`
 - `listExpiredLocks(now)`
 - `reapExpiredLocks(now)`
 

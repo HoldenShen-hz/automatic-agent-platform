@@ -285,11 +285,9 @@ export class MemoryRetrievalService {
    * Removes a memory from the FTS index
    */
   public unindexMemory(memoryId: string): void {
-    // R16-16 FIX: Remove manual quote escaping - parameterized queries handle escaping automatically.
-    // Previous manual escaping with replace(/'/g, "''") was redundant and could cause double-escaping
-    // issues when combined with parameterized binding.
+    const safeId = memoryId.replace(/'/g, "''");
     this.store.withConnection((connection) => {
-      connection.prepare("DELETE FROM memories_fts WHERE memory_id = ?").run(memoryId);
+      connection.prepare("DELETE FROM memories_fts WHERE memory_id = ?").run(safeId);
     });
   }
 

@@ -1,17 +1,8 @@
 import assert from "node:assert/strict";
-import test, { afterEach, beforeEach } from "node:test";
+import test from "node:test";
 
 import { ApprovalRoutingService } from "../../../src/org-governance/approval-routing/approval-routing-service.js";
-import { setDefaultLegacyFxRate } from "../../../src/org-governance/approval-routing/route-engine/index.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
-
-beforeEach(() => {
-  setDefaultLegacyFxRate(7.2);
-});
-
-afterEach(() => {
-  setDefaultLegacyFxRate(null);
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test fixtures
@@ -48,11 +39,6 @@ test("ApprovalRoutingService.route returns direct route without delegation or es
     orgNodeId: "dept_1",
     riskLevel: "low",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.deepEqual(result.approverChain, ["director"]);
@@ -74,9 +60,6 @@ test("ApprovalRoutingService.route applies delegation when in scope and active",
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: true,
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
   });
@@ -86,11 +69,6 @@ test("ApprovalRoutingService.route applies delegation when in scope and active",
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.deepEqual(result.approverChain, ["backup_director"]);
@@ -110,9 +88,6 @@ test("ApprovalRoutingService.route does not apply inactive delegation", () => {
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: false, // Inactive
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
   });
@@ -122,11 +97,6 @@ test("ApprovalRoutingService.route does not apply inactive delegation", () => {
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.deepEqual(result.approverChain, ["director"]);
@@ -145,9 +115,6 @@ test("ApprovalRoutingService.route does not apply expired delegation", () => {
         startsAt: "2026-01-01T00:00:00.000Z",
         expiresAt: "2026-03-01T00:00:00.000Z", // Expired
         active: true,
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
   });
@@ -157,11 +124,6 @@ test("ApprovalRoutingService.route does not apply expired delegation", () => {
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.deepEqual(result.approverChain, ["director"]);
@@ -180,9 +142,6 @@ test("ApprovalRoutingService.route does not apply delegation outside scope", () 
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: true,
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
   });
@@ -201,15 +160,12 @@ test("ApprovalRoutingService.route does not apply delegation outside scope", () 
 test("ApprovalRoutingService.route applies escalation when threshold exceeded", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
-    delegations: [],
     escalationRules: [
       {
         ruleId: "esc_1",
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -219,11 +175,6 @@ test("ApprovalRoutingService.route applies escalation when threshold exceeded", 
     orgNodeId: "dept_1",
     riskLevel: "high",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z"); // 60 minutes later
 
   assert.ok(result.approverChain.includes("vp_ops"));
@@ -240,8 +191,6 @@ test("ApprovalRoutingService.route does not escalate when time threshold not met
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -251,11 +200,6 @@ test("ApprovalRoutingService.route does not escalate when time threshold not met
     orgNodeId: "dept_1",
     riskLevel: "high",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:15:00.000Z"); // Only 15 minutes
 
   assert.equal(result.escalatedTo, null);
@@ -271,8 +215,6 @@ test("ApprovalRoutingService.route does not escalate for low risk when rule targ
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -282,11 +224,6 @@ test("ApprovalRoutingService.route does not escalate for low risk when rule targ
     orgNodeId: "dept_1",
     riskLevel: "low",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T02:00:00.000Z");
 
   assert.equal(result.escalatedTo, null);
@@ -304,9 +241,6 @@ test("ApprovalRoutingService.route combines delegation and escalation", () => {
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: true,
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
     escalationRules: [
@@ -315,8 +249,6 @@ test("ApprovalRoutingService.route combines delegation and escalation", () => {
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -326,14 +258,9 @@ test("ApprovalRoutingService.route combines delegation and escalation", () => {
     orgNodeId: "dept_1",
     riskLevel: "high",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z");
 
-  assert.deepEqual(result.approverChain, ["vp_ops", "backup_director"]);
+  assert.deepEqual(result.approverChain, ["backup_director", "vp_ops"]);
   assert.equal(result.delegated, true);
   assert.equal(result.escalatedTo, "vp_ops");
 });
@@ -350,11 +277,6 @@ test("ApprovalRoutingService.route handles node without ownerUserIds", () => {
     orgNodeId: "empty_dept",
     riskLevel: "low",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.deepEqual(result.approverChain, ["platform_admin"]);
@@ -373,11 +295,6 @@ test("ApprovalRoutingService.route applies SoD policy to filter initiator", () =
     orgNodeId: "dept_1",
     riskLevel: "low",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   // Director is filtered out by SoD policy
@@ -423,11 +340,6 @@ test("ApprovalRoutingService.planChain creates sequential chain by default", () 
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   assert.equal(plan.chainMode, "sequential");
@@ -445,11 +357,6 @@ test("ApprovalRoutingService.planChain creates parallel chain", () => {
     orgNodeId: "team_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z", { chainMode: "parallel" });
 
   assert.equal(plan.chainMode, "parallel");
@@ -466,11 +373,6 @@ test("ApprovalRoutingService.planChain includes conditional approvers", () => {
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z", {
     chainMode: "conditional",
     conditionalApproverIds: ["security_team", "compliance_team"],
@@ -489,11 +391,6 @@ test("ApprovalRoutingService.planChain calculates deadline correctly", () => {
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z", {
     timeoutMinutes: 60,
   });
@@ -513,8 +410,6 @@ test("ApprovalRoutingService.planChain sets escalation target", () => {
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -524,11 +419,6 @@ test("ApprovalRoutingService.planChain sets escalation target", () => {
     orgNodeId: "dept_1",
     riskLevel: "high",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z");
 
   assert.equal(plan.steps[0]?.escalationTarget, "vp_ops");
@@ -542,11 +432,6 @@ test("ApprovalRoutingService.planChain generates unique stepIds", () => {
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
 
   const stepIds = plan.steps.map((s) => s.stepId);
@@ -562,11 +447,6 @@ test("ApprovalRoutingService.planChain with empty conditionalApproverIds", () =>
     orgNodeId: "dept_1",
     riskLevel: "medium",
     amountUsd: 0,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z", {
     chainMode: "conditional",
     conditionalApproverIds: [], // Empty
@@ -593,9 +473,6 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
         startsAt: "2026-04-20T00:00:00.000Z",
         expiresAt: "2026-04-21T00:00:00.000Z",
         active: true,
-        delegationType: "manager_cover",
-        conflictOfInterestApproverIds: [],
-        coiReviewStatus: "passed",
       },
     ],
     escalationRules: [
@@ -604,8 +481,6 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
-        escalateToParentManager: false,
-        escalationLevel: 1,
       },
     ],
   });
@@ -615,14 +490,9 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
     orgNodeId: "dept_1",
     riskLevel: "high",
     amountUsd: 1000,
-    evidenceRefs: [],
-    requesterManagerIds: [],
-    conflictedApproverIds: [],
-    policyVersion: "approval-routing/v2",
-    orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z");
 
-  assert.deepEqual(result.approverChain, ["vp_ops", "backup_director"]);
+  assert.deepEqual(result.approverChain, ["backup_director", "vp_ops"]);
   assert.equal(result.delegated, true);
   assert.equal(result.escalatedTo, "vp_ops");
   assert.ok(result.auditRecord.reasonCodes?.includes("approval.escalated"));

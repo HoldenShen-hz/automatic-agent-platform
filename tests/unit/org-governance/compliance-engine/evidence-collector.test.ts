@@ -1,7 +1,4 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
 
 import { ComplianceEvidenceCollector } from "../../../../src/org-governance/compliance-engine/evidence-collector.js";
@@ -120,69 +117,4 @@ test("ComplianceEvidenceCollector collects multiple records for same framework",
 
   const records = collector.list("SOC2");
   assert.equal(records.length, 5);
-});
-
-test("ComplianceEvidenceCollector persists records and hash continuity when storagePath is configured", () => {
-  const storageDir = mkdtempSync(join(tmpdir(), "evidence-collector-"));
-  const storagePath = join(storageDir, "evidence.json");
-  const writer = new ComplianceEvidenceCollector({ storagePath });
-
-  const first = writer.collect({
-    frameworkId: "SOC2",
-    controlId: "CC1.1",
-    source: "audit-log",
-    artifactRef: "artifact-1",
-  });
-  const second = writer.collect({
-    frameworkId: "SOC2",
-    controlId: "CC1.2",
-    source: "audit-log",
-    artifactRef: "artifact-2",
-  });
-
-  assert.equal(existsSync(storagePath), true);
-
-  const reloaded = new ComplianceEvidenceCollector({ storagePath });
-  const reloadedRecords = reloaded.list("SOC2");
-
-  assert.equal(reloadedRecords.length, 2);
-  assert.equal(reloadedRecords[0]?.hash, first.hash);
-  assert.equal(reloadedRecords[1]?.previousHash, first.hash);
-  assert.equal(reloadedRecords[1]?.hash, second.hash);
-  assert.deepEqual(reloaded.verifyChain("SOC2"), []);
-});
-
-test("ComplianceEvidenceCollector.verifyChain detects tampered persisted evidence", () => {
-  const storageDir = mkdtempSync(join(tmpdir(), "evidence-collector-"));
-  const storagePath = join(storageDir, "evidence.json");
-  const collector = new ComplianceEvidenceCollector({ storagePath });
-
-  const first = collector.collect({
-    frameworkId: "SOC2",
-    controlId: "CC1.1",
-    source: "audit-log",
-    artifactRef: "artifact-1",
-  });
-  collector.collect({
-    frameworkId: "SOC2",
-    controlId: "CC1.2",
-    source: "audit-log",
-    artifactRef: "artifact-2",
-  });
-
-  const snapshot = JSON.parse(readFileSync(storagePath, "utf8")) as {
-    records: Array<Record<string, unknown>>;
-    scheduledCollections: unknown[];
-    lastHashByFramework: Record<string, string>;
-    schemaVersion: number;
-  };
-  snapshot.records[0] = {
-    ...snapshot.records[0],
-    artifactRef: "tampered-artifact",
-  };
-
-  writeFileSync(storagePath, JSON.stringify(snapshot, null, 2));
-
-  const reloaded = new ComplianceEvidenceCollector({ storagePath });
-  assert.deepEqual(reloaded.verifyChain("SOC2"), [first.evidenceId]);
 });

@@ -20,9 +20,9 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
-v4.3 `§46-§51` introduces the organization governance layer. The current repository already has:
+v2.7 `§46-§51` introduces the organization governance layer. The current repository already has:
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`

@@ -1,21 +1,8 @@
 /**
- * E2E Checkpoint and Artifact Flow Tests (MIGRATED)
+ * E2E Checkpoint and Artifact Flow Tests
  *
  * End-to-end tests covering checkpoint creation, artifact storage, and retrieval
  * during task execution workflows.
- *
- * MIGRATION: R18-17, R18-18, R18-19
- * These tests have been migrated from the legacy insertWorkflowState API
- * to the canonical runMultiStepOrchestration API.
- *
- * OLD PATTERN (DEPRECATED):
- *   - createE2eHarness() with manual store.insertWorkflowState()
- *   - Manual workflow state manipulation via store.updateWorkflowState()
- *
- * NEW PATTERN (CANONICAL):
- *   - runMultiStepOrchestration() handles full lifecycle
- *   - stepOutputOverrides for controlling step outputs
- *   - stepFailureInjection/stepFailurePlans for error testing
  *
  * Tests validate:
  * - Checkpoint creation at workflow steps
@@ -27,90 +14,200 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { existsSync, unlinkSync } from "node:fs";
 
-import { runMultiStepOrchestration, type MultiStepToolExecutionInput } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { ArtifactRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/artifact-repository.js";
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { ArtifactRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/artifact-repository.js";
+import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
+import type { ExecutionStatus, TaskStatus } from "../../src/platform/contracts/types/status.js";
 
-/**
- * Helper to create a temporary database path for the test.
- */
-function createTestDbPath(prefix: string): string {
-  return join("/tmp", `${prefix}-${Date.now()}.db`);
+function createE2eHarness(prefix: string) {
+  const workspace = createTempWorkspace(prefix);
+  const dbPath = join(workspace, "e2e-checkpoint-artifact.db");
+  const db = new SqliteDatabase(dbPath);
+  db.migrate();
+  const store = new AuthoritativeTaskStore(db);
+  const artifactRepo = new ArtifactRepository(db.connection);
+  const transitions = new TransitionService(db, store);
+
+  return { workspace, db, store, artifactRepo, transitions };
+}
+
+function makeTaskCommand(
+  taskId: string,
+  fromStatus: TaskStatus,
+  toStatus: TaskStatus,
+  traceId: string,
+  executionId: string | null = null,
+) {
+  return {
+    entityKind: "task" as const,
+    entityId: taskId,
+    fromStatus,
+    toStatus,
+    executionId,
+    reasonCode: "e2e_checkpoint_test",
+    traceId,
+    actorType: "system" as const,
+    occurredAt: nowIso(),
+  };
+}
+
+function makeExecCommand(
+  executionId: string,
+  fromStatus: ExecutionStatus,
+  toStatus: ExecutionStatus,
+  traceId: string,
+) {
+  return {
+    entityKind: "execution" as const,
+    entityId: executionId,
+    fromStatus,
+    toStatus,
+    reasonCode: "e2e_checkpoint_test",
+    traceId,
+    actorType: "agent" as const,
+    occurredAt: nowIso(),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Test: Checkpoint created at workflow step boundaries
 // ---------------------------------------------------------------------------
 
-test("E2E: checkpoint created at each workflow step boundary", async () => {
-  const dbPath = createTestDbPath("e2e-ckpt-step");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  // Define explicit workflow plan with dependencies
-  const planSteps = [
-    {
-      stepId: "step_extract",
-      dependencies: [],
-      outputs: ["extracted_data", "record_count"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_transform",
-      dependencies: ["step_extract"],
-      outputs: ["transformed_data", "records_processed"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_load",
-      dependencies: ["step_transform"],
-      outputs: ["load_result"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Multi-step checkpoint test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepOutputOverrides: {
-      step_extract: { extracted_data: "extracted", record_count: 100 },
-      step_transform: { transformed_data: true, records_processed: 100 },
-      step_load: { load_result: "success" },
-    },
-  };
+test("E2E: checkpoint created at each workflow step boundary", () => {
+  const h = createE2eHarness("e2e-ckpt-step-");
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const sessionId = newId("sess");
+  const traceId = newId("trace");
+  const now = nowIso();
 
   try {
-    const result = await runMultiStepOrchestration(input);
+    // Setup task with multi-step workflow
+    h.db.transaction(() => {
+      h.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Multi-step checkpoint test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: JSON.stringify({ request: "process data pipeline" }),
+        normalizedInputJson: JSON.stringify({ request: "process data pipeline" }),
+        outputJson: null,
+        estimatedCostUsd: 0.1,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
 
-    // Verify task reached terminal state
-    const task = result.snapshot.task;
-    assert.ok(
-      task?.status === "done" || task?.status === "failed" || task?.status === "cancelled",
-      `Task should be in terminal state, got ${task?.status}`
-    );
+      h.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent-general",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 120000,
+        budgetUsdLimit: 5,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    // Verify workflow step outputs were accumulated
-    const workflow = result.snapshot.workflow;
-    if (workflow) {
-      const outputs = JSON.parse(workflow.outputsJson);
-      assert.ok(outputs.extracted_data || outputs.step_extract, "Step 0 output should be preserved");
-    }
+      h.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Step 0 completes - create checkpoint
+    const step0Checkpoint = {
+      stepIndex: 0,
+      outputs: { data: "extracted", recordCount: 100 },
+      timestamp: nowIso(),
+    };
+
+    h.db.transaction(() => {
+      h.store.updateWorkflowState(
+        taskId,
+        "running",
+        1,
+        JSON.stringify(step0Checkpoint.outputs),
+        nowIso(),
+        null,
+      );
+    });
+
+    let workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.currentStepIndex, 1, "Workflow should advance to step 1");
+    assert.ok(JSON.parse(workflow!.outputsJson).data, "Step 0 output should be preserved");
+
+    // Step 1 completes
+    const step1Checkpoint = {
+      stepIndex: 1,
+      outputs: { transformed: true, recordsProcessed: 100 },
+      timestamp: nowIso(),
+    };
+
+    h.db.transaction(() => {
+      h.store.updateWorkflowState(
+        taskId,
+        "running",
+        2,
+        JSON.stringify({ ...step0Checkpoint.outputs, ...step1Checkpoint.outputs }),
+        nowIso(),
+        null,
+      );
+    });
+
+    workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.currentStepIndex, 2, "Workflow should advance to step 2");
+    assert.ok(JSON.parse(workflow!.outputsJson).transformed, "Step 1 output should be preserved");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    h.db.close();
+    cleanupPath(h.workspace);
   }
 });
 
@@ -119,25 +216,16 @@ test("E2E: checkpoint created at each workflow step boundary", async () => {
 // ---------------------------------------------------------------------------
 
 test("E2E: artifacts stored and retrieved by task ID", () => {
-  const workspace = createTempWorkspace("e2e-artifact-task-");
-  const dbPath = join(workspace, "e2e-artifact-task.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const h = createE2eHarness("e2e-artifact-task-");
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const traceId = newId("trace");
+  const now = nowIso();
 
   try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const artifactRepo = new ArtifactRepository(db.connection);
-    const now = nowIso();
-    const taskId = newId("task");
-    const executionId = newId("exec");
-
     // Setup task
-    db.transaction(() => {
-      store.insertTask({
+    h.db.transaction(() => {
+      h.store.insertTask({
         id: taskId,
         parentId: null,
         rootId: taskId,
@@ -157,7 +245,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
         completedAt: null,
       });
 
-      store.insertExecution({
+      h.store.insertExecution({
         id: executionId,
         taskId,
         workflowId: "single_agent_minimal",
@@ -167,7 +255,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
         runKind: "task_run",
         status: "executing",
         inputRef: null,
-        traceId: newId("trace"),
+        traceId,
         attempt: 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
@@ -186,13 +274,13 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
       });
     });
 
-    // Store multiple artifacts (bypassing workflow for direct artifact testing)
+    // Store multiple artifacts
     const artifactId1 = newId("artifact");
     const artifactId2 = newId("artifact");
     const artifactId3 = newId("artifact");
 
-    db.transaction(() => {
-      artifactRepo.insertArtifact({
+    h.db.transaction(() => {
+      h.artifactRepo.insertArtifact({
         artifactId: artifactId1,
         taskId,
         executionId,
@@ -207,7 +295,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
         createdAt: now,
       });
 
-      artifactRepo.insertArtifact({
+      h.artifactRepo.insertArtifact({
         artifactId: artifactId2,
         taskId,
         executionId,
@@ -222,7 +310,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
         createdAt: nowIso(),
       });
 
-      artifactRepo.insertArtifact({
+      h.artifactRepo.insertArtifact({
         artifactId: artifactId3,
         taskId,
         executionId,
@@ -239,7 +327,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
     });
 
     // Retrieve artifacts by task
-    const artifacts = artifactRepo.listArtifactsByTask(taskId);
+    const artifacts = h.artifactRepo.listArtifactsByTask(taskId);
     assert.equal(artifacts.length, 3, "Should have 3 artifacts for task");
 
     // Verify artifact properties
@@ -249,12 +337,12 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
     assert.equal(outputArtifact!.sizeBytes, 2048, "Should have correct size");
 
     // Verify lineage tracking
-    const lineage = JSON.parse(outputArtifact!.lineageJson ?? "{}");
+    const lineage = JSON.parse(outputArtifact!.lineageJson);
     assert.equal(lineage.parent, artifactId1, "Should track lineage to parent artifact");
 
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    h.db.close();
+    cleanupPath(h.workspace);
   }
 });
 
@@ -263,24 +351,15 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
 // ---------------------------------------------------------------------------
 
 test("E2E: artifacts retrieved by execution ID", () => {
-  const workspace = createTempWorkspace("e2e-artifact-exec-");
-  const dbPath = join(workspace, "e2e-artifact-exec.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const h = createE2eHarness("e2e-artifact-exec-");
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const traceId = newId("trace");
+  const now = nowIso();
 
   try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const artifactRepo = new ArtifactRepository(db.connection);
-    const now = nowIso();
-    const taskId = newId("task");
-    const executionId = newId("exec");
-
-    db.transaction(() => {
-      store.insertTask({
+    h.db.transaction(() => {
+      h.store.insertTask({
         id: taskId,
         parentId: null,
         rootId: taskId,
@@ -300,7 +379,7 @@ test("E2E: artifacts retrieved by execution ID", () => {
         completedAt: null,
       });
 
-      store.insertExecution({
+      h.store.insertExecution({
         id: executionId,
         taskId,
         workflowId: "single_agent_minimal",
@@ -310,7 +389,7 @@ test("E2E: artifacts retrieved by execution ID", () => {
         runKind: "task_run",
         status: "executing",
         inputRef: null,
-        traceId: newId("trace"),
+        traceId,
         attempt: 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
@@ -329,10 +408,10 @@ test("E2E: artifacts retrieved by execution ID", () => {
       });
     });
 
-    // Store artifact (bypassing workflow for direct artifact testing)
+    // Store artifact
     const artifactId = newId("artifact");
-    db.transaction(() => {
-      artifactRepo.insertArtifact({
+    h.db.transaction(() => {
+      h.artifactRepo.insertArtifact({
         artifactId,
         taskId,
         executionId,
@@ -349,186 +428,307 @@ test("E2E: artifacts retrieved by execution ID", () => {
     });
 
     // Retrieve artifact by ID
-    const artifact = artifactRepo.getArtifact(artifactId);
+    const artifact = h.artifactRepo.getArtifact(artifactId);
     assert.ok(artifact, "Should retrieve artifact by ID");
     assert.equal(artifact!.executionId, executionId, "Should reference correct execution");
     assert.equal(artifact!.taskId, taskId, "Should reference correct task");
 
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    h.db.close();
+    cleanupPath(h.workspace);
   }
 });
 
 // ---------------------------------------------------------------------------
-// Test: Workflow checkpoint preserves state across retry (via canonical API)
+// Test: Workflow checkpoint preserves state across retry
 // ---------------------------------------------------------------------------
 
-test("E2E: workflow checkpoint preserves state across execution retry", async () => {
-  const dbPath = createTestDbPath("e2e-ckpt-retry");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_0",
-      dependencies: [],
-      outputs: ["step0_result"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 1 },
-    },
-    {
-      stepId: "step_1",
-      dependencies: ["step_0"],
-      outputs: ["step1_result"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 1 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Checkpoint retry test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepOutputOverrides: {
-      step_0: { step0_result: "completed" },
-    },
-  };
+test("E2E: workflow checkpoint preserves state across execution retry", () => {
+  const h = createE2eHarness("e2e-ckpt-retry-");
+  const taskId = newId("task");
+  const executionId1 = newId("exec1");
+  const executionId2 = newId("exec2");
+  const sessionId = newId("sess");
+  const traceId1 = newId("trace1");
+  const traceId2 = newId("trace2");
+  const now = nowIso();
 
   try {
-    // First execution completes step 0
-    const result1 = await runMultiStepOrchestration(input);
+    // Setup task with first execution
+    h.db.transaction(() => {
+      h.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Checkpoint retry test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
 
-    const task = result1.snapshot.task;
-    assert.ok(task, "Should have task");
+      // First execution failed at step 1
+      h.store.insertExecution({
+        id: executionId1,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent_1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 120000,
+        budgetUsdLimit: 5,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: "transient_failure",
+        lastErrorMessage: "Temporary failure",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    // The workflow should reflect the step progress
-    const workflow = result1.snapshot.workflow;
-    assert.ok(workflow, "Should have workflow state");
+      // Workflow state shows progress at step 1
+      h.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 1,
+        status: "running",
+        outputsJson: JSON.stringify({ step0_result: "completed" }),
+        lastErrorCode: "transient_failure",
+        retryCount: 0,
+        resumableFromStep: "1",
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Verify checkpoint before retry
+    let workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.currentStepIndex, 1, "Workflow should be at step 1");
+    assert.equal(workflow?.resumableFromStep, "1", "Should be resumable from step 1");
+    assert.ok(JSON.parse(workflow!.outputsJson).step0_result, "Step 0 output preserved");
+
+    // Create retry execution
+    h.db.transaction(() => {
+      h.store.insertExecution({
+        id: executionId2,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: executionId1,
+        agentId: "agent_1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 2,
+        timeoutMs: 120000,
+        budgetUsdLimit: 5,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "exponential",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: nowIso(),
+        finishedAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    });
+
+    // Verify retry execution references parent and inherits checkpoint
+    const exec2 = h.store.getExecution(executionId2);
+    assert.equal(exec2?.parentExecutionId, executionId1, "Should reference parent execution");
+    assert.equal(exec2?.attempt, 2, "Should be attempt 2");
+
+    // Workflow state should still reflect checkpoint from failed execution
+    workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.currentStepIndex, 1, "Checkpoint preserved for retry");
+    assert.ok(JSON.parse(workflow!.outputsJson).step0_result, "Step 0 output still available");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    h.db.close();
+    cleanupPath(h.workspace);
   }
 });
 
 // ---------------------------------------------------------------------------
-// Test: Task completion persists all checkpoint and artifact data (via canonical API)
+// Test: Task completion persists all checkpoint data
 // ---------------------------------------------------------------------------
 
-test("E2E: task completion persists all checkpoint and artifact data", async () => {
-  const dbPath = createTestDbPath("e2e-ckpt-complete");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const planSteps = [
-    {
-      stepId: "step_0",
-      dependencies: [],
-      outputs: ["step0"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_1",
-      dependencies: ["step_0"],
-      outputs: ["step1"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-    {
-      stepId: "step_2",
-      dependencies: ["step_1"],
-      outputs: ["step2", "final"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
-    },
-  ];
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Completion checkpoint test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-    stepOutputOverrides: {
-      step_0: { step0: "done" },
-      step_1: { step1: "done" },
-      step_2: { step2: "final" },
-    },
-  };
+test("E2E: task completion persists all checkpoint and artifact data", () => {
+  const h = createE2eHarness("e2e-ckpt-complete-");
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const sessionId = newId("sess");
+  const traceId = newId("trace");
+  const now = nowIso();
 
   try {
-    const result = await runMultiStepOrchestration(input);
+    // Setup task with completed workflow
+    h.db.transaction(() => {
+      h.store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Completion checkpoint test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      h.store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: "multi_step_wf",
+        parentExecutionId: null,
+        agentId: "agent_1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "succeeded",
+        inputRef: null,
+        traceId,
+        attempt: 1,
+        timeoutMs: 120000,
+        budgetUsdLimit: 5,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertWorkflowState({
+        taskId,
+        divisionId: "general_ops",
+        workflowId: "multi_step_wf",
+        currentStepIndex: 2,
+        status: "completed",
+        outputsJson: JSON.stringify({ step0: "done", step1: "done", step2: "final" }),
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Store final artifact
+    const artifactId = newId("artifact");
+    h.db.transaction(() => {
+      h.artifactRepo.insertArtifact({
+        artifactId,
+        taskId,
+        executionId,
+        stepId: "final",
+        kind: "output",
+        storagePath: "/artifacts/final-output.json",
+        fileName: "final-output.json",
+        mimeType: "application/json",
+        sizeBytes: 256,
+        checksum: "final123",
+        lineageJson: JSON.stringify({ generation: 0 }),
+        createdAt: now,
+      });
+    });
+
+    // Complete task via terminal state transition
+    h.transitions.transitionTaskTerminalState({
+      taskId,
+      sessionId,
+      executionId,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "completed",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "workflow completed", steps: 3 }),
+      outputsJson: JSON.stringify({ step0: "done", step1: "done", step2: "final" }),
+      context: {
+        reasonCode: "task.completed",
+        traceId,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
 
     // Verify task is done with output
-    const task = result.snapshot.task;
-    assert.ok(task?.status === "done" || task?.status === "failed", "Task should reach terminal state");
+    const task = h.store.getTask(taskId);
+    assert.equal(task?.status, "done", "Task should be done");
+    assert.ok(task?.completedAt, "Should have completedAt");
+    assert.ok(task?.outputJson, "Should have output");
 
     // Verify workflow state is completed
-    const workflow = result.snapshot.workflow;
-    assert.ok(workflow, "Should have workflow state");
+    const workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "completed", "Workflow should be completed");
+    assert.equal(workflow?.currentStepIndex, 2, "Should be at final step");
+
+    // Verify artifact still accessible
+    const artifact = h.artifactRepo.getArtifact(artifactId);
+    assert.ok(artifact, "Artifact should still be accessible after completion");
+    assert.equal(artifact!.taskId, taskId, "Artifact should reference correct task");
 
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    h.db.close();
+    cleanupPath(h.workspace);
   }
 });
-
-// ============================================================================
-// MIGRATION DOCUMENTATION
-// ============================================================================
-//
-// LEGACY CODE (DEPRECATED - shown for reference only):
-// ---------------------------------------------------------------------------
-//
-//   function createE2eHarness(prefix: string) {
-//     const workspace = createTempWorkspace(prefix);
-//     const dbPath = join(workspace, "e2e-checkpoint-artifact.db");
-//     const db = new SqliteDatabase(dbPath);
-//     db.migrate();
-//     const store = new AuthoritativeTaskStore(db);
-//     const artifactRepo = new ArtifactRepository(db.connection);
-//     const transitions = new TransitionService(db, store);
-//     return { workspace, db, store, artifactRepo, transitions };
-//   }
-//
-//   test("legacy: checkpoint at step", () => {
-//     const h = createE2eHarness("e2e-ckpt-step-");
-//     h.db.transaction(() => {
-//       h.store.insertTask({ ... });
-//       h.store.insertExecution({ ... });
-//       h.store.insertWorkflowState({   // <-- LEGACY API
-//         taskId, workflowId: "multi_step_wf", currentStepIndex: 0,
-//         status: "running", outputsJson: "{}", ...
-//       });
-//     });
-//     // Manual step advancement...
-//     h.db.transaction(() => {
-//       h.store.updateWorkflowState(taskId, "running", 1, JSON.stringify(outputs), ...);
-//     });
-//   });
-//
-// CANONICAL CODE (CURRENT):
-// ---------------------------------------------------------------------------
-//
-//   const input: MultiStepToolExecutionInput = {
-//     dbPath,
-//     title: "Multi-step test",
-//     request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-//     stepOutputOverrides: { "step_0": { output: "value" } },
-//   };
-//
-//   const result = await runMultiStepOrchestration(input);
-//   // result.snapshot.task, result.snapshot.workflow, etc.
-//
-// NOTES:
-//   - Artifact repository tests (tests 2-3) still use direct store/repository access
-//     because they test artifact storage in isolation, not full workflow execution
-//   - Checkpoint and completion tests now use canonical runMultiStepOrchestration API
-//
-// See docs_zh/migrations/e2e-workflow-state-migration.md for full migration guide.

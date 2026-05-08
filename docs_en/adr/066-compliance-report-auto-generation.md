@@ -83,6 +83,6 @@ Negative:
 - [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
 - [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§66` Compliance Report Auto-Generation Engine

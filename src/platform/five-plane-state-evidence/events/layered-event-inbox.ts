@@ -22,12 +22,6 @@ export class LayeredEventInbox {
   private readonly consumers = new Map<string, EventInboxConsumer>();
   private readonly cursors = new Map<string, number>();
 
-  // R30-11: Add configurable max records limit with eviction policy
-  // Records array was unbounded - now capped with oldest-first eviction when limit is reached
-  private static readonly MAX_RECORDS = 10_000;
-  // Threshold to trigger compaction (when records exceed this, oldest are evicted)
-  private static readonly COMPACT_THRESHOLD = 10_000;
-
   public registerConsumer(consumer: EventInboxConsumer): void {
     if (consumer.consumerId.trim().length === 0) {
       throw new ValidationError("event_inbox.consumer_id_required", "EventInbox consumerId is required.");
@@ -46,31 +40,6 @@ export class LayeredEventInbox {
       );
     }
     this.records.push({ event, appendedAt });
-
-    // R30-11 fix: Evict oldest records when exceeding MAX_RECORDS limit
-    // This implements oldest-first eviction to maintain bounded memory usage
-    if (this.records.length > LayeredEventInbox.MAX_RECORDS) {
-      const removeCount = this.records.length - LayeredEventInbox.MAX_RECORDS;
-      // Evict oldest records (first 'removeCount' items) that all consumers have passed
-      const minCursor = this.getMinCursor();
-      if (minCursor >= removeCount) {
-        // All consumers have passed at least 'removeCount' records, safe to evict
-        this.records.splice(0, removeCount);
-        // Adjust cursors down by removeCount
-        for (const consumerId of this.cursors.keys()) {
-          this.cursors.set(consumerId, this.cursors.get(consumerId)! - removeCount);
-        }
-      } else {
-        // Not all consumers have passed enough - use compact to be safe
-        this.compact();
-      }
-    }
-
-    // Root cause §191-2242 fix: Auto-compact when records exceed threshold to prevent memory leak.
-    // Records array only grew without pruning, causing unbounded memory growth.
-    if (this.records.length >= LayeredEventInbox.COMPACT_THRESHOLD) {
-      this.compact();
-    }
   }
 
   public peek(consumerId: string): readonly EventEnvelope[] {
@@ -86,7 +55,6 @@ export class LayeredEventInbox {
     const consumer = this.requireConsumer(consumerId);
     const cursor = this.cursors.get(consumerId) ?? 0;
     const delivered: EventEnvelope[] = [];
-    const seenEventIds = new Set<string>();
     let nextCursor = cursor;
 
     for (let index = cursor; index < this.records.length; index += 1) {
@@ -94,20 +62,9 @@ export class LayeredEventInbox {
       if (record == null) {
         continue;
       }
-      // Deduplicate: skip if this consumer already received this event
-      if (seenEventIds.has(record.event.eventId)) {
-        continue;
-      }
-      // R29-39 fix: Only advance cursor for events that matched the consumer's filter.
-      // Non-matching events should remain visible on subsequent drains.
+      nextCursor = index + 1;
       if (canConsumerReceive(consumer, record.event)) {
-        seenEventIds.add(record.event.eventId);
         delivered.push(record.event);
-        // Only advance cursor if we haven't hit the limit yet
-        // This ensures non-matching events remain visible
-        if (delivered.length < limit) {
-          nextCursor = index + 1;
-        }
       }
       if (delivered.length >= limit) {
         break;
@@ -120,61 +77,6 @@ export class LayeredEventInbox {
 
   public size(): number {
     return this.records.length;
-  }
-
-  /**
-   * Gets the minimum cursor position across all consumers.
-   * This represents how far the least-progressed consumer has read.
-   */
-  private getMinCursor(): number {
-    let minCursor = this.records.length;
-    for (const cursor of this.cursors.values()) {
-      if (cursor < minCursor) {
-        minCursor = cursor;
-      }
-    }
-    return minCursor;
-  }
-
-  /**
-   * Compacts the records array by removing records that have been consumed by all registered consumers.
-   * This prevents unbounded memory growth when the inbox only appends and never prunes.
-   * Should be called periodically or when records.length exceeds a threshold.
-   * @returns The number of records removed
-   */
-  public compact(): number {
-    if (this.records.length === 0) {
-      return 0;
-    }
-
-    // Find the minimum cursor across all consumers
-    const minCursor = this.getMinCursor();
-
-    // If all consumers have consumed all records, clear all
-    if (minCursor >= this.records.length) {
-      const removed = this.records.length;
-      this.records.length = 0;
-      // Reset all cursors to 0 since records are empty
-      for (const consumerId of this.cursors.keys()) {
-        this.cursors.set(consumerId, 0);
-      }
-      return removed;
-    }
-
-    // If minCursor > 0, remove records before minCursor
-    if (minCursor > 0) {
-      const removed = minCursor;
-      // Remove records from the beginning using splice
-      this.records.splice(0, minCursor);
-      // Adjust all cursors down by minCursor
-      for (const consumerId of this.cursors.keys()) {
-        const currentCursor = this.cursors.get(consumerId)!;
-        this.cursors.set(consumerId, currentCursor - minCursor);
-      }
-      return removed;
-    }
-
-    return 0;
   }
 
   private requireConsumer(consumerId: string): EventInboxConsumer {

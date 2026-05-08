@@ -191,53 +191,10 @@ export class TaskRepository {
   }
 
   /**
-   * Update task output with CAS semantics.
-   * §25.3: Only updates if current status matches expectedStatus to prevent TOCTOU races.
-   * Returns the number of rows affected (0 if status didn't match).
+   * Update task output.
    */
-  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
-    return execute(
-      this.conn,
-      `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND status = ?`,
-      outputJson,
-      updatedAt,
-      taskId,
-      expectedStatus,
-    );
-  }
-
-  /**
-   * Update task output with full CAS semantics including version/fencing token.
-   * R9-02: §25.3 - Uses updated_at as fencing token to prevent TOCTOU races.
-   * Only updates if current updated_at matches expectedTaskUpdatedAt AND status matches expectedStatus.
-   * Returns the number of rows affected (0 if either check failed).
-   */
-  public updateTaskOutputCas(
-    taskId: string,
-    expectedTaskUpdatedAt: string,
-    expectedStatus: string,
-    outputJson: string,
-    updatedAt: string,
-  ): number {
-    return execute(
-      this.conn,
-      `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND status = ?`,
-      outputJson,
-      updatedAt,
-      taskId,
-      expectedTaskUpdatedAt,
-      expectedStatus,
-    );
-  }
-
-  public updateTaskTitle(taskId: string, title: string, updatedAt: string): void {
-    execute(
-      this.conn,
-      `UPDATE tasks SET title = ?, updated_at = ? WHERE id = ?`,
-      title,
-      updatedAt,
-      taskId,
-    );
+  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
+    execute(this.conn, `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ?`, outputJson, updatedAt, taskId);
   }
 
   public updateTaskInput(taskId: string, inputJson: string, normalizedInputJson: string, updatedAt: string): void {
