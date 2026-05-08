@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -36,6 +38,7 @@ describe("useAnalyticsVm", () => {
 
     expect(result.current.timeSeriesData.length).toBeGreaterThan(0);
     expect(result.current.timeSeriesData[0]?.timestamp).toContain("T");
+    expect(result.current.trendSummary).toEqual([12, 6]);
 
     act(() => {
       result.current.exportData("json");

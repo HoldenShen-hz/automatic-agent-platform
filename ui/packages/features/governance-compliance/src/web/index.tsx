@@ -4,17 +4,64 @@ import { useGovernanceComplianceVm } from "../hooks";
 
 export function GovernanceComplianceWebView(): ReactElement {
   const vm = useGovernanceComplianceVm();
+  const defaultPolicy = vm.policies.find((policy) => policy.id === vm.selectedPolicyId) ?? vm.policies[0] ?? null;
   return (
     <FeatureScaffold title="Governance Compliance" summary="治理与合规视图" status="Implemented/Partial">
       <div style={{ display: "grid", gap: 16 }}>
         <FeatureWorkbenchPanel
           items={vm.items}
           actions={[
-            { id: "governance-summary", label: "汇总治理状态", tone: "accent" },
-            { id: "governance-field-policy", label: "审阅字段策略", tone: "neutral" },
-            { id: "governance-audit-trail", label: "查看审计轨迹", tone: "neutral" },
-            { id: "governance-exception", label: "管理异常", tone: "neutral" },
-            { id: "governance-escalate", label: "升级委托审批", tone: "danger" },
+            {
+              id: "governance-summary",
+              label: "汇总治理状态",
+              tone: "accent",
+              onTrigger: () => {
+                if (defaultPolicy != null) {
+                  vm.selectPolicy(defaultPolicy.id);
+                }
+              },
+            },
+            {
+              id: "governance-field-policy",
+              label: "审阅字段策略",
+              tone: "neutral",
+              onTrigger: () => {
+                if (defaultPolicy != null) {
+                  vm.selectPolicy(defaultPolicy.id);
+                  return vm.updatePolicy(defaultPolicy.id, {});
+                }
+              },
+            },
+            {
+              id: "governance-audit-trail",
+              label: "查看审计轨迹",
+              tone: "neutral",
+              onTrigger: () => {
+                const endDate = new Date().toISOString().split("T")[0] ?? "";
+                const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] ?? endDate;
+                vm.filterAuditTrail(startDate, endDate);
+              },
+            },
+            {
+              id: "governance-exception",
+              label: "管理异常",
+              tone: "neutral",
+              onTrigger: () => {
+                if (defaultPolicy != null) {
+                  return vm.submitExceptionRequest("manual_exception_review_requested", defaultPolicy.id);
+                }
+              },
+            },
+            {
+              id: "governance-escalate",
+              label: "升级委托审批",
+              tone: "danger",
+              onTrigger: () => {
+                if (defaultPolicy != null) {
+                  return vm.submitExceptionRequest("governance_escalation_requested", defaultPolicy.id);
+                }
+              },
+            },
           ]}
         />
         <section style={{ display: "grid", gap: 12 }}>

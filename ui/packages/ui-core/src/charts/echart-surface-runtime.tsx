@@ -28,6 +28,8 @@ function withAlpha(color: string, alpha: number): string {
 
 export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EChartSurfaceRuntimeProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<ReturnType<typeof init> | null>(null);
+  const previousValuesRef = useRef<readonly number[]>([]);
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
   const chartTheme = theme.color;
 
@@ -38,7 +40,38 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       return;
     }
 
-    const chart = init(container);
+    chartRef.current = init(container);
+
+    const resize = () => chartRef.current?.resize();
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(() => resize());
+    resizeObserver?.observe(container);
+    if (resizeObserver == null) {
+      container.ownerDocument.defaultView?.addEventListener("resize", resize);
+    }
+    return () => {
+      resizeObserver?.disconnect();
+      if (resizeObserver == null) {
+        container.ownerDocument.defaultView?.removeEventListener("resize", resize);
+      }
+      chartRef.current?.dispose();
+      chartRef.current = null;
+      previousValuesRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (chart == null) {
+      return;
+    }
+
+    const previousValues = previousValuesRef.current;
+    const canAppend = previousValues.length > 0
+      && values.length > previousValues.length
+      && previousValues.every((value, index) => values[index] === value);
+
     chart.setOption({
       backgroundColor: "transparent",
       animationDuration: 220,
@@ -76,7 +109,7 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
         {
           type: "line",
           smooth: true,
-          data: values,
+          ...(canAppend ? {} : { data: values }),
           lineStyle: { color: chartTheme.accent, width: 3 },
           areaStyle: { color: withAlpha(chartTheme.accent, 0.18) },
         },
@@ -84,17 +117,13 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       tooltip: { trigger: "axis" },
     });
 
-    const resize = () => chart.resize();
-    const resizeObserver = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(() => resize());
-    resizeObserver?.observe(container);
-    container.ownerDocument.defaultView?.addEventListener("resize", resize);
-    return () => {
-      resizeObserver?.disconnect();
-      container.ownerDocument.defaultView?.removeEventListener("resize", resize);
-      chart.dispose();
-    };
+    if (canAppend) {
+      chart.appendData({
+        seriesIndex: 0,
+        data: values.slice(previousValues.length),
+      });
+    }
+    previousValuesRef.current = [...values];
   }, [values, chartTheme.accent, chartTheme.border, chartTheme.subtle, chartTheme.surfaceElevated]);
 
   return (

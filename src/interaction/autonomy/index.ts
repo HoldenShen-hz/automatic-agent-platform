@@ -286,12 +286,10 @@ function decideLevel(
   }
 
   // §42 P0/P1 Demotion Logic:
-  // - P0 incidents: freeze immediately per R23-07
+  // - P0 incidents: demote to suggestion (not frozen) per §42.2
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
   const severity = score.lastIncidentSeverity;
-  if (score.incidents > 0 && severity === "P0" && !options.severityBasedDemotion) {
-    return "frozen";
-  }
+  // P0 no longer has early return - always falls through to time window check at line 311
 
   // R9-45 fix: Non-P0/P1 incidents require time window check for demotion
   // Only demote if incident is recent (within the promotion time window)

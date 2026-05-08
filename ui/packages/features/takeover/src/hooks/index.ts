@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTasksQuery, useRestClient } from "@aa/shared-state";
+import { useTasksQuery, useRestClient, useWsClient } from "@aa/shared-state";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 import { updateTask, fetchWorkflowRunSteps } from "@aa/shared-api-client";
 
@@ -22,6 +22,9 @@ export interface TakeoverVm {
   readonly ownershipHistory: readonly { operator: string; timestamp: string; action: string }[];
   claimOwnership(taskId: string, operator: string): Promise<void>;
   transferOwnership(taskId: string, toOperator: string, reason: string): Promise<void>;
+  annotateCurrentSnapshot(note: string, operator: string): void;
+  takeoverCurrentTask(operator: string): Promise<void>;
+  resumeAutomaticExecution(operator: string): Promise<void>;
   restoreFromSnapshot(snapshot: TakeoverSnapshot): void;
 }
 
@@ -98,6 +101,7 @@ function createTakeoverItems(
 
 export function useTakeoverVm(): TakeoverVm {
   const client = useRestClient();
+  const wsClient = useWsClient();
   const tasks = useTasksQuery().data ?? [];
   const [snapshots, setSnapshots] = useState<readonly TakeoverSnapshot[]>(() => loadSnapshots());
   const [ownershipHistory, setOwnershipHistory] = useState<readonly { operator: string; timestamp: string; action: string }[]>(
@@ -111,6 +115,52 @@ export function useTakeoverVm(): TakeoverVm {
     }
     setCurrentSnapshot(snapshots[0] ?? null);
   }, [currentSnapshot, snapshots]);
+
+  useEffect(() => {
+    const taskId = currentSnapshot?.taskId;
+    if (taskId == null) {
+      return;
+    }
+
+    const relevantTypes = new Set([
+      "status_changed",
+      "progress",
+      "completed",
+      "failed",
+      "task.created",
+      "task.deleted",
+      "workflow.updated",
+      "workflow.paused",
+      "workflow.resumed",
+      "workflow.completed",
+    ]);
+
+    return wsClient.subscribe("global", (event) => {
+      if (!relevantTypes.has(event.type)) {
+        return;
+      }
+      const liveTask = tasks.find((candidate) => candidate.id === taskId);
+      if (liveTask == null) {
+        return;
+      }
+      setCurrentSnapshot((snapshot) => {
+        if (snapshot == null || snapshot.taskId !== taskId) {
+          return snapshot;
+        }
+        return {
+          ...snapshot,
+          timestamp: new Date().toISOString(),
+          context: {
+            title: liveTask.title,
+            status: liveTask.status,
+            owner: liveTask.owner ?? null,
+            currentStep: liveTask.currentStep,
+            domainId: liveTask.domainId,
+          },
+        };
+      });
+    });
+  }, [currentSnapshot?.taskId, tasks, wsClient]);
 
   const items = useMemo(
     () => createTakeoverItems(currentSnapshot, ownershipHistory),
@@ -165,6 +215,32 @@ export function useTakeoverVm(): TakeoverVm {
     recordOwnershipEvent(toOperator, `transfer:${reason}`);
   }, [captureSnapshot, client, ownershipHistory]);
 
+  const annotateCurrentSnapshot = useCallback((note: string, operator: string): void => {
+    recordOwnershipEvent(operator, `annotate:${note}`);
+  }, [ownershipHistory]);
+
+  const takeoverCurrentTask = useCallback(async (operator: string): Promise<void> => {
+    const taskId = currentSnapshot?.taskId ?? tasks[0]?.id;
+    if (taskId == null) {
+      throw new Error("takeover.no_task_available");
+    }
+    await claimOwnership(taskId, operator);
+  }, [claimOwnership, currentSnapshot?.taskId, tasks]);
+
+  const resumeAutomaticExecution = useCallback(async (operator: string): Promise<void> => {
+    const taskId = currentSnapshot?.taskId ?? tasks[0]?.id;
+    if (taskId == null) {
+      throw new Error("takeover.no_task_available");
+    }
+    await updateTask(client, taskId, {
+      owner: operator,
+      status: "running",
+      currentStep: "resume-auto",
+    });
+    await captureSnapshot(taskId);
+    recordOwnershipEvent(operator, "resume:auto");
+  }, [captureSnapshot, client, currentSnapshot?.taskId, ownershipHistory, tasks]);
+
   const restoreFromSnapshot = useCallback((snapshot: TakeoverSnapshot): void => {
     setCurrentSnapshot(snapshot);
   }, []);
@@ -175,6 +251,9 @@ export function useTakeoverVm(): TakeoverVm {
     ownershipHistory,
     claimOwnership,
     transferOwnership,
+    annotateCurrentSnapshot,
+    takeoverCurrentTask,
+    resumeAutomaticExecution,
     restoreFromSnapshot,
   };
 }

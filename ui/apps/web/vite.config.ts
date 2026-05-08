@@ -9,6 +9,29 @@ import {
   WEB_MINIFY_MODE,
 } from "./build-config";
 
+const CSP_HEADER_VALUE = [
+  "default-src 'self'",
+  "connect-src 'self' https: ws: wss:",
+  "img-src 'self' data: https:",
+  "style-src 'self'",
+  "script-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+  "report-to csp-endpoint",
+].join("; ");
+
+const REPORT_TO_HEADER_VALUE = '{"group":"csp-endpoint","max-age":10886400,"endpoints":[{"url":"/__csp-report"}]}';
+
+function applyCspHeaders(
+  res: {
+    setHeader(name: string, value: string): void;
+  },
+): void {
+  res.setHeader("Content-Security-Policy", CSP_HEADER_VALUE);
+  res.setHeader("Report-To", REPORT_TO_HEADER_VALUE);
+}
+
 /**
  * Vite plugin that injects CSP HTTP headers for production deployments.
  *
@@ -25,25 +48,26 @@ import {
 function cspHeadersPlugin(): Plugin {
   return {
     name: "csp-headers",
-    apply: "build",
     configureServer(server) {
       server.middlewares.use((_req, res, next) => {
-        res.setHeader(
-          "Content-Security-Policy",
-          [
-            "default-src 'self'",
-            "connect-src 'self' https: ws: wss:",
-            "img-src 'self' data: https:",
-            "style-src 'self'",
-            "script-src 'self'",
-            "object-src 'none'",
-            "base-uri 'self'",
-            "frame-ancestors 'none'",
-            "report-to csp-endpoint",
-          ].join("; "),
-        );
-        res.setHeader("Report-To", '{"group":"csp-endpoint","max-age":10886400,"endpoints":[{"url":"/__csp-report"}]}');
+        applyCspHeaders(res);
         next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        applyCspHeaders(res);
+        next();
+      });
+    },
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "_headers",
+        source: `/*
+  Content-Security-Policy: ${CSP_HEADER_VALUE}
+  Report-To: ${REPORT_TO_HEADER_VALUE}
+`,
       });
     },
   };

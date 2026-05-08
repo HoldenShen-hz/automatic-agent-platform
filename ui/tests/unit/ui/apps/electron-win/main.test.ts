@@ -1,4 +1,48 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("electron", () => ({
+  app: {
+    on: vi.fn(),
+    whenReady: vi.fn(async () => undefined),
+    quit: vi.fn(),
+  },
+  BrowserWindow: Object.assign(
+    vi.fn(() => ({
+      once: vi.fn(),
+      show: vi.fn(),
+      on: vi.fn(),
+      minimize: vi.fn(),
+      isMaximized: vi.fn(() => false),
+      unmaximize: vi.fn(),
+      maximize: vi.fn(),
+      setContentProtection: vi.fn(),
+      webContents: {
+        setWindowOpenHandler: vi.fn(),
+      },
+    })),
+    {
+      getAllWindows: vi.fn(() => []),
+    },
+  ),
+  shell: {
+    openExternal: vi.fn(),
+  },
+  ipcMain: {
+    handle: vi.fn(),
+  },
+  Menu: {
+    buildFromTemplate: vi.fn(() => ({})),
+  },
+  Tray: vi.fn(() => ({
+    setToolTip: vi.fn(),
+    setContextMenu: vi.fn(),
+    on: vi.fn(),
+    destroy: vi.fn(),
+  })),
+  nativeImage: {
+    createEmpty: vi.fn(() => ({})),
+  },
+}));
 
 import {
   electronMainBaseline,
@@ -16,14 +60,32 @@ describe("electronMainBaseline", () => {
   });
 
   it("does not expose arbitrary shell execution IPC channels", () => {
-    expect(electronMainBaseline.channels).toContain("shell:openExternal");
-    expect(electronMainBaseline.channels).not.toContain("shell:run");
-    expect(electronMainBaseline.channels).not.toContain("shell:spawn");
+    expect(electronMainBaseline.channels).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "shell:openExternal",
+          tier: "external-navigation",
+          permission: "external-link",
+        }),
+      ]),
+    );
+    expect(electronMainBaseline.channels.find((channel) => channel.name === "shell:run")).toBeUndefined();
+    expect(electronMainBaseline.channels.find((channel) => channel.name === "shell:spawn")).toBeUndefined();
   });
 
   it("does not expose raw file read/write IPC channels", () => {
-    expect(electronMainBaseline.channels).not.toContain("files:read");
-    expect(electronMainBaseline.channels).not.toContain("files:write");
+    expect(electronMainBaseline.channels.find((channel) => channel.name === "files:read")).toBeUndefined();
+    expect(electronMainBaseline.channels.find((channel) => channel.name === "files:write")).toBeUndefined();
+  });
+
+  it("assigns secure-storage and navigation channels to different trust tiers", () => {
+    const secureStoreRead = electronMainBaseline.channels.find((channel) => channel.name === "secure-store:read");
+    const externalShell = electronMainBaseline.channels.find((channel) => channel.name === "shell:openExternal");
+
+    expect(secureStoreRead?.tier).toBe("secure-storage");
+    expect(externalShell?.tier).toBe("external-navigation");
+    expect(secureStoreRead?.permission).toBe("credential-read");
+    expect(externalShell?.permission).toBe("external-link");
   });
 });
 

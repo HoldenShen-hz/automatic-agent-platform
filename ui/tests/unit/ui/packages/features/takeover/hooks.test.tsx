@@ -1,7 +1,10 @@
+// @vitest-environment jsdom
+
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClient = { patch: vi.fn() };
+const mockSubscribe = vi.fn(() => () => undefined);
 const mockUpdateTask = vi.fn(async () => ({ ok: true }));
 const mockFetchWorkflowRunSteps = vi.fn(async () => [
   { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-06T00:00:00.000Z", completedAt: "2026-05-06T00:01:00.000Z" },
@@ -19,6 +22,7 @@ const taskData = [
 
 vi.mock("@aa/shared-state", () => ({
   useRestClient: () => mockClient,
+  useWsClient: () => ({ subscribe: mockSubscribe }),
   useTasksQuery: () => ({ data: taskData }),
 }));
 

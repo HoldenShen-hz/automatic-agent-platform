@@ -30,19 +30,17 @@ export const electronMainBaseline = {
     sandbox: true,
   },
   channels: [
-    "shell:openExternal",
-    "window:minimize",
-    "window:maximize",
-    "window:open",
-    "deep-link:open",
-    "secure-store:read",
-    "secure-store:write",
-    "secure-store:delete",
-    // §185-2165: files:read/files:write removed - no path whitelist, allows arbitrary file access
-    // These should be replaced with scoped file APIs that validate paths against allowed directories
-    "privacy:getAnalyticsConsent",
-    "privacy:setAnalyticsConsent",
-    "privacy:enableScreenSecurity",
+    { name: "shell:openExternal", tier: "external-navigation", permission: "external-link" },
+    { name: "window:minimize", tier: "window-control", permission: "window-state" },
+    { name: "window:maximize", tier: "window-control", permission: "window-state" },
+    { name: "window:open", tier: "external-navigation", permission: "external-link" },
+    { name: "deep-link:open", tier: "deep-link", permission: "deeplink" },
+    { name: "secure-store:read", tier: "secure-storage", permission: "credential-read" },
+    { name: "secure-store:write", tier: "secure-storage", permission: "credential-write" },
+    { name: "secure-store:delete", tier: "secure-storage", permission: "credential-delete" },
+    { name: "privacy:getAnalyticsConsent", tier: "privacy", permission: "analytics-consent-read" },
+    { name: "privacy:setAnalyticsConsent", tier: "privacy", permission: "analytics-consent-write" },
+    { name: "privacy:enableScreenSecurity", tier: "privacy", permission: "screen-protection" },
   ] as const,
 };
 
@@ -257,4 +255,3 @@ app.on("before-quit", () => {
 
 // Export for testing
 export { createMainWindow, setupIpcHandlers };
-

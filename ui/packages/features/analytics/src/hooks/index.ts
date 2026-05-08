@@ -46,6 +46,15 @@ const METRIC_SETS: Record<string, readonly string[]> = {
   viewer: ["tasks_total", "workflows_total", "approvals_pending"],
 };
 
+function parseMetricValue(metric: AnalyticsMetricDTO): number {
+  const normalized = Number.parseFloat(String(metric.value).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function buildTrendSummary(metrics: readonly AnalyticsMetricDTO[]): readonly number[] {
+  return metrics.map((metric) => parseMetricValue(metric));
+}
+
 export function mapAnalyticsToVm(
   metrics: readonly AnalyticsMetricDTO[],
   chartConfig: AnalyticsChartConfig = { chartType: "kpi" },
@@ -57,7 +66,7 @@ export function mapAnalyticsToVm(
 
   return {
     metrics: metrics.map((metric) => ({ label: metric.label, value: metric.value })),
-    trendSummary: metrics.map((metric) => metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1),
+    trendSummary: buildTrendSummary(metrics),
     chartConfig: { ...chartConfig, chartType: validatedChartType },
     // breakdowns will be populated by useAnalyticsVm with multi-layer KPI breakdown
     breakdowns: [],
@@ -124,9 +133,7 @@ export function useAnalyticsVm(
 
   return {
     metrics: roleMetrics.map((metric) => ({ label: metric.label, value: metric.value })),
-    trendSummary: roleMetrics.map((metric) =>
-      metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1,
-    ),
+    trendSummary: buildTrendSummary(roleMetrics),
     chartConfig: { ...chartConfig, chartType: validatedChartType },
     breakdowns,
     timeSeriesData,
@@ -153,7 +160,7 @@ function buildTimeSeries(
   for (let ts = start; ts <= end; ts += dayMs) {
     const timestamp = new Date(ts).toISOString();
     // Use metric value as-is for time series - in production would be actual historical values
-    const avgValue = metrics.reduce((sum, m) => sum + (typeof m.value === "number" ? m.value : 0), 0) / Math.max(metrics.length, 1);
+    const avgValue = metrics.reduce((sum, metric) => sum + parseMetricValue(metric), 0) / Math.max(metrics.length, 1);
     points.push({
       timestamp,
       value: avgValue,
