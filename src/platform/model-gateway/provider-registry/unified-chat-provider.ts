@@ -658,11 +658,17 @@ export class UnifiedChatProvider {
     if (timeoutMs == null) {
       return signal;
     }
-    const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    if (signal == null) {
-      return timeoutSignal;
-    }
-    return AbortSignal.any([signal, timeoutSignal]);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort(new Error("provider.request_timeout"));
+    }, timeoutMs);
+    signal?.addEventListener("abort", () => {
+      controller.abort(signal.reason);
+    }, { once: true });
+    controller.signal.addEventListener("abort", () => {
+      clearTimeout(timeout);
+    }, { once: true });
+    return controller.signal;
   }
 
   private createEmbeddingProvider(model: string): EmbeddingProvider {

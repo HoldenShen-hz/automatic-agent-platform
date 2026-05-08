@@ -40,6 +40,12 @@ export interface ContextCompactionOptions {
   occurredAt?: string;
   /** KV Cache prefix configuration for three-layer prompt partitioning */
   kvCacheConfig?: Partial<KvCachePrefixConfig>;
+  /** Harness run ID for compaction record (v4.3+) */
+  harnessRunId?: string | null;
+  /** Node run ID for compaction record (v4.3+) */
+  nodeRunId?: string | null;
+  /** Message range covered by compaction (start_index-end_index) */
+  coveredMessageRange?: string | null;
 }
 
 export interface CompactedContextMessage {
@@ -192,8 +198,11 @@ export class ContextCompactionService {
           id: newId("compact"),
           sessionId: options.sessionId,
           taskId: options.taskId,
+          harnessRunId: options.harnessRunId ?? null,
+          nodeRunId: options.nodeRunId ?? null,
           stage: "trim",
           sourceMessageIdsJson: JSON.stringify(trimCandidates.map((message) => message.id)),
+          coveredMessageRange: options.coveredMessageRange ?? null,
           summaryText: null,
           summaryRef: null,
           compactionReason: "context_overflow_stage1_trim",
