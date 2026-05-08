@@ -120,6 +120,16 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
+      // R5-10: Allow backward transitions for feedback→plan scenario (replan loop)
+      const currentStage = this.getCurrentStage();
+      if (currentStage === "feedback" && targetStage === "plan") {
+        return {
+          allowed: true,
+          targetStage,
+          reasonCode: "fsm.replan_feedback_to_plan",
+          reasonCodes: [`fsm.replan_feedback_to_plan: ${currentStage} → ${targetStage}`],
+        };
+      }
       return {
         allowed: false,
         targetStage,

@@ -17,6 +17,7 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 const WS_PATH = "/ws/v1/stream";
 const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
 const CLOSE_TIMEOUT_MS = 100;
+const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
 
 export type WebSocketMessageType =
   | { type: "ping" }
@@ -50,6 +51,8 @@ interface ClientConnection {
   pendingAcks: Map<number, { eventId: string; taskId: string; sentAt: string }>;
   bufferedEventCount: number;
 }
+
+type SubscriptionResult = "subscribed" | "scope_denied" | "subscription_limit_exceeded";
 
 export class WebSocketBridge {
   private readonly wss: WebSocketServer;
@@ -141,10 +144,16 @@ export class WebSocketBridge {
         return;
       case "subscribe":
         if (typeof message.taskId === "string" && message.taskId.length > 0) {
-          const subscribed = this.subscribeToTask(ws, message.taskId);
-          ws.send(JSON.stringify(subscribed
+          const result = this.subscribeToTask(ws, message.taskId);
+          ws.send(JSON.stringify(result === "subscribed"
             ? { type: "subscribed", taskId: message.taskId }
-            : { type: "error", code: "scope_denied", message: "Task scope denied" }));
+            : {
+                type: "error",
+                code: result === "scope_denied" ? "scope_denied" : "subscription_limit_exceeded",
+                message: result === "scope_denied"
+                  ? "Task scope denied"
+                  : `Subscription limit of ${MAX_SUBSCRIPTIONS_PER_CLIENT} tasks exceeded`,
+              }));
         }
         return;
       case "unsubscribe":
@@ -158,21 +167,24 @@ export class WebSocketBridge {
     }
   }
 
-  private subscribeToTask(ws: WebSocket, taskId: string): boolean {
+  private subscribeToTask(ws: WebSocket, taskId: string): SubscriptionResult {
     const client = this.clients.get(ws);
     if (!client) {
-      return false;
+      return "scope_denied";
     }
     const scopeDecision = this.tenantScopeFilter?.evaluate(client.principal, taskId);
     if (scopeDecision != null && !scopeDecision.allowed) {
-      return false;
+      return "scope_denied";
+    }
+    if (!client.subscribedTasks.has(taskId) && client.subscribedTasks.size >= MAX_SUBSCRIPTIONS_PER_CLIENT) {
+      return "subscription_limit_exceeded";
     }
     client.subscribedTasks.add(taskId);
     if (!this.taskSubscribers.has(taskId)) {
       this.taskSubscribers.set(taskId, new Set());
     }
     this.taskSubscribers.get(taskId)!.add(ws);
-    return true;
+    return "subscribed";
   }
 
   private unsubscribeFromTask(ws: WebSocket, taskId: string): void {
@@ -217,6 +229,21 @@ export class WebSocketBridge {
       if (scopeDecision != null && !scopeDecision.allowed) {
         continue;
       }
+      const bufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
+      if (
+        bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES
+        && (event.eventType === "status_changed" || event.eventType === "progress" || event.eventType === "message_delta")
+      ) {
+        this.slowConsumers.add(ws);
+        client.bufferedEventCount = client.pendingAcks.size;
+        ws.send(JSON.stringify({
+          type: "backpressure_warning",
+          taskId,
+          bufferedCount: client.bufferedEventCount,
+          reason: "slow_consumer",
+        } satisfies WebSocketMessageType));
+        continue;
+      }
       const sequenceNum = client.nextExpectedSequenceNum++;
       if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
         ws.send(JSON.stringify({
@@ -242,7 +269,6 @@ export class WebSocketBridge {
         event,
       };
       ws.send(JSON.stringify(message));
-      const bufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
       if (bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES) {
         this.slowConsumers.add(ws);
         ws.send(JSON.stringify({

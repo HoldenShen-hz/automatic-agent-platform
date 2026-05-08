@@ -66,11 +66,11 @@ test("DelegationManagerService.cancel cancels pending delegation", async () => {
   const service = new DelegationManagerService();
   const parent = createTestContext();
   const spec = createTestSpec();
-  
+
   const handle = await service.delegate(parent, spec);
   await service.cancel(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "cancelled");
 });
 
@@ -101,11 +101,11 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
   const service = new DelegationManagerService();
   const parent = createTestContext();
   const spec = createTestSpec();
-  
+
   const handle = await service.delegate(parent, spec);
   await service.complete(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -113,11 +113,11 @@ test("DelegationManagerService.completeWithEvidence completes with evidence", as
   const service = new DelegationManagerService();
   const parent = createTestContext();
   const spec = createTestSpec();
-  
+
   const handle = await service.delegate(parent, spec);
   await service.completeWithEvidence(handle.delegationId, ["evidence-1", "evidence-2"], "output-ref-1");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -125,11 +125,11 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
   const service = new DelegationManagerService();
   const parent = createTestContext();
   const spec = createTestSpec();
-  
+
   const handle = await service.delegate(parent, spec);
   await service.fail(handle.delegationId, "Something went wrong");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "failed");
 });
 
@@ -140,7 +140,7 @@ test("DelegationManagerService.getDelegationChain returns chain", async () => {
 
   await service.delegate(parent, spec);
 
-  const chain = service.getDelegationChain("agent-1");
+  const chain = await service.getDelegationChain("agent-1");
   assert.ok(chain !== null);
   assert.equal(chain!.rootAgentId, "agent-1");
   assert.ok(chain!.nodes.length > 0);
@@ -149,7 +149,7 @@ test("DelegationManagerService.getDelegationChain returns chain", async () => {
 test("DelegationManagerService.getDelegationChain returns null for unknown agent", async () => {
   const service = new DelegationManagerService();
 
-  const chain = service.getDelegationChain("unknown-agent");
+  const chain = await service.getDelegationChain("unknown-agent");
   assert.equal(chain, null);
 });
 
@@ -160,11 +160,11 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
 
   await service.delegate(parent, spec);
 
-  const active = service.getActiveDelegations("agent-1");
+  const active = await service.getActiveDelegations("agent-1");
   assert.ok(active.length > 0);
 });
 
-test("DelegationManagerService.revokeExpiredDelegations expires old delegations", () => {
+test("DelegationManagerService.revokeExpiredDelegations expires old delegations", async () => {
   const service = new DelegationManagerService({ defaultTimeout: -1000 }); // Already expired
   const parent = createTestContext();
   const spec = createTestSpec({ timeout: -1000 });
@@ -172,24 +172,24 @@ test("DelegationManagerService.revokeExpiredDelegations expires old delegations"
   // We need to manually insert an expired delegation for testing
   // Since revokeExpiredDelegations scans existing delegations
 
-  const result = service.revokeExpiredDelegations();
-  
+  const result = await service.revokeExpiredDelegations();
+
   assert.equal(result.scanned, 0); // No delegations exist yet
   assert.equal(result.expired, 0);
 });
 
-test("DelegationManagerService.getExpiredDelegations returns expired", () => {
+test("DelegationManagerService.getExpiredDelegations returns expired", async () => {
   const service = new DelegationManagerService();
-  
+
   // No delegations to expire yet
-  const expired = service.getExpiredDelegations();
+  const expired = await service.getExpiredDelegations();
   assert.equal(expired.length, 0);
 });
 
-test("DelegationManagerService.getPendingExpirationCount returns count", () => {
+test("DelegationManagerService.getPendingExpirationCount returns count", async () => {
   const service = new DelegationManagerService();
-  
-  const count = service.getPendingExpirationCount();
+
+  const count = await service.getPendingExpirationCount();
   assert.equal(count, 0);
 });
 

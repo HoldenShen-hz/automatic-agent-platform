@@ -37,6 +37,14 @@ export interface WebhookGatewayConfig {
 export interface ChannelGatewayServiceOptions {
   /** Optional custom fetch implementation (defaults to global fetch) */
   fetchImpl?: FetchLike;
+  /** Default outbound request timeout in milliseconds (default 5000, capped at maxRequestTimeoutMs) */
+  requestTimeoutMs?: number;
+  /** Maximum outbound request timeout in milliseconds (default 30000) */
+  maxRequestTimeoutMs?: number;
+  /** Consecutive retryable failures required to open the provider circuit breaker */
+  circuitBreakerFailureThreshold?: number;
+  /** Duration to keep the provider circuit open after tripping */
+  circuitBreakerResetMs?: number;
   /** Telegram channel configuration */
   telegram?: TelegramGatewayConfig;
   /** Slack channel configuration */

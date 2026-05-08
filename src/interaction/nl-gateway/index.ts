@@ -67,7 +67,8 @@ export interface DetectedIntent {
     | "task_query"
     | "task_modify"
     | "status_inquiry"
-    | "approval_action";
+    | "approval_action"
+    | "why";
   readonly domainHint: string | null;
   readonly entities: readonly ExtractedEntity[];
   readonly urgency: "low" | "normal" | "high" | "critical";

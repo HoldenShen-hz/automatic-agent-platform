@@ -15,9 +15,9 @@
 |------|------|------|
 | POST/GET | /api/v1/tasks | 任务 CRUD |
 | GET/DELETE | /api/v1/tasks/{id} | 单任务操作 |
-| GET | /api/v1/harness-runs | Harness 运行列表 |
-| GET | /api/v1/node-runs | Node 运行列表 |
-| GET | /api/v1/workflow-runs | legacy 兼容列表 |
+| GET | /api/v1/harness-runs | Harness 运行列表（canonical） |
+| GET | /api/v1/node-runs | Node 运行列表（canonical） |
+| GET | /api/v1/workflow-runs | **已废弃**，仅用于迁移兼容；canonical 模型为 harness-runs + node-runs |
 | GET/POST | /api/v1/approvals | 审批管理 |
 | GET | /api/v1/incidents | 事件查看 |
 | GET/POST | /api/v1/knowledge | 知识管理 |

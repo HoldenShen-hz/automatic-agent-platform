@@ -18,6 +18,7 @@
 | 2 | partial_auto | 部分自动化 |
 | 3 | high_auto | 高度自动化 |
 | 4 | full_auto | 完全自动化 |
+| 5 | autonomous | 自主决策（仅在高成熟度域可用） |
 
 规则：
 

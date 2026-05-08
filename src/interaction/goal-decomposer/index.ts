@@ -72,6 +72,7 @@ export type GoalLifecycleState =
   | "draft"
   | "decomposing"
   | "decomposed"
+  | "partially_completed"
   | "executing"
   | "completed"
   | "failed"

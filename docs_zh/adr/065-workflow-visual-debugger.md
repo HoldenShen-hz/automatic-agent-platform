@@ -39,11 +39,13 @@ interface WorkflowDAGView {
 
 ### 调试功能
 
+> **已废弃 step 概念**：调试模型基于 `HarnessRun / NodeRun`，不支持 `step_over/step_into/step_out` 等线性步骤调试操作。
+
 | 功能 | 说明 |
 |------|------|
-| step_over | 单步跳过 |
-| step_into | 单步进入 |
-| step_out | 单步退出 |
+| node_over | 节点跳过 |
+| node_into | 节点进入 |
+| node_out | 节点退出 |
 | resume | 继续执行 |
 | pause | 暂停 |
 | stop | 停止 |
@@ -59,8 +61,8 @@ interface WorkflowDAGView {
 
 | 类型 | 说明 |
 |------|------|
-| step_start | 步骤开始 |
-| step_complete | 步骤完成 |
+| node_start | 节点开始 |
+| node_complete | 节点完成 |
 | error | 错误发生 |
 | condition | 条件满足 |
 

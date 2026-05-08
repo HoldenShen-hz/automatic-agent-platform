@@ -16,13 +16,25 @@ export const MAX_BODY_BYTES = 1_048_576;
 
 export function matchRoute(request: ApiRequestLike): RouteMatch | null {
   const method = request.method ?? "GET";
-  if (method !== "GET" && method !== "POST" && method !== "OPTIONS") {
+  if (
+    method !== "GET"
+    && method !== "POST"
+    && method !== "PUT"
+    && method !== "PATCH"
+    && method !== "DELETE"
+    && method !== "OPTIONS"
+  ) {
     return null;
   }
   const rawUrl = request.url ?? "/";
   const normalizedUrl = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
   const parsed = parseUrl(normalizedUrl, true);
-  const pathname = parsed.pathname ?? "/";
+  const rawPathname = parsed.pathname ?? "/";
+  const pathname = rawPathname === "/api"
+    ? "/"
+    : rawPathname.startsWith("/api/")
+      ? rawPathname.slice(4)
+      : rawPathname;
   const segments = pathname.split("/").filter((segment) => segment.length > 0);
   return { pathname, segments };
 }

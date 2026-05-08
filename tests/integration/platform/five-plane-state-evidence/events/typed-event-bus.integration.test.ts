@@ -42,17 +42,15 @@ test("integration: TypedEventBus.publish() stores event in SQLite via DurableEve
     assert.ok(eventRecord.id, "Published event should have an ID");
     assert.equal(eventRecord.eventType, "task:status_changed");
     assert.equal(eventRecord.taskId, "task-event-001");
-
-    typedBus.dispose();
   } finally {
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus.subscribe() receives published events", () => {
+test("integration: TypedEventBus.subscribe() receives published events", async () => {
   const ctx = createIntegrationContext("aa-typed-sub-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     const receivedEvents: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
 
     typedBus.subscribe("test-consumer-1", ["task:status_changed"], (envelope) => {
@@ -82,23 +80,22 @@ test("integration: TypedEventBus.subscribe() receives published events", () => {
     });
 
     // Deliver pending events to consumer
-    const delivered = typedBus.deliverPending("test-consumer-1");
+    const delivered = await typedBus.deliverPending("test-consumer-1");
     assert.ok(delivered >= 1, "At least one event should be delivered");
 
     assert.equal(receivedEvents.length, 1, "Should receive exactly one event");
     assert.equal(receivedEvents[0].eventType, "task:status_changed");
     assert.equal((receivedEvents[0].payload as Record<string, unknown>).entityId, "task-sub-001");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("test-consumer-1");
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus.unsubscribe() stops event delivery", () => {
+test("integration: TypedEventBus.unsubscribe() stops event delivery", async () => {
   const ctx = createIntegrationContext("aa-typed-unsub-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     let callCount = 0;
 
     const handler = () => {
@@ -130,10 +127,8 @@ test("integration: TypedEventBus.unsubscribe() stops event delivery", () => {
       },
     });
 
-    typedBus.deliverPending("unsub-consumer");
+    await typedBus.deliverPending("unsub-consumer");
     assert.equal(callCount, 0, "Unsubscribed handler should not be called");
-
-    typedBus.dispose();
   } finally {
     ctx.cleanup();
   }
@@ -141,9 +136,8 @@ test("integration: TypedEventBus.unsubscribe() stops event delivery", () => {
 
 test("integration: TypedEventBus.pendingForConsumer() returns undelivered events", () => {
   const ctx = createIntegrationContext("aa-typed-pending-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
-
     typedBus.subscribe("pending-consumer", ["task:status_changed", "workflow:step_completed"], () => {});
 
     // Publish multiple event types
@@ -187,17 +181,16 @@ test("integration: TypedEventBus.pendingForConsumer() returns undelivered events
 
     const pending = typedBus.pendingForConsumer("pending-consumer");
     assert.ok(pending.length >= 2, "Should have at least 2 pending events");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("pending-consumer");
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus delivers multiple events in order", () => {
+test("integration: TypedEventBus delivers multiple events in order", async () => {
   const ctx = createIntegrationContext("aa-typed-multi-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     const received: string[] = [];
 
     typedBus.subscribe("multi-consumer", ["task:status_changed"], (envelope) => {
@@ -230,22 +223,21 @@ test("integration: TypedEventBus delivers multiple events in order", () => {
       });
     }
 
-    typedBus.deliverPending("multi-consumer");
+    await typedBus.deliverPending("multi-consumer");
     assert.equal(received.length, 3, "Should receive all 3 events");
     assert.equal(received[0], "task-multi-001:in_progress");
     assert.equal(received[1], "task-multi-002:in_progress");
     assert.equal(received[2], "task-multi-003:in_progress");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("multi-consumer");
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus filters events by subscribed type", () => {
+test("integration: TypedEventBus filters events by subscribed type", async () => {
   const ctx = createIntegrationContext("aa-typed-filter-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     const received: string[] = [];
 
     // Only subscribe to task events, not workflow events
@@ -291,20 +283,19 @@ test("integration: TypedEventBus filters events by subscribed type", () => {
       },
     });
 
-    typedBus.deliverPending("filter-consumer");
+    await typedBus.deliverPending("filter-consumer");
     assert.equal(received.length, 1, "Should only receive task:status_changed event");
     assert.equal(received[0], "task:status_changed");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("filter-consumer");
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus handles high-risk command events", () => {
+test("integration: TypedEventBus handles high-risk command events", async () => {
   const ctx = createIntegrationContext("aa-typed-risk-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     const received: string[] = [];
 
     typedBus.subscribe("risk-consumer", ["platform.harness_run.status_changed"], (envelope) => {
@@ -326,20 +317,19 @@ test("integration: TypedEventBus handles high-risk command events", () => {
       },
     });
 
-    typedBus.deliverPending("risk-consumer");
+    await typedBus.deliverPending("risk-consumer");
     assert.equal(received.length, 1);
     assert.equal(received[0], "platform.harness_run.status_changed");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("risk-consumer");
     ctx.cleanup();
   }
 });
 
-test("integration: TypedEventBus multiple consumers receive same events independently", () => {
+test("integration: TypedEventBus multiple consumers receive same events independently", async () => {
   const ctx = createIntegrationContext("aa-typed-indep-");
+  const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
-    const typedBus = new TypedEventBus(ctx.db, ctx.store);
     const consumer1Events: string[] = [];
     const consumer2Events: string[] = [];
 
@@ -373,14 +363,14 @@ test("integration: TypedEventBus multiple consumers receive same events independ
       },
     });
 
-    typedBus.deliverPending("indep-consumer-1");
-    typedBus.deliverPending("indep-consumer-2");
+    await typedBus.deliverPending("indep-consumer-1");
+    await typedBus.deliverPending("indep-consumer-2");
 
     assert.equal(consumer1Events.length, 1, "Consumer 1 should receive event");
     assert.equal(consumer2Events.length, 1, "Consumer 2 should receive event independently");
-
-    typedBus.dispose();
   } finally {
+    typedBus.unsubscribe("indep-consumer-1");
+    typedBus.unsubscribe("indep-consumer-2");
     ctx.cleanup();
   }
 });

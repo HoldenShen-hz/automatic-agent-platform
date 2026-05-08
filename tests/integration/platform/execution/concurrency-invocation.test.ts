@@ -578,8 +578,8 @@ test("[CONCURRENCY-2] concurrent execution status transitions are serialized", a
             entityKind: "execution",
             entityId: executionId,
             fromStatus: "created",
-            toStatus: "dispatching",
-            reasonCode: `execution.dispatching.${workerId}`,
+            toStatus: "executing",
+            reasonCode: `execution.executing.${workerId}`,
             traceId: `trace-exec-${workerId}`,
             actorType: "system",
             occurredAt: nowIso(),
@@ -598,7 +598,7 @@ test("[CONCURRENCY-2] concurrent execution status transitions are serialized", a
 
     // Final state should be consistent
     const execution = store.getExecution(executionId);
-    assert.equal(execution?.status, "dispatching", "Execution should be in dispatching state");
+    assert.equal(execution?.status, "executing", "Execution should be in executing state");
 
     db.close();
   } finally {

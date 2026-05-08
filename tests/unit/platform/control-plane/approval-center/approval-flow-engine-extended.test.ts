@@ -584,56 +584,95 @@ test("ApprovalFlowEngine addFeedback with modify_directly does not require repla
 // Runtime Context Normalization Tests
 // ============================================================================
 
-test("ApprovalFlowEngine normalizeRuntimeContext prefers explicit values", () => {
-  const engine = new ApprovalFlowEngine();
-  const request = createMockApprovalRequest({
-    harnessRunId: "request-harness",
-    nodeRunId: "request-node",
-    executionId: "request-exec",
-  });
-
-  const context = engine.normalizeRuntimeContext(request, {
-    harnessRunId: "explicit-harness",
-    nodeRunId: "explicit-node",
-  });
-
-  assert.strictEqual(context.harnessRunId, "explicit-harness");
-  assert.strictEqual(context.nodeRunId, "explicit-node");
-});
-
-test("ApprovalFlowEngine normalizeRuntimeContext falls back to request values", () => {
-  const engine = new ApprovalFlowEngine();
-  const request = createMockApprovalRequest({
-    harnessRunId: "request-harness",
-    nodeRunId: "request-node",
-  });
-
-  const context = engine.normalizeRuntimeContext(request, {});
-
-  assert.strictEqual(context.harnessRunId, "request-harness");
-  assert.strictEqual(context.nodeRunId, "request-node");
-});
-
-test("ApprovalFlowEngine normalizeRuntimeContext uses legacy workflowRunId", () => {
+test("ApprovalFlowEngine createFlow prefers explicit runtime option values", () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest({
     executionId: "request-exec",
   });
 
-  const context = engine.normalizeRuntimeContext(request, {
-    workflowRunId: "legacy-workflow",
-  });
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.SINGLE,
+      approvers: [{ type: "role", identifier: "admin", can_delegate: true }],
+      timeout: { warnAfterMs: 1000, escalateAfterMs: 2000, autoActionAfterMs: 3000, autoAction: "deny" },
+      escalation: { escalateTo: { type: "role", identifier: "admin", can_delegate: true }, maxEscalationDepth: 1, notificationChannels: [], escalationTimeoutMs: 5000 },
+      feedbackLoop: { maxIterations: 2, requireReplanOnReject: true },
+    },
+    request,
+    {
+      harnessRunId: "explicit-harness",
+      nodeRunId: "explicit-node",
+    },
+  );
 
-  assert.strictEqual(context.harnessRunId, "legacy-workflow");
+  assert.strictEqual(flow.feedbackLoop?.harnessRunId, "explicit-harness");
+  assert.strictEqual(flow.feedbackLoop?.nodeRunId, "explicit-node");
 });
 
-test("ApprovalFlowEngine normalizeRuntimeContext uses legacy stepId", () => {
+test("ApprovalFlowEngine createFlow falls back to request taskId for harnessRunId", () => {
+  const engine = new ApprovalFlowEngine();
+  const request = createMockApprovalRequest({
+    taskId: "fallback-task-id",
+    executionId: "request-exec",
+  });
+
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.SINGLE,
+      approvers: [{ type: "role", identifier: "admin", can_delegate: true }],
+      timeout: { warnAfterMs: 1000, escalateAfterMs: 2000, autoActionAfterMs: 3000, autoAction: "deny" },
+      escalation: { escalateTo: { type: "role", identifier: "admin", can_delegate: true }, maxEscalationDepth: 1, notificationChannels: [], escalationTimeoutMs: 5000 },
+      feedbackLoop: { maxIterations: 2, requireReplanOnReject: true },
+    },
+    request,
+    {},
+  );
+
+  assert.strictEqual(flow.feedbackLoop?.harnessRunId, "fallback-task-id");
+});
+
+test("ApprovalFlowEngine createFlow uses legacy workflowRunId option as harnessRunId", () => {
+  const engine = new ApprovalFlowEngine();
+  const request = createMockApprovalRequest({
+    executionId: "request-exec",
+  });
+
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.SINGLE,
+      approvers: [{ type: "role", identifier: "admin", can_delegate: true }],
+      timeout: { warnAfterMs: 1000, escalateAfterMs: 2000, autoActionAfterMs: 3000, autoAction: "deny" },
+      escalation: { escalateTo: { type: "role", identifier: "admin", can_delegate: true }, maxEscalationDepth: 1, notificationChannels: [], escalationTimeoutMs: 5000 },
+      feedbackLoop: { maxIterations: 2, requireReplanOnReject: true },
+    },
+    request,
+    {
+      workflowRunId: "legacy-workflow",
+    },
+  );
+
+  assert.strictEqual(flow.feedbackLoop?.harnessRunId, "legacy-workflow");
+  assert.strictEqual(flow.feedbackLoop?.workflowRunId, "legacy-workflow");
+});
+
+test("ApprovalFlowEngine createFlow uses legacy stepId option as nodeRunId", () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
-  const context = engine.normalizeRuntimeContext(request, {
-    stepId: "legacy-step",
-  });
+  const flow = engine.createFlow(
+    {
+      flowType: FlowType.SINGLE,
+      approvers: [{ type: "role", identifier: "admin", can_delegate: true }],
+      timeout: { warnAfterMs: 1000, escalateAfterMs: 2000, autoActionAfterMs: 3000, autoAction: "deny" },
+      escalation: { escalateTo: { type: "role", identifier: "admin", can_delegate: true }, maxEscalationDepth: 1, notificationChannels: [], escalationTimeoutMs: 5000 },
+      feedbackLoop: { maxIterations: 2, requireReplanOnReject: true },
+    },
+    request,
+    {
+      stepId: "legacy-step",
+    },
+  );
 
-  assert.strictEqual(context.nodeRunId, "legacy-step");
+  assert.strictEqual(flow.feedbackLoop?.nodeRunId, "legacy-step");
+  assert.strictEqual(flow.feedbackLoop?.stepId, "legacy-step");
 });

@@ -27,6 +27,19 @@ function seedFullConfigTree(root: string): void {
     appName: "automatic-agent",
     phase: "phase_2a",
     stableCoreEnabled: true,
+    dependencyOrder: ["init", "runtime", "ready"],
+    readinessGates: ["gate-1", "gate-2"],
+    degradationPolicy: {
+      onReadinessFailure: "degrade",
+      allowSummaryMode: true,
+    },
+    healthCheckTimeoutMs: 5000,
+    readinessProbe: {
+      initialDelayMs: 1000,
+      intervalMs: 5000,
+      timeoutMs: 3000,
+      failureThreshold: 3,
+    },
   }));
 
   writeFileSync(join(root, "gateways/default.json"), JSON.stringify({
@@ -57,9 +70,25 @@ function seedFullConfigTree(root: string): void {
   }));
 
   writeFileSync(join(root, "runtime/default.json"), JSON.stringify({
-    maxConcurrentTasks: 2,
+    configVersion: "1.0.0",
+    configSchemaVersion: "1.0",
     defaultTaskTimeoutMs: 300000,
     defaultStepTimeoutMs: 120000,
+    maxConcurrentTasks: 2,
+    apiDefaultTimeoutMs: 30000,
+    apiMaxTimeoutMs: 300000,
+    retryMax: 3,
+    circuitBreaker: {
+      enabled: true,
+      threshold: 5,
+    },
+    rateLimit: {
+      enabled: true,
+      requestsPerMinute: 1000,
+    },
+    configDriftReconciler: {
+      interval: 60000,
+    },
   }));
 
   writeFileSync(join(root, "security/default.json"), JSON.stringify({
@@ -279,9 +308,17 @@ test("config governance: loads bundle with JSONC comments without widening acces
     mkdirSync(join(workspace, "runtime"), { recursive: true });
     writeFileSync(join(workspace, "runtime/default.json"), `{
       // This is a comment within allowed workspace
+      "configVersion": "1.0.0",
+      "configSchemaVersion": "1.0",
       "maxConcurrentTasks": 3,
       "defaultTaskTimeoutMs": 300000,
-      "defaultStepTimeoutMs": 120000
+      "defaultStepTimeoutMs": 120000,
+      "apiDefaultTimeoutMs": 30000,
+      "apiMaxTimeoutMs": 300000,
+      "retryMax": 3,
+      "circuitBreaker": { "enabled": true, "threshold": 5 },
+      "rateLimit": { "enabled": true, "requestsPerMinute": 1000 },
+      "configDriftReconciler": { "interval": 60000 }
     }`);
 
     const service = new ConfigGovernanceService({ configRoot: workspace });

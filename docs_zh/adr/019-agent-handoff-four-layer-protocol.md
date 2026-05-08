@@ -68,5 +68,5 @@ interface HandoffSerializer {
 
 ## 来源章节
 
-- `§12 Agent Handoff`
-- `§13 OAPEFLIR Loop`
+- `§13` OAPEFLIR Agent Handoff 模型（v4.3 架构体系）
+- `§41-§42` 渐进式自主权与 Agent 协作协议

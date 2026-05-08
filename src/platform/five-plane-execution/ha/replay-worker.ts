@@ -6,7 +6,7 @@ import {
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service-root.js";
-import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "./replay-boundary-guard.js";
+import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "../recovery/replay-boundary-guard.js";
 
 export interface ReplayWorkerOptions {
   readonly replayService: Pick<RuntimeRecoveryReplayService, "buildTaskReplayReport">;
@@ -57,6 +57,36 @@ export class ReplayWorker implements RecoveryWorker {
     try {
       this.assertReplayPolicySafe(this.replayPolicy);
       const taskIds = [...await this.options.listTaskIds()];
+
+      // R4-29 (INV-REPLAY-001): Integrate ReplayBoundaryGuard to prevent real side effects during replay
+      // Build replay operations from task replay reports
+      const replayOperations: ReplayOperation[] = taskIds.map((taskId) => ({
+        operationId: `replay:${taskId}`,
+        resourceKind: "tool" as const,
+        hasRealSideEffect: true, // Assume tools have side effects unless proven otherwise
+        tombstoneReplay: false,
+      }));
+
+      // Evaluate whether replay operations are safe before proceeding
+      const replayMode: ReplayMode = this.replayPolicy.mode === "trace_only" ? "trace_replay" : "reexecution_replay";
+      const boundaryDecision = this.boundaryGuard.evaluate(replayMode, replayOperations);
+
+      if (!boundaryDecision.allowed) {
+        return {
+          workerId: this.getWorkerId(),
+          workerType: "replay",
+          startedAt,
+          completedAt: this.now(),
+          durationMs: Date.now() - startedMs,
+          itemsProcessed: 0,
+          itemsRecovered: 0,
+          errors: [{
+            code: boundaryDecision.reasonCode,
+            message: `Replay blocked: ${boundaryDecision.blockedOperationIds.join(", ")}`,
+          }],
+        };
+      }
+
       const reports = taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt));
       const recoveryActiveCount = reports.filter((report) => report.outcome !== "no_recovery_activity").length;
 

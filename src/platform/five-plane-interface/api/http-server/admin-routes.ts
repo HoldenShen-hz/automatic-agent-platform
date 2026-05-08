@@ -77,6 +77,15 @@ export interface AdminRouteDeps {
   adminConfigService?: AdminConfigService | null;
 }
 
+function matchesHarnessRunRoute(segments: string[], expectedLengthWithoutApi: number): boolean {
+  const offset = segments[0] === "api" ? 1 : 0;
+  return (
+    segments[offset] === "v1"
+    && segments[offset + 1] === "harness-runs"
+    && segments.length === expectedLengthWithoutApi + offset
+  );
+}
+
 export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
   return [
     {
@@ -107,6 +116,70 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         assertGlobalTenantScopeSupported(principal, "admin takeover consoles");
         const taskId = validateTaskId(segments[3], "Admin route");
         return buildJsonResponse(ctx.requestId, 200, deps.missionControlService.getAdminTakeoverConsole(taskId));
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (!matchesHarnessRunRoute(segments, 3)) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const limit = readLimit(ctx.request, 50);
+        const workflows = deps.missionControlService.listWorkflowCockpits(limit);
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRuns: workflows.map((workflow) => ({
+            harnessRunId: workflow.workflowId ?? workflow.taskId ?? "unknown-harness-run",
+            taskId: workflow.taskId,
+            workflowId: workflow.workflowId,
+            workflowStatus: workflow.workflowStatus,
+            pendingApprovalCount: workflow.pendingApprovalCount ?? 0,
+            retryCount: workflow.retryCount ?? 0,
+          })),
+          total: workflows.length,
+          limit,
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (!matchesHarnessRunRoute(segments, 4)) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const harnessRunId = validateTaskId(segments[segments.length - 1], "Harness runs route");
+        const workflow = deps.missionControlService.getWorkflowCockpit(harnessRunId);
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRunId,
+          workflow: workflow.summary,
+          inspect: workflow.inspect,
+          timeline: workflow.timeline,
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (!matchesHarnessRunRoute(segments, 5) || segments[segments.length - 1] !== "events") {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const harnessRunId = validateTaskId(segments[segments.length - 2], "Harness run events route");
+        const workflow = deps.missionControlService.getWorkflowCockpit(harnessRunId);
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRunId,
+          events: workflow.timeline?.entries ?? [],
+        });
       },
     },
     {

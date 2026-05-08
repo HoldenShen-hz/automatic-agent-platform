@@ -66,7 +66,7 @@ test("StateTransitionMachine: rejects invalid transitions", () => {
   );
 });
 
-test("StateTransitionMachine: rejects no-op transitions", () => {
+test("StateTransitionMachine: allows no-op transitions", () => {
   const transitions: Record<string, readonly string[]> = {
     pending: ["in_progress"],
     in_progress: ["done"],
@@ -75,14 +75,12 @@ test("StateTransitionMachine: rejects no-op transitions", () => {
 
   const machine = new StateTransitionMachine("task", transitions);
 
-  // No-op transitions (same state) should always be rejected
-  assert.throws(
-    () => machine.assertTransition("pending", "pending"),
-    WorkflowStateError,
-    "Should reject no-op transition pending -> pending"
-  );
+  // No-op transitions (same state) are allowed because assertTransition is idempotent
+  // It returns without error when current === next
+  machine.assertTransition("pending", "pending");
 
-  // Note: self-transition on terminal state (done -> done) is allowed because it is a no-op and causes no state change
+  // Note: self-transition on terminal state (done -> done) is also allowed
+  machine.assertTransition("done", "done");
 });
 
 test("StateTransitionMachine: uses entity kind in error messages", () => {

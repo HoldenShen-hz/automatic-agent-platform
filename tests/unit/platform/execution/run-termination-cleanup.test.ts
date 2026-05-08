@@ -13,7 +13,7 @@ test("RunTerminationCleanup emits cleanup_completed and includes callback in cle
   const completed: unknown[] = [];
   const failed: unknown[] = [];
 
-  const result = await cleanup.executeAsync({
+  const result = cleanup.execute({
     runId: "run_123",
     tenantId: "tenant_123",
     terminalStatus: "completed",
@@ -47,7 +47,7 @@ test("RunTerminationCleanup emits cleanup_failed when a handler is missing", asy
   const completed: unknown[] = [];
   const failed: Array<{ result: unknown; error: string }> = [];
 
-  const result = await cleanup.executeAsync({
+  const result = cleanup.execute({
     runId: "run_456",
     tenantId: "tenant_456",
     terminalStatus: "failed",

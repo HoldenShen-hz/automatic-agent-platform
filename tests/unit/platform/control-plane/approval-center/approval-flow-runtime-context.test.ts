@@ -85,9 +85,11 @@ test("ApprovalFlowEngine prefers canonical request runtime ids when no override 
       attachments: [],
       metadata: {},
       context: {},
+      executionId: "legacy-run-002",
+    },
+    {
       harnessRunId: "harness-run-002",
       nodeRunId: "node-run-002",
-      executionId: "legacy-run-002",
     },
   );
 

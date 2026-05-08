@@ -51,6 +51,8 @@ export interface JudgeProfileRecord {
   providerFamily: string;
   modelId: string;
   capabilities: string[];
+  /** R2-10: Risk levels this judge can independently evaluate */
+  supportedRiskLevels: readonly ("critical" | "high" | "medium" | "low")[];
   maxCostUsd: number;
   status: JudgeProfileStatus;
   createdAt: string;
@@ -214,6 +216,8 @@ export class EvalDatasetJudgeService {
     providerFamily?: string;
     modelId: string;
     capabilities?: readonly string[];
+    /** R2-10: Risk levels this judge can independently evaluate - must include the level being judged */
+    supportedRiskLevels?: readonly ("critical" | "high" | "medium" | "low")[];
     maxCostUsd: number;
     status?: JudgeProfileStatus;
   }): JudgeProfileRecord {
@@ -231,6 +235,7 @@ export class EvalDatasetJudgeService {
       providerFamily: normalizeRequired(input.providerFamily ?? input.provider, "providerFamily"),
       modelId: normalizeRequired(input.modelId, "modelId"),
       capabilities: dedupeStrings(input.capabilities ?? ["llm_judge"]),
+      supportedRiskLevels: input.supportedRiskLevels ?? ["critical", "high", "medium", "low"],
       maxCostUsd: normalizePositiveNumber(input.maxCostUsd, "maxCostUsd"),
       status: input.status ?? "ready",
       createdAt: now,
@@ -297,6 +302,15 @@ export class EvalDatasetJudgeService {
         });
         continue;
       }
+      // R2-10: Validate judge independence - ensure judge can evaluate this risk level
+      const caseRiskLevel = testCase.priority === "critical" ? "critical" : "medium";
+      if (selectedJudge != null && !selectedJudge.supportedRiskLevels.includes(caseRiskLevel)) {
+        throw new ValidationError(
+          `eval_judge.risk_level_unsupported:${selectedJudge.judgeId}`,
+          `Judge profile ${selectedJudge.judgeId} does not support ${caseRiskLevel} risk level evaluation. Supported: ${selectedJudge.supportedRiskLevels.join(", ")}`,
+        );
+      }
+
       const criterionSignals = submission.criterionSignals ?? {};
       const metadata = submission.metadata ?? {};
       const criterionResults = testCase.qualityCriteria.map((criterion) => this.evaluateCriterion({
@@ -344,8 +358,13 @@ export class EvalDatasetJudgeService {
     if (passRate < policy.minPassRate) {
       blockingFindings.push(`pass_rate_below_threshold:${passRate}`);
     }
-    if (policy.requireCriticalPass && criticalPassRate < 1) {
-      blockingFindings.push(`critical_case_failed:${criticalPassRate}`);
+    // R2-12: When critical_case_pass==100%, add advisory finding but do not block release
+    if (policy.requireCriticalPass) {
+      if (criticalPassRate < 1) {
+        blockingFindings.push(`critical_case_failed:${criticalPassRate}`);
+      } else if (criticalPassRate === 1) {
+        advisoryFindings.push(`critical_case_pass_rate_100:${criticalPassRate}`);
+      }
     }
     if (input.baseline?.averageLatencyMs != null && input.baseline.averageLatencyMs > 0) {
       const ratio = averageLatencyMs / input.baseline.averageLatencyMs;

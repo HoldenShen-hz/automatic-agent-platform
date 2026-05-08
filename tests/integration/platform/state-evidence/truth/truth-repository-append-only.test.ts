@@ -413,7 +413,7 @@ test("truth-repository: Cost events append-only tracking", () => {
     });
 
     // List cost events for task
-    const events = ctx.store.listCostEventsForTask(taskId);
+    const events = ctx.store.listCostEventsByTask(taskId);
     assert.equal(events.length, costs.length, "Should have all cost events");
 
     // Verify total cost accumulation (append-only aggregate)

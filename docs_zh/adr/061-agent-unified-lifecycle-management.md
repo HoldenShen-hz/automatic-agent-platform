@@ -36,13 +36,18 @@ interface AgentComponent {
 | 状态 | 说明 |
 |------|------|
 | draft | 草稿 |
+| requirements_locked | 需求锁定 |
 | testing | 测试中 |
 | staging | 预发布 |
 | production | 生产 |
 | deprecated | 废弃 |
 | retired | 退役 |
+| archived | 归档 |
 
-### 版本管理
+约束：
+- 状态流转顺序：draft → requirements_locked → testing → staging → production → deprecated → retired → archived
+- requirements_locked 后不再接受轻率需求变更，需走变更委员会流程
+- archived 状态保留审计历史，不可逆回活跃态
 
 - Semantic versioning (major.minor.patch)
 - 版本兼容性检查

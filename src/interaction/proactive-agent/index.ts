@@ -108,6 +108,8 @@ interface TriggerRuntimeState {
   fireTimestamps: string[];
   consecutiveFailures: number;
   fireCount: number;
+  /** R5-29: Batched events pending aggregation */
+  pendingEvents: Array<{ timestamp: number; event: TriggerEvaluationInput["event"] }>;
 }
 
 function parseDurationMs(raw: string): number {
@@ -226,6 +228,8 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       fireTimestamps: [],
       consecutiveFailures: 0,
       fireCount: 0,
+      // R5-29: Initialize pending events for batch aggregation
+      pendingEvents: [],
     });
     this.detectFeedbackLoop(definition.triggerId);
   }
@@ -298,6 +302,24 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       reasons.push("proactive_agent.trigger_condition_not_met");
     }
 
+    // R5-29: Batch window aggregation - accumulate events for batch evaluation
+    const triggerConfig = state.trigger.config;
+    if ("batchWindow" in triggerConfig && triggerConfig.batchWindow != null && input.event != null) {
+      const batchWindowMs = parseDurationMs(triggerConfig.batchWindow);
+      if (batchWindowMs > 0) {
+        // Add event to pending batch
+        state.pendingEvents.push({ timestamp: now, event: input.event });
+        // Filter out expired events from batch
+        state.pendingEvents = state.pendingEvents.filter(
+          (e) => now - e.timestamp <= batchWindowMs,
+        );
+        // R5-29: If batch has multiple events, only fire when batch window closes
+        if (state.pendingEvents.length > 1) {
+          reasons.push("proactive_agent.batch_aggregation_pending");
+        }
+      }
+    }
+
     if (reasons.length > 0) {
       return {
         allowed: false,
@@ -319,7 +341,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
         ? "silent_record"
         : state.trigger.action.actionType === "update_dashboard"
           ? "silent_record"
-          : "auto_execute";
+          // R5-24: medium risk proactive actions cannot auto_execute; R5-25: high also cannot
+          : state.trigger.riskLevel === "medium" || state.trigger.riskLevel === "high"
+            ? "suggest"
+            : "auto_execute";
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {

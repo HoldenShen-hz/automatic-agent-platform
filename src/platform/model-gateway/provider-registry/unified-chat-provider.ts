@@ -69,11 +69,14 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
+  /** @required for audit - caller must provide traceId for request correlation */
   traceId?: string;
-  spanId?: string;
+  /** @required for audit - caller must provide tenantId for multi-tenant isolation */
   tenantId?: string | null;
-  principalId?: string | null;
+  /** @required for audit - caller must provide costTag for chargeback attribution */
   costTag?: string;
+  spanId?: string;
+  principalId?: string | null;
   timeoutMs?: number;
   abortSignal?: AbortSignal;
   validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
@@ -336,15 +339,41 @@ export class UnifiedChatProvider {
   public async createStreamingChatCompletion(
     request: ChatCompletionRequest,
     onChunk: (chunk: ChatCompletionResult, isFinal: boolean) => void,
+    options?: {
+      /** Enable incremental budget deduction tracking during streaming */
+      enableIncrementalBudgetDeduction?: boolean;
+      /** Called to validate and record partial response chunks */
+      onPartialChunk?: (chunk: ChatCompletionResult) => { allowed: boolean; deductAmount?: number };
+    },
   ): Promise<void> {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
+    const startedAt = Date.now();
+    let firstChunkLatencyMs: number | null = null;
+    let metricsRecorded = false;
+    let totalTokensSeen = 0;
     const runtimeSignal = this.buildRuntimeSignal(request.abortSignal, request.timeoutMs);
     const runtimeRequest = runtimeSignal === request.abortSignal || runtimeSignal === undefined
       ? request
       : { ...request, abortSignal: runtimeSignal };
+
+    // R2-2: Validate abort signal at stream start to fail fast
+    this.assertNotAborted(runtimeSignal);
+
+    const recordStreamingLatency = (model: string): void => {
+      if (metricsRecorded) {
+        return;
+      }
+      metricsRecorded = true;
+      runtimeMetricsRegistry.recordLlmLatency(
+        firstChunkLatencyMs != null ? firstChunkLatencyMs / 1000 : null,
+        (Date.now() - startedAt) / 1000,
+        model,
+        provider,
+      );
+    };
 
     switch (provider) {
       case "anthropic": {
@@ -352,9 +381,26 @@ export class UnifiedChatProvider {
         const runStreaming = () => anthropicService.createStreamingChatCompletion(
           this.toAnthropicRequest(runtimeRequest),
           (chunk, isFinal) => {
+            firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeAnthropicResult(chunk, provider, request.model, 0);
+
+            // R2-2: Validate partial response if callback provided
+            if (options?.onPartialChunk) {
+              const validation = options.onPartialChunk(normalized);
+              if (!validation.allowed) {
+                throw new Error("streaming.partial_response_validation_failed");
+              }
+              // R2-2: Incremental budget deduction for streaming
+              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                totalTokensSeen += normalized.usage.completionTokens ?? 0;
+              }
+            }
+
             request.validatePartialChunk?.(normalized, isFinal);
             onChunk(normalized, isFinal);
+            if (isFinal) {
+              recordStreamingLatency(normalized.model);
+            }
           },
         );
         if (breaker != null) {
@@ -362,6 +408,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
+        recordStreamingLatency(request.model);
         return;
       }
       case "openai": {
@@ -369,9 +416,25 @@ export class UnifiedChatProvider {
         const runStreaming = () => openaiService.createStreamingChatCompletion(
           this.toOpenAIRequest(runtimeRequest),
           (chunk, isFinal) => {
+            firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeOpenAIResult(chunk, provider, request.model, 0);
+
+            // R2-2: Validate partial response if callback provided
+            if (options?.onPartialChunk) {
+              const validation = options.onPartialChunk(normalized);
+              if (!validation.allowed) {
+                throw new Error("streaming.partial_response_validation_failed");
+              }
+              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                totalTokensSeen += normalized.usage.completionTokens ?? 0;
+              }
+            }
+
             request.validatePartialChunk?.(normalized, isFinal);
             onChunk(normalized, isFinal);
+            if (isFinal) {
+              recordStreamingLatency(normalized.model);
+            }
           },
         );
         if (breaker != null) {
@@ -379,6 +442,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
+        recordStreamingLatency(request.model);
         return;
       }
       case "minimax": {
@@ -386,9 +450,23 @@ export class UnifiedChatProvider {
         const runStreaming = () => minimaxService.createStreamingChatCompletion(
           this.toMiniMaxRequest(runtimeRequest),
           (chunk) => {
+            firstChunkLatencyMs ??= Date.now() - startedAt;
             const normalized = this.normalizeMiniMaxResult(chunk, provider, request.model, 0);
+
+            // R2-2: Validate partial response if callback provided
+            if (options?.onPartialChunk) {
+              const validation = options.onPartialChunk(normalized);
+              if (!validation.allowed) {
+                throw new Error("streaming.partial_response_validation_failed");
+              }
+              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                totalTokensSeen += normalized.usage.completionTokens ?? 0;
+              }
+            }
+
             request.validatePartialChunk?.(normalized, false);
             onChunk(normalized, false);
+            recordStreamingLatency(normalized.model);
           },
         );
         if (breaker != null) {
@@ -396,6 +474,7 @@ export class UnifiedChatProvider {
         } else {
           await runStreaming();
         }
+        recordStreamingLatency(request.model);
         return;
       }
     }
@@ -404,8 +483,9 @@ export class UnifiedChatProvider {
   public async streamChat(
     request: ChatCompletionRequest,
     onChunk: (chunk: ChatCompletionResult, isFinal: boolean) => void,
+    options?: Parameters<UnifiedChatProvider["createStreamingChatCompletion"]>[2],
   ): Promise<void> {
-    await this.createStreamingChatCompletion(request, onChunk);
+    await this.createStreamingChatCompletion(request, onChunk, options);
   }
 
   public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {

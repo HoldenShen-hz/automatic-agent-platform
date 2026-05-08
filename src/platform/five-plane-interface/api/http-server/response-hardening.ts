@@ -13,7 +13,7 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedOrigins: ["*"],
   allowedMethods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
-  exposedHeaders: ["x-request-id", "x-api-version", "x-app-version"],
+  exposedHeaders: ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"],
   maxAgeSeconds: 86_400,
   credentials: true,
 };
@@ -99,11 +99,15 @@ export function decorateResponseHeaders(
   origin: string | undefined,
   corsConfig: CorsConfig,
 ): ApiResponsePayload {
+  const traceId = payload.headers["x-trace-id"]
+    ?? payload.headers["x-correlation-id"]
+    ?? payload.headers["x-request-id"];
   const headers: Record<string, string> = {
     ...payload.headers,
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
+    ...(traceId != null ? { "x-trace-id": traceId, "X-Trace-Id": traceId } : {}),
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);
   if (allowOrigin != null) {

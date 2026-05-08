@@ -49,8 +49,8 @@
 
 ## 4. CostEvent 最小字段
 
-- `task_id`
-- `harness_run_id?`
+- `harness_run_id`
+- `task_id?`
 - `node_run_id?`
 - `attempt_id?`
 - `session_id?`

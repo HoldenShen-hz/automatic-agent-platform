@@ -15,6 +15,10 @@ export interface PluginContextConfig {
   userId?: string;
   sessionId?: string;
   sandboxTier?: SandboxModeLike;
+  /** R2-11: Call depth tracking for nested plugin invocations */
+  callDepth?: number;
+  /** R2-11: Delegation depth for plugin-to-plugin delegation chain */
+  delegationDepth?: number;
   resourceLimits?: {
     maxMemoryMb?: number;
     maxCpuMs?: number;
@@ -24,6 +28,8 @@ export interface PluginContextConfig {
 
 type NormalizedPluginContextConfig = Omit<Required<PluginContextConfig>, "sandboxTier"> & {
   sandboxTier: SandboxMode;
+  callDepth: number;
+  delegationDepth: number;
 };
 
 export interface ContextValue {
@@ -53,6 +59,8 @@ export class PluginContext {
       tenantId: config.tenantId ?? "default",
       userId: config.userId ?? "anonymous",
       sessionId: config.sessionId ?? "none",
+      callDepth: config.callDepth ?? 0,
+      delegationDepth: config.delegationDepth ?? 0,
       sandboxTier: normalizeSandboxMode(config.sandboxTier),
       resourceLimits: config.resourceLimits ?? {},
     };
@@ -60,6 +68,8 @@ export class PluginContext {
     // Initialize with system context
     this.setValue("system.plugin_id", config.pluginId, "system");
     this.setValue("system.timestamp", new Date().toISOString(), "system");
+    this.setValue("system.call_depth", this.config.callDepth, "system");
+    this.setValue("system.delegation_depth", this.config.delegationDepth, "system");
   }
 
   /**
@@ -102,6 +112,20 @@ export class PluginContext {
    */
   get sandboxTier(): SandboxMode {
     return this.config.sandboxTier;
+  }
+
+  /**
+   * R2-11: Get the current call depth for nested plugin invocations.
+   */
+  get callDepth(): number {
+    return this.config.callDepth;
+  }
+
+  /**
+   * R2-11: Get the current delegation depth for plugin-to-plugin delegation.
+   */
+  get delegationDepth(): number {
+    return this.config.delegationDepth;
   }
 
   /**
@@ -155,6 +179,7 @@ export class PluginContext {
 
   /**
    * Create a child context for sub-execution.
+   * R2-11: Forks automatically increment callDepth; delegationDepth increments on explicit delegation.
    */
   fork(overrides: Partial<PluginContextConfig>): PluginContext {
     return new PluginContext({
@@ -165,6 +190,8 @@ export class PluginContext {
       tenantId: overrides.tenantId ?? this.config.tenantId,
       userId: overrides.userId ?? this.config.userId,
       sessionId: overrides.sessionId ?? this.config.sessionId,
+      callDepth: overrides.callDepth ?? (this.config.callDepth + 1),
+      delegationDepth: overrides.delegationDepth ?? this.config.delegationDepth,
       sandboxTier: overrides.sandboxTier ?? this.config.sandboxTier,
       resourceLimits: overrides.resourceLimits ?? this.config.resourceLimits,
     });

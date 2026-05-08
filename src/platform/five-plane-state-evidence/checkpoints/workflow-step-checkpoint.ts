@@ -217,7 +217,7 @@ export function summarizeWorkflowStepCheckpoint(
   const output = checkpoint.output as { summary?: unknown } | null;
   return {
     artifactId,
-    stepId: checkpoint.stepId,
+    nodeRunId: checkpoint.nodeRunId,
     workflowId: checkpoint.workflowId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
@@ -234,13 +234,16 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
   }
 
   const candidate = value as Record<string, unknown>;
+  // R4-18 FIX: Check harnessRunId/nodeRunId/planGraphId instead of stepId
   if (
     candidate.schemaVersion !== WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION
     || typeof candidate.taskId !== "string"
     || (candidate.executionId !== null && typeof candidate.executionId !== "string")
     || typeof candidate.workflowId !== "string"
     || typeof candidate.divisionId !== "string"
-    || typeof candidate.stepId !== "string"
+    || typeof candidate.harnessRunId !== "string"
+    || typeof candidate.nodeRunId !== "string"
+    || typeof candidate.planGraphId !== "string"
     || typeof candidate.roleId !== "string"
     || typeof candidate.outputKey !== "string"
     || typeof candidate.status !== "string"

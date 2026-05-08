@@ -101,6 +101,44 @@ type ImprovementCandidateStatus =
   | 'rolled_back';
 ```
 
+#### ImprovementCandidate 状态机转换图
+
+```
+                   人工拒绝
+candidate_created ──→ rejected
+      ↑
+      │ 自动评估触发
+      │
+under_review ──→ approved
+      ↑                  │
+      │                  ↓
+      │            evaluation_enabled (L1)
+      │                  │
+      │                  ↓ (指标达标)
+      │              canary_5 (L2)
+      │                  │
+      │                  ↓ (持续 N 分钟无回滚)
+      │              partial_25 (L3)
+      │                  │
+      │                  ↓ (持续 N 分钟无回滚)
+      │              stable_75 (L4)
+      │                  │
+      │                  ↓ (持续 N 分钟无回滚)
+      │              stable_100 (L5)
+      │                  │
+      │                  ↓ (稳定运行 M 天)
+      │              released
+      │
+      │ 任何阶段指标超标
+      ↓              ←── auto_rollback
+auto_rollback → rolled_back
+
+约束：
+- `candidate_created` 为初态，`rejected` / `rolled_back` 为终态
+- `auto_rollback` 触发后只允许流转到 `rolled_back`，不允许直接恢复
+- `released` 后若发现严重问题，需走变更委员会流程方可回退
+```
+
 ### 6. Autonomy Boundary（自主边界）
 
 | 级别 | AI 自主权限 | 人类审批 |

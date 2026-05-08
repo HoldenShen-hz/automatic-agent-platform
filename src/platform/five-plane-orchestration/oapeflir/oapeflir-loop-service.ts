@@ -1,4 +1,6 @@
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
+import type { ConstraintPack, HarnessDecision } from "../harness/index.js";
+import { createPlanGraphBundle, createGraphPatch, type GraphPatch, type PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
   DualChannelStepOutput,
@@ -48,6 +50,10 @@ import {
   BOUNDARY_STRATEGY,
   type ValidationResult,
 } from "./schemas/validators.js";
+import { StageTransitionFSM, createStageTransitionFSM } from "./stage-transition-fsm.js";
+import { HarnessLoopController } from "../harness/loop/index.js";
+import { newId } from "../../contracts/types/ids.js";
+import { nowIso } from "../../contracts/types/ids.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -63,6 +69,7 @@ export interface OapeflirLoopResult {
   observation: UnifiedObservation;
   assessment: UnifiedAssessment;
   plan: Plan;
+  planGraphBundle: PlanGraphBundle;
   stepOutputs: DualChannelStepOutput[];
   feedback: FeedbackBatch;
   learningSignals: LearningSignal[];
@@ -70,8 +77,18 @@ export interface OapeflirLoopResult {
   rolloutRecord: RolloutRecord | null;
   timeline: OapeflirStageRecord[];
   outcome: ExecutionOutcomeEvaluation;
+  evaluationReport: EvaluationReport;
   qualityGate: PostExecutionQualityGateDecision;
   replanDecision: ReplanningDecision;
+  graphPatch: GraphPatch | null;
+  harnessDecision: HarnessDecision | null;
+}
+
+export interface EvaluationReport {
+  verdict: "accept" | "replan" | "retry" | "escalate";
+  score: number;
+  evidenceRefs: readonly string[];
+  notes?: string;
 }
 
 export interface OapeflirLoopServiceOptions {
@@ -207,6 +224,9 @@ export class OapeflirLoopService {
         throw planValidation.error;
       }
 
+      // R5-1: Build PlanGraphBundle from Plan
+      const planGraphBundle = this.buildPlanGraphBundle(plan, input.taskId, input.workflow.executionSteps.length);
+
       const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
         input.stepOutputs ?? await this.executeViaBridge(plan, { taskId: input.taskId })
       ), {
@@ -282,6 +302,18 @@ export class OapeflirLoopService {
         qualityGate.reasonCodes.join(","),
       );
       const replanDecision = this.replanning.decide(plan, feedback, replanTrigger);
+
+      // R5-7: Build EvaluationReport from ExecutionOutcomeEvaluation
+      const evaluationReport: EvaluationReport = {
+        verdict: qualityGate.accepted ? "accept" : outcome.nextAction === "replan" ? "replan" : outcome.nextAction === "retry" ? "retry" : "escalate",
+        score: outcome.qualityScore,
+        evidenceRefs: outcome.reasons,
+        notes: outcome.reasons.join("; "),
+      };
+
+      // R5-12: Build GraphPatch if replan is needed
+      const graphPatch = replanDecision.shouldReplan ? this.buildGraphPatch(plan, plan.version + 1) : null;
+
       let rolloutRecord: RolloutRecord | null = null;
 
       if (learningObjects.length > 0) {
@@ -359,6 +391,7 @@ export class OapeflirLoopService {
         observation: taskObservation,
         assessment,
         plan,
+        planGraphBundle,
         stepOutputs,
         feedback,
         learningSignals,
@@ -366,8 +399,11 @@ export class OapeflirLoopService {
         rolloutRecord,
         timeline: timeline.build(),
         outcome,
+        evaluationReport,
         qualityGate,
         replanDecision,
+        graphPatch,
+        harnessDecision: null,
       };
     });
   }
@@ -467,5 +503,119 @@ export class OapeflirLoopService {
       return payload.summary;
     }
     return "";
+  }
+
+  /**
+   * R5-1: Builds a PlanGraphBundle from a Plan per §13.7 "Plan must be Graph"
+   */
+  private buildPlanGraphBundle(plan: Plan, taskId: string, stepCount: number): PlanGraphBundle {
+    const nodes = plan.steps.map((step, index) => ({
+      nodeId: step.stepId,
+      nodeType: "execution" as const,
+      inputRefs: step.dependencies.length > 0 ? step.dependencies : [`task:${taskId}`],
+      outputSchemaRef: `schema:step.${step.stepId}`,
+      riskClass: "medium" as const,
+      budgetIntent: {
+        amount: 1000,
+        currency: "USD",
+        resourceKinds: ["compute"] as const,
+      },
+      sideEffectProfile: {
+        mayCommitExternalEffect: false,
+        reversible: true,
+      },
+      retryPolicyRef: `retry:plan.${plan.version}.step.${index}`,
+      timeoutMs: step.timeout,
+    }));
+
+    const edges: Array<{
+      edgeId: string;
+      fromNodeId: string;
+      toNodeId: string;
+      condition: { type: "always" };
+      dependencyType: "hard";
+    }> = [];
+
+    // Create edges based on dependencies
+    for (const step of plan.steps) {
+      for (const depId of step.dependencies) {
+        edges.push({
+          edgeId: newId("graph_edge"),
+          fromNodeId: depId,
+          toNodeId: step.stepId,
+          condition: { type: "always" },
+          dependencyType: "hard",
+        });
+      }
+    }
+
+    const entryNodeIds = plan.steps
+      .filter((step) => step.dependencies.length === 0)
+      .map((step) => step.stepId);
+
+    const terminalNodeIds = plan.steps
+      .filter((step) => !plan.steps.some((s) => s.dependencies.includes(step.stepId)))
+      .map((step) => step.stepId);
+
+    return createPlanGraphBundle({
+      harnessRunId: `harness:${taskId}`,
+      graphVersion: plan.version,
+      graph: {
+        graphId: newId("graph"),
+        nodes,
+        edges,
+        entryNodeIds,
+        terminalNodeIds,
+        joinStrategy: "all",
+        graphHash: `plan:${plan.planId}:v${plan.version}`,
+      },
+      schedulerPolicy: {
+        policyId: "scheduler:oapeflir.default",
+        strategy: "deterministic_fifo",
+      },
+      budgetPlanRef: `budget:plan.${plan.planId}`,
+      riskProfile: {
+        riskClass: "medium",
+        reasons: [`plan:${plan.planId}`],
+      },
+    });
+  }
+
+  /**
+   * R5-12: Builds a GraphPatch from a Plan for replanning per §13.13
+   */
+  private buildGraphPatch(basePlan: Plan, newVersion: number): GraphPatch {
+    const operations = basePlan.steps.map((step) => ({
+      operationId: newId("graph_op"),
+      operationType: "add_node" as const,
+      targetRef: step.stepId,
+      payload: {
+        stepId: step.stepId,
+        action: step.action,
+        title: step.title,
+        inputs: step.inputs,
+        outputs: step.outputs,
+        dependencies: step.dependencies,
+        timeout: step.timeout,
+      },
+    }));
+
+    return createGraphPatch({
+      harnessRunId: `harness:${basePlan.taskId}`,
+      baseGraphVersion: basePlan.version,
+      newGraphVersion: newVersion,
+      operations,
+      affectedExecutedNodes: [],
+      affectedSideEffects: [],
+      compatibilityClass: "safe_append",
+      policyProofRef: {
+        artifactId: `policy:${basePlan.taskId}`,
+        uri: `policy://${basePlan.taskId}`,
+      },
+      auditRef: {
+        artifactId: `audit:${basePlan.taskId}`,
+        uri: `audit://${basePlan.taskId}`,
+      },
+    });
   }
 }

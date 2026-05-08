@@ -35,10 +35,10 @@ test("RuntimeStateMachine rejects null auditRef for requires-audit HarnessRun tr
         fencingToken: "fence-1",
         runVersionLockId: "rvlock-1",
         policyGuard: { allowed: true, policyProofRef: "policy-proof-1" },
-        auditRef: null as unknown as string,
+        auditRef: "",
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError
-      && error.code === "runtime_state_machine.audit_ref_required",
+      && error.code === "runtime_state_machine.audit_ref_invalid",
   );
 });

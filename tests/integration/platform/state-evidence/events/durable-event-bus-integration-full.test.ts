@@ -525,7 +525,6 @@ test("typed event bus: publish with type-safe payload", async () => {
     assert.equal(received.length, 1);
     assert.equal(received[0].toStatus, "in_progress");
 
-    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -567,7 +566,6 @@ test("typed event bus: subscribe to multiple event types", async () => {
     assert.ok(receivedTypes.includes("workflow:step_completed"));
     assert.ok(!receivedTypes.includes("division:completed"), "Should not receive unsubscribed event");
 
-    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -616,7 +614,6 @@ test("typed event bus: delivers skill events with correct payload", async () => 
     assert.equal(received[0].stepId, "step-skill-1");
     assert.equal(received[0].attempt, 1);
 
-    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -656,7 +653,6 @@ test("typed event bus: delivers domain lifecycle events", async () => {
     assert.equal(received[0].domainId, "test-domain");
     assert.equal(received[0].status, "active");
 
-    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);

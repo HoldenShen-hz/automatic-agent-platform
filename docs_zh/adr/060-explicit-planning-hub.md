@@ -122,5 +122,6 @@ Execute 层通过此接口接收 Plan，不得绕过。
 ## 来源章节
 
 - `§5` Plan Hub 设计
-- `§L.6` R3 约束定义
-- `§H.2` PlanStrategySelector 决策树
+- `§5.3` PlanGraphBundle 定义
+- `§L.4` R3 约束定义
+- `§L.5` ReplanningTrigger

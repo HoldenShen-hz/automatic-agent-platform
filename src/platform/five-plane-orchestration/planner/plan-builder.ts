@@ -4,6 +4,7 @@ import { createAssessmentRef, parsePlan, type Plan, type PlanStep, type TaskSitu
 import { TaskDecompositionService } from "./task-decomposition-service.js";
 import { PlanDagValidator } from "./plan-dag-validator.js";
 import { PlanStrategySelector } from "./plan-strategy-selector.js";
+import { PlanGraphNormalizer, type GraphNormalizationResult } from "./plan-graph-normalizer.js";
 
 export interface PlanBuilderInput {
   observation: TaskSituation;
@@ -13,12 +14,18 @@ export interface PlanBuilderInput {
   parentVersion?: number;
 }
 
+export interface BuildPlanOptions {
+  normalizeGraph?: boolean;
+  propagateRisk?: boolean;
+}
+
 export class PlanBuilder {
   private readonly decomposition = new TaskDecompositionService();
   private readonly dagValidator = new PlanDagValidator();
   private readonly strategySelector = new PlanStrategySelector();
+  private readonly graphNormalizer = new PlanGraphNormalizer();
 
-  public build(input: PlanBuilderInput): Plan {
+  public build(input: PlanBuilderInput, options: BuildPlanOptions = {}): Plan {
     const decomposed = this.decomposition.decompose(input.workflow);
     const steps: PlanStep[] = decomposed.map((item, index) => ({
       stepId: input.workflow.executionSteps[index]?.stepId ?? `step_${index + 1}`,
@@ -41,23 +48,32 @@ export class PlanBuilder {
     const dagValidation = this.dagValidator.validate(steps);
     const strategy = this.strategySelector.select(input);
 
+    // R5-9: Apply graph normalization and risk propagation if enabled
+    let normalizedSteps = dagValidation.orderedSteps;
+    if (options.normalizeGraph) {
+      const normalizationResult = this.graphNormalizer.normalize(steps, input.assessment);
+      if (normalizationResult.valid) {
+        normalizedSteps = normalizationResult.normalizedSteps;
+      }
+    }
+
     return parsePlan({
       planId: newId("plan"),
       taskId: input.observation.taskId,
       assessmentRef: createAssessmentRef(input.assessment),
       version: input.version ?? 1,
       strategy: input.version != null && input.version > 1 ? "replanned" : strategy,
-      steps: dagValidation.orderedSteps,
+      steps: normalizedSteps,
       createdAt: Date.now(),
       parentVersion: input.parentVersion,
     });
   }
 
-  public replan(previousPlan: Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">): Plan {
+  public replan(previousPlan: Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">, options: BuildPlanOptions = {}): Plan {
     return this.build({
       ...input,
       version: previousPlan.version + 1,
       parentVersion: previousPlan.version,
-    });
+    }, options);
   }
 }

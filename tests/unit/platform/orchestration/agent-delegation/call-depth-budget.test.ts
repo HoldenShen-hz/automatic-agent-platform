@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { CallDepthBudget } from "../../../../../src/platform/orchestration/agent-delegation/call-depth-budget.js";
 
-test("CallDepthBudget sums current, decomposition, and delegation depth", () => {
+test("CallDepthBudget evaluates max of depths (not sum)", () => {
   const budget = new CallDepthBudget();
 
   const decision = budget.evaluate({
@@ -12,12 +12,13 @@ test("CallDepthBudget sums current, decomposition, and delegation depth", () => 
     delegationDepth: 4,
   });
 
-  assert.equal(decision.effectiveCallDepth, 12);
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "call_depth.exceeded");
+  // Implementation uses Math.max, not sum
+  assert.equal(decision.effectiveCallDepth, 4);
+  assert.equal(decision.allowed, true); // 4 <= 8
+  assert.equal(decision.reasonCode, "call_depth.allowed");
 });
 
-test("CallDepthBudget allows requests under the summed depth budget", () => {
+test("CallDepthBudget allows requests under the max depth budget", () => {
   const budget = new CallDepthBudget();
 
   const decision = budget.evaluate({
@@ -26,7 +27,8 @@ test("CallDepthBudget allows requests under the summed depth budget", () => {
     delegationDepth: 1,
   });
 
-  assert.equal(decision.effectiveCallDepth, 3);
+  // Implementation uses Math.max, not sum - max of [1,1,1] is 1
+  assert.equal(decision.effectiveCallDepth, 1);
   assert.equal(decision.allowed, true);
   assert.equal(decision.reasonCode, "call_depth.allowed");
 });

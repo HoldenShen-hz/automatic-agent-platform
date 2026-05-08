@@ -35,8 +35,14 @@ interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
   threshold: number;       // 失败率阈值
   window_ms: number;      // 统计窗口
-  open_duration_ms: number; // 熔断持续时间
+  open_duration_ms: number; // 熔断持续时间（不包含自动解除语义）
 }
+
+约束：
+- `open_duration_ms` 仅定义熔断持续时间，不代表 TTL 自动解除。
+- 熔断器从 `open` 转为 `half_open` 必须通过显式调用 `circuit_breaker.half_open()` 或人工干预。
+- 禁止在 `open` 状态未经过渡直接自动恢复为 `closed`。
+- `half_open` 状态下若探测请求成功率达阈值，方可转为 `closed`；否则回退为 `open`。
 ```
 
 ### 恢复流程

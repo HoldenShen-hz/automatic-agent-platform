@@ -71,7 +71,14 @@ const CLARIFICATION_THRESHOLD = 0.7;  // 置信度 < 0.7 → 人工辅助
 
 ```typescript
 const DEFAULT_MAX_DEPTH = 5;  // 最大分解深度 5 层
+const GLOBAL_CALL_DEPTH_CAP = 8;  // 全局调用深度硬帽，目标分解递归不得超过此限制
 ```
+
+约束：
+- `DEFAULT_MAX_DEPTH` 定义单次目标分解的递归深度上限。
+- `GLOBAL_CALL_DEPTH_CAP` 为系统级硬帽，防止递归嵌套过深导致栈溢出。
+- 实际分解层级受两者共同约束，取较小值。
+- 超过 `GLOBAL_CALL_DEPTH_CAP` 时必须终止分解并上报 `call_depth_exceeded` 错误。
 
 ### GoalProjection 与 HarnessRun 生命周期关系
 

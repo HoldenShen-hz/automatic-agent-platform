@@ -41,8 +41,7 @@ test("integration: TypedEventBus publishes typed event and persists with correct
     assert.equal(event.eventType, "task:status_changed");
     assert.equal(event.eventTier, "tier_1");
 
-    bus.dispose();
-  } finally {
+      } finally {
     ctx.cleanup();
   }
 });
@@ -92,8 +91,7 @@ test("integration: TypedEventBus subscribe filters by event type", async () => {
     assert.equal(seen.length, 1, "Should receive only matching event");
     assert.equal(seen[0], "decision:requested:approval-typed-sub-1");
 
-    bus.dispose();
-    db.close();
+        db.close();
   } finally {
     cleanupPath(workspace);
   }
@@ -150,8 +148,7 @@ test("integration: TypedEventBus delivers skill execution events with typed payl
     assert.equal(seen[0].skillId, "coding-v3");
     assert.equal(seen[0].status, "miss");
 
-    bus.dispose();
-    db.close();
+        db.close();
   } finally {
     cleanupPath(workspace);
   }
@@ -185,8 +182,7 @@ test("integration: TypedEventBus delivers platform.harness_run events", async ()
 
     assert.ok(received, "Should receive task status change event");
 
-    bus.dispose();
-  } finally {
+      } finally {
     ctx.cleanup();
   }
 });
@@ -242,8 +238,7 @@ test("integration: TypedEventBus multiple consumers receive typed events indepen
     assert.equal(consumerB.length, 1, "Consumer B should receive cost event");
     assert.equal(consumerB[0].budgetId, "budget-monthly");
 
-    bus.dispose();
-    db.close();
+        db.close();
   } finally {
     cleanupPath(workspace);
   }
@@ -292,8 +287,7 @@ test("integration: TypedEventBus unsubscribe removes consumer", async () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(seen.length, 1, "Should not receive after unsubscribe");
 
-    bus.dispose();
-    db.close();
+        db.close();
   } finally {
     cleanupPath(workspace);
   }
@@ -322,8 +316,7 @@ test("integration: TypedEventBus pendingForConsumer returns events for typed con
     const pending = bus.pendingForConsumer("pending-consumer");
     assert.equal(pending.length, 1, "Should have 1 pending event");
 
-    bus.dispose();
-  } finally {
+      } finally {
     ctx.cleanup();
   }
 });
@@ -366,8 +359,7 @@ test("integration: TypedEventBus delivers OAPEFLIR phase transition events", asy
     assert.equal(seen.length, 1);
     assert.equal(seen[0], "skill-oapeflir");
 
-    bus.dispose();
-    db.close();
+        db.close();
   } finally {
     cleanupPath(workspace);
   }

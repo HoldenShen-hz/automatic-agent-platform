@@ -49,9 +49,6 @@ test("integration: wrap and unwrap workflow step checkpoint preserves all fields
   const tempDir = createTempDir("aa-wrap-unwrap-test");
   try {
     const checkpoint = createWorkflowStepCheckpoint({
-      harnessRunId: "harness_integ_1",
-      nodeRunId: "node_integ_1",
-      planGraphBundleId: "bundle_integ_1",
       taskId: "task_integ_1",
       executionId: "exec_integ_1",
       workflowId: "wf_integ_1",
@@ -398,9 +395,6 @@ test("integration: readWorkflowStepCheckpoint with valid checkpoint file", async
 
   try {
     const checkpoint = createWorkflowStepCheckpoint({
-      harnessRunId: "harness_read_valid",
-      nodeRunId: "node_read_valid",
-      planGraphBundleId: "bundle_read_valid",
       taskId: "task_read_valid",
       executionId: "exec_read_valid",
       workflowId: "wf_read_valid",
@@ -425,6 +419,7 @@ test("integration: readWorkflowStepCheckpoint with valid checkpoint file", async
       },
     });
 
+    // Write directly as JSON - same as what the runtime would write
     writeFileSync(tempFile, JSON.stringify(checkpoint), "utf8");
 
     const artifactRecord: ArtifactRecord = {
@@ -534,9 +529,6 @@ test("integration: readWorkflowStepCheckpoint returns null for non-existent path
 
 test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
-    harnessRunId: "harness_summarize",
-    nodeRunId: "node_summarize",
-    planGraphBundleId: "bundle_summarize",
     taskId: "task_summarize",
     executionId: "exec_summarize",
     workflowId: "wf_summarize",
@@ -564,9 +556,8 @@ test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async 
   const summary = summarizeWorkflowStepCheckpoint("artifact_summarize_1", checkpoint);
 
   assert.equal(summary.artifactId, "artifact_summarize_1");
-  assert.equal(summary.harnessRunId, "harness_summarize");
-  assert.equal(summary.nodeRunId, "node_summarize");
-  assert.equal(summary.planGraphBundleId, "bundle_summarize");
+  assert.equal(summary.workflowId, "wf_summarize");
+  assert.equal(summary.stepId, "step_summarize");
   assert.equal(summary.status, "succeeded");
   assert.equal(summary.producedAt, "2026-05-01T12:30:00.000Z");
   assert.equal(summary.nextStepId, "step_next");
@@ -577,9 +568,6 @@ test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async 
 
 test("integration: summarizeWorkflowStepCheckpoint with null values", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
-    harnessRunId: "harness_null_summary",
-    nodeRunId: null,
-    planGraphBundleId: "bundle_null_summary",
     taskId: "task_null_summary",
     executionId: null,
     workflowId: "wf_null_summary",
@@ -607,7 +595,7 @@ test("integration: summarizeWorkflowStepCheckpoint with null values", async () =
   const summary = summarizeWorkflowStepCheckpoint("artifact_null_summary", checkpoint);
 
   assert.equal(summary.artifactId, "artifact_null_summary");
-  assert.equal(summary.nodeRunId, null);
+  assert.equal(summary.stepId, "step_null_summary");
   assert.equal(summary.nextStepId, null);
   assert.equal(summary.summary, null);
 });

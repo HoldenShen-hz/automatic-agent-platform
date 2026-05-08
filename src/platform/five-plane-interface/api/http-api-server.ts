@@ -37,6 +37,11 @@ import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import { readRequestId } from "./http-server/utils.js";
+import { createDeduplicationMiddleware } from "./middleware/request-deduplication.js";
+import {
+  createIdempotencyKeyMiddleware,
+  extractIdempotencyKey,
+} from "./middleware/idempotency-key.js";
 import {
   MAX_BODY_BYTES,
   authenticateOptionalPrincipal,
@@ -154,6 +159,8 @@ export class HttpApiServer {
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
+  private readonly requestDeduplication = createDeduplicationMiddleware();
+  private readonly idempotencyMiddleware = createIdempotencyKeyMiddleware();
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -398,10 +405,75 @@ export class HttpApiServer {
         }
         const route = matchRoute(request);
         if (!route) {
-          return this.buildJsonErrorResponse(requestId, 404, {
+          return this.attachResponseTracing(this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
+          }), requestId, request);
+        }
+
+        const tenantId = principal?.tenantId ?? null;
+        const method = request.method ?? "GET";
+        const idempotencyKey = extractIdempotencyKey(request.headers);
+
+        if (method !== "GET" && method !== "OPTIONS" && idempotencyKey == null) {
+          const deduplicationKey = this.requestDeduplication.generateKey({ tenantId: tenantId ?? undefined });
+          const fingerprint = this.requestDeduplication.generateFingerprint({
+            method,
+            path: route.pathname,
+            ...(typeof request.body === "string" ? { body: request.body } : {}),
+            ...(tenantId != null ? { tenantId } : {}),
           });
+          const deduplicationDecision = this.requestDeduplication.check(deduplicationKey, fingerprint);
+          if (!deduplicationDecision.allowed) {
+            return this.attachResponseTracing({
+              ...this.buildJsonErrorResponse(requestId, 409, {
+                code: "api.duplicate_request",
+                message: "Duplicate request rejected within deduplication window.",
+              }),
+              headers: {
+                "content-type": "application/json; charset=utf-8",
+                "x-request-id": requestId,
+                ...(deduplicationDecision.originalRequestId != null
+                  ? { "x-original-request-id": deduplicationDecision.originalRequestId }
+                  : {}),
+                ...(deduplicationDecision.retryAfterMs != null
+                  ? { "retry-after-ms": String(deduplicationDecision.retryAfterMs) }
+                  : {}),
+              },
+            }, requestId, request);
+          }
+        }
+
+        const idempotencyDecision = await this.idempotencyMiddleware.check({
+          method,
+          path: route.pathname,
+          ...(idempotencyKey != null ? { idempotencyKey } : {}),
+          tenantId,
+          ...(typeof request.body === "string" ? { body: request.body } : {}),
+        });
+        if (idempotencyDecision.error != null) {
+          return this.attachResponseTracing(this.buildJsonErrorResponse(
+            requestId,
+            idempotencyDecision.error.statusCode,
+            {
+              code: idempotencyDecision.error.code,
+              message: idempotencyDecision.error.message,
+            },
+          ), requestId, request);
+        }
+        if (idempotencyDecision.cachedResponse != null) {
+          const body = typeof idempotencyDecision.cachedResponse.body === "string"
+            ? idempotencyDecision.cachedResponse.body
+            : JSON.stringify(idempotencyDecision.cachedResponse.body, null, 2);
+          return this.attachResponseTracing({
+            statusCode: idempotencyDecision.cachedResponse.statusCode,
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "x-request-id": requestId,
+              "x-idempotent-replay": "true",
+            },
+            body,
+          }, requestId, request);
         }
 
         const ctx: RouteContext = { request, route, requestId, principal };
@@ -410,16 +482,41 @@ export class HttpApiServer {
           this.resolveRouteResponse(route, request, ctx),
         );
         if (resolved == null) {
-          return this.buildJsonErrorResponse(requestId, 404, {
+          return this.attachResponseTracing(this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
+          }), requestId, request);
+        }
+        if (idempotencyKey != null && this.idempotencyMiddleware.isWriteOperation(method)) {
+          await this.idempotencyMiddleware.record({
+            method,
+            idempotencyKey,
+            tenantId,
+            statusCode: resolved.statusCode,
+            responseBody: resolved.body,
           });
         }
-        return resolved;
+        return this.attachResponseTracing(resolved, requestId, request);
       } catch (error) {
-        return this.handleError(error, requestId, request);
+        return this.attachResponseTracing(this.handleError(error, requestId, request), requestId, request);
       }
     });
+  }
+
+  private attachResponseTracing(
+    payload: ApiResponsePayload,
+    requestId: string,
+    request: ApiRequestLike,
+  ): ApiResponsePayload {
+    const traceId = request.headers["x-correlation-id"] ?? payload.headers["x-trace-id"] ?? requestId;
+    return {
+      ...payload,
+      headers: {
+        ...payload.headers,
+        "x-request-id": payload.headers["x-request-id"] ?? requestId,
+        "x-trace-id": traceId,
+      },
+    };
   }
 
   private async resolveRouteResponse(

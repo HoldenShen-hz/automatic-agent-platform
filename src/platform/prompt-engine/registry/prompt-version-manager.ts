@@ -227,6 +227,7 @@ export class PromptVersionManager {
         trafficWeight: entry.bundle.metadata.trafficAllocation.weight,
         createdAt: entry.createdAt,
         deprecated: entry.bundle.metadata.deprecated,
+        lifecycleStatus: entry.bundle.metadata.lifecycleStatus,
       };
     });
   }

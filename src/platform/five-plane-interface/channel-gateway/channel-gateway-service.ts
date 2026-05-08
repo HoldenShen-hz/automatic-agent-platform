@@ -57,6 +57,10 @@ export { GatewayRateLimitError } from "./errors.js";
 export class ChannelGatewayService {
   private readonly fetchImpl: FetchLike;
   private readonly logger = new StructuredLogger({ retentionLimit: 100 });
+  private readonly requestTimeoutMs: number;
+  private readonly circuitBreakerFailureThreshold: number;
+  private readonly circuitBreakerResetMs: number;
+  private readonly circuitBreakerState = new Map<string, { failureCount: number; openUntil: number | null }>();
 
   public constructor(
     /** Storage port for target lookups */
@@ -67,6 +71,15 @@ export class ChannelGatewayService {
     private readonly options: ChannelGatewayServiceOptions = {},
   ) {
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.requestTimeoutMs = Math.max(
+      1,
+      Math.min(
+        Math.trunc(options.requestTimeoutMs ?? 5_000),
+        Math.max(1, Math.trunc(options.maxRequestTimeoutMs ?? 30_000)),
+      ),
+    );
+    this.circuitBreakerFailureThreshold = Math.max(1, Math.trunc(options.circuitBreakerFailureThreshold ?? 3));
+    this.circuitBreakerResetMs = Math.max(1, Math.trunc(options.circuitBreakerResetMs ?? 30_000));
   }
 
   /**
@@ -405,18 +418,77 @@ export class ChannelGatewayService {
     text: string;
     metadata?: Record<string, unknown>;
   }): Promise<GatewayDeliveryReceipt> {
-    switch (input.channel) {
-      case "telegram":
-        return this.sendTelegramMessage(input.targetId, input.externalTargetId, input.text);
-      case "slack":
-        return this.sendSlackMessage(input.targetId, input.externalTargetId, input.text);
-      case "webhook":
-        return this.sendWebhookMessage(input.targetId, input.externalTargetId, input.text, input.metadata ?? {});
-      default:
-        throw new ValidationError(`gateway.unsupported_channel:${input.channel}`, `gateway.unsupported_channel:${input.channel}`, {
-          retryable: false,
-          details: { channel: input.channel },
-        });
+    return this.executeProtectedDelivery(input.channel, async () => {
+      switch (input.channel) {
+        case "telegram":
+          return this.sendTelegramMessage(input.targetId, input.externalTargetId, input.text);
+        case "slack":
+          return this.sendSlackMessage(input.targetId, input.externalTargetId, input.text);
+        case "webhook":
+          return this.sendWebhookMessage(input.targetId, input.externalTargetId, input.text, input.metadata ?? {});
+        default:
+          throw new ValidationError(`gateway.unsupported_channel:${input.channel}`, `gateway.unsupported_channel:${input.channel}`, {
+            retryable: false,
+            details: { channel: input.channel },
+          });
+      }
+    });
+  }
+
+  private async executeProtectedDelivery<T>(channel: string, operation: () => Promise<T>): Promise<T> {
+    this.assertCircuitClosed(channel);
+    try {
+      const result = await operation();
+      this.resetCircuitBreaker(channel);
+      return result;
+    } catch (error) {
+      this.recordCircuitBreakerFailure(channel, error);
+      throw error;
+    }
+  }
+
+  private assertCircuitClosed(channel: string): void {
+    const state = this.circuitBreakerState.get(channel);
+    if (state?.openUntil != null && state.openUntil > Date.now()) {
+      throw new GatewayDeliveryError(`gateway.${channel}_circuit_open`, 503, true);
+    }
+    if (state?.openUntil != null && state.openUntil <= Date.now()) {
+      this.circuitBreakerState.set(channel, { failureCount: 0, openUntil: null });
+    }
+  }
+
+  private resetCircuitBreaker(channel: string): void {
+    this.circuitBreakerState.set(channel, { failureCount: 0, openUntil: null });
+  }
+
+  private recordCircuitBreakerFailure(channel: string, error: unknown): void {
+    const retryable = error instanceof GatewayDeliveryError ? error.retryable : true;
+    if (!retryable) {
+      return;
+    }
+    const previous = this.circuitBreakerState.get(channel) ?? { failureCount: 0, openUntil: null };
+    const failureCount = previous.failureCount + 1;
+    this.circuitBreakerState.set(channel, {
+      failureCount,
+      openUntil: failureCount >= this.circuitBreakerFailureThreshold ? Date.now() + this.circuitBreakerResetMs : null,
+    });
+  }
+
+  private async fetchWithTimeout(input: string, init: RequestInit, timeoutCode: string): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    try {
+      return await this.fetchImpl(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new GatewayDeliveryError(timeoutCode, 504, true);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -484,7 +556,7 @@ export class ChannelGatewayService {
         blocked: "gateway.telegram_url_blocked",
       },
     ).toString();
-    const response = await this.fetchImpl(requestUrl, {
+    const response = await this.fetchWithTimeout(requestUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -493,7 +565,7 @@ export class ChannelGatewayService {
         chat_id: chatId,
         text,
       }),
-    });
+    }, "gateway.telegram_timeout");
     if (!response.ok) {
       throw new GatewayDeliveryError(`gateway.telegram_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }
@@ -538,7 +610,7 @@ export class ChannelGatewayService {
         blocked: "gateway.slack_url_blocked",
       },
     ).toString();
-    const response = await this.fetchImpl(requestUrl, {
+    const response = await this.fetchWithTimeout(requestUrl, {
       method: "POST",
       headers: {
         authorization: `Bearer ${config.botToken}`,
@@ -548,7 +620,7 @@ export class ChannelGatewayService {
         channel: channelId,
         text,
       }),
-    });
+    }, "gateway.slack_timeout");
     if (!response.ok) {
       throw new GatewayDeliveryError(`gateway.slack_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }
@@ -603,7 +675,7 @@ export class ChannelGatewayService {
       blocked: "gateway.webhook_url_blocked_ssrf",
     }).toString();
 
-    const response = await this.fetchImpl(validatedRequestUrl, {
+    const response = await this.fetchWithTimeout(validatedRequestUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -614,7 +686,7 @@ export class ChannelGatewayService {
         text,
         metadata,
       }),
-    });
+    }, "gateway.webhook_timeout");
     if (!response.ok) {
       throw new GatewayDeliveryError(`gateway.webhook_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }

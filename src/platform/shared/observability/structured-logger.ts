@@ -50,10 +50,13 @@ export interface StructuredLogEntry {
   agentId?: string;
   sessionId?: string;
   stepId?: string;
+  tenantId?: string;
+  harnessRunId?: string;
   traceId?: string;
   spanId?: string;
   parentSpanId?: string;
   correlationId?: string;
+  causationId?: string;
   data?: Record<string, unknown> | null;
   structuredPayload?: Record<string, unknown>;
   createdAt: string;
@@ -83,6 +86,7 @@ export interface StructuredLoggerOptions {
   plane?: StructuredPlane;
   planeSourceFile?: string;
   service?: string;
+  minLogLevel?: StructuredLogLevel;
 }
 
 type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "service" | "structuredPayload"> & {
@@ -137,11 +141,13 @@ function safePath(userPath: string, baseDir: string): string {
 export class StructuredLogger {
   private static globalFileSink: StructuredLoggerFileSink | null = null;
   private static transports: LogTransport[] = [];
+  private static rotationStateByPath = new Map<string, { scheduled: boolean }>();
 
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
   private readonly plane: StructuredPlane;
   private readonly service: string;
+  private readonly minLogLevel: StructuredLogLevel;
   private head: number = 0;
   private count: number = 0;
   private droppedEntryCount: number = 0;
@@ -237,6 +243,7 @@ export class StructuredLogger {
     this.retentionLimit = Math.max(0, Math.trunc(options.retentionLimit ?? 500));
     this.plane = options.plane ?? inferStructuredPlane(options.planeSourceFile);
     this.service = normalizeStructuredService(options.service ?? options.planeSourceFile);
+    this.minLogLevel = options.minLogLevel ?? "debug";
     // Pre-allocate buffer for O(1) insertion
     this.buffer = new Array(this.retentionLimit);
   }
@@ -254,6 +261,8 @@ export class StructuredLogger {
     const agentId = entry.agentId ?? readStringField(rawData, "agentId");
     const sessionId = entry.sessionId ?? readStringField(rawData, "sessionId");
     const stepId = entry.stepId ?? readStringField(rawData, "stepId");
+    const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
+    const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
     const traceId = entry.traceId ?? readStringField(rawData, "traceId") ?? activeTelemetryContext?.traceId;
     const spanId = entry.spanId ?? activeTelemetryContext?.spanId;
     // Note: ActiveTelemetryContext.parentSpanId is string | null, but StructuredLogEntry.parentSpanId is string | undefined
@@ -263,6 +272,7 @@ export class StructuredLogger {
       readStringField(rawData, "correlationId") ??
       traceId ??
       activeTelemetryContext?.traceId;
+    const causationId = entry.causationId ?? readStringField(rawData, "causationId");
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = rawData;
@@ -275,14 +285,21 @@ export class StructuredLogger {
       ...(agentId !== undefined ? { agentId } : {}),
       ...(sessionId !== undefined ? { sessionId } : {}),
       ...(stepId !== undefined ? { stepId } : {}),
+      ...(tenantId !== undefined ? { tenantId } : {}),
+      ...(harnessRunId !== undefined ? { harnessRunId } : {}),
       ...(traceId !== undefined ? { traceId } : {}),
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
+      ...(causationId !== undefined && causationId !== null ? { causationId } : {}),
       ...(data !== undefined ? { data, structuredPayload: data } : {}),
       createdAt: timestamp,
       timestamp,
     };
+
+    if (compareLogLevels(record.level, this.minLogLevel) < 0) {
+      return record;
+    }
 
     if (this.retentionLimit > 0) {
       // If buffer is full, track overflow
@@ -437,10 +454,10 @@ export class StructuredLogger {
     }
   }
 
-  private rotationScheduled = false;
-
   private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
-    if (this.rotationScheduled || sink.maxBytes == null) {
+    const state = StructuredLogger.rotationStateByPath.get(sink.filePath) ?? { scheduled: false };
+    StructuredLogger.rotationStateByPath.set(sink.filePath, state);
+    if (state.scheduled || sink.maxBytes == null) {
       return;
     }
 
@@ -459,7 +476,7 @@ export class StructuredLogger {
     }
 
     // Schedule async rotation
-    this.rotationScheduled = true;
+    state.scheduled = true;
     setImmediate(() => this.performRotation(sink));
   }
 
@@ -472,7 +489,10 @@ export class StructuredLogger {
         } catch {
           // File may not exist
         }
-        this.rotationScheduled = false;
+        const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
+        if (state != null) {
+          state.scheduled = false;
+        }
         return;
       }
 
@@ -501,9 +521,24 @@ export class StructuredLogger {
     } catch {
       // Rotation errors should not affect logging
     } finally {
-      this.rotationScheduled = false;
+      const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
+      if (state != null) {
+        state.scheduled = false;
+      }
     }
   }
+}
+
+const LOG_LEVEL_ORDER: Record<StructuredLogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+  fatal: 50,
+};
+
+function compareLogLevels(left: StructuredLogLevel, right: StructuredLogLevel): number {
+  return LOG_LEVEL_ORDER[left] - LOG_LEVEL_ORDER[right];
 }
 
 function normalizeStructuredService(value: string | undefined): string {

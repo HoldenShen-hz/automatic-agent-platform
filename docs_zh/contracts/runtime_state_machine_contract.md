@@ -82,30 +82,50 @@ queued -> pending -> in_progress -> done
 
 枚举：
 
+- `created`
+- `admitted`
+- `planning`
+- `ready`
 - `running`
+- `replanning`
+- `compensating`
+- `pausing`
 - `paused`
+- `resuming`
+- `completing`
 - `completed`
 - `failed`
-- `resuming`
 - `cancelling`
 - `cancelled`
+- `timed_out`
 
 允许跃迁：
 
-- `running -> paused`
-- `running -> completed`
-- `running -> failed`
-- `running -> cancelling`
+- `created -> admitted`
+- `admitted -> planning`
+- `planning -> ready`
+- `ready -> running`
+- `running -> replanning`
+- `running -> compensating`
+- `running -> pausing`
+- `running -> completing`
+- `replanning -> running`
+- `compensating -> running`
+- `pausing -> paused`
 - `paused -> resuming`
 - `resuming -> running`
-- `resuming -> failed`
+- `completing -> completed`
+- `running -> failed`
+- `running -> cancelling`
 - `cancelling -> cancelled`
+- `running -> timed_out`
 
 约束：
 
-- `completed` 与 `failed` 为终态。
+- `completed`、`failed`、`cancelled`、`timed_out` 为终态。
 - `paused` 必须伴随可恢复原因，例如审批等待、人工输入等待、外部依赖等待。
 - `resuming` 仅作为短暂中间态，用于恢复前的状态修复和 preflight 检查。
+- `replanning` / `compensating` 为 OAPEFLIR 期间的活跃运行态，不是独立终态。
 - `WorkflowStatus` 只允许作为历史 workflow projection；v4.3 truth run 状态以 `HarnessRun.status` 为准。
 - 具体闭环阶段进度由 `current_stage + StageStatus` 表达，不得把二者混成一个字段。
 
@@ -171,41 +191,40 @@ queued -> pending -> in_progress -> done
 
 枚举：
 
-- `created`
+- `pending`
 - `prechecking`
-- `executing`
+- `ready`
+- `running`
 - `blocked`
 - `succeeded`
 - `failed`
 - `cancelled`
-- `superseded`
+- `timed_out`
 
 允许跃迁：
 
-- `created -> prechecking`
-- `created -> cancelled`
-- `created -> failed`
-- `prechecking -> executing`
+- `pending -> prechecking`
+- `pending -> cancelled`
+- `prechecking -> ready`
 - `prechecking -> blocked`
 - `prechecking -> cancelled`
-- `prechecking -> failed`
-- `executing -> blocked`
-- `executing -> succeeded`
-- `executing -> failed`
-- `executing -> cancelled`
+- `ready -> running`
+- `running -> blocked`
+- `running -> succeeded`
+- `running -> failed`
+- `running -> cancelled`
+- `running -> timed_out`
 - `blocked -> prechecking`
-- `blocked -> executing`
+- `blocked -> running`
 - `blocked -> cancelled`
 - `blocked -> failed`
-- `blocked -> superseded`
 
 约束：
 
 - `prechecking` 是正式运行态的一部分，不是可忽略的临时字段。
 - `blocked` 必须伴随明确原因，例如 `approval_required`、`dependency_unavailable`。
-- `superseded` 表示该 execution 被新的 attempt 或 handover 取代，旧 execution 不再推进。
-- 重试语义不再由独立状态表达，而通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入 `failed` 或 `superseded`。
-- `succeeded`、`failed`、`cancelled`、`superseded` 为终态。
+- 重试语义不再由独立状态表达，而通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入 `failed` 或 `cancelled`。
+- `succeeded`、`failed`、`cancelled`、`timed_out` 为终态。
 - v4.3 truth 执行状态以 `NodeRun.status` 和 `NodeAttemptReceipt` append-only 回执为准，`ExecutionStatus` 不得反向驱动运行时合法性判断。
 
 ## 7. 跨状态一致性约束

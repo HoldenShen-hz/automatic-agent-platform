@@ -124,6 +124,8 @@ export interface PromptBundleVersion {
   trafficWeight: number;
   createdAt: string;
   deprecated: boolean;
+  /** R2-8: Full lifecycle status for prompt lifecycle management */
+  lifecycleStatus: PromptLifecycleStatus;
 }
 
 export interface PromptBundleListResult {

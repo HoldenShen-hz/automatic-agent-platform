@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ApprovalTimeoutExecutor } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
-import { ApprovalService } from "../../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
-import { ApprovalRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
-import type { ApprovalRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import { ApprovalTimeoutExecutor } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
+import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import { ApprovalRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------
 // Helper to insert a test task (required for FK constraints)
@@ -511,8 +511,9 @@ test("isExpired() returns false when approval has respondedAt set", () => {
 test("isExpired() uses timeoutAt column when available and not expired", () => {
   const ctx = createIntegrationContext("aa-int-isexpired-timeout-at-future");
   try {
+    const approvalRepo = new ApprovalRepository(ctx.db.connection);
     const approvalService = new ApprovalService(ctx.db, ctx.store);
-    const executor = new ApprovalTimeoutExecutor(approvalService, ctx.store);
+    const executor = new ApprovalTimeoutExecutor(approvalService, ctx.store, approvalRepo);
 
     const now = new Date().toISOString();
     const futureTimeout = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h in future
@@ -542,8 +543,9 @@ test("isExpired() uses timeoutAt column when available and not expired", () => {
 test("isExpired() returns true when timeoutAt is in the past", () => {
   const ctx = createIntegrationContext("aa-int-isexpired-timeout-at-past");
   try {
+    const approvalRepo = new ApprovalRepository(ctx.db.connection);
     const approvalService = new ApprovalService(ctx.db, ctx.store);
-    const executor = new ApprovalTimeoutExecutor(approvalService, ctx.store);
+    const executor = new ApprovalTimeoutExecutor(approvalService, ctx.store, approvalRepo);
 
     const now = new Date().toISOString();
     const pastTimeout = new Date(Date.now() - 60 * 60 * 1000).toISOString(); // 1h in past

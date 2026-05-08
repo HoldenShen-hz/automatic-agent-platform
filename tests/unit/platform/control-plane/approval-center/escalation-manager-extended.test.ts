@@ -64,7 +64,7 @@ test("EscalationManager resetDelegationTtl throws on EXPIRED status", async () =
   };
 
   await assert.rejects(
-    () => manager.resetDelegationTtl(delegation),
+    async () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });
@@ -84,7 +84,7 @@ test("EscalationManager resetDelegationTtl throws on REVOKED status", async () =
   };
 
   await assert.rejects(
-    () => manager.resetDelegationTtl(delegation),
+    async () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });
@@ -104,7 +104,7 @@ test("EscalationManager resetDelegationTtl throws on COMPLETED status", async ()
   };
 
   await assert.rejects(
-    () => manager.resetDelegationTtl(delegation),
+    async () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });

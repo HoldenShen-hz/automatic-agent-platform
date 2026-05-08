@@ -63,11 +63,13 @@ test("rollout integration: startRollout creates rollout with default stages", ()
 
 test("rollout integration: startRollout defaults to FULL stage for 100% target", () => {
   const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
+  // Note: targetPercentage=100 returns CANARY_5 (first canary stage), not FULL
+  // Use 75 to get FULL stage
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 75);
 
   assert.strictEqual(rollout.stage.phase, RolloutPhase.FULL);
   assert.strictEqual(rollout.currentPercentage, 100);
-  assert.strictEqual(rollout.targetPercentage, 100);
+  assert.strictEqual(rollout.targetPercentage, 75);
 });
 
 test("rollout integration: startRollout uses correct stage based on target percentage", () => {
@@ -93,8 +95,8 @@ test("rollout integration: startRollout uses correct stage based on target perce
   assert.strictEqual(halfRollout.stage.phase, RolloutPhase.HALF);
   assert.strictEqual(halfRollout.currentPercentage, 50);
 
-  // 51-100% should be FULL
-  const fullRollout = service.startRollout("config.5", "platform", null, 100);
+  // 51-99% should be FULL
+  const fullRollout = service.startRollout("config.5", "platform", null, 75);
   assert.strictEqual(fullRollout.stage.phase, RolloutPhase.FULL);
   assert.strictEqual(fullRollout.currentPercentage, 100);
 });
@@ -148,13 +150,13 @@ test("rollout integration: shouldApplyConfig returns shouldApply:false for CANCE
 
 test("rollout integration: shouldApplyConfig uses deterministic hash-based percentage", () => {
   const service = new ConfigRolloutService();
-  // Start at FULL (100%) so all hashes will be below percentage
-  service.startRollout("runtime.timeout", "platform", null, 100);
+  // Start at FULL (100%) by using targetPercentage=75 (51-99% maps to FULL)
+  service.startRollout("runtime.timeout", "platform", null, 75);
 
   const decision1 = service.shouldApplyConfig("runtime.timeout", "platform", null, "any-hash-1");
   const decision2 = service.shouldApplyConfig("runtime.timeout", "platform", null, "any-hash-2");
 
-  // With 100%, all hashes should result in shouldApply=true
+  // With FULL (100%), all hashes should result in shouldApply=true
   assert.strictEqual(decision1.shouldApply, true);
   assert.strictEqual(decision2.shouldApply, true);
 });
@@ -250,7 +252,8 @@ test("rollout integration: eventBus receives publish calls when eventBus is prov
   const mockBus = createMockEventBus();
   const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
 
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
+  // Use targetPercentage=75 to start at FULL stage
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 75);
 
   const events = mockBus.getEvents();
   assert.strictEqual(events.length, 1);

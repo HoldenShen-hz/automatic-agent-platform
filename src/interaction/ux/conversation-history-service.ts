@@ -38,6 +38,8 @@ export interface ConversationSessionRecord {
   readonly updatedAt: string;
   readonly lastIntent?: DetectedIntent["intentType"];
   readonly status: "active" | "completed" | "abandoned";
+  /** R5-31: Indicates if session contains restricted/regulated data */
+  readonly isRestricted?: boolean;
 }
 
 /**
@@ -47,6 +49,8 @@ export interface ConversationHistoryOptions {
   readonly memoryLayer?: MemoryRecord["memoryLayer"];
   readonly scope?: string;
   readonly retentionDays?: number;
+  /** R5-31: Mark session as restricted/regulated to prevent long-term memory persistence */
+  readonly isRestricted?: boolean;
 }
 
 /**
@@ -90,6 +94,8 @@ export class ConversationHistoryService {
       createdAt: now,
       updatedAt: now,
       status: "active",
+      // R5-31: New sessions inherit isRestricted flag if provided
+      isRestricted: options.isRestricted ?? undefined,
     };
   }
 
@@ -117,8 +123,9 @@ export class ConversationHistoryService {
       ...(turn.intent ? { lastIntent: turn.intent } : {}),
     };
 
-    // Persist to memory store if available
-    if (this.memoryService && options.memoryLayer !== "layer_3") {
+    // Persist to memory store if available and not restricted
+    // R5-31: Restricted/regulated dialog data must not be written to long-term memory
+    if (this.memoryService && options.memoryLayer !== "layer_3" && !session.isRestricted) {
       await this.persistSession(updatedSession, options);
     }
 
@@ -138,7 +145,7 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService) {
+    if (this.memoryService && !session.isRestricted) {
       await this.persistSession(completedSession, options);
     }
 
@@ -158,7 +165,8 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService) {
+    // R5-31: Restricted data should not be persisted on abandon either
+    if (this.memoryService && !session.isRestricted) {
       await this.persistSession(abandonedSession, options);
     }
 

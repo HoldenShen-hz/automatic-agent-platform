@@ -76,7 +76,7 @@ test("getDelegation retrieves created delegation", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   assert.equal(delegation.parentAgentId, "parent-agent");
@@ -91,9 +91,9 @@ test("complete transitions delegation to completed", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  service.complete(handle.delegationId);
+  await service.complete(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation);
   assert.equal(delegation.status, "completed");
   assert.ok(delegation.completedAt);
@@ -105,9 +105,9 @@ test("cancel transitions delegation to cancelled", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  service.cancel(handle.delegationId);
+  await service.cancel(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation);
   assert.equal(delegation.status, "cancelled");
 });
@@ -118,9 +118,9 @@ test("fail transitions delegation to failed", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  service.fail(handle.delegationId, "Test error");
+  await service.fail(handle.delegationId, "Test error");
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation);
   assert.equal(delegation.status, "failed");
 });
@@ -131,9 +131,9 @@ test("handleDelegationTimeout transitions delegation to timed_out", async () => 
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  service.handleDelegationTimeout(handle.delegationId);
+  await service.handleDelegationTimeout(handle.delegationId);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation);
   assert.equal(delegation.status, "timed_out");
 });
@@ -148,7 +148,7 @@ test("getDelegationChain returns chain after delegation", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  const chain = service.getDelegationChain("parent-agent");
+  const chain = await service.getDelegationChain("parent-agent");
 
   assert.ok(chain);
   assert.equal(chain.rootAgentId, "parent-agent");
@@ -183,7 +183,7 @@ test("delegation chain tracks multi-level delegation", async () => {
   });
   const handle1 = await service.delegate(level1Ctx, spec1);
 
-  const chain = service.getDelegationChain("root-agent");
+  const chain = await service.getDelegationChain("root-agent");
   assert.ok(chain);
   assert.equal(chain.totalDelegations, 2);
   assert.equal(chain.nodes.length, 2);
@@ -233,7 +233,7 @@ test("service respects maxFanout limit", async () => {
   });
   const spec3 = createDelegationSpec({ targetAgentId: "child-3", targetPackId: "pack-3" });
 
-  assert.throws(
+  await assert.rejects(
     () => service.delegate(parent3, spec3),
     DelegationFanoutExceededError,
   );
@@ -277,7 +277,7 @@ test("service throws topology depth error when configured depth limit is exceede
   });
   const spec3 = createDelegationSpec({ targetAgentId: "d4", targetPackId: "p4" });
 
-  assert.throws(
+  await assert.rejects(
     () => service.delegate(d3, spec3),
     DelegationDepthExceededError,
   );
@@ -297,9 +297,9 @@ test("getActiveDelegations returns pending and active delegations", async () => 
   const spec2 = createDelegationSpec({ targetAgentId: "child-2", targetPackId: "pack-2" });
   const handle2 = await service.delegate(parent, spec2);
 
-  service.complete(handle1.delegationId);
+  await service.complete(handle1.delegationId);
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
 });
@@ -312,7 +312,7 @@ test("cancel throws for non-existent delegation", async () => {
   const service = createDelegationManager();
 
   try {
-    service.cancel("non-existent-id");
+    await service.cancel("non-existent-id");
     assert.fail("Expected error to be thrown");
   } catch (err: unknown) {
     assert.equal((err as { code?: string }).code, "delegation.not_found");
@@ -325,10 +325,10 @@ test("complete throws for invalid status transition", async () => {
   const spec = createDelegationSpec();
 
   const handle = await service.delegate(parent, spec);
-  service.cancel(handle.delegationId);
+  await service.cancel(handle.delegationId);
 
   try {
-    service.complete(handle.delegationId);
+    await service.complete(handle.delegationId);
     assert.fail("Expected error to be thrown");
   } catch (err: unknown) {
     assert.equal((err as { code?: string }).code, "delegation.invalid_status_transition");
@@ -345,7 +345,7 @@ test("delegation with requiresApproval creates pending_approval status", async (
   assert.equal(handle.status, "pending_approval");
   assert.equal(handle.requiresApproval, true);
 
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   assert.ok(delegation);
   assert.equal(delegation.status, "pending_approval");
 });
