@@ -316,6 +316,34 @@ test("cleanupRollouts does not remove PENDING rollouts", () => {
   assert.equal(service.getActiveRollouts().length, 1);
 });
 
+test("autoProgressRollouts respects health gates before promoting rollout", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
+  rollout.updatedAt = new Date(Date.now() - rollout.stage.minDurationMs - 1000).toISOString();
+
+  const blocked = service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.08,
+      latencyRegression: 0.1,
+      incidentRate: 0.01,
+    },
+  });
+
+  assert.equal(blocked, 0);
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
+
+  const progressed = service.autoProgressRollouts({
+    [rollout.rolloutId]: {
+      errorRate: 0.01,
+      latencyRegression: 0.05,
+      incidentRate: 0.0,
+    },
+  });
+
+  assert.equal(progressed, 1);
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_25);
+});
+
 test("startRollout accepts metadata", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100, {
