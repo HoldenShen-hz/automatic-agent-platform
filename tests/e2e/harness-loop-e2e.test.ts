@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { useFakeTimers } from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import {

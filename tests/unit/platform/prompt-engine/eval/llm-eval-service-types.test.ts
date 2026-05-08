@@ -209,6 +209,7 @@ test("AbTestResult structure is correct", () => {
     controlAvgScore: 0.85,
     treatmentAvgScore: 0.87,
     improvement: 0.02,
+    pValue: 0.01,
     significant: true,
     verdict: "pass",
   };
