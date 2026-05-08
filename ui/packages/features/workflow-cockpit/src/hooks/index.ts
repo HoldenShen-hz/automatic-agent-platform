@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWorkflowsQuery, useRestClient } from "@aa/shared-state";
 import type { WorkflowDTO } from "@aa/shared-types";
-import { pauseWorkflow, resumeWorkflow, recoverWorkflow, releaseWorkflow } from "@aa/shared-api-client";
+import { cancelWorkflow, pauseWorkflow, resumeWorkflow, recoverWorkflow, releaseWorkflow } from "@aa/shared-api-client";
 
 export interface WorkflowCockpitVm {
   readonly workflows: readonly WorkflowDTO[];
@@ -12,6 +12,7 @@ export interface WorkflowCockpitVm {
   readonly activityItems: readonly { title: string; description: string }[];
   readonly pendingAction: boolean;
   selectWorkflow(id: string): void;
+  cancelWorkflow(): Promise<void>;
   pauseWorkflow(): Promise<void>;
   resumeWorkflow(): Promise<void>;
   recoverWorkflow(): Promise<void>;
@@ -118,6 +119,22 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
   }, [client, queryClient, selectedWorkflow]);
 
+  const doCancelWorkflow = useCallback(async (): Promise<void> => {
+    if (selectedWorkflow == null) return;
+    setPendingAction(true);
+    try {
+      await cancelWorkflow(client, selectedWorkflow.id);
+      updateSelected(
+        { status: "cancelled", currentStage: "aborted" },
+        `Cancelled · ${selectedWorkflow.title}`,
+        "Workflow execution was aborted and removed from the active queue.",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    } finally {
+      setPendingAction(false);
+    }
+  }, [client, queryClient, selectedWorkflow]);
+
   const doResumeWorkflow = useCallback(async (): Promise<void> => {
     if (selectedWorkflow == null) return;
     setPendingAction(true);
@@ -175,6 +192,7 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     selectWorkflow(id: string) {
       setSelectedId(id);
     },
+    cancelWorkflow: doCancelWorkflow,
     pauseWorkflow: doPauseWorkflow,
     resumeWorkflow: doResumeWorkflow,
     recoverWorkflow: doRecoverWorkflow,

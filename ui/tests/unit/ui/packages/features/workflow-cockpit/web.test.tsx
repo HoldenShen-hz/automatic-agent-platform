@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mockSelectWorkflow = vi.fn();
+const mockCancelWorkflow = vi.fn();
 const mockPauseWorkflow = vi.fn();
 const mockResumeWorkflow = vi.fn();
 const mockRecoverWorkflow = vi.fn();
@@ -37,6 +38,7 @@ vi.mock("../../../../../../packages/features/workflow-cockpit/src/hooks", () => 
       evidenceRefs: [{ refId: "ev-1", type: "artifact", uri: "artifact://launch", description: "Launch plan" }],
     },
     selectWorkflow: mockSelectWorkflow,
+    cancelWorkflow: mockCancelWorkflow,
     pauseWorkflow: mockPauseWorkflow,
     resumeWorkflow: mockResumeWorkflow,
     recoverWorkflow: mockRecoverWorkflow,
@@ -61,15 +63,17 @@ describe("WorkflowCockpitWebView", () => {
     expect(screen.queryByText(/artifact Launch plan/)).not.toBeNull();
   });
 
-  it("wires pause/resume/recover/release controls", () => {
+  it("wires cancel/pause/resume/recover/release controls", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<WorkflowCockpitWebView />);
 
+    fireEvent.click(screen.getAllByRole("button", { name: "Cancel" })[0]!);
     fireEvent.click(screen.getAllByRole("button", { name: "Pause" })[0]!);
     fireEvent.click(screen.getAllByRole("button", { name: "Resume" })[0]!);
     fireEvent.click(screen.getAllByRole("button", { name: "Recover" })[0]!);
     fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0]!);
 
+    expect(mockCancelWorkflow).toHaveBeenCalled();
     expect(mockPauseWorkflow).toHaveBeenCalled();
     expect(mockResumeWorkflow).toHaveBeenCalled();
     expect(mockRecoverWorkflow).toHaveBeenCalled();

@@ -289,7 +289,7 @@ function decideLevel(
   // - P0 incidents: freeze immediately per R23-07
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
   const severity = score.lastIncidentSeverity;
-  if (score.incidents > 0 && severity === "P0") {
+  if (score.incidents > 0 && severity === "P0" && !options.severityBasedDemotion) {
     return "frozen";
   }
 

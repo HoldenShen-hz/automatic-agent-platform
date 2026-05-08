@@ -1,33 +1,38 @@
 export interface CostAttributionEntry {
   readonly subjectId: string;
-  readonly llmCostUsd: number;
-  readonly toolCostUsd: number;
-  readonly computeCostUsd: number;
-  readonly storageCostUsd: number;
-  readonly egressCostUsd: number;
-  readonly humanReviewCostUsd: number;
+  readonly amountUsd?: number;
+  readonly llmCostUsd?: number;
+  readonly toolCostUsd?: number;
+  readonly computeCostUsd?: number;
+  readonly storageCostUsd?: number;
+  readonly egressCostUsd?: number;
+  readonly humanReviewCostUsd?: number;
 }
 
 export function aggregateCostAttribution(entries: readonly CostAttributionEntry[]): Record<string, number> {
-  const raw = entries.reduce<Record<string, { llm: number; tool: number; compute: number; storage: number; egress: number; humanReview: number }>>((acc, item) => {
+  const raw = entries.reduce<Record<string, number>>((acc, item) => {
     if (!acc[item.subjectId]) {
-      acc[item.subjectId] = { llm: 0, tool: 0, compute: 0, storage: 0, egress: 0, humanReview: 0 };
+      acc[item.subjectId] = 0;
     }
-    const entry = acc[item.subjectId]!;
-    entry.llm += item.llmCostUsd;
-    entry.tool += item.toolCostUsd;
-    entry.compute += item.computeCostUsd;
-    entry.storage += item.storageCostUsd;
-    entry.egress += item.egressCostUsd;
-    entry.humanReview += item.humanReviewCostUsd;
+    const current = acc[item.subjectId]!;
+    // Use amountUsd if present, otherwise sum individual cost fields
+    if (item.amountUsd !== undefined) {
+      acc[item.subjectId] = current + item.amountUsd;
+    } else {
+      acc[item.subjectId] = current
+        + (item.llmCostUsd ?? 0)
+        + (item.toolCostUsd ?? 0)
+        + (item.computeCostUsd ?? 0)
+        + (item.storageCostUsd ?? 0)
+        + (item.egressCostUsd ?? 0)
+        + (item.humanReviewCostUsd ?? 0);
+    }
     return acc;
   }, {});
-  // Compute total per subject (sum of 7 dimensions)
-  // Use Math.round with epsilon adjustment for 4 decimal places rounding
+  // Round to 4 decimal places for floating point precision
   return Object.fromEntries(
     Object.entries(raw).map(([k, v]) => {
-      const total = v.llm + v.tool + v.compute + v.storage + v.egress + v.humanReview;
-      const scaled = total * 10000;
+      const scaled = v * 10000;
       const rounded = Math.round(scaled + 1e-9);
       return [k, rounded / 10000];
     })

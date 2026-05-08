@@ -38,6 +38,11 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
       domainId: "marketing",
       evidenceCount: 2,
       timelineDepth: 5,
+      resourceUsage: {
+        cpuPercent: 62,
+        memoryMb: 768,
+        runtimeMinutes: 18,
+      },
     },
     selectTask: mockSelectTask,
     claimTask: mockClaimTask,
@@ -76,6 +81,8 @@ describe("TaskCockpitWebView", () => {
     render(<TaskCockpitWebView />);
 
     expect(screen.queryByText(/L3 Steps/)).not.toBeNull();
+    expect(screen.queryByText(/CPU: 62%/)).not.toBeNull();
+    expect(screen.queryByText(/Memory: 768 MB/)).not.toBeNull();
     expect(screen.queryByText(/Collect inputs completed · agent-1/)).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "L4 Evidence" }));

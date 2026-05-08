@@ -48,6 +48,15 @@ export function TaskCockpitWebView(): ReactElement {
                 { key: "Evidence", value: String(selectedTask.evidenceCount ?? 0) },
               ]}
             />
+            {selectedTask.resourceUsage != null && (
+              <KeyValueTable
+                rows={[
+                  { key: "CPU", value: `${selectedTask.resourceUsage.cpuPercent}%` },
+                  { key: "Memory", value: `${selectedTask.resourceUsage.memoryMb} MB` },
+                  { key: "Runtime", value: `${selectedTask.resourceUsage.runtimeMinutes} min` },
+                ]}
+              />
+            )}
             {/* §2274: Operator and escalation target inputs with validation */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "grid", gap: 4 }}>

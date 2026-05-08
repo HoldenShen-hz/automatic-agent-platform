@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import type { WorkflowStepDTO } from "@aa/shared-types";
-import { designTokens } from "@aa/ui-core";
+import { DAGVisualization, designTokens } from "@aa/ui-core";
 
 export interface DAGViewerProps {
   readonly steps: readonly WorkflowStepDTO[];
@@ -38,6 +38,19 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <DAGVisualization
+        stages={STAGE_ORDER.map((stage) => {
+          const stageSteps = steps.filter((step) => step.phase?.toLowerCase().includes(stage));
+          const failedStep = stageSteps.find((step) => step.status === "failed");
+          const runningStep = stageSteps.find((step) => step.status === "running");
+          return {
+            id: stage,
+            label: stage,
+            status: failedStep != null ? "failed" : runningStep != null ? "running" : stageSteps.length > 0 ? "completed" : "pending",
+            items: stageSteps.map((step) => step.title),
+          };
+        })}
+      />
       <div style={{ fontSize: 12, color: designTokens.color.subtle, marginBottom: 4 }}>
         OAPEFLIR Stage Rail
       </div>

@@ -351,3 +351,193 @@ export function SegmentedControl({
     }, option.label)),
   );
 }
+
+export function TimelineChart({
+  points,
+}: {
+  points: readonly { label: string; value: number; tone?: "neutral" | "accent" | "danger" }[];
+}): ReactElement {
+  const max = Math.max(...points.map((point) => point.value), 1);
+  return createElement("div", { style: { display: "grid", gap: 10 } },
+    points.map((point) => {
+      const color = point.tone === "danger"
+        ? designTokens.semantic.color.danger
+        : point.tone === "accent"
+          ? designTokens.semantic.color.accent
+          : designTokens.semantic.color.info;
+      return createElement("div", { key: point.label, style: { display: "grid", gap: 4 } },
+        createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12 } },
+          createElement("span", null, point.label),
+          createElement("strong", null, point.value),
+        ),
+        createElement("div", { style: { height: 8, borderRadius: 999, background: designTokens.semantic.color.surfaceElevated, overflow: "hidden" } },
+          createElement("div", {
+            style: {
+              width: `${Math.max(6, (point.value / max) * 100)}%`,
+              height: "100%",
+              background: color,
+            },
+          }),
+        ),
+      );
+    }),
+  );
+}
+
+export function PieChart({
+  slices,
+}: {
+  slices: readonly { label: string; value: number; color?: string }[];
+}): ReactElement {
+  const total = slices.reduce((sum, slice) => sum + Math.max(slice.value, 0), 0);
+  const palette = [
+    designTokens.semantic.color.accent,
+    designTokens.semantic.color.info,
+    designTokens.semantic.color.warning,
+    designTokens.semantic.color.success,
+    designTokens.semantic.color.danger,
+  ];
+  let currentPercent = 0;
+  const gradientStops = slices.map((slice, index) => {
+    const safeValue = total === 0 ? 0 : (Math.max(slice.value, 0) / total) * 100;
+    const start = currentPercent;
+    const end = currentPercent + safeValue;
+    currentPercent = end;
+    const color = slice.color ?? palette[index % palette.length]!;
+    return `${color} ${start}% ${end}%`;
+  });
+
+  return createElement("div", { style: { display: "grid", gap: 12, alignItems: "center", justifyItems: "center" } },
+    createElement("div", {
+      "aria-label": "Pie chart",
+      style: {
+        width: 144,
+        height: 144,
+        borderRadius: "50%",
+        background: total === 0
+          ? designTokens.semantic.color.surfaceElevated
+          : `conic-gradient(${gradientStops.join(", ")})`,
+        border: `1px solid ${designTokens.semantic.color.border}`,
+      },
+    }),
+    createElement("div", { style: { display: "grid", gap: 6, width: "100%" } },
+      slices.map((slice, index) => createElement("div", {
+        key: `${slice.label}-${index}`,
+        style: { display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 },
+      },
+      createElement("span", null, slice.label),
+      createElement("strong", null, slice.value),
+      )),
+    ),
+  );
+}
+
+function formatRemainingDuration(deadline: string, now: number): {
+  readonly label: string;
+  readonly tone: "danger" | "warning" | "success";
+} {
+  const diff = new Date(deadline).getTime() - now;
+  if (diff <= 0) {
+    return { label: "Expired", tone: "danger" };
+  }
+  const minutes = Math.floor(diff / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const remainderMinutes = minutes % 60;
+  const label = hours > 0 ? `${hours}h ${remainderMinutes}m remaining` : `${minutes}m remaining`;
+  if (minutes <= 15) {
+    return { label, tone: "danger" };
+  }
+  if (minutes <= 60) {
+    return { label, tone: "warning" };
+  }
+  return { label, tone: "success" };
+}
+
+export function SLACountdown({
+  deadline,
+  now = Date.now(),
+}: {
+  deadline: string;
+  now?: number;
+}): ReactElement {
+  const remaining = formatRemainingDuration(deadline, now);
+  const color = remaining.tone === "danger"
+    ? designTokens.semantic.color.danger
+    : remaining.tone === "warning"
+      ? designTokens.semantic.color.warning
+      : designTokens.semantic.color.success;
+  return createElement("time", {
+    dateTime: deadline,
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "4px 10px",
+      borderRadius: 999,
+      background: designTokens.semantic.color.surfaceElevated,
+      color,
+      fontWeight: 600,
+    },
+  }, remaining.label);
+}
+
+export function FileAttachment({
+  files,
+}: {
+  files: readonly { id: string; name: string; sizeLabel?: string; kind?: string }[];
+}): ReactElement {
+  return createElement("div", { style: { display: "grid", gap: 8 } },
+    files.map((file) => createElement("div", {
+      key: file.id,
+      style: {
+        ...baseSurfaceStyle,
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: 12,
+      },
+    },
+    createElement("div", { style: { display: "grid", gap: 2 } },
+      createElement("strong", null, file.name),
+      createElement("span", { style: { color: designTokens.semantic.color.textSubtle, fontSize: 12 } }, file.kind ?? "attachment"),
+    ),
+    createElement("span", { style: { color: designTokens.semantic.color.textSubtle, fontSize: 12 } }, file.sizeLabel ?? ""),
+    )),
+  );
+}
+
+export function DAGVisualization({
+  stages,
+}: {
+  stages: readonly { id: string; label: string; status: "pending" | "running" | "completed" | "failed"; items?: readonly string[] }[];
+}): ReactElement {
+  const statusColor = (status: "pending" | "running" | "completed" | "failed"): string => {
+    switch (status) {
+      case "completed": return designTokens.semantic.color.accent;
+      case "running": return designTokens.semantic.color.info;
+      case "failed": return designTokens.semantic.color.danger;
+      default: return designTokens.semantic.color.textSubtle;
+    }
+  };
+
+  return createElement("div", { style: { display: "grid", gap: 12 } },
+    createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`, gap: 12 } },
+      stages.map((stage) => createElement("div", {
+        key: stage.id,
+        style: {
+          ...baseSurfaceStyle,
+          padding: 12,
+          borderTop: `3px solid ${statusColor(stage.status)}`,
+        },
+      },
+      createElement("strong", null, stage.label),
+      createElement("div", { style: { marginTop: 4, color: designTokens.semantic.color.textSubtle, fontSize: 12 } }, stage.status),
+      stage.items != null && stage.items.length > 0
+        ? createElement("ul", { style: { margin: "10px 0 0", paddingInlineStart: 18 } },
+          stage.items.map((item) => createElement("li", { key: item, style: { fontSize: 12 } }, item)),
+        )
+        : null,
+      )),
+    ),
+  );
+}

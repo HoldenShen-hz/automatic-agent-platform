@@ -4,7 +4,21 @@ import { createRouteGuardChain } from "@aa/shared-domain";
 import { ComponentErrorBoundary, FeatureScaffold } from "./components";
 import { designTokens } from "./design-tokens";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
-export { ComponentErrorBoundary, FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
+export {
+  CodeBlock,
+  ComponentErrorBoundary,
+  DAGVisualization,
+  FeatureScaffold,
+  FeatureWorkbench,
+  FeatureWorkbenchPanel,
+  FileAttachment,
+  KeyValueTable,
+  ListCard,
+  PieChart,
+  SLACountdown,
+  StatusPill,
+  TimelineChart,
+} from "./components";
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";

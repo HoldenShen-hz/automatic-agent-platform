@@ -59,8 +59,28 @@ export const defaultMockApiShape: MockApiShape = {
     activeAgents: 8,
   },
   tasks: [
-    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
-    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
+    {
+      id: "task-1",
+      title: "春季营销活动",
+      status: "running",
+      domainId: "marketing",
+      currentStep: "launch-assets",
+      owner: "growth-ops",
+      evidenceCount: 6,
+      timelineDepth: 5,
+      resourceUsage: { cpuPercent: 62, memoryMb: 768, runtimeMinutes: 18 },
+    },
+    {
+      id: "task-2",
+      title: "量化策略检查",
+      status: "blocked",
+      domainId: "quant-trading",
+      currentStep: "approval",
+      owner: "quant-review",
+      evidenceCount: 9,
+      timelineDepth: 5,
+      resourceUsage: { cpuPercent: 41, memoryMb: 512, runtimeMinutes: 27 },
+    },
   ],
   workflows: [
     {

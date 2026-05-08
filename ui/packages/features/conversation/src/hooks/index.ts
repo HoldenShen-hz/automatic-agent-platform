@@ -9,11 +9,13 @@ import { useEffect, useRef, useState } from "react";
 
 export interface ConversationVm {
   readonly messages: readonly { role: string; content: string }[];
+  readonly attachments: readonly { id: string; name: string; sizeLabel: string }[];
   readonly status: ConversationStatus;
   readonly draft: string;
   readonly planReady: boolean;
   readonly executionReady: boolean;
   readonly isStreaming: boolean;
+  attachFiles(files: FileList | readonly { name: string; size: number }[]): void;
   setDraft(value: string): void;
   sendPrompt(): void;
   buildPlan(): void;
@@ -47,6 +49,16 @@ function persistMessages(messages: readonly ConversationMessage[]): void {
   }
 }
 
+function formatFileSize(size: number): string {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+  return `${size} B`;
+}
+
 /**
  * §4.6.1: Subscribe to nl.session.updated / nl.plan.created events for real-time updates.
  * WS streaming is the primary path; in-memory ConversationClient is only for local fallback.
@@ -58,6 +70,7 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
   const [messages, setMessages] = useState<readonly ConversationMessage[]>(loadPersistedMessages);
   const [status, setStatus] = useState<ConversationStatus>("idle");
   const [draft, setDraftState] = useState("帮我发起营销活动");
+  const [attachments, setAttachments] = useState<readonly { id: string; name: string; sizeLabel: string }[]>([]);
   const [planReady, setPlanReady] = useState(false);
   const [executionReady, setExecutionReady] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -91,16 +104,26 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
 
   return {
     messages,
+    attachments,
     status,
     draft,
     planReady,
     executionReady,
     isStreaming,
+    attachFiles(files) {
+      const normalized = Array.from(files).map((file, index) => ({
+        id: `attachment-${Date.now()}-${index}`,
+        name: file.name,
+        sizeLabel: formatFileSize(file.size),
+      }));
+      setAttachments((current) => [...current, ...normalized]);
+    },
     setDraft(value: string) {
       setDraftState(value);
     },
     sendPrompt() {
       clientRef.current?.send(draft);
+      setAttachments([]);
     },
     buildPlan() {
       clientRef.current?.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");

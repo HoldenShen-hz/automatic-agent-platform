@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClient = { post: vi.fn() };
 const mockPauseWorkflow = vi.fn(async () => ({ ok: true }));
+const mockCancelWorkflow = vi.fn(async () => ({ ok: true }));
 const mockResumeWorkflow = vi.fn(async () => ({ ok: true }));
 const mockRecoverWorkflow = vi.fn(async () => ({ ok: true }));
 const mockReleaseWorkflow = vi.fn(async () => ({ ok: true }));
@@ -32,6 +33,7 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
+  cancelWorkflow: (...args: unknown[]) => mockCancelWorkflow(...args),
   pauseWorkflow: (...args: unknown[]) => mockPauseWorkflow(...args),
   resumeWorkflow: (...args: unknown[]) => mockResumeWorkflow(...args),
   recoverWorkflow: (...args: unknown[]) => mockRecoverWorkflow(...args),
@@ -64,12 +66,14 @@ describe("useWorkflowCockpitVm", () => {
 
     await act(async () => {
       await result.current.pauseWorkflow();
+      await result.current.cancelWorkflow();
       await result.current.resumeWorkflow();
       await result.current.recoverWorkflow();
       await result.current.releaseWorkflow();
     });
 
     expect(mockPauseWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
+    expect(mockCancelWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
     expect(mockResumeWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
     expect(mockRecoverWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");
     expect(mockReleaseWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1");

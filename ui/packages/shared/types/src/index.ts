@@ -183,7 +183,7 @@ export interface WorkflowStepDTO {
 export interface WorkflowDTO {
   readonly id: string;
   readonly title: string;
-  readonly status: "draft" | "running" | "paused" | "completed";
+  readonly status: "draft" | "running" | "paused" | "completed" | "cancelled";
   readonly currentStage: string;
   readonly owner: string;
   readonly steps: readonly WorkflowStepDTO[];
@@ -372,6 +372,11 @@ export interface TaskDTO {
   readonly owner?: string;
   readonly evidenceCount?: number;
   readonly timelineDepth?: number;
+  readonly resourceUsage?: {
+    readonly cpuPercent: number;
+    readonly memoryMb: number;
+    readonly runtimeMinutes: number;
+  };
 }
 
 export interface ApprovalDTO {

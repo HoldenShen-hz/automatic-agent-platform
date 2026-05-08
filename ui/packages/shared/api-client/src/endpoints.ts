@@ -153,6 +153,13 @@ export async function recoverWorkflow(client: RESTClient, workflowId: string): P
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "recover" });
 }
 
+export async function cancelWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), {
+    action: "resume",
+    mode: "abort",
+  });
+}
+
 export async function releaseWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPublish.path, { workflowId }), { action: "release" });
 }

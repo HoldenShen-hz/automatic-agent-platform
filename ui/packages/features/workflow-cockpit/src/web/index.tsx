@@ -19,6 +19,12 @@ export function WorkflowCockpitWebView(): ReactElement {
     }
   };
 
+  const handleCancel = () => {
+    if (selectedWorkflow != null && window.confirm(`Cancel workflow "${selectedWorkflow.title}"? This will abort the current run.`)) {
+      vm.cancelWorkflow();
+    }
+  };
+
   const handleResume = () => {
     if (selectedWorkflow != null && window.confirm(`Resume workflow "${selectedWorkflow.title}"? This will continue execution from the current checkpoint.`)) {
       vm.resumeWorkflow();
@@ -86,6 +92,7 @@ export function WorkflowCockpitWebView(): ReactElement {
                 />
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={handleCancel} type="button">Cancel</button>
                 <button onClick={handlePause} type="button">Pause</button>
                 <button onClick={handleResume} type="button">Resume</button>
                 <button onClick={handleRecover} type="button">Recover</button>
