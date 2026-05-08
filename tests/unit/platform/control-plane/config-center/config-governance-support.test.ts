@@ -486,3 +486,65 @@ test("validateConfigField rejects Infinity for number", () => {
   const issues: string[] = [];
   assert.equal(validateConfigField(Infinity, schema, issues), false);
 });
+
+test("BOOTSTRAP_LAYER_SCHEMA accepts readiness and startup-order defaults required by bootstrap config", () => {
+  const issues: string[] = [];
+  validateLayerSchema({
+    appName: "automatic-agent-system",
+    phase: "ring_1",
+    stableCoreEnabled: true,
+    dependencyOrder: ["bootstrap", "platform"],
+    readinessGates: ["config_loaded"],
+    degradationPolicy: {
+      onReadinessFailure: "fail_closed",
+      allowSummaryMode: true,
+    },
+    healthCheckTimeoutMs: 5000,
+    readinessProbe: {
+      initialDelayMs: 1000,
+      intervalMs: 5000,
+      timeoutMs: 3000,
+      failureThreshold: 3,
+    },
+  }, BOOTSTRAP_LAYER_SCHEMA, issues);
+
+  assert.deepEqual(issues, []);
+});
+
+test("RUNTIME_LAYER_SCHEMA accepts config schema version, breaker threshold, and drift interval", () => {
+  const issues: string[] = [];
+  validateLayerSchema({
+    configVersion: "v4.3",
+    configSchemaVersion: "v4.3",
+    maxConcurrentTasks: 1,
+    defaultTaskTimeoutMs: 300000,
+    defaultStepTimeoutMs: 120000,
+    apiDefaultTimeoutMs: 5000,
+    apiMaxTimeoutMs: 30000,
+    maxAgentRounds: 6,
+    maxToolCalls: 8,
+    circuitBreaker: {
+      enabled: true,
+      threshold: 5,
+    },
+    configDriftReconciler: {
+      interval: 300000,
+    },
+  }, RUNTIME_LAYER_SCHEMA, issues);
+
+  assert.deepEqual(issues, []);
+});
+
+test("RUNTIME_LAYER_SCHEMA rejects runtime defaults that omit config schema version and drift interval", () => {
+  const issues: string[] = [];
+  validateLayerSchema({
+    maxConcurrentTasks: 1,
+    defaultTaskTimeoutMs: 300000,
+    defaultStepTimeoutMs: 120000,
+  }, RUNTIME_LAYER_SCHEMA, issues);
+
+  assert.ok(issues.includes("config.invalid_runtime.configVersion"));
+  assert.ok(issues.includes("config.invalid_runtime.configSchemaVersion"));
+  assert.ok(issues.includes("config.invalid_runtime.circuitBreaker"));
+  assert.ok(issues.includes("config.invalid_runtime.configDriftReconciler"));
+});

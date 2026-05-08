@@ -92,7 +92,47 @@ const TOOL_NAME_ALIASES = new Map<string, readonly string[]>([
   ["patch", ["apply_patch"]],
   ["question", ["question"]],
   ["todo", ["todo_write"]],
+  ["budget_guard", ["read", "question"]],
+  ["case_manager", ["question", "todo_write"]],
+  ["change_freezer", ["read", "question"]],
+  ["clause_library", ["read", "web_search"]],
+  ["cue_sheet", ["read", "todo_write"]],
+  ["dependency_tracker", ["read", "todo_write"]],
+  ["diagnose", ["read", "question"]],
+  ["evidence_matrix", ["read", "question"]],
+  ["execute", ["bash"]],
+  ["python", ["bash"]],
+  ["repo_map", ["read"]],
+  ["static_analysis", ["read", "question"]],
 ]);
+
+function inferDomainToolAlias(toolName: string): readonly string[] | null {
+  if (/(edit|editor|write|writer|patch|apply|redline|generator|drafter)/.test(toolName)) {
+    return ["read", "apply_patch", "edit_replace", "edit_batch"];
+  }
+
+  if (/(runner|executor|launcher|router|scheduler|sync|close_calendar|order_execution)/.test(toolName)) {
+    return ["read", "bash", "question"];
+  }
+
+  if (
+    /(search|retrieve|lookup|fetch|reader|ingest|collector|snapshot|feed|graph|index|trace|logs?|monitor|tracker|calendar|journal|market_data|ehr|crm|hris|ledger|paper|warehouse|source|catalog)/.test(
+      toolName,
+    )
+  ) {
+    return ["read", "web_search", "web_fetch"];
+  }
+
+  if (
+    /(planner|builder|analyzer|classifier|synthesizer|profiler|calculator|checker|mapper|register|registry|engine|simulator|tuner|moderator|observer|model|backtester|scorer|reporter|publisher|policy|guideline|citation|portfolio|coverage|trend|signal|status|resource|milestone|document|knowledge|clinical|care|creative|brief|strategy|incident|ticket|defect|test|experiment|recommendation|risk|quality|forecast|variance|segment|taxonomy|attribution|performance)/.test(
+      toolName,
+    )
+  ) {
+    return ["read", "question", "todo_write"];
+  }
+
+  return null;
+}
 
 function normalizeToolName(toolName: string): string {
   return toolName.trim().toLowerCase();
@@ -139,6 +179,18 @@ export function expandToolNames(toolNames: readonly string[]): ExpandedToolNames
         }
       }
       continue;
+    }
+
+    const inferredAliases = inferDomainToolAlias(toolName);
+    if (inferredAliases != null) {
+      for (const alias of inferredAliases) {
+        if (resolveToolExecutionMetadata(alias) != null) {
+          appendUnique(resolvedToolNames, alias);
+        }
+      }
+      if (resolvedToolNames.length > 0) {
+        continue;
+      }
     }
 
     const compactName = normalizeCompactToolName(toolName);

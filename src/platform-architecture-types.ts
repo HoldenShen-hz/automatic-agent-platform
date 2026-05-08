@@ -35,3 +35,11 @@ export interface PlatformStartupTarget {
   startupCommand: string | null;
   appManifest: PlatformAppManifest | null;
 }
+
+export type {
+  HarnessRun,
+  HarnessRunStatus,
+  NodeRun,
+  NodeRunStatus,
+  PlanGraphBundle,
+} from "./platform/contracts/executable-contracts/index.js";

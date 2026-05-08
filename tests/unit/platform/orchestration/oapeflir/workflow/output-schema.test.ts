@@ -41,13 +41,31 @@ test("parseWorkflowOutputSchema throws for non-object root", () => {
   );
 });
 
-test("parseWorkflowOutputSchema throws for invalid property type", () => {
+test("parseWorkflowOutputSchema supports number, object, and string-array properties", () => {
+  const schema = parseWorkflowOutputSchema(
+    JSON.stringify({
+      type: "object",
+      properties: {
+        key1: { type: "number" },
+        key2: { type: "object" },
+        key3: { type: "array", items: { type: "string" } },
+      },
+    }),
+    "test://schema/1",
+  );
+
+  assert.equal(schema.properties.key1?.type, "number");
+  assert.equal(schema.properties.key2?.type, "object");
+  assert.deepEqual(schema.properties.key3, { type: "array", itemType: "string" });
+});
+
+test("parseWorkflowOutputSchema throws for unsupported array item type", () => {
   assert.throws(
     () => parseWorkflowOutputSchema(
       JSON.stringify({
         type: "object",
         properties: {
-          key1: { type: "number" }, // not supported
+          key1: { type: "array", items: { type: "number" } },
         },
       }),
       "test://schema/1",
@@ -213,4 +231,26 @@ test("parseWorkflowOutputSchema throws for invalid additionalProperties type", (
     ),
     (e: any) => e.code === "workflow.output_schema_invalid_document",
   );
+});
+
+test("validateWorkflowStepOutput accepts supported non-string property types", () => {
+  const schema = parseWorkflowOutputSchema(
+    JSON.stringify({
+      type: "object",
+      required: ["summary", "count", "meta", "tags", "enabled"],
+      properties: {
+        summary: { type: "string", minLength: 1 },
+        count: { type: "number" },
+        meta: { type: "object" },
+        tags: { type: "array", items: { type: "string" } },
+        enabled: { type: "boolean" },
+      },
+      additionalProperties: false,
+    }),
+    "test://schema/typed",
+  );
+
+  assert.equal(schema.properties.count?.type, "number");
+  assert.equal(schema.properties.meta?.type, "object");
+  assert.deepEqual(schema.properties.tags, { type: "array", itemType: "string" });
 });

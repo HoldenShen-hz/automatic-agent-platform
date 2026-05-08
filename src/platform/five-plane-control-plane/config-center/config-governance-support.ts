@@ -93,6 +93,76 @@ export const BOOTSTRAP_LAYER_SCHEMA: ConfigFieldSchema = {
     appName: { kind: "string", issue: "config.invalid_bootstrap.appName", minLength: 1 },
     phase: { kind: "string", issue: "config.invalid_bootstrap.phase", minLength: 1 },
     stableCoreEnabled: { kind: "boolean", issue: "config.invalid_bootstrap.stableCoreEnabled" },
+    dependencyOrder: {
+      kind: "array",
+      issue: "config.invalid_bootstrap.dependencyOrder",
+      minLength: 1,
+      element: {
+        kind: "string",
+        minLength: 1,
+      },
+    },
+    readinessGates: {
+      kind: "array",
+      issue: "config.invalid_bootstrap.readinessGates",
+      minLength: 1,
+      element: {
+        kind: "string",
+        minLength: 1,
+      },
+    },
+    degradationPolicy: {
+      kind: "object",
+      issue: "config.invalid_bootstrap.degradationPolicy",
+      shape: {
+        onReadinessFailure: {
+          kind: "string",
+          issue: "config.invalid_bootstrap.degradationPolicy.onReadinessFailure",
+          minLength: 1,
+        },
+        allowSummaryMode: {
+          kind: "boolean",
+          issue: "config.invalid_bootstrap.degradationPolicy.allowSummaryMode",
+          optional: true,
+        },
+      },
+    },
+    healthCheckTimeoutMs: {
+      kind: "number",
+      issue: "config.invalid_bootstrap.healthCheckTimeoutMs",
+      integer: true,
+      minExclusive: 0,
+    },
+    readinessProbe: {
+      kind: "object",
+      issue: "config.invalid_bootstrap.readinessProbe",
+      shape: {
+        initialDelayMs: {
+          kind: "number",
+          issue: "config.invalid_bootstrap.readinessProbe.initialDelayMs",
+          integer: true,
+          minExclusive: 0,
+        },
+        intervalMs: {
+          kind: "number",
+          issue: "config.invalid_bootstrap.readinessProbe.intervalMs",
+          integer: true,
+          minExclusive: 0,
+        },
+        timeoutMs: {
+          kind: "number",
+          issue: "config.invalid_bootstrap.readinessProbe.timeoutMs",
+          integer: true,
+          minExclusive: 0,
+        },
+        failureThreshold: {
+          kind: "number",
+          issue: "config.invalid_bootstrap.readinessProbe.failureThreshold",
+          integer: true,
+          minExclusive: 0,
+        },
+      },
+    },
   },
 };
 
@@ -130,6 +200,16 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
   kind: "object",
   issue: "config.invalid_runtime",
   shape: {
+    configVersion: {
+      kind: "string",
+      issue: "config.invalid_runtime.configVersion",
+      minLength: 1,
+    },
+    configSchemaVersion: {
+      kind: "string",
+      issue: "config.invalid_runtime.configSchemaVersion",
+      minLength: 1,
+    },
     defaultTaskTimeoutMs: {
       kind: "number",
       issue: "config.invalid_runtime.defaultTaskTimeoutMs",
@@ -146,6 +226,18 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
       integer: true,
       minExclusive: 0,
     },
+    apiDefaultTimeoutMs: {
+      kind: "number",
+      issue: "config.invalid_runtime.apiDefaultTimeoutMs",
+      integer: true,
+      minExclusive: 0,
+    },
+    apiMaxTimeoutMs: {
+      kind: "number",
+      issue: "config.invalid_runtime.apiMaxTimeoutMs",
+      integer: true,
+      minExclusive: 0,
+    },
     maxAgentRounds: {
       kind: "number",
       issue: "config.invalid_runtime.maxAgentRounds",
@@ -159,6 +251,34 @@ export const RUNTIME_LAYER_SCHEMA: ConfigFieldSchema = {
       optional: true,
       integer: true,
       minExclusive: 0,
+    },
+    circuitBreaker: {
+      kind: "object",
+      issue: "config.invalid_runtime.circuitBreaker",
+      shape: {
+        enabled: {
+          kind: "boolean",
+          issue: "config.invalid_runtime.circuitBreaker.enabled",
+        },
+        threshold: {
+          kind: "number",
+          issue: "config.invalid_runtime.circuitBreaker.threshold",
+          integer: true,
+          minExclusive: 0,
+        },
+      },
+    },
+    configDriftReconciler: {
+      kind: "object",
+      issue: "config.invalid_runtime.configDriftReconciler",
+      shape: {
+        interval: {
+          kind: "number",
+          issue: "config.invalid_runtime.configDriftReconciler.interval",
+          integer: true,
+          minExclusive: 0,
+        },
+      },
     },
   },
 };

@@ -1,6 +1,10 @@
 import { buildGovernanceAuditRecord, type GovernanceAuditRecord } from "../compliance-engine/audit-enforcer/index.js";
 import { type ApprovalDelegation, resolveDelegatedApprover } from "./delegation/index.js";
-import { type ApprovalEscalationRule, shouldEscalateApproval } from "./escalation/index.js";
+import {
+  evaluateApprovalEscalation,
+  type ApprovalEscalationEvaluationContext,
+  type ApprovalEscalationRule,
+} from "./escalation/index.js";
 import {
   resolveApprovalRoute,
   type AmountThresholdRule,
@@ -11,6 +15,8 @@ import type { OrgNode } from "../org-model/org-node/index.js";
 
 export interface ApprovalRoutingResult extends ApprovalRouteDecision {
   readonly escalatedTo: string | null;
+  readonly escalationRuleId: string | null;
+  readonly slaBreachNotificationTargetIds: readonly string[];
   readonly auditRecord: GovernanceAuditRecord;
 }
 
@@ -22,6 +28,7 @@ export interface ApprovalChainStep {
   readonly mode: ApprovalChainMode;
   readonly deadlineAt: string | null;
   readonly escalationTarget: string | null;
+  readonly slaBreachNotificationTargetIds: readonly string[];
   readonly reasonCodes: readonly string[];
 }
 
@@ -35,6 +42,7 @@ export interface ApprovalChainOptions {
   readonly chainMode?: ApprovalChainMode;
   readonly timeoutMinutes?: number;
   readonly conditionalApproverIds?: readonly string[];
+  readonly escalationContext?: ApprovalEscalationEvaluationContext;
 }
 
 export interface ApprovalRoutingServiceOptions {
@@ -57,10 +65,16 @@ export class ApprovalRoutingService {
     this.amountThresholdRules = options.amountThresholdRules ?? [];
   }
 
-  public route(request: ApprovalRouteRequest, createdAtIso: string, nowIso: string): ApprovalRoutingResult {
+  public route(
+    request: ApprovalRouteRequest,
+    createdAtIso: string,
+    nowIso: string,
+    escalationContext: ApprovalEscalationEvaluationContext = {},
+  ): ApprovalRoutingResult {
     const delegationMap = this.buildDelegationMap(request.orgNodeId, nowIso);
     const base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
-    const escalatedTo = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
+    const escalation = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel, escalationContext);
+    const escalatedTo = escalation.escalatedTo;
     const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)
       ? [...base.approverChain, escalatedTo]
       : [...base.approverChain];
@@ -75,6 +89,8 @@ export class ApprovalRoutingService {
         approverIds: approverChain,
       },
       escalatedTo,
+      escalationRuleId: escalation.escalationRuleId,
+      slaBreachNotificationTargetIds: escalation.slaBreachNotificationTargetIds,
       auditRecord: buildGovernanceAuditRecord({
         recordId: `audit_${request.requesterId}_${request.orgNodeId}`,
         action: "approval.route",
@@ -85,6 +101,8 @@ export class ApprovalRoutingService {
           ...(base.delegated ? ["approval.delegated"] : ["approval.direct_route"]),
           `approval.routing.${base.routingStrategy}`,
           ...(escalatedTo != null ? ["approval.escalated"] : []),
+          ...(escalation.escalationRuleId != null ? [`approval.escalation_rule.${escalation.escalationRuleId}`] : []),
+          ...(escalation.slaBreachNotificationTargetIds.length > 0 ? ["approval.sla_breach_notified"] : []),
         ],
         occurredAt: nowIso,
       }),
@@ -101,7 +119,7 @@ export class ApprovalRoutingService {
     nowIso: string,
     options: ApprovalChainOptions = {},
   ): ApprovalChainPlan {
-    const routing = this.route(request, createdAtIso, nowIso);
+    const routing = this.route(request, createdAtIso, nowIso, options.escalationContext);
     const chainMode = options.chainMode ?? "sequential";
     const deadlineAt = options.timeoutMinutes == null
       ? null
@@ -116,6 +134,7 @@ export class ApprovalRoutingService {
         mode: "parallel",
         deadlineAt,
         escalationTarget: routing.escalatedTo,
+        slaBreachNotificationTargetIds: routing.slaBreachNotificationTargetIds,
         reasonCodes: routing.auditRecord.reasonCodes,
       }];
     } else {
@@ -128,6 +147,7 @@ export class ApprovalRoutingService {
         mode: chainMode,
         deadlineAt,
         escalationTarget: routing.escalatedTo,
+        slaBreachNotificationTargetIds: routing.slaBreachNotificationTargetIds,
         reasonCodes: chainMode === "conditional"
           ? [...routing.auditRecord.reasonCodes, "approval.routing.conditional"]
           : routing.auditRecord.reasonCodes,
@@ -154,9 +174,27 @@ export class ApprovalRoutingService {
     createdAtIso: string,
     nowIso: string,
     riskLevel: ApprovalRouteRequest["riskLevel"],
-  ): string | null {
-    const matchedRule = this.escalationRules.find((rule) =>
-      shouldEscalateApproval(rule, createdAtIso, nowIso, riskLevel));
-    return matchedRule?.escalateToApproverId ?? null;
+    context: ApprovalEscalationEvaluationContext,
+  ): {
+    readonly escalatedTo: string | null;
+    readonly escalationRuleId: string | null;
+    readonly slaBreachNotificationTargetIds: readonly string[];
+  } {
+    const matchedRule = this.escalationRules
+      .map((rule) => ({
+        rule,
+        decision: evaluateApprovalEscalation(rule, createdAtIso, nowIso, riskLevel, context),
+      }))
+      .filter((item) => item.decision.shouldEscalate)
+      .sort((left, right) =>
+        right.rule.triggerAfterMinutes - left.rule.triggerAfterMinutes ||
+        right.rule.maxEscalationDepth - left.rule.maxEscalationDepth,
+      )[0];
+
+    return {
+      escalatedTo: matchedRule?.rule.escalateToApproverId ?? null,
+      escalationRuleId: matchedRule?.rule.ruleId ?? null,
+      slaBreachNotificationTargetIds: matchedRule?.decision.notificationTargetIds ?? [],
+    };
   }
 }

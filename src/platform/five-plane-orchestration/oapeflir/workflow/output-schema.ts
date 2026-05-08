@@ -19,6 +19,16 @@ export type WorkflowOutputSchemaProperty =
     }
   | {
       type: "boolean";
+    }
+  | {
+      type: "number";
+    }
+  | {
+      type: "object";
+    }
+  | {
+      type: "array";
+      itemType: "string";
     };
 
 /** Complete workflow output schema definition */
@@ -83,6 +93,35 @@ function normalizePropertySchema(
   if (property.type === "boolean") {
     return {
       type: "boolean",
+    };
+  }
+
+  if (property.type === "number") {
+    return {
+      type: "number",
+    };
+  }
+
+  if (property.type === "object") {
+    return {
+      type: "object",
+    };
+  }
+
+  if (property.type === "array") {
+    const items = expectPlainObject(property.items, sourcePath, `properties.${propertyName}.items`);
+    if (items.type !== "string") {
+      throw new WorkflowStateError(
+        "workflow.output_schema_unsupported",
+        `Unsupported array item type at ${sourcePath}:properties.${propertyName}.items.type`,
+        {
+          details: { sourcePath, propertyName, itemType: items.type },
+        },
+      );
+    }
+    return {
+      type: "array",
+      itemType: "string",
     };
   }
 
@@ -235,6 +274,27 @@ export function validateWorkflowStepOutput(
     if (propertySchema.type === "boolean" && typeof value !== "boolean") {
       throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
         details: { stepId: step.stepId, key, expectedType: propertySchema.type },
+      });
+    }
+
+    if (propertySchema.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
+      throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
+        details: { stepId: step.stepId, key, expectedType: propertySchema.type },
+      });
+    }
+
+    if (propertySchema.type === "object" && !isPlainObject(value)) {
+      throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
+        details: { stepId: step.stepId, key, expectedType: propertySchema.type },
+      });
+    }
+
+    if (
+      propertySchema.type === "array" &&
+      (!Array.isArray(value) || value.some((entry) => typeof entry !== propertySchema.itemType))
+    ) {
+      throw new WorkflowStateError("workflow.output_schema_invalid", `workflow.output_schema_invalid: Invalid output value for key: ${key}`, {
+        details: { stepId: step.stepId, key, expectedType: propertySchema.type, itemType: propertySchema.itemType },
       });
     }
   }

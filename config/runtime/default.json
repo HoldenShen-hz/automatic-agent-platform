@@ -1,9 +1,18 @@
 {
+  "configVersion": "v4.3",
+  "configSchemaVersion": "v4.3",
   "maxConcurrentTasks": 1,
   "defaultTaskTimeoutMs": 300000,
   "defaultStepTimeoutMs": 120000,
   "apiDefaultTimeoutMs": 5000,
   "apiMaxTimeoutMs": 30000,
   "maxAgentRounds": 6,
-  "maxToolCalls": 8
+  "maxToolCalls": 8,
+  "circuitBreaker": {
+    "enabled": true,
+    "threshold": 5
+  },
+  "configDriftReconciler": {
+    "interval": 300000
+  }
 }

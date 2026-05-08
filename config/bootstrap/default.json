@@ -1,5 +1,33 @@
 {
   "appName": "automatic-agent-system",
-  "phase": "phase_1a",
-  "stableCoreEnabled": true
+  "phase": "ring_1",
+  "stableCoreEnabled": true,
+  "dependencyOrder": [
+    "bootstrap",
+    "platform",
+    "domains",
+    "interaction",
+    "org-governance",
+    "scale-ecosystem",
+    "ops-maturity",
+    "apps",
+    "plugins",
+    "sdk"
+  ],
+  "readinessGates": [
+    "config_loaded",
+    "service_registry_ready",
+    "startup_targets_registered"
+  ],
+  "degradationPolicy": {
+    "onReadinessFailure": "fail_closed",
+    "allowSummaryMode": true
+  },
+  "healthCheckTimeoutMs": 5000,
+  "readinessProbe": {
+    "initialDelayMs": 1000,
+    "intervalMs": 5000,
+    "timeoutMs": 3000,
+    "failureThreshold": 3
+  }
 }

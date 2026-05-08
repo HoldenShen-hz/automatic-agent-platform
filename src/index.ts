@@ -33,12 +33,16 @@ export { buildDomainsStartupPlan } from "./domains-startup-plan.js";
 export { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 export { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 export { getPlatformApplicationKernel } from "./platform-application-kernel.js";
+export { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
+export { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
+export { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
+export { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
 export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
-export type PlatformRootEntryMode = "summary" | "demo" | PlatformAppKind;
+export type PlatformRootEntryMode = PlatformStartupTargetKind;
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
@@ -91,6 +95,57 @@ export interface PlatformRootSummary {
   };
 }
 
+interface PlatformRootDemoLegacySnapshot {
+  readonly task: {
+    readonly id: string;
+    readonly status: string;
+    readonly outputJson: string | null;
+  };
+  readonly workflow: {
+    readonly status: string;
+    readonly currentStepIndex: number;
+  } | null;
+  readonly execution: {
+    readonly id: string;
+    readonly status: string;
+    readonly traceId: string;
+  } | null;
+  readonly session: {
+    readonly id: string;
+    readonly status: string;
+  } | null;
+  readonly stepOutputs: readonly unknown[];
+  readonly events: readonly {
+    readonly eventType: string;
+    readonly eventTier: string;
+  }[];
+}
+
+export interface PlatformRootDemoSummary {
+  readonly contractSurface: "platform_root_demo_summary_v1";
+  readonly runRef: {
+    readonly taskId: string;
+    readonly executionId: string | null;
+    readonly sessionId: string | null;
+    readonly traceId: string | null;
+  };
+  readonly lifecycle: {
+    readonly taskStatus: string;
+    readonly workflowStatus: string | null;
+    readonly executionStatus: string | null;
+    readonly sessionStatus: string | null;
+    readonly currentStepIndex: number | null;
+  };
+  readonly result: {
+    readonly output: unknown;
+    readonly stepOutputCount: number;
+  };
+  readonly events: readonly {
+    readonly eventType: string;
+    readonly eventTier: string;
+  }[];
+}
+
 function resolveDbPath(): string {
   const base = process.cwd();
   const sqliteDir = join(base, "data", "sqlite");
@@ -120,6 +175,44 @@ function resolveRootEntryMode(): PlatformRootEntryMode {
   return process.env.npm_lifecycle_event === "demo" ? "demo" : "summary";
 }
 
+function parseTaskOutput(outputJson: string | null): unknown {
+  if (outputJson == null) {
+    return null;
+  }
+  try {
+    return JSON.parse(outputJson);
+  } catch {
+    return outputJson;
+  }
+}
+
+export function buildPlatformRootDemoSummary(snapshot: PlatformRootDemoLegacySnapshot): PlatformRootDemoSummary {
+  return {
+    contractSurface: "platform_root_demo_summary_v1",
+    runRef: {
+      taskId: snapshot.task.id,
+      executionId: snapshot.execution?.id ?? null,
+      sessionId: snapshot.session?.id ?? null,
+      traceId: snapshot.execution?.traceId ?? null,
+    },
+    lifecycle: {
+      taskStatus: snapshot.task.status,
+      workflowStatus: snapshot.workflow?.status ?? null,
+      executionStatus: snapshot.execution?.status ?? null,
+      sessionStatus: snapshot.session?.status ?? null,
+      currentStepIndex: snapshot.workflow?.currentStepIndex ?? null,
+    },
+    result: {
+      output: parseTaskOutput(snapshot.task.outputJson),
+      stepOutputCount: snapshot.stepOutputs.length,
+    },
+    events: snapshot.events.map((event) => ({
+      eventType: event.eventType,
+      eventTier: event.eventTier,
+    })),
+  };
+}
+
 export async function runPlatformRootDemo(): Promise<void> {
   requireValidStartupEnv();
 
@@ -130,41 +223,7 @@ export async function runPlatformRootDemo(): Promise<void> {
   });
 
   console.log(
-    JSON.stringify(
-      {
-        task: {
-          id: snapshot.task.id,
-          status: snapshot.task.status,
-          output: snapshot.task.outputJson ? JSON.parse(snapshot.task.outputJson) : null,
-        },
-        workflow: snapshot.workflow
-          ? {
-              status: snapshot.workflow.status,
-              currentStepIndex: snapshot.workflow.currentStepIndex,
-            }
-          : null,
-        execution: snapshot.execution
-          ? {
-              id: snapshot.execution.id,
-              status: snapshot.execution.status,
-              traceId: snapshot.execution.traceId,
-            }
-          : null,
-        session: snapshot.session
-          ? {
-              id: snapshot.session.id,
-              status: snapshot.session.status,
-            }
-          : null,
-        stepOutputs: snapshot.stepOutputs.length,
-        events: snapshot.events.map((event) => ({
-          eventType: event.eventType,
-          eventTier: event.eventTier,
-        })),
-      },
-      null,
-      2,
-    ),
+    JSON.stringify(buildPlatformRootDemoSummary(snapshot), null, 2),
   );
 }
 

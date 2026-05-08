@@ -4,7 +4,11 @@
 
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { shouldEscalateApproval, type ApprovalEscalationRule } from "../../../../../src/org-governance/approval-routing/escalation/index.js";
+import {
+  evaluateApprovalEscalation,
+  shouldEscalateApproval,
+  type ApprovalEscalationRule,
+} from "../../../../../src/org-governance/approval-routing/escalation/index.js";
 
 function createRule(overrides: Partial<{
   ruleId: string;
@@ -120,4 +124,54 @@ test("shouldEscalateApproval works with all risk levels", () => {
   assert.strictEqual(shouldEscalateApproval(rule, createdAt, now, "medium"), true);
   assert.strictEqual(shouldEscalateApproval(rule, createdAt, now, "high"), true);
   assert.strictEqual(shouldEscalateApproval(rule, createdAt, now, "critical"), true);
+});
+
+test("evaluateApprovalEscalation enforces max escalation depth", () => {
+  const decision = evaluateApprovalEscalation(
+    createRule({ maxEscalationDepth: 1 }),
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    { escalationDepth: 1 },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, false);
+  assert.strictEqual(decision.reason, "max_depth_reached");
+});
+
+test("evaluateApprovalEscalation enforces cooldown between repeated escalations", () => {
+  const decision = evaluateApprovalEscalation(
+    createRule({ cooldownMinutes: 30, maxEscalationDepth: 2 }),
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      escalationDepth: 1,
+      lastEscalatedAtIso: "2025-01-01T10:45:00Z",
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, false);
+  assert.strictEqual(decision.reason, "cooldown_active");
+});
+
+test("evaluateApprovalEscalation returns SLA breach notification targets when enabled", () => {
+  const decision = evaluateApprovalEscalation(
+    createRule({
+      notifyOnSlaBreach: true,
+      slaBreachNotificationTargetIds: ["compliance", "oncall-manager"],
+      maxEscalationDepth: 2,
+    }),
+    "2025-01-01T10:00:00Z",
+    "2025-01-01T11:00:00Z",
+    "high",
+    {
+      escalationDepth: 0,
+      slaBreached: true,
+    },
+  );
+
+  assert.strictEqual(decision.shouldEscalate, true);
+  assert.strictEqual(decision.shouldNotifySlaBreach, true);
+  assert.deepStrictEqual(decision.notificationTargetIds, ["compliance", "oncall-manager"]);
 });
