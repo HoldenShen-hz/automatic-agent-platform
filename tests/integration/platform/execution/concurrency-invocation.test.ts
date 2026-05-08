@@ -641,8 +641,6 @@ test("[CONCURRENCY-3] lock acquisition with TTL timeout works correctly", async 
     // Now should be able to acquire
     const result3 = adapter.acquire({ lockKey: "timeout-lock", owner: "owner-2", ttlMs: 30000 });
     assert.equal(result3.acquired, true, "Should acquire after TTL expires");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -678,8 +676,6 @@ test("[CONCURRENCY-3] expired lock is automatically evicted on next acquire", as
 
     const lock = adapter.inspect("expired-lock");
     assert.equal(lock?.owner, "owner-2", "Lock should be owned by new owner");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -712,8 +708,6 @@ test("[CONCURRENCY-3] lock extend only works for current owner", async () => {
     // Different owner cannot extend
     const wrongExtend = adapter.extend("extend-lock", "owner-2", 5000);
     assert.equal(wrongExtend, null, "Non-owner should not be able to extend");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -751,8 +745,6 @@ test("[CONCURRENCY-3] force steal allows new owner to take expired lock", async 
     // New owner can release
     const newRelease = adapter.release("steal-lock", "owner-2");
     assert.equal(newRelease, true, "New owner should be able to release");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -792,8 +784,6 @@ test("[CONCURRENCY-3] concurrent lock acquisition with timeout contention", asyn
     // Exactly one should succeed
     const successes = result.values.filter((r) => r.acquired === true);
     assert.equal(successes.length, 1, "Exactly one worker should acquire the lock");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -846,8 +836,6 @@ test("[CONCURRENCY-4] concurrent queue adapter operations maintain consistency",
     );
 
     assert.equal(dequeueResult.errors.length, 0, "No errors during dequeue");
-
-    db.close();
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -889,7 +877,6 @@ test("[CONCURRENCY-4] concurrent config updates via queue stats maintains invari
 
     db.close();
   } finally {
-    db.close();
     cleanupPath(workspace);
   }
 });
@@ -922,8 +909,6 @@ test("[CONCURRENCY-4] concurrent list jobs returns consistent snapshot", async (
     const uniqueCounts = new Set(counts);
     assert.equal(uniqueCounts.size, 1, "All list calls should return same count");
     assert.equal(counts[0], 20, "Should list all 20 jobs");
-
-    db.close();
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -977,8 +962,6 @@ test("[CONCURRENCY-4] critical section test for lock adapter mutual exclusion", 
     // In a proper implementation, there should be no violations
     // Note: This test may show violations if the SQLite adapter doesn't properly serialize
     assert.equal(result.maxConcurrent, 1, "Maximum concurrent holders should be 1");
-
-    db.close();
   } finally {
     db.close();
   }
@@ -1115,8 +1098,6 @@ test("[CONCURRENCY-5] concurrent queue operations with same idempotency key main
     const jobs = adapter.listJobs("idempotent-queue");
     const sameKeyJobs = jobs.filter((j) => j.idempotencyKey === "same-key");
     assert.equal(sameKeyJobs.length, 1, "Only one job should exist with idempotency key");
-
-    db.close();
   } finally {
     db.close();
     cleanupPath(workspace);

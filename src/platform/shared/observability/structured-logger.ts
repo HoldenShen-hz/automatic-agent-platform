@@ -273,6 +273,12 @@ export class StructuredLogger {
       traceId ??
       activeTelemetryContext?.traceId;
     const causationId = entry.causationId ?? readStringField(rawData, "causationId");
+    const crosscuttingFabricCandidate = entry.crosscuttingFabric ?? readStringField(rawData, "crosscuttingFabric");
+    const crosscuttingFabric = crosscuttingFabricCandidate === "reliability"
+      || crosscuttingFabricCandidate === "security"
+      || crosscuttingFabricCandidate === "governance"
+      ? crosscuttingFabricCandidate
+      : undefined;
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = rawData;
@@ -281,6 +287,7 @@ export class StructuredLogger {
       ...entry,
       service: entry.service ?? this.service,
       plane: entry.plane ?? this.plane,
+      ...(crosscuttingFabric !== undefined ? { crosscuttingFabric } : {}),
       ...(taskId !== undefined ? { taskId } : {}),
       ...(agentId !== undefined ? { agentId } : {}),
       ...(sessionId !== undefined ? { sessionId } : {}),

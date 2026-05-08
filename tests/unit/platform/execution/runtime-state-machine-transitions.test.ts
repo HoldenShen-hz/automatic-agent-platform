@@ -216,8 +216,8 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
-      leaseId: nodeRun.leaseId ?? (needsLease ? "lease-1" : undefined),
-      fencingToken: nodeRun.fencingToken ?? (needsLease ? "fence-1" : undefined),
+      leaseId: needsLease ? "lease-1" : undefined,
+      fencingToken: needsLease ? "fence-1" : undefined,
       occurredAt: "2026-04-27T00:00:00.000Z",
     };
 

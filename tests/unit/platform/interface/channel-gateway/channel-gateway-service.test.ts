@@ -291,6 +291,87 @@ test("channel gateway service enforces per-channel rate limits before delivery",
   }
 });
 
+test("channel gateway service times out outbound provider calls", async () => {
+  const fetchImpl: typeof fetch = async (_input, init) => await new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+  const harness = createHarness({ fetchImpl });
+  try {
+    harness.targets.registerTarget({
+      channel: "webhook",
+      targetKind: "room",
+      externalTargetId: "https://hooks.example.test/timeout",
+      displayName: "Timeout Hook",
+      aliases: ["timeout-hook"],
+    });
+    const service = new ChannelGatewayService(harness.store, harness.targets, {
+      fetchImpl,
+      requestTimeoutMs: 10,
+      webhook: {
+        defaultHeaders: {
+          "x-gateway-source": "automatic-agent",
+        },
+      },
+    });
+
+    await assert.rejects(
+      service.sendMessage({
+        query: "timeout-hook",
+        text: "This should time out.",
+      }),
+      /gateway\.webhook_timeout/,
+    );
+  } finally {
+    harness.close();
+  }
+});
+
+test("channel gateway service opens provider circuit breaker after repeated retryable failures", async () => {
+  let requestCount = 0;
+  const fetchImpl: typeof fetch = async () => {
+    requestCount += 1;
+    return {
+      ok: false,
+      status: 503,
+      json: async () => ({ ok: false }),
+    } as Response;
+  };
+  const harness = createHarness({ fetchImpl });
+  try {
+    harness.targets.registerTarget({
+      channel: "slack",
+      targetKind: "room",
+      externalTargetId: "C123456",
+      displayName: "Failing Slack",
+      aliases: ["failing-slack"],
+    });
+    const service = new ChannelGatewayService(harness.store, harness.targets, {
+      fetchImpl,
+      circuitBreakerFailureThreshold: 2,
+      slack: {
+        botToken: "slack-token",
+        baseUrl: "https://slack.example.test",
+      },
+    });
+
+    await assert.rejects(
+      service.sendMessage({ query: "failing-slack", text: "first failure" }),
+      /gateway\.slack_delivery_failed:503/,
+    );
+    await assert.rejects(
+      service.sendMessage({ query: "failing-slack", text: "second failure" }),
+      /gateway\.slack_delivery_failed:503/,
+    );
+    await assert.rejects(
+      service.sendMessage({ query: "failing-slack", text: "breaker open" }),
+      /gateway\.slack_circuit_open/,
+    );
+    assert.equal(requestCount, 2);
+  } finally {
+    harness.close();
+  }
+});
+
 test("channel gateway service retries queued delivery failures asynchronously", async () => {
   let attempts = 0;
   const requests: CapturedRequest[] = [];

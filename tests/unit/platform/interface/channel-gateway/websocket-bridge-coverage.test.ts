@@ -263,6 +263,35 @@ test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
   });
 });
 
+test("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+
+      ws.on("open", () => {
+        const serverSideSocket = Array.from((bridge as any).clients.keys())[0];
+        for (let index = 0; index < 100; index += 1) {
+          const result = (bridge as any).subscribeToTask(serverSideSocket, `task-${index}`);
+          assert.equal(result, "subscribed");
+        }
+        const overflowResult = (bridge as any).subscribeToTask(serverSideSocket, "task-overflow");
+        assert.equal(overflowResult, "subscription_limit_exceeded");
+        ws.close();
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", reject);
+    });
+  });
+});
+
 test("WebSocketBridge removes listeners and subscriptions on disconnect", async () => {
   const server = createMockServer();
   const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);

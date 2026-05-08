@@ -92,6 +92,7 @@ test("integration: POST /v1/admin/control-plane/load-balancing/select returns 50
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "idempotency-key": "lb-select-unavailable-1",
       },
       body: JSON.stringify({ queueName: "default" }),
     });
@@ -164,6 +165,7 @@ test("integration: POST /v1/admin/config updates configuration", async () => {
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "idempotency-key": "admin-config-post-1",
       },
       body: JSON.stringify({ key: "runtime.maxConcurrency", value: 8 }),
     });
@@ -172,6 +174,156 @@ test("integration: POST /v1/admin/config updates configuration", async () => {
     assert.equal(payload.data.success, true);
     assert.equal(payload.data.record.key, "runtime.maxConcurrency");
     assert.equal(payload.data.record.value, 8);
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: PUT /api/v1/admin/config updates configuration via canonical API prefix", async () => {
+  const workspace = createTempWorkspace("aa-admin-config-put-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/api/v1/admin/config",
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "admin-config-put-1",
+      },
+      body: JSON.stringify({ key: "runtime.maxQueueDepth", value: 32 }),
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{ success: boolean; record: { key: string; value: number } }>(response);
+    assert.equal(payload.data.success, true);
+    assert.equal(payload.data.record.key, "runtime.maxQueueDepth");
+    assert.equal(payload.data.record.value, 32);
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: GET /api/v1/replay-sessions returns replay session summaries", async () => {
+  const workspace = createTempWorkspace("aa-admin-replay-list-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/api/v1/replay-sessions",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{
+      replaySessions: Array<{ replaySessionId: string; taskId: string | null }>;
+      total: number;
+    }>(response);
+    assert.ok(payload.data.total >= 1);
+    assert.ok(payload.data.replaySessions.some((session) => session.taskId === context.seededTaskId));
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: GET /api/v1/replay-sessions/:id returns replay session detail", async () => {
+  const workspace = createTempWorkspace("aa-admin-replay-detail-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: `/api/v1/replay-sessions/${context.seededTaskId}`,
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{
+      replaySessionId: string;
+      workflow: { taskId: string };
+      events: Array<unknown>;
+    }>(response);
+    assert.equal(payload.data.replaySessionId, context.seededTaskId);
+    assert.equal(payload.data.workflow.taskId, context.seededTaskId);
+    assert.ok(Array.isArray(payload.data.events));
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: POST /v1/admin/panic-directives and /v1/admin/resume-directives complete directive lifecycle", async () => {
+  const workspace = createTempWorkspace("aa-admin-panic-resume-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const panicResponse = await server.inject({
+      url: "/v1/admin/panic-directives",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "admin-panic-1",
+      },
+      body: JSON.stringify({
+        scope: "platform/runtime",
+        reasonCode: "security.operator_override",
+        activeIncidents: 1,
+        requiredApprovers: ["operator-1", "operator-2"],
+        freezeModes: ["deploy", "automation"],
+        severity: "full",
+      }),
+    });
+    assert.equal(panicResponse.statusCode, 200);
+    const panicPayload = readJson<{
+      success: boolean;
+      directive: { scope: string; reasonCode: string; directiveId: string };
+      propagationRecords: Array<unknown>;
+    }>(panicResponse);
+    assert.equal(panicPayload.data.success, true);
+    assert.equal(panicPayload.data.directive.scope, "platform/runtime");
+    assert.equal(panicPayload.data.directive.reasonCode, "security.operator_override");
+    assert.ok(panicPayload.data.propagationRecords.length >= 1);
+
+    const resumeResponse = await server.inject({
+      url: "/v1/admin/resume-directives",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "admin-resume-1",
+      },
+      body: JSON.stringify({
+        scope: "platform/runtime",
+        approvedBy: ["operator-1", "operator-2"],
+        approvedRoles: ["platform_admin", "security_team"],
+        checkpointsVerified: true,
+        forensicSnapshotReviewed: true,
+        rollbackPlanReady: true,
+        validationRunPassed: true,
+      }),
+    });
+    assert.equal(resumeResponse.statusCode, 200);
+    const resumePayload = readJson<{
+      success: boolean;
+      receipt: { scope: string; resumed: boolean; directiveId: string | null };
+    }>(resumeResponse);
+    assert.equal(resumePayload.data.success, true);
+    assert.equal(resumePayload.data.receipt.scope, "platform/runtime");
+    assert.equal(resumePayload.data.receipt.resumed, true);
+    assert.ok(resumePayload.data.receipt.directiveId != null);
   } finally {
     context.db.close();
     cleanupPath(workspace);

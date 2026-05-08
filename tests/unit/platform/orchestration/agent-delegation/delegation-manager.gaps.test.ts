@@ -385,7 +385,7 @@ test("createDelegationManager without options uses defaults", () => {
   );
 });
 
-test("createDelegationManager with custom options", () => {
+test("createDelegationManager with custom options", async () => {
   const service = createDelegationManager({
     maxDepth: 10,
     maxFanout: 5,
@@ -396,9 +396,8 @@ test("createDelegationManager with custom options", () => {
   const spec = createDelegationSpec();
 
   // Depth 5 should be allowed with maxDepth of 10
-  return service.delegate(parent, spec).then((handle) => {
-    assert.equal(handle.depth, 6);
-  });
+  const handle = await service.delegate(parent, spec);
+  assert.equal(handle.depth, 6);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

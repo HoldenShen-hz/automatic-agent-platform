@@ -53,10 +53,36 @@ function makeBundle(overrides: Partial<ConfigBundle> = {}): ConfigBundle {
     configRoot: "/tmp/config",
     version: makeVersion(),
     layers: {
-      bootstrap: { appName: "aa", phase: "phase_2a", stableCoreEnabled: true },
+      bootstrap: {
+        appName: "aa",
+        phase: "phase_2a",
+        stableCoreEnabled: true,
+        dependencyOrder: ["init", "run", "cleanup"],
+        readinessGates: ["startup", "health"],
+        degradationPolicy: { onReadinessFailure: "fallback", allowSummaryMode: false },
+        healthCheckTimeoutMs: 5000,
+        readinessProbe: {
+          initialDelayMs: 1000,
+          intervalMs: 5000,
+          timeoutMs: 3000,
+          failureThreshold: 3,
+        },
+      },
       gateways: { defaultGateway: "cli", sseEnabled: true },
       providers: { defaultProvider: "minimax", defaultModelProfile: "reasoning-medium" },
-      runtime: { maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 },
+      runtime: {
+        configVersion: "1.0.0",
+        configSchemaVersion: "1.0.0",
+        maxConcurrentTasks: 2,
+        defaultTaskTimeoutMs: 300000,
+        defaultStepTimeoutMs: 120000,
+        apiDefaultTimeoutMs: 30000,
+        apiMaxTimeoutMs: 300000,
+        retryMax: 3,
+        circuitBreaker: { enabled: true, threshold: 5 },
+        rateLimit: { enabled: true, requestsPerMinute: 6000 },
+        configDriftReconciler: { interval: 60000 },
+      },
       security: {
         approvalMode: "supervised",
         sandboxMode: "workspace_write",
@@ -451,10 +477,37 @@ test("validateBundle prod allows destructiveActions explicitly false", () => {
 // ---------------------------------------------------------------------------
 
 function seedMinimalConfig(root: string, env: string = "dev"): void {
-  createFile(join(root, "bootstrap/default.json"), JSON.stringify({ appName: "aa", phase: "test", stableCoreEnabled: true }));
+  createFile(
+    join(root, "bootstrap/default.json"),
+    JSON.stringify({
+      appName: "aa",
+      phase: "test",
+      stableCoreEnabled: true,
+      dependencyOrder: ["init", "run", "cleanup"],
+      readinessGates: ["startup", "health"],
+      degradationPolicy: { onReadinessFailure: "fallback" },
+      healthCheckTimeoutMs: 5000,
+      readinessProbe: { initialDelayMs: 1000, intervalMs: 5000, timeoutMs: 3000, failureThreshold: 3 },
+    }),
+  );
   createFile(join(root, "gateways/default.json"), JSON.stringify({ defaultGateway: "cli", sseEnabled: true }));
   createFile(join(root, "providers/default.json"), JSON.stringify({ defaultProvider: "minimax", defaultModelProfile: "reasoning-medium" }));
-  createFile(join(root, "runtime/default.json"), JSON.stringify({ maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 }));
+  createFile(
+    join(root, "runtime/default.json"),
+    JSON.stringify({
+      configVersion: "1.0.0",
+      configSchemaVersion: "1.0.0",
+      maxConcurrentTasks: 2,
+      defaultTaskTimeoutMs: 300000,
+      defaultStepTimeoutMs: 120000,
+      apiDefaultTimeoutMs: 30000,
+      apiMaxTimeoutMs: 300000,
+      retryMax: 3,
+      circuitBreaker: { enabled: true, threshold: 5 },
+      rateLimit: { enabled: true, requestsPerMinute: 6000 },
+      configDriftReconciler: { interval: 60000 },
+    }),
+  );
   createFile(
     join(root, "security/default.json"),
     JSON.stringify({

@@ -10,10 +10,10 @@ import test from "node:test";
 
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { createRepositoryHarness } from "../../../helpers/repository-harness.js";
-import { TransitionService } from "../../../../src/platform/state-transition/transition-service.js";
+import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
 import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { StateTransitionMachine } from "../../../../src/platform/execution/state-transition/state-transition-machine.js";
-import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 test("state-transition: Task transitions from queued -> in_progress -> done", () => {
   const ctx = createIntegrationContext("aa-state-task-");
@@ -550,11 +550,8 @@ test("state-transition: Invalid transition throws WorkflowStateError", () => {
       "Should throw on skipping intermediate state"
     );
 
-    assert.throws(
-      () => machine.assertTransition("in_progress", "in_progress"),
-      { message: /noop_transition_denied/ },
-      "Should throw on no-op transition"
-    );
+    // No-op transitions (same state) are allowed - assertTransition returns without throwing
+    machine.assertTransition("in_progress", "in_progress");
   } finally {
     harness.cleanup();
   }

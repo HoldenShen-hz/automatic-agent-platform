@@ -16,7 +16,7 @@ import { createAssetProductionRetrieverPlugin } from "./retrievers/asset-product
 import { createLivestreamRetrieverPlugin } from "./retrievers/livestream-retriever.js";
 import { createBasicEvaluatorPlugin } from "./validators/basic-evaluator.js";
 import { DataTaintPropagationService, type DataTaintLabel } from "../platform/five-plane-state-evidence/truth/data-taint-propagation.js";
-import { newId, nowIso } from "../contracts/types/ids.js";
+import { newId, nowIso } from "../platform/contracts/types/ids.js";
 
 type PluginFactory = () => RegisteredPlugin;
 

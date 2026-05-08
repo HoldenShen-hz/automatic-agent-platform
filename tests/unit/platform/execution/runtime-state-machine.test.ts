@@ -213,7 +213,9 @@ test("RuntimeStateMachine enforces NodeRun lease and fencing token", () => {
 
 test("RuntimeStateMachine requires lease and fencing before execution-state NodeRun transitions", () => {
   const machine = createMachine();
-  const nodeRun = createNodeRun({
+
+  // First, verify that transition to leased without lease/fencing throws
+  const nodeRunNoLease = createNodeRun({
     harnessRunId: "run-1",
     planGraphBundleId: "pgb-1",
     graphVersion: 1,
@@ -226,7 +228,7 @@ test("RuntimeStateMachine requires lease and fencing before execution-state Node
     () =>
       machine.transition({
         aggregateType: "NodeRun",
-        aggregate: nodeRun,
+        aggregate: nodeRunNoLease,
         fromStatus: "ready",
         toStatus: "leased",
         expectedSeq: 1,
@@ -237,6 +239,16 @@ test("RuntimeStateMachine requires lease and fencing before execution-state Node
       }),
     WorkflowStateError,
   );
+
+  // Now verify that with lease and fencing, the transition succeeds
+  const nodeRun = createNodeRun({
+    harnessRunId: "run-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+    status: "ready",
+    currentSeq: 1,
+  });
 
   const leased = machine.transition({
     aggregateType: "NodeRun",

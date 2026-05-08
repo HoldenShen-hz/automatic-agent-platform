@@ -35,6 +35,7 @@ import {
 import { PackCatalogService } from "./pack-catalog-service.js";
 import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
+import { AdminRuntimeDirectiveService } from "./admin-runtime-directive-service.js";
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import { readRequestId } from "./http-server/utils.js";
 import { createDeduplicationMiddleware } from "./middleware/request-deduplication.js";
@@ -100,6 +101,7 @@ export interface HttpApiServerOptions {
   configRolloutService?: ConfigRolloutService | null;
   tenantRegistryService?: TenantBoundaryRegistryService | null;
   adminConfigService?: AdminConfigService | null;
+  adminRuntimeDirectiveService?: AdminRuntimeDirectiveService | null;
   promptRegistryService?: HierarchicalPromptRegistryService | null;
   knowledgePlaneService?: KnowledgePlaneService | null;
   artifactPlaneService?: ArtifactPlaneService | null;
@@ -156,6 +158,7 @@ export class HttpApiServer {
   private readonly configRolloutService: ConfigRolloutService;
   private readonly tenantRegistryService: TenantBoundaryRegistryService;
   private readonly adminConfigService: AdminConfigService;
+  private readonly adminRuntimeDirectiveService: AdminRuntimeDirectiveService;
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
@@ -171,6 +174,7 @@ export class HttpApiServer {
     this.configRolloutService = options.configRolloutService ?? new ConfigRolloutService();
     this.tenantRegistryService = options.tenantRegistryService ?? new TenantBoundaryRegistryService();
     this.adminConfigService = options.adminConfigService ?? new AdminConfigService();
+    this.adminRuntimeDirectiveService = options.adminRuntimeDirectiveService ?? new AdminRuntimeDirectiveService();
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
@@ -641,6 +645,7 @@ export class HttpApiServer {
         tenantRegistryService: this.tenantRegistryService,
         costReportService: this.costReportService,
         adminConfigService: this.adminConfigService,
+        adminRuntimeDirectiveService: this.adminRuntimeDirectiveService,
       }),
       ...createConsoleRoutes({
         authService: this.options.authService ?? null,

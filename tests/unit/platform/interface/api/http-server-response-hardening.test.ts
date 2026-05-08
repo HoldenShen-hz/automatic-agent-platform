@@ -15,7 +15,7 @@ test("DEFAULT_CORS_CONFIG has correct structure", () => {
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, ["*"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedMethods, ["GET", "POST", "OPTIONS"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedHeaders, ["content-type", "authorization", "x-request-id", "x-api-key"]);
-  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-api-version", "x-app-version"]);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"]);
   assert.equal(DEFAULT_CORS_CONFIG.maxAgeSeconds, 86_400);
   assert.equal(DEFAULT_CORS_CONFIG.credentials, true);
 });
@@ -216,6 +216,16 @@ test("decorateResponseHeaders preserves existing headers", () => {
   };
   const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["custom-header"], "value");
+});
+
+test("decorateResponseHeaders derives x-trace-id from x-request-id when missing", () => {
+  const payload: ApiResponsePayload = {
+    statusCode: 200,
+    headers: { "x-request-id": "req-123" },
+    body: "test",
+  };
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+  assert.equal(result.headers["x-trace-id"], "req-123");
 });
 
 test("decorateResponseHeaders adds CORS headers when origin allowed", () => {

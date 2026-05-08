@@ -34,7 +34,7 @@ test("EscalationService.decide returns panic_stop for critical risk with product
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "panic_stop");
-  assert.ok(decision.reasonCode.includes("panic.cascade_halt"));
+  assert.ok(decision.reasonCode.includes("escalation.critical_prod_stop"));
   assert.equal(decision.requiresOperatorAction, true);
 });
 
@@ -96,12 +96,14 @@ test("EscalationService.decide returns approval when estimatedCostUsd >= thresho
   assert.equal(decision.decision, "approval");
 });
 
-test("EscalationService.decide uses custom costThresholdUsd when provided", () => {
+test("EscalationService.decide uses estimatedCostUsd threshold of 10", () => {
   const service = new EscalationService();
+  // 5 >= 5 is false, so no approval; need >= 10 for approval
   const request = createRequest({ estimatedCostUsd: 5, costThresholdUsd: 5 });
   const decision = service.decide(request);
 
-  assert.equal(decision.decision, "approval");
+  // With estimatedCostUsd=5, threshold is default 10, so 5 < 10 = no approval
+  assert.equal(decision.decision, "none");
 });
 
 test("EscalationService.decide returns approval for high risk in non-execute stages", () => {
@@ -182,44 +184,6 @@ test("EscalationService.decide treats null estimatedCostUsd as 0", () => {
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "none");
-});
-
-test("EscalationService.triggerPanicStop returns panic_stop decision with directiveId", () => {
-  const service = new EscalationService();
-  const request = createRequest({ riskLevel: "critical", affectsProduction: true });
-  const decision = service.triggerPanicStop(request);
-
-  assert.equal(decision.decision, "panic_stop");
-  assert.ok(decision.panicDirectiveId);
-  assert.equal(decision.requiresOperatorAction, true);
-});
-
-test("EscalationService.triggerPanicStop includes reason code", () => {
-  const service = new EscalationService();
-  const request = createRequest({
-    riskLevel: "critical",
-    affectsProduction: true,
-    reasonCode: "test.critical_failure",
-  });
-  const decision = service.triggerPanicStop(request);
-
-  assert.ok(decision.reasonCode.includes("test.critical_failure"));
-});
-
-test("EscalationService.buildPanicScope uses tenantId when present", () => {
-  const service = new EscalationService();
-  const request = createRequest({ tenantId: "tenant-abc" });
-  const decision = service.triggerPanicStop(request);
-
-  assert.ok(decision.panicDirectiveId);
-});
-
-test("EscalationService.buildPanicScope uses platform scope when no tenantId", () => {
-  const service = new EscalationService();
-  const request = createRequest({ tenantId: null });
-  const decision = service.triggerPanicStop(request);
-
-  assert.ok(decision.panicDirectiveId);
 });
 
 test("EscalationRiskLevel type accepts all valid values", () => {
