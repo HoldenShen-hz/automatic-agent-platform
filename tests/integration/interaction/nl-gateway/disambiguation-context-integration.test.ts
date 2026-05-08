@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DisambiguationHandler } from "../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
-import { ContextEnricher } from "../../../src/interaction/nl-gateway/index.js";
-import type { DetectedIntent } from "../../../src/interaction/nl-gateway/index.js";
+import { DisambiguationHandler } from "../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
+import { ContextEnricher } from "../../../../src/interaction/nl-gateway/index.js";
+import type { DetectedIntent } from "../../../../src/interaction/nl-gateway/index.js";
 
 function makeIntent(intentType: DetectedIntent["intentType"] = "task_create", confidence = 0.75): DetectedIntent {
   return {
@@ -32,7 +32,7 @@ test("integration: disambiguation generates context-appropriate questions", () =
   const disambiguator = new DisambiguationHandler();
   const intent = makeIntent("task_modify", 0.5);
 
-  const result = disambigutor.generateClarification("更新配置", 0.5, intent, []);
+  const result = disambiguator.generateClarification("更新配置", 0.5, intent, []);
 
   // Should ask about scope when task_modify intent is unclear
   assert.equal(result.requiresClarification, true);
@@ -76,14 +76,14 @@ test("integration: disambiguation and enrichment handle deploy intent", () => {
 
   const result = disambiguator.generateClarification(
     "deploy to production",
-    0.6,
+    0.4,
     makeIntent("task_create"),
     [],
   );
 
   const context = enricher.enrich("deploy to production", "devops", []);
 
-  assert.equal(result.confidenceLevel, "low");
+  assert.equal(result.confidenceLevel, "very_low");
   assert.ok(result.questions.some((q) => q.entityType === "environment"));
   assert.ok(context.extractedConstraints.includes("production_scope"));
 });

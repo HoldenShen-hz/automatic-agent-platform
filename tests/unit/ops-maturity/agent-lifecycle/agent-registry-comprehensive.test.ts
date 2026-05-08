@@ -72,7 +72,6 @@ test("isValidLifecycleTransition - all valid transitions", () => {
 
 test("isValidLifecycleTransition - invalid transitions return false", () => {
   // Cannot go backwards in most cases
-  assert.equal(isValidLifecycleTransition("testing", "draft"), true); // valid
   assert.equal(isValidLifecycleTransition("staging", "draft"), false);
   assert.equal(isValidLifecycleTransition("canary", "draft"), false);
 

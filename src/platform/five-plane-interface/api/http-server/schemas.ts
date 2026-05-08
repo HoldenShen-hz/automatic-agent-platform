@@ -306,7 +306,7 @@ export function parseArtifactBundlePreviewPayload(body: unknown): ArtifactBundle
     taskId: payload.taskId,
     domainId: payload.domainId,
     bundleType: payload.bundleType,
-    artifacts: payload.artifacts,
+    artifacts: payload.artifacts as ArtifactRecord[],
   };
 }
 

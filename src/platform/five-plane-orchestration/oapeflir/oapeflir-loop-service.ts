@@ -1,6 +1,6 @@
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import type { ConstraintPack, HarnessDecision } from "../harness/index.js";
-import { createPlanGraphBundle, createGraphPatch, type GraphPatch, type PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
+import { createPlanGraphBundle, createGraphPatch, type GraphPatch, type PlanGraphBundle, type JsonValue } from "../../contracts/executable-contracts/index.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
   DualChannelStepOutput,
@@ -168,7 +168,13 @@ export class OapeflirLoopService {
           metrics: { workflowSteps: input.workflow.executionSteps.length },
         });
         const systemObservation = this.systemSituationBuilder.build();
-        return this.observationAggregator.aggregate(taskSituation, systemObservation);
+        return this.observationAggregator.aggregate(
+        taskSituation,
+        systemObservation,
+        this.observationAggregator.createEmptyEventFlowSituation(),
+        this.observationAggregator.createEmptyGoalDecompositionSituation(),
+        this.observationAggregator.createEmptyMemorySituation(),
+      );
       }, {
         taskId: input.taskId,
         workflowStepCount: input.workflow.executionSteps.length,
@@ -371,7 +377,6 @@ export class OapeflirLoopService {
         }
 
         // R5-2: Re-enter at Plan stage — record replan and rebuild plan
-        timeline.record("replan", "started", loopPlan.planId, null, "Replanning triggered by quality gate rejection or replan decision.");
         fsm.resetToStage("plan");
 
         const replanTransition = fsm.canTransitionTo("plan");
@@ -756,7 +761,7 @@ export class OapeflirLoopService {
   private buildPlanGraphBundle(plan: Plan, taskId: string, stepCount: number): PlanGraphBundle {
     const nodes = plan.steps.map((step, index) => ({
       nodeId: step.stepId,
-      nodeType: "execution" as const,
+      nodeType: "tool" as const,
       inputRefs: step.dependencies.length > 0 ? step.dependencies : [`task:${taskId}`],
       outputSchemaRef: `schema:step.${step.stepId}`,
       riskClass: "medium" as const,
@@ -830,20 +835,27 @@ export class OapeflirLoopService {
    * R5-12: Builds a GraphPatch from a Plan for replanning per §13.13
    */
   private buildGraphPatch(basePlan: Plan, newVersion: number): GraphPatch {
-    const operations = basePlan.steps.map((step) => ({
-      operationId: newId("graph_op"),
-      operationType: "add_node" as const,
-      targetRef: step.stepId,
-      payload: {
-        stepId: step.stepId,
-        action: step.action,
-        title: step.title,
-        inputs: step.inputs,
-        outputs: step.outputs,
-        dependencies: step.dependencies,
-        timeout: step.timeout,
-      },
-    }));
+    const operations = basePlan.steps.map((step) => {
+      const payload: Record<string, JsonValue> = {
+        stepId: step.stepId as JsonValue,
+        action: step.action as JsonValue,
+        inputs: step.inputs as JsonValue,
+        dependencies: step.dependencies as JsonValue,
+        timeout: step.timeout as JsonValue,
+      };
+      if (step.title !== undefined) {
+        payload.title = step.title as JsonValue;
+      }
+      if (step.outputs !== undefined) {
+        payload.outputs = step.outputs as JsonValue;
+      }
+      return {
+        operationId: newId("graph_op"),
+        operationType: "add_node" as const,
+        targetRef: step.stepId,
+        payload,
+      };
+    });
 
     return createGraphPatch({
       harnessRunId: `harness:${basePlan.taskId}`,

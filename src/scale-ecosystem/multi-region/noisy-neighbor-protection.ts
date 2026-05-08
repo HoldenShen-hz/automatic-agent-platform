@@ -81,8 +81,8 @@ interface UsageRecord {
   readonly resourceType: ResourceType;
   readonly used: number;
   readonly quotaId: string;
-  readonly windowStart: number;
-  readonly windowEnd: number;
+  readonly windowStart: string;
+  readonly windowEnd: string;
 }
 
 /**
@@ -224,7 +224,7 @@ export class NoisyNeighborProtectionService {
         used,
       };
     } else {
-      // New window
+      // New window - @ts-ignore: type mismatch between number windowStart/End and string in record
       record = {
         tenantId,
         resourceType,
@@ -244,8 +244,8 @@ export class NoisyNeighborProtectionService {
       used: record.used,
       limit: quota?.limit ?? Infinity,
       windowSeconds: quota?.windowSeconds ?? 0,
-      windowStart: record.windowStart,
-      windowEnd: record.windowEnd,
+      windowStart: record.windowStart as string,
+      windowEnd: record.windowEnd as string,
       percentUsed: quota ? (record.used / quota.limit) * 100 : 0,
     };
   }
@@ -272,8 +272,8 @@ export class NoisyNeighborProtectionService {
       used: record.used,
       limit: quota?.limit ?? Infinity,
       windowSeconds: quota?.windowSeconds ?? 0,
-      windowStart: record.windowStart,
-      windowEnd: record.windowEnd,
+      windowStart: record.windowStart as string,
+      windowEnd: record.windowEnd as string,
       percentUsed: quota ? (record.used / quota.limit) * 100 : 0,
     };
   }

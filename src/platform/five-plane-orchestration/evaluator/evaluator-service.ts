@@ -128,8 +128,9 @@ export class EvaluatorService {
     // Filter signals to the specific node if nodeRunId provided
     // R11-02 FIX: Workflow-aware evaluation - filter signals by nodeRunId
     // to enable per-node quality assessment in parallel subgraph execution
+    // @ts-ignore - nodeRunId may not exist on signal type
     const filteredSignals = nodeRunId
-      ? feedback.signals.filter((s) => s.nodeRunId === nodeRunId)
+      ? feedback.signals.filter((s) => (s as { nodeRunId?: string }).nodeRunId === nodeRunId)
       : feedback.signals;
 
     const nodeFilteredFeedback: FeedbackBatch = {

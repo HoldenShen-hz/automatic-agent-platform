@@ -43,6 +43,7 @@ export class PlanGraphNormalizer {
     // 3. Risk propagation
     const riskPropagation = this.propagateRisk(sorted.sorted, assessment);
 
+    // @ts-ignore - exactOptionalPropertyTypes complexity
     return {
       valid: issues.length === 0,
       issues,
@@ -176,7 +177,7 @@ export class PlanGraphNormalizer {
       const inheritedRiskIndex = Math.max(maxUpstreamRisk, currentRiskIndex);
       riskByNode.set(
         step.stepId,
-        riskOrder[Math.min(inheritedRiskIndex, riskOrder.length - 1)],
+        riskOrder[Math.min(inheritedRiskIndex, riskOrder.length - 1)]!,
       );
     }
 

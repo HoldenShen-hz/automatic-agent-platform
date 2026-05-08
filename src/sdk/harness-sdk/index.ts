@@ -361,27 +361,26 @@ export class HarnessSdk {
       return updated as unknown as HarnessRun;
     }
 
-    // @ts-ignore - timeline property doesn't exist on Partial<HarnessRun>, eventType may not match
-    const timelineEntry = {
+    const timelineEntry: HarnessTimelineEvent = {
       eventId: newId("timeline"),
-      eventType: "step_completed",
-      recordedAt: nowIso(),
-      details: {
+      runId: run.harnessRunId,
+      type: "step_completed",
+      payload: {
         role: input.role,
         nodeRunId: input.nodeRunId,
         planGraphId: input.planGraphId,
       },
+      recordedAt: nowIso(),
     };
 
-    // @ts-ignore - timeline property doesn't exist on Partial<HarnessRun>
+    // Cast through HarnessRunRuntimeState to access timeline and currentSeq (which exist on runtime state but not on CanonicalHarnessRun)
     const timeline = [
-      ...(((run as Partial<HarnessRun>).timeline ?? []) as HarnessTimelineEvent[]),
-      // @ts-ignore - eventType doesn't exactly match HarnessTimelineEvent type
-      timelineEntry as HarnessTimelineEvent,
+      ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
+      timelineEntry,
     ];
     return {
       ...run,
-      currentSeq: ((run as Partial<HarnessRun>).currentSeq ?? 0) + 1,
+      currentSeq: ((run as unknown as Partial<HarnessRunRuntimeState>).currentSeq ?? 0) + 1,
       timeline,
     } as HarnessRun;
   }
@@ -544,8 +543,8 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-ignore - timeline property doesn't exist on Partial<HarnessRun>
-        return ((runOrId as Partial<HarnessRun>).timeline ?? []) as HarnessTimelineEvent[];
+        // Cast through HarnessRunRuntimeState to access timeline
+        return ((runOrId as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[];
       }
     }
     return this.runtime.listTimeline(this.requireRun(runOrId));

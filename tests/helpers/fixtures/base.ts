@@ -222,7 +222,7 @@ export function createMinimalBudgetReservation(
     amount: overrides.amount ?? 100,
     resourceKind: overrides.resourceKind ?? "token",
     status: overrides.status ?? "reserved",
-    nodeRunId: overrides.nodeRunId,
+    ...(overrides.nodeRunId != null ? { nodeRunId: overrides.nodeRunId } : {}),
     overrides,
   });
 }

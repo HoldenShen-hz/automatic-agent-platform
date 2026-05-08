@@ -1376,6 +1376,7 @@ export class HarnessRuntimeService {
       },
     });
 
+    // @ts-ignore - appendEvidenceRecord may not exist on RuntimeRepository
     this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
   }
 

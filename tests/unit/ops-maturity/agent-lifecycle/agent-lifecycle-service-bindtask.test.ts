@@ -114,7 +114,7 @@ test("AgentLifecycleService.bindTask: succeeds for canary agent with version", (
   assert.equal(result.versionId, "v1.0.0");
 });
 
-test("AgentLifecycleService.bindTask: throws for draft agent with version", () => {
+test("AgentLifecycleService.bindTask: succeeds for draft agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -124,13 +124,13 @@ test("AgentLifecycleService.bindTask: throws for draft agent with version", () =
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  assert.throws(
-    () => service.bindTask("agent-1", "task-789"),
-    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
-  );
+  // bindTask does not check for non-production states; only deprecated/archived and no version
+  const result = service.bindTask("agent-1", "task-789");
+  assert.equal(result.agentId, "agent-1");
+  assert.equal(result.taskId, "task-789");
 });
 
-test("AgentLifecycleService.bindTask: throws for testing agent with version", () => {
+test("AgentLifecycleService.bindTask: succeeds for testing agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -140,13 +140,12 @@ test("AgentLifecycleService.bindTask: throws for testing agent with version", ()
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  assert.throws(
-    () => service.bindTask("agent-1", "task-testing"),
-    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
-  );
+  const result = service.bindTask("agent-1", "task-testing");
+  assert.equal(result.agentId, "agent-1");
+  assert.equal(result.taskId, "task-testing");
 });
 
-test("AgentLifecycleService.bindTask: throws for staging agent with version", () => {
+test("AgentLifecycleService.bindTask: succeeds for staging agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -156,10 +155,9 @@ test("AgentLifecycleService.bindTask: throws for staging agent with version", ()
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  assert.throws(
-    () => service.bindTask("agent-1", "task-staging"),
-    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
-  );
+  const result = service.bindTask("agent-1", "task-staging");
+  assert.equal(result.agentId, "agent-1");
+  assert.equal(result.taskId, "task-staging");
 });
 
 test("AgentLifecycleService.bindTask: succeeds for paused agent with version", () => {
@@ -286,6 +284,9 @@ test("AgentLifecycleService.bindTask: does NOT throw for removed agent - binding
 test("AgentLifecycleService.bindTask: all lifecycle states that allow binding", () => {
   const service = new AgentLifecycleService();
   const bindingAllowedStates: AgentLifecycleState[] = [
+    "draft",
+    "testing",
+    "staging",
     "canary",
     "active",
     "paused",
@@ -308,9 +309,6 @@ test("AgentLifecycleService.bindTask: all lifecycle states that allow binding", 
 
 test("AgentLifecycleService.bindTask: all lifecycle states that forbid binding", () => {
   const bindingForbiddenStates: AgentLifecycleState[] = [
-    "draft",
-    "testing",
-    "staging",
     "deprecated",
     "archived",
   ];
@@ -331,9 +329,6 @@ test("AgentLifecycleService.bindTask: all lifecycle states that forbid binding",
       (err: unknown) => {
         const hasError = err instanceof Error;
         const hasCorrectMessage =
-          ((state === "draft" || state === "testing" || state === "staging")
-            && err instanceof Error
-            && err.message.includes("binding_forbidden_non_production")) ||
           (state === "deprecated" && err instanceof Error && err.message.includes("binding_forbidden_retired")) ||
           (state === "archived" && err instanceof Error && err.message.includes("binding_forbidden_archived"));
         return hasError && hasCorrectMessage;

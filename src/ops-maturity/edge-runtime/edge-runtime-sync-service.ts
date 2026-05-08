@@ -101,7 +101,7 @@ export class EdgeRuntimeSyncService {
     if (missingRequiredFields.length > 0) {
       throw new Error(`edge_runtime.missing_required_profile_fields:${missingRequiredFields.join(",")}`);
     }
-    if (profile.keyLease.trim().length === 0) {
+    if (profile.keyLease!.trim().length === 0) {
       throw new Error("edge_runtime.key_lease_required");
     }
     if (profile.deviceAttestation == null || profile.deviceAttestation.status !== "valid") {
@@ -118,7 +118,7 @@ export class EdgeRuntimeSyncService {
     if (Number.isNaN(createdAtMillis)) {
       throw new Error("edge_runtime.invalid_created_at");
     }
-    if (Date.now() - createdAtMillis > profile.offlineMaxDuration) {
+    if (Date.now() - createdAtMillis > profile.offlineMaxDuration!) {
       throw new Error("edge_runtime.offline_window_exceeded");
     }
     if (request.edgeNodeId !== profile.edgeNodeId) {

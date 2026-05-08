@@ -599,7 +599,7 @@ test("CDCReplicationService.mergeEventsWithConflictResolution replaces conflicte
 // MultiRegionReplicationCoordinator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs for all targets", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs for all targets", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
     "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
@@ -618,7 +618,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs f
   assert.equal(replications[1].targetRegionId, "ap-southeast-1");
 });
 
-test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", () => {
+test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
     "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
@@ -628,7 +628,7 @@ test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", 
   assert.equal(coordinator.getCDCService(), service);
 });
 
-test("MultiRegionReplicationCoordinator uses default batch size and interval", () => {
+test("MultiRegionReplicationCoordinator uses default batch size and interval", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
     "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
@@ -643,7 +643,7 @@ test("MultiRegionReplicationCoordinator uses default batch size and interval", (
   assert.equal(replications[0].replicationIntervalMs, 5000); // default
 });
 
-test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown source", () => {
+test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown source", async () => {
   const service = new CDCReplicationService();
   const { MultiRegionReplicationCoordinator } = await import(
     "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"

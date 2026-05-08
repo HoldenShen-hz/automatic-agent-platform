@@ -220,7 +220,7 @@ export class ObservationAggregator {
   ): UnifiedObservation {
     // Validate system situation using schema before aggregation
     const validatedSystem = SystemSituationSchema.parse(systemSituation);
-    const validatedEventFlow = EventFlowSituationSchema.parse(eventFlowSituation);
+    const validatedEventFlow = EventFlowSituationSchema.parse(eventFlowSituation) as EventFlowSituation;
     const validatedGoalDecomposition = GoalDecompositionSituationSchema.parse(goalDecompositionSituation);
     const validatedMemory = MemorySituationSchema.parse(memorySituation);
     const cleanedTask = this.stripBlacklistedFields(taskSituation);

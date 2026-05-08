@@ -6,9 +6,9 @@ import {
   type TriggerDefinition,
   type ScheduleTriggerConfig,
   type EventTriggerConfig,
-} from "../../../src/interaction/proactive-agent/index.js";
-import { shouldRunScheduleTrigger } from "../../../src/interaction/proactive-agent/schedule-manager/index.js";
-import { shouldConsumeProactiveEvent } from "../../../src/interaction/proactive-agent/event-watcher/index.js";
+} from "../../../../src/interaction/proactive-agent/index.js";
+import { shouldRunScheduleTrigger } from "../../../../src/interaction/proactive-agent/schedule-manager/index.js";
+import { shouldConsumeProactiveEvent } from "../../../../src/interaction/proactive-agent/event-watcher/index.js";
 
 function makeScheduleTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {

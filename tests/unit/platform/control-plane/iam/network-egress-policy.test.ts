@@ -9,9 +9,9 @@ import {
 } from "../../../../../src/platform/control-plane/iam/network-egress-policy.js";
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
-test("loadNetworkEgressPolicyConfigFromEnv returns audit_only mode by default", () => {
+test("loadNetworkEgressPolicyConfigFromEnv returns deny mode by default", () => {
   const config = loadNetworkEgressPolicyConfigFromEnv({});
-  assert.equal(config.mode, "audit_only");
+  assert.equal(config.mode, "deny");
   assert.equal(config.enabled, true);
 });
 
@@ -55,9 +55,9 @@ test("loadNetworkEgressPolicyConfigFromEnv ignores invalid destination types", (
   assert.deepEqual(config.allowedDestinationTypes, ["url", "ssh"]);
 });
 
-test("NetworkEgressPolicyService defaults to enabled and audit_only", () => {
+test("NetworkEgressPolicyService defaults to enabled and deny mode", () => {
   const policy = new NetworkEgressPolicyService();
-  assert.equal(policy.getMode(), "audit_only");
+  assert.equal(policy.getMode(), "deny");
 });
 
 test("NetworkEgressPolicyService evaluate allows any URL when disabled", () => {

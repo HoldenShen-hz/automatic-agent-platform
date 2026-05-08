@@ -156,6 +156,7 @@ export class HierarchicalPromptRegistryService {
         trafficWeight: bundle.metadata.trafficAllocation.weight,
         createdAt: bundle.createdAt,
         deprecated: bundle.metadata.deprecated,
+        lifecycleStatus: (bundle.metadata as { lifecycleStatus?: string }).lifecycleStatus ?? "active",
       }))
       .sort((a, b) => a.version - b.version);
   }

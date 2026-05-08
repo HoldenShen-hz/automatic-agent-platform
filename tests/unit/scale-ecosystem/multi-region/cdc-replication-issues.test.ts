@@ -14,7 +14,7 @@ import {
   CDCReplicationService,
   type CDCReplicationEvent,
   type CDCReplicationBatch,
-} from "../../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+} from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2196: Replication queue grows unbounded

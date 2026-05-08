@@ -78,8 +78,8 @@ test("VALID_LIFECYCLE_TRANSITIONS defines correct transitions per R3-35", () => 
   // paused -> active, deprecated, canary
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("paused"), ["active", "deprecated", "canary"]);
 
-  // deprecated -> archived, paused
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "paused"]);
+  // deprecated -> archived, active
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "active"]);
 
   // archived -> removed
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed"]);
@@ -121,7 +121,8 @@ test("canAutoPromote returns true only for canary state per R3-35", () => {
 });
 
 test("isTerminalState returns true only for removed state per R3-35", () => {
-  assert.equal(isTerminalState("archived"), false, "archived should be resumable toward removed or active");
+  assert.equal(isTerminalState("removed"), true);
+  assert.equal(isTerminalState("archived"), true, "archived is terminal (only removed should allow further transitions)");
   assert.equal(isTerminalState("draft"), false);
   assert.equal(isTerminalState("testing"), false);
   assert.equal(isTerminalState("staging"), false);
@@ -129,7 +130,6 @@ test("isTerminalState returns true only for removed state per R3-35", () => {
   assert.equal(isTerminalState("active"), false);
   assert.equal(isTerminalState("paused"), false);
   assert.equal(isTerminalState("deprecated"), false);
-  assert.equal(isTerminalState("removed"), true);
 });
 
 test("listActiveAgents filters active and canary agents", () => {

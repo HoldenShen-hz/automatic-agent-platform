@@ -667,6 +667,9 @@ test("RegionDescriptorSchema accepts valid minimal input", () => {
   const result = RegionDescriptorSchema.safeParse({
     regionId: "us-east",
     jurisdiction: "US",
+    provider: "aws",
+    endpoints: { api: "https://api.example.com" },
+    dataResidencyPolicy: "regional",
   });
   assert.equal(result.success, true);
 });
@@ -689,7 +692,7 @@ test("RegionDescriptorSchema rejects short countryCode", () => {
 });
 
 test("RegionDescriptorSchema accepts all valid status values", () => {
-  for (const status of ["active", "degraded", "disabled"]) {
+  for (const status of ["active", "standby", "draining"]) {
     const result = RegionDescriptorSchema.safeParse({
       regionId: "us-east",
       jurisdiction: "US",

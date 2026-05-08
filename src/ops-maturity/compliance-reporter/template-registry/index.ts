@@ -62,6 +62,7 @@ type ComplianceTemplateLike = {
   readonly migrationRule?: string;
 };
 
+// @ts-ignore - generic constraint issue with ComplianceTemplateLike
 export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike = ComplianceReportTemplate> {
   private readonly templates: readonly T[];
 

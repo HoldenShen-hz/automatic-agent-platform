@@ -38,7 +38,7 @@ export function buildRunComparison(left: readonly RunSnapshot[], right: readonly
   return left.map((item) => {
     const other = rightByStep.get(item.stepId);
     return {
-      stepId: item.stepId,
+      stepId: item.stepId ?? "",
       leftStatus: item.status,
       rightStatus: other?.status ?? "missing",
       latencyDeltaMs: item.latencyMs != null && other?.latencyMs != null ? other.latencyMs - item.latencyMs : null,

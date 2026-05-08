@@ -263,6 +263,7 @@ export function createMinimalNodeRun(input: MinimalNodeRunInput = {}): NodeRun {
     nodeId: input.nodeId ?? newId("node"),
     status: input.status ?? "created",
     attemptCount: input.attemptCount ?? 0,
+    sideEffects: [],
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
     ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
     currentSeq: input.currentSeq ?? 0,
@@ -471,9 +472,11 @@ export function createCanonicalHarnessScenario(input: {
   goal?: string;
   riskClass?: RiskClass;
 } = {}): CanonicalHarnessScenario {
-  const budgetLedger = createMinimalBudgetLedger({ tenantId: input.tenantId });
+  const budgetLedger = createMinimalBudgetLedger(
+    input.tenantId != null ? { tenantId: input.tenantId } : {}
+  );
   const harnessRun = createMinimalHarnessRun({
-    tenantId: input.tenantId,
+    ...(input.tenantId != null ? { tenantId: input.tenantId } : {}),
     budgetLedgerId: budgetLedger.budgetLedgerId,
     status: "planning",
   });

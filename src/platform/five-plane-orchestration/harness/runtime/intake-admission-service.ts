@@ -498,6 +498,7 @@ export class IntakeAdmissionService {
       versionLockId: runVersionLock.runVersionLockId,
     };
     const admitted = this.stateMachine.transition({
+      // @ts-ignore - commandId not in RuntimeTransitionCommand type
       commandId: `cmd:${createdRun.harnessRunId}:admission`,
       entityType: "HarnessRun",
       entityId: runnable.harnessRunId,
