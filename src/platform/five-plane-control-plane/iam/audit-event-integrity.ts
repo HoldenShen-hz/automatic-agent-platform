@@ -231,6 +231,7 @@ export function verifyTier1AuditIntegrity(
   entries: ReadonlyArray<Tier1AuditIntegrityVerificationEntry>,
   signingKey?: string,
 ): Tier1AuditIntegrityReport {
+  const sortedEntries = [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition);
   const compromisedEventIds = new Set<string>();
   const missingEventIds = new Set<string>();
   const findings = new Set<string>();
@@ -239,7 +240,7 @@ export function verifyTier1AuditIntegrity(
   let previousChainHash: string | null = null;
 
   // Process entries in chain position order
-  for (const entry of [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition)) {
+  for (const entry of sortedEntries) {
     const integrityRecord = entry.integrityRecord;
     let compromised = false;
 
@@ -302,7 +303,7 @@ export function verifyTier1AuditIntegrity(
     compromisedEvents: compromisedEventIds.size,
     missingEvents: missingEventIds.size,
     chainBreaks,
-    latestChainHash: entries.at(-1)?.integrityRecord.chainHash ?? null,
+    latestChainHash: sortedEntries.at(-1)?.integrityRecord.chainHash ?? null,
     compromisedEventIds: Array.from(compromisedEventIds).sort(),
     missingEventIds: Array.from(missingEventIds).sort(),
     findings: Array.from(findings).sort(),

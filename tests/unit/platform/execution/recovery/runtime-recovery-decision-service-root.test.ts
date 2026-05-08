@@ -316,7 +316,7 @@ test("RecoveryDecisionApplyResult has correct structure", () => {
   assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test("RuntimeRecoveryDecisionService.decide records decision event", () => {
+test("RuntimeRecoveryDecisionService.decide records decision event", async () => {
   const db = createMockDb();
   let inserted = 0;
   const store = createFullMockStore({
@@ -340,11 +340,11 @@ test("RuntimeRecoveryDecisionService.decide records decision event", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.decide("exec-1");
+  await service.decide("exec-1");
   assert.equal(inserted, 1);
 });
 
-test("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
+test("RuntimeRecoveryDecisionService.apply records decision and action events", async () => {
   const db = createMockDb();
   let inserted = 0;
   const store = createFullMockStore({
@@ -369,6 +369,6 @@ test("RuntimeRecoveryDecisionService.apply records decision and action events", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.apply("exec-1");
+  await service.apply("exec-1");
   assert.ok(inserted >= 2);
 });

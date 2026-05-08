@@ -70,6 +70,14 @@ test("PolicyEngine.evaluate handles system subjectType with high-risk action", (
   assert.equal(result.requiresApproval, true);
 });
 
+test("PolicyEngine.evaluate accepts service, worker, and plugin subject types", () => {
+  const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
+
+  assert.doesNotThrow(() => engine.evaluate(makeRequest({ subjectType: "service" })));
+  assert.doesNotThrow(() => engine.evaluate(makeRequest({ subjectType: "worker" })));
+  assert.doesNotThrow(() => engine.evaluate(makeRequest({ subjectType: "plugin" })));
+});
+
 // ---------------------------------------------------------------------------
 // PolicyEngine - All Risk Categories
 // ---------------------------------------------------------------------------

@@ -229,6 +229,17 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
           this._tokenExpiry = Date.now() + safeTtlSeconds * 1000;
           return this._cachedToken;
         }
+        vaultLogger.log({
+          level: "warn",
+          message: "Vault AppRole login returned no client token; falling back to static token if configured",
+          data: { status: loginResp.status },
+        });
+      } else {
+        vaultLogger.log({
+          level: "warn",
+          message: "Vault AppRole login failed; falling back to static token if configured",
+          data: { status: loginResp.status, statusText: loginResp.statusText },
+        });
       }
     }
 

@@ -138,3 +138,69 @@ test("verifyTier1AuditIntegrity handles empty events array", () => {
   assert.equal(report.compromisedEvents, 0);
   assert.equal(report.chainBreaks, 0);
 });
+
+test("verifyTier1AuditIntegrity reports latestChainHash from sorted chain position order", () => {
+  const firstEvent = {
+    id: "evt-1",
+    taskId: "task-1",
+    sessionId: null,
+    executionId: "exec-1",
+    eventType: "task:status_changed",
+    eventTier: "tier_1" as const,
+    payloadJson: "{\"status\":\"queued\"}",
+    traceId: "trace-1",
+    createdAt: "2026-04-07T00:00:00.000Z",
+  };
+  const firstChecksum = computeTier1AuditEventChecksum(firstEvent);
+  const firstChainHash = computeTier1AuditChainHash({
+    chainPosition: 1,
+    previousChainHash: null,
+    eventChecksum: firstChecksum,
+    eventId: firstEvent.id,
+  });
+  const secondEvent = {
+    ...firstEvent,
+    id: "evt-2",
+    eventType: "task:completed",
+    payloadJson: "{\"status\":\"completed\"}",
+    createdAt: "2026-04-07T00:01:00.000Z",
+  };
+  const secondChecksum = computeTier1AuditEventChecksum(secondEvent);
+  const secondChainHash = computeTier1AuditChainHash({
+    chainPosition: 2,
+    previousChainHash: firstChainHash,
+    eventChecksum: secondChecksum,
+    eventId: secondEvent.id,
+  });
+
+  const report = verifyTier1AuditIntegrity([
+    {
+      integrityRecord: {
+        eventId: secondEvent.id,
+        chainPosition: 2,
+        eventType: secondEvent.eventType,
+        eventCreatedAt: secondEvent.createdAt,
+        eventChecksum: secondChecksum,
+        previousChainHash: firstChainHash,
+        chainHash: secondChainHash,
+        recordedAt: "2026-04-07T00:01:01.000Z",
+      },
+      event: secondEvent,
+    },
+    {
+      integrityRecord: {
+        eventId: firstEvent.id,
+        chainPosition: 1,
+        eventType: firstEvent.eventType,
+        eventCreatedAt: firstEvent.createdAt,
+        eventChecksum: firstChecksum,
+        previousChainHash: null,
+        chainHash: firstChainHash,
+        recordedAt: "2026-04-07T00:00:01.000Z",
+      },
+      event: firstEvent,
+    },
+  ]);
+
+  assert.equal(report.latestChainHash, secondChainHash);
+});

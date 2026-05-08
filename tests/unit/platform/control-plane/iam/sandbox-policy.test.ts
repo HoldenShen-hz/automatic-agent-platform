@@ -12,6 +12,7 @@ import {
   createScopedExternalAccessPolicy,
   createRestrictedExecPolicy,
   createConfigReadPolicy,
+  DEFAULT_SANDBOX_DENIED_ROOTS,
   normalizeSandboxMode,
   type SandboxPolicy,
   type SandboxMode,
@@ -25,7 +26,7 @@ test("createWorkspaceWritePolicy creates valid policy", () => {
   assert.equal(policy.mode, "workspace_write");
   assert.equal(policy.policyId, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace/root"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -56,6 +57,7 @@ test("createConfigReadPolicy creates read-only policy", () => {
   assert.equal(policy.mode, "read_only");
   assert.equal(policy.policyId, "config_read");
   assert.deepEqual(policy.allowedRoots, ["/etc/config"]);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");
@@ -75,7 +77,7 @@ test("checkSandboxPath denies path outside allowed root", () => {
   const result = checkSandboxPath(policy, "/etc/passwd");
 
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
+  assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
 });
 
 test("checkSandboxPath denies path in denied root", () => {
@@ -88,6 +90,21 @@ test("checkSandboxPath denies path in denied root", () => {
 
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
+});
+
+test("default sandbox factory policies deny sensitive system roots", () => {
+  const policies = [
+    createWorkspaceWritePolicy("/workspace/root"),
+    createScopedExternalAccessPolicy("/workspace/root"),
+    createRestrictedExecPolicy("/workspace/root"),
+    createConfigReadPolicy("/workspace/root"),
+  ];
+
+  for (const policy of policies) {
+    assert.ok(policy.deniedRoots.includes("/etc"));
+    assert.ok(policy.deniedRoots.includes("/proc"));
+    assert.ok(policy.deniedRoots.some((root) => root.includes(".ssh")));
+  }
 });
 
 test("checkSandboxPath denied root takes precedence over allowed root", () => {
@@ -239,7 +256,7 @@ test("checkSandboxPath returns correct reason codes", () => {
 
   // Outside allowed roots
   const outsideResult = checkSandboxPath(policy, "/etc/file");
-  assert.equal(outsideResult.reasonCode, "sandbox.path_outside_allowed_roots");
+  assert.equal(outsideResult.reasonCode, "sandbox.path_in_denied_root");
 });
 
 test("resolveSandboxPath returns normalized path for non-existent parent", () => {
@@ -350,7 +367,8 @@ test("config read policy denies write operations context", () => {
   assert.equal(policy.processRuleMode, "deny");
 
   const result = checkSandboxPath(policy, "/etc/app/config/settings.json");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
 });
 
 test("sandbox policy with empty denied roots array", () => {

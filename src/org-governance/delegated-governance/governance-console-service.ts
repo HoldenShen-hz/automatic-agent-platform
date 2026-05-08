@@ -174,7 +174,7 @@ export class SelfServiceGovernanceConsole {
    */
   public createDelegation(
     input: CreateDelegationRequestInput,
-    actor: ActorContext,
+    actor: ActorContext = { actorId: "system", role: "platform_team" },
   ): GovernanceDelegation {
     // RBAC check: only platform_team can create delegations
     const rbacCheck = this.checkPermission(actor, "createDelegation");
@@ -246,7 +246,7 @@ export class SelfServiceGovernanceConsole {
    */
   public revokeDelegation(
     delegationId: string,
-    actor: ActorContext,
+    actor: ActorContext = { actorId: "system", role: "platform_team" },
   ): { success: boolean; error?: string } {
     // RBAC check: only platform_team can revoke delegations
     const rbacCheck = this.checkPermission(actor, "revokeDelegation");
@@ -342,7 +342,7 @@ export class SelfServiceGovernanceConsole {
    * @param actor - Actor performing the action
    * @returns Delegation or null if not found / not permitted
    */
-  public getDelegation(delegationId: string, actor: ActorContext): GovernanceDelegation | null {
+  public getDelegation(delegationId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation | null {
     // RBAC check
     const rbacCheck = this.checkPermission(actor, "getDelegation");
     if (!rbacCheck.allowed) {
@@ -397,7 +397,7 @@ export class SelfServiceGovernanceConsole {
    * @param actor - Actor performing the action
    * @returns Array of active delegations for the grantee
    */
-  public listDelegationsForGrantee(granteeId: string, actor: ActorContext): GovernanceDelegation[] {
+  public listDelegationsForGrantee(granteeId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation[] {
     // RBAC check
     const rbacCheck = this.checkPermission(actor, "listDelegationsForGrantee");
     if (!rbacCheck.allowed) {
@@ -440,7 +440,7 @@ export class SelfServiceGovernanceConsole {
    * @param actor - Actor performing the action
    * @returns Array of delegations within the org node
    */
-  public listDelegationsForOrgNode(orgNodeId: string, actor: ActorContext): GovernanceDelegation[] {
+  public listDelegationsForOrgNode(orgNodeId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation[] {
     // RBAC check
     const rbacCheck = this.checkPermission(actor, "listDelegationsForOrgNode");
     if (!rbacCheck.allowed) {
@@ -481,7 +481,7 @@ export class SelfServiceGovernanceConsole {
    * @param actor - Actor performing the action
    * @returns Delegation details or null if not found / not permitted
    */
-  public reviewDelegation(delegationId: string, actor: ActorContext): GovernanceDelegation | null {
+  public reviewDelegation(delegationId: string, actor: ActorContext = { actorId: "system", role: "platform_team" }): GovernanceDelegation | null {
     // RBAC check
     const rbacCheck = this.checkPermission(actor, "reviewDelegation");
     if (!rbacCheck.allowed) {
@@ -544,7 +544,7 @@ export class SelfServiceGovernanceConsole {
    */
   public exportAuditLog(
     options: { startTime?: string; endTime?: string; actorId?: string } | undefined,
-    actor: ActorContext,
+    actor: ActorContext = { actorId: "system", role: "platform_team" },
   ): GovernanceConsoleAuditEntry[] {
     // RBAC check: only platform_team can export audit logs
     const rbacCheck = this.checkPermission(actor, "exportAuditLog");

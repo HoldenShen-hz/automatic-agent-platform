@@ -30,6 +30,20 @@ export interface ComplianceGovernanceAuditRecord {
   readonly recordId: string | null;
 }
 
+const FAIL_CLOSED_GOVERNANCE_RECORD_ID = "governance_missing";
+
+function createMissingGovernanceResult(orgNodeId: string): ComplianceEvaluationResult {
+  return {
+    orgNodeId,
+    effectivePolicy: {},
+    allowed: false,
+    missingKeys: ["governance_evaluator_unconfigured"],
+    auditRecord: {
+      recordId: FAIL_CLOSED_GOVERNANCE_RECORD_ID,
+    },
+  };
+}
+
 export interface ComplianceTransferPackage {
   transferId: string;
   status: ComplianceTransferStatus;
@@ -160,7 +174,7 @@ export class ComplianceCaseOrchestrationService {
       redacted: redactionApplied,
     });
 
-    if (governance != null && !governance.allowed) {
+    if (!governance.allowed) {
       reasons.push(...governance.missingKeys.map((key) => `governance_missing:${key}`));
     }
     if (artifactDecision.action === "deny") {
@@ -203,7 +217,7 @@ export class ComplianceCaseOrchestrationService {
     }
 
     const status = this.resolveTransferStatus({
-      governanceAllowed: governance?.allowed ?? true,
+      governanceAllowed: governance.allowed,
       artifactDecision,
       transferDecision,
       residency,
@@ -277,7 +291,7 @@ export class ComplianceCaseOrchestrationService {
       slaHours: input.slaHours,
     });
     const blockingReasons: string[] = [];
-    if (governance != null && !governance.allowed) {
+    if (!governance.allowed) {
       blockingReasons.push(...governance.missingKeys.map((key) => `governance_missing:${key}`));
     }
     if (plan.status === "blocked_by_legal_hold") {
@@ -291,7 +305,7 @@ export class ComplianceCaseOrchestrationService {
         targetRef: plan.requestId,
         kind: step.action === "erase" ? "erased_by" : "redacted_from",
         actorRef: input.actorId,
-        policyRef: governance?.auditRecord.recordId ?? null,
+        policyRef: governance.auditRecord.recordId,
         metadata: {
           subjectRef: input.subjectRef,
           action: step.action,
@@ -320,9 +334,9 @@ export class ComplianceCaseOrchestrationService {
     action: string;
     requiredPolicyKeys?: readonly string[] | undefined;
     occurredAt: string;
-  }): ComplianceEvaluationResult | null {
+  }): ComplianceEvaluationResult {
     if (this.governance == null) {
-      return null;
+      return createMissingGovernanceResult(input.orgNodeId);
     }
     return this.governance.evaluate({
       actorId: input.actorId,
@@ -330,7 +344,7 @@ export class ComplianceCaseOrchestrationService {
       action: input.action,
       occurredAt: input.occurredAt,
       ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
-    }) ?? null;
+    }) ?? createMissingGovernanceResult(input.orgNodeId);
   }
 
   private resolveTransferStatus(input: {

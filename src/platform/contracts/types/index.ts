@@ -24,3 +24,16 @@ export * from "./governance.js";
 export * from "./health.js";
 export * from "./cost.js";
 export * from "./domain/index.js";
+
+// Re-export control-directive legacy factory for backward compatibility
+export { createControlDirective } from "../control-directive/index.js";
+
+// Re-export execution-plan legacy factory for backward compatibility
+// NOTE: createExecutionPlan is forbidden and throws; retained for import compatibility
+export { createExecutionPlan } from "../execution-plan/index.js";
+
+// Re-export execution-receipt legacy factory for backward compatibility
+export { createExecutionReceipt } from "../execution-receipt/index.js";
+
+// Re-export state-command factory (was removed in R16-79, restored for backward compat)
+export { createStateCommand } from "../state-command/index.js";

@@ -161,6 +161,21 @@ test("applySodPolicy blocks when budget owner equals execution owner", () => {
   assert.ok(!filtered.includes("owner"));
 });
 
+test("resolveApprovalRoute fails closed when SOD filtering removes every approver", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const request = ApprovalRouteRequestSchema.parse({
+    requesterId: "employee",
+    orgNodeId: "dept-1",
+    riskLevel: "low",
+    requesterManagerIds: ["director"],
+  });
+
+  assert.throws(
+    () => resolveApprovalRoute(nodes, request),
+    (err: any) => err.code === "approval_route.empty_approver_chain",
+  );
+});
+
 // R9-33: Parallel sign-off support
 
 test("buildParallelSignoffGroups returns empty for single approver chain", () => {

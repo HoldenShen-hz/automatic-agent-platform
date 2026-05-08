@@ -43,7 +43,7 @@ import type { ToolRiskLevel } from "../../execution/tool-executor/tool-metadata.
 import { BudgetGuard, type BudgetPolicy, type BudgetGuardResult } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import type { PlatformRole } from "./access-model.js";
+import type { PlatformPrincipalType, PlatformRole } from "./access-model.js";
 import { evaluateAuthorizationContext, inferCapabilitiesForAction, roleGrantsCapabilities } from "./access-model.js";
 
 const policyEngineLogger = new StructuredLogger({ retentionLimit: 200 });
@@ -103,7 +103,7 @@ export interface PolicyDecisionRequest {
   sessionId?: string;
 
   /** Type of subject making the request */
-  subjectType: "user" | "agent" | "system";
+  subjectType: PlatformPrincipalType;
 
   /** ID of the subject making the request */
   subjectId: string;

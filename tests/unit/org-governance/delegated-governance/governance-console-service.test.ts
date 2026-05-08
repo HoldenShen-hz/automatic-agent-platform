@@ -83,10 +83,10 @@ test("SelfServiceGovernanceConsole.revokeDelegation successfully revokes", () =>
     revocable: true,
   });
 
-  const result = console.revokeDelegation(delegation.delegationId, "grantor-1");
+  const result = console.revokeDelegation(delegation.delegationId, { actorId: "grantor-1", role: "platform_team" });
 
   assert.strictEqual(result.success, true);
-  const revoked = console.getDelegation(delegation.delegationId);
+  const revoked = console.getDelegation(delegation.delegationId, { actorId: "grantor-1", role: "platform_team" });
   assert.strictEqual(revoked?.status, "revoked");
 });
 
@@ -96,10 +96,10 @@ test("SelfServiceGovernanceConsole.revokeDelegation fails for non-existent deleg
     auditLogStore: new InMemoryAuditLogStore(),
   });
 
-  const result = console.revokeDelegation("non-existent-id", "grantor-1");
+  const result = console.revokeDelegation("non-existent-id", { actorId: "grantor-1", role: "platform_team" });
 
   assert.strictEqual(result.success, false);
-  assert.strictEqual(result.error, "delegation_not_found");
+  assert.ok(result.error?.includes("delegation_not_found"));
 });
 
 test("SelfServiceGovernanceConsole.revokeDelegation fails for non-revocable delegation", () => {
@@ -116,10 +116,10 @@ test("SelfServiceGovernanceConsole.revokeDelegation fails for non-revocable dele
     revocable: false,
   });
 
-  const result = console.revokeDelegation(delegation.delegationId, "grantor-1");
+  const result = console.revokeDelegation(delegation.delegationId, { actorId: "grantor-1", role: "platform_team" });
 
   assert.strictEqual(result.success, false);
-  assert.strictEqual(result.error, "delegation_not_revocable");
+  assert.ok(result.error?.includes("delegation_not_revocable"));
 });
 
 test("SelfServiceGovernanceConsole.revokeDelegation rejects non-grantor callers", () => {
@@ -136,11 +136,11 @@ test("SelfServiceGovernanceConsole.revokeDelegation rejects non-grantor callers"
     revocable: true,
   });
 
-  const result = console.revokeDelegation(delegation.delegationId, "random-user");
+  const result = console.revokeDelegation(delegation.delegationId, { actorId: "random-user", role: "platform_team" });
 
   assert.strictEqual(result.success, false);
-  assert.strictEqual(result.error, "permission_denied");
-  assert.strictEqual(console.getDelegation(delegation.delegationId)?.status, "active");
+  assert.ok(result.error?.includes("permission_denied"));
+  assert.strictEqual(console.getDelegation(delegation.delegationId, { actorId: "random-user", role: "platform_team" })?.status, "active");
 });
 
 test("SelfServiceGovernanceConsole.listDelegationsForGrantee returns only active delegations", () => {

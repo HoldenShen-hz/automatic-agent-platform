@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { OrgNode } from "../../org-model/org-node/index.js";
 import { getLegalEntityApprovalRoles, requiresLegalEntityApproval } from "../../org-model/org-node/index.js";
+import { ValidationError } from "../../../platform/contracts/errors.js";
 
 export const ApprovalRouteRequestSchema = z.object({
   requesterId: z.string().min(1),
@@ -372,6 +373,19 @@ export function resolveApprovalRoute(
   const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
   const approverChain = applySodPolicy(request, delegatedChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
+  if (approverChain.length === 0) {
+    throw new ValidationError(
+      "approval_route.empty_approver_chain",
+      "Approval routing produced an empty approver chain after SOD/COI filtering.",
+      {
+        details: {
+          requesterId: request.requesterId,
+          orgNodeId: matched?.orgNodeId ?? request.orgNodeId,
+          candidateApprovers: delegatedChain,
+        },
+      },
+    );
+  }
   const amount = normalizeApprovalAmount(request);
   const matchedBoundary = matched?.legalEntityBoundary ?? null;
   const requesterBoundary = nodes.find((item) => item.orgNodeId === request.orgNodeId)?.legalEntityBoundary ?? null;

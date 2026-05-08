@@ -49,6 +49,17 @@ const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
  */
 export type SandboxMode = "read_only" | "workspace_write" | "scoped_external_access" | "restricted_exec";
 
+export const DEFAULT_SANDBOX_DENIED_ROOTS = [
+  "/etc",
+  "/proc",
+  "/sys",
+  "/dev",
+  "/root",
+  "~/.ssh",
+  "/Users/*/.ssh",
+  "/home/*/.ssh",
+] as const;
+
 const SANDBOX_MODE_ALIASES = {
   process: "read_only",
   container: "workspace_write",
@@ -538,7 +549,7 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     policyId: "workspace_write",
     mode: "workspace_write",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -550,7 +561,7 @@ export function createReadOnlyPolicy(workspaceRoot: string): SandboxPolicy {
     policyId: "read_only",
     mode: "read_only",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
@@ -562,7 +573,7 @@ export function createScopedExternalAccessPolicy(workspaceRoot: string): Sandbox
     policyId: "scoped_external_access",
     mode: "scoped_external_access",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -574,7 +585,7 @@ export function createRestrictedExecPolicy(workspaceRoot: string): SandboxPolicy
     policyId: "restricted_exec",
     mode: "restricted_exec",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
@@ -599,7 +610,7 @@ export function createConfigReadPolicy(configRoot: string): SandboxPolicy {
     policyId: "config_read",
     mode: "read_only",
     allowedRoots: [configRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_SANDBOX_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",

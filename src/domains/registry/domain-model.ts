@@ -177,7 +177,7 @@ export const WorkflowConfigSchema = z.object({
   const stepCount = workflow.steps.length;
   const hasMultiParentDeps = workflow.steps.some((step) => step.dependsOn.length > 1);  // AND-split
   const hasCircularDeps = hasCircularDependencies(workflow.steps);  // circular refs
-  const hasParallelRoots = stepCount > 2 && workflow.steps.every((step) => step.dependsOn.length === 0);  // parallel entry points
+  const hasParallelRoots = stepCount > 1 && workflow.steps.every((step) => step.dependsOn.length === 0);  // parallel entry points
 
   // Complexity triggers: step count threshold, multi-parent, circular, or parallel
   const isComplexWorkflow = (

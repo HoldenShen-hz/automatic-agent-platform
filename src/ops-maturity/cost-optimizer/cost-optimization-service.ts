@@ -83,6 +83,7 @@ export class CostOptimizationService {
         : this.records.filter((item) => this.resolveSubjectId(item) === subjectTypeOrHarnessRunId);
     return aggregateCostAttribution(filtered.map((item) => ({
       subjectId: this.resolveSubjectId(item),
+      amountUsd: item.amountUsd,
       llmCostUsd: item.llmCostUsd,
       toolCostUsd: item.toolCostUsd,
       computeCostUsd: item.computeCostUsd,

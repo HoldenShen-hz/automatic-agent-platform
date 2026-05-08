@@ -390,16 +390,22 @@ test("createStateCommand with all command types", async () => {
   const commandTypes = ["update_truth", "append_event", "write_checkpoint", "store_artifact"] as const;
 
   for (const type of commandTypes) {
-    const command = createStateCommand({
-      traceId: "trace_123",
-      principal,
-      type,
-      aggregateId: "task_456",
-      expectedVersion: 1,
-      fencingToken: "fence_abc",
-      payload: { data: "test" },
-    });
-    assert.equal(command.type, type);
+    assert.throws(
+      () =>
+        createStateCommand({
+          traceId: "trace_123",
+          principal,
+          type,
+          aggregateId: "task_456",
+          expectedVersion: 1,
+          fencingToken: "fence_abc",
+          payload: { data: "test" },
+        }),
+      (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
+    );
   }
 });
 

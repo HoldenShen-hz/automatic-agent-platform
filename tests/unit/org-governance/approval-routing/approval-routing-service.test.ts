@@ -397,14 +397,14 @@ test("route() filters requester from approver chain (SoD policy)", () => {
   ];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
 
-  // requester is the same as the approver
-  const result = service.route(
-    makeRequest({ requesterId: "dir_1" }),
-    "2026-04-01T00:00:00.000Z",
-    "2026-04-01T00:00:00.000Z",
+  assert.throws(
+    () => service.route(
+      makeRequest({ requesterId: "dir_1" }),
+      "2026-04-01T00:00:00.000Z",
+      "2026-04-01T00:00:00.000Z",
+    ),
+    (err: any) => err.code === "approval_route.empty_approver_chain",
   );
-
-  assert.ok(!result.approverChain.includes("dir_1"));
 });
 
 test("route() falls back to platform_admin when node has no owners", () => {

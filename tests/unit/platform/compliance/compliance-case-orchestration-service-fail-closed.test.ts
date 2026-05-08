@@ -73,3 +73,25 @@ test("allowRedactedRestrictedTransfer does not override governance deny (R19-24)
   assert.equal(result.status, "blocked");
   assert.ok(result.reasons.includes("governance_missing:retentionDays"));
 });
+
+test("missing governance evaluator blocks erasure planning as fail-closed", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: null,
+  });
+
+  const result = service.planSubjectErasureRequest({
+    actorId: "privacy_officer",
+    orgNodeId: "dept_risk",
+    action: "subject.erase",
+    subjectRef: "user:bob",
+    requestedBy: "privacy@example.com",
+    slaHours: 24,
+    requiredPolicyKeys: ["approvalRequired"],
+    targets: [{ targetRef: "artifact:1", targetKind: "artifact", containsPii: true }],
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.governance?.allowed, false);
+  assert.ok(result.blockingReasons.includes("governance_missing:governance_evaluator_unconfigured"));
+});

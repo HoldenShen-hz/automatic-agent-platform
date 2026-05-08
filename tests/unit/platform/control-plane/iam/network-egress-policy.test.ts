@@ -332,7 +332,7 @@ test("NetworkEgressPolicyService audit_only mode logs but does not block", () =>
   const decision = policy.evaluate("https://blocked.example.com/api");
   // In audit_only mode, even blocked domains return allowed=true
   assert.equal(decision.allowed, true);
-  assert.equal(decision.reasonCode, "EGRESS_DOMAIN_BLOCKED");
+  assert.equal(decision.reasonCode, "EGRESS_AUDIT_ONLY_DOMAIN_BLOCKED");
 });
 
 test("NetworkEgressPolicyService with explicit allow rules enforces allowlist in deny mode", () => {

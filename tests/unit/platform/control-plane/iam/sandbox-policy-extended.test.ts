@@ -18,6 +18,7 @@ import {
   createConfigReadPolicy,
   resolveSandboxPath,
   DEFAULT_SANDBOX_RESOURCE_LIMITS,
+  DEFAULT_SANDBOX_DENIED_ROOTS,
   type SandboxPolicy,
   type SandboxMode,
 } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
@@ -308,7 +309,7 @@ test("createWorkspaceWritePolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "workspace_write");
   assert.equal(policy.mode, "workspace_write");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -320,7 +321,7 @@ test("createReadOnlyPolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "read_only");
   assert.equal(policy.mode, "read_only");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");
@@ -332,7 +333,7 @@ test("createScopedExternalAccessPolicy creates correct policy structure", () => 
   assert.equal(policy.policyId, "scoped_external_access");
   assert.equal(policy.mode, "scoped_external_access");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -344,7 +345,7 @@ test("createRestrictedExecPolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "restricted_exec");
   assert.equal(policy.mode, "restricted_exec");
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "allow");
@@ -356,7 +357,7 @@ test("createConfigReadPolicy creates correct policy structure", () => {
   assert.equal(policy.policyId, "config_read");
   assert.equal(policy.mode, "read_only");
   assert.deepEqual(policy.allowedRoots, ["/etc/myapp"]);
-  assert.deepEqual(policy.deniedRoots, []);
+  assert.deepEqual(policy.deniedRoots, [...DEFAULT_SANDBOX_DENIED_ROOTS]);
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");
   assert.equal(policy.processRuleMode, "deny");
