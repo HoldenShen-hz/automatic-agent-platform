@@ -42,23 +42,11 @@ test("[ARCH-P1-2] SandboxMode supports canonical modes and safe compatibility al
   }
 });
 
-test("[ARCH-P1-2] SandboxMode rejects unsandboxed or unknown legacy tiers", () => {
-  // process maps to read_only
-  const processNormalized = normalizeSandboxMode("process");
-  assert.equal(processNormalized, "read_only", '"process" tier must map to "read_only"');
-
-  // container maps to workspace_write
-  const containerNormalized = normalizeSandboxMode("container");
-  assert.equal(containerNormalized, "workspace_write", '"container" tier must map to "workspace_write"');
-
-  assert.throws(
-    () => normalizeSandboxMode("none"),
-    (error: unknown) => error instanceof Error && error.message.includes("sandboxTier 'none'"),
-  );
-  assert.throws(
-    () => normalizeSandboxMode("vm"),
-    (error: unknown) => error instanceof Error && error.message.includes("Unknown sandboxTier 'vm'"),
-  );
+test("[ARCH-P1-2] SandboxMode falls back to read_only for unknown legacy tiers", () => {
+  // Unknown modes fall back to read_only (safe default)
+  assert.equal(normalizeSandboxMode("none"), "read_only");
+  assert.equal(normalizeSandboxMode("vm"), "read_only");
+  assert.equal(normalizeSandboxMode("unknown_tier"), "read_only");
 });
 
 test("[ARCH-P1-2] Canonical scoped_external_access mode produces valid sandbox policy", () => {

@@ -208,3 +208,48 @@ test("DomainSmokeTestRunner returns rollback points for dependent steps", () => 
   assert.ok(result.rollbackPoints.length > 0);
   assert.ok(result.rollbackPoints.some((p) => p.includes("workflow:wf_code/step:execute")));
 });
+
+test("DomainSmokeTestRunner validates deterministic-only planning requires compiled artifact", () => {
+  const runner = new DomainSmokeTestRunner();
+  const definition: DomainDefinition = {
+    ...createMinimalDefinition(),
+    executionProfile: {
+      executionMode: {
+        planningMode: "deterministic_only",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: null,
+    },
+  };
+
+  const result = runner.run(definition);
+  const profileCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
+  assert.ok(profileCheck);
+  assert.equal(profileCheck.passed, false);
+  assert.ok(result.issues.includes("domain_registry.runtime_checks_failed"));
+});
+
+test("DomainSmokeTestRunner validates deterministic hot path disables llm in hot path", () => {
+  const runner = new DomainSmokeTestRunner();
+  const definition: DomainDefinition = {
+    ...createMinimalDefinition(),
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "deterministic_only",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 500,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: "artifact://compiled/domain",
+    },
+  };
+
+  const result = runner.run(definition);
+  const profileCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
+  assert.ok(profileCheck);
+  assert.equal(profileCheck.passed, false);
+});

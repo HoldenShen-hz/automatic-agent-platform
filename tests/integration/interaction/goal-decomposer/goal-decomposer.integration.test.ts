@@ -13,9 +13,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { GoalDecompositionService, type Goal, type LlmPlanGenerator } from "../../../src/interaction/goal-decomposer/index.js";
-import { validateGoalDecomposition } from "../../../src/interaction/goal-decomposer/validator/index.js";
-import type { LlmPlan } from "../../../src/interaction/goal-decomposer/llm-plan-generator.js";
+import { GoalDecompositionService, type Goal, type LlmPlanGenerator } from "../../../../src/interaction/goal-decomposer/index.js";
+import { validateGoalDecomposition } from "../../../../src/interaction/goal-decomposer/validator/index.js";
+import type { LlmPlan } from "../../../../src/interaction/goal-decomposer/llm-plan-generator.js";
 
 // ─── Test Factories ───────────────────────────────────────────────────────────
 

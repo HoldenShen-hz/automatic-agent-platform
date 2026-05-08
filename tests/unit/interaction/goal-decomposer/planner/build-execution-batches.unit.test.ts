@@ -160,3 +160,15 @@ test("buildExecutionBatches preserves topological constraint across batches", ()
   assert.ok(xIdx < yIdx, "x should come before y");
   assert.ok(yIdx < zIdx, "y should come before z");
 });
+
+test("buildExecutionBatches prioritizes critical tasks when priority labels are provided", () => {
+  const batches = buildExecutionBatches(["low_task", "critical_task", "normal_task"], [], {
+    priorityLabels: {
+      low_task: "low",
+      critical_task: "critical",
+      normal_task: "normal",
+    },
+  });
+
+  assert.deepEqual(batches[0], ["critical_task", "normal_task", "low_task"]);
+});

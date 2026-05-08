@@ -27,6 +27,7 @@ export class ReplayWorker implements RecoveryWorker {
   private readonly cadence: RecoveryCadence;
   private readonly now: () => string;
   private readonly replayPolicy: ReplaySandboxPolicy;
+  private readonly boundaryGuard: ReplayBoundaryGuard;
 
   public constructor(private readonly options: ReplayWorkerOptions) {
     this.cadence = buildRecoveryCadence({
@@ -39,6 +40,7 @@ export class ReplayWorker implements RecoveryWorker {
       mode: "trace_only",
       allowRealSideEffects: false,
     };
+    this.boundaryGuard = new ReplayBoundaryGuard();
     this.assertReplayPolicySafe(this.replayPolicy);
   }
 

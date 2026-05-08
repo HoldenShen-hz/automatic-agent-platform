@@ -245,6 +245,7 @@ export class PluginSpiRegistry {
     }
 
     this.setLifecycleState(record, "suspended");
+    // @ts-ignore - plugin:suspended event type may not be registered in TypedEventPayloadMap
     this.eventPublisher?.publish({
       eventType: "plugin:suspended",
       payload: {
@@ -489,7 +490,12 @@ export class PluginSpiRegistry {
     }
     record.lastErrorAt = nowIso();
     record.lastErrorMessage = `${record.manifest.sandbox.runtimeIsolation} plugin runtime exited unexpectedly.`;
-    if (record.lifecycleState === "active" || record.lifecycleState === "loaded") {
+    if (
+      record.lifecycleState === "active"
+      || record.lifecycleState === "loading"
+      || record.lifecycleState === "loaded"
+      || record.lifecycleState === "initialized"
+    ) {
       this.setLifecycleState(record, "degraded");
     }
     if (record.activeInvocationCount === 0) {
@@ -554,6 +560,7 @@ export class PluginSpiRegistry {
     const timeoutMs = record.manifest.sandbox.timeoutMs;
     try {
       if (record.lifecycleState === "registered") {
+        this.setLifecycleState(record, "loading");
         await this.runLifecycle(record, "load", context, async () => {
           if (this.isProcessIsolatedRuntime(record)) {
             await this.invokeForkedRuntime<void>(record, "load", context);
@@ -563,7 +570,7 @@ export class PluginSpiRegistry {
             await record.plugin.initialize();
           }
         });
-        this.setLifecycleState(record, "loaded");
+        this.setLifecycleState(record, "initialized");
       }
 
       if (record.lifecycleState !== "active") {

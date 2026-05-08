@@ -111,6 +111,24 @@ export interface ExecuteBridge {
    * by the OAPEFLIR Feedback stage.
    */
   toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[];
+
+  /**
+   * Execute a subgraph of a plan.
+   * Used when the OAPEFLIR loop needs to execute a subset of steps
+   * (e.g. for parallel branches, conditional paths, or nested workflows).
+   */
+  executeSubgraph(subgraph: PlanStep[], context: ExecutionContext): Promise<ExecutionResult>;
+
+  /**
+   * Execute a child run of a plan.
+   * Used for spawning child executions that are attached to a parent task/run,
+   * such as for multi-agent scenarios or detached background workflows.
+   */
+  executeChildRun(
+    plan: Plan,
+    context: ExecutionContext,
+    parentRunId: string,
+  ): Promise<ExecutionResult>;
 }
 
 export {

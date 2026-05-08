@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AlertRouter } from "../../../src/interaction/dashboard/alert-router/index.js";
-import type { AttentionItem } from "../../../src/interaction/dashboard/index.js";
+import { sortAttentionQueue } from "../../../../src/interaction/dashboard/alert-router/index.js";
+import type { AttentionItem } from "../../../../src/interaction/dashboard/index.js";
 
 function makeAttentionItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
   return {
@@ -17,72 +17,51 @@ function makeAttentionItem(overrides: Partial<AttentionItem> = {}): AttentionIte
   };
 }
 
-test("AlertRouter.routeNotifications returns routed notifications", () => {
-  const router = new AlertRouter();
-  const items = [makeAttentionItem({ itemType: "incident", priority: "critical" })];
-
-  const routed = router.routeNotifications(items);
-
-  assert.ok(routed.length > 0);
-  assert.equal(routed[0]!.deliveryType, "overlay");
-});
-
-test("AlertRouter.getOverlayAlerts filters critical incidents", () => {
-  const router = new AlertRouter();
+test("sortAttentionQueue sorts by priority then createdAt", () => {
   const items = [
-    makeAttentionItem({ itemType: "incident", priority: "critical" }),
-    makeAttentionItem({ itemType: "suggestion", priority: "normal" }),
+    makeAttentionItem({ priority: "low", createdAt: "2026-04-19T00:00:00.000Z" }),
+    makeAttentionItem({ priority: "critical", createdAt: "2026-04-19T00:00:00.000Z" }),
+    makeAttentionItem({ priority: "normal", createdAt: "2026-04-19T00:00:00.000Z" }),
+    makeAttentionItem({ priority: "high", createdAt: "2026-04-19T00:00:00.000Z" }),
   ];
 
-  const overlay = router.getOverlayAlerts(items);
+  const sorted = sortAttentionQueue(items);
 
-  assert.equal(overlay.length, 1);
-  assert.equal(overlay[0]!.priority, "critical");
+  assert.equal(sorted[0]!.priority, "critical");
+  assert.equal(sorted[1]!.priority, "high");
+  assert.equal(sorted[2]!.priority, "normal");
+  assert.equal(sorted[3]!.priority, "low");
 });
 
-test("AlertRouter.getPushNotifications filters push-eligible items", () => {
-  const router = new AlertRouter();
+test("sortAttentionQueue respects createdAt within same priority", () => {
   const items = [
-    makeAttentionItem({ itemType: "incident", priority: "high" }),
-    makeAttentionItem({ itemType: "approval_needed", priority: "normal" }),
+    makeAttentionItem({ priority: "critical", createdAt: "2026-04-20T00:00:00.000Z" }),
+    makeAttentionItem({ priority: "critical", createdAt: "2026-04-19T00:00:00.000Z" }),
   ];
 
-  const push = router.getPushNotifications(items);
+  const sorted = sortAttentionQueue(items);
 
-  assert.ok(push.length > 0);
+  assert.ok(sorted[0]!.createdAt < sorted[1]!.createdAt);
 });
 
-test("AlertRouter.getHapticAlerts returns critical items", () => {
-  const router = new AlertRouter();
-  const items = [makeAttentionItem({ itemType: "incident", priority: "critical" })];
-
-  const haptic = router.getHapticAlerts(items);
-
-  assert.equal(haptic.length, 1);
+test("sortAttentionQueue handles empty array", () => {
+  const sorted = sortAttentionQueue([]);
+  assert.equal(sorted.length, 0);
 });
 
-test("AlertRouter.routeNotifications respects cooldown period", () => {
-  const router = new AlertRouter();
-  const items = [makeAttentionItem({ itemType: "incident", priority: "critical" })];
-
-  const first = router.routeNotifications(items);
-  const second = router.routeNotifications(items);
-
-  // Second delivery should be blocked by cooldown
-  assert.ok(first.length > 0);
+test("sortAttentionQueue handles single item", () => {
+  const items = [makeAttentionItem({ priority: "critical" })];
+  const sorted = sortAttentionQueue(items);
+  assert.equal(sorted.length, 1);
+  assert.equal(sorted[0]!.priority, "critical");
 });
 
-test("AlertRouter handles empty attention items", () => {
-  const router = new AlertRouter();
-  const routed = router.routeNotifications([]);
-  assert.equal(routed.length, 0);
-});
+test("sortAttentionQueue is stable for items with same priority and createdAt", () => {
+  const items = [
+    makeAttentionItem({ priority: "high", createdAt: "2026-04-19T00:00:00.000Z" }),
+    makeAttentionItem({ priority: "high", createdAt: "2026-04-19T00:00:00.000Z" }),
+  ];
 
-test("AlertRouter handles unhandled alert types gracefully", () => {
-  const router = new AlertRouter();
-  const items = [makeAttentionItem({ itemType: "unknown_type" as AttentionItem["itemType"], priority: "high" })];
-
-  const routed = router.routeNotifications(items);
-  // Unknown types should not match any rules
-  assert.equal(routed.length, 0);
+  const sorted = sortAttentionQueue(items);
+  assert.equal(sorted.length, 2);
 });

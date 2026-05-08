@@ -15,6 +15,8 @@ export interface MultiStepToolExecutionInput {
   dbPath: string;
   title: string;
   request: string;
+  /** Optional tenant scope for the created task (R4-27 fix) */
+  tenantId?: string | null;
   contextBudgetTokens?: number;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;

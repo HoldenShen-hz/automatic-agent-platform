@@ -1,8 +1,8 @@
 /**
- * Unit tests for trust-scorer risk functions
+ * Unit tests for trust-scorer functions
  *
- * Tests checkInherentRisk and mapTrustLevelToAutonomyLevel which handle
- * the R1-10 inherent risk check before mapping trust level to autonomy level.
+ * Tests calculateTrustScore and mapTrustLevel which handle the trust scoring
+ * and trust level mapping logic.
  */
 
 import assert from "node:assert/strict";
@@ -10,9 +10,7 @@ import test from "node:test";
 
 import {
   calculateTrustScore,
-  checkInherentRisk,
   mapTrustLevel,
-  mapTrustLevelToAutonomyLevel,
 } from "../../../../src/interaction/autonomy/trust-scorer/index.js";
 import type { CapabilityTrustScore } from "../../../../src/interaction/autonomy/index.js";
 
@@ -30,116 +28,6 @@ function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTru
     ...overrides,
   };
 }
-
-// --- checkInherentRisk tests ---
-
-test("checkInherentRisk returns false for critical risk class", () => {
-  const result = checkInherentRisk({ riskClass: "critical" });
-  assert.equal(result, false);
-});
-
-test("checkInherentRisk returns false for high risk class", () => {
-  const result = checkInherentRisk({ riskClass: "high" });
-  assert.equal(result, false);
-});
-
-test("checkInherentRisk returns false when isHighRiskDomain is true", () => {
-  const result = checkInherentRisk({ isHighRiskDomain: true });
-  assert.equal(result, false);
-});
-
-test("checkInherentRisk returns false when requiresHumanAccountable is true", () => {
-  const result = checkInherentRisk({ requiresHumanAccountable: true });
-  assert.equal(result, false);
-});
-
-test("checkInherentRisk returns true for low risk with no additional flags", () => {
-  const result = checkInherentRisk({ riskClass: "low" });
-  assert.equal(result, true);
-});
-
-test("checkInherentRisk returns true for medium risk without other flags", () => {
-  const result = checkInherentRisk({ riskClass: "medium" });
-  assert.equal(result, true);
-});
-
-test("checkInherentRisk returns true when only domainId is provided", () => {
-  const result = checkInherentRisk({ domainId: "some-domain" });
-  assert.equal(result, true);
-});
-
-test("checkInherentRisk returns false for high risk class even with domainId", () => {
-  const result = checkInherentRisk({ riskClass: "high", domainId: "some-domain" });
-  assert.equal(result, false);
-});
-
-test("checkInherentRisk returns false when multiple safe conditions exist but one is critical", () => {
-  // Critical overrides other safe conditions
-  const result = checkInherentRisk({
-    riskClass: "critical",
-    isHighRiskDomain: false,
-    requiresHumanAccountable: false,
-  });
-  assert.equal(result, false);
-});
-
-// --- mapTrustLevelToAutonomyLevel tests ---
-
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto when no inherent risk", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted");
-  assert.equal(result, "full_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when critical risk class", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "critical" });
-  assert.equal(result, "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when high risk class", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "high" });
-  assert.equal(result, "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when isHighRiskDomain", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { isHighRiskDomain: true });
-  assert.equal(result, "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when requiresHumanAccountable", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { requiresHumanAccountable: true });
-  assert.equal(result, "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps trusted to semi_auto", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("trusted"), "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps semi_trusted to semi_auto", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("semi_trusted"), "semi_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel maps supervised to supervised", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("supervised"), "supervised");
-});
-
-test("mapTrustLevelToAutonomyLevel maps probation to suggestion", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("probation"), "suggestion");
-});
-
-test("mapTrustLevelToAutonomyLevel maps untrusted to suggestion", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("untrusted"), "suggestion");
-});
-
-test("mapTrustLevelToAutonomyLevel handles fully_trusted with empty options object", () => {
-  // Empty object means no risk flags set
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", {});
-  assert.equal(result, "full_auto");
-});
-
-test("mapTrustLevelToAutonomyLevel handles fully_trusted with null options", () => {
-  const result = mapTrustLevelToAutonomyLevel("fully_trusted", null as never);
-  assert.equal(result, "full_auto");
-});
 
 // --- calculateTrustScore base 0-100 range tests ---
 
@@ -227,4 +115,36 @@ test("calculateTrustScore handles large volumes correctly", () => {
   const result = calculateTrustScore(score);
   // 95 - 0.2 - 45 + 10 = 59.8 => 60
   assert.equal(result, 60);
+});
+
+// --- mapTrustLevel tests ---
+
+test("mapTrustLevel maps score >= 95 to fully_trusted", () => {
+  assert.equal(mapTrustLevel(95), "fully_trusted");
+  assert.equal(mapTrustLevel(100), "fully_trusted");
+});
+
+test("mapTrustLevel maps score >= 85 and < 95 to trusted", () => {
+  assert.equal(mapTrustLevel(85), "trusted");
+  assert.equal(mapTrustLevel(94), "trusted");
+});
+
+test("mapTrustLevel maps score >= 70 and < 85 to semi_trusted", () => {
+  assert.equal(mapTrustLevel(70), "semi_trusted");
+  assert.equal(mapTrustLevel(84), "semi_trusted");
+});
+
+test("mapTrustLevel maps score >= 50 and < 70 to supervised", () => {
+  assert.equal(mapTrustLevel(50), "supervised");
+  assert.equal(mapTrustLevel(69), "supervised");
+});
+
+test("mapTrustLevel maps score >= 30 and < 50 to probation", () => {
+  assert.equal(mapTrustLevel(30), "probation");
+  assert.equal(mapTrustLevel(49), "probation");
+});
+
+test("mapTrustLevel maps score < 30 to untrusted", () => {
+  assert.equal(mapTrustLevel(0), "untrusted");
+  assert.equal(mapTrustLevel(29), "untrusted");
 });

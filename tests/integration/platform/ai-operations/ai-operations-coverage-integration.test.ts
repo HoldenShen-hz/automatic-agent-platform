@@ -193,7 +193,7 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
       ],
     });
 
-    assert.equal(promptRelease.rollout.status, "active");
+    assert.equal(promptRelease.rollout.status, "canary_5");
 
     const rendered = renderer.render({
       template: promptRelease.template,
@@ -296,7 +296,7 @@ test("integration: ai operations coverage tests harness runtime with constraint 
       policyIds: ["prompt_release", "model_governance", "compliance_transfer"],
       approvalMode: "supervised",
       autonomyMode: "supervised",
-      toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      tool_policy: { allowedTools: ["knowledge.query", "artifact.publish"] },
       risk_policy: {
         maxRiskScore: 70,
         escalationThreshold: 55,

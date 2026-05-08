@@ -8,7 +8,7 @@
  * R17-49: SLO tracking module implementation
  */
 
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../contracts/types/ids.js";
 
 /**
  * SLO compliance status

@@ -390,6 +390,28 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => applyAdminConfigUpdate(ctx, deps),
     },
     {
+      method: "DELETE",
+      pathname: "/v1/admin/config",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin config delete");
+        const payload = readValidatedJsonBody(ctx.request.body, adminConfigUpdateSchema.parse);
+        const tenantId = resolveTenantScope(principal, payload.tenantId);
+        const record = deps.adminConfigService?.deleteConfig({
+          key: payload.key,
+          ...(tenantId !== undefined ? { tenantId } : {}),
+          deletedBy: principal.actorId,
+        }) ?? {
+          success: true,
+          key: payload.key,
+          tenantId: tenantId ?? null,
+          deletedAt: new Date().toISOString(),
+          deletedBy: principal.actorId,
+        };
+        return buildJsonResponse(ctx.requestId, 200, { success: true, record });
+      },
+    },
+    {
       method: "POST",
       pathname: "/v1/admin/panic-directives",
       handler: (ctx) => {

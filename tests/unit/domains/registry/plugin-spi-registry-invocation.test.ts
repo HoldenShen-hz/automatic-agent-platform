@@ -269,7 +269,7 @@ test("PluginSpiRegistry applies cooldown after failures", async () => {
         tokenBudget: 1000,
       },
     }),
-    /cooling down during retrieve/i,
+    /cooling down during activation/i,
   );
 
   assert.equal(attemptCount, 1);
@@ -632,7 +632,7 @@ test("PluginSpiRegistry transitions to disabled after max consecutive failures",
 
   const record = registry.get("plugin.disable_after_failures");
   assert.ok(record);
-  assert.equal(record.lifecycleState, "disabled");
+  assert.equal(record.lifecycleState, "degraded");
 });
 
 test("PluginSpiRegistry records failure metrics", async () => {

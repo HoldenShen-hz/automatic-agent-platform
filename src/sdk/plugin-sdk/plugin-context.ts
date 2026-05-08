@@ -209,6 +209,9 @@ export class PluginContext {
   }
 
   private setValue(key: string, value: unknown, source: ContextValue["source"]): void {
+    if (key.startsWith("system.") && source !== "system") {
+      throw new Error(`PluginContext forbids overriding reserved key namespace: ${key}`);
+    }
     this.values.set(key, {
       key,
       value,

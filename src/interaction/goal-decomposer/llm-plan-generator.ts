@@ -61,6 +61,36 @@ function parseGoalBudgetEnvelope(goal: Goal): GoalBudgetEnvelope {
   };
 }
 
+function allocateBudgetShare(
+  totalBudgetUsd: number | null,
+  taskEstimatedCostUsd: number,
+  totalEstimatedCostUsd: number,
+  taskCount: number,
+): number | null {
+  if (totalBudgetUsd == null) {
+    return null;
+  }
+  if (totalEstimatedCostUsd <= 0) {
+    return Number((totalBudgetUsd / Math.max(1, taskCount)).toFixed(4));
+  }
+  return Number(((taskEstimatedCostUsd / totalEstimatedCostUsd) * totalBudgetUsd).toFixed(4));
+}
+
+function deriveEstimateConfidence(goal: Goal, goalBudget: GoalBudgetEnvelope, taskCount: number): PlannedTask["estimatedCost"]["confidence"] {
+  const evidenceSignals = goal.successCriteria.length + goal.constraints.length + taskCount;
+  if (goalBudget.totalBudgetUsd != null && evidenceSignals >= 4) {
+    return "high";
+  }
+  if (evidenceSignals >= 2) {
+    return "medium";
+  }
+  return "low";
+}
+
+function deriveEstimateSampleCount(goal: Goal, taskCount: number): number {
+  return Math.max(1, goal.successCriteria.length + goal.constraints.length + taskCount);
+}
+
 export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   private readonly model: string;
   public readonly managesBudgetReservations: boolean;
@@ -96,6 +126,8 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       const parsed = this.parsePlan(response);
       const goalBudget = parseGoalBudgetEnvelope(goal);
       const totalEstimatedCostUsd = parsed.tasks.reduce((sum, task) => sum + task.estimatedCostUsd, 0);
+      const estimateConfidence = deriveEstimateConfidence(goal, goalBudget, parsed.tasks.length);
+      const estimateSampleCount = deriveEstimateSampleCount(goal, parsed.tasks.length);
       if (reservedBudget != null) {
         allocator.settle({
           ledger: reservedBudget.ledger,
@@ -120,24 +152,30 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             constraints: goal.constraints,
             deadline: goal.deadline ?? null,
             priority: goal.priority,
-            allocatedBudgetUsd: goalBudget.totalBudgetUsd == null
-              ? null
-              : Number(((task.estimatedCostUsd / Math.max(totalEstimatedCostUsd, task.estimatedCostUsd)) * goalBudget.totalBudgetUsd).toFixed(4)),
+            allocatedBudgetUsd: allocateBudgetShare(
+              goalBudget.totalBudgetUsd,
+              task.estimatedCostUsd,
+              totalEstimatedCostUsd,
+              parsed.tasks.length,
+            ),
           },
           expectedOutputs: task.expectedOutputs,
           delegationMode: task.delegationMode,
           estimatedDuration: task.estimatedDuration,
           estimatedCost: {
             estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
-            confidence: "low",
-            sampleCount: 0,
+            confidence: estimateConfidence,
+            sampleCount: estimateSampleCount,
             divisionId: task.domainId,
             basedOn: "default",
           },
           constraintEnvelope: {
-            budgetLimitUsd: goalBudget.totalBudgetUsd == null
-              ? null
-              : Number(((task.estimatedCostUsd / Math.max(totalEstimatedCostUsd, task.estimatedCostUsd)) * goalBudget.totalBudgetUsd).toFixed(4)),
+            budgetLimitUsd: allocateBudgetShare(
+              goalBudget.totalBudgetUsd,
+              task.estimatedCostUsd,
+              totalEstimatedCostUsd,
+              parsed.tasks.length,
+            ),
             riskTolerance: goalBudget.riskTolerance,
             requiresApproval: goalBudget.requiresApproval || task.delegationMode !== "auto",
             requiredPermissions: [],

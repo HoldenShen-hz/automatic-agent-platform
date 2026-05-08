@@ -217,7 +217,7 @@ export function summarizeWorkflowStepCheckpoint(
   const output = checkpoint.output as { summary?: unknown } | null;
   return {
     artifactId,
-    nodeRunId: checkpoint.nodeRunId,
+    stepId: checkpoint.stepId,
     workflowId: checkpoint.workflowId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,

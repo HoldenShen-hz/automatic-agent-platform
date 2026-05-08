@@ -66,7 +66,7 @@ export function createClarificationState(missingSlots: readonly string[]): Clari
   };
 }
 
-export function inspectNlPrompt(input: string): PromptInjectionClassification {
+export async function inspectNlPrompt(input: string): Promise<PromptInjectionClassification> {
   return classifyPromptInjectionRisk(input);
 }
 

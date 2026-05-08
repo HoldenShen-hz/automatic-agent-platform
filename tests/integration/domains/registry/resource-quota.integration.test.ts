@@ -43,18 +43,18 @@ function createTestDomain(overrides: Partial<DomainDefinition> & { capabilities?
     toolBundles: [
       {
         bundleId: "quota_tools",
-        tools: [{ toolName: "bash", enabled: true, configOverrides: {} }],
+        tools: [{ toolName: "calculator", enabled: true, configOverrides: {} }],
       },
     ],
     outputContracts: [],
     promptOverrides: {},
     capabilities: {
       supportedTaskTypes: ["quota"],
-      requiredTools: ["bash"],
+      requiredTools: ["calculator"],
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
       ...capOverrides,
     },
     status: "registered" as DomainDefinition["status"],
@@ -90,10 +90,10 @@ test("resource quotas: maxTokensPerTask below minimum fails smoke test", async (
   const result = runner.run(domain);
 
   assert.equal(result.passed, false);
-  assert.ok(
-    result.issues.some((i) => i.includes("resource_quota") || i.includes("maxTokensPerTask")),
-    `Expected resource quota issue but got: ${result.issues.join(", ")}`,
-  );
+  const resourceCheck = result.runtimeChecks.find((c) => c.checkId === "resource_quota");
+  assert.ok(resourceCheck, "Expected resource_quota check in runtimeChecks");
+  assert.equal(resourceCheck!.passed, false);
+  assert.ok(resourceCheck!.details.includes("maxTokensPerTask"));
 });
 
 test("resource quotas: maxCostPerTask below minimum fails smoke test", async () => {
@@ -108,23 +108,28 @@ test("resource quotas: maxCostPerTask below minimum fails smoke test", async () 
   const result = runner.run(domain);
 
   assert.equal(result.passed, false);
-  assert.ok(
-    result.issues.some((i) => i.includes("resource_quota") || i.includes("maxCostPerTask")),
-    `Expected resource quota issue but got: ${result.issues.join(", ")}`,
-  );
+  const resourceCheck = result.runtimeChecks.find((c) => c.checkId === "resource_quota");
+  assert.ok(resourceCheck, "Expected resource_quota check in runtimeChecks");
+  assert.equal(resourceCheck!.passed, false);
+  assert.ok(resourceCheck!.details.includes("maxCostPerTask"));
 });
 
-test("resource quotas: registration fails when smoke test fails", async () => {
+test("resource quotas: activation fails when smoke test fails due to invalid quotas", async () => {
   const service = new DomainRegistryService();
   const domain = createTestDomain({
-    domainId: "quota-registration-fail",
+    domainId: "quota-activation-fail",
     capabilities: {
       budgetLimits: { maxTokensPerTask: 100, maxCostPerTask: 0.001 },
     },
   });
 
+  // Registration succeeds since register doesn't run smoke tests
+  const registered = service.register(domain);
+  assert.equal(registered.domainId, "quota-activation-fail");
+
+  // But activation fails because smoke test finds invalid quotas
   assert.throws(
-    () => service.register(domain),
+    () => service.activate("quota-activation-fail"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });

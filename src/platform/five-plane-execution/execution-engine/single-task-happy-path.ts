@@ -32,6 +32,8 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 
+import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
 import { HealthService } from "../../shared/observability/health-service.js";
@@ -245,6 +247,23 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       agentId: step.roleId,
     }, () => {
 
+    // R4-25/R4-27 fix: Create HarnessRun first to enable canonical execution tracking
+    const harnessRun = createHarnessRun({
+      tenantId: input.tenantId ?? "tenant:local",
+      traceId,
+      goal: input.title,
+      riskLevel: "medium",
+      domainId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
+      confirmedTaskSpecId: `ctspec:${taskId}`,
+      requestEnvelopeId: `request:${taskId}`,
+      requestHash: `hash:${taskId}`,
+      constraintPackRef: `constraint_pack:${SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId}`,
+      versionLockId: newId("version_lock"),
+      budgetLedgerId: newId("bledger"),
+      status: "created",
+    });
+    const harnessRunId = harnessRun.harnessRunId;
+
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
@@ -280,11 +299,13 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
+    // R4-25 fix: ExecutionRecord now created with harnessRunId association via HarnessRun
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
       workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
       parentExecutionId: null,
+      harnessRunId, // R4-27 fix: Associated HarnessRun for canonical tracking
       agentId: "agent_general_executor",
       roleId: "general_executor",
       runKind: "task_run",

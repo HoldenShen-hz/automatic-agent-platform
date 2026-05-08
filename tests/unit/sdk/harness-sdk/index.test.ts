@@ -89,6 +89,24 @@ test("HarnessSdk.createRun allows run creation when tenantId is provided", () =>
   assert.ok(run.harnessRunId !== undefined);
 });
 
+test("HarnessSdk.createRun requires authContext for supervised or full-auto runs", () => {
+  const sdk = new HarnessSdk();
+
+  assert.throws(
+    () =>
+      sdk.createRun({
+        taskId: "task-123",
+        domainId: "domain-1",
+        tenantId: "tenant-1",
+        constraintPack: {
+          ...makeConstraintPack(),
+          approvalMode: "required",
+        },
+      }),
+    (error: unknown) => error instanceof HarnessSdkError && error.code === "harness_sdk.missing_auth",
+  );
+});
+
 test("HarnessSdk.createRun with budgetRef and allowed budget succeeds", () => {
   const sdk = new HarnessSdk(undefined, (_budgetRef: string) => ({
     allowed: true,

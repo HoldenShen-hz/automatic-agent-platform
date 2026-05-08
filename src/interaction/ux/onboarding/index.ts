@@ -29,11 +29,14 @@ export interface UserPortalContext {
   readonly memberCount: number;
   readonly departmentCount: number;
   readonly requiresSso: boolean;
+  readonly userMode?: "builder" | "operator" | "executive";
+  readonly historicalDomainPreferences?: readonly string[];
 }
 
 export interface PortalOnboardingPlan {
   readonly mode: PlatformMode;
   readonly recommendedDomains: readonly string[];
+  readonly recommendationReasons: readonly string[];
   readonly recommendedNextActions: readonly string[];
   readonly welcomePrompt: string;
 }
@@ -44,9 +47,16 @@ export interface DomainOnboardingWizard {
     readonly title: string;
     readonly description: string;
     readonly emphasis?: "minimal" | "guided" | "governed";
+    readonly optional?: boolean;
+    readonly visibleForModes?: readonly PlatformMode["mode"][];
   }[];
   readonly recommendedDomains: readonly string[];
   readonly defaultMode: PlatformMode;
+  readonly progressiveDisclosure: {
+    readonly level: "minimal" | "guided" | "governed";
+    readonly visibleSections: readonly string[];
+    readonly hiddenSections: readonly string[];
+  };
 }
 
 export interface WorkflowPreview {
@@ -88,6 +98,11 @@ export interface VisualWorkflowBuilder {
   readonly validation: {
     readonly valid: boolean;
     readonly messages: readonly string[];
+  };
+  readonly progressiveDisclosure: {
+    readonly level: "minimal" | "guided" | "governed";
+    readonly hiddenCategories: readonly string[];
+    readonly defaultExpandedCategories: readonly string[];
   };
 }
 
@@ -187,16 +202,23 @@ export class UserPortalService implements UserPortalPort {
 
   public buildOnboardingPlan(description: string, context: UserPortalContext): PortalOnboardingPlan {
     const mode = this.resolveMode(context);
-    const recommendedDomains = this.recommendDomains(description);
-    const recommendedNextActions = [
-      "确认业务目标和首个自动化场景",
-      "选择合适的域模板并检查默认风控",
-      "激活第一个 Agent 并在看板中观察结果",
-    ];
+    const { domains: recommendedDomains, reasons: recommendationReasons } = this.recommendDomains(description, context);
+    const recommendedNextActions = mode.mode === "solo"
+      ? [
+          "确认业务目标和首个自动化场景",
+          "直接套用推荐模板并保留默认风控",
+          "激活第一个 Agent 并在简化看板中观察结果",
+        ]
+      : [
+          "确认业务目标和首个自动化场景",
+          "选择合适的域模板并检查默认风控",
+          "激活第一个 Agent 并在看板中观察结果",
+        ];
 
     return {
       mode,
       recommendedDomains,
+      recommendationReasons,
       recommendedNextActions,
       welcomePrompt: `你好，我会先按 ${mode.mode} 模式为你准备平台入口。`,
     };
@@ -204,6 +226,7 @@ export class UserPortalService implements UserPortalPort {
 
   public buildDomainOnboardingWizard(description: string, context: UserPortalContext): DomainOnboardingWizard {
     const mode = this.resolveMode(context);
+    const progressiveDisclosure = this.buildProgressiveDisclosure(mode);
     return {
       steps: [
         {
@@ -229,6 +252,8 @@ export class UserPortalService implements UserPortalPort {
             ? "确认默认预算和基础安全边界。"
             : "确认审批方式、预算约束和默认安全边界。",
           emphasis: mode.mode === "enterprise" ? "governed" : "guided",
+          optional: mode.mode === "solo",
+          visibleForModes: ["solo", "team", "department", "enterprise"],
         },
         {
           stepId: "activation",
@@ -239,20 +264,38 @@ export class UserPortalService implements UserPortalPort {
           emphasis: mode.mode === "enterprise" ? "governed" : "guided",
         },
       ],
-      recommendedDomains: this.recommendDomains(description),
+      recommendedDomains: this.recommendDomains(description, context).domains,
       defaultMode: mode,
+      progressiveDisclosure,
     };
   }
 
   public buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[], context?: UserPortalContext): VisualWorkflowBuilder {
     const domains = selectedDomains != null && selectedDomains.length > 0
       ? [...selectedDomains]
-      : this.recommendDomains(description);
+      : this.recommendDomains(description, context ?? {
+        memberCount: 1,
+        departmentCount: 1,
+        requiresSso: false,
+      }).domains;
     const primaryDomain = domains[0] ?? "general_ops";
     const mode = context == null
       ? null
       : this.resolveMode(context);
     const includeApprovalStage = mode?.features.approvalEngine === "full";
+    const progressiveDisclosure = mode == null
+      ? {
+          level: "guided" as const,
+          hiddenCategories: [],
+          defaultExpandedCategories: ["trigger", "action", "output"],
+        }
+      : {
+          level: this.buildProgressiveDisclosure(mode).level,
+          hiddenCategories: mode.mode === "solo" ? ["condition", "approval"] : mode.mode === "team" ? ["condition"] : [],
+          defaultExpandedCategories: mode.mode === "enterprise"
+            ? ["trigger", "action", "approval", "output"]
+            : ["trigger", "action", "output"],
+        };
 
     return {
       canvas: {
@@ -346,10 +389,14 @@ export class UserPortalService implements UserPortalPort {
         valid: true,
         messages: ["流程结构有效，可继续配置审批和风控。"],
       },
+      progressiveDisclosure,
     };
   }
 
-  private recommendDomains(description: string): string[] {
+  private recommendDomains(description: string, context?: UserPortalContext): {
+    readonly domains: string[];
+    readonly reasons: readonly string[];
+  } {
     const normalized = description.toLowerCase();
     const lexicon: Readonly<Record<string, readonly string[]>> = {
       advertising: ["marketing", "campaign", "广告", "投放", "增长", "roi", "线索"],
@@ -359,12 +406,26 @@ export class UserPortalService implements UserPortalPort {
       engineering_ops: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布", "生产环境", "pipeline"],
     };
     const scores = new Map<string, number>();
+    const reasons = new Map<string, string[]>();
     for (const [domainId, keywords] of Object.entries(lexicon)) {
       let score = 0;
       for (const keyword of keywords) {
         if (normalized.includes(keyword.toLowerCase())) {
           score += /(deploy|production|prod|付款|工资|预算)/i.test(keyword) ? 3 : 2;
+          reasons.set(domainId, [...(reasons.get(domainId) ?? []), `keyword:${keyword}`]);
         }
+      }
+      if (context?.historicalDomainPreferences?.includes(domainId)) {
+        score += 2;
+        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "history_affinity"]);
+      }
+      if (context?.userMode === "executive" && domainId === "finance") {
+        score += 1;
+        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "executive_budget_focus"]);
+      }
+      if (context?.requiresSso && domainId === "engineering_ops") {
+        score += 1;
+        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "enterprise_integration"]);
       }
       if (score > 0) {
         scores.set(domainId, score);
@@ -373,7 +434,33 @@ export class UserPortalService implements UserPortalPort {
     const ranked = [...scores.entries()]
       .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
       .map(([domainId]) => domainId);
-    return ranked.length > 0 ? ranked : normalized.length > 0 ? ["general_ops"] : [];
+    const domains = ranked.length > 0 ? ranked : normalized.length > 0 ? ["general_ops"] : [];
+    return {
+      domains,
+      reasons: domains.flatMap((domainId) => reasons.get(domainId) ?? [`fallback:${domainId}`]),
+    };
+  }
+
+  private buildProgressiveDisclosure(mode: PlatformMode): DomainOnboardingWizard["progressiveDisclosure"] {
+    if (mode.mode === "solo") {
+      return {
+        level: "minimal",
+        visibleSections: ["business_type", "activation", "basic_risk"],
+        hiddenSections: ["advanced_integrations", "governance_matrix", "org_hierarchy"],
+      };
+    }
+    if (mode.mode === "enterprise") {
+      return {
+        level: "governed",
+        visibleSections: ["business_type", "capability_setup", "risk_setup", "activation", "governance_matrix"],
+        hiddenSections: [],
+      };
+    }
+    return {
+      level: "guided",
+      visibleSections: ["business_type", "capability_setup", "risk_setup", "activation"],
+      hiddenSections: ["org_hierarchy"],
+    };
   }
 
   private resolveDomainRiskLevel(domainId: string, description: string): DraggableComponent["riskLevel"] {

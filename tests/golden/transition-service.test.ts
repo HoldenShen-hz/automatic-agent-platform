@@ -34,19 +34,31 @@ test("golden: transition service task status transition validation", () => {
   const executionId = "trans_exec_001";
   seedTaskAndExecution(db, store, { taskId, executionId, traceId: "trans-trace" });
 
-  // Get current task status
+  // Get current task status - seed creates tasks in "in_progress" status
   const task = store.getTask(taskId);
   assert.ok(task, "Task should exist");
+  assert.equal(task.status, "in_progress", "Task should be in in_progress status from seed");
 
-  // Verify current status allows expected transitions
-  const allowedTransitions = service.getAllowedTaskTransitions(taskId);
-  assert.ok(Array.isArray(allowedTransitions), "Allowed transitions should be array");
+  // Verify task can transition from in_progress -> done (terminal)
+  const now = nowIso();
+  service.transitionTaskStatus({
+    entityKind: "task",
+    entityId: taskId,
+    fromStatus: "in_progress",
+    toStatus: "done",
+    executionId,
+    occurredAt: now,
+    traceId: "trans-trace",
+    actorType: "system",
+  });
+
+  const updatedTask = store.getTask(taskId);
+  assert.ok(updatedTask, "Task should exist after transition");
+  assert.equal(updatedTask.status, "done", "Task should be in done status");
 
   assertGolden("transition-task-allowed-transitions", {
-    taskId: task.id,
-    currentStatus: task.status,
-    allowedTransitionCount: allowedTransitions.length,
-    allowedTransitions,
+    taskId: updatedTask.id,
+    currentStatus: updatedTask.status,
   });
 
   db.close();
@@ -67,18 +79,30 @@ test("golden: transition service execution status transitions", () => {
   const executionId = "trans_exec_exec_001";
   seedTaskAndExecution(db, store, { taskId, executionId, traceId: "trans-exec-trace" });
 
-  // Get current execution status
+  // Get current execution status - seed creates executions in "executing" status
   const execution = store.getExecution(executionId);
   assert.ok(execution, "Execution should exist");
+  assert.equal(execution.status, "executing", "Execution should be in executing status from seed");
 
-  const allowedTransitions = service.getAllowedExecutionTransitions(executionId);
-  assert.ok(Array.isArray(allowedTransitions), "Allowed transitions should be array");
+  // Verify execution can transition from executing -> succeeded (terminal)
+  const now = nowIso();
+  service.transitionExecutionStatus({
+    entityKind: "execution",
+    entityId: executionId,
+    fromStatus: "executing",
+    toStatus: "succeeded",
+    occurredAt: now,
+    traceId: "trans-exec-trace",
+    actorType: "system",
+  });
+
+  const updatedExecution = store.getExecution(executionId);
+  assert.ok(updatedExecution, "Execution should exist after transition");
+  assert.equal(updatedExecution.status, "succeeded", "Execution should be in succeeded status");
 
   assertGolden("transition-execution-allowed-transitions", {
-    executionId: execution.id,
-    currentStatus: execution.status,
-    allowedTransitionCount: allowedTransitions.length,
-    allowedTransitions,
+    executionId: updatedExecution.id,
+    currentStatus: updatedExecution.status,
   });
 
   db.close();
@@ -97,7 +121,7 @@ test("golden: transition service approval status transitions", () => {
 
   const taskId = "trans_approval_task_001";
   const executionId = "trans_approval_exec_001";
-  const approvalId = newId("approval");
+  const approvalId = "trans_approval_001";
   const now = nowIso();
 
   seedTaskAndExecution(db, store, { taskId, executionId, traceId: "trans-approval-trace" });
@@ -120,14 +144,25 @@ test("golden: transition service approval status transitions", () => {
   const approval = store.getApproval(approvalId);
   assert.ok(approval, "Approval should exist");
 
-  const allowedTransitions = service.getAllowedApprovalTransitions(approvalId);
-  assert.ok(Array.isArray(allowedTransitions), "Allowed transitions should be array");
+  // Verify approval can transition from requested -> approved
+  service.transitionApprovalStatus({
+    entityKind: "approval",
+    entityId: approvalId,
+    fromStatus: "requested",
+    toStatus: "approved",
+    occurredAt: now,
+    traceId: "trans-approval-trace",
+    actorType: "human",
+    responseJson: JSON.stringify({ decision: "approved" }),
+  });
+
+  const updatedApproval = store.getApproval(approvalId);
+  assert.ok(updatedApproval, "Approval should exist after transition");
+  assert.equal(updatedApproval.status, "approved", "Approval should be in approved status");
 
   assertGolden("transition-approval-allowed-transitions", {
-    approvalId: approval.id,
-    currentStatus: approval.status,
-    allowedTransitionCount: allowedTransitions.length,
-    allowedTransitions,
+    approvalId: updatedApproval.id,
+    currentStatus: updatedApproval.status,
   });
 
   db.close();
@@ -169,14 +204,26 @@ test("golden: transition service workflow status transitions", () => {
   const workflowState = store.getWorkflowState(taskId);
   assert.ok(workflowState, "Workflow state should exist");
 
-  const allowedTransitions = service.getAllowedWorkflowTransitions(taskId);
-  assert.ok(Array.isArray(allowedTransitions), "Allowed transitions should be array");
+  // Verify workflow can transition from running -> paused
+  service.transitionWorkflowStatus({
+    entityKind: "workflow",
+    entityId: taskId,
+    fromStatus: "running",
+    toStatus: "paused",
+    currentStepIndex: 0,
+    outputsJson: "{}",
+    occurredAt: now,
+    traceId: "trans-wf-trace",
+    actorType: "system",
+  });
+
+  const updatedWorkflow = store.getWorkflowState(taskId);
+  assert.ok(updatedWorkflow, "Workflow should exist after transition");
+  assert.equal(updatedWorkflow.status, "paused", "Workflow should be in paused status");
 
   assertGolden("transition-workflow-allowed-transitions", {
-    taskId: workflowState.taskId,
-    currentStatus: workflowState.status,
-    allowedTransitionCount: allowedTransitions.length,
-    allowedTransitions,
+    taskId: updatedWorkflow.taskId,
+    currentStatus: updatedWorkflow.status,
   });
 
   db.close();

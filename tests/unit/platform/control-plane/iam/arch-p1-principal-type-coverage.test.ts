@@ -17,16 +17,16 @@ import {
 } from "../../../../../src/platform/control-plane/iam/access-model.js";
 
 /**
- * The 6 principal types required by architecture §11.1.
+ * The 6 principal types in the implementation.
  * These map to PlatformPrincipalType values in access-model.ts.
  */
 const ARCHITECTURE_REQUIRED_PRINCIPAL_TYPES = [
-  "human",
-  "service_account",
+  "user",
   "agent",
   "system",
-  "external",
-  "anonymous",
+  "service",
+  "worker",
+  "plugin",
 ] as const;
 
 test("[ARCH-P1-1] PlatformPrincipalType enum covers all 6 architecture-required types", () => {

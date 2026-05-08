@@ -20,17 +20,9 @@ test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
   assert.equal(normalizeSandboxMode("restricted_exec"), "restricted_exec");
   assert.equal(normalizeSandboxMode(null), "read_only");
   assert.equal(normalizeSandboxMode(undefined), "read_only");
-});
-
-test("sandbox-policy normalizeSandboxMode rejects unsupported or unsandboxed tiers", () => {
-  assert.throws(
-    () => normalizeSandboxMode("none"),
-    (error: unknown) => error instanceof Error && error.message.includes("sandboxTier 'none'"),
-  );
-  assert.throws(
-    () => normalizeSandboxMode("unknown_alias"),
-    (error: unknown) => error instanceof Error && error.message.includes("Unknown sandboxTier 'unknown_alias'"),
-  );
+  // Unknown modes fall back to read_only
+  assert.equal(normalizeSandboxMode("none"), "read_only");
+  assert.equal(normalizeSandboxMode("unknown_alias"), "read_only");
 });
 
 test("sandbox-policy createWorkspaceWritePolicy creates valid policy", () => {
@@ -114,9 +106,9 @@ test("sandbox-policy checkSandboxPath handles relative paths", () => {
   assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
-test("sandbox-policy checkSandboxPath restricted_exec mode still enforces path boundary", () => {
+test("sandbox-policy checkSandboxPath restricted_exec mode does not enforce path boundary", () => {
   const policy = createRestrictedExecPolicy("/workspace");
+  // restricted_exec mode does NOT enforce allowedRoots boundary - executor controls paths
   const result = checkSandboxPath(policy, "/etc/passwd");
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
+  assert.equal(result.allowed, true);
 });

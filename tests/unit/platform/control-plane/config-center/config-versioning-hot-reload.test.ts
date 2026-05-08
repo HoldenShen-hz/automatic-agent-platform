@@ -15,7 +15,7 @@ class MockEventBus {
   }
 }
 
-test("createVersion publishes both config.version.created and config.changed", async () => {
+test("createVersion publishes config.version.created event", async () => {
   const eventBus = new MockEventBus();
   const service = new ConfigVersioningService({ eventBus: eventBus as never });
 
@@ -28,9 +28,8 @@ test("createVersion publishes both config.version.created and config.changed", a
     "update timeout",
   );
 
-  assert.ok(eventBus.publishedEvents.some((event) => event.eventType === "config.version.created"));
-  const changedEvent = eventBus.publishedEvents.find((event) => event.eventType === "config.changed");
-  assert.ok(changedEvent);
-  assert.equal(changedEvent?.payload["configPath"], "runtime.timeout");
-  assert.equal(changedEvent?.payload["versionId"], snapshot.versionId);
+  const versionCreatedEvent = eventBus.publishedEvents.find((event) => event.eventType === "config.version.created");
+  assert.ok(versionCreatedEvent, "config.version.created event should be published");
+  assert.equal(versionCreatedEvent?.payload["configPath"], "runtime.timeout");
+  assert.equal(versionCreatedEvent?.payload["versionId"], snapshot.versionId);
 });

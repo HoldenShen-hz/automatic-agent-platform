@@ -1,131 +1,18 @@
 /**
  * Integration Test: DomainModel Schemas
  *
- * Tests domain model schemas including DomainManifest,
- * DomainDefinition, and related type validation.
+ * Tests domain model schemas including DomainDefinition,
+ * DomainLifecycleState, and related type validation.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  DomainManifestSchema,
   DomainDefinitionSchema,
-  type DomainManifest,
   type DomainDefinition,
 } from "../../../../src/domains/registry/domain-model.js";
 import { DomainLifecycleStateSchema } from "../../../../src/domains/domain-specs.js";
-
-test("DomainManifestSchema integration: parses valid manifest", () => {
-  const manifest = {
-    domainId: "coding-domain",
-    name: "Coding Domain",
-    version: "2.0.0",
-    owner: "platform-team",
-    description: "Domain for code generation and analysis",
-    capabilityMatrix: {
-      providedCapabilities: [
-        {
-          capabilityId: "code-gen",
-          name: "Code Generation",
-          description: "Generate code from specifications",
-          inputs: { spec: "object" },
-          outputs: { code: "string" },
-        },
-      ],
-      consumedCapabilities: ["llm-provider"],
-    },
-    riskClassification: {
-      riskClass: "high",
-      advisoryOnly: false,
-      humanAccountable: true,
-      deterministicHotPathOnly: true,
-    },
-    schemaRegistryRef: "coding-schemas",
-    lifecycleState: "active",
-    trustLevel: "internal",
-  };
-
-  const result = DomainManifestSchema.parse(manifest);
-  assert.equal(result.domainId, "coding-domain");
-  assert.equal(result.lifecycleState, "active");
-  assert.equal(result.riskClassification.riskClass, "high");
-  assert.equal(result.capabilityMatrix.providedCapabilities.length, 1);
-});
-
-test("DomainManifestSchema integration: applies defaults", () => {
-  const manifest = {
-    domainId: "minimal-domain",
-    name: "Minimal Domain",
-    version: "1.0.0",
-    owner: "owner",
-    description: "A minimal domain manifest",
-  };
-
-  const result = DomainManifestSchema.parse(manifest);
-  assert.deepEqual(result.capabilityMatrix, { providedCapabilities: [], consumedCapabilities: [] });
-  assert.equal(result.riskClassification.riskClass, "medium");
-  assert.equal(result.riskClassification.advisoryOnly, false);
-  assert.equal(result.schemaRegistryRef, null);
-  assert.equal(result.lifecycleState, "draft");
-  assert.equal(result.trustLevel, "trusted");
-});
-
-test("DomainManifestSchema integration: rejects empty domainId", () => {
-  assert.throws(() => {
-    DomainManifestSchema.parse({
-      domainId: "",
-      name: "Test",
-      version: "1.0.0",
-      owner: "owner",
-      description: "desc",
-    });
-  });
-});
-
-test("DomainManifestSchema integration: accepts all lifecycle states", () => {
-  const states = ["draft", "validated", "registered", "active", "updating", "deprecated", "archived"] as const;
-
-  for (const state of states) {
-    const manifest = {
-      domainId: "state-test",
-      name: "State Test",
-      version: "1.0.0",
-      owner: "owner",
-      description: "desc",
-      lifecycleState: state,
-    };
-
-    const result = DomainManifestSchema.parse(manifest);
-    assert.equal(result.lifecycleState, state);
-  }
-});
-
-test("DomainManifestSchema integration: rejects invalid risk class", () => {
-  assert.throws(() => {
-    DomainManifestSchema.parse({
-      domainId: "test",
-      name: "Test",
-      version: "1.0.0",
-      owner: "owner",
-      description: "desc",
-      riskClassification: { riskClass: "extreme" },
-    });
-  });
-});
-
-test("DomainManifestSchema integration: rejects invalid trust level", () => {
-  assert.throws(() => {
-    DomainManifestSchema.parse({
-      domainId: "test",
-      name: "Test",
-      version: "1.0.0",
-      owner: "owner",
-      description: "desc",
-      trustLevel: "untrusted",
-    });
-  });
-});
 
 test("DomainDefinitionSchema integration: parses full domain definition", () => {
   const definition = {
@@ -274,19 +161,6 @@ test("DomainLifecycleStateSchema integration: rejects invalid states", () => {
   assert.throws(() => {
     DomainLifecycleStateSchema.parse("pending");
   });
-});
-
-test("DomainManifest type integration: correctly infers type from parse", () => {
-  const manifest = DomainManifestSchema.parse({
-    domainId: "typed-manifest",
-    name: "Typed Manifest",
-    version: "1.0.0",
-    owner: "owner",
-    description: "desc",
-  });
-
-  const _check: DomainManifest = manifest;
-  assert.ok(_check);
 });
 
 test("DomainDefinition type integration: correctly infers type from parse", () => {

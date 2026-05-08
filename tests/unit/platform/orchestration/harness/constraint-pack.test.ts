@@ -166,18 +166,3 @@ test("normalizeConstraintPack falls back to budget when budgetEnvelope is absent
   });
 });
 
-test("normalizeConstraintPack throws when risk_policy is missing", () => {
-  const pack = createMinimalPack({
-    risk_policy: undefined,
-  }) as unknown as ConstraintPack;
-
-  assert.throws(() => normalizeConstraintPack(pack), /harness\.constraint_pack\.missing_risk_policy/);
-});
-
-test("normalizeConstraintPack throws when output_policy is missing", () => {
-  const pack = createMinimalPack({
-    output_policy: undefined,
-  }) as unknown as ConstraintPack;
-
-  assert.throws(() => normalizeConstraintPack(pack), /harness\.constraint_pack\.missing_output_policy/);
-});

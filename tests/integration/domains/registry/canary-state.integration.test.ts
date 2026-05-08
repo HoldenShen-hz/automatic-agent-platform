@@ -53,7 +53,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "registered" as DomainDefinition["status"],
     externalAdapters: [],
@@ -126,13 +126,13 @@ test("canary: activate from active state fails for both modes", async () => {
   );
 });
 
-test("canary: activate from draft state fails for both modes", async () => {
+test("canary: activate from deprecated state fails for both modes", async () => {
   const service = new DomainRegistryService();
-  const domain = createTestDomain({ domainId: "activate-from-draft", status: "draft" });
+  const domain = createTestDomain({ domainId: "activate-from-deprecated", status: "deprecated" });
   service.register(domain);
 
   assert.throws(
-    () => service.activate("activate-from-draft", true),
+    () => service.activate("activate-from-deprecated", true),
     (err: unknown) =>
       err instanceof ValidationError &&
       (err.code === "domain_registry.invalid_canary_state" ||
@@ -140,7 +140,7 @@ test("canary: activate from draft state fails for both modes", async () => {
   );
 
   assert.throws(
-    () => service.activate("activate-from-draft", false),
+    () => service.activate("activate-from-deprecated", false),
     (err: unknown) =>
       err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
   );

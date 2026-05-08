@@ -12,7 +12,7 @@ test("NlEntryService parses detailed intent and extracts entities", async () => 
     message: "请在 2026-04-20 前把生产环境 deploy 状态同步到 slack，并控制预算在 ¥500 以内",
   });
 
-  assert.equal(result.detectedIntents[0]?.intentType, "task_query");
+  assert.equal(result.detectedIntents[0]?.intentType, "status_inquiry");
   assert.equal(result.suggestedDivisionId, "devops");
   assert.ok(result.detectedIntents[0]?.entities.some((entity) => entity.entityType === "date"));
   assert.ok(result.detectedIntents[0]?.entities.some((entity) => entity.entityType === "money"));

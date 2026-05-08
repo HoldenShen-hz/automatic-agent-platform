@@ -164,6 +164,11 @@ export class DurableEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: Record<string, unknown>;
+    // §28.1 replay ordering fields
+    aggregateId?: string | null;
+    runId?: string | null;
+    sequence?: number | null;
+    schemaVersion?: string | null;
   }): EventRecord {
     this.assertNotDisposed();
     const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
@@ -188,6 +193,11 @@ export class DurableEventBus {
           payloadJson: JSON.stringify(validatedPayload),
           traceId: input.traceContext?.traceId ?? input.traceId ?? null,
           createdAt: nowIso(),
+          // §28.1 replay ordering fields for event chain reconstruction
+          aggregateId: input.aggregateId ?? null,
+          runId: input.runId ?? null,
+          sequence: input.sequence ?? null,
+          schemaVersion: input.schemaVersion ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;

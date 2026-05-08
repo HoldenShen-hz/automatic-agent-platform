@@ -8,7 +8,7 @@ import { createExecutionReceipt } from "../../../../src/platform/contracts/execu
 import { createModelRequest } from "../../../../src/platform/contracts/model-request/index.js";
 import { createRequestEnvelope } from "../../../../src/platform/contracts/request-envelope/index.js";
 import { createStateCommand } from "../../../../src/platform/contracts/state-command/index.js";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError, UnimplementedError } from "../../../../src/platform/contracts/errors.js";
 
 test("integration: supported platform contract objects compose while legacy plan/directive/receipt factories fail fast", () => {
   const envelope = createRequestEnvelope({
@@ -38,18 +38,24 @@ test("integration: supported platform contract objects compose while legacy plan
     contextRef: modelRequest.requestId,
     tenantId: envelope.tenantId,
   });
-  const command = createStateCommand({
-    entityKind: "delegation_request",
-    entityId: delegation.requestId,
-    action: "transition",
-    expectedVersion: null,
-    payload: { nextStatus: "queued", delegationRequestId: delegation.requestId },
-    emittedBy: "planner",
-  });
 
   assert.equal(modelRequest.taskId, envelope.taskId);
   assert.equal(delegation.contextRef, modelRequest.requestId);
-  assert.equal(command.payload.delegationRequestId, delegation.requestId);
+
+  // createStateCommand is deprecated and always throws
+  assert.throws(
+    () =>
+      createStateCommand({
+        entityKind: "delegation_request",
+        entityId: delegation.requestId,
+        action: "transition",
+        expectedVersion: null,
+        payload: { nextStatus: "queued", delegationRequestId: delegation.requestId },
+        emittedBy: "planner",
+      }),
+    (error: unknown) =>
+      error instanceof UnimplementedError && error.code === "DEPRECATED_STATE_COMMAND",
+  );
   assert.throws(
     () =>
       createExecutionPlan({
@@ -73,7 +79,7 @@ test("integration: supported platform contract objects compose while legacy plan
         executionId: null,
         metadata: { delegationRequestId: delegation.requestId },
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
   assert.throws(
     () =>

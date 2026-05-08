@@ -5,9 +5,9 @@ interface BasicValidationContract {
   fieldTypes?: Record<string, "string" | "number" | "boolean" | "array" | "object">;
 }
 
-export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
+function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPlugin {
   return {
-    pluginId: "plugin.core.basic-evaluator",
+    pluginId,
     domainId: "core",
     spiType: "validator",
     capabilityIds: ["output.validate"],
@@ -68,4 +68,12 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
       };
     },
   };
+}
+
+export function createBasicValidatorPlugin(): DomainValidatorPlugin {
+  return createBasicValidatorPluginInternal("plugin.core.basic-validator");
+}
+
+export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
+  return createBasicValidatorPluginInternal("plugin.core.basic-evaluator");
 }

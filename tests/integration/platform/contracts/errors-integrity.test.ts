@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AppError, ValidationError, PolicyDeniedError, AuthError, ProviderError,
+import { AppError, ValidationError, PolicyDeniedError, AuthError, ProviderError, UnimplementedError,
          createErrorCode, isAppError, getErrorCode, normalizeToAppError } from "../../../../src/platform/contracts/errors.js";
 import {
   createPrincipalRef,
@@ -189,8 +189,10 @@ test("integration: State command validation errors are properly typed", () => {
     caughtError = error;
   }
 
+  // createStateCommand is deprecated and throws UnimplementedError
   assert.ok(caughtError instanceof AppError);
-  assert.ok(caughtError instanceof ValidationError);
+  assert.ok(caughtError instanceof UnimplementedError);
+  assert.equal((caughtError as UnimplementedError).code, "DEPRECATED_STATE_COMMAND");
 });
 
 // =============================================================================
@@ -297,7 +299,7 @@ test("integration: Budget hard cap throws ValidationError when exceeded", () => 
   });
 
   assert.equal(result.ledger.reservedAmount, 50);
-  assert.equal(result.ledger.status, "active");
+  assert.equal(result.ledger.status, "open");
 
   // Now try to exceed cap - should throw
   let caughtError: unknown = null;
@@ -345,6 +347,13 @@ test("integration: Error context propagates through plan graph creation", () => 
     riskClass: "high",
     idempotencyKey: "idem-error-1",
     traceId: "trace-error-1",
+    confirmationReceipt: {
+      receiptId: "conf-receipt-1",
+      confirmedBy: principal,
+      riskClass: "high",
+      confirmedAt: "2026-04-29T00:00:00.000Z",
+      state: "confirmed",
+    },
   });
 
   const envelope = createRequestEnvelopeFromConfirmedTask({

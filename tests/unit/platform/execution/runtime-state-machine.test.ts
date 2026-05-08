@@ -223,6 +223,9 @@ test("RuntimeStateMachine requires lease and fencing before execution-state Node
     status: "ready",
     currentSeq: 1,
   });
+  // Clear the default fencingToken to avoid mismatch errors in the first check
+  // The first check should throw for missing lease/fencing, not for mismatch
+  (nodeRunNoLease as any).fencingToken = null;
 
   assert.throws(
     () =>
@@ -249,6 +252,9 @@ test("RuntimeStateMachine requires lease and fencing before execution-state Node
     status: "ready",
     currentSeq: 1,
   });
+  // Clear the default fencingToken to avoid mismatch after the first transition
+  // The second transition will set it properly via applyStatus
+  (nodeRun as any).fencingToken = null;
 
   const leased = machine.transition({
     aggregateType: "NodeRun",

@@ -325,6 +325,11 @@ export class WorkflowBuilderService {
           ? []
           : [`complete current step before leaving ${request.session.currentStepId}`],
       },
+      progressiveDisclosure: {
+        level: "minimal" as const,
+        hiddenCategories: [],
+        defaultExpandedCategories: [],
+      },
     };
     const saveReview: WorkflowBuilderSaveReview = {
       normalizedGraph: normalizeGraph(builder.canvas.nodes, builder.canvas.edges),

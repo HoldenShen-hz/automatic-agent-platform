@@ -1014,6 +1014,7 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
       },
     ],
     selectedTierId: "enterprise",
+    workflowClass: "deterministic",
     observation: {
       latencyMs: 600,
       successRate: 0.99,

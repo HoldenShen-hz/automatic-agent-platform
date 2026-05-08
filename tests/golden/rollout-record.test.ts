@@ -12,8 +12,6 @@ import {
   RolloutRecordSchema,
   RolloutLevelSchema,
   RolloutStatusSchema,
-  RolloutMetricsSchema,
-  AuditContextSchema,
   parseRolloutRecord,
   type RolloutRecord,
   type RolloutLevel,
@@ -131,86 +129,6 @@ test("golden: RolloutStatus enum values are valid", () => {
   assertGolden("rollout-status-enum-v1", {
     validStatuses,
     totalStatuses: validStatuses.length,
-  });
-});
-
-test("golden: RolloutMetrics schema validates correctly", () => {
-  const validMetrics = {
-    errorRate: 0.05,
-    latencyP99: 200,
-    successRate: 0.95,
-    sampleCount: 500,
-  };
-
-  const parsed = RolloutMetricsSchema.parse(validMetrics);
-
-  assert.equal(parsed.errorRate, 0.05);
-  assert.equal(parsed.latencyP99, 200);
-  assert.equal(parsed.successRate, 0.95);
-  assert.equal(parsed.sampleCount, 500);
-
-  // Test boundary values
-  const zeroMetrics = RolloutMetricsSchema.parse({
-    errorRate: 0,
-    latencyP99: 0,
-    successRate: 0,
-    sampleCount: 0,
-  });
-  assert.equal(zeroMetrics.errorRate, 0);
-  assert.equal(zeroMetrics.sampleCount, 0);
-
-  const fullSuccess = RolloutMetricsSchema.parse({
-    errorRate: 0,
-    latencyP99: 100,
-    successRate: 1.0,
-    sampleCount: 100,
-  });
-  assert.equal(fullSuccess.successRate, 1.0);
-
-  assertGolden("rollout-metrics-schema-v1", {
-    validMetrics: {
-      errorRate: parsed.errorRate,
-      latencyP99: parsed.latencyP99,
-      successRate: parsed.successRate,
-      sampleCount: parsed.sampleCount,
-    },
-    zeroMetrics: {
-      errorRate: zeroMetrics.errorRate,
-      sampleCount: zeroMetrics.sampleCount,
-    },
-  });
-});
-
-test("golden: AuditContext schema validates with optional fields", () => {
-  // Full audit context
-  const fullContext = {
-    userId: "user_123",
-    reason: "Admin promotion",
-    metadata: { ip: "192.168.1.1", userAgent: "test" },
-  };
-  const parsedFull = AuditContextSchema.parse(fullContext);
-  assert.equal(parsedFull.userId, "user_123");
-  assert.equal(parsedFull.reason, "Admin promotion");
-  assert.deepEqual(parsedFull.metadata, { ip: "192.168.1.1", userAgent: "test" });
-
-  // Minimal audit context (empty object)
-  const minimalContext = {};
-  const parsedMinimal = AuditContextSchema.parse(minimalContext);
-  assert.equal(parsedMinimal.userId, undefined);
-  assert.equal(parsedMinimal.reason, undefined);
-  assert.deepEqual(parsedMinimal.metadata, {});
-
-  // Partial audit context
-  const partialContext = { userId: "user_456" };
-  const parsedPartial = AuditContextSchema.parse(partialContext);
-  assert.equal(parsedPartial.userId, "user_456");
-  assert.equal(parsedPartial.reason, undefined);
-
-  assertGolden("audit-context-schema-v1", {
-    hasUserId: parsedFull.userId !== undefined,
-    hasReason: parsedFull.reason !== undefined,
-    metadataKeys: Object.keys(parsedFull.metadata || {}),
-    minimalHasUserId: parsedMinimal.userId !== undefined,
   });
 });
 

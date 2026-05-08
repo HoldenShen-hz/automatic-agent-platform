@@ -14,7 +14,7 @@ import { createOperationsRetrieverPlugin } from "./retrievers/operations-retriev
 import { createGameDevRetrieverPlugin } from "./retrievers/game-dev-retriever.js";
 import { createAssetProductionRetrieverPlugin } from "./retrievers/asset-production-retriever.js";
 import { createLivestreamRetrieverPlugin } from "./retrievers/livestream-retriever.js";
-import { createBasicEvaluatorPlugin } from "./validators/basic-evaluator.js";
+import { createBasicEvaluatorPlugin, createBasicValidatorPlugin } from "./validators/basic-evaluator.js";
 import { DataTaintPropagationService, type DataTaintLabel } from "../platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
 
@@ -91,6 +91,7 @@ const globalPluginTaintTracker = new PluginTaintTracker();
 const BUILTIN_PLUGIN_FACTORIES = new Map<string, PluginFactory>([
   ["plugin.coding.retriever", createCodingRetrieverPlugin],
   ["plugin.coding.presenter", createCodingPresenterPlugin],
+  ["plugin.core.basic-validator", createBasicValidatorPlugin],
   ["plugin.core.basic-evaluator", createBasicEvaluatorPlugin],
   ["plugin.core.basic-planner", createBasicPlannerPlugin],
   ["plugin.shared.github_adapter", createGithubAdapterPlugin],

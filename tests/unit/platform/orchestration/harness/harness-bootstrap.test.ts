@@ -19,6 +19,10 @@ test("harness bootstrap exposes canonical harness services", () => {
   assert.deepEqual(bootstrap.registeredServiceIds, [
     HARNESS_CATALOG_SERVICE_ID,
     HARNESS_BOOTSTRAP_SERVICE_ID,
+    "aiops.harness.node_runtime",
+    "aiops.harness.side_effect_mgr",
+    "aiops.harness.evaluator",
+    "aiops.harness.graph_scheduler",
   ]);
   assert.equal(bootstrap.catalog.length, 4);
 });
@@ -41,7 +45,7 @@ test("buildHarnessBootstrap returns correct structure", () => {
   assert.equal(Array.isArray(bootstrap.catalog), true);
   assert.equal(bootstrap.catalog.length, 4);
   assert.equal(Array.isArray(bootstrap.registeredServiceIds), true);
-  assert.equal(bootstrap.registeredServiceIds.length, 2);
+  assert.equal(bootstrap.registeredServiceIds.length, 6);
 });
 
 test("buildHarnessBootstrap catalog contains all harness capability baselines", () => {
@@ -73,9 +77,9 @@ test("registerHarnessBootstrap registers catalog service before bootstrap servic
 });
 
 test("registerHarnessBootstrap uses default ServiceRegistry when not passed", async () => {
-  const registry = ServiceRegistry.getInstance();
+  const registry = ServiceRegistry.createScoped();
   try {
-    const bootstrap = registerHarnessBootstrap();
+    const bootstrap = registerHarnessBootstrap(registry);
     assert.equal(bootstrap.capabilityGroupId, "harness");
     assert.equal(registry.isInitialized(HARNESS_CATALOG_SERVICE_ID), true);
     assert.equal(registry.isInitialized(HARNESS_BOOTSTRAP_SERVICE_ID), true);

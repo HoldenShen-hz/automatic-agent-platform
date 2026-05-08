@@ -66,12 +66,30 @@ test("PluginContext.set and get work correctly", () => {
   assert.equal(ctx.get("custom.key"), "custom-value");
 });
 
+test("PluginContext rejects plugin override of reserved system namespace", () => {
+  const ctx = new PluginContext({ pluginId: "test-plugin" });
+
+  assert.throws(
+    () => ctx.set("system.plugin_id", "spoofed", "plugin"),
+    /reserved key namespace/,
+  );
+});
+
 test("PluginContext.setValues sets multiple values", () => {
   const ctx = new PluginContext({ pluginId: "test-plugin" });
   ctx.setValues({ key1: "value1", key2: "value2" }, "user");
 
   assert.equal(ctx.get("key1"), "value1");
   assert.equal(ctx.get("key2"), "value2");
+});
+
+test("PluginContext.setValues rejects reserved system namespace entries", () => {
+  const ctx = new PluginContext({ pluginId: "test-plugin" });
+
+  assert.throws(
+    () => ctx.setValues({ "system.timestamp": "spoofed" }, "user"),
+    /reserved key namespace/,
+  );
 });
 
 test("PluginContext.has returns true for existing key", () => {

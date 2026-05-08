@@ -10,23 +10,23 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 import {
   DashboardAggregationService,
   type AttentionItem,
-} from "../../../src/interaction/dashboard/index.js";
+} from "../../../../src/interaction/dashboard/index.js";
 import {
   DashboardProjectionService,
   type DashboardDelta,
-} from "../../../src/interaction/dashboard/dashboard-projection-service.js";
+} from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 import {
   DashboardWebSocketServer,
   type ChannelSubscription,
   type DashboardChannel,
-} from "../../../src/interaction/dashboard/dashboard-websocket-server.js";
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
+} from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
+import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local Test Types

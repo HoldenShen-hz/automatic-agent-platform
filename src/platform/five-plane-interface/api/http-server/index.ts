@@ -23,5 +23,7 @@ export { createIncidentRoutes, type IncidentRouteDeps } from "./incident-routes.
 export { createPackRoutes, type PackRouteDeps } from "./pack-routes.js";
 export { createCostRoutes, type CostRouteDeps } from "./cost-routes.js";
 export { createPromptRoutes, type PromptRouteDeps } from "./prompt-routes.js";
+export { createHarnessRunsRoutes, type HarnessRunsRouteDeps } from "./harness-runs-routes.js";
+export { createReplaySessionRoutes, type ReplaySessionRouteDeps } from "./replay-sessions-routes.js";
 
 export type { RouteContext, RouteDefinition, RouteMatch, ApiRequestLike, ApiResponsePayload, RouteHandler } from "./types.js";

@@ -39,7 +39,6 @@ import {
   type ArtifactRef,
 } from "../../src/platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
-import { minimalWorkflowToPlanGraphBundle } from "../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -517,115 +516,6 @@ test("golden: NodeAttemptReceipt response shape matches canonical interface (R18
       receiptKind: receipt.receiptKind,
       status: receipt.status,
       evidenceRefs: receipt.evidenceRefs,
-    });
-
-  } finally {
-    harness.cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// minimalWorkflowToPlanGraphBundle Output Shape Tests
-// ---------------------------------------------------------------------------
-
-test("golden: minimalWorkflowToPlanGraphBundle output shape is stable (R18-27)", () => {
-  const harness = createE2EHarness("aa-golden-minimal-workflow-to-bundle-");
-  try {
-    const minimalWorkflow = {
-      workflowId: "test_workflow_golden_001",
-      steps: [
-        {
-          stepId: "step_a",
-          roleId: "planner",
-          outputKey: "output_a",
-          inputKeys: [] as string[],
-          timeoutMs: 30000,
-          maxAttempts: 1,
-          dependsOnStepIds: [] as string[],
-        },
-        {
-          stepId: "step_b",
-          roleId: "generator",
-          outputKey: "output_b",
-          inputKeys: ["step_a"],
-          timeoutMs: 30000,
-          maxAttempts: 1,
-          dependsOnStepIds: ["step_a"],
-        },
-        {
-          stepId: "step_c",
-          roleId: "evaluator",
-          outputKey: "output_c",
-          inputKeys: ["step_b"],
-          timeoutMs: 30000,
-          maxAttempts: 1,
-          dependsOnStepIds: ["step_b"],
-        },
-      ],
-    };
-
-    const harnessRunId = "hrun_golden_test_001";
-    const bundle = minimalWorkflowToPlanGraphBundle(minimalWorkflow, harnessRunId);
-
-    // Verify bundle has all required canonical fields
-    assert.ok(bundle.planGraphBundleId, "Bundle must have planGraphBundleId");
-    assert.ok(bundle.planGraphBundleId.includes(minimalWorkflow.workflowId), "BundleId should include workflowId");
-    assert.equal(bundle.harnessRunId, harnessRunId, "Bundle harnessRunId should match");
-    assert.equal(bundle.graphVersion, 1, "Bundle graphVersion should be 1");
-    assert.ok(bundle.graph, "Bundle must have graph");
-    assert.equal(bundle.graph.nodes.length, 3, "Bundle should have 3 nodes");
-    assert.ok(bundle.graph.edges.length > 0, "Bundle should have edges for dependencies");
-    assert.ok(bundle.schedulerPolicy, "Bundle must have schedulerPolicy");
-    assert.ok(bundle.budgetPlanRef.includes(minimalWorkflow.workflowId), "budgetPlanRef should include workflowId");
-    assert.ok(bundle.riskProfile, "Bundle must have riskProfile");
-    assert.ok(bundle.validationReport, "Bundle must have validationReport");
-    assert.ok(bundle.validationReport.valid, "ValidationReport should be valid");
-    assert.ok(Array.isArray(bundle.artifactRefs), "Bundle must have artifactRefs array");
-    assert.ok(bundle.createdAt, "Bundle must have createdAt");
-
-    // Verify node mapping from steps
-    const stepANode = bundle.graph.nodes.find((n) => n.nodeId === "step_a");
-    assert.ok(stepANode, "step_a should map to a node");
-    assert.equal(stepANode?.nodeType, "llm", "step_a with planner role should be llm nodeType");
-    assert.deepEqual(stepANode?.inputRefs, [], "step_a should have empty inputRefs");
-
-    const stepBNode = bundle.graph.nodes.find((n) => n.nodeId === "step_b");
-    assert.ok(stepBNode, "step_b should map to a node");
-    assert.equal(stepBNode?.nodeType, "tool", "step_b with generator role should be tool nodeType");
-    assert.deepEqual(stepBNode?.inputRefs, ["step_a"], "step_b should depend on step_a");
-
-    const stepCNode = bundle.graph.nodes.find((n) => n.nodeId === "step_c");
-    assert.ok(stepCNode, "step_c should map to a node");
-    assert.equal(stepCNode?.nodeType, "llm", "step_c with evaluator role should be llm nodeType");
-    assert.deepEqual(stepCNode?.inputRefs, ["step_b"], "step_c should depend on step_b");
-
-    // Verify entry and terminal nodes
-    assert.ok(bundle.graph.entryNodeIds.includes("step_a"), "step_a should be an entry node");
-    assert.ok(bundle.graph.terminalNodeIds.includes("step_c"), "step_c should be a terminal node");
-
-    // Golden assertion for minimalWorkflowToPlanGraphBundle output
-    assertGolden("minimal-workflow-to-plan-graph-bundle-v1", {
-      planGraphBundleId: bundle.planGraphBundleId,
-      harnessRunId: bundle.harnessRunId,
-      graphVersion: bundle.graphVersion,
-      graph: {
-        graphId: bundle.graph.graphId,
-        nodesCount: bundle.graph.nodes.length,
-        edgesCount: bundle.graph.edges.length,
-        entryNodeIds: bundle.graph.entryNodeIds,
-        terminalNodeIds: bundle.graph.terminalNodeIds,
-        joinStrategy: bundle.graph.joinStrategy,
-        graphHash: bundle.graph.graphHash,
-      },
-      schedulerPolicy: bundle.schedulerPolicy,
-      budgetPlanRef: bundle.budgetPlanRef,
-      riskProfile: bundle.riskProfile,
-      validationReport: {
-        valid: bundle.validationReport.valid,
-        findingsCount: bundle.validationReport.findings.length,
-      },
-      artifactRefsCount: bundle.artifactRefs.length,
-      createdAt: bundle.createdAt,
     });
 
   } finally {

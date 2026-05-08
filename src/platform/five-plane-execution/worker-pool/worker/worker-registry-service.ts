@@ -509,6 +509,7 @@ export class WorkerRegistryService {
       lastProgressAt: input.lastProgressAt ?? (input.progressMessage ? occurredAt : existing?.lastProgressAt ?? null),
       lastHeartbeatAt: occurredAt,
       updatedAt: occurredAt,
+      version: existing?.version ?? 0,
     };
 
     this.store.worker.upsertWorkerSnapshot(record);

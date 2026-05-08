@@ -206,6 +206,7 @@ export class DisambiguationHandler {
       task_modify: "修改/更新已有内容",
       status_inquiry: "状态查询",
       approval_action: "审批操作",
+      why: "询问原因",
     };
     return labels[intentType] ?? intentType;
   }

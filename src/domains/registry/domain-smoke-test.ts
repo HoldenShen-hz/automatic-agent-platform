@@ -1,5 +1,6 @@
 import type { DomainDefinition } from "./domain-model.js";
 import type { DomainCapabilityProfile } from "./domain-model.js";
+import { DomainExecutionProfileSchema } from "../domain-specs.js";
 
 export interface SmokTestRuntimeCheck {
   checkId: string;
@@ -39,6 +40,9 @@ export class DomainSmokeTestRunner {
 
     // Gate check 3: Resource quota pre-check
     runtimeChecks.push(this.validateResourceQuotas(definition.capabilities));
+
+    // Gate check 4: execution profile coverage and consistency
+    runtimeChecks.push(this.validateExecutionProfile(definition));
 
     if (runtimeChecks.some((check) => !check.passed)) {
       issues.push("domain_registry.runtime_checks_failed");
@@ -156,5 +160,40 @@ export class DomainSmokeTestRunner {
       }
     }
     return points;
+  }
+
+  private validateExecutionProfile(definition: DomainDefinition): SmokTestRuntimeCheck {
+    const executionProfile = DomainExecutionProfileSchema.parse(definition.executionProfile ?? {});
+    const executionMode = executionProfile.executionMode;
+
+    if (executionMode.hotPathMode === "deterministic_only" && executionMode.llmInHotPathAllowed) {
+      return {
+        checkId: "execution_profile",
+        passed: false,
+        details: "executionProfile.executionMode.llmInHotPathAllowed must be false when hotPathMode=deterministic_only",
+      };
+    }
+
+    if (executionMode.planningMode === "deterministic_only" && executionProfile.compiledArtifactRef == null) {
+      return {
+        checkId: "execution_profile",
+        passed: false,
+        details: "executionProfile.compiledArtifactRef is required when planningMode=deterministic_only",
+      };
+    }
+
+    if (executionProfile.latencyTier === "realtime" && executionMode.maxHotPathLatencyMs > 1000) {
+      return {
+        checkId: "execution_profile",
+        passed: false,
+        details: "executionProfile.maxHotPathLatencyMs must be <= 1000 for latencyTier=realtime",
+      };
+    }
+
+    return {
+      checkId: "execution_profile",
+      passed: true,
+      details: `Execution profile validated: planning=${executionMode.planningMode}, hotPath=${executionMode.hotPathMode}, latencyTier=${executionProfile.latencyTier}`,
+    };
   }
 }

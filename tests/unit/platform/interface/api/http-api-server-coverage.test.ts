@@ -11,8 +11,67 @@ import type { BillingService } from "../../../../../src/scale-ecosystem/billing/
 import type { ApiDelegationService } from "../../../../../src/platform/interface/api/facade-interfaces.js";
 
 class NoOpMissionControlService implements MissionControlService {
-  async snapshot() {
-    return { taskBoard: [], gatewayTargets: [], productSignals: { billingAccounts: [] } };
+  getSnapshot() {
+    return {
+      generatedAt: new Date().toISOString(),
+      health: {
+        status: "ok",
+        uptimeSeconds: 1000,
+        dbWritable: true,
+        providerHealth: "healthy" as const,
+        providerSuccessRate: 1,
+        providerRecentCalls: 0,
+        activeExecutions: 0,
+        queuedTasks: 0,
+        eventLoopLagMs: null,
+        memoryRssMb: 100,
+        tier1AckBacklog: 0,
+        degradationMode: "none" as const,
+        backpressure: { severity: "none", activeBreakers: [] },
+        queueGovernance: { mode: "normal", queueDepth: 0 },
+        workerHealth: { totalWorkers: 0, healthyWorkers: 0, unhealthyWorkers: 0 },
+        findings: [],
+      },
+      metrics: {
+        generatedAt: new Date().toISOString(),
+        taskMetrics: { total: 0, pending: 0, inProgress: 0, completed: 0, failedCount: 0 },
+        stepMetrics: { total: 0, pending: 0, completed: 0, failedCount: 0, averageDurationMs: null },
+        runtimeMetrics: { activeExecutions: 0, queuedTasks: 0 },
+      },
+      taskBoard: [],
+      pendingApprovals: [],
+      divisions: [],
+      productSignals: { latestPmfReport: null, billingAccounts: [], perceptionBriefs: [] },
+      gatewayTargets: [],
+      activeAgents: 0,
+      queueDepth: 0,
+      errorRate: 0,
+      avgDurationMs: null,
+      p50LatencyMs: null,
+      p99LatencyMs: null,
+      budgetUtilizationPercent: null,
+      uptimePercent: 100,
+    };
+  }
+  getHealthReportAsync() {
+    return Promise.resolve({
+      status: "ok" as const,
+      uptimeSeconds: 1000,
+      dbWritable: true,
+      providerHealth: "healthy" as const,
+      providerSuccessRate: 1,
+      providerRecentCalls: 0,
+      activeExecutions: 0,
+      queuedTasks: 0,
+      eventLoopLagMs: null,
+      memoryRssMb: 100,
+      tier1AckBacklog: 0,
+      degradationMode: "none" as const,
+      backpressure: { severity: "none", activeBreakers: [] },
+      queueGovernance: { mode: "normal" as const, queueDepth: 0 },
+      workerHealth: { totalWorkers: 0, healthyWorkers: 0, unhealthyWorkers: 0 },
+      findings: [],
+    });
   }
   getStableTasks() {
     return [];
@@ -192,7 +251,7 @@ test("HttpApiServer sets security headers on responses", async () => {
 
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
-    assert.equal(response.headers["strict-transport-security"]);
+    assert.ok(response.headers["strict-transport-security"]);
   } finally {
     await server.stop();
   }

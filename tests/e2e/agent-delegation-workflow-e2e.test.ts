@@ -129,7 +129,7 @@ test("E2E Delegation: parent agent delegates to child and execution completes", 
     assert.equal(delegationResult.depth, 1, "Depth should be 1 for first delegation");
 
     // Verify delegation is created and retrievable (status depends on internal transition)
-    const delegation = delegationService.getDelegation(delegationResult.delegationId);
+    const delegation = await delegationService.getDelegation(delegationResult.delegationId);
     assert.ok(delegation, "Should be able to retrieve delegation");
     assert.ok(
       ["pending", "active"].includes(delegation!.status),
@@ -255,19 +255,19 @@ test("E2E Delegation: multi-level delegation chain with permission narrowing", a
     assert.equal(level2.depth, 2, "Level 2 should have depth 2");
 
     // Verify chain integrity
-    const chain = delegationService.getDelegationChain("agent-root");
+    const chain = await delegationService.getDelegationChain("agent-root");
     assert.ok(chain, "Should have delegation chain");
     assert.equal(chain!.rootAgentId, "agent-root", "Chain root should be agent-root");
     assert.equal(chain!.nodes.length, 2, "Chain should have 2 nodes");
 
     // Level 1 narrowing: agent-level1 should have intersection
-    const del1 = delegationService.getDelegation(level1.delegationId);
+    const del1 = await delegationService.getDelegation(level1.delegationId);
     assert.ok(del1!.permissions.resources.includes("resource-a"), "Level 1 should have resource-a");
     assert.ok(!del1!.permissions.resources.includes("resource-c") || del1!.permissions.resources.length <= 2,
       "Level 1 should not have resource-c (narrowed)");
 
     // Level 2 narrowing: agent-level2 should have further intersection
-    const del2 = delegationService.getDelegation(level2.delegationId);
+    const del2 = await delegationService.getDelegation(level2.delegationId);
     assert.ok(del2!.permissions.resources.includes("resource-a"), "Level 2 should have resource-a");
     assert.ok(del2!.permissions.actions.includes("action-read"), "Level 2 should have action-read");
     assert.ok(!del2!.permissions.actions.includes("action-write") || del2!.permissions.actions.length <= 2,
@@ -449,7 +449,7 @@ test("E2E Delegation: delegation chain can be cancelled", async () => {
     );
 
     // Verify delegation is created (status may be pending or active)
-    const activeDel = delegationService.getDelegation(delegation.delegationId);
+    const activeDel = await delegationService.getDelegation(delegation.delegationId);
     assert.ok(activeDel, "Should be able to retrieve delegation");
     assert.ok(
       ["pending", "active"].includes(activeDel!.status),
@@ -457,10 +457,10 @@ test("E2E Delegation: delegation chain can be cancelled", async () => {
     );
 
     // Cancel delegation
-    delegationService.cancelDelegation(delegation.delegationId);
+    await delegationService.cancelDelegation(delegation.delegationId);
 
     // Verify delegation is cancelled
-    const cancelledDel = delegationService.getDelegation(delegation.delegationId);
+    const cancelledDel = await delegationService.getDelegation(delegation.delegationId);
     assert.equal(cancelledDel?.status, "cancelled", "Delegation should be cancelled");
 
   } finally {

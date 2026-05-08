@@ -206,6 +206,10 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
       fencingToken: needsLease ? "fence-1" : undefined,
     });
 
+    // For non-execution transitions, we still need to pass the nodeRun's existing fencingToken
+    // to avoid mismatch error (nodeRun has default fencingToken from createNodeRun)
+    const commandFencingToken = needsLease ? "fence-1" : nodeRun.fencingToken;
+
     const command = {
       aggregateType: "NodeRun" as const,
       aggregate: nodeRun,
@@ -217,7 +221,7 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
       reasonCode: "test",
       emittedBy: "test",
       leaseId: needsLease ? "lease-1" : undefined,
-      fencingToken: needsLease ? "fence-1" : undefined,
+      fencingToken: commandFencingToken,
       occurredAt: "2026-04-27T00:00:00.000Z",
     };
 

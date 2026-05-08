@@ -2,7 +2,15 @@ import { topologicallySortTaskIds, type DependencyEdge } from "../dependency-gra
 
 export interface BuildExecutionBatchesOptions {
   readonly priorities?: Readonly<Record<string, number>>;
+  readonly priorityLabels?: Readonly<Record<string, "low" | "normal" | "high" | "critical">>;
 }
+
+const PRIORITY_LABEL_WEIGHTS: Readonly<Record<NonNullable<BuildExecutionBatchesOptions["priorityLabels"]>[string], number>> = {
+  low: 100,
+  normal: 200,
+  high: 300,
+  critical: 400,
+};
 
 export function buildExecutionBatches(
   taskIds: readonly string[],
@@ -15,6 +23,7 @@ export function buildExecutionBatches(
   const order = topologicallySortTaskIds(taskIds, edges);
   const originalOrder = new Map(order.map((taskId, index) => [taskId, index]));
   const priorities = options.priorities ?? {};
+  const priorityLabels = options.priorityLabels ?? {};
   const indegree = new Map<string, number>();
   const adjacency = new Map<string, string[]>();
   for (const taskId of taskIds) {
@@ -27,7 +36,9 @@ export function buildExecutionBatches(
   }
 
   const sortReady = (items: readonly string[]): string[] => [...items].sort((left, right) => {
-    const priorityDelta = (priorities[right] ?? 0) - (priorities[left] ?? 0);
+    const leftPriority = priorities[left] ?? PRIORITY_LABEL_WEIGHTS[priorityLabels[left] ?? "normal"] ?? 0;
+    const rightPriority = priorities[right] ?? PRIORITY_LABEL_WEIGHTS[priorityLabels[right] ?? "normal"] ?? 0;
+    const priorityDelta = rightPriority - leftPriority;
     if (priorityDelta !== 0) {
       return priorityDelta;
     }

@@ -80,7 +80,9 @@ test("documentation: markdown files in docs_zh have valid internal links", async
       }
 
       totalLinksChecked++;
-      const linkPath = link.startsWith("/") ? link : join(dirname(mdFile), link);
+      // Strip anchor from link (e.g., "file.md:1" -> "file.md")
+      const linkWithoutAnchor = link.replace(/:(\d+)$/, "");
+      const linkPath = linkWithoutAnchor.startsWith("/") ? linkWithoutAnchor : join(dirname(mdFile), linkWithoutAnchor);
 
       try {
         const fileStat = await stat(linkPath);

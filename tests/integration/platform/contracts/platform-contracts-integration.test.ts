@@ -36,10 +36,13 @@ import {
 import {
   createPlatformPrincipal,
   createRequestEnvelope as createPlatformRequestEnvelope,
-  createStateCommand,
   createEvidenceRecord,
   createProjectionUpdate,
 } from "../../../../src/platform/contracts/types/platform-contracts.js";
+
+import {
+  createStateCommand,
+} from "../../../../src/platform/contracts/types/index.js";
 
 // Request envelope imports (legacy)
 import {
@@ -54,7 +57,7 @@ import {
   type ArtifactWriteCommand,
 } from "../../../../src/platform/contracts/state-command/index.js";
 
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError, UnimplementedError } from "../../../../src/platform/contracts/errors.js";
 
 // =============================================================================
 // Full Task Lifecycle Integration Tests
@@ -616,8 +619,8 @@ test("integration: legacy state command creation", () => {
         emittedBy: "worker-state-1",
       }),
     (error: unknown) =>
-      error instanceof ValidationError &&
-      error.code === "state_command.legacy_contract_forbidden",
+      error instanceof UnimplementedError &&
+      error.code === "DEPRECATED_STATE_COMMAND",
   );
 });
 
@@ -633,8 +636,8 @@ test("integration: legacy state command with transition action", () => {
         emittedBy: "orchestrator",
       }),
     (error: unknown) =>
-      error instanceof ValidationError &&
-      error.code === "state_command.legacy_contract_forbidden",
+      error instanceof UnimplementedError &&
+      error.code === "DEPRECATED_STATE_COMMAND",
   );
 });
 
@@ -655,7 +658,9 @@ test("integration: legacy state command throws for invalid transition", () => {
         payload: { wrongField: "value" }, // missing nextStatus
         emittedBy: "worker-1",
       }),
-    ValidationError,
+    (error: unknown) =>
+      error instanceof UnimplementedError &&
+      error.code === "DEPRECATED_STATE_COMMAND",
   );
 });
 
@@ -676,7 +681,9 @@ test("integration: legacy state command throws for missing required fields", () 
         payload: {},
         emittedBy: "worker-1",
       }),
-    ValidationError,
+    (error: unknown) =>
+      error instanceof UnimplementedError &&
+      error.code === "DEPRECATED_STATE_COMMAND",
   );
 });
 
@@ -716,21 +723,25 @@ test("integration: platform state command creation", () => {
     roles: [],
   });
 
-  const command = createStateCommand({
-    traceId: "platform-trace-1",
-    principal,
-    leaseId: "platform-lease-1",
-    fencingToken: "platform-token-1",
-    event: "PlatformTaskCreated",
-    type: "update_truth",
-    aggregateId: "platform-task-1",
-    expectedVersion: 1,
-    payload: { platformField: "platformValue" },
-  });
-
-  assert.ok(command.commandId.startsWith("statecmd_"));
-  assert.equal(command.traceId, "platform-trace-1");
-  assert.equal(command.type, "update_truth");
+  // createStateCommand is deprecated and always throws
+  assert.throws(
+    () =>
+      createStateCommand({
+        traceId: "platform-trace-1",
+        principal,
+        leaseId: "platform-lease-1",
+        fencingToken: "platform-token-1",
+        event: "PlatformTaskCreated",
+        type: "update_truth",
+        aggregateId: "platform-task-1",
+        expectedVersion: 1,
+        payload: { platformField: "platformValue" },
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "code" in error &&
+      (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
+  );
 });
 
 test("integration: evidence record creation with platform principal", () => {

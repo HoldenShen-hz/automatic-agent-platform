@@ -210,27 +210,13 @@ test("smoke test: sandbox compatibility passes with restricted security level", 
   assert.equal(sandboxCheck!.passed, true);
 });
 
-test("smoke test: missing executionProfile fails", async () => {
+test("smoke test: executionProfile fails when hotPathMode=deterministic_only but llmInHotPathAllowed=true", async () => {
   const domain = createTestDomain({
-    domainId: "no-execution-profile",
-    executionProfile: undefined,
-  });
-  const runner = new DomainSmokeTestRunner();
-
-  const result = runner.run(domain);
-
-  const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
-  assert.ok(execCheck);
-  assert.equal(execCheck!.passed, false);
-});
-
-test("smoke test: executionProfile without planningMode fails", async () => {
-  const domain = createTestDomain({
-    domainId: "no-planning-mode",
+    domainId: "invalid-hotpath-deterministic",
     executionProfile: {
       executionMode: {
-        planningMode: undefined as unknown as "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted",
+        hotPathMode: "deterministic_only",
         llmInHotPathAllowed: true,
         maxHotPathLatencyMs: 1000,
       },
@@ -245,17 +231,17 @@ test("smoke test: executionProfile without planningMode fails", async () => {
   const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
   assert.ok(execCheck);
   assert.equal(execCheck!.passed, false);
-  assert.ok(execCheck!.details.includes("planningMode"));
+  assert.ok(execCheck!.details.includes("llmInHotPathAllowed"));
 });
 
-test("smoke test: executionProfile without hotPathMode fails", async () => {
+test("smoke test: executionProfile fails when planningMode=deterministic_only without compiledArtifactRef", async () => {
   const domain = createTestDomain({
-    domainId: "no-hotpath-mode",
+    domainId: "invalid-planning-deterministic",
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: undefined as unknown as "llm_allowed",
-        llmInHotPathAllowed: true,
+        planningMode: "deterministic_only",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: false,
         maxHotPathLatencyMs: 1000,
       },
       latencyTier: "interactive",
@@ -269,20 +255,20 @@ test("smoke test: executionProfile without hotPathMode fails", async () => {
   const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
   assert.ok(execCheck);
   assert.equal(execCheck!.passed, false);
-  assert.ok(execCheck!.details.includes("hotPathMode"));
+  assert.ok(execCheck!.details.includes("compiledArtifactRef"));
 });
 
-test("smoke test: executionProfile without latencyTier fails", async () => {
+test("smoke test: executionProfile fails when latencyTier=realtime but maxHotPathLatencyMs > 1000", async () => {
   const domain = createTestDomain({
-    domainId: "no-latency-tier",
+    domainId: "invalid-realtime-latency",
     executionProfile: {
       executionMode: {
         planningMode: "llm_assisted",
         hotPathMode: "llm_allowed",
         llmInHotPathAllowed: true,
-        maxHotPathLatencyMs: 1000,
+        maxHotPathLatencyMs: 2000,
       },
-      latencyTier: undefined as unknown as "interactive",
+      latencyTier: "realtime",
       compiledArtifactRef: null,
     } as DomainExecutionProfile,
   });
@@ -293,7 +279,7 @@ test("smoke test: executionProfile without latencyTier fails", async () => {
   const execCheck = result.runtimeChecks.find((c) => c.checkId === "execution_profile");
   assert.ok(execCheck);
   assert.equal(execCheck!.passed, false);
-  assert.ok(execCheck!.details.includes("latencyTier"));
+  assert.ok(execCheck!.details.includes("maxHotPathLatencyMs"));
 });
 
 test("smoke test: rollback points computed for steps with dependencies", async () => {

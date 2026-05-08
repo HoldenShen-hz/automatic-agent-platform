@@ -15,7 +15,7 @@ import {
 
 test("MarketplaceCatalogEntrySchema parses valid entry", () => {
   const entry = {
-    listingId: "listing_001",
+    entryId: "listing_001",
     title: "Analytics Pack",
     trustLevel: "verified",
     lifecycleState: "active",
@@ -23,7 +23,7 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
 
   const result = MarketplaceCatalogEntrySchema.parse(entry);
 
-  assert.equal(result.listingId, "listing_001");
+  assert.equal(result.entryId, "listing_001");
   assert.equal(result.title, "Analytics Pack");
   assert.equal(result.trustLevel, "verified");
   assert.equal(result.lifecycleState, "active");
@@ -31,7 +31,7 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
 
 test("MarketplaceCatalogEntrySchema applies default quality metrics", () => {
   const entry = {
-    listingId: "listing_002",
+    entryId: "listing_002",
     title: "Basic Pack",
     trustLevel: "community",
     lifecycleState: "active",
@@ -46,7 +46,7 @@ test("MarketplaceCatalogEntrySchema applies default quality metrics", () => {
 
 test("MarketplaceCatalogEntrySchema accepts custom quality metrics", () => {
   const entry = {
-    listingId: "listing_003",
+    entryId: "listing_003",
     title: "Premium Pack",
     trustLevel: "internal",
     lifecycleState: "active",
@@ -66,7 +66,7 @@ test("MarketplaceCatalogEntrySchema accepts custom quality metrics", () => {
 
 test("MarketplaceCatalogEntrySchema rejects invalid trustLevel", () => {
   const entry = {
-    listingId: "listing_004",
+    entryId: "listing_004",
     title: "Bad Pack",
     trustLevel: "invalid",
     lifecycleState: "active",
@@ -80,7 +80,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid trustLevel", () => {
 
 test("MarketplaceCatalogEntrySchema rejects invalid lifecycleState", () => {
   const entry = {
-    listingId: "listing_005",
+    entryId: "listing_005",
     title: "Bad Pack",
     trustLevel: "community",
     lifecycleState: "invalid_state",
@@ -92,9 +92,9 @@ test("MarketplaceCatalogEntrySchema rejects invalid lifecycleState", () => {
   );
 });
 
-test("MarketplaceCatalogEntrySchema rejects empty listingId", () => {
+test("MarketplaceCatalogEntrySchema rejects empty entryId", () => {
   const entry = {
-    listingId: "",
+    entryId: "",
     title: "Bad Pack",
     trustLevel: "community",
     lifecycleState: "active",
@@ -102,7 +102,7 @@ test("MarketplaceCatalogEntrySchema rejects empty listingId", () => {
 
   assert.throws(
     () => MarketplaceCatalogEntrySchema.parse(entry),
-    /listingId/
+    /entryId/
   );
 });
 

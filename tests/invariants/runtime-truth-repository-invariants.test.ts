@@ -28,6 +28,12 @@ test("Seed initializes aggregate state", () => {
   const harnessRun = createHarnessRun({
     harnessRunId: "hrn_seed_test",
     tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
     status: "created",
   });
 
@@ -44,6 +50,12 @@ test("Every transition appends event to event log", () => {
   const harnessRun = createHarnessRun({
     harnessRunId: "hrn_event_test",
     tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
     status: "created",
   });
 
@@ -61,7 +73,7 @@ test("Every transition appends event to event log", () => {
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
-    toStatus: "admitted",
+    toStatus: "failed",
     tenantId: "tenant-truth",
     traceId: "trace_event_test",
     reasonCode: "test.transition",
@@ -82,6 +94,12 @@ test("Event envelope contains required platform fact fields", () => {
   const harnessRun = createHarnessRun({
     harnessRunId: "hrn_envelope_test",
     tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
     status: "created",
   });
 
@@ -95,7 +113,7 @@ test("Event envelope contains required platform fact fields", () => {
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
-    toStatus: "admitted",
+    toStatus: "failed",
     tenantId: "tenant-truth",
     traceId: "trace_envelope_test",
     reasonCode: "test.envelope",
@@ -156,19 +174,41 @@ test("RunVersionLock is appended correctly", () => {
 test("EvidenceRecord is appended for audit trail", () => {
   const repo = new RuntimeTruthRepository();
 
-  const evidence = {
-    evidenceId: "ev_test",
+  // Note: EvidenceRecord append is not available in RuntimeTruthRepository
+  // Evidence records are appended via transition() with auditRef parameter
+  const harnessRun = createHarnessRun({
+    harnessRunId: "hrn_audit_trail",
+    tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
+    status: "created",
+  });
+
+  repo.seed("HarnessRun", harnessRun);
+
+  // Transition with auditRef to append audit trail
+  repo.transition({
+    commandId: "cmd_audit_trail",
+    entityType: "HarnessRun",
+    entityId: "hrn_audit_trail",
+    principal: "test-principal",
+    aggregateType: "HarnessRun",
+    aggregate: harnessRun,
+    fromStatus: "created",
+    toStatus: "failed",
     tenantId: "tenant-truth",
     traceId: "trace_evidence",
-    evidenceType: "platform.audit",
-    payload: { action: "test.audit" },
-    recordedAt: "2026-05-02T00:00:00.000Z",
-  };
-
-  repo.appendEvidenceRecord(evidence);
+    reasonCode: "test.audit",
+    emittedBy: "INV-TRUTH-001-test",
+    auditRef: "audit://test/evidence",
+  });
 
   const snapshot = repo.snapshot();
-  assert.ok(snapshot.events.length >= 0); // Evidence may go to separate store
+  assert.ok(snapshot.auditRefs.includes("audit://test/evidence"), "AuditRef should be tracked in snapshot");
 });
 
 test("Snapshot returns consistent state", () => {
@@ -177,6 +217,12 @@ test("Snapshot returns consistent state", () => {
   const harnessRun = createHarnessRun({
     harnessRunId: "hrn_snapshot_test",
     tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
     status: "created",
   });
 
@@ -203,6 +249,12 @@ test("Multiple aggregates can coexist in repository", () => {
   const harnessRun = createHarnessRun({
     harnessRunId: "hrn_multi",
     tenantId: "tenant-truth",
+    confirmedTaskSpecId: "task-spec-1",
+    requestEnvelopeId: "req-env-1",
+    requestHash: "hash-abc123",
+    constraintPackRef: "cp://default/test",
+    versionLockId: "vl-001",
+    budgetLedgerId: "bledger-001",
     status: "created",
   });
 
@@ -247,8 +299,8 @@ test("BudgetLedger transitions emit budget events", () => {
     principal: "test-principal",
     aggregateType: "BudgetLedger",
     aggregate: ledger,
-    fromStatus: "active",
-    toStatus: "active",
+    fromStatus: "open",
+    toStatus: "soft_cap_reached",
     tenantId: "tenant-budget-truth",
     traceId: "trace_budget_truth",
     reasonCode: "budget.reserve",
@@ -276,7 +328,7 @@ test("SideEffectRecord transitions emit audit trail", () => {
     nodeAttemptId: "attempt-1",
     effectKind: "external_api",
     idempotencyKey: "idem_se_truth",
-    status: "committing",
+    status: "approved",
     riskClass: "high",
     preCommitPolicyProofRef: {
       artifactId: "artifact-se",
@@ -296,8 +348,8 @@ test("SideEffectRecord transitions emit audit trail", () => {
     principal: "test-principal",
     aggregateType: "SideEffectRecord",
     aggregate: sideEffect,
-    fromStatus: "committing",
-    toStatus: "committed",
+    fromStatus: "approved",
+    toStatus: "committing",
     tenantId: "tenant-truth",
     traceId: "trace_se_truth",
     reasonCode: "side_effect.commit",
@@ -305,6 +357,7 @@ test("SideEffectRecord transitions emit audit trail", () => {
     sideEffectSafety: {
       idempotencyKey: sideEffect.idempotencyKey,
       preCommitPolicyProofRef: sideEffect.preCommitPolicyProofRef.uri,
+      humanApprovalRef: "human://approval/se_truth",
     },
     auditRef: "audit://side-effects/se_truth/commit",
   });

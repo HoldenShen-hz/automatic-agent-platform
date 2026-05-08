@@ -7,7 +7,7 @@
  * @see docs_zh/contracts/responsibility_boundary_contract.md
  */
 
-import { newId, nowIso } from "../ids.js";
+import { newId, nowIso } from "./ids.js";
 
 /**
  * Responsibility boundary types

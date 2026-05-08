@@ -168,6 +168,7 @@ test("UserPortalService buildOnboardingPlan returns plan with recommended domain
 
   assert.ok(plan.mode != null);
   assert.ok(Array.isArray(plan.recommendedDomains));
+  assert.ok(Array.isArray(plan.recommendationReasons));
   assert.ok(Array.isArray(plan.recommendedNextActions));
   assert.ok(plan.welcomePrompt.includes("solo"));
 });
@@ -265,6 +266,7 @@ test("UserPortalService buildDomainOnboardingWizard returns wizard with 4 steps"
   assert.equal(wizard.steps[1]!.stepId, "capability_setup");
   assert.equal(wizard.steps[2]!.stepId, "risk_setup");
   assert.equal(wizard.steps[3]!.stepId, "activation");
+  assert.equal(wizard.progressiveDisclosure.level, "minimal");
 });
 
 test("UserPortalService buildDomainOnboardingWizard recommends domains", () => {
@@ -300,6 +302,7 @@ test("UserPortalService buildVisualWorkflowBuilder creates nodes and edges", () 
 
   assert.equal(builder.canvas.nodes.length, 3);
   assert.equal(builder.canvas.edges.length, 2);
+  assert.equal(builder.progressiveDisclosure.level, "guided");
 });
 
 test("UserPortalService buildVisualWorkflowBuilder uses selected domains when provided", () => {
@@ -349,4 +352,44 @@ test("UserPortalService buildVisualWorkflowBuilder sets production deploy risk t
 
   assert.ok(engComponents.length > 0);
   assert.equal(engComponents[0]!.riskLevel, "high");
+});
+
+test("UserPortalService domain recommendations consider history and user mode", () => {
+  const service = new UserPortalService();
+
+  const plan = service.buildOnboardingPlan("需要发票与预算审批", {
+    memberCount: 5,
+    departmentCount: 1,
+    requiresSso: false,
+    historicalDomainPreferences: ["finance"],
+    userMode: "executive",
+  });
+
+  assert.equal(plan.recommendedDomains[0], "finance");
+  assert.ok(plan.recommendationReasons.some((reason) => reason.includes("history_affinity") || reason.includes("executive_budget_focus")));
+});
+
+test("UserPortalService enterprise wizard exposes governed progressive disclosure", () => {
+  const service = new UserPortalService();
+
+  const wizard = service.buildDomainOnboardingWizard("跨部门上线与审批", {
+    memberCount: 120,
+    departmentCount: 6,
+    requiresSso: true,
+  });
+
+  assert.equal(wizard.progressiveDisclosure.level, "governed");
+  assert.ok(wizard.progressiveDisclosure.visibleSections.includes("governance_matrix"));
+});
+
+test("UserPortalService visual builder hides advanced categories in solo mode", () => {
+  const service = new UserPortalService();
+
+  const builder = service.buildVisualWorkflowBuilder("简单自动化", undefined, {
+    memberCount: 1,
+    departmentCount: 1,
+    requiresSso: false,
+  });
+
+  assert.ok(builder.progressiveDisclosure.hiddenCategories.includes("approval"));
 });

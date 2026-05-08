@@ -156,7 +156,7 @@ test("RevenueSharePolicy supports quarterly settlement cycle", () => {
 test("RevenueSharePolicy readonly grossSplit prevents modification", () => {
   const policy: RevenueSharePolicy = {
     policyId: "policy-003",
-    grossSplit: { "pub": 75, "platform": 25 },
+    grossSplit: Object.freeze({ "pub": 75, "platform": 25 }),
     taxHandling: "platform_withheld",
     refundPolicy: "independent_adjustment",
     settlementCycle: "monthly",

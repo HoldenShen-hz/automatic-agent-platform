@@ -175,7 +175,47 @@ test("PackLifecycleOrchestrationService rejects publish before certification", (
   );
 });
 
-test("PackLifecycleOrchestrationService enforces minimum deprecation support window", () => {
+test("PackLifecycleOrchestrationService allows the contract minimum deprecation support window", () => {
+  const service = new PackLifecycleOrchestrationService();
+  service.registerPack({
+    manifest: createManifest(),
+    owner: "ops@example.com",
+    evalDatasetIds: ["dataset_ops_pack_v1"],
+  });
+  service.recordTesting({
+    packId: "ops-pack",
+    version: "1.0.0",
+    coveragePercent: 90,
+    mockTestsPassed: true,
+    stagingIntegrationPassed: true,
+    evalPassed: true,
+    reportRef: "artifact://tests/ops-pack-v1",
+  });
+  service.certifyPack({
+    packId: "ops-pack",
+    version: "1.0.0",
+    reviewer: "reviewer@example.com",
+    certificationReportRef: "artifact://certs/ops-pack-v1",
+    selectedLicenseTier: "professional",
+    pluginIds: ["plugin.operations.retriever", "plugin.shared.github_adapter"],
+    securityReviewPassed: true,
+    riskReviewPassed: true,
+  });
+
+  const deprecated = service.deprecatePack({
+    packId: "ops-pack",
+    version: "1.0.0",
+    owner: "ops@example.com",
+    migrationGuideRef: "docs://migration/ops-pack-v1",
+    effectiveAt: "2026-04-21T00:00:00.000Z",
+    supportWindowDays: 90,
+  });
+
+  assert.equal(deprecated.deprecation?.supportWindowDays, 90);
+  assert.equal(deprecated.lifecycleStage, "deprecated");
+});
+
+test("PackLifecycleOrchestrationService rejects support windows below 90 days", () => {
   const service = new PackLifecycleOrchestrationService();
   service.registerPack({
     manifest: createManifest(),
@@ -210,7 +250,7 @@ test("PackLifecycleOrchestrationService enforces minimum deprecation support win
         owner: "ops@example.com",
         migrationGuideRef: "docs://migration/ops-pack-v1",
         effectiveAt: "2026-04-21T00:00:00.000Z",
-        supportWindowDays: 90,
+        supportWindowDays: 89,
       }),
     (error: unknown) =>
       error instanceof ValidationError && error.code === "pack_lifecycle.support_window_too_short:ops-pack@1.0.0",

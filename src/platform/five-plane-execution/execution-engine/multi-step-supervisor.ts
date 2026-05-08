@@ -76,6 +76,8 @@ export interface StepSupervisorContext {
   traceId: string;
   traceContext: ReturnType<typeof import("../../shared/observability/trace-context.js").createRootTraceContext>;
   streamId: string;
+  /** R4-27 fix: HarnessRun ID for canonical execution tracking */
+  harnessRunId: string;
   admissionDecision: AdmissionDecision;
   input: MultiStepToolExecutionInput;
   routing: ReturnType<typeof import("../../orchestration/routing/intake-router.js").IntakeRouter.prototype.route>;
@@ -211,11 +213,13 @@ export async function executeStepLoop(
       executionAttemptCounter += 1;
       const executionId = newId("exec");
       const executionNow = nowIso();
+      // R4-26 fix: ExecutionRecord now created with harnessRunId from StepSupervisorContext
       const execution: ExecutionRecord = {
         id: executionId,
         taskId,
         workflowId: plannedWorkflow.workflow.workflowId,
         parentExecutionId: null,
+        harnessRunId: ctx.harnessRunId, // R4-27 fix: Associated HarnessRun for canonical tracking
         agentId: step.agentId,
         roleId: step.roleId,
         runKind: "task_run",

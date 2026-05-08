@@ -21,7 +21,18 @@ export interface HumanOutput {
 }
 
 export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter"]);
-export const PluginLifecycleStateSchema = z.enum(["registered", "loaded", "active", "inactive", "suspended", "unloaded", "degraded", "disabled"]);
+export const PluginLifecycleStateSchema = z.enum([
+  "registered",
+  "loading",
+  "loaded",
+  "initialized",
+  "active",
+  "inactive",
+  "suspended",
+  "unloaded",
+  "degraded",
+  "disabled",
+]);
 export const PluginRuntimeIsolationSchema = z.enum([
   "shared_process",
   "serialized_in_process",

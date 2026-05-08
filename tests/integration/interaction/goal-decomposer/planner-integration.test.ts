@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildExecutionBatches } from "../../../src/interaction/goal-decomposer/planner/index.js";
-import { validateGoalDecomposition } from "../../../src/interaction/goal-decomposer/validator/index.js";
-import { GoalDecompositionService } from "../../../src/interaction/goal-decomposer/index.js";
+import { buildExecutionBatches } from "../../../../src/interaction/goal-decomposer/planner/index.js";
+import { validateGoalDecomposition } from "../../../../src/interaction/goal-decomposer/validator/index.js";
+import { GoalDecompositionService } from "../../../../src/interaction/goal-decomposer/index.js";
 
 test("integration: planner and validator work together", async () => {
   const service = new GoalDecompositionService();

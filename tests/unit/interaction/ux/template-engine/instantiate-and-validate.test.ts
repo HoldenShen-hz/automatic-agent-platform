@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   instantiateTemplate,
+  recommendTemplatesForDomain,
   validateTemplateForDomain,
   type InteractionTemplate,
 } from "../../../../../src/interaction/ux/template-engine/index.js";
@@ -16,6 +17,17 @@ const createTemplate = (overrides: Partial<InteractionTemplate> = {}): Interacti
   domainId: "advertising",
   riskProfile: "medium",
   version: "1.0.0",
+  catalogTags: ["advertising"],
+  marketplaceBinding: {
+    listingId: "listing_tpl_001",
+    channel: "marketplace",
+  },
+  workflowDefaults: {
+    divisionId: "advertising",
+    workflowId: "campaign_launch",
+    executionMode: "supervised",
+    approvalMode: "simple",
+  },
   parameters: [
     {
       name: "target audience",
@@ -82,6 +94,7 @@ test("instantiateTemplate merges provided parameter values", () => {
 
   const budgetParam = result.workflowConfig.parameters.find((p) => p.name === "budget");
   assert.equal(budgetParam?.defaultValue, 5000);
+  assert.equal(result.parameterValues["budget"], 5000);
 });
 
 test("instantiateTemplate returns all step IDs as boundSteps", () => {
@@ -163,4 +176,19 @@ test("validateTemplateForDomain handles empty available capabilities", () => {
 
   assert.equal(result.compatible, false);
   assert.deepEqual(result.missingCapabilities, ["payments"]);
+});
+
+test("recommendTemplatesForDomain ranks matching templates first", () => {
+  const recommendations = recommendTemplatesForDomain([
+    createTemplate({ templateId: "finance_1", domainId: "finance", requiredCapabilities: ["invoicing"], catalogTags: ["finance"] }),
+    createTemplate({ templateId: "hr_1", domainId: "hr", requiredCapabilities: [] }),
+  ], {
+    domainId: "finance",
+    availableCapabilities: ["invoicing"],
+    desiredRiskProfile: "medium",
+    desiredTags: ["finance"],
+  });
+
+  assert.equal(recommendations[0]?.templateId, "finance_1");
+  assert.ok(recommendations[0]!.score >= recommendations[1]!.score);
 });

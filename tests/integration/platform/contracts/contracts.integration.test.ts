@@ -78,8 +78,7 @@ test("contracts-integration: ContractEnvelope wraps NodeAttemptReceipt", () => {
     payload: receipt,
   });
 
-  assert.equal(envelope.version, CONTRACT_SCHEMA_VERSION);
-  assert.equal(envelope.schema, "canonical");
+  assert.equal(envelope.schemaVersion, CONTRACT_SCHEMA_VERSION);
   assert.deepEqual(envelope.payload, receipt);
   assert.equal(envelope.signature, null);
   assert.equal(envelope.ttl, null);
@@ -104,7 +103,7 @@ test("contracts-integration: ContractEnvelope wraps PlanGraphBundle", () => {
     payload: bundle,
   });
 
-  assert.equal(envelope.schema, "canonical");
+  assert.equal(envelope.schemaVersion, CONTRACT_SCHEMA_VERSION);
   assert.deepEqual(envelope.payload, bundle);
 });
 

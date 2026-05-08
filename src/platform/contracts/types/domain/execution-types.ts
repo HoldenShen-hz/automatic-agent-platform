@@ -36,6 +36,8 @@ export interface ExecutionRecord {
   workflowId: string | null;
   /** Parent execution ID for nested executions (e.g., spawned sub-agents) */
   parentExecutionId: string | null;
+  /** R4-27 fix: Associated HarnessRun ID for canonical v4.3+ execution tracking */
+  harnessRunId: string | null;
   agentId: string;
   roleId: string | null;
   runKind: RunKind;

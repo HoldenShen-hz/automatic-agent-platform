@@ -18,7 +18,7 @@ import {
   createStateCommand,
   createEvidenceRecord,
   createProjectionUpdate,
-} from "../../../../../src/platform/contracts/types/platform-contracts.js";
+} from "../../../../../src/platform/contracts/types/index.js";
 
 test("platform-contracts: createPlatformPrincipal generates valid principal", () => {
   const principal = createPlatformPrincipal({
@@ -130,7 +130,7 @@ test("platform-contracts: createExecutionPlan generates valid plan", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      && (error as Error & { code?: string }).code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -148,7 +148,7 @@ test("platform-contracts: createExecutionReceipt generates valid receipt", () =>
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -169,7 +169,7 @@ test("platform-contracts: createExecutionReceipt handles error detail", () => {
     (error: unknown) =>
       error instanceof Error
       && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      && (error as Error & { code?: string }).code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -179,24 +179,23 @@ test("platform-contracts: createStateCommand generates valid command", () => {
     tenantId: null,
   });
 
-  const command = createStateCommand({
-    traceId: "trace_xyz",
-    principal,
-    type: "update_truth",
-    aggregateId: "task_123",
-    expectedVersion: 5,
-    fencingToken: "token_abc",
-    payload: { status: "done" },
-  });
-
-  assert.ok(command.commandId.startsWith("statecmd_"));
-  assert.equal(command.traceId, "trace_xyz");
-  assert.equal(command.principal, principal);
-  assert.equal(command.type, "update_truth");
-  assert.equal(command.aggregateId, "task_123");
-  assert.equal(command.expectedVersion, 5);
-  assert.equal(command.fencingToken, "token_abc");
-  assert.deepEqual(command.payload, { status: "done" });
+  // createStateCommand is deprecated and always throws
+  assert.throws(
+    () =>
+      createStateCommand({
+        traceId: "trace_xyz",
+        principal,
+        type: "update_truth",
+        aggregateId: "task_123",
+        expectedVersion: 5,
+        fencingToken: "token_abc",
+        payload: { status: "done" },
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "code" in error &&
+      (error as Error & { code?: string }).code === "DEPRECATED_STATE_COMMAND",
+  );
 });
 
 test("platform-contracts: createEvidenceRecord generates valid record", () => {

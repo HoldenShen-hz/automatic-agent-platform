@@ -95,7 +95,7 @@ export class ConversationHistoryService {
       updatedAt: now,
       status: "active",
       // R5-31: New sessions inherit isRestricted flag if provided
-      isRestricted: options.isRestricted ?? undefined,
+      ...(options.isRestricted !== undefined ? { isRestricted: options.isRestricted } : {}),
     };
   }
 

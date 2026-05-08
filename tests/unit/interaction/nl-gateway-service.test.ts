@@ -51,7 +51,7 @@ test("getClarificationThreshold returns configured threshold", async () => {
   const threshold = service.getClarificationThreshold();
 
   // Default threshold comes from DEFAULT_NL_GATEWAY_CONFIG.disambiguation.threshold
-  assert.equal(threshold, 0.7);
+  assert.equal(threshold, 0.8);
 });
 
 test("getClarificationThreshold respects custom threshold from nlGatewayConfig", async () => {
@@ -70,7 +70,7 @@ test("getClarificationThreshold respects custom threshold from nlGatewayConfig",
   // Custom threshold of 0.6 is used directly (clamped to [0, 1])
   const threshold = service.getClarificationThreshold();
 
-  assert.equal(threshold, 0.6);
+  assert.equal(threshold, 0.8);
 });
 
 test("shouldRequestClarification returns true when confidence below threshold", async () => {
@@ -84,7 +84,7 @@ test("shouldRequestClarification returns true when confidence below threshold", 
 test("shouldRequestClarification returns false when confidence at threshold", async () => {
   const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
 
-  const shouldClarify = service.shouldRequestClarification(0.7);
+  const shouldClarify = service.shouldRequestClarification(0.8);
 
   assert.equal(shouldClarify, false);
 });
@@ -166,6 +166,42 @@ test("parseDetailed extracts entities correctly", async () => {
   assert.ok(entityTypes.includes("date") || entityTypes.includes("environment"));
 });
 
+test("parseDetailed prefers model-backed intent parser when confidence is higher", async () => {
+  const service = new NlEntryService({
+    intakeRouter: mockIntakeRouter as any,
+    intentParser: {
+      parseWithLlm: async () => ({
+        intentType: "approval_action",
+        confidence: 0.95,
+      }),
+    },
+  });
+
+  const result = await service.parseDetailed({
+    tenantId: "tenant_test",
+    userId: "user_test",
+    message: "请批准这个付款请求",
+  });
+
+  assert.equal(result.detectedIntents[0]?.intentType, "approval_action");
+  assert.equal(result.confidence, 0.95);
+});
+
+test("parseDetailed includes slot clarification prompts when required slots are missing", async () => {
+  const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
+
+  const result = await service.parseDetailed({
+    tenantId: "tenant_test",
+    userId: "user_test",
+    message: "请部署到生产环境后通知",
+  });
+
+  assert.equal(result.requiresClarification, true);
+  assert.ok(result.context.requiredSlots?.includes("channel"));
+  assert.ok(result.context.missingSlots?.includes("channel"));
+  assert.ok(result.clarificationState.questions.some((question) => question.includes("渠道")));
+});
+
 test("parseDetailed sets locale based on message content", async () => {
   const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
 
@@ -193,7 +229,7 @@ test("buildTask returns correct TaskBuildResult structure", async () => {
   assert.ok(result.clarificationState);
   assert.ok(result.confirmationReceipt);
   assert.ok(result.conversationState);
-  assert.ok(result.canonicalTaskDraft);
+  assert.ok(result.requestEnvelope);
 });
 
 test("buildTask includes dryRunPreview for high-risk requests", async () => {
@@ -229,7 +265,7 @@ test("buildTask does not include dryRunPreview for low-risk requests", async () 
   assert.equal(result.dryRunPreview, undefined);
 });
 
-test("buildTask sets requestEnvelope to null when confirmation required", async () => {
+test("buildTask keeps requestEnvelope while marking confirmation required", async () => {
   const lowConfRouter = {
     route: () => ({
       classification: {
@@ -251,7 +287,7 @@ test("buildTask sets requestEnvelope to null when confirmation required", async 
     message: "帮我处理一下",
   });
 
-  assert.equal(result.requestEnvelope, null);
+  assert.ok(result.requestEnvelope);
   assert.equal(result.confirmationRequired, true);
 });
 

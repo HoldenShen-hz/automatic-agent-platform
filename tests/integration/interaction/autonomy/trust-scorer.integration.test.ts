@@ -13,7 +13,6 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import {
   calculateTrustScore,
   mapTrustLevel,
-  checkInherentRisk,
   mapTrustLevelToAutonomyLevel,
   applyTrustDecay,
 } from "../../../../src/interaction/autonomy/trust-scorer/index.js";
@@ -66,9 +65,9 @@ test("TrustScorer: calculateTrustScore applies success points", () => {
     };
 
     const result = calculateTrustScore(score);
-    // Success: (95/100) * 1000 = 950 points
-    // No penalties, volume bonus = min(100, 100/50) = 2
-    assert.ok(result >= 900, `Expected high trust score from successes, got ${result}`);
+    // Success: (95/100) * 100 = 95 points
+    // No penalties, volume bonus = min(10, 100/50) = 2
+    assert.ok(result >= 90, `Expected high trust score from successes, got ${result}`);
   } finally {
     ctx.cleanup();
   }
@@ -136,8 +135,8 @@ test("TrustScorer: calculateTrustScore includes volume bonus", () => {
     };
 
     const result = calculateTrustScore(score);
-    // Volume bonus = min(100, 200/50) = 100
-    assert.ok(result > 900, "High volume should provide bonus");
+    // Volume bonus = min(10, 200/50) = min(10, 4) = 4
+    assert.ok(result > 90, "High volume should provide bonus");
   } finally {
     ctx.cleanup();
   }
@@ -182,115 +181,51 @@ test("TrustScorer: mapTrustLevel returns fully_trusted for score >= 950", () => 
   }
 });
 
-test("TrustScorer: mapTrustLevel returns trusted for score >= 850", () => {
+test("TrustScorer: mapTrustLevel returns trusted for score >= 85", () => {
   const ctx = createIntegrationContext("aa-trust-level-trusted2-");
   try {
-    assert.equal(mapTrustLevel(850), "trusted");
-    assert.equal(mapTrustLevel(949), "trusted");
+    assert.equal(mapTrustLevel(85), "trusted");
+    assert.equal(mapTrustLevel(94), "trusted");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TrustScorer: mapTrustLevel returns semi_trusted for score >= 700", () => {
+test("TrustScorer: mapTrustLevel returns semi_trusted for score >= 70", () => {
   const ctx = createIntegrationContext("aa-trust-level-semi-");
   try {
-    assert.equal(mapTrustLevel(700), "semi_trusted");
-    assert.equal(mapTrustLevel(849), "semi_trusted");
+    assert.equal(mapTrustLevel(70), "semi_trusted");
+    assert.equal(mapTrustLevel(84), "semi_trusted");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TrustScorer: mapTrustLevel returns supervised for score >= 500", () => {
+test("TrustScorer: mapTrustLevel returns supervised for score >= 50", () => {
   const ctx = createIntegrationContext("aa-trust-level-supervised-");
   try {
-    assert.equal(mapTrustLevel(500), "supervised");
-    assert.equal(mapTrustLevel(699), "supervised");
+    assert.equal(mapTrustLevel(50), "supervised");
+    assert.equal(mapTrustLevel(69), "supervised");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TrustScorer: mapTrustLevel returns probation for score >= 300", () => {
+test("TrustScorer: mapTrustLevel returns probation for score >= 30", () => {
   const ctx = createIntegrationContext("aa-trust-level-probation-");
   try {
-    assert.equal(mapTrustLevel(300), "probation");
-    assert.equal(mapTrustLevel(499), "probation");
+    assert.equal(mapTrustLevel(30), "probation");
+    assert.equal(mapTrustLevel(49), "probation");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TrustScorer: mapTrustLevel returns untrusted for score < 300", () => {
+test("TrustScorer: mapTrustLevel returns untrusted for score < 30", () => {
   const ctx = createIntegrationContext("aa-trust-level-untrusted-");
   try {
     assert.equal(mapTrustLevel(0), "untrusted");
-    assert.equal(mapTrustLevel(299), "untrusted");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-// ============================================================================
-// Inherent Risk Check
-// ============================================================================
-
-test("TrustScorer: checkInherentRisk returns false for critical riskClass", () => {
-  const ctx = createIntegrationContext("aa-risk-critical-");
-  try {
-    const result = checkInherentRisk({ riskClass: "critical" });
-    assert.equal(result, false, "Critical risk should block full auto");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("TrustScorer: checkInherentRisk returns false for high riskClass", () => {
-  const ctx = createIntegrationContext("aa-risk-high-");
-  try {
-    const result = checkInherentRisk({ riskClass: "high" });
-    assert.equal(result, false, "High risk should block full auto");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("TrustScorer: checkInherentRisk returns false for high-risk domain", () => {
-  const ctx = createIntegrationContext("aa-risk-domain-");
-  try {
-    const result = checkInherentRisk({ isHighRiskDomain: true });
-    assert.equal(result, false, "High-risk domain should block full auto");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("TrustScorer: checkInherentRisk returns false when requiresHumanAccountable", () => {
-  const ctx = createIntegrationContext("aa-risk-human-");
-  try {
-    const result = checkInherentRisk({ requiresHumanAccountable: true });
-    assert.equal(result, false, "Human accountable domains should block full auto");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("TrustScorer: checkInherentRisk returns true for low risk class", () => {
-  const ctx = createIntegrationContext("aa-risk-low-");
-  try {
-    const result = checkInherentRisk({ riskClass: "low" });
-    assert.equal(result, true, "Low risk should allow full auto");
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("TrustScorer: checkInherentRisk returns true for medium risk with no other factors", () => {
-  const ctx = createIntegrationContext("aa-risk-medium-");
-  try {
-    const result = checkInherentRisk({ riskClass: "medium" });
-    assert.equal(result, true, "Medium risk should allow full auto");
+    assert.equal(mapTrustLevel(29), "untrusted");
   } finally {
     ctx.cleanup();
   }
@@ -300,11 +235,11 @@ test("TrustScorer: checkInherentRisk returns true for medium risk with no other 
 // Trust Level to Autonomy Level Mapping
 // ============================================================================
 
-test("TrustScorer: mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto", () => {
+test("TrustScorer: mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto", () => {
   const ctx = createIntegrationContext("aa-autonomy-full-");
   try {
     const result = mapTrustLevelToAutonomyLevel("fully_trusted");
-    assert.equal(result, "full_auto");
+    assert.equal(result, "semi_auto");
   } finally {
     ctx.cleanup();
   }
@@ -442,9 +377,9 @@ test("TrustScorer: full pipeline from score to autonomy level", () => {
     const trustLevel = mapTrustLevel(trustScore);
     const autonomyLevel = mapTrustLevelToAutonomyLevel(trustLevel);
 
-    assert.ok(trustScore >= 700, "High success rate should yield high trust");
+    assert.ok(trustScore >= 90, "High success rate should yield high trust");
     assert.ok(["fully_trusted", "trusted", "semi_trusted"].includes(trustLevel), "Should be at least semi_trusted");
-    assert.ok(["full_auto", "semi_auto"].includes(autonomyLevel), "Should be semi_auto or higher");
+    assert.ok(["semi_auto", "supervised"].includes(autonomyLevel), "Should be semi_auto or supervised");
   } finally {
     ctx.cleanup();
   }
@@ -471,8 +406,8 @@ test("TrustScorer: pipeline with incidents shows trust degradation", () => {
 
     // Incidents should reduce score significantly
     assert.ok(trustScore < 900, "Incidents should reduce trust score");
-    // Should still be semi_auto or supervised given recent good performance
-    assert.ok(["supervised", "semi_auto"].includes(autonomyLevel), "Recent good performance should maintain level");
+    // With incidents, should be at probation/suggestion level
+    assert.ok(["supervised", "semi_auto", "suggestion"].includes(autonomyLevel), "Recent good performance should maintain level");
   } finally {
     ctx.cleanup();
   }

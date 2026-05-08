@@ -308,6 +308,7 @@ export const skillExecutionCacheMethods = {
       id: newId("step"),
       taskId,
       stepId: cachedStep.stepId,
+      nodeRunId: newId("node_run"),
       roleId: `skill:${skill.skillId}`,
       status: cachedStep.status,
       dataJson: JSON.stringify({

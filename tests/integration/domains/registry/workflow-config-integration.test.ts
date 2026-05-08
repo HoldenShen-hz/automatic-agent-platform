@@ -53,32 +53,6 @@ test("WorkflowConfig integration: parses DAG workflow with branching", () => {
   assert.ok(result.steps[3]!.dependsOn.includes("branch-b"));
 });
 
-test("WorkflowConfig integration: parses workflow with stepGraph edges", () => {
-  const workflow = {
-    workflowId: "graph-workflow",
-    name: "Graph Workflow",
-    steps: [
-      { stepName: "init" },
-      { stepName: "step-a" },
-      { stepName: "step-b" },
-      { stepName: "finish" },
-    ],
-    stepGraph: {
-      edges: [
-        { fromStep: "init", toStep: "step-a", condition: null },
-        { fromStep: "init", toStep: "step-b", condition: { parallel: true } },
-        { fromStep: "step-a", toStep: "finish", condition: null },
-        { fromStep: "step-b", toStep: "finish", condition: null },
-      ],
-    },
-  };
-
-  const result = WorkflowConfigSchema.parse(workflow);
-  assert.equal(result.stepGraph!.edges.length, 4);
-  assert.equal(result.stepGraph!.edges[0]!.fromStep, "init");
-  assert.equal(result.stepGraph!.edges[0]!.toStep, "step-a");
-  assert.deepEqual(result.stepGraph!.edges[1]!.condition, { parallel: true });
-});
 
 test("WorkflowConfig integration: parses step with model hints", () => {
   const workflow = {

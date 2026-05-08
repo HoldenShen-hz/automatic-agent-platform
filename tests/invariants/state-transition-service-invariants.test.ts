@@ -81,7 +81,7 @@ test("INV-STATE-001: RuntimeStateMachine requires event emission for state trans
       tenantId: "tenant-test",
     },
     fromStatus: "created",
-    toStatus: "admitted",
+    toStatus: "failed",
     tenantId: "tenant-test",
     traceId: "trace-test",
     reasonCode: "test.transition",
@@ -99,30 +99,32 @@ test("INV-STATE-001: Terminal states have no valid transitions", () => {
   const terminalStatuses = ["completed", "failed", "aborted"] as const;
 
   for (const terminalStatus of terminalStatuses) {
-    const result = stateMachine.transition({
-      commandId: "cmd-terminal",
-      entityType: "HarnessRun",
-      entityId: "hrn_terminal",
-      principal: "test-principal",
-      aggregateType: "HarnessRun",
-      aggregate: {
-        harnessRunId: "hrn_terminal",
-        status: terminalStatus,
+    // Terminal states cannot transition to non-terminal states
+    try {
+      stateMachine.transition({
+        commandId: "cmd-terminal",
+        entityType: "HarnessRun",
+        entityId: "hrn_terminal",
+        principal: "test-principal",
+        aggregateType: "HarnessRun",
+        aggregate: {
+          harnessRunId: "hrn_terminal",
+          status: terminalStatus,
+          tenantId: "tenant-test",
+        },
+        fromStatus: terminalStatus,
+        toStatus: "running", // Invalid - terminal to non-terminal
         tenantId: "tenant-test",
-      },
-      fromStatus: terminalStatus,
-      toStatus: "running", // Invalid - terminal to non-terminal
-      tenantId: "tenant-test",
-      traceId: "trace-terminal",
-      reasonCode: "test.invalid_transition",
-      emittedBy: "INV-STATE-001-test",
-    });
-
-    // Terminal states should not transition to non-terminal
-    // The aggregate returned may be in the same terminal state
-    assert.ok(
-      result.aggregate !== undefined,
-      `Transition from terminal ${terminalStatus} should be handled`,
-    );
+        traceId: "trace-terminal",
+        reasonCode: "test.invalid_transition",
+        emittedBy: "INV-STATE-001-test",
+      });
+      assert.fail(`Terminal state ${terminalStatus} should reject transition to running`);
+    } catch (err) {
+      assert.ok(
+        err instanceof Error && (err.message.includes("invalid_transition") || err.message.includes("Invalid")),
+        `Terminal state ${terminalStatus} should reject with invalid_transition: ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
 });

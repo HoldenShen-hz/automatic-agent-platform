@@ -239,6 +239,25 @@ export class StageTransitionFSM {
       this.stageTimestamps.delete(stage);
     }
   }
+
+  /**
+   * Resets the FSM to a specific stage, clearing all statuses after that stage.
+   * Used for replan scenarios where we need to re-execute from a particular stage.
+   */
+  public resetToStage(stage: OapeflirStage): void {
+    const targetIndex = STAGE_ORDER.indexOf(stage);
+    if (targetIndex < 0) {
+      throw new Error(`Invalid stage: ${stage}`);
+    }
+    this.currentStageIndex = targetIndex;
+    for (const s of STAGE_ORDER) {
+      const sIndex = STAGE_ORDER.indexOf(s);
+      if (sIndex >= targetIndex) {
+        this.stageStatuses.set(s, "pending");
+        this.stageTimestamps.delete(s);
+      }
+    }
+  }
 }
 
 export function createStageTransitionFSM(): StageTransitionFSM {

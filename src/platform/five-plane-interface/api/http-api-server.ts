@@ -69,6 +69,7 @@ import {
   createPackRoutes,
   createCostRoutes,
   createPromptRoutes,
+  createHarnessRunsRoutes,
 } from "./http-server/index.js";
 import {
   buildPreflightHeaders,
@@ -674,6 +675,9 @@ export class HttpApiServer {
       ...createPromptRoutes({
         authService: this.options.authService ?? null,
         promptRegistryService: this.promptRegistryService,
+      }),
+      ...createHarnessRunsRoutes({
+        authService: this.options.authService ?? null,
       }),
     ];
   }

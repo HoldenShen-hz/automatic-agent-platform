@@ -93,7 +93,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
       ],
     });
 
-    assert.equal(promptRelease.rollout.status, "active");
+    assert.equal(promptRelease.rollout.status, "canary_5");
 
     const evalService = new LlmEvalService(ctx.db);
     const suite = evalService.defineSuite({

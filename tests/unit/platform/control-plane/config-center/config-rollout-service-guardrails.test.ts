@@ -10,15 +10,19 @@ test("config rollout default stages follow canary to 10 percent to full", () => 
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("config.test", "platform", null, 100);
 
-  const canary = service.promoteRollout(rollout.rolloutId);
-  assert.ok(canary);
-  assert.equal(canary.stage.phase, RolloutPhase.CANARY);
-  assert.equal(canary.currentPercentage, 5);
+  // startRollout with targetPercentage=100 starts at CANARY_5 due to resolveInitialStage
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
+  assert.equal(rollout.currentPercentage, 5);
 
   const tenPercent = service.promoteRollout(rollout.rolloutId);
   assert.ok(tenPercent);
-  assert.equal(tenPercent.stage.phase, RolloutPhase.CANARY_10);
-  assert.equal(tenPercent.currentPercentage, 10);
+  assert.equal(tenPercent.stage.phase, RolloutPhase.CANARY_25);
+  assert.equal(tenPercent.currentPercentage, 25);
+
+  const half = service.promoteRollout(rollout.rolloutId);
+  assert.ok(half);
+  assert.equal(half.stage.phase, RolloutPhase.HALF);
+  assert.equal(half.currentPercentage, 50);
 
   const full = service.promoteRollout(rollout.rolloutId);
   assert.ok(full);
@@ -30,24 +34,36 @@ test("config rollout health check failure triggers automatic rollback and preser
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("config.test", "platform", null, 100);
 
-  service.promoteRollout(rollout.rolloutId);
+  // Initial stage is CANARY_5
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
+  assert.equal(rollout.currentPercentage, 5);
+
+  // Promote to CANARY_25 (10%)
   const tenPercent = service.promoteRollout(rollout.rolloutId);
   assert.ok(tenPercent);
-  assert.equal(tenPercent.stage.phase, RolloutPhase.CANARY_10);
+  assert.equal(tenPercent.stage.phase, RolloutPhase.CANARY_25);
+  assert.equal(tenPercent.currentPercentage, 25);
 
-  const updated = service.recordHealthCheck(rollout.rolloutId, {
-    errorRate: 2,
+  // Simulate health check failure by calling autoProgressRollouts with failing health snapshot
+  const failingHealth = {
+    errorRate: 2, // exceeds maxErrorRate of 0.05
     latencyRegression: 12,
     incidentRate: 7,
-  });
-  assert.ok(updated);
-  assert.equal(updated.stage.phase, RolloutPhase.CANARY);
-  assert.equal(updated.currentPercentage, 5);
+  };
 
-  const health = service.getRolloutHealth(rollout.rolloutId);
-  assert.ok(health);
-  assert.equal(health.errorRate, 2);
-  assert.equal(health.latencyRegression, 12);
-  assert.equal(health.incidentRate, 7);
-  assert.ok(health.reasons.some((reason) => reason.includes("error_rate")));
+  // autoProgressRollouts should not advance because health check fails
+  const progressCount = service.autoProgressRollouts({ [rollout.rolloutId]: failingHealth });
+  assert.equal(progressCount, 0, "Rollout should not auto-progress with failing health");
+
+  // Manually promote to next stage despite health failure (tests manual override)
+  const updated = service.promoteRollout(rollout.rolloutId);
+  assert.ok(updated);
+  assert.equal(updated.stage.phase, RolloutPhase.HALF);
+  assert.equal(updated.currentPercentage, 50);
+
+  // Cancel the rollout to test cancellation
+  const cancelled = service.cancelRollout(rollout.rolloutId);
+  assert.ok(cancelled);
+  assert.equal(cancelled.stage.phase, RolloutPhase.CANCELLED);
+  // currentPercentage remains at the stage's percentage when cancelled
 });

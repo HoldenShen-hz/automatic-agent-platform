@@ -18,7 +18,7 @@ import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../src/platform/five-plane-execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../src/platform/execution/runtime-state-machine.js";
 import { createBudgetLedger, type BudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";

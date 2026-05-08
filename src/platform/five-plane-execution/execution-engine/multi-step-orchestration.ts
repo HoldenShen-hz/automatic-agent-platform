@@ -13,6 +13,7 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
 import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { ContextCompactionService, type ContextCompactionResult } from "./context-compaction-service.js";
 import {
@@ -349,6 +350,23 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       let skippedStepIds = new Set<string>();
       let failedStepIds = new Set<string>();
 
+      // R4-26/R4-27 fix: Create HarnessRun for canonical execution tracking
+      const harnessRun = createHarnessRun({
+        tenantId: input.tenantId ?? "tenant:local",
+        traceId,
+        goal: input.title,
+        riskLevel: "medium",
+        domainId: plannedWorkflow.workflow.divisionId,
+        confirmedTaskSpecId: `ctspec:${taskId}`,
+        requestEnvelopeId: `request:${taskId}`,
+        requestHash: `hash:${taskId}`,
+        constraintPackRef: `constraint_pack:${plannedWorkflow.workflow.divisionId}`,
+        versionLockId: newId("version_lock"),
+        budgetLedgerId: newId("bledger"),
+        status: "created",
+      });
+      const harnessRunId = harnessRun.harnessRunId;
+
       const stepResult = await executeStepLoop(
         {
           taskId,
@@ -356,6 +374,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           traceId,
           traceContext,
           streamId,
+          harnessRunId, // R4-26/R4-27 fix: Pass HarnessRun ID for canonical tracking
           admissionDecision,
           input,
           routing,

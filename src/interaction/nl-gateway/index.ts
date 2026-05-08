@@ -1,4 +1,4 @@
-export { detectAmbiguity } from "./ambiguity-handler/index.js";
+export { detectAmbiguity } from "./disambiguation-handler/index.js";
 export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";
@@ -13,7 +13,8 @@ import {
   type IntentConfig,
   type EntityExtractionConfig,
 } from "./nl-gateway-config-loader.js";
-import { resolveRequiredSlots } from "./slot-resolver/index.js";
+import { buildSlotClarificationState } from "./slot-resolver/index.js";
+import { parseIntentTokensWithModel } from "./intent-parser/index.js";
 
 export {
   loadNlGatewayConfig,
@@ -116,7 +117,7 @@ export interface NlRequestPayload {
   readonly generatedSummary: string;
 }
 
-export type RequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
+export type RequestEnvelope = PlatformRequestEnvelope;
 
 export type ConversationState =
   | "Idle"
@@ -716,6 +717,7 @@ export class NlEntryService implements NlEntryPort {
   private readonly localeConfig: LocaleConfig;
   private readonly conversationWindowSize: number;
   private readonly nlConfig: NlGatewayConfig;
+  private readonly intentParser: IntentParserPort | null;
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
 
@@ -730,6 +732,7 @@ export class NlEntryService implements NlEntryPort {
     this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
+    this.intentParser = options.intentParser ?? null;
   }
 
   /**
@@ -766,40 +769,69 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
+    const locale = this.resolveLocale(request);
     const route = this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
     });
     const entities = extractEntities(request.message);
+    const parsedIntentTokens = await parseIntentTokensWithModel(request.message, {
+      locale,
+      parser: this.intentParser?.parseWithLlm == null
+        ? null
+        : {
+            // @ts-ignore - IntentParserLlmResult intentType includes "why" but ModelIntentParserPort expects narrower type
+            parseWithLlm: (input) => this.intentParser!.parseWithLlm!(input),
+          },
+      minimumConfidence: this.clarificationThreshold,
+    });
+    const parserIntent = parsedIntentTokens[0];
     const securityFindings = detectPromptInjection(request.message);
+    const resolvedIntentType = parserIntent != null && parserIntent.confidence >= route.classification.confidence
+      ? parserIntent.intentType
+      : mapIntentType(route.classification.intent);
+    const resolvedConfidence = Math.max(route.classification.confidence, parserIntent?.confidence ?? 0);
     const detectedIntent: DetectedIntent = {
-      intentType: mapIntentType(route.classification.intent),
+      intentType: resolvedIntentType,
       domainHint: route.divisionId,
       entities,
       urgency: deriveUrgency(request.message),
-      confidence: route.classification.confidence,
+      confidence: resolvedConfidence,
     };
-    const context = this.contextEnricher.enrich(request.message, route.divisionId, entities);
-    const clarificationQuestions = buildClarificationQuestions(
+    const slotResolution = buildSlotClarificationState(
+      entities,
+      inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId),
+    );
+    const context = {
+      ...this.contextEnricher.enrich(request.message, route.divisionId, entities),
+      requiredSlots: slotResolution.missing.length === 0 ? [] : inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId),
+      missingSlots: slotResolution.missing,
+      resolvedSlots: slotResolution.resolved,
+    };
+    const clarificationQuestions = [...new Set([
+      ...buildClarificationQuestions(
       request.message,
-      route.classification.confidence,
+      resolvedConfidence,
       route.divisionId,
       entities,
-    );
-    const locale = this.resolveLocale(request);
+      ),
+      ...slotResolution.questions,
+    ])];
     const slotConfidence = estimateSlotConfidence(entities, request.message);
     const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const requiresClarification =
       blockedByPolicy
-      || route.classification.confidence < this.clarificationThreshold
+      || resolvedConfidence < this.clarificationThreshold
       || slotConfidence < SLOT_CONFIDENCE_THRESHOLD
+      || !slotResolution.isComplete
       || clarificationQuestions.length > 0;
     const clarificationState: ClarificationState = {
       state: blockedByPolicy ? "blocked" : requiresClarification ? "required" : "none",
       reasonCodes: [
         ...(blockedByPolicy ? ["nl_gateway.prompt_injection_detected"] : []),
-        ...(route.classification.confidence < this.clarificationThreshold ? ["nl_gateway.intent_confidence_low"] : []),
+        ...(resolvedConfidence < this.clarificationThreshold ? ["nl_gateway.intent_confidence_low"] : []),
         ...(slotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
+        ...(!slotResolution.isComplete ? ["nl_gateway.required_slots_missing"] : []),
       ],
       questions: clarificationQuestions,
     };
@@ -807,7 +839,7 @@ export class NlEntryService implements NlEntryPort {
     return {
       rawInput: request.message,
       detectedIntents: [detectedIntent],
-      confidence: route.classification.confidence,
+      confidence: resolvedConfidence,
       requiresClarification,
       locale,
       continuation: route.classification.continuation,
@@ -818,6 +850,7 @@ export class NlEntryService implements NlEntryPort {
       context,
       securityFindings,
       blockedByPolicy,
+      priorConversationTurns: [],
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
     };
   }
@@ -906,6 +939,7 @@ export class NlEntryService implements NlEntryPort {
       clarificationState: detailed.clarificationState,
       confirmationReceipt,
       conversationState,
+      clarificationSession: null,
     };
   }
 

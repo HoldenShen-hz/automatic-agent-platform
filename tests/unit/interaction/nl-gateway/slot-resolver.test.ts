@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveRequiredSlots } from "../../../../src/interaction/nl-gateway/slot-resolver/index.js";
+import { buildSlotClarificationState, resolveRequiredSlots } from "../../../../src/interaction/nl-gateway/slot-resolver/index.js";
 import type { ExtractedEntity } from "../../../src/interaction/nl-gateway/index.js";
 
 function makeEntity(type: string, value: string, normalized?: unknown): ExtractedEntity {
@@ -63,4 +63,13 @@ test("resolveRequiredSlots empty requiredEntityTypes", () => {
 
   assert.deepEqual(result.missing, []);
   assert.ok("date" in result.resolved);
+});
+
+test("buildSlotClarificationState builds prompts for missing slots", () => {
+  const result = buildSlotClarificationState([makeEntity("date", "2026-04-29")], ["date", "environment", "channel"]);
+
+  assert.deepEqual(result.missing, ["environment", "channel"]);
+  assert.equal(result.isComplete, false);
+  assert.equal(result.nextExpectedSlot, "environment");
+  assert.equal(result.questions.length, 2);
 });

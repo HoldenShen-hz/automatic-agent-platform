@@ -277,6 +277,82 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       },
     }));
   }
+
+  /**
+   * Execute a subgraph of a plan.
+   * Executes only the specified subset of steps, treating them as an independent unit.
+   */
+  async executeSubgraph(subgraph: PlanStep[], context: ExecutionContext): Promise<ExecutionResult> {
+    const { runMultiStepOrchestration } = await import("../../../core/runtime/orchestrator/index.js");
+
+    const request = serialiseOapeflirPlan(subgraph);
+
+    const orchInput: Parameters<typeof runMultiStepOrchestration>[0] = {
+      dbPath: this.dbPath,
+      title: `OAPEFLIR subgraph ${context.taskId}`,
+      request,
+    };
+    if (context.tokenBudget != null) {
+      orchInput.contextBudgetTokens = context.tokenBudget;
+    }
+    const orchResult = await runMultiStepOrchestration(orchInput);
+
+    const stepRecords = extractStepOutputRecords(orchResult);
+    const stepResults = stepRecords.map(mapStepOutputRecord);
+
+    const totalDurationMs = stepResults.reduce((sum, r) => sum + r.durationMs, 0);
+    const totalTokenCost = stepResults.reduce((sum, r) => sum + r.tokenCost, 0);
+
+    return {
+      planId: `subgraph:${context.taskId}`,
+      results: stepResults,
+      totalDurationMs,
+      totalTokenCost,
+      allSucceeded: stepResults.every((r) => r.status === "succeeded"),
+      skippedStepIds: stepResults.filter((r) => r.status === "skipped").map((r) => r.stepId),
+      failedStepIds: stepResults.filter((r) => r.status === "failed").map((r) => r.stepId),
+    };
+  }
+
+  /**
+   * Execute a child run attached to a parent task.
+   * Spawns a child execution with a reference to the parent run ID.
+   */
+  async executeChildRun(
+    plan: Plan,
+    context: ExecutionContext,
+    parentRunId: string,
+  ): Promise<ExecutionResult> {
+    const { runMultiStepOrchestration } = await import("../../../core/runtime/orchestrator/index.js");
+
+    const request = serialiseOapeflirPlan(plan.steps);
+
+    const orchInput: Parameters<typeof runMultiStepOrchestration>[0] = {
+      dbPath: this.dbPath,
+      title: `OAPEFLIR child run of ${parentRunId}`,
+      request,
+    };
+    if (context.tokenBudget != null) {
+      orchInput.contextBudgetTokens = context.tokenBudget;
+    }
+    const orchResult = await runMultiStepOrchestration(orchInput);
+
+    const stepRecords = extractStepOutputRecords(orchResult);
+    const stepResults = stepRecords.map(mapStepOutputRecord);
+
+    const totalDurationMs = stepResults.reduce((sum, r) => sum + r.durationMs, 0);
+    const totalTokenCost = stepResults.reduce((sum, r) => sum + r.tokenCost, 0);
+
+    return {
+      planId: plan.planId,
+      results: stepResults,
+      totalDurationMs,
+      totalTokenCost,
+      allSucceeded: stepResults.every((r) => r.status === "succeeded"),
+      skippedStepIds: stepResults.filter((r) => r.status === "skipped").map((r) => r.stepId),
+      failedStepIds: stepResults.filter((r) => r.status === "failed").map((r) => r.stepId),
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -340,5 +416,55 @@ export class MockExecuteBridge implements ExecuteBridge {
         validationPassed: r.validationPassed,
       },
     }));
+  }
+
+  async executeSubgraph(subgraph: PlanStep[], _context: ExecutionContext): Promise<ExecutionResult> {
+    const results = subgraph.map((step, index) => ({
+      stepId: step.stepId,
+      status: "succeeded" as const,
+      durationMs: 100 + index * 50,
+      tokenCost: 200 + index * 75,
+      summary: `Completed subgraph step ${step.action} for ${step.stepId}`,
+      outputs: {},
+      artifacts: (step.outputs ?? []).map((o) => `artifact:${o}`),
+      modelId: "local-simulated",
+      retryCount: 0,
+      validationPassed: true,
+    }));
+
+    return {
+      planId: "subgraph",
+      results,
+      totalDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
+      totalTokenCost: results.reduce((s, r) => s + r.tokenCost, 0),
+      allSucceeded: true,
+      skippedStepIds: [],
+      failedStepIds: [],
+    };
+  }
+
+  async executeChildRun(plan: Plan, _context: ExecutionContext, _parentRunId: string): Promise<ExecutionResult> {
+    const results = plan.steps.map((step, index) => ({
+      stepId: step.stepId,
+      status: "succeeded" as const,
+      durationMs: 100 + index * 50,
+      tokenCost: 200 + index * 75,
+      summary: `Completed child run step ${step.action} for ${step.stepId}`,
+      outputs: {},
+      artifacts: (step.outputs ?? []).map((o) => `artifact:${o}`),
+      modelId: "local-simulated",
+      retryCount: 0,
+      validationPassed: true,
+    }));
+
+    return {
+      planId: plan.planId,
+      results,
+      totalDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
+      totalTokenCost: results.reduce((s, r) => s + r.tokenCost, 0),
+      allSucceeded: true,
+      skippedStepIds: [],
+      failedStepIds: [],
+    };
   }
 }

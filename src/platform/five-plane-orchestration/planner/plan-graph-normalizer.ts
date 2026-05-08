@@ -51,6 +51,37 @@ export class PlanGraphNormalizer {
     };
   }
 
+  /**
+   * Validate a plan graph structure.
+   * Returns validation result without modifying the graph.
+   */
+  public validate(steps: readonly PlanStep[]): { valid: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    // 1. Cycle detection via topological sort
+    const sorted = this.topologicalSort(steps);
+    if (!sorted.success) {
+      issues.push("validation.cycle_detected");
+    }
+
+    // 2. Orphan node detection
+    const orphanNodes = this.findOrphanNodes(sorted.sorted);
+    if (orphanNodes.length > 0) {
+      issues.push(`validation.orphan_nodes:${orphanNodes.join(",")}`);
+    }
+
+    // 3. Invalid dependency references
+    const invalidDeps = this.findInvalidDependencies(steps);
+    if (invalidDeps.length > 0) {
+      issues.push(`validation.invalid_dependencies:${invalidDeps.join(",")}`);
+    }
+
+    return {
+      valid: issues.length === 0,
+      issues,
+    };
+  }
+
   private topologicalSort(steps: readonly PlanStep[]): { success: boolean; sorted: PlanStep[] } {
     const stepById = new Map(steps.map((s) => [s.stepId, s]));
     const inDegree = new Map<string, number>();
@@ -89,16 +120,35 @@ export class PlanGraphNormalizer {
   }
 
   private findOrphanNodes(steps: PlanStep[]): string[] {
+    if (steps.length <= 1) return [];
+
     const stepIds = new Set(steps.map((s) => s.stepId));
     const hasDependents = new Set(steps.flatMap((s) => s.dependencies));
     const orphans: string[] = [];
+
+    // Orphan = has no dependencies AND nothing depends on it (except for single-node graphs)
     for (const step of steps) {
-      if (!hasDependents.has(step.stepId) && step.dependencies.length === 0 && steps.length > 1) {
-        // It's an orphan if it has no dependencies AND no other step depends on it (and there are other steps)
-        // Actually orphan detection should be: has no dependencies AND nothing depends on it
+      const hasNoDependents = !hasDependents.has(step.stepId);
+      const hasNoDependencies = step.dependencies.length === 0;
+      if (hasNoDependencies && hasNoDependents && steps.length > 1) {
+        orphans.push(step.stepId);
       }
     }
     return orphans;
+  }
+
+  private findInvalidDependencies(steps: readonly PlanStep[]): string[] {
+    const stepIds = new Set(steps.map((s) => s.stepId));
+    const invalidDeps: string[] = [];
+
+    for (const step of steps) {
+      for (const dep of step.dependencies) {
+        if (!stepIds.has(dep)) {
+          invalidDeps.push(`${step.stepId}->${dep}`);
+        }
+      }
+    }
+    return invalidDeps;
   }
 
   private propagateRisk(

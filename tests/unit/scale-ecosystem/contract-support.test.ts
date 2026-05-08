@@ -87,6 +87,7 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
       shouldFailover: true,
       targetRegionId: "us-west-2",
       rationale: "multi_region.primary_unhealthy",
+      fencingEpoch: 1,
     },
   );
   assert.equal(

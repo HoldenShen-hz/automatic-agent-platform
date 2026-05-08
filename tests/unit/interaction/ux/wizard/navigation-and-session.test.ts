@@ -11,6 +11,10 @@ import {
   deserializeWizardSession,
   goBackWizard,
   advanceWizard,
+  advanceWizardToNextVisibleStep,
+  recordWizardAnswer,
+  saveWizardSession,
+  getWizardProgress,
   getVisibleSteps,
   type WizardSession,
   type WizardStep,
@@ -27,6 +31,7 @@ const createSession = (overrides: Partial<WizardSession> = {}): WizardSession =>
   currentStepId: "step_1",
   answers: {},
   history: [],
+  visitedStepIds: [],
   ...overrides,
 });
 
@@ -220,6 +225,44 @@ test("advanceWizard handles step order correctly", () => {
 
   assert.equal(final.currentStepId, "step_3");
   assert.deepEqual(final.history, ["step_1", "step_2"]);
+});
+
+test("advanceWizardToNextVisibleStep skips hidden conditional steps", () => {
+  const session = createSession({
+    steps: [
+      { stepId: "step_1", title: "Step 1", completed: true },
+      { stepId: "hidden", title: "Hidden", completed: false, condition: () => false },
+      { stepId: "step_3", title: "Step 3", completed: false },
+    ],
+  });
+
+  const next = advanceWizardToNextVisibleStep(session);
+  assert.notEqual(next, null);
+  assert.equal(next.currentStepId, "step_3");
+});
+
+test("recordWizardAnswer persists answer values", () => {
+  const updated = recordWizardAnswer(createSession(), "business_type", "finance");
+  assert.equal(updated.answers["business_type"], "finance");
+});
+
+test("saveWizardSession stamps lastSavedAt", () => {
+  const saved = saveWizardSession(createSession(), "2026-05-08T00:00:00.000Z");
+  assert.equal(saved.lastSavedAt, "2026-05-08T00:00:00.000Z");
+});
+
+test("getWizardProgress reports completion over visible steps", () => {
+  const progress = getWizardProgress(createSession({
+    steps: [
+      { stepId: "step_1", title: "Step 1", completed: true },
+      { stepId: "step_2", title: "Step 2", completed: false },
+      { stepId: "hidden", title: "Hidden", completed: false, condition: () => false },
+    ],
+  }));
+
+  assert.equal(progress.visibleSteps, 2);
+  assert.equal(progress.completedSteps, 1);
+  assert.equal(progress.completionPercent, 50);
 });
 
 test("goBackWizard restores previous current step", () => {

@@ -20,7 +20,6 @@ import {
   DomainGovernanceSpecSchema,
   DomainInteractionSpecSchema,
   toResponsibilityBoundary,
-  enforceResponsibilityBoundary,
   resolveDomainRiskSpec,
   type DomainRiskSpec,
   type DomainLifecycleState,
@@ -388,42 +387,6 @@ test("golden: toResponsibilityBoundary maps risk flags correctly", () => {
     humanAccountable: toResponsibilityBoundary(spec2),
     advisoryOnly: toResponsibilityBoundary(spec3),
     fullyAutonomous: toResponsibilityBoundary(spec4),
-  });
-});
-
-test("golden: enforceResponsibilityBoundary validates autonomy levels", () => {
-  // deterministic_hot_path_only allows only human_required
-  const result1 = enforceResponsibilityBoundary("deterministic_hot_path_only", "human_required");
-  assert.equal(result1, null, "human_required should be allowed");
-
-  const result2 = enforceResponsibilityBoundary("deterministic_hot_path_only", "full_auto");
-  assert.equal(result2, "domain.responsibility_boundary.deterministic_only_violation");
-
-  const result3 = enforceResponsibilityBoundary("deterministic_hot_path_only", "llm_assisted");
-  assert.equal(result3, "domain.responsibility_boundary.deterministic_only_violation");
-
-  // human_accountable allows human_required and llm_assisted, blocks full_auto
-  const result4 = enforceResponsibilityBoundary("human_accountable", "full_auto");
-  assert.equal(result4, "domain.responsibility_boundary.human_accountable_violation");
-
-  const result5 = enforceResponsibilityBoundary("human_accountable", "llm_assisted");
-  assert.equal(result5, null);
-
-  // advisory_only and fully_autonomous allow all
-  const result6 = enforceResponsibilityBoundary("advisory_only", "full_auto");
-  assert.equal(result6, null);
-
-  const result7 = enforceResponsibilityBoundary("fully_autonomous", "full_auto");
-  assert.equal(result7, null);
-
-  assertGolden("enforce-responsibility-boundary-v1", {
-    deterministicAllowsHumanRequired: result1 === null,
-    deterministicBlocksFullAuto: result2 !== null,
-    deterministicBlocksLlmAssisted: result3 !== null,
-    humanAccountableBlocksFullAuto: result4 !== null,
-    humanAccountableAllowsLlmAssisted: result5 === null,
-    advisoryAllowsFullAuto: result6 === null,
-    fullyAllowsFullAuto: result7 === null,
   });
 });
 

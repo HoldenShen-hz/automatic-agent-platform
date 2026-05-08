@@ -172,6 +172,41 @@ test("UnifiedChatPlanGenerator.generate includes goal context in task inputs", a
   assert.equal(task.inputs.deadline, "2026-05-01T00:00:00Z");
 });
 
+test("UnifiedChatPlanGenerator.generate propagates budget with non-zero evidence confidence", async () => {
+  const mockResponse = JSON.stringify({
+    tasks: [
+      {
+        domainId: "engineering",
+        description: "执行部署",
+        expectedOutputs: ["部署结果"],
+        delegationMode: "auto",
+        estimatedDuration: "30m",
+        estimatedCostUsd: 0.03,
+      },
+      {
+        domainId: "engineering",
+        description: "验证结果",
+        expectedOutputs: ["验证报告"],
+        delegationMode: "supervised",
+        estimatedDuration: "30m",
+        estimatedCostUsd: 0.01,
+      },
+    ],
+    dependencyGraph: [],
+  });
+
+  const provider = createMockProvider(mockResponse);
+  const generator = new UnifiedChatPlanGenerator({ provider });
+  const goal = createTestGoal({
+    description: "创建并部署一个Web服务，预算 200 美元",
+  });
+
+  const result = await generator.generate(goal);
+  assert.ok(result.tasks[0]!.inputs.allocatedBudgetUsd != null);
+  assert.ok(result.tasks[0]!.estimatedCost.sampleCount >= 1);
+  assert.notEqual(result.tasks[0]!.estimatedCost.confidence, "low");
+});
+
 test("UnifiedChatPlanGenerator.generate normalizes numeric task references", async () => {
   const mockResponse = JSON.stringify({
     tasks: [
@@ -339,7 +374,7 @@ test("UnifiedChatPlanGenerator.generate rounds estimated cost to 4 decimal place
   assert.equal(result.tasks[0]!.estimatedCost.estimatedCostUsd, 0.0123);
 });
 
-test("UnifiedChatPlanGenerator.generate uses low confidence for cost estimates", async () => {
+test("UnifiedChatPlanGenerator.generate derives evidence-based cost estimates", async () => {
   const mockResponse = JSON.stringify({
     tasks: [
       { domainId: "a", description: "Task", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 0.05 },
@@ -353,10 +388,10 @@ test("UnifiedChatPlanGenerator.generate uses low confidence for cost estimates",
 
   const result = await generator.generate(goal);
 
-  assert.equal(result.tasks[0]!.estimatedCost.confidence, "low");
-  assert.equal(result.tasks[0]!.estimatedCost.sampleCount, 0);
-  assert.equal(result.tasks[0]!.estimatedCost.divisionId, null);
-  assert.equal(result.tasks[0]!.estimatedCost.basedOn, "default");
+  assert.equal(result.tasks[0]!.estimatedCost.confidence, "medium");
+  assert.ok(result.tasks[0]!.estimatedCost.sampleCount >= 1);
+  assert.equal(result.tasks[0]!.estimatedCost.divisionId, "a");
+  assert.equal(result.tasks[0]!.estimatedCost.basedOn, "llm_estimate");
 });
 
 test("LlmPlanGenerator interface is compatible with UnifiedChatPlanGenerator", () => {
