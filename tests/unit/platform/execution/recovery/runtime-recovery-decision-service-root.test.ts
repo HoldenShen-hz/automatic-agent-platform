@@ -231,7 +231,7 @@ test("RuntimeRecoveryDecisionService.apply throws when candidate not found", asy
   );
 });
 
-test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
+test("RuntimeRecoveryDecisionService.apply handles cancel action", async () => {
   const db = createMockDb();
   let updated = false;
   const store = createFullMockStore({
@@ -255,7 +255,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter, null);
   assert.equal(result.decision.action, "cancel");

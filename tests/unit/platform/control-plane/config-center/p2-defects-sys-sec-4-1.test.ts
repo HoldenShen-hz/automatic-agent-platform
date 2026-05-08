@@ -209,7 +209,8 @@ test("[SYS-SEC-4.1] PluginSandboxRootSchema allows undefined (optional)", () => 
 });
 
 test("[SYS-SEC-4.1] startup env schema includes security-related AA_ variables", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
 
   // Verify all security-related AA_ vars are in the schema
   const securityVars = [
@@ -227,7 +228,8 @@ test("[SYS-SEC-4.1] startup env schema includes security-related AA_ variables",
 });
 
 test("[SYS-SEC-4.1] startup env schema includes storage-related AA_ variables", () => {
-  const schemaShape = StartupEnvSchema.shape;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaShape = (StartupEnvSchema as any)._def.schema.shape;
 
   const storageVars = [
     "AA_STORAGE_DRIVER",
