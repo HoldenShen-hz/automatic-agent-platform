@@ -185,6 +185,7 @@ export class DegradationController {
    * D4: Service unavailable error
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+    this.lastEscalationReason = null;
     let attemptLevel = this.currentLevel;
     const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
 
@@ -193,8 +194,8 @@ export class DegradationController {
         case DegradationLevel.D0:
           try {
             return await this.routeD0(request);
-          } catch {
-            this.lastEscalationReason = "route_d0_failed";
+          } catch (error) {
+            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d0_failed");
             this.escalate();
             attemptLevel = this.currentLevel;
             continue;
@@ -202,8 +203,8 @@ export class DegradationController {
         case DegradationLevel.D1:
           try {
             return await this.routeD1(request);
-          } catch {
-            this.lastEscalationReason = "route_d1_failed";
+          } catch (error) {
+            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d1_failed");
             this.escalate();
             attemptLevel = this.currentLevel;
             continue;
@@ -380,6 +381,13 @@ export class DegradationController {
       deduped.set(candidate.profileName, candidate);
     }
     return [...deduped.values()];
+  }
+
+  private describeEscalationReason(error: unknown, fallbackReason: string): string {
+    if (error instanceof Error && error.message.length > 0) {
+      return error.message;
+    }
+    return fallbackReason;
   }
 
   /**

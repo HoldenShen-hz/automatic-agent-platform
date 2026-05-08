@@ -225,6 +225,8 @@ export async function executeStepLoop(
         attempt: executionAttemptCounter,
         timeoutMs: step.timeoutMs,
         budgetUsdLimit: 1,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
@@ -536,7 +538,7 @@ export async function executeStepLoop(
         break;
       }
 
-      const completedStepIds = [...stepOutputs.map((item) => item.stepId), step.stepId];
+      const completedStepIds = [...stepOutputs.map((item) => item.nodeRunId), step.stepId];
       const outputKeys = [...Object.keys(outputs), step.outputKey];
       const upstreamArtifactRefs = stepOutputs.flatMap((item) => {
         if (!item.artifactsJson) return [];
@@ -569,7 +571,7 @@ export async function executeStepLoop(
             request: input.request,
             routeReason: routing.routeReason,
             priorStepSummaries: priorSummaries,
-            dependsOnStepIds: [...step.dependsOnStepIds],
+            dependsOnStepIds: step.dependsOnStepIds.filter((id): id is string => id !== undefined),
           },
           resumeContext: {
             completedStepIds,

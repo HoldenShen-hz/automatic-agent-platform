@@ -31,16 +31,16 @@ export const DepartmentComplianceBindingSchema = z.object({
 export type ComplianceFramework = z.infer<typeof ComplianceFrameworkSchema>;
 export type DepartmentComplianceBinding = z.infer<typeof DepartmentComplianceBindingSchema>;
 
-export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Object.freeze([
-  Object.freeze({
+export const DEFAULT_COMPLIANCE_FRAMEWORKS = Object.freeze([
+  {
     frameworkId: "sox",
-    type: "sox",
+    type: "sox" as const,
     displayName: "Sarbanes-Oxley",
-    controlIds: ["access_review", "approval_segregation", "audit_retention"],
+    controlIds: ["access_review", "approval_segregation", "audit_retention"] as string[],
     auditRequirements: [
-      { frequency: "quarterly", evidenceType: "access_review_log", retentionPeriod: 2555 },
-      { frequency: "quarterly", evidenceType: "dual_approver_audit", retentionPeriod: 2555 },
-      { frequency: "annually", evidenceType: "evidence_retention", retentionPeriod: 2555 },
+      { frequency: "quarterly" as const, evidenceType: "access_review_log", retentionPeriod: 2555 },
+      { frequency: "quarterly" as const, evidenceType: "dual_approver_audit", retentionPeriod: 2555 },
+      { frequency: "annually" as const, evidenceType: "evidence_retention", retentionPeriod: 2555 },
     ],
     reportTemplate: "sox_control_attestation",
     minimumPolicies: {
@@ -48,16 +48,16 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       auditRetentionDays: 2555,
       approvalChainRequired: true,
     },
-  }),
-  Object.freeze({
+  },
+  {
     frameworkId: "hipaa",
-    type: "hipaa",
+    type: "hipaa" as const,
     displayName: "HIPAA",
-    controlIds: ["phi_access", "minimum_necessary", "encryption_required"],
+    controlIds: ["phi_access", "minimum_necessary", "encryption_required"] as string[],
     auditRequirements: [
-      { frequency: "monthly", evidenceType: "phi_access_log", retentionPeriod: 2190 },
-      { frequency: "annually", evidenceType: "breach_notification", retentionPeriod: 2190 },
-      { frequency: "quarterly", evidenceType: "minimum_necessary_review", retentionPeriod: 2190 },
+      { frequency: "monthly" as const, evidenceType: "phi_access_log", retentionPeriod: 2190 },
+      { frequency: "annually" as const, evidenceType: "breach_notification", retentionPeriod: 2190 },
+      { frequency: "quarterly" as const, evidenceType: "minimum_necessary_review", retentionPeriod: 2190 },
     ],
     reportTemplate: "hipaa_phi_control_report",
     minimumPolicies: {
@@ -65,16 +65,16 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       encryptionRequired: true,
       breachNotificationHours: 72,
     },
-  }),
-  Object.freeze({
+  },
+  {
     frameworkId: "pci_dss",
-    type: "pci_dss",
+    type: "pci_dss" as const,
     displayName: "PCI DSS",
-    controlIds: ["network_segmentation", "key_rotation", "payment_audit"],
+    controlIds: ["network_segmentation", "key_rotation", "payment_audit"] as string[],
     auditRequirements: [
-      { frequency: "quarterly", evidenceType: "cardholder_data_scan", retentionPeriod: 365 },
-      { frequency: "annually", evidenceType: "key_rotation_attestation", retentionPeriod: 365 },
-      { frequency: "quarterly", evidenceType: "quarterly_audit", retentionPeriod: 365 },
+      { frequency: "quarterly" as const, evidenceType: "cardholder_data_scan", retentionPeriod: 365 },
+      { frequency: "annually" as const, evidenceType: "key_rotation_attestation", retentionPeriod: 365 },
+      { frequency: "quarterly" as const, evidenceType: "quarterly_audit", retentionPeriod: 365 },
     ],
     reportTemplate: "pci_dss_attestation",
     minimumPolicies: {
@@ -82,16 +82,16 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       keyRotationDays: 90,
       dualControl: true,
     },
-  }),
-  Object.freeze({
+  },
+  {
     frameworkId: "gdpr",
-    type: "gdpr",
+    type: "gdpr" as const,
     displayName: "GDPR",
-    controlIds: ["lawful_basis", "erasure", "residency", "consent_audit"],
+    controlIds: ["lawful_basis", "erasure", "residency", "consent_audit"] as string[],
     auditRequirements: [
-      { frequency: "annually", evidenceType: "lawful_basis_register", retentionPeriod: 730 },
-      { frequency: "annually", evidenceType: "erasure_report", retentionPeriod: 730 },
-      { frequency: "monthly", evidenceType: "residency_exception_log", retentionPeriod: 730 },
+      { frequency: "annually" as const, evidenceType: "lawful_basis_register", retentionPeriod: 730 },
+      { frequency: "annually" as const, evidenceType: "erasure_report", retentionPeriod: 730 },
+      { frequency: "monthly" as const, evidenceType: "residency_exception_log", retentionPeriod: 730 },
     ],
     reportTemplate: "gdpr_data_governance_report",
     minimumPolicies: {
@@ -99,16 +99,16 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       residencyAwareProcessing: true,
       consentTracking: true,
     },
-  }),
-  Object.freeze({
+  },
+  {
     frameworkId: "soc2",
-    type: "soc2",
+    type: "soc2" as const,
     displayName: "SOC 2",
-    controlIds: ["change_management", "access_review", "incident_response"],
+    controlIds: ["change_management", "access_review", "incident_response"] as string[],
     auditRequirements: [
-      { frequency: "annually", evidenceType: "control_owner_attestation", retentionPeriod: 365 },
-      { frequency: "monthly", evidenceType: "change_audit_trail", retentionPeriod: 365 },
-      { frequency: "quarterly", evidenceType: "incident_summary", retentionPeriod: 365 },
+      { frequency: "annually" as const, evidenceType: "control_owner_attestation", retentionPeriod: 365 },
+      { frequency: "monthly" as const, evidenceType: "change_audit_trail", retentionPeriod: 365 },
+      { frequency: "quarterly" as const, evidenceType: "incident_summary", retentionPeriod: 365 },
     ],
     reportTemplate: "soc2_trust_services_report",
     minimumPolicies: {
@@ -116,16 +116,16 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       incidentResponseRunbook: true,
       evidenceRetentionDays: 365,
     },
-  }),
-  Object.freeze({
+  },
+  {
     frameworkId: "pipl",
-    type: "pipl",
+    type: "pipl" as const,
     displayName: "PIPL",
-    controlIds: ["purpose_limitation", "cross_border_transfer", "sensitive_data_protection"],
+    controlIds: ["purpose_limitation", "cross_border_transfer", "sensitive_data_protection"] as string[],
     auditRequirements: [
-      { frequency: "annually", evidenceType: "purpose_limitation_review", retentionPeriod: 1095 },
-      { frequency: "monthly", evidenceType: "cross_border_transfer_register", retentionPeriod: 1095 },
-      { frequency: "annually", evidenceType: "sensitive_data_audit", retentionPeriod: 1095 },
+      { frequency: "annually" as const, evidenceType: "purpose_limitation_review", retentionPeriod: 1095 },
+      { frequency: "monthly" as const, evidenceType: "cross_border_transfer_register", retentionPeriod: 1095 },
+      { frequency: "annually" as const, evidenceType: "sensitive_data_audit", retentionPeriod: 1095 },
     ],
     reportTemplate: "pipl_personal_information_report",
     minimumPolicies: {
@@ -133,5 +133,22 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Obj
       crossBorderTransferApproval: true,
       dataClassification: "restricted",
     },
-  }),
-]);
+  },
+] as const) as unknown as readonly ComplianceFramework[];
+
+/**
+ * Looks up a compliance framework by its type identifier.
+ * Returns undefined if no matching framework exists.
+ */
+export function getComplianceFrameworkByType(
+  type: ComplianceFramework["type"],
+): ComplianceFramework | undefined {
+  return DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.type === type);
+}
+
+/**
+ * Returns all framework types available in the catalog.
+ */
+export function getAvailableFrameworkTypes(): readonly ComplianceFramework["type"][] {
+  return DEFAULT_COMPLIANCE_FRAMEWORKS.map((f) => f.type);
+}

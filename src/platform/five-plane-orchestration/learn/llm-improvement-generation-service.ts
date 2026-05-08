@@ -1,6 +1,6 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { LearningObject } from "./learning-object-model.js";
+import { normalizeLearningType, type LearningObject } from "./learning-object-model.js";
 import {
   createUnifiedChatProvider,
   type UnifiedChatProvider,
@@ -143,14 +143,14 @@ Return a JSON array of LearningObjects, one per signal.`;
       recommendation: (item.recommendation as string) ?? this.templateRecommendation(signal),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: Date.now(),
+      createdAt: String(Date.now()),
     };
   }
 
   private fallbackTemplateGeneration(signals: readonly LearningSignal[]): LearningObject[] {
     return signals.map((signal) => ({
       learningObjectId: newId("learning"),
-      learningType: signal.learningType,
+      learningType: normalizeLearningType(signal.learningType),
       title: `${signal.learningType.replace("_", " ")}: ${signal.valueSummary.slice(0, 40)}`,
       summary: signal.valueSummary,
       confidence: signal.confidence,
@@ -159,7 +159,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       recommendation: this.templateRecommendation(signal),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: signal.generatedAt,
+      createdAt: String(signal.generatedAt),
     }));
   }
 

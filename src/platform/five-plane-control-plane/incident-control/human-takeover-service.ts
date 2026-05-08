@@ -364,6 +364,7 @@ export class HumanTakeoverService {
       // Insert step output record with manual override flag
       this.store.workflow.insertStepOutput({
         id: newId("step"),
+        nodeRunId: newId("step"),
         taskId: snapshot.task.id,
         stepId: target.step.stepId,
         roleId: target.step.roleId,
@@ -459,6 +460,7 @@ export class HumanTakeoverService {
 
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
+        nodeRunId: newId("step"),
         taskId: snapshot.task.id,
         stepId: step.stepId,
         roleId: step.roleId,

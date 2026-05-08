@@ -91,11 +91,11 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
   }
 
   return {
-    stepId: record.stepId,
+    stepId: record.stepId ?? "unknown",
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
     durationMs: record.durationMs,
     tokenCost: record.tokenCost,
-    summary: record.summary ?? `Step ${record.stepId} ${record.status}`,
+    summary: record.summary ?? `Step ${record.stepId ?? "unknown"} ${record.status}`,
     outputs,
     artifacts,
     modelId: "runtime", // Supervisor doesn't track per-step model; record at plan level
@@ -115,7 +115,7 @@ export function mapToDualChannelStepOutputs(
   return records.map((record) => {
     const result = mapStepOutputRecord(record);
     return {
-      stepId: record.stepId,
+      stepId: record.stepId ?? "unknown",
       planRef: planId,
       userFacingResult: {
         summary: result.summary,

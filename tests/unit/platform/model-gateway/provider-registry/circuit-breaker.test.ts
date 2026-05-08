@@ -232,24 +232,21 @@ test("CircuitBreaker opens when failure rate exceeds 50% within monitoring windo
   mock.timers.enable({ apis: ["Date"] });
 
   try {
-    // The rate formula: (recentFailures / windowSeconds) * 10
-    // With windowSeconds = 1 (1000ms), even 1 failure gives 100% rate
-    // So rate-based opening triggers on first failure if consecutive threshold is not met
     const breaker = new CircuitBreaker({
       name: "rate-test",
       failureThreshold: 100, // High threshold so consecutive failures don't trigger
       resetTimeoutMs: 10000,
       halfOpenSuccessThreshold: 2,
       monitorWindowMs: 1000,
+      minSampleSize: 1,
     });
 
-    // First failure - rate-based opening should trigger because:
-    // consecutiveFailures (1) < failureThreshold (100)
-    // but getRecentFailureRate() = (1/1)*10 = 10, capped at 1 >= 0.5
+    // Rate-based opening now uses recentFailures / recentRequests.
+    // With minSampleSize=1, the first failed request produces 1/1 = 100%.
     const error = await breaker.execute(async () => { throw new Error("rate fail"); }).catch(e => e);
     assert.equal(error.message, "rate fail");
 
-    // After first failure, circuit should be open due to rate >= 50%
+    // After first failure, circuit should be open due to 100% recent failure rate.
     assert.equal(breaker.getState(), "open");
 
     // Subsequent calls should be rejected

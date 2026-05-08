@@ -136,6 +136,9 @@ const BUDGET_LEDGER_TRANSITIONS: TransitionTable<BudgetLedger["status"]> = {
   open: ["soft_cap_reached", "hard_cap_reached", "closed"],
   soft_cap_reached: ["open", "hard_cap_reached", "closed"],
   hard_cap_reached: ["closed"],
+  settling: ["closed"],
+  reserving: ["closed"],
+  releasing: ["closed"],
   closed: [],
 };
 
@@ -169,6 +172,7 @@ export class RuntimeStateMachine {
       aggregateId: getAggregateId(command.aggregateType, aggregate),
       aggregateSeq: getAggregateSeq(aggregate),
       tenantId: command.tenantId,
+      runId: getRunId(command.aggregateType, aggregate),
       traceId: command.traceId,
       payload: {
         aggregateType: command.aggregateType,
@@ -488,6 +492,21 @@ function getAggregateSeq(aggregate: RuntimeStateAggregate): number {
     return aggregate.version;
   }
   return 1;
+}
+
+function getRunId(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): string {
+  switch (aggregateType) {
+    case "HarnessRun":
+      return (aggregate as HarnessRun).harnessRunId;
+    case "NodeRun":
+      return (aggregate as NodeRun).harnessRunId;
+    case "SideEffectRecord":
+      return (aggregate as SideEffectRecord).harnessRunId;
+    case "BudgetLedger":
+      return (aggregate as BudgetLedger).harnessRunId;
+    case "BudgetReservation":
+      return (aggregate as BudgetReservation).harnessRunId;
+  }
 }
 
 function toEventNamespace(aggregateType: RuntimeStateAggregateType): string {

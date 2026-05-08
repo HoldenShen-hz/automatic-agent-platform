@@ -294,6 +294,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       attempt: 1,
       timeoutMs: step.timeoutMs,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
@@ -496,6 +498,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     const stepOutput: StepOutputRecord = {
       id: newId("step"),
       taskId,
+      nodeRunId: newId("node_run"),
       stepId: step.stepId,
       roleId: step.roleId,
       status: "succeeded",

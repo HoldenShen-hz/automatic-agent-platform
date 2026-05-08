@@ -314,9 +314,6 @@ export class PlanGraphHarnessRuntime {
     const transitions: readonly NodeRun["status"][] = ["ready", "leased", "running"];
     for (const toStatus of transitions) {
       const result = this.stateMachine.transition({
-        entityType: "NodeRun",
-        entityId: nodeRun.nodeRunId,
-        principal: input.context.executorRef,
         aggregateType: "NodeRun",
         aggregate: nodeRun,
         fromStatus: nodeRun.status,
@@ -370,9 +367,6 @@ export class PlanGraphHarnessRuntime {
 
     const terminalStatus: NodeRun["status"] = receipt.status === "succeeded" ? "succeeded" : "failed";
     const terminal = this.stateMachine.transition({
-      entityType: "NodeRun",
-      entityId: nodeRun.nodeRunId,
-      principal: input.context.executorRef,
       aggregateType: "NodeRun",
       aggregate: nodeRun,
       fromStatus: nodeRun.status,

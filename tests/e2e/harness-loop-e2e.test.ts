@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import test, { useFakeTimers } from "node:test";
+import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import {
@@ -21,7 +21,9 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.e2e.default"],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["read", "write", "bash"] },
+    tool_policy: { allowedTools: ["read", "write", "bash"] },
+    sandboxRequirement: "workspace_write",
+    approvalRequirement: "none",
     risk_policy: {
       maxRiskScore: 80,
       escalationThreshold: 60,
@@ -378,13 +380,18 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
   }
 });
 
-test("E2E: loop aborts when max duration exceeded", async (t) => {
-  // R10-38 fix: Use fake timers to simulate time passage since Node.js executes too fast (<1ms)
-  // to trigger the duration guard in real time. We use shouldAdvanceTime to advance time during
-  // async operations (setTimeout). The key is that we schedule time advancement BEFORE runLoop,
-  // so when runLoop's internal duration check runs (even synchronously), the fake time has
-  // been advanced by shouldAdvanceTime.
-  t.mock.timers.useFakeTimers({ shouldAdvanceTime: true });
+test("E2E: loop aborts when max duration exceeded", (t) => {
+  // R10-38 fix: Use Date.now mocking to simulate time passage since Node.js executes
+  // too fast (<1ms) to trigger the duration guard naturally. With maxDurationMs=0,
+  // any elapsed time > 0 triggers the guard. We mock Date.now to return incrementing
+  // values so startedAt (first call) is 100 and subsequent calls return 101+,
+  // making elapsed = 1 > 0 and triggering the guard.
+  const originalDateNow = Date.now.bind(Date);
+  let dateNowValue = 100;
+
+  Object.defineProperty(Date, 'now', {
+    get: () => () => dateNowValue++,
+  });
 
   const harness = createE2EHarness("aa-e2e-max-dur-");
   try {
@@ -394,13 +401,8 @@ test("E2E: loop aborts when max duration exceeded", async (t) => {
       budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 0 },
     });
 
-    // Schedule time advancement - this will advance fake time when the timer fires
-    // We use setTimeout to trigger time advancement, and shouldAdvanceTime makes
-    // Date.now() return progressively larger values during async yields
-    setTimeout(() => {}, 100);
-
-    // Also advance time manually to ensure we exceed maxDurationMs=0
-    t.mock.timers.setSystemTime(100);
+    // Reset the mock value before runLoop
+    dateNowValue = 100;
 
     const runLoopResult = service.runLoop({
       taskId: "task-e2e-dur-002",
@@ -420,8 +422,11 @@ test("E2E: loop aborts when max duration exceeded", async (t) => {
     assert.equal(runLoopResult.decision?.reasonCode, "harness.guard.max_duration_exceeded", "reasonCode should be harness.guard.max_duration_exceeded");
     assert.ok(runLoopResult.completedAt, "completedAt should be set for aborted run");
   } finally {
+    // Restore original Date.now
+    Object.defineProperty(Date, 'now', {
+      get: () => originalDateNow,
+    });
     harness.cleanup();
-    t.mock.timers.reset();
   }
 });
 

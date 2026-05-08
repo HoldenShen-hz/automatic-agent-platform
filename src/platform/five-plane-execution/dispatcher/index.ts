@@ -138,7 +138,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.budget_exceeded",
         `Budget limit exceeded for tool execution: ${toolName} - ${evaluation.reasonCode}`,
-        { toolName, retryable: false },
+        { retryable: false },
       );
     }
   }

@@ -30,11 +30,8 @@ export type {
 
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
-import {
-  createPlatformPrincipal,
-  createRequestEnvelope,
-  type RequestEnvelope as PlatformRequestEnvelope,
-} from "../../platform/contracts/types/index.js";
+import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
+import { createRequestEnvelope } from "../../platform/contracts/types/index.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;

@@ -19,7 +19,6 @@ export async function executeOapeflirRuntimePlan(
     dbPath: input.dbPath,
     title: `OAPEFLIR plan ${input.planGraphBundle.planGraphBundleId}`,
     request: "",
-    planGraphBundle: input.planGraphBundle,
     ...(input.contextBudgetTokens == null ? {} : { contextBudgetTokens: input.contextBudgetTokens }),
   });
 }

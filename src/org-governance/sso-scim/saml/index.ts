@@ -40,7 +40,7 @@ export function validateXmlSignature(
   } = {},
 ): { valid: boolean; error?: string } {
   try {
-    const sig = new SignedXml({
+    const sig = new SignedXml(null, {
       signatureAlgorithm: options.signatureAlgorithm ?? "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
     });
 

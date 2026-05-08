@@ -192,7 +192,7 @@ export class PromptVersionManager {
       this.bundleVersions.set(bundle.name, new Map());
     }
 
-    this.bundleVersions.get(bundle.name)!.set(bundle.version, {
+    this.bundleVersions.get(bundle.name)!.set(String(bundle.version), {
       bundle,
       createdAt: nowIso(),
     });
@@ -217,11 +217,12 @@ export class PromptVersionManager {
     const sorted = this.getSortedVersions(bundleName);
     const current = sorted.length > 0 ? sorted[sorted.length - 1] : null;
 
-    return sorted.map((version) => {
-      const entry = bundleVersionMap.get(version)!;
+    return sorted.map((versionStr) => {
+      const entry = bundleVersionMap.get(versionStr)!;
       return {
-        version,
-        isCurrent: version === current,
+        version: Number(versionStr),
+        displayVersion: entry.bundle.displayVersion,
+        isCurrent: versionStr === current,
         isDefault: entry.bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: entry.bundle.metadata.trafficAllocation.weight,
         createdAt: entry.createdAt,

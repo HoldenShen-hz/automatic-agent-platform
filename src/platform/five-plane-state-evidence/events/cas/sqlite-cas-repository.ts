@@ -158,10 +158,11 @@ export class SqliteCasRepository {
     }
 
     const current = this.get(key);
+    const { value, version } = current ?? {};
     return {
       success: false,
-      currentValue: current?.value,
-      currentVersion: current?.version,
+      ...(value !== undefined && { currentValue: value }),
+      ...(version !== undefined && { currentVersion: version }),
     };
   }
 
@@ -216,10 +217,11 @@ export class SqliteCasRepository {
     }
 
     const current = this.get(key);
+    const { value, version } = current ?? {};
     return {
       success: false,
-      currentValue: current?.value,
-      currentVersion: current?.version,
+      ...(value !== undefined && { currentValue: value }),
+      ...(version !== undefined && { currentVersion: version }),
     };
   }
 }
