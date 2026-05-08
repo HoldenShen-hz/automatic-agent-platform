@@ -18,6 +18,12 @@ export interface WorkbenchOperatorAction {
   readonly requiredRole: "viewer" | "operator" | "admin";
 }
 
+export const WORKBENCH_VIEW_ROUTE_PATTERN = /^\/workbench\/[a-z0-9-]+$/;
+
+export function isWorkbenchViewRoute(route: string): boolean {
+  return WORKBENCH_VIEW_ROUTE_PATTERN.test(route);
+}
+
 export interface PlatformWorkbenchSnapshot {
   readonly generatedAt: string;
   readonly onboarding: GuidedOnboardingSession | null;
@@ -73,7 +79,7 @@ export class PlatformWorkbenchSnapshotService {
 
 function defaultOperatorActions(attentionQueue: readonly AttentionItem[]): readonly WorkbenchOperatorAction[] {
   const hasCriticalAttention = attentionQueue.some((item) => item.priority === "critical");
-  return [
+  const actions = [
     {
       actionId: "open_approvals",
       label: "Open Approval Queue",
@@ -93,4 +99,8 @@ function defaultOperatorActions(attentionQueue: readonly AttentionItem[]): reado
       requiredRole: hasCriticalAttention ? "admin" : "operator",
     },
   ];
+  if (actions.some((action) => !isWorkbenchViewRoute(action.route))) {
+    throw new Error("workbench.invalid_view_route");
+  }
+  return actions;
 }

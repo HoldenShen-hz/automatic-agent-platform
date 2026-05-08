@@ -8,7 +8,7 @@ const PRIORITY_ORDER = {
 } as const;
 
 // UI spec notification delivery mechanisms
-export type NotificationDeliveryType = "overlay" | "push" | "haptic" | "email" | "sms";
+export type NotificationDeliveryType = "overlay" | "push" | "haptic" | "email" | "sms" | "nl_summary";
 
 export interface NotificationRoutingRule {
   readonly alertType: AttentionItem["itemType"];
@@ -30,6 +30,21 @@ export interface AlertRouterConfig {
   readonly enableOverlay: boolean;
   readonly enablePush: boolean;
   readonly enableHaptic: boolean;
+  readonly enableNlSummary: boolean;
+}
+
+export interface NlSummaryDigestItem {
+  readonly itemType: AttentionItem["itemType"];
+  readonly priority: AttentionItem["priority"];
+  readonly title: string;
+  readonly domainId: string;
+  readonly actionOptions: readonly string[];
+}
+
+export interface NlSummaryDigest {
+  readonly generatedAt: string;
+  readonly summaryText: string;
+  readonly items: readonly NlSummaryDigestItem[];
 }
 
 const DEFAULT_ROUTING_RULES: readonly NotificationRoutingRule[] = [
@@ -49,6 +64,7 @@ const DEFAULT_CONFIG: AlertRouterConfig = {
   enableOverlay: true,
   enablePush: true,
   enableHaptic: true,
+  enableNlSummary: true,
 };
 
 export function sortAttentionQueue(items: readonly AttentionItem[]): AttentionItem[] {
@@ -97,7 +113,7 @@ export class AlertRouter {
           targetEndpoint: this.resolveTargetEndpoint(item, deliveryType),
         });
 
-        this.recordDelivery(item.itemType, item.priority, now);
+        this.recordDelivery(item, deliveryType, now);
       }
     }
 
@@ -138,6 +154,35 @@ export class AlertRouter {
   }
 
   /**
+   * Build a compact NL summary feed so dashboards and chat surfaces can
+   * surface attention items through a third channel besides overlay/push.
+   */
+  public buildNlSummary(items: readonly AttentionItem[], limit = 3): NlSummaryDigest | null {
+    if (!this.config.enableNlSummary || items.length === 0) {
+      return null;
+    }
+
+    const prioritizedItems = sortAttentionQueue(items).slice(0, Math.max(1, limit));
+    const digestItems = prioritizedItems.map((item) => ({
+      itemType: item.itemType,
+      priority: item.priority,
+      title: item.title,
+      domainId: item.domainId,
+      actionOptions: [...(item.actionOptions ?? [])],
+    }));
+
+    const summaryText = digestItems
+      .map((item) => `[${item.priority}] ${item.title} (${item.itemType} @ ${item.domainId})`)
+      .join("; ");
+
+    return {
+      generatedAt: new Date().toISOString(),
+      summaryText,
+      items: digestItems,
+    };
+  }
+
+  /**
    * Check if an item should be delivered (respects cooldown).
    */
   private shouldDeliver(item: AttentionItem, deliveryType: NotificationDeliveryType, cooldownSeconds: number): boolean {
@@ -154,8 +199,8 @@ export class AlertRouter {
   /**
    * Record a delivery for cooldown tracking.
    */
-  private recordDelivery(itemType: string, priority: string, timestamp: string): void {
-    const key = `${itemType}:${priority}`;
+  private recordDelivery(item: AttentionItem, deliveryType: NotificationDeliveryType, timestamp: string): void {
+    const key = this.makeDeliveryKey(item, deliveryType);
     const existing = this.deliveryHistory.get(key);
     this.deliveryHistory.set(key, {
       lastDeliveredAt: timestamp,
@@ -187,6 +232,8 @@ export class AlertRouter {
         return `email://domain/${item.domainId}`;
       case "sms":
         return `sms://domain/${item.domainId}`;
+      case "nl_summary":
+        return `summary://tenant/${item.domainId}`;
       default:
         return `unknown://${item.domainId}`;
     }

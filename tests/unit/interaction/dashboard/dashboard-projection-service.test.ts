@@ -157,6 +157,52 @@ test("buildStateFromProjections aggregates incident counts", () => {
   assert.deepEqual(state.incidentsByPriority, { high: 1, low: 1 });
 });
 
+test("buildStateFromProjections emits the full dashboard KPI field set", () => {
+  const service = new DashboardProjectionService();
+  const projections = [
+    createMockProjectionRecord("task_summary", "task-1", {
+      taskStatus: "completed",
+      durationMs: 100,
+      pendingApproval: true,
+      costUsd: 25,
+    }),
+    createMockProjectionRecord("task_summary", "task-2", {
+      taskStatus: "failed",
+      durationMs: 50,
+      costUsd: 10,
+    }),
+    createMockProjectionRecord("task_summary", "task-3", {
+      taskStatus: "in_progress",
+      durationMs: 20,
+      costUsd: 5,
+    }),
+    createMockProjectionRecord("incident_summary", "inc-1", {
+      priority: "critical",
+      resolved: false,
+    }),
+    createMockProjectionRecord("agent_health", "agent-1", {
+      status: "healthy",
+    }),
+    createMockProjectionRecord("agent_budget", "budget-1", {
+      consumedUsd: 40,
+    }),
+  ];
+
+  const state = service.buildStateFromProjections(projections);
+
+  assert.equal(state.totalTasks, 3);
+  assert.equal(state.successRate, 0.3333);
+  assert.equal(state.avgDurationMs, 100);
+  assert.equal(state.activeAgents, 2);
+  assert.equal(state.queueDepth, 1);
+  assert.equal(state.errorRate, 0.3333);
+  assert.equal(state.p50LatencyMs, 50);
+  assert.equal(state.p99LatencyMs, 99);
+  assert.equal(state.budgetUtilizationPercent, 8);
+  assert.equal(state.approvalPendingCount, 1);
+  assert.ok(state.systemHealthScore >= 0);
+});
+
 test("createDashboardProjectionService factory creates service", () => {
   const service = createDashboardProjectionService({ emitDebounceMs: 500 });
   assert.ok(service instanceof DashboardProjectionService);

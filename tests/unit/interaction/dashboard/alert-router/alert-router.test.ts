@@ -219,10 +219,16 @@ test("AlertRouter.getHapticAlerts returns only haptic-eligible items", () => {
 });
 
 test("AlertRouter respects cooldown - second delivery within cooldown is blocked", () => {
-  // Skip: cooldown tracking is broken in source - recordDelivery uses key "${itemType}:${priority}"
-  // but shouldDeliver uses makeDeliveryKey which appends "${itemType}:${priority}:${deliveryType}",
-  // so history lookups always miss and cooldown never engages. Core routing (20 other tests) is verified.
-  return true;
+  const router = new AlertRouter();
+  const items = [
+    makeItem({ id: "cooldown-1", itemType: "incident", priority: "critical" }),
+  ];
+
+  const firstDelivery = router.routeNotifications(items);
+  const secondDelivery = router.routeNotifications(items);
+
+  assert.equal(firstDelivery.length, 3);
+  assert.equal(secondDelivery.length, 0);
 });
 
 test("AlertRouter enableOverlay=false disables overlay alerts", () => {
@@ -277,4 +283,22 @@ test("AlertRouter.routeNotifications includes targetEndpoint", () => {
   const haptic = routed.find((r) => r.deliveryType === "haptic");
   assert.ok(haptic);
   assert.equal(haptic.targetEndpoint, "haptic://device/domain-42");
+});
+
+test("AlertRouter.buildNlSummary returns prioritized digest for NL surfaces", () => {
+  const router = new AlertRouter();
+  const items = [
+    makeItem({ id: "normal-1", itemType: "suggestion", priority: "normal", title: "Review cost drift" }),
+    makeItem({ id: "critical-1", itemType: "incident", priority: "critical", title: "Database unavailable" }),
+    makeItem({ id: "high-1", itemType: "approval_needed", priority: "high", title: "Approve recovery plan" }),
+  ];
+
+  const digest = router.buildNlSummary(items, 2);
+
+  assert.ok(digest);
+  assert.equal(digest.items.length, 2);
+  assert.equal(digest.items[0]?.title, "Database unavailable");
+  assert.equal(digest.items[1]?.title, "Approve recovery plan");
+  assert.match(digest.summaryText, /\[critical\] Database unavailable/);
+  assert.match(digest.summaryText, /\[high\] Approve recovery plan/);
 });

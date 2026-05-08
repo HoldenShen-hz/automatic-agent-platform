@@ -38,4 +38,4 @@ const settingsFeature = createFeatureModule({
 export default settingsFeature;
 export { createSettingsMobileCards } from "./mobile";
 export { useSettingsVm } from "./hooks";
-export { SettingsWebView, settingsSubPages } from "./web";
+export { SettingsWebView } from "./web";
