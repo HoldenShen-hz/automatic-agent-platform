@@ -12,6 +12,7 @@ export interface CrossAgentAnalysisResult {
   worstAgentId: string | null;
   divergenceScore: number;
   recommendation: string;
+  alerts: readonly CrossAgentDriftAlert[];
 }
 
 export interface CrossAgentDriftAlert {
@@ -52,6 +53,7 @@ export class CrossAgentAnalyzerService {
       worstAgentId: worst.agentId,
       divergenceScore,
       recommendation: divergenceScore >= 0.2 ? "rebalance_or_rollout_review" : "agents_are_consistent",
+      alerts: [...this.alertHistory],
     };
   }
 
