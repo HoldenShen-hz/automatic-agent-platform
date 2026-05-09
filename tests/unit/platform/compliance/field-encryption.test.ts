@@ -157,7 +157,7 @@ test("FieldEncryptionService rejects malformed ciphertext envelope", () => {
 
   assert.throws(
     () => service.revealField({ ciphertext: "enc:short", keyRef: "auth_key" }),
-    /invalid_ciphertext/,
+    /enc:fingerprint:iv:authTag:ciphertext format/,
   );
 });
 

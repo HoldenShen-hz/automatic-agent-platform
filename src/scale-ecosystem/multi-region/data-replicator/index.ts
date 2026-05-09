@@ -82,6 +82,8 @@ export interface DataReplicatorConfig {
   policy: ReplicationPolicy;
   sourceJurisdiction?: string;
   targetJurisdictions?: Readonly<Record<string, string>>;
+  /** R15-54: Target region data residency policies for enforcing local_only blocking */
+  targetDataResidencyPolicies?: Readonly<Record<string, "local_only" | "regional" | "global">>;
   transferComplianceService?: CrossBorderTransferComplianceService;
   batchSize: number;
   flushIntervalMs: number;
@@ -208,6 +210,12 @@ export class DataReplicatorService {
     if (!shouldReplicateToRegion(this.config.policy, targetRegionId)) {
       return null;
     }
+    // R15-54: Check data residency policy before replication
+    const targetResidency = this.config.targetDataResidencyPolicies?.[targetRegionId];
+    if (targetResidency === "local_only") {
+      // local_only policy blocks all cross-region replication for this target
+      return null;
+    }
     let effectivePayload = payload;
     if (this.config.transferComplianceService != null
       && this.config.sourceJurisdiction != null
@@ -222,6 +230,8 @@ export class DataReplicatorService {
         purpose: options?.purpose ?? aggregateType,
         payload: isRecord(payload) ? payload : null,
         allowedDataFields: options?.allowedDataFields ?? [],
+        // R15-54: Pass residency policy to compliance service for blocking decisions
+        dataResidencyPolicy: targetResidency,
       });
       if (!assessment.allowed) {
         return null;

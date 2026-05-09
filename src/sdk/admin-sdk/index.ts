@@ -10,8 +10,31 @@ import {
   type DecisionDirectiveType,
   type DecisionDirectiveScope,
 } from "../../platform/contracts/control-directive/index.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
+import { z } from "zod";
 
-export interface AdminSdkConfig extends ApiClientConfig {}
+// R31-38 FIX: Input validation schema for registerDomain
+const registerDomainSchema = z.object({
+  domainId: z.string().min(1),
+  displayName: z.string().min(1),
+  description: z.string().optional(),
+  version: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
+});
+
+export interface AdminSdkConfig extends ApiClientConfig {
+  /** R31-39 FIX: Role required for admin operations */
+  requiredRole?: string;
+}
+
+// R31-39 FIX: Permission checking for AdminSdk operations
+function checkAdminPermission(config: AdminSdkConfig): boolean {
+  if (!config.requiredRole) {
+    return false;
+  }
+  const allowedRoles = ["admin", "operator"];
+  return allowedRoles.includes(config.requiredRole);
+}
 
 // R8-23 FIX: Operational and Decision directive types for admin operations
 export type { OperationalDirective, OperationalDirectiveType, OperationalDirectiveScope };
@@ -19,9 +42,11 @@ export type { DecisionDirective, DecisionDirectiveType, DecisionDirectiveScope }
 
 export class AdminSdk {
   private readonly client: RetryableApiClient;
+  private readonly config: AdminSdkConfig;
 
   public constructor(config: AdminSdkConfig) {
     this.client = createApiClient(config);
+    this.config = config;
   }
 
   public listDomains<T>() {
@@ -29,10 +54,23 @@ export class AdminSdk {
   }
 
   public registerDomain<T>(body: unknown) {
-    return this.client.post<T>("/domains", body);
+    // R31-38 FIX: Validate input with Zod schema
+    const parseResult = registerDomainSchema.safeParse(body);
+    if (!parseResult.success) {
+      throw new ValidationError(
+        "admin_sdk.invalid_input",
+        `registerDomain validation failed: ${parseResult.error.message}`,
+        { details: { errors: parseResult.error.errors } }
+      );
+    }
+    return this.client.post<T>("/domains", parseResult.data);
   }
 
   public publishPack<T>(packId: string, body: unknown) {
+    // R31-39 FIX: Check permission before allowing pack publishing
+    if (!checkAdminPermission(this.config)) {
+      throw new ValidationError("admin_sdk.permission_denied", "admin_sdk.permission_denied: publishPack requires admin role");
+    }
     return this.client.publishPack<T>(packId, body);
   }
 

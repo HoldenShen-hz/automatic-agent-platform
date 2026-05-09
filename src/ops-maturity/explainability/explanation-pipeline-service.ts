@@ -206,7 +206,13 @@ export class ExplanationPipelineService {
   }
 
   public verifyVersionLock(rationaleId: string, versionLockRef: string): boolean {
-    return this.versionLocks.get(rationaleId) === versionLockRef;
+    const stored = this.versionLocks.get(rationaleId);
+    if (stored === undefined) return false;
+    return stored === versionLockRef;
+  }
+
+  public isVersionLocked(rationaleId: string): boolean {
+    return this.versionLocks.has(rationaleId);
   }
 
   public recordExplanationView(

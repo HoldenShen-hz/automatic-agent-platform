@@ -44,7 +44,7 @@ export interface PluginDefinition {
   resourceLimits: PluginResourceLimits;
   dependencies: string[];
   security: PluginSecurityConfig;
-  spiTypes: PluginType[];
+  spiTypes: Array<PluginType | "planner" | "presenter" | "validator">;
   domainIds: string[];
   sbomRef: string | null;
   signing: {
@@ -230,7 +230,10 @@ export function validatePluginDefinition(definition: PluginDefinition): PluginDe
     resourceLimits: definition.resourceLimits,
     dependencies: definition.dependencies,
     security: definition.security,
-    spiTypes: definition.spiTypes,
+    spiTypes: definition.spiTypes.filter((type): type is PluginType => {
+      const validTypes: PluginType[] = ["tool", "adapter", "retriever", "evaluator"];
+      return typeof type === "string" && validTypes.includes(type as PluginType);
+    }),
     domainIds: definition.domainIds,
     sbomRef: definition.sbomRef,
     signing: definition.signing,

@@ -468,7 +468,19 @@ export class StructuredLogger {
       return;
     }
 
-    // Quick sync check if rotation is even needed
+    // Check asynchronously if rotation is needed to avoid blocking the event loop
+    // and prevent race condition between statSync (sync) and appendFile (async)
+    this.checkRotationAsync(sink, incomingBytes).catch(() => {
+      // Rotation check errors should not affect logging
+    });
+  }
+
+  private async checkRotationAsync(sink: StructuredLoggerFileSink, incomingBytes: number): Promise<void> {
+    const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
+    if (!state || state.scheduled || sink.maxBytes == null) {
+      return;
+    }
+
     let currentBytes = 0;
     try {
       if (existsSync(sink.filePath)) {

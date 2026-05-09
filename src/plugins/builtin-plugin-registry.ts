@@ -203,7 +203,8 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
     owner: "platform-team",
     domainIds: [],
     capabilityIds: ["evaluation"],
-    spiTypes: ["evaluator"],
+    // R15-13 FIX: spiType was incorrectly "evaluator" but actual plugin implements "validator"
+    spiTypes: ["validator"],
     extensionKind: "domain_plugin",
     trustLevel: "internal",
     publicSdkSurface: "@platform/evaluator.core",

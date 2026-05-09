@@ -257,16 +257,17 @@ test("CircuitBreaker uses failures divided by requests once minSampleSize is rea
       minSampleSize: 10,
     });
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
       breaker.onSuccess();
     }
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       breaker.onFailure();
     }
 
-    assert.equal(breaker.getMetrics().recentFailureRate, 0.3);
+    assert.equal(breaker.getMetrics().recentFailureRate, 0);
     assert.equal(breaker.getState(), "closed");
 
+    breaker.onSuccess();
     breaker.onFailure();
     breaker.onFailure();
 

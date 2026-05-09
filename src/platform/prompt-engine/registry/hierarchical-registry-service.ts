@@ -2,11 +2,10 @@
  * HierarchicalPromptRegistryService
  *
  * Implements a hierarchical prompt registry with lookup precedence:
- * global → domain → pack → task-type
+ * global → domain → task-type
  *
  * Each level can override prompts from higher levels, enabling:
  * - Global defaults with domain overrides
- * - Pack-specific customizations
  * - Task-type specific prompts
  */
 
@@ -47,13 +46,18 @@ interface VersionEntry {
   trafficWeight: number;
 }
 
-type RegistryLevel = "global" | "domain" | "pack" | "task-type";
+type RegistryLevel = "global" | "domain" | "task-type";
 
+/**
+ * R23-48 fix: Hierarchical registry now uses 3 levels per spec:
+ * global → domain → task-type (not 4 levels with pack as separate level).
+ *
+ * For backward compatibility, packId is still accepted but stored under domain.
+ */
 export class HierarchicalPromptRegistryService {
-  // global → domain → pack → task-type hierarchy
+  // R23-48 fix: Consolidated to 3-level hierarchy: global → domain → task-type
   private readonly globalBundles = new Map<string, PromptBundle>();
   private readonly domainBundles = new Map<string, Map<string, PromptBundle>>();
-  private readonly packBundles = new Map<string, Map<string, PromptBundle>>();
   private readonly taskTypeBundles = new Map<string, Map<string, Map<string, PromptBundle>>>();
   private readonly versionsByName = new Map<string, Map<string, PromptBundle>>();
   private readonly versionsByScope = new Map<string, Map<string, PromptBundle>>();
@@ -66,6 +70,8 @@ export class HierarchicalPromptRegistryService {
 
   /**
    * Registers a new prompt bundle at the specified level.
+   * R23-48 fix: packId is deprecated, use domain instead. For backward compatibility,
+   * if packId is provided with domain, bundles are stored at domain level.
    */
   public registerBundle(
     input: PromptBundleRegistrationInput,
@@ -75,13 +81,15 @@ export class HierarchicalPromptRegistryService {
   ): PromptBundle {
     this.validateRegistrationInput(input);
 
-    const bundleId = this.buildBundleId(input, level, domain, packId);
+    // R23-48 fix: Normalize to domain-level storage for backward compatibility
+    const effectiveDomain = domain ?? input.domain ?? packId;
+    const bundleId = this.buildBundleId(input, level, effectiveDomain);
     const bundle: PromptBundle = {
       bundleId,
       name: input.name,
       version: input.version,
       displayVersion: input.displayVersion,
-      domain: domain ?? input.domain,
+      domain: effectiveDomain,
       taskType: input.taskType,
       packId: packId ?? input.packId,
       systemPrompt: input.systemPrompt,
@@ -94,14 +102,14 @@ export class HierarchicalPromptRegistryService {
       updatedAt: nowIso(),
     };
 
-    this.storeBundle(bundle, level, domain, packId);
-    this.storeVersion(bundle, level, domain, packId);
+    this.storeBundle(bundle, level, effectiveDomain);
+    this.storeVersion(bundle, level, effectiveDomain);
     return bundle;
   }
 
   /**
    * Retrieves a prompt bundle with hierarchical lookup.
-   * Looks up in order: task-type → pack → domain → global
+   * R23-48 fix: Looks up in order: task-type → domain → global (3-level hierarchy)
    */
   public getBundle(
     name: string,
@@ -109,25 +117,21 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
     domain?: string,
   ): PromptBundle | null {
-    // Try task-type level first
-    if (packId && domain) {
-      const taskTypeEntry = this.taskTypeBundles.get(packId)?.get(taskType)?.get(name);
+    // R23-48 fix: Normalize packId to domain for backward compatibility.
+    // Prefer explicit domain so pack no longer becomes a standalone hierarchy level.
+    const effectiveDomain = domain ?? packId;
+
+    // Try task-type level first (uses domain as context)
+    if (effectiveDomain) {
+      const taskTypeEntry = this.taskTypeBundles.get(effectiveDomain)?.get(taskType)?.get(name);
       if (taskTypeEntry && !taskTypeEntry.metadata.deprecated) {
         return taskTypeEntry;
       }
     }
 
-    // Try pack level
-    if (packId) {
-      const packEntry = this.packBundles.get(packId)?.get(name);
-      if (packEntry && !packEntry.metadata.deprecated) {
-        return packEntry;
-      }
-    }
-
     // Try domain level
-    if (domain) {
-      const domainEntry = this.domainBundles.get(domain)?.get(name);
+    if (effectiveDomain) {
+      const domainEntry = this.domainBundles.get(effectiveDomain)?.get(name);
       if (domainEntry && !domainEntry.metadata.deprecated) {
         return domainEntry;
       }
@@ -163,8 +167,9 @@ export class HierarchicalPromptRegistryService {
 
   /**
    * Lists all bundles, optionally filtered by level.
+   * R23-48 fix: Removed pack level, only supports global/domain/task-type
    */
-  public listBundles(level?: RegistryLevel, domain?: string, packId?: string): PromptBundleListResult[] {
+  public listBundles(level?: RegistryLevel, domain?: string, _packId?: string): PromptBundleListResult[] {
     const results: PromptBundleListResult[] = [];
     const seen = new Set<string>();
 
@@ -185,10 +190,7 @@ export class HierarchicalPromptRegistryService {
       if (domainMap) addFromMap(domainMap);
     }
 
-    if ((!level || level === "pack") && packId) {
-      const packMap = this.packBundles.get(packId);
-      if (packMap) addFromMap(packMap);
-    }
+    // R23-48 fix: Removed pack level listing (now handled via domain)
 
     return results;
   }
@@ -343,7 +345,7 @@ export class HierarchicalPromptRegistryService {
     };
   }
 
-  private storeBundle(bundle: PromptBundle, level: RegistryLevel, domain?: string, packId?: string): void {
+  private storeBundle(bundle: PromptBundle, level: RegistryLevel, domain?: string, _packId?: string): void {
     switch (level) {
       case "global":
         this.globalBundles.set(bundle.name, bundle);
@@ -355,24 +357,18 @@ export class HierarchicalPromptRegistryService {
         }
         this.domainBundles.get(domain)!.set(bundle.name, bundle);
         break;
-      case "pack":
-        if (!packId) throw new ValidationError("prompt_bundle.missing_pack_id", "PackId required for pack-level registration");
-        if (!this.packBundles.has(packId)) {
-          this.packBundles.set(packId, new Map());
-        }
-        this.packBundles.get(packId)!.set(bundle.name, bundle);
-        break;
       case "task-type":
-        if (!packId || !domain) {
-          throw new ValidationError("prompt_bundle.missing_context", "PackId and domain required for task-type level registration");
+        // R23-48 fix: task-type uses domain as the pack/context identifier
+        if (!domain) {
+          throw new ValidationError("prompt_bundle.missing_context", "Domain required for task-type level registration");
         }
-        if (!this.taskTypeBundles.has(packId)) {
-          this.taskTypeBundles.set(packId, new Map());
+        if (!this.taskTypeBundles.has(domain)) {
+          this.taskTypeBundles.set(domain, new Map());
         }
-        if (!this.taskTypeBundles.get(packId)!.has(bundle.taskType)) {
-          this.taskTypeBundles.get(packId)!.set(bundle.taskType, new Map());
+        if (!this.taskTypeBundles.get(domain)!.has(bundle.taskType)) {
+          this.taskTypeBundles.get(domain)!.set(bundle.taskType, new Map());
         }
-        this.taskTypeBundles.get(packId)!.get(bundle.taskType)!.set(bundle.name, bundle);
+        this.taskTypeBundles.get(domain)!.get(bundle.taskType)!.set(bundle.name, bundle);
         break;
     }
   }
@@ -395,18 +391,17 @@ export class HierarchicalPromptRegistryService {
     version: string,
     level: RegistryLevel,
     domain?: string,
-    packId?: string,
+    _packId?: string,
   ): PromptBundle | null {
     switch (level) {
       case "global":
-        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId));
+        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain));
       case "domain":
-        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
-      case "pack":
-        return packId ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
+        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain)) : null;
       case "task-type":
-        if (packId && domain) {
-          const scopeKey = this.buildScopeKey(name, level, domain, domain, packId);
+        // R23-48 fix: task-type uses domain as the pack/context identifier
+        if (domain) {
+          const scopeKey = this.buildScopeKey(name, level, domain, domain);
           return this.findCurrentScopeBundle(scopeKey);
         }
         return null;
@@ -427,17 +422,16 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
     domain?: string,
   ): PromptBundle[] {
+    // R23-48 fix: Normalize packId to domain for backward compatibility
+    const effectiveDomain = domain ?? packId;
     const scopeKeys: string[] = [];
-    if (packId && domain) {
-      scopeKeys.push(this.buildScopeKey(name, "task-type", taskType, domain, packId));
+    if (effectiveDomain) {
+      scopeKeys.push(this.buildScopeKey(name, "task-type", taskType, effectiveDomain));
     }
-    if (packId) {
-      scopeKeys.push(this.buildScopeKey(name, "pack", undefined, domain, packId));
+    if (effectiveDomain) {
+      scopeKeys.push(this.buildScopeKey(name, "domain", undefined, effectiveDomain));
     }
-    if (domain) {
-      scopeKeys.push(this.buildScopeKey(name, "domain", undefined, domain, undefined));
-    }
-    scopeKeys.push(this.buildScopeKey(name, "global", undefined, domain, undefined));
+    scopeKeys.push(this.buildScopeKey(name, "global", undefined, undefined));
 
     for (const scopeKey of scopeKeys) {
       const bundles = [...(this.versionsByScope.get(scopeKey)?.values() ?? [])]
@@ -455,17 +449,16 @@ export class HierarchicalPromptRegistryService {
     level: RegistryLevel,
     taskType?: string,
     domain?: string,
-    packId?: string,
+    _packId?: string,
   ): string {
     switch (level) {
       case "global":
         return [level, name].join(":");
       case "domain":
         return [level, domain ?? "", name].join(":");
-      case "pack":
-        return [level, packId ?? "", name].join(":");
       case "task-type":
-        return [level, domain ?? "", packId ?? "", taskType ?? "", name].join(":");
+        // R23-48 fix: task-type uses domain as the pack/context identifier
+        return [level, domain ?? "", taskType ?? "", name].join(":");
     }
   }
 

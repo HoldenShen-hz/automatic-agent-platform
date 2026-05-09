@@ -1,20 +1,7 @@
 export { detectAmbiguity as detectAmbiguityFn } from "./disambiguation-handler/index.js";
 export * from "./disambiguation-handler/index.js";
-export * from "./intent-parser/index.js";
-export * from "./slot-resolver/index.js";
-
-import {
-  loadNlGatewayConfig,
-  getConversationWindowSize,
-  shouldRequestClarification,
-  type NlGatewayConfig,
-  type ConversationWindowConfig,
-  type DisambiguationConfig,
-  type IntentConfig,
-  type EntityExtractionConfig,
-} from "./nl-gateway-config-loader.js";
-import { buildSlotClarificationState } from "./slot-resolver/index.js";
-import { parseIntentTokensWithModel } from "./intent-parser/index.js";
+export { parseIntentTokensWithModel } from "./intent-parser/index.js";
+export { buildSlotClarificationState } from "./slot-resolver/index.js";
 
 export {
   loadNlGatewayConfig,
@@ -28,11 +15,15 @@ export type {
   DisambiguationConfig,
   IntentConfig,
   EntityExtractionConfig,
-};
+} from "./nl-gateway-config-loader.js";
 
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
+import type { NlGatewayConfig } from "./nl-gateway-config-loader.js";
+import { loadNlGatewayConfig, getConversationWindowSize } from "./nl-gateway-config-loader.js";
+import { parseIntentTokensWithModel } from "./intent-parser/index.js";
+import { buildSlotClarificationState } from "./slot-resolver/index.js";
 import { createRequestEnvelope, type RequestEnvelopeLegacy } from "../../platform/contracts/types/index.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 

@@ -8,7 +8,8 @@
  * - Experiment result classification (success/failure/inconclusive)
  * - Rollback and boundary control for safe chaos engineering
  *
- * §R14-09: Added rollback automation and boundary control for chaos experiments.
+ * §68 Chaos Engineering: fault injection, game days, steady-state validation.
+ * §67 Capacity Planning: failover reserve, capacity modeling.
  *
  * Architecture anchors:
  * - docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md

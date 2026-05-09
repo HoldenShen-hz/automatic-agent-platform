@@ -497,6 +497,63 @@ export class ExecutionDispatchService {
         }
       }
       if (eligibleWorkers.length === 0) {
+        // R9-05 fix: Detect poison-pill tickets that can never be dispatched
+        // A ticket is a poison-pill if it has required capabilities that no worker possesses
+        // or has constraints that can never be satisfied. Such tickets would loop forever.
+        const hasUnmatchedCapabilities = requiredCapabilities.length > 0 &&
+          evaluations.every((eval_) => !eval_.accepted ||
+            (eval_.missingCapabilities && eval_.missingCapabilities.length > 0));
+        if (hasUnmatchedCapabilities) {
+          const missingCaps = evaluations
+            .flatMap((e) => e.missingCapabilities ?? [])
+            .filter((cap): cap is string => typeof cap === "string");
+          const uniqueMissingCaps = [...new Set(missingCaps)];
+          // Invalidate poison-pill ticket to DLQ instead of looping forever
+          this.db.transaction(() => {
+            this.store.worker.invalidateExecutionTicket({
+              ticketId: ticket.id,
+              status: "cancelled",
+              invalidatedAt: occurredAt,
+            });
+            const execution = this.store.dispatch.getExecution(ticket.executionId);
+            const dlqRecord = this.dlqService.enqueue({
+              sourceEventId: ticket.id,
+              eventType: "dispatch:poison_pill_detected",
+              consumerId: ticket.queueName ?? "dispatch",
+              errorCode: "poison_pill",
+              errorMessage: `Ticket ${ticket.id} has required capabilities [${uniqueMissingCaps.join(", ")}] that no worker possesses`,
+              payloadJson: JSON.stringify({
+                ticketId: ticket.id,
+                executionId: ticket.executionId,
+                taskId: ticket.taskId,
+                priority: ticket.priority,
+                requiredCapabilities,
+                missingCapabilities: uniqueMissingCaps,
+              }),
+              originalTimestamp: ticket.createdAt,
+              failureCategory: "configuration",
+              reason: `Poison-pill ticket: no workers have required capabilities [${uniqueMissingCaps.join(", ")}]`,
+            });
+            this.store.event.insertEvent({
+              id: newId("evt"),
+              taskId: ticket.taskId,
+              executionId: ticket.executionId,
+              eventType: "dispatch:poison_pill_detected",
+              eventTier: "tier_2",
+              payloadJson: JSON.stringify({
+                ticketId: ticket.id,
+                executionId: ticket.executionId,
+                taskId: ticket.taskId,
+                missingCapabilities: uniqueMissingCaps,
+                dlqEntryId: dlqRecord.deadLetterId,
+              }),
+              traceId: execution?.traceId ?? null,
+              createdAt: occurredAt,
+            });
+          });
+          continue;
+        }
+
         const remoteBlockReason =
           dispatchTarget === "require_remote"
             ? remoteTrustReason

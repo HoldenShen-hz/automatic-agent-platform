@@ -42,6 +42,20 @@ async function main(): Promise<void> {
 
   await withCliStorageBackendAsync(async (storage) => {
     const migrationRunner = new MigrationRunner(storage);
+
+    // R31-41 FIX: Require --confirm flag for down migrations to prevent accidental data loss
+    if (action === "down") {
+      const confirmFlag = process.env.AA_STORAGE_DOWN_CONFIRM ?? "";
+      if (confirmFlag !== "yes") {
+        process.stdout.write(JSON.stringify({
+          error: "admin_storage.down_migration_requires_confirmation",
+          message: "Down migration requires AA_STORAGE_DOWN_CONFIRM=yes environment variable.",
+          hint: "Set AA_STORAGE_DOWN_CONFIRM=yes to proceed with down migration.",
+        }, null, 2) + "\n");
+        return;
+      }
+    }
+
     const migrationSummary =
       action === "summary"
         ? await migrationRunner.status()

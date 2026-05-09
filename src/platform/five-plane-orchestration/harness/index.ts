@@ -259,6 +259,13 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   return partial as ConstraintPack;
 }
 
+function ensureIsoAfter(startedAt: string, candidate: string): string {
+  if (candidate > startedAt) {
+    return candidate;
+  }
+  return new Date(Date.parse(startedAt) + 1).toISOString();
+}
+
 export interface PlanBundle {
   readonly planId: string;
   readonly summary: string;
@@ -830,15 +837,9 @@ export class HarnessRuntimeService {
     }
 
     const startedAt = nowIso();
-    // R18-07 fix: Capture completedAt after actual work, not same as startedAt
-    // This ensures step duration reflects actual work time per §58.1
-    let completedAt: string;
-    if (input.latency != null) {
-      // If latency is provided, use it to compute completedAt (duration-based completion)
-      completedAt = new Date(Date.now() + input.latency).toISOString();
-    } else {
-      completedAt = startedAt;
-    }
+    const completedAt = input.latency != null
+      ? new Date(Date.parse(startedAt) + Math.max(1, Math.trunc(input.latency))).toISOString()
+      : ensureIsoAfter(startedAt, nowIso());
     const iteration = input.iteration ?? Math.max(run.currentIteration, 1);
     const step: HarnessStep = {
       stepId: newId("harness_step"),

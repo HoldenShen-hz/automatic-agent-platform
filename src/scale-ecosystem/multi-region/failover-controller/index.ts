@@ -88,9 +88,91 @@ export interface RejectRegionJoinResult {
   readonly mustRejoinAsFollower: boolean;
 }
 
+/**
+ * R15-49: EpochManager - Global fencing epoch management for multi-region failover.
+ *
+ * Ensures fencing epoch consistency across all regions:
+ * - Epoch only increments on successful promote
+ * - Old leader must present current epoch to rejoin as follower
+ * - Demoted leader rejection if epoch is stale
+ */
+export class EpochManager {
+  private readonly epochsByPartition = new Map<string, number>();
+  private readonly demotedLeaders = new Map<string, string>();
+
+  /**
+   * Get the current fencing epoch for a partition
+   */
+  public getCurrentEpoch(partitionKey: string): number {
+    return this.epochsByPartition.get(partitionKey ?? "global") ?? 0;
+  }
+
+  /**
+   * Promote epoch - called when a new leader is promoted.
+   * Returns the new epoch that the promoted leader must acknowledge.
+   */
+  public promoteEpoch(partitionKey: string, newLeaderRegionId: string, oldLeaderRegionId: string | null): number {
+    const key = partitionKey ?? "global";
+    const currentEpoch = this.epochsByPartition.get(key) ?? 0;
+    const newEpoch = currentEpoch + 1;
+    this.epochsByPartition.set(key, newEpoch);
+    if (oldLeaderRegionId != null) {
+      this.demotedLeaders.set(`${key}:${oldLeaderRegionId}`, newLeaderRegionId);
+    }
+    return newEpoch;
+  }
+
+  /**
+   * Check if a region offering to rejoin was demoted and is presenting a stale epoch.
+   * Returns true if the region should be rejected (demoted leader with stale epoch).
+   */
+  public isStaleDemotedLeader(partitionKey: string, regionId: string, offeredEpoch: number): boolean {
+    const key = partitionKey ?? "global";
+    const currentEpoch = this.epochsByPartition.get(key) ?? 0;
+    if (offeredEpoch < currentEpoch) {
+      const wasDemoted = this.demotedLeaders.has(`${key}:${regionId}`);
+      return wasDemoted;
+    }
+    return false;
+  }
+
+  /**
+   * Get the region that a demoted leader was replaced by
+   */
+  public getReplacementLeader(partitionKey: string, demotedRegionId: string): string | null {
+    const key = partitionKey ?? "global";
+    return this.demotedLeaders.get(`${key}:${demotedRegionId}`) ?? null;
+  }
+
+  /**
+   * Clear demoted leader record after successful rejoin as follower
+   */
+  public clearDemotedRecord(partitionKey: string, regionId: string): void {
+    const key = partitionKey ?? "global";
+    this.demotedLeaders.delete(`${key}:${regionId}`);
+  }
+}
+
+const defaultEpochManager = new EpochManager();
+
+export function getGlobalEpochManager(): EpochManager {
+  return defaultEpochManager;
+}
+
+/**
+ * R15-49: Enforce fencing - reject stale demoted leader rejoin attempts.
+ *
+ * Demoted leader must present the current (incremented) epoch to rejoin as follower.
+ * If the epoch is stale (lower than current), the rejoin is rejected.
+ */
 export class RegionFailoverController {
   private readonly stateByPartition = new Map<string, FencingEpochState>();
   private readonly quorumVotes = new Map<string, QuorumVote[]>();
+  private readonly epochManager: EpochManager;
+
+  public constructor(epochManager?: EpochManager) {
+    this.epochManager = epochManager ?? defaultEpochManager;
+  }
 
   /**
    * Enforce fencing: after failover, demoted leader must rejoin as follower.
@@ -122,7 +204,7 @@ export class RegionFailoverController {
     return {
       accepted: !stale,
       reason: stale
-        ? "fencing_epoch_stale_demoted_leader_must_offfer_current_epoch"
+        ? "fencing_epoch_stale_demoted_leader_must_offer_current_epoch"
         : "fencing_epoch_ok_must_rejoin_as_follower",
       currentFencingEpoch: currentEpoch,
       mustRejoinAsFollower,

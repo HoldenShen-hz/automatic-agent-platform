@@ -59,11 +59,11 @@ export class FieldEncryptionService {
       throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
 
-    const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef), Buffer.from(ivHex, "hex"));
-    decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+    const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef), Buffer.from(ivHex!, "hex"));
+    decipher.setAuthTag(Buffer.from(authTagHex!, "hex"));
 
     const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(ciphertextHex, "hex")),
+      decipher.update(Buffer.from(ciphertextHex!, "hex")),
       decipher.final(),
     ]);
     return decrypted.toString("utf8");

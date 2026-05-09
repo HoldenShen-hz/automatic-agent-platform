@@ -71,6 +71,8 @@ export class ResourcePoolService {
     if (!poolConsumers) {
       throw new Error(`resource_pool.not_found:${poolId}`);
     }
+    // R17: Verify consumer owns the resources before releasing
+    this.verifyConsumerOwnsResources(poolId, consumerId, units);
     const currentConsumerAllocation = poolConsumers.get(consumerId) ?? 0;
     const actualRelease = Math.min(units, currentConsumerAllocation);
     const newConsumerAllocation = Math.max(0, currentConsumerAllocation - actualRelease);
@@ -82,6 +84,22 @@ export class ResourcePoolService {
     };
     this.pools.set(poolId, updated);
     return updated;
+  }
+
+  /**
+   * Verify that a consumer owns the resources it attempts to release.
+   * Throws if the consumerId does not match the registered owner or if
+   * the consumer has no allocation in this pool.
+   */
+  private verifyConsumerOwnsResources(poolId: string, consumerId: string, requestedUnits: number): void {
+    const poolConsumers = this.consumerAllocations.get(poolId);
+    if (!poolConsumers) {
+      throw new Error(`resource_pool.not_found:${poolId}`);
+    }
+    const currentAllocation = poolConsumers.get(consumerId) ?? 0;
+    if (currentAllocation < requestedUnits) {
+      throw new Error(`resource_pool.unauthorized_release:${consumerId} does not own ${requestedUnits} units in pool ${poolId} (current: ${currentAllocation})`);
+    }
   }
 
   /**

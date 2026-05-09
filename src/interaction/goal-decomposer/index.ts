@@ -328,7 +328,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
     const maxDepth = this.options.maxDepth ?? DEFAULT_MAX_DEPTH;
     const currentDepth = this.options.currentDepth ?? 0;
-    const maxDepthReached = currentDepth >= maxDepth;
 
     const goal = normalizeGoal(goalInput);
 
@@ -408,6 +407,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       }
     }
     const graphAnalysis = this.analyzeDependencyGraph(tasks, dependencyGraph);
+    const depthUsed = Math.max(currentDepth, graphAnalysis.maxDependencyDepth);
+    const maxDepthReached = depthUsed >= maxDepth;
     const estimatedCost = totalCost(tasks.map((task) => task.estimatedCost));
     // riskSummary already calculated above for propagation
     const decompositionConfidence =
@@ -421,6 +422,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     const validationMessages = [
       ...(graphAnalysis.hasCycle ? ["goal_decomposer.cycle_detected"] : []),
+      ...(maxDepthReached ? [`goal_decomposer.max_depth_reached:${depthUsed}:${maxDepth}`] : []),
       ...(constraintEnvelope.requiresApproval ? ["goal_decomposer.approval_constraint_propagated"] : []),
       ...(budgetBlockedLlmPlan ? ["goal_decomposer.llm_budget_reservation_blocked"] : []),
       ...capabilityValidation.validationMessages,
@@ -463,12 +465,13 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         || riskSummary.overallRisk === "critical"
         || goal.priority === "critical"
         || graphAnalysis.hasCycle
+        || maxDepthReached
         || !capabilityValidation.valid,
       decompositionStrategy,
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
       criticalPathTaskIds: graphAnalysis.criticalPathTaskIds,
-      depthUsed: currentDepth,
+      depthUsed,
       maxDepthReached,
       lifecycleState,
       goalGraphDraft,
@@ -780,6 +783,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     topologicallySortedTaskIds: string[];
     parallelTaskGroups: string[][];
     criticalPathTaskIds: string[];
+    maxDependencyDepth: number;
   } {
     const taskIds = tasks.map((task) => task.taskId);
     const inDegree = new Map<string, number>(taskIds.map((taskId) => [taskId, 0]));
@@ -814,6 +818,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     }
 
     const hasCycle = sorted.length !== taskIds.length;
+    const maxDependencyDepth = levels.size === 0
+      ? currentDepthFromTasks(tasks)
+      : Math.max(...levels.values());
     const parallelGroups = hasCycle
       ? [taskIds]
       : [...new Set(levels.values())]
@@ -850,6 +857,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         topologicallySortedTaskIds: taskIds,
         parallelTaskGroups: parallelGroups,
         criticalPathTaskIds: [],
+        maxDependencyDepth,
       };
     }
 
@@ -868,6 +876,11 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       topologicallySortedTaskIds: sorted,
       parallelTaskGroups: parallelGroups,
       criticalPathTaskIds: criticalPath,
+      maxDependencyDepth,
     };
   }
+}
+
+function currentDepthFromTasks(tasks: readonly PlannedTask[]): number {
+  return tasks.length > 0 ? 1 : 0;
 }

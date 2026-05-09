@@ -201,9 +201,10 @@ export class LearningObjectValidator {
   public validateMany(inputs: readonly LearningObject[]): LearningObject[] {
     // Update known objects before validation
     this.knownObjects = [...inputs];
+    // R13-01 fix: Return all objects (including quarantined), not just valid ones.
+    // Quarantine status must be preserved through validateMany per §29.4.
     return inputs
       .map((input) => this.validate(input))
-      .filter((result) => result.valid)
       .map((result) => result.learningObject);
   }
 }

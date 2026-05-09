@@ -29,24 +29,27 @@ import { loadShadowSnapshotCliEnv } from "../../platform/control-plane/config-ce
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { ShadowSnapshotService } from "../../platform/execution/tool-executor/shadow-snapshot-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-const envConfig = loadShadowSnapshotCliEnv();
 
-const service = new ShadowSnapshotService({
-  workspaceRoot: envConfig.workspaceRoot,
-  shadowRoot: envConfig.shadowRoot,
-  sandboxPolicy: createWorkspaceWritePolicy(envConfig.workspaceRoot),
-  ...(envConfig.maxEntryBytes != null
-    ? { maxEntryBytes: envConfig.maxEntryBytes }
-    : {}),
-  ...(envConfig.excludedPaths != null
-    ? { excludedPaths: envConfig.excludedPaths }
-    : {}),
-});
+// R31-43 FIX: Defer environment loading and service creation to main() to avoid module-level side effects
+function main(): void {
+  const envConfig = loadShadowSnapshotCliEnv();
 
-let output: unknown;
-switch (envConfig.action) {
-  case "create":
-    output = service.createSnapshot({
+  const service = new ShadowSnapshotService({
+    workspaceRoot: envConfig.workspaceRoot,
+    shadowRoot: envConfig.shadowRoot,
+    sandboxPolicy: createWorkspaceWritePolicy(envConfig.workspaceRoot),
+    ...(envConfig.maxEntryBytes != null
+      ? { maxEntryBytes: envConfig.maxEntryBytes }
+      : {}),
+    ...(envConfig.excludedPaths != null
+      ? { excludedPaths: envConfig.excludedPaths }
+      : {}),
+  });
+
+  let output: unknown;
+  switch (envConfig.action) {
+    case "create":
+      output = service.createSnapshot({
       ...(envConfig.snapshotId != null ? { snapshotId: envConfig.snapshotId } : {}),
       ...(envConfig.label != null ? { label: envConfig.label } : {}),
       ...(envConfig.reasonCode != null ? { reasonCode: envConfig.reasonCode } : {}),
@@ -66,6 +69,9 @@ switch (envConfig.action) {
     break;
   default:
     throw new ValidationError(`unknown_shadow_snapshot_action:${envConfig.action}`, `unknown_shadow_snapshot_action:${envConfig.action}`);
+  }
+
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+main();

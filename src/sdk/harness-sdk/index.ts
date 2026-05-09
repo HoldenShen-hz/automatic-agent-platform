@@ -382,11 +382,11 @@ export class HarnessSdk {
     let updatedRun: HarnessRun;
 
     if (mutableRun != null) {
-      // Use nodeRunId for routing (not stage string) per R8-21 fix
+      // R31-42 FIX: Only use stage if explicitly provided, don't default to nodeRunId
       const updated = this.runtime.appendStep(mutableRun, {
         role: input.role,
         nodeRunId: input.nodeRunId,
-        stage: input.nodeRunId,  // R8-21 FIX: Use nodeRunId instead of stage string
+        ...(input.stage !== undefined ? { stage: input.stage } : {}),
         inputs: {
           ...input.inputs,
           nodeRunId: input.nodeRunId,

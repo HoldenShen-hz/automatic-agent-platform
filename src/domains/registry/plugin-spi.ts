@@ -21,6 +21,7 @@ export interface HumanOutput {
 }
 
 export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
+export const PluginTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 export const PluginLifecycleStateSchema = z.enum([
   "registered",
   "loading",
@@ -83,6 +84,7 @@ export const PluginManifestSchema = z.object({
 });
 
 export type PluginSpiType = z.infer<typeof PluginSpiTypeSchema>;
+export type PluginType = z.infer<typeof PluginTypeSchema>;
 export type PluginLifecycleState = z.infer<typeof PluginLifecycleStateSchema>;
 export type PluginRuntimeIsolation = z.infer<typeof PluginRuntimeIsolationSchema>;
 export type PluginSandboxPolicy = z.infer<typeof PluginSandboxPolicySchema>;

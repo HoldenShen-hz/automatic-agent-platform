@@ -11,6 +11,7 @@ export interface HitlRequest {
   readonly reason: string;
   readonly evidenceRefs: readonly string[];
   readonly requestedAt: string;
+  readonly expiresAt?: string;
   readonly status: HitlRequestStatus;
   readonly resolvedAt: string | null;
   readonly resolvedBy: string | null;
@@ -64,20 +65,24 @@ export class InMemoryHitlStore implements HitlPersistenceStore {
 }
 
 export class HitlRuntime {
+  private static readonly DEFAULT_REQUEST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly store: HitlPersistenceStore;
   private readonly memoryFallback = new Map<string, HitlRequest>();
   private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
+  private readonly requestTtlMs: number;
 
   /**
    * R9-21 fix: Constructor accepts optional persistence store.
    * If no store provided, uses in-memory fallback (requests won't survive restart).
    * All mutating operations persist to the store immediately.
    */
-  public constructor(options: { store?: HitlPersistenceStore } = {}) {
+  public constructor(options: { store?: HitlPersistenceStore; requestTtlMs?: number } = {}) {
     this.store = options.store ?? new InMemoryHitlStore();
+    this.requestTtlMs = options.requestTtlMs ?? HitlRuntime.DEFAULT_REQUEST_TTL_MS;
     // R9-21 fix: Load any previously persisted requests on startup
     for (const request of this.store.loadRequests()) {
-      this.memoryFallback.set(request.requestId, request);
+      const normalized = this.normalizeRequest(request);
+      this.memoryFallback.set(normalized.requestId, normalized);
     }
   }
 
@@ -87,11 +92,12 @@ export class HitlRuntime {
    * If persistence fails, in-memory Map still retains the request.
    */
   public persistRequest(request: HitlRequest): void {
+    const normalized = this.normalizeRequest(request);
     // Always update in-memory Map first (fallback)
-    this.memoryFallback.set(request.requestId, request);
+    this.memoryFallback.set(normalized.requestId, normalized);
     // Then persist to durable store (primary)
     try {
-      this.store.saveRequest(request);
+      this.store.saveRequest(normalized);
     } catch {
       // R9-21 fix: Map is fallback - if persistence fails, we still have the in-memory copy
     }
@@ -100,9 +106,10 @@ export class HitlRuntime {
   /** R9-21 fix: Load previously persisted requests from store. Called on initialization. */
   public loadRequests(requests: readonly HitlRequest[]): void {
     for (const request of requests) {
-      this.memoryFallback.set(request.requestId, request);
+      const normalized = this.normalizeRequest(request);
+      this.memoryFallback.set(normalized.requestId, normalized);
       try {
-        this.store.saveRequest(request);
+        this.store.saveRequest(normalized);
       } catch {
         // R9-21 fix: Continue loading even if persistence fails
       }
@@ -110,14 +117,15 @@ export class HitlRuntime {
   }
 
   public hydrate(request: HitlRequest, record?: HumanResponsibilityRecord | null): void {
-    this.memoryFallback.set(request.requestId, request);
+    const normalized = this.normalizeRequest(request);
+    this.memoryFallback.set(normalized.requestId, normalized);
     try {
-      this.store.saveRequest(request);
+      this.store.saveRequest(normalized);
     } catch {
       // R9-21 fix: Map is fallback
     }
     if (record != null) {
-      this.responsibilityRecords.set(request.requestId, record);
+      this.responsibilityRecords.set(normalized.requestId, record);
     }
   }
 
@@ -127,7 +135,9 @@ export class HitlRuntime {
     mode?: HitlMode;
     reason: string;
     evidenceRefs: readonly string[];
+    expiresAt?: string;
   }): HitlRequest {
+    const requestedAt = nowIso();
     const request: HitlRequest = {
       requestId: newId("hitl"),
       runId: input.runId,
@@ -135,7 +145,8 @@ export class HitlRuntime {
       mode: input.mode ?? "inspect",
       reason: input.reason,
       evidenceRefs: [...input.evidenceRefs],
-      requestedAt: nowIso(),
+      requestedAt,
+      expiresAt: input.expiresAt ?? this.computeExpiryIso(requestedAt),
       status: "pending_approval",
       resolvedAt: null,
       resolvedBy: null,
@@ -145,7 +156,7 @@ export class HitlRuntime {
   }
 
   public inspect(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -166,7 +177,7 @@ export class HitlRuntime {
     patchContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -190,7 +201,7 @@ export class HitlRuntime {
     overrideContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -211,7 +222,7 @@ export class HitlRuntime {
   }
 
   public takeover(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -229,7 +240,7 @@ export class HitlRuntime {
   }
 
   public resolve(requestId: string, resolution: "approved" | "rejected", actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -256,7 +267,7 @@ export class HitlRuntime {
    * §45.18 requires 5 HITL states including paused for workflow suspension.
    */
   public pause(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -278,7 +289,7 @@ export class HitlRuntime {
   }
 
   public resume(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.memoryFallback.get(requestId);
+    const request = this.requireRequest(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -294,11 +305,55 @@ export class HitlRuntime {
   }
 
   public get(requestId: string): HitlRequest | null {
-    return this.memoryFallback.get(requestId) ?? null;
+    return this.requireRequest(requestId) ?? null;
   }
 
   public getResponsibilityRecord(requestId: string): HumanResponsibilityRecord | null {
     return this.responsibilityRecords.get(requestId) ?? null;
+  }
+
+  private requireRequest(requestId: string): HitlRequest | null {
+    const request = this.memoryFallback.get(requestId);
+    if (request == null) {
+      return null;
+    }
+    return this.expirePendingRequestIfNeeded(request);
+  }
+
+  private normalizeRequest(request: HitlRequest): HitlRequest {
+    if (request.expiresAt != null) {
+      return request;
+    }
+    return {
+      ...request,
+      expiresAt: this.computeExpiryIso(request.requestedAt),
+    };
+  }
+
+  private computeExpiryIso(baseIso: string): string {
+    return new Date(Date.parse(baseIso) + this.requestTtlMs).toISOString();
+  }
+
+  private expirePendingRequestIfNeeded(request: HitlRequest): HitlRequest {
+    const normalized = this.normalizeRequest(request);
+    if (
+      normalized.status !== "pending_approval"
+      || normalized.expiresAt == null
+      || Date.parse(normalized.expiresAt) > Date.now()
+    ) {
+      return normalized;
+    }
+    const expired: HitlRequest = {
+      ...normalized,
+      status: "rejected",
+      resolvedAt: nowIso(),
+      resolvedBy: "system:hitl_timeout",
+    };
+    this.persistRequest(expired);
+    if (!this.responsibilityRecords.has(expired.requestId)) {
+      this.createResponsibilityRecord(expired, "system:hitl_timeout", "override", "hitl_request_expired");
+    }
+    return expired;
   }
 
   private createResponsibilityRecord(

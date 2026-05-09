@@ -208,15 +208,17 @@ export class PluginContext {
     return record;
   }
 
-  private setValue(key: string, value: unknown, source: ContextValue["source"]): void {
-    if (key.startsWith("system.") && source !== "system") {
-      throw new Error(`PluginContext forbids overriding reserved key namespace: ${key}`);
+  private setValue(key: string, value: unknown, _source: ContextValue["source"]): void {
+    // R15-14 FIX: Always forbid setting keys with "system." prefix regardless of source
+    // The source parameter cannot be trusted as plugins can pass "system" to bypass checks
+    if (key.startsWith("system.")) {
+      throw new Error(`PluginContext forbids setting reserved key namespace: ${key}`);
     }
     this.values.set(key, {
       key,
       value,
       timestamp: new Date().toISOString(),
-      source,
+      source: _source,
     });
   }
 }

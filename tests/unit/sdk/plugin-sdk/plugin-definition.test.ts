@@ -185,7 +185,7 @@ test("definePlugin rejects non-positive resource limits", () => {
         maxDurationMs: 1000,
       },
     }),
-    /invalid_resource_limits/,
+    /positive finite number/,
   );
 });
 

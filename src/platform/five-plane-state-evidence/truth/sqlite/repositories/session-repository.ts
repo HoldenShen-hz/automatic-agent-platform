@@ -191,7 +191,7 @@ export class SessionRepository {
   }
 
   public listMessagesBySession(sessionId: string, limit?: number): MessageRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : undefined;
+    const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit as number)) : undefined;
     const limitClause = safeLimit != null ? ` LIMIT ${safeLimit}` : "";
     const sql = `SELECT
         id, session_id AS sessionId, direction, message_type AS messageType,

@@ -33,8 +33,8 @@ function normalizeKey(key: Buffer | string): Buffer {
   if (buffer.length === 32) {
     return buffer;
   }
-  if (buffer.length > 0) {
-    // R10-05: Use PBKDF2 for key derivation instead of raw SHA-256
+  // R10-05: Require minimum key length and use PBKDF2 for key derivation
+  if (buffer.length >= 16) {
     const salt = randomBytes(SALT_LENGTH);
     return deriveKeyWithPbkdf2(buffer, salt);
   }

@@ -75,8 +75,10 @@ export const DEFAULT_ML_CLASSIFIER_CONFIG: MLInjectionClassifierConfig = {
 };
 
 const OUTPUT_SUSPICIOUS_PATTERNS: readonly PromptInjectionSignal[] = [
-  { signal: "markdown_link_exfiltration", pattern: /\[[^\]]+\]\((https?:\/\/|mailto:)[^)]+\)/i, weight: 0.4 },
-  { signal: "raw_url_exfiltration", pattern: /https?:\/\/\S+/i, weight: 0.35 },
+  // R23-54 fix: markdown/raw URL exfiltration now requires credential context nearby
+  // to avoid blocking benign documentation or release-note links in normal output.
+  { signal: "markdown_link_exfiltration", pattern: /(?:secret|token|api[-_\s]?key|password|credential).*\[[^\]]+\]\((https?:\/\/|mailto:)[^)]+\)/i, weight: 0.4 },
+  { signal: "raw_url_exfiltration", pattern: /(?:(?:secret|token|api[-_\s]?key|password|credential)\s*:?\s*https?:\/\/\S+|https?:\/\/\S*[?&](?:token|secret|api(?:[-_\s]?key)?|password|credential)=\S+)/i, weight: 0.5 },
   { signal: "instruction_echo", pattern: /ignore\s+(?:all\s+)?previous\s+instructions?|bypass.*(?:safety|restriction)/i, weight: 0.45 },
   { signal: "system_prompt_echo", pattern: /(system|developer|hidden)\s+(prompt|instructions?)/i, weight: 0.35 },
 ];

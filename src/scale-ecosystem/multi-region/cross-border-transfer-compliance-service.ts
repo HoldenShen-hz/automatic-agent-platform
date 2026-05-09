@@ -11,6 +11,8 @@ export interface CrossBorderTransferRequest {
   readonly payload?: Record<string, unknown> | null;
   readonly allowedDataFields?: readonly string[];
   readonly preferredMechanism?: "scc" | "bcr" | "dpf";
+  /** R15-54: Target region's data residency policy - enforces local_only blocking */
+  readonly dataResidencyPolicy?: "local_only" | "regional" | "global";
 }
 
 export interface CrossBorderTransferAssessment {
@@ -58,6 +60,13 @@ export class CrossBorderTransferComplianceService {
     if (request.containsPii) {
       reasons.push("multi_region.contains_pii");
     }
+
+    // R15-54: Enforce data residency policy - local_only blocks all cross-border transfers
+    if (request.dataResidencyPolicy === "local_only" && isCrossBorder) {
+      const assessment = this.buildBlockedAssessment(request, "local_only_residency_policy", reasons);
+      return assessment;
+    }
+
     const riskLevel: CrossBorderTransferAssessment["transferImpactAssessment"]["riskLevel"] = isCrossBorder
       ? request.containsPii ? "high" : "medium"
       : "low";
@@ -107,6 +116,51 @@ export class CrossBorderTransferComplianceService {
 
   public getTransferLog(): readonly CrossBorderTransferAssessment["transferLog"][] {
     return [...this.transferLog];
+  }
+
+  /**
+   * R15-54: Build a blocked assessment for rejected transfers.
+   * Used when data residency policy or other compliance rules block a transfer.
+   */
+  private buildBlockedAssessment(
+    request: CrossBorderTransferRequest,
+    blockReason: string,
+    reasons: readonly string[],
+  ): CrossBorderTransferAssessment {
+    const assessment: CrossBorderTransferAssessment = {
+      allowed: false,
+      jurisdictionClassifier: {
+        isCrossBorder: request.sourceJurisdiction !== request.targetJurisdiction,
+        sourceJurisdiction: request.sourceJurisdiction,
+        targetJurisdiction: request.targetJurisdiction,
+      },
+      transferImpactAssessment: {
+        riskLevel: "high",
+        reasons: [...reasons, blockReason],
+      },
+      mechanismSelection: {
+        mechanism: "blocked",
+        rationale: `multi_region.transfer_blocked:${blockReason}`,
+      },
+      dataMinimizer: {
+        minimizedPayload: null,
+        removedFields: [],
+      },
+      outputScanner: {
+        blockedFindings: [blockReason],
+        passed: false,
+      },
+      transferLog: {
+        transferLogId: newId("transfer_log"),
+        recordedAt: nowIso(),
+        sourceRegionId: request.sourceRegionId,
+        targetRegionId: request.targetRegionId,
+        mechanism: "blocked",
+        allowed: false,
+      },
+    };
+    this.transferLog.push(assessment.transferLog);
+    return assessment;
   }
 }
 

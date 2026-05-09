@@ -151,9 +151,6 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
-    if (!this.instances.has(name)) {
-      this.instances.delete(name);
-    }
     this.services.set(name, registration as ServiceRegistration<unknown>);
   }
 

@@ -77,7 +77,6 @@ export interface EncryptRecordResult {
   encryptions: Array<{
     fieldPath: string;
     dekId: string;
-    originalValue: string;
   }>;
 }
 
@@ -249,7 +248,6 @@ export class CryptoShreddingService {
       encryptions.push({
         fieldPath: fieldSpec.fieldPath,
         dekId: result.dekId,
-        originalValue: value,
       });
     }
 

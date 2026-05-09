@@ -110,7 +110,7 @@ export function measureDuration(name: string, fn: () => void | Promise<void>): v
   if (result instanceof Promise) {
     return result.finally(() => {
       const duration = performance.now() - start;
-      void Promise.resolve().then(() => /* defer to avoid telemetry recursing */);
+      void duration; // placeholder for future metric recording
     });
   }
   const duration = performance.now() - start;

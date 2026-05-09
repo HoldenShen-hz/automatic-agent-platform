@@ -204,9 +204,6 @@ export class DekStore {
       replacedMetadata.replacesDekId = dekId;
     }
 
-    // Remove key from memory when rotated (but keep metadata for decryption of old data)
-    this.keys.delete(dekId);
-
     logger.log({
       level: "info",
       message: "DEK marked as rotated",

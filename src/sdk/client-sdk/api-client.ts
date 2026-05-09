@@ -160,7 +160,9 @@ export class RetryableApiClient {
     const response = await this.get<T[]>(path, query);
     const nextCursor = response.headers["x-next-cursor"] ?? null;
     const totalCountHeader = response.headers["x-total-count"];
-    const totalCount = totalCountHeader !== undefined ? parseInt(totalCountHeader, 10) : undefined;
+    // R31-37 FIX: Check if parseInt result is NaN
+    const rawTotalCount = totalCountHeader !== undefined ? parseInt(totalCountHeader, 10) : NaN;
+    const totalCount = Number.isNaN(rawTotalCount) ? undefined : rawTotalCount;
 
     const result: PaginatedResponse<T> = {
       data: response.data,
@@ -339,6 +341,13 @@ export class RetryableApiClient {
     };
   }
 
+  /**
+   * Map of non-idempotent HTTP methods that should NOT be retried automatically.
+   * Per §22, POST/PUT/PATCH/DELETE are not idempotent and retrying them may cause
+   * duplicate side effects. Only GET and HEAD requests are safely retried.
+   */
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {
     const url = buildApiUrl(this.config, request);
     const headers = buildAuthHeaders(this.config);
@@ -346,6 +355,10 @@ export class RetryableApiClient {
     if (request.body) {
       headers["content-type"] = "application/json";
     }
+
+    // R15-01 FIX: Only retry on retryable status codes (5xx errors) for idempotent methods
+    // POST/PUT/PATCH/DELETE should not be retried as they may cause duplicate side effects
+    const isIdempotent = !RetryableApiClient.NON_IDEMPOTENT_METHODS.has(request.method ?? "GET");
 
     try {
       const fetchOptions: RequestInit = {
@@ -361,13 +374,26 @@ export class RetryableApiClient {
 
       const response = await fetch(url, fetchOptions);
 
-      if (!response.ok && attempt < this.retryConfig.maxRetries) {
+      const retryableStatus = response.status >= 500;
+      if (!response.ok && retryableStatus && isIdempotent && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
         );
         await delay(retryAfter);
         return this.request<T>(request, attempt + 1);
+      }
+
+      // R31-36 FIX: Only parse as success if response.ok is true
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        const category = classifyApiError(response.status, errorText);
+        throw new ApiError(
+          `API request failed with status ${response.status}: ${errorText}`,
+          category,
+          response.status,
+          response.status >= 500 && isIdempotent,
+        );
       }
 
       const data = await response.json() as T;
@@ -382,13 +408,20 @@ export class RetryableApiClient {
         headers: responseHeaders,
       };
     } catch (error) {
-      if (attempt < this.retryConfig.maxRetries) {
-        const retryAfter = Math.min(
-          this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
-          this.retryConfig.maxBackoffMs,
-        );
-        await delay(retryAfter);
-        return this.request<T>(request, attempt + 1);
+      // R15-03 FIX: Network errors should also be retried only for idempotent methods
+      if (isIdempotent && attempt < this.retryConfig.maxRetries && error instanceof Error) {
+        // Check if it's a network error (not an HTTP status error that we already threw above)
+        const isNetworkError = error instanceof ApiError
+          ? error.category === ApiErrorCategory.NETWORK
+          : (error.message.includes("fetch") || error.message.includes("network") || error.message.includes("ECONNREFUSED"));
+        if (isNetworkError) {
+          const retryAfter = Math.min(
+            this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
+            this.retryConfig.maxBackoffMs,
+          );
+          await delay(retryAfter);
+          return this.request<T>(request, attempt + 1);
+        }
       }
       throw error;
     }
@@ -400,6 +433,48 @@ export class RetryableApiClient {
  * Event subscription callback type.
  */
 export type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
+
+/**
+ * R15-03 FIX: Error types per SDK contract §5 - distinguish network/auth/business errors
+ */
+export enum ApiErrorCategory {
+  NETWORK = "network",
+  AUTH = "auth",
+  BUSINESS = "business",
+  CONTRACT = "contract",
+}
+
+export class ApiError extends Error {
+  public readonly category: ApiErrorCategory;
+  public readonly statusCode: number | null;
+  public readonly isRetryable: boolean;
+
+  constructor(message: string, category: ApiErrorCategory, statusCode: number | null = null, isRetryable = false) {
+    super(message);
+    this.name = "ApiError";
+    this.category = category;
+    this.statusCode = statusCode;
+    this.isRetryable = isRetryable;
+  }
+}
+
+export function classifyApiError(statusCode: number | null, message: string): ApiErrorCategory {
+  if (statusCode === null) {
+    // Network errors
+    if (message.includes("fetch") || message.includes("network") || message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
+      return ApiErrorCategory.NETWORK;
+    }
+    return ApiErrorCategory.NETWORK;
+  }
+  if (statusCode === 401 || statusCode === 403) {
+    return ApiErrorCategory.AUTH;
+  }
+  if (statusCode >= 500) {
+    return ApiErrorCategory.NETWORK;
+  }
+  // 4xx client errors - business logic errors
+  return ApiErrorCategory.BUSINESS;
+}
 
 /**
  * Event subscription handle for unsubscribe.

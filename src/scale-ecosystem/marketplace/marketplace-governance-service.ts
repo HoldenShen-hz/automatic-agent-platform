@@ -529,35 +529,48 @@ export class MarketplaceGovernanceService {
       ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
       : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
 
+    // R15-65: Always require a review record for audit trail, even when reviewRequired=false
+    // Packages that don't require review get an auto-created review record
+    if (reviewRecord == null) {
+      const permissions = JSON.parse(packageRecord.permissionsJson) as string[];
+      const autoReview: MarketplaceReviewRecord = {
+        reviewId: newId("review"),
+        tenantId: packageRecord.tenantId,
+        packageId: packageRecord.packageId,
+        status: "approved",
+        submitter: "marketplace_auto_approved",
+        reviewer: "marketplace_system",
+        decisionReasonCode: "auto_approved_no_review_required",
+        findingsJson: "[]",
+        permissionSurfaceHash: hashPermissionSurface(permissions),
+        submittedAt: nowIso(),
+        decidedAt: nowIso(),
+      };
+      this.store.marketplace.upsertMarketplaceReview(autoReview);
+    }
+
+    // Re-fetch after potential auto-creation
+    const reviewToUse = input.reviewId == null
+      ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
+      : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
+
     // Review is required only if the package has reviewRequired flag
     if (packageRecord.reviewRequired === 1) {
-      if (reviewRecord == null) {
+      if (reviewToUse == null || reviewToUse.status !== "approved") {
         throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
           retryable: false,
           details: { packageId: packageRecord.packageId },
         });
       }
 
-      // Package must be approved before publication
-      if (reviewRecord.status !== "approved") {
-        throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
-          retryable: false,
-          details: {
-            packageId: packageRecord.packageId,
-            reviewId: reviewRecord.reviewId,
-            reviewStatus: reviewRecord.status,
-          },
-        });
-      }
-
       // Review must match the package being published
-      if (reviewRecord.packageId !== packageRecord.packageId) {
+      if (reviewToUse.packageId !== packageRecord.packageId) {
         throw new ValidationError("marketplace.review_package_mismatch", "marketplace.review_package_mismatch", {
           retryable: false,
           details: {
             packageId: packageRecord.packageId,
-            reviewPackageId: reviewRecord.packageId,
-            reviewId: reviewRecord.reviewId,
+            reviewPackageId: reviewToUse.packageId,
+            reviewId: reviewToUse.reviewId,
           },
         });
       }

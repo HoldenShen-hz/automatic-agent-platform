@@ -13,7 +13,7 @@ const promptBundleRequestSchema = z.object({
   taskType: z.string().optional(),
   systemPrompt: z.string().optional(),
   userPrompt: z.string().optional(),
-  level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
+  level: z.enum(["global", "domain", "task-type"]).optional(),
   domain: z.string().optional(),
   packId: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -36,7 +36,7 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = readLimit(ctx.request, 50);
-        const level = readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "pack" | undefined;
+        const level = readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "task-type" | undefined;
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
         const prompts = deps.promptRegistryService.listBundles(level, domain, packId);
@@ -104,7 +104,7 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "operator");
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
         const payload = readJsonBody(ctx.request.body) as Record<string, unknown>;
-        const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
+        const level = (payload.level as "global" | "domain" | "task-type" | undefined) ?? "global";
         deps.promptRegistryService.deprecateBundle(
           name,
           String(payload.version ?? ""),
@@ -125,7 +125,7 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         }
         requirePrincipal(ctx.request, deps.authService, "admin");
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
-        const level = (readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
+        const level = (readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "task-type" | undefined) ?? "global";
         const version = readQueryParam(ctx.request, "version", { required: true, maxLength: 64 })!;
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });

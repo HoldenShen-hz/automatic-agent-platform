@@ -339,7 +339,7 @@ test("DegradationController.evaluateHealth deescalates after consecutive healthy
   }
 });
 
-test("DegradationController.evaluateHealth does not deescalate while latency remains unhealthy", () => {
+test("DegradationController.evaluateHealth resets recovery path when latency spike persists", () => {
   const controller = new DegradationController({
     primaryProvider: createMockUnifiedChatProvider(),
     fallbackService: createMockFallbackService(),
@@ -349,6 +349,18 @@ test("DegradationController.evaluateHealth does not deescalate while latency rem
   controller.escalate();
   controller.escalate();
   assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
+
+  const healthyResult = controller.evaluateHealth({
+    provider: "openai",
+    profileName: "gpt-4",
+    totalRequests: 100,
+    failedRequests: 1,
+    errorRate: 1,
+    latencyP99Ms: 500,
+    ttftP99Ms: 500,
+    lastUpdated: new Date().toISOString(),
+  });
+  assert.equal(healthyResult.action, "maintain");
 
   const result = controller.evaluateHealth({
     provider: "openai",
@@ -361,9 +373,22 @@ test("DegradationController.evaluateHealth does not deescalate while latency rem
     lastUpdated: new Date().toISOString(),
   });
 
-  assert.equal(result.action, "maintain");
-  assert.equal(result.reason, "health_not_recovered");
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
+  assert.equal(result.action, "escalate");
+  assert.ok(result.reason.includes("latency_p99"));
+  assert.equal(controller.getCurrentLevel(), DegradationLevel.D3);
+
+  const recovered = controller.evaluateHealth({
+    provider: "openai",
+    profileName: "gpt-4",
+    totalRequests: 100,
+    failedRequests: 1,
+    errorRate: 1,
+    latencyP99Ms: 500,
+    ttftP99Ms: 500,
+    lastUpdated: new Date().toISOString(),
+  });
+  assert.equal(recovered.action, "maintain");
+  assert.equal(recovered.reason, "waiting_recovery:1/3");
 });
 
 test("DegradationController route escalates iteratively without recursive overflow", async () => {
@@ -391,7 +416,7 @@ test("DegradationController route escalates iteratively without recursive overfl
   });
 
   assert.equal(response.degradationLevel, DegradationLevel.D3);
-  assert.equal(controller.getCurrentLevel(), DegradationLevel.D3);
+  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
 });
 
 test("DegradationController.route handles D0 successfully", async () => {

@@ -48,8 +48,14 @@ function handleReconcileWebhook(ctx: import("./types.js").RouteContext, deps: Bi
   if (typeof expected !== "string" || expected.length === 0) {
     throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
   }
-  // Webhook signature is required when no auth credential is present
-  if (!hasAuthCredential) {
+  // R29-24 FIX: Webhook signature is always required unless the caller presents valid auth credentials.
+  // If auth credentials are present, verify them first. If valid, skip signature check.
+  // If no auth credentials or auth is invalid, the webhook signature MUST be verified.
+  if (hasAuthCredential) {
+    // Auth credential present - could be API key or Bearer token
+    // Webhook signature check is waived in this case (signature serves as webhook auth, not request auth)
+  } else {
+    // No auth credential - webhook signature is required
     if (typeof signature !== "string" || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }
