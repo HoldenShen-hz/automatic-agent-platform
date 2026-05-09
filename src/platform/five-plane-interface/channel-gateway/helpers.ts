@@ -38,9 +38,32 @@ export function readTrackedDeliveryPayload(payload: Record<string, unknown>): Tr
   if (metadata != null && (typeof metadata !== "object" || Array.isArray(metadata))) {
     return null;
   }
+  const requestEnvelope = payload.requestEnvelope;
+  if (requestEnvelope != null && (typeof requestEnvelope !== "object" || Array.isArray(requestEnvelope))) {
+    return null;
+  }
   return {
     targetId: payload.targetId,
     text: payload.text,
     ...(metadata != null ? { metadata: metadata as Record<string, unknown> } : {}),
+    ...(requestEnvelope != null ? { requestEnvelope: requestEnvelope as Record<string, unknown> } : {}),
   };
+}
+
+export function normalizeWebhookRequestEnvelope(metadata: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (metadata == null) {
+    return undefined;
+  }
+  const explicitEnvelope = metadata.requestEnvelope;
+  if (explicitEnvelope != null && typeof explicitEnvelope === "object" && !Array.isArray(explicitEnvelope)) {
+    return explicitEnvelope as Record<string, unknown>;
+  }
+
+  const normalizedEntries = Object.entries(metadata)
+    .filter(([key, value]) => key.startsWith("_envelope_") && value != null)
+    .map(([key, value]) => [key.slice("_envelope_".length), value] as const);
+  if (normalizedEntries.length === 0) {
+    return undefined;
+  }
+  return Object.fromEntries(normalizedEntries);
 }

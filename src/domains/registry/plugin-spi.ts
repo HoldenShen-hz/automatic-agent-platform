@@ -20,7 +20,7 @@ export interface HumanOutput {
   citations: string[];
 }
 
-export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter"]);
+export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 export const PluginLifecycleStateSchema = z.enum([
   "registered",
   "loading",

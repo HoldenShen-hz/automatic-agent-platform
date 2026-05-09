@@ -173,7 +173,7 @@ export class SlaOperationsService {
       tierId: record.tierId,
       penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
       severity: record.severity,
-      creditAmount: record.severity === "critical" ? undefined : calculateCreditAmount(selectedTier, breachCodes),
+      creditAmount: record.severity === "critical" ? undefined : calculateCreditAmount(selectedTier as SlaTierProfile, breachCodes),
       description: record.severity === "critical"
         ? "Critical SLA breach - contract review required"
         : `SLA breach: ${breachCodes.join(", ")} - credit issued`,
@@ -194,7 +194,10 @@ export class SlaOperationsService {
       reservedCapacity,
       breachRecords,
       escalationActions,
-      penaltyDecisions,
+      penaltyDecisions: penaltyDecisions.map(p => ({
+        ...p,
+        creditAmount: p.creditAmount ?? 0,
+      })),
       starvationProtected,
       preemptionCapApplied,
       workflowClass: request.workflowClass,

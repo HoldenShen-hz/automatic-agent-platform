@@ -193,15 +193,15 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
     case "paused":
       return "L0_off";
     case "evaluation_enabled":
-      return "evaluate_0";
+      return "L1_evaluate";
     case "canary_5":
-      return "canary_5";
+      return "L2_canary";
     case "partial_25":
-      return "partial_25";
+      return "L3_partial";
     case "stable_75":
-      return "stable_75";
+      return "L4_stable";
     case "stable_100":
     case "released":
-      return "stable_100";
+      return "L5_full";
   }
 }

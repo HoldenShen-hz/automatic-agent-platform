@@ -1,10 +1,9 @@
 /**
- * Unit tests for MemoryService - Issue #2027
- *
- * Tests content hash truncation bug and size check UTF-16 issues.
+ * Unit tests for MemoryService content hashing and size validation.
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { MemoryService, type RememberMemoryInput, type ConsolidateMemoriesInput } from "../../../../../src/platform/state-evidence/memory/memory-service.js";
@@ -101,29 +100,21 @@ function createMockStore(): AuthoritativeTaskStore {
   } as any;
 }
 
-// =============================================================================
-// Issue #2027: Content hash collision risk - truncated to 16 hex chars
-// =============================================================================
-
-test("MemoryService contentHash is truncated to 16 chars - Issue #2027 collision risk", () => {
+test("MemoryService contentHash stores the full SHA-256 digest", () => {
   const store = createMockStore();
   const service = new MemoryService(store);
 
-  // SHA-256 produces 64 hex characters, but code only uses first 16
+  const content = "Test content for hash";
   const result = service.remember({
     scope: "project",
-    content: "Test content for hash",
+    content,
   });
 
-  // Issue #2027: contentHash is only 16 characters instead of full 64
-  // This creates collision risk with large memory stores
-  assert.equal(result.contentHash!.length, 16, "Issue #2027: Hash truncated to 16 chars");
-
-  // With 16 hex chars (4 bits each = 64 bits of entropy), collision probability
-  // becomes non-negligible with millions of memories
+  assert.equal(result.contentHash!.length, 64);
+  assert.equal(result.contentHash, createHash("sha256").update(content).digest("hex"));
 });
 
-test("MemoryService similar contents may produce colliding hashes - Issue #2027", () => {
+test("MemoryService different contents retain distinct full hashes", () => {
   const store = createMockStore();
   const service = new MemoryService(store);
 
@@ -137,21 +128,16 @@ test("MemoryService similar contents may produce colliding hashes - Issue #2027"
     content: "Content pattern B with specific details here", // Only first char differs
   });
 
-  // Issue #2027: Both hashes will have same prefix if the difference is after char 16
-  // This demonstrates the collision vulnerability
-  console.log(`Hash 1: ${result1.contentHash}`);
-  console.log(`Hash 2: ${result2.contentHash}`);
-
-  // The hashes might collide if the differences are after the 16th character
-  // This is more likely with many memories having similar prefixes
-  assert.ok(true, "Issue #2027: Documented collision risk with truncated hashes");
+  assert.notEqual(result1.contentHash, result2.contentHash);
+  assert.equal(result1.contentHash?.length, 64);
+  assert.equal(result2.contentHash?.length, 64);
 });
 
 // =============================================================================
 // Issue #2031: Size check uses .length (UTF-16) not byte count
 // =============================================================================
 
-test("MemoryService size check uses string length not byte count - Issue #2031", () => {
+test("MemoryService size check uses byte count for multibyte content - Issue #2031", () => {
   const store = createMockStore();
   const service = new MemoryService(store);
 
@@ -169,10 +155,11 @@ test("MemoryService size check uses string length not byte count - Issue #2031",
   // With mixed ASCII and emoji, byte count >> char count
   console.log(`Char count: ${charCount}, Byte count: ${byteCount}`);
 
-  // Issue #2031: size check passes when it should fail
-  // The service uses .length which counts UTF-16 code units
-  // For emoji-heavy content, this allows >1MB content through
   assert.ok(byteCount > charCount, "Emoji content has more bytes than characters");
+  assert.throws(
+    () => service.remember({ scope: "project", content: emojiContent }),
+    /exceeds maximum of 1000000 bytes/i,
+  );
 });
 
 // =============================================================================

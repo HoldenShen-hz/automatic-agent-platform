@@ -4,7 +4,16 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import { KnowledgeArchive } from "./archive/knowledge-archive.js";
 import { NamespacePolicyStore } from "./governance/namespace-policy.js";
 import { AstStructuralIndex } from "./indexing/ast-index.js";
-import type { ChunkingConfig, KnowledgeChunk, KnowledgeDocument, KnowledgeNamespace, KnowledgeSource, TrustLevel } from "./knowledge-model.js";
+import {
+  compareTrustLevels,
+  normalizeTrustLevel,
+  type ChunkingConfig,
+  type KnowledgeChunk,
+  type KnowledgeDocument,
+  type KnowledgeNamespace,
+  type KnowledgeSource,
+  type TrustLevel,
+} from "./knowledge-model.js";
 import { KeywordKnowledgeIndex } from "./keyword-index.js";
 import { KnowledgeRetrievalService } from "./retrieval/knowledge-retrieval.js";
 import { buildSemanticEmbedding, semanticEmbeddingId } from "./semantic-embedding.js";
@@ -111,6 +120,10 @@ function chunkSectionAware(body: string): Array<{ content: string; section?: str
   return chunkFixed(body).map((content) => ({ content }));
 }
 
+function shouldPromoteKnowledge(trustLevel: TrustLevel): boolean {
+  return compareTrustLevels(trustLevel, "team_reviewed") >= 0;
+}
+
 export class KnowledgeIngestionPipeline {
   private readonly archive: KnowledgeArchive;
   private readonly namespaces: NamespacePolicyStore;
@@ -144,17 +157,28 @@ export class KnowledgeIngestionPipeline {
   }): KnowledgeIngestionResult {
     const contentHash = sha256(input.body);
     const timestamp = nowIso();
+    const normalizedTrustLevel = normalizeTrustLevel(input.trustLevel ?? "team_reviewed");
+    const promoted = shouldPromoteKnowledge(normalizedTrustLevel);
     const source: KnowledgeSource = {
       sourceId: newId("knowledge_source"),
       type: input.sourceType ?? "text",
       uri: input.uri ?? `memory://${input.namespace}/${newId("doc")}`,
       contentHash,
-      metadata: {},
+      metadata: promoted
+        ? {
+            ingestionLifecycle: "promoted",
+            quarantinedAt: timestamp,
+            promotedAt: timestamp,
+          }
+        : {
+            ingestionLifecycle: "quarantined",
+            quarantinedAt: timestamp,
+          },
       ingestedAt: timestamp,
       namespace: input.namespace,
       language: input.language ?? null,
       tags: [...(input.tags ?? [])],
-      trustLevel: input.trustLevel ?? "team_reviewed",
+      trustLevel: normalizedTrustLevel,
       freshnessTimestamp: timestamp,
       checksum: contentHash,
       chunking: input.chunking,
@@ -166,7 +190,7 @@ export class KnowledgeIngestionPipeline {
       version: 1,
       tags: [...(input.tags ?? [])],
       domainScope: [input.namespace.split("/")[0] ?? "shared"],
-      status: "indexed",
+      status: promoted ? "indexed" : "draft",
       namespace: input.namespace,
       mimeType: "text/plain",
       rawText: input.body,
@@ -199,16 +223,18 @@ export class KnowledgeIngestionPipeline {
       };
       });
     const archived = this.archive.upsert({ source, document, chunks });
-    for (const chunk of archived.chunks) {
-      this.index.upsert(chunk);
+    if (archived.document.status === "indexed") {
+      for (const chunk of archived.chunks) {
+        this.index.upsert(chunk);
+      }
+      this.astIndex.upsertDocument({
+        documentId: archived.document.documentId,
+        sourceUri: archived.source.uri,
+        namespace: input.namespace,
+        content: input.body,
+        language: input.language ?? null,
+      });
     }
-    this.astIndex.upsertDocument({
-      documentId: document.documentId,
-      sourceUri: source.uri,
-      namespace: input.namespace,
-      content: input.body,
-      language: input.language ?? null,
-    });
     return archived;
   }
 

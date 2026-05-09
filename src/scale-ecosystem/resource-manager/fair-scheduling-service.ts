@@ -1,6 +1,6 @@
 import { orderFairQueue, type FairQueueItem } from "./fair-queue/index.js";
 import { choosePreemptionVictim, type PreemptionCandidate } from "./preemption/index.js";
-import { evaluateMultiDimensionalQuota, type QuotaPolicy } from "./quota-enforcer/index.js";
+import { evaluateMultiDimensionalQuota, type MultiResourceQuotaVector } from "./quota-enforcer/index.js";
 
 export interface SchedulingClass {
   readonly tenantId: string;
@@ -29,7 +29,7 @@ export interface FairQueueSnapshot {
 }
 
 export interface FairSchedulingRequest {
-  readonly quotaPolicy: QuotaPolicy;
+  readonly quotaPolicy: MultiResourceQuotaVector;
   readonly claim: ResourceClaim;
   readonly queueItems: readonly FairQueueItem[];
   readonly preemptionCandidates: readonly PreemptionCandidate[];

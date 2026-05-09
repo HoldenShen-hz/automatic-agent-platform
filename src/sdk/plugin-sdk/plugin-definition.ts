@@ -86,6 +86,34 @@ const DEFAULT_SECURITY: PluginSecurityConfig = {
   egressDomains: [],
 };
 
+function normalizeResourceLimits(resourceLimits: PluginResourceLimits | undefined): PluginResourceLimits {
+  const normalized = resourceLimits ?? DEFAULT_RESOURCE_LIMITS;
+  for (const [key, value] of Object.entries(normalized)) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new ValidationError(
+        "plugin_sdk.invalid_resource_limits",
+        `Plugin resource limit "${key}" must be a positive finite number.`,
+      );
+    }
+  }
+  return normalized;
+}
+
+function normalizeSecurityConfig(security: PluginSecurityInput | PluginSecurityConfig | undefined): PluginSecurityConfig {
+  const requestedSandboxTier = security?.sandboxTier;
+  if (typeof requestedSandboxTier === "string" && requestedSandboxTier.trim().toLowerCase() === "none") {
+    throw new ValidationError(
+      "plugin_sdk.insecure_sandbox_tier",
+      "Plugin security sandboxTier 'none' is forbidden; use an explicit constrained sandbox tier instead.",
+    );
+  }
+
+  return {
+    sandboxTier: normalizeSandboxMode(requestedSandboxTier ?? DEFAULT_SECURITY.sandboxTier),
+    egressDomains: security?.egressDomains ?? DEFAULT_SECURITY.egressDomains,
+  };
+}
+
 /**
  * Define a plugin using the Plugin SDK DSL.
  *
@@ -141,12 +169,9 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     type: options.type,
     ...(options.role !== undefined ? { role: options.role } : {}),
     capabilities: options.capabilities,
-    resourceLimits: options.resourceLimits ?? DEFAULT_RESOURCE_LIMITS,
+    resourceLimits: normalizeResourceLimits(options.resourceLimits),
     dependencies: options.dependencies ?? [],
-    security: {
-      sandboxTier: normalizeSandboxMode(options.security?.sandboxTier ?? DEFAULT_SECURITY.sandboxTier),
-      egressDomains: options.security?.egressDomains ?? DEFAULT_SECURITY.egressDomains,
-    },
+    security: normalizeSecurityConfig(options.security),
     spiTypes: [...new Set((options.spiTypes ?? [options.type]).filter((type): type is PluginType => type !== undefined))],
     domainIds: [...new Set((options.domainIds ?? []).map((domainId) => domainId.trim()).filter((domainId) => domainId.length > 0))],
     sbomRef: options.sbomRef?.trim() ? options.sbomRef.trim() : null,

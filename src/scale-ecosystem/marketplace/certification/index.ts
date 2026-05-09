@@ -200,7 +200,7 @@ export interface CertificationEvidence {
 export interface AgentCertification {
   certificationId: string;
   agentId: string;
-  status: "pending" | "approved" | "revoked";
+  status: CertificationStatus;
   securityScan?: SecurityScan;
   evidence?: CertificationEvidence;
   approvedAt: string | null;
@@ -210,7 +210,7 @@ export interface AgentCertification {
 export interface PackCertification {
   certificationId: string;
   packId: string;
-  status: "pending" | "approved" | "revoked";
+  status: CertificationStatus;
   securityScan?: SecurityScan;
   evidence?: CertificationEvidence;
   approvedAt: string | null;

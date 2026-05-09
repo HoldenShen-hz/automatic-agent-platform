@@ -4,7 +4,7 @@ import { resolveRegionFailover } from "./multi-region/failover-controller/index.
 import { selectPreferredRegion, type RegionDescriptor } from "./multi-region/region-router/index.js";
 import { orderFairQueue, type FairQueueItem } from "./resource-manager/fair-queue/index.js";
 import { choosePreemptionVictim, type PreemptionCandidate } from "./resource-manager/preemption/index.js";
-import { isQuotaExceeded, type QuotaPolicy } from "./resource-manager/quota-enforcer/index.js";
+import { isMultiDimensionalQuotaExceeded, type MultiResourceQuotaVector } from "./resource-manager/quota-enforcer/index.js";
 import { allocateReservedCapacity, type ReservedCapacityAllocation } from "./sla-engine/resource-allocator/index.js";
 import { detectSlaBreach, type SlaCommitment, type SlaObservation } from "./sla-engine/breach-detector/index.js";
 import { resolveHighestPriorityTier, type SlaTier } from "./sla-engine/tier-resolver/index.js";
@@ -15,7 +15,7 @@ export interface RuntimeGovernanceRequest {
   readonly connectorHealthReports: readonly ConnectorHealthReport[];
   readonly regions: readonly RegionDescriptor[];
   readonly primaryRegionHealthy: boolean;
-  readonly quotaPolicy: QuotaPolicy;
+  readonly quotaPolicy: MultiResourceQuotaVector;
   readonly requestedUnits: number;
   readonly queueItems: readonly FairQueueItem[];
   readonly preemptionCandidates: readonly PreemptionCandidate[];
@@ -60,7 +60,7 @@ export class RuntimeGovernanceService {
       connectorId: connectorHealth === "failed" ? null : enabledConnectors[0]?.connectorId ?? null,
       regionId: preferredRegion?.regionId ?? null,
       failoverRegionId: failover.targetRegionId,
-      quotaAllowed: !isQuotaExceeded(input.quotaPolicy, input.requestedUnits),
+      quotaAllowed: !isMultiDimensionalQuotaExceeded(input.quotaPolicy, { workerUnits: input.requestedUnits }),
       queueOrder,
       preemptionVictimId,
       highestTierId,

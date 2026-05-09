@@ -677,8 +677,7 @@ export class AutoStopLossService {
         triggerReason,
         ...(context !== undefined ? { context } : {}),
       });
-      this.recordEvent(event, playbook.id);
-      this.lastExecutionTime.set(playbook.id, this.now().getTime());
+      // Note: do NOT recordEvent or set lastExecutionTime here - those fire only after human approval
       return event;
     }
 
@@ -782,8 +781,7 @@ export class AutoStopLossService {
 
     // Keep history bounded to prevent memory exhaustion - O(1) eviction
     while (this.executionHistory.size > this.MAX_EXECUTION_HISTORY) {
-      const oldestSeq = Math.min(...this.executionHistory.keys());
-      this.executionHistory.delete(oldestSeq);
+      this.executionHistory.delete(this.oldestExecutionHistorySeq++);
     }
 
     // Update rate limit counters (reset hourly via hour key)
@@ -812,7 +810,7 @@ export class AutoStopLossService {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
-    return `${now.getFullYear()}${month}${day}${hours}`;
+    return `${now.getFullYear()}-${month}-${day}T${hours}`;
   }
 
   // ── Human Approval ──────────────────────────────────────────────────
@@ -859,6 +857,7 @@ export class AutoStopLossService {
       } else {
         delete event.errorMessage;
       }
+      this.recordEvent(event, pendingExecution.playbook.id);
       this.lastExecutionTime.set(pendingExecution.playbook.id, this.now().getTime());
       this.pendingApprovals.delete(eventId);
       return true;

@@ -223,6 +223,30 @@ test("AnthropicChatService uses correct headers for Anthropic API", async () => 
   assert.equal(capturedApiKey, "sk-ant-api-key");
 });
 
+test("AnthropicChatService rejects non-user/assistant messages after system extraction", async () => {
+  const service = new AnthropicChatService({
+    credentialPool: new ProviderCredentialPool({
+      provider: "anthropic",
+      credentials: [{ credentialId: "test-key", apiKey: "sk-test-key" }],
+    }),
+    fetchImpl: async () => createSuccessResponse(ANTHROPIC_RESPONSE),
+  });
+
+  await assert.rejects(
+    () => service.createChatCompletion({
+      model: "claude-sonnet-4-20250514",
+      messages: [{ role: "tool", content: "invalid" } as any],
+      max_tokens: 1024,
+    }),
+    (error: unknown) => {
+      return typeof error === "object"
+        && error !== null
+        && "code" in error
+        && (error as { code?: string }).code === "provider.invalid_request";
+    },
+  );
+});
+
 // ============================================================================
 // Credential Failover Tests
 // ============================================================================

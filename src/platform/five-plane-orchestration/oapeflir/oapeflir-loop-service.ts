@@ -592,7 +592,7 @@ export class OapeflirLoopService {
                 fsm.recordStageSkipped("release", "release.canary_blocked");
                 rolloutRecord = null;
               } else {
-                const strategyVersion = createStrategyVersion("Evaluation planning guidance", validatedLearningObjects, "evaluate_0");
+                const strategyVersion = createStrategyVersion("Evaluation planning guidance", validatedLearningObjects, "L1_evaluate");
                 // R5-8: All gates passed - call PolicyRolloutService.start() with gates
                 let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
                   taskId: input.taskId,
@@ -655,9 +655,9 @@ export class OapeflirLoopService {
           policyIds: [],
           approvalMode: "none" as const,
           autonomyMode: "full_auto" as const,
-          tool_policy: { allowedTools: [] as const[] },
+          tool_policy: { allowedTools: [] as const },
           sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: 300000 },
-          approvalRequirement: { requiredForRiskClass: [] as const[], approverRoles: [] as const[], escalationTimeoutMs: 60000 },
+          approvalRequirement: { requiredForRiskClass: [] as const, approverRoles: [] as const, escalationTimeoutMs: 60000 },
         };
         const controller = new HarnessLoopController(constraintPack, {}, { startedAt: Date.now() });
 
@@ -789,6 +789,14 @@ export class OapeflirLoopService {
       },
       stepOutputRefs: [output.stepId],
       timestamp: Date.now() + index,
+      feedbackTrustScore: 0.5,
+      trustFactors: {
+        sourceReliability: 0.5,
+        historicalAccuracy: 0.5,
+        authenticatedSource: false,
+        attackSurfaceExposure: 0.5,
+        holdoutOverlap: 0,
+      },
     }));
   }
 

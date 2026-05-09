@@ -483,6 +483,134 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "performance_test",
     consumers: [],
   },
+  // R23-72: OAPEFLIR stage events with producer/consumers/compatibility_policy metadata
+  // observe stage
+  "observe:signals_collected": {
+    type: "observe:signals_collected",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "observe:context_augmented": {
+    type: "observe:context_augmented",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // assess stage
+  "assess:evaluation_completed": {
+    type: "assess:evaluation_completed",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "assess:anomaly_classified": {
+    type: "assess:anomaly_classified",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // plan stage
+  "plan:proposal_created": {
+    type: "plan:proposal_created",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "plan:decision_recorded": {
+    type: "plan:decision_recorded",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // execute stage
+  "execute:action_started": {
+    type: "execute:action_started",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "execute:action_completed": {
+    type: "execute:action_completed",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // feedback stage
+  "feedback:signal_received": {
+    type: "feedback:signal_received",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "feedback:outcome_processed": {
+    type: "feedback:outcome_processed",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // learn stage
+  "learn:object_created": {
+    type: "learn:object_created",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "learn:object_promoted": {
+    type: "learn:object_promoted",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // improve stage
+  "improve:candidate_proposed": {
+    type: "improve:candidate_proposed",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "improve:candidate_accepted": {
+    type: "improve:candidate_accepted",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  // release stage
+  "release:rollout_started": {
+    type: "release:rollout_started",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "release:rollout_completed": {
+    type: "release:rollout_completed",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "release:rollback_triggered": {
+    type: "release:rollback_triggered",
+    tier: "tier_1",
+    producer: "oapeflir_orchestrator",
+    consumers: ["oapeflir_projection", "truth_projector"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
 /**

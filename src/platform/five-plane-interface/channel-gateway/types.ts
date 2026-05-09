@@ -117,4 +117,5 @@ export interface TrackedGatewayDeliveryPayload {
   targetId: string;
   text: string;
   metadata?: Record<string, unknown>;
+  requestEnvelope?: Record<string, unknown>;
 }

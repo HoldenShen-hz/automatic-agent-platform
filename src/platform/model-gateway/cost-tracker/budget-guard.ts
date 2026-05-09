@@ -19,6 +19,14 @@ import { BudgetAllocator } from "../../execution/budget-allocator.js";
 /**
  * Budget policy defining cost limits and warning thresholds.
  * R2-6: 3-level hierarchy - platform / pack / step
+ *
+ * R23-61: Updated to use non-deprecated fields:
+ * - maxPlatformCostUsd (replaces deprecated platformBudget)
+ * - maxPackCostUsd (replaces deprecated packBudget)
+ * - maxStepCostUsd (replaces deprecated stepBudget)
+ *
+ * R23-62: mode field expanded to 8 values per contract:
+ * supervised, auto, full-auto, preview, simulation, audit, enforcement, learning
  */
 export interface BudgetPolicy {
   /** Platform-level hard cap (top-level budget ceiling). Defaults to 0 (disabled). */
@@ -34,7 +42,8 @@ export interface BudgetPolicy {
   maxSteps?: number;
   maxDurationMs?: number;
   warnAtRatio: number;
-  mode: "supervised" | "auto" | "full-auto";
+  /** R23-62: Expanded to 8 values: supervised, auto, full-auto, preview, simulation, audit, enforcement, learning */
+  mode: "supervised" | "auto" | "full-auto" | "preview" | "simulation" | "audit" | "enforcement" | "learning";
 }
 
 /**

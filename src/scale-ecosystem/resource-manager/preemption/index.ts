@@ -7,6 +7,11 @@ export interface PreemptionCandidate {
   readonly checkpointLatencyMs?: number;
 }
 
+/** Minimum preemption priority threshold - jobs at or below this level are protected from preemption */
+const MIN_PREEMPTABLE_PRIORITY = 0;
+/** Priority level above which jobs cannot be preempted regardless of other factors */
+const MAX_PROTECTED_PRIORITY = 100;
+
 /**
  * R15-59: Choose the best victim for preemption with checkpoint-before-preempt requirement.
  *
@@ -20,6 +25,8 @@ export interface PreemptionCandidate {
 export function choosePreemptionVictim(
   candidates: readonly PreemptionCandidate[],
   maxCheckpointAgeMs = 300_000,
+  minPreemptablePriority = MIN_PREEMPTABLE_PRIORITY,
+  maxProtectedPriority = MAX_PROTECTED_PRIORITY,
 ): PreemptionCandidate | null {
   const now = Date.now();
   return [...candidates]
@@ -29,6 +36,14 @@ export function choosePreemptionVictim(
       const hasValidCheckpoint = candidate.lastCheckpointTimestampMs != null
         && candidate.lastCheckpointTimestampMs > 0
         && checkpointAge <= maxCheckpointAgeMs;
+      // Protected priority threshold - jobs above maxProtectedPriority cannot be preempted
+      if (candidate.priority > maxProtectedPriority) {
+        return false;
+      }
+      // Minimum preemptable priority threshold
+      if (candidate.priority < minPreemptablePriority) {
+        return false;
+      }
       return hasValidCheckpoint;
     })
     .sort((left, right) => {

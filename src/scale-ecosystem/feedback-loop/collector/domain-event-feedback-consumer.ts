@@ -1,6 +1,7 @@
 import { newId } from "../../../platform/contracts/types/ids.js";
 import type { FeedbackBatch, LearningSignal } from "./feedback-model.js";
 import { FeedbackCollector } from "./feedback-collector.js";
+import { deriveFeedbackTrustScore } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
 import type { FeedbackSignal } from "../../../platform/orchestration/oapeflir/types/feedback-signal.js";
 import type { TypedEventBus, TypedEventEnvelope } from "../../../platform/state-evidence/events/typed-event-bus.js";
 import type {
@@ -192,6 +193,13 @@ export class DomainEventFeedbackConsumer {
     severity: FeedbackSignal["severity"],
     payload: Record<string, unknown>,
   ): FeedbackSignal {
+    const trustFactors = {
+      sourceReliability: 0.5,
+      historicalAccuracy: 0.5,
+      authenticatedSource: false,
+      attackSurfaceExposure: 0.5,
+      holdoutOverlap: 0,
+    };
     return {
       signalId: newId("signal"),
       taskId: buildSyntheticTaskId(this.scopeFor(envelope)),
@@ -201,6 +209,8 @@ export class DomainEventFeedbackConsumer {
       payload,
       stepOutputRefs: [stepOutputRef],
       timestamp: Date.parse(envelope.event.createdAt),
+      feedbackTrustScore: deriveFeedbackTrustScore(trustFactors),
+      trustFactors,
     };
   }
 }

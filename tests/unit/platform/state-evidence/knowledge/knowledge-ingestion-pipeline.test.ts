@@ -32,8 +32,9 @@ test("KnowledgeIngestionPipeline ingests documents and serves keyword queries", 
 
   assert.equal(result.chunks.length, 2);
   assert.ok(pipeline.query("rollback", { domainId: "ops" }).length >= 1);
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
   assert.equal(pipeline.query("rollback", { domainId: "coding" }).length >= 1, true);
+  assert.equal(result.document.status, "indexed");
 });
 
 test("KnowledgeIngestionPipeline handles empty query results", () => {
@@ -132,4 +133,35 @@ test("KnowledgeIngestionPipeline supports section_aware chunking and AST indexin
   const symbols = astIndex.query({ query: "deployCanary", namespace: "coding/repo" });
   assert.equal(symbols.length, 1);
   assert.equal(symbols[0]?.symbolName, "deployCanary");
+});
+
+test("KnowledgeIngestionPipeline keeps private_unverified documents quarantined and out of retrieval", () => {
+  const pipeline = new KnowledgeIngestionPipeline();
+  pipeline.registerNamespace({
+    namespaceId: "ns_5",
+    path: "ops/quarantine",
+    description: "Quarantine knowledge",
+    ownerDomainId: "ops",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "team_reviewed",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  const result = pipeline.ingest({
+    title: "Unverified note",
+    body: "Rollback draft note for unverified intake.",
+    namespace: "ops/quarantine",
+    trustLevel: "private_unverified",
+  });
+
+  assert.equal(result.document.status, "draft");
+  assert.equal(result.source.metadata.ingestionLifecycle, "quarantined");
+  assert.equal(pipeline.query("rollback", { domainId: "ops", includeUnverified: true }).length, 0);
 });

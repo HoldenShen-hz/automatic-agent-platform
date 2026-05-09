@@ -191,13 +191,13 @@ export class SessionRepository {
   }
 
   public listMessagesBySession(sessionId: string, limit?: number): MessageRecord[] {
+    const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : undefined;
+    const limitClause = safeLimit != null ? ` LIMIT ${safeLimit}` : "";
     const sql = `SELECT
         id, session_id AS sessionId, direction, message_type AS messageType,
         content, parts_json AS partsJson, attachments_json AS attachmentsJson,
         created_at AS createdAt
-       FROM messages WHERE session_id = ? ORDER BY created_at ASC${
-         limit ? ` LIMIT ${limit}` : ""
-       }`;
+       FROM messages WHERE session_id = ? ORDER BY created_at ASC${limitClause}`;
     return queryAll<MessageRecord>(this.conn, sql, sessionId);
   }
 

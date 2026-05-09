@@ -339,6 +339,61 @@ test("DegradationController.evaluateHealth deescalates after consecutive healthy
   }
 });
 
+test("DegradationController.evaluateHealth does not deescalate while latency remains unhealthy", () => {
+  const controller = new DegradationController({
+    primaryProvider: createMockUnifiedChatProvider(),
+    fallbackService: createMockFallbackService(),
+    cacheService: createMockCacheService(),
+  });
+
+  controller.escalate();
+  controller.escalate();
+  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
+
+  const result = controller.evaluateHealth({
+    provider: "openai",
+    profileName: "gpt-4",
+    totalRequests: 100,
+    failedRequests: 1,
+    errorRate: 1,
+    latencyP99Ms: 6000,
+    ttftP99Ms: 500,
+    lastUpdated: new Date().toISOString(),
+  });
+
+  assert.equal(result.action, "maintain");
+  assert.equal(result.reason, "health_not_recovered");
+  assert.equal(controller.getCurrentLevel(), DegradationLevel.D2);
+});
+
+test("DegradationController route escalates iteratively without recursive overflow", async () => {
+  const failingProvider = {
+    createChatCompletion: async () => {
+      throw new Error("provider_down");
+    },
+    getAvailableProfiles: () => ([
+      { profileName: "fallback-profile", provider: "mock" },
+    ]),
+    dispose: () => {},
+  } as unknown as UnifiedChatProvider;
+
+  const controller = new DegradationController({
+    primaryProvider: failingProvider,
+    fallbackProvider: failingProvider,
+    fallbackService: createMockFallbackService(),
+    cacheService: createMockCacheService(),
+  });
+
+  const response = await controller.route({
+    model: "gpt-4",
+    routeClass: "default",
+    messages: [{ role: "user", content: "Hello" }],
+  });
+
+  assert.equal(response.degradationLevel, DegradationLevel.D3);
+  assert.equal(controller.getCurrentLevel(), DegradationLevel.D3);
+});
+
 test("DegradationController.route handles D0 successfully", async () => {
   const mockProvider = createMockUnifiedChatProvider();
   const controller = new DegradationController({

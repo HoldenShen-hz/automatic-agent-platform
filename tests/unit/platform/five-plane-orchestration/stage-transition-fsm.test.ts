@@ -120,6 +120,7 @@ test("getNextStage returns null when complete", () => {
   }
   assert.equal(fsm.getNextStage(), null);
   assert.equal(fsm.isComplete(), true);
+  assert.equal(fsm.getCurrentStage(), "release");
 });
 
 test("getNextStage returns first stage initially", () => {
@@ -166,6 +167,24 @@ test("feedback-driven replan allows backward to plan/assess/execute", () => {
   // from release, feedback-driven replan to plan
   fsm.recordStageEntry("release");
   const result = fsm.canTransitionTo("plan");
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, "fsm.feedback_driven_replan");
+});
+
+test("feedback-driven replan allows closed loop back to observe", () => {
+  const fsm = new StageTransitionFSM();
+  fsm.recordStageEntry("observe");
+  fsm.recordStageCompletion("observe");
+  fsm.recordStageEntry("assess");
+  fsm.recordStageCompletion("assess");
+  fsm.recordStageEntry("plan");
+  fsm.recordStageCompletion("plan");
+  fsm.recordStageEntry("execute");
+  fsm.recordStageCompletion("execute");
+  fsm.recordStageEntry("feedback");
+  fsm.recordStageCompletion("feedback");
+
+  const result = fsm.canTransitionTo("observe");
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, "fsm.feedback_driven_replan");
 });

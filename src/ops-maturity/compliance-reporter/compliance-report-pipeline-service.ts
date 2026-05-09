@@ -322,7 +322,9 @@ export class ComplianceReportPipelineService {
     readonly now: string;
   }): ComplianceReportHumanSignoff {
     const signedAt = input.signedAt ?? null;
-    if (signedAt != null && new Date(signedAt) <= new Date(input.signoffDueAt)) {
+    // Use getTime() for deterministic numeric comparison, avoiding timezone interpretation issues
+    const signoffDueTime = new Date(input.signoffDueAt).getTime();
+    if (signedAt != null && new Date(signedAt).getTime() <= signoffDueTime) {
       return {
         artifactId: input.artifact.artifactId,
         signerId: input.signerId ?? null,
@@ -341,7 +343,7 @@ export class ComplianceReportPipelineService {
       timeoutAction: input.timeoutAction ?? "escalate_owner",
       signoffDueAt: input.signoffDueAt,
       signedAt,
-      status: new Date(input.now) > new Date(input.signoffDueAt) ? "not_attested_expired" : "signoff_overdue",
+      status: new Date(input.now).getTime() > signoffDueTime ? "not_attested_expired" : "signoff_overdue",
     };
   }
 

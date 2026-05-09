@@ -3,10 +3,20 @@ import type { ApiClientConfig } from "../client-sdk/index.js";
 import { buildApiUrl } from "../client-sdk/index.js";
 import type { BusinessPackManifest } from "../pack-sdk/index.js";
 import { validateBusinessPackManifest } from "../pack-sdk/index.js";
-import type { PluginManifest } from "../../domains/registry/plugin-spi.js";
+import {
+  PluginManifestSchema,
+  type PluginManifest,
+} from "../../domains/registry/plugin-spi.js";
 
 function validatePluginManifest(manifest: PluginManifest): PluginManifest {
-  return manifest;
+  const parsed = PluginManifestSchema.safeParse(manifest);
+  if (!parsed.success) {
+    throw new ValidationError(
+      "sdk_workbench.invalid_plugin_manifest",
+      `SDK workbench received an invalid plugin manifest: ${parsed.error.issues.map((issue) => issue.path.join(".") || "root").join(", ")}`,
+    );
+  }
+  return parsed.data;
 }
 
 export interface WorkbenchInstallPlan {

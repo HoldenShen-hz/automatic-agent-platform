@@ -152,6 +152,15 @@ test("FieldEncryptionService AES-256-GCM provides authentication", () => {
   );
 });
 
+test("FieldEncryptionService rejects malformed ciphertext envelope", () => {
+  const service = new FieldEncryptionService();
+
+  assert.throws(
+    () => service.revealField({ ciphertext: "enc:short", keyRef: "auth_key" }),
+    /invalid_ciphertext/,
+  );
+});
+
 test("FieldEncryptionService all classification levels use AES-256-GCM", () => {
   const service = new FieldEncryptionService();
   const classifications: Array<FieldProtectionRule["classification"]> = ["internal", "confidential", "restricted"];

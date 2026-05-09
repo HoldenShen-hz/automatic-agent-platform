@@ -1,15 +1,11 @@
 /**
  * @fileoverview Unit tests for Channel Gateway Service - Issue #2047
  *
- * ISSUE #2047: Inbound webhook stores raw payload not RequestEnvelope
+ * ISSUE #2047: Inbound webhook retry path must preserve structured RequestEnvelope
  *
- * When an inbound webhook request is received and tracked for retry,
- * the delivery payload stores only { targetId, text, metadata } but NOT
- * the full RequestEnvelope that would be needed for proper replay.
- *
- * The current tracking stores raw message data but loses the envelope
- * context (source, tenantId, workspaceId, etc.) that was part of the
- * original webhook request.
+ * Regression coverage ensures retry tracking stores a structured
+ * requestEnvelope alongside webhook metadata so replay does not lose
+ * tenant/source/event context.
  */
 
 import assert from "node:assert/strict";
@@ -96,7 +92,7 @@ function createHarness() {
  * webhook delivery because envelope metadata is lost.
  */
 
-test("ISSUE #2047: Tracked message payload only contains text and metadata, not envelope context", async () => {
+test("ISSUE #2047: tracked webhook payload preserves normalized requestEnvelope context", async () => {
   const harness = createHarness();
   try {
     const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
@@ -125,6 +121,8 @@ test("ISSUE #2047: Tracked message payload only contains text and metadata, not 
         metadata: {
           originalEventType: "task.completed",
           sourceTenant: "tenant-123",
+          _envelope_source: "slack",
+          _envelope_tenantId: "tenant-123",
         },
       }),
       /gateway\.webhook_delivery_failed:503/,
@@ -133,23 +131,30 @@ test("ISSUE #2047: Tracked message payload only contains text and metadata, not 
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
-    const trackedPayload = queued[0]!.payload;
+    const trackedPayload = queued[0]!.payload as {
+      targetId: string;
+      text: string;
+      metadata: Record<string, unknown>;
+      requestEnvelope?: Record<string, unknown>;
+    };
     assert.equal(trackedPayload.targetId, target.targetId);
     assert.equal(trackedPayload.text, "Test message with metadata");
     assert.deepEqual(trackedPayload.metadata, {
       originalEventType: "task.completed",
       sourceTenant: "tenant-123",
+      _envelope_source: "slack",
+      _envelope_tenantId: "tenant-123",
     });
-
-    // Retry payload stores normalized delivery input, not flattened top-level envelope fields.
-    assert.equal(("sourceTenant" in trackedPayload), false);
-    assert.equal(("originalEventType" in trackedPayload), false);
+    assert.deepEqual(trackedPayload.requestEnvelope, {
+      source: "slack",
+      tenantId: "tenant-123",
+    });
   } finally {
     harness.close();
   }
 });
 
-test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payload", async () => {
+test("ISSUE #2047: explicit requestEnvelope is retained for retry reconstruction", async () => {
   const harness = createHarness();
   try {
     const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
@@ -171,10 +176,11 @@ test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payl
       metadata: {
         // These fields should be part of RequestEnvelope but are lost
         requestEnvelope: {
-          envelopeId: "env-123",
-          source: "github",
+          requestId: "req-123",
           tenantId: "tenant-abc",
-          workspaceId: "workspace-xyz",
+          sourcePlane: "interface",
+          targetPlane: "orchestration",
+          traceId: "trace-xyz",
           eventType: "pull_request",
         },
       },
@@ -191,18 +197,22 @@ test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payl
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
-    const trackedPayload = queued[0]!.payload;
+    const trackedPayload = queued[0]!.payload as {
+      targetId: string;
+      text: string;
+      metadata: Record<string, unknown>;
+      requestEnvelope?: Record<string, unknown>;
+    };
     assert.equal(trackedPayload.targetId, target.targetId);
     assert.equal(trackedPayload.text, "Original message text");
     assert.deepEqual((trackedPayload.metadata as { requestEnvelope?: unknown }).requestEnvelope, input.metadata?.requestEnvelope);
-    assert.equal(("envelopeId" in trackedPayload), false);
-    assert.equal(("source" in trackedPayload), false);
+    assert.deepEqual(trackedPayload.requestEnvelope, input.metadata?.requestEnvelope);
   } finally {
     harness.close();
   }
 });
 
-test("ISSUE #2047: Webhook adapter metadata is preserved but envelope fields are flattened", async () => {
+test("ISSUE #2047: flattened envelope metadata is normalized into requestEnvelope", async () => {
   const harness = createHarness();
   try {
     const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
@@ -242,15 +252,24 @@ test("ISSUE #2047: Webhook adapter metadata is preserved but envelope fields are
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
-    const trackedPayload = queued[0]!.payload;
+    const trackedPayload = queued[0]!.payload as {
+      text: string;
+      metadata: Record<string, unknown>;
+      requestEnvelope?: Record<string, unknown>;
+    };
     assert.equal(trackedPayload.text, "Test with envelope fields");
     assert.deepEqual(trackedPayload.metadata, metadata);
+    assert.deepEqual(trackedPayload.requestEnvelope, {
+      source: "bitbucket",
+      tenantId: "tenant-bitbucket",
+      eventType: "push",
+    });
   } finally {
     harness.close();
   }
 });
 
-test("ISSUE #2047: Retry processing reads text and metadata but cannot restore original envelope", async () => {
+test("ISSUE #2047: retry processing replays webhook with top-level requestEnvelope", async () => {
   const harness = createHarness();
   try {
     const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
@@ -270,6 +289,11 @@ test("ISSUE #2047: Retry processing reads text and metadata but cannot restore o
     const metadata = {
       correlationId: "corr-123",
       retryCount: 0,
+      requestEnvelope: {
+        requestId: "req-retry-1",
+        tenantId: "tenant-retry",
+        traceId: "trace-retry",
+      },
     };
     const failingService = new ChannelGatewayService(harness.store, harness.targets, {
       deliveryService,
@@ -294,6 +318,7 @@ test("ISSUE #2047: Retry processing reads text and metadata but cannot restore o
 
     assert.equal(summary.delivered, 1);
     assert.deepEqual((harness.requests.at(-1)?.body as { metadata?: unknown } | undefined)?.metadata, metadata);
+    assert.deepEqual((harness.requests.at(-1)?.body as { requestEnvelope?: unknown } | undefined)?.requestEnvelope, metadata.requestEnvelope);
   } finally {
     harness.close();
   }

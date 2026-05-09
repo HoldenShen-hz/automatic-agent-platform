@@ -37,6 +37,42 @@ import {
 } from "./human-takeover-support.js";
 
 /**
+ * R23-71: ManualOverride - Record of manual operator override in the execution loop
+ */
+export interface ManualOverride {
+  overrideId: string;
+  taskId: string;
+  executionId: string | null;
+  operatorId: string;
+  actionType: "input_modification" | "worker_switch" | "step_skip" | "task_complete" | "execution_retry" | "step_modification";
+  reasonCode: string;
+  targetStage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release" | null;
+  overridePayloadJson: string;
+  feedbackSignalInjected: boolean;
+  improvementCandidateCreated: boolean;
+  createdAt: string;
+  traceId: string | null;
+}
+
+/**
+ * R23-71: IncidentContextBundle - Context bundle for incident/override correlation
+ */
+export interface IncidentContextBundle {
+  bundleId: string;
+  incidentId: string | null;
+  taskId: string;
+  executionId: string | null;
+  overrideIds: readonly string[];
+  takeoverSessionIds: readonly string[];
+  operatorIds: readonly string[];
+  severity: "low" | "medium" | "high" | "critical";
+  status: "active" | "resolved" | "cancelled";
+  createdAt: string;
+  resolvedAt: string | null;
+  metadataJson: string | null;
+}
+
+/**
  * Result of a takeover action operation.
  * Contains identifiers needed to track the action and its effects.
  */
@@ -695,6 +731,45 @@ export class HumanTakeoverService {
         createdAt: now,
       });
 
+      // R23-70: Inject feedback signal for operator actions that could inform OAPEFLIR learning
+      // This enables the loop to learn from human interventions
+      const feedbackSignalInjected = this.injectFeedbackSignal(session, actionType, mutation.payload);
+
+      // R23-70: Create improvement candidate if this action represents a notable override
+      const improvementCandidateCreated = this.createImprovementCandidate(
+        session,
+        actionType,
+        reasonCode,
+        mutation.payload,
+        feedbackSignalInjected,
+      );
+
+      // R23-70: Emit feedback signal received event for OAPEFLIR learn stage
+      if (feedbackSignalInjected) {
+        this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: session.taskId,
+          executionId,
+          eventType: "feedback:signal_received",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            runId: session.taskId,
+            loopIteration: 0,
+            signalId: newId("feedback"),
+            signalType: "human_takeover_feedback",
+            sourceComponent: "human_takeover_service",
+            receivedAt: now,
+            payload: {
+              actionType,
+              operatorId: session.operatorId,
+              takeoverSessionId,
+            },
+          }),
+          traceId: newId("trace"),
+          createdAt: now,
+        });
+      }
+
       // Emit event for event bus consumers to react to takeover actions
       this.store.event.insertEvent({
         id: newId("evt"),
@@ -707,6 +782,8 @@ export class HumanTakeoverService {
           operatorActionId,
           actionType,
           reasonCode,
+          feedbackSignalInjected,
+          improvementCandidateCreated,
           ...mutation.payload,
         }),
         traceId: newId("trace"),
@@ -720,6 +797,89 @@ export class HumanTakeoverService {
       takeoverSessionId,
       operatorActionId,
     };
+  }
+
+  /**
+   * R23-70: Injects a feedback signal into the OAPEFLIR loop when an operator action occurs.
+   * Returns true if a signal was injected.
+   */
+  private injectFeedbackSignal(
+    session: TakeoverSessionRecord,
+    actionType: OperatorActionType,
+    payload: Record<string, unknown>,
+  ): boolean {
+    // Only inject feedback for significant override actions
+    const feedbackWorthyActions: OperatorActionType[] = [
+      "modify_input",
+      "switch_worker",
+      "retry_execution",
+      "set_current_step",
+      "complete_task",
+    ];
+
+    if (!feedbackWorthyActions.includes(actionType)) {
+      return false;
+    }
+
+    // Signal is injected via the event above
+    return true;
+  }
+
+  /**
+   * R23-70: Creates an improvement candidate when a notable override action occurs.
+   * Returns true if a candidate was created.
+   */
+  private createImprovementCandidate(
+    session: TakeoverSessionRecord,
+    actionType: OperatorActionType,
+    reasonCode: string,
+    payload: Record<string, unknown>,
+    feedbackSignalInjected: boolean,
+  ): boolean {
+    // Only create candidates for significant actions with feedback
+    if (!feedbackSignalInjected) {
+      return false;
+    }
+
+    // Significant override actions that warrant improvement candidates
+    const candidateWorthyActions: OperatorActionType[] = [
+      "modify_input",
+      "switch_worker",
+      "retry_execution",
+      "set_current_step",
+    ];
+
+    if (!candidateWorthyActions.includes(actionType)) {
+      return false;
+    }
+
+    // Emit improve:candidate_proposed event for the OAPEFLIR improve stage
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: session.taskId,
+      executionId: null,
+      eventType: "improve:candidate_proposed",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        runId: session.taskId,
+        loopIteration: 0,
+        candidateId: newId("improve_candidate"),
+        candidateType: "operator_override",
+        description: `Operator ${actionType} override: ${reasonCode}`,
+        proposedBy: session.operatorId,
+        proposedAt: nowIso(),
+        estimatedImpact: "medium",
+        metadata: {
+          actionType,
+          reasonCode,
+          payloadKeys: Object.keys(payload),
+        },
+      }),
+      traceId: newId("trace"),
+      createdAt: nowIso(),
+    });
+
+    return true;
   }
 
   /**

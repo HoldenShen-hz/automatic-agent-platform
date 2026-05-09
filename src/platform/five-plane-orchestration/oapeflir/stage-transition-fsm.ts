@@ -76,6 +76,7 @@ export class StageTransitionFSM {
   private currentStageIndex: number = 0;
   private readonly stageStatuses = new Map<OapeflirStage, StageStatus>();
   private readonly stageTimestamps = new Map<OapeflirStage, number>();
+  private readonly skippedReasonCodes = new Map<OapeflirStage, string>();
 
   public constructor() {
     for (const stage of STAGE_ORDER) {
@@ -84,6 +85,9 @@ export class StageTransitionFSM {
   }
 
   public getCurrentStage(): OapeflirStage {
+    if (this.currentStageIndex >= STAGE_ORDER.length) {
+      return STAGE_ORDER[STAGE_ORDER.length - 1]!;
+    }
     return STAGE_ORDER[this.currentStageIndex]!;
   }
 
@@ -120,14 +124,13 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
-      // R5-10: Allow backward transitions for feedback→plan scenario (replan loop)
-      const currentStage = this.getCurrentStage();
-      if (currentStage === "feedback" && targetStage === "plan") {
+      const feedbackCompleted = this.stageStatuses.get("feedback") === "completed";
+      if (feedbackCompleted && (targetStage === "plan" || targetStage === "observe")) {
         return {
           allowed: true,
           targetStage,
-          reasonCode: "fsm.replan_feedback_to_plan",
-          reasonCodes: [`fsm.replan_feedback_to_plan: ${currentStage} → ${targetStage}`],
+          reasonCode: "fsm.feedback_driven_replan",
+          reasonCodes: [`fsm.feedback_driven_replan: feedback → ${targetStage}`],
         };
       }
       return {
@@ -180,6 +183,7 @@ export class StageTransitionFSM {
   }
 
   public recordStageEntry(stage: OapeflirStage, status: StageStatus = "pending"): void {
+    this.currentStageIndex = STAGE_ORDER.indexOf(stage);
     this.stageStatuses.set(stage, status);
     this.stageTimestamps.set(stage, Date.now());
   }
@@ -205,13 +209,12 @@ export class StageTransitionFSM {
     }
   }
 
-  /**
-   * R31-11 FIX: Store the reason code for skipped stages for later retrieval.
-   */
-  private readonly skippedReasonCodes = new Map<OapeflirStage, string>();
-
   public getSkippedReasonCode(stage: OapeflirStage): string | undefined {
     return this.skippedReasonCodes.get(stage);
+  }
+
+  public getStageSkipReason(stage: OapeflirStage): string | undefined {
+    return this.getSkippedReasonCode(stage);
   }
 
   public recordStageError(stage: OapeflirStage): void {
@@ -247,6 +250,7 @@ export class StageTransitionFSM {
     for (const stage of STAGE_ORDER) {
       this.stageStatuses.set(stage, "pending");
       this.stageTimestamps.delete(stage);
+      this.skippedReasonCodes.delete(stage);
     }
   }
 
@@ -265,6 +269,7 @@ export class StageTransitionFSM {
       if (sIndex >= targetIndex) {
         this.stageStatuses.set(s, "pending");
         this.stageTimestamps.delete(s);
+        this.skippedReasonCodes.delete(s);
       }
     }
   }

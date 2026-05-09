@@ -76,6 +76,25 @@ function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
+function requireRepository(value: unknown): string {
+  const repository = requireString(value, "repository");
+  const normalized = repository.trim();
+  if (
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalized)
+    || normalized.includes("\\")
+    || normalized.includes("..")
+    || normalized.includes("%2f")
+    || normalized.includes("%2F")
+    || normalized.includes("%5c")
+    || normalized.includes("%5C")
+    || normalized.includes("%2e")
+    || normalized.includes("%2E")
+  ) {
+    throw new Error("github_adapter.invalid_repository");
+  }
+  return normalized;
+}
+
 export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = {}): ExternalAdapterPlugin {
   const apiBaseUrl = (options.apiBaseUrl ?? "https://api.github.com").replace(/\/+$/, "");
   const policy = options.policy ?? new NetworkEgressPolicyService({
@@ -106,7 +125,7 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
       if (!credentialFingerprint) {
         throw new Error("github_adapter.not_authenticated");
       }
-      const repository = requireString(params["repository"], "repository");
+      const repository = requireRepository(params["repository"]);
       const endpoint = buildEndpoint(apiBaseUrl, action, repository, params);
       const decision = policy.evaluate(endpoint);
       if (!decision.allowed) {

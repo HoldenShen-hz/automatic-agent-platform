@@ -177,3 +177,31 @@ test("GithubAdapter uses custom apiBaseUrl when provided", async () => {
   const output = result as any;
   assert.ok(output.endpoint.startsWith("https://github.example.com/api/v3"));
 });
+
+test("GithubAdapter.execute rejects repository traversal input", async () => {
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  await adapter.authenticate({ token: "ghp_test1234567890" });
+
+  await assert.rejects(
+    async () => adapter.execute("create_issue", {
+      repository: "owner/../repo",
+      title: "Test",
+      body: "Body",
+    }),
+    { message: "github_adapter.invalid_repository" },
+  );
+});
+
+test("GithubAdapter.execute rejects encoded slash repository input", async () => {
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  await adapter.authenticate({ token: "ghp_test1234567890" });
+
+  await assert.rejects(
+    async () => adapter.execute("create_issue", {
+      repository: "owner%2Frepo/extra",
+      title: "Test",
+      body: "Body",
+    }),
+    { message: "github_adapter.invalid_repository" },
+  );
+});

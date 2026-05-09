@@ -145,6 +145,50 @@ test("definePlugin applies custom security config", () => {
   assert.deepEqual(result.security.egressDomains, ["api.example.com"]);
 });
 
+test("definePlugin rejects insecure sandbox tier none", () => {
+  assert.throws(
+    () => definePlugin({
+      pluginId: "test",
+      name: "Test",
+      version: "1.0.0",
+      type: "tool",
+      capabilities: [{
+        name: "cap",
+        description: "test",
+        inputSchema: {},
+        outputSchema: {},
+      }],
+      security: {
+        sandboxTier: "none",
+      },
+    }),
+    /sandboxTier 'none'/,
+  );
+});
+
+test("definePlugin rejects non-positive resource limits", () => {
+  assert.throws(
+    () => definePlugin({
+      pluginId: "test",
+      name: "Test",
+      version: "1.0.0",
+      type: "tool",
+      capabilities: [{
+        name: "cap",
+        description: "test",
+        inputSchema: {},
+        outputSchema: {},
+      }],
+      resourceLimits: {
+        maxMemoryMb: 0,
+        maxCpuMs: 100,
+        maxDurationMs: 1000,
+      },
+    }),
+    /invalid_resource_limits/,
+  );
+});
+
 test("definePlugin trims pluginId, name, version, and description", () => {
   const result = definePlugin({
     pluginId: "  test  ",

@@ -202,6 +202,11 @@ export class DegradationController {
    * D4: Service unavailable error
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+    return this.routeWithDepth(request, 0);
+  }
+
+  private async routeWithDepth(request: LLMDegradationRequest, depth: number): Promise<LLMDegradationResponse> {
+    const MAX_ROUTE_DEPTH = 4; // D0 through D4 = max 4 escalations within one route call
     this.lastEscalationReason = null;
     let attemptLevel = this.currentLevel;
     const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
@@ -212,19 +217,33 @@ export class DegradationController {
           try {
             return await this.routeD0(request);
           } catch (error) {
+            if (depth >= MAX_ROUTE_DEPTH) {
+              throw new ProviderError(
+                "degradation.max_depth_exceeded",
+                "LLM service failed after maximum degradation attempts.",
+                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
+              );
+            }
             this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d0_failed");
             this.escalate();
             attemptLevel = this.currentLevel;
-            continue;
+            return this.routeWithDepth(request, depth + 1);
           }
         case DegradationLevel.D1:
           try {
             return await this.routeD1(request);
           } catch (error) {
+            if (depth >= MAX_ROUTE_DEPTH) {
+              throw new ProviderError(
+                "degradation.max_depth_exceeded",
+                "LLM service failed after maximum degradation attempts.",
+                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
+              );
+            }
             this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d1_failed");
             this.escalate();
             attemptLevel = this.currentLevel;
-            continue;
+            return this.routeWithDepth(request, depth + 1);
           }
         case DegradationLevel.D2:
           return this.routeD2(request);
@@ -458,7 +477,7 @@ export class DegradationController {
     if (this.currentLevel > DegradationLevel.D0) {
       const fromLevel = this.currentLevel;
       this.currentLevel--;
-      this.consecutiveHealthyCount = 0;
+      // Note: do NOT reset consecutiveHealthyCount here - evaluateHealth references it after deescalate
       this.emitOperationalDirective("degradation_deescalation", fromLevel, this.currentLevel, "health_recovered");
     }
   }
@@ -490,6 +509,9 @@ export class DegradationController {
     reason: string;
   } {
     const { errorRate, latencyP99Ms, ttftP99Ms } = metrics;
+    const latencyHealthy = latencyP99Ms <= this.config.escalateLatencyP99Ms;
+    const ttftHealthy = ttftP99Ms <= 10000;
+    const errorHealthy = errorRate < this.config.deescalateErrorRateThreshold;
 
     // Check for escalation conditions
     // §15: TTFT >10s triggers escalation
@@ -521,7 +543,9 @@ export class DegradationController {
 
     // Check for de-escalation conditions
     const shouldDeescalate =
-      errorRate < this.config.deescalateErrorRateThreshold &&
+      errorHealthy &&
+      latencyHealthy &&
+      ttftHealthy &&
       this.currentLevel > this.config.maxAutoDeescalateLevel;
 
     if (shouldDeescalate) {
@@ -543,14 +567,14 @@ export class DegradationController {
     }
 
     // Reset healthy counter if not fully healthy
-    if (errorRate >= this.config.deescalateErrorRateThreshold) {
+    if (!errorHealthy || !latencyHealthy || !ttftHealthy) {
       this.consecutiveHealthyCount = 0;
     }
 
     return {
       action: "maintain",
       newLevel: this.currentLevel,
-      reason: "healthy",
+      reason: errorHealthy && latencyHealthy && ttftHealthy ? "healthy" : "health_not_recovered",
     };
   }
 

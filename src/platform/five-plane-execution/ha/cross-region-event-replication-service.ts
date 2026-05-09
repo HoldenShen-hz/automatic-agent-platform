@@ -314,7 +314,7 @@ export class CrossRegionEventReplicationService {
       }
 
       event.status = "replicating";
-      completedPromises.push(this.replicateToTarget(event));
+      completedPromises.push(this.replicateToTarget(event, plan));
     }
 
     await Promise.all(completedPromises);

@@ -290,6 +290,16 @@ export class AnthropicChatService {
     }
   }
 
+  private toAnthropicMessageRole(role: AnthropicMessage["role"]): "user" | "assistant" {
+    if (role === "user" || role === "assistant") {
+      return role;
+    }
+    throw new ProviderError("provider.invalid_request", "Anthropic message array cannot contain system-role entries after normalization.", {
+      source: "provider",
+      retryable: false,
+    });
+  }
+
   private transformToAnthropicRequest(request: AnthropicChatCompletionRequest): Record<string, unknown> {
     // Extract system message if present
     let systemMessage: string | undefined;
@@ -306,7 +316,7 @@ export class AnthropicChatService {
     const result: Record<string, unknown> = {
       model: request.model,
       messages: anthropicMessages.map((m) => ({
-        role: m.role === "assistant" ? "assistant" : m.role,
+        role: this.toAnthropicMessageRole(m.role),
         content: m.content,
       })),
       max_tokens: request.max_tokens,

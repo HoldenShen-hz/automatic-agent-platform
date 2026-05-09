@@ -15,7 +15,7 @@ export interface StrategyVersion {
 export function createStrategyVersion(
   title: string,
   learningObjects: readonly LearningObject[],
-  releaseLevel: StrategyReleaseLevel = "evaluate_0",
+  releaseLevel: StrategyReleaseLevel = "L1_evaluate",
 ): StrategyVersion {
   return {
     strategyVersionId: newId("strategy_version"),

@@ -5,6 +5,7 @@
  * Filters out noise, contradictions, and low-information feedback.
  */
 
+import { deriveFeedbackTrustScore } from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
 import type { FeedbackSignal } from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
 import type { LearningSignal } from "./collector/feedback-model.js";
 
@@ -211,6 +212,13 @@ export class FeedbackQualityGrader {
 
     const feedbackSignals = signals.flatMap((sig) => {
       const result: FeedbackSignal[] = [];
+      const trustFactors = {
+        sourceReliability: 0.5,
+        historicalAccuracy: 0.5,
+        authenticatedSource: false,
+        attackSurfaceExposure: 0.5,
+        holdoutOverlap: 0,
+      };
       for (const id of sig.sourceSignalIds) {
         result.push({
           signalId: id,
@@ -224,6 +232,8 @@ export class FeedbackQualityGrader {
           payload: { reasonCode: sig.learningType },
           stepOutputRefs: sig.evidenceRefs,
           timestamp: sig.generatedAt,
+          feedbackTrustScore: deriveFeedbackTrustScore(trustFactors),
+          trustFactors,
         });
       }
       return result;

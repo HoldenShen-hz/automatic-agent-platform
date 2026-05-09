@@ -740,7 +740,7 @@ export class AsyncWorkerRepository {
        updated_at AS "updatedAt"
        FROM execution_tickets
        WHERE status = 'pending'
-         AND dispatch_after <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', 'utc')`;
+         AND dispatch_after <= NOW()`;
     if (queueName != null) {
       sql += ` AND queue_name = $${params.length + 1}`;
       params.push(queueName);

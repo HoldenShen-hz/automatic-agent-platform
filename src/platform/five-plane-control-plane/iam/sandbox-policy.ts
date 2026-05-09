@@ -114,6 +114,128 @@ export interface SandboxPolicy {
 
   /** R12-15: CPU limit as a fraction of available cores (0 = no limit) */
   cpuLimitFraction: number;
+
+  /** R23-58: Filesystem rules for path-based access control */
+  filesystem_rules?: readonly FilesystemRule[];
+
+  /** R23-58: Network rules for network access control */
+  network_rules?: readonly NetworkRule[];
+
+  /** R23-58: Process rules for process spawning control */
+  process_rules?: readonly ProcessRule[];
+
+  /** R23-58: Timestamp when policy was created */
+  created_at?: string;
+}
+
+/**
+ * R23-58: Filesystem rule for granular path access control
+ */
+export interface FilesystemRule {
+  /** Rule type: allow or deny */
+  rule: "allow" | "deny";
+  /** Path pattern to match (supports glob patterns) */
+  pathPattern: string;
+  /** Operations this rule applies to */
+  operations?: readonly ("read" | "write" | "execute" | "list" | "stat")[];
+  /** Optional description */
+  description?: string;
+}
+
+/**
+ * R23-58: Network rule for network access control
+ */
+export interface NetworkRule {
+  /** Rule type: allow or deny */
+  rule: "allow" | "deny";
+  /** Host pattern to match */
+  hostPattern: string;
+  /** Port or port range */
+  port?: string | number;
+  /** Protocol */
+  protocol?: "tcp" | "udp" | "icmp" | "any";
+  /** Optional description */
+  description?: string;
+}
+
+/**
+ * R23-58: Process rule for process spawning control
+ */
+export interface ProcessRule {
+  /** Rule type: allow or deny */
+  rule: "allow" | "deny";
+  /** Executable path pattern */
+  execPattern: string;
+  /** Arguments pattern (optional) */
+  argsPattern?: string;
+  /** Environment variable constraints */
+  envConstraints?: Record<string, string>;
+  /** Optional description */
+  description?: string;
+}
+
+/**
+ * R23-59: SandboxCapabilityProfile - defines the capability set available to a sandboxed execution
+ */
+export interface SandboxCapabilityProfile {
+  /** Unique identifier for this capability profile */
+  profileId: string;
+
+  /** Human-readable name */
+  name: string;
+
+  /** Description of what this profile is used for */
+  description: string;
+
+  /** Filesystem capabilities */
+  filesystem: {
+    /** Max path depth allowed */
+    maxPathDepth: number;
+    /** Whether symlinks are allowed */
+    allowSymlinks: boolean;
+    /** Allowed file extensions for execution */
+    allowedExecExtensions: readonly string[];
+    /** Max file size in bytes (0 = unlimited) */
+    maxFileSizeBytes: number;
+    /** Read-only filesystem */
+    readOnly: boolean;
+  };
+
+  /** Network capabilities */
+  network: {
+    /** Whether network access is allowed */
+    allowNetwork: boolean;
+    /** Allowed host patterns */
+    allowedHosts: readonly string[];
+    /** Allowed port ranges */
+    allowedPorts: readonly string[];
+    /** Allow outbound connections */
+    allowOutbound: boolean;
+  };
+
+  /** Process capabilities */
+  process: {
+    /** Max processes allowed */
+    maxProcesses: number;
+    /** Max CPU time in ms */
+    maxCpuTimeMs: number;
+    /** Max memory in bytes */
+    maxMemoryBytes: number;
+    /** Allowed executable paths */
+    allowedExecPaths: readonly string[];
+  };
+
+  /** IPC capabilities */
+  ipc: {
+    /** Whether IPC is allowed */
+    allowIpc: boolean;
+    /** Allowed IPC paths */
+    allowedIpcPaths: readonly string[];
+  };
+
+  /** Timestamps */
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**

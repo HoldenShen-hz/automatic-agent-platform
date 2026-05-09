@@ -216,7 +216,6 @@ export class ConversationHistoryService {
     const memories = await this.memoryService.recall({
       sessionId,
       scopes: [this.defaultScope],
-      tenantId,
     });
 
     const sessionMemory = memories.find(

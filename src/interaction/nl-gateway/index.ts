@@ -1162,14 +1162,17 @@ export class NlEntryService implements NlEntryPort {
       confirmationReceipt,
       conversationState,
       clarificationSession: null,
-      // R9-41: Include dry-run preview when available
-      dryRunPreview: buildDryRunPreview({
-        request,
-        divisionId: detailed.suggestedDivisionId,
-        workflowId: detailed.suggestedWorkflowId,
-        riskPreview,
-        context: detailed.context,
-      }),
+      // R9-41: Include dry-run preview when available (only add property if dry run is applicable)
+      ...(() => {
+        const dryRunResult = buildDryRunPreview({
+          request,
+          divisionId: detailed.suggestedDivisionId,
+          workflowId: detailed.suggestedWorkflowId,
+          riskPreview,
+          context: detailed.context,
+        });
+        return dryRunResult ? { dryRunPreview: dryRunResult } : {};
+      })(),
     };
   }
 

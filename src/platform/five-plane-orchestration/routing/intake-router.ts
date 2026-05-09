@@ -6,13 +6,6 @@
  * Routes incoming requests to the appropriate division and workflow based on
  * content analysis and trigger pattern matching. Entry point for request classification.
  *
- * ## Architecture Role
- *
- * Part of the control layer canonical mapping:
- * - Canonical ID: intake_router
- * - Business Alias: VP Operations
- * - Responsibility: Input triage, classification, routing
- *
  * ## Routing Decisions
  *
  * - Which division handles the request (based on trigger patterns)
@@ -24,6 +17,9 @@
  * - Keyword matching for orchestration hints (plan, orchestrate, analyze, etc.)
  * - Division trigger patterns (matched against normalized input)
  * - Request complexity threshold (120 characters)
+ *
+ * Note: Budget entry is handled by the budget allocation layer, not by intake router.
+ * The router determines workflow selection and division routing only.
  *
  * @see Architecture: docs_zh/architecture/00-platform-architecture.md
  * @see Workflow Routing ADR: docs_zh/adr/004-workflow-routing.md

@@ -62,9 +62,15 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
   return { sqlitePath, pgDsn, dryRun };
 }
 
+const VALID_TABLES = new Set(TABLES);
+
 export function planSqliteToPgMigration(sqlite: SqliteDatabase): Array<{ table: string; rowCount: number }> {
   return TABLES.map((table) => {
     try {
+      // R31-32 FIX: Validate table name against allowlist to prevent SQL injection
+      if (!VALID_TABLES.has(table)) {
+        throw new Error(`Invalid table name: ${table}`);
+      }
       const row = sqlite.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count?: number } | undefined;
       return { table, rowCount: row?.count ?? 0 };
     } catch (error) {
@@ -120,9 +126,11 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
 async function main(): Promise<void> {
   const options = parseMigrateSqliteToPgArgs(process.argv.slice(2));
   const result = await migrateSqliteToPg(options);
+  // R31-33 FIX: Mask PG DSN in output to prevent credential leakage
+  const maskedDsn = options.pgDsn.replace(/\/\/[^@]+@/, "//****:****@");
   process.stdout.write(`${JSON.stringify({
     sqlite: basename(options.sqlitePath),
-    pgDsn: options.pgDsn,
+    pgDsn: maskedDsn,
     dryRun: options.dryRun,
     tables: result,
   }, null, 2)}\n`);

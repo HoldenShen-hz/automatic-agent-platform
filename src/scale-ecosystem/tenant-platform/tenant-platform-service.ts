@@ -289,7 +289,7 @@ const VALID_LIFECYCLE_TRANSITIONS: Record<TenantLifecycleStage, TenantLifecycleS
 export class TenantPlatformService {
   private readonly quotaService: NoisyNeighborProtectionService;
   private readonly encryptionService: PerTenantEncryptionService;
-  private readonly logger = new StructuredLogger({ component: "TenantPlatformService" });
+  private readonly logger = new StructuredLogger({});
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -545,7 +545,7 @@ export class TenantPlatformService {
     // Register the tenant with dedicated resource guarantees
     // In production, this would interact with the worker-pool service to create
     // a dedicated pool and with the quota-enforcer to set reserved limits
-    logger?.info("Provisioning dedicated pool isolation", {
+    this.logger?.info("Provisioning dedicated pool isolation", {
       tenantId: tenant.tenantId,
       organizationId: tenant.organizationId,
       dedicatedQuotaId,

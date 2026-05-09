@@ -50,6 +50,16 @@ const DEFAULT_QUALITY_SCORING_CONFIG: QualityScoringConfig = {
   suggestionPenalty: 0.1,
 };
 
+function describeValueType(value: unknown): string {
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (value === null) {
+    return "null";
+  }
+  return typeof value;
+}
+
 /**
  * R11-14: Validates input and calculates quality score
  */
@@ -95,7 +105,7 @@ function validateWithQualityScoring(
     }
 
     const value = payload[field];
-    const actualType = Array.isArray(value) ? "array" : value === null ? "object" : typeof value;
+    const actualType = describeValueType(value);
     if (actualType !== expectedType) {
       errors.push({
         field,

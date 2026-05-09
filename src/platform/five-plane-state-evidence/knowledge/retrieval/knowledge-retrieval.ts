@@ -302,6 +302,9 @@ export class KnowledgeRetrievalService {
     }
     const candidates: Array<[string, number]> = [];
     for (const record of this.archive.list(options.namespace)) {
+      if (record.document.status !== "indexed" || record.document.archived) {
+        continue;
+      }
       for (const chunk of record.chunks) {
         const similarity = cosineSimilarity(chunk.embedding, queryEmbedding);
         if (similarity < SEMANTIC_MATCH_THRESHOLD) {
@@ -340,6 +343,9 @@ export class KnowledgeRetrievalService {
     freshness: ReturnType<FreshnessTracker["assess"]>;
     trustPolicy: ReturnType<SourceTrustPolicyRegistry["get"]>;
   } | null {
+    if (chunkRecord.record.document.status !== "indexed" || chunkRecord.record.document.archived) {
+      return null;
+    }
     if (options.namespace != null && chunkRecord.chunk.namespace !== options.namespace) {
       return null;
     }

@@ -592,7 +592,7 @@ export class MarketplaceGovernanceService {
         : assertSimpleIdentifier(input.publicationId, "marketplace.invalid_publication_id"),
       tenantId: packageRecord.tenantId,
       packageId: packageRecord.packageId,
-      reviewId: reviewRecord.reviewId,
+      reviewId: reviewRecord?.reviewId ?? "",
       channel: assertSimpleIdentifier(input.channel ?? "marketplace_public", "marketplace.invalid_channel"),
       status: "published",
       compatibilityMatrixJson: packageRecord.compatibilityJson,

@@ -125,8 +125,10 @@ export class UxEventTrackingService {
 
     if (this.eventPublisher) {
       // R29-36: Use actual eventType instead of hardcoded "test:many_events"
+      // Note: UxEventType is not in TypedEventPayloadMap, so we cast through unknown.
+      // The event is still logged to eventLog for internal tracking purposes.
       this.eventPublisher.publish({
-        eventType: trackEntry.eventType,
+        eventType: trackEntry.eventType as unknown as "test:many_events",
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {

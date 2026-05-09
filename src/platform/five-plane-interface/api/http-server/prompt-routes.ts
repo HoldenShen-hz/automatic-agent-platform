@@ -7,9 +7,16 @@ import { z } from "zod";
 import type { PromptBundleRegistrationInput } from "../../../contracts/prompt-bundle/index.js";
 
 const promptBundleRequestSchema = z.object({
+  name: z.string().optional(),
+  version: z.number().optional(),
+  displayVersion: z.string().optional(),
+  taskType: z.string().optional(),
+  systemPrompt: z.string().optional(),
+  userPrompt: z.string().optional(),
   level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
   domain: z.string().optional(),
   packId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   // R29-39: Removed .passthrough() to enforce strict schema validation
   // Additional fields should be explicitly defined in the schema
 });
@@ -46,14 +53,22 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "operator");
         const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse);
         const level = rawPayload.level ?? "global";
-        // R29-39: Create properly typed input without unsafe 'as any' cast
-        const bundleInput: PromptBundleRegistrationInput = {
-          ...(rawPayload.level && { level: rawPayload.level }),
-          ...(rawPayload.domain && { domain: rawPayload.domain }),
-          ...(rawPayload.packId && { packId: rawPayload.packId }),
-        };
+        // R29-39: Register bundle with proper input from request
         const bundle = deps.promptRegistryService.registerBundle(
-          bundleInput,
+          {
+            name: rawPayload.name ?? rawPayload.packId ?? "unnamed",
+            version: rawPayload.version ?? 1,
+            displayVersion: rawPayload.displayVersion ?? "1.0.0",
+            taskType: rawPayload.taskType ?? "general",
+            systemPrompt: { content: rawPayload.systemPrompt ?? "", templateVariables: [], channel: "system" },
+            userPrompt: rawPayload.userPrompt ? { content: rawPayload.userPrompt, templateVariables: [], channel: "user" } : undefined,
+            domain: rawPayload.domain ?? "",
+            packId: rawPayload.packId,
+            fewShotExamples: undefined,
+            constraints: undefined,
+            compatibilityMatrix: { toolSchemaVersions: [], evaluatorSchemaVersions: [], domainDescriptorVersions: [], modelRoutingProfiles: [] },
+            metadata: undefined,
+          },
           level,
           rawPayload.domain,
           rawPayload.packId,

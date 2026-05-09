@@ -237,7 +237,7 @@ export class ChangepointDetectorService {
     }
 
     const effectiveBaselineWindow = Math.min(
-      Math.max(1, Math.floor(baselineWindowOrWindows)),
+      Math.max(1, Math.floor(baselineWindowOrWindows as number)),
       Math.max(samples.length - Math.max(1, recentWindow), 0),
     );
     const effectiveRecentWindow = Math.max(1, Math.floor(recentWindow));
@@ -630,13 +630,13 @@ function bucketize(values: readonly number[], bucketCount = 10): number[] {
     histogram[0] = 1;
     return histogram;
   }
-  const counts = Array.from({ length: bucketCount }, () => 0);
+  const counts: number[] = Array.from({ length: bucketCount }, () => 0);
   for (const value of values) {
     const position = Math.min(
       bucketCount - 1,
       Math.floor(((value - min) / (max - min + EPSILON)) * bucketCount),
     );
-    counts[position] += 1;
+    counts[position] = (counts[position] ?? 0) + 1;
   }
   return counts.map((count) => count / values.length);
 }

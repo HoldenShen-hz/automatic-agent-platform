@@ -80,6 +80,18 @@ test("validate returns error for type mismatch", async () => {
   assert.equal(result.errors[0].message, "Expected string, received number");
 });
 
+test("validate still applies fieldTypes when requiredFields is empty", async () => {
+  const plugin = createBasicEvaluatorPlugin();
+  const result = await plugin.validate({
+    machineOutput: { payload: { field1: 123 } },
+    contract: { requiredFields: [], fieldTypes: { field1: "string" } },
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].message, "Expected string, received number");
+});
+
 test("validate returns suggestion for type mismatch", async () => {
   const plugin = createBasicEvaluatorPlugin();
   const result = await plugin.validate({
@@ -152,15 +164,16 @@ test("validate handles array type correctly", async () => {
   assert.deepEqual(result.errors, []);
 });
 
-test("validate handles object type correctly", async () => {
+test("validate rejects null when object type is required", async () => {
   const plugin = createBasicEvaluatorPlugin();
   const result = await plugin.validate({
     machineOutput: { payload: { field1: null } },
     contract: { fieldTypes: { field1: "object" } },
   });
 
-  assert.equal(result.valid, true);
-  assert.deepEqual(result.errors, []);
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].message, "Expected object, received null");
 });
 
 test("validate handles empty payload", async () => {

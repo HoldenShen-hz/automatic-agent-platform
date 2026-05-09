@@ -474,15 +474,15 @@ export class AsyncOrganizationRepository {
       parameters.push(options.plane);
     }
     if (options.tenantId !== undefined) {
-      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      conditions.push(`tenant_id = $${parameters.length + 1}`);
       parameters.push(options.tenantId);
     }
     if (options.organizationId !== undefined) {
-      conditions.push(`organization_id IS $${parameters.length + 1}`);
+      conditions.push(`organization_id = $${parameters.length + 1}`);
       parameters.push(options.organizationId);
     }
     if (options.workspaceId !== undefined) {
-      conditions.push(`workspace_id IS $${parameters.length + 1}`);
+      conditions.push(`workspace_id = $${parameters.length + 1}`);
       parameters.push(options.workspaceId);
     }
 

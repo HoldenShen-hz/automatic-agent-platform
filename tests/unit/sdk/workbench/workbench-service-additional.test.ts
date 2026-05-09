@@ -413,3 +413,25 @@ test("SdkWorkbenchService snapshot handles client without tenantId", () => {
 
   assert.equal(snapshot.tenantId, null);
 });
+
+test("SdkWorkbenchService rejects invalid plugin manifests instead of pass-through", () => {
+  const service = new SdkWorkbenchService();
+
+  assert.throws(
+    () => service.buildSnapshot({
+      client: createTestClient(),
+      plugins: [
+        createTestPlugin({
+          name: "",
+        }),
+      ],
+      packs: [],
+      availableContracts: [],
+    }),
+    (error: unknown) =>
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && (error as { code?: string }).code === "sdk_workbench.invalid_plugin_manifest",
+  );
+});

@@ -79,8 +79,8 @@ export const RolloutRecordSchema = z.object({
   recordId: z.string().min(1),
   candidateId: z.string().min(1),
   level: RolloutLevelSchema,
-  previousLevel: RolloutLevelSchema.default("off"),
-  fromLevel: RolloutLevelSchema.default("off"),
+  previousLevel: RolloutLevelSchema.default("L0_off"),
+  fromLevel: RolloutLevelSchema.default("L0_off"),
   toLevel: RolloutLevelSchema,
   strategyVersionId: z.string().nullable().default(null),
   status: RolloutStatusSchema.default("candidate_created"),
@@ -111,8 +111,8 @@ export type RolloutRecord = z.infer<typeof RolloutRecordSchema>;
 
 export function parseRolloutRecord(input: unknown): RolloutRecord {
   const record = (input ?? {}) as Partial<RolloutRecord>;
-  const fromLevel = record.fromLevel ?? record.previousLevel ?? "off";
-  const toLevel = record.toLevel ?? record.level ?? "off";
+  const fromLevel = record.fromLevel ?? record.previousLevel ?? "L0_off";
+  const toLevel = record.toLevel ?? record.level ?? "L0_off";
   const transitionedAt = record.transitionedAt ?? Date.now();
   const guardrailReasonCodes = record.guardrailReasonCodes ?? [];
   const evidence = record.evidence ?? [];

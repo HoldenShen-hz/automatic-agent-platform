@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -114,6 +114,61 @@ test("PackScaffoldService.scaffold validates empty pack ID", () => {
     }),
     /Pack ID/i,
   );
+});
+
+test("PackScaffoldService.scaffold rejects template injection in name", () => {
+  const service = new PackScaffoldService();
+  assert.throws(
+    () => service.scaffold({
+      packId: "safe-pack",
+      name: "Bad ${process.env.SECRET}",
+      template: "minimal",
+      domain: "testing",
+      owner: "test@example.com",
+      riskLevel: "low",
+    }),
+    (error: unknown) => error instanceof Error && /unsupported template control characters/i.test(error.message),
+  );
+});
+
+test("PackScaffoldService.scaffold rejects template injection in domain", () => {
+  const service = new PackScaffoldService();
+  assert.throws(
+    () => service.scaffold({
+      packId: "safe-pack",
+      name: "Safe Pack",
+      template: "minimal",
+      domain: "ops\nrm -rf /",
+      owner: "test@example.com",
+      riskLevel: "low",
+    }),
+    (error: unknown) => error instanceof Error && /cannot contain template control characters/i.test(error.message),
+  );
+});
+
+test("PackScaffoldService.scaffold trims sanitized config before rendering files", () => {
+  const service = new PackScaffoldService();
+  const tmpDir = mkdtempSync(join(tmpdir(), "pack-scaffold-test-"));
+  const originalCwd = process.cwd();
+
+  try {
+    process.chdir(tmpDir);
+    const result = service.scaffold({
+      packId: "trimmed-pack",
+      name: "  Trimmed Pack  ",
+      template: "minimal",
+      domain: "trimmed.domain",
+      owner: " owner@example.com ",
+      riskLevel: "low",
+    });
+
+    const manifest = JSON.parse(readFileSync(result.manifestPath, "utf8"));
+    assert.equal(manifest.owner, "owner@example.com");
+    assert.equal(manifest.domainId, "trimmed.domain");
+  } finally {
+    process.chdir(originalCwd);
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test("PackTestLocalService.test runs unit tests and returns report", async () => {

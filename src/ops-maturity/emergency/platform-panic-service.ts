@@ -26,6 +26,10 @@ export interface PlatformPanicDirective {
   readonly reconfirmationAfterSeconds?: number;
   readonly rollbackStrategy?: "automatic" | "manual" | "none";
   readonly allowList?: readonly string[];
+  /** R23-65: Reference to the resource/entity this directive applies to */
+  readonly scopeRef?: string;
+  /** R23-65: Expiration timestamp after which this directive is no longer valid */
+  readonly expiresAt?: string;
 }
 
 export interface PanicPropagationRecord {
@@ -68,6 +72,28 @@ export interface PanicResumeReceipt {
   readonly resumedAt: string | null;
   readonly directiveId: string | null;
   readonly reasonCodes: readonly string[];
+}
+
+/**
+ * R23-66: PanicDrillRecord - Record of a panic drill execution for audit and compliance
+ */
+export interface PanicDrillRecord {
+  readonly drillId: string;
+  readonly scope: string;
+  readonly scopeLevel: PanicScopeLevel;
+  readonly drillType: "scheduled" | "manual" | "simulation";
+  readonly initiatedBy: string;
+  readonly initiatedAt: string;
+  readonly completedAt: string | null;
+  readonly status: "initiated" | "in_progress" | "completed" | "cancelled" | "failed";
+  readonly directiveId: string | null;
+  readonly freezeModesTested: readonly PanicFreezeMode[];
+  readonly targetPlanes: readonly ("P1" | "P2" | "P3" | "P4" | "P5")[];
+  readonly acknowledgmentsReceived: number;
+  readonly acknowledgmentsExpected: number;
+  readonly findingsJson: string | null;
+  readonly notes: string | null;
+  readonly traceId: string | null;
 }
 
 export interface PlatformPanicActivation {

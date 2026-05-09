@@ -28,11 +28,13 @@ const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
 };
 
 function hashToBucket(value: string): number {
-  let hash = 0;
+  // R23-52 fix: Use djb2-style hash which provides better distribution
+  // than simple polynomial accumulation. Also ensure full 32-bit range.
+  let hash = 5381;
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash * 31) + value.charCodeAt(index)) >>> 0;
+    hash = ((hash << 5) + hash) + value.charCodeAt(index);
   }
-  return hash % 100;
+  return Math.abs(hash) % 100;
 }
 
 export class CanaryTrafficRouter {

@@ -40,7 +40,7 @@ export class ImprovementCandidateRegistry {
   private readonly accessOrder: string[] = [];
   private readonly createdAt = new Map<string, number>();
   /** R23-45 fix: Optional persistence store for durable storage */
-  private readonly persistenceStore?: CandidatePersistenceStore;
+  private readonly persistenceStore: CandidatePersistenceStore | undefined;
   /** R23-45 fix: TTL in milliseconds */
   private readonly ttlMs: number;
   private readonly maxSize: number;
@@ -231,7 +231,7 @@ export class ImprovementCandidateRegistry {
       return [{
         guardrailId: "guardrail.platform.human_approval",
         description: "Platform-scoped improvements require human approval before rollout.",
-        requiredLevel: "evaluate_0",
+        requiredLevel: "L1_evaluate",
       }];
     }
     return [];

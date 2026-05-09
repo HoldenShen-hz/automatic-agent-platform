@@ -18,6 +18,7 @@ test("SdkWorkbenchService.buildSnapshot creates snapshot with all inputs", () =>
     plugins: [
       {
         pluginId: "test-plugin",
+        name: "Test Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["tool"],
@@ -89,6 +90,7 @@ test("SdkWorkbenchService.createInstallPlan matches plugins to pack capabilities
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],
@@ -119,6 +121,7 @@ test("SdkWorkbenchService.createInstallPlan resolves all capabilities when plugi
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],
@@ -153,6 +156,7 @@ test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved 
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],

@@ -108,7 +108,7 @@ export class ComplianceExceptionWorkflowEngine {
       decision,
       reason,
       decidedAt: nowIso(),
-      comments: comments ?? undefined,
+      ...(comments !== undefined && { comments }),
     };
 
     let nextStatus: ComplianceExceptionStatus = workflow.status;

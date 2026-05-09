@@ -177,7 +177,7 @@ test("KnowledgeIngestionPipeline ingest applies trust level from input", () => {
     trustLevel: "verified",
   });
 
-  assert.equal(result.source.trustLevel, "verified");
+  assert.equal(result.source.trustLevel, "authoritative");
 });
 
 test("KnowledgeIngestionPipeline ingest applies trust level default", () => {
@@ -189,7 +189,8 @@ test("KnowledgeIngestionPipeline ingest applies trust level default", () => {
     namespace: "test/ns",
   });
 
-  assert.equal(result.source.trustLevel, "community");
+  assert.equal(result.source.trustLevel, "team_reviewed");
+  assert.equal(result.document.status, "indexed");
 });
 
 test("KnowledgeIngestionPipeline ingest handles tags in content", () => {

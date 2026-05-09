@@ -18,6 +18,7 @@ import {
   normalizeGatewayDeliveryFailure,
 } from "./errors.js";
 import {
+  normalizeWebhookRequestEnvelope,
   parseMetadata,
   readTrackedDeliveryPayload,
   requireNonEmpty,
@@ -313,6 +314,9 @@ export class ChannelGatewayService {
         ...(input.metadata ?? {}),
       }
       : undefined;
+    const requestEnvelope = channel === "webhook"
+      ? normalizeWebhookRequestEnvelope(metadata)
+      : undefined;
 
     // Check rate limits before attempting delivery
     this.enforceRateLimit(channel, deliveryService);
@@ -326,6 +330,7 @@ export class ChannelGatewayService {
           targetId: resolution.entry.targetId,
           text,
           ...(metadata != null && Object.keys(metadata).length > 0 ? { metadata } : {}),
+          ...(requestEnvelope != null ? { requestEnvelope } : {}),
         },
       ).messageId
       : null;
@@ -433,6 +438,9 @@ export class ChannelGatewayService {
         };
         if (queuedMessage.channel === "webhook") {
           deliveryInput.metadata = trackedPayload.metadata ?? {};
+          if (trackedPayload.requestEnvelope != null && deliveryInput.metadata.requestEnvelope == null) {
+            deliveryInput.metadata.requestEnvelope = trackedPayload.requestEnvelope;
+          }
         }
         const receipt = await this.deliverResolvedTarget(deliveryInput);
         this.recordSuccessfulDelivery(queuedMessage.channel, queuedMessage.messageId, receipt, deliveryService);
@@ -872,6 +880,9 @@ export class ChannelGatewayService {
         targetId,
         text,
         metadata,
+        ...(normalizeWebhookRequestEnvelope(metadata) != null
+          ? { requestEnvelope: normalizeWebhookRequestEnvelope(metadata) }
+          : {}),
       }),
     }, "gateway.webhook_timeout");
     if (!response.ok) {

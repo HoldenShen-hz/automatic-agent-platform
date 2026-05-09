@@ -383,7 +383,7 @@ export class DekManager {
     return {
       ciphertext,
       dekId: dek.dekId,
-      iv: dek.iv,
+      iv: iv.toString("hex"),
     };
   }
 

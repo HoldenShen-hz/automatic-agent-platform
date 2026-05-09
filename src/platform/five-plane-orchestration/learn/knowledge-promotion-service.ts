@@ -64,7 +64,7 @@ export class KnowledgePromotionService {
   /** R23-42 fix: Approval gate flag - when true, requires approval before promotion */
   private readonly requireApproval: boolean;
   /** R23-42 fix: Approval callback - called to check if promotion is allowed */
-  private readonly approvalGate?: (learningObjects: readonly LearningObject[], taskId: string) => Promise<boolean> | boolean;
+  private readonly approvalGate: ((learningObjects: readonly LearningObject[], taskId: string) => Promise<boolean> | boolean) | undefined;
 
   constructor(options: KnowledgePromotionServiceOptions = {}) {
     this.knowledgePlane = options.knowledgePlane ?? new KnowledgePlaneService();

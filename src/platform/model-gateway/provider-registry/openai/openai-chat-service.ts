@@ -421,7 +421,6 @@ export class OpenAIChatService {
       let finalFinishReason: string = "stop";
       const accumulatedToolCalls: OpenAIFunctionCallResult[] = [];
       let accumulatedUsage: OpenAIUsage | null = null;
-      let firstChunk = true;
 
       try {
         while (true) {
@@ -460,14 +459,11 @@ export class OpenAIChatService {
 
               if (parsed.choices && parsed.choices.length > 0) {
                 const choice = parsed.choices[0]!;
+                if (choice.finish_reason != null) {
+                  finalFinishReason = choice.finish_reason;
+                }
 
                 if (choice.delta !== undefined) {
-                  // Streaming chunk
-                  if (firstChunk) {
-                    firstChunk = false;
-                    finalFinishReason = choice.finish_reason ?? "stop";
-                  }
-
                   if (choice.delta.content) {
                     accumulatedContent += choice.delta.content;
                   }
@@ -501,7 +497,6 @@ export class OpenAIChatService {
                   }
                 } else {
                   // Final chunk
-                  finalFinishReason = choice.finish_reason ?? "stop";
                   if (choice.message?.content) {
                     accumulatedContent = choice.message.content;
                   }

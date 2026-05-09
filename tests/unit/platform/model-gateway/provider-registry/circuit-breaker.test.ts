@@ -228,31 +228,50 @@ test("CircuitBreakerState type accepts all valid values", () => {
   assert.equal(states.length, 3);
 });
 
-test("CircuitBreaker opens when failure rate exceeds 50% within monitoring window", async () => {
+test("CircuitBreaker does not open on high failure ratio before minSampleSize is reached", () => {
+  const breaker = new CircuitBreaker({
+    name: "min-sample-test",
+    failureThreshold: 100,
+    monitorWindowMs: 1000,
+    minSampleSize: 4,
+  });
+
+  breaker.onFailure();
+  breaker.onFailure();
+  breaker.onFailure();
+
+  assert.equal(breaker.getMetrics().recentFailureRate, 0);
+  assert.equal(breaker.getState(), "closed");
+});
+
+test("CircuitBreaker uses failures divided by requests once minSampleSize is reached", () => {
   mock.timers.enable({ apis: ["Date"] });
 
   try {
     const breaker = new CircuitBreaker({
       name: "rate-test",
-      failureThreshold: 100, // High threshold so consecutive failures don't trigger
+      failureThreshold: 100,
       resetTimeoutMs: 10000,
       halfOpenSuccessThreshold: 2,
       monitorWindowMs: 1000,
-      minSampleSize: 1,
+      minSampleSize: 10,
     });
 
-    // Rate-based opening now uses recentFailures / recentRequests.
-    // With minSampleSize=1, the first failed request produces 1/1 = 100%.
-    const error = await breaker.execute(async () => { throw new Error("rate fail"); }).catch(e => e);
-    assert.equal(error.message, "rate fail");
+    for (let i = 0; i < 7; i++) {
+      breaker.onSuccess();
+    }
+    for (let i = 0; i < 3; i++) {
+      breaker.onFailure();
+    }
 
-    // After first failure, circuit should be open due to 100% recent failure rate.
+    assert.equal(breaker.getMetrics().recentFailureRate, 0.3);
+    assert.equal(breaker.getState(), "closed");
+
+    breaker.onFailure();
+    breaker.onFailure();
+
+    assert.equal(breaker.getMetrics().recentFailureRate, 0.5);
     assert.equal(breaker.getState(), "open");
-
-    // Subsequent calls should be rejected
-    const openError = await breaker.execute(async () => "ok").catch(e => e);
-    assert.ok(openError instanceof CircuitBreakerOpenError);
-    assert.equal(openError.circuitName, "rate-test");
   } finally {
     mock.timers.reset();
   }

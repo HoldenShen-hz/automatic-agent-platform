@@ -172,7 +172,7 @@ test("MemoryDecayService.getLayerDecayConfig returns correct config for working 
   const service = new MemoryDecayService();
   const config = service.getLayerDecayConfig("working");
   assert.equal(config.halfLifeSeconds, 300);
-  assert.equal(config.decayRateMultiplier, 1.0);
+  assert.equal(config.decayRateMultiplier, 0.0);
   assert.equal(config.accessBoostFactor, 0.1);
 });
 
@@ -202,7 +202,7 @@ test("MemoryDecayService.getLayerDecayConfig returns correct config for procedur
   const service = new MemoryDecayService();
   const config = service.getLayerDecayConfig("procedural");
   assert.equal(config.halfLifeSeconds, 2592000);
-  assert.equal(config.decayRateMultiplier, 0.2);
+  assert.equal(config.decayRateMultiplier, 0.0);
 });
 
 test("MemoryDecayService.getLayerDecayConfig returns correct config for meta layer", () => {
@@ -228,6 +228,13 @@ test("MemoryDecayService.getDecayConfig uses memory scope to get correct config"
   const oldWorking = createMemoryRecord({ scope: "working", createdAt: "2020-01-01T00:00:00.000Z" });
   const oldMeta = createMemoryRecord({ scope: "meta", createdAt: "2020-01-01T00:00:00.000Z" });
   assert.ok(service.calculateFreshness(oldWorking) < service.calculateFreshness(oldMeta));
+});
+
+test("MemoryDecayService maps project scope to semantic decay config", () => {
+  const service = new MemoryDecayService();
+  const config = service.getDecayConfig(createMemoryRecord({ scope: "project" }));
+  assert.equal(config.halfLifeSeconds, DEFAULT_DECAY_CONFIGS.semantic.halfLifeSeconds);
+  assert.equal(config.decayRateMultiplier, DEFAULT_DECAY_CONFIGS.semantic.decayRateMultiplier);
 });
 
 // =============================================================================
@@ -476,11 +483,11 @@ test("DEFAULT_DECAY_CONFIGS has correct half-life values", () => {
 });
 
 test("DEFAULT_DECAY_CONFIGS has correct decay rate multipliers", () => {
-  assert.equal(DEFAULT_DECAY_CONFIGS.working.decayRateMultiplier, 1.0);
+  assert.equal(DEFAULT_DECAY_CONFIGS.working.decayRateMultiplier, 0.0);
   assert.equal(DEFAULT_DECAY_CONFIGS.session.decayRateMultiplier, 0.8);
   assert.equal(DEFAULT_DECAY_CONFIGS.episodic.decayRateMultiplier, 0.6);
   assert.equal(DEFAULT_DECAY_CONFIGS.semantic.decayRateMultiplier, 0.4);
-  assert.equal(DEFAULT_DECAY_CONFIGS.procedural.decayRateMultiplier, 0.2);
+  assert.equal(DEFAULT_DECAY_CONFIGS.procedural.decayRateMultiplier, 0.0);
   assert.equal(DEFAULT_DECAY_CONFIGS.meta.decayRateMultiplier, 0.0);
 });
 

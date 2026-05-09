@@ -21,7 +21,7 @@
 import type { MemoryRecord } from "../../contracts/types/domain.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
-  getLayerMetadata,
+  mapScopeToSixLayer,
   type SixLayerMemoryType,
 } from "./layer-transition-service.js";
 
@@ -200,15 +200,8 @@ export class MemoryDecayService {
    * Gets the decay configuration for a memory's layer
    */
   public getDecayConfig(memory: MemoryRecord): DecayConfig {
-    const layerMeta = getLayerMetadata(memory.scope as SixLayerMemoryType);
-    if (layerMeta) {
-      const config = this.decayConfigs[layerMeta.layer];
-      if (config) {
-        return config;
-      }
-    }
-    // Fallback to session config for unknown layers
-    return this.decayConfigs.session;
+    const mappedLayer = mapScopeToSixLayer(memory.scope);
+    return this.decayConfigs[mappedLayer] ?? this.decayConfigs.session;
   }
 
   /**

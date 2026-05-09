@@ -132,12 +132,15 @@ function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   const sql = db.sql.connection;
 
   if (queue === "jobs") {
+    // R31-40 FIX: Add batch limit to retry - reset attempts but limit to 100 records at a time
     const result = sql.prepare(`
       UPDATE queue_jobs
       SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
       WHERE status = 'dead_letter'
+      ORDER BY updated_at ASC
+      LIMIT 100
     `).run();
-    console.log(`Retried ${result.changes} dead-lettered jobs.`);
+    console.log(`Retried up to ${result.changes} dead-lettered jobs (batch limit: 100).`);
   } else if (queue === "gateway") {
     // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
@@ -151,6 +154,15 @@ function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
 
 function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
   const sql = db.sql.connection;
+
+  // R31-34 FIX: Require --confirm flag for purge operations to prevent accidental deletion
+  const confirmFlag = process.env.AA_DLQ_PURGE_CONFIRM ?? "";
+  if (confirmFlag !== "yes") {
+    console.log("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes environment variable.");
+    console.log(`Dry-run: Would delete all ${queue} dead letter records.`);
+    console.log("Set AA_DLQ_PURGE_CONFIRM=yes to proceed with actual deletion.");
+    return;
+  }
 
   if (queue === "gateway") {
     const result = sql.prepare(`DELETE FROM gateway_dead_letters`).run();

@@ -240,10 +240,10 @@ export class PackScaffoldService {
    * Generate Pack project structure from template.
    */
   scaffold(config: ScaffoldConfig): ScaffoldResult {
-    validateScaffoldConfig(config);
+    const normalizedConfig = validateScaffoldConfig(config);
 
-    const rootDir = resolvePackDir(config.packId);
-    const structure = TEMPLATE_STRUCTURE[config.template];
+    const rootDir = resolvePackDir(normalizedConfig.packId);
+    const structure = TEMPLATE_STRUCTURE[normalizedConfig.template];
     const manifestPath = join(rootDir, "manifest.json");
     const entryPointPath = join(rootDir, "src", "index.ts");
 
@@ -257,7 +257,7 @@ export class PackScaffoldService {
     mkdirSync(join(rootDir, "scripts"), { recursive: true });
 
     // Write manifest
-    const manifest = buildManifest(config, structure.manifestCapabilities);
+    const manifest = buildManifest(normalizedConfig, structure.manifestCapabilities);
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
 
     // Write files
@@ -267,9 +267,9 @@ export class PackScaffoldService {
       writeFileSync(
         filePath,
         file.content
-          .replace(/{{PACK_ID}}/g, config.packId)
-          .replace(/{{PACK_NAME}}/g, config.name)
-          .replace(/{{DOMAIN_ID}}/g, config.domain),
+          .replace(/{{PACK_ID}}/g, normalizedConfig.packId)
+          .replace(/{{PACK_NAME}}/g, normalizedConfig.name)
+          .replace(/{{DOMAIN_ID}}/g, normalizedConfig.domain),
         "utf-8",
       );
       files.push(filePath);
@@ -295,19 +295,53 @@ export class PackScaffoldService {
   }
 }
 
-function validateScaffoldConfig(config: ScaffoldConfig): void {
-  if (!config.packId?.trim()) {
+function containsTemplateInjection(value: string): boolean {
+  return /[\r\n`]/.test(value)
+    || value.includes("${")
+    || value.includes("{{")
+    || value.includes("}}");
+}
+
+function validatePlainTemplateValue(value: string, field: "name" | "owner"): string {
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} is required.`);
+  }
+  if (containsTemplateInjection(normalized)) {
+    throw new ValidationError(`pack_scaffold.invalid_${field}`, `Pack ${field} contains unsupported template control characters.`);
+  }
+  return normalized;
+}
+
+function validateDomainValue(domain: string): string {
+  const normalized = domain.trim();
+  if (normalized.length === 0) {
+    throw new ValidationError("pack_scaffold.invalid_domain", "Pack domain is required.");
+  }
+  if (!/^[a-z0-9][a-z0-9-_.]*$/.test(normalized) || containsTemplateInjection(normalized)) {
+    throw new ValidationError(
+      "pack_scaffold.invalid_domain_format",
+      "Pack domain must be lowercase and cannot contain template control characters.",
+    );
+  }
+  return normalized;
+}
+
+function validateScaffoldConfig(config: ScaffoldConfig): ScaffoldConfig {
+  const packId = config.packId?.trim() ?? "";
+  if (!packId) {
     throw new ValidationError("pack_scaffold.invalid_pack_id", "Pack ID is required and cannot be empty.");
   }
-  if (!/^[a-z0-9][a-z0-9-_.]*$/.test(config.packId)) {
+  if (!/^[a-z0-9][a-z0-9-_.]*$/.test(packId)) {
     throw new ValidationError("pack_scaffold.invalid_pack_id_format", "Pack ID must match pattern: lowercase, numbers, hyphens, underscores, dots.");
   }
-  if (!config.name?.trim()) {
-    throw new ValidationError("pack_scaffold.invalid_name", "Pack name is required.");
-  }
-  if (!config.owner?.trim()) {
-    throw new ValidationError("pack_scaffold.invalid_owner", "Pack owner is required.");
-  }
+  return {
+    ...config,
+    packId,
+    name: validatePlainTemplateValue(config.name ?? "", "name"),
+    domain: validateDomainValue(config.domain ?? ""),
+    owner: validatePlainTemplateValue(config.owner ?? "", "owner"),
+  };
 }
 
 function resolvePackDir(packId: string): string {

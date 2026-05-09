@@ -633,6 +633,74 @@ export interface ReleaseRolloutCompletedPayload {
   affectedResources?: readonly string[];
 }
 
+// R23-60: AuthSession and AuthProviderBinding types for IAM
+export interface AuthSession {
+  sessionId: string;
+  tenantId: string;
+  userId: string | null;
+  providerId: string;
+  providerType: "oidc" | "saml" | "api_key" | "oauth" | "password";
+  scope: readonly string[];
+  createdAt: string;
+  expiresAt: string | null;
+  lastAccessedAt: string;
+  metadataJson: string | null;
+}
+
+export interface AuthProviderBinding {
+  bindingId: string;
+  providerId: string;
+  providerType: "oidc" | "saml" | "oauth";
+  tenantId: string | null;
+  clientId: string | null;
+  clientSecretEncrypted: string | null;
+  discoveryUrl: string | null;
+  authorizationEndpoint: string | null;
+  tokenEndpoint: string | null;
+  userinfoEndpoint: string | null;
+  jwksUri: string | null;
+  scopes: readonly string[];
+  pkceEnabled: boolean;
+  pkceChallengeMethod: "S256" | "plain" | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// R23-63: CostEvent runtime type for cost tracking
+export interface CostEvent {
+  eventId: string;
+  tenantId: string;
+  harnessRunId: string | null;
+  taskId: string | null;
+  executionId: string | null;
+  eventType: "cost_estimated" | "cost_actualized" | "cost_reserved" | "cost_released" | "budget_exceeded" | "budget_warning";
+  amountUsd: number;
+  currency: string;
+  costCategory: "token" | "compute" | "storage" | "network" | "api_call" | "other";
+  provider: string | null;
+  model: string | null;
+  usageType: string | null;
+  quantity: number | null;
+  unitPriceUsd: number | null;
+  metadataJson: string | null;
+  traceId: string | null;
+  occurredAt: string;
+}
+
+// R23-64: StageBudgetPolicy for per-stage budget limits
+export interface StageBudgetPolicy {
+  policyId: string;
+  tenantId: string | null;
+  stage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release";
+  maxCostUsd: number;
+  warnAtRatio: number;
+  budgetScope: "per_run" | "per_task" | "daily" | "monthly";
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReleaseRollbackTriggeredPayload {
   runId: string;
   loopIteration: number;

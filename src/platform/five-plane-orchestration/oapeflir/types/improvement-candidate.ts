@@ -8,7 +8,7 @@ export const ImprovementPrioritySchema = z.enum(["critical", "high", "medium", "
 export const ImprovementGuardrailSchema = z.object({
   guardrailId: z.string().min(1),
   description: z.string().min(1),
-  requiredLevel: RolloutLevelSchema.default("evaluate_0"),
+  requiredLevel: RolloutLevelSchema.default("L1_evaluate"),
 });
 export const ImprovementCandidateStatusSchema = z.enum([
   "candidate_created",
@@ -31,7 +31,7 @@ export const ImprovementCandidateSchema = z.object({
   source: ImprovementCandidateSourceSchema,
   targetScope: ImprovementTargetScopeSchema,
   priority: ImprovementPrioritySchema,
-  rolloutLevel: RolloutLevelSchema.default("off"),
+  rolloutLevel: RolloutLevelSchema.default("L0_off"),
   metrics: RolloutMetricsSchema.default({
     errorRate: 0,
     latencyP99: 0,

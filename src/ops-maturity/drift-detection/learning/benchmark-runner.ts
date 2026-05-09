@@ -105,12 +105,14 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
       return;
     }
 
-    this.benchmarkCases = [...(configOrCases.benchmarkCases ?? [])];
-    this.globalBaselineMetrics = configOrCases.baseline ?? null;
-    this.minSampleSize = configOrCases.minSampleSize ?? 3;
-    this.evaluationVersion = configOrCases.evaluationVersion ?? DEFAULT_EVALUATION_VERSION;
-    this.benchmarkSetId = configOrCases.benchmarkSetId ?? DEFAULT_BENCHMARK_SET_ID;
-    this.proposalExecutor = configOrCases.proposalExecutor ?? null;
+    const config = configOrCases as BenchmarkRunnerConfig;
+
+    this.benchmarkCases = [...(config.benchmarkCases ?? [])];
+    this.globalBaselineMetrics = config.baseline ?? null;
+    this.minSampleSize = config.minSampleSize ?? 3;
+    this.evaluationVersion = config.evaluationVersion ?? DEFAULT_EVALUATION_VERSION;
+    this.benchmarkSetId = config.benchmarkSetId ?? DEFAULT_BENCHMARK_SET_ID;
+    this.proposalExecutor = config.proposalExecutor ?? null;
   }
 
   public addBenchmarkCase(benchmarkCase: BenchmarkCase): void {

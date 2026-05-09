@@ -17,6 +17,7 @@ export class KnowledgeArchive {
   private readonly recordsByChunkId = new Map<string, ArchivedKnowledgeChunkRecord>();
 
   public upsert(record: ArchivedKnowledgeRecord): ArchivedKnowledgeRecord {
+    // Check if this exact checksum already exists
     const existing = this.documentsByChecksum.get(record.source.checksum);
     if (existing) {
       // Remove old chunk records to prevent stale entries
@@ -28,7 +29,7 @@ export class KnowledgeArchive {
         document: {
           ...existing.document,
           version: existing.document.version + 1,
-          status: "indexed",
+          status: record.document.status,
           rawText: record.document.rawText,
           archived: false,
           archivedAt: null,
@@ -42,6 +43,13 @@ export class KnowledgeArchive {
       }
       return updated;
     }
+
+    // New checksum for a potentially existing documentId - clean up old checksum entry
+    const existingByDocId = this.recordsByDocumentId.get(record.document.documentId);
+    if (existingByDocId && existingByDocId.source.checksum !== record.source.checksum) {
+      this.documentsByChecksum.delete(existingByDocId.source.checksum);
+    }
+
     this.documentsByChecksum.set(record.source.checksum, record);
     this.recordsByDocumentId.set(record.document.documentId, record);
     for (const chunk of record.chunks) {
