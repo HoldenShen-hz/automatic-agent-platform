@@ -1,3 +1,14 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "1057b4cc",
+      "cron": "*/30 * * * *",
+      "prompt": "请review docs_zh/reviews/platform-architecture-implementation-consistency-audit_round.md 中的所有问题，修复其中的问题，逐条进行review，reaudit 标记解决,修复的，不要看， 不要假修复问题，不要修改reaudit 文档，要给出问题的根因，对应的测试也要补上，不要做全量测试，只测跟问题相关的项，不然系统会崩溃，一次性完成，不要中断，多起几个agent",
+      "createdAt": 1778344746777,
+      "recurring": true,
+      "createdBySessionId": "9c3842ee-81e4-4d05-ab92-5220bed300e6",
+      "createdByPid": 30696,
+      "createdByProcStart": "Sat May  9 14:44:25 2026"
+    }
+  ]
 }
