@@ -173,9 +173,16 @@ export class ContextIsolator {
       return IsolationLevel.SANDBOXED;
     }
 
-    // Check if child requires significantly fewer permissions
-    const permissionRatio =
-      spec.requiredPermissions.actions.length / parent.permissions.actions.length;
+    // R26-01 fix: Guard against division by zero when parent has no actions
+    const parentActionCount = parent.permissions.actions.length;
+    const requiredActionCount = spec.requiredPermissions.actions.length;
+
+    if (parentActionCount === 0) {
+      // No actions to delegate - cannot delegate anything
+      return requiredActionCount === 0 ? IsolationLevel.FULL : IsolationLevel.MINIMAL;
+    }
+
+    const permissionRatio = requiredActionCount / parentActionCount;
 
     if (permissionRatio >= 0.9) {
       return IsolationLevel.FULL;
@@ -214,14 +221,11 @@ export class ContextIsolator {
         };
 
       case IsolationLevel.MINIMAL:
-        // Child only gets explicitly required permissions
+        // R26-03 fix: Child only gets explicitly required permissions
+        // Empty required = no permissions granted (no fallback to parent - avoids privilege elevation)
         return {
-          resources: requiredPermissions.resources.length > 0
-            ? requiredPermissions.resources
-            : parentPermissions.resources,
-          actions: requiredPermissions.actions.length > 0
-            ? requiredPermissions.actions
-            : parentPermissions.actions,
+          resources: requiredPermissions.resources,
+          actions: requiredPermissions.actions,
           constraints: requiredPermissions.constraints,
         };
 
