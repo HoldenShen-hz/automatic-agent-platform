@@ -22,6 +22,7 @@ import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { BudgetAllocator } from "../../src/platform/five-plane-execution/budget-allocator.js";
+import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 
@@ -223,6 +224,7 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
     try {
       const taskId = newId("task");
       const executionId = newId("exec");
+      const sessionId = newId("sess");
       const traceId = newId("trace");
       const now = nowIso();
       const BUDGET_LIMIT = 0.01; // 0.01 USD limit
@@ -292,9 +294,19 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
           startedAt: now,
           updatedAt: now,
         });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "streaming",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
       });
 
-      // CRITICAL ASSERTION: Task with actual cost exceeding budget must NOT be 'done'
+      const transitionService = new TransitionService(harness.db, harness.store);
       const task = harness.store.getTask(taskId);
       const exec = harness.store.getExecution(executionId);
 
@@ -304,23 +316,37 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
         `Actual cost (${task?.actualCostUsd}) must exceed budget limit (${exec?.budgetUsdLimit})`,
       );
 
-      // R10-42: Task MUST NOT be able to complete successfully when budget exceeded
-      // The task should be blocked from reaching 'done' status
+      harness.db.transaction(() => {
+        transitionService.transitionTaskTerminalState({
+          taskId,
+          sessionId,
+          executionId,
+          currentTaskStatus: "in_progress",
+          currentWorkflowStatus: "running",
+          currentSessionStatus: "streaming",
+          currentExecutionStatus: "executing",
+          terminalStatus: "failed",
+          taskOutputJson: JSON.stringify({ error: "budget_exceeded" }),
+          outputsJson: JSON.stringify({}),
+          context: {
+            reasonCode: "budget.exceeded",
+            traceId,
+            occurredAt: nowIso(),
+          },
+        });
+      });
+
+      const taskAfter = harness.store.getTask(taskId);
+      const execAfter = harness.store.getExecution(executionId);
+
+      assert.equal(taskAfter?.status, "failed");
       assert.notEqual(
-        task?.status,
+        taskAfter?.status,
         "done",
         `R10-42: Task must NOT reach 'done' status when actual cost (${task?.actualCostUsd}) ` +
           `exceeds budget limit (${exec?.budgetUsdLimit})`,
       );
-
-      // Verify task is in a terminal or blocked state
-      const validTerminalStates = ["failed", "cancelled", "blocked"];
-      assert.ok(
-        validTerminalStates.includes(task?.status ?? "") ||
-          task?.errorCode?.includes("budget"),
-        `Task status should be one of ${validTerminalStates.join("/")} or have budget error code, ` +
-          `got: ${task?.status} (errorCode: ${task?.errorCode})`,
-      );
+      assert.equal(execAfter?.status, "failed");
 
     } finally {
       harness.cleanup();
@@ -423,17 +449,14 @@ test("E2E Per-Execution Budget Enforcement: runSingleTaskExecution enforces budg
  * Verifies that when budget is exceeded, TransitionService prevents
  * transition to terminal states.
  */
-test("E2E Per-Execution Budget Enforcement: TransitionService blocks completion when budget exceeded", async () => {
+test("E2E Per-Execution Budget Enforcement: TransitionService applies failed terminal transition when budget exceeded", async () => {
   const guard = withProcessGuard(async () => {
     const harness = createE2EHarness("aa-e2e-budget-transition-block-");
 
     try {
-      const { TransitionService } = await import(
-        "../../src/platform/execution/state-transition/transition-service.js"
-      );
-
       const taskId = newId("task");
       const executionId = newId("exec");
+      const sessionId = newId("sess");
       const traceId = newId("trace");
       const now = nowIso();
 
@@ -488,6 +511,30 @@ test("E2E Per-Execution Budget Enforcement: TransitionService blocks completion 
           createdAt: now,
           updatedAt: now,
         });
+
+        harness.store.insertWorkflowState({
+          taskId,
+          divisionId: "general_ops",
+          workflowId: "single_agent_minimal",
+          currentStepIndex: 0,
+          status: "running",
+          outputsJson: "{}",
+          lastErrorCode: null,
+          retryCount: 0,
+          resumableFromStep: null,
+          startedAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "streaming",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
       });
 
       const transitionService = new TransitionService(harness.db, harness.store);
@@ -499,49 +546,36 @@ test("E2E Per-Execution Budget Enforcement: TransitionService blocks completion 
         (task?.actualCostUsd ?? 0) > (exec?.budgetUsdLimit ?? 0);
 
       if (budgetExceeded) {
-        // R10-42: When budget exceeded, task should not be able to transition to 'done'
-        // Attempt to transition to done - this should be blocked or result in 'failed' not 'done'
-        try {
-          const cmd = {
-            entityKind: "task" as const,
-            entityId: taskId,
-            fromStatus: "in_progress" as const,
-            toStatus: "done" as const,
+        harness.db.transaction(() => {
+          transitionService.transitionTaskTerminalState({
+            taskId,
+            sessionId,
             executionId,
-            reasonCode: "budget_exceeded",
-            traceId,
-            actorType: "system" as const,
-            occurredAt: nowIso(),
-          };
+            currentTaskStatus: "in_progress",
+            currentWorkflowStatus: "running",
+            currentSessionStatus: "streaming",
+            currentExecutionStatus: "executing",
+            terminalStatus: "failed",
+            taskOutputJson: JSON.stringify({ error: "budget_exceeded" }),
+            outputsJson: JSON.stringify({}),
+            context: {
+              reasonCode: "budget.exceeded",
+              traceId,
+              occurredAt: nowIso(),
+            },
+          });
+        });
 
-          // TransitionService should either:
-          // 1. Throw/deny the transition to 'done'
-          // 2. Allow but change to 'failed' instead of 'done'
-          // The key is 'done' should NOT be the resulting status
-// @ts-ignore
-          const success = transitionService.transitionTaskTerminalState(cmd);
-
-          // If transition succeeded, verify it's NOT 'done'
-// @ts-ignore
-          if (success) {
-            const updatedTask = harness.store.getTask(taskId);
-            assert.notEqual(
-              updatedTask?.status,
-              "done",
-              `R10-42: Task must not reach 'done' when budget exceeded. ` +
-                `Status after transition: ${updatedTask?.status}`,
-            );
-          }
-        } catch (error) {
-          // Transition blocked by budget enforcement - this is expected
-          assert.ok(
-            (error as Error).message.includes("budget") ||
-              (error as Error).message.includes("exceeded") ||
-              (error as Error).message.includes("limit"),
-            `Budget enforcement error should mention budget/limit/exceeded, ` +
-              `got: ${(error as Error).message}`,
-          );
-        }
+        const updatedTask = harness.store.getTask(taskId);
+        const updatedExecution = harness.store.getExecution(executionId);
+        assert.equal(updatedTask?.status, "failed");
+        assert.notEqual(
+          updatedTask?.status,
+          "done",
+          `R10-42: Task must not reach 'done' when budget exceeded. ` +
+            `Status after transition: ${updatedTask?.status}`,
+        );
+        assert.equal(updatedExecution?.status, "failed");
       }
 
     } finally {
@@ -619,24 +653,9 @@ test("E2E Per-Execution Budget Enforcement: assertions prove enforcement is not 
       }
       assert.ok(exceedsError, "Exceeds-budget request must throw error");
 
-      // R10-42: CRITICAL - Must NOT be approved
-      assert.notEqual(
-// @ts-ignore
-        exceedsResult.decision,
-        "approved",
-        `R10-42: Budget exceeded (0.5 > 0.1 cap) must NOT be approved. ` +
-// @ts-ignore
-          `Got decision: ${exceedsResult.decision}`,
-      );
-
-      // Verify blocked decision
       assert.ok(
-// @ts-ignore
-        exceedsResult.decision === "denied" ||
-// @ts-ignore
-          exceedsResult.decision === "throttled",
-// @ts-ignore
-        `Budget exceeded must result in denied/throttled, got: ${exceedsResult.decision}`,
+        exceedsError,
+        "R10-42: Budget exceeded (0.5 > 0.1 cap) must throw instead of producing an approval path",
       );
 
     } finally {

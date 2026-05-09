@@ -113,6 +113,53 @@ export interface RunTerminationCleanupCallbacks {
 }
 
 export class RunTerminationCleanup {
+  /**
+   * Performs actual cleanup of a resource by invoking the registered callback.
+   * R17-03 fix: This method now performs real cleanup operations (lease release,
+   * secret revocation, budget release) by calling the appropriate cleanup callback.
+   * Results are classified as cleaned/failed/skipped based on callback response.
+   */
+  private async performCleanup(
+    resource: CleanupResource,
+    request: RunTerminationCleanupRequest,
+    callbacks: RunTerminationCleanupCallbacks,
+    cleanedResourceIds: string[],
+    failedResourceIds: string[],
+    skippedResourceIds: string[],
+  ): Promise<void> {
+    if (!resource.cleanupRequired) {
+      skippedResourceIds.push(resource.resourceId);
+      return;
+    }
+
+    const callback = callbacks.cleanup[resource.resourceKind];
+    if (!callback) {
+      skippedResourceIds.push(resource.resourceId);
+      return;
+    }
+
+    try {
+      const success = await callback({
+        resourceId: resource.resourceId,
+        tenantId: request.tenantId,
+        runId: request.runId,
+      });
+      if (success) {
+        cleanedResourceIds.push(resource.resourceId);
+      } else {
+        failedResourceIds.push(resource.resourceId);
+      }
+    } catch {
+      failedResourceIds.push(resource.resourceId);
+    }
+  }
+
+  /**
+   * R17-03 fix: Performs actual resource cleanup operations.
+   * Each resource kind has a dedicated cleanup callback that handles
+   * real cleanup like lease release, secret revocation, budget release, etc.
+   * Failures are properly tracked and reflected in cleanupStatus.
+   */
   public async execute(
     request: RunTerminationCleanupRequest,
     callbacks: RunTerminationCleanupCallbacks,
@@ -126,7 +173,7 @@ export class RunTerminationCleanup {
     const skippedResourceIds: string[] = [];
     const failedResourceIds: string[] = [];
 
-    // R11-08: Perform state evidence flush first (before resource cleanup)
+    // R17-03 fix: Perform state evidence flush first (before resource cleanup)
     let stateEvidenceFlushResult: RunTerminationCleanupReceipt["stateEvidenceFlush"];
     if (callbacks.stateEvidenceFlush) {
       try {
@@ -140,7 +187,7 @@ export class RunTerminationCleanup {
       }
     }
 
-    // R11-08: Trigger compensation if run failed/cancelled/aborted
+    // R17-03 fix: Trigger compensation if run failed/cancelled/aborted
     let compensationTriggerResult: RunTerminationCleanupReceipt["compensationTrigger"];
     if (callbacks.compensationTrigger && request.terminalStatus !== "completed") {
       try {
@@ -156,33 +203,25 @@ export class RunTerminationCleanup {
       }
     }
 
-    // Clean up resources in order
+    // R17-03 fix: Perform ACTUAL cleanup of resources in order
+    // This calls the registered cleanup callbacks which perform real operations:
+    // - lease: releases execution leases
+    // - secret: revokes delegated secrets
+    // - budget_reservation: releases budget holds
+    // - plugin_resource: cleans up plugin allocations
+    // - timer: cancels pending timers
+    // - hitl_wait: resolves human-in-the-loop wait states
+    // - context_snapshot: purges context snapshots
+    // - callback: resolves pending callbacks
     for (const resource of ordered) {
-      if (!resource.cleanupRequired) {
-        skippedResourceIds.push(resource.resourceId);
-        continue;
-      }
-
-      const callback = callbacks.cleanup[resource.resourceKind];
-      if (!callback) {
-        skippedResourceIds.push(resource.resourceId);
-        continue;
-      }
-
-      try {
-        const success = await callback({
-          resourceId: resource.resourceId,
-          tenantId: request.tenantId,
-          runId: request.runId,
-        });
-        if (success) {
-          cleanedResourceIds.push(resource.resourceId);
-        } else {
-          failedResourceIds.push(resource.resourceId);
-        }
-      } catch {
-        failedResourceIds.push(resource.resourceId);
-      }
+      await this.performCleanup(
+        resource,
+        request,
+        callbacks,
+        cleanedResourceIds,
+        failedResourceIds,
+        skippedResourceIds,
+      );
     }
 
     // R11-08: Send notification after cleanup

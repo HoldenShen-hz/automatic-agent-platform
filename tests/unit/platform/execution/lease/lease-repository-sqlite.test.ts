@@ -759,13 +759,97 @@ test("SqliteLeaseRepository handles updateLeaseStatus to all possible statuses",
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
 
-  const statuses: ExecutionLeaseRecord["status"][] = ["active", "released", "expired", "reclaimed"];
+  // R26-08 fix: Test valid state transitions from active state
+  const statuses: ExecutionLeaseRecord["status"][] = ["expired", "reclaimed", "handed_over"];
 
   for (const status of statuses) {
-    await repo.insertLease(createLease({ id: `lease-status-${status}` }));
+    await repo.insertLease(createLease({ id: `lease-status-${status}`, status: "active" }));
     await repo.updateLeaseStatus(`lease-status-${status}`, status);
     const updated = await repo.getLease(`lease-status-${status}`);
     assert.ok(updated != null);
     assert.equal(updated!.status, status, `Failed for status: ${status}`);
   }
+});
+
+// R26-08 fix: Test that invalid state transitions are rejected
+test("R26-08: updateLeaseStatus rejects invalid transition from released to active", async () => {
+  const state = { leases: new Map(), audits: [] };
+  const db = createMockSqliteDb(state);
+  const repo = new SqliteLeaseRepository(db);
+
+  await repo.insertLease(createLease({ id: "lease-released", status: "released" }));
+
+  // Attempting to go from released -> active should throw
+  await assert.rejects(
+    async () => await repo.updateLeaseStatus("lease-released", "active"),
+    /Invalid lease status transition/,
+  );
+});
+
+// R26-08 fix: Test that expired lease cannot go back to expired
+test("R26-08: updateLeaseStatus rejects invalid transition from expired to expired", async () => {
+  const state = { leases: new Map(), audits: [] };
+  const db = createMockSqliteDb(state);
+  const repo = new SqliteLeaseRepository(db);
+
+  await repo.insertLease(createLease({ id: "lease-expired", status: "expired" }));
+
+  // Attempting to go from expired -> expired should throw (no self-transition)
+  await assert.rejects(
+    async () => await repo.updateLeaseStatus("lease-expired", "expired"),
+    /Invalid lease status transition/,
+  );
+});
+
+// R26-09 fix: Test that release is only allowed from active/expired/handed_over states
+test("R26-09: updateLeaseRelease rejects release from already released lease", async () => {
+  const state = { leases: new Map(), audits: [] };
+  const db = createMockSqliteDb(state);
+  const repo = new SqliteLeaseRepository(db);
+
+  await repo.insertLease(createLease({ id: "lease-already-released", status: "released" }));
+
+  await assert.rejects(
+    async () => await repo.updateLeaseRelease("lease-already-released", nowIso(), "test"),
+    /Cannot release lease in released state/,
+  );
+});
+
+// R26-10 fix: Test that heartbeat extends expires_at
+test("R26-10: updateLeaseHeartbeat extends expires_at by original lease duration", async () => {
+  const state = { leases: new Map(), audits: [] };
+  const db = createMockSqliteDb(state);
+  const repo = new SqliteLeaseRepository(db);
+
+  const leasedAt = "2026-01-01T10:00:00.000Z";
+  const expiresAt = "2026-01-01T10:01:00.000Z"; // 1 minute lease
+  await repo.insertLease(createLease({
+    id: "lease-hb-extend",
+    leasedAt,
+    expiresAt,
+    status: "active",
+  }));
+
+  const newHeartbeat = "2026-01-01T10:00:30.000Z"; // 30 seconds after leasedAt
+  await repo.updateLeaseHeartbeat("lease-hb-extend", newHeartbeat);
+
+  const updated = state.leases.get("lease-hb-extend");
+  assert.ok(updated != null);
+  // Original lease was 60 seconds, so new expiry should be 30 + 60 = 90 seconds after leasedAt = T10:01:30
+  assert.equal(updated!.lastHeartbeatAt, newHeartbeat);
+  assert.equal(updated!.expiresAt, "2026-01-01T10:01:30.000Z");
+});
+
+// R26-10 fix: Test that heartbeat only works on active leases
+test("R26-10: updateLeaseHeartbeat rejects heartbeat on released lease", async () => {
+  const state = { leases: new Map(), audits: [] };
+  const db = createMockSqliteDb(state);
+  const repo = new SqliteLeaseRepository(db);
+
+  await repo.insertLease(createLease({ id: "lease-hb-released", status: "released" }));
+
+  await assert.rejects(
+    async () => await repo.updateLeaseHeartbeat("lease-hb-released", nowIso()),
+    /Cannot heartbeat lease in released state/,
+  );
 });

@@ -237,8 +237,12 @@ export interface VerifyRemoteWorkerRegistrationInput {
  * Returns empty array if parsing fails or result is not an array.
  */
 function parseJsonArray(value: string): string[] {
-  const parsed = JSON.parse(value) as unknown;
-  return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  } catch {
+    return [];
+  }
 }
 
 /**

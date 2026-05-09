@@ -235,16 +235,34 @@ export class RecoveryController {
         return this.runtime.openHitlReview(recovering, "budget_exhausted", []);
 
       case "platform_panic": {
-        // R9-22 fix: emit recovery event for platform_panic graph-scope replan
+        if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
+          this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "platform_panic_retry_exhausted", {
+            scope: "graph",
+            action: "escalate_hitl",
+            attempt: currentAttempt,
+            maxAttempts: RETRY_MAX_ATTEMPTS,
+          });
+          const escalated = this.runtime.openHitlReview(
+            recovering,
+            "platform_panic_retry_exhausted",
+            [],
+          );
+          this.durableService.persist(escalated);
+          return escalated;
+        }
+
+        const delayMs = computeBackoffDelayMs(currentAttempt + 1);
         this.emitRecoveryEvent("recovery:repair_applied", run.runId, "platform_panic", {
           scope: "graph",
           action: "replan",
           checkpointRef,
+          attempt: currentAttempt + 1,
+          delayMs,
         });
-        // Platform panic: full recovery from checkpoint with graph-scope retry
-        // R13-16 fix: platform_panic uses graph scope (replan semantics)
+        // Platform panic: graph-scope retry with exponential backoff.
+        const resumeAt = new Date(Date.now() + delayMs).toISOString();
         this.durableService.persist(recovering);
-        return this.runtime.resume(recovering);
+        return this.runtime.sleep(recovering, "platform_panic_retry", resumeAt, currentAttempt + 1);
       }
 
       case "worker_crash":
@@ -277,11 +295,9 @@ export class RecoveryController {
           delayMs,
         });
 
-        // R30-28 fix: worker_crash must call resume() after recover() to transition run to running state.
-        // Using sleep() would leave the recovered run in non-running state.
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
         this.durableService.persist(recovering);
-        return this.runtime.resume(recovering);
+        return this.runtime.sleep(recovering, "worker_crash_retry", resumeAt, currentAttempt + 1);
       }
     }
   }

@@ -70,8 +70,11 @@ export async function createLearningArtifact(
     const { createHash } = await import("node:crypto");
     checksum = createHash("sha256").update(content).digest("hex");
   } catch {
-    // Deterministic fallback — must still be 64 hex chars to satisfy schema
-    checksum = learningObject.learningObjectId.padEnd(64, "0").slice(0, 64);
+    // R29-01 fix: Hash the objectId to produce a valid hex string instead of
+    // using the objectId directly, which may contain underscores and lowercase
+    // letters outside the [0-9a-f] range required for a SHA-256 hex checksum.
+    const { createHash: fallbackHash } = await import("node:crypto");
+    checksum = fallbackHash("sha256").update(learningObject.learningObjectId).digest("hex");
   }
 
   return {

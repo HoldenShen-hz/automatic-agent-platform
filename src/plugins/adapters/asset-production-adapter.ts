@@ -7,6 +7,15 @@
  */
 
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
+import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
+
+// R28-14 fix: add auth check and egress policy to asset-production-adapter
+let credentialFingerprint: string | null = null;
+const assetProductionPolicy = new NetworkEgressPolicyService({
+  mode: "enforce",
+  allowedDomains: ["api.figma.com", "cdn.figma.com"],
+});
 
 export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
   return {
@@ -18,19 +27,34 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       // Figma API credentials would be validated here
     },
     async healthCheck() {
-      return true;
+      return assetProductionPolicy.evaluate("https://api.figma.com").allowed;
     },
     async shutdown() {
-      return undefined;
+      credentialFingerprint = null;
     },
-    async authenticate(_credentials: Record<string, unknown>): Promise<void> {
-      // Figma credentials validated here
+    async authenticate(credentials: Record<string, unknown>): Promise<void> {
+      const token = (credentials["token"] ?? credentials["managedSecretRef"]) as string | undefined;
+      if (!token || typeof token !== "string") {
+        throw new Error("asset_production_adapter.missing_credentials");
+      }
+      credentialFingerprint = `figma_${token.slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
+      // R28-14 fix: enforce auth check
+      if (credentialFingerprint === null) {
+        throw new Error("asset_production_adapter.not_authenticated");
+      }
+
       const { fileKey, nodeId } = params as {
         fileKey?: string;
         nodeId?: string;
       };
+
+      // R28-14 fix: enforce egress policy
+      const allowed = assetProductionPolicy.evaluate("https://api.figma.com").allowed;
+      if (!allowed) {
+        throw new PolicyDeniedError("egress.denied" as ErrorCode, "Asset production adapter: egress denied");
+      }
 
       // In production this would call Figma API and CDN
       return {

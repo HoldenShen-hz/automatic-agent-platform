@@ -545,36 +545,50 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   }
 
   private detectFeedbackLoop(triggerId: string): void {
+    // R23-12 FIX: Use iterative DFS with explicit path tracking to capture all cycle members
     const visited = new Set<string>();
-    const stack = new Set<string>();
-    const hasCycle = (currentId: string): boolean => {
-      if (stack.has(currentId)) {
-        return true;
+    const path: string[] = [];
+    const pathSet = new Set<string>();
+
+    const findCycle = (currentId: string): string[] | null => {
+      if (pathSet.has(currentId)) {
+        // Found cycle - return the cycle nodes starting from where currentId first appears in path
+        const cycleStart = path.indexOf(currentId);
+        return path.slice(cycleStart);
       }
       if (visited.has(currentId)) {
-        return false;
+        return null; // Already explored this node, no cycle through this path
       }
       visited.add(currentId);
-      stack.add(currentId);
+      path.push(currentId);
+      pathSet.add(currentId);
+
       const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
       for (const nextId of targets) {
-        if (hasCycle(nextId)) {
-          return true;
+        const cycle = findCycle(nextId);
+        if (cycle !== null) {
+          return cycle;
         }
       }
-      stack.delete(currentId);
-      return false;
+
+      path.pop();
+      pathSet.delete(currentId);
+      return null;
     };
-    if (!hasCycle(triggerId)) {
+
+    const cycleNodes = findCycle(triggerId);
+    if (cycleNodes === null || cycleNodes.length === 0) {
       return;
     }
+
+    // R23-12 FIX: Report ALL triggerIds involved in the cycle, not just DFS stack
     this.incidents.push({
       incidentId: newId("proactive_incident"),
-      triggerIds: [...stack],
+      triggerIds: cycleNodes,
       reasonCode: "proactive_agent.feedback_loop_detected",
       createdAt: nowIso(),
     });
-    for (const loopTriggerId of stack) {
+    for (const loopTriggerId of cycleNodes) {
       const state = this.states.get(loopTriggerId);
       if (state != null) {
         state.trigger = {

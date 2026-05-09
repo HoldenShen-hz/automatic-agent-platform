@@ -208,3 +208,24 @@ test("AUDIT_INTEGRITY_DDL contains required schema", () => {
   assert.ok(AUDIT_INTEGRITY_DDL.includes("previous_chain_hash"));
   assert.ok(AUDIT_INTEGRITY_DDL.includes("chain_hash"));
 });
+
+// R12-16: Verify algorithm field is HMAC-SHA256 (not plain SHA-256)
+test("getIntegrityRecord returns algorithm as HMAC-SHA256", () => {
+  const db = createMockDatabase();
+  const repo = createAuditIntegrityRepository(db);
+
+  repo.insertIntegrityRecord(
+    "evt-algo-test",
+    1,
+    "task:status_changed",
+    "2026-04-07T00:00:00.000Z",
+    "checksum-algo",
+    null,
+    "chain-hash-algo",
+  );
+
+  const record = repo.getIntegrityRecord("evt-algo-test");
+
+  assert.ok(record !== null);
+  assert.equal(record!.algorithm, "HMAC-SHA256");
+});

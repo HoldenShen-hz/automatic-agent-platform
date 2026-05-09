@@ -6,6 +6,14 @@
  */
 
 /**
+ * Migration 45: Adds version column to worker_snapshots for optimistic concurrency control.
+ * R11-12/R25.3/R25.10: Enables CAS (Compare-And-Swap) pattern to detect concurrent modifications.
+ */
+export const WORKER_SNAPSHOT_VERSION_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+`;
+
+/**
  * Migration 51: Adds persistent CAS (Compare-And-Swap) records table.
  * R16-35: CAS service now persists records to SQLite instead of in-memory Map.
  */

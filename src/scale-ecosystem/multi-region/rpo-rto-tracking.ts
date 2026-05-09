@@ -362,6 +362,94 @@ export class RpoRtoTrackingService {
     }
     return event.actualRtoMs;
   }
+
+  /**
+   * R13-23: Assert SLA compliance for a region pair.
+   * Throws if RPO or RTO targets are breached.
+   * Used to enforce §52 RPO/RTO guarantees.
+   */
+  public assertSlaCompliance(regionPairId: string): void {
+    const status = this.getStatus(regionPairId);
+    if (!status) {
+      return; // No SLA target = no assertion to make
+    }
+
+    const breaches: string[] = [];
+    if (status.rpoBreached) {
+      breaches.push(`RPO breach: actual=${status.currentRpoMs}ms, target=${status.targetRpoMs}ms`);
+    }
+    if (status.rtoBreached) {
+      breaches.push(`RTO breach: actual=${status.currentRtoMs}ms, target=${status.targetRtoMs}ms`);
+    }
+
+    if (breaches.length > 0) {
+      throw new Error(
+        `SLA_COMPLIANCE_FAILED:${regionPairId} - ${breaches.join("; ")}`,
+      );
+    }
+  }
+
+  /**
+   * R13-23: Get SLA compliance status as a result object (non-throwing).
+   * Returns { compliant: true } if SLA is met, { compliant: false, breaches: [...] } otherwise.
+   */
+  public getSlaCompliance(regionPairId: string): {
+    readonly compliant: boolean;
+    readonly breaches: readonly string[];
+  } {
+    const status = this.getStatus(regionPairId);
+    if (!status) {
+      return { compliant: true, breaches: [] };
+    }
+
+    const breaches: string[] = [];
+    if (status.rpoBreached) {
+      breaches.push(`RPO: actual=${status.currentRpoMs}ms, target=${status.targetRpoMs}ms`);
+    }
+    if (status.rtoBreached) {
+      breaches.push(`RTO: actual=${status.currentRtoMs}ms, target=${status.targetRtoMs}ms`);
+    }
+
+    return {
+      compliant: breaches.length === 0,
+      breaches,
+    };
+  }
+
+  /**
+   * R13-23: Get guarantee summary for a region pair.
+   * Provides detailed RPO/RTO guarantee status for monitoring dashboards.
+   */
+  public getGuaranteeSummary(regionPairId: string): {
+    readonly hasTarget: boolean;
+    readonly rpoTargetMs: number | null;
+    readonly rtoTargetMs: number | null;
+    readonly currentRpoMs: number;
+    readonly currentRtoMs: number;
+    readonly rpoMet: boolean;
+    readonly rtoMet: boolean;
+    readonly consecutiveBreaches: number;
+    readonly lastMeasurementAt: string | null;
+  } | null {
+    const target = this.targets.get(regionPairId);
+    const status = this.getStatus(regionPairId);
+
+    if (!target && !status) {
+      return null;
+    }
+
+    return {
+      hasTarget: target !== undefined,
+      rpoTargetMs: target?.rpoMs ?? null,
+      rtoTargetMs: target?.rtoMs ?? null,
+      currentRpoMs: status?.currentRpoMs ?? 0,
+      currentRtoMs: status?.currentRtoMs ?? 0,
+      rpoMet: status ? !status.rpoBreached : true,
+      rtoMet: status ? !status.rtoBreached : true,
+      consecutiveBreaches: status?.consecutiveBreaches ?? 0,
+      lastMeasurementAt: status?.lastMeasurementAt ?? null,
+    };
+  }
 }
 
 /**

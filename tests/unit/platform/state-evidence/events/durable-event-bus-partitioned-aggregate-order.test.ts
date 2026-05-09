@@ -69,6 +69,7 @@ test("R12-01: events with same aggregateId are delivered in FIFO sequence order"
     assert.equal(deliveredEvents[1].id, evt2.id, "second event delivered second");
     assert.equal(deliveredEvents[2].id, evt3.id, "third event delivered third");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -143,6 +144,7 @@ test("R12-01: events with different aggregateIds can be delivered out of order b
       assert.ok(b1Idx < b2Idx, "B1 must come before B2 within aggregate B");
     }
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -189,6 +191,7 @@ test("R12-01: events without aggregateId are partitioned by event id only", asyn
     // Without aggregateId, each event is its own partition - ordering not required
     assert.equal(deliveredEvents.length, 3, "all 3 events should be delivered");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -261,6 +264,7 @@ test("R12-01: out-of-sequence events are skipped for same aggregate", async () =
     // arrive before or after the partition chain is established
     // The key invariant is that within a partition, sequence numbers are monotonic
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);

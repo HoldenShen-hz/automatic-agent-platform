@@ -67,7 +67,9 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
     },
   },
   disambiguation: {
-    threshold: 0.7,
+    // R23-10 FIX: §39.6 requires 0.80 threshold to trigger clarification.
+    // Previous value 0.7 allowed 0.7-0.79 to bypass clarification (zone of doubt).
+    threshold: 0.80,
     lowConfidenceThreshold: 0.5,
     maxClarificationQuestions: 3,
     enableProactiveClarification: true,

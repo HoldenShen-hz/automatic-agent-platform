@@ -6,12 +6,42 @@ import {
   type StructuredMemoryContent,
 } from "./memory-schema.js";
 
+/**
+ * R24-29/R24-32 FIX: Loss report for memory consolidation.
+ * Per §29.2, compression requires loss report - facts must not be silently discarded.
+ */
+export interface ConsolidationLossReport {
+  consolidatedMemoryCount: number;
+  sourceMemoryCount: number;
+  /** Memories that were excluded from consolidation */
+  excludedMemories: readonly {
+    memoryId: string;
+    scope: string;
+    reason: string;
+    qualityScore: number | null;
+    importanceScore: number | null;
+    createdAt: string;
+  }[];
+  /** Content snippets that were dropped during summarization */
+  droppedContent: readonly {
+    memoryId: string;
+    snippetPreview: string;
+    reason: string;
+  }[];
+  truncationTimestamp: string;
+}
+
 export interface MemoryConsolidationSummary {
   summaryText: string;
   averageQualityScore: number | null;
   sourceMemoryIds: string[];
   sourceCount: number;
   structuredContent: StructuredMemoryContent;
+  /**
+   * R24-29/R24-32 FIX: Loss report documenting what was lost during consolidation.
+   * Per §29.2, facts must not be silently discarded - compression requires loss report.
+   */
+  lossReport: ConsolidationLossReport;
 }
 
 export function extractMemorySnippet(record: Pick<MemoryRecord, "contentJson">): string {
@@ -45,9 +75,10 @@ export function buildMemoryConsolidationSummary(
   });
 
   const snippets = ordered
-    .map((record) => extractMemorySnippet(record))
-    .filter((snippet) => snippet.trim().length > 0)
-    .slice(0, 8);
+    .map((record) => ({ record, snippet: extractMemorySnippet(record) }))
+    .filter(({ snippet }) => snippet.trim().length > 0);
+  const droppedSnippets = snippets.slice(8);
+  const limitedSnippets = snippets.slice(0, 8);
   const classifications = Array.from(new Set(ordered.map((record) => record.classification))).sort();
   const qualityScores = ordered
     .map((record) => record.qualityScore)
@@ -57,7 +88,7 @@ export function buildMemoryConsolidationSummary(
     `Consolidated ${ordered.length} memories into ${targetLayer}.`,
     `Window: ${ordered[0]?.createdAt ?? "unknown"} -> ${ordered.at(-1)?.createdAt ?? "unknown"}.`,
     `Classifications: ${classifications.join(", ") || "unknown"}.`,
-    snippets.length > 0 ? `Highlights: ${snippets.join(" | ")}` : null,
+    limitedSnippets.length > 0 ? `Highlights: ${limitedSnippets.map(s => s.snippet).join(" | ")}` : null,
   ]
     .filter((item): item is string => item != null)
     .join(" ");
@@ -65,8 +96,8 @@ export function buildMemoryConsolidationSummary(
   const structuredContent: StructuredMemoryContent = {
     schemaVersion: "memory.v2",
     workContext: `Consolidated ${ordered.length} memories into ${targetLayer}`,
-    topOfMind: snippets.slice(0, 3),
-    recentHistory: snippets.slice(0, 5),
+    topOfMind: limitedSnippets.slice(0, 3).map(s => s.snippet),
+    recentHistory: limitedSnippets.slice(0, 5).map(s => s.snippet),
     longTermBackground: [
       `Window ${ordered[0]?.createdAt ?? "unknown"} -> ${ordered.at(-1)?.createdAt ?? "unknown"}`,
       `Classifications: ${classifications.join(", ") || "unknown"}`,
@@ -91,6 +122,21 @@ export function buildMemoryConsolidationSummary(
     }).slice(0, 12),
   };
 
+  // R24-29/R24-32 FIX: Build loss report documenting dropped content
+  const lossReport: ConsolidationLossReport = {
+    consolidatedMemoryCount: ordered.length,
+    sourceMemoryCount: ordered.length,
+    excludedMemories: [],
+    droppedContent: [
+      ...droppedSnippets.map(({ record, snippet }) => ({
+        memoryId: record.id,
+        snippetPreview: snippet.length > 50 ? snippet.slice(0, 50) + "..." : snippet,
+        reason: "exceeded_max_snippets_limit:8",
+      })),
+    ],
+    truncationTimestamp: new Date().toISOString(),
+  };
+
   return {
     summaryText,
     averageQualityScore:
@@ -98,5 +144,6 @@ export function buildMemoryConsolidationSummary(
     sourceMemoryIds: ordered.map((record) => record.id),
     sourceCount: ordered.length,
     structuredContent,
+    lossReport,
   };
 }

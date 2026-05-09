@@ -253,11 +253,16 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
       break;
 
     case "plugin:invocation_completed":
+      newState.lastInvocationAt = event.createdAt;
       if (status === "completed") {
         newState.successCount++;
         newState.lastSuccessAt = event.createdAt;
+        newState.status = "completed";
+      } else if (status === "failed") {
+        newState.failureCount++;
+        newState.lastFailureAt = event.createdAt;
+        newState.status = "failed";
       }
-      newState.lastInvocationAt = event.createdAt;
       break;
 
     case "skill:step_succeeded":

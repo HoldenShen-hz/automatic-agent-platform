@@ -51,7 +51,27 @@ export class KnowledgeSnapshotStore {
     if (!existsSync(this.snapshotPath)) {
       return null;
     }
-    return JSON.parse(readFileSync(this.snapshotPath, "utf8")) as KnowledgePlaneSnapshot;
+    // R30-13 fix: Validate JSON structure before returning to prevent corrupted/tampered data
+    // from silently propagating invalid state through the system
+    const rawContent = readFileSync(this.snapshotPath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      // Corrupted JSON - return null rather than invalid data
+      return null;
+    }
+    if (
+      typeof parsed !== "object"
+      || parsed === null
+      || !("generatedAt" in (parsed as Record<string, unknown>))
+      || !("namespaces" in (parsed as Record<string, unknown>))
+      || !("records" in (parsed as Record<string, unknown>))
+    ) {
+      // Invalid schema structure - return null rather than invalid data
+      return null;
+    }
+    return parsed as KnowledgePlaneSnapshot;
   }
 
   public save(input: { namespaces: readonly KnowledgeNamespace[]; records: readonly ArchivedKnowledgeRecord[] }): KnowledgePlaneSnapshot {

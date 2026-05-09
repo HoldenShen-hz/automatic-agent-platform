@@ -180,9 +180,11 @@ export class CasService {
    * @param value - The value to set
    */
   public setValue(key: string, value: string): void {
+    const existing = this.store.get(key);
+    const currentVersion = existing?.version ?? 0;
     this.store.set(key, {
       value,
-      version: 1,
+      version: currentVersion + 1,
       updatedAt: new Date(),
     });
   }

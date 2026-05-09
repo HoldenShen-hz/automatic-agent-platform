@@ -56,7 +56,7 @@ test("dispatchProjectionHandler initializes state correctly", () => {
   assert.equal(state.dispatchTarget, "worker-pool-a");
   assert.equal(state.priority, "high");
   assert.equal(state.eventCount, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_1"]));
   assert.equal(state.firstEventAt, "2026-05-01T10:00:00.000Z");
   assert.equal(state.lastEventAt, "2026-05-01T10:00:00.000Z");
   assert.equal(state.timeline.length, 1);
@@ -268,7 +268,7 @@ test("dispatchProjectionHandler is idempotent - same event applied twice", () =>
 
   // Should only count once
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idempotent"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idempotent"]));
   assert.equal(state2.ticketId, "ticket_idem");
 });
 
@@ -368,7 +368,7 @@ test("dispatchProjectionHandler deduplicates event_ids", () => {
 
   // Should only count once
   assert.equal(state3.eventCount, 1);
-  assert.deepEqual(state3.processedEventIds, ["evt_dedup"]);
+  assert.deepEqual(state3.processedEventIds, new Set(["evt_dedup"]));
   assert.equal(state3.ticketId, "ticket_dedup");
 });
 
@@ -529,7 +529,7 @@ test("createInitialDispatchTicketState returns correct initial state", () => {
   assert.equal(state.decisionTraceJson, null);
   assert.deepEqual(state.timeline, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set([]));
   assert.equal(state.firstEventAt, null);
   assert.equal(state.lastEventAt, null);
   assert.equal(state.lastProjectedAt, null);

@@ -312,6 +312,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Random nonce as hex string
    */
   generateNonce(length = 32): string {
+    // R28-16 fix: generate full length hex without slicing to preserve entropy
     return randomBytes(length).toString("hex");
   }
 

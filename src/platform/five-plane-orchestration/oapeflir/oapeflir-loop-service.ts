@@ -777,27 +777,38 @@ export class OapeflirLoopService {
   }
 
   private buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
-    return stepOutputs.map((output, index) => ({
-      signalId: `signal_${index + 1}`,
-      taskId,
-      source: index === stepOutputs.length - 1 ? "user" : "execution",
-      category: "success",
-      severity: "info",
-      payload: {
-        summary: output.userFacingResult.summary,
-        durationMs: output.systemTelemetry.durationMs,
-      },
-      stepOutputRefs: [output.stepId],
-      timestamp: Date.now() + index,
-      feedbackTrustScore: 0.5,
-      trustFactors: {
-        sourceReliability: 0.5,
-        historicalAccuracy: 0.5,
-        authenticatedSource: false,
-        attackSurfaceExposure: 0.5,
-        holdoutOverlap: 0,
-      },
-    }));
+    return stepOutputs.map((output, index) => {
+      // R19-08 fix: Derive feedback category from step output status, not hardcoded "success"
+      // Failed steps with validation failures should produce failure/blocker feedback
+      const isLastStep = index === stepOutputs.length - 1;
+      const validationPassed = output.systemTelemetry.validationPassed;
+      const category: FeedbackSignal["category"] = !validationPassed
+        ? "failure"
+        : "success";
+
+      return {
+        signalId: `signal_${index + 1}`,
+        taskId,
+        source: isLastStep ? "user" : "execution",
+        category,
+        severity: !validationPassed ? "error" : "info",
+        payload: {
+          summary: output.userFacingResult.summary,
+          durationMs: output.systemTelemetry.durationMs,
+          validationPassed,
+        },
+        stepOutputRefs: [output.stepId],
+        timestamp: Date.now() + index,
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
+      };
+    });
   }
 
   /**

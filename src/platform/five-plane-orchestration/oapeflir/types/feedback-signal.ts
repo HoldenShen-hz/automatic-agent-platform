@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const FeedbackSourceSchema = z.enum(["execution", "user", "hitl", "validation", "system"]);
-export const FeedbackCategorySchema = z.enum(["success", "failure", "correction", "timeout", "partial"]);
+// R19-14 fix: Add blocker/regression categories for §31 contamination check and incident regression
+export const FeedbackCategorySchema = z.enum(["success", "failure", "correction", "timeout", "partial", "blocker", "regression"]);
 export const FeedbackSeveritySchema = z.enum(["info", "warning", "error", "critical"]);
 
 export const FeedbackTrustFactorsSchema = z.object({

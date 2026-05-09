@@ -115,9 +115,10 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
     enforcement: "blocking",
   },
   qualityScoreWeights: {
-    successSignal: 0.35,
-    completionOutcome: 0.45,
-    failureSignal: 0.3,
+    // R21 fix: weights must sum to 1.0 (was 1.2)
+    successSignal: 0.3,
+    completionOutcome: 0.4,
+    failureSignal: 0.2,
     partialSignal: 0.1,
   },
   actionThresholds: {

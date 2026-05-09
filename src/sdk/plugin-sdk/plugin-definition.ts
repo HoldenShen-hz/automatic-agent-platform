@@ -7,7 +7,7 @@
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
-export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
+export type PluginType = "tool" | "adapter" | "retriever" | "evaluator" | "validator" | "planner" | "presenter";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
 
 export interface PluginCapability {

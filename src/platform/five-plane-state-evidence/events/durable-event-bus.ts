@@ -7,6 +7,7 @@ import { getEventSchema, getRegisteredConsumers, validateEventPayload } from "./
 import { injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
 // persists the final status and error code, but there was previously no
@@ -43,10 +44,9 @@ const MAX_BACKOFF_MS = 5000;
 const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<string, number>>();
 
 /**
- * Active subscriptions poll for newly persisted tier-1 events so cross-instance
- * publishers do not rely on subscription-time races.
+ * R12-04: Base polling interval before queue-depth back-pressure adjusts it.
  */
-const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 10;
+const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
  * R12-01: Sequence number tracker per partition for ordering guarantees.
@@ -172,11 +172,11 @@ interface DeliveryChainState {
  * polling frequency based on consumer back-pressure, replacing the hardcoded 10ms.
  */
 class AdaptivePollingInterval {
-  private baseIntervalMs = 10;
+  private baseIntervalMs = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS;
   private maxIntervalMs = 5_000;
   private currentIntervalMs: number;
 
-  public constructor(baseIntervalMs = 10, maxIntervalMs = 5_000) {
+  public constructor(baseIntervalMs = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS, maxIntervalMs = 5_000) {
     this.baseIntervalMs = baseIntervalMs;
     this.maxIntervalMs = maxIntervalMs;
     this.currentIntervalMs = baseIntervalMs;
@@ -215,6 +215,7 @@ export class DurableEventBus {
   private readonly consumerGroups = new Map<string, ConsumerGroup>();
   private readonly adaptivePolling = new AdaptivePollingInterval();
   private readonly disposed = false;
+  private readonly runSequenceNumbers = new Map<string, number>();
 
   // R12-01: Pending events per partition for FIFO ordering
   // Maps partitionKey -> array of events awaiting delivery
@@ -372,6 +373,7 @@ export class DurableEventBus {
     this.validatePayloadSize(validatedPayload);
 
     const schema = getEventSchema(input.eventType);
+    const resolvedSequence = this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null);
     const eventRecord = this.db.transaction(() =>
       {
         this.ensureReferencedTask(input.taskId ?? null);
@@ -388,7 +390,8 @@ export class DurableEventBus {
           // §28.1 replay ordering fields for event chain reconstruction
           aggregateId: input.aggregateId ?? null,
           runId: input.runId ?? null,
-          sequence: input.sequence ?? null,
+          sequence: resolvedSequence,
+          correlationId: input.traceContext?.correlationId ?? null,
           schemaVersion: input.schemaVersion ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
@@ -440,6 +443,8 @@ export class DurableEventBus {
       return validatedPayload;
     });
 
+    const resolvedSequences = inputs.map((input) => this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null));
+
     // Insert all events in a single transaction for efficiency
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
@@ -458,7 +463,8 @@ export class DurableEventBus {
           // §28.1 replay ordering fields for event chain reconstruction
           aggregateId: input.aggregateId ?? null,
           runId: input.runId ?? null,
-          sequence: input.sequence ?? null,
+          sequence: resolvedSequences[index] ?? null,
+          correlationId: input.traceContext?.correlationId ?? null,
           schemaVersion: input.schemaVersion ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
@@ -589,7 +595,7 @@ export class DurableEventBus {
       }
     }
 
-    // All retries exhausted - mark as failed (will be retried on next replay)
+    // All retries exhausted - mark as failed before moving the delivery to DLQ.
     const errorMessage = lastError
       ? `failed_after_${MAX_DELIVERY_RETRIES}_retries: ${lastError.message}`
       : `failed_after_${MAX_DELIVERY_RETRIES}_retries: unknown_error`;
@@ -602,38 +608,52 @@ export class DurableEventBus {
       errorCode: errorMessage,
     });
 
-    // R12-03: Persist to DLQ repository - fail if not configured (DLQ persistence is mandatory)
-    if (!this.dlqRepository) {
-      throw new WorkflowStateError(
-        "event_bus.dlq_persistence_required",
-        "event_bus.dlq_persistence_required: DLQ repository not configured; dead-letter event could not be persisted",
-        { details: { eventId: item.event.id, consumerId: item.ack.consumerId } },
-      );
-    }
     try {
-      this.dlqRepository.insert({
-        deadLetterId: newId("dlq"),
-        sourceEventId: item.event.id,
-        eventType: item.event.eventType,
+      const deadLetteredAt = nowIso();
+      if (this.dlqRepository) {
+        this.dlqRepository.insert({
+          deadLetterId: newId("dlq"),
+          sourceEventId: item.event.id,
+          eventType: item.event.eventType,
+          consumerId: item.ack.consumerId,
+          errorCode: errorMessage,
+          errorMessage: lastError instanceof Error ? lastError.message : null,
+          payloadJson: item.event.payloadJson,
+          status: "pending",
+          retryCount: MAX_DELIVERY_RETRIES,
+          maxRetries: MAX_DELIVERY_RETRIES,
+          nextRetryAt: null,
+          createdAt: deadLetteredAt,
+          updatedAt: deadLetteredAt,
+          originalTimestamp: item.event.createdAt,
+          firstFailedAt: deadLetteredAt,
+          lastFailedAt: deadLetteredAt,
+          lastAttemptAt: deadLetteredAt,
+          failureCategory: null,
+          reason: errorMessage,
+          retryExhaustedAt: deadLetteredAt,
+          linkedIncidentId: null,
+          operatorActionLog: [],
+        });
+      } else {
+        this.store.event.insertEventDeadLetter({
+          id: newId("edl"),
+          originalEventId: item.event.id,
+          eventType: item.event.eventType,
+          payloadJson: item.event.payloadJson,
+          consumerId: item.ack.consumerId,
+          failureCount: MAX_DELIVERY_RETRIES,
+          lastError: errorMessage,
+          deadLetteredAt,
+          reprocessedAt: null,
+          reprocessResult: null,
+        });
+      }
+      this.store.event.markEventDeadLettered({
+        eventId: item.event.id,
         consumerId: item.ack.consumerId,
+        occurredAt: deadLetteredAt,
         errorCode: errorMessage,
-        errorMessage: lastError instanceof Error ? lastError.message : null,
-        payloadJson: item.event.payloadJson,
-        status: "pending",
-        retryCount: MAX_DELIVERY_RETRIES,
-        maxRetries: MAX_DELIVERY_RETRIES,
-        nextRetryAt: null,
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-        originalTimestamp: item.event.createdAt,
-        firstFailedAt: nowIso(),
-        lastFailedAt: nowIso(),
-        lastAttemptAt: nowIso(),
-        failureCategory: null,
-        reason: errorMessage,
-        retryExhaustedAt: nowIso(),
-        linkedIncidentId: null,
-        operatorActionLog: [],
       });
     } catch (dlqError) {
       eventBusLogger.error("event_bus.dlq_persist_failed", {
@@ -664,7 +684,7 @@ export class DurableEventBus {
         attempts: MAX_DELIVERY_RETRIES,
         errorCode: errorMessage,
         lastError: lastError instanceof Error ? lastError.message : null,
-        persisted: this.dlqRepository != null,
+        persisted: true,
       },
     });
 
@@ -701,6 +721,38 @@ export class DurableEventBus {
     this.schedulePollingTick(consumerId, 0);
   }
 
+  private calculatePollingInterval(consumerId: string, queueDepth: number): number {
+    const highWaterMark = 100;
+    runtimeMetricsRegistry.recordEventBackpressure(consumerId, queueDepth, queueDepth >= highWaterMark);
+
+    const chainState = this.deliveryChainStates.get(consumerId);
+    if (chainState) {
+      chainState.backPressure = {
+        isBackPressure: queueDepth >= highWaterMark,
+        pendingCount: queueDepth,
+        bufferedBytes: queueDepth * 1024,
+        lastCheckedAt: nowIso(),
+      };
+    }
+
+    if (queueDepth > 100) {
+      return 1_000;
+    } else if (queueDepth > 50) {
+      return 500;
+    } else if (queueDepth > 10) {
+      return 250;
+    }
+
+    return this.adaptivePolling.getInterval(
+      chainState?.backPressure ?? {
+        isBackPressure: false,
+        pendingCount: 0,
+        bufferedBytes: 0,
+        lastCheckedAt: nowIso(),
+      },
+    );
+  }
+
   private schedulePollingTick(consumerId: string, delayMs: number): void {
     if (this.disposed || !this.subscribers.has(consumerId) || this.pollingTimers.has(consumerId)) {
       return;
@@ -712,10 +764,8 @@ export class DurableEventBus {
       }
       void this.enqueueDelivery(consumerId, true).finally(() => {
         if (!this.disposed && this.subscribers.has(consumerId)) {
-          // R12-04: Use adaptive polling interval based on back-pressure
-          const chainState = this.deliveryChainStates.get(consumerId);
-          const backPressure = chainState?.backPressure ?? { isBackPressure: false, pendingCount: 0, bufferedBytes: 0, lastCheckedAt: nowIso() };
-          const interval = this.adaptivePolling.getInterval(backPressure);
+          const queueDepth = this.pendingForConsumer(consumerId).length;
+          const interval = this.calculatePollingInterval(consumerId, queueDepth);
           this.schedulePollingTick(consumerId, interval);
         }
       });
@@ -736,8 +786,7 @@ export class DurableEventBus {
     // R12-01: Get partition key for FIFO ordering
     const partitionKey = event.aggregateId ?? event.id;
 
-    // R12-01: Use the event's own sequence field as the sequence number for ordering
-    // This ensures events with the same aggregateId are delivered in sequence order
+    // R12-01: Use the event's own sequence field as the sequence number for ordering.
     const eventSequence = event.sequence ?? 0;
 
     // R12-02: Collect all eligible consumers and group them
@@ -778,64 +827,100 @@ export class DurableEventBus {
       eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
     }
 
-    // R12-01: Enforce FIFO ordering per partition by queuing in sequence order
-    for (const { consumerId, entry, groupId } of eligibleConsumers) {
-      // R12-02: Increment group delivery count for concurrency control
-      this.groupDeliveryCounts.set(groupId, (this.groupDeliveryCounts.get(groupId) ?? 0) + 1);
+    const queue = this.pendingPartitionEvents.get(partitionKey) ?? [];
+    const queueEntry: PartitionSequenceEntry = {
+      sequence: eventSequence,
+      event,
+      pendingConsumers: new Set(eligibleConsumers.map((consumer) => consumer.consumerId)),
+    };
+    const insertIndex = queue.findIndex((entry) => entry.sequence > eventSequence);
+    if (insertIndex === -1) {
+      queue.push(queueEntry);
+    } else {
+      queue.splice(insertIndex, 0, queueEntry);
+    }
+    this.pendingPartitionEvents.set(partitionKey, queue);
+    this.processPartitionQueue(partitionKey);
+  }
 
-      // R12-01: Get this consumer's delivery chain for this partition
+  private processPartitionQueue(partitionKey: string): void {
+    const queue = this.pendingPartitionEvents.get(partitionKey);
+    const nextEntry = queue?.[0];
+    if (!queue || !nextEntry) {
+      return;
+    }
+
+    for (const consumerId of Array.from(nextEntry.pendingConsumers)) {
+      const subscriber = this.subscribers.get(consumerId);
+      if (!subscriber) {
+        nextEntry.pendingConsumers.delete(consumerId);
+        continue;
+      }
+
+      const consumerPartitionKey = `${partitionKey}:${consumerId}`;
+      const expectedSeq = partitionSequenceNumbers.get(consumerPartitionKey);
+      if (expectedSeq !== undefined && nextEntry.sequence < expectedSeq) {
+        nextEntry.pendingConsumers.delete(consumerId);
+        eventBusLogger.debug("event_bus.out_of_sequence_skip", {
+          eventId: nextEntry.event.id,
+          consumerId,
+          eventSequence: nextEntry.sequence,
+          expectedSequence: expectedSeq,
+        });
+        continue;
+      }
+      if (expectedSeq !== undefined && nextEntry.sequence !== expectedSeq) {
+        continue;
+      }
+
       const partitionChainKey = `${consumerId}:${partitionKey}`;
-      const prior = this.deliveryChains.get(partitionChainKey) ?? Promise.resolve();
+      if (this.deliveryChains.has(partitionChainKey)) {
+        continue;
+      }
 
-      const next = prior
-        .catch((err) => {
-          eventBusLogger.warn("event_bus.delivery_chain_error", {
-            consumerId,
-            partitionKey,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return undefined;
-        })
+      this.groupDeliveryCounts.set(subscriber.groupId, (this.groupDeliveryCounts.get(subscriber.groupId) ?? 0) + 1);
+      const next = Promise.resolve()
         .then(async () => {
           this.assertNotDisposed();
-          // R12-01: Check sequence - only deliver if this is the next expected event
-          // Use the per-partition-per-consumer sequence tracker to ensure ordering
-          const consumerPartitionKey = `${partitionKey}:${consumerId}`;
-          const expectedSeq = partitionSequenceNumbers.get(consumerPartitionKey) ?? 0;
-          if (eventSequence < expectedSeq) {
-            // This event is old, skip it
-            eventBusLogger.debug("event_bus.out_of_sequence_skip", {
-              eventId: event.id,
-              consumerId,
-              eventSequence,
-              expectedSequence: expectedSeq,
-            });
-            return;
-          }
-          partitionSequenceNumbers.set(consumerPartitionKey, eventSequence + 1);
+          partitionSequenceNumbers.set(consumerPartitionKey, nextEntry.sequence + 1);
 
           try {
-            await entry.handler(event);
+            await subscriber.handler(nextEntry.event);
           } catch (error) {
             eventBusLogger.warn("event_bus.volatile_delivery_failed", {
-              eventId: event.id,
-              eventType: event.eventType,
+              eventId: nextEntry.event.id,
+              eventType: nextEntry.event.eventType,
               consumerId,
               errorMessage: error instanceof Error ? error.message : String(error),
             });
           } finally {
-            // R12-02: Decrement group delivery count
-            this.groupDeliveryCounts.set(groupId, Math.max(0, (this.groupDeliveryCounts.get(groupId) ?? 1) - 1));
+            this.groupDeliveryCounts.set(subscriber.groupId, Math.max(0, (this.groupDeliveryCounts.get(subscriber.groupId) ?? 1) - 1));
           }
         });
 
       const chain = next.then(() => undefined, () => undefined);
       this.deliveryChains.set(partitionChainKey, chain);
       void chain.finally(() => {
+        nextEntry.pendingConsumers.delete(consumerId);
         if (this.deliveryChains.get(partitionChainKey) === chain) {
           this.deliveryChains.delete(partitionChainKey);
         }
+        if (nextEntry.pendingConsumers.size === 0) {
+          queue.shift();
+          if (queue.length === 0) {
+            this.pendingPartitionEvents.delete(partitionKey);
+          }
+        }
+        this.processPartitionQueue(partitionKey);
       });
+    }
+
+    if (nextEntry.pendingConsumers.size === 0) {
+      queue.shift();
+      if (queue.length === 0) {
+        this.pendingPartitionEvents.delete(partitionKey);
+      }
+      this.processPartitionQueue(partitionKey);
     }
   }
 
@@ -958,6 +1043,20 @@ export class DurableEventBus {
       return;
     }
     this.activeConsumerRefCounts.set(consumerId, currentCount - 1);
+  }
+
+  private resolvePublishSequence(runId: string | null, requestedSequence: number | null): number | null {
+    if (runId == null) {
+      return requestedSequence ?? null;
+    }
+    if (requestedSequence != null) {
+      const current = this.runSequenceNumbers.get(runId) ?? 0;
+      this.runSequenceNumbers.set(runId, Math.max(current, requestedSequence));
+      return requestedSequence;
+    }
+    const nextSequence = (this.runSequenceNumbers.get(runId) ?? 0) + 1;
+    this.runSequenceNumbers.set(runId, nextSequence);
+    return nextSequence;
   }
 }
 

@@ -14,7 +14,7 @@ export interface TaskMetricSnapshot {
 export function summarizeTaskMetrics(statuses: readonly string[]): TaskMetricSnapshot {
   return {
     total: statuses.length,
-    done: statuses.filter((item) => item === "done").length,
+    done: statuses.filter((item) => item === "completed").length,
     inProgress: statuses.filter((item) => item === "in_progress" || item === "running").length,
     failed: statuses.filter((item) => item === "failed").length,
     pending: statuses.filter((item) => item === "pending" || item === "queued" || item === "scheduled").length,

@@ -332,8 +332,9 @@ function validateScaffoldConfig(config: ScaffoldConfig): ScaffoldConfig {
   if (!packId) {
     throw new ValidationError("pack_scaffold.invalid_pack_id", "Pack ID is required and cannot be empty.");
   }
-  if (!/^[a-z0-9][a-z0-9-_.]*$/.test(packId)) {
-    throw new ValidationError("pack_scaffold.invalid_pack_id_format", "Pack ID must match pattern: lowercase, numbers, hyphens, underscores, dots.");
+  // R28-23/R28-28 fix: disallow dots to prevent path traversal ambiguity
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(packId)) {
+    throw new ValidationError("pack_scaffold.invalid_pack_id_format", "Pack ID must match pattern: lowercase, numbers, hyphens, underscores (no dots).");
   }
   return {
     ...config,

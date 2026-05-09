@@ -52,6 +52,7 @@ test("R12-02: different consumer groups have independent delivery state", async 
     assert.ok(highPriorityEvents.includes(event.id), "high-priority consumer should receive event");
     assert.ok(lowPriorityEvents.includes(event.id), "low-priority consumer should receive event");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -100,6 +101,7 @@ test("R12-02: consumer group maxConcurrency limits concurrent deliveries", async
     // (though due to async nature and timing, this is best-effort)
     assert.ok(maxConcurrentSeen.max <= 2 + 1, "concurrent deliveries should be limited by group maxConcurrency");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -152,6 +154,7 @@ test("R12-02: each consumer maintains independent offset via own ack state", asy
     assert.equal(pendingA.length, 0, "no pending for consumer A after fan-out");
     assert.equal(pendingB.length, 0, "no pending for consumer B after fan-out");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -189,6 +192,7 @@ test("R12-02: group-level circuit breaker state is maintained independently", as
     // Both groups should have their own independent state
     // The groups don't interfere with each other
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -229,6 +233,7 @@ test("R12-02: consumer group back-pressure is tracked per group", async () => {
     // State may or may not be in back-pressure depending on timing,
     // but the tracking mechanism should exist and work
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -263,6 +268,7 @@ test("R12-02: consumer without group defaults to 'default' group", async () => {
 
     assert.ok(defaultGroupEvents.includes(event.id), "default group consumer should receive event");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);

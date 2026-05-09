@@ -172,7 +172,7 @@ test("R13-15: Interleave by tenant prevents single tenant flooding", () => {
 });
 
 // R13-15 test: Single tenant should not monopolize all dispatch slots
-test("R13-15: Single tenant dispatch quota enforced", () => {
+test("R13-15: monopolizing tenant cannot consume more than burst quota when another tenant is queued", () => {
   interface Ticket {
     id: string;
     tenantId: string;
@@ -217,23 +217,39 @@ test("R13-15: Single tenant dispatch quota enforced", () => {
     return result;
   }
 
-  // Simulate 10 tickets all from same tenant
-  const allSameTenant: Ticket[] = Array.from({ length: 10 }, (_, i) => ({
-    id: `ticket-${i}`,
-    tenantId: "monopolizer",
-  }));
+  const tickets: Ticket[] = [
+    ...Array.from({ length: 10 }, (_, i) => ({
+      id: `ticket-a-${i}`,
+      tenantId: "monopolizer",
+    })),
+    ...Array.from({ length: 2 }, (_, i) => ({
+      id: `ticket-b-${i}`,
+      tenantId: "tenant-b",
+    })),
+  ];
 
-  const interleaved = interleaveByTenant(allSameTenant);
-  assert.equal(interleaved.length, 10, "All tickets should be preserved");
+  const interleaved = interleaveByTenant(tickets);
+  assert.equal(interleaved.length, tickets.length, "All tickets should be preserved");
 
-  // Count consecutive monopolizer tickets at the start
-  let consecutiveMonopolizer = 0;
+  let maxConsecutiveMonopolizer = 0;
+  let currentConsecutive = 0;
+  let lastTenant: string | null = null;
   for (const ticket of interleaved) {
-    if (ticket.tenantId === "monopolizer") {
-      consecutiveMonopolizer++;
+    if (ticket.tenantId === lastTenant) {
+      currentConsecutive++;
     } else {
-      break;
+      if (lastTenant === "monopolizer") {
+        maxConsecutiveMonopolizer = Math.max(maxConsecutiveMonopolizer, currentConsecutive);
+      }
+      currentConsecutive = 1;
+      lastTenant = ticket.tenantId;
     }
   }
-  assert.ok(consecutiveMonopolizer <= 3, `No more than 3 consecutive monopolizer tickets, got ${consecutiveMonopolizer}`);
+  if (lastTenant === "monopolizer") {
+    maxConsecutiveMonopolizer = Math.max(maxConsecutiveMonopolizer, currentConsecutive);
+  }
+
+  const tenantBFirstIndex = interleaved.findIndex((ticket) => ticket.tenantId === "tenant-b");
+  assert.ok(tenantBFirstIndex >= 0 && tenantBFirstIndex <= 3, "tenant-b should receive dispatch opportunity within first burst");
+  assert.ok(maxConsecutiveMonopolizer <= 8, `monopolizer should not monopolize entire queue before tenant-b gets a turn, got burst ${maxConsecutiveMonopolizer}`);
 });

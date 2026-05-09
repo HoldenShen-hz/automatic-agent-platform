@@ -359,12 +359,8 @@ test("E2E Budget Blocking: verify actual spend blocking mechanism", async () => 
         },
       });
 
-      assert.equal(
-// @ts-ignore
-        withinBudgetResult.decision,
-        "approved",
-        "Reservation of 0.001 USD should be approved against 0.01 USD cap",
-      );
+      assert.equal(withinBudgetResult.reservation.amount, 0.001);
+      assert.equal(withinBudgetResult.ledger.reservedAmount, 0.001);
 
       // Create new ledger with same hard cap for second test
       const ledger2 = createBudgetLedger({
@@ -372,21 +368,6 @@ test("E2E Budget Blocking: verify actual spend blocking mechanism", async () => 
         harnessRunId: newId("run"),
         currency: "USD",
         hardCap: 0.01,
-      });
-
-      // Attempt to reserve 0.02 USD (exceeds budget) - should be denied
-      const exceedsBudgetResult = allocator.reserve({
-        ledger: ledger2,
-        amount: 0.02, // EXCEEDS 0.01 hard cap
-        resourceKind: "token",
-        expiresAt: nowIso(),
-        expectedVersion: ledger2.version,
-        context: {
-          tenantId: "tenant_budget_test",
-          traceId,
-          emittedBy: "test",
-          principal: "test-principal",
-        },
       });
 
       // Should throw ValidationError when amount exceeds hard cap
@@ -414,17 +395,6 @@ test("E2E Budget Blocking: verify actual spend blocking mechanism", async () => 
       assert.ok(
         exceedsBudgetError,
         `Reservation of 0.02 USD should throw error against 0.01 USD cap`,
-      );
-
-      // CRITICAL ASSERTION: Verify blocking behavior
-      // This is the key test for R10-42 - ensure budget enforcement actually blocks
-// @ts-ignore
-      const blockedDecision = exceedsBudgetResult.decision;
-
-      assert.ok(
-        blockedDecision === "denied" || blockedDecision === "throttled",
-        `Execution MUST be blocked when actual spend (0.02 USD) exceeds budget cap (0.01 USD). ` +
-        `Got decision: ${blockedDecision}`,
       );
     } finally {
       harness.cleanup();
@@ -521,15 +491,29 @@ test("E2E Budget Blocking: execution transitions to blocked state when budget ex
         hardCap: 0.005,
       });
 
+      const exhaustedLedger = allocator.reserve({
+        ledger,
+        amount: 0.005,
+        resourceKind: "token",
+        expiresAt: nowIso(),
+        expectedVersion: ledger.version,
+        context: {
+          tenantId: "tenant_test",
+          traceId,
+          emittedBy: "test",
+          principal: "test-principal",
+        },
+      }).ledger;
+
       // Any additional reservation attempt should be blocked
       let blocked = false;
       try {
         allocator.reserve({
-          ledger,
+          ledger: exhaustedLedger,
           amount: 0.001, // Even tiny additional cost should be blocked
           resourceKind: "token",
           expiresAt: nowIso(),
-          expectedVersion: ledger.version,
+          expectedVersion: exhaustedLedger.version,
           context: {
             tenantId: "tenant_test",
             traceId,
@@ -671,30 +655,11 @@ test("E2E Budget Blocking: assertions are not no-ops - they catch budget violati
         },
       });
 
-      // Should succeed when amount (0.5) is within cap (1.0)
-      let sufficientApproved = false;
-      try {
-// @ts-ignore
-        sufficientAllocator.reserve({
-          ledger: sufficientLedger,
-          amount: 0.5,
-          resourceKind: "token",
-          expiresAt: nowIso(),
-          expectedVersion: sufficientLedger.version,
-          context: {
-            tenantId: "tenant_sufficient",
-            traceId,
-            emittedBy: "test",
-            principal: "test-principal",
-          },
-        });
-        sufficientApproved = true;
-      } catch (error) {
-        sufficientApproved = false;
-      }
-      assert.ok(
-        sufficientApproved,
-        "Sufficient budget (0.5 of 1.0) should be approved",
+      assert.equal(sufficientResult.reservation.amount, 0.5);
+      assert.equal(
+        sufficientResult.ledger.reservedAmount,
+        0.5,
+        "Sufficient budget reservation should update the ledger",
       );
 
       // Test 2: Verify assertion FAILS when budget is insufficient
@@ -707,24 +672,9 @@ test("E2E Budget Blocking: assertions are not no-ops - they catch budget violati
         hardCap: 0.1,
       });
 
-      const insufficientResult = insufficientAllocator.reserve({
-        ledger: insufficientLedger,
-        amount: 0.5, // Exceeds 0.1 cap
-        resourceKind: "token",
-        expiresAt: nowIso(),
-        expectedVersion: insufficientLedger.version,
-        context: {
-          tenantId: "tenant_insufficient",
-          traceId,
-          emittedBy: "test",
-          principal: "test-principal",
-        },
-      });
-
       // Should throw ValidationError when amount exceeds hard cap
       let insufficientDenied = false;
       try {
-// @ts-ignore
         insufficientAllocator.reserve({
           ledger: insufficientLedger,
           amount: 0.5,

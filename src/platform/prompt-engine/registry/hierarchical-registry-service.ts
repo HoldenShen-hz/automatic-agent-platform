@@ -359,19 +359,19 @@ export class HierarchicalPromptRegistryService {
     domain?: string,
     _packId?: string,
   ): PromptBundle | null {
-    switch (level) {
-      case "global":
-        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain));
-      case "domain":
-        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain)) : null;
-      case "task-type":
-        // R23-48 fix: task-type uses domain as the pack/context identifier
-        if (domain) {
-          const scopeKey = this.buildScopeKey(name, level, domain, domain);
-          return this.findCurrentScopeBundle(scopeKey);
-        }
-        return null;
+    const scopeKey = this.buildScopeKey(name, level, level === "task-type" ? domain : undefined, domain);
+    const bundles = this.versionsByScope.get(scopeKey);
+    if (!bundles) return null;
+
+    // R28-18 fix: if version is specified, find the exact version; otherwise find default bundle
+    if (version !== undefined && version !== "") {
+      const versionNum = Number(version);
+      const bundle = bundles.get(String(versionNum));
+      return bundle && bundle.metadata.deprecated !== true ? bundle : null;
     }
+
+    // No version specified — find the default bundle (highest weight, then most recent)
+    return this.selectDefaultBundle([...bundles.values()]);
   }
 
   private buildListResult(bundle: PromptBundle): PromptBundleListResult {

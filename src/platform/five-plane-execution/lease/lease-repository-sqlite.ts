@@ -88,18 +88,56 @@ export class SqliteLeaseRepository implements LeaseRepository {
   }
 
   async updateLeaseStatus(leaseId: string, status: ExecutionLeaseRecord["status"]): Promise<void> {
+    // R26-08 fix: Guard against invalid state transitions
+    const existing = await this.getLease(leaseId);
+    if (!existing) {
+      throw new Error(`Lease ${leaseId} not found`);
+    }
+    // Define valid state transitions
+    const validTransitions: Record<ExecutionLeaseRecord["status"], ExecutionLeaseRecord["status"][]> = {
+      "active": ["expired", "released", "reclaimed", "handed_over"],
+      "expired": ["reclaimed", "active"], // R26-08 fix: allow reactivation in some cases
+      "released": [], // terminal state
+      "reclaimed": [], // terminal state
+      "handed_over": ["active"], // can be handed back
+    };
+    const allowed = validTransitions[existing.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new Error(`Invalid lease status transition from ${existing.status} to ${status}`);
+    }
     this.db.connection
       .prepare(`UPDATE execution_leases SET status = ? WHERE id = ?`)
       .run(status, leaseId);
   }
 
   async updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string): Promise<void> {
+    // R26-10 fix: Also extend expires_at by TTL on heartbeat to enable lease renewal
+    const existing = await this.getLease(leaseId);
+    if (!existing) {
+      throw new Error(`Lease ${leaseId} not found`);
+    }
+    // Only extend if lease is still active
+    if (existing.status !== "active") {
+      throw new Error(`Cannot heartbeat lease in ${existing.status} state`);
+    }
+    // Calculate new expiry time (extend by same duration as original lease)
+    const originalLeaseDuration = new Date(existing.expiresAt).getTime() - new Date(existing.leasedAt).getTime();
+    const newExpiresAt = new Date(new Date(lastHeartbeatAt).getTime() + originalLeaseDuration).toISOString();
     this.db.connection
-      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ? WHERE id = ?`)
-      .run(lastHeartbeatAt, leaseId);
+      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ?, expires_at = ? WHERE id = ?`)
+      .run(lastHeartbeatAt, newExpiresAt, leaseId);
   }
 
   async updateLeaseRelease(leaseId: string, releasedAt: string, reasonCode: string | null): Promise<void> {
+    // R26-09 fix: Only allow release from active/expired/handed_over states
+    const existing = await this.getLease(leaseId);
+    if (!existing) {
+      throw new Error(`Lease ${leaseId} not found`);
+    }
+    const releaseableStates: ExecutionLeaseRecord["status"][] = ["active", "expired", "handed_over"];
+    if (!releaseableStates.includes(existing.status)) {
+      throw new Error(`Cannot release lease in ${existing.status} state`);
+    }
     this.db.connection
       .prepare(
         `UPDATE execution_leases

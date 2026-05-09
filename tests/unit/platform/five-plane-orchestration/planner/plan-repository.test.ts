@@ -102,3 +102,26 @@ test("PlanRepository.save handles multiple tasks independently", () => {
   assert.equal(repo.listByTask("task-A").length, 2);
   assert.equal(repo.listByTask("task-B").length, 1);
 });
+
+test("R29-10: PlanRepository.save deduplicates same version", () => {
+  const repo = new PlanRepository();
+  const planV1a = makePlan({ planId: "v1a", taskId: "task-001", version: 1 });
+  const planV1b = makePlan({ planId: "v1b", taskId: "task-001", version: 1 });
+
+  repo.save(planV1a);
+  repo.save(planV1b);
+
+  const list = repo.listByTask("task-001");
+  // Only one plan with version 1 should exist (first one saved)
+  assert.equal(list.length, 1);
+  assert.equal(list[0].planId, "v1a");
+});
+
+test("R29-10: PlanRepository.save allows same version on different tasks", () => {
+  const repo = new PlanRepository();
+  repo.save(makePlan({ planId: "v1-taskA", taskId: "task-A", version: 1 }));
+  repo.save(makePlan({ planId: "v1-taskB", taskId: "task-B", version: 1 }));
+
+  assert.equal(repo.listByTask("task-A").length, 1);
+  assert.equal(repo.listByTask("task-B").length, 1);
+});

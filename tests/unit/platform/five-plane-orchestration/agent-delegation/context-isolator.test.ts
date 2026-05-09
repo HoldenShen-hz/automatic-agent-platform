@@ -365,3 +365,64 @@ test("FULL isolation level returns parent permissions unchanged", () => {
   assert.deepEqual(isolated.narrowedPermissions.resources, parent.permissions.resources);
   assert.deepEqual(isolated.narrowedPermissions.actions, parent.permissions.actions);
 });
+
+// R26-05 fix: denied domains should use union, not intersection
+test("R26-05: mergeDomainLists uses union for denied domains (not intersection)", () => {
+  const parent: PermissionSet = {
+    resources: ["resource-a"],
+    actions: ["action-read"],
+    constraints: {
+      allowedDomains: ["domain-a", "domain-b"],
+      deniedDomains: ["denied-parent-1", "denied-parent-2"],
+    },
+  };
+
+  const child: PermissionSet = {
+    resources: ["resource-a"],
+    actions: ["action-read"],
+    constraints: {
+      allowedDomains: ["domain-a"], // child wants to narrow allowed
+      deniedDomains: ["denied-child-1", "denied-parent-2"], // child adds its own denied
+    },
+  };
+
+  const isolator = new ContextIsolator();
+  const result = isolator.mergePermissions(parent, child);
+
+  // Denied domains should be the UNION of parent and child denied domains
+  // This ensures denied domains are never discarded - any domain denied by either is denied
+  assert.ok(result.constraints.deniedDomains != null, "Should have denied domains");
+  const denied = result.constraints.deniedDomains as readonly string[];
+  assert.ok(denied.includes("denied-parent-1"), "Should include parent's denied domain");
+  assert.ok(denied.includes("denied-parent-2"), "Should include parent's denied domain");
+  assert.ok(denied.includes("denied-child-1"), "Should include child's denied domain");
+  assert.equal(denied.length, 3, "Should be union of both denied domain lists");
+});
+
+// R26-05 fix: allowed domains should still use intersection
+test("R26-05: mergeDomainLists uses intersection for allowed domains", () => {
+  const parent: PermissionSet = {
+    resources: ["resource-a"],
+    actions: ["action-read"],
+    constraints: {
+      allowedDomains: ["domain-a", "domain-b", "domain-c"],
+    },
+  };
+
+  const child: PermissionSet = {
+    resources: ["resource-a"],
+    actions: ["action-read"],
+    constraints: {
+      allowedDomains: ["domain-b", "domain-c", "domain-d"], // d is not in parent
+    },
+  };
+
+  const isolator = new ContextIsolator();
+  const result = isolator.mergePermissions(parent, child);
+
+  // Allowed domains should be intersection
+  const allowed = result.constraints.allowedDomains as readonly string[];
+  assert.deepEqual(allowed, ["domain-b", "domain-c"], "Should be intersection");
+  assert.ok(!allowed.includes("domain-a"), "Should not include domain-a (only in parent)");
+  assert.ok(!allowed.includes("domain-d"), "Should not include domain-d (only in child)");
+});

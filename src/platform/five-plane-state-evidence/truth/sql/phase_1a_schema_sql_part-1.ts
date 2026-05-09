@@ -202,4 +202,5 @@ CREATE INDEX IF NOT EXISTS idx_agent_execution_records_agent_updated_at ON agent
 
 CREATE TABLE IF NOT EXISTS worker_snapshots (
   worker_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL DEFAULT 1,
 `;

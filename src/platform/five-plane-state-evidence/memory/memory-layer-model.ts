@@ -176,6 +176,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
  * Maps a §29 architecture layer name to the internal scope name.
  * @param architectureLayer - The §29 architecture layer name
  * @returns The internal scope name
+ * @throws Error if architectureLayer is not recognized
  */
 export function architectureLayerToScope(architectureLayer: string): HierarchicalMemoryLayer {
   switch (architectureLayer) {
@@ -192,7 +193,9 @@ export function architectureLayerToScope(architectureLayer: string): Hierarchica
     case "meta":
       return "evolution";
     default:
-      return "project";
+      // R24-33 FIX: Throw error for unknown layer instead of silent fallback to "project"
+      // Silent fallback causes mis-routing when configuration is incorrect
+      throw new Error(`memory.layer_unknown: Unknown architecture layer "${architectureLayer}". Valid layers: working, session, episodic, semantic, procedural, meta.`);
   }
 }
 

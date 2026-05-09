@@ -42,8 +42,12 @@ export interface AgentRetirementRecord {
   readonly status: "initiated" | "in_grace_period" | "completed" | "cancelled";
 }
 
+/**
+ * R27-14 fix: Compare timestamps as Date objects to handle mixed UTC/local timezone strings.
+ * ISO 8601 string comparison only works when both strings use the same timezone offset.
+ */
 export function canRetireAgent(plan: AgentRetirementPlan, nowIso: string): boolean {
-  return plan.revokeAt <= nowIso;
+  return new Date(plan.revokeAt).getTime() <= new Date(nowIso).getTime();
 }
 
 /**

@@ -18,6 +18,11 @@ export interface EventInboxRecord {
 }
 
 export class LayeredEventInbox {
+  /** Maximum records to retain before compaction kicks in */
+  private static readonly MAX_RECORDS = 10_000;
+  /** Ratio of records to retain after compaction (50%) */
+  private static readonly COMPACTION_RETENTION_RATIO = 0.5;
+
   private readonly records: EventInboxRecord[] = [];
   private readonly consumers = new Map<string, EventInboxConsumer>();
   private readonly cursors = new Map<string, number>();
@@ -32,6 +37,33 @@ export class LayeredEventInbox {
     }
   }
 
+  private compact(): void {
+    if (this.records.length <= LayeredEventInbox.MAX_RECORDS) {
+      return;
+    }
+    // Find the minimum cursor across all consumers
+    let minCursor = this.records.length;
+    for (const cursor of this.cursors.values()) {
+      if (cursor < minCursor) {
+        minCursor = cursor;
+      }
+    }
+    // Retain records from minCursor onwards plus a margin, remove older ones
+    const retainCount = Math.ceil(LayeredEventInbox.MAX_RECORDS * LayeredEventInbox.COMPACTION_RETENTION_RATIO);
+    const cutoffIndex = Math.max(minCursor, this.records.length - retainCount);
+    if (cutoffIndex > 0 && cutoffIndex < this.records.length) {
+      this.records.splice(0, cutoffIndex);
+      // Adjust cursors that were pointing beyond the new start
+      for (const [consumerId, cursor] of this.cursors.entries()) {
+        if (cursor >= cutoffIndex) {
+          this.cursors.set(consumerId, cursor - cutoffIndex);
+        } else {
+          this.cursors.set(consumerId, 0);
+        }
+      }
+    }
+  }
+
   public append(event: EventEnvelope, appendedAt = new Date(Date.now()).toISOString()): void {
     if (!isPlatformFactEvent(event) && !isOapeflirViewEvent(event)) {
       throw new ValidationError(
@@ -40,6 +72,8 @@ export class LayeredEventInbox {
       );
     }
     this.records.push({ event, appendedAt });
+    // R30-11 fix: compact records when limit exceeded to prevent unbounded memory growth
+    this.compact();
   }
 
   public peek(consumerId: string): readonly EventEnvelope[] {

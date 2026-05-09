@@ -53,9 +53,9 @@ export interface DispatchTicketState {
   eventCount: number;
   /**
    * Set of processed event IDs for idempotency (O(1) lookup).
-   * Stored as array for JSON serialization but converted to Set internally.
+   * Uses Set for O(1) contains() instead of O(n) array.includes().
    */
-  processedEventIds: string[];
+  processedEventIds: ReadonlySet<string>;
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
@@ -74,13 +74,6 @@ export interface DispatchTicketState {
    * Used for freshness monitoring per §28.6/§25.5.
    */
   stale: boolean;
-}
-
-/**
- * Internal state with Set for O(1) idempotency checks.
- */
-interface DispatchTicketStateInternal extends Omit<DispatchTicketState, "processedEventIds"> {
-  _processedEventIdSet: Set<string>;
 }
 
 /**
@@ -167,7 +160,7 @@ export function createInitialDispatchTicketState(): DispatchTicketState {
     decisionTraceJson: null,
     timeline: [],
     eventCount: 0,
-    processedEventIds: [],
+    processedEventIds: new Set<string>(),
     firstEventAt: null,
     lastProjectedAt: null,
     lastEventAt: null,
@@ -177,31 +170,11 @@ export function createInitialDispatchTicketState(): DispatchTicketState {
 }
 
 /**
- * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
- */
-function toInternalState(state: DispatchTicketState): DispatchTicketStateInternal {
-  return {
-    ...state,
-    _processedEventIdSet: new Set(state.processedEventIds),
-  };
-}
-
-/**
- * Converts internal state (with Set) back to serialized state (with array for JSON).
- */
-function toSerializedState(state: DispatchTicketStateInternal): DispatchTicketState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
-  };
-}
-
-/**
  * Checks if an event has already been processed (idempotency check).
  * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: DispatchTicketStateInternal, eventId: string): boolean {
-  return state._processedEventIdSet.has(eventId);
+function isEventProcessed(state: DispatchTicketState, eventId: string): boolean {
+  return state.processedEventIds.has(eventId);
 }
 
 /**
@@ -216,11 +189,10 @@ export const dispatchProjectionHandler: ProjectionHandler = (
   // Cast state to DispatchTicketState | null
   const currentState = state as DispatchTicketState | null;
   const baseState = currentState ? { ...currentState } : createInitialDispatchTicketState();
-  const internalState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events using O(1) Set lookup
-  if (isEventProcessed(internalState, event.eventId)) {
-    return toSerializedState(internalState) as unknown as Record<string, unknown>;
+  if (isEventProcessed(baseState, event.eventId)) {
+    return baseState as unknown as Record<string, unknown>;
   }
 
   const occurredAt = event.createdAt;
@@ -239,17 +211,21 @@ export const dispatchProjectionHandler: ProjectionHandler = (
     stale = lagMs > 300000;
   }
 
-  // Mark event as processed using O(1) Set add
-  internalState._processedEventIdSet.add(event.eventId);
-  internalState.eventCount = internalState.eventCount + 1;
+  // Mark event as processed using O(1) Set add - create new Set with existing + new eventId
+  const newProcessedEventIds = new Set([...baseState.processedEventIds, event.eventId]);
+  const newState: DispatchTicketState = {
+    ...baseState,
+    processedEventIds: newProcessedEventIds,
+    eventCount: baseState.eventCount + 1,
+  };
 
   switch (event.eventType) {
     case "dispatch:ticket_created": {
       const payload = JSON.parse(event.payloadJson as string) as DispatchTicketCreatedPayload;
-      const newTimeline = [...internalState.timeline];
+      const newTimeline = [...newState.timeline];
       newTimeline.push({ ...timelineEntry, details: `ticket_created:${payload.ticketId}` });
-      return toSerializedState({
-        ...internalState,
+      return {
+        ...newState,
         ticketId: payload.ticketId,
         executionId: event.taskId,
         taskId: event.taskId,
@@ -258,20 +234,20 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         priority: payload.priority,
         status: "pending",
         timeline: newTimeline,
-        firstEventAt: internalState.firstEventAt ?? occurredAt,
+        firstEventAt: newState.firstEventAt ?? occurredAt,
         lastEventAt: occurredAt,
         lastProjectedAt: occurredAt,
         lagMs,
         stale,
-      }) as unknown as Record<string, unknown>;
+      };
     }
 
     case "dispatch:ticket_claimed": {
       const payload = JSON.parse(event.payloadJson as string) as DispatchTicketClaimedPayload;
-      const newTimeline = [...internalState.timeline];
+      const newTimeline = [...newState.timeline];
       newTimeline.push({ ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` });
-      return toSerializedState({
-        ...internalState,
+      return {
+        ...newState,
         workerId: payload.workerId,
         status: "claimed",
         claimedAt: occurredAt,
@@ -280,15 +256,15 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         lastProjectedAt: occurredAt,
         lagMs,
         stale,
-      }) as unknown as Record<string, unknown>;
+      };
     }
 
     case "dispatch:decision_recorded": {
       const payload = JSON.parse(event.payloadJson as string) as DispatchDecisionRecordedPayload;
-      const newTimeline = [...internalState.timeline];
+      const newTimeline = [...newState.timeline];
       newTimeline.push({ ...timelineEntry, details: `decision_recorded:${payload.outcome}` });
-      return toSerializedState({
-        ...internalState,
+      return {
+        ...newState,
         decisionOutcome: payload.outcome,
         decisionReasonCode: payload.reasonCode,
         decisionSelectedWorkerId: payload.selectedWorkerId,
@@ -298,10 +274,10 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         lastProjectedAt: occurredAt,
         lagMs,
         stale,
-      }) as unknown as Record<string, unknown>;
+      };
     }
 
     default:
-      return toSerializedState(internalState) as unknown as Record<string, unknown>;
+      return newState as unknown as Record<string, unknown>;
   }
 };

@@ -29,10 +29,15 @@ export interface AlertsVm {
   readonly history: readonly AlertHistoryEntry[];
   readonly streamStatus: "idle" | "live";
   readonly pendingOperations: number;
+  // R14-34: acknowledge/dismiss/escalate are the three core actions per §4.7
   readonly onAcknowledge: (id: string) => void;
   readonly onDismiss: (id: string) => void;
   readonly onEscalate: (id: string) => void;
+  // Additional actions for alert lifecycle management
   readonly onSnooze: (id: string) => void;
+  // Legacy aliases for backward compatibility with existing tests (R14-34)
+  readonly acknowledgeAlert: (id: string) => void;
+  readonly dismissAlert: (id: string) => void;
 }
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -81,6 +86,8 @@ export function buildAlertsVm(
   });
 
   const sorted = sortIncidents(filtered);
+  // R14-33: Incidents sorted by severity (critical→low) then by creation time (newest first)
+  // R14-34: acknowledge/dismiss/escalate are the three core actions per §4.7
   return {
     incidents: sorted,
     items: sorted.map((incident) => ({
@@ -98,6 +105,9 @@ export function buildAlertsVm(
     streamStatus,
     pendingOperations,
     ...actions,
+    // Legacy aliases for backward compatibility with existing tests (R14-34)
+    acknowledgeAlert: actions.onAcknowledge,
+    dismissAlert: actions.onDismiss,
   };
 }
 

@@ -86,7 +86,8 @@ test("parseFeedbackSignal accepts all valid sources", () => {
 });
 
 test("parseFeedbackSignal accepts all valid categories", () => {
-  const categories = ["success", "failure", "correction", "timeout", "partial"] as const;
+  // R19-14 fix: Updated to include blocker and regression categories
+  const categories = ["success", "failure", "correction", "timeout", "partial", "blocker", "regression"] as const;
   for (const category of categories) {
     const signal = {
       signalId: "sig_123",

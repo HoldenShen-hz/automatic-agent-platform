@@ -110,8 +110,6 @@ export class PromptVersionManager {
     if (parsed1.patch !== undefined && parsed2.patch !== undefined) {
       return parsed1.patch - parsed2.patch;
     }
-    if (parsed1.patch !== undefined) return 1;
-    if (parsed2.patch !== undefined) return -1;
     return 0;
   }
 

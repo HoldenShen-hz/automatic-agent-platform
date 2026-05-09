@@ -60,6 +60,7 @@ test("DurableEventBus publish assigns monotonic run-local sequence and exposes r
     assert.equal(first.idempotencyKey, null);
 
     bus.dispose();
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);

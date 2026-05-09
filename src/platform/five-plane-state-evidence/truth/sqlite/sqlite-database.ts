@@ -597,6 +597,13 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
           "ALTER TABLE budget_reservations ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';",
         );
         return true;
+      case 45:
+        this.ensureColumn(
+          "worker_snapshots",
+          "version",
+          "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 1;",
+        );
+        return true;
       case 11:
         this.ensureColumn(
           "worker_snapshots",

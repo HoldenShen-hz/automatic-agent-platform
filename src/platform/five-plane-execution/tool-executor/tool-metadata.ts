@@ -487,11 +487,12 @@ export const TODO_WRITE_TOOL_METADATA: ToolExecutionMetadata = {
 /**
  * Predefined metadata for the web_search tool.
  * Medium-risk remote API access.
+ * R30-19 fix: readOnly is true for web_search - it's a search operation that doesn't modify data.
  */
 export const WEB_SEARCH_TOOL_METADATA: ToolExecutionMetadata = {
   toolName: "web_search",
-  readOnly: false,
-  idempotent: false,
+  readOnly: true,
+  idempotent: true,
   sideEffectScope: "remote_api",
   recoveryStrategy: "retry_safe",
   requiresConfirmation: false,
@@ -518,10 +519,11 @@ export const WEB_SEARCH_TOOL_METADATA: ToolExecutionMetadata = {
 /**
  * Predefined metadata for the web_fetch tool.
  * Medium-risk remote API access.
+ * R30-20 fix: readOnly is true for web_fetch - HTTP GET is a read-only operation.
  */
 export const WEB_FETCH_TOOL_METADATA: ToolExecutionMetadata = {
   toolName: "web_fetch",
-  readOnly: false,
+  readOnly: true,
   idempotent: false,
   sideEffectScope: "remote_api",
   recoveryStrategy: "retry_safe",

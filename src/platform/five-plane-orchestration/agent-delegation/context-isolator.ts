@@ -287,8 +287,10 @@ export class ContextIsolator {
   ): readonly string[] | undefined {
     if (!child || child.length === 0) return parent;
     if (!parent || parent.length === 0) return child;
-    // Return intersection
-    return parent.filter((d) => child.includes(d));
+    // R26-05 fix: Use union for denied domains (child OR parent), not intersection
+    // This ensures denied domains are never discarded - any domain denied by either is denied
+    const combined = [...parent, ...child];
+    return [...new Set(combined)];
   }
 }
 

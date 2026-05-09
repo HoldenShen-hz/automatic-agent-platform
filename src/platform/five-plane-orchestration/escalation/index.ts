@@ -57,6 +57,10 @@ export interface EscalationRequest {
   reasonCode: string;
   estimatedCostUsd: number | null;
   affectsProduction: boolean;
+  /** R29-07 fix: SLA deadline for routing decisions — null means no SLA constraint */
+  slaDeadline: string | null;
+  /** R29-07 fix: Timeout in milliseconds for human takeover — exceeded SLA triggers escalation */
+  timeoutMs: number | null;
 }
 
 /**

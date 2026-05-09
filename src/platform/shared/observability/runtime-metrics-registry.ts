@@ -167,6 +167,11 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("knowledge_query_total", { operation, result }, 1);
   }
 
+  public recordEventBackpressure(consumerId: string, pendingCount: number, isHighWaterMark: boolean): void {
+    this.setGauge("event_bus_backpressure_pending", { consumerId }, pendingCount);
+    this.setGauge("event_bus_backpressure_high_water", { consumerId }, isHighWaterMark ? 1 : 0);
+  }
+
   public getCounters(name: string): CounterSeries[] {
     return [...this.counters.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)

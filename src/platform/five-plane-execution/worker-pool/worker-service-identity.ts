@@ -37,12 +37,18 @@ export interface WorkerIdentityRecord {
 
 export class WorkerServiceIdentityRegistry {
   private readonly store: AuthoritativeTaskStore | null;
+  // R13-19 fix: In-memory fallback when no store is provided
+  private readonly memoryStore: Map<string, WorkerServiceIdentity>;
 
   public constructor(store?: AuthoritativeTaskStore) {
     this.store = store ?? null;
+    this.memoryStore = new Map();
   }
 
   public register(identity: WorkerServiceIdentity): WorkerServiceIdentity {
+    // R13-19 fix: Store in memory map for coordinator restarts
+    this.memoryStore.set(identity.workerId, identity);
+
     // R13-19 fix: Persist identity to durable storage when store is available
     if (this.store) {
       const record: WorkerIdentityRecord = {
@@ -65,7 +71,22 @@ export class WorkerServiceIdentityRegistry {
   }
 
   public evaluateClaim(claim: WorkerNodeRunClaim): WorkerIdentityDecision {
-    // R13-19 fix: Try to load from persistent storage first
+    // R13-19 fix: Check in-memory store first (for coordinator restarts without persistent store)
+    const memoryIdentity = this.memoryStore.get(claim.workerId);
+    if (memoryIdentity) {
+      if (memoryIdentity.serviceIdentity !== claim.serviceIdentity) {
+        return { accepted: false, reasonCode: "worker_identity.service_identity_mismatch" };
+      }
+      if (memoryIdentity.mtlsPeerFingerprint !== claim.mtlsPeerFingerprint) {
+        return { accepted: false, reasonCode: "worker_identity.mtls_mismatch" };
+      }
+      if (!memoryIdentity.allowedNodeRunTenants.includes(claim.tenantId)) {
+        return { accepted: false, reasonCode: "worker_identity.tenant_not_allowed" };
+      }
+      return { accepted: true, reasonCode: "worker_identity.accepted" };
+    }
+
+    // R13-19 fix: Try to load from persistent storage as fallback
     const storedIdentity = this.loadFromStore(claim.workerId);
 
     if (storedIdentity) {
