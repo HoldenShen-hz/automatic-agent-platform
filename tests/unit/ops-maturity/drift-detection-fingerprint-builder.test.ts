@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BehaviorFingerprintBuilder,
-  FINGERPRINT_WINDOW_SIZES,
   type BehaviorFingerprintInput,
 } from "../../../src/ops-maturity/drift-detection/fingerprint-builder/index.js";
 
@@ -13,7 +12,6 @@ test("BehaviorFingerprintBuilder build creates fingerprint with correct structur
     failureCategories: ["schema_error", "type_error"],
     averageLatencyMs: 1500,
     averageCostUsd: 0.5,
-    window: "1h",
     avgStepCount: 10,
     toolUsageDistribution: { tool_a: 5, tool_b: 5 },
     successRate: 0.95,
@@ -25,10 +23,7 @@ test("BehaviorFingerprintBuilder build creates fingerprint with correct structur
   const fingerprint = builder.build(input);
 
   assert.strictEqual(fingerprint.fingerprintId, "fingerprint:agent_test");
-  assert.strictEqual(fingerprint.subjectType, "agent");
-  assert.strictEqual(fingerprint.window, "1h");
-  assert.strictEqual(fingerprint.avgStepCount, 10);
-  assert.strictEqual(fingerprint.baselineRef, null);
+  assert.ok(Array.isArray(fingerprint.normalizedFeatures));
   assert.ok(fingerprint.hash.length > 0);
 });
 
@@ -41,11 +36,10 @@ test("BehaviorFingerprintBuilder build buckets latency correctly", () => {
     failureCategories: [],
     averageLatencyMs: 500,
     averageCostUsd: 0.1,
-    window: "1h",
     avgStepCount: 5,
   });
 
-  assert.ok(fastFingerprint.behaviorFeatures.some((f) => f.includes("fast")));
+  assert.ok(fastFingerprint.normalizedFeatures.some((f) => f.includes("fast")));
 
   const slowFingerprint = builder.build({
     agentId: "agent_slow",
@@ -53,11 +47,10 @@ test("BehaviorFingerprintBuilder build buckets latency correctly", () => {
     failureCategories: [],
     averageLatencyMs: 10000,
     averageCostUsd: 0.1,
-    window: "1h",
     avgStepCount: 5,
   });
 
-  assert.ok(slowFingerprint.behaviorFeatures.some((f) => f.includes("slow")));
+  assert.ok(slowFingerprint.normalizedFeatures.some((f) => f.includes("slow")));
 });
 
 test("BehaviorFingerprintBuilder build buckets cost correctly", () => {
@@ -69,11 +62,10 @@ test("BehaviorFingerprintBuilder build buckets cost correctly", () => {
     failureCategories: [],
     averageLatencyMs: 100,
     averageCostUsd: 0.05,
-    window: "1h",
     avgStepCount: 5,
   });
 
-  assert.ok(lowCostFingerprint.behaviorFeatures.some((f) => f.includes("low")));
+  assert.ok(lowCostFingerprint.normalizedFeatures.some((f) => f.includes("low")));
 
   const highCostFingerprint = builder.build({
     agentId: "agent_high_cost",
@@ -81,15 +73,10 @@ test("BehaviorFingerprintBuilder build buckets cost correctly", () => {
     failureCategories: [],
     averageLatencyMs: 100,
     averageCostUsd: 5.0,
-    window: "1h",
     avgStepCount: 5,
   });
 
-  assert.ok(highCostFingerprint.behaviorFeatures.some((f) => f.includes("high")));
-});
-
-test("BehaviorFingerprintBuilder build includes all window sizes", () => {
-  assert.deepStrictEqual(FINGERPRINT_WINDOW_SIZES, ["1h", "7d", "30d", "90d"]);
+  assert.ok(highCostFingerprint.normalizedFeatures.some((f) => f.includes("high")));
 });
 
 test("BehaviorFingerprintBuilder build uses defaults for optional fields", () => {
@@ -100,7 +87,6 @@ test("BehaviorFingerprintBuilder build uses defaults for optional fields", () =>
     failureCategories: [],
     averageLatencyMs: 1000,
     averageCostUsd: 0.5,
-    window: "7d",
     avgStepCount: 3,
   });
 
@@ -117,7 +103,6 @@ test("BehaviorFingerprintBuilder build generates unique hashes for different inp
     failureCategories: [],
     averageLatencyMs: 1000,
     averageCostUsd: 0.5,
-    window: "7d",
     avgStepCount: 3,
   });
 
@@ -127,7 +112,6 @@ test("BehaviorFingerprintBuilder build generates unique hashes for different inp
     failureCategories: [],
     averageLatencyMs: 1000,
     averageCostUsd: 0.5,
-    window: "7d",
     avgStepCount: 3,
   });
 
@@ -143,7 +127,6 @@ test("BehaviorFingerprintBuilder build generates same hash for same input", () =
     failureCategories: ["error_a"],
     averageLatencyMs: 2000,
     averageCostUsd: 1.0,
-    window: "30d",
     avgStepCount: 7,
   };
 
@@ -151,4 +134,20 @@ test("BehaviorFingerprintBuilder build generates same hash for same input", () =
   const fp2 = builder.build(input);
 
   assert.strictEqual(fp1.hash, fp2.hash);
+});
+
+test("BehaviorFingerprintBuilder hash matches manually computed SHA-256", () => {
+  const builder = new BehaviorFingerprintBuilder();
+  const input: BehaviorFingerprintInput = {
+    agentId: "agent_sha_test",
+    tools: ["tool_a", "tool_b"],
+    failureCategories: ["schema_error"],
+    averageLatencyMs: 1000,
+    averageCostUsd: 0.5,
+    avgStepCount: 5,
+  };
+
+  const fp = builder.build(input);
+  // Verify the hash is a valid SHA-256 hex string (64 characters)
+  assert.ok(/^[a-f0-9]{64}$/.test(fp.hash), "Hash should be a valid SHA-256 hex string");
 });

@@ -155,7 +155,8 @@ test("createRun sets budgetLedgerId correctly", () => {
     constraintPack: createConstraintPack(),
   });
 
-  assert.ok(run.budgetLedgerId.startsWith("budget_ledger_"));
+  // The budget ledger ID uses "bledger_" prefix from createBudgetLedger
+  assert.ok(run.budgetLedgerId.startsWith("bledger_"));
 });
 
 test("createRun sets planGraphBundle correctly", () => {

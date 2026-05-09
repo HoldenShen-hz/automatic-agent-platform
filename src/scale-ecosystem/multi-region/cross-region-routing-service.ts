@@ -13,6 +13,7 @@ export interface ResidencyPolicy {
 export interface CrossRegionRouteRequest {
   readonly regions: readonly RegionDescriptor[];
   readonly policy: ResidencyPolicy;
+  readonly operationType?: "read" | "write";
   readonly primaryRegionId?: string | null;
   readonly preferredRegionId?: string | null;
   readonly primaryRegionHealthy: boolean;
@@ -42,6 +43,7 @@ function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities:
 
 export class CrossRegionRoutingService {
   public route(request: CrossRegionRouteRequest): CrossRegionRouteDecision {
+    const operationType = request.operationType ?? "read";
     const blockedRegionIds = new Set(request.policy.blockedRegionIds ?? []);
     const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? request.primaryRegionId ?? null : null;
     const allowedJurisdictions = new Set(request.policy.allowedJurisdictions);
@@ -59,9 +61,13 @@ export class CrossRegionRoutingService {
     const preferredRegion = request.preferredRegionId == null
       ? null
       : candidateDescriptors.find((region) => region.regionId === request.preferredRegionId) ?? null;
-    const selectedRegion = preferredRegion ?? selectPreferredRegion(candidateDescriptors);
+    const selectedRegion = operationType === "write"
+      ? this.selectWriteRegion(candidateDescriptors, request)
+      : preferredRegion ?? selectPreferredRegion(candidateDescriptors);
     const failover = resolveRegionFailover({
       primaryHealthy: request.primaryRegionHealthy,
+      currentLeaderRegionId: request.primaryRegionId ?? null,
+      partitionKey: request.policy.policyId,
       candidateRegionIds: candidateDescriptors
         .filter((region) => region.regionId !== selectedRegion?.regionId)
         .map((region) => region.regionId),
@@ -69,6 +75,7 @@ export class CrossRegionRoutingService {
 
     const auditTrail = [
       `policy:${request.policy.policyId}`,
+      `operation:${operationType}`,
       `cross_border:${request.policy.allowCrossBorder ? "allowed" : "blocked"}`,
       `blocked:${blockedRegions.join(",") || "none"}`,
     ];
@@ -91,5 +98,24 @@ export class CrossRegionRoutingService {
       },
       blockedRegions,
     };
+  }
+
+  private selectWriteRegion(
+    candidateDescriptors: readonly RegionDescriptor[],
+    request: CrossRegionRouteRequest,
+  ): RegionDescriptor | null {
+    if (request.primaryRegionHealthy && request.primaryRegionId != null) {
+      return candidateDescriptors.find((region) => region.regionId === request.primaryRegionId) ?? null;
+    }
+    const failoverTarget = resolveRegionFailover({
+      primaryHealthy: request.primaryRegionHealthy,
+      currentLeaderRegionId: request.primaryRegionId ?? null,
+      partitionKey: request.policy.policyId,
+      candidateRegionIds: candidateDescriptors.map((region) => region.regionId),
+      preferredRegionId: request.preferredRegionId ?? null,
+    }).targetRegionId;
+    return failoverTarget == null
+      ? null
+      : candidateDescriptors.find((region) => region.regionId === failoverTarget) ?? null;
   }
 }

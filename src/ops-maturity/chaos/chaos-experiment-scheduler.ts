@@ -7,17 +7,25 @@
  * - Automated experiment termination on violation
  * - Experiment result classification (success/failure/inconclusive)
  *
- * §68 Chaos Engineering - Experiment Scheduling + Automated Steady-State Validation
- *
- * §66 GameDay Orchestrator (P2 Enhancement for Phase 3):
- * Current scheduleGameDay() / startGameDay() / refreshGameDayStatus() implement basic scheduling skeleton.
- * To implement complete GameDay orchestration capability, the following are needed: real fault injection
- * execution, integration with monitoring system for steady-state validation, multi-experiment parallel
- * orchestration, and GameDay report generation. Currently ChaosExperimentScheduler lacks integration
- * with external fault injection systems and real steady-state validation pipeline.
+ * Architecture anchors:
+ * - docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md
+ * - docs_zh/adr/089-ai-operations-governance-and-quality.md
+ * - docs_zh/architecture/02-code-architecture-reference.md
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+
+export interface ChaosArchitectureAnchor {
+  readonly contractRef: string;
+  readonly adrRef: string;
+  readonly architectureRef: string;
+}
+
+export const CHAOS_ARCHITECTURE_ANCHORS: ChaosArchitectureAnchor = {
+  contractRef: "docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md",
+  adrRef: "docs_zh/adr/089-ai-operations-governance-and-quality.md",
+  architectureRef: "docs_zh/architecture/02-code-architecture-reference.md",
+};
 
 export interface SteadyStateHypothesis {
   name: string;

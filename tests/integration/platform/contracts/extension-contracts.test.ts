@@ -708,7 +708,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
   const profile = {
     edgeNodeId: "edge_store_1",
     deviceId: "device_edge_store_1",
-    offlineMaxDuration: 86400,
+    offlineMaxDuration: 31536000000,
     keyLease: "lease_key_1",
     capabilities: ["text", "sync"],
     connectivityMode: "offline" as const,

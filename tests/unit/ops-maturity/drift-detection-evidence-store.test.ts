@@ -99,13 +99,13 @@ test("InMemoryEvidenceStore getRecent returns latest records", async () => {
   assert.strictEqual(recent[0]?.id, "ev_5");
 });
 
-test("InMemoryEvidenceStore evicts oldest records when max reached", async () => {
-  const store = new InMemoryEvidenceStore(5); // max 5 records
+test("InMemoryEvidenceStore stores all records without eviction (no max limit)", async () => {
+  const store = new InMemoryEvidenceStore(); // No max limit specified
 
   for (let i = 0; i < 10; i++) {
     await store.append({ id: `ev_${i}`, taskType: "t1", sessionId: `s${i}`, traceId: `t${i}`, success: true, costUsd: 1, latencyMs: 100, toolCalls: 5, repairRounds: 0, rollback: false, createdAt: `2026-04-20T0${i}:00:00.000Z` });
   }
 
   const stats = await store.getStatistics();
-  assert.strictEqual(stats.totalRecords, 4); // Implementation evicts 2 records per cycle when length >= max
+  assert.strictEqual(stats.totalRecords, 10); // All records are stored
 });

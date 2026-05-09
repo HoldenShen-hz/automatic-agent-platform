@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { nowIso } from "../../../platform/contracts/types/ids.js";
+import { CrossBorderTransferComplianceService } from "../cross-border-transfer-compliance-service.js";
 
 export const ReplicationPolicySchema = z.object({
   sourceRegionId: z.string().min(1),
@@ -56,6 +57,9 @@ export interface DataReplicatorConfig {
   sourceRegionId: string;
   targetRegionIds: readonly string[];
   policy: ReplicationPolicy;
+  sourceJurisdiction?: string;
+  targetJurisdictions?: Readonly<Record<string, string>>;
+  transferComplianceService?: CrossBorderTransferComplianceService;
   batchSize: number;
   flushIntervalMs: number;
   retryAttempts: number;
@@ -165,16 +169,45 @@ export class DataReplicatorService {
     aggregateType: string,
     aggregateId: string,
     payload: unknown,
-  ): ReplicationEvent {
+    options?: {
+      readonly containsPii?: boolean;
+      readonly dataCategories?: readonly string[];
+      readonly allowedDataFields?: readonly string[];
+      readonly purpose?: string;
+    },
+  ): ReplicationEvent | null {
+    if (!shouldReplicateToRegion(this.config.policy, targetRegionId)) {
+      return null;
+    }
+    let effectivePayload = payload;
+    if (this.config.transferComplianceService != null
+      && this.config.sourceJurisdiction != null
+      && this.config.targetJurisdictions?.[targetRegionId] != null) {
+      const assessment = this.config.transferComplianceService.assessTransfer({
+        sourceRegionId: this.config.sourceRegionId,
+        targetRegionId,
+        sourceJurisdiction: this.config.sourceJurisdiction,
+        targetJurisdiction: this.config.targetJurisdictions[targetRegionId]!,
+        dataCategories: options?.dataCategories ?? [],
+        containsPii: options?.containsPii ?? false,
+        purpose: options?.purpose ?? aggregateType,
+        payload: isRecord(payload) ? payload : null,
+        allowedDataFields: options?.allowedDataFields,
+      });
+      if (!assessment.allowed) {
+        return null;
+      }
+      effectivePayload = assessment.dataMinimizer.minimizedPayload ?? payload;
+    }
     const event: ReplicationEvent = {
       eventId: `repl_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       aggregateType,
       aggregateId,
-      payload,
+      payload: effectivePayload,
       timestamp: nowIso(),
-      checksum: computeChecksum(payload, this.config.checksumAlgorithm),
+      checksum: computeChecksum(effectivePayload, this.config.checksumAlgorithm),
     };
 
     const buffer = this.buffers.get(targetRegionId);
@@ -243,7 +276,7 @@ export class DataReplicatorService {
       targetRegionId,
       sequenceNumber: lastSequence,
       timestamp: nowIso(),
-      pendingCount: events.length,
+      pendingCount: errors.length,
     });
 
     return {
@@ -330,9 +363,16 @@ export function createDataReplicator(
     sourceRegionId,
     targetRegionIds,
     policy,
+    sourceJurisdiction: options?.sourceJurisdiction,
+    targetJurisdictions: options?.targetJurisdictions,
+    transferComplianceService: options?.transferComplianceService,
     batchSize: options?.batchSize ?? 100,
     flushIntervalMs: options?.flushIntervalMs ?? 5000,
     retryAttempts: options?.retryAttempts ?? 3,
     checksumAlgorithm: options?.checksumAlgorithm ?? "sha256",
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }

@@ -48,7 +48,7 @@ test("HarnessRuntimeService.createRun creates budget ledger with correct hard ca
     constraintPack,
   });
 
-  assert.ok(run.budgetLedgerId.startsWith("budget_ledger_"));
+  assert.ok(run.budgetLedgerId.startsWith("bledger_"));
 });
 
 test("HarnessRuntimeService.appendStep adds step to run", () => {

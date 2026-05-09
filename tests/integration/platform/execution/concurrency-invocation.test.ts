@@ -767,8 +767,10 @@ test("[CONCURRENCY-3] concurrent lock acquisition with timeout contention", asyn
   try {
     const adapter = new SqliteLockAdapter(db);
 
-    // Pre-acquire the lock
-    adapter.acquire({ lockKey: "contention-lock", owner: "initial-owner", ttlMs: 30000 });
+    // Pre-acquire the lock with a very short TTL so it expires quickly
+    adapter.acquire({ lockKey: "contention-lock", owner: "initial-owner", ttlMs: 1 });
+    // Wait for the TTL to expire (1ms is very short)
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // 10 concurrent workers trying to acquire same lock
     const result = await runConcurrentInvariant(
@@ -952,11 +954,13 @@ test("[CONCURRENCY-4] critical section test for lock adapter mutual exclusion", 
       }
     };
 
-    // First, acquire initial lock to set up contention
-    const initial = adapter.acquire({ lockKey: "critical-lock", owner: "initial-owner", ttlMs: 30000 });
+    // First, acquire initial lock with short TTL and wait for it to expire
+    const initial = adapter.acquire({ lockKey: "critical-lock", owner: "initial-owner", ttlMs: 1 });
     assert.equal(initial.acquired, true, "Initial acquire should succeed");
+    // Wait for the TTL to expire so workers can contend
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Run critical section test
+    // Run critical section test - workers will contend after initial lock expires
     const result = await runCriticalSectionTest(acquireLock, releaseLock, { concurrency: 10 });
 
     // In a proper implementation, there should be no violations

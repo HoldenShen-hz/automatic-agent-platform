@@ -383,7 +383,7 @@ test("HarnessRuntimeService.assertInvariants detects non_accept_decision_require
   };
 
   const result = runtime.assertInvariants(runWithDecisionNoFeedback);
-  assert.ok(result.violations.includes("harness.invariant.non_accept_decision_requires_feedback"));
+  assert.ok(result.violations.includes("INV-9:harness.invariant.non_accept_decision_requires_feedback"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects blocked_tool_requested", () => {
@@ -415,7 +415,7 @@ test("HarnessRuntimeService.assertInvariants detects blocked_tool_requested", ()
   };
 
   const result = runtime.assertInvariants(completedRunWithBlockedTools);
-  assert.ok(result.violations.includes("harness.invariant.blocked_tool_requested"));
+  assert.ok(result.violations.includes("INV-10:harness.invariant.blocked_tool_requested"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects required_evidence_missing", () => {
@@ -460,7 +460,7 @@ test("HarnessRuntimeService.assertInvariants detects required_evidence_missing",
   };
 
   const result = runtime.assertInvariants(completedRunWithMissingEvidence);
-  assert.ok(result.violations.includes("harness.invariant.required_evidence_missing"));
+  assert.ok(result.violations.includes("INV-10:harness.invariant.required_evidence_missing"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects max_risk_exceeded", () => {
@@ -499,7 +499,7 @@ test("HarnessRuntimeService.assertInvariants detects max_risk_exceeded", () => {
   };
 
   const result = runtime.assertInvariants(completedRunWithMaxRisk);
-  assert.ok(result.violations.includes("harness.invariant.max_risk_exceeded"));
+  assert.ok(result.violations.includes("INV-10:harness.invariant.max_risk_exceeded"));
 });
 
 test("HarnessRuntimeService.assertInvariants passes for completed run with no issues", () => {
@@ -647,10 +647,10 @@ test("HarnessRuntimeService.assertInvariants reports multiple violations", () =>
 
   const result = runtime.assertInvariants(badRun);
   assert.ok(result.violations.length >= 3);
-  assert.ok(result.violations.includes("harness.invariant.final_state_requires_completed_at"));
-  assert.ok(result.violations.includes("harness.invariant.iteration_exceeds_budget"));
-  assert.ok(result.violations.includes("harness.invariant.total_cost_exceeds_budget"));
-  assert.ok(result.violations.includes("harness.invariant.duration_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-5:harness.invariant.final_state_requires_completed_at"));
+  assert.ok(result.violations.includes("INV-1:harness.invariant.iteration_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-3:harness.invariant.total_cost_exceeds_budget"));
+  assert.ok(result.violations.includes("INV-4:harness.invariant.duration_exceeds_budget"));
 });
 
 test("HarnessRuntimeService.assertInvariants handles run without loopMetrics", () => {
