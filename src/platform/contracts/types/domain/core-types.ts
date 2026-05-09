@@ -65,11 +65,24 @@ export interface TransitionAuditContext {
   metadataJson?: string;
 }
 
+export interface TransitionPrincipalLike {
+  principalId?: string;
+  actorId?: string;
+  tenantId?: string | null;
+  roles?: readonly string[];
+}
+
 // ---------------------------------------------------------------------------
 // Transition command
 // ---------------------------------------------------------------------------
 
 export interface TransitionCommand<TKind extends TransitionEntityKind, TStatus extends string> extends TransitionAuditContext {
+  principal?: TransitionPrincipalLike;
+  leaseId?: string;
+  fencingToken?: string;
+  event?: string;
+  payload?: unknown;
+  expectedVersion?: number | null;
   entityKind: TKind;
   entityId: string;
   fromStatus?: TStatus;

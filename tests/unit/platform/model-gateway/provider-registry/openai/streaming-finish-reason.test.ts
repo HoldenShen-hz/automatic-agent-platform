@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   OpenAIChatService,
   type OpenAIChatCompletionRequest,
-} from "../../../../../../../src/platform/model-gateway/provider-registry/openai/openai-chat-service.js";
+} from "../../../../../../src/platform/model-gateway/provider-registry/openai/openai-chat-service.js";
 
 const FAKE_API_KEY = "test-api-key-openai";
 const FAKE_MODEL = "gpt-4o";
@@ -79,6 +79,8 @@ test("OpenAI streaming takes final finish_reason from last chunk with non-null v
       leaseId: "fake-lease",
     }),
     releaseCredential: () => {},
+    markSuccess: () => {},
+    markFailure: () => {},
     selectCredential: async () => ({
       credentialId: "fake-cred",
       leaseId: "fake-lease",
@@ -173,6 +175,8 @@ test("OpenAI streaming preserves content_filter finish_reason", async () => {
       leaseId: "fake-lease",
     }),
     releaseCredential: () => {},
+    markSuccess: () => {},
+    markFailure: () => {},
     selectCredential: async () => ({
       credentialId: "fake-cred",
       leaseId: "fake-lease",
@@ -280,6 +284,8 @@ test("OpenAI streaming preserves tool_calls finish_reason", async () => {
       leaseId: "fake-lease",
     }),
     releaseCredential: () => {},
+    markSuccess: () => {},
+    markFailure: () => {},
     selectCredential: async () => ({
       credentialId: "fake-cred",
       leaseId: "fake-lease",

@@ -324,7 +324,7 @@ export class AsyncOrganizationRepository {
        WHERE tenant_id = $1`,
       tenantId,
     );
-    return result ?? null;
+    return normalizeTenantRecord(result ?? null);
   }
 
   public async listTenantRecords(options: {
@@ -333,7 +333,7 @@ export class AsyncOrganizationRepository {
   } = {}): Promise<TenantRecord[]> {
     const safeLimit = Number.isFinite(options.limit) ? Math.max(1, Math.trunc(options.limit ?? 50)) : 50;
     if (options.organizationId !== undefined) {
-      return asyncQueryAll<TenantRecord>(
+      return (await asyncQueryAll<TenantRecord>(
         this.conn,
         `SELECT
            tenant_id AS "tenantId",
@@ -353,9 +353,9 @@ export class AsyncOrganizationRepository {
          LIMIT $2`,
         options.organizationId,
         safeLimit,
-      );
+      )).map((record) => normalizeTenantRecord(record)!);
     }
-    return asyncQueryAll<TenantRecord>(
+    return (await asyncQueryAll<TenantRecord>(
       this.conn,
       `SELECT
          tenant_id AS "tenantId",
@@ -373,7 +373,7 @@ export class AsyncOrganizationRepository {
        ORDER BY updated_at DESC, tenant_id ASC
        LIMIT $1`,
       safeLimit,
-    );
+    )).map((record) => normalizeTenantRecord(record)!);
   }
 
   public async getDeploymentBindingRecord(bindingId: string): Promise<DeploymentBindingRecord | null> {
@@ -510,4 +510,14 @@ export class AsyncOrganizationRepository {
       ...parameters,
     );
   }
+}
+
+function normalizeTenantRecord(record: TenantRecord | null): TenantRecord | null {
+  if (record == null) {
+    return null;
+  }
+  return {
+    ...record,
+    quotas: record.quotas ?? {},
+  };
 }

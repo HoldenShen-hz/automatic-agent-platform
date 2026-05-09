@@ -1,3 +1,6 @@
+import { TypedEventBus } from "../state-evidence/events/typed-event-bus.js";
+import { nowIso } from "../../contracts/types/ids.js";
+
 export type CleanupCallback = (params: {
   readonly resourceId: string;
   readonly tenantId: string;
@@ -105,6 +108,8 @@ export interface RunTerminationCleanupCallbacks {
   readonly compensationTrigger?: CompensationTriggerCallback;
   /** R11-08: Optional notification callback */
   readonly notification?: NotificationCallback;
+  /** R17-03: Optional event bus for emitting cleanup events */
+  readonly eventBus?: TypedEventBus;
 }
 
 export class RunTerminationCleanup {
@@ -211,7 +216,7 @@ export class RunTerminationCleanup {
 
     // R11-08/R11-11: Build result with proper optional field handling
     // Include optional fields only when they have values
-    return {
+    const receipt: RunTerminationCleanupReceipt = {
       runId: request.runId,
       tenantId: request.tenantId,
       terminalStatus: request.terminalStatus,
@@ -225,5 +230,42 @@ export class RunTerminationCleanup {
       ...(compensationTriggerResult !== undefined && { compensationTrigger: compensationTriggerResult }),
       ...(notificationResult !== undefined && { notification: notificationResult }),
     };
+
+    // R17-03: Emit cleanup events to the event bus
+    if (callbacks.eventBus) {
+      const occurredAt = nowIso();
+      if (cleanupStatus === "failed") {
+        callbacks.eventBus.publish({
+          eventType: "run.cleanup_failed",
+          runId: request.runId,
+          payload: {
+            runId: request.runId,
+            tenantId: request.tenantId,
+            terminalStatus: request.terminalStatus,
+            cleanedResourceIds,
+            failedResourceIds,
+            cleanupStatus,
+            errorMessage: `Cleanup failed: ${failedResourceIds.length} resources failed`,
+            occurredAt,
+          },
+        });
+      } else {
+        callbacks.eventBus.publish({
+          eventType: "run.cleanup_completed",
+          runId: request.runId,
+          payload: {
+            runId: request.runId,
+            tenantId: request.tenantId,
+            terminalStatus: request.terminalStatus,
+            cleanedResourceIds,
+            failedResourceIds,
+            cleanupStatus,
+            occurredAt,
+          },
+        });
+      }
+    }
+
+    return receipt;
   }
 }

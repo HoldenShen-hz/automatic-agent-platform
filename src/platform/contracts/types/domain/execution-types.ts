@@ -38,6 +38,14 @@ export interface ExecutionRecord {
   parentExecutionId: string | null;
   /** R4-27 fix: Associated HarnessRun ID for canonical v4.3+ execution tracking */
   harnessRunId: string | null;
+  /** Canonical node-level execution identity for PlanGraph-based dispatch */
+  nodeRunId?: string | null;
+  /** Canonical plan graph identity retained alongside legacy workflow linkage */
+  planGraphId?: string | null;
+  /** Compatibility alias for bundle-centric orchestration state */
+  planGraphBundleId?: string | null;
+  /** Latest node attempt id when execution state is surfaced at node granularity */
+  nodeAttemptId?: string | null;
   agentId: string;
   roleId: string | null;
   runKind: RunKind;

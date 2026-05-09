@@ -39,6 +39,7 @@ export interface StateCommand<TPayload = unknown> {
   readonly type?: LegacyStateCommandType;
   readonly aggregateId?: string;
   readonly expectedVersion: number | null;
+  readonly expectedStatus?: string | null;
   readonly payload: TPayload;
   readonly emittedBy: string;
   readonly createdAt: string;
@@ -52,6 +53,7 @@ type SimpleStateCommandInput<TPayload> = {
   readonly entityId: string;
   readonly action: StateCommandAction;
   readonly expectedVersion?: number | null;
+  readonly expectedStatus?: string | null;
   readonly payload: TPayload;
   readonly emittedBy: string;
   readonly commandId?: string;
@@ -68,6 +70,7 @@ type CompatibilityStateCommandInput<TPayload> = {
   readonly aggregateId: string;
   readonly aggregateType?: string;
   readonly expectedVersion?: number | null;
+  readonly expectedStatus?: string | null;
   readonly payload: TPayload;
   readonly emittedBy?: string;
   readonly commandId?: string;

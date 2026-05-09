@@ -618,6 +618,21 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     consumers: ["oapeflir_projection", "truth_projector"],
     compatibilityPolicy: "backward_compatible_additive",
   },
+  // R17-03: Run termination cleanup events
+  "run.cleanup_completed": {
+    type: "run.cleanup_completed",
+    tier: "tier_1",
+    producer: "run_termination_cleanup",
+    consumers: ["truth_projector", "audit_system"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
+  "run.cleanup_failed": {
+    type: "run.cleanup_failed",
+    tier: "tier_1",
+    producer: "run_termination_cleanup",
+    consumers: ["truth_projector", "audit_system", "alerting"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
 /**

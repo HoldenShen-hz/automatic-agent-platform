@@ -11,14 +11,15 @@
 
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type {
-  PromptBundle,
-  PromptBundleConstraints,
-  PromptBundleListResult,
-  PromptBundleMetadata,
-  PromptBundleRegistrationInput,
-  PromptBundleSegment,
-  PromptBundleVersion,
+import {
+  createPromptBundle,
+  type PromptBundle,
+  type PromptBundleConstraints,
+  type PromptBundleListResult,
+  type PromptBundleMetadata,
+  type PromptBundleRegistrationInput,
+  type PromptBundleSegment,
+  type PromptBundleVersion,
 } from "../../contracts/prompt-bundle/index.js";
 
 export interface HierarchicalPromptRegistryConfig {
@@ -79,28 +80,18 @@ export class HierarchicalPromptRegistryService {
     domain?: string,
     packId?: string,
   ): PromptBundle {
-    this.validateRegistrationInput(input);
-
     // R23-48 fix: Normalize to domain-level storage for backward compatibility
     const effectiveDomain = domain ?? input.domain ?? packId;
-    const bundleId = this.buildBundleId(input, level, effectiveDomain);
-    const bundle: PromptBundle = {
-      bundleId,
-      name: input.name,
-      version: input.version,
-      displayVersion: input.displayVersion,
-      domain: effectiveDomain,
-      taskType: input.taskType,
+    const timestamp = nowIso();
+    const bundle = createPromptBundle({
+      ...input,
+      bundleId: this.buildBundleId(input, level, effectiveDomain),
+      domain: effectiveDomain ?? input.domain,
       packId: packId ?? input.packId,
-      systemPrompt: input.systemPrompt,
-      userPrompt: input.userPrompt,
-      fewShotExamples: input.fewShotExamples ?? [],
       constraints: this.normalizeConstraints(input.constraints),
-      compatibilityMatrix: input.compatibilityMatrix,
-      metadata: this.buildMetadata(input),
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
 
     this.storeBundle(bundle, level, effectiveDomain);
     this.storeVersion(bundle, level, effectiveDomain);
@@ -298,24 +289,6 @@ export class HierarchicalPromptRegistryService {
     return parts.join(":");
   }
 
-  private validateRegistrationInput(input: PromptBundleRegistrationInput): void {
-    if (!input.name?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_name", "Bundle name must be non-empty");
-    }
-    if (!String(input.version)?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be non-empty");
-    }
-    if (!input.domain?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_domain", "Bundle domain must be non-empty");
-    }
-    if (!input.taskType?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_task_type", "Bundle taskType must be non-empty");
-    }
-    if (!input.systemPrompt?.content?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_system_prompt", "System prompt content must be non-empty");
-    }
-  }
-
   private normalizeConstraints(input?: PromptBundleConstraints): PromptBundleConstraints {
     if (!input) {
       return {
@@ -335,22 +308,6 @@ export class HierarchicalPromptRegistryService {
       stopSequences: input.stopSequences,
       responseFormat: input.responseFormat,
       customConstraints: input.customConstraints ?? {},
-    };
-  }
-
-  private buildMetadata(input: PromptBundleRegistrationInput): PromptBundleMetadata {
-    return {
-      owner: input.metadata?.owner ?? "system",
-      deprecated: input.metadata?.deprecated ?? false,
-      lifecycleStatus: input.metadata?.lifecycleStatus ?? "active",
-      tags: input.metadata?.tags ?? [],
-      compatibilityTags: input.metadata?.compatibilityTags ?? [],
-      trafficAllocation: input.metadata?.trafficAllocation ?? {
-        weight: 100,
-        startTime: undefined,
-        endTime: undefined,
-        targeting: undefined,
-      },
     };
   }
 

@@ -98,7 +98,7 @@ export interface TenantRecord {
   isolationMode: TenantIsolationMode;
   deploymentMode: DeploymentMode;
   /** Resource quotas for the tenant */
-  quotas?: TenantQuotas;
+  quotas: TenantQuotas;
   /** Billing plan identifier */
   billingPlan?: string;
   /** SLA tier */

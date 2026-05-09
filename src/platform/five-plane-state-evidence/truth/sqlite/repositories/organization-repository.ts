@@ -304,7 +304,7 @@ export class OrganizationRepository {
   }
 
   public getTenantRecord(tenantId: string): TenantRecord | null {
-    return queryOne<TenantRecord>(
+    return normalizeTenantRecord(queryOne<TenantRecord>(
       this.db.connection,
       `SELECT
          tenant_id AS tenantId,
@@ -321,7 +321,7 @@ export class OrganizationRepository {
        FROM tenants
        WHERE tenant_id = ?`,
       tenantId,
-    ) ?? null;
+    ) ?? null);
   }
 
   public listTenantRecords(options: {
@@ -350,7 +350,7 @@ export class OrganizationRepository {
          LIMIT ?`,
         options.organizationId,
         safeLimit,
-      );
+      ).map((record) => normalizeTenantRecord(record)!);
     }
     return queryAll<TenantRecord>(
       this.db.connection,
@@ -370,7 +370,7 @@ export class OrganizationRepository {
        ORDER BY updated_at DESC, tenant_id ASC
        LIMIT ?`,
       safeLimit,
-    );
+    ).map((record) => normalizeTenantRecord(record)!);
   }
 
   public getDeploymentBindingRecord(bindingId: string): DeploymentBindingRecord | null {
@@ -505,4 +505,14 @@ export class OrganizationRepository {
       ...parameters,
     );
   }
+}
+
+function normalizeTenantRecord(record: TenantRecord | null): TenantRecord | null {
+  if (record == null) {
+    return null;
+  }
+  return {
+    ...record,
+    quotas: record.quotas ?? {},
+  };
 }

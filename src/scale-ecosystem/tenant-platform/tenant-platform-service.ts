@@ -531,6 +531,7 @@ export class TenantPlatformService {
         artifactScope: assertIdentifier(input.artifactScope, "tenant.invalid_artifact_scope"),
         isolationMode,
         deploymentMode: input.deploymentMode ?? "cloud_shared",
+        quotas: {},
         createdAt,
         updatedAt: createdAt,
       };

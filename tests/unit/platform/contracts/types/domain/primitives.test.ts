@@ -148,8 +148,8 @@ test("MessagePartType accepts all valid values", () => {
 
 // Worker primitives
 test("RunKind accepts all valid values", () => {
-  const kinds: RunKind[] = ["task_run", "tool_call", "approval_resume", "replay"];
-  assert.equal(kinds.length, 4);
+  const kinds: RunKind[] = ["task_run", "node_run", "tool_call", "approval_resume", "replay"];
+  assert.equal(kinds.length, 5);
 });
 
 test("WorkerStatus accepts all valid values", () => {

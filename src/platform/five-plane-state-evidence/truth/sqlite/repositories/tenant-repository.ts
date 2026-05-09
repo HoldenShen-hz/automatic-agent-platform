@@ -132,11 +132,11 @@ export class InMemoryTenantRepository implements TenantRepository {
       artifactScope: input.artifactScope ?? `${tenantId}:artifact`,
       isolationMode: input.isolationMode ?? "shared_logical",
       deploymentMode: input.deploymentMode ?? "cloud_shared",
+      quotas: normalizeTenantQuotas(quotas),
       status: input.status ?? "active",
       ...(input.billingPlan ? { billingPlan: input.billingPlan } : {}),
       ...(input.slaLevel ? { slaLevel: input.slaLevel } : {}),
       ...(input.allowedRegions ? { allowedRegions: input.allowedRegions } : {}),
-      ...(quotas ? { quotas } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -159,7 +159,7 @@ export class InMemoryTenantRepository implements TenantRepository {
       throw new Error(`Tenant ${tenantId} not found`);
     }
 
-    const quotas = toTenantQuotas(input.quotas) ?? existing.quotas;
+    const quotas = normalizeTenantQuotas(toTenantQuotas(input.quotas) ?? existing.quotas);
     const billingPlan = input.billingPlan ?? existing.billingPlan;
     const slaLevel = input.slaLevel ?? existing.slaLevel;
     const allowedRegions = input.allowedRegions ?? existing.allowedRegions;
@@ -174,11 +174,10 @@ export class InMemoryTenantRepository implements TenantRepository {
       artifactScope: input.artifactScope ?? existing.artifactScope,
       isolationMode: input.isolationMode ?? existing.isolationMode,
       deploymentMode: input.deploymentMode ?? existing.deploymentMode,
+      quotas,
       createdAt: existing.createdAt,
       updatedAt: nowIso(),
     };
-
-    if (quotas) record.quotas = quotas;
     if (billingPlan) record.billingPlan = billingPlan;
     if (slaLevel) record.slaLevel = slaLevel;
     if (allowedRegions) record.allowedRegions = allowedRegions;
@@ -340,4 +339,8 @@ function toTenantQuotas(inputs?: readonly TenantQuotaInput[]): TenantQuotas | un
   }
 
   return Object.keys(quotas).length > 0 ? quotas : undefined;
+}
+
+function normalizeTenantQuotas(quotas?: TenantQuotas): TenantQuotas {
+  return quotas == null ? {} : { ...quotas };
 }

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { EventEmitter } from "node:events";
 
-import { FluentdTransport } from "../../../../../../../src/platform/shared/observability/transports/fluentd-transport.js";
-import type { StructuredLogEntry } from "../../../../../../../src/platform/shared/observability/structured-logger.js";
+import { FluentdTransport } from "../../../../../../src/platform/shared/observability/transports/fluentd-transport.js";
+import type { StructuredLogEntry } from "../../../../../../src/platform/shared/observability/structured-logger.js";
 
 function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): StructuredLogEntry {
   return {

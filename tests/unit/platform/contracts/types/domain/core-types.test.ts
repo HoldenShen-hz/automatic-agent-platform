@@ -4,6 +4,7 @@ import test from "node:test";
 import type {
   TraceContext,
   TransitionAuditContext,
+  TransitionPrincipalLike,
   TransitionCommand,
   TaskStatusTransitionCommand,
   WorkflowStatusTransitionCommand,
@@ -87,6 +88,11 @@ test("TransitionEntityKind accepts all valid values", () => {
 });
 
 test("TransitionCommand structure is correct", () => {
+  const principal: TransitionPrincipalLike = {
+    principalId: "principal_1",
+    tenantId: "tenant_1",
+    roles: ["operator"],
+  };
   const cmd: TransitionCommand<"task", TaskStatus> = {
     entityKind: "task",
     entityId: "task_123",
@@ -95,10 +101,19 @@ test("TransitionCommand structure is correct", () => {
     reasonCode: "task.done",
     traceId: "trace_abc",
     actorType: "agent",
+    principal,
+    leaseId: "lease_1",
+    fencingToken: "fence_1",
+    event: "task.transitioned",
+    payload: { status: "done" },
+    expectedVersion: 3,
     occurredAt: "2026-04-14T00:00:00.000Z",
   };
   assert.equal(cmd.entityKind, "task");
   assert.equal(cmd.toStatus, "done");
+  assert.equal(cmd.principal?.principalId, "principal_1");
+  assert.equal(cmd.leaseId, "lease_1");
+  assert.equal(cmd.expectedVersion, 3);
 });
 
 test("TaskStatusTransitionCommand structure is correct", () => {

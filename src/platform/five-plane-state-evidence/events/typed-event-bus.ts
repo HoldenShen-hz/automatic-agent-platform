@@ -217,6 +217,26 @@ export interface TypedEventPayloadMap {
   "oapeflir.view.run_lifecycle": Record<string, unknown>;
   "oapeflir.graph.scheduled": Record<string, unknown>;
   "oapeflir.node.executed": Record<string, unknown>;
+  // R17-03: Run termination cleanup events
+  "run.cleanup_completed": {
+    runId: string;
+    tenantId: string;
+    terminalStatus: string;
+    cleanedResourceIds: readonly string[];
+    failedResourceIds: readonly string[];
+    cleanupStatus: string;
+    occurredAt: string;
+  };
+  "run.cleanup_failed": {
+    runId: string;
+    tenantId: string;
+    terminalStatus: string;
+    cleanedResourceIds: readonly string[];
+    failedResourceIds: readonly string[];
+    cleanupStatus: string;
+    errorMessage?: string;
+    occurredAt: string;
+  };
 }
 
 /**

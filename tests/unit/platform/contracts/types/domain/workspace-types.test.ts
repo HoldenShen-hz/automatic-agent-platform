@@ -125,6 +125,7 @@ test("TenantRecord structure is correct", () => {
     artifactScope: "artifact_primary",
     isolationMode: "shared_hard_scoped",
     deploymentMode: "cloud_shared",
+    quotas: {},
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
   };
@@ -143,6 +144,7 @@ test("TenantRecord allows dedicated_runtime isolation", () => {
     artifactScope: "artifact_dedicated",
     isolationMode: "dedicated_runtime",
     deploymentMode: "private_cloud",
+    quotas: {},
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
   };

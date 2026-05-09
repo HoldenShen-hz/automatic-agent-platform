@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   MiniMaxChatService,
   type MiniMaxChatCompletionRequest,
-} from "../../../../../../../src/platform/model-gateway/provider-registry/minimax/minimax-chat-service.js";
+} from "../../../../../../src/platform/model-gateway/provider-registry/minimax/minimax-chat-service.js";
 
 const FAKE_API_KEY = "test-api-key-minimax";
 const FAKE_MODEL = "abab6.5s";
@@ -17,6 +17,8 @@ test("MiniMax streaming throws MiniMaxAPIError on business error (R27-02)", asyn
       leaseId: "fake-lease",
     }),
     releaseCredential: () => {},
+    markSuccess: () => {},
+    markFailure: () => {},
     selectCredential: async () => ({
       credentialId: "fake-cred",
       leaseId: "fake-lease",
@@ -99,6 +101,8 @@ test("MiniMax streaming re-throws MiniMaxAPIError from assertMiniMaxBusinessSucc
       leaseId: "fake-lease",
     }),
     releaseCredential: () => {},
+    markSuccess: () => {},
+    markFailure: () => {},
     selectCredential: async () => ({
       credentialId: "fake-cred",
       leaseId: "fake-lease",

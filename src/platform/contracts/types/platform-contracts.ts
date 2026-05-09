@@ -16,6 +16,10 @@
  */
 
 import { newId, nowIso } from "./ids.js";
+import {
+  createProjectionUpdate as createStandaloneProjectionUpdate,
+  type ProjectionUpdate,
+} from "../projection-update/index.js";
 
 // =============================================================================
 // Platform-Level Contract Types
@@ -57,20 +61,6 @@ export interface EvidenceRecord {
   readonly content: unknown;
   readonly timestamp: string;
   readonly metadata: Readonly<Record<string, string>>;
-}
-
-export interface ProjectionUpdate {
-  readonly projectionId: string;
-  readonly projectionType: string;
-  readonly version: number;
-  readonly timestamp: string;
-  readonly sourceEvents: readonly string[];
-  readonly patch: Readonly<Record<string, unknown>>;
-  readonly metadata: {
-    readonly rebuiltAt?: string | undefined;
-    readonly triggeredBy: string;
-    readonly idempotencyKey: string;
-  };
 }
 
 // =============================================================================
@@ -157,17 +147,5 @@ export function createProjectionUpdate(input: {
   rebuiltAt?: string;
   idempotencyKey?: string;
 }): ProjectionUpdate {
-  return {
-    projectionId: input.projectionId,
-    projectionType: input.projectionType,
-    version: input.version,
-    timestamp: nowIso(),
-    sourceEvents: input.sourceEvents,
-    patch: input.patch,
-    metadata: {
-      ...(input.rebuiltAt != null ? { rebuiltAt: input.rebuiltAt } : {}),
-      triggeredBy: input.triggeredBy,
-      idempotencyKey: input.idempotencyKey ?? newId("projupd"),
-    },
-  };
+  return createStandaloneProjectionUpdate(input);
 }

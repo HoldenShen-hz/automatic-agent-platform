@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createDelegationRequest,
+  type BudgetEnvelope,
   type DelegationRequest,
   type DelegationPriority,
 } from "../../../../../src/platform/contracts/delegation-request/index.js";
@@ -210,6 +211,11 @@ test("createDelegationRequest accepts all priority levels", () => {
 });
 
 test("DelegationRequest interface accepts all fields", () => {
+  const budgetEnvelope: BudgetEnvelope = {
+    amount: 5,
+    currency: "USD",
+    resourceKinds: ["llm", "tool"],
+  };
   const request: DelegationRequest = {
     requestId: "req-123",
     taskId: "task-456",
@@ -220,6 +226,8 @@ test("DelegationRequest interface accepts all fields", () => {
     reason: "urgent review needed",
     contextRef: "context:1",
     tenantId: "tenant-1",
+    budgetReservationId: "bresv-1",
+    budgetEnvelope,
     createdAt: "2026-01-01T00:00:00.000Z",
   };
 
@@ -229,4 +237,6 @@ test("DelegationRequest interface accepts all fields", () => {
   assert.equal(request.toAgentId, "agent-2");
   assert.equal(request.capabilityRef, "cap:review");
   assert.equal(request.priority, "critical");
+  assert.equal(request.budgetReservationId, "bresv-1");
+  assert.deepEqual(request.budgetEnvelope, budgetEnvelope);
 });

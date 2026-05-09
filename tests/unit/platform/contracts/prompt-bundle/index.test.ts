@@ -1,573 +1,263 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type {
-  PromptBundle,
-  PromptBundleSegment,
-  FewShotExample,
-  PromptBundleConstraints,
-  PromptBundleMetadata,
-  PromptBundleTrafficAllocation,
-  TrafficTargeting,
-  PromptBundleRegistrationInput,
-  PromptBundleVersion,
-  PromptBundleListResult,
+import {
+  createPromptBundle,
+  validatePromptBundle,
+  validatePromptBundleRegistrationInput,
+  type PromptBundle,
+  type PromptBundleCompatibilityMatrix,
+  type PromptBundleListResult,
+  type PromptBundleMetadata,
+  type PromptBundleRegistrationInput,
+  type PromptBundleVersion,
 } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
-// =============================================================================
-// PromptBundleSegment Tests
-// =============================================================================
-
-test("PromptBundleSegment with all fields", () => {
-  const segment: PromptBundleSegment = {
-    content: "You are a helpful assistant.",
-    templateVariables: ["userName", "taskType"],
-    channel: "system",
+function createCompatibilityMatrix(): PromptBundleCompatibilityMatrix {
+  return {
+    toolSchemaVersions: [{ toolName: "shell", schemaVersion: 1 }],
+    evaluatorSchemaVersions: [{ evaluatorName: "safety", schemaVersion: 2 }],
+    domainDescriptorVersions: [{ domainId: "platform", version: 3 }],
+    modelRoutingProfiles: [{ modelId: "gpt-5.4", profileVersion: 1 }],
   };
-  assert.equal(segment.content, "You are a helpful assistant.");
-  assert.deepEqual(segment.templateVariables, ["userName", "taskType"]);
-  assert.equal(segment.channel, "system");
-});
+}
 
-test("PromptBundleSegment accepts all channel values", () => {
-  const channels: PromptBundleSegment["channel"][] = ["system", "developer", "user"];
-  for (const channel of channels) {
-    const segment: PromptBundleSegment = {
-      content: "test",
-      templateVariables: [],
-      channel,
-    };
-    assert.equal(segment.channel, channel);
-  }
-});
-
-test("PromptBundleSegment with empty templateVariables", () => {
-  const segment: PromptBundleSegment = {
-    content: "Static prompt",
-    templateVariables: [],
-    channel: "user",
-  };
-  assert.deepEqual(segment.templateVariables, []);
-});
-
-// =============================================================================
-// FewShotExample Tests
-// =============================================================================
-
-test("FewShotExample with required fields", () => {
-  const example: FewShotExample = {
-    exampleId: "example-1",
-    input: "What is 2+2?",
-    output: "4",
-    explanation: undefined,
-    tags: [],
-  };
-  assert.equal(example.exampleId, "example-1");
-  assert.equal(example.input, "What is 2+2?");
-  assert.equal(example.output, "4");
-  assert.equal(example.explanation, undefined);
-  assert.deepEqual(example.tags, []);
-});
-
-test("FewShotExample with all fields", () => {
-  const example: FewShotExample = {
-    exampleId: "example-2",
-    input: "Translate to French: hello",
-    output: "bonjour",
-    explanation: "Basic greeting translation",
-    tags: ["translation", "beginner"],
-  };
-  assert.equal(example.explanation, "Basic greeting translation");
-  assert.deepEqual(example.tags, ["translation", "beginner"]);
-});
-
-// =============================================================================
-// PromptBundleConstraints Tests
-// =============================================================================
-
-test("PromptBundleConstraints with undefined optional fields", () => {
-  const constraints: PromptBundleConstraints = {
-    maxTokens: undefined,
-    temperature: undefined,
-    topP: undefined,
-    stopSequences: undefined,
-    responseFormat: undefined,
-    customConstraints: {},
-  };
-  assert.equal(constraints.maxTokens, undefined);
-  assert.equal(constraints.temperature, undefined);
-  assert.deepEqual(constraints.customConstraints, {});
-});
-
-test("PromptBundleConstraints with all values set", () => {
-  const constraints: PromptBundleConstraints = {
-    maxTokens: 4096,
-    temperature: 0.7,
-    topP: 0.9,
-    stopSequences: ["END", "STOP"],
-    responseFormat: "json",
-    customConstraints: { topK: 40 },
-  };
-  assert.equal(constraints.maxTokens, 4096);
-  assert.equal(constraints.temperature, 0.7);
-  assert.equal(constraints.topP, 0.9);
-  assert.deepEqual(constraints.stopSequences, ["END", "STOP"]);
-  assert.equal(constraints.responseFormat, "json");
-  assert.equal(constraints.customConstraints.topK, 40);
-});
-
-test("PromptBundleConstraints accepts all responseFormat values", () => {
-  const formats: PromptBundleConstraints["responseFormat"][] = [
-    "text",
-    "json",
-    "xml",
-    "markdown",
-    undefined,
-  ];
-  for (const format of formats) {
-    const constraints: PromptBundleConstraints = {
-      maxTokens: 1000,
-      temperature: 0.5,
-      topP: 1.0,
-      stopSequences: undefined,
-      responseFormat: format,
-      customConstraints: {},
-    };
-    assert.equal(constraints.responseFormat, format);
-  }
-});
-
-// =============================================================================
-// TrafficTargeting Tests
-// =============================================================================
-
-test("TrafficTargeting with all undefined fields", () => {
-  const targeting: TrafficTargeting = {
-    tenantIds: undefined,
-    userSegments: undefined,
-    regions: undefined,
-    modelTiers: undefined,
-  };
-  assert.equal(targeting.tenantIds, undefined);
-  assert.equal(targeting.userSegments, undefined);
-});
-
-test("TrafficTargeting with specific targeting criteria", () => {
-  const targeting: TrafficTargeting = {
-    tenantIds: ["tenant-a", "tenant-b"],
-    userSegments: ["premium", "enterprise"],
-    regions: ["us-east-1", "eu-west-1"],
-    modelTiers: ["standard", "premium"],
-  };
-  assert.deepEqual(targeting.tenantIds, ["tenant-a", "tenant-b"]);
-  assert.deepEqual(targeting.userSegments, ["premium", "enterprise"]);
-  assert.deepEqual(targeting.regions, ["us-east-1", "eu-west-1"]);
-  assert.deepEqual(targeting.modelTiers, ["standard", "premium"]);
-});
-
-// =============================================================================
-// PromptBundleTrafficAllocation Tests
-// =============================================================================
-
-test("PromptBundleTrafficAllocation with required fields only", () => {
-  const allocation: PromptBundleTrafficAllocation = {
-    weight: 100,
-    startTime: undefined,
-    endTime: undefined,
-    targeting: undefined,
-  };
-  assert.equal(allocation.weight, 100);
-  assert.equal(allocation.startTime, undefined);
-  assert.equal(allocation.endTime, undefined);
-  assert.equal(allocation.targeting, undefined);
-});
-
-test("PromptBundleTrafficAllocation with all fields", () => {
-  const targeting: TrafficTargeting = {
-    tenantIds: ["t1"],
-    userSegments: undefined,
-    regions: undefined,
-    modelTiers: undefined,
-  };
-  const allocation: PromptBundleTrafficAllocation = {
-    weight: 50,
-    startTime: "2026-01-01T00:00:00.000Z",
-    endTime: "2026-12-31T23:59:59.000Z",
-    targeting,
-  };
-  assert.equal(allocation.weight, 50);
-  assert.equal(allocation.startTime, "2026-01-01T00:00:00.000Z");
-  assert.equal(allocation.endTime, "2026-12-31T23:59:59.000Z");
-  assert.deepEqual(allocation.targeting, targeting);
-});
-
-test("PromptBundleTrafficAllocation weight bounds", () => {
-  const lowWeight: PromptBundleTrafficAllocation = { weight: 0, startTime: undefined, endTime: undefined, targeting: undefined };
-  assert.equal(lowWeight.weight, 0);
-
-  const highWeight: PromptBundleTrafficAllocation = { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined };
-  assert.equal(highWeight.weight, 100);
-});
-
-// =============================================================================
-// PromptBundleMetadata Tests
-// =============================================================================
-
-test("PromptBundleMetadata with required fields", () => {
-  const metadata: PromptBundleMetadata = {
-    owner: "platform-team",
-    deprecated: false,
-    tags: ["v1", "stable"],
-    compatibilityTags: ["core", "standard"],
-    trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-  };
-  assert.equal(metadata.owner, "platform-team");
-  assert.equal(metadata.deprecated, false);
-  assert.deepEqual(metadata.tags, ["v1", "stable"]);
-  assert.deepEqual(metadata.compatibilityTags, ["core", "standard"]);
-});
-
-test("PromptBundleMetadata with deprecated flag", () => {
-  const metadata: PromptBundleMetadata = {
-    owner: "legacy-team",
-    deprecated: true,
-    tags: ["v0", "deprecated"],
-    compatibilityTags: [],
-    trafficAllocation: { weight: 0, startTime: undefined, endTime: undefined, targeting: undefined },
-  };
-  assert.equal(metadata.deprecated, true);
-});
-
-// =============================================================================
-// PromptBundle Tests
-// =============================================================================
-
-test("PromptBundle with all fields", () => {
-  const bundle: PromptBundle = {
-    bundleId: "bundle-123",
-    name: "Assistant Prompt",
-    version: "1.0.0",
+function createRegistrationInput(
+  overrides: Partial<PromptBundleRegistrationInput> = {},
+): PromptBundleRegistrationInput {
+  return {
+    name: "assistant-core",
+    version: 3,
+    displayVersion: "3.0.0",
     domain: "assistant",
     taskType: "chat",
-    packId: "pack-456",
+    packId: "pack-assistant",
     systemPrompt: {
-      content: "You are a helpful assistant.",
-      templateVariables: ["userName"],
+      content: "You are a precise assistant.",
+      templateVariables: ["tenantName"],
       channel: "system",
     },
     userPrompt: {
-      content: "Help the user with: {{task}}",
+      content: "Help with {{task}}",
       templateVariables: ["task"],
       channel: "user",
     },
     fewShotExamples: [
       {
-        exampleId: "ex-1",
-        input: "Hello",
-        output: "Hi there!",
-        explanation: undefined,
-        tags: [],
+        exampleId: "fewshot-1",
+        input: "hello",
+        output: "hi",
+        explanation: "basic greeting",
+        tags: ["greeting"],
       },
     ],
     constraints: {
       maxTokens: 2048,
-      temperature: 0.7,
-      topP: undefined,
-      stopSequences: undefined,
-      responseFormat: "text",
-      customConstraints: {},
+      temperature: 0.2,
+      topP: 0.95,
+      stopSequences: ["END"],
+      responseFormat: "markdown",
+      customConstraints: { style: "concise" },
     },
+    compatibilityMatrix: createCompatibilityMatrix(),
     metadata: {
-      owner: "team-a",
+      owner: "platform-team",
       deprecated: false,
-      tags: ["v1"],
-      compatibilityTags: ["standard"],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
+      lifecycleStatus: "active",
+      tags: ["stable"],
+      compatibilityTags: ["core"],
+      trafficAllocation: {
+        weight: 100,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
     },
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-15T00:00:00.000Z",
+    ...overrides,
   };
-  assert.equal(bundle.bundleId, "bundle-123");
-  assert.equal(bundle.name, "Assistant Prompt");
-  assert.equal(bundle.version, "1.0.0");
-  assert.equal(bundle.domain, "assistant");
-  assert.equal(bundle.taskType, "chat");
-  assert.equal(bundle.packId, "pack-456");
-  assert.equal(bundle.systemPrompt.content, "You are a helpful assistant.");
-  assert.equal(bundle.userPrompt?.content, "Help the user with: {{task}}");
-  assert.equal(bundle.fewShotExamples.length, 1);
-  assert.equal(bundle.constraints.maxTokens, 2048);
-  assert.equal(bundle.metadata.owner, "team-a");
-});
+}
 
-test("PromptBundle with undefined optional fields", () => {
-  const bundle: PromptBundle = {
-    bundleId: "bundle-789",
-    name: "Minimal Prompt",
-    version: "1.0.0",
-    domain: "test",
-    taskType: "simple",
-    packId: undefined,
-    systemPrompt: { content: "Hello", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: [],
-    constraints: {
-      maxTokens: undefined,
-      temperature: undefined,
-      topP: undefined,
-      stopSequences: undefined,
-      responseFormat: undefined,
-      customConstraints: {},
-    },
-    metadata: {
-      owner: "tester",
-      deprecated: false,
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-    },
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  };
+test("createPromptBundle builds a normalized bundle with defaults", () => {
+  const bundle = createPromptBundle(
+    createRegistrationInput({
+      packId: undefined,
+      userPrompt: undefined,
+      fewShotExamples: undefined,
+      constraints: undefined,
+      metadata: undefined,
+    }),
+  );
+
+  assert.ok(bundle.bundleId.startsWith("promptbundle_"));
+  assert.equal(bundle.version, 3);
+  assert.equal(bundle.displayVersion, "3.0.0");
   assert.equal(bundle.packId, undefined);
   assert.equal(bundle.userPrompt, undefined);
   assert.deepEqual(bundle.fewShotExamples, []);
-  assert.equal(bundle.constraints.maxTokens, undefined);
+  assert.equal(bundle.metadata.owner, "system");
+  assert.equal(bundle.metadata.lifecycleStatus, "active");
+  assert.equal(bundle.metadata.trafficAllocation.weight, 100);
+  assert.deepEqual(bundle.constraints.customConstraints, {});
 });
 
-// =============================================================================
-// PromptBundleRegistrationInput Tests
-// =============================================================================
+test("createPromptBundle preserves provided metadata, constraints, and compatibility matrix", () => {
+  const input = createRegistrationInput();
+  const bundle = createPromptBundle(input);
 
-test("PromptBundleRegistrationInput with minimal fields", () => {
-  const input: PromptBundleRegistrationInput = {
-    name: "New Bundle",
-    version: "1.0.0",
-    domain: "test",
-    taskType: "generic",
-    packId: undefined,
-    systemPrompt: { content: "Test", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: undefined,
-    constraints: undefined,
-    metadata: undefined,
-  };
-  assert.equal(input.name, "New Bundle");
-  assert.equal(input.fewShotExamples, undefined);
-  assert.equal(input.constraints, undefined);
-  assert.equal(input.metadata, undefined);
+  assert.equal(bundle.metadata.owner, "platform-team");
+  assert.equal(bundle.constraints.maxTokens, 2048);
+  assert.equal(bundle.compatibilityMatrix.toolSchemaVersions[0]?.toolName, "shell");
+  assert.equal(bundle.fewShotExamples[0]?.exampleId, "fewshot-1");
 });
 
-test("PromptBundleRegistrationInput with all optional fields", () => {
-  const systemPrompt: PromptBundleSegment = { content: "Sys", templateVariables: [], channel: "system" };
-  const userPrompt: PromptBundleSegment = { content: "User", templateVariables: [], channel: "user" };
-  const constraints: PromptBundleConstraints = {
-    maxTokens: 1000,
-    temperature: 0.5,
-    topP: undefined,
-    stopSequences: undefined,
-    responseFormat: undefined,
-    customConstraints: {},
-  };
-  const metadata: PromptBundleMetadata = {
-    owner: "owner1",
-    deprecated: false,
-    tags: ["new"],
-    compatibilityTags: [],
-    trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-  };
-  const input: PromptBundleRegistrationInput = {
-    name: "Full Bundle",
-    version: "2.0.0",
-    domain: "production",
-    taskType: "advanced",
-    packId: "pack-1",
-    systemPrompt,
-    userPrompt,
-    fewShotExamples: [],
-    constraints,
-    metadata,
-  };
-  assert.equal(input.packId, "pack-1");
-  assert.deepEqual(input.fewShotExamples, []);
-  assert.equal(input.constraints?.maxTokens, 1000);
-  assert.equal(input.metadata?.owner, "owner1");
+test("validatePromptBundleRegistrationInput rejects empty required fields", () => {
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput(
+        createRegistrationInput({ name: "   " }),
+      ),
+    ValidationError,
+  );
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput(
+        createRegistrationInput({ displayVersion: "" }),
+      ),
+    ValidationError,
+  );
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput(
+        createRegistrationInput({ domain: "" }),
+      ),
+    ValidationError,
+  );
 });
 
-// =============================================================================
-// PromptBundleVersion Tests
-// =============================================================================
+test("validatePromptBundleRegistrationInput rejects non-positive integer version", () => {
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput(
+        createRegistrationInput({ version: 0 }),
+      ),
+    ValidationError,
+  );
+  assert.throws(
+    () =>
+      validatePromptBundleRegistrationInput(
+        createRegistrationInput({ version: 1.5 }),
+      ),
+    ValidationError,
+  );
+});
 
-test("PromptBundleVersion with all fields", () => {
+test("createPromptBundle derives deprecated lifecycle status when legacy flag is set", () => {
+  const bundle = createPromptBundle(
+    createRegistrationInput({
+      metadata: {
+        owner: "legacy-team",
+        deprecated: true,
+        lifecycleStatus: "deprecated",
+        tags: [],
+        compatibilityTags: [],
+        trafficAllocation: {
+          weight: 0,
+          startTime: undefined,
+          endTime: undefined,
+          targeting: undefined,
+        },
+      },
+    }),
+  );
+
+  assert.equal(bundle.metadata.deprecated, true);
+  assert.equal(bundle.metadata.lifecycleStatus, "deprecated");
+});
+
+test("validatePromptBundle rejects invalid traffic allocation weight", () => {
+  const bundle = createPromptBundle(createRegistrationInput());
+  assert.throws(
+    () =>
+      validatePromptBundle({
+        ...bundle,
+        metadata: {
+          ...bundle.metadata,
+          trafficAllocation: {
+            ...bundle.metadata.trafficAllocation,
+            weight: 101,
+          },
+        },
+      }),
+    ValidationError,
+  );
+});
+
+test("PromptBundleVersion reflects integer version and displayVersion", () => {
   const version: PromptBundleVersion = {
-    version: "2.0.0",
+    version: 3,
+    displayVersion: "3.0.0",
     isCurrent: true,
     isDefault: false,
     trafficWeight: 75,
     createdAt: "2026-01-15T00:00:00.000Z",
     deprecated: false,
+    lifecycleStatus: "active",
   };
-  assert.equal(version.version, "2.0.0");
-  assert.equal(version.isCurrent, true);
-  assert.equal(version.isDefault, false);
-  assert.equal(version.trafficWeight, 75);
-  assert.equal(version.createdAt, "2026-01-15T00:00:00.000Z");
-  assert.equal(version.deprecated, false);
+
+  assert.equal(version.version, 3);
+  assert.equal(version.displayVersion, "3.0.0");
+  assert.equal(version.lifecycleStatus, "active");
 });
 
-test("PromptBundleVersion with deprecated flag", () => {
-  const version: PromptBundleVersion = {
-    version: "0.9.0",
-    isCurrent: false,
-    isDefault: false,
-    trafficWeight: 0,
-    createdAt: "2025-01-01T00:00:00.000Z",
-    deprecated: true,
-  };
-  assert.equal(version.deprecated, true);
-  assert.equal(version.trafficWeight, 0);
-});
-
-// =============================================================================
-// PromptBundleListResult Tests
-// =============================================================================
-
-test("PromptBundleListResult structure", () => {
-  const bundle: PromptBundle = {
-    bundleId: "bundle-list-test",
-    name: "List Test Bundle",
-    version: "1.0.0",
-    domain: "test",
-    taskType: "simple",
-    packId: undefined,
-    systemPrompt: { content: "Test", templateVariables: [], channel: "system" },
-    userPrompt: undefined,
-    fewShotExamples: [],
-    constraints: {
-      maxTokens: undefined,
-      temperature: undefined,
-      topP: undefined,
-      stopSequences: undefined,
-      responseFormat: undefined,
-      customConstraints: {},
-    },
-    metadata: {
-      owner: "test",
-      deprecated: false,
-      tags: [],
-      compatibilityTags: [],
-      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-    },
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  };
-  const versions: PromptBundleVersion[] = [
+test("PromptBundleListResult stores bundle and current display lineage", () => {
+  const bundle = createPromptBundle(createRegistrationInput({ bundleId: "bundle-123" }));
+  const availableVersions: PromptBundleVersion[] = [
     {
-      version: "1.0.0",
+      version: 3,
+      displayVersion: "3.0.0",
       isCurrent: true,
       isDefault: true,
       trafficWeight: 100,
-      createdAt: "2026-01-01T00:00:00.000Z",
+      createdAt: bundle.createdAt,
       deprecated: false,
-    },
-    {
-      version: "0.9.0",
-      isCurrent: false,
-      isDefault: false,
-      trafficWeight: 0,
-      createdAt: "2025-12-01T00:00:00.000Z",
-      deprecated: true,
+      lifecycleStatus: "active",
     },
   ];
   const result: PromptBundleListResult = {
     bundle,
-    availableVersions: versions,
-    currentVersion: "1.0.0",
+    availableVersions,
+    currentVersion: "3",
   };
-  assert.equal(result.bundle.bundleId, "bundle-list-test");
-  assert.equal(result.availableVersions.length, 2);
-  assert.equal(result.currentVersion, "1.0.0");
-  assert.equal(result.availableVersions[0]?.isCurrent, true);
+
+  assert.equal(result.bundle.bundleId, "bundle-123");
+  assert.equal(result.availableVersions[0]?.displayVersion, "3.0.0");
+  assert.equal(result.currentVersion, "3");
 });
 
-// =============================================================================
-// Edge Cases
-// =============================================================================
-
-test("PromptBundleConstraints customConstraints can hold arbitrary data", () => {
-  const customConstraints = {
-    topK: 50,
-    presencePenalty: 0.5,
-    frequencyPenalty: 0.3,
-    nested: { deep: "value" },
-  };
-  const constraints: PromptBundleConstraints = {
-    maxTokens: 500,
-    temperature: 0.9,
-    topP: undefined,
-    stopSequences: undefined,
-    responseFormat: undefined,
-    customConstraints,
-  };
-  assert.equal(constraints.customConstraints.topK, 50);
-  // Access nested through type assertion since customConstraints is Record<string, unknown>
-  const nested = constraints.customConstraints.nested as { deep: string };
-  assert.equal(nested.deep, "value");
-});
-
-test("TrafficTargeting allows empty arrays", () => {
-  const targeting: TrafficTargeting = {
-    tenantIds: [],
-    userSegments: [],
-    regions: [],
-    modelTiers: [],
-  };
-  assert.deepEqual(targeting.tenantIds, []);
-  assert.deepEqual(targeting.userSegments, []);
-});
-
-test("PromptBundleMetadata allows duplicate tags", () => {
+test("PromptBundle interface supports full object shape", () => {
   const metadata: PromptBundleMetadata = {
-    owner: "team",
+    owner: "platform-team",
     deprecated: false,
-    tags: ["a", "a", "b"],
-    compatibilityTags: [],
-    trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
+    lifecycleStatus: "active",
+    tags: ["stable"],
+    compatibilityTags: ["core"],
+    trafficAllocation: {
+      weight: 100,
+      startTime: undefined,
+      endTime: undefined,
+      targeting: undefined,
+    },
   };
-  assert.deepEqual(metadata.tags, ["a", "a", "b"]);
-});
 
-test("PromptBundle version semantic versioning", () => {
-  const versions = ["0.0.1", "1.0.0", "2.10.100", "10.0.0-beta"];
-  for (const version of versions) {
-    const bundle: PromptBundle = {
-      bundleId: `bundle-${version}`,
-      name: "Test",
-      version,
-      domain: "test",
-      taskType: "simple",
-      packId: undefined,
-      systemPrompt: { content: "T", templateVariables: [], channel: "system" },
-      userPrompt: undefined,
-      fewShotExamples: [],
-      constraints: {
-        maxTokens: undefined,
-        temperature: undefined,
-        topP: undefined,
-        stopSequences: undefined,
-        responseFormat: undefined,
-        customConstraints: {},
-      },
-      metadata: {
-        owner: "t",
-        deprecated: false,
-        tags: [],
-        compatibilityTags: [],
-        trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
-      },
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    assert.equal(bundle.version, version);
-  }
+  const bundle: PromptBundle = createPromptBundle(
+    createRegistrationInput({
+      bundleId: "bundle-shape",
+      metadata,
+    }),
+  );
+
+  assert.equal(bundle.bundleId, "bundle-shape");
+  assert.equal(bundle.metadata.owner, "platform-team");
+  assert.equal(bundle.systemPrompt.channel, "system");
 });

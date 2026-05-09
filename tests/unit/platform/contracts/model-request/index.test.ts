@@ -219,10 +219,12 @@ test("ModelRequest interface accepts all fields", () => {
     maxTokens: 512,
     tenantId: "tenant-1",
     taskId: "task-1",
+    budgetReservationId: "bresv-1",
     createdAt: "2026-01-01T00:00:00.000Z",
   };
 
   assert.equal(request.requestId, "req-123");
   assert.equal(request.temperature, 0.5);
   assert.equal(request.maxTokens, 512);
+  assert.equal(request.budgetReservationId, "bresv-1");
 });
