@@ -29,21 +29,49 @@ export interface TransportResponse<T> {
   readonly data: T;
 }
 
+export interface RestRequestOptions {
+  readonly headers?: Headers;
+}
+
 export type RestTransport = <T>(request: RestClientRequest) => Promise<TransportResponse<T>>;
 
 export interface RESTClient {
-  get<T>(path: string): Promise<T>;
-  post<T>(path: string, body: unknown): Promise<T>;
-  put<T>(path: string, body: unknown): Promise<T>;
-  patch<T>(path: string, body: unknown): Promise<T>;
-  delete<T>(path: string): Promise<T>;
+  get<T>(path: string, options?: RestRequestOptions): Promise<T>;
+  post<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T>;
+  put<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T>;
+  patch<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T>;
+  delete<T>(path: string, options?: RestRequestOptions): Promise<T>;
 }
 
 export interface HttpTransportOptions {
   readonly baseUrl: string;
+  readonly acceptVersion?: string;
   readonly headers?: Readonly<Record<string, string>>;
   readonly fetchImplementation?: typeof fetch;
   readonly fallbackToMock?: boolean;
+}
+
+export const DEFAULT_ACCEPT_VERSION_HEADER = "2026-04-01,2026-01-01";
+
+export type RestHttpUiAction = "redirect_to_login" | "access_denied" | "backoff_and_retry" | "none";
+
+export class RestHttpError extends Error {
+  public readonly status: number;
+  public readonly uiAction: RestHttpUiAction;
+  public readonly retryAfterMs: number | null;
+
+  public constructor(status: number, retryAfterMs: number | null = null) {
+    super(`rest.http_error:${status}`);
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+    this.uiAction = status === 401
+      ? "redirect_to_login"
+      : status === 403
+        ? "access_denied"
+        : status === 429
+          ? "backoff_and_retry"
+          : "none";
+  }
 }
 
 export class MockTransport {
@@ -153,6 +181,11 @@ interface CircuitBreakerState {
   state: "closed" | "open" | "half-open";
 }
 
+interface PlatformEnvelope<T> {
+  readonly requestId?: string;
+  readonly data: T;
+}
+
 const DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
   baseDelayMs: 100,
@@ -178,9 +211,8 @@ export class HttpTransport {
   }
 
   private shouldRetry(error: unknown): boolean {
-    if (error instanceof Error && error.message.startsWith("rest.http_error:")) {
-      const status = parseInt(error.message.split(":")[1], 10);
-      return status >= 500 || status === 429;
+    if (error instanceof RestHttpError) {
+      return error.status >= 500 || error.status === 429;
     }
     return true;
   }
@@ -195,7 +227,7 @@ export class HttpTransport {
   }
 
   private recordFailure(): void {
-    this.circuitBreaker.failures++;
+    this.circuitBreaker.failures += 1;
     this.circuitBreaker.lastFailure = Date.now();
     if (this.circuitBreaker.failures >= DEFAULT_CIRCUIT_BREAKER_CONFIG.failureThreshold) {
       this.circuitBreaker.state = "open";
@@ -222,6 +254,18 @@ export class HttpTransport {
     return this.circuitBreaker.state === "half-open";
   }
 
+  private async parseResponse<T>(response: Response): Promise<T> {
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      return undefined as T;
+    }
+    const parsed = await response.json() as T | PlatformEnvelope<T>;
+    if (parsed != null && typeof parsed === "object" && "data" in parsed) {
+      return (parsed as PlatformEnvelope<T>).data;
+    }
+    return parsed as T;
+  }
+
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
     const url = request.path.startsWith("http")
       ? request.path
@@ -229,15 +273,15 @@ export class HttpTransport {
     const requestBody = request.body == null ? null : JSON.stringify(request.body);
     const requestHeaders = new Headers({
       "content-type": "application/json",
-      "accept-version": "2024-01-01",
+      "Accept-Version": this.options.acceptVersion ?? DEFAULT_ACCEPT_VERSION_HEADER,
       ...(this.options.headers ?? {}),
       ...Object.fromEntries(request.headers.entries()),
     });
 
     let lastError: unknown;
-    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt += 1) {
       if (!this.canAttempt()) {
-        throw new Error("rest.circuit_open");
+        throw new Error("rest.circuit_open:Circuit breaker is open");
       }
 
       try {
@@ -248,23 +292,30 @@ export class HttpTransport {
         });
 
         if (!response.ok) {
-          throw new Error(`rest.http_error:${response.status}`);
+          const retryAfterHeader = response.headers.get("retry-after");
+          const retryAfterSeconds = retryAfterHeader == null ? Number.NaN : Number(retryAfterHeader);
+          throw new RestHttpError(
+            response.status,
+            Number.isFinite(retryAfterSeconds) ? Math.round(retryAfterSeconds * 1000) : null,
+          );
         }
 
         this.recordSuccess();
         return {
           status: response.status,
-          data: (await response.json()) as T,
+          data: await this.parseResponse<T>(response),
         };
       } catch (error) {
         lastError = error;
         if (attempt < this.retryConfig.maxRetries && this.shouldRetry(error)) {
           await this.sleep(this.calculateBackoff(attempt));
+          continue;
         }
-        this.recordFailure();
+        break;
       }
     }
 
+    this.recordFailure();
     if (this.fallbackTransport != null) {
       return this.fallbackTransport.send(request);
     }
@@ -278,24 +329,24 @@ export class DefaultRESTClient implements RESTClient {
     private readonly interceptors: readonly RestClientInterceptor[] = [],
   ) {}
 
-  public get<T>(path: string): Promise<T> {
-    return this.request<T>({ path, method: "GET", headers: new Headers() });
+  public get<T>(path: string, options?: RestRequestOptions): Promise<T> {
+    return this.request<T>({ path, method: "GET", headers: options?.headers ?? new Headers() });
   }
 
-  public post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>({ path, method: "POST", headers: new Headers(), body });
+  public post<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
+    return this.request<T>({ path, method: "POST", headers: options?.headers ?? new Headers(), body });
   }
 
-  public put<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>({ path, method: "PUT", headers: new Headers(), body });
+  public put<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
+    return this.request<T>({ path, method: "PUT", headers: options?.headers ?? new Headers(), body });
   }
 
-  public patch<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>({ path, method: "PATCH", headers: new Headers(), body });
+  public patch<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
+    return this.request<T>({ path, method: "PATCH", headers: options?.headers ?? new Headers(), body });
   }
 
-  public delete<T>(path: string): Promise<T> {
-    return this.request<T>({ path, method: "DELETE", headers: new Headers() });
+  public delete<T>(path: string, options?: RestRequestOptions): Promise<T> {
+    return this.request<T>({ path, method: "DELETE", headers: options?.headers ?? new Headers() });
   }
 
   private async request<T>(initialRequest: RestClientRequest): Promise<T> {
@@ -321,6 +372,7 @@ export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>)
   if (baseUrl != null) {
     return new DefaultRESTClient((request) => new HttpTransport({
       baseUrl,
+      acceptVersion: options.acceptVersion,
       ...(options?.headers == null ? {} : { headers: options.headers }),
       ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
       fallbackToMock: options?.fallbackToMock ?? true,

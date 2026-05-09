@@ -17,6 +17,12 @@ export interface RestClientInterceptor {
   onResponse?<T>(response: RestClientResponse<T>): Promise<RestClientResponse<T>> | RestClientResponse<T>;
 }
 
+export class OfflineQueueRequestQueuedError extends Error {
+  public constructor() {
+    super("rest.offline:Request queued for offline sync");
+  }
+}
+
 export function createTraceInterceptor(): RestClientInterceptor {
   return {
     onRequest(request) {
@@ -68,20 +74,14 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
   return {
     onRequest(request) {
       if (request.method !== "GET" && typeof navigator !== "undefined" && navigator.onLine === false) {
-        const queueId = crypto.randomUUID();
         queue.enqueue({
-          id: queueId,
+          id: crypto.randomUUID(),
           endpoint: request.path,
           method: request.method,
           body: request.body,
           createdAt: new Date().toISOString(),
         });
-        // Short-circuit the request by returning a mock response that signals queued state
-        return {
-          ...request,
-          queueId,
-          queuedAt: new Date().toISOString(),
-        } as unknown as RestClientRequest;
+        throw new OfflineQueueRequestQueuedError();
       }
       return request;
     },

@@ -151,12 +151,17 @@ function buildPlanDelta(
  * Creates an AgentHandoff using the ids module for ID generation.
  */
 function createAgentHandoff(
-  input: Omit<AgentHandoff, "handoffId" | "createdAt">,
+  input: Omit<AgentHandoff, "handoffId" | "createdAt" | "contextSummary" | "historyRefs"> & {
+    contextSummary?: string;
+    historyRefs?: string[];
+  },
 ): AgentHandoff {
   return {
     ...input,
     handoffId: newId("handoff"),
     createdAt: nowIso(),
+    contextSummary: input.contextSummary ?? input.state.latestSummary,
+    historyRefs: [...(input.historyRefs ?? [])],
   };
 }
 

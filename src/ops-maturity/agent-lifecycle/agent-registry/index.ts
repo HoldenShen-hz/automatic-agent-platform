@@ -1,8 +1,11 @@
 import { z } from "zod";
+import {
+  mapAutonomyLevelToUnifiedRuntimeMode,
+  normalizeUnifiedRuntimeMode,
+  type DocumentedUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../../platform/contracts/types/unified-runtime-mode.js";
 
-/**
- * Agent lifecycle states as defined in architecture doc §61.3.
- */
 export const AgentLifecycleStateSchema = z.enum([
   "draft",
   "testing",
@@ -17,40 +20,38 @@ export const AgentLifecycleStateSchema = z.enum([
 
 export type AgentLifecycleState = z.infer<typeof AgentLifecycleStateSchema>;
 
-/**
- * Agent component: Pack reference with version.
- * As defined in architecture doc §61.1.
- */
+function normalizeAgentRuntimeMode(value: string): UnifiedRuntimeMode {
+  switch (value) {
+    case "suggestion":
+    case "supervised":
+    case "semi_auto":
+    case "full_auto":
+      return mapAutonomyLevelToUnifiedRuntimeMode(value);
+    default:
+      return normalizeUnifiedRuntimeMode(value as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
+  }
+}
+
+const AgentRuntimeModeSchema = z.string().transform((value) => normalizeAgentRuntimeMode(value));
+
 export const PackComponentSchema = z.object({
   packId: z.string().min(1),
   version: z.string().min(1),
 });
 
-/**
- * Agent component: Prompt Bundle reference with version.
- * As defined in architecture doc §61.1.
- */
 export const PromptBundleComponentSchema = z.object({
   bundleId: z.string().min(1),
   version: z.string().min(1),
 });
 
-/**
- * Agent component: Model binding with fallback chain.
- * As defined in architecture doc §61.1.
- */
 export const ModelBindingComponentSchema = z.object({
   provider: z.string().min(1),
   model: z.string().min(1),
   fallbackChain: z.array(z.string()).default([]),
 });
 
-/**
- * Agent component: Trust profile for autonomy scoring.
- * As defined in architecture doc §61.1.
- */
 export const TrustProfileComponentSchema = z.object({
-  initialLevel: z.enum(["suggestion", "supervised", "semi_auto", "full_auto"]).default("suggestion"),
+  initialLevel: AgentRuntimeModeSchema.default("no_write"),
   scoringConfig: z.object({
     successWeight: z.number().min(0).max(1).default(0.4),
     latencyWeight: z.number().min(0).max(1).default(0.3),
@@ -64,30 +65,18 @@ export const ConnectorBindingComponentSchema = z.object({
   permissionScope: z.string().min(1).default("read"),
 });
 
-/**
- * Agent component: Trigger policy for proactive agents.
- * As defined in architecture doc §41.
- */
 export const TriggerPolicySchema = z.object({
   triggerId: z.string().min(1),
   type: z.enum(["scheduled", "event", "manual"]).default("manual"),
   enabled: z.boolean().default(true),
 });
 
-/**
- * Agent component: Autonomy configuration.
- * As defined in architecture doc §42.
- */
 export const AutonomyConfigSchema = z.object({
-  maxAutomationLevel: z.enum(["suggestion", "supervised", "semi_auto", "full_auto"]).default("supervised"),
+  maxAutomationLevel: AgentRuntimeModeSchema.default("manual_only"),
   requireHumanApprovalForHighRisk: z.boolean().default(true),
   maxRetriesBeforeApproval: z.number().int().nonnegative().default(3),
 });
 
-/**
- * Agent components composite.
- * As defined in architecture doc §61.1.
- */
 export const AgentComponentsSchema = z.object({
   pack: PackComponentSchema,
   promptBundle: PromptBundleComponentSchema,
@@ -98,19 +87,11 @@ export const AgentComponentsSchema = z.object({
   autonomyConfig: AutonomyConfigSchema,
 });
 
-/**
- * OrgNode reference for ownership.
- * As defined in architecture doc §46.
- */
 export const OrgNodeRefSchema = z.object({
   orgNodeId: z.string().min(1),
   path: z.string().min(1),
 });
 
-/**
- * Agent definition - composite entity as defined in architecture doc §61.1.
- * This is the primary entity for Agent lifecycle management.
- */
 export const AgentDefinitionSchema = z.object({
   agentId: z.string().min(1),
   name: z.string().min(1),
@@ -125,16 +106,10 @@ export const AgentDefinitionSchema = z.object({
 
 export type AgentDefinition = z.infer<typeof AgentDefinitionSchema>;
 
-/**
- * Lists all agents in active states (canary or active).
- */
 export function listActiveAgents(agents: readonly AgentDefinition[]): AgentDefinition[] {
   return agents.filter((item) => item.lifecycleState === "active" || item.lifecycleState === "canary");
 }
 
-/**
- * Valid state transitions per architecture doc §61.3.
- */
 export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, readonly AgentLifecycleState[]> = new Map([
   ["draft", ["testing"]],
   ["testing", ["staging", "draft"]],
@@ -147,27 +122,15 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   ["removed", []],
 ]);
 
-/**
- * Checks if a lifecycle state transition is valid.
- */
-export function isValidLifecycleTransition(
-  from: AgentLifecycleState,
-  to: AgentLifecycleState,
-): boolean {
+export function isValidLifecycleTransition(from: AgentLifecycleState, to: AgentLifecycleState): boolean {
   const allowed = VALID_LIFECYCLE_TRANSITIONS.get(from);
   return allowed?.includes(to) ?? false;
 }
 
-/**
- * Checks if agent can be promoted (for automatic canary promotion).
- */
 export function canAutoPromote(state: AgentLifecycleState): boolean {
   return state === "canary";
 }
 
-/**
- * Checks if agent is in a terminal state.
- */
 export function isTerminalState(state: AgentLifecycleState): boolean {
   return state === "archived";
 }

@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const PHASE_1_LEARNING_TYPES = [
+  "failure_pattern",
+  "user_correction",
+  "recovery_playbook",
+] as const;
+
+export type Phase1LearningType = typeof PHASE_1_LEARNING_TYPES[number];
+
 export const LearningObjectPromotionStatusSchema = z.enum([
   "draft",
   "untrusted",
@@ -21,7 +29,7 @@ export function normalizeLearningObjectPromotionStatus(
 
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1),
-  learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook"]),
+  learningType: z.enum(PHASE_1_LEARNING_TYPES),
   title: z.string().min(1),
   summary: z.string().min(1),
   confidence: z.number().min(0).max(1),
@@ -36,8 +44,8 @@ export const LearningObjectSchema = z.object({
 export type LearningObject = z.infer<typeof LearningObjectSchema>;
 
 export function normalizeLearningType(
-  learningType: LearningObject["learningType"] | "model_retraining" | "dataset_gap",
-): LearningObject["learningType"] {
+  learningType: Phase1LearningType | "model_retraining" | "dataset_gap",
+): Phase1LearningType {
   switch (learningType) {
     case "failure_pattern":
     case "user_correction":

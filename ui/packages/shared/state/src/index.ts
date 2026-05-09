@@ -53,7 +53,12 @@ export { createSyncStore } from "./stores/sync-store";
 export { createNotificationStore, createThemeStore } from "./stores/index";
 export type { NotificationStoreState, Notification, NotificationKind } from "./stores/notification-store";
 export type { ThemeStoreState, ThemeMode, ResolvedThemeName } from "./stores/theme-store";
-export { createQueryClientFactory } from "./query-client";
+export {
+  CACHE_TIER_STALE_TIME,
+  createQueryClientFactory,
+  createTieredQueryClientFactory,
+  type QueryCacheTier,
+} from "./query-client";
 export * from "./mutations/index";
 
 const ApiClientContext = createContext<RESTClient | null>(null);

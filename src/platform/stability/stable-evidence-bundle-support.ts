@@ -277,6 +277,12 @@ export interface StableEvidenceBundleReport {
     queueDeliveryReportPath: string;
     /** Path to PG portability migration compatibility rehearsal report */
     migrationCompatibilityReportPath: string;
+    /** Path to dispatch rehearsal report */
+    dispatchReportPath: string;
+    /** Path to worker handshake rehearsal report */
+    workerHandshakeReportPath: string;
+    /** Path to worker writeback rehearsal report */
+    workerWritebackReportPath: string;
     /** Path to repair execution report */
     repairReportPath: string;
     /** Path to event drain report */
@@ -326,6 +332,12 @@ export interface StableEvidenceBundleReport {
     queueDeliveryPassed: boolean;
     /** Whether PG portability migration compatibility tests passed */
     migrationCompatibilityPassed: boolean;
+    /** Whether dispatch rehearsal tests passed */
+    dispatchPassed: boolean;
+    /** Whether worker handshake rehearsal tests passed */
+    workerHandshakePassed: boolean;
+    /** Whether worker writeback rehearsal tests passed */
+    workerWritebackPassed: boolean;
     /** Whether validation tests passed */
     validationPassed: boolean;
     /** Whether soak tests passed */
@@ -358,6 +370,12 @@ export interface StableEvidenceBundleReport {
     totalQueueDeliveryScenarios: number;
     /** Total number of migration compatibility scenarios tested */
     totalMigrationCompatibilityScenarios: number;
+    /** Total number of dispatch scenarios tested */
+    totalDispatchScenarios: number;
+    /** Total number of worker handshake scenarios tested */
+    totalWorkerHandshakeScenarios: number;
+    /** Total number of worker writeback scenarios tested */
+    totalWorkerWritebackScenarios: number;
     /** Total number of rollback scenarios tested */
     totalRollbackScenarios: number;
     /** Number of validation runs that failed */
@@ -382,6 +400,12 @@ export interface StableEvidenceBundleReport {
     failedQueueDeliveryScenarios: number;
     /** Number of migration compatibility scenarios that failed */
     failedMigrationCompatibilityScenarios: number;
+    /** Number of dispatch scenarios that failed */
+    failedDispatchScenarios: number;
+    /** Number of worker handshake scenarios that failed */
+    failedWorkerHandshakeScenarios: number;
+    /** Number of worker writeback scenarios that failed */
+    failedWorkerWritebackScenarios: number;
     /** Number of rollback scenarios that failed */
     failedRollbackScenarios: number;
     /** Combined integrity failures from validation and soak */

@@ -1,13 +1,31 @@
 import type { ReactElement } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 
+function detectPlatform(): "android" | "ios" {
+  const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod|ios/.test(userAgent) ? "ios" : "android";
+}
+
 export function MobileApp(): ReactElement {
-  const adapter = createMobilePlatformAdapter("android");
+  const adapter = createMobilePlatformAdapter(detectPlatform());
+  const bridgeReady = typeof globalThis.__AA_MOBILE__ !== "undefined";
+
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <strong>Automatic Agent Platform Mobile Baseline</strong>
-      <span>Platform: {adapter.platform}</span>
-      <span>Native bridge ready: {String(typeof globalThis.__AA_MOBILE__ !== "undefined")}</span>
-    </div>
+    <View style={styles.container}>
+      <Text style={styles.title}>Automatic Agent Platform Mobile Baseline</Text>
+      <Text>Platform: {adapter.platform}</Text>
+      <Text>Native bridge ready: {String(bridgeReady)}</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    display: "flex",
+    gap: 12,
+  },
+  title: {
+    fontWeight: "700",
+  },
+});

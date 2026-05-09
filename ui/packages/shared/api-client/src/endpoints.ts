@@ -82,20 +82,16 @@ export const endpointCatalog = {
 } satisfies Record<string, EndpointDefinition>;
 
 export interface ListQueryParams {
-  readonly offset?: number;
-  readonly limit?: number;
-  readonly sortBy?: string;
-  readonly sortOrder?: "asc" | "desc";
-  readonly filterBy?: string;
-  readonly filterValue?: string;
+  readonly page?: number;
+  readonly pageSize?: number;
+  readonly sort?: string;
+  readonly filter?: string;
 }
 
 function buildQueryString(params: ListQueryParams): string {
-  const entries = Object.entries(params).filter(([, value]) => value !== undefined);
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null);
   if (entries.length === 0) return "";
-  return "?" + new URLSearchParams(
-    entries.map(([key, value]) => [key, String(value)])
-  ).toString();
+  return `?${new URLSearchParams(entries.map(([key, value]) => [key, String(value)])).toString()}`;
 }
 
 function resolvePath(template: string, params: Record<string, string>): string {
@@ -281,6 +277,18 @@ export async function fetchWebhooks(client: RESTClient): Promise<readonly Webhoo
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {
   return client.get<UserPreferenceDTO>(endpointCatalog.preferences.path);
+}
+
+export async function updatePreferences(
+  client: RESTClient,
+  body: Partial<UserPreferenceDTO>,
+  ifMatch?: string,
+): Promise<UserPreferenceDTO> {
+  const headers = new Headers();
+  if (ifMatch != null && ifMatch.length > 0) {
+    headers.set("If-Match", ifMatch);
+  }
+  return client.put<UserPreferenceDTO>(endpointCatalog.preferences.path, body, { headers });
 }
 
 export async function fetchContractVersion(client: RESTClient): Promise<{ contractVersion: string; minServerVersion?: string }> {

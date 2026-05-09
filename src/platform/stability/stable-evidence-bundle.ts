@@ -62,6 +62,21 @@ import {
   type StableQueueDeliveryRehearsalReport,
 } from "./stable-queue-delivery-rehearsal.js";
 import {
+  runStableDispatchRehearsal,
+  writeStableDispatchRehearsalReport,
+  type StableDispatchRehearsalReport,
+} from "./stable-dispatch-rehearsal.js";
+import {
+  runStableWorkerHandshakeRehearsal,
+  writeStableWorkerHandshakeRehearsalReport,
+  type StableWorkerHandshakeRehearsalReport,
+} from "./stable-worker-handshake-rehearsal.js";
+import {
+  runStableWorkerWritebackRehearsal,
+  writeStableWorkerWritebackRehearsalReport,
+  type StableWorkerWritebackRehearsalReport,
+} from "./stable-worker-writeback-rehearsal.js";
+import {
   runStableMigrationCompatibilityRehearsal,
   writeStableMigrationCompatibilityRehearsalReport,
   type StableMigrationCompatibilityRehearsalReport,
@@ -148,6 +163,9 @@ export async function createStableEvidenceBundle(
     dbWritabilityReportPath: join(options.outputDir, "db-writability-report.json"),
     queueDeliveryReportPath: join(options.outputDir, "queue-delivery-report.json"),
     migrationCompatibilityReportPath: join(options.outputDir, "migration-compatibility-report.json"),
+    dispatchReportPath: join(options.outputDir, "dispatch-report.json"),
+    workerHandshakeReportPath: join(options.outputDir, "worker-handshake-report.json"),
+    workerWritebackReportPath: join(options.outputDir, "worker-writeback-report.json"),
     runtimeDbPath: join(options.outputDir, "runtime", "stable-evidence.db"),
   };
 
@@ -216,6 +234,21 @@ export async function createStableEvidenceBundle(
     outputDir: join(options.outputDir, "queue-delivery"),
   });
   writeStableQueueDeliveryRehearsalReport(artifacts.queueDeliveryReportPath, queueDeliveryReport);
+
+  const dispatchReport: StableDispatchRehearsalReport = await runStableDispatchRehearsal({
+    outputDir: join(options.outputDir, "dispatch"),
+  });
+  writeStableDispatchRehearsalReport(artifacts.dispatchReportPath, dispatchReport);
+
+  const workerHandshakeReport: StableWorkerHandshakeRehearsalReport = await runStableWorkerHandshakeRehearsal({
+    outputDir: join(options.outputDir, "worker-handshake"),
+  });
+  writeStableWorkerHandshakeRehearsalReport(artifacts.workerHandshakeReportPath, workerHandshakeReport);
+
+  const workerWritebackReport: StableWorkerWritebackRehearsalReport = await runStableWorkerWritebackRehearsal({
+    outputDir: join(options.outputDir, "worker-writeback"),
+  });
+  writeStableWorkerWritebackRehearsalReport(artifacts.workerWritebackReportPath, workerWritebackReport);
 
   const migrationCompatibilityReport: StableMigrationCompatibilityRehearsalReport =
     await runStableMigrationCompatibilityRehearsal({
@@ -351,6 +384,9 @@ export async function createStableEvidenceBundle(
       dbQueueDisconnectReport.failedScenarios === 0 &&
       dbWritabilityReport.failedScenarios === 0 &&
       queueDeliveryReport.failedScenarios === 0 &&
+      dispatchReport.failedScenarios === 0 &&
+      workerHandshakeReport.failedScenarios === 0 &&
+      workerWritebackReport.failedScenarios === 0 &&
       migrationCompatibilityReport.failedScenarios === 0 &&
       validationPassed &&
       soakPassed &&
@@ -372,6 +408,9 @@ export async function createStableEvidenceBundle(
     dbQueueDisconnectPassed: dbQueueDisconnectReport.failedScenarios === 0,
     dbWritabilityPassed: dbWritabilityReport.failedScenarios === 0,
     queueDeliveryPassed: queueDeliveryReport.failedScenarios === 0,
+    dispatchPassed: dispatchReport.failedScenarios === 0,
+    workerHandshakePassed: workerHandshakeReport.failedScenarios === 0,
+    workerWritebackPassed: workerWritebackReport.failedScenarios === 0,
     migrationCompatibilityPassed: migrationCompatibilityReport.failedScenarios === 0,
     validationPassed,
     soakPassed,
@@ -388,6 +427,9 @@ export async function createStableEvidenceBundle(
     totalDbQueueDisconnectScenarios: dbQueueDisconnectReport.totalScenarios,
     totalDbWritabilityScenarios: dbWritabilityReport.totalScenarios,
     totalQueueDeliveryScenarios: queueDeliveryReport.totalScenarios,
+    totalDispatchScenarios: dispatchReport.totalScenarios,
+    totalWorkerHandshakeScenarios: workerHandshakeReport.totalScenarios,
+    totalWorkerWritebackScenarios: workerWritebackReport.totalScenarios,
     totalMigrationCompatibilityScenarios: migrationCompatibilityReport.totalScenarios,
     totalRollbackScenarios: rollbackReport.totalScenarios,
     failedValidationRuns: validationReport.failedRuns,
@@ -400,6 +442,9 @@ export async function createStableEvidenceBundle(
     failedDbQueueDisconnectScenarios: dbQueueDisconnectReport.failedScenarios,
     failedDbWritabilityScenarios: dbWritabilityReport.failedScenarios,
     failedQueueDeliveryScenarios: queueDeliveryReport.failedScenarios,
+    failedDispatchScenarios: dispatchReport.failedScenarios,
+    failedWorkerHandshakeScenarios: workerHandshakeReport.failedScenarios,
+    failedWorkerWritebackScenarios: workerWritebackReport.failedScenarios,
     failedMigrationCompatibilityScenarios: migrationCompatibilityReport.failedScenarios,
     failedRollbackScenarios: rollbackReport.failedScenarios,
     integrityFailures: validationReport.integrityFailures + soakReport.integrityFailures,

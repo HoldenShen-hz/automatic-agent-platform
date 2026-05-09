@@ -6,8 +6,8 @@
  * This file provides platform-specific types ONLY.
  *
  * ARCHITECTURAL R4-4 FIX:
- * This file now contains ONLY platform-specific types (PlatformPrincipal, EvidenceRecord,
- * ProjectionUpdate). All canonical types (PlanGraphBundle, NodeAttemptReceipt,
+ * This file now contains ONLY platform-specific types (PlatformPrincipal, EvidenceRecord).
+ * All canonical types (PlanGraphBundle, NodeAttemptReceipt,
  * ContractEnvelope, SideEffectRecord, RequestEnvelope, EventEnvelope, etc.) are exported from
  * executable-contracts/ directly or via the contracts/index.ts barrel.
  *
@@ -16,10 +16,6 @@
  */
 
 import { newId, nowIso } from "./ids.js";
-import {
-  createProjectionUpdate as createStandaloneProjectionUpdate,
-  type ProjectionUpdate,
-} from "../projection-update/index.js";
 
 // =============================================================================
 // Platform-Level Contract Types
@@ -135,17 +131,4 @@ export function createEvidenceRecord(input: {
     timestamp: nowIso(),
     metadata: input.metadata ?? {},
   };
-}
-
-export function createProjectionUpdate(input: {
-  projectionId: string;
-  projectionType: string;
-  version: number;
-  sourceEvents: readonly string[];
-  patch: Readonly<Record<string, unknown>>;
-  triggeredBy: string;
-  rebuiltAt?: string;
-  idempotencyKey?: string;
-}): ProjectionUpdate {
-  return createStandaloneProjectionUpdate(input);
 }

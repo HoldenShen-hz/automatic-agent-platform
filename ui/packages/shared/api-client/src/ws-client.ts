@@ -21,6 +21,21 @@ export interface WebSocketFactory {
   new(url: string, protocols?: string | string[]): WebSocket;
 }
 
+export interface SharedWorkerLike {
+  readonly port: MessagePort;
+}
+
+export type SharedWorkerFactory = () => SharedWorkerLike;
+
+export interface BrowserWSClientOptions {
+  readonly heartbeatIntervalMs?: number;
+  readonly heartbeatTimeoutMs?: number;
+}
+
+type WorkerMessage =
+  | { readonly type: "status"; readonly status: WSStatus }
+  | { readonly type: "event"; readonly event: WSEventEnvelope };
+
 export class InMemoryWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
@@ -78,15 +93,18 @@ export class BrowserWSClient implements WSClient {
   private subscribedChannels = new Set<string>();
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 10;
-  private readonly baseReconnectDelayMs = 500;
+  private readonly baseReconnectDelayMs = 1000;
   private readonly maxReconnectDelayMs = 30000;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
   private currentUrl: string | null = null;
   private currentToken: string | null = null;
 
   public constructor(
     private readonly websocketFactory: WebSocketFactory = WebSocket,
     private readonly fallbackClient: InMemoryWSClient | null = null,
+    private readonly options: BrowserWSClientOptions = {},
   ) {}
 
   public connect(url: string, token: string): void {
@@ -96,72 +114,9 @@ export class BrowserWSClient implements WSClient {
     this.establishConnection(url, token);
   }
 
-  private establishConnection(url: string, token: string): void {
-    this.setStatus("connecting");
-    this.clearReconnectTimer();
-    try {
-      // Use Sec-WebSocket-Protocol header for auth token instead of URL query param
-      const socket = new this.websocketFactory(url, ["aa-auth-v1", `Bearer-${encodeURIComponent(token)}`]);
-      this.socket = socket;
-      socket.onopen = () => {
-        this.reconnectAttempts = 0;
-        this.setStatus("connected");
-        for (const channel of this.subscribedChannels) {
-          socket.send(JSON.stringify({ action: "subscribe", channel }));
-        }
-      };
-      socket.onmessage = (event) => {
-        const data = JSON.parse(String(event.data)) as WSEventEnvelope;
-        this.publish(data);
-      };
-      socket.onclose = () => {
-        this.setStatus("reconnecting");
-        this.scheduleReconnect();
-      };
-      socket.onerror = () => {
-        this.setStatus("reconnecting");
-        if (this.fallbackClient != null) {
-          this.fallbackClient.connect(url, token);
-        }
-        this.scheduleReconnect();
-      };
-    } catch {
-      this.setStatus("reconnecting");
-      if (this.fallbackClient != null) {
-        this.fallbackClient.connect(url, token);
-      }
-      this.scheduleReconnect();
-    }
-  }
-
-  private calculateReconnectDelay(): number {
-    const delay = this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempts);
-    return Math.min(delay, this.maxReconnectDelayMs);
-  }
-
-  private scheduleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.setStatus("disconnected");
-      return;
-    }
-    const delay = this.calculateReconnectDelay();
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectAttempts++;
-      if (this.currentUrl != null && this.currentToken != null) {
-        this.establishConnection(this.currentUrl, this.currentToken);
-      }
-    }, delay);
-  }
-
-  private clearReconnectTimer(): void {
-    if (this.reconnectTimer != null) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-  }
-
   public disconnect(): void {
     this.clearReconnectTimer();
+    this.stopHeartbeat();
     this.reconnectAttempts = this.maxReconnectAttempts;
     this.socket?.close();
     this.socket = null;
@@ -176,7 +131,7 @@ export class BrowserWSClient implements WSClient {
     channelHandlers.add(handler);
     this.handlers.set(channel, channelHandlers);
     this.subscribedChannels.add(channel);
-    if (this.socket != null && this.socket.readyState === WebSocket.OPEN) {
+    if (this.socket != null && this.socket.readyState === this.getOpenState()) {
       this.socket.send(JSON.stringify({ action: "subscribe", channel }));
     }
     const fallbackUnsubscribe = this.fallbackClient?.subscribe(channel, handler);
@@ -211,6 +166,115 @@ export class BrowserWSClient implements WSClient {
     this.fallbackClient?.useSseFallback();
   }
 
+  private establishConnection(url: string, token: string): void {
+    this.setStatus("connecting");
+    this.clearReconnectTimer();
+    this.stopHeartbeat();
+    try {
+      const socket = new this.websocketFactory(url, "v1.auth.token");
+      this.socket = socket;
+      socket.onopen = () => {
+        this.reconnectAttempts = 0;
+        this.setStatus("connected");
+        socket.send(JSON.stringify({ action: "auth", token }));
+        for (const channel of this.subscribedChannels) {
+          socket.send(JSON.stringify({ action: "subscribe", channel }));
+        }
+        this.startHeartbeat();
+      };
+      socket.onmessage = (event) => {
+        const data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
+        if (data.action === "pong" || data.type === "pong") {
+          this.clearHeartbeatDeadline();
+          return;
+        }
+        this.publish(data);
+      };
+      socket.onclose = () => {
+        this.handleReconnect(url, token);
+      };
+      socket.onerror = () => {
+        this.handleReconnect(url, token);
+      };
+    } catch {
+      this.handleReconnect(url, token);
+    }
+  }
+
+  private handleReconnect(url: string, token: string): void {
+    this.stopHeartbeat();
+    this.setStatus("reconnecting");
+    if (this.fallbackClient != null) {
+      this.fallbackClient.connect(url, token);
+    }
+    this.scheduleReconnect();
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    const intervalMs = this.options.heartbeatIntervalMs ?? 15000;
+    const timeoutMs = this.options.heartbeatTimeoutMs ?? 5000;
+    this.heartbeatTimer = setInterval(() => {
+      if (this.socket == null || this.socket.readyState !== this.getOpenState()) {
+        return;
+      }
+      this.socket.send(JSON.stringify({ action: "ping" }));
+      this.clearHeartbeatDeadline();
+      this.heartbeatDeadlineTimer = setTimeout(() => {
+        this.socket?.close();
+      }, timeoutMs);
+    }, intervalMs);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer != null) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    this.clearHeartbeatDeadline();
+  }
+
+  private clearHeartbeatDeadline(): void {
+    if (this.heartbeatDeadlineTimer != null) {
+      clearTimeout(this.heartbeatDeadlineTimer);
+      this.heartbeatDeadlineTimer = null;
+    }
+  }
+
+  private calculateReconnectDelay(): number {
+    const exponentialDelay = Math.min(
+      this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempts),
+      this.maxReconnectDelayMs,
+    );
+    const jitter = exponentialDelay * (Math.random() * 0.3 - 0.15);
+    return Math.floor(exponentialDelay + jitter);
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.setStatus("disconnected");
+      return;
+    }
+    const delay = this.calculateReconnectDelay();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectAttempts += 1;
+      if (this.currentUrl != null && this.currentToken != null) {
+        this.establishConnection(this.currentUrl, this.currentToken);
+      }
+    }, delay);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  private getOpenState(): number {
+    return typeof WebSocket !== "undefined" ? WebSocket.OPEN : 1;
+  }
+
   private setStatus(status: WSStatus): void {
     this.status = status;
     for (const handler of this.statusHandlers) {
@@ -219,8 +283,76 @@ export class BrowserWSClient implements WSClient {
   }
 }
 
-export function createRuntimeWSClient(socketFactory?: WebSocketFactory): WSClient {
-  if (typeof WebSocket !== "undefined") {
+export class SharedWorkerWSClient implements WSClient {
+  private readonly handlers = new Map<string, Set<EventHandler>>();
+  private readonly statusHandlers = new Set<(status: WSStatus) => void>();
+  private readonly port: MessagePort;
+
+  public constructor(worker: SharedWorkerLike) {
+    this.port = worker.port;
+    this.port.addEventListener("message", this.handleMessage);
+    this.port.start();
+  }
+
+  public connect(url: string, token: string): void {
+    this.port.postMessage({ action: "connect", url, token });
+  }
+
+  public disconnect(): void {
+    this.port.postMessage({ action: "disconnect" });
+  }
+
+  public subscribe(channel: string, handler: EventHandler): () => void {
+    const channelHandlers = this.handlers.get(channel) ?? new Set<EventHandler>();
+    const wasEmpty = channelHandlers.size === 0;
+    channelHandlers.add(handler);
+    this.handlers.set(channel, channelHandlers);
+    if (wasEmpty) {
+      this.port.postMessage({ action: "subscribe", channel });
+    }
+    return () => {
+      channelHandlers.delete(handler);
+      if (channelHandlers.size === 0) {
+        this.handlers.delete(channel);
+      }
+    };
+  }
+
+  public onStatusChange(handler: (status: WSStatus) => void): () => void {
+    this.statusHandlers.add(handler);
+    return () => this.statusHandlers.delete(handler);
+  }
+
+  public publish(event: WSEventEnvelope): void {
+    this.port.postMessage({ action: "publish", event });
+  }
+
+  public useSseFallback(): void {
+    this.port.postMessage({ action: "useSseFallback" });
+  }
+
+  private readonly handleMessage = (event: MessageEvent<WorkerMessage>): void => {
+    const message = event.data;
+    if (message.type === "status") {
+      for (const handler of this.statusHandlers) {
+        handler(message.status);
+      }
+      return;
+    }
+    for (const handler of this.handlers.get(message.event.channel) ?? []) {
+      handler(message.event);
+    }
+  };
+}
+
+export function createRuntimeWSClient(
+  socketFactory?: WebSocketFactory,
+  sharedWorkerFactory?: SharedWorkerFactory,
+): WSClient {
+  if (typeof SharedWorker !== "undefined" && sharedWorkerFactory != null) {
+    return new SharedWorkerWSClient(sharedWorkerFactory());
+  }
+  if (typeof WebSocket !== "undefined" || socketFactory != null) {
     return new BrowserWSClient(socketFactory ?? WebSocket, new InMemoryWSClient());
   }
   return new InMemoryWSClient();

@@ -309,7 +309,9 @@ export function restoreWorkflowStepCheckpoint(
     },
     compensationModel: checkpoint.compensationModel == null
       ? null
-      : { ...checkpoint.compensationModel },
+      : typeof checkpoint.compensationModel === "string"
+        ? checkpoint.compensationModel
+        : { ...checkpoint.compensationModel },
   };
 }
 

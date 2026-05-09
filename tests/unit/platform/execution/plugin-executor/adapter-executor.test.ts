@@ -178,6 +178,11 @@ test("AdapterExecutor retry policy returns error when all attempts fail", async 
   assert.equal(result.status, "error");
   assert.equal(result.attempts, 3);
   assert.ok(result.output && typeof result.output === "object" && "error" in result.output);
+  // R4-48: Verify retry exhaustion details for incident/DLQ handling
+  const output = result.output as Record<string, unknown>;
+  assert.equal(output.retryExhausted, true);
+  assert.equal(output.maxAttempts, 3);
+  assert.equal(output.lastErrorCode, "Error");
 });
 
 test("AdapterExecutor listAdapters returns all registered adapters", () => {

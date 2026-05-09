@@ -38,6 +38,12 @@ import { RecoveryController, type HarnessFailureType } from "./recovery-controll
 import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
 import type { ControlPlaneDirectiveSink } from "../../../platform/five-plane-control-plane/control-plane-directive-sink.js";
 import { createOperationalDirective } from "../../../platform/contracts/control-directive/index.js";
+import {
+  mapAutonomyLevelToUnifiedRuntimeMode,
+  normalizeUnifiedRuntimeMode,
+  type DocumentedUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../../platform/contracts/types/unified-runtime-mode.js";
 
 export * from "./harness-baseline.js";
 export * from "./harness-bootstrap.js";
@@ -112,7 +118,13 @@ export interface ConstraintBudgetEnvelope {
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
-  readonly autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
+  readonly autonomyMode:
+    | "suggestion"
+    | "supervised"
+    | "semi_auto"
+    | "full_auto"
+    | UnifiedRuntimeMode
+    | DocumentedUnifiedRuntimeMode;
   readonly tool_policy: ConstraintToolPolicy;
   readonly risk_policy?: ConstraintRiskPolicy;
   readonly output_policy?: ConstraintOutputPolicy;
@@ -158,7 +170,7 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   const partial: {
     policyIds: readonly string[];
     approvalMode: "none" | "required" | "supervised";
-    autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
+    autonomyMode: ConstraintPack["autonomyMode"];
     tool_policy: { allowedTools: readonly string[] };
     risk_policy: { maxRiskScore: number; escalationThreshold: number };
     output_policy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
@@ -176,7 +188,7 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   } = {
     policyIds: input.policyIds ? [...input.policyIds] : [],
     approvalMode: input.approvalMode ?? "none",
-    autonomyMode: input.autonomyMode ?? "semi_auto",
+    autonomyMode: normalizeConstraintPackAutonomyMode(input.autonomyMode ?? "semi_auto"),
     tool_policy: {
       allowedTools: input.tool_policy?.allowedTools ? [...input.tool_policy.allowedTools] : [],
     },
@@ -257,6 +269,20 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   }
 
   return partial as ConstraintPack;
+}
+
+export function normalizeConstraintPackAutonomyMode(
+  autonomyMode: ConstraintPack["autonomyMode"],
+): UnifiedRuntimeMode {
+  switch (autonomyMode) {
+    case "suggestion":
+    case "supervised":
+    case "semi_auto":
+    case "full_auto":
+      return mapAutonomyLevelToUnifiedRuntimeMode(autonomyMode);
+    default:
+      return normalizeUnifiedRuntimeMode(autonomyMode);
+  }
 }
 
 function ensureIsoAfter(startedAt: string, candidate: string): string {

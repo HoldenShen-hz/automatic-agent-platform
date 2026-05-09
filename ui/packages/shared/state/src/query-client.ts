@@ -1,10 +1,18 @@
 import { QueryClient } from "@tanstack/react-query";
 
-export function createQueryClientFactory() {
+export const CACHE_TIER_STALE_TIME = {
+  tasks: 120_000,
+  approvals: 30_000,
+  config: 3_600_000,
+} as const;
+
+export type QueryCacheTier = keyof typeof CACHE_TIER_STALE_TIME;
+
+export function createTieredQueryClientFactory(tier: QueryCacheTier) {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30_000,
+        staleTime: CACHE_TIER_STALE_TIME[tier],
         gcTime: 5 * 60_000,
         retry: 3,
         refetchOnWindowFocus: true,
@@ -15,4 +23,8 @@ export function createQueryClientFactory() {
       },
     },
   });
+}
+
+export function createQueryClientFactory() {
+  return createTieredQueryClientFactory("tasks");
 }

@@ -37,11 +37,11 @@ export * from "./types/responsibility-boundary.js";
 export {
   type PlatformPrincipal,
   type EvidenceRecord as PlatformEvidenceRecord,
-  type ProjectionUpdate as PlatformProjectionUpdate,
   createPlatformPrincipal,
   createEvidenceRecord,
-  createProjectionUpdate,
 } from "./types/platform-contracts.js";
+
+// ProjectionUpdate is exported from ./projection-update/index.js above via `export * from "./projection-update/index.js";`
 
 // Re-export canonical RequestEnvelope (from executable-contracts) as PlatformRequestEnvelope
 export {

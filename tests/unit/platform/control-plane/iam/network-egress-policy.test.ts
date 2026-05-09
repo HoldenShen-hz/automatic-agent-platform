@@ -10,6 +10,7 @@ import {
 import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
 test("loadNetworkEgressPolicyConfigFromEnv returns deny mode by default", () => {
+  // R4-37: Default is now "deny" per §11.5 - egress violations are blocked
   const config = loadNetworkEgressPolicyConfigFromEnv({});
   assert.equal(config.mode, "deny");
   assert.equal(config.enabled, true);

@@ -1,5 +1,5 @@
 import { TypedEventBus } from "../state-evidence/events/typed-event-bus.js";
-import { nowIso } from "../../contracts/types/ids.js";
+import { nowIso } from "../contracts/types/ids.js";
 
 export type CleanupCallback = (params: {
   readonly resourceId: string;
@@ -237,7 +237,6 @@ export class RunTerminationCleanup {
       if (cleanupStatus === "failed") {
         callbacks.eventBus.publish({
           eventType: "run.cleanup_failed",
-          runId: request.runId,
           payload: {
             runId: request.runId,
             tenantId: request.tenantId,
@@ -252,7 +251,6 @@ export class RunTerminationCleanup {
       } else {
         callbacks.eventBus.publish({
           eventType: "run.cleanup_completed",
-          runId: request.runId,
           payload: {
             runId: request.runId,
             tenantId: request.tenantId,

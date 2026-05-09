@@ -219,9 +219,10 @@ function extractUrlString(input: string | URL | Request): string {
 export function loadNetworkEgressPolicyConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): NetworkEgressPolicyConfig {
-  // R4-37 FIX: Default to "audit_only" - egress violations are logged but not blocked.
-  // Setting AA_EGRESS_POLICY_MODE="deny" enables enforcement (blocking prohibited connections).
-  const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "audit_only").trim().toLowerCase();
+  // R4-37 FIX: Default to "deny" per §11.5 - egress violations are blocked
+  // and logged as formal security events. Use "audit_only" only when
+  // explicit logging without blocking is required.
+  const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "deny").trim().toLowerCase();
   const mode: NetworkEgressPolicyMode = modeValue === "deny" || modeValue === "enforce"
     ? modeValue === "enforce" ? "enforce" : "deny"
     : "audit_only";
