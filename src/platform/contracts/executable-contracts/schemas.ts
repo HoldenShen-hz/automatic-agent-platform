@@ -556,8 +556,22 @@ export const HarnessDecisionSchema = z.object({
   harnessDecisionId: z.string().min(1),
   decisionInputBundleId: z.string().min(1),
   decisionKind: z.enum(["approve", "reject", "patch", "takeover", "resume", "abort", "retry", "replan"]),
-  decision: z.enum(["accept", "reject", "retry", "replan", "escalate", "abort", "takeover", "patch"]),
-  deciderType: z.enum(["system", "policy", "evaluator", "human", "operator"]),
+  // R2-26/R2-27/R2-28 fix: Canonical 6 decisions per §58.6 + production extensions
+  // Basic 6: accept, retry_same_plan, replan, escalate_to_human, downgrade_mode, abort
+  // Production extensions: quarantine, revoke_approval, pause_for_external, require_revalidation
+  decision: z.enum([
+    "accept",
+    "retry_same_plan",
+    "replan",
+    "escalate_to_human",
+    "downgrade_mode",
+    "abort",
+    "quarantine",
+    "revoke_approval",
+    "pause_for_external",
+    "require_revalidation",
+  ]),
+  deciderType: z.enum(["system", "policy", "evaluator", "human", "operator", "llm"]),
   deciderRef: z.string().min(1),
   reasonCode: z.string().min(1),
   expiresAt: z.string().optional(),

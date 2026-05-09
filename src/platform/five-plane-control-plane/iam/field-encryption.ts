@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, createHmac, createHash } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, pbkdf2Sync } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -6,26 +6,21 @@ const AES_256_GCM = "aes-256-gcm";
 const IV_BYTES = 12;
 const AUTH_TAG_BYTES = 16;
 
-// R10-05: PBKDF2 parameters for proper key derivation
+// R10-05: PBKDF2 parameters for proper key derivation (RFC 8018)
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEY_LENGTH = 32;
 const PBKDF2_DIGEST = "sha256";
 const SALT_LENGTH = 16;
 
 /**
- * Derives a cryptographic key from a password using PBKDF2.
- * R10-05: Replaces SHA-256 without KDF with proper PBKDF2 key derivation.
+ * R10-05: Derives a cryptographic key from a password using PBKDF2 (RFC 8018).
+ * Replaces custom SHA-256 hashing with Node.js crypto.pbkdf2Sync for
+ * proper key derivation from arbitrary-length passwords.
  */
 function deriveKeyWithPbkdf2(password: Buffer | string, salt: Buffer): Buffer {
   const buffer = Buffer.isBuffer(password) ? password : Buffer.from(password, "utf8");
-  // Use PBKDF2 with SHA-256, 100k iterations, and 32-byte output
-  return createHash("sha256")
-    .update(
-      createHmac(PBKDF2_DIGEST, buffer)
-        .update(salt)
-        .digest()
-    )
-    .digest();
+  // Use Node.js crypto.pbkdf2Sync with RFC 8018 recommended parameters
+  return pbkdf2Sync(buffer, salt, PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH, PBKDF2_DIGEST);
 }
 
 function normalizeKey(key: Buffer | string): Buffer {

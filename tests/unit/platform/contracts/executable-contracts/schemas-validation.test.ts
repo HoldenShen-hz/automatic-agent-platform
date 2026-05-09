@@ -1862,8 +1862,22 @@ test("HarnessDecisionSchema accepts valid decision", () => {
   assert.equal(result.success, true);
 });
 
-test("HarnessDecisionSchema accepts all decision values", () => {
-  const decisions = ["accept", "reject", "retry", "replan", "escalate", "abort", "takeover", "patch"];
+test("HarnessDecisionSchema accepts all decision values - canonical 6 + production extensions", () => {
+  // R2-26/R2-27/R2-28 fix: §58.6 defines 6 basic decisions + 4 production extensions
+  const decisions = [
+    // Basic 6 per §58.6
+    "accept",
+    "retry_same_plan",
+    "replan",
+    "escalate_to_human",
+    "downgrade_mode",
+    "abort",
+    // Production extensions
+    "quarantine",
+    "revoke_approval",
+    "pause_for_external",
+    "require_revalidation",
+  ];
   for (const decision of decisions) {
     const valid = {
       harnessDecisionId: `hdecision_${decision}`,
@@ -1880,8 +1894,28 @@ test("HarnessDecisionSchema accepts all decision values", () => {
   }
 });
 
+test("HarnessDecisionSchema rejects legacy decision values", () => {
+  // R2-26/R2-27 fix: reject/return/retry/escalate/takeover/patch are no longer valid
+  const legacyDecisions = ["reject", "retry", "escalate", "takeover", "patch"];
+  for (const decision of legacyDecisions) {
+    const invalid = {
+      harnessDecisionId: `hdecision_${decision}`,
+      decisionInputBundleId: "dib_456",
+      decisionKind: "approve",
+      decision,
+      deciderType: "system",
+      deciderRef: "policy_engine",
+      reasonCode: "TEST",
+      createdAt: "2026-04-01T00:00:00.000Z",
+    };
+    const result = HarnessDecisionSchema.safeParse(invalid);
+    assert.equal(result.success, false, `Legacy decision '${decision}' should be rejected`);
+  }
+});
+
 test("HarnessDecisionSchema accepts all decider types", () => {
-  const deciderTypes = ["system", "policy", "evaluator", "human", "operator"];
+  // R2-26 fix: llm added as valid deciderType per §58.6
+  const deciderTypes = ["system", "policy", "evaluator", "human", "operator", "llm"];
   for (const type of deciderTypes) {
     const valid = {
       harnessDecisionId: `hdecision_${type}`,

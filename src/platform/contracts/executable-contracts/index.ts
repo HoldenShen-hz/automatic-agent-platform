@@ -731,11 +731,31 @@ export interface DecisionInputBundle {
   readonly createdAt: string;
 }
 
+export type HarnessDecisionType =
+  | "accept"
+  | "retry_same_plan"
+  | "replan"
+  | "escalate_to_human"
+  | "downgrade_mode"
+  | "abort";
+
+export type HarnessDecisionExtensibleType =
+  | HarnessDecisionType
+  | "quarantine"
+  | "revoke_approval"
+  | "pause_for_external"
+  | "require_revalidation"
+  | "retry"
+  | "escalate"
+  | "reject"
+  | "takeover"
+  | "patch";
+
 export interface HarnessDecision {
   readonly harnessDecisionId: string;
   readonly decisionInputBundleId: string;
   readonly decisionKind: DecisionInputBundle["decisionKind"];
-  readonly decision: "accept" | "reject" | "retry" | "replan" | "escalate" | "abort" | "takeover" | "patch";
+  readonly decision: HarnessDecisionExtensibleType;
   readonly deciderType: "system" | "policy" | "evaluator" | "human" | "operator" | "llm";
   readonly deciderRef: string;
   readonly reasonCode: string;
