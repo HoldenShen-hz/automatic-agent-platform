@@ -180,6 +180,28 @@ test("HttpApiServer inject handles OPTIONS preflight request", async () => {
   }
 });
 
+test("HttpApiServer inject rejects JSON write requests with unsupported content type", async () => {
+  const server = createMinimalServer();
+  await server.start();
+
+  try {
+    const response = await server.inject({
+      url: "/v1/auth/token",
+      method: "POST",
+      headers: {
+        "content-type": "text/plain",
+      },
+      body: JSON.stringify({ apiKey: "test-key" }),
+    });
+
+    assert.equal(response.statusCode, 415);
+    const body = response.json<{ error: { code: string } }>();
+    assert.equal(body.error.code, "api.unsupported_media_type");
+  } finally {
+    await server.stop();
+  }
+});
+
 test("HttpApiServer inject handles non-existent route", async () => {
   const server = createMinimalServer();
   await server.start();

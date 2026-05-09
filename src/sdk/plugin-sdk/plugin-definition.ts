@@ -219,6 +219,7 @@ export function defineEvaluator(options: Omit<DefinePluginOptions, "type"> & { p
  * Validate a plugin manifest.
  */
 export function validatePluginDefinition(definition: PluginDefinition): PluginDefinition {
+  const validTypes: PluginType[] = ["tool", "adapter", "retriever", "evaluator", "validator", "planner", "presenter"];
   return definePlugin({
     pluginId: definition.pluginId,
     name: definition.name,
@@ -230,11 +231,10 @@ export function validatePluginDefinition(definition: PluginDefinition): PluginDe
     resourceLimits: definition.resourceLimits,
     dependencies: definition.dependencies,
     security: definition.security,
-    spiTypes: definition.spiTypes.filter((type): type is PluginType => {
-      const validTypes: PluginType[] = ["tool", "adapter", "retriever", "evaluator"];
+    spiTypes: (definition.spiTypes ?? [definition.type]).filter((type): type is PluginType => {
       return typeof type === "string" && validTypes.includes(type as PluginType);
     }),
-    domainIds: definition.domainIds,
+    domainIds: definition.domainIds ?? [],
     sbomRef: definition.sbomRef,
     signing: definition.signing,
   });

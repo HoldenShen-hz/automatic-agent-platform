@@ -318,3 +318,25 @@ test("validatePluginDefinition uses default description when missing", () => {
 
   assert.equal(validated.description, "Plugin description");
 });
+
+test("validatePluginDefinition preserves extended spiTypes such as planner/presenter/validator", () => {
+  const original = definePlugin({
+    pluginId: "my-pack.presenter",
+    name: "My Presenter",
+    version: "1.0.0",
+    type: "presenter",
+    spiTypes: ["presenter", "planner", "validator"],
+    capabilities: [{
+      name: "render",
+      description: "Render output",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "object" },
+    }],
+  });
+
+  const validated = validatePluginDefinition(original);
+
+  assert.ok(validated.spiTypes.includes("presenter"));
+  assert.ok(validated.spiTypes.includes("planner"));
+  assert.ok(validated.spiTypes.includes("validator"));
+});

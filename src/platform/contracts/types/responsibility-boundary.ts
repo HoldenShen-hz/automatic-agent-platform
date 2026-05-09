@@ -43,7 +43,8 @@ export type BoundaryAction =
   | "inspect"
   | "patch"
   | "takeover"
-  | "resume";
+  | "resume"
+  | "execute_ai_action";
 
 /**
  * A responsibility boundary defines where human responsibility begins
@@ -298,11 +299,11 @@ export class ResponsibilityBoundaryService {
     action: BoundaryAction,
     actorType: ResponsibilityActorType,
   ): void {
-    const mutatingActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "delegate"]);
+    const mutatingActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "delegate", "execute_ai_action"]);
     if (boundary.operatingMode === "advisory_only" && mutatingActions.has(action)) {
       throw new Error(`responsibility_boundary.advisory_only_blocks_action:${action}`);
     }
-    const humanOnlyActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume"]);
+    const humanOnlyActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "execute_ai_action"]);
     if (boundary.operatingMode === "human_accountable" && humanOnlyActions.has(action) && actorType !== "human_operator") {
       throw new Error(`responsibility_boundary.human_accountable_requires_human:${action}`);
     }

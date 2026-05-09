@@ -132,7 +132,7 @@ export class OapeflirLoopService {
       eventPublisher: options.eventPublisher ?? null,
     });
     // R19-06 fix: Store eventPublisher for stage event emission
-    this.eventPublisher = options.eventPublisher ?? null;
+    this.eventPublisher = options.eventPublisher ?? undefined;
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
@@ -815,6 +815,22 @@ export class OapeflirLoopService {
           holdoutOverlap: 0,
         },
       };
+    });
+  }
+
+  /**
+   * R19-06 fix: Emits platform._ facts / oapeflir.view._ projections for state changes per §14.3.
+   * Called after each stage transition to emit lifecycle events.
+   */
+  private emitStageEvent(stage: string, taskId: string, data: Record<string, unknown>): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    // Cast to allow oapeflir.view.run_lifecycle which is Record<string, unknown> in TypedEventPayloadMap
+    (this.eventPublisher.publish as (input: { eventType: string; taskId: string; payload: Record<string, unknown> }) => void)({
+      eventType: "oapeflir.view.run_lifecycle",
+      taskId,
+      payload: { stage, ...data },
     });
   }
 
