@@ -50,6 +50,7 @@ import {
   normalizeHeaders,
   readIncomingBody,
 } from "./http-server/request-helpers.js";
+import { assertJsonRequestContentType } from "./middleware/input-validation.js";
 import { ApiError, normalizeError } from "./http-server/api-error.js";
 import {
   createHealthRoutes,
@@ -454,6 +455,7 @@ export class HttpApiServer {
         if (bodyBytes > MAX_BODY_BYTES) {
           throw new ApiError(413, "api.payload_too_large", "Request body exceeds 1 MB limit.");
         }
+        assertJsonRequestContentType(request, request.body);
         const route = matchRoute(request);
         if (!route) {
           return this.attachResponseTracing(this.buildJsonErrorResponse(requestId, 404, {

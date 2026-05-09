@@ -161,7 +161,7 @@ export class SplitBrainProtectionService {
     const confidence = Math.min(1, evidence.length * 0.3);
 
     return {
-      hasSplitBrain: evidence.length >= 2,
+      hasSplitBrain: evidence.length > 0,
       confidence,
       evidence,
       conflictingRegions: [...new Set(evidence.map((e) => e.regionId))],

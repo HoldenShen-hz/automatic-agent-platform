@@ -34,7 +34,7 @@ export type ConflictResolutionStrategy =
   | "crdt"
   | "manual-merge"
   | "source-region-wins"
-  | " quorum-wins";
+  | "quorum-wins";
 
 /**
  * Region descriptor in topology

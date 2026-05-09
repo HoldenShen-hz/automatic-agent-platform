@@ -90,6 +90,21 @@ export class RpoRtoTrackingService {
   private readonly replicationLagEvents = new Map<string, ReplicationLagEvent>();
   private readonly lastReplicationSequence = new Map<string, number>();
 
+  private toPairKey(sourceRegionId: string, targetRegionId: string): string {
+    return `${sourceRegionId}:${targetRegionId}`;
+  }
+
+  private parseRegionPairId(regionPairId: string): { sourceRegionId: string; targetRegionId: string } | null {
+    const parts = regionPairId.split("->");
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+      return null;
+    }
+    return {
+      sourceRegionId: parts[0],
+      targetRegionId: parts[1],
+    };
+  }
+
   /**
    * Register an RPO/RTO target for a region pair
    */
@@ -112,7 +127,7 @@ export class RpoRtoTrackingService {
     targetRegionId: string,
     sequence: number,
   ): void {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     this.lastReplicationSequence.set(key, sequence);
   }
 
@@ -123,7 +138,7 @@ export class RpoRtoTrackingService {
     sourceRegionId: string,
     targetRegionId: string,
   ): number {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     return this.lastReplicationSequence.get(key) ?? 0;
   }
 
@@ -135,8 +150,8 @@ export class RpoRtoTrackingService {
     targetRegionId: string,
     lagMs: number,
   ): ReplicationLagEvent {
-    const key = `${sourceRegionId}:${targetRegionId}`;
-    const target = this.targets.get(key);
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
+    const target = this.targets.get(`${sourceRegionId}->${targetRegionId}`);
     const rpoMs = target?.rpoMs ?? 30000; // Default 30s RPO
 
     const event: ReplicationLagEvent = {
@@ -160,11 +175,13 @@ export class RpoRtoTrackingService {
     sourceRegionId: string,
     targetRegionId: string,
   ): void {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event = this.replicationLagEvents.get(key);
     if (event) {
       this.replicationLagEvents.set(key, {
         ...event,
+        lagMs: 0,
+        exceedsRpo: false,
         clearedAt: nowIso(),
       });
     }
@@ -177,8 +194,11 @@ export class RpoRtoTrackingService {
     sourceRegionId: string,
     targetRegionId: string,
   ): number {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event = this.replicationLagEvents.get(key);
+    if (event?.clearedAt != null) {
+      return 0;
+    }
     return event?.lagMs ?? 0;
   }
 
@@ -189,7 +209,7 @@ export class RpoRtoTrackingService {
     sourceRegionId: string,
     targetRegionId: string,
   ): FailoverEvent {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event: FailoverEvent = {
       eventId: newId("failover"),
       sourceRegionId,
@@ -213,7 +233,7 @@ export class RpoRtoTrackingService {
     success: boolean,
     failureReason: string | null = null,
   ): FailoverEvent {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event = this.failoverEvents.get(key);
 
     if (!event) {
@@ -285,25 +305,25 @@ export class RpoRtoTrackingService {
       return null;
     }
 
-    // Get current lag as RPO estimate
-    const [source, targetRegion] = regionPairId.split("->");
-    if (!source || !targetRegion) {
+    const pair = this.parseRegionPairId(regionPairId);
+    if (pair == null) {
       return null;
     }
 
-    const currentRpoMs = this.getCurrentReplicationLag(source, targetRegion);
+    const currentLagRpoMs = this.getCurrentReplicationLag(pair.sourceRegionId, pair.targetRegionId);
 
-    // Check if there's an active failover (RTO estimate)
-    const failover = this.failoverEvents.get(regionPairId);
-    let currentRtoMs = 0;
+    const failover = this.failoverEvents.get(this.toPairKey(pair.sourceRegionId, pair.targetRegionId));
+    let activeFailoverRtoMs = 0;
     if (failover && !failover.completedAt) {
-      currentRtoMs = Date.now() - new Date(failover.startedAt).getTime();
+      activeFailoverRtoMs = Date.now() - new Date(failover.startedAt).getTime();
     }
 
-    // Count consecutive breaches
     const recentMeasurements = this.measurements
       .filter((m) => m.regionPairId === regionPairId)
       .slice(-10);
+    const lastMeasurement = recentMeasurements[recentMeasurements.length - 1] ?? null;
+    const currentRpoMs = Math.max(currentLagRpoMs, lastMeasurement?.actualRpoMs ?? 0);
+    const currentRtoMs = Math.max(activeFailoverRtoMs, lastMeasurement?.actualRtoMs ?? 0);
     const consecutiveBreaches = recentMeasurements.filter((m) => !m.meetsTarget).length;
 
     return {
@@ -346,7 +366,7 @@ export class RpoRtoTrackingService {
     sourceRegionId: string,
     targetRegionId: string,
   ): readonly FailoverEvent[] {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event = this.failoverEvents.get(key);
     return event ? [event] : [];
   }
@@ -355,7 +375,7 @@ export class RpoRtoTrackingService {
    * Get average RTO from completed failovers
    */
   public getAverageRto(sourceRegionId: string, targetRegionId: string): number | null {
-    const key = `${sourceRegionId}:${targetRegionId}`;
+    const key = this.toPairKey(sourceRegionId, targetRegionId);
     const event = this.failoverEvents.get(key);
     if (!event?.completedAt || event.actualRtoMs === null) {
       return null;
