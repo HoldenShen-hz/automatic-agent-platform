@@ -561,6 +561,7 @@ export class EventRepository {
           i.previous_chain_hash AS previousChainHash,
           i.chain_hash AS chainHash,
           i.recorded_at AS recordedAt,
+          i.algorithm AS algorithm,
           e.event_type AS currentEventType,
           e.task_id AS taskId,
           e.session_id AS sessionId,
@@ -585,6 +586,7 @@ export class EventRepository {
             previousChainHash: row.previousChainHash,
             chainHash: row.chainHash,
             recordedAt: row.recordedAt,
+            algorithm: row.algorithm,
           },
           event:
             row.payloadJson == null || row.eventTier == null || row.createdAt == null || row.currentEventType == null
@@ -648,8 +650,8 @@ export class EventRepository {
     const insertIntegrityRecord = this.conn.prepare(
       `INSERT INTO event_integrity_records (
         event_id, chain_position, event_type, event_created_at,
-        event_checksum, previous_chain_hash, chain_hash, recorded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        event_checksum, previous_chain_hash, chain_hash, recorded_at, algorithm
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
 
     for (const event of pendingEvents) {
@@ -671,6 +673,7 @@ export class EventRepository {
         previousChainHash,
         chainHash,
         nowIso(),
+        "HMAC-SHA256",
       );
 
       previousChainHash = chainHash;

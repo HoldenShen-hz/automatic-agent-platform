@@ -42,6 +42,15 @@ test("classifyFailure returns correct context for L1 category", () => {
   assert.equal(result.requiresModelUpgrade, false);
   assert.equal(result.requiresHumanEscalation, false);
   assert.equal(result.repairBudgetUsed, 0);
+  assert.equal(result.isPlatformException, false); // unit_test_failure is coding-agent specific
+});
+
+test("classifyFailure returns correct context for schema_error as platform exception", () => {
+  const result = classifyFailure("schema_error", 0);
+
+  assert.equal(result.category, "schema_error");
+  assert.equal(result.level, "L1");
+  assert.equal(result.isPlatformException, true); // Schema validation is a platform capability
 });
 
 test("classifyFailure returns correct context for L2 category", () => {
@@ -75,6 +84,7 @@ test("shouldEscalate returns true for L3 failures", () => {
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     repairBudgetUsed: 0,
+    isPlatformException: false,
   };
 
   assert.equal(shouldEscalate(l3Failure, 3), true);
@@ -89,6 +99,7 @@ test("shouldEscalate returns true for L2 failures after one repair", () => {
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
     repairBudgetUsed: 1,
+    isPlatformException: false,
   };
 
   assert.equal(shouldEscalate(l2Failure, 3), true);
@@ -103,6 +114,7 @@ test("shouldEscalate returns false for L2 failures before repair", () => {
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
     repairBudgetUsed: 0,
+    isPlatformException: false,
   };
 
   assert.equal(shouldEscalate(l2Failure, 3), false);
@@ -117,6 +129,7 @@ test("shouldEscalate returns true when repair budget exhausted", () => {
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     repairBudgetUsed: 2,
+    isPlatformException: false,
   };
 
   assert.equal(shouldEscalate(l1Failure, 2), true);
@@ -131,6 +144,7 @@ test("shouldEscalate returns false when L1 has budget remaining", () => {
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     repairBudgetUsed: 1,
+    isPlatformException: false,
   };
 
   assert.equal(shouldEscalate(l1Failure, 3), false);
@@ -180,5 +194,41 @@ test("L3 categories require human escalation", () => {
     const classification = FAILURE_CLASSIFICATION[category];
     assert.equal(classification.level, "L3", `${category} should be L3`);
     assert.equal(classification.requiresHumanEscalation, true, `${category} should require human escalation`);
+  }
+});
+
+// R8-14: schema_error and type_error are platform exceptions, not coding-agent specific
+test("schema_error and type_error are platform exceptions per §9.6", () => {
+  assert.equal(FAILURE_CLASSIFICATION.schema_error.isPlatformException, true, "schema_error should be a platform exception");
+  assert.equal(FAILURE_CLASSIFICATION.type_error.isPlatformException, true, "type_error should be a platform exception");
+});
+
+test("lint_error and unit_test_failure are NOT platform exceptions (coding-agent specific)", () => {
+  assert.equal(FAILURE_CLASSIFICATION.lint_error.isPlatformException, false, "lint_error should NOT be a platform exception");
+  assert.equal(FAILURE_CLASSIFICATION.unit_test_failure.isPlatformException, false, "unit_test_failure should NOT be a platform exception");
+});
+
+test("all categories have isPlatformException defined", () => {
+  const categories: FailureCategory[] = [
+    "schema_error",
+    "type_error",
+    "unit_test_failure",
+    "lint_error",
+    "simple_logic_bug",
+    "complex_repair_failure",
+    "review_validate_conflict",
+    "planning_inconsistency",
+    "forbidden_path",
+    "secret_exposure",
+    "high_risk_operation",
+    "migration_failure",
+    "deployment_failure",
+    "security_policy_violation",
+  ];
+
+  for (const category of categories) {
+    const classification = FAILURE_CLASSIFICATION[category];
+    assert.ok("isPlatformException" in classification, `${category} should have isPlatformException defined`);
+    assert.equal(typeof classification.isPlatformException, "boolean", `${category}.isPlatformException should be a boolean`);
   }
 });

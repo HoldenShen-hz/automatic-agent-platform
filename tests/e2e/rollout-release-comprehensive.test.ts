@@ -49,32 +49,28 @@ test("E2E Rollout: full pipeline draft -> shadow -> canary -> stable", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({ status: "proposed" });
 
-  // Phase 1: Draft to Shadow
-  let record = machine.transition(candidate, "shadow", { approvedBy: "admin-1" });
-  assert.equal(record.status, "shadow", "Should reach shadow status");
-  assert.equal(record.level, "shadow", "Should have shadow level");
+  // Phase 1: Draft to Shadow (L1_evaluate)
+  let record = machine.transition(candidate, "L1_evaluate", { approvedBy: "admin-1" });
+  assert.equal(record.status, "evaluation_enabled", "Should reach evaluation_enabled status");
+  assert.equal(record.level, "L1_evaluate", "Should have L1_evaluate level");
   assert.equal(record.approvedBy, "admin-1", "Should record approver");
 
-  // Phase 2: Shadow to Canary 5%
-  record = machine.transition(candidate, "canary_5", { currentStatus: "shadow" });
+  // Phase 2: Shadow to Canary 5% (L2_canary)
+  record = machine.transition(candidate, "L2_canary", { currentStatus: "evaluation_enabled" });
   assert.equal(record.status, "canary_5", "Should reach canary_5 status");
 
-  // Phase 3: Canary 5% to Partial 25%
-  record = machine.transition(candidate, "partial_25", { currentStatus: "canary_5" });
+  // Phase 3: Canary 5% to Partial 25% (L3_partial)
+  record = machine.transition(candidate, "L3_partial", { currentStatus: "canary_5" });
   assert.equal(record.status, "partial_25", "Should reach partial_25 status");
 
-  // Phase 4: Partial 25% to Partial 50%
-  record = machine.transition(candidate, "partial_50", { currentStatus: "partial_25" });
-  assert.equal(record.status, "partial_50", "Should reach partial_50 status");
+  // Phase 4: Partial 25% to Stable 75% (L4_stable)
+  record = machine.transition(candidate, "L4_stable", { currentStatus: "partial_25" });
+  assert.equal(record.status, "stable_75", "Should reach stable_75 status");
 
-  // Phase 5: Partial 50% to Partial 75%
-  record = machine.transition(candidate, "partial_75", { currentStatus: "partial_50" });
-  assert.equal(record.status, "partial_75", "Should reach partial_75 status");
-
-  // Phase 6: Partial 75% to Stable
-  record = machine.transition(candidate, "stable", { currentStatus: "partial_75" });
-  assert.equal(record.status, "stable", "Should reach stable status");
-  assert.equal(record.level, "stable", "Should have stable level");
+  // Phase 5: Stable 75% to Full (L5_full)
+  record = machine.transition(candidate, "L5_full", { currentStatus: "stable_75" });
+  assert.equal(record.status, "stable_100", "Should reach stable_100 status");
+  assert.equal(record.level, "L5_full", "Should have L5_full level");
 });
 
 // ---------------------------------------------------------------------------
@@ -91,8 +87,7 @@ test("E2E Rollout: canary traffic router directs 5% to canary", () => {
   };
 
   // At 5% canary, approximately 5 requests should go to canary
-// @ts-ignore
-  const routing = router.computeCanaryAllocation("canary_5", metrics);
+  const routing = router.computeCanaryAllocation("canary_5");
 
   assert.equal(routing.targetLevel, "canary_5", "Should target canary_5");
   assert.equal(routing.canaryPercentage, 5, "Should be 5% canary");
@@ -112,8 +107,7 @@ test("E2E Rollout: canary traffic router directs 25% to canary", () => {
     baselineP99LatencyMs: 100,
   };
 
-// @ts-ignore
-  const routing = router.computeCanaryAllocation("partial_25", metrics);
+const routing = router.computeCanaryAllocation("partial_25");
 
   assert.equal(routing.targetLevel, "partial_25", "Should target partial_25");
   assert.equal(routing.canaryPercentage, 25, "Should be 25% canary");
@@ -135,7 +129,7 @@ test("E2E Rollout: guardrail evaluator passes for healthy canary", () => {
     observationWindowMs: 120000,
   };
 
-  const result = evaluator.evaluate("canary_5", metrics);
+  const result = evaluator.evaluate("L2_canary", metrics);
 
   assert.equal(result.passed, true, "Should pass guardrails");
   assert.equal(result.blockingIssues.length, 0, "Should have no blocking issues");
@@ -157,7 +151,7 @@ test("E2E Rollout: guardrail evaluator fails for degraded canary", () => {
     observationWindowMs: 120000,
   };
 
-  const result = evaluator.evaluate("canary_5", metrics);
+  const result = evaluator.evaluate("L2_canary", metrics);
 
   assert.equal(result.passed, false, "Should fail guardrails");
   assert.ok(result.blockingIssues.length > 0, "Should have blocking issues");
@@ -197,24 +191,24 @@ test("E2E Rollout: auto-rollback triggers when canary metrics degrade", () => {
 // Test: Rollback from canary_5 to shadow
 // ---------------------------------------------------------------------------
 
-test("E2E Rollout: rollback from canary_5 returns to shadow", () => {
+test("E2E Rollout: rollback from L2_canary returns to shadow", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({ status: "approved" });
 
-  // Get to canary_5
-  machine.transition(candidate, "shadow");
-  const canaryRecord = machine.transition(candidate, "canary_5", { currentStatus: "shadow" });
+  // Get to L2_canary
+  machine.transition(candidate, "L1_evaluate");
+  const canaryRecord = machine.transition(candidate, "L2_canary", { currentStatus: "evaluation_enabled" });
   assert.equal(canaryRecord.status, "canary_5", "Should be at canary_5");
 
-  // Rollback to shadow
-  const rollbackRecord = machine.transition(candidate, "shadow", {
+  // Rollback to L1_evaluate
+  const rollbackRecord = machine.transition(candidate, "L0_off", {
     currentStatus: "canary_5",
     targetStatus: "rolled_back",
     guardrailReasonCodes: ["rollout.failure_rate_exceeded"],
   });
 
   assert.equal(rollbackRecord.status, "rolled_back", "Should be marked as rolled_back");
-  assert.equal(rollbackRecord.level, "shadow", "Should rollback to shadow level");
+  assert.equal(rollbackRecord.level, "L0_off", "Should rollback to L0_off level");
   assert.ok(rollbackRecord.guardrailReasonCodes.includes("rollout.failure_rate_exceeded"));
 });
 
@@ -228,7 +222,7 @@ test("E2E Rollout: state machine rejects invalid transitions", () => {
 
   // rejected cannot transition to anything except rejected
   try {
-    machine.transition(candidate, "canary_5");
+    machine.transition(candidate, "L2_canary");
     assert.fail("Should have thrown for invalid transition");
   } catch (error) {
     assert.ok(error instanceof Error, "Should throw an Error");
@@ -241,23 +235,23 @@ test("E2E Rollout: state machine rejects invalid transitions", () => {
 // Test: Pause and resume from canary state
 // ---------------------------------------------------------------------------
 
-test("E2E Rollout: pause and resume from canary_5", () => {
+test("E2E Rollout: pause and resume from L2_canary", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({ status: "approved" });
 
-  // Get to canary_5
-  machine.transition(candidate, "shadow");
-  machine.transition(candidate, "canary_5", { currentStatus: "shadow" });
+  // Get to L2_canary
+  machine.transition(candidate, "L1_evaluate");
+  machine.transition(candidate, "L2_canary", { currentStatus: "evaluation_enabled" });
 
   // Pause the rollout
-  const pausedRecord = machine.transition(candidate, "canary_5", {
+  const pausedRecord = machine.transition(candidate, "L2_canary", {
     currentStatus: "canary_5",
     targetStatus: "paused",
   });
   assert.equal(pausedRecord.status, "paused", "Should be paused");
 
   // Resume from paused
-  const resumedRecord = machine.transition(candidate, "canary_5", { currentStatus: "paused" });
+  const resumedRecord = machine.transition(candidate, "L2_canary", { currentStatus: "paused" });
   assert.equal(resumedRecord.status, "canary_5", "Should resume to canary_5");
 });
 
@@ -265,13 +259,13 @@ test("E2E Rollout: pause and resume from canary_5", () => {
 // Test: Transition to shadow requires shadow_running status
 // ---------------------------------------------------------------------------
 
-test("E2E Rollout: transition to shadow requires shadow_running status", () => {
+test("E2E Rollout: transition to L1_evaluate requires approved status", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({ status: "approved" });
 
-  // approved should be able to transition to shadow
-  const record = machine.transition(candidate, "shadow");
-  assert.equal(record.status, "shadow", "Should transition to shadow from approved");
+  // approved should be able to transition to L1_evaluate
+  const record = machine.transition(candidate, "L1_evaluate");
+  assert.equal(record.status, "evaluation_enabled", "Should transition to evaluation_enabled from approved");
 });
 
 // ---------------------------------------------------------------------------
@@ -289,7 +283,7 @@ test("E2E Rollout: guardrail evaluator returns insufficient with low sample coun
     observationWindowMs: 10000, // Very short window
   };
 
-  const result = evaluator.evaluate("canary_5", metrics);
+  const result = evaluator.evaluate("L2_canary", metrics);
 
   assert.equal(result.passed, false, "Should fail due to insufficient data");
   assert.ok(result.blockingIssues.some(i => i.includes("insufficient")), "Should flag insufficient data");
@@ -334,10 +328,9 @@ test("E2E Rollout: stable stage routes 100% to stable", () => {
     baselineP99LatencyMs: 100,
   };
 
-// @ts-ignore
-  const routing = router.computeCanaryAllocation("stable", metrics);
+const routing = router.computeCanaryAllocation("stable_100");
 
-  assert.equal(routing.targetLevel, "stable", "Should target stable");
+  assert.equal(routing.targetLevel, "stable_100", "Should target stable_100");
   assert.equal(routing.canaryPercentage, 0, "Should be 0% canary");
   assert.equal(routing.stablePercentage, 100, "Should be 100% stable");
 });
@@ -355,27 +348,27 @@ test("E2E Rollout: policy rollout advances through stages with evidence", () => 
   });
 
   // Draft to Shadow with policy focus
-  let record = machine.transition(candidate, "shadow", {
+  let record = machine.transition(candidate, "L1_evaluate", {
     approvedBy: "compliance-team",
   });
-  assert.equal(record.status, "shadow");
+  assert.equal(record.status, "evaluation_enabled");
 
   // Shadow to Canary with evidence
-  record = machine.transition(candidate, "canary_5", {
-    currentStatus: "shadow",
+  record = machine.transition(candidate, "L2_canary", {
+    currentStatus: "evaluation_enabled",
     strategyVersionId: "policy-v2",
   });
   assert.equal(record.status, "canary_5");
   assert.equal(record.strategyVersionId, "policy-v2");
 
   // Canary advances but guardrails fail - rollback
-  record = machine.transition(candidate, "shadow", {
+  record = machine.transition(candidate, "L0_off", {
     currentStatus: "canary_5",
     targetStatus: "rolled_back",
     guardrailReasonCodes: ["rollout.failure_rate_exceeded"],
   });
   assert.equal(record.status, "rolled_back");
-  assert.equal(record.level, "shadow");
+  assert.equal(record.level, "L0_off");
 });
 
 // ---------------------------------------------------------------------------
@@ -389,9 +382,9 @@ test("E2E Rollout: rollback preserves evidence for retry", () => {
     sourceSignalRefs: ["signal:perf-issue", "signal:error-spike"],
   });
 
-  const record = machine.transition(candidate, "canary_5", { currentStatus: "shadow" });
+  const record = machine.transition(candidate, "L2_canary", { currentStatus: "evaluation_enabled" });
 
-  const rollbackRecord = machine.transition(candidate, "shadow", {
+  const rollbackRecord = machine.transition(candidate, "L0_off", {
     currentStatus: "canary_5",
     targetStatus: "rolled_back",
     guardrailReasonCodes: ["rollout.latency_multiplier_exceeded"],

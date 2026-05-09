@@ -120,6 +120,7 @@ class AuditIntegrityRepositoryImpl implements AuditIntegrityRepository {
       previousChainHash: row.previous_chain_hash != null ? String(row.previous_chain_hash) : null,
       chainHash: String(row.chain_hash),
       recordedAt: String(row.recorded_at),
+      algorithm: "SHA-256" as const,
     };
   }
 }

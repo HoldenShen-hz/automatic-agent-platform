@@ -61,6 +61,8 @@
 - shared queue 可以共享，但队列消息必须显式携带 tenant / workspace 归属。
 - shared cache 命中不得跨 tenant 复用，即使 payload 看起来相同。
 - shared worker 回收或切换 tenant 前，必须完成上下文擦除与 secret 回收。
+- `dedicated_pool` 租户必须实际落到 tenant-scoped worker pool / resource pool，而不只是把 `isolationMode` 记录在 metadata 里。
+- `dedicated_pool` 的调度策略必须是 `dedicated_pool_only`；shared queue 可以接单，但最终执行不得回落到共享 worker 池。
 
 ## 5A. 自动隔离触发器
 

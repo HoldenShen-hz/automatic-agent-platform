@@ -181,7 +181,7 @@ export class ExecutionOutcomeEvaluator {
     actualCost?: number,
     baselineQualityScore?: number | null,
   ): EvaluationOutcome {
-    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback, baselineQualityScore);
+    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback);
 
     // R11-03: Evaluate constraint compliance dimension
     const constraintCompliance = this.evaluateConstraintCompliance(planGraphBundle, feedback);

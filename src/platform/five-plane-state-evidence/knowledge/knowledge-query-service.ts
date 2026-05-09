@@ -174,6 +174,30 @@ export class KnowledgeQueryService {
     return this.queryWithLevel(keyword, options, level);
   }
 
+  public queryFederated(
+    keyword: string,
+    namespaces: readonly string[],
+    options: KnowledgeQueryOptions = {},
+    level: QueryLevel = QueryLevel.Standard,
+  ): RetrievalHit[] {
+    return this.mergeFederatedHits(
+      namespaces.map((namespace) => this.queryWithLevel(keyword, { ...options, namespace }, level)),
+      options.limit,
+    );
+  }
+
+  public async queryFederatedAsync(
+    keyword: string,
+    namespaces: readonly string[],
+    options: KnowledgeQueryOptions = {},
+    level: QueryLevel = QueryLevel.Standard,
+  ): Promise<RetrievalHit[]> {
+    const hitGroups = await Promise.all(
+      namespaces.map((namespace) => this.queryWithLevelAsync(keyword, { ...options, namespace }, level)),
+    );
+    return this.mergeFederatedHits(hitGroups, options.limit);
+  }
+
   /**
    * Synchronous query with explicit level.
    */
@@ -240,6 +264,26 @@ export class KnowledgeQueryService {
         );
       }
     }
+  }
+
+  private mergeFederatedHits(hitGroups: readonly RetrievalHit[][], limit?: number): RetrievalHit[] {
+    const deduped = new Map<string, RetrievalHit>();
+    for (const hits of hitGroups) {
+      for (const hit of hits) {
+        const existing = deduped.get(hit.knowledgeRef);
+        if (existing == null || hit.score > existing.score) {
+          deduped.set(hit.knowledgeRef, hit);
+        }
+      }
+    }
+    return [...deduped.values()]
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        return left.knowledgeRef.localeCompare(right.knowledgeRef);
+      })
+      .slice(0, limit ?? 10);
   }
 
   /**

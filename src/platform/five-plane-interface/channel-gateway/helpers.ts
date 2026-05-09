@@ -34,6 +34,9 @@ export function readTrackedDeliveryPayload(payload: Record<string, unknown>): Tr
   if (typeof payload.text !== "string" || payload.text.trim().length === 0) {
     return null;
   }
+  if (payload.tenantId != null && typeof payload.tenantId !== "string") {
+    return null;
+  }
   const metadata = payload.metadata;
   if (metadata != null && (typeof metadata !== "object" || Array.isArray(metadata))) {
     return null;
@@ -45,6 +48,7 @@ export function readTrackedDeliveryPayload(payload: Record<string, unknown>): Tr
   return {
     targetId: payload.targetId,
     text: payload.text,
+    ...(typeof payload.tenantId === "string" ? { tenantId: payload.tenantId } : {}),
     ...(metadata != null ? { metadata: metadata as Record<string, unknown> } : {}),
     ...(requestEnvelope != null ? { requestEnvelope: requestEnvelope as Record<string, unknown> } : {}),
   };

@@ -280,6 +280,7 @@ export class ChannelGatewayService {
    */
   public async sendMessage(input: SendGatewayMessageInput): Promise<GatewayDeliveryReceipt> {
     const text = requireNonEmpty(input.text, "gateway.invalid_text");
+    const tenantId = input.tenantId ?? null;
 
     // Resolve target: direct by ID or via directory query
     const resolution = input.targetId != null
@@ -319,7 +320,7 @@ export class ChannelGatewayService {
       : undefined;
 
     // Check rate limits before attempting delivery
-    this.enforceRateLimit(channel, deliveryService);
+    this.enforceRateLimit(channel, deliveryService, tenantId);
 
     // Create delivery tracking record if delivery service is configured
     const trackedMessageId = deliveryService != null
@@ -329,6 +330,7 @@ export class ChannelGatewayService {
         {
           targetId: resolution.entry.targetId,
           text,
+          ...(tenantId != null ? { tenantId } : {}),
           ...(metadata != null && Object.keys(metadata).length > 0 ? { metadata } : {}),
           ...(requestEnvelope != null ? { requestEnvelope } : {}),
         },
@@ -357,7 +359,7 @@ export class ChannelGatewayService {
 
       // Record success in delivery tracking
       if (deliveryService != null) {
-        this.recordSuccessfulDelivery(channel, trackedMessageId, deliveryReceipt, deliveryService);
+        this.recordSuccessfulDelivery(channel, trackedMessageId, deliveryReceipt, deliveryService, tenantId);
       }
       return deliveryReceipt;
     } catch (error) {
@@ -401,13 +403,6 @@ export class ChannelGatewayService {
     };
 
     for (const queuedMessage of queuedMessages) {
-      // Check rate limit before retrying
-      const rateLimit = deliveryService.checkRateLimit(queuedMessage.channel);
-      if (!rateLimit.allowed) {
-        summary.skippedRateLimited += 1;
-        continue;
-      }
-
       // Validate payload can be reconstructed
       const trackedPayload = readTrackedDeliveryPayload(queuedMessage.payload);
       if (trackedPayload == null) {
@@ -418,6 +413,13 @@ export class ChannelGatewayService {
         if (resolution?.outcome === "dead_lettered") {
           summary.deadLettered += 1;
         }
+        continue;
+      }
+
+      // Check rate limit before retrying using the original tenant scope.
+      const rateLimit = deliveryService.checkRateLimit(queuedMessage.channel, trackedPayload.tenantId ?? null);
+      if (!rateLimit.allowed) {
+        summary.skippedRateLimited += 1;
         continue;
       }
 
@@ -443,7 +445,13 @@ export class ChannelGatewayService {
           }
         }
         const receipt = await this.deliverResolvedTarget(deliveryInput);
-        this.recordSuccessfulDelivery(queuedMessage.channel, queuedMessage.messageId, receipt, deliveryService);
+        this.recordSuccessfulDelivery(
+          queuedMessage.channel,
+          queuedMessage.messageId,
+          receipt,
+          deliveryService,
+          trackedPayload.tenantId ?? null,
+        );
         summary.delivered += 1;
       } catch (error) {
         const outcome = this.recordFailedDelivery(
@@ -474,11 +482,12 @@ export class ChannelGatewayService {
   private enforceRateLimit(
     channel: string,
     deliveryService: ChannelGatewayDeliveryService | undefined,
+    tenantId: string | null = null,
   ): void {
     if (deliveryService == null) {
       return;
     }
-    const result = deliveryService.checkRateLimit(channel);
+    const result = deliveryService.checkRateLimit(channel, tenantId);
     if (!result.allowed) {
       throw new GatewayRateLimitError(
         channel,
@@ -503,10 +512,11 @@ export class ChannelGatewayService {
     messageId: string | null,
     receipt: GatewayDeliveryReceipt,
     deliveryService: ChannelGatewayDeliveryService,
+    tenantId: string | null = null,
   ): void {
     // Record rate limit hit to maintain accurate counters
     try {
-      deliveryService.recordRateLimitHit(channel);
+      deliveryService.recordRateLimitHit(channel, tenantId);
     } catch (error) {
       this.logger.log({
         level: "warn",

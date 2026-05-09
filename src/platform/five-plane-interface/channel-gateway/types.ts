@@ -68,6 +68,8 @@ export interface SendGatewayMessageInput {
   targetId?: string;
   /** Message text to send */
   text: string;
+  /** Optional tenant scope for gateway rate limiting and retry isolation. */
+  tenantId?: string | null;
   /** Optional metadata passed to webhook payloads */
   metadata?: Record<string, unknown> | null;
 }
@@ -116,6 +118,7 @@ export interface GatewayRetryQueueSummary {
 export interface TrackedGatewayDeliveryPayload {
   targetId: string;
   text: string;
+  tenantId?: string | null;
   metadata?: Record<string, unknown>;
   requestEnvelope?: Record<string, unknown>;
 }

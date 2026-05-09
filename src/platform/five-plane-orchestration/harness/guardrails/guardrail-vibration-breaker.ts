@@ -8,6 +8,7 @@ export interface GuardrailVibrationState {
   readonly guardrailActionCount: number;
   readonly lastGuardrailSignature: string | null;
   readonly guardrailCooldownUntilMs: number | null;
+  readonly recentSignals?: readonly Pick<GuardrailActionSignal, "signature" | "observedAtMs">[];
 }
 
 export interface GuardrailVibrationDecision {
@@ -18,23 +19,27 @@ export interface GuardrailVibrationDecision {
 
 export class GuardrailVibrationBreaker {
   public constructor(
-    private readonly maxRepeatedActions: number,
-    private readonly cooldownMs: number,
+    private readonly maxRepeatedActions = 3,
+    private readonly cooldownMs = 30_000,
+    private readonly observationWindowMs = 30_000,
   ) {}
 
   public evaluate(signal: GuardrailActionSignal, state: GuardrailVibrationState): GuardrailVibrationDecision {
-    // R23-40 fix: Track all repeated signals (not just consecutive) to detect vibration patterns.
-    // The original bug: only consecutive same signatures were counted, so alternating A,B,A,B never tripped.
-    // With cooldown, we now reject signals within the cooldown window, but after cooldown expires,
-    // we need to reset appropriately to prevent immediate re-trip.
-    //
-    // CooldownExpiry semantics:
-    // - null: not in cooldown
-    // - > now: in cooldown, reject all signals
-    // - <= now: cooldown just expired, reset based on signature
+    if (signal.signature === "proceed") {
+      return {
+        allowed: true,
+        state: {
+          guardrailActionCount: 0,
+          lastGuardrailSignature: null,
+          guardrailCooldownUntilMs: null,
+          recentSignals: [],
+        },
+        reasonCode: "guardrail.allowed",
+      };
+    }
+
     const cooldownExpiry = state.guardrailCooldownUntilMs;
 
-    // If in cooldown period (cooldownExpiry > now), reject regardless of signature
     if (cooldownExpiry != null && signal.observedAtMs < cooldownExpiry) {
       return {
         allowed: false,
@@ -43,34 +48,20 @@ export class GuardrailVibrationBreaker {
       };
     }
 
-    // Cooldown just expired (cooldownExpiry <= now) - first signal after cooldown
-    if (cooldownExpiry != null && signal.observedAtMs >= cooldownExpiry) {
-      const repeated = state.lastGuardrailSignature === signal.signature;
-      // R23-40 fix: After cooldown expires, if same signature appears again, start fresh at count=1.
-      // This prevents the same signal from immediately re-tripping the breaker.
-      // If a different signature appears, also start fresh since it's a new observation window.
-      const nextState: GuardrailVibrationState = {
-        guardrailActionCount: 1,
-        lastGuardrailSignature: signal.signature,
-        guardrailCooldownUntilMs: null,
-      };
-      return {
-        allowed: true,
-        state: nextState,
-        reasonCode: "guardrail.allowed",
-      };
-    }
-
-    // Normal case: not in cooldown, track repeated signals
-    const repeated = state.lastGuardrailSignature === signal.signature;
-    const nextCount = state.guardrailActionCount + 1;
-
+    const activeSignals = (
+      cooldownExpiry != null && signal.observedAtMs >= cooldownExpiry
+        ? []
+        : [...(state.recentSignals ?? [])]
+    ).filter((entry) => entry.observedAtMs >= signal.observedAtMs - this.observationWindowMs);
+    const nextSignals = [...activeSignals, { signature: signal.signature, observedAtMs: signal.observedAtMs }];
+    const nextCount = nextSignals.length;
     const cooldown = nextCount > this.maxRepeatedActions;
 
     const nextState: GuardrailVibrationState = {
       guardrailActionCount: cooldown ? 0 : nextCount,
       lastGuardrailSignature: signal.signature,
       guardrailCooldownUntilMs: cooldown ? signal.observedAtMs + this.cooldownMs : null,
+      recentSignals: cooldown ? [] : nextSignals,
     };
 
     return {

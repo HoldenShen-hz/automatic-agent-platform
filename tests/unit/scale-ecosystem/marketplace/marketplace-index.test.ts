@@ -19,6 +19,10 @@ test("Marketplace index exports PackSecurityService", () => {
   assert.ok(Marketplace.PackSecurityService !== undefined);
 });
 
+test("Marketplace index exports PluginTrustStore", () => {
+  assert.ok(Marketplace.PluginTrustStore !== undefined);
+});
+
 test("Marketplace index exports sortMarketplaceCatalog function", () => {
   assert.ok(typeof Marketplace.sortMarketplaceCatalog === "function");
 });

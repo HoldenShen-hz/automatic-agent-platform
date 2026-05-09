@@ -47,10 +47,19 @@ export interface FailureContext {
 
   /** Repair budget consumed */
   repairBudgetUsed: number;
+
+  /**
+   * Whether this is a platform-level exception (vs coding-agent specific).
+   * Platform exceptions indicate failures in platform capabilities like
+   * schema validation, type checking, or other infrastructure services.
+   * Coding-agent specific errors (lint_error, test_failure) should be false.
+   */
+  isPlatformException: boolean;
 }
 
 export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext, 'repairBudgetUsed'>> = {
   // L1: Auto-repairable failures
+  // Platform-level exceptions (schema_error, type_error) vs coding-agent specific (lint_error, unit_test_failure)
   schema_error: {
     category: 'schema_error',
     level: 'L1',
@@ -58,6 +67,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: true, // Schema validation is a platform capability
   },
   type_error: {
     category: 'type_error',
@@ -66,6 +76,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: true, // Type checking is a platform capability
   },
   unit_test_failure: {
     category: 'unit_test_failure',
@@ -74,6 +85,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false, // Coding-agent specific
   },
   lint_error: {
     category: 'lint_error',
@@ -82,6 +94,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false, // Coding-agent specific
   },
   simple_logic_bug: {
     category: 'simple_logic_bug',
@@ -90,6 +103,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false, // Coding-agent specific
   },
 
   // L2: Model upgrade required
@@ -100,6 +114,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   review_validate_conflict: {
     category: 'review_validate_conflict',
@@ -108,6 +123,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   planning_inconsistency: {
     category: 'planning_inconsistency',
@@ -116,6 +132,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
 
   // L3: Human escalation required
@@ -126,6 +143,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   secret_exposure: {
     category: 'secret_exposure',
@@ -134,6 +152,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   high_risk_operation: {
     category: 'high_risk_operation',
@@ -142,6 +161,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   migration_failure: {
     category: 'migration_failure',
@@ -150,6 +170,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   deployment_failure: {
     category: 'deployment_failure',
@@ -158,6 +179,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   security_policy_violation: {
     category: 'security_policy_violation',
@@ -166,6 +188,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
 };
 

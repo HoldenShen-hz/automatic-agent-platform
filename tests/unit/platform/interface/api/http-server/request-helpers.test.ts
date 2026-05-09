@@ -41,8 +41,8 @@ test("matchRoute parses GET request", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks/123");
-  assert.deepEqual(match.segments, ["api", "tasks", "123"]);
+  assert.equal(match.pathname, "/tasks/123");
+  assert.deepEqual(match.segments, ["tasks", "123"]);
 });
 
 test("matchRoute parses POST request", () => {
@@ -54,11 +54,11 @@ test("matchRoute parses POST request", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks");
-  assert.deepEqual(match.segments, ["api", "tasks"]);
+  assert.equal(match.pathname, "/tasks");
+  assert.deepEqual(match.segments, ["tasks"]);
 });
 
-test("matchRoute returns null for non-GET/POST methods", () => {
+test("matchRoute accepts PUT requests", () => {
   const request: ApiRequestLike = {
     method: "PUT",
     url: "/api/tasks/123",
@@ -66,10 +66,11 @@ test("matchRoute returns null for non-GET/POST methods", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.equal(match, null);
+  assert.ok(match !== null);
+  assert.equal(match.pathname, "/tasks/123");
 });
 
-test("matchRoute returns null for DELETE method", () => {
+test("matchRoute accepts DELETE method", () => {
   const request: ApiRequestLike = {
     method: "DELETE",
     url: "/api/tasks/123",
@@ -77,7 +78,20 @@ test("matchRoute returns null for DELETE method", () => {
     body: null,
   };
   const match = matchRoute(request);
-  assert.equal(match, null);
+  assert.ok(match !== null);
+  assert.equal(match.pathname, "/tasks/123");
+});
+
+test("matchRoute accepts PATCH method", () => {
+  const request: ApiRequestLike = {
+    method: "PATCH",
+    url: "/api/tasks/123",
+    headers: {},
+    body: null,
+  };
+  const match = matchRoute(request);
+  assert.ok(match !== null);
+  assert.equal(match.pathname, "/tasks/123");
 });
 
 test("matchRoute defaults to GET when method is undefined", () => {
@@ -89,7 +103,7 @@ test("matchRoute defaults to GET when method is undefined", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/health");
+  assert.equal(match.pathname, "/health");
 });
 
 test("matchRoute handles root path", () => {
@@ -114,8 +128,8 @@ test("matchRoute handles path with query string", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.equal(match.pathname, "/api/tasks");
-  assert.deepEqual(match.segments, ["api", "tasks"]);
+  assert.equal(match.pathname, "/tasks");
+  assert.deepEqual(match.segments, ["tasks"]);
 });
 
 test("matchRoute handles empty segments", () => {
@@ -127,7 +141,7 @@ test("matchRoute handles empty segments", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.deepEqual(match.segments, ["api", "tasks"]);
+  assert.deepEqual(match.segments, ["tasks"]);
 });
 
 test("normalizeHeaders converts header keys to lowercase", () => {

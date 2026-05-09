@@ -9,6 +9,7 @@
 export * from "./certification/index.js";
 export * from "./marketplace-governance-service.js";
 export * from "./pack-security-service.js";
+export * from "./plugin-trust-store.js";
 export * from "./publisher/index.js";
 export {
   MarketplaceCatalogEntrySchema,

@@ -116,7 +116,8 @@ export function validatePanicDirective(directive: PlatformPanicDirective): reado
   if ((directive.requiredApprovers as unknown as string[]).length < 2) {
     findings.push("panic.two_approvers_required");
   }
-  if (!["global", "tenant", "domain", "run", "node", "region", "platform"].includes(directive.scopeLevel)) {
+  const effectiveScope = directive.scopeLevel ?? directive.scope;
+  if (!["global", "tenant", "domain", "run", "node", "region", "platform"].includes(effectiveScope)) {
     findings.push("panic.invalid_scope");
   }
   return findings;
@@ -130,14 +131,14 @@ export function validateResumePlan(plan: ResumePlan): readonly string[] {
 
 export function transitionAgentLifecycle(from: AgentLifecycleState, to: AgentLifecycleState): boolean {
   const allowed: Record<AgentLifecycleState, readonly AgentLifecycleState[]> = {
-    draft: ["testing"],
+    draft: ["testing", "canary", "archived"],
     testing: ["staging", "draft"],
     staging: ["canary", "testing"],
-    canary: ["active", "staging", "paused"],
+    canary: ["active", "staging", "paused", "deprecated"],
     active: ["paused", "deprecated"],
-    paused: ["active", "deprecated", "canary"],
-    deprecated: ["archived", "active"],
-    archived: ["removed", "paused"],
+    paused: ["active", "deprecated"],
+    deprecated: ["archived"],
+    archived: [],
     removed: [],
   };
   return allowed[from]?.includes(to) ?? false;

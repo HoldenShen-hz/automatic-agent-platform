@@ -34,6 +34,7 @@ import { ProviderError, ValidationError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const gcpLogger = new StructuredLogger({ retentionLimit: 50 });
+const GCP_SAFE_RESOURCE_SEGMENT = /^[A-Za-z0-9_-]+$/;
 
 /**
  * Configuration options for GCP Secret Manager provider.
@@ -180,13 +181,28 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
    * @returns Object with project, secret, and version
    */
   private extractSecretName(secretRef: string): { project: string; secret: string; version: string } {
-    const parts = secretRef.replace(/^secret:\/\//, "").split("/");
-    const secret = parts[parts.length - 1] ?? "";
-    const project = this.projectId ?? "";
-    const version = parts.length > 1 && parts[parts.length - 2] === "versions"
-      ? (parts[parts.length - 1] ?? "latest")
-      : "latest";
+    const normalized = secretRef.replace(/^secret:\/\//, "").replace(/^\/+/, "");
+    const parts = normalized.split("/").filter((part) => part.length > 0);
+    if (parts.length !== 1 && !(parts.length === 3 && parts[1] === "versions")) {
+      throw new ValidationError(`gcp.invalid_secret_ref:${secretRef}`, `gcp.invalid_secret_ref:${secretRef}`, {
+        source: "provider",
+        details: { secretRef },
+      });
+    }
+    const project = this.requireSafeSegment(this.projectId ?? "", "project", secretRef);
+    const secret = this.requireSafeSegment(parts[0] ?? "", "secret", secretRef);
+    const version = this.requireSafeSegment(parts[2] ?? "latest", "version", secretRef);
     return { project, secret, version };
+  }
+
+  private requireSafeSegment(value: string, field: "project" | "secret" | "version", secretRef: string): string {
+    if (!GCP_SAFE_RESOURCE_SEGMENT.test(value)) {
+      throw new ValidationError(`gcp.invalid_${field}:${secretRef}`, `gcp.invalid_${field}:${secretRef}`, {
+        source: "provider",
+        details: { secretRef, field },
+      });
+    }
+    return value;
   }
 
   /**

@@ -2,6 +2,7 @@ export interface PreemptionCandidate {
   readonly executionId: string;
   readonly priority: number;
   readonly progressPercent: number;
+  readonly protectedFromPreemption?: boolean;
   /** Unix timestamp (ms) when the last checkpoint was successfully saved, or 0 if no checkpoint exists */
   readonly lastCheckpointTimestampMs?: number;
   readonly checkpointLatencyMs?: number;
@@ -31,6 +32,9 @@ export function choosePreemptionVictim(
   const now = Date.now();
   return [...candidates]
     .filter((candidate) => {
+      if (candidate.protectedFromPreemption === true) {
+        return false;
+      }
       // R15-59: Require valid checkpoint before preemption
       const checkpointAge = now - (candidate.lastCheckpointTimestampMs ?? 0);
       const hasValidCheckpoint = candidate.lastCheckpointTimestampMs != null

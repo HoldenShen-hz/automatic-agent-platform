@@ -1,5 +1,24 @@
 import { z } from "zod";
 
+export const LearningObjectPromotionStatusSchema = z.enum([
+  "draft",
+  "untrusted",
+  "validating",
+  "quarantine",
+  "quarantined",
+  "validated",
+  "promoted",
+  "retired",
+]);
+
+export type LearningObjectPromotionStatus = z.infer<typeof LearningObjectPromotionStatusSchema>;
+
+export function normalizeLearningObjectPromotionStatus(
+  promotionStatus: LearningObjectPromotionStatus,
+): Exclude<LearningObjectPromotionStatus, "quarantine"> {
+  return promotionStatus === "quarantine" ? "quarantined" : promotionStatus;
+}
+
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1),
   learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook"]),
@@ -10,7 +29,7 @@ export const LearningObjectSchema = z.object({
   sourceSignalIds: z.array(z.string()).default([]),
   recommendation: z.string().min(1),
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
-  promotionStatus: z.enum(["draft", "quarantine", "validated", "promoted", "retired"]).default("quarantine"),
+  promotionStatus: LearningObjectPromotionStatusSchema.default("untrusted"),
   createdAt: z.string(),
 });
 

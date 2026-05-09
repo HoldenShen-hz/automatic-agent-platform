@@ -103,7 +103,7 @@ test("E2E: CrossRegionRoutingService routes to preferred region when allowed", (
   const policy: ResidencyPolicy = {
     policyId: "policy-001",
     allowedJurisdictions: ["US", "EU"],
-    allowCrossBorder: true,
+    crossBorderTransferClass: "free_transfer",
   };
 
   const request: CrossRegionRouteRequest = {
@@ -133,7 +133,7 @@ test("E2E: CrossRegionRoutingService blocks region when jurisdiction not allowed
   const policy: ResidencyPolicy = {
     policyId: "policy-002",
     allowedJurisdictions: ["US", "EU"],
-    allowCrossBorder: false,
+    crossBorderTransferClass: "local_only",
   };
 
   const request: CrossRegionRouteRequest = {
@@ -166,7 +166,7 @@ test("E2E: CrossRegionRoutingService respects blocked regions", (t) => {
     policyId: "policy-003",
     allowedJurisdictions: ["US", "EU"],
     blockedRegionIds: ["us-east-1"],
-    allowCrossBorder: true,
+    crossBorderTransferClass: "free_transfer",
   };
 
   const request: CrossRegionRouteRequest = {
@@ -195,7 +195,7 @@ test("E2E: CrossRegionRoutingService selects lowest latency when no preference",
   const policy: ResidencyPolicy = {
     policyId: "policy-004",
     allowedJurisdictions: ["US", "EU"],
-    allowCrossBorder: true,
+    crossBorderTransferClass: "free_transfer",
   };
 
   const request: CrossRegionRouteRequest = {
@@ -225,7 +225,7 @@ test("E2E: CrossRegionRoutingService handles region with required capabilities",
     policyId: "policy-005",
     allowedJurisdictions: ["US", "EU"],
     requiredCapabilities: ["ai-inference"],
-    allowCrossBorder: true,
+    crossBorderTransferClass: "free_transfer",
   };
 
   const request: CrossRegionRouteRequest = {
@@ -256,7 +256,7 @@ test("E2E: CrossRegionRoutingService sets recovery topology on failover", (t) =>
   const policy: ResidencyPolicy = {
     policyId: "policy-006",
     allowedJurisdictions: ["US", "EU"],
-    allowCrossBorder: true,
+    crossBorderTransferClass: "free_transfer",
   };
 
   const replicationPolicy: ReplicationPolicy = {

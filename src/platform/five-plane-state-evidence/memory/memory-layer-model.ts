@@ -44,12 +44,11 @@ export interface MemoryPromotionCandidate {
 }
 
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
-  // R16-38 fix: Added runtime→session promotion rule for working memory
-  { from: "runtime", to: "session", minHitCount: 2, minQualityScore: 0.5, minImportanceScore: 0.4 },
-  { from: "session", to: "agent", minHitCount: 3, minQualityScore: 0.6, minImportanceScore: 0.5 },
-  { from: "agent", to: "project", minHitCount: 8, minQualityScore: 0.75, minImportanceScore: 0.65 },
-  { from: "project", to: "user", minHitCount: 12, minQualityScore: 0.8, minImportanceScore: 0.75 },
-  { from: "user", to: "evolution", minHitCount: 20, minQualityScore: 0.9, minImportanceScore: 0.85 },
+  { from: "runtime", to: "session", minHitCount: 3, minQualityScore: 0.4, minImportanceScore: 0.3 },
+  { from: "session", to: "agent", minHitCount: 8, minQualityScore: 0.55, minImportanceScore: 0.5 },
+  { from: "agent", to: "project", minHitCount: 15, minQualityScore: 0.7, minImportanceScore: 0.65 },
+  { from: "project", to: "user", minHitCount: 25, minQualityScore: 0.8, minImportanceScore: 0.75 },
+  { from: "user", to: "evolution", minHitCount: 40, minQualityScore: 0.9, minImportanceScore: 0.85 },
 ];
 
 /**
@@ -156,7 +155,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
     maxTtlMs: 365 * 24 * 3_600_000,   // 365 days
     minTtlMs: 30 * 24 * 3_600_000,    // 30 days
     evictionStrategy: "usage",
-    supportsPromotion: false,
+    supportsPromotion: true,
     supportsDemotion: true,
     description: "Skills, procedures, and learned behaviors. Longest retention, usage-based eviction.",
   },
@@ -397,8 +396,20 @@ export function shouldEvict(
   if (candidateCount <= maxLayerSize) {
     return false;
   }
+  const config = getLayerTtlConfig(memory.scope as HierarchicalMemoryLayer);
+  const strategy = config?.evictionStrategy ?? "lru";
   const priority = getEvictionPriority(memory);
-  const shouldEvictResult = candidateCount > maxLayerSize && priority < 0.5;
+  const normalizedPriority = strategy === "lru" || strategy === "fifo"
+    ? (() => {
+        const referenceMs = strategy === "lru"
+          ? (memory.lastAccessedAt ? new Date(memory.lastAccessedAt).getTime() : new Date(memory.createdAt).getTime())
+          : new Date(memory.createdAt).getTime();
+        const retentionMs = Math.max(1, config?.defaultTtlMs ?? 7 * 24 * 3_600_000);
+        const ageRatio = Math.max(0, Math.min(1, (Date.now() - referenceMs) / retentionMs));
+        return 1 - ageRatio;
+      })()
+    : priority;
+  const shouldEvictResult = candidateCount > maxLayerSize && normalizedPriority < 0.5;
   if (shouldEvictResult) {
     // R16-39 fix: Report priority-based eviction to prevent silent loss
     onEvict?.(memory, "capacity_pressure");

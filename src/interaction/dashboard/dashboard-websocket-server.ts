@@ -8,7 +8,7 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { DashboardDelta } from "./dashboard-projection-service.js";
+import type { DashboardDelta, DashboardChange } from "./dashboard-projection-service.js";
 
 export interface DashboardChannelSubscription {
   readonly channel: string;
@@ -100,6 +100,7 @@ export class DashboardWebSocketServer {
   private readonly replayBuffer: DashboardDelta[] = [];
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deltaHandler: ((delta: DashboardDelta, clientIds: readonly string[]) => void) | null = null;
+  private projectionPollingTimer: ReturnType<typeof setInterval> | null = null;
 
   public constructor(config?: Partial<WebSocketServerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -313,6 +314,41 @@ export class DashboardWebSocketServer {
     return clientIds.length;
   }
 
+  /**
+   * Integrates this WebSocket server with a DashboardProjectionService.
+   * Automatically polls the projection service every 100ms for new deltas
+   * and pushes them to subscribed clients via handleProjectionDelta.
+   *
+   * This enables real-time dashboard updates by bridging the projection
+   * service's delta generation with the WebSocket server's push mechanism.
+   */
+  public integrateWithProjectionService(
+    projectionService: { consumePendingDeltas(): readonly DashboardDelta[] },
+    pollingIntervalMs: number = 100,
+  ): void {
+    // Stop any existing polling timer
+    if (this.projectionPollingTimer !== null) {
+      clearInterval(this.projectionPollingTimer);
+    }
+
+    this.projectionPollingTimer = setInterval(() => {
+      const deltas = projectionService.consumePendingDeltas();
+      for (const delta of deltas) {
+        this.handleProjectionDelta(delta);
+      }
+    }, pollingIntervalMs);
+  }
+
+  /**
+   * Stops the projection service integration polling.
+   */
+  public stopProjectionIntegration(): void {
+    if (this.projectionPollingTimer !== null) {
+      clearInterval(this.projectionPollingTimer);
+      this.projectionPollingTimer = null;
+    }
+  }
+
   private assertRequiredIdentity(principal?: string, tenantId?: string): void {
     if (principal !== undefined && principal.trim().length === 0) {
       throw new Error("Principal is required");
@@ -490,4 +526,64 @@ export function createDashboardWebSocketServer(
   config?: Partial<WebSocketServerConfig>,
 ): DashboardWebSocketServer {
   return new DashboardWebSocketServer(config);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domain Event Mapping (R7-16)
+// Maps internal DashboardChange types to UI spec domain event types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DomainEventType =
+  | "task.status_changed"
+  | "task.created"
+  | "task.completed"
+  | "task.failed"
+  | "approval.requested"
+  | "approval.resolved"
+  | "incident.opened"
+  | "incident.resolved"
+  | "system.health_changed"
+  | "harness_run.created"
+  | "harness_run.status_changed"
+  | "node_run.created"
+  | "node_run.status_changed"
+  | "dashboard.snapshot";
+
+/**
+ * Maps internal DashboardChange changeType to UI spec domain event type.
+ * This enables the WebSocket server to emit properly typed domain events
+ * that the UI can consume consistently.
+ */
+export function mapChangeTypeToDomainEvent(
+  changeType: DashboardChange["changeType"],
+  entityId: string,
+): DomainEventType {
+  switch (changeType) {
+    case "task_created":
+      return "task.created";
+    case "task_updated":
+      return "task.status_changed";
+    case "task_completed":
+      return "task.completed";
+    case "task_failed":
+      return "task.failed";
+    case "incident_opened":
+      return "incident.opened";
+    case "incident_resolved":
+      return "incident.resolved";
+    case "system_health_changed":
+      return "system.health_changed";
+    // Legacy mappings for backward compatibility
+    default:
+      // Default to task.status_changed for any unhandled types
+      return "task.status_changed";
+  }
+}
+
+/**
+ * Maps an approval-related entity ID pattern to domain event type.
+ * Used when the delta contains approval information.
+ */
+export function mapApprovalToDomainEvent(entityId: string, resolved: boolean): DomainEventType {
+  return resolved ? "approval.resolved" : "approval.requested";
 }

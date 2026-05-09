@@ -143,6 +143,12 @@ test("E2E Per-Execution Budget Enforcement: execution BLOCKS when spend exceeds 
           resourceKind: "token",
           expiresAt: nowIso(),
           expectedVersion: ledger.version,
+          context: {
+            tenantId: "tenant_budget_e2e",
+            traceId: traceId,
+            emittedBy: "test",
+            principal: "test-principal",
+          },
         });
 
 // @ts-ignore
@@ -558,6 +564,7 @@ test("E2E Per-Execution Budget Enforcement: assertions prove enforcement is not 
 
     try {
       const allocator = new BudgetAllocator();
+      const traceId = newId("trace");
 
       // Test 1: Within budget - should be approved
       const withinLedger = createBudgetLedger({
@@ -573,6 +580,12 @@ test("E2E Per-Execution Budget Enforcement: assertions prove enforcement is not 
         resourceKind: "token",
         expiresAt: nowIso(),
         expectedVersion: withinLedger.version,
+        context: {
+          tenantId: "tenant_within",
+          traceId: traceId,
+          emittedBy: "test",
+          principal: "test-principal",
+        },
       });
 
       // Within-budget request should succeed (no error thrown)
@@ -594,6 +607,12 @@ test("E2E Per-Execution Budget Enforcement: assertions prove enforcement is not 
           resourceKind: "token",
           expiresAt: nowIso(),
           expectedVersion: exceedsLedger.version,
+          context: {
+            tenantId: "tenant_exceeds",
+            traceId: traceId,
+            emittedBy: "test",
+            principal: "test-principal",
+          },
         });
       } catch (error) {
         exceedsError = true;

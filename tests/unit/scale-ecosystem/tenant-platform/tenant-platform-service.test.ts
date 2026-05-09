@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { TenantPlatformService } from "../../../../src/scale-ecosystem/tenant-platform/tenant-platform-service.js";
 import { PerTenantEncryptionService } from "../../../../src/scale-ecosystem/multi-region/per-tenant-encryption.js";
+import { ResourcePoolService } from "../../../../src/scale-ecosystem/resource-manager/resource-pool-service.js";
 
 function createMockStore() {
   const workspaces = new Map();
@@ -281,6 +282,38 @@ test("TenantPlatformService.createTenant initializes per-tenant static encryptio
   const encrypted = service.encryptTenantData(tenant.tenantId, "secret-payload");
   assert.notEqual(encrypted.ciphertext, "secret-payload");
   assert.equal(service.decryptTenantData(tenant.tenantId, encrypted), "secret-payload");
+});
+
+test("TenantPlatformService.createTenant provisions a dedicated tenant-scoped worker pool for dedicated_pool isolation", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_dedicated",
+    displayName: "Dedicated Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const resourcePoolService = new ResourcePoolService();
+  const service = new TenantPlatformService(db, store, undefined, undefined, resourcePoolService);
+
+  const tenant = service.createTenant({
+    organizationId: "org_dedicated",
+    storageScope: "storage_dedicated",
+    identityScope: "identity_dedicated",
+    policyScope: "policy_dedicated",
+    artifactScope: "artifact_dedicated",
+    isolationMode: "dedicated_pool",
+  });
+
+  const isolation = service.getDedicatedPoolIsolation(tenant.tenantId);
+  assert.ok(isolation);
+  assert.equal(isolation.routingPolicy, "dedicated_pool_only");
+  assert.equal(isolation.executionIsolation, "tenant_scoped_worker_pool");
+  assert.equal(isolation.resourcePool.scopeType, "tenant");
+  assert.equal(isolation.resourcePool.tenantId, tenant.tenantId);
+  assert.equal(service.getResourcePoolService().getPool(isolation.resourcePool.poolId)?.organizationId, "org_dedicated");
 });
 
 test("TenantPlatformService.decommissionTenant tears down tenant encryption keys", () => {

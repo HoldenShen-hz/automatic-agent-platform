@@ -89,7 +89,8 @@ CREATE TABLE IF NOT EXISTS event_integrity_records (
   event_checksum TEXT NOT NULL,
   previous_chain_hash TEXT NULL,
   chain_hash TEXT NOT NULL,
-  recorded_at TEXT NOT NULL
+  recorded_at TEXT NOT NULL,
+  algorithm TEXT NOT NULL DEFAULT 'HMAC-SHA256'
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_integrity_chain_position
   ON event_integrity_records(chain_position);

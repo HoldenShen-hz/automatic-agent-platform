@@ -275,6 +275,12 @@ test("E2E Budget Enforcement: budget is reserved before execution starts", async
           resourceKind: "token",
           expiresAt: nowIso(),
           expectedVersion: ledger.version,
+          context: {
+            tenantId: "tenant_test",
+            traceId: traceId,
+            emittedBy: "test",
+            principal: "test-principal",
+          },
         });
       } catch (error) {
         // Budget reservation should throw when amount exceeds hard cap

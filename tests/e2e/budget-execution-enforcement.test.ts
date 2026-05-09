@@ -516,6 +516,12 @@ test("E2E Budget Enforcement: execution blocked when budget reservation fails", 
           resourceKind: "token",
           expiresAt: nowIso(),
           expectedVersion: ledger.version,
+          context: {
+            tenantId: "tenant:e2e-test",
+            traceId,
+            emittedBy: "test",
+            principal: "test-principal",
+          },
         });
       } catch (error) {
         reservationFailed = true;

@@ -11,8 +11,10 @@ import {
 import { useMutation } from "@aa/shared-state/mutations";
 import type { UserPreferenceDTO } from "@aa/shared-types";
 import { createRESTClient } from "@aa/shared-api-client";
+import { createDefaultTranslationService } from "@aa/shared-i18n";
 
 const restClient = createRESTClient();
+const translationService = createDefaultTranslationService();
 
 export interface SettingsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
@@ -25,6 +27,8 @@ export interface SettingsVm {
   readonly saveState: "idle" | "saving" | "saved" | "error";
   readonly activityItems: readonly { title: string; description: string }[];
   readonly pendingOperations: number;
+  readonly localeOptions: readonly { value: string; label: string }[];
+  readonly sectionItems: readonly { id: string; title: string; description: string }[];
   setDraftTheme(theme: "light" | "dark" | "high-contrast"): void;
   setDraftLocale(locale: string): void;
   save(): Promise<void>;
@@ -133,6 +137,15 @@ export function useSettingsVm(): SettingsVm {
     saveState,
     pendingOperations: saveStatus === "pending" ? 1 : 0,
     activityItems,
+    localeOptions: translationService.listSupportedLocales().map((item) => ({
+      value: item.locale,
+      label: item.nativeLabel ?? item.locale,
+    })),
+    sectionItems: [
+      { id: "general", title: "General", description: "Profile, locale, theme, dashboard layout" },
+      { id: "api-keys", title: "API Keys", description: "Manage access tokens and rotation windows" },
+      { id: "notifications", title: "Notifications", description: "Email, push, and in-app delivery policies" },
+    ],
     setDraftTheme(theme: "light" | "dark" | "high-contrast") {
       setDraftTheme(theme);
       setSaveState("idle");

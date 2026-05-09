@@ -585,3 +585,94 @@ test("LlmEvalService.detectRegression returns zero scores when no runs exist", (
   assert.equal(result.currentScore, 0);
   assert.equal(result.previousScore, 0);
 });
+
+// R2-10: Independence enforcement tests for §21.7
+
+test("LlmEvalService.runCiGate fails when enforceIndependenceForHighRisk is true with high-priority cases but no independentJudgeId", () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "High Risk Suite",
+    kind: "golden",
+    cases: [
+      { id: "c1", input: "a", expectedOutput: "b", priority: "critical" },
+      { id: "c2", input: "c", expectedOutput: "d", priority: "high" },
+    ],
+  });
+
+  const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
+    enforceIndependenceForHighRisk: true,
+    // missing independentJudgeId
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.independenceViolation, "high_risk_evaluation_requires_independent_judge");
+  assert.ok(result.summary.includes("independence violation"));
+});
+
+test("LlmEvalService.runCiGate passes when enforceIndependenceForHighRisk is true with high-priority cases and independentJudgeId", () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "High Risk Suite With Judge",
+    kind: "golden",
+    cases: [
+      { id: "c1", input: "a", expectedOutput: "b", priority: "critical" },
+      { id: "c2", input: "c", expectedOutput: "d", priority: "high" },
+    ],
+  });
+
+  const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
+    enforceIndependenceForHighRisk: true,
+    independentJudgeId: "judge_anthropic_claude",
+    evaluator: () => ({ actualOutput: "b", score: 1, passed: true, latencyMs: 10 }),
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.independenceViolation, undefined);
+});
+
+test("LlmEvalService.runCiGate passes when enforceIndependenceForHighRisk is true but no high-priority cases", () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "Low Risk Suite",
+    kind: "golden",
+    cases: [
+      { id: "c1", input: "a", expectedOutput: "b", priority: "medium" },
+      { id: "c2", input: "c", expectedOutput: "d", priority: "low" },
+    ],
+  });
+
+  const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
+    enforceIndependenceForHighRisk: true,
+    // no independentJudgeId but also no high-priority cases
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.independenceViolation, undefined);
+});
+
+test("LlmEvalService.runCiGate passes when enforceIndependenceForHighRisk is false with high-priority cases", () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "High Risk Suite Disabled",
+    kind: "golden",
+    cases: [
+      { id: "c1", input: "a", expectedOutput: "b", priority: "critical" },
+    ],
+  });
+
+  const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
+    enforceIndependenceForHighRisk: false,
+    // no independentJudgeId - should still pass since enforcement is disabled
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.independenceViolation, undefined);
+});

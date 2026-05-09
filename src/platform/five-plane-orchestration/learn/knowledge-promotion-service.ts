@@ -44,7 +44,7 @@ export interface KnowledgePromotionServiceOptions {
   requireApproval?: boolean;
   /**
    * R23-42 fix: Approval callback for promotion requests.
-   * If provided, this callback must return true for promotion to proceed.
+   * Synchronous gates work with promote(); asynchronous gates must use promoteAsync().
    */
   approvalGate?: (learningObjects: readonly LearningObject[], taskId: string) => Promise<boolean> | boolean;
 }
@@ -81,26 +81,66 @@ export class KnowledgePromotionService {
    * @returns Promotion result with counts and document IDs
    */
   public promote(learningObjects: readonly LearningObject[], taskId: string): KnowledgePromotionResult {
+    const approval = this.evaluateApprovalGateSync(learningObjects, taskId);
+    if (!approval.allowed) {
+      return approval.result;
+    }
+    return this.promoteEligible(learningObjects, taskId);
+  }
+
+  public async promoteAsync(learningObjects: readonly LearningObject[], taskId: string): Promise<KnowledgePromotionResult> {
+    const approval = await this.evaluateApprovalGateAsync(learningObjects, taskId);
+    if (!approval.allowed) {
+      return approval.result;
+    }
+    return this.promoteEligible(learningObjects, taskId);
+  }
+
+  private evaluateApprovalGateSync(
+    learningObjects: readonly LearningObject[],
+    taskId: string,
+  ): { allowed: true } | { allowed: false; result: KnowledgePromotionResult } {
+    if (!this.requireApproval) {
+      return { allowed: true };
+    }
+    if (!this.approvalGate) {
+      return { allowed: false, result: this.blockPromotion(taskId, "approval_required_without_gate", learningObjects.length) };
+    }
+    const approved = this.approvalGate(learningObjects, taskId);
+    if (approved instanceof Promise) {
+      throw new Error("knowledge_promotion.approval_gate_async_requires_promote_async");
+    }
+    if (!approved) {
+      return { allowed: false, result: this.blockPromotion(taskId, "approval_gate_rejected", learningObjects.length) };
+    }
+    return { allowed: true };
+  }
+
+  private async evaluateApprovalGateAsync(
+    learningObjects: readonly LearningObject[],
+    taskId: string,
+  ): Promise<{ allowed: true } | { allowed: false; result: KnowledgePromotionResult }> {
+    if (!this.requireApproval) {
+      return { allowed: true };
+    }
+    if (!this.approvalGate) {
+      return { allowed: false, result: this.blockPromotion(taskId, "approval_required_without_gate", learningObjects.length) };
+    }
+    const approved = await this.approvalGate(learningObjects, taskId);
+    if (!approved) {
+      return { allowed: false, result: this.blockPromotion(taskId, "approval_gate_rejected", learningObjects.length) };
+    }
+    return { allowed: true };
+  }
+
+  private blockPromotion(taskId: string, reasonCode: string, objectCount: number): KnowledgePromotionResult {
+    logger.info("[KnowledgePromotion] Promotion blocked by approval gate", { taskId, reasonCode, objectCount });
+    return { promotedCount: 0, failedCount: 0, knowledgeDocumentIds: [] };
+  }
+
+  private promoteEligible(learningObjects: readonly LearningObject[], taskId: string): KnowledgePromotionResult {
     const promoted: Array<{ objectId: string; documentId: string }> = [];
     const failed: string[] = [];
-
-    // R23-42 fix: Check approval gate before promoting any objects
-    if (this.requireApproval) {
-      if (this.approvalGate) {
-        const approved = this.approvalGate(learningObjects, taskId);
-        if (!(approved instanceof Promise)) {
-          // Can't await in sync method - throw error to signal async approval needed
-          throw new Error("knowledge_promotion.approval_required_async");
-        } else if (!approved) {
-          logger.info("[KnowledgePromotion] Promotion blocked by approval gate", { taskId, objectCount: learningObjects.length });
-          return { promotedCount: 0, failedCount: 0, knowledgeDocumentIds: [] };
-        }
-      } else {
-        // Approval required but no gate provided - block promotion
-        logger.info("[KnowledgePromotion] Promotion blocked - approval required but no gate configured", { taskId });
-        return { promotedCount: 0, failedCount: 0, knowledgeDocumentIds: [] };
-      }
-    }
 
     for (const obj of learningObjects) {
       if (obj.promotionStatus !== "validated" && obj.promotionStatus !== "promoted") {

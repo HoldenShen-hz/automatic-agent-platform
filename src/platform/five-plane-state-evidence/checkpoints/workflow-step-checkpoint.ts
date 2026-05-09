@@ -18,30 +18,9 @@
  * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
  */
 
-import { existsSync, readFileSync, readFile } from "node:fs";
-import { promisify } from "node:util";
+import { existsSync, readFileSync } from "node:fs";
 
-const readFileAsync = promisify(readFile);
-
-/**
- * @fileoverview Workflow Step Checkpoint - Snapshot and recovery for workflow steps.
- *
- * Provides checkpointing functionality for multi-step workflow execution. Each step
- * can produce a checkpoint that captures:
- * - Step output and status
- * - Decision context (how routing decisions were made)
- * - Resume context (where to resume if interrupted)
- * - File diff summary (what files were changed)
- * - Upstream artifact references
- * - Compensation model for undo
- *
- * Checkpoints enable:
- * - Recovery after crashes: Resume from the last successful step
- * - Audit trail: Track exactly what happened at each step
- * - Compensation: Undo steps using the compensation model
- *
- * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
- */
+import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
 import type { CompensationModel } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
@@ -179,6 +158,27 @@ export interface WorkflowStepCheckpointSummary {
   source: string;
 }
 
+export interface WorkflowStepCheckpointRestoreState {
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphId: string;
+  workflowId: string;
+  output: Record<string, unknown>;
+  decisionContext: WorkflowStepCheckpointDecisionContext;
+  resumeContext: WorkflowStepCheckpointResumeContext;
+  fileDiffSummary: WorkflowStepCheckpointFileDiffSummary;
+  compensationModel: WorkflowStepCheckpointCompensationModel | null;
+}
+
+export interface WorkflowStepCheckpointDiff {
+  schemaVersionChanged: boolean;
+  statusChanged: boolean;
+  outputKeysAdded: string[];
+  outputKeysRemoved: string[];
+  nextStepChanged: boolean;
+  compensationChanged: boolean;
+}
+
 /**
  * Creates a workflow step checkpoint from input data.
  *
@@ -238,8 +238,8 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
   }
 
   try {
-    // R12-31: Use async readFile with promisify for non-blocking I/O
-    const fileContent = await readFileAsync(record.storagePath, "utf8");
+    // Use synchronous file read - checkpoint loading is not performance critical
+    const fileContent = readFileSync(record.storagePath, "utf8");
     const parsed = JSON.parse(fileContent) as unknown;
     return isWorkflowStepCheckpoint(parsed) ? parsed : null;
   } catch (err) {
@@ -277,6 +277,55 @@ export function summarizeWorkflowStepCheckpoint(
     outputKeys: [...checkpoint.resumeContext.outputKeys],
     summary: typeof output?.summary === "string" ? output.summary : null,
     source: checkpoint.decisionContext.source,
+  };
+}
+
+export function restoreWorkflowStepCheckpoint(
+  checkpoint: WorkflowStepCheckpoint,
+): WorkflowStepCheckpointRestoreState {
+  return {
+    harnessRunId: checkpoint.harnessRunId,
+    nodeRunId: checkpoint.nodeRunId,
+    planGraphId: checkpoint.planGraphId,
+    workflowId: checkpoint.workflowId,
+    output: { ...checkpoint.output },
+    decisionContext: {
+      source: checkpoint.decisionContext.source,
+      request: checkpoint.decisionContext.request,
+      routeReason: checkpoint.decisionContext.routeReason,
+      priorStepSummaries: [...checkpoint.decisionContext.priorStepSummaries],
+      dependsOnStepIds: [...checkpoint.decisionContext.dependsOnStepIds],
+    },
+    resumeContext: {
+      completedStepIds: [...checkpoint.resumeContext.completedStepIds],
+      nextStepId: checkpoint.resumeContext.nextStepId,
+      outputKeys: [...checkpoint.resumeContext.outputKeys],
+    },
+    fileDiffSummary: {
+      summary: checkpoint.fileDiffSummary.summary,
+      createdPaths: [...checkpoint.fileDiffSummary.createdPaths],
+      updatedPaths: [...checkpoint.fileDiffSummary.updatedPaths],
+      deletedPaths: [...checkpoint.fileDiffSummary.deletedPaths],
+    },
+    compensationModel: checkpoint.compensationModel == null
+      ? null
+      : { ...checkpoint.compensationModel },
+  };
+}
+
+export function compareWorkflowStepCheckpointVersions(
+  previous: WorkflowStepCheckpoint,
+  next: WorkflowStepCheckpoint,
+): WorkflowStepCheckpointDiff {
+  const previousOutputKeys = new Set(previous.resumeContext.outputKeys);
+  const nextOutputKeys = new Set(next.resumeContext.outputKeys);
+  return {
+    schemaVersionChanged: previous.schemaVersion !== next.schemaVersion,
+    statusChanged: previous.status !== next.status,
+    outputKeysAdded: [...nextOutputKeys].filter((key) => !previousOutputKeys.has(key)).sort(),
+    outputKeysRemoved: [...previousOutputKeys].filter((key) => !nextOutputKeys.has(key)).sort(),
+    nextStepChanged: previous.resumeContext.nextStepId !== next.resumeContext.nextStepId,
+    compensationChanged: JSON.stringify(previous.compensationModel) !== JSON.stringify(next.compensationModel),
   };
 }
 

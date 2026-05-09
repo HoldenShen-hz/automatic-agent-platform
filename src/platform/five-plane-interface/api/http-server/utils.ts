@@ -181,15 +181,26 @@ export function buildJsonErrorResponse(
   error: {
     code: string;
     message: string;
+    details?: Record<string, unknown> | null;
+    traceId?: string | null;
   },
 ): ApiResponsePayload {
+  const traceId = error.traceId ?? requestId;
   return {
     statusCode,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-request-id": requestId,
     },
-    body: JSON.stringify({ requestId, error }, null, 2),
+    body: JSON.stringify({
+      requestId,
+      traceId,
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.details != null ? { details: error.details } : {}),
+      },
+    }, null, 2),
   };
 }
 

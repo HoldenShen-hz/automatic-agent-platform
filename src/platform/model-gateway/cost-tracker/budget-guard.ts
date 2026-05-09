@@ -501,25 +501,17 @@ export class BudgetGuard {
     success: boolean;
     ledger: BudgetLedger;
     actualAmount: number;
-    error: string | undefined;
+    error?: string;
   }> {
     // Phase 1: Reserve budget atomically
     const reserveResult = this.atomicReserve(request);
     if (!reserveResult.success) {
-      const result: {
-        success: boolean;
-        ledger: BudgetLedger;
-        actualAmount: number;
-        error?: string;
-      } = {
+      return {
         success: false,
         ledger: reserveResult.session.ledger,
         actualAmount: 0,
+        error: reserveResult.reasonCode ?? "budget.reservation_failed",
       };
-      if (reserveResult.reasonCode != null) {
-        result.error = reserveResult.reasonCode;
-      }
-      return result;
     }
 
     // Phase 2: Transition to executing state
@@ -527,20 +519,12 @@ export class BudgetGuard {
     if (!executeResult.success) {
       // Release reserved budget on failure
       this.atomicRelease(reserveResult.session.sessionId);
-      const result: {
-        success: boolean;
-        ledger: BudgetLedger;
-        actualAmount: number;
-        error?: string;
-      } = {
+      return {
         success: false,
         ledger: executeResult.session.ledger,
         actualAmount: 0,
+        error: executeResult.reasonCode ?? "budget.execute_failed",
       };
-      if (executeResult.reasonCode != null) {
-        result.error = executeResult.reasonCode;
-      }
-      return result;
     }
 
     // Phase 3: Execute the task
@@ -562,20 +546,19 @@ export class BudgetGuard {
 
     // Phase 4: Settle with actual cost
     const settleResult = this.atomicSettle(reserveResult.session.sessionId, actualCost);
-    const result: {
-      success: boolean;
-      ledger: BudgetLedger;
-      actualAmount: number;
-      error?: string;
-    } = {
-      success: settleResult.success,
+    if (settleResult.success) {
+      return {
+        success: true,
+        ledger: settleResult.session.ledger,
+        actualAmount: settleResult.session.actualAmount ?? actualCost,
+      };
+    }
+    return {
+      success: false,
       ledger: settleResult.session.ledger,
       actualAmount: settleResult.session.actualAmount ?? actualCost,
+      error: settleResult.reasonCode ?? "budget.settle_failed",
     };
-    if (!settleResult.success && settleResult.reasonCode != null) {
-      result.error = settleResult.reasonCode;
-    }
-    return result;
   }
 
   public evaluateTaskSpend(input: {

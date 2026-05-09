@@ -22,6 +22,7 @@ import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/auth
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import { NoisyNeighborProtectionService, getNoisyNeighborProtectionService, type ResourceType } from "../multi-region/noisy-neighbor-protection.js";
 import { PerTenantEncryptionService, getPerTenantEncryptionService, type EncryptionAlgorithm, type EncryptedRecord } from "../multi-region/per-tenant-encryption.js";
+import { ResourcePoolService, type ResourcePool } from "../resource-manager/resource-pool-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type {
   DataNamespacePlane,
@@ -219,6 +220,16 @@ export interface TenantTopologySummary {
   dataNamespaces: DataNamespaceRecord[];
 }
 
+export interface DedicatedPoolIsolationRecord {
+  readonly tenantId: string;
+  readonly organizationId: string;
+  readonly resourcePool: ResourcePool;
+  readonly routingPolicy: "dedicated_pool_only";
+  readonly executionIsolation: "tenant_scoped_worker_pool";
+  readonly provisionedAt: string;
+  readonly quotaScopeId: string;
+}
+
 /**
  * Tenant lifecycle stage (maps to TenantRecord.status field)
  */
@@ -289,16 +300,28 @@ const VALID_LIFECYCLE_TRANSITIONS: Record<TenantLifecycleStage, TenantLifecycleS
 export class TenantPlatformService {
   private readonly quotaService: NoisyNeighborProtectionService;
   private readonly encryptionService: PerTenantEncryptionService;
+  private readonly resourcePoolService: ResourcePoolService;
   private readonly logger = new StructuredLogger({});
+  private readonly dedicatedPoolIsolations = new Map<string, DedicatedPoolIsolationRecord>();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     quotaService?: NoisyNeighborProtectionService,
     encryptionService?: PerTenantEncryptionService,
+    resourcePoolService?: ResourcePoolService,
   ) {
     this.quotaService = quotaService ?? getNoisyNeighborProtectionService();
     this.encryptionService = encryptionService ?? getPerTenantEncryptionService();
+    this.resourcePoolService = resourcePoolService ?? new ResourcePoolService();
+  }
+
+  public getResourcePoolService(): ResourcePoolService {
+    return this.resourcePoolService;
+  }
+
+  public getDedicatedPoolIsolation(tenantId: string): DedicatedPoolIsolationRecord | null {
+    return this.dedicatedPoolIsolations.get(tenantId) ?? null;
   }
 
   /**
@@ -538,24 +561,43 @@ export class TenantPlatformService {
    * the tenant's execution environment to run in complete isolation from other tenants.
    */
   private provisionDedicatedPoolIsolation(tenant: TenantRecord): void {
-    // Create a dedicated quota policy for this tenant with reserved capacity
-    // The noisy neighbor protection service handles per-tenant quota management
     const dedicatedQuotaId = `quota_dedicated_${tenant.tenantId}`;
+    const provisionedAt = nowIso();
+    const poolId = `tenant_pool_${tenant.tenantId}`;
+    const resourcePool = this.resourcePoolService.registerPool({
+      poolId,
+      resourceType: "worker_pool",
+      scopeType: "tenant",
+      tenantId: tenant.tenantId,
+      organizationId: tenant.organizationId,
+      capacityUnits: 1,
+      burstUnits: 0,
+      minSampleSize: 20,
+      sampleCount: 0,
+      allocatedUnits: 0,
+      failureRateThreshold: 0.3,
+      failureRate: 0,
+      isolationStatus: "active",
+    });
+    const isolationRecord: DedicatedPoolIsolationRecord = {
+      tenantId: tenant.tenantId,
+      organizationId: tenant.organizationId,
+      resourcePool,
+      routingPolicy: "dedicated_pool_only",
+      executionIsolation: "tenant_scoped_worker_pool",
+      provisionedAt,
+      quotaScopeId: dedicatedQuotaId,
+    };
+    this.dedicatedPoolIsolations.set(tenant.tenantId, isolationRecord);
 
-    // Register the tenant with dedicated resource guarantees
-    // In production, this would interact with the worker-pool service to create
-    // a dedicated pool and with the quota-enforcer to set reserved limits
     this.logger?.info("Provisioning dedicated pool isolation", {
       tenantId: tenant.tenantId,
       organizationId: tenant.organizationId,
       dedicatedQuotaId,
+      poolId,
+      routingPolicy: isolationRecord.routingPolicy,
       action: "dedicated_pool_provisioning",
     });
-
-    // The actual worker pool creation would be handled by the execution plane
-    // Here we record that dedicated resources should be provisioned
-    // This ensures the tenant record is marked with dedicated_pool isolation
-    // and subsequent execution requests will be routed to the dedicated pool
   }
 
   /**
@@ -792,6 +834,7 @@ export class TenantPlatformService {
       };
       this.store.organization.upsertTenantRecord(updated);
       this.encryptionService.removeTenantKeys(updated.tenantId);
+      this.dedicatedPoolIsolations.delete(updated.tenantId);
       return updated;
     });
   }

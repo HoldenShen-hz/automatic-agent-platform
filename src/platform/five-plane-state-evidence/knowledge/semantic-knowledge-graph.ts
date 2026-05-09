@@ -31,13 +31,16 @@ export type KnowledgeGraphEdgeType =
   | "same_document"
   // R8-11: Entity relation edges
   | "relates_to"        // General relationship between entities
+  | "related_to"        // Backward-compatible alias for relates_to
   | "specializes"       // Entity is a specialization of another
   | "generalizes"       // Entity is a generalization of another
   | "implies"           // Entity implies or leads to another
+  | "contradicts"       // Entity contradicts another
   // R8-11: Trust propagation edges
   | "trusts"            // Trust relationship (A trusts B)
   | "verified_by"       // Entity verified by evidence/source
   | "derived_from"      // Knowledge derived from source
+  | "derives_from"      // Backward-compatible alias for derived_from
   | "confirms"          // Confirms or corroborates another entity
   // R13-07: Learned edge types for learning pipeline integration
   | "learned_from"      // Knowledge learned from evidence/source
@@ -82,6 +85,7 @@ export interface KnowledgeGraphChunkConnections {
   sameDocumentRefs: string[];
   // R8-11: Entity relation connections
   relatedEntityRefs: string[];
+  contradictsRefs: string[];
   specializesRefs: string[];
   generalizesRefs: string[];
   impliesRefs: string[];
@@ -226,6 +230,7 @@ export class SemanticKnowledgeGraph {
       sameDocumentRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "same_document"),
       // R8-11: Entity relation connections
       relatedEntityRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "relates_to"),
+      contradictsRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "contradicts"),
       specializesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "specializes"),
       generalizesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "generalizes"),
       impliesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "implies"),
@@ -244,7 +249,7 @@ export class SemanticKnowledgeGraph {
   public addEntityRelation(
     fromEntityId: string,
     toEntityId: string,
-    relation: Extract<KnowledgeGraphEdgeType, "references" | "trust_boost" | "learned_from" | "failure_pattern" | "causal_relationship" | "temporal_correlation" | "relates_to" | "specializes" | "generalizes" | "implies">,
+    relation: Extract<KnowledgeGraphEdgeType, "references" | "trust_boost" | "learned_from" | "failure_pattern" | "causal_relationship" | "temporal_correlation" | "relates_to" | "related_to" | "specializes" | "generalizes" | "implies" | "contradicts" | "derived_from" | "derives_from">,
     weight: number,
     trustLevel: TrustLevel = "team_reviewed",
   ): void {
@@ -355,7 +360,9 @@ export class SemanticKnowledgeGraph {
 
     while (queue.length > 0 && collected.size < limit) {
       const currentNodeId = queue.shift()!;
-      for (const edge of this.edges.values()) {
+      // R12-33: Use adjacencyByNodeId map instead of iterating all edges
+      const adjacentEdges = this.adjacencyByNodeId.get(currentNodeId) ?? [];
+      for (const edge of adjacentEdges) {
         if (collected.size >= limit) {
           return;
         }
@@ -391,7 +398,8 @@ export class SemanticKnowledgeGraph {
 
     return [...(this.adjacencyByNodeId.get(chunkNodeId) ?? [])]
       .filter((edge) => edge.relation === relation)
-      .map((edge) => this.nodes.get(edge.toNodeId))
+      .map((edge) => edge.fromNodeId === chunkNodeId ? edge.toNodeId : edge.fromNodeId)
+      .map((nodeId) => this.nodes.get(nodeId))
       .filter((node): node is KnowledgeGraphNode => node != null && validNodeTypes.includes(node.nodeType))
       .map((node) => node.knowledgeRef)
       .filter((ref): ref is string => ref != null)
@@ -419,16 +427,43 @@ export class SemanticKnowledgeGraph {
   }
 
   private addEdge(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType, weight: number): void {
-    const id = edgeId(fromNodeId, toNodeId, relation);
-    this.edges.set(id, {
+    const normalizedRelation = this.normalizeRelation(relation);
+    const id = edgeId(fromNodeId, toNodeId, normalizedRelation);
+    const edge: KnowledgeGraphEdge = {
       edgeId: id,
       fromNodeId,
       toNodeId,
-      relation,
+      relation: normalizedRelation,
       weight,
-    });
+    };
+    this.edges.set(id, edge);
     const adjacency = this.adjacencyByNodeId.get(fromNodeId) ?? [];
-    adjacency.push(this.edges.get(id)!);
+    const existingIndex = adjacency.findIndex((candidate) => candidate.edgeId === id);
+    if (existingIndex >= 0) {
+      adjacency[existingIndex] = edge;
+    } else {
+      adjacency.push(edge);
+    }
     this.adjacencyByNodeId.set(fromNodeId, adjacency);
+
+    const reverseAdjacency = this.adjacencyByNodeId.get(toNodeId) ?? [];
+    const reverseIndex = reverseAdjacency.findIndex((candidate) => candidate.edgeId === id);
+    if (reverseIndex >= 0) {
+      reverseAdjacency[reverseIndex] = edge;
+    } else {
+      reverseAdjacency.push(edge);
+    }
+    this.adjacencyByNodeId.set(toNodeId, reverseAdjacency);
+  }
+
+  private normalizeRelation(relation: KnowledgeGraphEdgeType): KnowledgeGraphEdgeType {
+    switch (relation) {
+      case "related_to":
+        return "relates_to";
+      case "derives_from":
+        return "derived_from";
+      default:
+        return relation;
+    }
   }
 }

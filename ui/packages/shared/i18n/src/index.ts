@@ -1,4 +1,6 @@
 import IntlMessageFormat from "intl-messageformat";
+import { enUsCatalog } from "./catalogs/en-US";
+import { zhCnCatalog } from "./catalogs/zh-CN";
 
 export interface TranslationCatalog {
   readonly locale: string;
@@ -6,20 +8,108 @@ export interface TranslationCatalog {
   readonly fallbackLocales?: readonly string[];
 }
 
+export type TextDirection = "ltr" | "rtl";
+
+export interface LocaleRegistration {
+  readonly fallbackLocales?: readonly string[];
+  readonly direction?: TextDirection;
+  readonly nativeLabel?: string;
+}
+
+export interface SupportedLocale {
+  readonly locale: string;
+  readonly direction: TextDirection;
+  readonly nativeLabel?: string;
+}
+
+type CatalogLoader = () => Promise<TranslationCatalog>;
+type LocaleChangeListener = (locale: string, direction: TextDirection) => void;
+
 export class TranslationService {
   private readonly catalogs = new Map<string, TranslationCatalog>();
+  private readonly loaders = new Map<string, CatalogLoader>();
+  private readonly directions = new Map<string, TextDirection>();
+  private readonly nativeLabels = new Map<string, string>();
+  private readonly listeners = new Set<LocaleChangeListener>();
   private currentLocale = "en-US";
 
-  public register(catalog: TranslationCatalog): void {
+  public register(catalog: TranslationCatalog, registration: LocaleRegistration = {}): void {
     this.catalogs.set(catalog.locale, catalog);
+    this.directions.set(catalog.locale, registration.direction ?? this.directions.get(catalog.locale) ?? "ltr");
+    if (registration.nativeLabel != null) {
+      this.nativeLabels.set(catalog.locale, registration.nativeLabel);
+    }
   }
 
-  public setLocale(locale: string): void {
+  public registerLoader(locale: string, loader: CatalogLoader, registration: LocaleRegistration = {}): void {
+    this.loaders.set(locale, loader);
+    this.directions.set(locale, registration.direction ?? this.directions.get(locale) ?? "ltr");
+    if (registration.nativeLabel != null) {
+      this.nativeLabels.set(locale, registration.nativeLabel);
+    }
+  }
+
+  public async loadLocale(locale: string): Promise<TranslationCatalog | null> {
+    const existing = this.catalogs.get(locale);
+    if (existing != null) {
+      return existing;
+    }
+    const loader = this.loaders.get(locale);
+    if (loader == null) {
+      return null;
+    }
+    const catalog = await loader();
+    this.register(catalog, {
+      direction: this.directions.get(locale),
+      nativeLabel: this.nativeLabels.get(locale),
+    });
+    return catalog;
+  }
+
+  public setLocale(locale: string, documentRef?: Pick<Document, "documentElement">): void {
     this.currentLocale = locale;
+    this.applyLocaleToDocument(documentRef);
+    const direction = this.getDirection(locale);
+    for (const listener of this.listeners) {
+      listener(locale, direction);
+    }
   }
 
   public getLocale(): string {
     return this.currentLocale;
+  }
+
+  public getDirection(locale = this.currentLocale): TextDirection {
+    return this.directions.get(locale) ?? (locale.startsWith("ar") || locale.startsWith("he") ? "rtl" : "ltr");
+  }
+
+  public listSupportedLocales(): readonly SupportedLocale[] {
+    const locales = new Set<string>([
+      ...this.catalogs.keys(),
+      ...this.loaders.keys(),
+      ...this.directions.keys(),
+    ]);
+    return [...locales]
+      .sort((left, right) => left.localeCompare(right))
+      .map((locale) => ({
+        locale,
+        direction: this.getDirection(locale),
+        nativeLabel: this.nativeLabels.get(locale),
+      }));
+  }
+
+  public subscribe(listener: LocaleChangeListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  public applyLocaleToDocument(documentRef?: Pick<Document, "documentElement">): void {
+    const resolvedDocument = documentRef ?? (typeof document !== "undefined" ? document : undefined);
+    if (resolvedDocument == null) {
+      return;
+    }
+    resolvedDocument.documentElement.lang = this.currentLocale;
+    resolvedDocument.documentElement.dir = this.getDirection(this.currentLocale);
   }
 
   public translate(
@@ -52,6 +142,14 @@ export class TranslationService {
       if (this.catalogs.has(locale)) {
         return locale;
       }
+      if (this.loaders.has(locale)) {
+        return locale;
+      }
+      const baseLanguage = locale.split("-")[0];
+      const matchedLocale = this.listSupportedLocales().find((item) => item.locale.split("-")[0] === baseLanguage);
+      if (matchedLocale != null) {
+        return matchedLocale.locale;
+      }
     }
     return this.currentLocale;
   }
@@ -59,24 +157,25 @@ export class TranslationService {
 
 export function createDefaultTranslationService(): TranslationService {
   const service = new TranslationService();
-  service.register({
-    locale: "zh-CN",
-    fallbackLocales: ["en-US"],
-    messages: {
-      "ui.app.title": "Automatic Agent Platform UI",
-      "ui.planned": "规划中能力",
-      "ui.implemented": "已接线能力",
-      "ui.notifications.pending": "{count, plural, =0 {没有待处理项} one {# 条待处理项} other {# 条待处理项}}",
-    },
+  service.register(enUsCatalog, {
+    direction: "ltr",
+    nativeLabel: "English (US)",
   });
-  service.register({
-    locale: "en-US",
-    messages: {
-      "ui.app.title": "Automatic Agent Platform UI",
-      "ui.planned": "Planned capability",
-      "ui.implemented": "Implemented capability",
-      "ui.notifications.pending": "{count, plural, =0 {No pending items} one {# pending item} other {# pending items}}",
-    },
+  service.register(zhCnCatalog, {
+    direction: "ltr",
+    nativeLabel: "简体中文",
+  });
+  service.registerLoader("en-US", async () => (await import("./catalogs/en-US")).enUsCatalog, {
+    direction: "ltr",
+    nativeLabel: "English (US)",
+  });
+  service.registerLoader("zh-CN", async () => (await import("./catalogs/zh-CN")).zhCnCatalog, {
+    direction: "ltr",
+    nativeLabel: "简体中文",
+  });
+  service.registerLoader("ar-SA", async () => (await import("./catalogs/ar-SA")).arSaCatalog, {
+    direction: "rtl",
+    nativeLabel: "العربية",
   });
   service.setLocale("zh-CN");
   return service;

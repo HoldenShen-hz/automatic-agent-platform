@@ -12,6 +12,10 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  type ControlPlaneDirectiveSink,
+  createNoOpDirectiveSink,
+} from "../control-plane-directive-sink.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -155,7 +159,14 @@ type RawRow = Record<string, unknown>;
  * traffic shifting and health-gated promotion/rollback.
  */
 export class TrafficRoutingService {
-  constructor(private readonly db: AuthoritativeSqlDatabase) {}
+  private readonly directiveSink: ControlPlaneDirectiveSink;
+
+  constructor(
+    private readonly db: AuthoritativeSqlDatabase,
+    directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
+  ) {
+    this.directiveSink = directiveSink;
+  }
 
   // ── Slot Management ────────────────────────────────────────────────
 

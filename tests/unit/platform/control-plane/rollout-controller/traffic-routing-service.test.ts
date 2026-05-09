@@ -647,3 +647,77 @@ test("TRAFFIC_ROUTING_DDL has correct column definitions", () => {
   assert.ok(TRAFFIC_ROUTING_DDL.includes("to_version TEXT NOT NULL"));
   assert.ok(TRAFFIC_ROUTING_DDL.includes("success INTEGER NOT NULL DEFAULT 0"));
 });
+
+// ---------------------------------------------------------------------------
+// R4-14: P2 → P3/P4 OperationalDirective Emission
+// ---------------------------------------------------------------------------
+
+test("startCanaryShift emits OperationalDirective with mode_switch type", () => {
+  const db = createTestDb();
+
+  const emittedDirectives: any[] = [];
+  const directiveSink = {
+    emitOperationalDirective(directive: any) {
+      emittedDirectives.push(directive);
+    },
+    emitDecisionDirective(_directive: any) {},
+  };
+
+  const service = new TrafficRoutingService(db, directiveSink as any);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  service.registerSlot("green", "v2.0.0", 1);
+
+  service.startCanaryShift("blue", "green");
+
+  assert.strictEqual(emittedDirectives.length, 1);
+  const directive = emittedDirectives[0];
+  assert.strictEqual(directive.type, "mode_switch");
+  assert.ok(directive.scope.harnessRunId.startsWith("tshift_"));
+  assert.strictEqual(directive.params.fromSlot, "blue");
+  assert.strictEqual(directive.params.toSlot, "green");
+});
+
+test("rollbackShift emits OperationalDirective with rollback type", () => {
+  const db = createTestDb();
+
+  const emittedDirectives: any[] = [];
+  const directiveSink = {
+    emitOperationalDirective(directive: any) {
+      emittedDirectives.push(directive);
+    },
+    emitDecisionDirective(_directive: any) {},
+  };
+
+  const service = new TrafficRoutingService(db, directiveSink as any);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  service.registerSlot("green", "v2.0.0", 1);
+
+  const shift = service.startCanaryShift("blue", "green");
+
+  emittedDirectives.length = 0; // clear startCanaryShift directive
+  service.rollbackShift(shift.id, "manual", "User requested rollback");
+
+  assert.strictEqual(emittedDirectives.length, 1);
+  const directive = emittedDirectives[0];
+  assert.strictEqual(directive.type, "rollback");
+  assert.strictEqual(directive.scope.harnessRunId, shift.id);
+  assert.strictEqual(directive.params.shiftId, shift.id);
+  assert.strictEqual(directive.params.trigger, "manual");
+});
+
+test("TrafficRoutingService uses no-op directive sink when none provided", () => {
+  const db = createTestDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 1);
+  service.registerSlot("green", "v2.0.0", 1);
+
+  // Should not throw even with no directive sink
+  const shift = service.startCanaryShift("blue", "green");
+  assert.ok(shift.id.startsWith("tshift_"));
+
+  const rollback = service.rollbackShift(shift.id, "manual", "test");
+  assert.strictEqual(rollback.success, true);
+});

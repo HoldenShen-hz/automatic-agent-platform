@@ -63,7 +63,7 @@ function makeMinimalDefinition(overrides: Partial<DomainDefinition> = {}): Domai
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "draft",
     externalAdapters: [],

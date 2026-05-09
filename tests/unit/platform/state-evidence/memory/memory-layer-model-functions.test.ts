@@ -498,7 +498,7 @@ test("DEFAULT_LAYER_TTL_CONFIGS user has correct values", () => {
   const config = DEFAULT_LAYER_TTL_CONFIGS.find((c) => c.scope === "user")!;
   assert.equal(config.architectureLayer, "procedural");
   assert.equal(config.evictionStrategy, "usage");
-  assert.equal(config.supportsPromotion, false);
+  assert.equal(config.supportsPromotion, true);
 });
 
 test("DEFAULT_LAYER_TTL_CONFIGS evolution has correct values", () => {
@@ -519,41 +519,53 @@ test("All DEFAULT_LAYER_TTL_CONFIGS have non-zero TTL values", () => {
 // DEFAULT_MEMORY_PROMOTION_RULES tests
 // =============================================================================
 
-test("DEFAULT_MEMORY_PROMOTION_RULES has 4 rules", () => {
-  assert.equal(DEFAULT_MEMORY_PROMOTION_RULES.length, 4);
+test("DEFAULT_MEMORY_PROMOTION_RULES has 5 rules", () => {
+  assert.equal(DEFAULT_MEMORY_PROMOTION_RULES.length, 5);
+});
+
+test("DEFAULT_MEMORY_PROMOTION_RULES defines runtime to session rule", () => {
+  const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "runtime" && r.to === "session");
+  assert.ok(rule !== undefined);
+  assert.equal(rule!.minHitCount, 3);
+  assert.equal(rule!.minQualityScore, 0.4);
+  assert.equal(rule!.minImportanceScore, 0.3);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES defines session to agent rule", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "session" && r.to === "agent");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 3);
-  assert.equal(rule!.minQualityScore, 0.6);
+  assert.equal(rule!.minHitCount, 8);
+  assert.equal(rule!.minQualityScore, 0.55);
+  assert.equal(rule!.minImportanceScore, 0.5);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES defines agent to project rule", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "agent" && r.to === "project");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 8);
-  assert.equal(rule!.minQualityScore, 0.75);
+  assert.equal(rule!.minHitCount, 15);
+  assert.equal(rule!.minQualityScore, 0.7);
+  assert.equal(rule!.minImportanceScore, 0.65);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES defines project to user rule", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "project" && r.to === "user");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 12);
+  assert.equal(rule!.minHitCount, 25);
   assert.equal(rule!.minQualityScore, 0.8);
+  assert.equal(rule!.minImportanceScore, 0.75);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES defines user to evolution rule", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "user" && r.to === "evolution");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 20);
+  assert.equal(rule!.minHitCount, 40);
   assert.equal(rule!.minQualityScore, 0.9);
+  assert.equal(rule!.minImportanceScore, 0.85);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES are in order from lower to higher layers", () => {
   const froms = DEFAULT_MEMORY_PROMOTION_RULES.map((r) => r.from);
-  assert.deepEqual(froms, ["session", "agent", "project", "user"]);
+  assert.deepEqual(froms, ["runtime", "session", "agent", "project", "user"]);
 });
 
 test("Promotion rules require increasing hit counts", () => {

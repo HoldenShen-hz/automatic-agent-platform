@@ -157,10 +157,19 @@ export class ModelCallProviderService {
       });
     }
 
+    const policy = this.getDefaultBudgetPolicy();
+
+    // R2-6: Enforce maxModelTokens constraint before LLM call
+    if (policy.maxModelTokens != null && policy.maxModelTokens > 0 && request.maxTokens > policy.maxModelTokens) {
+      throw new ProviderError("model_call.max_tokens_exceeded", `Maximum model tokens ${policy.maxModelTokens} exceeded for this call (requested ${request.maxTokens})`, {
+        retryable: false,
+      });
+    }
+
     // R4-25 (INV-BUDGET-001): Reserve budget before LLM call
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
     const budgetEvaluation = this.budgetGuard.evaluateTaskSpend({
-      policy: this.getDefaultBudgetPolicy(),
+      policy,
       currentTaskCostUsd: 0,
       nextEstimatedCostUsd: estimatedCostUsd,
     });
@@ -168,6 +177,16 @@ export class ModelCallProviderService {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${budgetEvaluation.reasonCode}`, {
         retryable: false,
       });
+    }
+
+    // R2-6: Enforce maxDurationMs constraint using AbortSignal timeout
+    const controller = new AbortController();
+    const maxDurationMs = policy.maxDurationMs;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    if (maxDurationMs != null && maxDurationMs > 0) {
+      timeoutId = setTimeout(() => {
+        controller.abort();
+      }, maxDurationMs);
     }
 
     const req: ChatCompletionRequest = {
@@ -178,7 +197,7 @@ export class ModelCallProviderService {
       traceId: request.traceId ?? "",
       tenantId: request.tenantId ?? null,
       costTag: request.costTag ?? "",
-      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+      abortSignal: controller.signal,
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
     if (request.system !== undefined) {
@@ -188,7 +207,24 @@ export class ModelCallProviderService {
       req.temperature = request.temperature;
     }
 
-    return this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+    try {
+      const startTime = Date.now();
+      const result = await this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+      const elapsedMs = Date.now() - startTime;
+
+      // R2-6: Check duration constraint after call completes
+      if (maxDurationMs != null && maxDurationMs > 0 && elapsedMs > maxDurationMs) {
+        throw new ProviderError("model_call.duration_exceeded", `Maximum duration ${maxDurationMs}ms exceeded (actual: ${elapsedMs}ms)`, {
+          retryable: false,
+        });
+      }
+
+      return result;
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
   public async createStreamingCompletion(
@@ -201,6 +237,18 @@ export class ModelCallProviderService {
       });
     }
 
+    const policy = this.getDefaultBudgetPolicy();
+    const maxDurationMs = policy.maxDurationMs;
+
+    // R2-6: Enforce maxDurationMs constraint using AbortSignal timeout
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    if (maxDurationMs != null && maxDurationMs > 0) {
+      timeoutId = setTimeout(() => {
+        controller.abort();
+      }, maxDurationMs);
+    }
+
     const req: ChatCompletionRequest = {
       model: request.model,
       messages: request.messages,
@@ -209,7 +257,7 @@ export class ModelCallProviderService {
       traceId: request.traceId ?? "",
       tenantId: request.tenantId ?? null,
       costTag: request.costTag ?? "",
-      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+      abortSignal: controller.signal,
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
     if (request.system !== undefined) {
@@ -220,23 +268,41 @@ export class ModelCallProviderService {
     }
 
     const governanceKey = buildModelGovernanceKey(request.model);
+    const startTime = Date.now();
+
     const executeStreaming = async (): Promise<void> => {
       await this.unifiedProvider.createStreamingChatCompletion(
         req,
         (chunk) => {
+          // R2-6: Check duration constraint between chunks
+          if (maxDurationMs != null && maxDurationMs > 0) {
+            const elapsedMs = Date.now() - startTime;
+            if (elapsedMs > maxDurationMs) {
+              controller.abort();
+              throw new ProviderError("model_call.duration_exceeded", `Maximum duration ${maxDurationMs}ms exceeded (elapsed: ${elapsedMs}ms)`, {
+                retryable: false,
+              });
+            }
+          }
           onChunk(this.normalizeResult(chunk), false);
         },
       );
     };
 
-    if (this.callGovernance == null) {
-      await executeStreaming();
-      return;
-    }
+    try {
+      if (this.callGovernance == null) {
+        await executeStreaming();
+        return;
+      }
 
-    const result = await this.callGovernance.execute(governanceKey, executeStreaming);
-    if (!result.success) {
-      throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+      const result = await this.callGovernance.execute(governanceKey, executeStreaming);
+      if (!result.success) {
+        throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+      }
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 
@@ -320,6 +386,9 @@ export class ModelCallProviderService {
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
       maxPlatformCostUsd: 0,
+      maxSteps: 100,
+      maxModelTokens: 8192,
+      maxDurationMs: 60000,
       warnAtRatio: 0.8,
       mode: "auto",
     };

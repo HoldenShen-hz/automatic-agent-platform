@@ -1,63 +1,242 @@
-import { useCallback, useState } from "react";
-import { useIncidentsQuery } from "@aa/shared-state";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createRESTClient } from "@aa/shared-api-client";
+import { useIncidentsQuery, useWsClient } from "@aa/shared-state";
+import { useMutation } from "@aa/shared-state/mutations";
 import type { IncidentDTO } from "@aa/shared-types";
 
+const restClient = createRESTClient();
+
+export interface AlertHistoryEntry {
+  readonly title: string;
+  readonly description: string;
+}
+
+export interface AlertListItem {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly detailRows: readonly { key: string; value: string }[];
+}
+
 export interface AlertsVm {
-  readonly items: readonly { title: string; description: string }[];
+  readonly items: readonly AlertListItem[];
   readonly incidents: readonly IncidentDTO[];
   readonly filters: {
     readonly severity: string;
     readonly domain: string;
     readonly timeRange: string;
   };
+  readonly history: readonly AlertHistoryEntry[];
+  readonly streamStatus: "idle" | "live";
+  readonly pendingOperations: number;
+  readonly onAcknowledge: (id: string) => void;
   readonly onDismiss: (id: string) => void;
+  readonly onEscalate: (id: string) => void;
+  readonly onSnooze: (id: string) => void;
 }
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
-export function mapAlertsToVm(
+interface AlertStreamPayload {
+  readonly incident?: IncidentDTO;
+}
+
+function mergeIncidents(existing: readonly IncidentDTO[], incoming: IncidentDTO): readonly IncidentDTO[] {
+  const merged = new Map(existing.map((incident) => [incident.id, incident] as const));
+  merged.set(incoming.id, incoming);
+  return [...merged.values()];
+}
+
+function sortIncidents(incidents: readonly IncidentDTO[]): readonly IncidentDTO[] {
+  return [...incidents].sort((a, b) => {
+    const orderA = SEVERITY_ORDER[a.severity] ?? 99;
+    const orderB = SEVERITY_ORDER[b.severity] ?? 99;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+function buildHistoryEntry(action: string, incident: IncidentDTO): AlertHistoryEntry {
+  return {
+    title: `${action} · ${incident.title}`,
+    description: `${incident.severity} · ${incident.createdAt}`,
+  };
+}
+
+export function buildAlertsVm(
   incidents: readonly IncidentDTO[],
   filters: AlertsVm["filters"],
-  onDismiss: (id: string) => void,
+  history: readonly AlertHistoryEntry[],
+  streamStatus: AlertsVm["streamStatus"],
+  pendingOperations: number,
+  actions: Pick<AlertsVm, "onAcknowledge" | "onDismiss" | "onEscalate" | "onSnooze">,
 ): AlertsVm {
   const filtered = incidents.filter((incident) => {
-    if (filters.severity && filters.severity !== "all" && incident.severity !== filters.severity) return false;
+    if (filters.severity !== "all" && incident.severity !== filters.severity) {
+      return false;
+    }
     return true;
   });
 
-  const sorted = [...filtered].sort((a, b) => {
-    const orderA = SEVERITY_ORDER[a.severity] ?? 99;
-    const orderB = SEVERITY_ORDER[b.severity] ?? 99;
-    if (orderA !== orderB) return orderA - orderB;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
+  const sorted = sortIncidents(filtered);
   return {
     incidents: sorted,
     items: sorted.map((incident) => ({
+      id: incident.id,
       title: `${incident.severity} · ${incident.title}`,
-      description: `${incident.summary} · ${incident.createdAt}`,
+      description: incident.summary,
+      detailRows: [
+        { key: "Severity", value: incident.severity },
+        { key: "Created", value: incident.createdAt },
+        { key: "Summary", value: incident.summary },
+      ],
     })),
     filters,
-    onDismiss,
+    history,
+    streamStatus,
+    pendingOperations,
+    ...actions,
   };
 }
 
 export function useAlertsVm(): AlertsVm {
-  const [filters, setFilters] = useState<AlertsVm["filters"]>({
+  const wsClient = useWsClient();
+  const [filters] = useState<AlertsVm["filters"]>({
     severity: "all",
     domain: "all",
     timeRange: "all",
   });
+  const [liveIncidents, setLiveIncidents] = useState<readonly IncidentDTO[]>([]);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const [snoozedUntil, setSnoozedUntil] = useState<ReadonlyMap<string, number>>(new Map());
+  const [history, setHistory] = useState<readonly AlertHistoryEntry[]>([]);
+  const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
+  const incidents = useIncidentsQuery().data ?? [];
 
-  const onDismiss = useCallback((id: string) => {
-    setDismissed((prev) => new Set([...prev, id]));
+  const { mutate: acknowledgeMutate, status: acknowledgeStatus } = useMutation({
+    client: restClient,
+    method: "POST",
+    path: ({ id }: { id: string }) => `/alerts/${id}/acknowledge`,
+  });
+  const { mutate: dismissMutate, status: dismissStatus } = useMutation({
+    client: restClient,
+    method: "POST",
+    path: ({ id }: { id: string }) => `/alerts/${id}/dismiss`,
+  });
+  const { mutate: snoozeMutate, status: snoozeStatus } = useMutation({
+    client: restClient,
+    method: "POST",
+    path: ({ id }: { id: string }) => `/alerts/${id}/snooze`,
+  });
+  const { mutate: escalateMutate, status: escalateStatus } = useMutation({
+    client: restClient,
+    method: "POST",
+    path: ({ id }: { id: string }) => `/alerts/${id}/escalate`,
+  });
+
+  useEffect(() => {
+    const unsubscribe = wsClient.subscribe("incidents", (event) => {
+      if (!event.type.startsWith("incident.")) {
+        return;
+      }
+      const payload = event.payload as AlertStreamPayload;
+      if (payload.incident == null) {
+        return;
+      }
+      setStreamStatus("live");
+      setLiveIncidents((current) => mergeIncidents(current, payload.incident!));
+      setHistory((current) => [buildHistoryEntry("Stream update", payload.incident!), ...current].slice(0, 8));
+    });
+    return unsubscribe;
+  }, [wsClient]);
+
+  const mergedIncidents = useMemo(() => {
+    const merged = new Map<string, IncidentDTO>();
+    for (const incident of incidents) {
+      merged.set(incident.id, incident);
+    }
+    for (const incident of liveIncidents) {
+      merged.set(incident.id, incident);
+    }
+    const now = Date.now();
+    return sortIncidents([...merged.values()]).filter((incident) => {
+      if (dismissed.has(incident.id)) {
+        return false;
+      }
+      const snoozeExpiry = snoozedUntil.get(incident.id);
+      return snoozeExpiry == null || snoozeExpiry <= now;
+    });
+  }, [dismissed, incidents, liveIncidents, snoozedUntil]);
+
+  const dedupedIncidents = useMemo(() => {
+    const byId = new Map<string, IncidentDTO>();
+    for (const incident of mergedIncidents) {
+      byId.set(incident.id, incident);
+    }
+    return sortIncidents([...byId.values()]);
+  }, [mergedIncidents]);
+
+  const appendHistory = useCallback((entry: AlertHistoryEntry) => {
+    setHistory((current) => [entry, ...current].slice(0, 8));
   }, []);
 
-  return mapAlertsToVm(
-    (useIncidentsQuery().data ?? []).filter((i) => !dismissed.has(i.id)),
+  const findIncident = useCallback((id: string) => dedupedIncidents.find((incident) => incident.id === id) ?? null, [dedupedIncidents]);
+
+  const onAcknowledge = useCallback((id: string) => {
+    acknowledgeMutate({ id });
+    const incident = findIncident(id);
+    if (incident != null) {
+      appendHistory(buildHistoryEntry("Acknowledged", incident));
+    }
+  }, [acknowledgeMutate, appendHistory, findIncident]);
+
+  const onDismiss = useCallback((id: string) => {
+    dismissMutate({ id });
+    setDismissed((current) => new Set([...current, id]));
+    const incident = findIncident(id);
+    if (incident != null) {
+      appendHistory(buildHistoryEntry("Dismissed", incident));
+    }
+  }, [appendHistory, dismissMutate, findIncident]);
+
+  const onSnooze = useCallback((id: string) => {
+    snoozeMutate({ id });
+    setSnoozedUntil((current) => {
+      const next = new Map(current);
+      next.set(id, Date.now() + 30 * 60 * 1000);
+      return next;
+    });
+    const incident = findIncident(id);
+    if (incident != null) {
+      appendHistory(buildHistoryEntry("Snoozed 30m", incident));
+    }
+  }, [appendHistory, findIncident, snoozeMutate]);
+
+  const onEscalate = useCallback((id: string) => {
+    escalateMutate({ id });
+    const incident = findIncident(id);
+    if (incident != null) {
+      appendHistory(buildHistoryEntry("Escalated", incident));
+    }
+  }, [appendHistory, escalateMutate, findIncident]);
+
+  const pendingOperations = [acknowledgeStatus, dismissStatus, snoozeStatus, escalateStatus]
+    .filter((status) => status === "pending")
+    .length;
+
+  return buildAlertsVm(
+    dedupedIncidents,
     filters,
-    onDismiss,
+    history,
+    streamStatus,
+    pendingOperations,
+    {
+      onAcknowledge,
+      onDismiss,
+      onEscalate,
+      onSnooze,
+    },
   );
 }

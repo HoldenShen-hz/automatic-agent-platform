@@ -74,6 +74,25 @@ export interface RegionHealthSummary {
   readonly isHealthyForFailover: boolean;
 }
 
+export interface FailoverRecord {
+  readonly failoverId: string;
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly recordedAt: string;
+  readonly fencingEpoch: number;
+  readonly reason: string;
+  readonly status: "committed";
+}
+
+export interface FailoverControlEvent {
+  readonly eventId: string;
+  readonly eventType: "multi_region.failover_recorded" | "multi_region.fencing_epoch_changed";
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly recordedAt: string;
+  readonly fencingEpoch: number;
+}
+
 /**
  * Health check event types
  */
@@ -395,6 +414,9 @@ export class RegionHealthCheckService {
 export class RegionFailoverOrchestrator {
   private readonly healthCheckService: RegionHealthCheckService;
   private readonly failoverListeners = new Set<(regionId: string, targetRegionId: string) => void>();
+  private readonly failoverRecords: FailoverRecord[] = [];
+  private readonly failoverEvents: FailoverControlEvent[] = [];
+  private readonly fencingEpochByRegion = new Map<string, number>();
 
   public constructor(healthCheckService?: RegionHealthCheckService) {
     this.healthCheckService = healthCheckService ?? new RegionHealthCheckService();
@@ -405,6 +427,22 @@ export class RegionFailoverOrchestrator {
    */
   public getHealthCheckService(): RegionHealthCheckService {
     return this.healthCheckService;
+  }
+
+  public getFailoverRecords(): readonly FailoverRecord[] {
+    return [...this.failoverRecords];
+  }
+
+  public getLatestFailoverRecord(): FailoverRecord | null {
+    return this.failoverRecords[this.failoverRecords.length - 1] ?? null;
+  }
+
+  public getFailoverEvents(): readonly FailoverControlEvent[] {
+    return [...this.failoverEvents];
+  }
+
+  public getFencingEpoch(sourceRegionId: string): number {
+    return this.fencingEpochByRegion.get(sourceRegionId) ?? 0;
   }
 
   /**
@@ -465,6 +503,36 @@ export class RegionFailoverOrchestrator {
         reason: "No healthy failover target available",
       };
     }
+
+    const recordedAt = nowIso();
+    const fencingEpoch = (this.fencingEpochByRegion.get(sourceRegionId) ?? 0) + 1;
+    this.fencingEpochByRegion.set(sourceRegionId, fencingEpoch);
+    const record: FailoverRecord = {
+      failoverId: newId("failover"),
+      sourceRegionId,
+      targetRegionId,
+      recordedAt,
+      fencingEpoch,
+      reason: "health_check_failover",
+      status: "committed",
+    };
+    this.failoverRecords.push(record);
+    this.failoverEvents.push({
+      eventId: newId("failover_event"),
+      eventType: "multi_region.failover_recorded",
+      sourceRegionId,
+      targetRegionId,
+      recordedAt,
+      fencingEpoch,
+    });
+    this.failoverEvents.push({
+      eventId: newId("fencing_epoch"),
+      eventType: "multi_region.fencing_epoch_changed",
+      sourceRegionId,
+      targetRegionId,
+      recordedAt,
+      fencingEpoch,
+    });
 
     // Notify listeners
     for (const listener of this.failoverListeners) {

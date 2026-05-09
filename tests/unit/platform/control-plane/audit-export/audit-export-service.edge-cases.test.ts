@@ -69,6 +69,7 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 previousChainHash: args[6] as string | null,
                 chainHash: args[7] as string,
                 recordedAt: args[8] as string,
+                algorithm: "SHA-256",
               };
               integrityRecords.set(record.eventId, record);
             } else if (sql.includes("INSERT INTO events")) {

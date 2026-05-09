@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   SimpleBenchmarkRunner,
   type BenchmarkCase,
+  type ProposalExecutor,
 } from "../../../src/ops-maturity/drift-detection/benchmark-runner.js";
 import type { ImprovementProposal } from "../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
@@ -36,6 +37,20 @@ function withMockedRandom<T>(value: number, fn: () => Promise<T> | T): Promise<T
   }
 }
 
+function createExecutor(results: Record<string, { success: boolean; costUsd: number; latencyMs: number; violations: string[] }>): ProposalExecutor {
+  return {
+    async execute(_proposal, input) {
+      const testCaseId = String(input["testCaseId"] ?? "");
+      return results[testCaseId] ?? {
+        success: true,
+        costUsd: 0.25,
+        latencyMs: 4000,
+        violations: [],
+      };
+    },
+  };
+}
+
 test("SimpleBenchmarkRunner constructor accepts initial benchmark cases", () => {
   const cases: BenchmarkCase[] = [
     { id: "case_1", taskType: "tool_use", input: { testCaseId: "case_1" } },
@@ -46,6 +61,9 @@ test("SimpleBenchmarkRunner constructor accepts initial benchmark cases", () => 
 
 test("SimpleBenchmarkRunner addBenchmarkCase adds a case", async () => {
   const runner = new SimpleBenchmarkRunner();
+  runner.setProposalExecutor(createExecutor({
+    case_new: { success: true, costUsd: 0.25, latencyMs: 4000, violations: [] },
+  }));
   runner.addBenchmarkCase({ id: "case_new", taskType: "tool_use", input: { testCaseId: "case_new" } });
 
   const results = await withMockedRandom(0.9, () => runner.runBenchmarks(createProposal()));
@@ -57,10 +75,10 @@ test("SimpleBenchmarkRunner runBenchmarks handles cases without executor wiring"
   const runner = new SimpleBenchmarkRunner([
     { id: "case_1", taskType: "tool_use", input: { testCaseId: "case_1" } },
   ]);
-
-  const results = await withMockedRandom(0.9, () => runner.runBenchmarks(createProposal()));
-  assert.equal(results.length, 1);
-  assert.equal(results[0]?.success, true);
+  await assert.rejects(
+    async () => withMockedRandom(0.9, () => runner.runBenchmarks(createProposal())),
+    /ProposalExecutor required/,
+  );
 });
 
 test("SimpleBenchmarkRunner runBenchmarks returns results for relevant cases", async () => {
@@ -69,6 +87,10 @@ test("SimpleBenchmarkRunner runBenchmarks returns results for relevant cases", a
     { id: "case_2", taskType: "tool_validation", input: { testCaseId: "case_2" } },
   ];
   const runner = new SimpleBenchmarkRunner(cases);
+  runner.setProposalExecutor(createExecutor({
+    case_1: { success: false, costUsd: 0.25, latencyMs: 5000, violations: ["minor_issue"] },
+    case_2: { success: true, costUsd: 0.25, latencyMs: 8000, violations: [] },
+  }));
 
   const results = await withMockedRandom(0.1, () => runner.runBenchmarks(createProposal({
     kind: "tool_routing_rule",
@@ -85,6 +107,16 @@ test("SimpleBenchmarkRunner evaluate returns a valid EvaluationReport", async ()
   const runner = new SimpleBenchmarkRunner([
     { id: "case_eval", taskType: "tool_use", input: { testCaseId: "case_eval" } },
   ]);
+  runner.setBaseline("case_eval", {
+    successRate: 0.6,
+    avgCost: 0.3,
+    avgLatencyMs: 5000,
+    sampleCount: 10,
+    snapshotRef: "baseline:case_eval",
+  });
+  runner.setProposalExecutor(createExecutor({
+    case_eval: { success: true, costUsd: 0.25, latencyMs: 4000, violations: [] },
+  }));
 
   const report = await withMockedRandom(0.9, () => runner.evaluate(createProposal()));
 
@@ -102,20 +134,31 @@ test("SimpleBenchmarkRunner evaluate returns a valid EvaluationReport", async ()
 
 test("SimpleBenchmarkRunner evaluate handles empty benchmark cases", async () => {
   const runner = new SimpleBenchmarkRunner([]);
+  runner.setProposalExecutor(createExecutor({}));
 
   const report = await runner.evaluate(createProposal());
 
   assert.equal(report.benchmarkCases, 0);
-  assert.equal(report.successRateBefore, 0.6);
+  assert.equal(report.successRateBefore, 0);
   assert.equal(report.successRateAfter, 0);
-  assert.equal(report.regressionRate, 0.6);
-  assert.equal(report.decision, "reject");
+  assert.equal(report.regressionRate, 0);
+  assert.equal(report.decision, "needs_revision");
 });
 
 test("SimpleBenchmarkRunner evaluate rejects when regression exceeds threshold", async () => {
   const runner = new SimpleBenchmarkRunner([
     { id: "case_regression", taskType: "tool_use", input: { testCaseId: "case_regression" } },
   ]);
+  runner.setBaseline("case_regression", {
+    successRate: 0.6,
+    avgCost: 0.3,
+    avgLatencyMs: 5000,
+    sampleCount: 10,
+    snapshotRef: "baseline:case_regression",
+  });
+  runner.setProposalExecutor(createExecutor({
+    case_regression: { success: false, costUsd: 0.25, latencyMs: 4000, violations: [] },
+  }));
 
   const report = await withMockedRandom(0.1, () => runner.evaluate(createProposal()));
 

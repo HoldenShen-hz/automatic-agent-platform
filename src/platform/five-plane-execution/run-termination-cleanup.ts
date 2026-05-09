@@ -36,7 +36,8 @@ export type CleanupResourceKind =
   | "plugin_resource"
   | "timer"
   | "hitl_wait"
-  | "context_snapshot";
+  | "context_snapshot"
+  | "callback";
 
 export interface CleanupResource {
   readonly resourceKind: CleanupResourceKind;
@@ -93,6 +94,7 @@ const CLEANUP_ORDER: readonly CleanupResourceKind[] = [
   "timer",
   "hitl_wait",
   "context_snapshot",
+  "callback",
 ];
 
 export interface RunTerminationCleanupCallbacks {

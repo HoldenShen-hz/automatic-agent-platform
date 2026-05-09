@@ -1,6 +1,6 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
-export type HitlMode = "inspect" | "patch" | "override" | "takeover" | "resume";
+export type HitlMode = "inspect" | "patch" | "override" | "takeover" | "resume" | "edit" | "delegate" | "escalate";
 export type HitlRequestStatus = "pending_approval" | "approved" | "rejected" | "paused" | "completed";
 
 export interface HitlRequest {
@@ -184,6 +184,7 @@ export class HitlRuntime {
     const beforeRef = `patch:before:${requestId}:${nowIso()}`;
     const patched: HitlRequest = {
       ...request,
+      mode: "patch",
       status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
@@ -209,6 +210,7 @@ export class HitlRuntime {
     const afterRef = `override:after:${requestId}:${nowIso()}`;
     const overridden: HitlRequest = {
       ...request,
+      mode: "override",
       status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
@@ -229,6 +231,7 @@ export class HitlRuntime {
     const beforeRef = `takeover:before:${requestId}:${nowIso()}`;
     const takenOver: HitlRequest = {
       ...request,
+      mode: "takeover",
       status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
@@ -260,6 +263,81 @@ export class HitlRuntime {
     const rationale = `hitl_resolution:${resolution}`;
     const record = this.createResponsibilityRecord(resolved, actorId, action, rationale);
     return { request: resolved, record };
+  }
+
+  public edit(
+    requestId: string,
+    actorId: string,
+    patchContent: Readonly<Record<string, unknown>>,
+    rationale: string,
+  ): { request: HitlRequest; record: HumanResponsibilityRecord } {
+    const request = this.requireRequest(requestId);
+    if (!request) {
+      throw new Error(`harness.hitl.request_not_found:${requestId}`);
+    }
+    const beforeRef = `edit:before:${requestId}:${nowIso()}`;
+    const afterRef = `edit:after:${requestId}:${nowIso()}`;
+    const edited: HitlRequest = {
+      ...request,
+      mode: "edit",
+      status: "completed",
+      resolvedAt: nowIso(),
+      resolvedBy: actorId,
+      patchContent,
+      beforeRef,
+      afterRef,
+    };
+    this.persistRequest(edited);
+    const record = this.createResponsibilityRecord(edited, actorId, "edit", rationale, beforeRef, afterRef);
+    return { request: edited, record };
+  }
+
+  public delegate(
+    requestId: string,
+    actorId: string,
+    delegateTo: string,
+    rationale: string,
+  ): { request: HitlRequest; record: HumanResponsibilityRecord } {
+    const request = this.requireRequest(requestId);
+    if (!request) {
+      throw new Error(`harness.hitl.request_not_found:${requestId}`);
+    }
+    const beforeRef = `delegate:before:${requestId}:${nowIso()}`;
+    const afterRef = `delegate:after:${requestId}:${delegateTo}:${nowIso()}`;
+    const delegated: HitlRequest = {
+      ...request,
+      mode: "delegate",
+      status: "paused",
+      resolvedAt: nowIso(),
+      resolvedBy: actorId,
+      patchContent: {
+        delegateTo,
+      },
+      beforeRef,
+      afterRef,
+    };
+    this.persistRequest(delegated);
+    const record = this.createResponsibilityRecord(delegated, actorId, "delegate", rationale, beforeRef, afterRef);
+    return { request: delegated, record };
+  }
+
+  public escalate(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
+    const request = this.requireRequest(requestId);
+    if (!request) {
+      throw new Error(`harness.hitl.request_not_found:${requestId}`);
+    }
+    const beforeRef = `escalate:before:${requestId}:${nowIso()}`;
+    const escalated: HitlRequest = {
+      ...request,
+      mode: "escalate",
+      status: "paused",
+      resolvedAt: nowIso(),
+      resolvedBy: actorId,
+      beforeRef,
+    };
+    this.persistRequest(escalated);
+    const record = this.createResponsibilityRecord(escalated, actorId, "escalate", rationale, beforeRef);
+    return { request: escalated, record };
   }
 
   /**
@@ -295,6 +373,7 @@ export class HitlRuntime {
     }
     const resumed: HitlRequest = {
       ...request,
+      mode: "resume",
       status: "approved",
       resolvedAt: nowIso(),
       resolvedBy: actorId,

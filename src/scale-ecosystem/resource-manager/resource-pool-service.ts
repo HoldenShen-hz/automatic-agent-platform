@@ -3,9 +3,18 @@ import { z } from "zod";
 export const ResourcePoolSchema = z.object({
   poolId: z.string().min(1),
   resourceType: z.string().min(1),
+  scopeType: z.enum(["shared", "tenant", "organization", "workspace"]).default("shared"),
+  tenantId: z.string().min(1).optional(),
+  organizationId: z.string().min(1).optional(),
+  workspaceId: z.string().min(1).optional(),
   capacityUnits: z.number().int().nonnegative(),
   allocatedUnits: z.number().int().nonnegative().default(0),
   burstUnits: z.number().int().nonnegative().default(0),
+  failureRateThreshold: z.number().min(0).max(1).default(0.3),
+  minSampleSize: z.number().int().positive().default(20),
+  failureRate: z.number().min(0).max(1).default(0),
+  sampleCount: z.number().int().nonnegative().default(0),
+  isolationStatus: z.enum(["active", "isolated"]).default("active"),
 });
 
 export type ResourcePool = z.infer<typeof ResourcePoolSchema>;
@@ -25,6 +34,11 @@ export interface ConsumerAllocation {
   readonly allocatedUnits: number;
 }
 
+export interface ResourcePoolHealthObservation {
+  readonly failureRate: number;
+  readonly sampleCount: number;
+}
+
 export class ResourcePoolService {
   private readonly pools = new Map<string, ResourcePool>();
   /** Per-consumer allocation tracking: poolId -> consumerId -> allocatedUnits */
@@ -39,6 +53,15 @@ export class ResourcePoolService {
 
   public allocate(poolId: string, consumerId: string, units: number): ResourcePoolAllocation {
     const pool = this.requirePool(poolId);
+    if (pool.isolationStatus === "isolated") {
+      return {
+        poolId,
+        consumerId,
+        units,
+        granted: false,
+        reasonCodes: ["resource_pool.isolated"],
+      };
+    }
     const available = pool.capacityUnits + pool.burstUnits - pool.allocatedUnits;
     if (units > available) {
       return {
@@ -81,6 +104,20 @@ export class ResourcePoolService {
     const updated: ResourcePool = {
       ...pool,
       allocatedUnits,
+    };
+    this.pools.set(poolId, updated);
+    return updated;
+  }
+
+  public recordHealthObservation(poolId: string, observation: ResourcePoolHealthObservation): ResourcePool {
+    const pool = this.requirePool(poolId);
+    const shouldIsolate = observation.sampleCount >= pool.minSampleSize
+      && observation.failureRate > pool.failureRateThreshold;
+    const updated: ResourcePool = {
+      ...pool,
+      failureRate: observation.failureRate,
+      sampleCount: observation.sampleCount,
+      isolationStatus: shouldIsolate ? "isolated" : "active",
     };
     this.pools.set(poolId, updated);
     return updated;

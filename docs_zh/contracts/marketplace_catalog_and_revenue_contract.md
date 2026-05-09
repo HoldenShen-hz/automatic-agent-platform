@@ -11,6 +11,9 @@
 - `CommercialTermsProjection`
 - `CertificationRecord`
 - `ListingDependency`
+- `PluginTrustRoot`
+- `PluginProvenanceAttestation`
+- `RevokedPluginArtifact`
 
 ## 3. `MarketplaceListing` 最小字段
 
@@ -63,6 +66,10 @@
 - 废弃条目必须提供迁移或替代建议。
 - `sunset` 条目不得接受新安装，但允许受控迁移或只读查看。
 - `removed` 条目不得被新安装、升级或激活。
+- 非 internal publisher 的 artifact 必须能在 `PluginTrustRoot` 中找到匹配信任根。
+- artifact 必须保留 provenance attestation，至少包含 `source_uri / manifest_checksum / sbom_digest / signature_digest`。
+- 被写入 `RevokedPluginArtifact` 的 artifact 必须立即阻断新安装与新激活。
+- install gate 必须同时校验 `signature / sbom / sandbox / egress review`，并给出推荐 `required_isolation_mode`。
 
 ## 6. 测试要求
 

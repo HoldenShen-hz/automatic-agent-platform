@@ -141,7 +141,7 @@ function safePath(userPath: string, baseDir: string): string {
 export class StructuredLogger {
   private static globalFileSink: StructuredLoggerFileSink | null = null;
   private static transports: LogTransport[] = [];
-  private static rotationStateByPath = new Map<string, { scheduled: boolean }>();
+  private static rotationStateByPath = new Map<string, { scheduled: boolean; pendingBytes: number }>();
 
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
@@ -434,13 +434,23 @@ export class StructuredLogger {
     }
     try {
       const serialized = `${JSON.stringify(entry)}\n`;
-      // Schedule rotation check asynchronously to avoid blocking event loop
-      // The rotation itself will be async if needed
-      this.scheduleRotationIfNeeded(sink, Buffer.byteLength(serialized, "utf8"));
+      const serializedBytes = Buffer.byteLength(serialized, "utf8");
+      const state = this.getOrCreateRotationState(sink.filePath);
+      state.pendingBytes += serializedBytes;
+      // Track inflight writes so concurrent async appends do not all race against
+      // the same stale file size.
+      this.scheduleRotationIfNeeded(sink);
       // Use async appendFile to avoid blocking the event loop
-      fsPromises.appendFile(sink.filePath, serialized, "utf8").catch(() => {
-        // File sink failures must not take down the caller path.
-      });
+      fsPromises.appendFile(sink.filePath, serialized, "utf8")
+        .catch(() => {
+          // File sink failures must not take down the caller path.
+        })
+        .finally(() => {
+          const latestState = StructuredLogger.rotationStateByPath.get(sink.filePath);
+          if (latestState != null) {
+            latestState.pendingBytes = Math.max(0, latestState.pendingBytes - serializedBytes);
+          }
+        });
     } catch {
       // File sink failures must not take down the caller path.
     }
@@ -461,21 +471,30 @@ export class StructuredLogger {
     }
   }
 
-  private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
-    const state = StructuredLogger.rotationStateByPath.get(sink.filePath) ?? { scheduled: false };
-    StructuredLogger.rotationStateByPath.set(sink.filePath, state);
+  private getOrCreateRotationState(filePath: string): { scheduled: boolean; pendingBytes: number } {
+    const existing = StructuredLogger.rotationStateByPath.get(filePath);
+    if (existing != null) {
+      return existing;
+    }
+    const created = { scheduled: false, pendingBytes: 0 };
+    StructuredLogger.rotationStateByPath.set(filePath, created);
+    return created;
+  }
+
+  private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink): void {
+    const state = this.getOrCreateRotationState(sink.filePath);
     if (state.scheduled || sink.maxBytes == null) {
       return;
     }
 
     // Check asynchronously if rotation is needed to avoid blocking the event loop
     // and prevent race condition between statSync (sync) and appendFile (async)
-    this.checkRotationAsync(sink, incomingBytes).catch(() => {
+    this.checkRotationAsync(sink).catch(() => {
       // Rotation check errors should not affect logging
     });
   }
 
-  private async checkRotationAsync(sink: StructuredLoggerFileSink, incomingBytes: number): Promise<void> {
+  private async checkRotationAsync(sink: StructuredLoggerFileSink): Promise<void> {
     const state = StructuredLogger.rotationStateByPath.get(sink.filePath);
     if (!state || state.scheduled || sink.maxBytes == null) {
       return;
@@ -490,7 +509,7 @@ export class StructuredLogger {
       return;
     }
 
-    if (currentBytes + incomingBytes <= sink.maxBytes) {
+    if (currentBytes + state.pendingBytes <= sink.maxBytes) {
       return;
     }
 

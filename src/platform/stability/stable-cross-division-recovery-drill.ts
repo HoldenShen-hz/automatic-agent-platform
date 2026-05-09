@@ -299,9 +299,9 @@ async function runCrossDivisionReplayScenario(
     const store = new AuthoritativeTaskStore(db);
     const replay = new RuntimeRecoveryReplayService(store);
     const generatedAt = "2026-04-04T09:30:00.000Z";
-    const general = replay.buildTaskReplayReport("task-general-stale-drill", generatedAt);
-    const blocked = replay.buildTaskReplayReport("task-engineering-blocked-drill", generatedAt);
-    const deadLetter = replay.buildTaskReplayReport("task-engineering-dead-letter-drill", generatedAt);
+    const general = await replay.buildTaskReplayReport("task-general-stale-drill", generatedAt);
+    const blocked = await replay.buildTaskReplayReport("task-engineering-blocked-drill", generatedAt);
+    const deadLetter = await replay.buildTaskReplayReport("task-engineering-dead-letter-drill", generatedAt);
     db.close();
 
     return {

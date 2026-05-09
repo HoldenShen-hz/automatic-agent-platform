@@ -10,6 +10,8 @@
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
  */
 
+import { lookup } from "node:dns/promises";
+
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
   isBlockedOutboundHostname,
@@ -116,6 +118,15 @@ export function isInternalUrl(url: URL): boolean {
   return isInternalNetworkUrl(url);
 }
 
+async function resolvesToBlockedAddress(hostname: string): Promise<boolean> {
+  try {
+    const addresses = await lookup(hostname, { all: true, verbatim: true });
+    return addresses.some((entry) => isBlockedIpOrHostname(entry.address));
+  } catch {
+    return true;
+  }
+}
+
 const webFetchLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
@@ -176,6 +187,16 @@ export function createWebFetchTool() {
           status: "blocked",
           error: `Domain ${url.hostname} is not allowed`,
           errorCode: "DOMAIN_BLOCKED",
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      if (await resolvesToBlockedAddress(url.hostname)) {
+        return {
+          success: false,
+          status: "blocked",
+          error: `Hostname ${url.hostname} resolved to a blocked internal address`,
+          errorCode: "DNS_REBINDING_BLOCKED",
           durationMs: Date.now() - startTime,
         };
       }

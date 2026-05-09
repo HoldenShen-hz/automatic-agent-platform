@@ -138,6 +138,40 @@ function compareSemver(a: string, b: string): number {
   return av.patch - bv.patch;
 }
 
+function matchesComparator(version: string, comparator: string): boolean {
+  const trimmed = comparator.trim();
+  if (trimmed.length === 0) {
+    return true;
+  }
+  if (trimmed.startsWith(">=")) {
+    return compareSemver(version, trimmed.slice(2).trim()) >= 0;
+  }
+  if (trimmed.startsWith("<=")) {
+    return compareSemver(version, trimmed.slice(2).trim()) <= 0;
+  }
+  if (trimmed.startsWith(">")) {
+    return compareSemver(version, trimmed.slice(1).trim()) > 0;
+  }
+  if (trimmed.startsWith("<")) {
+    return compareSemver(version, trimmed.slice(1).trim()) < 0;
+  }
+  if (trimmed.startsWith("^")) {
+    const min = trimmed.slice(1).trim();
+    const minVersion = parseSemver(min);
+    const versionParts = parseSemver(version);
+    return versionParts.major === minVersion.major && compareSemver(version, min) >= 0;
+  }
+  if (trimmed.startsWith("~")) {
+    const min = trimmed.slice(1).trim();
+    const minVersion = parseSemver(min);
+    const versionParts = parseSemver(version);
+    return versionParts.major === minVersion.major
+      && versionParts.minor === minVersion.minor
+      && compareSemver(version, min) >= 0;
+  }
+  return compareSemver(version, trimmed) === 0;
+}
+
 export class PackSecurityService {
   public async runSecurityScan(input: SecurityScanInput): Promise<SecurityScanResult> {
     const scanId = newId("scan");
@@ -246,21 +280,14 @@ export class PackSecurityService {
    * Supports simple semver ranges (exact, ^, ~, >=).
    */
   private versionMatchesCveRange(version: string, range: string): boolean {
-    const v = parseSemver(version);
-    if (range.startsWith("^")) {
-      const min = parseSemver(range.slice(1));
-      return v.major === min.major && v.minor >= min.minor && v.patch >= min.patch;
+    const comparators = range
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    if (comparators.length === 0) {
+      return false;
     }
-    if (range.startsWith("~")) {
-      const min = parseSemver(range.slice(1));
-      return v.major === min.major && v.minor === min.minor && v.patch >= min.patch;
-    }
-    if (range.startsWith(">=")) {
-      const minVer = range.slice(2);
-      return compareSemver(version, minVer) >= 0;
-    }
-    // Exact match
-    return version === range;
+    return comparators.every((comparator) => matchesComparator(version, comparator));
   }
 
   private async runSandboxTest(input: SecurityScanInput): Promise<{ issues: SecurityIssue[] }> {

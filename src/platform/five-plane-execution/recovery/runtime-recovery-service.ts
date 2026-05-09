@@ -413,7 +413,7 @@ export class RuntimeRecoveryService {
    * @returns Complete recovery view including candidates, approvals, and events
    * @throws Error if task is not found
    */
-  public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): TaskRuntimeRecoveryView {
+  public async buildRuntimeRecoveryView(taskId: string, tenantId?: string | null) {
     const task = this.store.task.getTask(taskId, tenantId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {
@@ -816,9 +816,9 @@ function toRecoveryEvent(event: EventRecord): TaskRuntimeRecoveryView["recentRec
   };
 }
 
-function findLatestCheckpoint(artifacts: ArtifactRecord[]): WorkflowStepCheckpointSummary | null {
+async function findLatestCheckpoint(artifacts: ArtifactRecord[]): Promise<WorkflowStepCheckpointSummary | null> {
   for (const artifact of [...artifacts].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
-    const checkpoint = readWorkflowStepCheckpoint(artifact);
+    const checkpoint = await readWorkflowStepCheckpoint(artifact);
     if (checkpoint) {
       return summarizeWorkflowStepCheckpoint(artifact.artifactId, checkpoint);
     }

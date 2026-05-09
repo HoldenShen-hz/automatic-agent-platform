@@ -372,13 +372,25 @@ export class HttpApiServer {
         message: `Request body exceeds ${MAX_BODY_BYTES} bytes.`,
       });
     }
-    const body = await readIncomingBody(request);
-    return this.dispatchRequest({
-      method: request.method,
-      url: request.url,
-      headers,
-      body,
-    });
+    return this.withRequestTimeout(
+      {
+        method: request.method,
+        url: request.url,
+        headers,
+        body: null,
+      },
+      (async () => {
+        const body = await readIncomingBody(request);
+        return this.dispatchRequest({
+          method: request.method,
+          url: request.url,
+          headers,
+          body,
+        }, {
+          skipRouteTimeout: true,
+        });
+      })(),
+    );
   }
 
   /**
@@ -388,13 +400,46 @@ export class HttpApiServer {
   private extractEndpointKey(url: string): string {
     try {
       const pathname = parseUrl(url).pathname ?? "/";
-      return pathname;
+      return this.normalizeRateLimitPath(pathname);
     } catch {
       return "/";
     }
   }
 
-  private async dispatchRequest(request: ApiRequestLike): Promise<ApiResponsePayload> {
+  private normalizeRateLimitPath(pathname: string): string {
+    const segments = pathname.split("/").filter((segment) => segment.length > 0);
+    if (segments.length === 0) {
+      return "/";
+    }
+    const prefixLength = segments[0] === "api" && segments[1] === "v1"
+      ? 2
+      : segments[0] === "v1"
+        ? 1
+        : 0;
+    if (prefixLength > 0) {
+      if (segments[prefixLength] === "tasks" && segments.length >= prefixLength + 2) {
+        const tail = segments[prefixLength + 2];
+        if (
+          segments.length === prefixLength + 2
+          || tail === "events"
+          || tail === "inspect"
+        ) {
+          segments[prefixLength + 1] = ":id";
+        }
+      }
+      if (segments[prefixLength] === "workflows" && segments.length === prefixLength + 2) {
+        segments[prefixLength + 1] = ":id";
+      }
+    }
+    return `/${segments.join("/")}`;
+  }
+
+  private async dispatchRequest(
+    request: ApiRequestLike,
+    options: {
+      skipRouteTimeout?: boolean;
+    } = {},
+  ): Promise<ApiResponsePayload> {
     const requestId = readRequestId(request);
     const principal = authenticateOptionalPrincipal(request, this.options.authService ?? null);
 
@@ -483,10 +528,12 @@ export class HttpApiServer {
         }
 
         const ctx: RouteContext = { request, route, requestId, principal };
-        const resolved = await this.withRequestTimeout(
-          request,
-          this.resolveRouteResponse(route, request, ctx),
-        );
+        const resolved = options.skipRouteTimeout
+          ? await this.resolveRouteResponse(route, request, ctx)
+          : await this.withRequestTimeout(
+            request,
+            this.resolveRouteResponse(route, request, ctx),
+          );
         if (resolved == null) {
           return this.attachResponseTracing(this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
@@ -578,6 +625,7 @@ export class HttpApiServer {
 
   private handleError(error: unknown, requestId: string, request: ApiRequestLike): ApiResponsePayload {
     const normalized = normalizeError(error);
+    const traceId = normalized.traceId ?? request.headers["x-correlation-id"] ?? requestId;
     if (!(error instanceof AppError)) {
       logger.error("Unhandled API error", {
         requestId,
@@ -589,6 +637,8 @@ export class HttpApiServer {
     return this.buildJsonErrorResponse(requestId, normalized.statusCode, {
       code: normalized.code,
       message: normalized.message,
+      ...(normalized.details != null ? { details: normalized.details } : {}),
+      traceId,
     });
   }
 
@@ -703,15 +753,26 @@ export class HttpApiServer {
     error: {
       code: string;
       message: string;
+      details?: Record<string, unknown> | null;
+      traceId?: string | null;
     },
   ): ApiResponsePayload {
+    const traceId = error.traceId ?? requestId;
     return {
       statusCode,
       headers: {
         "content-type": "application/json; charset=utf-8",
         "x-request-id": requestId,
       },
-      body: JSON.stringify({ requestId, error }, null, 2),
+      body: JSON.stringify({
+        requestId,
+        traceId,
+        error: {
+          code: error.code,
+          message: error.message,
+          ...(error.details != null ? { details: error.details } : {}),
+        },
+      }, null, 2),
     };
   }
 

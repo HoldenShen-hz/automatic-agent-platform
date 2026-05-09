@@ -437,3 +437,95 @@ test("ApprovalService.applyDecision throws for terminal decision with extra fiel
     (err: any) => err.code === "approval.invalid_terminal_payload",
   );
 });
+
+// ---------------------------------------------------------------------------
+// R4-14: P2 → P3/P4 Directive Emission
+// ---------------------------------------------------------------------------
+
+test("ApprovalService.applyDecision emits DecisionDirective on approval", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+
+  const emittedDirectives: any[] = [];
+  const directiveSink = {
+    emitDecisionDirective(directive: any) {
+      emittedDirectives.push(directive);
+    },
+    emitOperationalDirective(_directive: any) {
+      // not used by ApprovalService
+    },
+  };
+
+  const service = new ApprovalService(db, store as any, undefined, directiveSink as any);
+
+  const request = createBaseRequest();
+  const approval = service.createRequest(request);
+
+  const decision: ApprovalDecision = {
+    approvalId: approval.approvalId,
+    decisionType: "confirmed",
+    confirmed: true,
+    respondedBy: "user_789",
+    respondedAt: "2026-04-21T00:00:00.000Z",
+  };
+
+  service.applyDecision(decision);
+
+  assert.strictEqual(emittedDirectives.length, 1, "Should emit exactly one directive");
+  const directive = emittedDirectives[0];
+  assert.strictEqual(directive.type, "approve");
+  assert.strictEqual(directive.targetRef, approval.approvalId);
+  assert.strictEqual(directive.issuedBy.principalId, "user_789");
+  assert.strictEqual(directive.payload.decisionType, "confirmed");
+});
+
+test("ApprovalService.applyDecision emits deny directive on rejected", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+
+  const emittedDirectives: any[] = [];
+  const directiveSink = {
+    emitDecisionDirective(directive: any) {
+      emittedDirectives.push(directive);
+    },
+    emitOperationalDirective(_directive: any) {},
+  };
+
+  const service = new ApprovalService(db, store as any, undefined, directiveSink as any);
+
+  const request = createBaseRequest();
+  const approval = service.createRequest(request);
+
+  const decision: ApprovalDecision = {
+    approvalId: approval.approvalId,
+    decisionType: "rejected",
+    respondedBy: "admin_user",
+    respondedAt: "2026-04-21T00:00:00.000Z",
+  };
+
+  service.applyDecision(decision);
+
+  assert.strictEqual(emittedDirectives.length, 1);
+  assert.strictEqual(emittedDirectives[0].type, "deny");
+  assert.strictEqual(emittedDirectives[0].issuedBy.principalId, "admin_user");
+});
+
+test("ApprovalService uses no-op directive sink when none provided", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new ApprovalService(db, store as any);
+
+  const request = createBaseRequest();
+  const approval = service.createRequest(request);
+
+  const decision: ApprovalDecision = {
+    approvalId: approval.approvalId,
+    decisionType: "confirmed",
+    confirmed: true,
+    respondedBy: "user_789",
+    respondedAt: "2026-04-21T00:00:00.000Z",
+  };
+
+  // Should not throw even with no directive sink
+  assert.doesNotThrow(() => service.applyDecision(decision));
+});

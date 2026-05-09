@@ -67,12 +67,16 @@ export interface EvalRunRecord {
 
 /**
  * Definition of a single test case within a suite.
+ *
+ * R2-10: Added priority field to support §21.7 risk-level independence enforcement.
  */
 export interface EvalCaseDefinition {
   id: string;
   input: string;
   expectedOutput: string;
   tags?: string[];
+  /** R2-10: Risk priority level for independence enforcement - high/critical require independent judge */
+  priority?: "critical" | "high" | "medium" | "low";
 }
 
 /**
@@ -168,6 +172,8 @@ export interface AbTestResult {
 
 /**
  * Result of a CI gate evaluation determining if a release can proceed.
+ *
+ * R2-10: Added independenceViolation field to report §21.7 independence violations.
  */
 export interface CiGateResult {
   passed: boolean;
@@ -176,6 +182,8 @@ export interface CiGateResult {
   regressions: string[];
   improvements: string[];
   summary: string;
+  /** R2-10: Set when high-risk evaluation requires independent judge but none is configured */
+  independenceViolation?: string;
 }
 
 /**
@@ -208,12 +216,19 @@ export type EvalCaseEvaluator = (
 
 /**
  * Options for CI gate evaluation.
+ *
+ * R2-10: Added enforceIndependenceForHighRisk and independentJudgeId to support
+ * §21.7 requirement that high-risk evaluations use an independent judge.
  */
 export interface CiGateOptions {
   evaluator?: EvalCaseEvaluator;
   baselinePromptVersion?: string | null;
   improvementScoreThreshold?: number;
   passingVerdicts?: readonly QualityVerdict[];
+  /** R2-10: When true, enforces that high-risk evaluations use an independent judge */
+  enforceIndependenceForHighRisk?: boolean;
+  /** R2-10: Judge ID to use for independent evaluation of high-risk cases */
+  independentJudgeId?: string;
 }
 
 type RawRow = Record<string, unknown>;
@@ -616,14 +631,28 @@ export class LlmEvalService {
     const passed = passingVerdicts.includes(verdict)
       && !(baselineRegression?.hasRegression ?? false);
 
-    return {
-      passed,
+    // R2-10: Enforce independence for high-risk evaluations per §21.7
+    let independenceViolation: string | null = null;
+    if (options.enforceIndependenceForHighRisk && cases.some((c) => c.priority === "critical" || c.priority === "high")) {
+      if (!options.independentJudgeId) {
+        independenceViolation = "high_risk_evaluation_requires_independent_judge";
+      }
+    }
+
+    const gatePassed = passingVerdicts.includes(verdict)
+      && !(baselineRegression?.hasRegression ?? false)
+      && independenceViolation == null;
+
+    const result: CiGateResult = {
+      passed: gatePassed,
       runId: run.id,
-      verdict,
+      verdict: independenceViolation != null ? "inconclusive" as const : verdict,
       regressions: uniqueRegressions,
       improvements: uniqueImprovements,
-      summary: `${completed?.passedCases ?? 0}/${completed?.totalCases ?? 0} cases passed, verdict: ${verdict}${regressionSummary}`,
+      summary: `${completed?.passedCases ?? 0}/${completed?.totalCases ?? 0} cases passed, verdict: ${verdict}${regressionSummary}${independenceViolation != null ? ", independence violation: " + independenceViolation : ""}`,
+      ...(independenceViolation != null ? { independenceViolation: independenceViolation ?? undefined } : {}),
     };
+    return result;
   }
 
   // ── Prompt Regression Detection ────────────────────────────────────

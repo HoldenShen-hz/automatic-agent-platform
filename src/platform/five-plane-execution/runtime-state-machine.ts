@@ -85,18 +85,19 @@ export interface RuntimeTransitionResult<TAggregate extends RuntimeStateAggregat
 type TransitionTable<TStatus extends string> = Record<TStatus, readonly TStatus[]>;
 
 const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
-  created: ["admitted", "failed", "aborted"],
-  admitted: ["planning", "ready", "failed", "aborted"],
-  planning: ["ready", "replanning", "failed", "aborted"],
-  ready: ["running", "paused", "failed", "aborted"],
-  running: ["pausing", "paused", "replanning", "compensating", "completed", "failed", "aborted"],
-  pausing: ["paused", "failed", "aborted"],
-  paused: ["resuming", "replanning", "failed", "aborted"],
-  resuming: ["running", "failed", "aborted"],
-  replanning: ["ready", "running", "failed", "aborted"],
-  compensating: ["completed", "failed", "aborted"],
+  created: ["admitted", "failed", "cancelled", "aborted"],
+  admitted: ["planning", "ready", "failed", "cancelled", "aborted"],
+  planning: ["ready", "replanning", "failed", "cancelled", "aborted"],
+  ready: ["running", "paused", "failed", "cancelled", "aborted"],
+  running: ["pausing", "paused", "replanning", "compensating", "completed", "failed", "cancelled", "aborted"],
+  pausing: ["paused", "failed", "cancelled", "aborted"],
+  paused: ["resuming", "replanning", "failed", "cancelled", "aborted"],
+  resuming: ["running", "failed", "cancelled", "aborted"],
+  replanning: ["ready", "running", "failed", "cancelled", "aborted"],
+  compensating: ["completed", "failed", "cancelled", "aborted"],
   completed: [],
   failed: [],
+  cancelled: [],
   aborted: [],
 };
 
@@ -469,7 +470,7 @@ function applyHarnessRunStatus(
   terminalReason: string,
   occurredAt: string,
 ): HarnessRun {
-  const isTerminal = status === "completed" || status === "failed" || status === "aborted";
+  const isTerminal = status === "completed" || status === "failed" || status === "cancelled" || status === "aborted";
   return {
     ...aggregate,
     status,

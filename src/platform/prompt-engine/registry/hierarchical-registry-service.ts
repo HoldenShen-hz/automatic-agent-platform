@@ -240,6 +240,8 @@ export class HierarchicalPromptRegistryService {
   /**
    * Gets the resolved prompt bundle considering traffic allocation.
    * Used for A/B testing scenarios.
+   * R16-15 fix: Added runVersion parameter to lock bundle selection for a given run,
+   * ensuring consistent bundle assignment even if bundle configurations change mid-run.
    */
   public resolveBundleForTraffic(
     name: string,
@@ -247,6 +249,7 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
     domain?: string,
     trafficKey?: string,
+    runVersion?: string,
   ): PromptBundle | null {
     const candidates = this.getResolvedScopeBundles(name, taskType, packId, domain);
     if (candidates.length === 0) {
@@ -264,7 +267,13 @@ export class HierarchicalPromptRegistryService {
       return this.selectDefaultBundle(eligible);
     }
 
-    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
+    // R16-15 fix: Incorporate runVersion into traffic key to lock bundle selection
+    // When runVersion is provided, the same run will consistently get the same bundle
+    // even if bundle configurations change mid-run
+    const effectiveTrafficKey = runVersion != null
+      ? `${trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`}:rv=${runVersion}`
+      : (trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
+    const slot = this.computeTrafficSlot(effectiveTrafficKey);
     let cursor = 0;
     for (const bundle of eligible) {
       cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);

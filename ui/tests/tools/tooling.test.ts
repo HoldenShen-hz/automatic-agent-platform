@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { generateEndpointBindingModule } from "@aa/codegen";
-import { createScenarioChecklist } from "@aa/e2e";
-import { describePlannedEndpoint, resolveMockRequest } from "@aa/mock-server";
+import { generateBindingsFromOpenApi, generateEndpointBindingModule } from "@aa/codegen";
+import { createPlaywrightScenarioDefinitions, createScenarioChecklist } from "@aa/e2e";
+import { createMockRequestHandler, describePlannedEndpoint, resolveMockRequest } from "@aa/mock-server";
 
 describe("ui tooling baselines", () => {
   it("exposes runnable codegen, mock-server and e2e helpers", () => {
@@ -11,11 +11,44 @@ describe("ui tooling baselines", () => {
       { id: "tasks", path: "/api/v1/tasks" },
       { id: "dashboard", path: "/api/v1/dashboard/snapshot" },
     ]);
+    const openApiSource = generateBindingsFromOpenApi({
+      paths: {
+        "/api/v1/tasks": {
+          get: { operationId: "listTasks" },
+        },
+      },
+    });
+    const playwrightDefinitions = createPlaywrightScenarioDefinitions("http://127.0.0.1:4173");
 
     expect(source).toContain('export const tasksPath = "/api/v1/tasks";');
+    expect(openApiSource).toContain('export const listTasksPath = { method: "GET", path: "/api/v1/tasks" } as const;');
     expect(resolveMockRequest("/api/v1/tasks")).toBeDefined();
     expect(describePlannedEndpoint("analytics").enabled).toBe(false);
     expect(createScenarioChecklist()).toHaveLength(7);
+    expect(playwrightDefinitions[0]?.url.startsWith("http://127.0.0.1:4173/")).toBe(true);
+  });
+
+  it("exposes an http request handler for health and api routes", async () => {
+    const handler = createMockRequestHandler();
+    const response = {
+      statusCode: 0,
+      headers: new Map<string, string>(),
+      body: "",
+      setHeader(name: string, value: string) {
+        this.headers.set(name, value);
+      },
+      end(payload: string) {
+        this.body = payload;
+      },
+    };
+
+    handler({ url: "/healthz" } as never, response as never);
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ ok: true });
+
+    handler({ url: "/api/v1/tasks" } as never, response as never);
+    expect(response.statusCode).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
   });
 
   it("ships a storybook baseline", () => {

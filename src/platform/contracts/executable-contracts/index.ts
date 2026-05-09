@@ -260,9 +260,10 @@ export type HarnessRunStatus =
   | "compensating"
   | "completed"
   | "failed"
+  | "cancelled"
   | "aborted";
 
-export const HARNESS_RUN_TERMINAL_STATUSES = ["completed", "failed", "aborted"] as const;
+export const HARNESS_RUN_TERMINAL_STATUSES = ["completed", "failed", "cancelled", "aborted"] as const;
 
 export interface HarnessRun {
   readonly harnessRunId: string;

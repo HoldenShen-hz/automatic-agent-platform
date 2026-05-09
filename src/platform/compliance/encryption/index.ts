@@ -55,7 +55,10 @@ export class FieldEncryptionService {
       throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use enc:fingerprint:iv:authTag:ciphertext format.");
     }
     const [, fingerprint, ivHex, authTagHex, ciphertextHex] = parts;
-    if (fingerprint !== fingerprintKey(input.keyRef)) {
+    if (fingerprint == null || ivHex == null || authTagHex == null || ciphertextHex == null) {
+      throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use enc:fingerprint:iv:authTag:ciphertext format.");
+    }
+    if (fingerprint !== fingerprintKey(input.keyRef, fingerprint.length)) {
       throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
 
@@ -81,8 +84,8 @@ function protectValue(value: string, keyRef: string): string {
   return `enc:${fingerprintKey(keyRef)}:${iv.toString("hex")}:${authTag.toString("hex")}:${ciphertext.toString("hex")}`;
 }
 
-function fingerprintKey(keyRef: string): string {
-  return createHash("sha256").update(keyRef).digest("hex").slice(0, 12);
+function fingerprintKey(keyRef: string, length = 32): string {
+  return createHash("sha256").update(keyRef).digest("hex").slice(0, length);
 }
 
 function deriveEncryptionKey(keyRef: string): Buffer {

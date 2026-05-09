@@ -91,6 +91,16 @@ export interface RegionReplicationConfig {
   };
 }
 
+export interface ReplicationLagStatus {
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly measuredAt: string;
+  readonly pendingEvents: number;
+  readonly lagMs: number;
+  readonly lagSloMs: number;
+  readonly withinSlo: boolean;
+}
+
 /**
  * CDC replication service for multi-region data sync
  */
@@ -98,6 +108,7 @@ export class CDCReplicationService {
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
+  private readonly latestSourceEventAt = new Map<string, string>();
 
   /**
    * Register a replication configuration
@@ -173,6 +184,11 @@ export class CDCReplicationService {
       endSequence,
       createdAt: nowIso(),
     };
+
+    const latestEvent = batchEvents[batchEvents.length - 1];
+    if (latestEvent != null) {
+      this.latestSourceEventAt.set(key, latestEvent.createdAt);
+    }
 
     // Queue batch for async replication
     this.enqueueBatch(key, batch);
@@ -257,9 +273,10 @@ export class CDCReplicationService {
   }
 
   /**
-   * Calculate replication lag (events behind)
+   * Calculate pending replication lag (events behind).
+   * Legacy API preserved for compatibility with existing callers.
    */
-  public getReplicationLag(
+  public getPendingEventCount(
     sourceRegionId: string,
     targetRegionId: string,
     totalSourceEvents: number,
@@ -269,6 +286,55 @@ export class CDCReplicationService {
       return totalSourceEvents;
     }
     return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
+  }
+
+  /**
+   * Calculate replication lag.
+   * When source events are provided, returns time lag in milliseconds.
+   * When a numeric total is provided, preserves legacy pending-event count behavior.
+   */
+  public getReplicationLag(
+    sourceRegionId: string,
+    targetRegionId: string,
+    sourceEventsOrCount: readonly CDCReplicationEvent[] | number,
+  ): number {
+    if (Array.isArray(sourceEventsOrCount)) {
+      return this.getReplicationLagStatus(sourceRegionId, targetRegionId, sourceEventsOrCount).lagMs;
+    }
+    return this.getPendingEventCount(sourceRegionId, targetRegionId, sourceEventsOrCount as number);
+  }
+
+  /**
+   * Return time-based replication lag monitoring aligned to the <=30s SLA.
+   */
+  public getReplicationLagStatus(
+    sourceRegionId: string,
+    targetRegionId: string,
+    sourceEvents: readonly CDCReplicationEvent[],
+    lagSloMs = 30_000,
+  ): ReplicationLagStatus {
+    const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    const checkpoint = this.getCheckpoint(sourceRegionId, targetRegionId);
+    const latestEventAt = sourceEvents[sourceEvents.length - 1]?.createdAt
+      ?? this.latestSourceEventAt.get(key)
+      ?? null;
+    const pendingEvents = checkpoint == null
+      ? sourceEvents.length
+      : sourceEvents.filter((event) => event.sequence > checkpoint.lastEventSequence).length;
+    const checkpointAt = checkpoint?.processedAt ?? nowIso();
+    const lagMs = latestEventAt == null
+      ? 0
+      : Math.max(0, Date.parse(latestEventAt) - Date.parse(checkpointAt));
+
+    return {
+      sourceRegionId,
+      targetRegionId,
+      measuredAt: nowIso(),
+      pendingEvents,
+      lagMs,
+      lagSloMs,
+      withinSlo: lagMs <= lagSloMs,
+    };
   }
 
   /**

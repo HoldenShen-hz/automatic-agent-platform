@@ -695,12 +695,8 @@ export class HarnessRuntimeService {
   private readonly runtimeTruthRepository: RuntimeRepository | undefined;
   /** R4-47: Directive sink for emitting OperationalDirective during HITL pause/resume operations */
   private readonly directiveSink: ControlPlaneDirectiveSink | null;
-  /** Vibration state per-run, maintained across runLoop iterations per §45.20 */
-  private vibrationState: GuardrailVibrationState = {
-    guardrailActionCount: 0,
-    lastGuardrailSignature: null,
-    guardrailCooldownUntilMs: null,
-  };
+  /** Vibration state keyed by runId so one run cannot poison another run's breaker history. */
+  private readonly vibrationStates = new Map<string, GuardrailVibrationState>();
 
   public constructor(
     options: {
@@ -733,11 +729,14 @@ export class HarnessRuntimeService {
     this.runtimeTruthRepository = options.runtimeTruthRepository;
     this.directiveSink = options.directiveSink ?? null;
     this.recoveryController = new RecoveryController(this.durableService, this);
-    // R18-05 fix: Reset vibration state for each new service instance
-    this.vibrationState = {
+  }
+
+  private createInitialVibrationState(): GuardrailVibrationState {
+    return {
       guardrailActionCount: 0,
       lastGuardrailSignature: null,
       guardrailCooldownUntilMs: null,
+      recentSignals: [],
     };
   }
 
@@ -926,7 +925,7 @@ export class HarnessRuntimeService {
   }
 
   public recover(run: HarnessRunRuntimeState): HarnessRunRuntimeState {
-    const isTerminal = run.status === "completed" || run.status === "failed" || run.status === "aborted";
+    const isTerminal = run.status === "completed" || run.status === "failed" || run.status === "aborted" || run.status === "cancelled";
     // R1-1: Must route all status changes through state machine to maintain INV-RUNTIME-001
     const paused = isTerminal
       ? this.transitionRunStatus(run, "paused", "harness.recover_from_terminal")
@@ -1008,7 +1007,7 @@ export class HarnessRuntimeService {
     }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
-      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
+      : this.transitionRunStatus(run, "cancelled", "harness.hitl_rejected");
     return {
       ...nextRun,
       pauseReason: resolution === "approved" ? null : run.pauseReason,
@@ -1072,8 +1071,8 @@ export class HarnessRuntimeService {
       violations.push("INV-4:harness.invariant.duration_exceeds_budget");
     }
 
-    // INV-5: Terminal state (completed/aborted) must have completedAt set
-    if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {
+    // INV-5: Terminal state (completed/aborted/cancelled) must have completedAt set
+    if ((run.status === "completed" || run.status === "aborted" || run.status === "cancelled") && run.completedAt == null) {
       violations.push("INV-5:harness.invariant.final_state_requires_completed_at");
     }
 
@@ -1104,6 +1103,7 @@ export class HarnessRuntimeService {
       || run.status === "replanning"
       || run.status === "resuming"
       || run.status === "completed"
+      || run.status === "cancelled"
       || run.status === "aborted";
     if (hasOpenExecutionBlockers && (run.toolbelt?.blockedTools.length ?? 0) > 0) {
       violations.push("INV-10:harness.invariant.blocked_tool_requested");
@@ -1588,26 +1588,30 @@ export class HarnessRuntimeService {
       // VibrationBreaker detects when the same guardrail action repeats too often,
       // indicating an oscillation loop that would cause infinite replanning.
       // Use guardrailSuggestedAction as the signature since that drives retry/replan.
-      const vibrationSignal: GuardrailActionSignal = {
-        runId: run.runId,
-        signature: guardrailAssessment.suggestedAction,
-        observedAtMs: Date.now(),
-      };
-      const vibrationDecision: GuardrailVibrationDecision = this.vibrationBreaker.evaluate(
-        vibrationSignal,
-        this.vibrationState,
-      );
-      this.vibrationState = vibrationDecision.state;
-
-      // If vibration is in cooldown, escalate to human review to break the oscillation loop
-      if (!vibrationDecision.allowed && guardrailAssessment.suggestedAction !== "proceed") {
-        const escalated = this.openHitlReview(
-          run,
-          "guardrail_vibration_detected",
-          [vibrationDecision.reasonCode, guardrailAssessment.suggestedAction],
+      if (guardrailAssessment.suggestedAction === "proceed") {
+        this.vibrationStates.delete(run.runId);
+      } else {
+        const vibrationSignal: GuardrailActionSignal = {
+          runId: run.runId,
+          signature: guardrailAssessment.suggestedAction,
+          observedAtMs: Date.now(),
+        };
+        const vibrationDecision: GuardrailVibrationDecision = this.vibrationBreaker.evaluate(
+          vibrationSignal,
+          this.vibrationStates.get(run.runId) ?? this.createInitialVibrationState(),
         );
-        this.durableService.persist(escalated);
-        return escalated;
+        this.vibrationStates.set(run.runId, vibrationDecision.state);
+
+        // If vibration is in cooldown, escalate to human review to break the oscillation loop
+        if (!vibrationDecision.allowed) {
+          const escalated = this.openHitlReview(
+            run,
+            "guardrail_vibration_detected",
+            [vibrationDecision.reasonCode, guardrailAssessment.suggestedAction],
+          );
+          this.durableService.persist(escalated);
+          return escalated;
+        }
       }
 
       const contextSnapshot = this.captureContextSnapshot({

@@ -17,7 +17,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { PolicyDeniedError, SandboxError, StorageError, ValidationError } from "../../contracts/errors.js";
@@ -100,6 +100,12 @@ const DEFAULT_EXCLUDED_PATHS = [
   "tmp/",
   "temp/",
   "data/backups/",
+];
+const TRUSTED_GIT_BINARY_PREFIXES = [
+  "/usr/bin/",
+  "/usr/local/bin/",
+  "/opt/homebrew/bin/",
+  "/bin/",
 ];
 
 /**
@@ -194,7 +200,7 @@ export class ShadowSnapshotService {
     this.maxEntryBytes = options.maxEntryBytes ?? 50 * 1024 * 1024;
     // Combine defaults with user-specified exclusions
     this.excludedPaths = Array.from(new Set([...DEFAULT_EXCLUDED_PATHS, ...(options.excludedPaths ?? [])].map(normalizeExcludedPath)));
-    this.gitBinary = options.gitBinary ?? "git";
+    this.gitBinary = this.validateGitBinary(options.gitBinary ?? "git");
   }
 
   /**
@@ -432,5 +438,22 @@ export class ShadowSnapshotService {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
+  }
+
+  private validateGitBinary(gitBinary: string): string {
+    if (gitBinary === "git") {
+      return gitBinary;
+    }
+    const resolvedBinary = resolve(gitBinary);
+    const binaryName = basename(resolvedBinary).toLowerCase();
+    const trustedPrefix = TRUSTED_GIT_BINARY_PREFIXES.some((prefix) => resolvedBinary.startsWith(prefix));
+    if ((binaryName !== "git" && binaryName !== "git.exe") || !trustedPrefix) {
+      throw new ValidationError(
+        `shadow_snapshot.invalid_git_binary:${gitBinary}`,
+        `shadow_snapshot.invalid_git_binary:${gitBinary}`,
+        { source: "provider", details: { gitBinary } },
+      );
+    }
+    return resolvedBinary;
   }
 }

@@ -602,40 +602,50 @@ export class DurableEventBus {
       errorCode: errorMessage,
     });
 
-    // R12-03: Persist to DLQ repository if configured
-    if (this.dlqRepository) {
-      try {
-        this.dlqRepository.insert({
-          deadLetterId: newId("dlq"),
-          sourceEventId: item.event.id,
-          eventType: item.event.eventType,
-          consumerId: item.ack.consumerId,
-          errorCode: errorMessage,
-          errorMessage: lastError instanceof Error ? lastError.message : null,
-          payloadJson: item.event.payloadJson,
-          status: "pending",
-          retryCount: MAX_DELIVERY_RETRIES,
-          maxRetries: MAX_DELIVERY_RETRIES,
-          nextRetryAt: null,
-          createdAt: nowIso(),
-          updatedAt: nowIso(),
-          originalTimestamp: item.event.createdAt,
-          firstFailedAt: nowIso(),
-          lastFailedAt: nowIso(),
-          lastAttemptAt: nowIso(),
-          failureCategory: null,
-          reason: errorMessage,
-          retryExhaustedAt: nowIso(),
-          linkedIncidentId: null,
-          operatorActionLog: [],
-        });
-      } catch (dlqError) {
-        eventBusLogger.error("event_bus.dlq_persist_failed", {
-          eventId: item.event.id,
-          consumerId: item.ack.consumerId,
-          error: dlqError instanceof Error ? dlqError.message : String(dlqError),
-        });
-      }
+    // R12-03: Persist to DLQ repository - fail if not configured (DLQ persistence is mandatory)
+    if (!this.dlqRepository) {
+      throw new WorkflowStateError(
+        "event_bus.dlq_persistence_required",
+        "event_bus.dlq_persistence_required: DLQ repository not configured; dead-letter event could not be persisted",
+        { details: { eventId: item.event.id, consumerId: item.ack.consumerId } },
+      );
+    }
+    try {
+      this.dlqRepository.insert({
+        deadLetterId: newId("dlq"),
+        sourceEventId: item.event.id,
+        eventType: item.event.eventType,
+        consumerId: item.ack.consumerId,
+        errorCode: errorMessage,
+        errorMessage: lastError instanceof Error ? lastError.message : null,
+        payloadJson: item.event.payloadJson,
+        status: "pending",
+        retryCount: MAX_DELIVERY_RETRIES,
+        maxRetries: MAX_DELIVERY_RETRIES,
+        nextRetryAt: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        originalTimestamp: item.event.createdAt,
+        firstFailedAt: nowIso(),
+        lastFailedAt: nowIso(),
+        lastAttemptAt: nowIso(),
+        failureCategory: null,
+        reason: errorMessage,
+        retryExhaustedAt: nowIso(),
+        linkedIncidentId: null,
+        operatorActionLog: [],
+      });
+    } catch (dlqError) {
+      eventBusLogger.error("event_bus.dlq_persist_failed", {
+        eventId: item.event.id,
+        consumerId: item.ack.consumerId,
+        error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+      });
+      throw new WorkflowStateError(
+        "event_bus.dlq_persist_failed",
+        "event_bus.dlq_persist_failed: failed to persist dead-letter event",
+        { details: { eventId: item.event.id, dlqError: dlqError instanceof Error ? dlqError.message : String(dlqError) } },
+      );
     }
 
     // REL-01: structured alert log on dead-letter. Persistence is handled

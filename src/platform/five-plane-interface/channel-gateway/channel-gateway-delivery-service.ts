@@ -99,9 +99,10 @@ export class ChannelGatewayDeliveryService {
    * @param channel - Channel to check
    * @returns Result indicating if allowed and current counts
    */
-  checkRateLimit(channel: string): RateLimitResult {
+  checkRateLimit(channel: string, tenantId: string | null = null): RateLimitResult {
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
+    const bucket = this.buildRateLimitBucket(channel, tenantId);
 
     const now = Date.now();
     const windowStart = new Date(now - (now % limitConfig.windowMs)).toISOString();
@@ -112,7 +113,7 @@ export class ChannelGatewayDeliveryService {
         `SELECT message_count FROM gateway_rate_limits
          WHERE channel = ? AND window_start = ?`,
       )
-      .get(channel, windowStart) as { message_count: number } | undefined;
+      .get(bucket, windowStart) as { message_count: number } | undefined;
 
     const currentCount = row?.message_count ?? 0;
 
@@ -142,9 +143,10 @@ export class ChannelGatewayDeliveryService {
    *
    * @param channel - Channel that was used
    */
-  recordRateLimitHit(channel: string): void {
+  recordRateLimitHit(channel: string, tenantId: string | null = null): void {
     const limitConfig = this.rateLimitConfig[channel as keyof RateLimitConfig]
       ?? this.rateLimitConfig.default!;
+    const bucket = this.buildRateLimitBucket(channel, tenantId);
 
     const now = Date.now();
     const windowStart = new Date(now - (now % limitConfig.windowMs)).toISOString();
@@ -156,7 +158,7 @@ export class ChannelGatewayDeliveryService {
          ON CONFLICT(channel, window_start)
          DO UPDATE SET message_count = message_count + 1`,
       )
-      .run(channel, windowStart);
+      .run(bucket, windowStart);
 
     const cutoff = new Date(now - 3600000).toISOString();
     this.db.connection
@@ -169,7 +171,7 @@ export class ChannelGatewayDeliveryService {
    *
    * @returns Current count, limit, and window for each channel
    */
-  getRateLimitStatus(): Record<string, { currentCount: number; limit: number; windowMs: number }> {
+  getRateLimitStatus(tenantId: string | null = null): Record<string, { currentCount: number; limit: number; windowMs: number }> {
     const result: Record<string, { currentCount: number; limit: number; windowMs: number }> = {};
     const now = Date.now();
 
@@ -177,13 +179,14 @@ export class ChannelGatewayDeliveryService {
       if (!config || channel === "default") continue;
 
       const windowStart = new Date(now - (now % config.windowMs)).toISOString();
+      const bucket = this.buildRateLimitBucket(channel, tenantId);
 
       const row = this.db.connection
         .prepare(
           `SELECT message_count FROM gateway_rate_limits
            WHERE channel = ? AND window_start = ?`,
         )
-        .get(channel, windowStart) as { message_count: number } | undefined;
+        .get(bucket, windowStart) as { message_count: number } | undefined;
 
       result[channel] = {
         currentCount: row?.message_count ?? 0,
@@ -309,7 +312,7 @@ export class ChannelGatewayDeliveryService {
    * @returns Random nonce as hex string
    */
   generateNonce(length = 32): string {
-    return randomBytes(length).toString("hex").slice(0, length);
+    return randomBytes(length).toString("hex");
   }
 
   /**
@@ -358,7 +361,7 @@ export class ChannelGatewayDeliveryService {
       targetId,
       status: "pending_retry",
       attempts: 0,
-      finalStatus: "success", // Will be updated
+      finalStatus: "pending",
       firstAttemptAt: now,
       lastAttemptAt: now,
       providerMessageId: null,
@@ -602,11 +605,18 @@ export class ChannelGatewayDeliveryService {
       targetId: String(row.target_id),
       status: row.status === "delivered" ? "delivered" : row.status === "failed" ? "failed" : "pending_retry",
       attempts: Number(row.attempts),
-      finalStatus: row.status === "delivered" ? "success" : row.status === "failed" ? "permanent_failure" : "exhausted_retries",
+      finalStatus: row.status === "delivered" ? "success" : row.status === "failed" ? "permanent_failure" : "pending",
       firstAttemptAt: String(row.created_at),
       lastAttemptAt: String(row.completed_at ?? row.created_at),
       providerMessageId: attempts ? String(attempts.provider_message_id ?? "") : null,
     };
+  }
+
+  private buildRateLimitBucket(channel: string, tenantId: string | null): string {
+    const normalizedTenantId = typeof tenantId === "string" && tenantId.trim().length > 0
+      ? tenantId.trim()
+      : "__global__";
+    return `${channel}::${normalizedTenantId}`;
   }
 
   /**

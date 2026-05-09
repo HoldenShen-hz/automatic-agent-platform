@@ -27,7 +27,7 @@ export interface DeliveryReceipt {
   targetId: string;
   status: "delivered" | "failed" | "pending_retry";
   attempts: number;
-  finalStatus: "success" | "permanent_failure" | "exhausted_retries";
+  finalStatus: "pending" | "success" | "permanent_failure" | "exhausted_retries";
   firstAttemptAt: string;
   lastAttemptAt: string;
   providerMessageId: string | null;

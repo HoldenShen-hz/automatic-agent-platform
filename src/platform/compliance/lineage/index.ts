@@ -59,5 +59,5 @@ function cloneEdge(edge: DataLineageEdge): DataLineageEdge {
 }
 
 function cloneMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
-  return metadata == null ? {} : { ...metadata };
+  return metadata == null ? {} : structuredClone(metadata);
 }

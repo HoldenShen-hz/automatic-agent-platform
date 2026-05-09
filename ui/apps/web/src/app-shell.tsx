@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { Suspense } from "react";
 import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-router-dom";
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
@@ -33,7 +34,11 @@ function renderGuardedFeature(
     );
   }
 
-  return <feature.Component />;
+  return (
+    <Suspense fallback={<div style={{ padding: 24, color: "#888" }}>Loading...</div>}>
+      <feature.Component />
+    </Suspense>
+  );
 }
 
 function AppRouter(

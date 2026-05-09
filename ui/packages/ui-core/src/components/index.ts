@@ -24,10 +24,10 @@ export function StatusPill({ status }: { status: ImplementationStatus }): ReactE
 export function ListCard({ items }: { items: readonly { title: string; description: string }[] }): ReactElement {
   return createElement(
     "div",
-    { style: { display: "grid", gap: 10 } },
+    { role: "list", style: { display: "grid", gap: 10 } },
     ...items.map((item) => createElement(
       "article",
-      { key: item.title, style: createPanelStyle() },
+      { key: item.title, role: "listitem", style: createPanelStyle() },
       createElement("div", { style: { color: designTokens.color.text, fontWeight: 600 } }, item.title),
       createElement("div", { style: { color: designTokens.color.subtle, marginTop: 6 } }, item.description),
     )),
@@ -68,6 +68,7 @@ export interface FeatureWorkbenchAction {
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
   readonly buildActivity?: (item: FeatureWorkbenchItem | null) => { title: string; description: string };
+  readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }
 
 export interface FeatureWorkbenchPanelItem {
@@ -82,7 +83,24 @@ export interface FeatureWorkbenchPanelAction {
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
   readonly activityDescription?: string;
+  readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }
+
+export interface FeatureWorkbenchLabels {
+  readonly filterLabel: string;
+  readonly filterPlaceholder: string;
+  readonly emptyState: string;
+  readonly activityLogTitle: string;
+  readonly activityLogEmpty: string;
+}
+
+const defaultWorkbenchLabels: FeatureWorkbenchLabels = {
+  filterLabel: "Filter workbench items",
+  filterPlaceholder: "Filter current workbench items",
+  emptyState: "No actionable items available",
+  activityLogTitle: "Activity log",
+  activityLogEmpty: "Recent actions will appear here after execution.",
+};
 
 export function FeatureWorkbench(
   {
@@ -90,15 +108,22 @@ export function FeatureWorkbench(
     rows,
     items,
     actions,
-    emptyState = "暂无可操作项",
+    emptyState,
+    labels,
   }: {
     metrics?: readonly { label: string; value: string | number }[];
     rows?: readonly { key: string; value: ReactNode }[];
     items: readonly FeatureWorkbenchItem[];
     actions: readonly FeatureWorkbenchAction[];
     emptyState?: string;
+    labels?: Partial<FeatureWorkbenchLabels>;
   },
 ): ReactElement {
+  const resolvedLabels = {
+    ...defaultWorkbenchLabels,
+    ...labels,
+    ...(emptyState == null ? {} : { emptyState }),
+  };
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
   const [activities, setActivities] = useState<readonly { title: string; description: string }[]>([]);
@@ -123,12 +148,24 @@ export function FeatureWorkbench(
 
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
 
-  function triggerAction(action: FeatureWorkbenchAction): void {
+  async function triggerAction(action: FeatureWorkbenchAction): Promise<void> {
+    await action.onTrigger?.(selectedItem);
     const activity = action.buildActivity?.(selectedItem) ?? {
-      title: `${action.label} 已执行`,
-      description: selectedItem == null ? "系统级动作已记录。" : `${selectedItem.title} 已进入 ${action.label} 流程。`,
+      title: `${action.label} completed`,
+      description: selectedItem == null ? "A system-level action has been recorded." : `${selectedItem.title} has entered the ${action.label} flow.`,
     };
     setActivities((current) => [activity, ...current].slice(0, 6));
+  }
+
+  function moveSelection(delta: number): void {
+    if (filteredItems.length === 0) {
+      return;
+    }
+    const currentIndex = filteredItems.findIndex((item) => item.id === selectedId);
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + delta + filteredItems.length) % filteredItems.length;
+    setSelectedId(filteredItems[nextIndex]?.id ?? null);
   }
 
   const metricsBlock = metrics != null && metrics.length > 0
@@ -146,17 +183,17 @@ export function FeatureWorkbench(
 
   return createElement(
     "div",
-    { style: { display: "grid", gap: 16 } },
+    { role: "region", "aria-label": "Feature workbench", style: { display: "grid", gap: 16 } },
     metricsBlock,
     createElement(
       "div",
       { style: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" } },
       createElement("input", {
-        "aria-label": "Filter workbench items",
+        "aria-label": resolvedLabels.filterLabel,
         onChange: (event: Event) => {
           setFilter((event.target as HTMLInputElement).value);
         },
-        placeholder: "筛选当前工作台项",
+        placeholder: resolvedLabels.filterPlaceholder,
         style: {
           background: designTokens.color.surfaceElevated,
           border: `1px solid ${designTokens.color.border}`,
@@ -171,7 +208,7 @@ export function FeatureWorkbench(
       ...actions.map((action) => createElement("button", {
         key: action.id,
         onClick: () => {
-          triggerAction(action);
+          void triggerAction(action);
         },
         style: {
           background: action.tone === "danger" ? designTokens.color.danger : action.tone === "accent" ? designTokens.color.accent : designTokens.color.surfaceElevated,
@@ -187,18 +224,39 @@ export function FeatureWorkbench(
     ),
     createElement(ThreePaneLayout, {
       left: filteredItems.length === 0
-        ? createElement("p", { style: { color: designTokens.color.subtle } }, emptyState)
+        ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
         : createElement(
           "div",
-          { style: { display: "grid", gap: 10 } },
+          { role: "listbox", "aria-label": "Workbench items", style: { display: "grid", gap: 10 } },
           ...filteredItems.map((item) => createElement("button", {
             key: item.id,
             onClick: () => {
               setSelectedId(item.id);
             },
+            onKeyDown: (event: KeyboardEvent) => {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                moveSelection(1);
+              }
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                moveSelection(-1);
+              }
+              if (event.key === "Home") {
+                event.preventDefault();
+                setSelectedId(filteredItems[0]?.id ?? null);
+              }
+              if (event.key === "End") {
+                event.preventDefault();
+                setSelectedId(filteredItems.at(-1)?.id ?? null);
+              }
+            },
+            role: "option",
+            "aria-selected": item.id === selectedId,
             style: {
               ...createPanelStyle(item.id === selectedId ? designTokens.color.accent : designTokens.color.border),
-              background: item.id === selectedId ? "#12201a" : designTokens.color.surface,
+              background: item.id === selectedId ? designTokens.semantic.color.surfaceSelected : designTokens.color.surface,
+              boxShadow: item.id === selectedId ? designTokens.shadows.focusRing : "none",
               color: designTokens.color.text,
               cursor: "pointer",
               textAlign: "left",
@@ -209,10 +267,10 @@ export function FeatureWorkbench(
           createElement("div", { style: { color: designTokens.color.subtle, marginTop: 8 } }, item.description))),
         ),
       center: selectedItem == null
-        ? createElement("p", { style: { color: designTokens.color.subtle } }, emptyState)
+        ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
         : createElement(
           "div",
-          { style: { display: "grid", gap: 12 } },
+          { role: "region", "aria-label": `${selectedItem.title} details`, style: { display: "grid", gap: 12 } },
           createElement("div", { style: createPanelStyle(designTokens.color.info) },
             createElement("h3", { style: { margin: 0, color: designTokens.color.text } }, selectedItem.title),
             createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, selectedItem.description),
@@ -225,10 +283,10 @@ export function FeatureWorkbench(
       right: createElement(
         "div",
         { style: { display: "grid", gap: 12 } },
-        createElement("div", { style: createPanelStyle(designTokens.color.border) },
-          createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, "操作日志"),
+        createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions text", style: createPanelStyle(designTokens.color.border) },
+          createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
           activities.length === 0
-            ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, "执行动作后会在这里记录最近轨迹。")
+            ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
             : createElement(ListCard, { items: activities }),
         ),
       ),
@@ -243,12 +301,14 @@ export function FeatureWorkbenchPanel(
     items = [],
     actions,
     emptyState,
+    labels,
   }: {
     metrics?: readonly { label: string; value: string | number }[];
     rows?: readonly { key: string; value: ReactNode }[];
     items?: readonly FeatureWorkbenchPanelItem[];
     actions: readonly FeatureWorkbenchPanelAction[];
     emptyState?: string;
+    labels?: Partial<FeatureWorkbenchLabels>;
   },
 ): ReactElement {
   const normalizedItems = useMemo<readonly FeatureWorkbenchItem[]>(() => {
@@ -258,8 +318,8 @@ export function FeatureWorkbenchPanel(
         title: item.title,
         description: item.description,
         detailRows: item.detailRows ?? [
-          { key: "条目", value: item.title },
-          { key: "摘要", value: item.description },
+          { key: "Item", value: item.title },
+          { key: "Summary", value: item.description },
         ],
       }));
     }
@@ -289,10 +349,11 @@ export function FeatureWorkbenchPanel(
     id: action.id,
     label: action.label,
     ...(action.tone == null ? {} : { tone: action.tone }),
+    ...(action.onTrigger == null ? {} : { onTrigger: action.onTrigger }),
     buildActivity: (item) => ({
       title: item == null ? action.label : `${action.label} · ${item.title}`,
       description: action.activityDescription
-        ?? (item == null ? "系统级动作已记录。" : `${item.title} 已进入 ${action.label} 流程。`),
+        ?? (item == null ? "A system-level action has been recorded." : `${item.title} has entered the ${action.label} flow.`),
     }),
   })), [actions]);
 
@@ -302,5 +363,6 @@ export function FeatureWorkbenchPanel(
     ...(metrics == null ? {} : { metrics }),
     ...(rows == null ? {} : { rows }),
     ...(emptyState == null ? {} : { emptyState }),
+    ...(labels == null ? {} : { labels }),
   });
 }

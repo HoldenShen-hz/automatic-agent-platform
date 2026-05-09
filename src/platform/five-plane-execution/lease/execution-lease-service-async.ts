@@ -138,7 +138,14 @@ export class ExecutionLeaseServiceAsync {
     }
 
     // Create new lease with incremented fencing token
-    // R9-08 fix: Enforce MIN/MAX bounds on TTL
+    // R9-08 fix: Reject TTL out of bounds before enforcement
+    if (input.ttlMs < MIN_LEASE_TTL_MS || input.ttlMs > MAX_LEASE_TTL_MS) {
+      return {
+        outcome: "blocked",
+        reasonCode: "ttl_out_of_bounds",
+        lease: null,
+      };
+    }
     const enforcedTtlMs = Math.min(Math.max(input.ttlMs, MIN_LEASE_TTL_MS), MAX_LEASE_TTL_MS);
     const lease = {
       id: newId("lease"),

@@ -8,12 +8,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { WorkflowStatus } from "../../src/platform/contracts/types/status.js";
+import { createMinimalHarnessRun } from "../helpers/fixtures/base.js";
 
 function createE2eHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -156,6 +158,53 @@ test("E2E: workflow transitions from resuming to running", () => {
     h.db.close();
     cleanupPath(h.workspace);
   }
+});
+
+test("E2E: workflow state transitions include canonical HarnessRun pause and resume coverage", () => {
+  const machine = new RuntimeStateMachine();
+  const traceId = newId("trace");
+  const harnessRun = createMinimalHarnessRun({
+    status: "running",
+    fencingToken: "fence-e2e-workflow-state",
+  });
+
+  const paused = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun",
+    entityId: harnessRun.harnessRunId,
+    principal: "workflow-e2e",
+    aggregateType: "HarnessRun",
+    aggregate: harnessRun,
+    fromStatus: "running",
+    toStatus: "paused",
+    tenantId: harnessRun.tenantId,
+    traceId,
+    reasonCode: "e2e.workflow.pause",
+    emittedBy: "tests/e2e/workflow-state-transitions.test.ts",
+    fencingToken: harnessRun.fencingToken ?? "fence-e2e-workflow-state",
+    auditRef: "audit://workflow-state-transitions/pause",
+  });
+  assert.equal(paused.aggregate.status, "paused");
+  assert.equal(paused.event.eventType, "platform.harness_run.status_changed");
+
+  const resuming = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun",
+    entityId: paused.aggregate.harnessRunId,
+    principal: "workflow-e2e",
+    aggregateType: "HarnessRun",
+    aggregate: paused.aggregate,
+    fromStatus: "paused",
+    toStatus: "resuming",
+    tenantId: paused.aggregate.tenantId,
+    traceId,
+    reasonCode: "e2e.workflow.resume",
+    emittedBy: "tests/e2e/workflow-state-transitions.test.ts",
+    fencingToken: paused.aggregate.fencingToken ?? "fence-e2e-workflow-state",
+    auditRef: "audit://workflow-state-transitions/resume",
+  });
+  assert.equal(resuming.aggregate.status, "resuming");
+  assert.equal(resuming.event.eventType, "platform.harness_run.status_changed");
 });
 
 test("E2E: workflow transitions to failed on error", () => {

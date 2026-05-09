@@ -415,9 +415,11 @@ test("validateWriteAccess denies when lease has expired even if other fields mat
     fencingToken: 42,
   });
 
+  // Note: reasonCode is "lease_expired" but eventType is "stale_write_rejected"
+  // because validateWriteAccess is rejecting a stale WRITE, not closing an expired lease
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "lease_expired");
-  assert.ok(state.audits.some((audit) => audit.eventType === "lease_expired"));
+  assert.ok(state.audits.some((audit) => audit.eventType === "stale_write_rejected"));
 });
 
 test("validateWriteAccess allows access when fence token matches and lease is active", () => {

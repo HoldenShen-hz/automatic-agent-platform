@@ -44,6 +44,11 @@ import {
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { TransitionService } from "../../execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
+import {
+  type ControlPlaneDirectiveSink,
+  createNoOpDirectiveSink,
+} from "../control-plane-directive-sink.js";
+import { createDecisionDirective, type DecisionDirective } from "../../contracts/control-directive/index.js";
 
 /**
  * Represents a request for human approval before proceeding.
@@ -184,14 +189,17 @@ function readCascadeSessionId(request: ApprovalRequest): string | null {
 export class ApprovalService {
   private readonly transitions: TransitionService;
   private readonly repository: RuntimeLifecycleRepository;
+  private readonly directiveSink: ControlPlaneDirectiveSink;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
+    directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
   ) {
     this.repository = repository;
     this.transitions = new TransitionService(db, store, repository);
+    this.directiveSink = directiveSink;
   }
 
   /**
@@ -393,6 +401,20 @@ export class ApprovalService {
       }
 
       this.applyExecutionEffect(existing.executionId, nextStatus, decision.respondedAt);
+
+      // Emit DecisionDirective to P3/P4 per R4-14 (P2→P3/P4 governance gate)
+      const decisionDirective: DecisionDirective = createDecisionDirective({
+        type: decision.decisionType === "rejected" || decision.decisionType === "expired" ? "deny" : "approve",
+        targetRef: decision.approvalId,
+        issuedBy: {
+          principalId: decision.respondedBy,
+          tenantId: existing.taskId, // task-scoped; real impl would resolve from principal
+          roles: [],
+        },
+        payload: decision,
+        reason: `approval.${nextStatus}`,
+      });
+      this.directiveSink.emitDecisionDirective(decisionDirective);
     });
     return decision;
   }

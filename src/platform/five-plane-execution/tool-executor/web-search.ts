@@ -111,10 +111,21 @@ export function extractSearchResults(html: string, limit: number): WebSearchResu
   // Reset lastIndex before iterating
   resultLinkPattern.lastIndex = 0;
   while ((linkMatch = resultLinkPattern.exec(html)) !== null && links.length < limit * 2) {
-    const url = decodeURIComponent(linkMatch[1]!);
+    let url: string;
+    try {
+      url = decodeURIComponent(linkMatch[1]!);
+    } catch {
+      continue;
+    }
     const title = decodeHTMLEntities(linkMatch[2]!.trim());
-    // Skip internal DuckDuckGo links
-    if (!url.startsWith("http") || isBlockedHostname(new URL(url).hostname)) continue;
+    if (!url.startsWith("http")) continue;
+    let hostname: string;
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      continue;
+    }
+    if (isBlockedHostname(hostname)) continue;
     links.push({ url, title });
   }
 

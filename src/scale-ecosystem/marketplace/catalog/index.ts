@@ -60,9 +60,15 @@ function isBreakingChange(fromVersion: string, toVersion: string): boolean {
  * Dependency node for graph analysis
  */
 interface DependencyNode {
-  readonly listingId: string;
+  readonly entryId: string;
   readonly version: string;
   readonly dependencies: readonly { listingId: string; versionRange: string }[];
+}
+
+function resolveMarketplaceCatalogEntryId(
+  entry: Pick<MarketplaceCatalogEntry, "entryId" | "listingId">,
+): string {
+  return entry.entryId ?? entry.listingId ?? "unknown_entry";
 }
 
 /**
@@ -77,40 +83,43 @@ function buildDependencyGraph(
   const recursionStack = new Set<string>();
   const cycles: string[][] = [];
 
-  function dfs(listingId: string, path: string[]): void {
-    if (recursionStack.has(listingId)) {
+  function dfs(entryId: string, path: string[]): void {
+    if (recursionStack.has(entryId)) {
       // Found cycle
-      const cycleStart = path.indexOf(listingId);
-      cycles.push([...path.slice(cycleStart), listingId]);
+      const cycleStart = path.indexOf(entryId);
+      cycles.push([...path.slice(cycleStart), entryId]);
       return;
     }
-    if (visited.has(listingId)) return;
+    if (visited.has(entryId)) return;
 
-    visited.add(listingId);
-    recursionStack.add(listingId);
+    visited.add(entryId);
+    recursionStack.add(entryId);
 
-    const catalogEntry = allEntries.find((e) => e.listingId === listingId);
+    const catalogEntry = allEntries.find((item) => resolveMarketplaceCatalogEntryId(item) === entryId);
     if (catalogEntry) {
-      graph.set(listingId, {
-        listingId: catalogEntry.listingId,
-        version: catalogEntry.version,
-        dependencies: catalogEntry.dependencies.map((d) => ({ listingId: d.listingId, versionRange: d.versionRange })),
+      const deps = catalogEntry.dependencies ?? [];
+      graph.set(entryId, {
+        entryId: resolveMarketplaceCatalogEntryId(catalogEntry),
+        version: catalogEntry.version ?? "0.0.0",
+        dependencies: deps.map((d) => ({ listingId: d.listingId, versionRange: d.versionRange })),
       });
-      for (const dep of catalogEntry.dependencies) {
-        dfs(dep.listingId, [...path, listingId]);
+      for (const dep of deps) {
+        dfs(dep.listingId, [...path, entryId]);
       }
     }
 
-    recursionStack.delete(listingId);
+    recursionStack.delete(entryId);
   }
 
-  graph.set(entry.listingId, {
-    listingId: entry.listingId,
-    version: entry.version,
-    dependencies: entry.dependencies.map((d) => ({ listingId: d.listingId, versionRange: d.versionRange })),
+  const entryId = resolveMarketplaceCatalogEntryId(entry);
+  const entryDeps = entry.dependencies ?? [];
+  graph.set(entryId, {
+    entryId,
+    version: entry.version ?? "0.0.0",
+    dependencies: entryDeps.map((d) => ({ listingId: d.listingId, versionRange: d.versionRange })),
   });
-  for (const dep of entry.dependencies) {
-    dfs(dep.listingId, [entry.listingId]);
+  for (const dep of entryDeps) {
+    dfs(dep.listingId, [entryId]);
   }
 
   return { graph, cycles };
@@ -148,7 +157,8 @@ function calculateUpgradePath(
 }
 
 export const MarketplaceCatalogEntrySchema = z.object({
-  listingId: z.string().min(1),
+  entryId: z.string().min(1).optional(),
+  listingId: z.string().min(1).optional(),
   packId: z.string().min(1).optional(),
   publisherId: z.string().min(1).default("unknown_publisher"),
   title: z.string().min(1),
@@ -181,19 +191,40 @@ export const MarketplaceCatalogEntrySchema = z.object({
     usabilityScore: 0,
     supportScore: 0,
   }),
+}).superRefine((value, ctx) => {
+  if ((value.entryId ?? value.listingId) == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "entryId or listingId is required",
+      path: ["entryId"],
+    });
+  }
+}).transform((value) => {
+  const entryId = value.entryId ?? value.listingId!;
+  return {
+    ...value,
+    entryId,
+    listingId: value.listingId ?? entryId,
+    packId: value.packId ?? entryId,
+  };
 });
 
-export type MarketplaceCatalogEntry = z.infer<typeof MarketplaceCatalogEntrySchema>;
+export type MarketplaceCatalogEntry = z.input<typeof MarketplaceCatalogEntrySchema>;
+export type NormalizedMarketplaceCatalogEntry = z.output<typeof MarketplaceCatalogEntrySchema>;
 
 export function sortMarketplaceCatalog(entries: readonly MarketplaceCatalogEntry[]): MarketplaceCatalogEntry[] {
   const rank = { internal: 0, verified: 1, community: 2, unknown: 3 } as const;
   return [...entries].sort((left, right) => {
-    const trustDelta = rank[left.trustLevel] - rank[right.trustLevel];
+    const leftTrust = rank[left.trustLevel ?? "unknown"];
+    const rightTrust = rank[right.trustLevel ?? "unknown"];
+    const trustDelta = leftTrust - rightTrust;
     if (trustDelta !== 0) {
       return trustDelta;
     }
-    const leftQuality = left.qualityMetrics.reliabilityScore + left.qualityMetrics.usabilityScore + left.qualityMetrics.supportScore;
-    const rightQuality = right.qualityMetrics.reliabilityScore + right.qualityMetrics.usabilityScore + right.qualityMetrics.supportScore;
+    const leftMetrics = left.qualityMetrics ?? { reliabilityScore: 0, usabilityScore: 0, supportScore: 0 };
+    const rightMetrics = right.qualityMetrics ?? { reliabilityScore: 0, usabilityScore: 0, supportScore: 0 };
+    const leftQuality = (leftMetrics.reliabilityScore ?? 0) + (leftMetrics.usabilityScore ?? 0) + (leftMetrics.supportScore ?? 0);
+    const rightQuality = (rightMetrics.reliabilityScore ?? 0) + (rightMetrics.usabilityScore ?? 0) + (rightMetrics.supportScore ?? 0);
     return rightQuality - leftQuality;
   });
 }
@@ -213,12 +244,12 @@ export function validateListingDependencies(
   entry: MarketplaceCatalogEntry,
   availableEntries: readonly MarketplaceCatalogEntry[],
 ): ListingCompatibilityCheck {
-  const availableById = new Map(availableEntries.map((item) => [item.listingId, item]));
+  const availableById = new Map(availableEntries.map((item) => [resolveMarketplaceCatalogEntryId(item), item]));
   const missingDependencies: string[] = [];
   const incompatibilities: string[] = [];
   const versionMismatches: string[] = [];
 
-  for (const dependency of entry.dependencies) {
+  for (const dependency of entry.dependencies ?? []) {
     const target = availableById.get(dependency.listingId);
     if (target == null) {
       if (!dependency.optional) {
@@ -228,12 +259,14 @@ export function validateListingDependencies(
     }
 
     // R13-28: Validate version range
-    if (!satisfiesVersionRange(target.version, dependency.versionRange)) {
-      versionMismatches.push(`${dependency.listingId}: need ${dependency.versionRange}, got ${target.version}`);
+    const targetVersion = target.version ?? "0.0.0";
+    if (!satisfiesVersionRange(targetVersion, dependency.versionRange)) {
+      versionMismatches.push(`${dependency.listingId}: need ${dependency.versionRange}, got ${targetVersion}`);
     }
 
-    if (entry.compatibility.supportedArtifactTypes.length > 0
-      && !entry.compatibility.supportedArtifactTypes.includes(target.artifactType)) {
+    const supportedTypes = entry.compatibility?.supportedArtifactTypes ?? [];
+    const targetArtifactType = target.artifactType ?? "pack";
+    if (supportedTypes.length > 0 && !supportedTypes.includes(targetArtifactType)) {
       incompatibilities.push(`artifact_type:${dependency.listingId}`);
     }
   }
@@ -267,8 +300,8 @@ export function analyzeDependencyGraph(
   const missingDependencies: string[] = [];
 
   for (const [id, node] of graph) {
-    if (id === entry.listingId) continue;
-    if (!allEntries.some((e) => e.listingId === id)) {
+    if (id === resolveMarketplaceCatalogEntryId(entry)) continue;
+    if (!allEntries.some((item) => resolveMarketplaceCatalogEntryId(item) === id)) {
       missingDependencies.push(id);
     }
   }
@@ -301,15 +334,16 @@ export function checkReverseDependencies(
   entry: MarketplaceCatalogEntry,
   allEntries: readonly MarketplaceCatalogEntry[],
 ): ReverseDependencyCheck {
+  const entryId = resolveMarketplaceCatalogEntryId(entry);
   // Find all entries that list this entry as a dependency
   const dependentEntries = allEntries.filter((e) =>
-    e.listingId !== entry.listingId &&
-    e.dependencies.some((dep) => dep.listingId === entry.listingId)
+    resolveMarketplaceCatalogEntryId(e) !== entryId &&
+    (e.dependencies ?? []).some((dep) => dep.listingId === entryId)
   );
 
   const blockers: string[] = [];
   for (const dependent of dependentEntries) {
-    blockers.push(`${dependent.listingId}@${dependent.version} depends on ${entry.listingId}`);
+    blockers.push(`${resolveMarketplaceCatalogEntryId(dependent)}@${dependent.version ?? "0.0.0"} depends on ${entryId}`);
   }
 
   return {
@@ -339,14 +373,15 @@ export function calculateUpgradePathForEntry(
   entry: MarketplaceCatalogEntry,
   targetVersion: string,
 ): UpgradePathResult {
-  const path = calculateUpgradePath(entry.version, targetVersion);
+  const currentVersion = entry.version ?? "0.0.0";
+  const path = calculateUpgradePath(currentVersion, targetVersion);
   return {
-    currentVersion: entry.version,
+    currentVersion,
     targetVersion,
     path,
-    isBreaking: isBreakingChange(entry.version, targetVersion),
+    isBreaking: isBreakingChange(currentVersion, targetVersion),
     estimatedSteps: path.length,
-    listingId: entry.listingId,
+    listingId: resolveMarketplaceCatalogEntryId(entry),
   };
 }
 

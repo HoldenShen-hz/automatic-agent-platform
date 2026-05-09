@@ -91,13 +91,16 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/v1/gateway/messages/send",
       handler: async (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "operator");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const channelGatewayService = deps.channelGatewayService;
         if (channelGatewayService == null) {
           throw new ApiError(503, "api.gateway_delivery_unavailable", "Channel gateway service is not configured.");
         }
         const payload = parseGatewaySendPayload(readValidatedJsonBody(ctx.request.body, (body) => body));
-        const receipt = await channelGatewayService.sendMessage(payload);
+        const receipt = await channelGatewayService.sendMessage({
+          ...payload,
+          tenantId: principal.tenantId ?? null,
+        });
         return buildJsonResponse(ctx.requestId, 200, {
           deliveredAt: receipt.deliveredAt,
           channel: receipt.channel,

@@ -19,6 +19,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
@@ -31,6 +32,11 @@ import type {
   WorkflowStatusTransitionCommand,
   SessionStatusTransitionCommand,
 } from "../../src/platform/contracts/types/domain.js";
+import {
+  createMinimalHarnessRun,
+  createMinimalNodeRun,
+  createMinimalPlanGraphBundle,
+} from "../helpers/fixtures/base.js";
 
 function createE2eHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -400,8 +406,12 @@ test("E2E: execution flow — execution blocked for approval and resumes", () =>
     let task = h.store.getTask(taskId);
     assert.equal(task?.status, "awaiting_decision", "Task should be awaiting_decision");
 
-    // Approval resolved: execution resumes
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "blocked", "executing", traceId));
+    // Approval resolved: execution resumes via blocked -> prechecking -> executing
+    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "blocked", "prechecking", traceId));
+    exec = h.store.getExecution(executionId);
+    assert.equal(exec?.status, "prechecking", "Execution should return to prechecking after unblock");
+
+    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "prechecking", "executing", traceId));
 
     // Task resumes
     h.transitions.transitionTaskStatus({
@@ -443,6 +453,65 @@ test("E2E: execution flow — execution blocked for approval and resumes", () =>
     h.db.close();
     cleanupPath(h.workspace);
   }
+});
+
+test("E2E: execution flow includes canonical HarnessRun, PlanGraphBundle, and NodeRun coverage", () => {
+  const machine = new RuntimeStateMachine();
+  const harnessRun = createMinimalHarnessRun({
+    status: "ready",
+    fencingToken: "fence-e2e-execution-flow",
+    planGraphBundleId: "bundle-e2e-execution-flow",
+  });
+  const planGraphBundle = createMinimalPlanGraphBundle(harnessRun.harnessRunId, {
+    planGraphBundleId: "bundle-e2e-execution-flow",
+  });
+  const nodeRun = createMinimalNodeRun(harnessRun.harnessRunId, planGraphBundle.planGraphBundleId, {
+    nodeId: planGraphBundle.graph.entryNodeIds[0]!,
+    status: "created",
+    leaseId: "lease-e2e-execution-flow",
+    fencingToken: "fence-e2e-execution-flow",
+  });
+  const traceId = newId("trace");
+
+  const harnessRunning = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun",
+    entityId: harnessRun.harnessRunId,
+    principal: "execution-e2e",
+    aggregateType: "HarnessRun",
+    aggregate: harnessRun,
+    fromStatus: "ready",
+    toStatus: "running",
+    tenantId: harnessRun.tenantId,
+    traceId,
+    reasonCode: "e2e.execution.harness_running",
+    emittedBy: "tests/e2e/execution-flow.test.ts",
+    fencingToken: harnessRun.fencingToken ?? "fence-e2e-execution-flow",
+    auditRef: "audit://execution-flow/harness-running",
+  });
+  assert.equal(planGraphBundle.harnessRunId, harnessRunning.aggregate.harnessRunId);
+  assert.equal(harnessRunning.event.eventType, "platform.harness_run.status_changed");
+
+  const nodeReady = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "NodeRun",
+    entityId: nodeRun.nodeRunId,
+    principal: "execution-e2e",
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "created",
+    toStatus: "ready",
+    tenantId: nodeRun.tenantId,
+    traceId,
+    reasonCode: "e2e.execution.node_ready",
+    emittedBy: "tests/e2e/execution-flow.test.ts",
+    leaseId: nodeRun.leaseId ?? "lease-e2e-execution-flow",
+    fencingToken: nodeRun.fencingToken ?? "fence-e2e-execution-flow",
+    auditRef: "audit://execution-flow/node-ready",
+  });
+  assert.equal(nodeReady.aggregate.planGraphBundleId, planGraphBundle.planGraphBundleId);
+  assert.equal(nodeReady.aggregate.harnessRunId, harnessRun.harnessRunId);
+  assert.equal(nodeReady.event.eventType, "platform.node_run.status_changed");
 });
 
 test("E2E: execution flow — multi-step workflow progression", () => {

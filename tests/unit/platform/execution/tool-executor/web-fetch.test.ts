@@ -171,7 +171,12 @@ test("createWebFetchTool allows whitelisted domains", async () => {
     allowedDomains: ["example.com"],
   });
 
-  assert.ok(result.status === "succeeded" || result.status === "failed" || result.status === "timed_out");
+  assert.ok(
+    result.status === "succeeded" ||
+      result.status === "failed" ||
+      result.status === "timed_out" ||
+      (result.status === "blocked" && result.errorCode === "DNS_REBINDING_BLOCKED"),
+  );
   assert.ok(result.errorCode !== "DOMAIN_BLOCKED");
 });
 

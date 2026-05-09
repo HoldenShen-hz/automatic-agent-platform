@@ -4,6 +4,7 @@ import {
   LLM_EVAL_DDL,
   PROMPT_MODEL_POLICY_GOVERNANCE_DDL,
 } from "../../../prompt-engine/eval/prompt-model-policy-governance-schema.js";
+import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../runtime-physical-schema.js";
 import {
   WORKER_TELEMETRY_HEARTBEAT_SQL,
   WORKER_RESTART_SEMANTICS_SQL,
@@ -291,6 +292,29 @@ PRAGMA busy_timeout = 5000;
  */
 
 /**
+ * Migration 43: Adds harness_runs table for tracking task execution runs.
+ */
+export const HARNESS_RUNS_SQL = `
+CREATE TABLE IF NOT EXISTS harness_runs (
+  harness_run_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  confirmed_task_spec_id TEXT NOT NULL,
+  request_envelope_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  version_lock_id TEXT NOT NULL,
+  budget_ledger_id TEXT NOT NULL,
+  current_seq INTEGER NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`;
+
+/**
+ * Migration 44: Adds the full runtime physical schema and extends harness_runs
+ * with the durable harness execution columns used by the execution engine.
+ */
+export const RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL = RUNTIME_PHYSICAL_SCHEMA_SQL;
+
+/**
  * Registry of all SQLite migrations in order.
  * Each migration is self-contained and can be applied independently.
  */
@@ -339,6 +363,8 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(40, "0040_session_events", SESSION_EVENTS_SQL),
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
   defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
+  defineMigration(43, "0043_harness_runs", HARNESS_RUNS_SQL),
+  defineMigration(44, "0044_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL),
 ] as const;
 
 /**

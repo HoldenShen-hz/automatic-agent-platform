@@ -11,6 +11,8 @@ import { readFileSync } from "node:fs";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const editSnapshotLogger = new StructuredLogger({ retentionLimit: 100 });
+const MAX_HISTORY_STEPS = 100;
+const MAX_EDITS_PER_STEP = 200;
 
 export interface FileSnapshot {
   filePath: string;
@@ -37,6 +39,7 @@ export class EditSnapshotService {
   private editHistory: Map<string, EditHistoryEntry[]> = new Map();
   private redoStack: Map<string, EditHistoryEntry[]> = new Map();
   private sessionId: string;
+  private stepTouchOrder: string[] = [];
 
   public constructor(sessionId: string) {
     this.sessionId = sessionId;
@@ -64,7 +67,8 @@ export class EditSnapshotService {
     // Get or create history for this step
     const history = this.editHistory.get(stepId) ?? [];
     history.push(entry);
-    this.editHistory.set(stepId, history);
+    this.editHistory.set(stepId, history.slice(-MAX_EDITS_PER_STEP));
+    this.touchStep(stepId);
 
     // Clear redo stack when a new edit is recorded
     this.redoStack.delete(stepId);
@@ -216,6 +220,7 @@ export class EditSnapshotService {
   public clearHistory(stepId: string): void {
     this.editHistory.delete(stepId);
     this.redoStack.delete(stepId);
+    this.stepTouchOrder = this.stepTouchOrder.filter((value) => value !== stepId);
   }
 
   /**
@@ -224,6 +229,7 @@ export class EditSnapshotService {
   public clearAll(): void {
     this.editHistory.clear();
     this.redoStack.clear();
+    this.stepTouchOrder = [];
   }
 
   /**
@@ -231,6 +237,18 @@ export class EditSnapshotService {
    */
   public getSessionId(): string {
     return this.sessionId;
+  }
+
+  private touchStep(stepId: string): void {
+    this.stepTouchOrder = this.stepTouchOrder.filter((value) => value !== stepId);
+    this.stepTouchOrder.push(stepId);
+    while (this.stepTouchOrder.length > MAX_HISTORY_STEPS) {
+      const evicted = this.stepTouchOrder.shift();
+      if (evicted) {
+        this.editHistory.delete(evicted);
+        this.redoStack.delete(evicted);
+      }
+    }
   }
 }
 

@@ -121,6 +121,7 @@ function buildCanonicalRequest(
 function buildStringToSign(
   algorithm: string,
   dateTime: string,
+  date: string,
   region: string,
   service: string,
   canonicalRequestHash: string,
@@ -128,7 +129,7 @@ function buildStringToSign(
   return [
     algorithm,
     dateTime,
-    `${region}/${service}/aws4_request`,
+    `${date}/${region}/${service}/aws4_request`,
     canonicalRequestHash,
   ].join("\n");
 }
@@ -269,7 +270,7 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
 
     // Build and sign the request
     const canonicalReq = buildCanonicalRequest(method, path, query, headers, payloadHash);
-    const stringToSign = buildStringToSign("AWS4-HMAC-SHA256", dateTime, credentials.region, "kms", sha256(canonicalReq).toString("hex"));
+    const stringToSign = buildStringToSign("AWS4-HMAC-SHA256", dateTime, date, credentials.region, "kms", sha256(canonicalReq).toString("hex"));
     const signingKey = deriveSigningKey(credentials.secretAccessKey, date, credentials.region, "kms");
     headers["Authorization"] = `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${date}/${credentials.region}/kms/aws4_request,SignedHeaders=${signedHeaders(headers)},Signature=${getSignature(stringToSign, signingKey)}`;
 
@@ -353,16 +354,20 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
 
     // Decrypt using KMS
     const ciphertextBlob = Buffer.from(ciphertextRef, "base64");
-    const result = await this.awsRequest("POST", "Decrypt", { CiphertextBlob: { "B": Array.from(ciphertextBlob) } });
+    const result = await this.awsRequest("POST", "Decrypt", { CiphertextBlob: ciphertextBlob.toString("base64") });
 
     // Extract plaintext from response
-    const plaintext = (result as Record<string, { B?: number[] }>).Plaintext;
-    if (!plaintext?.B) {
+    const plaintext = (result as Record<string, string | { B?: number[] }>).Plaintext;
+    const plaintextStr = typeof plaintext === "string"
+      ? Buffer.from(plaintext, "base64").toString("utf8")
+      : plaintext?.B != null
+        ? Buffer.from(plaintext.B).toString("utf8")
+        : null;
+    if (plaintextStr == null) {
       throw new ProviderError(`kms.decrypt_failed:${secretRef}`, `kms.decrypt_failed:${secretRef}`, {
         details: { secretRef },
       });
     }
-    const plaintextStr = Buffer.from(plaintext.B).toString("utf8");
 
     return {
       secretRef,

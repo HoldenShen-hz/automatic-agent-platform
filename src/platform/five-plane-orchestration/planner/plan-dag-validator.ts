@@ -58,6 +58,26 @@ export class PlanDagValidator {
       issues.push("planning.cycle_detected");
     }
 
+    // R8-13 FIX: Check entry node existence (nodes with no incoming edges)
+    // A valid DAG must have at least one node with in-degree 0 (entry point)
+    const entryNodes: string[] = [];
+    incomingCounts.forEach((inCount, nodeId) => {
+      if (inCount === 0) entryNodes.push(nodeId);
+    });
+    if (entryNodes.length === 0 && steps.length > 0) {
+      issues.push("planning.no_entry_node");
+    }
+
+    // R8-13 FIX: Check terminal node existence (nodes with no outgoing edges)
+    // A valid DAG must have at least one node with out-degree 0 (exit point)
+    const terminalNodes: string[] = [];
+    outgoing.forEach((outEdges, nodeId) => {
+      if (outEdges.length === 0) terminalNodes.push(nodeId);
+    });
+    if (terminalNodes.length === 0 && steps.length > 0) {
+      issues.push("planning.no_terminal_node");
+    }
+
     return {
       valid: issues.length === 0,
       issues,

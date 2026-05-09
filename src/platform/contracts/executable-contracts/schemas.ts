@@ -171,6 +171,7 @@ export const HarnessRunStatusSchema = z.enum([
   "compensating",
   "completed",
   "failed",
+  "cancelled",
   "aborted",
 ]);
 

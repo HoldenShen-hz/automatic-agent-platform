@@ -254,7 +254,7 @@ export class RuntimeRecoveryService {
    * @returns Complete recovery view including candidates, approvals, and events
    * @throws Error if task is not found
    */
-  public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): TaskRuntimeRecoveryView {
+  public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null) {
     const task = this.store.task.getTask(taskId, tenantId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {

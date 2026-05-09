@@ -35,12 +35,21 @@ CREATE TABLE IF NOT EXISTS request_envelopes (
 CREATE TABLE IF NOT EXISTS harness_runs (
   harness_run_id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
+  org_id TEXT NOT NULL,
+  trace_id TEXT NOT NULL,
+  goal TEXT NULL,
+  risk_level TEXT NOT NULL,
+  domain_id TEXT NOT NULL,
   confirmed_task_spec_id TEXT NOT NULL,
   request_envelope_id TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
   status TEXT NOT NULL,
+  constraint_pack_ref TEXT NOT NULL,
   version_lock_id TEXT NOT NULL,
   budget_ledger_id TEXT NOT NULL,
   current_seq INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  fencing_token TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
@@ -124,7 +133,8 @@ CREATE TABLE IF NOT EXISTS budget_reservations (
   amount REAL NOT NULL,
   resource_kind TEXT NOT NULL,
   status TEXT NOT NULL,
-  expires_at TEXT NOT NULL
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS budget_settlements (

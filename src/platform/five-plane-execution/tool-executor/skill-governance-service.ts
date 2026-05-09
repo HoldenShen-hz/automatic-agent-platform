@@ -121,6 +121,10 @@ export function computeSkillHealth(executionCount: number, successRate: number):
   return successRate * Math.min(1.0, executionCount / 100);
 }
 
+function escapeLikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export class SkillGovernanceService {
   public constructor(private readonly store: AuthoritativeTaskStore) {}
 
@@ -405,8 +409,8 @@ export class SkillGovernanceService {
       params.push(options.riskLevel);
     }
     if (options.tag) {
-      conditions.push("tags_json LIKE ?");
-      params.push(`%${options.tag}%`);
+      conditions.push("tags_json LIKE ? ESCAPE '\\'");
+      params.push(`%${escapeLikePattern(options.tag)}%`);
     }
 
     if (conditions.length > 0) {

@@ -23,11 +23,14 @@ test("golden: RolloutRecord schema produces correct structure", () => {
   const validRecord = {
     recordId: "rollout_001",
     candidateId: "candidate_test_001",
-    level: "canary_5",
-    previousLevel: "off",
+    level: "L2_canary",
+    previousLevel: "L0_off",
+    fromLevel: "L0_off",
+    toLevel: "L2_canary",
     strategyVersionId: "v1.2.3",
     status: "canary_5",
     transitionedAt: 1714500000,
+    createdAt: new Date(1714500000).toISOString(),
     approvedBy: "admin@example.com",
     guardrailReasonCodes: ["GR_001", "GR_002"],
     evidence: ["evidence_1", "evidence_2"],
@@ -38,8 +41,8 @@ test("golden: RolloutRecord schema produces correct structure", () => {
   // Verify structure
   assert.equal(parsed.recordId, "rollout_001");
   assert.equal(parsed.candidateId, "candidate_test_001");
-  assert.equal(parsed.level, "canary_5");
-  assert.equal(parsed.previousLevel, "off");
+  assert.equal(parsed.level, "L2_canary");
+  assert.equal(parsed.previousLevel, "L0_off");
   assert.equal(parsed.strategyVersionId, "v1.2.3");
   assert.equal(parsed.status, "canary_5");
   assert.ok(parsed.approvedBy);
@@ -58,14 +61,12 @@ test("golden: RolloutRecord schema produces correct structure", () => {
 
 test("golden: RolloutLevel enum values are valid", () => {
   const validLevels: RolloutLevel[] = [
-    "off",
-    "suggest",
-    "shadow",
-    "canary_5",
-    "partial_25",
-    "partial_50",
-    "partial_75",
-    "stable",
+    "L0_off",
+    "L1_evaluate",
+    "L2_canary",
+    "L3_partial",
+    "L4_stable",
+    "L5_full",
   ];
 
   for (const level of validLevels) {
@@ -84,14 +85,15 @@ test("golden: RolloutLevel enum values are valid", () => {
 
 test("golden: RolloutStatus enum values are valid", () => {
   const validStatuses: RolloutStatus[] = [
-    "draft",
-    "pending_approval",
-    "shadow",
+    "candidate_created",
+    "under_review",
+    "approved",
+    "evaluation_enabled",
     "canary_5",
     "partial_25",
-    "partial_50",
-    "partial_75",
-    "stable",
+    "stable_75",
+    "stable_100",
+    "released",
     "rejected",
     "rolled_back",
     "paused",
@@ -112,8 +114,10 @@ test("golden: parseRolloutRecord produces valid output", () => {
   const input = {
     recordId: "rollout_parse_test",
     candidateId: "candidate_abc",
-    level: "partial_50",
-    status: "partial_50",
+    level: "L3_partial",
+    fromLevel: "L2_canary",
+    toLevel: "L3_partial",
+    status: "partial_25",
     transitionedAt: 1714600000,
   };
 
@@ -121,8 +125,8 @@ test("golden: parseRolloutRecord produces valid output", () => {
 
   assert.ok(parsed.recordId);
   assert.ok(parsed.candidateId);
-  assert.equal(parsed.level, "partial_50");
-  assert.equal(parsed.status, "partial_50");
+  assert.equal(parsed.level, "L3_partial");
+  assert.equal(parsed.status, "partial_25");
 
   assertGolden("parse-rollout-record-v1", {
     recordId: parsed.recordId,
@@ -136,7 +140,9 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
   // Missing required field
   const missingRecordId = {
     candidateId: "candidate_test",
-    level: "canary_5",
+    level: "L2_canary",
+    fromLevel: "L0_off",
+    toLevel: "L2_canary",
   };
 
   const result1 = RolloutRecordSchema.safeParse(missingRecordId);
@@ -147,6 +153,8 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
     recordId: "rollout_001",
     candidateId: "candidate_test",
     level: "invalid_level",
+    fromLevel: "L0_off",
+    toLevel: "invalid_level",
   };
 
   const result2 = RolloutRecordSchema.safeParse(invalidLevel);
@@ -156,7 +164,9 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
   const invalidStatus = {
     recordId: "rollout_002",
     candidateId: "candidate_test",
-    level: "canary_5",
+    level: "L2_canary",
+    fromLevel: "L0_off",
+    toLevel: "L2_canary",
     status: "invalid_status",
   };
 
@@ -174,16 +184,19 @@ test("golden: RolloutRecord with minimal required fields", () => {
   const minimalRecord = {
     recordId: "rollout_minimal",
     candidateId: "candidate_min",
-    level: "canary_5",
+    level: "L2_canary",
+    fromLevel: "L0_off",
+    toLevel: "L2_canary",
     transitionedAt: 1714000000,
+    createdAt: new Date(1714000000).toISOString(),
   };
 
   const parsed = RolloutRecordSchema.parse(minimalRecord);
 
   assert.equal(parsed.recordId, "rollout_minimal");
-  assert.equal(parsed.level, "canary_5");
-  assert.equal(parsed.previousLevel, "off", "Should have default previousLevel");
-  assert.equal(parsed.status, "draft", "Should have default status");
+  assert.equal(parsed.level, "L2_canary");
+  assert.equal(parsed.previousLevel, "L0_off", "Should have default previousLevel");
+  assert.equal(parsed.status, "candidate_created", "Should have default status");
   assert.deepEqual(parsed.guardrailReasonCodes, [], "Should have empty guardrailReasonCodes");
   assert.deepEqual(parsed.evidence, [], "Should have empty evidence");
 
@@ -199,14 +212,14 @@ test("golden: RolloutRecord with minimal required fields", () => {
 test("golden: RolloutRecord full lifecycle progression", () => {
   // Simulate a full rollout lifecycle
   const stages = [
-    { status: "draft", level: "off" },
-    { status: "pending_approval", level: "suggest" },
-    { status: "shadow", level: "shadow" },
-    { status: "canary_5", level: "canary_5" },
-    { status: "partial_25", level: "partial_25" },
-    { status: "partial_50", level: "partial_50" },
-    { status: "partial_75", level: "partial_75" },
-    { status: "stable", level: "stable" },
+    { status: "under_review", level: "L0_off" },
+    { status: "approved", level: "L1_evaluate" },
+    { status: "evaluation_enabled", level: "L1_evaluate" },
+    { status: "canary_5", level: "L2_canary" },
+    { status: "partial_25", level: "L3_partial" },
+    { status: "stable_75", level: "L4_stable" },
+    { status: "stable_100", level: "L5_full" },
+    { status: "released", level: "L5_full" },
   ];
 
   const records: RolloutRecord[] = [];

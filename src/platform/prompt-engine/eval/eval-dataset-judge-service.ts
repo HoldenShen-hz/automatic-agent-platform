@@ -144,6 +144,8 @@ export interface EvalDatasetEvaluationInput {
   phase?: EvalRunPhase | undefined;
   baseline?: EvalDatasetBaselineMetrics | undefined;
   gatePolicy?: EvalDatasetGatePolicy | undefined;
+  /** R2-10: When true, enforces that high-risk evaluations use an independent judge per §21.7 */
+  enforceIndependenceForHighRisk?: boolean;
 }
 
 export class EvalDatasetJudgeService {
@@ -413,6 +415,14 @@ export class EvalDatasetJudgeService {
     }
     if (selectedJudge != null) {
       advisoryFindings.push(`judge_assigned:${selectedJudge.judgeId}`);
+    }
+
+    // R2-10: Enforce independence for high-risk evaluations per §21.7
+    if (input.enforceIndependenceForHighRisk) {
+      const highRiskCases = caseResults.filter((c) => c.priority === "critical" || c.priority === "standard");
+      if (highRiskCases.length > 0 && selectedJudge == null) {
+        blockingFindings.push("independence_violation:high_risk_evaluation_requires_independent_judge");
+      }
     }
 
     const phase = input.phase ?? "offline";

@@ -89,7 +89,7 @@ export class ReplayWorker implements RecoveryWorker {
         };
       }
 
-      const reports = taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt));
+      const reports = await Promise.all(taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt)));
       const recoveryActiveCount = reports.filter((report) => report.outcome !== "no_recovery_activity").length;
 
       return {

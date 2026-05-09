@@ -12,9 +12,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
+import { createMinimalNodeRun } from "../helpers/fixtures/base.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -187,6 +189,55 @@ test("E2E Task Lifecycle: multiple tasks can be queued independently", async () 
   } finally {
     harness.cleanup();
   }
+});
+
+test("E2E Task Lifecycle: canonical NodeRun transitions use RuntimeStateMachine.transition", async () => {
+  const machine = new RuntimeStateMachine();
+  const nodeRun = createMinimalNodeRun("hrun-e2e-task-lifecycle", "bundle-e2e-task-lifecycle", {
+    status: "created",
+    leaseId: "lease-e2e-task-lifecycle",
+    fencingToken: "fence-e2e-task-lifecycle",
+  });
+  const traceId = newId("trace");
+
+  const ready = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "NodeRun",
+    entityId: nodeRun.nodeRunId,
+    principal: "task-lifecycle-e2e",
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "created",
+    toStatus: "ready",
+    tenantId: nodeRun.tenantId,
+    traceId,
+    reasonCode: "e2e.task_lifecycle.node_ready",
+    emittedBy: "tests/e2e/task-lifecycle.test.ts",
+    leaseId: nodeRun.leaseId ?? "lease-e2e-task-lifecycle",
+    fencingToken: nodeRun.fencingToken ?? "fence-e2e-task-lifecycle",
+    auditRef: "audit://task-lifecycle/node-ready",
+  });
+  assert.equal(ready.aggregate.status, "ready");
+
+  const leased = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "NodeRun",
+    entityId: ready.aggregate.nodeRunId,
+    principal: "task-lifecycle-e2e",
+    aggregateType: "NodeRun",
+    aggregate: ready.aggregate,
+    fromStatus: "ready",
+    toStatus: "leased",
+    tenantId: ready.aggregate.tenantId,
+    traceId,
+    reasonCode: "e2e.task_lifecycle.node_leased",
+    emittedBy: "tests/e2e/task-lifecycle.test.ts",
+    leaseId: ready.aggregate.leaseId ?? "lease-e2e-task-lifecycle",
+    fencingToken: ready.aggregate.fencingToken ?? "fence-e2e-task-lifecycle",
+    auditRef: "audit://task-lifecycle/node-leased",
+  });
+  assert.equal(leased.aggregate.status, "leased");
+  assert.equal(leased.event.eventType, "platform.node_run.status_changed");
 });
 
 // ---------------------------------------------------------------------------

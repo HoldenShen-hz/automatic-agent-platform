@@ -35,7 +35,7 @@ import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import type { IntakeAdmissionService } from "../../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { AppError } from "../../../contracts/errors.js";
-import type { JsonValue, TaskInputSource } from "../../../contracts/executable-contracts/index.js";
+import type { TaskInputSource } from "../../../contracts/executable-contracts/index.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -232,7 +232,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             source: (payload.source ?? "ui") as TaskInputSource,
             domainId: payload.divisionId ?? "",
             goal: payload.title,
-            inputs: (payload.inputJson ?? "{}") as JsonValue,
+            inputs: payload.inputJson ?? "{}",
             riskPreview: { riskClass: "low" as const, reasons: [] },
             constraintPackRef: "",
             budgetIntent: { amount: 0, currency: "USD", resourceKinds: [] },

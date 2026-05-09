@@ -1,4 +1,8 @@
-import { parseLearningObject, type LearningObject } from "./learning-object-model.js";
+import {
+  normalizeLearningObjectPromotionStatus,
+  parseLearningObject,
+  type LearningObject,
+} from "./learning-object-model.js";
 
 export interface PiiScanResult {
   containsPii: boolean;
@@ -113,17 +117,25 @@ export class LearningObjectValidator {
   public validate(input: LearningObject): LearningObjectValidationResult {
     const learningObject = parseLearningObject(input);
     const warnings: string[] = [];
+    const normalizedPromotionStatus = normalizeLearningObjectPromotionStatus(learningObject.promotionStatus);
+    const candidate: LearningObject = {
+      ...learningObject,
+      promotionStatus:
+        normalizedPromotionStatus === "draft" || normalizedPromotionStatus === "untrusted"
+          ? "validating"
+          : normalizedPromotionStatus,
+    };
 
     // R13-02: PII scan
-    const piiResult = scanForPiiAndSecrets(learningObject.summary + " " + learningObject.recommendation);
+    const piiResult = scanForPiiAndSecrets(candidate.summary + " " + candidate.recommendation);
     if (piiResult.containsPii) {
       return {
         valid: false,
         reasonCode: "learning.pii_detected",
         learningObject: {
-          ...learningObject,
+          ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: [`PII detected: ${piiResult.piiTypes.join(", ")}`],
       };
@@ -135,51 +147,51 @@ export class LearningObjectValidator {
         valid: false,
         reasonCode: "learning.secret_detected",
         learningObject: {
-          ...learningObject,
+          ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: [`Secrets detected: ${piiResult.secretTypes.join(", ")}`],
       };
     }
 
     // R13-02: Holdout dedup / contamination check
-    const diversityResult = checkDiversity(this.knownObjects, learningObject);
+    const diversityResult = checkDiversity(this.knownObjects, candidate);
     if (!diversityResult.isDiverse) {
       return {
         valid: false,
         reasonCode: diversityResult.reasonCode,
         learningObject: {
-          ...learningObject,
+          ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
         warnings: ["Object failed diversity check - possible contamination or duplication"],
       };
     }
 
     // R13-02: Diversity check (broader ecosystem diversity)
-    if (learningObject.evidenceRefs.length === 0) {
+    if (candidate.evidenceRefs.length === 0) {
       return {
         valid: false,
         reasonCode: "learning.missing_evidence",
         learningObject: {
-          ...learningObject,
+          ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
       };
     }
 
-    const minimumConfidence = minimumConfidenceFor(learningObject.learningType);
-    if (learningObject.confidence < minimumConfidence) {
+    const minimumConfidence = minimumConfidenceFor(candidate.learningType);
+    if (candidate.confidence < minimumConfidence) {
       return {
         valid: false,
         reasonCode: "learning.confidence_below_floor",
         learningObject: {
-          ...learningObject,
+          ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantine",
+          promotionStatus: "quarantined",
         },
       };
     }
@@ -188,11 +200,14 @@ export class LearningObjectValidator {
       valid: true,
       reasonCode: "learning.validated",
       learningObject: {
-        ...learningObject,
-        validatedBy: learningObject.validatedBy === "none" ? "evidence" : learningObject.validatedBy,
-        promotionStatus: learningObject.promotionStatus === "draft" || learningObject.promotionStatus === "quarantine"
+        ...candidate,
+        validatedBy: candidate.validatedBy === "none" ? "evidence" : candidate.validatedBy,
+        promotionStatus: candidate.promotionStatus === "draft"
+          || candidate.promotionStatus === "untrusted"
+          || candidate.promotionStatus === "validating"
+          || candidate.promotionStatus === "quarantined"
           ? "validated"
-          : learningObject.promotionStatus,
+          : candidate.promotionStatus,
       },
       warnings: warnings.length > 0 ? warnings : [],
     };

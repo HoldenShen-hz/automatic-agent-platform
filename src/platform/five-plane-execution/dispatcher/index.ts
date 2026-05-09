@@ -384,13 +384,16 @@ class MultiStepToolRegistry {
 
     switch (toolName) {
       case "todo_write": {
+        // R4-31 fix: use a proper deny-all sandbox policy for todo_write write operations
+        // Write operations (create/update/delete) must be explicitly allowed by policy
+        const denyAllPolicy = createWorkspaceWritePolicy(this.repoRoot);
         const request = {
           callId: `call_${Date.now()}`,
           taskId: "",
           agentId: "multi-step",
           traceId: "",
           toolName: "todo_write",
-          sandboxPolicy: { allow: [], deny: [] },
+          sandboxPolicy: denyAllPolicy,
           operation: (args.operation as "create" | "update" | "delete" | "list" | "get") ?? "create",
           sessionId: args.sessionId as string | null ?? null,
           todoId: args.todoId as string | null ?? null,

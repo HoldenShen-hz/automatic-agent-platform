@@ -20,6 +20,8 @@ const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
 const CLOSE_TIMEOUT_MS = 100;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
 const MAX_TASK_EVENT_HISTORY = 200;
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
+const DEFAULT_MAX_PAYLOAD_BYTES = 64 * 1024;
 // R12-07: Configurable back-pressure threshold
 const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
 
@@ -72,9 +74,15 @@ interface ClientConnection {
   lastAcknowledgedSequenceNum: number;
   pendingAcks: Map<number, { eventId: string; taskId: string; sentAt: string }>;
   bufferedEventCount: number;
+  isAlive: boolean;
 }
 
 type SubscriptionResult = "subscribed" | "scope_denied" | "subscription_limit_exceeded";
+
+export interface WebSocketBridgeOptions {
+  heartbeatIntervalMs?: number;
+  maxPayloadBytes?: number;
+}
 
 export class WebSocketBridge {
   private readonly wss: WebSocketServer;
@@ -83,15 +91,26 @@ export class WebSocketBridge {
   private readonly taskEventHistory = new Map<string, Array<{ eventId: string; event: TaskWebSocketEvent }>>();
   private readonly slowConsumers = new Set<WebSocket>();
   private readonly tenantScopeFilter: TenantScopeFilter | null;
+  private readonly heartbeatTimer: NodeJS.Timeout;
 
   public constructor(
     server: Server,
     private readonly authService: ApiAuthService,
     taskScopeResolver: TaskProjectionScopeResolver | null = null,
+    options: WebSocketBridgeOptions = {},
   ) {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
-    this.wss = new WebSocketServer({ server, path: WS_PATH });
+    this.wss = new WebSocketServer({
+      server,
+      path: WS_PATH,
+      maxPayload: options.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES,
+    });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
+    this.heartbeatTimer = setInterval(
+      () => this.runHeartbeatSweep(),
+      options.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_INTERVAL_MS,
+    );
+    this.heartbeatTimer.unref?.();
     logger.info("WebSocket bridge initialized", { path: WS_PATH });
   }
 
@@ -126,6 +145,7 @@ export class WebSocketBridge {
       lastAcknowledgedSequenceNum: -1,
       pendingAcks: new Map(),
       bufferedEventCount: 0,
+      isAlive: true,
     };
     this.clients.set(ws, client);
 
@@ -134,6 +154,10 @@ export class WebSocketBridge {
     }
 
     ws.on("message", (data) => {
+      const liveClient = this.clients.get(ws);
+      if (liveClient != null) {
+        liveClient.isAlive = true;
+      }
       try {
         const parsed = JSON.parse(data.toString());
         const result = WebSocketMessageSchema.safeParse(parsed) as { success: true; data: WebSocketMessageType } | { success: false; data: unknown };
@@ -148,6 +172,12 @@ export class WebSocketBridge {
     });
     ws.on("close", () => {
       this.handleDisconnection(ws);
+    });
+    ws.on("pong", () => {
+      const liveClient = this.clients.get(ws);
+      if (liveClient != null) {
+        liveClient.isAlive = true;
+      }
     });
     ws.on("error", (error) => {
       logger.error("WebSocket client error", {
@@ -164,6 +194,9 @@ export class WebSocketBridge {
         ws.send(JSON.stringify({ type: "pong" }));
         return;
       case "pong":
+        if (client != null) {
+          client.isAlive = true;
+        }
         return;
       case "ack":
         if (client != null && message.delivered) {
@@ -290,6 +323,7 @@ export class WebSocketBridge {
   }
 
   public async close(): Promise<void> {
+    clearInterval(this.heartbeatTimer);
     for (const [ws] of this.clients) {
       ws.close(1001, "Server shutting down");
     }
@@ -304,6 +338,34 @@ export class WebSocketBridge {
       this.wss.close(() => finish());
       setTimeout(() => finish(), CLOSE_TIMEOUT_MS);
     });
+  }
+
+  private runHeartbeatSweep(): void {
+    for (const [ws, client] of this.clients) {
+      if (ws.readyState !== ws.OPEN) {
+        this.handleDisconnection(ws);
+        continue;
+      }
+      if (!client.isAlive) {
+        logger.warn("WebSocket heartbeat timeout", {
+          actorId: client.principal.actorId,
+          tenantId: client.principal.tenantId,
+        });
+        this.handleDisconnection(ws);
+        if (typeof (ws as { terminate?: () => void }).terminate === "function") {
+          (ws as { terminate: () => void }).terminate();
+        } else {
+          ws.close(4000, "Heartbeat timeout");
+        }
+        continue;
+      }
+      client.isAlive = false;
+      if (typeof (ws as { ping?: () => void }).ping === "function") {
+        (ws as { ping: () => void }).ping();
+      } else if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" } satisfies WebSocketMessageType));
+      }
+    }
   }
 
   private extractBearerToken(protocolHeader: string | string[] | undefined): string | null {

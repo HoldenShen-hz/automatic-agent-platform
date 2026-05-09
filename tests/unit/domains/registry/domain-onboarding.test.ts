@@ -66,7 +66,7 @@ function makeMinimalDefinition(overrides: Partial<DomainDefinition> = {}): Domai
       optionalTools: ["read"],
       modelPreferences: { primary: "claude-4" },
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "draft",
     externalAdapters: [],
@@ -157,7 +157,7 @@ test("buildCapabilityEntry returns correct structure", () => {
   assert.deepEqual(entry.skillIds, ["wf_test"]);
   assert.deepEqual(entry.pluginIds, ["plugin.retriever"]);
   assert.equal(entry.defaultActivationPolicy, "registered");
-  assert.equal(entry.trustTier, "standard");
+  assert.equal(entry.trustTier, "restricted");
 });
 
 test("buildCapabilityEntry uses domainId as bundleId fallback when no bundles", () => {
@@ -165,7 +165,7 @@ test("buildCapabilityEntry uses domainId as bundleId fallback when no bundles", 
   service.register(makeMinimalDefinition({
     domainId: "no_bundle",
     toolBundles: [],
-  }));
+  }), { skipSmokeTest: true });
 
   const entry = service.buildCapabilityEntry("no_bundle");
   assert.equal(entry.bundleId, "no_bundle.default");
@@ -259,7 +259,7 @@ test("activate fails for draft domain with no workflows", () => {
     domainId: "empty_wf",
     status: "testing",
     workflows: [],
-  }));
+  }), { skipSmokeTest: true });
 
   assert.throws(() => service.activate("empty_wf"), (err: unknown) => {
     return err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed";
@@ -295,9 +295,9 @@ test("filterAllowedTools includes required tools even if not in any bundle", () 
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
-  }));
+  }), { skipSmokeTest: true });
 
   const allowed = service.filterAllowedTools("required_override", ["bash", "extra_tool", "unknown"]);
   assert.ok(allowed.includes("extra_tool"));

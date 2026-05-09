@@ -35,8 +35,12 @@ export {
   type WorkflowStepCheckpoint,
   type CreateWorkflowStepCheckpointInput,
   type WorkflowStepCheckpointSummary,
+  type WorkflowStepCheckpointRestoreState,
+  type WorkflowStepCheckpointDiff,
   // Workflow step checkpoint functions
   createWorkflowStepCheckpoint,
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
+  restoreWorkflowStepCheckpoint,
+  compareWorkflowStepCheckpointVersions,
 } from "./workflow-step-checkpoint.js";

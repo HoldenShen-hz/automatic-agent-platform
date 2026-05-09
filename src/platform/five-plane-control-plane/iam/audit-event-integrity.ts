@@ -68,6 +68,9 @@ export interface Tier1AuditIntegrityRecord {
 
   /** When this integrity record was computed */
   recordedAt: string;
+
+  /** R12-16: Algorithm used for checksums (HMAC-SHA256 or SHA-256) */
+  algorithm: string;
 }
 
 /**

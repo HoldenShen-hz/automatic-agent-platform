@@ -28,16 +28,33 @@ export interface FairQueueSnapshot {
   readonly quotaExceeded: boolean;
 }
 
+export interface PromotionBudgetPolicy {
+  readonly tenantId: string;
+  readonly maxPromotionsPerHour: number;
+  readonly maxPromotionsPerDay: number;
+  readonly usedPromotionsThisHour: number;
+  readonly usedPromotionsToday: number;
+}
+
+export interface PromotionBudgetDecision {
+  readonly allowed: boolean;
+  readonly remainingHourlyPromotions: number;
+  readonly remainingDailyPromotions: number;
+  readonly reason: string | null;
+}
+
 export interface FairSchedulingRequest {
   readonly quotaPolicy: MultiResourceQuotaVector;
   readonly claim: ResourceClaim;
   readonly queueItems: readonly FairQueueItem[];
   readonly preemptionCandidates: readonly PreemptionCandidate[];
+  readonly promotionBudget?: PromotionBudgetPolicy | null;
 }
 
 export interface FairSchedulingDecision {
   readonly queue: FairQueueSnapshot;
   readonly preemption: PreemptionDecision;
+  readonly promotionBudget: PromotionBudgetDecision;
 }
 
 export class FairSchedulingService {
@@ -51,7 +68,13 @@ export class FairSchedulingService {
     const starvedItemIds = request.queueItems
       .filter((item) => item.ageMs >= 15 * 60_000)
       .map((item) => item.itemId);
-    const victim = quotaExceeded ? choosePreemptionVictim(request.preemptionCandidates) : null;
+    const promotionBudget = this.evaluatePromotionBudget(
+      request.claim.schedulingClass.tenantId,
+      request.promotionBudget ?? null,
+    );
+    const victim = quotaExceeded && promotionBudget.allowed
+      ? choosePreemptionVictim(request.preemptionCandidates)
+      : null;
 
     return {
       queue: {
@@ -60,14 +83,41 @@ export class FairSchedulingService {
         quotaExceeded,
       },
       preemption: {
-        shouldPreempt: quotaExceeded && victim != null,
+        shouldPreempt: quotaExceeded && promotionBudget.allowed && victim != null,
         victimExecutionId: victim?.executionId ?? null,
-        reason: quotaExceeded
-          ? victim == null
-            ? "resource_manager.quota_exceeded_without_victim"
-            : "resource_manager.quota_exceeded_preempt_low_priority"
-          : null,
+        reason: !promotionBudget.allowed
+          ? promotionBudget.reason
+          : quotaExceeded
+            ? victim == null
+              ? "resource_manager.quota_exceeded_without_victim"
+              : "resource_manager.quota_exceeded_preempt_low_priority"
+            : null,
       },
+      promotionBudget,
+    };
+  }
+
+  private evaluatePromotionBudget(
+    tenantId: string,
+    budget: PromotionBudgetPolicy | null,
+  ): PromotionBudgetDecision {
+    if (budget == null || budget.tenantId !== tenantId) {
+      return {
+        allowed: true,
+        remainingHourlyPromotions: Number.POSITIVE_INFINITY,
+        remainingDailyPromotions: Number.POSITIVE_INFINITY,
+        reason: null,
+      };
+    }
+
+    const remainingHourlyPromotions = Math.max(0, budget.maxPromotionsPerHour - budget.usedPromotionsThisHour);
+    const remainingDailyPromotions = Math.max(0, budget.maxPromotionsPerDay - budget.usedPromotionsToday);
+    const allowed = remainingHourlyPromotions > 0 && remainingDailyPromotions > 0;
+    return {
+      allowed,
+      remainingHourlyPromotions,
+      remainingDailyPromotions,
+      reason: allowed ? null : "resource_manager.promotion_budget_exhausted",
     };
   }
 }
