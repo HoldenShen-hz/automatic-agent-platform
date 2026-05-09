@@ -44,6 +44,8 @@ export interface MemoryPromotionCandidate {
 }
 
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
+  // R16-38 fix: Added runtime→session promotion rule for working memory
+  { from: "runtime", to: "session", minHitCount: 2, minQualityScore: 0.5, minImportanceScore: 0.4 },
   { from: "session", to: "agent", minHitCount: 3, minQualityScore: 0.6, minImportanceScore: 0.5 },
   { from: "agent", to: "project", minHitCount: 8, minQualityScore: 0.75, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 12, minQualityScore: 0.8, minImportanceScore: 0.75 },
@@ -314,17 +316,23 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 
 /**
  * Determines if a memory should be evicted based on its layer's eviction strategy.
+ * R16-39 fix: Added optional callback for loss reporting when evicting memories.
+ * Per §29.2, silent discarding is prohibited - eviction must be reported.
  * @param memory - The memory record to evaluate
  * @param candidateCount - Number of candidate memories in the same layer
  * @param maxLayerSize - Maximum size for this layer (optional)
+ * @param onEvict - Optional callback for loss reporting when memory is evicted
  * @returns True if the memory should be evicted
  */
 export function shouldEvict(
   memory: MemoryRecord,
   candidateCount: number,
   maxLayerSize?: number,
+  onEvict?: (memory: MemoryRecord, reason: string) => void,
 ): boolean {
   if (isMemoryStale(memory)) {
+    // R16-39 fix: Report stale eviction to prevent silent loss
+    onEvict?.(memory, "ttl_expired");
     return true;
   }
   if (maxLayerSize === undefined) {
@@ -334,7 +342,12 @@ export function shouldEvict(
     return false;
   }
   const priority = getEvictionPriority(memory);
-  return candidateCount > maxLayerSize && priority < 0.5;
+  const shouldEvictResult = candidateCount > maxLayerSize && priority < 0.5;
+  if (shouldEvictResult) {
+    // R16-39 fix: Report priority-based eviction to prevent silent loss
+    onEvict?.(memory, "capacity_pressure");
+  }
+  return shouldEvictResult;
 }
 
 export function mapMemoryScopeToLayer(scope: string): HierarchicalMemoryLayer {
