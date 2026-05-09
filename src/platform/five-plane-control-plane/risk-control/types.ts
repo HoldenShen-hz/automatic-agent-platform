@@ -38,14 +38,19 @@ export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
 
 /**
  * Input factors for risk score calculation per §10.2
+ * ADR-026 v4.3 canonical 8-factor model
  */
 export const RiskFactorsSchema = z.object({
-  stepTypeRisk: StepTypeRiskSchema,
-  targetSystemRisk: TargetSystemRiskSchema,
-  dataClassRisk: DataClassRiskSchema,
-  blastRadius: BlastRadiusSchema,
-  priorFailureRatePercent: z.number().min(0).max(100),
-  confidence: ConfidenceLevelSchema,
+  // ADR-026 v4.3: 8-factor canonical model replaces legacy 6-factor
+  impact: z.number().min(1).max(5),                    // weight=4, operation impact
+  irreversibility: z.number().min(1).max(5),          // weight=4, result irreversibility
+  dataSensitivity: z.number().min(1).max(5),           // weight=3, data sensitivity level
+  autonomyModeRisk: z.number().min(1).max(5),          // weight=2, automation amplification risk
+  tenantImpact: z.number().min(1).max(5),             // weight=2, tenant/organization scope
+  blastRadius: z.number().min(1).max(5),              // weight=2, failure spread radius
+  historicalFailureRate: z.number().min(0).max(100),  // weight=2, historical failure rate %
+  evidenceConfidence: z.enum(["high", "medium", "low"]), // weight=1, evidence sufficiency
+  // Legacy fields removed per ADR-026 v4.3 remediation
 });
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 

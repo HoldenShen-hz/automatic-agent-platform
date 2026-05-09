@@ -40,7 +40,8 @@ const WORKER_SNAPSHOT_SELECT = `SELECT
   current_step_id AS "currentStepId",
   last_progress_at AS "lastProgressAt",
   last_heartbeat_at AS "lastHeartbeatAt",
-  updated_at AS "updatedAt"
+  updated_at AS "updatedAt",
+  version
  FROM worker_snapshots`;
 
 const COORDINATOR_SNAPSHOT_SELECT = `SELECT

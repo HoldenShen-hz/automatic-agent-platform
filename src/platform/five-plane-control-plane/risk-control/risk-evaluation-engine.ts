@@ -3,17 +3,31 @@
  *
  * Implements §10 risk scoring algorithm and automated risk control engine.
  *
- * ## §10.2 Risk Scoring Algorithm
+ * ## §10.2 Risk Scoring Algorithm (ADR-026 v4.3 canonical 8-factor model)
  *
- * risk_score = Σ(factor_weight × factor_value) / max_possible_score
+ * risk_score = (
+ *   impact*4 +
+ *   irreversibility*4 +
+ *   dataSensitivity*3 +
+ *   autonomyModeRisk*2 +
+ *   tenantImpact*2 +
+ *   blastRadius*2 +
+ *   historicalFailureRate*2 +
+ *   evidenceConfidence*1
+ * ) / 20
  *
- * Factor weights per §10.2:
- *   step_type_risk:      weight=3  (read=1, write=3, delete=5, external_call=4)
- *   target_system_risk:  weight=4  (internal=1, staging=2, production=5)
- *   data_class_risk:     weight=3  (public=1, internal=2, confidential=4, restricted=5)
- *   blast_radius:        weight=2  (single_task=1, workflow=2, tenant=3, platform=5)
- *   prior_failure_rate:  weight=2  (0-10%=1, 10-30%=2, 30-50%=3, >50%=5)
- *   confidence:          weight=1  (high=1, medium=3, low=5)
+ * Factor weights per ADR-026 v4.3:
+ *   impact:              weight=4  (1-5 scale)
+ *   irreversibility:     weight=4  (1-5 scale)
+ *   dataSensitivity:     weight=3  (1-5 scale)
+ *   autonomyModeRisk:    weight=2  (1-5 scale)
+ *   tenantImpact:        weight=2  (1-5 scale)
+ *   blastRadius:         weight=2  (1-5 scale)
+ *   historicalFailureRate: weight=2 (0-100% mapped to 1-5)
+ *   evidenceConfidence:  weight=1  (high=1, medium=3, low=5)
+ *
+ * Max possible = 4*5 + 4*5 + 3*5 + 2*5 + 2*5 + 2*5 + 2*5 + 1*5 = 20+20+15+10+10+10+10+5 = 100
+ * Normalized to 0-1 by dividing by 20 -> max normalized score = 100/20 = 5 -> normalized = 1.0
  *
  * ## §10.3 Risk Level Mapping
  *
@@ -32,6 +46,7 @@
  * | critical   | ❌           | critical  | break-glass | prohibited    | legal-grade |
  *
  * @see docs_zh/architecture/00-platform-architecture.md §10
+ * @see docs_zh/adr/026-risk-control-architecture.md ADR-026 v4.3
  */
 
 import type {
@@ -40,21 +55,17 @@ import type {
   RiskEvaluationEngineOptions,
   RiskConfig,
   RiskLevel,
-  StepTypeRisk,
-  TargetSystemRisk,
-  DataClassRisk,
-  BlastRadius,
-  ConfidenceLevel,
   RiskLevelActionConfig,
 } from "./types.js";
 
 /**
- * Max possible weighted score = sum of all (weight × max_value)
- * stepTypeRisk: 3×5=15, targetSystemRisk: 4×5=20, dataClassRisk: 3×5=15
- * blastRadius: 2×5=10, priorFailureRate: 2×5=10, confidence: 1×5=5
- * Total max = 75
+ * ADR-026 v4.3: Max possible weighted score = sum of all (weight × max_value)
+ * impact: 4×5=20, irreversibility: 4×5=20, dataSensitivity: 3×5=15
+ * autonomyModeRisk: 2×5=10, tenantImpact: 2×5=10, blastRadius: 2×5=10
+ * historicalFailureRate: 2×5=10, evidenceConfidence: 1×5=5
+ * Total max raw = 100, normalized by dividing by 20 -> max normalized = 1.0
  */
-const MAX_POSSIBLE_SCORE = 75;
+const MAX_POSSIBLE_SCORE = 20;
 
 export class RiskEvaluationEngine {
   private readonly config: RiskConfig;

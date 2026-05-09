@@ -111,6 +111,7 @@ export class DelegationAuditService {
     parentAgentId: string;
     childAgentId: string;
     durationMs: number;
+    depth?: number; // R26-07 fix: track depth instead of hardcoding 0
     actorId: string;
     actorType: "user" | "agent" | "system";
   }): DelegationAuditEvent {
@@ -119,7 +120,7 @@ export class DelegationAuditService {
       delegationId: params.delegationId,
       parentAgentId: params.parentAgentId,
       childAgentId: params.childAgentId,
-      depth: 0,
+      depth: params.depth ?? 0,
       reasonCode: "delegation.completed",
       metadata: { durationMs: params.durationMs },
       actorId: params.actorId,
@@ -132,6 +133,7 @@ export class DelegationAuditService {
     parentAgentId: string;
     childAgentId: string;
     error: string;
+    depth?: number; // R26-07 fix: track depth instead of hardcoding 0
     actorId: string;
     actorType: "user" | "agent" | "system";
   }): DelegationAuditEvent {
@@ -140,7 +142,7 @@ export class DelegationAuditService {
       delegationId: params.delegationId,
       parentAgentId: params.parentAgentId,
       childAgentId: params.childAgentId,
-      depth: 0,
+      depth: params.depth ?? 0,
       reasonCode: "delegation.failed",
       metadata: { error: params.error },
       actorId: params.actorId,

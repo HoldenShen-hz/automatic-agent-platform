@@ -99,6 +99,18 @@ export class ComplianceGovernanceService {
     readonly compensatingControls: readonly string[];
     readonly auditRef: string;
   }): ComplianceExceptionWorkflow {
+    // R17-84 fix: Validate expiresAt is in the future
+    const now = new Date();
+    const expiryDate = new Date(input.expiresAt);
+    if (expiryDate <= now) {
+      throw new Error("expiresAt must be a future date");
+    }
+
+    // R17-84 fix: Compensating controls are required and must not be empty
+    if (!input.compensatingControls || input.compensatingControls.length === 0) {
+      throw new Error("compensatingControls are required and must not be empty");
+    }
+
     return {
       exceptionId: `compliance_exception:${input.scope}:${input.expiresAt}`,
       scope: input.scope,
