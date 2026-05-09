@@ -86,7 +86,7 @@ Learning types:
 - recovery_playbook: A recovery action was taken; recommend making recovery automatic
 
 Output format: Return a JSON array of LearningObjects. Each object must have:
-{"learningObjectId": "placeholder", "learningType": "...", "title": "...", "summary": "...", "confidence": 0.0-1.0, "evidenceRefs": [], "sourceSignalIds": [], "recommendation": "...", "validatedBy": "none", "promotionStatus": "draft", "createdAt": current_timestamp}
+{"learningObjectId": "placeholder", "learningType": "...", "title": "...", "summary": "...", "confidence": 0.0-1.0, "evidenceRefs": [], "sourceSignalIds": [], "recommendation": "...", "validatedBy": "none", "promotionStatus": "quarantine", "createdAt": current_timestamp}
 
 Generate one LearningObject per signal. Be specific and actionable in recommendations.`;
   }
@@ -142,7 +142,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       sourceSignalIds: Array.isArray(item.sourceSignalIds) ? item.sourceSignalIds as string[] : signal.sourceSignalIds,
       recommendation: (item.recommendation as string) ?? this.templateRecommendation(signal),
       validatedBy: "none",
-      promotionStatus: "draft",
+      promotionStatus: "quarantine",
       createdAt: String(Date.now()),
     };
   }
@@ -158,7 +158,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       sourceSignalIds: signal.sourceSignalIds,
       recommendation: this.templateRecommendation(signal),
       validatedBy: "none",
-      promotionStatus: "draft",
+      promotionStatus: "quarantine",
       createdAt: String(signal.generatedAt),
     }));
   }

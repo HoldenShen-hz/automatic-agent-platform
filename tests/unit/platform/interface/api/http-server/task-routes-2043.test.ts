@@ -159,10 +159,10 @@ test("ISSUE #2043: parseUpdateTaskPayload returns empty object when no fields pr
 test("ISSUE #2043: parseUpdateTaskPayload includes title when explicitly set", () => {
   const payload = parseUpdateTaskPayload({
     title: "My New Task Title",
-    status: "running",
+    status: "paused",
   });
 
-  assert.equal(payload.status, "running");
+  assert.equal(payload.status, "paused");
   assert.equal(payload.title, "My New Task Title");
 });
 
@@ -197,8 +197,8 @@ test("ISSUE #2043: PATCH route calls updateTaskTitle when title is provided", as
   const routes = createTaskRoutes(deps);
 
   const ctx = createMockContext(
-    "/api/v1/tasks/task-1",
-    ["api", "v1", "tasks", "task-1"],
+    "/v1/tasks/task-1",
+    ["v1", "tasks", "task-1"],
     {},
     JSON.stringify({ title: "Updated Title" }),
     "PATCH",
@@ -240,8 +240,8 @@ test("ISSUE #2043: The title update condition forwards the provided title", asyn
   const routes = createTaskRoutes(deps);
 
   const ctx = createMockContext(
-    "/api/v1/tasks/task-1",
-    ["api", "v1", "tasks", "task-1"],
+    "/v1/tasks/task-1",
+    ["v1", "tasks", "task-1"],
     {},
     JSON.stringify({ title: "Should Update Title" }),
     "PATCH",
@@ -283,8 +283,8 @@ test("ISSUE #2043: Status update works (not dead code)", async () => {
   const routes = createTaskRoutes(deps);
 
   const ctx = createMockContext(
-    "/api/v1/tasks/task-1",
-    ["api", "v1", "tasks", "task-1"],
+    "/v1/tasks/task-1",
+    ["v1", "tasks", "task-1"],
     {},
     JSON.stringify({ status: "paused" }),
     "PATCH",
@@ -327,8 +327,8 @@ test("ISSUE #2043: outputJson update works (not dead code)", async () => {
   const routes = createTaskRoutes(deps);
 
   const ctx = createMockContext(
-    "/api/v1/tasks/task-1",
-    ["api", "v1", "tasks", "task-1"],
+    "/v1/tasks/task-1",
+    ["v1", "tasks", "task-1"],
     {},
     JSON.stringify({ outputJson: '{"result": "done"}' }),
     "PATCH",

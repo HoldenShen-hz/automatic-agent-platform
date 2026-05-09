@@ -24,6 +24,24 @@ import type {
   WorkflowStepCompletedPayload,
   CircuitBreakerStateChangePayload,
   WorkerScaleSignalPayload,
+  // R23-55/R23-56: OAPEFLIR stage event payloads (15 types)
+  ObserveSignalsCollectedPayload,
+  ObserveContextAugmentedPayload,
+  AssessEvaluationCompletedPayload,
+  AssessAnomalyClassifiedPayload,
+  PlanProposalCreatedPayload,
+  PlanDecisionRecordedPayload,
+  ExecuteActionStartedPayload,
+  ExecuteActionCompletedPayload,
+  FeedbackSignalReceivedPayload,
+  FeedbackOutcomeProcessedPayload,
+  LearnObjectCreatedPayload,
+  LearnObjectPromotedPayload,
+  ImproveCandidateProposedPayload,
+  ImproveCandidateAcceptedPayload,
+  ReleaseRolloutStartedPayload,
+  ReleaseRolloutCompletedPayload,
+  ReleaseRollbackTriggeredPayload,
 } from "./typed-event-payloads.js";
 
 /**
@@ -165,6 +183,24 @@ export interface TypedEventPayloadMap {
   // R13-18: Auto-scaling signals for worker pool
   "worker:scale_up": WorkerScaleSignalPayload,
   "worker:scale_down": WorkerScaleSignalPayload,
+  // R23-55/R23-56: OAPEFLIR stage events (15 types: observe/assess/plan/execute/feedback/learn/improve/release)
+  "observe:signals_collected": ObserveSignalsCollectedPayload,
+  "observe:context_augmented": ObserveContextAugmentedPayload,
+  "assess:evaluation_completed": AssessEvaluationCompletedPayload,
+  "assess:anomaly_classified": AssessAnomalyClassifiedPayload,
+  "plan:proposal_created": PlanProposalCreatedPayload,
+  "plan:decision_recorded": PlanDecisionRecordedPayload,
+  "execute:action_started": ExecuteActionStartedPayload,
+  "execute:action_completed": ExecuteActionCompletedPayload,
+  "feedback:signal_received": FeedbackSignalReceivedPayload,
+  "feedback:outcome_processed": FeedbackOutcomeProcessedPayload,
+  "learn:object_created": LearnObjectCreatedPayload,
+  "learn:object_promoted": LearnObjectPromotedPayload,
+  "improve:candidate_proposed": ImproveCandidateProposedPayload,
+  "improve:candidate_accepted": ImproveCandidateAcceptedPayload,
+  "release:rollout_started": ReleaseRolloutStartedPayload,
+  "release:rollout_completed": ReleaseRolloutCompletedPayload,
+  "release:rollback_triggered": ReleaseRollbackTriggeredPayload,
   // §28.1: Canonical platform events
   "platform.harness_run.status_changed": Record<string, unknown>;
   "platform.harness_run.created": Record<string, unknown>;

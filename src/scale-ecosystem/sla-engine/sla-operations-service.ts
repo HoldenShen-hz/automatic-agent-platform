@@ -58,6 +58,10 @@ export interface SlaPenaltyDecision {
   readonly tierId: string;
   readonly penaltyType: "credit" | "capacity_boost" | "contract_review";
   readonly severity: "warning" | "critical";
+  /** Amount in credits to be issued (for penaltyType="credit") */
+  readonly creditAmount?: number;
+  /** Description of the penalty for audit purposes */
+  readonly description?: string;
 }
 
 const WORKFLOW_CLASS_LATENCY_MULTIPLIER: Record<WorkflowClass, number> = {
@@ -97,6 +101,21 @@ const DEFAULT_WORKFLOW_CLASS_SLA_MAP: Record<WorkflowClass, WorkflowClassSlaProf
     preemptionPriority: 1,
   },
 };
+
+/**
+ * Calculate credit amount based on tier profile and breach severity.
+ * Credits are calculated as a percentage of the tier's budget allocation.
+ */
+function calculateCreditAmount(tier: SlaTierProfile | null, breachCodes: readonly string[]): number {
+  if (tier == null) {
+    return 0;
+  }
+  // Base credit amount is 5% of budget allocation per breach code
+  const baseCreditPercent = 5;
+  const breachCount = breachCodes.length;
+  const budgetAllocation = tier.budgetAllocationPercent ?? 0;
+  return Math.floor(budgetAllocation * (baseCreditPercent * breachCount) / 100);
+}
 
 export class SlaOperationsService {
   public evaluate(request: SlaOperationsRequest): SlaOperationsDecision {
@@ -154,10 +173,16 @@ export class SlaOperationsService {
       tierId: record.tierId,
       penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
       severity: record.severity,
+      creditAmount: record.severity === "critical" ? undefined : calculateCreditAmount(selectedTier, breachCodes),
+      description: record.severity === "critical"
+        ? "Critical SLA breach - contract review required"
+        : `SLA breach: ${breachCodes.join(", ")} - credit issued`,
     }));
 
     const starvationProtected = request.tiers.some((tier) => (reservedCapacity[tier.tierId] ?? 0) > 0);
-    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) <= Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
+    // Preemption cap is applied only when selected tier has the highest priority (at the cap)
+    const maxPriority = Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0), 0);
+    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) === maxPriority;
     return {
       selectedTierId: selectedTier.tierId,
       routingHint: {

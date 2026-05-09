@@ -78,44 +78,46 @@ function inferCurrentStatus(candidate: ImprovementCandidate): RolloutStatus {
 }
 
 function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus): RolloutStatus {
+  // R23-43 fix: Use L0-L5 level naming for standardized rollout progression
   switch (level) {
-    case "off":
+    case "L0_off":
       return currentStatus === "candidate_created" || currentStatus === "under_review" || currentStatus === "approved"
         ? "rejected"
         : "rolled_back";
-    case "evaluate_0":
+    case "L1_evaluate":
       return "evaluation_enabled";
-    case "canary_5":
+    case "L2_canary":
       return "canary_5";
-    case "partial_25":
+    case "L3_partial":
       return "partial_25";
-    case "stable_75":
+    case "L4_stable":
       return "stable_75";
-    case "stable_100":
+    case "L5_full":
       return currentStatus === "stable_100" ? "released" : "stable_100";
   }
 }
 
 function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
+  // R23-43 fix: Use L0-L5 level naming for standardized rollout progression
   switch (status) {
     case "candidate_created":
     case "under_review":
     case "approved":
     case "rejected":
     case "rolled_back":
-      return "off";
+      return "L0_off";
     case "evaluation_enabled":
-      return "evaluate_0";
+      return "L1_evaluate";
     case "canary_5":
-      return "canary_5";
+      return "L2_canary";
     case "partial_25":
-      return "partial_25";
+      return "L3_partial";
     case "stable_75":
-      return "stable_75";
+      return "L4_stable";
     case "stable_100":
     case "released":
-      return "stable_100";
+      return "L5_full";
     case "paused":
-      return "off";
+      return "L0_off";
   }
 }

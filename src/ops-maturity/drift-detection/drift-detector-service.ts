@@ -74,7 +74,7 @@ export class DriftDetectorService implements IDriftDetector {
       const crossAgentResult = this.crossAgentAnalyzer.analyze(
         input.agentMetrics.map((m) => ({
           agentId: m.agentId,
-          domain: m.domain,
+          domainId: m.domain,
           successRate: m.successRate,
           averageCostUsd: m.averageCostUsd,
           averageLatencyMs: m.averageLatencyMs,
@@ -161,7 +161,7 @@ export class DriftDetectorService implements IDriftDetector {
     const result = this.crossAgentAnalyzer.analyze(
       metrics.map((m) => ({
         agentId: m.agentId,
-        domain: m.domain,
+        domainId: m.domain,
         successRate: m.successRate,
         averageCostUsd: m.averageCostUsd,
         averageLatencyMs: m.averageLatencyMs,

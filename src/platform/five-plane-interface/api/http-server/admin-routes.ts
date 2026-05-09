@@ -499,9 +499,10 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin tenants list");
         const limit = readLimit(ctx.request, 50);
+        const tenants = deps.tenantRegistryService?.listTenants(limit) ?? [];
         return buildJsonResponse(ctx.requestId, 200, {
-          tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
-          total: deps.tenantRegistryService?.listTenants(Number.MAX_SAFE_INTEGER).length ?? 0,
+          tenants,
+          total: tenants.length,
         });
       },
     },

@@ -19,7 +19,7 @@ export interface PromotionGateConfig {
 export interface PromotionDecision {
   allowed: boolean;
   reasons: string[];
-  stage: 'proposed' | 'testing' | 'canary' | 'active' | 'rejected';
+  stage: 'draft' | 'reviewed' | 'staged' | 'stable' | 'retired' | 'rejected';
 }
 
 export const DEFAULT_PROMOTION_GATE_CONFIG: PromotionGateConfig = {
@@ -97,12 +97,14 @@ export class PromotionGate {
     let nextStage: PromotionDecision['stage'];
     if (reasons.length > 0) {
       nextStage = 'rejected';
-    } else if (currentStage === 'testing') {
-      nextStage = 'canary';
-    } else if (currentStage === 'canary') {
-      nextStage = 'active';
+    } else if (currentStage === 'reviewed') {
+      nextStage = 'staged';
+    } else if (currentStage === 'staged') {
+      nextStage = 'stable';
+    } else if (currentStage === 'stable') {
+      nextStage = 'retired';
     } else {
-      nextStage = 'testing';
+      nextStage = 'reviewed';
     }
 
     return {

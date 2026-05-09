@@ -166,7 +166,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...learningObject,
           validatedBy: "none",
-          promotionStatus: "draft",
+          promotionStatus: "quarantine",
         },
       };
     }
@@ -179,7 +179,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...learningObject,
           validatedBy: "none",
-          promotionStatus: "draft",
+          promotionStatus: "quarantine",
         },
       };
     }
@@ -190,7 +190,9 @@ export class LearningObjectValidator {
       learningObject: {
         ...learningObject,
         validatedBy: learningObject.validatedBy === "none" ? "evidence" : learningObject.validatedBy,
-        promotionStatus: learningObject.promotionStatus === "draft" ? "validated" : learningObject.promotionStatus,
+        promotionStatus: learningObject.promotionStatus === "draft" || learningObject.promotionStatus === "quarantine"
+          ? "validated"
+          : learningObject.promotionStatus,
       },
       warnings: warnings.length > 0 ? warnings : [],
     };

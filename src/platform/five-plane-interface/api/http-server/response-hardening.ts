@@ -39,7 +39,7 @@ export function parseAllowedOrigins(raw: string | undefined): string[] {
 }
 
 export function normalizeCorsConfig(config: Partial<CorsConfig> | null | undefined): CorsConfig {
-  return {
+  const normalized: CorsConfig = {
     allowedOrigins: config?.allowedOrigins != null && config.allowedOrigins.length > 0
       ? [...config.allowedOrigins]
       : [...DEFAULT_CORS_CONFIG.allowedOrigins],
@@ -55,6 +55,10 @@ export function normalizeCorsConfig(config: Partial<CorsConfig> | null | undefin
     maxAgeSeconds: config?.maxAgeSeconds ?? DEFAULT_CORS_CONFIG.maxAgeSeconds,
     credentials: config?.credentials ?? DEFAULT_CORS_CONFIG.credentials,
   };
+  if (normalized.credentials && normalized.allowedOrigins.includes("*")) {
+    throw new Error("api.cors.invalid_wildcard_credentials");
+  }
+  return normalized;
 }
 
 export function isOriginAllowed(origin: string | undefined, config: CorsConfig): boolean {
@@ -76,7 +80,7 @@ function resolveAllowOrigin(origin: string | undefined, config: CorsConfig): str
     return null;
   }
   if (config.allowedOrigins.includes("*")) {
-    return origin != null && config.credentials ? origin : "*";
+    return "*";
   }
   return origin!.trim();
 }

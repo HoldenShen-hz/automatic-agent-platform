@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { resolveTriggerActionMode } from "./trigger-engine/index.js";
 
 export interface ProactiveTrigger {
   readonly triggerId: string;
@@ -400,16 +401,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
-    const baseActionMode = state.trigger.action.requireConfirmation
-      ? "suggest"
-      : state.trigger.riskLevel === "critical"
-        ? "silent_record"
-        : state.trigger.action.actionType === "update_dashboard"
-          ? "silent_record"
-          // R5-24: medium risk proactive actions cannot auto_execute; R5-25: high also cannot
-          : state.trigger.riskLevel === "medium" || state.trigger.riskLevel === "high"
-            ? "suggest"
-            : "auto_execute";
+    const baseActionMode = state.trigger.action.actionType === "update_dashboard"
+      ? "silent_record"
+      : resolveTriggerActionMode(state.trigger.action.requireConfirmation, state.trigger.riskLevel);
     // R5-27: Apply autonomy level adjustment to action mode
     const actionMode = this.getAutonomyAdjustedActionMode(baseActionMode);
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;

@@ -61,7 +61,7 @@ export class FailurePatternMiner {
       sourceSignalIds: pattern.sourceSignalIds,
       recommendation: pattern.recommendation,
       validatedBy: "none",
-      promotionStatus: "draft",
+      promotionStatus: "quarantine",
       createdAt: String(pattern.detectedAt),
     };
   }
@@ -77,7 +77,7 @@ export class FailurePatternMiner {
       sourceSignalIds: signal.sourceSignalIds,
       recommendation: "Prefer replanning with narrower scope and stronger validation.",
       validatedBy: "none",
-      promotionStatus: "draft",
+      promotionStatus: "quarantine",
       createdAt: String(signal.generatedAt),
     };
   }

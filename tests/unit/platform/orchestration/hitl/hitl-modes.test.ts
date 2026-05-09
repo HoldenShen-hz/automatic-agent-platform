@@ -12,6 +12,9 @@ test("HITL_MODES exports all expected modes", () => {
     "collaborative_edit",
     "informed_confirmation",
     "circuit_breaker_human",
+    "modify_and_approve",
+    "override_decision",
+    "force_terminate",
   ] as const);
 });
 
@@ -285,6 +288,9 @@ test("validateHitlModeRequest returns HitlModeConstraint with correct mode", () 
     "collaborative_edit",
     "informed_confirmation",
     "circuit_breaker_human",
+    "modify_and_approve",
+    "override_decision",
+    "force_terminate",
   ];
 
   const multiOptionModes = new Set(["iterative_feedback"]);
@@ -298,8 +304,8 @@ test("validateHitlModeRequest returns HitlModeConstraint with correct mode", () 
     const result = validateHitlModeRequest({
       mode,
       options,
-      riskLevel: mode === "circuit_breaker_human" ? "high" : "medium",
-      timeoutPolicy: mode === "circuit_breaker_human" ? "reject" : "remain_pending",
+      riskLevel: mode === "circuit_breaker_human" || mode === "force_terminate" ? "high" : "medium",
+      timeoutPolicy: mode === "circuit_breaker_human" || mode === "force_terminate" ? "reject" : "remain_pending",
       context:
         mode === "multi_party_approval"
           ? { requiredApprovals: 2 }
@@ -310,5 +316,38 @@ test("validateHitlModeRequest returns HitlModeConstraint with correct mode", () 
               : {},
     });
     assert.equal(result.mode, mode, `Mode ${mode} should be returned correctly`);
+    assert.ok(result.capability.length > 0, `Mode ${mode} should expose capability metadata`);
   }
+});
+
+test("validateHitlModeRequest accepts modify_and_approve and exposes capability", () => {
+  const result = validateHitlModeRequest({
+    mode: "modify_and_approve",
+    options: [{ optionId: "patch-1" }],
+    riskLevel: "medium",
+    timeoutPolicy: "remain_pending",
+  });
+  assert.equal(result.capability, "modify_and_approve");
+});
+
+test("validateHitlModeRequest accepts override_decision and exposes capability", () => {
+  const result = validateHitlModeRequest({
+    mode: "override_decision",
+    options: [{ optionId: "override-1" }],
+    riskLevel: "medium",
+    timeoutPolicy: "remain_pending",
+  });
+  assert.equal(result.capability, "override_decision");
+  assert.ok(result.summary.includes("prior"));
+});
+
+test("validateHitlModeRequest accepts force_terminate for critical risk", () => {
+  const result = validateHitlModeRequest({
+    mode: "force_terminate",
+    options: [{ optionId: "terminate-1" }],
+    riskLevel: "critical",
+    timeoutPolicy: "reject",
+  });
+  assert.equal(result.capability, "force_terminate");
+  assert.ok(result.summary.includes("immediately terminates"));
 });

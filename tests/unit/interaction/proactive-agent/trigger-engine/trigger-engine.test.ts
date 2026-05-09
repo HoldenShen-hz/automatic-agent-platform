@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveTriggerActionMode } from "../../../../../src/interaction/proactive-agent/trigger-engine/index.js";
+import { ProactiveAgentService } from "../../../../../src/interaction/proactive-agent/index.js";
 
 test("resolveTriggerActionMode returns suggest when requireConfirmation is true", () => {
   assert.equal(resolveTriggerActionMode(true, "low"), "suggest");
@@ -21,8 +22,8 @@ test("resolveTriggerActionMode returns auto_execute for low risk without confirm
   assert.equal(resolveTriggerActionMode(false, "low"), "auto_execute");
 });
 
-test("resolveTriggerActionMode returns auto_execute for medium risk without confirmation", () => {
-  assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
+test("resolveTriggerActionMode returns suggest for medium risk without confirmation", () => {
+  assert.equal(resolveTriggerActionMode(false, "medium"), "suggest");
 });
 
 test("resolveTriggerActionMode returns suggest for high risk without confirmation", () => {
@@ -38,7 +39,7 @@ test("resolveTriggerActionMode covers all risk levels with confirmation required
 
 test("resolveTriggerActionMode covers all risk levels without confirmation", () => {
   assert.equal(resolveTriggerActionMode(false, "low"), "auto_execute");
-  assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
+  assert.equal(resolveTriggerActionMode(false, "medium"), "suggest");
   assert.equal(resolveTriggerActionMode(false, "high"), "suggest");
   assert.equal(resolveTriggerActionMode(false, "critical"), "silent_record");
 });
@@ -52,7 +53,7 @@ test("resolveTriggerActionMode returns correct action mode for each combination"
 
   // Without confirmation: depends on risk level
   assert.equal(resolveTriggerActionMode(false, "low"), "auto_execute");
-  assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
+  assert.equal(resolveTriggerActionMode(false, "medium"), "suggest");
   assert.equal(resolveTriggerActionMode(false, "high"), "suggest");
   assert.equal(resolveTriggerActionMode(false, "critical"), "silent_record");
 });
@@ -74,4 +75,40 @@ test("resolveTriggerActionMode action modes are valid enum values", () => {
     assert.ok(validModes.includes(withConfirm), `Invalid mode: ${withConfirm}`);
     assert.ok(validModes.includes(withoutConfirm), `Invalid mode: ${withoutConfirm}`);
   }
+});
+
+test("ProactiveAgentService records full trigger cycle in incident before disabling looped triggers", async () => {
+  const service = new ProactiveAgentService();
+
+  await service.registerTrigger({
+    triggerId: "trigger-a",
+    domainId: "general_ops",
+    name: "A",
+    type: "event",
+    config: { eventSource: "source", eventPattern: "a", filter: {} },
+    action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true },
+    enabled: true,
+    riskLevel: "low",
+    maxFireRate: "10/hour",
+    cooldown: "1m",
+    feedbackTargetTriggerIds: ["trigger-b"],
+  });
+  await service.registerTrigger({
+    triggerId: "trigger-b",
+    domainId: "general_ops",
+    name: "B",
+    type: "event",
+    config: { eventSource: "source", eventPattern: "b", filter: {} },
+    action: { actionType: "suggest_to_user", template: {}, requireConfirmation: true },
+    enabled: true,
+    riskLevel: "low",
+    maxFireRate: "10/hour",
+    cooldown: "1m",
+    feedbackTargetTriggerIds: ["trigger-a"],
+  });
+
+  const incidents = service.listIncidents();
+  assert.equal(incidents.length, 1);
+  assert.deepEqual(new Set(incidents[0]!.triggerIds), new Set(["trigger-a", "trigger-b"]));
+  assert.equal(service.listTriggers().every((trigger) => trigger.enabled === false), true);
 });

@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { TenantPlatformService } from "../../../../src/scale-ecosystem/tenant-platform/tenant-platform-service.js";
+import { PerTenantEncryptionService } from "../../../../src/scale-ecosystem/multi-region/per-tenant-encryption.js";
 
 function createMockStore() {
   const workspaces = new Map();
@@ -252,6 +253,65 @@ test("TenantPlatformService.createTenant sets organization default when requeste
 
   const updatedOrg = store.organization.getOrganizationRecord("org_default_test");
   assert.equal(updatedOrg.defaultTenantId, tenant.tenantId);
+});
+
+test("TenantPlatformService.createTenant initializes per-tenant static encryption and can encrypt payloads", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_encrypt",
+    displayName: "Encrypted Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const encryption = new PerTenantEncryptionService();
+  const service = new TenantPlatformService(db, store, undefined, encryption);
+
+  const tenant = service.createTenant({
+    organizationId: "org_encrypt",
+    storageScope: "storage_encrypt",
+    identityScope: "identity_encrypt",
+    policyScope: "policy_encrypt",
+    artifactScope: "artifact_encrypt",
+  });
+
+  assert.equal(encryption.isInitialized(tenant.tenantId), true);
+  const encrypted = service.encryptTenantData(tenant.tenantId, "secret-payload");
+  assert.notEqual(encrypted.ciphertext, "secret-payload");
+  assert.equal(service.decryptTenantData(tenant.tenantId, encrypted), "secret-payload");
+});
+
+test("TenantPlatformService.decommissionTenant tears down tenant encryption keys", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_encrypt_cleanup",
+    displayName: "Cleanup Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const encryption = new PerTenantEncryptionService();
+  const service = new TenantPlatformService(db, store, undefined, encryption);
+
+  const tenant = service.createTenant({
+    organizationId: "org_encrypt_cleanup",
+    storageScope: "storage_cleanup",
+    identityScope: "identity_cleanup",
+    policyScope: "policy_cleanup",
+    artifactScope: "artifact_cleanup",
+  });
+
+  assert.equal(encryption.isInitialized(tenant.tenantId), true);
+  service.decommissionTenant({
+    tenantId: tenant.tenantId,
+    actor: "operator",
+    reason: "sunset",
+  });
+  assert.equal(encryption.isInitialized(tenant.tenantId), false);
 });
 
 test("TenantPlatformService.createDeploymentBinding creates binding for tenant", () => {

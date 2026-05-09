@@ -239,3 +239,37 @@ test("EvolutionIntegrationService uses custom config", async () => {
   const stats = await service.getStatistics();
   assert.equal(stats.totalEvidence, 4, "Should have 4 evidence records");
 });
+
+test("EvolutionIntegrationService syncWithLearningPipeline forwards active proposals through learning bridge", async () => {
+  const store = createMockStore();
+  const approvalService = createMockApprovalService();
+  const service = new EvolutionIntegrationService(store, approvalService);
+
+  const captured: unknown[] = [];
+  service.setLearningBridge({
+    async onLearningObjects(objects) {
+      captured.push(...objects);
+    },
+  });
+
+  const proposalEngine = (service as unknown as {
+    proposalEngine: {
+      create(input: Record<string, unknown>): Promise<{ id: string }>;
+      submitForApproval(id: string): Promise<void>;
+    };
+  }).proposalEngine;
+  const proposal = await proposalEngine.create({
+    title: "Bridge Proposal",
+    description: "Forward to main learning pipeline",
+    kind: "tool_routing_rule",
+    target: "tool_execution",
+    risk: "low",
+    agentId: "evolution-system",
+    evidenceIds: ["e-1"],
+  });
+  await proposalEngine.submitForApproval(proposal.id);
+
+  await service.syncWithLearningPipeline();
+
+  assert.ok(captured.length >= 1, "Expected at least one bridged learning object");
+});

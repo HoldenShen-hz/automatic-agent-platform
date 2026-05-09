@@ -1,5 +1,15 @@
 import type { PlannedWorkflow } from "./workflow-planner.js";
 
+/**
+ * R31-12 FIX: AgentTeamStage now has explicit semantic mapping to OAPEFLIR 8 stages.
+ * The mapping is:
+ *   plan      -> OAPEFLIR: plan
+ *   build     -> OAPEFLIR: execute
+ *   review    -> OAPEFLIR: feedback
+ *   validate  -> OAPEFLIR: feedback (quality gate)
+ *   repair    -> OAPEFLIR: feedback (replan loop)
+ *   release   -> OAPEFLIR: release
+ */
 export type AgentTeamStage =
   | "plan"
   | "build"
@@ -7,6 +17,18 @@ export type AgentTeamStage =
   | "validate"
   | "repair"
   | "release";
+
+/**
+ * R31-12 FIX: Semantic mapping from AgentTeamStage to OAPEFLIR phases.
+ */
+export const AGENT_TEAM_STAGE_TO_OAPEFLIR_PHASE: Record<AgentTeamStage, string> = {
+  plan: "plan",
+  build: "execute",
+  review: "feedback",
+  validate: "feedback",
+  repair: "feedback",
+  release: "release",
+} as const;
 
 export type AgentModelTier = "cheap" | "standard" | "strong";
 

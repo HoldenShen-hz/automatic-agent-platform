@@ -154,7 +154,7 @@ export class KnowledgeIngestionPipeline {
       namespace: input.namespace,
       language: input.language ?? null,
       tags: [...(input.tags ?? [])],
-      trustLevel: input.trustLevel ?? "community",
+      trustLevel: input.trustLevel ?? "team_reviewed",
       freshnessTimestamp: timestamp,
       checksum: contentHash,
       chunking: input.chunking,

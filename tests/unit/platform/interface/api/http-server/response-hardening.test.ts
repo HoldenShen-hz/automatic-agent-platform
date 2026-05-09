@@ -13,12 +13,12 @@ import type { ApiResponsePayload } from "../../../../../../src/platform/interfac
 
 test("parseAllowedOrigins returns defaults for undefined input", () => {
   const result = parseAllowedOrigins(undefined);
-  assert.deepEqual(result, ["*"]);
+  assert.deepEqual(result, []);
 });
 
 test("parseAllowedOrigins returns defaults for empty string", () => {
   const result = parseAllowedOrigins("");
-  assert.deepEqual(result, ["*"]);
+  assert.deepEqual(result, []);
 });
 
 test("parseAllowedOrigins parses comma-separated origins", () => {
@@ -120,15 +120,24 @@ test("buildPreflightHeaders includes CORS headers for allowed origin", () => {
   assert.equal(headers["access-control-max-age"], "86400");
 });
 
-test("buildPreflightHeaders uses wildcard with credentials", () => {
+test("buildPreflightHeaders rejects wildcard when credentials are enabled", () => {
   const config = {
     ...DEFAULT_CORS_CONFIG,
     allowedOrigins: ["*"],
     credentials: true,
   };
   const headers = buildPreflightHeaders("https://example.com", config);
-  assert.equal(headers["access-control-allow-origin"], "https://example.com");
-  assert.equal(headers["access-control-allow-credentials"], "true");
+  assert.deepEqual(headers, {});
+});
+
+test("buildPreflightHeaders returns wildcard for non-credentialed wildcard config", () => {
+  const config = {
+    ...DEFAULT_CORS_CONFIG,
+    allowedOrigins: ["*"],
+    credentials: false,
+  };
+  const headers = buildPreflightHeaders("https://example.com", config);
+  assert.equal(headers["access-control-allow-origin"], "*");
 });
 
 test("buildPreflightHeaders adds vary header", () => {
@@ -212,11 +221,14 @@ test("decorateResponseHeaders adds CORS headers for allowed origin", () => {
 });
 
 test("decorateResponseHeaders appends Origin to existing vary", () => {
+  const config = normalizeCorsConfig({
+    allowedOrigins: ["https://example.com"],
+  });
   const payload: ApiResponsePayload = {
     statusCode: 200,
     body: "test",
     headers: { vary: "Accept-Encoding" },
   };
-  const result = decorateResponseHeaders(payload, "https://example.com", DEFAULT_CORS_CONFIG);
+  const result = decorateResponseHeaders(payload, "https://example.com", config);
   assert.equal(result.headers["vary"], "Accept-Encoding, Origin");
 });

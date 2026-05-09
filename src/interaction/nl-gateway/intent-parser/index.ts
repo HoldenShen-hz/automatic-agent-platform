@@ -129,8 +129,13 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
   }
 
   // Fallback: infer from message length and complexity
-  if (normalized.length > 20) {
+  // R29-28 FIX: Only classify as task_create if message is sufficiently detailed
+  // Short messages are more likely to be queries
+  if (normalized.length > 12 && normalized.length <= 20) {
     return [{ intentType: "task_create", confidence: 0.72 }];
+  }
+  if (normalized.length > 20) {
+    return [{ intentType: "task_create", confidence: 0.75 }];
   }
   return [{ intentType: "task_query", confidence: 0.60 }];
 }

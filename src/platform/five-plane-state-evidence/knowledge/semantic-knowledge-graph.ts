@@ -1,4 +1,5 @@
 import type { ArchivedKnowledgeRecord } from "./archive/knowledge-archive.js";
+import type { TrustLevel } from "./knowledge-model.js";
 
 /**
  * Node types in the knowledge graph.
@@ -41,7 +42,10 @@ export type KnowledgeGraphEdgeType =
   // R13-07: Learned edge types for learning pipeline integration
   | "learned_from"      // Knowledge learned from evidence/source
   | "failure_pattern"   // Edge marks a failure pattern node
-  | "causal_relationship"; // Causal relationship between nodes
+  | "causal_relationship" // Causal relationship between nodes
+  | "temporal_correlation"
+  | "references"
+  | "trust_boost";
 
 export interface KnowledgeGraphNode {
   nodeId: string;
@@ -49,6 +53,7 @@ export interface KnowledgeGraphNode {
   label: string;
   namespace: string | null;
   knowledgeRef: string | null;
+  trustLevel: TrustLevel;
 }
 
 export interface KnowledgeGraphEdge {
@@ -62,6 +67,11 @@ export interface KnowledgeGraphEdge {
 export interface KnowledgeGraphInspection {
   nodes: KnowledgeGraphNode[];
   edges: KnowledgeGraphEdge[];
+}
+
+export interface TrustPropagationResult {
+  propagatedNodeIds: string[];
+  trustScoreChanges: Record<string, number>;
 }
 
 export interface KnowledgeGraphChunkConnections {
@@ -83,6 +93,7 @@ export interface KnowledgeGraphChunkConnections {
   learnedFromRefs: string[];
   failurePatternRefs: string[];
   causalRelationshipRefs: string[];
+  temporalCorrelationRefs: string[];
 }
 
 function edgeId(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType): string {
@@ -117,6 +128,7 @@ export class SemanticKnowledgeGraph {
       label: record.document.namespace,
       namespace: record.document.namespace,
       knowledgeRef: null,
+      trustLevel: "authoritative",
     });
 
     const documentNodeId = `document:${record.document.documentId}`;
@@ -126,6 +138,7 @@ export class SemanticKnowledgeGraph {
       label: record.document.title,
       namespace: record.document.namespace,
       knowledgeRef: null,
+      trustLevel: record.source.trustLevel,
     });
     this.addEdge(namespaceNodeId, documentNodeId, "contains", 1);
 
@@ -139,6 +152,7 @@ export class SemanticKnowledgeGraph {
         label: chunk.summary,
         namespace: chunk.namespace,
         knowledgeRef: `knowledge:${chunk.chunkId}`,
+        trustLevel: record.source.trustLevel,
       });
       this.chunkByKnowledgeRef.set(`knowledge:${chunk.chunkId}`, chunkNodeId);
       this.addEdge(documentNodeId, chunkNodeId, "contains", 1);
@@ -156,6 +170,7 @@ export class SemanticKnowledgeGraph {
           label: normalizedKeyword,
           namespace: chunk.namespace,
           knowledgeRef: null,
+          trustLevel: record.source.trustLevel,
         });
         this.addEdge(chunkNodeId, keywordNodeId, "contains", 1);
         const chunkIds = this.keywordToChunkIds.get(normalizedKeyword) ?? new Set<string>();
@@ -222,6 +237,58 @@ export class SemanticKnowledgeGraph {
       learnedFromRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "learned_from"),
       failurePatternRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "failure_pattern"),
       causalRelationshipRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "causal_relationship"),
+      temporalCorrelationRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "temporal_correlation"),
+    };
+  }
+
+  public addEntityRelation(
+    fromEntityId: string,
+    toEntityId: string,
+    relation: Extract<KnowledgeGraphEdgeType, "references" | "trust_boost" | "learned_from" | "failure_pattern" | "causal_relationship" | "temporal_correlation" | "relates_to" | "specializes" | "generalizes" | "implies">,
+    weight: number,
+    trustLevel: TrustLevel = "team_reviewed",
+  ): void {
+    const fromNodeId = this.ensureEntityNode(fromEntityId, trustLevel);
+    const toNodeId = this.ensureEntityNode(toEntityId, trustLevel);
+    this.addEdge(fromNodeId, toNodeId, relation, weight);
+  }
+
+  public propagateTrust(seedNodeIds: readonly string[], decayFactor: number): TrustPropagationResult {
+    if (seedNodeIds.length === 0) {
+      return {
+        propagatedNodeIds: [],
+        trustScoreChanges: {},
+      };
+    }
+
+    const normalizedDecay = Math.max(0, Math.min(1, decayFactor));
+    const queue = seedNodeIds.map((nodeId) => ({ nodeId, score: 1 }));
+    const visited = new Set<string>();
+    const scores = new Map<string, number>();
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current.nodeId)) {
+        continue;
+      }
+      visited.add(current.nodeId);
+      scores.set(current.nodeId, current.score);
+
+      for (const edge of this.adjacencyByNodeId.get(current.nodeId) ?? []) {
+        if (edge.relation !== "trust_boost" && edge.relation !== "trusts") {
+          continue;
+        }
+        const nextScore = Number((current.score * Math.max(0, edge.weight) * (1 - normalizedDecay)).toFixed(4));
+        if (nextScore <= 0) {
+          continue;
+        }
+        queue.push({ nodeId: edge.toNodeId, score: nextScore });
+      }
+    }
+
+    return {
+      propagatedNodeIds: [...scores.keys()],
+      trustScoreChanges: Object.fromEntries(scores.entries()),
     };
   }
 
@@ -318,7 +385,7 @@ export class SemanticKnowledgeGraph {
       ? ["chunk"]
       : relation === "trusts" || relation === "verified_by" || relation === "derived_from" || relation === "confirms"
         ? ["chunk", "entity", "trust_root"]
-      : relation === "learned_from" || relation === "failure_pattern" || relation === "causal_relationship"
+      : relation === "learned_from" || relation === "failure_pattern" || relation === "causal_relationship" || relation === "temporal_correlation"
         ? ["chunk", "entity"]
         : ["chunk", "entity"];
 
@@ -334,6 +401,21 @@ export class SemanticKnowledgeGraph {
   private addUndirectedEdge(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType, weight: number): void {
     this.addEdge(fromNodeId, toNodeId, relation, weight);
     this.addEdge(toNodeId, fromNodeId, relation, weight);
+  }
+
+  private ensureEntityNode(entityId: string, trustLevel: TrustLevel): string {
+    const nodeId = entityId.startsWith("entity:") ? entityId : `entity:${entityId}`;
+    if (!this.nodes.has(nodeId)) {
+      this.nodes.set(nodeId, {
+        nodeId,
+        nodeType: "entity",
+        label: entityId.replace(/^entity:/, ""),
+        namespace: null,
+        knowledgeRef: null,
+        trustLevel,
+      });
+    }
+    return nodeId;
   }
 
   private addEdge(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType, weight: number): void {

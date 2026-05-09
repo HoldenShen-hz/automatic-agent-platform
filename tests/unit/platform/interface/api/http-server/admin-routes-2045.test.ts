@@ -6,8 +6,8 @@
  * - that forced loading the full tenant set into memory and could trigger OOM
  *
  * Current guardrail:
- * - the handler must stay on the canonical `/api/v1/admin/tenants` route
- * - all reads must remain bounded by the validated request limit
+ * - the handler must stay on the canonical `/v1/admin/tenants` route
+ * - the tenant read must remain bounded by the validated request limit
  * - the handler must never fall back to `Number.MAX_SAFE_INTEGER`
  */
 
@@ -64,26 +64,14 @@ function createMockAuthService(roles: string[] = ["admin"]): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
-function normalizePathname(pathname: string): string {
-  return pathname.startsWith("/api/") ? pathname : `/api${pathname}`;
-}
-
-function normalizeSegments(pathname: string, segments: string[]): string[] {
-  if (segments.length > 0) {
-    return segments[0] === "api" ? segments : ["api", ...segments];
-  }
-  return normalizePathname(pathname)
-    .split("?")[0]
-    .split("/")
-    .filter((segment) => segment.length > 0);
-}
-
 function createMockContext(pathname = "/v1/admin/tenants", segments: string[] = [], headers: Record<string, string | undefined> = {}, body: string | null = null, method: string = "GET"): RouteContext {
-  const normalizedPathname = normalizePathname(pathname);
   return {
     requestId: "req-123",
-    request: { method, url: normalizedPathname, headers, body } as never,
-    route: { pathname: normalizedPathname.split("?")[0]!, segments: normalizeSegments(normalizedPathname, segments) },
+    request: { method, url: pathname, headers, body } as never,
+    route: {
+      pathname: pathname.split("?")[0]!,
+      segments: segments.length > 0 ? segments : pathname.split("?")[0]!.split("/").filter((segment) => segment.length > 0),
+    },
     principal: null,
   };
 }
@@ -113,10 +101,11 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
  * ISSUE #2045 TEST SUITE
  *
  * The old route used an unbounded list call for totals. The current
- * implementation keeps both reads bounded to the validated request limit.
+ * implementation keeps the tenant listing bounded and derives `total`
+ * from the returned page size.
  */
 
-test("ISSUE #2045: GET /api/v1/admin/tenants keeps both listTenants calls on the bounded default limit", async () => {
+test("ISSUE #2045: GET /v1/admin/tenants keeps listTenants on the bounded default limit", async () => {
   const callLog: { limit: number }[] = [];
 
   const mockTenantRegistryService = {
@@ -138,11 +127,11 @@ test("ISSUE #2045: GET /api/v1/admin/tenants keeps both listTenants calls on the
 
   await callRoute(routes, ctx);
 
-  assert.equal(callLog.length, 2);
-  assert.deepEqual(callLog, [{ limit: 50 }, { limit: 50 }]);
+  assert.equal(callLog.length, 1);
+  assert.deepEqual(callLog, [{ limit: 50 }]);
 });
 
-test("ISSUE #2045: GET /api/v1/admin/tenants?limit=10 reuses the requested bounded limit", async () => {
+test("ISSUE #2045: GET /v1/admin/tenants?limit=10 reuses the requested bounded limit", async () => {
   const callLog: { limit: number }[] = [];
 
   const mockTenantRegistryService = {
@@ -164,11 +153,11 @@ test("ISSUE #2045: GET /api/v1/admin/tenants?limit=10 reuses the requested bound
 
   await callRoute(routes, ctx);
 
-  assert.equal(callLog.length, 2);
-  assert.deepEqual(callLog, [{ limit: 10 }, { limit: 10 }]);
+  assert.equal(callLog.length, 1);
+  assert.deepEqual(callLog, [{ limit: 10 }]);
 });
 
-test("ISSUE #2045: GET /api/v1/admin/tenants clamps oversized limits instead of issuing an unbounded read", async () => {
+test("ISSUE #2045: GET /v1/admin/tenants clamps oversized limits instead of issuing an unbounded read", async () => {
   let maxLimitUsed = 0;
 
   const mockTenantRegistryService = {

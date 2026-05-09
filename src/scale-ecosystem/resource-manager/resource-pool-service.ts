@@ -18,12 +18,22 @@ export interface ResourcePoolAllocation {
   readonly reasonCodes: readonly string[];
 }
 
+/** Per-consumer resource allocation breakdown */
+export interface ConsumerAllocation {
+  readonly poolId: string;
+  readonly consumerId: string;
+  readonly allocatedUnits: number;
+}
+
 export class ResourcePoolService {
   private readonly pools = new Map<string, ResourcePool>();
+  /** Per-consumer allocation tracking: poolId -> consumerId -> allocatedUnits */
+  private readonly consumerAllocations = new Map<string, Map<string, number>>();
 
   public registerPool(pool: ResourcePool): ResourcePool {
     const parsed = ResourcePoolSchema.parse(pool);
     this.pools.set(parsed.poolId, parsed);
+    this.consumerAllocations.set(parsed.poolId, new Map());
     return parsed;
   }
 
@@ -43,6 +53,9 @@ export class ResourcePoolService {
       ...pool,
       allocatedUnits: pool.allocatedUnits + units,
     });
+    // Track per-consumer allocation
+    const poolConsumers = this.consumerAllocations.get(poolId)!;
+    poolConsumers.set(consumerId, (poolConsumers.get(consumerId) ?? 0) + units);
     return {
       poolId,
       consumerId,
@@ -52,15 +65,38 @@ export class ResourcePoolService {
     };
   }
 
-  public release(poolId: string, units: number): ResourcePool {
+  public release(poolId: string, consumerId: string, units: number): ResourcePool {
     const pool = this.requirePool(poolId);
-    const allocatedUnits = Math.max(0, pool.allocatedUnits - units);
+    const poolConsumers = this.consumerAllocations.get(poolId);
+    if (!poolConsumers) {
+      throw new Error(`resource_pool.not_found:${poolId}`);
+    }
+    const currentConsumerAllocation = poolConsumers.get(consumerId) ?? 0;
+    const actualRelease = Math.min(units, currentConsumerAllocation);
+    const newConsumerAllocation = Math.max(0, currentConsumerAllocation - actualRelease);
+    poolConsumers.set(consumerId, newConsumerAllocation);
+    const allocatedUnits = Math.max(0, pool.allocatedUnits - actualRelease);
     const updated: ResourcePool = {
       ...pool,
       allocatedUnits,
     };
     this.pools.set(poolId, updated);
     return updated;
+  }
+
+  /**
+   * Get per-consumer allocation breakdown for a pool.
+   */
+  public getConsumerAllocations(poolId: string): ConsumerAllocation[] {
+    const poolConsumers = this.consumerAllocations.get(poolId);
+    if (!poolConsumers) {
+      return [];
+    }
+    const result: ConsumerAllocation[] = [];
+    for (const [consumerId, allocatedUnits] of poolConsumers) {
+      result.push({ poolId, consumerId, allocatedUnits });
+    }
+    return result;
   }
 
   public getPool(poolId: string): ResourcePool | null {

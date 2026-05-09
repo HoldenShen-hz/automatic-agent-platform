@@ -146,17 +146,17 @@ test("getRegisteredConsumers handles events with oapeflir_projection consumer", 
 });
 
 test("hasEventSchema returns true for events in RUNTIME_EVENT_REPLAY_METADATA", () => {
-  // oapeflir events are only in RUNTIME_EVENT_REPLAY_METADATA
-  assert.equal(hasEventSchema("oapeflir.decision.recorded"), true);
-  assert.equal(hasEventSchema("oapeflir.phase.transition"), true);
+  // oapeflir events that are metadata-backed should resolve via replay metadata
+  assert.equal(hasEventSchema("oapeflir.graph.scheduled"), true);
+  assert.equal(hasEventSchema("oapeflir.node.executed"), true);
   assert.equal(hasEventSchema("oapeflir.view.run_lifecycle"), true);
 });
 
 test("hasEventSchema returns true for platform events", () => {
   assert.equal(hasEventSchema("platform.harness_run.created"), true);
-  assert.equal(hasEventSchema("platform.node_run.created"), true);
-  assert.equal(hasEventSchema("platform.side_effect.triggered"), true);
-  assert.equal(hasEventSchema("platform.budget.reserved"), true);
+  assert.equal(hasEventSchema("platform.node_run.started"), true);
+  assert.equal(hasEventSchema("platform.side_effect.status_changed"), true);
+  assert.equal(hasEventSchema("platform.budget_reservation.status_changed"), true);
 });
 
 test("hasEventSchema returns false for completely unknown events", () => {

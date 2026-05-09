@@ -68,6 +68,15 @@ export interface WorkflowStepCheckpointFileDiffSummary {
   deletedPaths: string[];
 }
 
+export type WorkflowStepCheckpointCompensationModel =
+  | CompensationModel
+  | {
+      strategy: string;
+      rollbackTaskId?: string | null;
+      notes?: string | null;
+      [key: string]: unknown;
+    };
+
 /**
  * Complete checkpoint data for a workflow step execution.
  *
@@ -94,7 +103,7 @@ export interface WorkflowStepCheckpoint {
   resumeContext: WorkflowStepCheckpointResumeContext;
   fileDiffSummary: WorkflowStepCheckpointFileDiffSummary;
   upstreamArtifactRefs: ArtifactRef[];
-  compensationModel: CompensationModel | null;
+  compensationModel: WorkflowStepCheckpointCompensationModel | null;
 }
 
 /**
@@ -121,7 +130,7 @@ export interface CreateWorkflowStepCheckpointInput {
   resumeContext: WorkflowStepCheckpointResumeContext;
   upstreamArtifactRefs?: ArtifactRef[];
   fileDiffSummary?: Partial<WorkflowStepCheckpointFileDiffSummary>;
-  compensationModel?: CompensationModel | null;
+  compensationModel?: WorkflowStepCheckpointCompensationModel | null;
 }
 
 /**
@@ -275,9 +284,16 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
     return false;
   }
 
-  if (candidate.compensationModel !== null
+  if (
+    candidate.compensationModel !== null
     && candidate.compensationModel !== undefined
-    && typeof candidate.compensationModel !== "string") {
+    && typeof candidate.compensationModel !== "string"
+    && (
+      typeof candidate.compensationModel !== "object"
+      || Array.isArray(candidate.compensationModel)
+      || typeof (candidate.compensationModel as { strategy?: unknown }).strategy !== "string"
+    )
+  ) {
     return false;
   }
 

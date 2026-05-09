@@ -16,7 +16,7 @@
  *
  * Promoted objects use:
  *   - namespace: "system.learned.patterns"
- *   - trustLevel: "reviewed" (because they passed LearningObjectValidator)
+ *   - trustLevel: "team_reviewed" (because they passed LearningObjectValidator)
  *   - source: { type: "system_generated", uri: "learning://{kind}/{id}" }
  */
 
@@ -37,6 +37,16 @@ export interface KnowledgePromotionResult {
 export interface KnowledgePromotionServiceOptions {
   knowledgePlane?: KnowledgePlaneService;
   eventPublisher?: TypedEventPublisher | null;
+  /**
+   * R23-42 fix: Approval gate for knowledge promotion.
+   * When true, promote() requires explicit approval before auto-promoting validated objects.
+   */
+  requireApproval?: boolean;
+  /**
+   * R23-42 fix: Approval callback for promotion requests.
+   * If provided, this callback must return true for promotion to proceed.
+   */
+  approvalGate?: (learningObjects: readonly LearningObject[], taskId: string) => Promise<boolean> | boolean;
 }
 
 /**
@@ -51,10 +61,16 @@ export interface KnowledgePromotionServiceOptions {
 export class KnowledgePromotionService {
   private readonly knowledgePlane: KnowledgePlaneService;
   private readonly eventPublisher: TypedEventPublisher | null;
+  /** R23-42 fix: Approval gate flag - when true, requires approval before promotion */
+  private readonly requireApproval: boolean;
+  /** R23-42 fix: Approval callback - called to check if promotion is allowed */
+  private readonly approvalGate?: (learningObjects: readonly LearningObject[], taskId: string) => Promise<boolean> | boolean;
 
   constructor(options: KnowledgePromotionServiceOptions = {}) {
     this.knowledgePlane = options.knowledgePlane ?? new KnowledgePlaneService();
     this.eventPublisher = options.eventPublisher ?? null;
+    this.requireApproval = options.requireApproval ?? false;
+    this.approvalGate = options.approvalGate;
   }
 
   /**
@@ -67,6 +83,24 @@ export class KnowledgePromotionService {
   public promote(learningObjects: readonly LearningObject[], taskId: string): KnowledgePromotionResult {
     const promoted: Array<{ objectId: string; documentId: string }> = [];
     const failed: string[] = [];
+
+    // R23-42 fix: Check approval gate before promoting any objects
+    if (this.requireApproval) {
+      if (this.approvalGate) {
+        const approved = this.approvalGate(learningObjects, taskId);
+        if (!(approved instanceof Promise)) {
+          // Can't await in sync method - throw error to signal async approval needed
+          throw new Error("knowledge_promotion.approval_required_async");
+        } else if (!approved) {
+          logger.info("[KnowledgePromotion] Promotion blocked by approval gate", { taskId, objectCount: learningObjects.length });
+          return { promotedCount: 0, failedCount: 0, knowledgeDocumentIds: [] };
+        }
+      } else {
+        // Approval required but no gate provided - block promotion
+        logger.info("[KnowledgePromotion] Promotion blocked - approval required but no gate configured", { taskId });
+        return { promotedCount: 0, failedCount: 0, knowledgeDocumentIds: [] };
+      }
+    }
 
     for (const obj of learningObjects) {
       if (obj.promotionStatus !== "validated" && obj.promotionStatus !== "promoted") {
@@ -81,7 +115,7 @@ export class KnowledgePromotionService {
           namespace: "system.learned.patterns",
           uri: `learning://${obj.learningType}/${obj.learningObjectId}`,
           sourceType: "text",
-          trustLevel: "reviewed",
+          trustLevel: "team_reviewed",
           tags: [obj.learningType, `confidence:${obj.confidence.toFixed(2)}`],
         });
 
@@ -116,7 +150,7 @@ export class KnowledgePromotionService {
           promotedCount,
           promotedObjects: allObjectsMetadata,
           namespace: "system.learned.patterns",
-          trustLevel: "reviewed",
+          trustLevel: "team_reviewed",
           occurredAt: nowIso(),
         },
       });

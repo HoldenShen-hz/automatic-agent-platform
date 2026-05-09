@@ -40,7 +40,7 @@ export class PolicyRolloutService {
     if (rolloutFreezeManager.isFrozen()) {
       return {
         allowed: false,
-        releaseLevel: "off",
+        releaseLevel: "L0_off",
         reasonCode: "rollout.frozen_error_budget",
         reasonCodes: ["rollout.frozen_error_budget: rollouts are frozen due to error budget exhaustion"],
       };
@@ -50,15 +50,15 @@ export class PolicyRolloutService {
     if (!guardrailDecision.allowed) {
       return {
         allowed: false,
-        releaseLevel: "off",
+        releaseLevel: "L0_off",
         reasonCode: guardrailDecision.reasonCodes[0] ?? "improvement.guardrail_blocked",
         reasonCodes: guardrailDecision.reasonCodes,
       };
     }
-    if (candidate.status !== "approved" && strategyVersion.releaseLevel !== "off") {
+    if (candidate.status !== "approved" && strategyVersion.releaseLevel !== "L0_off") {
       return {
         allowed: false,
-        releaseLevel: "off",
+        releaseLevel: "L0_off",
         reasonCode: "improvement.candidate_not_approved",
         reasonCodes: ["improvement.candidate_not_approved"],
       };
@@ -123,7 +123,7 @@ export class PolicyRolloutService {
     approvedBy?: string,
   ): RolloutRecord {
     const rollbackDecision = this.autoRollback.evaluate(current, metrics);
-    return this.stateMachine.transition(candidate, "off", {
+    return this.stateMachine.transition(candidate, "L0_off", {
       currentStatus: current.status,
       targetStatus: "rolled_back",
       approvedBy,
@@ -145,16 +145,22 @@ export class PolicyRolloutService {
     targetStatus: RolloutStatus,
     metrics?: RolloutMetrics,
   ): MetricsGateDecision {
-    if (!PROGRESSIVE_STATUSES.has(targetStatus)) {
+    // R23-44 fix: Always evaluate rollback decision regardless of target status.
+    // Rollback should be triggered for any status if metrics indicate problems.
+    if (!metrics) {
+      // If no metrics provided, allow promotion but don't trigger rollback
+      if (PROGRESSIVE_STATUSES.has(targetStatus)) {
+        return {
+          allowed: false,
+          rollback: false,
+          reasonCodes: ["rollout.metrics_required"],
+        };
+      }
       return { allowed: true, rollback: false, reasonCodes: [] };
     }
-    if (!metrics) {
-      return {
-        allowed: false,
-        rollback: false,
-        reasonCodes: ["rollout.metrics_required"],
-      };
-    }
+
+    // R23-44 fix: Evaluate auto-rollback even for non-progressive statuses
+    // This ensures rollback is triggered when metrics indicate problems during any rollout phase
     const rollbackDecision = this.autoRollback.evaluate(current, metrics);
     if (rollbackDecision.rollback) {
       return {
@@ -163,11 +169,17 @@ export class PolicyRolloutService {
         reasonCodes: rollbackDecision.reasonCodes,
       };
     }
-    return {
-      allowed: true,
-      rollback: false,
-      reasonCodes: ["rollout.metrics_gate_passed"],
-    };
+
+    // For progressive statuses, check if metrics are sufficient for promotion
+    if (PROGRESSIVE_STATUSES.has(targetStatus)) {
+      return {
+        allowed: true,
+        rollback: false,
+        reasonCodes: ["rollout.metrics_gate_passed"],
+      };
+    }
+
+    return { allowed: true, rollback: false, reasonCodes: [] };
   }
 }
 
@@ -179,7 +191,7 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
     case "rejected":
     case "rolled_back":
     case "paused":
-      return "off";
+      return "L0_off";
     case "evaluation_enabled":
       return "evaluate_0";
     case "canary_5":

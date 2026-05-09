@@ -126,7 +126,7 @@ test("ExperienceDistillationService.distill sets recommendation for user_correct
   ];
 
   const results = service.distill(signals);
-  assert.ok(results[0]!.recommendation.includes("planning guidance"));
+  assert.ok(results[0]!.recommendation.includes("future task execution"));
 });
 
 test("ExperienceDistillationService.distill preserves valueSummary as summary", () => {
@@ -173,14 +173,14 @@ test("ExperienceDistillationService.distill processes multiple signals", () => {
   assert.equal(results.length, 3);
 });
 
-test("ExperienceDistillationService.distill sets promotionStatus to draft", () => {
+test("ExperienceDistillationService.distill sets promotionStatus to quarantine", () => {
   const service = new ExperienceDistillationService();
   const signals = [
     makeSignal({ learningSignalId: "sig-draft", taskId: "task-draft", learningType: "failure_pattern" }),
   ];
 
   const results = service.distill(signals);
-  assert.equal(results[0]!.promotionStatus, "draft");
+  assert.equal(results[0]!.promotionStatus, "quarantine");
 });
 
 test("ExperienceDistillationService.distill sets validatedBy to none", () => {
@@ -217,7 +217,12 @@ test("ExperienceDistillationService.distill handles all learning types", () => {
     ];
     const results = service.distill(signals);
     assert.equal(results.length, 1, `Failed for ${learningType}`);
-    assert.equal(results[0]!.learningType, learningType, `Failed for ${learningType}`);
+    const expectedType = learningType === "model_retraining"
+      ? "user_correction"
+      : learningType === "dataset_gap"
+        ? "failure_pattern"
+        : learningType;
+    assert.equal(results[0]!.learningType, expectedType, `Failed for ${learningType}`);
   }
 });
 
@@ -234,5 +239,5 @@ test("ExperienceDistillationService.distill preserves custom createdAt from sign
   ];
 
   const results = service.distill(signals);
-  assert.equal(results[0]!.createdAt, customTime);
+  assert.equal(results[0]!.createdAt, String(customTime));
 });

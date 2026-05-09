@@ -175,7 +175,7 @@ export class CrossRegionEventReplicationService {
     };
 
     this.replicationQueue.push(plan);
-    this.processReplicationQueue();
+    void this.processReplicationQueue();
 
     return eventId;
   }
@@ -335,7 +335,7 @@ export class CrossRegionEventReplicationService {
     plan.failedTargets = events.filter((e) => e.status === "failed").length;
   }
 
-  private async replicateToTarget(event: ReplicatedEvent): Promise<void> {
+  private async replicateToTarget(event: ReplicatedEvent, plan: ReplicationPlan): Promise<void> {
     try {
       // In a real implementation, this would send to a cross-region message queue
       // or use a dedicated replication transport. Here we just publish via the event bus.
@@ -354,9 +354,15 @@ export class CrossRegionEventReplicationService {
         event.status = "failed";
       } else {
         event.status = "pending";
+        // R29-23: Re-add plan to queue for retry since queue was already shifted out
+        // when executePlan initially processed it. Without this, the retry timeout
+        // would find an empty queue and the event would never be retried.
+        if (!this.replicationQueue.some((p) => p.planId === plan.planId)) {
+          this.replicationQueue.push(plan);
+        }
         // Re-queue with backoff delay
         setTimeout(() => {
-          this.processReplicationQueue();
+          void this.processReplicationQueue();
         }, this.calculateBackoff(event.retryCount));
       }
     }

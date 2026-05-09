@@ -17,10 +17,12 @@ function createTestProposal(overrides: Partial<ImprovementProposal> = {}): Impro
     patch: "{}",
     rationale: "Testing",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: ["ev_1"],
-    status: "proposed",
+    status: "draft",
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
+    draftedAt: "2026-04-14T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -94,24 +96,24 @@ test("InMemoryEvolutionRegistry lists all proposals", async () => {
 
 test("InMemoryEvolutionRegistry filters proposals by status", async () => {
   const registry = new InMemoryEvolutionRegistry();
-  await registry.saveProposal(createTestProposal({ id: "prop_1", status: "proposed" }));
-  await registry.saveProposal(createTestProposal({ id: "prop_2", status: "testing" }));
-  await registry.saveProposal(createTestProposal({ id: "prop_3", status: "proposed" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_1", status: "draft" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_2", status: "reviewed" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_3", status: "draft" }));
 
-  const proposals = await registry.listProposals("proposed");
+  const proposals = await registry.listProposals("draft");
 
   assert.equal(proposals.length, 2);
-  assert.ok(proposals.every(p => p.status === "proposed"));
+  assert.ok(proposals.every(p => p.status === "draft"));
 });
 
 test("InMemoryEvolutionRegistry updates proposal status", async () => {
   const registry = new InMemoryEvolutionRegistry();
   await registry.saveProposal(createTestProposal({ id: "prop_1" }));
 
-  await registry.updateProposalStatus("prop_1", "testing");
+  await registry.updateProposalStatus("prop_1", "reviewed");
 
   const proposal = await registry.getProposal("prop_1");
-  assert.equal(proposal?.status, "testing");
+  assert.equal(proposal?.status, "reviewed");
 });
 
 test("InMemoryEvolutionRegistry saves and retrieves evaluation", async () => {
@@ -199,11 +201,11 @@ test("InMemoryEvolutionRegistry computes statistics correctly", async () => {
   const registry = new InMemoryEvolutionRegistry();
 
   // Add proposals with various statuses
-  await registry.saveProposal(createTestProposal({ id: "prop_1", status: "proposed" }));
-  await registry.saveProposal(createTestProposal({ id: "prop_2", status: "testing" }));
-  await registry.saveProposal(createTestProposal({ id: "prop_3", status: "canary" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_1", status: "draft" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_2", status: "reviewed" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_3", status: "staged" }));
   await registry.saveProposal(createTestProposal({ id: "prop_4", status: "rejected" }));
-  await registry.saveProposal(createTestProposal({ id: "prop_5", status: "rolled_back" }));
+  await registry.saveProposal(createTestProposal({ id: "prop_5", status: "retired" }));
 
   // Add evaluation with success lift
   await registry.saveEvaluation(createTestEvaluation("prop_1", {
@@ -214,13 +216,13 @@ test("InMemoryEvolutionRegistry computes statistics correctly", async () => {
   const stats = await registry.getStatistics();
 
   assert.equal(stats.totalProposals, 5);
-  assert.equal(stats.activeCount, 2); // testing + canary
-  assert.equal(stats.rejectedCount, 2); // rejected + rolled_back
-  assert.equal(stats.byStatus["proposed"], 1);
-  assert.equal(stats.byStatus["testing"], 1);
-  assert.equal(stats.byStatus["canary"], 1);
+  assert.equal(stats.activeCount, 2); // reviewed + staged
+  assert.equal(stats.rejectedCount, 2); // rejected + retired
+  assert.equal(stats.byStatus["draft"], 1);
+  assert.equal(stats.byStatus["reviewed"], 1);
+  assert.equal(stats.byStatus["staged"], 1);
   assert.equal(stats.byStatus["rejected"], 1);
-  assert.equal(stats.byStatus["rolled_back"], 1);
+  assert.equal(stats.byStatus["retired"], 1);
   // averageSuccessLift = (0.7 - 0.6) = 0.1 (with floating point tolerance)
   assert.ok(Math.abs(stats.averageSuccessLift - 0.1) < 0.0001);
 });
@@ -254,7 +256,7 @@ test("InMemoryEvolutionRegistry updateProposalStatus handles non-existent propos
   const registry = new InMemoryEvolutionRegistry();
 
   // Should not throw
-  await registry.updateProposalStatus("non_existent", "testing");
+  await registry.updateProposalStatus("non_existent", "reviewed");
 
   const proposals = await registry.listProposals();
   assert.equal(proposals.length, 0);

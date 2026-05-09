@@ -21,7 +21,8 @@ test("SimpleProposalEngine.create creates a proposal", async () => {
   assert.equal(proposal.kind, "tool_routing_rule");
   assert.equal(proposal.target, "test_target");
   assert.equal(proposal.risk, "low");
-  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.status, "draft");
+  assert.equal(proposal.reviewRequirement, "auto");
   assert.ok(proposal.id.startsWith("prop_"));
 });
 
@@ -52,7 +53,7 @@ test("SimpleProposalEngine.create increments ID counter", async () => {
   assert.ok(id2 > id1);
 });
 
-test("SimpleProposalEngine.submitForApproval changes status to testing", async () => {
+test("SimpleProposalEngine.submitForApproval changes status to reviewed", async () => {
   const engine = new SimpleProposalEngine();
   const proposal = await engine.create({
     title: "Test",
@@ -70,11 +71,11 @@ test("SimpleProposalEngine.submitForApproval changes status to testing", async (
   assert.equal(pending.length, 0); // No longer pending
 
   const active = await engine.listActive();
-  assert.equal(active.length, 1); // Now in "testing" status which is included in active
-  assert.equal(active[0]!.status, "testing");
+  assert.equal(active.length, 1);
+  assert.equal(active[0]!.status, "reviewed");
 });
 
-test("SimpleProposalEngine.listPending returns only proposed proposals", async () => {
+test("SimpleProposalEngine.listPending returns only draft proposals", async () => {
   const engine = new SimpleProposalEngine();
   await engine.create({
     title: "Pending",
@@ -160,6 +161,7 @@ test("SimpleProposalEngine.proposeFromReflection generates proposals based on ro
   const routingProposal = proposals.find(p => p.kind === "tool_routing_rule");
   assert.ok(routingProposal !== undefined);
   assert.equal(routingProposal!.risk, "low");
+  assert.equal(routingProposal!.status, "draft");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles test root cause", async () => {
@@ -178,6 +180,7 @@ test("SimpleProposalEngine.proposeFromReflection handles test root cause", async
   const skillDocProposal = proposals.find(p => p.kind === "skill_doc");
   assert.ok(skillDocProposal !== undefined);
   assert.equal(skillDocProposal!.risk, "low");
+  assert.equal(skillDocProposal!.reviewRequirement, "auto");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles complex root cause", async () => {
@@ -196,6 +199,7 @@ test("SimpleProposalEngine.proposeFromReflection handles complex root cause", as
   const workflowProposal = proposals.find(p => p.kind === "workflow_template");
   assert.ok(workflowProposal !== undefined);
   assert.equal(workflowProposal!.risk, "medium");
+  assert.equal(workflowProposal!.reviewRequirement, "manual_review");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles security root cause", async () => {
@@ -214,6 +218,7 @@ test("SimpleProposalEngine.proposeFromReflection handles security root cause", a
   const securityProposal = proposals.find(p => p.kind === "prompt_patch");
   assert.ok(securityProposal !== undefined);
   assert.equal(securityProposal!.risk, "high");
+  assert.equal(securityProposal!.reviewRequirement, "manual_review");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles multiple root causes", async () => {
@@ -291,7 +296,7 @@ test("ImprovementProposal interface supports all status values", async () => {
   });
 
   // Verify all expected status values are possible
-  const validStatuses = ["proposed", "testing", "canary", "active", "rejected", "rolled_back"];
+  const validStatuses = ["draft", "reviewed", "staged", "stable", "retired", "rejected"];
   assert.ok(validStatuses.includes(proposal.status));
 });
 

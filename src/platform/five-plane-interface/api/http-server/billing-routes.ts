@@ -43,12 +43,13 @@ function handleReconcileWebhook(ctx: import("./types.js").RouteContext, deps: Bi
     (typeof ctx.request.headers.authorization === "string" && ctx.request.headers.authorization.trim().length > 0)
     || (typeof ctx.request.headers["x-api-key"] === "string" && ctx.request.headers["x-api-key"]!.trim().length > 0);
 
+  const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
+  const expected = deps.webhookSecret;
+  if (typeof expected !== "string" || expected.length === 0) {
+    throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
+  }
+  // Webhook signature is required when no auth credential is present
   if (!hasAuthCredential) {
-    const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
-    const expected = deps.webhookSecret;
-    if (typeof expected !== "string" || expected.length === 0) {
-      throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
-    }
     if (typeof signature !== "string" || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }

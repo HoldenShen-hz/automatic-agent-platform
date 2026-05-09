@@ -216,6 +216,7 @@ export class ConversationHistoryService {
     const memories = await this.memoryService.recall({
       sessionId,
       scopes: [this.defaultScope],
+      tenantId,
     });
 
     const sessionMemory = memories.find(
@@ -226,7 +227,14 @@ export class ConversationHistoryService {
       return null;
     }
 
-    return this.deserializeSession(sessionMemory.contentJson);
+    const session = this.deserializeSession(sessionMemory.contentJson);
+
+    // R4-45/R29-26: Enforce tenant isolation - only return session if it belongs to the requesting tenant
+    if (session.tenantId !== tenantId) {
+      return null;
+    }
+
+    return session;
   }
 
   /**
@@ -263,14 +271,12 @@ export class ConversationHistoryService {
       if (session && session.userId === userId && session.tenantId === tenantId) {
         userSessions.push(session);
       }
-      if (userSessions.length >= limit) {
-        break;
-      }
     }
 
-    return userSessions.sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+    // R29-34: Sort before limiting to ensure we return the most recent sessions
+    return userSessions
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, limit);
   }
 
   /**

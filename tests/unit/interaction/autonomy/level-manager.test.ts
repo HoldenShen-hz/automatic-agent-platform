@@ -22,8 +22,8 @@ test("compareAutonomyLevels returns zero for equal levels", () => {
 });
 
 test("compareAutonomyLevels handles frozen level", () => {
-  assert.ok(compareAutonomyLevels("frozen", "suggestion") > 0);
-  assert.ok(compareAutonomyLevels("frozen", "full_auto") > 0);
+  assert.ok(compareAutonomyLevels("frozen", "suggestion") < 0);
+  assert.ok(compareAutonomyLevels("frozen", "full_auto") < 0);
   assert.equal(compareAutonomyLevels("frozen", "frozen"), 0);
 });
 

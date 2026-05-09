@@ -49,6 +49,31 @@ test("NlEntryService buildTask marks destructive requests for confirmation", asy
 
   assert.equal(task.riskPreview.overallRisk, "critical");
   assert.equal(task.confirmationRequired, true);
-  assert.equal(task.requestEnvelope.metadata.confirmationRequired, "true");
-  assert.equal(task.requestEnvelope.payload.confirmationRequired, true);
+  assert.equal(task.requestEnvelope, null);
+});
+
+test("NlEntryService parseDetailed does not report stale Building state when no clarification is needed", async () => {
+  const service = new NlEntryService({
+    intakeRouter: {
+      route: () => ({
+        classification: {
+          intent: "query" as const,
+          continuation: "new_task" as const,
+          confidence: 0.95,
+          matchedRules: [],
+        },
+        divisionId: "engineering_ops",
+        workflowId: "single_agent_minimal",
+      }),
+    } as never,
+  });
+
+  const result = await service.parseDetailed({
+    tenantId: "tenant_1",
+    userId: "user_1",
+    message: "请查询 2026-05-01 engineering 团队任务状态",
+  });
+
+  assert.equal(result.requiresClarification, false);
+  assert.equal(result.conversationState, "Executing");
 });

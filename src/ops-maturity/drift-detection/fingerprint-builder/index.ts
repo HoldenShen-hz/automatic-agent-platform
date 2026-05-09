@@ -26,8 +26,18 @@ export interface BehaviorFingerprintWindow {
 }
 
 function resolveWindowPreset(preset: FingerprintWindowPreset | null | undefined): string {
-  if (preset == null) {
+  const range = resolveWindowRange(preset);
+  if (!range) {
     return "none";
+  }
+  return `${range.start}:${range.end}:${range.preset}`;
+}
+
+function resolveWindowRange(
+  preset: FingerprintWindowPreset | null | undefined,
+): { readonly preset: FingerprintWindowPreset; readonly start: string; readonly end: string } | null {
+  if (preset == null) {
+    return null;
   }
   const now = new Date();
   const past = new Date(now);
@@ -39,13 +49,20 @@ function resolveWindowPreset(preset: FingerprintWindowPreset | null | undefined)
     case "30d": past.setDate(past.getDate() - 30); break;
     case "90d": past.setDate(past.getDate() - 90); break;
   }
-  return `${past.toISOString()}:${now.toISOString()}:${preset}`;
+  return {
+    preset,
+    start: past.toISOString(),
+    end: now.toISOString(),
+  };
 }
 
 export interface BehaviorFingerprint {
   fingerprintId: string;
   subjectType: string;
   baselineRef: string | null;
+  window: FingerprintWindowPreset | null;
+  windowStart: string | null;
+  windowEnd: string | null;
   normalizedFeatures: string[];
   hash: string;
 }
@@ -54,6 +71,7 @@ export class BehaviorFingerprintBuilder {
   public build(input: BehaviorFingerprintInput): BehaviorFingerprint {
     const subjectType = input.subjectType ?? "agent";
     const baselineRef = input.baselineRef ?? null;
+    const windowRange = resolveWindowRange(input.windowPreset);
     const normalizedFeatures = [
       `subject_type:${subjectType}`,
       `baseline_ref:${baselineRef ?? "none"}`,
@@ -75,6 +93,9 @@ export class BehaviorFingerprintBuilder {
       fingerprintId: `fingerprint:${input.agentId}`,
       subjectType,
       baselineRef,
+      window: windowRange?.preset ?? null,
+      windowStart: windowRange?.start ?? null,
+      windowEnd: windowRange?.end ?? null,
       normalizedFeatures,
       hash,
     };

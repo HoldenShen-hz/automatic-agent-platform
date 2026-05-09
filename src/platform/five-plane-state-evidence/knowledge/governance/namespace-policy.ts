@@ -1,4 +1,5 @@
-import type { KnowledgeNamespace } from "../knowledge-model.js";
+import type { KnowledgeNamespace, TrustLevel } from "../knowledge-model.js";
+import { compareTrustLevels } from "../knowledge-model.js";
 
 /**
  * Namespace validation result with policy decision details.
@@ -24,7 +25,7 @@ export interface NamespaceStrategyConfig {
   /** Enforce freshness policy on all operations */
   enforceFreshness: boolean;
   /** Minimum trust level for cross-domain access */
-  minTrustLevelForCrossDomain: "verified" | "reviewed" | "community" | "unverified";
+  minTrustLevelForCrossDomain: TrustLevel;
 }
 
 /**
@@ -35,7 +36,7 @@ export const DEFAULT_NAMESPACE_STRATEGY: NamespaceStrategyConfig = {
   strictIsolation: false,
   crossNamespaceRetrieval: true,
   enforceFreshness: true,
-  minTrustLevelForCrossDomain: "reviewed",
+  minTrustLevelForCrossDomain: "team_reviewed",
 };
 
 /**
@@ -130,8 +131,8 @@ export class NamespacePolicyStore {
     }
 
     // Trust level validation for cross-domain namespaces
-    if (ns.accessPolicy === "restricted" && ns.trustLevel === "unverified") {
-      warnings.push("Restricted namespace with unverified trust level may limit cross-domain access");
+    if (ns.accessPolicy === "restricted" && ns.trustLevel === "private_unverified") {
+      warnings.push("Restricted namespace with private_unverified trust level may limit cross-domain access");
     }
 
     // Check for path conflicts
@@ -239,11 +240,7 @@ export class NamespacePolicyStore {
     }
 
     // Cross-domain access requires minimum trust level
-    const trustOrder = ["unverified", "community", "reviewed", "verified"];
-    const sourceTrustIndex = trustOrder.indexOf(sourceNamespace.trustLevel);
-    const requiredIndex = trustOrder.indexOf(this.strategyConfig.minTrustLevelForCrossDomain);
-
-    return sourceTrustIndex >= requiredIndex;
+    return compareTrustLevels(sourceNamespace.trustLevel, this.strategyConfig.minTrustLevelForCrossDomain) >= 0;
   }
 
   /**

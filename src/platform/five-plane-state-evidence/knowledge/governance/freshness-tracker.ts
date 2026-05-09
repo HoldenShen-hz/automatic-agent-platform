@@ -1,4 +1,5 @@
 import type { KnowledgeSource, KnowledgeNamespace, TrustLevel } from "../knowledge-model.js";
+import { degradeTrustLevel } from "../knowledge-model.js";
 
 export interface FreshnessAssessment {
   stale: boolean;
@@ -15,7 +16,7 @@ export class FreshnessTracker {
     return {
       stale,
       daysOld,
-      effectiveTrustLevel: stale && source.trustLevel === "verified" ? "reviewed" : source.trustLevel,
+      effectiveTrustLevel: stale ? degradeTrustLevel(source.trustLevel) : source.trustLevel,
       action: stale ? namespace.freshnessPolicy.staleAction : null,
     };
   }

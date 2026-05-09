@@ -88,7 +88,7 @@ test("SemanticKnowledgeGraph.replace clears existing data and loads new records"
 
   graph.replace([record1]);
   let inspection = graph.inspect();
-  assert.equal(inspection.nodes.length, 4); // namespace + document + 1 chunk + 1 keyword
+  assert.equal(inspection.nodes.length, 5); // namespace + document + 1 chunk + 2 keywords
 
   graph.replace([record2]);
   inspection = graph.inspect();
@@ -197,8 +197,8 @@ test("SemanticKnowledgeGraph.getChunkConnections returns connections for chunk",
   // Same document connection
   assert.ok(connections.sameDocumentRefs.includes("knowledge:chunk2"));
 
-  // No shared keyword refs since chunk1 only has keyword1
-  assert.ok(!connections.sharedKeywordRefs.includes("knowledge:chunk2"));
+  // chunk1 and chunk2 share keyword1
+  assert.ok(connections.sharedKeywordRefs.includes("knowledge:chunk2"));
 });
 
 test("SemanticKnowledgeGraph.getChunkConnections returns null for unknown knowledgeRef", () => {
@@ -310,7 +310,7 @@ test("SemanticKnowledgeGraph creates same_document edges between consecutive chu
 
   const inspection = graph.inspect();
   const sameDocEdges = inspection.edges.filter((e) => e.relation === "same_document");
-  assert.equal(sameDocEdges.length, 2); // chunk1-chunk2 and chunk2-chunk3
+  assert.equal(sameDocEdges.length, 4); // bidirectional edges for chunk1-chunk2 and chunk2-chunk3
 });
 
 test("SemanticKnowledgeGraph trust levels are properly set from source", () => {
@@ -324,4 +324,13 @@ test("SemanticKnowledgeGraph trust levels are properly set from source", () => {
   const inspection = graph.inspect();
   const chunkNode = inspection.nodes.find((n) => n.nodeType === "chunk");
   assert.equal(chunkNode?.trustLevel, "official");
+});
+
+test("SemanticKnowledgeGraph exposes temporal_correlation learned edges", () => {
+  const graph = new SemanticKnowledgeGraph();
+  graph.addEntityRelation("incident-a", "incident-b", "temporal_correlation", 0.8);
+
+  const inspection = graph.inspect();
+  const temporalEdges = inspection.edges.filter((edge) => edge.relation === "temporal_correlation");
+  assert.equal(temporalEdges.length, 1);
 });

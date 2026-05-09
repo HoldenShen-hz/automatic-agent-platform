@@ -48,6 +48,12 @@ export const CertificationRecordSchema = z.object({
   lastReviewedAt: z.string().nullable().default(null),
   /** Number of active findings against this certification. */
   activeFindings: z.number().int().nonnegative().default(0),
+  /** Quality & Security Gate evidence per §55.1 */
+  sbomVerified: z.boolean().default(false),
+  signatureVerified: z.boolean().default(false),
+  compatibilityVerified: z.boolean().default(false),
+  sandboxVerified: z.boolean().default(false),
+  egressPolicyReviewed: z.boolean().default(false),
 });
 
 export type CertificationRecord = z.infer<typeof CertificationRecordSchema>;
@@ -78,6 +84,9 @@ export function isMarketplaceListingCertified(record: CertificationRecord): bool
     return false;
   }
   if (record.activeFindings > thresholds.maxFindingsAllowed) {
+    return false;
+  }
+  if (!record.sbomVerified || !record.signatureVerified || !record.compatibilityVerified || !record.sandboxVerified || !record.egressPolicyReviewed) {
     return false;
   }
 
@@ -136,6 +145,21 @@ export function getCertificationHealthStatus(record: CertificationRecord): {
   if (record.activeFindings > thresholds.maxFindingsAllowed) {
     reasons.push(`Active findings ${record.activeFindings} exceed limit ${thresholds.maxFindingsAllowed}`);
   }
+  if (!record.sbomVerified) {
+    reasons.push("SBOM verification is required");
+  }
+  if (!record.signatureVerified) {
+    reasons.push("Signature verification is required");
+  }
+  if (!record.compatibilityVerified) {
+    reasons.push("Compatibility verification is required");
+  }
+  if (!record.sandboxVerified) {
+    reasons.push("Sandbox validation is required");
+  }
+  if (!record.egressPolicyReviewed) {
+    reasons.push("Egress policy review is required");
+  }
 
   if (record.lastReviewedAt != null) {
     const lastReviewed = new Date(record.lastReviewedAt);
@@ -165,11 +189,20 @@ export interface SecurityScan {
   expiresAt: string | null;
 }
 
+export interface CertificationEvidence {
+  sbomVerified: boolean;
+  signatureVerified: boolean;
+  compatibilityVerified: boolean;
+  sandboxVerified: boolean;
+  egressPolicyReviewed: boolean;
+}
+
 export interface AgentCertification {
   certificationId: string;
   agentId: string;
   status: "pending" | "approved" | "revoked";
   securityScan?: SecurityScan;
+  evidence?: CertificationEvidence;
   approvedAt: string | null;
   expiresAt: string | null;
 }
@@ -179,6 +212,7 @@ export interface PackCertification {
   packId: string;
   status: "pending" | "approved" | "revoked";
   securityScan?: SecurityScan;
+  evidence?: CertificationEvidence;
   approvedAt: string | null;
   expiresAt: string | null;
 }
@@ -233,6 +267,11 @@ export class CertificationGate {
       };
     }
 
+    const evidenceFailure = evaluateCertificationEvidence(certification.evidence);
+    if (evidenceFailure) {
+      return evidenceFailure;
+    }
+
     return {
       allowed: true,
       reasons: ["Agent certification approved"],
@@ -269,6 +308,11 @@ export class CertificationGate {
       };
     }
 
+    const evidenceFailure = evaluateCertificationEvidence(certification.evidence);
+    if (evidenceFailure) {
+      return evidenceFailure;
+    }
+
     return {
       allowed: true,
       reasons: ["Pack certification approved"],
@@ -288,4 +332,49 @@ export function getAgentCertification(agentId: string): AgentCertification | und
 
 export function getPackCertification(packId: string): PackCertification | undefined {
   return packCertifications.get(packId);
+}
+
+function evaluateCertificationEvidence(
+  evidence: CertificationEvidence | undefined,
+): { allowed: boolean; reasons: string[]; blockedBy: string[] } | null {
+  if (evidence == null) {
+    return {
+      allowed: false,
+      reasons: ["Certification evidence bundle is missing"],
+      blockedBy: ["certification_evidence_missing"],
+    };
+  }
+
+  const reasons: string[] = [];
+  const blockedBy: string[] = [];
+  if (!evidence.sbomVerified) {
+    reasons.push("SBOM verification is incomplete");
+    blockedBy.push("sbom_verification_required");
+  }
+  if (!evidence.signatureVerified) {
+    reasons.push("Signature verification is incomplete");
+    blockedBy.push("signature_verification_required");
+  }
+  if (!evidence.compatibilityVerified) {
+    reasons.push("Compatibility verification is incomplete");
+    blockedBy.push("compatibility_verification_required");
+  }
+  if (!evidence.sandboxVerified) {
+    reasons.push("Sandbox validation is incomplete");
+    blockedBy.push("sandbox_validation_required");
+  }
+  if (!evidence.egressPolicyReviewed) {
+    reasons.push("Egress policy review is incomplete");
+    blockedBy.push("egress_policy_review_required");
+  }
+
+  if (blockedBy.length === 0) {
+    return null;
+  }
+
+  return {
+    allowed: false,
+    reasons,
+    blockedBy,
+  };
 }

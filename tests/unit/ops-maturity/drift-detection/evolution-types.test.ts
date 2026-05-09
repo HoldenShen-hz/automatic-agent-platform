@@ -33,12 +33,12 @@ test("ProposalKind type accepts valid values", () => {
 
 test("ProposalStatus type accepts valid values", () => {
   const statuses: ProposalStatus[] = [
-    "proposed",
-    "testing",
-    "canary",
-    "active",
+    "draft",
+    "reviewed",
+    "staged",
+    "stable",
+    "retired",
     "rejected",
-    "rolled_back",
   ];
   assert.equal(statuses.length, 6);
 });
@@ -53,15 +53,17 @@ test("ImprovementProposal structure is correct", () => {
     patch: '{"test": true}',
     rationale: "Test rationale",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: ["ev_1", "ev_2"],
-    status: "proposed",
+    status: "draft",
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
+    draftedAt: "2026-04-14T00:00:00.000Z",
   };
   assert.equal(proposal.id, "prop_123");
   assert.equal(proposal.kind, "tool_routing_rule");
   assert.equal(proposal.risk, "low");
-  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.status, "draft");
   assert.equal(proposal.evidenceIds.length, 2);
 });
 
@@ -75,10 +77,12 @@ test("ImprovementProposal allows optional expectedBenefit", () => {
     patch: "{}",
     rationale: "Test rationale",
     risk: "medium",
+    reviewRequirement: "manual_review",
     evidenceIds: [],
-    status: "proposed",
+    status: "draft",
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
+    draftedAt: "2026-04-14T00:00:00.000Z",
     expectedBenefit: {
       quality: 0.1,
       latency: -0.05,
@@ -101,10 +105,12 @@ test("ImprovementProposal risk can be high", () => {
     patch: "{}",
     rationale: "Security improvement",
     risk: "high",
+    reviewRequirement: "manual_review",
     evidenceIds: [],
-    status: "proposed",
+    status: "draft",
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
+    draftedAt: "2026-04-14T00:00:00.000Z",
   };
   assert.equal(proposal.risk, "high");
 });

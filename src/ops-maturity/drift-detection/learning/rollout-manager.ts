@@ -27,6 +27,7 @@ export interface RolloutMetricThresholds {
   errorRateCeiling: number;    // Maximum acceptable error rate (e.g., 0.15)
   latencyCeilingMs: number;     // Maximum acceptable latency in ms
   costCeilingUsd: number;       // Maximum acceptable cost per execution
+  securityViolationCeiling: number;
 }
 
 // R13-10: Default thresholds for automatic rollback trigger
@@ -35,6 +36,7 @@ export const DEFAULT_ROLLOUT_THRESHOLDS: RolloutMetricThresholds = {
   errorRateCeiling: 0.15,
   latencyCeilingMs: 10000,
   costCeilingUsd: 1.00,
+  securityViolationCeiling: 0,
 };
 
 export interface RolloutMetrics {
@@ -42,6 +44,7 @@ export interface RolloutMetrics {
   errorRate: number;
   latencyMs: number;
   costUsd: number;
+  securityViolations?: number;
 }
 
 export interface RolloutManager {
@@ -97,9 +100,11 @@ export class SimpleRolloutManager implements RolloutManager {
       errorRateCeiling: thresholds?.errorRateCeiling ?? DEFAULT_ROLLOUT_THRESHOLDS.errorRateCeiling,
       latencyCeilingMs: thresholds?.latencyCeilingMs ?? DEFAULT_ROLLOUT_THRESHOLDS.latencyCeilingMs,
       costCeilingUsd: thresholds?.costCeilingUsd ?? DEFAULT_ROLLOUT_THRESHOLDS.costCeilingUsd,
+      securityViolationCeiling:
+        thresholds?.securityViolationCeiling ?? DEFAULT_ROLLOUT_THRESHOLDS.securityViolationCeiling,
     };
 
-    const { successRate, errorRate, latencyMs, costUsd } = record.metrics;
+    const { successRate, errorRate, latencyMs, costUsd, securityViolations = 0 } = record.metrics;
     const violations: string[] = [];
 
     if (successRate < effectiveThresholds.successRateFloor) {
@@ -113,6 +118,11 @@ export class SimpleRolloutManager implements RolloutManager {
     }
     if (costUsd > effectiveThresholds.costCeilingUsd) {
       violations.push(`costUsd(${costUsd}) above ceiling(${effectiveThresholds.costCeilingUsd})`);
+    }
+    if (securityViolations > effectiveThresholds.securityViolationCeiling) {
+      violations.push(
+        `securityViolations(${securityViolations}) above ceiling(${effectiveThresholds.securityViolationCeiling})`,
+      );
     }
 
     if (violations.length > 0) {

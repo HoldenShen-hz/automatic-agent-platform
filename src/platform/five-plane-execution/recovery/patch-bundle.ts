@@ -104,7 +104,7 @@ export function validatePatchBundle(
   // Check diff size
   if (bundle.totalDiffLines > taskCard.maxDiffLines) {
     errors.push(
-      `Total diff lines (${bundle.totalDiffLines}) exceeds maximum (${bundle.totalDiffLines})`
+      `Total diff lines (${bundle.totalDiffLines}) exceeds maximum (${taskCard.maxDiffLines})`
     );
   }
 

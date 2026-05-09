@@ -282,6 +282,45 @@ export function analyzeDependencyGraph(
 }
 
 /**
+ * R15-64: Reverse dependency check result for uninstall/deprecation operations
+ */
+export interface ReverseDependencyCheck {
+  readonly hasReverseDependencies: boolean;
+  readonly dependentEntries: readonly MarketplaceCatalogEntry[];
+  readonly canSafelyRemove: boolean;
+  readonly blockers: readonly string[];
+}
+
+/**
+ * R15-64: Check if any other entries depend on the given entry before uninstall/deprecation.
+ *
+ * This performs a reverse dependency analysis to ensure that removing or deprecating
+ * an entry won't break other entries that depend on it.
+ */
+export function checkReverseDependencies(
+  entry: MarketplaceCatalogEntry,
+  allEntries: readonly MarketplaceCatalogEntry[],
+): ReverseDependencyCheck {
+  // Find all entries that list this entry as a dependency
+  const dependentEntries = allEntries.filter((e) =>
+    e.listingId !== entry.listingId &&
+    e.dependencies.some((dep) => dep.listingId === entry.listingId)
+  );
+
+  const blockers: string[] = [];
+  for (const dependent of dependentEntries) {
+    blockers.push(`${dependent.listingId}@${dependent.version} depends on ${entry.listingId}`);
+  }
+
+  return {
+    hasReverseDependencies: dependentEntries.length > 0,
+    dependentEntries,
+    canSafelyRemove: dependentEntries.length === 0,
+    blockers,
+  };
+}
+
+/**
  * Upgrade path calculation result (R13-30)
  */
 export interface UpgradePathResult {

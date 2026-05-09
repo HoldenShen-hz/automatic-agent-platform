@@ -9,6 +9,8 @@ import test from "node:test";
 
 import {
   CertificationRecordSchema,
+  CertificationGate,
+  getCertificationHealthStatus,
   isMarketplaceListingCertified,
   type CertificationRecord,
 } from "../../../../../src/scale-ecosystem/marketplace/certification/index.js";
@@ -112,6 +114,11 @@ test("isMarketplaceListingCertified returns true for approved status", () => {
     certificationId: "cert_008",
     status: "approved",
     approvedAt: "2026-04-01T00:00:00.000Z",
+    sbomVerified: true,
+    signatureVerified: true,
+    compatibilityVerified: true,
+    sandboxVerified: true,
+    egressPolicyReviewed: true,
   };
 
   const result = isMarketplaceListingCertified(record);
@@ -125,6 +132,11 @@ test("isMarketplaceListingCertified returns false for pending status", () => {
     certificationId: "cert_009",
     status: "pending",
     approvedAt: null,
+    sbomVerified: true,
+    signatureVerified: true,
+    compatibilityVerified: true,
+    sandboxVerified: true,
+    egressPolicyReviewed: true,
   };
 
   const result = isMarketplaceListingCertified(record);
@@ -138,6 +150,11 @@ test("isMarketplaceListingCertified returns false for revoked status", () => {
     certificationId: "cert_010",
     status: "revoked",
     approvedAt: null,
+    sbomVerified: true,
+    signatureVerified: true,
+    compatibilityVerified: true,
+    sandboxVerified: true,
+    egressPolicyReviewed: true,
   };
 
   const result = isMarketplaceListingCertified(record);
@@ -156,4 +173,45 @@ test("CertificationRecordSchema rejects approvedAt with non-approved status", ()
   // Schema does not validate semantic consistency, just structure
   const result = CertificationRecordSchema.parse(record);
   assert.equal(result.approvedAt, "2026-04-01T00:00:00.000Z");
+});
+
+test("isMarketplaceListingCertified fails closed when quality and security evidence is incomplete", () => {
+  const record: CertificationRecord = {
+    listingId: "listing_012",
+    certificationId: "cert_012",
+    status: "approved",
+    approvedAt: "2026-04-01T00:00:00.000Z",
+    sbomVerified: false,
+    signatureVerified: true,
+    compatibilityVerified: true,
+    sandboxVerified: true,
+    egressPolicyReviewed: true,
+  };
+
+  assert.equal(isMarketplaceListingCertified(record), false);
+  const status = getCertificationHealthStatus(record);
+  assert.equal(status.isValid, false);
+  assert.ok(status.reasons.some((reason) => reason.includes("SBOM")));
+});
+
+test("CertificationGate blocks agent certification without full quality and security evidence", () => {
+  const gate = new CertificationGate();
+  const result = gate.checkAgentCertification({
+    certificationId: "agent-cert-1",
+    agentId: "agent-1",
+    status: "approved",
+    approvedAt: "2026-04-01T00:00:00.000Z",
+    expiresAt: null,
+    evidence: {
+      sbomVerified: true,
+      signatureVerified: true,
+      compatibilityVerified: false,
+      sandboxVerified: true,
+      egressPolicyReviewed: false,
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.blockedBy.includes("compatibility_verification_required"));
+  assert.ok(result.blockedBy.includes("egress_policy_review_required"));
 });

@@ -6,10 +6,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
   createWorkflowStepCheckpoint,
+  readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
   type WorkflowStepCheckpoint,
   type CreateWorkflowStepCheckpointInput,
@@ -22,7 +26,7 @@ function createMockCheckpointInput(
   return {
     harnessRunId: "harness-123",
     nodeRunId: "node-456",
-    planGraphBundleId: "bundle-789",
+    planGraphId: "bundle-789",
     taskId: "task-001",
     executionId: "exec-002",
     workflowId: "workflow-1",
@@ -75,7 +79,7 @@ test("createWorkflowStepCheckpoint creates valid checkpoint", () => {
   assert.equal(checkpoint.schemaVersion, WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION);
   assert.equal(checkpoint.harnessRunId, input.harnessRunId);
   assert.equal(checkpoint.nodeRunId, input.nodeRunId);
-  assert.equal(checkpoint.planGraphBundleId, input.planGraphBundleId);
+  assert.equal(checkpoint.planGraphId, input.planGraphId);
   assert.equal(checkpoint.taskId, input.taskId);
   assert.equal(checkpoint.workflowId, input.workflowId);
   assert.equal(checkpoint.stepId, input.stepId);
@@ -203,6 +207,35 @@ test("createWorkflowStepCheckpoint stores compensation model when provided", () 
   assert.equal(checkpoint.compensationModel, compensationModel);
 });
 
+test("readWorkflowStepCheckpoint accepts structured compensation model objects", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "workflow-step-checkpoint-"));
+  const storagePath = join(workspace, "checkpoint.json");
+  try {
+    writeFileSync(storagePath, JSON.stringify({
+      ...createMockCheckpointInput(),
+      schemaVersion: WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
+      planGraphId: "bundle-789",
+      compensationModel: {
+        strategy: "manual_rollback",
+        rollbackTaskId: "rollback-1",
+      },
+    }));
+
+    const checkpoint = readWorkflowStepCheckpoint({
+      kind: "workflow_step_snapshot",
+      storagePath,
+    } as never);
+
+    assert.ok(checkpoint);
+    assert.deepEqual(checkpoint!.compensationModel, {
+      strategy: "manual_rollback",
+      rollbackTaskId: "rollback-1",
+    });
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("createWorkflowStepCheckpoint accepts all valid step statuses", () => {
   const statuses = ["pending", "running", "completed", "failed", "skipped", "cancelled"] as const;
 
@@ -220,12 +253,11 @@ test("summarizeWorkflowStepCheckpoint creates summary from checkpoint", () => {
   const summary = summarizeWorkflowStepCheckpoint("artifact-step-1", checkpoint);
 
   assert.equal(summary.artifactId, "artifact-step-1");
-  assert.equal(summary.harnessRunId, checkpoint.harnessRunId);
   assert.equal(summary.nodeRunId, checkpoint.nodeRunId);
-  assert.equal(summary.planGraphBundleId, checkpoint.planGraphBundleId);
+  assert.equal(summary.planGraphId, checkpoint.planGraphId);
   assert.equal(summary.status, checkpoint.status);
   assert.equal(summary.producedAt, checkpoint.producedAt);
-  assert.equal(summary.nextStepId, checkpoint.resumeContext.nextStepId);
+  assert.equal(summary.nextNodeRunId, null);
   assert.deepEqual(summary.outputKeys, checkpoint.resumeContext.outputKeys);
   assert.equal(summary.source, checkpoint.decisionContext.source);
 });

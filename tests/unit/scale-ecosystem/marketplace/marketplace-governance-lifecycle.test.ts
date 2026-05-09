@@ -53,6 +53,9 @@ function createHarness() {
     manifestChecksum: "e".repeat(64),
     lifecycleState: "enabled",
     reviewRequired: 1,
+    sbomVerified: 1,
+    sandboxCertVerified: 1,
+    egressPolicyCompliant: 1,
     createdAt: "2026-04-21T00:00:00.000Z",
     updatedAt: "2026-04-21T00:00:00.000Z",
   };
@@ -84,11 +87,60 @@ test("MarketplaceGovernanceService deprecates and retires packages without datab
   assert.equal(packages.get("pkg_lifecycle")?.lifecycleState, "deprecated");
   assert.equal(publications.get("pub_lifecycle")?.status, "deprecated");
 
+  const sunset = service.sunsetPackage({
+    packageId: "pkg_lifecycle",
+    reasonCode: "lifecycle.sunset",
+    sunsetAt: "2026-04-21T00:00:00.000Z",
+    endOfLifeAt: "2026-10-18T00:00:00.000Z",
+  });
+  assert.equal(sunset.lifecycleState, "sunset");
+  assert.equal(packages.get("pkg_lifecycle")?.lifecycleState, "sunset");
+  assert.equal(publications.get("pub_lifecycle")?.status, "sunset");
+
   const retired = service.retirePackage({
     packageId: "pkg_lifecycle",
     reasonCode: "lifecycle.retired",
+    migrationCompletionRatio: 0.97,
+    retiredAt: "2026-10-19T00:00:00.000Z",
   });
   assert.equal(retired.lifecycleState, "retired");
   assert.equal(packages.get("pkg_lifecycle")?.lifecycleState, "retired");
   assert.equal(publications.get("pub_lifecycle")?.status, "retired");
+});
+
+test("MarketplaceGovernanceService blocks direct sunset and premature retire transitions", () => {
+  const { service } = createHarness();
+
+  assert.throws(
+    () =>
+      service.sunsetPackage({
+        packageId: "pkg_lifecycle",
+        reasonCode: "skip.deprecated",
+        sunsetAt: "2026-04-21T00:00:00.000Z",
+        endOfLifeAt: "2026-10-18T00:00:00.000Z",
+      }),
+    /marketplace\.deprecated_required_before_sunset/,
+  );
+
+  service.deprecatePackage({
+    packageId: "pkg_lifecycle",
+    reasonCode: "prepare.sunset",
+  });
+  service.sunsetPackage({
+    packageId: "pkg_lifecycle",
+    reasonCode: "sunset.entered",
+    sunsetAt: "2026-04-21T00:00:00.000Z",
+    endOfLifeAt: "2026-10-18T00:00:00.000Z",
+  });
+
+  assert.throws(
+    () =>
+      service.retirePackage({
+        packageId: "pkg_lifecycle",
+        reasonCode: "too.early",
+        migrationCompletionRatio: 0.94,
+        retiredAt: "2026-05-01T00:00:00.000Z",
+      }),
+    /marketplace\.sunset_grace_period_not_elapsed|marketplace\.migration_threshold_not_met/,
+  );
 });

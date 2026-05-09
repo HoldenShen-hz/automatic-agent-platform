@@ -60,6 +60,10 @@ interface PaginationCursor {
 }
 
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
+  // R29-37: Internal default limit - extracted to constant for maintainability
+  const DEFAULT_TASK_LIMIT = 25;
+  const INTERNAL_TASK_LIMIT = 200;
+
   return [
     // ── v1 ───────────────────────────────────────────────────────────────────
     {
@@ -67,9 +71,10 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       pathname: "/v1/tasks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        // R29-37: For internal/tenant users, use higher limit within bounds
         const limit = principal.tenantId != null
-          ? 25
-          : readLimit(ctx.request, 25);
+          ? Math.min(INTERNAL_TASK_LIMIT, readLimit(ctx.request, DEFAULT_TASK_LIMIT))
+          : readLimit(ctx.request, DEFAULT_TASK_LIMIT);
         const tasks = deps.inspectService.queryTaskInspectSummaries({
           limit,
           ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),

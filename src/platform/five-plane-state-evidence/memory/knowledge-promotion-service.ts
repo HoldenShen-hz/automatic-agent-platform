@@ -400,10 +400,18 @@ export class KnowledgePromotionService {
       return false;
     }
 
-    entry.lineage.verificationStatus = status;
-    if (notes) {
-      entry.lineage.metadata.verificationNotes = notes;
-    }
+    const updatedLineage: KnowledgeLineage = {
+      ...entry.lineage,
+      verificationStatus: status,
+      metadata: {
+        ...entry.lineage.metadata,
+        ...(notes ? { verificationNotes: notes } : {}),
+      },
+    };
+    this.lineageStore.set(lineageId, {
+      ...entry,
+      lineage: updatedLineage,
+    });
 
     return true;
   }

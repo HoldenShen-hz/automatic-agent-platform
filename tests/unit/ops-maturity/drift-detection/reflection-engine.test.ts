@@ -86,6 +86,20 @@ test("SimpleReflectionEngine.reflect ignores successful records", async () => {
   assert.equal(reflections.length, 0);
 });
 
+test("SimpleReflectionEngine.reflect produces success-pattern reflections when repeated successes accumulate", async () => {
+  const engine = new SimpleReflectionEngine();
+  const evidence = [
+    createEvidence({ id: "ev_s1", success: true, failureMode: undefined, taskType: "tool_execution", repairRounds: 0, toolCalls: 2 }),
+    createEvidence({ id: "ev_s2", success: true, failureMode: undefined, taskType: "tool_execution", repairRounds: 0, toolCalls: 3 }),
+    createEvidence({ id: "ev_s3", success: true, failureMode: undefined, taskType: "tool_execution", repairRounds: 0, toolCalls: 2 }),
+  ];
+
+  const reflections = await engine.reflect(evidence);
+  assert.equal(reflections.length, 1);
+  assert.equal(reflections[0]!.patternType, "success");
+  assert.equal(reflections[0]!.metadata?.successPattern, true);
+});
+
 test("SimpleReflectionEngine.reflect ignores records without failureMode", async () => {
   const engine = new SimpleReflectionEngine();
   // Create evidence records without failureMode property

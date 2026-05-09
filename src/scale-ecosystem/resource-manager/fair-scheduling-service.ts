@@ -1,6 +1,6 @@
 import { orderFairQueue, type FairQueueItem } from "./fair-queue/index.js";
 import { choosePreemptionVictim, type PreemptionCandidate } from "./preemption/index.js";
-import { isQuotaExceeded, type QuotaPolicy } from "./quota-enforcer/index.js";
+import { evaluateMultiDimensionalQuota, type QuotaPolicy } from "./quota-enforcer/index.js";
 
 export interface SchedulingClass {
   readonly tenantId: string;
@@ -43,7 +43,11 @@ export interface FairSchedulingDecision {
 export class FairSchedulingService {
   public schedule(request: FairSchedulingRequest): FairSchedulingDecision {
     const ordered = orderFairQueue(request.queueItems);
-    const quotaExceeded = isQuotaExceeded(request.quotaPolicy, request.claim.requestedUnits);
+    // Evaluate quota using hardLimit as the rejection threshold (not burstLimit)
+    const quotaDecision = evaluateMultiDimensionalQuota(request.quotaPolicy, {
+      workerUnits: request.claim.requestedUnits,
+    });
+    const quotaExceeded = quotaDecision.exceeded;
     const starvedItemIds = request.queueItems
       .filter((item) => item.ageMs >= 15 * 60_000)
       .map((item) => item.itemId);

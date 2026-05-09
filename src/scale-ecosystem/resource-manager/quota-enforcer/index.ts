@@ -60,12 +60,13 @@ export function evaluateQuota(dimension: QuotaDimension, requestedUnits: number)
   const hardLimit = dimension.hardLimit;
   const softLimit = dimension.softLimit ?? hardLimit;
   const burstLimit = dimension.burstLimit ?? hardLimit;
-  const exceeded = projected > burstLimit;
+  // Use hardLimit as the rejection threshold - if projected exceeds hardLimit, reject
+  const exceeded = projected > hardLimit;
   return {
     exceeded,
     warning: projected > softLimit,
     usesBurst: projected > hardLimit && projected <= burstLimit,
-    remainingUnits: Math.max(0, burstLimit - projected),
+    remainingUnits: Math.max(0, hardLimit - projected),
   };
 }
 

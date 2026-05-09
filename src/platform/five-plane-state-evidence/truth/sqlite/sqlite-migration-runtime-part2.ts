@@ -461,6 +461,9 @@ CREATE TABLE IF NOT EXISTS extension_packages (
   manifest_checksum TEXT NOT NULL,
   lifecycle_state TEXT NOT NULL,
   review_required INTEGER NOT NULL,
+  sbom_verified INTEGER NOT NULL DEFAULT 0,
+  sandbox_cert_verified INTEGER NOT NULL DEFAULT 0,
+  egress_policy_compliant INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -206,6 +206,22 @@ export interface PluginLifecycleEventPayload {
   errorMessage?: string | null;
 }
 
+/**
+ * R23-57: PluginIsolationEventPayload - Plugin isolation event with phase field
+ * Used for plugin error isolation events that require phase tracking.
+ */
+export interface PluginIsolationEventPayload {
+  pluginId: string;
+  domainId: string | null;
+  spiType: string;
+  phase: string;
+  lifecycleState: string;
+  bindingId?: string | null;
+  occurredAt: string;
+  reasonCode?: string | null;
+  errorMessage?: string | null;
+}
+
 export interface PluginInvocationEventPayload {
   pluginId: string;
   domainId: string | null;
@@ -454,4 +470,175 @@ export interface CircuitBreakerStateChangePayload {
   newState: "closed" | "open" | "half_open";
   nextAttemptAt: number | null;
   occurredAt: string;
+}
+
+// R23-55/R23-56: OAPEFLIR stage event payloads (15 types required by contract)
+// observe stage - signal collection and preprocessing
+export interface ObserveSignalsCollectedPayload {
+  runId: string;
+  loopIteration: number;
+  signalCount: number;
+  signalTypes: readonly string[];
+  observedAt: string;
+  contextSnapshot?: Record<string, unknown>;
+}
+
+export interface ObserveContextAugmentedPayload {
+  runId: string;
+  loopIteration: number;
+  contextSources: readonly string[];
+  augmentationApplied: boolean;
+  augmentedAt: string;
+}
+
+// assess stage - evaluation and anomaly detection
+export interface AssessEvaluationCompletedPayload {
+  runId: string;
+  loopIteration: number;
+  evaluationResult: string;
+  anomaliesDetected: number;
+  assessedAt: string;
+  riskScore?: number;
+}
+
+export interface AssessAnomalyClassifiedPayload {
+  runId: string;
+  loopIteration: number;
+  anomalyId: string;
+  anomalyClass: string;
+  severity: "low" | "medium" | "high" | "critical";
+  classifiedAt: string;
+}
+
+// plan stage - proposal and decision making
+export interface PlanProposalCreatedPayload {
+  runId: string;
+  loopIteration: number;
+  proposalId: string;
+  proposedActions: readonly string[];
+  estimatedCost?: number;
+  createdAt: string;
+}
+
+export interface PlanDecisionRecordedPayload {
+  runId: string;
+  loopIteration: number;
+  decisionId: string;
+  selectedAction: string;
+  reasoning?: string;
+  decidedAt: string;
+}
+
+// execute stage - action execution
+export interface ExecuteActionStartedPayload {
+  runId: string;
+  loopIteration: number;
+  actionId: string;
+  actionType: string;
+  targetResource?: string;
+  startedAt: string;
+}
+
+export interface ExecuteActionCompletedPayload {
+  runId: string;
+  loopIteration: number;
+  actionId: string;
+  actionType: string;
+  outcome: "success" | "failure" | "partial";
+  completedAt: string;
+  executionDurationMs?: number;
+}
+
+// feedback stage - outcome collection
+export interface FeedbackSignalReceivedPayload {
+  runId: string;
+  loopIteration: number;
+  signalId: string;
+  signalType: string;
+  sourceComponent: string;
+  receivedAt: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface FeedbackOutcomeProcessedPayload {
+  runId: string;
+  loopIteration: number;
+  outcomeId: string;
+  outcomeType: string;
+  processedAt: string;
+  qualityScore?: number;
+}
+
+// learn stage - knowledge capture and promotion
+export interface LearnObjectCreatedPayload {
+  runId: string;
+  loopIteration: number;
+  objectId: string;
+  objectType: string;
+  namespace: string;
+  createdAt: string;
+  confidenceScore?: number;
+}
+
+export interface LearnObjectPromotedPayload {
+  runId: string;
+  loopIteration: number;
+  objectId: string;
+  objectType: string;
+  promotionReason: string;
+  promotedAt: string;
+  trustLevel: string;
+}
+
+// improve stage - improvement candidate handling
+export interface ImproveCandidateProposedPayload {
+  runId: string;
+  loopIteration: number;
+  candidateId: string;
+  candidateType: string;
+  description: string;
+  proposedBy: string;
+  proposedAt: string;
+  estimatedImpact?: string;
+}
+
+export interface ImproveCandidateAcceptedPayload {
+  runId: string;
+  loopIteration: number;
+  candidateId: string;
+  acceptedBy: string;
+  acceptanceReason?: string;
+  acceptedAt: string;
+  rolloutStrategy?: string;
+}
+
+// release stage - rollout management
+export interface ReleaseRolloutStartedPayload {
+  runId: string;
+  loopIteration: number;
+  rolloutId: string;
+  targetScope: string;
+  startedAt: string;
+  phasedRollout: boolean;
+  targetVersion?: string;
+}
+
+export interface ReleaseRolloutCompletedPayload {
+  runId: string;
+  loopIteration: number;
+  rolloutId: string;
+  targetScope: string;
+  completedAt: string;
+  successRate?: number;
+  affectedResources?: readonly string[];
+}
+
+export interface ReleaseRollbackTriggeredPayload {
+  runId: string;
+  loopIteration: number;
+  rolloutId: string;
+  reasonCode: string;
+  triggeredBy: string;
+  triggeredAt: string;
+  rollbackScope?: string;
 }

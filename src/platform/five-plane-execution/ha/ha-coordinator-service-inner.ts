@@ -528,12 +528,12 @@ export class HaCoordinatorService {
       }
 
       // Check if lease is still valid
-      if (activeLease && new Date(activeLease.expiresAt) <= new Date(now)) {
-        this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, "leadership_lease_expired");
+      if (!activeLease || new Date(activeLease.expiresAt) <= new Date(now)) {
+        this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, activeLease ? "leadership_lease_expired" : "no_active_lease");
         return {
           authorized: false,
           authority: requiredAuthority,
-          reasonCode: "leadership_lease_expired",
+          reasonCode: activeLease ? "leadership_lease_expired" : "no_active_lease",
           leaderNodeId: leader.nodeId,
           epoch: latestEpoch.epoch,
           fencingToken: latestEpoch.fencingToken,
@@ -634,30 +634,40 @@ export class HaCoordinatorService {
         }
 
         // Acquire leadership for new leader
-        this.acquireLeadership({ nodeId: newLeaderNodeId, forceAcquire: true });
-      }
+        const acquireResult = this.acquireLeadership({ nodeId: newLeaderNodeId, forceAcquire: true });
 
-      const decision: FailoverDecision = {
-        decisionId: newId("failover"),
-        oldLeaderNodeId: currentLeader?.nodeId ?? null,
-        newLeaderNodeId,
-        epoch: latestEpoch.epoch + (outcome === "leader_changed" ? 1 : 0),
-        cause,
-        outcome,
-        decidedAt: now,
-        fencingToken: latestEpoch.fencingToken,
-      };
+        const decision: FailoverDecision = {
+          decisionId: newId("failover"),
+          oldLeaderNodeId: currentLeader?.nodeId ?? null,
+          newLeaderNodeId,
+          epoch: acquireResult.epoch,
+          cause,
+          outcome,
+          decidedAt: now,
+          fencingToken: acquireResult.fencingToken,
+        };
 
-      if (outcome === "leader_changed") {
         this.db.connection
           .prepare(
             `INSERT INTO failover_decisions (decision_id, old_leader_node_id, new_leader_node_id, epoch, cause, outcome, decided_at, fencing_token)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(decision.decisionId, decision.oldLeaderNodeId, decision.newLeaderNodeId, decision.epoch, decision.cause, decision.outcome, decision.decidedAt, decision.fencingToken);
+
+        return decision;
       }
 
-      return decision;
+      // For non-leadership-change outcomes, create but don't persist
+      return {
+        decisionId: newId("failover"),
+        oldLeaderNodeId: currentLeader?.nodeId ?? null,
+        newLeaderNodeId,
+        epoch: latestEpoch.epoch,
+        cause,
+        outcome,
+        decidedAt: now,
+        fencingToken: latestEpoch.fencingToken,
+      };
     });
   }
 

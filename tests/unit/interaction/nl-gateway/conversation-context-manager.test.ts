@@ -185,3 +185,23 @@ test("ConversationContextManager tracks lastIntent", () => {
   const context2 = manager.addTurn("tenant_1", "user_1", "查询状态", intent2);
   assert.equal(context2.lastIntent?.intentType, "task_query");
 });
+
+test("ConversationContextManager evicts least recently used contexts when capacity is exceeded", () => {
+  const manager = new ConversationContextManager(undefined, { maxActiveContexts: 2 });
+  const intent = {
+    intentType: "task_query" as const,
+    domainHint: null,
+    entities: [],
+    urgency: "normal" as const,
+    confidence: 0.9,
+  };
+
+  manager.addTurn("tenant_1", "user_1", "消息1", intent);
+  manager.addTurn("tenant_2", "user_2", "消息2", intent);
+  manager.getContext("tenant_1", "user_1");
+  manager.addTurn("tenant_3", "user_3", "消息3", intent);
+
+  assert.equal(manager.getContext("tenant_2", "user_2").turnCount, 0);
+  assert.equal(manager.getContext("tenant_1", "user_1").turnCount, 1);
+  assert.equal(manager.getContext("tenant_3", "user_3").turnCount, 1);
+});

@@ -7,6 +7,7 @@ import {
   validateListingDependencies,
   analyzeDependencyGraph,
   calculateUpgradePathForEntry,
+  checkReverseDependencies,
   detectBreakingChanges,
   type MarketplaceCatalogEntry,
 } from "../../../src/scale-ecosystem/marketplace/catalog/index.js";
@@ -257,6 +258,23 @@ test("MarketplaceCatalogEntrySchema rejects reliability score above 1", () => {
   });
 
   assert.equal(result.success, false);
+});
+
+test("checkReverseDependencies blocks deprecation when other listings still depend on target", () => {
+  const core = createCatalogEntry({
+    listingId: "core-plugin",
+    version: "1.0.0",
+  });
+  const dependent = createCatalogEntry({
+    listingId: "dependent-plugin",
+    version: "2.0.0",
+    dependencies: [{ listingId: "core-plugin", versionRange: "^1.0.0", optional: false }],
+  });
+
+  const result = checkReverseDependencies(core, [core, dependent]);
+  assert.equal(result.hasReverseDependencies, true);
+  assert.equal(result.canSafelyRemove, false);
+  assert.equal(result.dependentEntries[0]?.listingId, "dependent-plugin");
 });
 
 test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality scores", () => {

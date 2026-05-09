@@ -331,7 +331,7 @@ export class EvolutionIntegrationService {
    * Security-related proposals and significant changes get higher risk assessment.
    */
   private determineRisk(kind: ProposalKind, taskType: string): 'low' | 'medium' | 'high' {
-    const securityKeywords = ['security', 'auth', 'permission', 'access', 'forbidden', 'validation'];
+    const securityKeywords = ['security', 'auth', 'permission', 'access', 'forbidden'];
 
     // High-risk categories always high
     if (kind === 'prompt_patch' || kind === 'threshold_tuning') {

@@ -351,11 +351,26 @@ test("MemoryRetrievalService.unindexMemory removes memory from index", () => {
 });
 
 test("MemoryRetrievalService.unindexMemory escapes single quotes in memoryId", () => {
-  const store = createMockStore();
+  let capturedArgs: unknown[] = [];
+  const store = {
+    withConnection: <T>(work: (connection: MockConnection) => T): T => work({
+      exec: () => {},
+      prepare: (_sql: string) => ({
+        run: (...args: unknown[]) => {
+          capturedArgs = args;
+        },
+        get: () => ({ count: 0 }),
+        all: () => [],
+      }),
+    }),
+    memory: {
+      listMemories: () => [],
+    },
+  } as unknown as AuthoritativeTaskStore;
   const service = new MemoryRetrievalService(store);
 
-  // Memory ID with single quote should be escaped
   service.unindexMemory("mem_with'_quote");
+  assert.deepEqual(capturedArgs, ["mem_with'_quote"]);
 });
 
 test("MemoryRetrievalService.searchMemories returns empty array when no results", () => {

@@ -7,6 +7,7 @@ import {
   FeedbackSourceSchema,
   FeedbackCategorySchema,
   FeedbackSeveritySchema,
+  getFeedbackPromotionEligibility,
 } from "../../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
 
 test("FeedbackSourceSchema accepts valid sources", () => {
@@ -76,6 +77,7 @@ test("FeedbackSignalSchema applies defaults", () => {
   const result = FeedbackSignalSchema.parse(minimalSignal);
   assert.deepEqual(result.payload, {});
   assert.deepEqual(result.stepOutputRefs, []);
+  assert.equal(typeof result.feedbackTrustScore, "number");
 });
 
 test("FeedbackSignalSchema rejects invalid source", () => {
@@ -205,4 +207,26 @@ test("FeedbackSignalSchema handles complex payload", () => {
   const nestedData = (result.payload as Record<string, unknown>).nestedData as { attempt: number; maxAttempts: number };
   assert.equal(nestedData.attempt, 1);
   assert.equal(nestedData.maxAttempts, 3);
+});
+
+test("FeedbackSignalSchema derives trust score and preserves trust factors", () => {
+  const result = FeedbackSignalSchema.parse({
+    signalId: "sig_trust_types",
+    taskId: "task_trust_types",
+    source: "validation",
+    category: "correction",
+    severity: "warning",
+    timestamp: 123,
+    trustFactors: {
+      sourceReliability: 0.9,
+      historicalAccuracy: 0.85,
+      authenticatedSource: true,
+      attackSurfaceExposure: 0.2,
+      holdoutOverlap: 0,
+    },
+  });
+
+  assert.ok(result.feedbackTrustScore > 0.75);
+  assert.equal(result.trustFactors.authenticatedSource, true);
+  assert.equal(getFeedbackPromotionEligibility(result).eligible, true);
 });

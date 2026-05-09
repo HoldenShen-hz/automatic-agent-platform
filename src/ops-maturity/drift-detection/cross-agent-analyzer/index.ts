@@ -2,6 +2,7 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export interface CrossAgentMetric {
   agentId: string;
+  domainId?: string | null;
   successRate: number;
   averageCostUsd: number;
   averageLatencyMs: number;
@@ -19,6 +20,7 @@ export interface CrossAgentAnalysisResult {
   /** Structured actionable recommendation with code, action, and rationale. */
   recommendation: CrossAgentRecommendation;
   alerts: readonly CrossAgentDriftAlert[];
+  peerGroups: readonly CrossAgentPeerGroupSummary[];
 }
 
 /** Structured recommendation format replacing generic string. */
@@ -42,9 +44,18 @@ export type CrossAgentAction =
 
 export interface CrossAgentDriftAlert {
   readonly alertId: string;
+  readonly peerGroupId: string;
   readonly severity: "low" | "medium" | "high";
   readonly detectedAt: string;
   readonly agentsInvolved: readonly string[];
+  readonly divergenceScore: number;
+  readonly antiGamingDetected: boolean;
+  readonly recommendation: CrossAgentRecommendation;
+}
+
+export interface CrossAgentPeerGroupSummary {
+  readonly peerGroupId: string;
+  readonly agentIds: readonly string[];
   readonly divergenceScore: number;
   readonly antiGamingDetected: boolean;
   readonly recommendation: CrossAgentRecommendation;
@@ -67,28 +78,56 @@ export class CrossAgentAnalyzerService {
           affectedAgents: [],
         },
         alerts: [],
+        peerGroups: [],
       };
     }
-    const ranked = [...metrics].sort((left, right) =>
-      scoreMetric(right) - scoreMetric(left),
+    const groupedMetrics = this.groupByPeerGroup(metrics);
+    const peerGroups = groupedMetrics.map(([peerGroupId, groupMetrics]) =>
+      this.analyzePeerGroup(peerGroupId, groupMetrics),
     );
+    const primaryGroup = peerGroups.reduce((selected, current) =>
+      current.divergenceScore > selected.divergenceScore ? current : selected,
+    );
+
+    for (const alert of primaryGroup.alerts) {
+      this.alertHistory.push(alert);
+    }
+
+    const ranked = primaryGroup.ranked;
+    const best = ranked[0]!;
+    const worst = ranked.at(-1)!;
+    return {
+      bestAgentId: best.agentId,
+      worstAgentId: worst.agentId,
+      divergenceScore: primaryGroup.divergenceScore,
+      recommendation: primaryGroup.recommendation,
+      alerts: [...this.alertHistory],
+      peerGroups: peerGroups.map(({ ranked: _ranked, alerts: _alerts, ...summary }) => summary),
+    };
+  }
+
+  private analyzePeerGroup(
+    peerGroupId: string,
+    metrics: CrossAgentMetric[],
+  ): CrossAgentPeerGroupSummary & {
+    readonly ranked: CrossAgentMetric[];
+    readonly alerts: readonly CrossAgentDriftAlert[];
+  } {
+    const ranked = [...metrics].sort((left, right) => scoreMetric(right) - scoreMetric(left));
     const best = ranked[0]!;
     const worst = ranked.at(-1)!;
     const divergenceScore = Math.max(0, scoreMetric(best) - scoreMetric(worst));
     const antiGamingDetected = this.detectAntiGaming(metrics);
-    const alert = this.buildDriftAlert(ranked, divergenceScore, antiGamingDetected);
-    if (alert) {
-      this.alertHistory.push(alert);
-    }
-
-    // Build structured recommendation based on analysis results
     const recommendation = this.buildStructuredRecommendation(ranked, divergenceScore, antiGamingDetected);
+    const alert = this.buildDriftAlert(peerGroupId, ranked, divergenceScore, antiGamingDetected);
     return {
-      bestAgentId: best.agentId,
-      worstAgentId: worst.agentId,
+      peerGroupId,
+      agentIds: ranked.map((metric) => metric.agentId),
       divergenceScore,
+      antiGamingDetected,
       recommendation,
-      alerts: [...this.alertHistory],
+      ranked,
+      alerts: alert ? [alert] : [],
     };
   }
 
@@ -188,6 +227,7 @@ export class CrossAgentAnalyzerService {
   }
 
   private buildDriftAlert(
+    peerGroupId: string,
     ranked: CrossAgentMetric[],
     divergenceScore: number,
     antiGamingDetected: boolean,
@@ -198,6 +238,7 @@ export class CrossAgentAnalyzerService {
         divergenceScore >= 0.3 ? "medium" : "low";
     return {
       alertId: newId("drift_alert"),
+      peerGroupId,
       severity,
       detectedAt: nowIso(),
       agentsInvolved: ranked.map((m) => m.agentId),
@@ -205,6 +246,17 @@ export class CrossAgentAnalyzerService {
       antiGamingDetected,
       recommendation: this.buildStructuredRecommendation(ranked, divergenceScore, antiGamingDetected),
     };
+  }
+
+  private groupByPeerGroup(metrics: CrossAgentMetric[]): Array<[string, CrossAgentMetric[]]> {
+    const grouped = new Map<string, CrossAgentMetric[]>();
+    for (const metric of metrics) {
+      const peerGroupId = metric.domainId?.trim() || "domain:global";
+      const bucket = grouped.get(peerGroupId) ?? [];
+      bucket.push(metric);
+      grouped.set(peerGroupId, bucket);
+    }
+    return [...grouped.entries()];
   }
 }
 

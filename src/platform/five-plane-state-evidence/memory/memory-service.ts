@@ -135,9 +135,10 @@ export class MemoryService {
    */
   public remember(input: RememberMemoryInput): MemoryRecord {
     // V-02: Validate content size before processing
-    const contentSize = typeof input.content === "string"
-      ? input.content.length
-      : JSON.stringify(input.content).length;
+    const contentText = typeof input.content === "string"
+      ? input.content
+      : JSON.stringify(input.content);
+    const contentSize = Buffer.byteLength(contentText, "utf8");
     if (contentSize > MemoryService.MAX_CONTENT_SIZE_BYTES) {
       throw new MemoryError("memory.content_too_large", `Memory content size ${contentSize} exceeds maximum of ${MemoryService.MAX_CONTENT_SIZE_BYTES} bytes`, {
         details: { contentSize, maxSize: MemoryService.MAX_CONTENT_SIZE_BYTES },
@@ -145,9 +146,6 @@ export class MemoryService {
     }
 
     // V-03: Write gate - minimum content quality check
-    const contentText = typeof input.content === "string"
-      ? input.content
-      : JSON.stringify(input.content);
     if (contentText.trim().length < 10) {
       throw new MemoryError("memory.content_too_short", `Memory content too short: minimum 10 characters required, got ${contentText.trim().length}`, {
         details: { contentLength: contentText.trim().length, minLength: 10 },

@@ -98,6 +98,46 @@ const HIGH_RISK_PERMISSIONS = [
 const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/i;
 const INLINE_SOURCE_PREFIX = "inline:";
 
+/**
+ * Mock CVE database for supply chain security scanning.
+ * In production, this would be replaced with OSV, NVD, or similar CVE database integration.
+ */
+const MOCK_CVE_DATABASE = new Map<string, readonly CveVulnerability[]>([
+  ["lodash", [
+    { cveId: "CVE-2021-23337", severity: "high", description: "Command Injection in lodash template function", affectedVersionRange: ">=4.0.0 <4.17.22", fixedVersion: "4.17.22" },
+    { cveId: "CVE-2020-8203", severity: "high", description: "Prototype Pollution in lodash", affectedVersionRange: "<4.17.21", fixedVersion: "4.17.21" },
+  ]],
+  ["axios", [
+    { cveId: "CVE-2021-3749", severity: "critical", description: "Server-Side Request Forgery in axios", affectedVersionRange: "<0.21.2", fixedVersion: "0.21.2" },
+    { cveId: "CVE-2020-28168", severity: "high", description: "DNS rebinding vulnerability in axios", affectedVersionRange: "<0.22.0", fixedVersion: "0.22.0" },
+  ]],
+  ["jsonwebtoken", [
+    { cveId: "CVE-2022-23529", severity: "critical", description: "Unrestricted key algorithm type in jsonwebtoken", affectedVersionRange: "<9.0.0", fixedVersion: "9.0.0" },
+  ]],
+  ["express", [
+    { cveId: "CVE-2022-24999", severity: "critical", description: "Open redirect vulnerability in express", affectedVersionRange: "<4.17.21", fixedVersion: "4.17.21" },
+  ]],
+]);
+
+/**
+ * Parse a semver string into major.minor.patch components.
+ */
+function parseSemver(version: string): { major: number; minor: number; patch: number } {
+  const parts = version.split(".").map((p) => parseInt(p, 10) || 0);
+  return { major: parts[0] ?? 0, minor: parts[1] ?? 0, patch: parts[2] ?? 0 };
+}
+
+/**
+ * Compare two semver versions. Returns negative if a < b, positive if a > b, 0 if equal.
+ */
+function compareSemver(a: string, b: string): number {
+  const av = parseSemver(a);
+  const bv = parseSemver(b);
+  if (av.major !== bv.major) return av.major - bv.major;
+  if (av.minor !== bv.minor) return av.minor - bv.minor;
+  return av.patch - bv.patch;
+}
+
 export class PackSecurityService {
   public async runSecurityScan(input: SecurityScanInput): Promise<SecurityScanResult> {
     const scanId = newId("scan");
@@ -166,6 +206,61 @@ export class PackSecurityService {
       conflicts,
       suggestions,
     };
+  }
+
+  /**
+   * Scan dependencies for known CVE vulnerabilities.
+   * In production, this would integrate with a real CVE database (e.g., OSV, NVD).
+   */
+  public scanDependencyVulnerabilities(
+    dependencies: readonly DependencyInfo[],
+  ): DependencyVulnerabilityResult[] {
+    const results: DependencyVulnerabilityResult[] = [];
+    const now = nowIso();
+
+    for (const dep of dependencies) {
+      const vulnerabilities: CveVulnerability[] = [];
+      // Mock CVE database - in production, query OSV/NVD API
+      const knownVulnerabilities = MOCK_CVE_DATABASE.get(dep.packId);
+      if (knownVulnerabilities) {
+        for (const vuln of knownVulnerabilities) {
+          // Check if the dependency version is affected
+          if (this.versionMatchesCveRange(dep.version, vuln.affectedVersionRange)) {
+            vulnerabilities.push(vuln);
+          }
+        }
+      }
+      results.push({
+        packId: dep.packId,
+        version: dep.version,
+        vulnerabilities,
+        scanCompletedAt: now,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if a version matches a CVE affected version range.
+   * Supports simple semver ranges (exact, ^, ~, >=).
+   */
+  private versionMatchesCveRange(version: string, range: string): boolean {
+    const v = parseSemver(version);
+    if (range.startsWith("^")) {
+      const min = parseSemver(range.slice(1));
+      return v.major === min.major && v.minor >= min.minor && v.patch >= min.patch;
+    }
+    if (range.startsWith("~")) {
+      const min = parseSemver(range.slice(1));
+      return v.major === min.major && v.minor === min.minor && v.patch >= min.patch;
+    }
+    if (range.startsWith(">=")) {
+      const minVer = range.slice(2);
+      return compareSemver(version, minVer) >= 0;
+    }
+    // Exact match
+    return version === range;
   }
 
   private async runSandboxTest(input: SecurityScanInput): Promise<{ issues: SecurityIssue[] }> {

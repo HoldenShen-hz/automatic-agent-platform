@@ -509,7 +509,8 @@ export class DurableEventBus {
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     const handler = this.subscribers.get(consumerId);
     if (!handler) {
-      return pending.length;
+      // R31-25 FIX: Return 0 when no handler exists - no delivery actually occurred
+      return 0;
     }
 
     let delivered = 0;
@@ -562,7 +563,8 @@ export class DurableEventBus {
   private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler): Promise<{ delivered: boolean; deadLettered: boolean }> {
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= MAX_DELIVERY_RETRIES; attempt++) {
+    // R31-18 FIX: Loop 0..MAX_DELIVERY_RETRIES-1 executes exactly MAX_DELIVERY_RETRIES times
+    for (let attempt = 0; attempt < MAX_DELIVERY_RETRIES; attempt++) {
       try {
         await handler(item.event);
         this.store.event.markEventAck({
@@ -575,7 +577,7 @@ export class DurableEventBus {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
-        if (attempt < MAX_DELIVERY_RETRIES) {
+        if (attempt < MAX_DELIVERY_RETRIES - 1) {
           const backoffDelay = calculateBackoff(attempt);
           await sleep(backoffDelay);
         }
@@ -873,11 +875,19 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
+    // R31-19 FIX: Use a Set to avoid duplicate ack creation
+    const processedConsumerIds = new Set<string>();
     for (const consumerId of getRegisteredConsumers(event.eventType)) {
-      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      if (!processedConsumerIds.has(consumerId)) {
+        processedConsumerIds.add(consumerId);
+        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      }
     }
     for (const consumerId of this.activeConsumerRefCounts.keys()) {
-      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      if (!processedConsumerIds.has(consumerId)) {
+        processedConsumerIds.add(consumerId);
+        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      }
     }
   }
 

@@ -1053,6 +1053,29 @@ test("KnowledgePromotionService.updateVerificationStatus updates notes when prov
   assert.equal(lineages[0]?.metadata.verificationNotes, "Second review - confirmed");
 });
 
+test("KnowledgePromotionService.updateVerificationStatus replaces lineage entry instead of mutating returned snapshot", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+
+  const originalLineage = result.lineage!;
+  service.updateVerificationStatus(originalLineage.id, "verified", "Reviewed");
+  const storedLineage = service.getLineage(memory.id)[0]!;
+
+  assert.equal(originalLineage.verificationStatus, "unverified");
+  assert.equal(storedLineage.verificationStatus, "verified");
+  assert.equal(storedLineage.metadata.verificationNotes, "Reviewed");
+});
+
 test("KnowledgePromotionService.updateVerificationStatus does not overwrite notes when not provided", () => {
   const service = new KnowledgePromotionService();
   const memory = createMemoryRecord({

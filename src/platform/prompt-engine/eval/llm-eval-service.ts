@@ -162,6 +162,8 @@ export interface AbTestResult {
   significant: boolean;
   pValue: number;
   verdict: QualityVerdict;
+  /** R23-47 fix: Indicates whether mock/deterministic scores were used instead of real LLM evaluation */
+  mockEvaluation: boolean;
 }
 
 /**
@@ -504,6 +506,8 @@ export class LlmEvalService {
       pValue,
       significant,
       verdict: significant && improvement > 0 ? "pass" : (significant && improvement < 0 ? "fail" : "inconclusive"),
+      // R23-47 fix: Indicate when mock scores were used
+      mockEvaluation: !useRealLlм,
     };
   }
 
@@ -746,8 +750,12 @@ function clampScore(score: number): number {
 }
 
 function deterministicAbScore(seed: string): number {
+  // R23-47 fix: More realistic score distribution for A/B test fallback.
+  // Uses full [0, 1] range and includes control sometimes beating treatment.
+  // This better simulates real A/B test variance for CI/testing purposes.
   const checksum = [...seed].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return clampScore(0.55 + ((checksum % 40) / 100));
+  // Map checksum to [0.3, 1.0] range for more realistic score variation
+  return clampScore(0.3 + ((checksum % 70) / 100));
 }
 
 function calculateAbPValue(controlAvg: number, treatmentAvg: number, sampleSize: number): number {

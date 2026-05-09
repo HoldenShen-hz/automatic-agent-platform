@@ -89,6 +89,8 @@ export class UxEventTrackingService {
   private readonly eventPublisher: TypedEventPublisher | null;
   private readonly abTestAssignments = new Map<string, ABTestAssignment>();
   private readonly eventLog: UxEventTrack[] = [];
+  // R29-35: Maximum event log size to prevent unbounded memory growth
+  private readonly maxEventLogSize = 1000;
 
   public constructor(eventPublisher?: TypedEventPublisher) {
     this.eventPublisher = eventPublisher ?? null;
@@ -116,11 +118,15 @@ export class UxEventTrackingService {
 
     this.eventLog.push(trackEntry);
 
+    // R29-35: Trim event log if it exceeds max size to prevent unbounded growth
+    if (this.eventLog.length > this.maxEventLogSize) {
+      this.eventLog.splice(0, this.eventLog.length - this.maxEventLogSize);
+    }
+
     if (this.eventPublisher) {
-      // Cast to any to bypass strict event type checking - events are forwarded to analytics pipeline
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // R29-36: Use actual eventType instead of hardcoded "test:many_events"
       this.eventPublisher.publish({
-        eventType: "test:many_events",
+        eventType: trackEntry.eventType,
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {
@@ -135,7 +141,7 @@ export class UxEventTrackingService {
           eventType: trackEntry.eventType,
           metadata: (p.metadata as Record<string, string>) ?? {},
         },
-      } as any);
+      });
     }
 
     return trackEntry;

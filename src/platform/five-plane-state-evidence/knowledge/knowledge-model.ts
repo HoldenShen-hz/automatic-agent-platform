@@ -1,6 +1,51 @@
 import { z } from "zod";
 
-export const TrustLevelSchema = z.enum(["verified", "reviewed", "community", "unverified"]);
+export const CanonicalTrustLevelSchema = z.enum([
+  "private_unverified",
+  "team_reviewed",
+  "official",
+  "authoritative",
+]);
+
+export const LegacyTrustLevelSchema = z.enum(["verified", "reviewed", "community", "unverified"]);
+
+const TRUST_LEVEL_COMPATIBILITY_MAP = {
+  private_unverified: "private_unverified",
+  team_reviewed: "team_reviewed",
+  official: "official",
+  authoritative: "authoritative",
+  unverified: "private_unverified",
+  community: "team_reviewed",
+  reviewed: "official",
+  verified: "authoritative",
+} as const;
+
+export type CanonicalTrustLevel = z.infer<typeof CanonicalTrustLevelSchema>;
+export type LegacyTrustLevel = z.infer<typeof LegacyTrustLevelSchema>;
+
+export function normalizeTrustLevel(level: CanonicalTrustLevel | LegacyTrustLevel): CanonicalTrustLevel {
+  return TRUST_LEVEL_COMPATIBILITY_MAP[level];
+}
+
+export const TRUST_LEVEL_ORDER: readonly CanonicalTrustLevel[] = [
+  "private_unverified",
+  "team_reviewed",
+  "official",
+  "authoritative",
+];
+
+export function compareTrustLevels(a: CanonicalTrustLevel, b: CanonicalTrustLevel): number {
+  return TRUST_LEVEL_ORDER.indexOf(a) - TRUST_LEVEL_ORDER.indexOf(b);
+}
+
+export function degradeTrustLevel(level: CanonicalTrustLevel): CanonicalTrustLevel {
+  const index = TRUST_LEVEL_ORDER.indexOf(level);
+  return TRUST_LEVEL_ORDER[Math.max(0, index - 1)]!;
+}
+
+export const TrustLevelSchema = z
+  .union([CanonicalTrustLevelSchema, LegacyTrustLevelSchema])
+  .transform((level) => normalizeTrustLevel(level));
 
 export const KnowledgeNamespaceSchema = z.object({
   namespaceId: z.string().min(1),
@@ -127,7 +172,7 @@ export const SourceTrustPolicySchema = z.object({
   humanReviewRequired: z.boolean(),
 });
 
-export type TrustLevel = z.infer<typeof TrustLevelSchema>;
+export type TrustLevel = z.output<typeof TrustLevelSchema>;
 export type KnowledgeNamespace = z.infer<typeof KnowledgeNamespaceSchema>;
 export type ChunkingConfig = z.infer<typeof ChunkingConfigSchema>;
 export type KnowledgeSource = z.infer<typeof KnowledgeSourceSchema>;

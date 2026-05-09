@@ -108,7 +108,7 @@ export interface TaskGraphDraft {
 export interface PlannerHandoffReceipt {
   readonly handoffId: string;
   readonly goalId: string;
-  readonly state: "ready_for_planner";
+  readonly state: "ready_for_planner" | "blocked_invalid_graph";
   readonly graphId: string;
   readonly constraintEnvelope: GoalConstraintEnvelope;
   readonly budgetLedgerId?: string;
@@ -445,7 +445,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const plannerHandoff: PlannerHandoffReceipt = {
       handoffId: `${goal.goalId}:planner_handoff`,
       goalId: goal.goalId,
-      state: "ready_for_planner",
+      state: graphAnalysis.hasCycle ? "blocked_invalid_graph" : "ready_for_planner",
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };
@@ -844,17 +844,28 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       predecessor.set(taskId, maxParent);
     }
 
+    if (hasCycle) {
+      return {
+        hasCycle,
+        topologicallySortedTaskIds: taskIds,
+        parallelTaskGroups: parallelGroups,
+        criticalPathTaskIds: [],
+      };
+    }
+
     const criticalTail = [...longestDistance.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
     const criticalPath: string[] = [];
+    const visited = new Set<string>();
     let cursor = criticalTail;
-    while (cursor != null) {
+    while (cursor != null && !visited.has(cursor)) {
+      visited.add(cursor);
       criticalPath.unshift(cursor);
       cursor = predecessor.get(cursor) ?? null;
     }
 
     return {
       hasCycle,
-      topologicallySortedTaskIds: hasCycle ? taskIds : sorted,
+      topologicallySortedTaskIds: sorted,
       parallelTaskGroups: parallelGroups,
       criticalPathTaskIds: criticalPath,
     };

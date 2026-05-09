@@ -137,7 +137,8 @@ test("intake factories enforce confirmation before request envelope", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
-    normalizedIntent: { goal: "ship contract freeze" },
+    domainId: "platform_contracts",
+    normalizedIntent: { goal: "ship contract freeze", domainId: "platform_contracts" },
     riskPreview: { riskClass: "high", reasons: ["external side effect"] },
   });
 
@@ -170,6 +171,7 @@ test("intake factories enforce confirmation before request envelope", () => {
       confirmedBy: principal,
       riskClass: "high",
       confirmedAt: "2026-04-27T00:00:00.000Z",
+      state: "confirmed",
     },
     idempotencyKey: "idem-1",
     traceId: "trace-1",
@@ -248,6 +250,28 @@ test("runtime factories create harness, graph, node, attempt, and receipt record
   assert.equal(attempt.attemptNo, 1);
   assert.equal(lineage.nextAttemptId, attempt.nodeAttemptId);
   assert.equal(receipt.status, "succeeded");
+});
+
+test("SideEffectRecord factory preserves rollback handler and deadline metadata", () => {
+  const record = createSideEffectRecord({
+    harnessRunId: "run-1",
+    nodeRunId: "node-run-1",
+    nodeAttemptId: "attempt-1",
+    effectKind: "external_api_call",
+    idempotencyKey: "idem-side-effect-1",
+    riskClass: "high",
+    preCommitPolicyProofRef: artifact,
+    deadline: "2026-05-01T00:00:00.000Z",
+    rollbackHandler: {
+      handler: "workflow.rollback.refund",
+      timeout: 30_000,
+    },
+    compensationPlan: "comp-plan-1",
+  });
+
+  assert.equal(record.rollbackHandler?.handler, "workflow.rollback.refund");
+  assert.equal(record.rollbackHandler?.timeout, 30_000);
+  assert.equal(record.deadline, "2026-05-01T00:00:00.000Z");
 });
 
 test("HarnessRun status schema matches the canonical 13-state runtime model", async () => {

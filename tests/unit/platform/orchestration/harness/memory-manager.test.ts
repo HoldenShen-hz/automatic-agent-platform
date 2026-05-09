@@ -265,3 +265,17 @@ test("HarnessMemoryManager record value property is mutable object", () => {
   const readResult = manager.read("run", "scope-1", "key-a") as typeof obj;
   assert.equal(readResult.nested, "mutated");
 });
+
+test("HarnessMemoryManager evicts oldest working-tier record from both metadata and namespace storage", () => {
+  const manager = new HarnessMemoryManager();
+
+  for (let index = 0; index < 100; index++) {
+    manager.write("run", `scope-${index}`, `key-${index}`, `value-${index}`);
+  }
+
+  manager.write("run", "scope-overflow", "key-overflow", "value-overflow");
+
+  assert.equal(manager.read("run", "scope-0", "key-0"), null);
+  assert.equal(manager.list("run", "scope-0").length, 0);
+  assert.equal(manager.read("run", "scope-overflow", "key-overflow"), "value-overflow");
+});

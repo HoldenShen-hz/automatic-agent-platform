@@ -33,6 +33,8 @@ class ApiError extends AppError {
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const nonEmptyStringSchema = z.string().trim().min(1);
+// R29-32: Incident ID format validation - must be non-empty string
+const incidentIdSchema = z.string().trim().min(1).max(128);
 
 const createIncidentSchema = z.object({
   severity: z.enum(["low", "medium", "high", "critical"]),
@@ -82,12 +84,18 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         }
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const incidentId = segments[2]!;
+        // R29-32: Validate incidentId before use to prevent injection attacks
+        const rawIncidentId = segments[2]!;
+        const parsedIncidentId = incidentIdSchema.safeParse(rawIncidentId);
+        if (!parsedIncidentId.success) {
+          throw new ApiError(400, "incident.invalid_id", "Invalid incident ID format.");
+        }
+        const incidentId = parsedIncidentId.data;
         const tenantId = resolveTenantScope(principal, undefined);
 
         const incident = deps.incidentService.getIncident(incidentId, tenantId);
         if (!incident) {
-          throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
+          throw new ApiError(404, "incident.not_found", "Incident not found.");
         }
 
         return buildJsonResponse(ctx.requestId, 200, incident);
@@ -122,13 +130,19 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         }
 
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const incidentId = segments[2]!;
+        // R29-32: Validate incidentId before use to prevent injection attacks
+        const rawIncidentId = segments[2]!;
+        const parsedIncidentId = incidentIdSchema.safeParse(rawIncidentId);
+        if (!parsedIncidentId.success) {
+          throw new ApiError(400, "incident.invalid_id", "Invalid incident ID format.");
+        }
+        const incidentId = parsedIncidentId.data;
         const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
 
         void principal;
         const incident = deps.incidentService.getIncident(incidentId);
         if (!incident) {
-          throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
+          throw new ApiError(404, "incident.not_found", "Incident not found.");
         }
 
         let updated: IncidentCase;

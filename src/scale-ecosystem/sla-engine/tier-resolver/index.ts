@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const SlaTierSchema = z.object({
   tierId: z.string().min(1),
+  tenantId: z.string().min(1).optional(),  // Optional tenant ID for multi-tenancy
   displayName: z.string().min(1),
   priority: z.number().int().nonnegative(),
   availability: z.number().min(0).max(1).optional().default(0.999),
@@ -24,6 +25,25 @@ export const SlaTierSchema = z.object({
 
 export type SlaTier = z.input<typeof SlaTierSchema>;
 
-export function resolveHighestPriorityTier(tiers: readonly SlaTier[]): SlaTier | null {
-  return [...tiers].sort((left, right) => right.priority - left.priority)[0] ?? null;
+/**
+ * Resolve the highest priority tier for a given tenant.
+ * If tenantId is provided, only tiers matching that tenant (or with no tenant) are considered.
+ * If tenantId is null/undefined, global tiers (those without tenantId) are prioritized.
+ */
+export function resolveHighestPriorityTier(tiers: readonly SlaTier[], tenantId?: string | null): SlaTier | null {
+  // Filter tiers by tenant scope
+  const tenantTiers = tiers.filter((tier) => {
+    if (tenantId == null) {
+      // When no tenant specified, only use global tiers (no tenantId)
+      return tier.tenantId == null;
+    }
+    // Match tiers belonging to the tenant or global tiers
+    return tier.tenantId === tenantId || tier.tenantId == null;
+  });
+
+  if (tenantTiers.length === 0) {
+    return null;
+  }
+
+  return [...tenantTiers].sort((left, right) => right.priority - left.priority)[0] ?? null;
 }

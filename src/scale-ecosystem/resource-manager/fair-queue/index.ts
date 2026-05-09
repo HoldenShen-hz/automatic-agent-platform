@@ -18,12 +18,11 @@ export function orderFairQueue(items: readonly FairQueueItem[]): FairQueueItem[]
     if (leftScore !== rightScore) {
       return rightScore - leftScore;
     }
-    if ((left.orgId ?? "") !== (right.orgId ?? "")) {
-      return (left.orgId ?? "").localeCompare(right.orgId ?? "");
+    // Tie-breaker: prefer older items (higher ageMs) for fairness
+    if (left.ageMs !== right.ageMs) {
+      return right.ageMs - left.ageMs;
     }
-    if ((left.domainId ?? "") !== (right.domainId ?? "")) {
-      return (left.domainId ?? "").localeCompare(right.domainId ?? "");
-    }
+    // Final tie-breaker: use itemId to ensure deterministic ordering
     return left.itemId.localeCompare(right.itemId);
   });
 }

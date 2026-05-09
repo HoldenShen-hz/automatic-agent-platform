@@ -128,6 +128,13 @@ export interface MetricRegistryEntry {
   readonly redactionPolicy: "none" | "tenant" | "strict";
 }
 
+const ATTENTION_PRIORITY_ORDER: Record<AttentionItem["priority"], number> = {
+  critical: 0,
+  high: 1,
+  normal: 2,
+  low: 3,
+};
+
 export interface NlSummaryMetadata {
   readonly evidenceRefs: readonly string[];
   readonly freshness: string;
@@ -399,7 +406,13 @@ export class DashboardAggregationService implements DashboardPort {
       });
     }
 
-    return [...queue, ...this.suggestions].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return [...queue, ...this.suggestions].sort((left, right) => {
+      const priorityDelta = ATTENTION_PRIORITY_ORDER[left.priority] - ATTENTION_PRIORITY_ORDER[right.priority];
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      return right.createdAt.localeCompare(left.createdAt);
+    });
   }
 
   private buildActionControls(

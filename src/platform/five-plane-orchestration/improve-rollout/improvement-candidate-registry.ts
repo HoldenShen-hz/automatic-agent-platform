@@ -13,11 +13,51 @@ export interface RegisterImprovementCandidateInput {
   expectedBenefit?: string;
 }
 
+/**
+ * R23-45 fix: Persistence store interface for improvement candidates.
+ * Allows registry to persist candidates to durable storage.
+ */
+export interface CandidatePersistenceStore {
+  saveCandidate(candidate: ImprovementCandidate): void;
+  loadCandidates(): ImprovementCandidate[];
+  deleteCandidate(candidateId: string): void;
+}
+
+/**
+ * R23-45 fix: TTL configuration for in-memory entries.
+ * Entries expire after ttlMs milliseconds from creation.
+ */
+export interface CandidateTtlConfig {
+  ttlMs: number;
+  maxSize: number;
+}
+
+const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days default TTL
+const DEFAULT_MAX_SIZE = 100;
+
 export class ImprovementCandidateRegistry {
   private readonly candidates = new Map<string, ImprovementCandidate>();
   private readonly accessOrder: string[] = [];
+  private readonly createdAt = new Map<string, number>();
+  /** R23-45 fix: Optional persistence store for durable storage */
+  private readonly persistenceStore?: CandidatePersistenceStore;
+  /** R23-45 fix: TTL in milliseconds */
+  private readonly ttlMs: number;
+  private readonly maxSize: number;
 
-  public constructor(private readonly maxSize = 100) {}
+  public constructor(options?: Partial<CandidateTtlConfig> & { store?: CandidatePersistenceStore }) {
+    this.ttlMs = options?.ttlMs ?? DEFAULT_TTL_MS;
+    this.maxSize = options?.maxSize ?? DEFAULT_MAX_SIZE;
+    this.persistenceStore = options?.store;
+    // R23-45 fix: Load persisted candidates on startup
+    if (this.persistenceStore) {
+      for (const candidate of this.persistenceStore.loadCandidates()) {
+        this.candidates.set(candidate.candidateId, candidate);
+        this.accessOrder.push(candidate.candidateId);
+        this.createdAt.set(candidate.candidateId, new Date(candidate.createdAt).getTime());
+      }
+    }
+  }
 
   public register(input: RegisterImprovementCandidateInput): ImprovementCandidate {
     const learningObject = input.learningObjects[0];
@@ -29,7 +69,7 @@ export class ImprovementCandidateRegistry {
       source: learningObject?.learningType ?? "failure_pattern",
       targetScope: this.mapTargetToTargetScope(input.target),
       priority: this.inferPriority(input.target),
-      rolloutLevel: "off",
+      rolloutLevel: "L0_off", // R23-43 fix: Use L0_off instead of "off"
       metrics: {
         errorRate: 0,
         latencyP99: 0,
@@ -47,18 +87,28 @@ export class ImprovementCandidateRegistry {
       updatedAt: timestamp,
     });
     this.candidates.set(candidate.candidateId, candidate);
+    this.createdAt.set(candidate.candidateId, Date.now());
     this.touch(candidate.candidateId);
     this.evictIfNeeded();
+    // R23-45 fix: Persist to durable store after registration
+    this.persistCandidate(candidate);
     return candidate;
   }
 
   public list(): ImprovementCandidate[] {
+    // R23-45 fix: Evict expired entries before listing
+    this.evictExpired();
     return this.accessOrder
       .map((candidateId) => this.candidates.get(candidateId))
       .filter((candidate): candidate is ImprovementCandidate => candidate != null);
   }
 
   public updateStatus(candidateId: string, status: ImprovementCandidate["status"]): ImprovementCandidate | null {
+    // R23-45 fix: Check TTL on access
+    if (!this.isValid(candidateId)) {
+      this.removeCandidate(candidateId);
+      return null;
+    }
     const current = this.candidates.get(candidateId);
     if (!current) {
       return null;
@@ -71,7 +121,65 @@ export class ImprovementCandidateRegistry {
     };
     this.candidates.set(candidateId, updated);
     this.touch(candidateId);
+    // R23-45 fix: Persist after update
+    this.persistCandidate(updated);
     return updated;
+  }
+
+  /**
+   * R23-45 fix: Check if a candidate exists and is not expired.
+   */
+  public isValid(candidateId: string): boolean {
+    const created = this.createdAt.get(candidateId);
+    if (created == null) {
+      return false;
+    }
+    return Date.now() - created < this.ttlMs;
+  }
+
+  /**
+   * R23-45 fix: Evict all expired entries.
+   */
+  private evictExpired(): void {
+    const now = Date.now();
+    const expiredIds: string[] = [];
+    for (const [candidateId, created] of this.createdAt.entries()) {
+      if (now - created >= this.ttlMs) {
+        expiredIds.push(candidateId);
+      }
+    }
+    for (const id of expiredIds) {
+      this.removeCandidate(id);
+    }
+  }
+
+  /**
+   * R23-45 fix: Remove a candidate and clean up metadata.
+   */
+  private removeCandidate(candidateId: string): void {
+    this.candidates.delete(candidateId);
+    this.createdAt.delete(candidateId);
+    const index = this.accessOrder.indexOf(candidateId);
+    if (index >= 0) {
+      this.accessOrder.splice(index, 1);
+    }
+    // R23-45 fix: Also remove from persistence store
+    try {
+      this.persistenceStore?.deleteCandidate(candidateId);
+    } catch {
+      // Ignore persistence errors during cleanup
+    }
+  }
+
+  /**
+   * R23-45 fix: Persist a candidate to durable storage.
+   */
+  private persistCandidate(candidate: ImprovementCandidate): void {
+    try {
+      this.persistenceStore?.saveCandidate(candidate);
+    } catch {
+      // R23-45 fix: Persistence failures should not block in-memory operation
+    }
   }
 
   private mapTargetToChangeScope(target: AutonomyTarget): ImprovementChangeScope {
@@ -148,19 +256,20 @@ export class ImprovementCandidateRegistry {
 }
 
 function inferRolloutLevelFromStatus(status: ImprovementCandidate["status"]): ImprovementCandidate["rolloutLevel"] {
+  // R23-43 fix: Use L0-L5 level naming for standardized rollout progression
   switch (status) {
     case "evaluation_enabled":
-      return "evaluate_0";
+      return "L1_evaluate";
     case "canary_5":
-      return "canary_5";
+      return "L2_canary";
     case "partial_25":
-      return "partial_25";
+      return "L3_partial";
     case "stable_75":
-      return "stable_75";
+      return "L4_stable";
     case "stable_100":
     case "released":
-      return "stable_100";
+      return "L5_full";
     default:
-      return "off";
+      return "L0_off";
   }
 }

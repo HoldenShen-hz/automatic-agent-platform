@@ -155,6 +155,16 @@ test("remember throws MemoryError when content exceeds size limit", () => {
   });
 });
 
+test("remember measures UTF-8 bytes instead of UTF-16 code units for size limit", () => {
+  const store = createMockStore();
+  const service = new MemoryService(store);
+  const largeCjkContent = "你".repeat(400_000);
+
+  assert.throws(() => {
+    service.remember({ scope: "project", content: largeCjkContent });
+  }, (err: any) => err.code === "E8memory.content_too_large");
+});
+
 test("remember throws MemoryError when content is too short", () => {
   const store = createMockStore();
   const service = new MemoryService(store);

@@ -85,6 +85,28 @@ test("DashboardAggregationService builds operator dashboard with attention queue
   assert.equal(dashboard.proactiveSuggestions.length, 1);
 });
 
+test("DashboardAggregationService sorts attention queue by priority before recency", () => {
+  const service = new DashboardAggregationService({
+    taskSource: {
+      list: () => [
+        {
+          ...makeTask("task_1", "pending", "finance"),
+          updatedAt: "2026-04-19T00:05:00.000Z",
+        },
+      ],
+    },
+    systemSource: {
+      build: () => makeSystemSituation({ healthStatus: "unhealthy" }),
+    },
+    currentTime: () => "2026-04-19T00:01:00.000Z",
+  });
+
+  const dashboard = service.buildOperatorDashboard();
+
+  assert.equal(dashboard.attentionQueue[0]?.priority, "critical");
+  assert.equal(dashboard.attentionQueue[0]?.itemType, "incident");
+});
+
 test("DashboardAggregationService snapshot reflects backlog and incidents", async () => {
   const service = new DashboardAggregationService({
     taskSource: {

@@ -25,7 +25,9 @@ export function loadExceptionRecoveryConfig(
   configPath: string = DEFAULT_CONFIG_PATH,
   sandboxPolicy?: SandboxPolicy,
 ): ExceptionRecoveryConfig {
-  if (cachedConfig) {
+  // Validate path before using as cache key to prevent cache poisoning
+  const effectivePath = configPath === DEFAULT_CONFIG_PATH ? DEFAULT_CONFIG_PATH : configPath;
+  if (cachedConfig && effectivePath === DEFAULT_CONFIG_PATH) {
     return cachedConfig;
   }
 

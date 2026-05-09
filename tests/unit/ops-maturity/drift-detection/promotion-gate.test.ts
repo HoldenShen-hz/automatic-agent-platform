@@ -15,10 +15,12 @@ function createProposal(overrides: Partial<ImprovementProposal> = {}): Improveme
     patch: "test patch",
     rationale: "test rationale",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: [],
-    status: "proposed",
+    status: "draft",
     createdAt: "2026-04-14T00:00:00.000Z",
     updatedAt: "2026-04-14T00:00:00.000Z",
+    draftedAt: "2026-04-14T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -153,29 +155,29 @@ test("PromotionGate.decide rejects safety violations", () => {
   assert.ok(decision.reasons.some(r => r.includes("Safety violations detected")));
 });
 
-test("PromotionGate.decide advances stage from testing to canary", () => {
+test("PromotionGate.decide advances stage from reviewed to staged", () => {
   const gate = new PromotionGate();
   const proposal = createProposal({ risk: "low" });
   const report = createReport();
 
-  const decision = gate.decide(proposal, report, false, "testing");
+  const decision = gate.decide(proposal, report, false, "reviewed");
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.stage, "canary");
+  assert.equal(decision.stage, "staged");
 });
 
-test("PromotionGate.decide advances stage from canary to active", () => {
+test("PromotionGate.decide advances stage from staged to stable", () => {
   const gate = new PromotionGate();
   const proposal = createProposal({ risk: "low" });
   const report = createReport();
 
-  const decision = gate.decide(proposal, report, false, "canary");
+  const decision = gate.decide(proposal, report, false, "staged");
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.stage, "active");
+  assert.equal(decision.stage, "stable");
 });
 
-test("PromotionGate.decide starts from testing when no currentStage", () => {
+test("PromotionGate.decide starts from reviewed when no currentStage", () => {
   const gate = new PromotionGate();
   const proposal = createProposal({ risk: "low" });
   const report = createReport();
@@ -183,7 +185,7 @@ test("PromotionGate.decide starts from testing when no currentStage", () => {
   const decision = gate.decide(proposal, report, false);
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.stage, "testing");
+  assert.equal(decision.stage, "reviewed");
 });
 
 test("PromotionGate.canAutoPromote returns true for low-risk proposals", () => {

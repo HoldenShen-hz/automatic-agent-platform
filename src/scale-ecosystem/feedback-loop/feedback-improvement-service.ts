@@ -1,4 +1,8 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import {
+  getFeedbackPromotionEligibility,
+  parseFeedbackSignal,
+} from "../../platform/orchestration/oapeflir/types/feedback-signal.js";
 import { analyzeFeedbackSignals, type FeedbackAnalysisSummary } from "./analyzer/index.js";
 import { FeedbackCollector, type FeedbackCollectorInput } from "./collector/feedback-collector.js";
 import type { FeedbackBatch, FeedbackSignal, LearningSignal } from "./collector/index.js";
@@ -54,7 +58,19 @@ export class FeedbackImprovementService {
   } {
     const feedback = this.collector.collect(input);
     const learningSignals = this.collector.toLearningSignals(feedback);
-    const candidates = learningSignals.map((signal) => this.createCandidate(signal));
+    const signalById = new Map(
+      feedback.signals.map((signal) => {
+        const parsed = parseFeedbackSignal(signal);
+        return [parsed.signalId, parsed] as const;
+      }),
+    );
+    const candidates = learningSignals.flatMap((signal) => {
+      const promotionEligible = signal.sourceSignalIds.every((signalId) => {
+        const sourceSignal = signalById.get(signalId);
+        return sourceSignal != null && getFeedbackPromotionEligibility(sourceSignal).eligible;
+      });
+      return promotionEligible ? [this.createCandidate(signal)] : [];
+    });
     return { feedback, learningSignals, candidates };
   }
 

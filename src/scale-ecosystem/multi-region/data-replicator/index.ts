@@ -297,15 +297,17 @@ export class DataReplicatorService {
       }
     }
 
-    // Update checkpoint
+    // Update checkpoint with actual pending count (flushed events not yet acknowledged)
+    // pendingCount = total flushed - successfully sent = events still in-flight
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
+    const pendingCount = events.length - lastSequence;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       sequenceNumber: lastSequence,
       timestamp: nowIso(),
-      pendingCount: errors.length,
+      pendingCount,
     });
 
     return {

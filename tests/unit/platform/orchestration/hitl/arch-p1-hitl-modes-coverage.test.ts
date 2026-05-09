@@ -92,7 +92,7 @@ test("[ARCH-P1-4] HITL modify_and_approve mode exists (for patch)", () => {
   });
 
   assert.equal(patchResult.mode, "modify_and_approve");
-  assert.ok(patchResult.capability, "modify_and_approve must expose HitlCapability");
+  assert.equal(patchResult.capability, "modify_and_approve");
 });
 
 test("[ARCH-P1-4] HITL force_terminate mode exists (for takeover)", () => {

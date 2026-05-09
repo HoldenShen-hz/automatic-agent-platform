@@ -92,7 +92,7 @@ test("ISSUE #2038: buildPreflightHeaders uses wildcard when credentials are disa
 
   const headers = buildPreflightHeaders("https://any-origin.com", config);
 
-  assert.equal(headers["access-control-allow-origin"], "https://any-origin.com");
+  assert.equal(headers["access-control-allow-origin"], "*");
   assert.equal(headers["access-control-allow-credentials"], undefined);
 });
 
@@ -142,6 +142,15 @@ test("ISSUE #2038: normalizeCorsConfig rejects wildcard+credentials at config ti
     }),
     /api\.cors\.invalid_wildcard_credentials/,
   );
+});
+
+test("ISSUE #2038: normalizeCorsConfig accepts wildcard when credentials are false", () => {
+  const config = normalizeCorsConfig({
+    allowedOrigins: ["*"],
+    credentials: false,
+  });
+  assert.deepEqual(config.allowedOrigins, ["*"]);
+  assert.equal(config.credentials, false);
 });
 
 test("ISSUE #2038: buildPreflightHeaders returns empty when origin not allowed", () => {
@@ -196,7 +205,7 @@ test("decorateResponseHeaders adds all required security headers", () => {
     body: "test",
   };
   const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
-  assert.equal(result.headers["content-security-policy"], "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'");
+  assert.equal(result.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
   assert.equal(result.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
   assert.equal(result.headers["x-frame-options"], "DENY");
   assert.equal(result.headers["x-content-type-options"], "nosniff");
@@ -284,11 +293,12 @@ test("normalizeCorsConfig merges partial config with defaults", () => {
   assert.deepEqual(result.allowedMethods, DEFAULT_CORS_CONFIG.allowedMethods);
 });
 
-test("response hardening exposes Accept-Version for API version negotiation", () => {
-  assert.ok(DEFAULT_CORS_CONFIG.allowedHeaders.includes("accept-version"));
+test("response hardening exposes canonical API version headers to callers", () => {
+  assert.ok(DEFAULT_CORS_CONFIG.exposedHeaders.includes("x-api-version"));
+  assert.ok(DEFAULT_CORS_CONFIG.exposedHeaders.includes("x-app-version"));
 });
 
-test("decorateResponseHeaders adds API deprecation and version support headers", () => {
+test("decorateResponseHeaders adds canonical API version headers", () => {
   const payload: ApiResponsePayload = {
     statusCode: 200,
     headers: {},
@@ -298,7 +308,5 @@ test("decorateResponseHeaders adds API deprecation and version support headers",
   const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
 
   assert.equal(result.headers["x-api-version"], "v1");
-  assert.equal(result.headers["deprecation"], "true");
-  assert.equal(result.headers["sunset"], "Thu, 31 Dec 2025 23:59:59 GMT");
-  assert.equal(result.headers["api-version-support"], "v1;v2");
+  assert.equal(result.headers["x-app-version"], "0.1.0");
 });

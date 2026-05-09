@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getFeedbackPromotionEligibility,
   parseFeedbackSignal,
   FeedbackSignalSchema,
 } from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
@@ -38,6 +39,8 @@ test("parseFeedbackSignal applies defaults", () => {
   const result = parseFeedbackSignal(minimal);
   assert.deepEqual(result.payload, {});
   assert.deepEqual(result.stepOutputRefs, []);
+  assert.equal(typeof result.feedbackTrustScore, "number");
+  assert.equal(result.trustFactors.authenticatedSource, false);
 });
 
 test("parseFeedbackSignal rejects empty signalId", () => {
@@ -153,4 +156,48 @@ test("FeedbackSignalSchema rejects non-integer timestamp", () => {
   };
 
   assert.throws(() => FeedbackSignalSchema.parse(signal));
+});
+
+test("parseFeedbackSignal derives trust score from canonical trust factors", () => {
+  const result = parseFeedbackSignal({
+    signalId: "sig_trust",
+    taskId: "task_trust",
+    source: "user",
+    category: "correction",
+    severity: "warning",
+    timestamp: 1000,
+    trustFactors: {
+      sourceReliability: 0.9,
+      historicalAccuracy: 0.8,
+      authenticatedSource: true,
+      attackSurfaceExposure: 0.1,
+      holdoutOverlap: 0,
+    },
+  });
+
+  assert.ok(result.feedbackTrustScore > 0.8);
+  assert.equal(getFeedbackPromotionEligibility(result).eligible, true);
+});
+
+test("parseFeedbackSignal marks low-trust overlapping signals ineligible for direct promotion", () => {
+  const result = parseFeedbackSignal({
+    signalId: "sig_low_trust",
+    taskId: "task_low_trust",
+    source: "system",
+    category: "failure",
+    severity: "error",
+    timestamp: 1000,
+    trustFactors: {
+      sourceReliability: 0.2,
+      historicalAccuracy: 0.3,
+      authenticatedSource: false,
+      attackSurfaceExposure: 0.8,
+      holdoutOverlap: 0.2,
+    },
+  });
+
+  const eligibility = getFeedbackPromotionEligibility(result);
+  assert.equal(eligibility.eligible, false);
+  assert.ok(eligibility.reasons.includes("holdout_overlap_detected"));
+  assert.ok(eligibility.reasons.includes("unauthenticated_source"));
 });

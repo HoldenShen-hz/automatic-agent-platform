@@ -1,4 +1,4 @@
-export { detectAmbiguity } from "./disambiguation-handler/index.js";
+export { detectAmbiguity as detectAmbiguityFn } from "./disambiguation-handler/index.js";
 export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";
@@ -278,6 +278,7 @@ const INTENT_CONFIDENCE_THRESHOLD = 0.8;
 const SLOT_CONFIDENCE_THRESHOLD = 0.85;
 // R5-30: Default maximum clarification rounds
 const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
+const DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS = 1000;
 const PROMPT_INJECTION_PATTERNS = [
   /ignore (all|any|previous|prior) instructions/i,
   /reveal (the )?(system|developer) prompt/i,
@@ -305,6 +306,10 @@ export interface ConversationTurn {
   readonly message: string;
   readonly detectedIntent: DetectedIntent;
   readonly timestamp: string;
+}
+
+export interface ConversationContextManagerOptions {
+  readonly maxActiveContexts?: number;
 }
 
 const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
@@ -543,18 +548,28 @@ function buildMissingSlotQuestions(missingSlots: readonly string[]): string[] {
 }
 
 function detectPromptInjection(message: string): PromptInjectionFinding[] {
-  return PROMPT_INJECTION_PATTERNS.flatMap((pattern) => {
-    const matched = pattern.exec(message);
-    if (matched == null) {
-      return [];
+  const findings: PromptInjectionFinding[] = [];
+  const seen = new Set<string>();
+
+  for (const pattern of PROMPT_INJECTION_PATTERNS) {
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    const regex = new RegExp(pattern.source, flags);
+    for (const matched of message.matchAll(regex)) {
+      const matchedText = matched[0];
+      if (!matchedText || seen.has(`${pattern.source}:${matchedText}:${matched.index ?? -1}`)) {
+        continue;
+      }
+      seen.add(`${pattern.source}:${matchedText}:${matched.index ?? -1}`);
+      findings.push({
+        reasonCode: "harness.guardrail.prompt_injection_detected",
+        severity: /reveal|show me|泄露/.test(matchedText) ? "high" : "medium",
+        blocked: true,
+        matchedText,
+      } satisfies PromptInjectionFinding);
     }
-    return [{
-      reasonCode: "harness.guardrail.prompt_injection_detected",
-      severity: /reveal|show me|泄露/.test(matched[0]) ? "high" : "medium",
-      blocked: true,
-      matchedText: matched[0],
-    } satisfies PromptInjectionFinding];
-  });
+  }
+
+  return findings;
 }
 
 function deriveConversationState(
@@ -997,7 +1012,7 @@ export class NlEntryService implements NlEntryPort {
       continuation: route.classification.continuation,
       suggestedDivisionId: route.divisionId,
       suggestedWorkflowId: route.workflowId,
-      conversationState: requiresClarification ? "Clarifying" : "Building",
+      conversationState: deriveConversationState(requiresClarification, false, blockedByPolicy),
       clarificationState,
       context,
       securityFindings,
@@ -1201,9 +1216,11 @@ export class NlEntryService implements NlEntryPort {
 export class ConversationContextManager {
   private readonly contexts = new Map<string, ConversationContext>();
   private readonly nlConfig: NlGatewayConfig;
+  private readonly maxActiveContexts: number;
 
-  public constructor(nlConfig?: NlGatewayConfig) {
+  public constructor(nlConfig?: NlGatewayConfig, options: ConversationContextManagerOptions = {}) {
     this.nlConfig = nlConfig ?? loadNlGatewayConfig();
+    this.maxActiveContexts = Math.max(1, options.maxActiveContexts ?? DEFAULT_MAX_ACTIVE_CONVERSATION_CONTEXTS);
   }
 
   /**
@@ -1214,6 +1231,7 @@ export class ConversationContextManager {
     const existing = this.contexts.get(key);
 
     if (existing) {
+      this.touchContext(key, existing);
       return existing;
     }
 
@@ -1265,6 +1283,7 @@ export class ConversationContextManager {
     };
 
     this.contexts.set(key, updatedContext);
+    this.evictLeastRecentlyUsedContexts();
     return updatedContext;
   }
 
@@ -1292,5 +1311,20 @@ export class ConversationContextManager {
    */
   public getWindowSize(taskType?: string): number {
     return getConversationWindowSize(this.nlConfig, taskType);
+  }
+
+  private touchContext(key: string, context: ConversationContext): void {
+    this.contexts.delete(key);
+    this.contexts.set(key, context);
+  }
+
+  private evictLeastRecentlyUsedContexts(): void {
+    while (this.contexts.size > this.maxActiveContexts) {
+      const oldestKey = this.contexts.keys().next().value;
+      if (oldestKey == null) {
+        break;
+      }
+      this.contexts.delete(oldestKey);
+    }
   }
 }

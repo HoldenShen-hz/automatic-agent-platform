@@ -524,11 +524,6 @@ export class DegradationController {
       errorRate < this.config.deescalateErrorRateThreshold &&
       this.currentLevel > this.config.maxAutoDeescalateLevel;
 
-    // Check for de-escalation conditions
-    const shouldDeescalate =
-      errorRate < this.config.deescalateErrorRateThreshold &&
-      this.currentLevel > this.config.maxAutoDeescalateLevel;
-
     if (shouldDeescalate) {
       const healthyCountBefore = this.consecutiveHealthyCount;
       this.consecutiveHealthyCount++;

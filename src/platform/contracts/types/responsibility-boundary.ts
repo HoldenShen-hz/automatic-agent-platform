@@ -18,6 +18,10 @@ export type ResponsibilityBoundaryType =
   | "system_boundary"
   | "organizational_boundary";
 
+export type ResponsibilityBoundaryMode =
+  | "advisory_only"
+  | "human_accountable";
+
 /**
  * Actor type in the responsibility chain
  */
@@ -50,6 +54,7 @@ export interface ResponsibilityBoundary {
   readonly taskId: string;
   readonly executionId: string | null;
   readonly boundaryType: ResponsibilityBoundaryType;
+  readonly operatingMode: ResponsibilityBoundaryMode;
   readonly stageRef: string;
   readonly createdAt: string;
   readonly createdBy: string;
@@ -107,6 +112,7 @@ export class ResponsibilityBoundaryService {
     taskId: string;
     executionId?: string | null;
     boundaryType: ResponsibilityBoundaryType;
+    operatingMode?: ResponsibilityBoundaryMode;
     stageRef: string;
     createdBy: string;
     description: string;
@@ -119,6 +125,7 @@ export class ResponsibilityBoundaryService {
       taskId: input.taskId,
       executionId: input.executionId ?? null,
       boundaryType: input.boundaryType,
+      operatingMode: input.operatingMode ?? "human_accountable",
       stageRef: input.stageRef,
       createdAt: nowIso(),
       createdBy: input.createdBy,
@@ -149,6 +156,7 @@ export class ResponsibilityBoundaryService {
     if (!boundary) {
       throw new Error(`responsibility_boundary.not_found:${input.boundaryId}`);
     }
+    this.assertBoundaryActionAllowed(boundary, input.action, input.toActorType);
 
     const transfer: ResponsibilityTransfer = {
       transferId: newId("resp_transfer"),
@@ -271,6 +279,33 @@ export class ResponsibilityBoundaryService {
   public requiresHumanReview(boundaryId: string): boolean {
     const boundary = this.boundaries.get(boundaryId);
     return boundary?.requiresHumanReview ?? false;
+  }
+
+  public assertActionAllowed(
+    boundaryId: string,
+    action: BoundaryAction,
+    actorType: ResponsibilityActorType,
+  ): void {
+    const boundary = this.boundaries.get(boundaryId);
+    if (!boundary) {
+      throw new Error(`responsibility_boundary.not_found:${boundaryId}`);
+    }
+    this.assertBoundaryActionAllowed(boundary, action, actorType);
+  }
+
+  private assertBoundaryActionAllowed(
+    boundary: ResponsibilityBoundary,
+    action: BoundaryAction,
+    actorType: ResponsibilityActorType,
+  ): void {
+    const mutatingActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "delegate"]);
+    if (boundary.operatingMode === "advisory_only" && mutatingActions.has(action)) {
+      throw new Error(`responsibility_boundary.advisory_only_blocks_action:${action}`);
+    }
+    const humanOnlyActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume"]);
+    if (boundary.operatingMode === "human_accountable" && humanOnlyActions.has(action) && actorType !== "human_operator") {
+      throw new Error(`responsibility_boundary.human_accountable_requires_human:${action}`);
+    }
   }
 }
 

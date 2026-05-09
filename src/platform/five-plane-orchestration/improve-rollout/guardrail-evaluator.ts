@@ -46,7 +46,7 @@ export class GuardrailEvaluator {
     if (strategyVersion.sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
-    if (strategyVersion.releaseLevel !== "off" && candidate.status !== "approved") {
+    if (strategyVersion.releaseLevel !== "L0_off" && candidate.status !== "approved") {
       reasonCodes.push("improvement.guardrail_requires_approval");
     }
     for (const guardrail of candidate.guardrails) {
@@ -104,17 +104,17 @@ export class GuardrailEvaluator {
 
 function rolloutLevelRank(level: RolloutLevel): number {
   switch (level) {
-    case "off":
+    case "L0_off":
       return 0;
-    case "evaluate_0":
+    case "L1_evaluate":
       return 1;
-    case "canary_5":
+    case "L2_canary":
       return 2;
-    case "partial_25":
+    case "L3_partial":
       return 3;
-    case "stable_75":
+    case "L4_stable":
       return 4;
-    case "stable_100":
+    case "L5_full":
       return 5;
   }
 }

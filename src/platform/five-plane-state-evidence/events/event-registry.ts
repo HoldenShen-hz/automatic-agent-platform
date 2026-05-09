@@ -801,6 +801,7 @@ export function hasEventSchema(type: string): boolean {
 /**
  * Gets the registered consumers for an event type.
  * Returns empty array if event type is not found.
+ * R31-17 FIX: Now also returns consumers for RUNTIME_EVENT_REPLAY_METADATA events.
  * @param type - The event type to get consumers for
  * @returns Array of consumer IDs
  */
@@ -808,7 +809,16 @@ export function getRegisteredConsumers(type: string): readonly string[] {
   if (!hasEventSchema(type)) {
     return [];
   }
-  return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
+  // R31-17 FIX: Check EVENT_SCHEMA_REGISTRY first, then RUNTIME_EVENT_REPLAY_METADATA
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
+  }
+  // R31-17 FIX: Handle RUNTIME_EVENT_REPLAY_METADATA events
+  const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
+  if (metadata != null) {
+    return metadata.sourceOfTruth === "platform" ? ["truth_projector", "audit_projection"] : ["oapeflir_projection"];
+  }
+  return [];
 }
 
 /**

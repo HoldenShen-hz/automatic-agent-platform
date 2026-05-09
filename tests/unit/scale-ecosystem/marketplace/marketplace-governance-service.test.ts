@@ -32,6 +32,9 @@ test("marketplace governance service can register, review, publish, and summariz
         runtimeCapability: "^1.0.0",
       },
       signatureVerified: true,
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       manifestChecksum: "a".repeat(64),
     });
 
@@ -93,6 +96,9 @@ test("marketplace governance service blocks publishing packages with rejected or
         runtimeCapability: "^1.0.0",
       },
       signatureVerified: true,
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       manifestChecksum: "b".repeat(64),
     });
 
@@ -155,6 +161,9 @@ test("marketplace governance service fail-closes malformed identifiers and check
             runtimeCapability: "^1.0.0",
           },
           signatureVerified: true,
+          sbomVerified: true,
+          sandboxCertVerified: true,
+          egressPolicyCompliant: true,
           manifestChecksum: "zz",
         }),
       /marketplace\.invalid_extension_id|marketplace\.invalid_manifest_checksum/,
@@ -193,6 +202,9 @@ test("marketplace governance service scopes duplicate extension versions across 
         runtimeCapability: "^1.0.0",
       },
       signatureVerified: true,
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       manifestChecksum: "c".repeat(64),
     });
     const tenantBPackage = service.registerExtensionPackage({
@@ -212,6 +224,9 @@ test("marketplace governance service scopes duplicate extension versions across 
         runtimeCapability: "^1.0.0",
       },
       signatureVerified: true,
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
       manifestChecksum: "d".repeat(64),
     });
 
@@ -268,6 +283,60 @@ test("marketplace governance service scopes duplicate extension versions across 
     assert.throws(
       () => service.publishPackage({ tenantId: "tenant-b", packageId: tenantAPackage.packageId, reviewId: reviewA.reviewId }),
       /marketplace\.package_not_found/,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("marketplace governance service blocks publish when certification gates are incomplete", () => {
+  const workspace = createTempWorkspace("aa-marketplace-unit-");
+  const dbPath = `${workspace}/marketplace.db`;
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const service = new MarketplaceGovernanceService(db, store);
+
+    const pkg = service.registerExtensionPackage({
+      extensionId: "plugin.missing-gates",
+      packageType: "plugin",
+      displayName: "Missing Gates Plugin",
+      version: "1.0.0",
+      owner: "ecosystem.team",
+      trustLevel: "verified",
+      sourceUri: "registry://plugins/missing-gates",
+      capabilities: ["catalog_export"],
+      permissions: ["read.catalog"],
+      compatibility: {
+        apiContract: "^1.0.0",
+        permissionSurface: "^1.0.0",
+        runtimeCapability: "^1.0.0",
+      },
+      signatureVerified: true,
+      sbomVerified: false,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: false,
+      manifestChecksum: "e".repeat(64),
+    });
+
+    const review = service.submitReview({
+      packageId: pkg.packageId,
+      submitter: "ecosystem.submitter",
+    });
+    service.decideReview({
+      reviewId: review.reviewId,
+      status: "approved",
+      reviewer: "review.board",
+      decisionReasonCode: "approved_pending_gates",
+    });
+
+    assert.throws(
+      () => service.publishPackage({ packageId: pkg.packageId, reviewId: review.reviewId }),
+      /marketplace\.certification_gate_failed/,
     );
 
     db.close();

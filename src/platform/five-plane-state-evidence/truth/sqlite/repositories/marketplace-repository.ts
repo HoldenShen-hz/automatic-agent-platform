@@ -97,8 +97,9 @@ export class MarketplaceRepository {
       `INSERT INTO extension_packages (
         package_id, tenant_id, extension_id, package_type, display_name, version, owner, trust_level,
         source_uri, capabilities_json, permissions_json, compatibility_json, signature_verified,
-        manifest_checksum, lifecycle_state, review_required, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        manifest_checksum, lifecycle_state, review_required, sbom_verified, sandbox_cert_verified,
+        egress_policy_compliant, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(package_id) DO UPDATE SET
         tenant_id = excluded.tenant_id,
         extension_id = excluded.extension_id,
@@ -115,6 +116,9 @@ export class MarketplaceRepository {
         manifest_checksum = excluded.manifest_checksum,
         lifecycle_state = excluded.lifecycle_state,
         review_required = excluded.review_required,
+        sbom_verified = excluded.sbom_verified,
+        sandbox_cert_verified = excluded.sandbox_cert_verified,
+        egress_policy_compliant = excluded.egress_policy_compliant,
         updated_at = excluded.updated_at`,
       record.packageId,
       record.tenantId,
@@ -132,6 +136,9 @@ export class MarketplaceRepository {
       record.manifestChecksum,
       record.lifecycleState,
       record.reviewRequired,
+      record.sbomVerified,
+      record.sandboxCertVerified,
+      record.egressPolicyCompliant,
       record.createdAt,
       record.updatedAt,
     );
@@ -156,6 +163,9 @@ export class MarketplaceRepository {
          manifest_checksum AS manifestChecksum,
          lifecycle_state AS lifecycleState,
          review_required AS reviewRequired,
+         sbom_verified AS sbomVerified,
+         sandbox_cert_verified AS sandboxCertVerified,
+         egress_policy_compliant AS egressPolicyCompliant,
          created_at AS createdAt,
          updated_at AS updatedAt
        FROM extension_packages
@@ -191,6 +201,9 @@ export class MarketplaceRepository {
          manifest_checksum AS manifestChecksum,
          lifecycle_state AS lifecycleState,
          review_required AS reviewRequired,
+         sbom_verified AS sbomVerified,
+         sandbox_cert_verified AS sandboxCertVerified,
+         egress_policy_compliant AS egressPolicyCompliant,
          created_at AS createdAt,
          updated_at AS updatedAt
        FROM extension_packages`;

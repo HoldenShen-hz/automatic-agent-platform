@@ -119,20 +119,20 @@ export class InMemoryEvolutionRegistry implements EvolutionRegistry {
     const proposals = Array.from(this.proposals.values());
 
     const byStatus: Record<ProposalStatus, number> = {
-      proposed: 0,
-      testing: 0,
-      canary: 0,
-      active: 0,
+      draft: 0,
+      reviewed: 0,
+      staged: 0,
+      stable: 0,
+      retired: 0,
       rejected: 0,
-      rolled_back: 0,
     };
 
     for (const proposal of proposals) {
       byStatus[proposal.status] = (byStatus[proposal.status] ?? 0) + 1;
     }
 
-    const activeCount = byStatus.testing + byStatus.canary;
-    const rejectedCount = byStatus.rejected + byStatus.rolled_back;
+    const activeCount = byStatus.reviewed + byStatus.staged + byStatus.stable;
+    const rejectedCount = byStatus.rejected + byStatus.retired;
 
     const evaluations = Array.from(this.evaluations.values());
     const averageSuccessLift = evaluations.length > 0

@@ -197,11 +197,21 @@ export class StageTransitionFSM {
   public recordStageSkipped(stage: OapeflirStage, reasonCode: string): void {
     this.stageStatuses.set(stage, "skipped");
     this.stageTimestamps.set(stage, Date.now());
+    this.skippedReasonCodes.set(stage, reasonCode);
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
     if (stageIndex >= this.currentStageIndex) {
       this.currentStageIndex = stageIndex + 1;
     }
+  }
+
+  /**
+   * R31-11 FIX: Store the reason code for skipped stages for later retrieval.
+   */
+  private readonly skippedReasonCodes = new Map<OapeflirStage, string>();
+
+  public getSkippedReasonCode(stage: OapeflirStage): string | undefined {
+    return this.skippedReasonCodes.get(stage);
   }
 
   public recordStageError(stage: OapeflirStage): void {

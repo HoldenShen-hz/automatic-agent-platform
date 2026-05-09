@@ -227,6 +227,7 @@ export class HarnessMemoryManager {
   private evictOldestFromTier(tier: MemoryTier): void {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;
+    let oldestRecord: InternalMemoryRecord | null = null;
 
     for (const [key, record] of this.memoryRecords.entries()) {
       if (record.tier === tier) {
@@ -234,12 +235,18 @@ export class HarnessMemoryManager {
         if (accessTime < oldestTime) {
           oldestTime = accessTime;
           oldestKey = key;
+          oldestRecord = record;
         }
       }
     }
 
-    if (oldestKey) {
+    if (oldestKey && oldestRecord) {
       this.memoryRecords.delete(oldestKey);
+      const scoped = this.namespaces[oldestRecord.namespace].get(oldestRecord.scopeId);
+      scoped?.delete(oldestRecord.key);
+      if (scoped != null && scoped.size === 0) {
+        this.namespaces[oldestRecord.namespace].delete(oldestRecord.scopeId);
+      }
     }
   }
 

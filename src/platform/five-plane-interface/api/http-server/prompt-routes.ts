@@ -10,7 +10,9 @@ const promptBundleRequestSchema = z.object({
   level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
   domain: z.string().optional(),
   packId: z.string().optional(),
-}).passthrough();
+  // R29-39: Removed .passthrough() to enforce strict schema validation
+  // Additional fields should be explicitly defined in the schema
+});
 
 type PromptBundleRequestPayload = z.infer<typeof promptBundleRequestSchema>;
 
@@ -42,12 +44,16 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       pathname: "/v1/prompts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-        const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse) as PromptBundleRequestPayload;
+        const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse);
         const level = rawPayload.level ?? "global";
-        // The request payload is a partial representation that gets transformed
-        // into the full PromptBundleRegistrationInput by the service layer
+        // R29-39: Create properly typed input without unsafe 'as any' cast
+        const bundleInput: PromptBundleRegistrationInput = {
+          ...(rawPayload.level && { level: rawPayload.level }),
+          ...(rawPayload.domain && { domain: rawPayload.domain }),
+          ...(rawPayload.packId && { packId: rawPayload.packId }),
+        };
         const bundle = deps.promptRegistryService.registerBundle(
-          rawPayload as unknown as PromptBundleRegistrationInput,
+          bundleInput,
           level,
           rawPayload.domain,
           rawPayload.packId,

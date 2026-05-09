@@ -1,13 +1,51 @@
 import { z } from "zod";
 
+/**
+ * R23-43 fix: Standardized rollout levels using L0-L5 naming convention.
+ *
+ * L0 - Off: No rollout, candidate is inactive
+ * L1 - Evaluate: Initial evaluation with 0% traffic (shadow mode)
+ * L2 - Canary: Canary deployment with small percentage traffic
+ * L3 - Partial: Partial rollout with moderate traffic
+ * L4 - Stable: Stable rollout with majority traffic
+ * L5 - Full: Full rollout with 100% traffic
+ *
+ * The old naming (canary_5, partial_25, stable_75, stable_100) is deprecated
+ * but maintained for backward compatibility in RolloutStatus.
+ */
 export const RolloutLevelSchema = z.enum([
-  "off",
-  "evaluate_0",
-  "canary_5",
-  "partial_25",
-  "stable_75",
-  "stable_100",
+  "L0_off",
+  "L1_evaluate",
+  "L2_canary",
+  "L3_partial",
+  "L4_stable",
+  "L5_full",
 ]);
+
+// Deprecated aliases for backward compatibility
+export const DEPRECATED_ROLLOUT_LEVEL_ALIASES: Record<string, RolloutLevel> = {
+  "off": "L0_off",
+  "evaluate_0": "L1_evaluate",
+  "canary_5": "L2_canary",
+  "partial_25": "L3_partial",
+  "stable_75": "L4_stable",
+  "stable_100": "L5_full",
+};
+
+/**
+ * Maps deprecated level names to standardized L0-L5 levels.
+ * @deprecated Use standardized L0-L5 levels instead
+ */
+export function normalizeRolloutLevel(level: string): RolloutLevel {
+  if (RolloutLevelSchema.options.includes(level as RolloutLevel)) {
+    return level as RolloutLevel;
+  }
+  const normalized = DEPRECATED_ROLLOUT_LEVEL_ALIASES[level];
+  if (normalized == null) {
+    return "L0_off"; // Default to L0 for unknown levels
+  }
+  return normalized;
+}
 export const RolloutStatusSchema = z.enum([
   "candidate_created",
   "under_review",

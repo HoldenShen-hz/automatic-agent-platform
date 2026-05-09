@@ -17,6 +17,13 @@ test("FeedbackImprovementService.ingest creates candidates from learning signals
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
+        trustFactors: {
+          sourceReliability: 0.95,
+          historicalAccuracy: 0.9,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.1,
+          holdoutOverlap: 0,
+        },
       },
     ],
   });
@@ -25,6 +32,35 @@ test("FeedbackImprovementService.ingest creates candidates from learning signals
   assert.ok(Array.isArray(result.learningSignals));
   assert.ok(Array.isArray(result.candidates));
   assert.ok(result.candidates.length > 0);
+});
+
+test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but blocks direct candidates", () => {
+  const service = new FeedbackImprovementService();
+  const result = service.ingest({
+    taskId: "task_low_trust",
+    signals: [
+      {
+        signalId: "sig_low_trust_feedback",
+        taskId: "task_low_trust",
+        source: "system",
+        category: "failure",
+        severity: "error",
+        payload: {},
+        stepOutputRefs: [],
+        timestamp: 1,
+        trustFactors: {
+          sourceReliability: 0.2,
+          historicalAccuracy: 0.2,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.9,
+          holdoutOverlap: 0.1,
+        },
+      },
+    ],
+  });
+
+  assert.ok(result.learningSignals.length > 0);
+  assert.equal(result.candidates.length, 0);
 });
 
 test("FeedbackImprovementService.createCandidate throws for signal without sourceSignalIds", () => {
@@ -307,6 +343,13 @@ test("FeedbackImprovementService.listCandidates returns all candidates", () => {
         payload: {},
         stepOutputRefs: [],
         timestamp: 1,
+        trustFactors: {
+          sourceReliability: 0.95,
+          historicalAccuracy: 0.9,
+          authenticatedSource: true,
+          attackSurfaceExposure: 0.1,
+          holdoutOverlap: 0,
+        },
       },
     ],
   });

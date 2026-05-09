@@ -11,7 +11,7 @@
  * Part of the control layer canonical mapping:
  * - Canonical ID: intake_router
  * - Business Alias: VP Operations
- * - Responsibility: Input triage, classification, routing, budget entry
+ * - Responsibility: Input triage, classification, routing
  *
  * ## Routing Decisions
  *

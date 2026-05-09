@@ -212,7 +212,10 @@ export class AutoStopLossService {
   private readonly config: AutoStopLossConfig;
   private readonly now: () => Date;
   private readonly playbooks: Map<string, StopLossPlaybook> = new Map();
-  private readonly executionHistory: StopLossEvent[] = [];
+  private readonly executionHistory: Map<number, StopLossEvent> = new Map();
+  private executionHistorySeq = 0;
+  private oldestExecutionHistorySeq = 0;
+  private readonly MAX_EXECUTION_HISTORY = 1000;
   private readonly executionCounts: Map<string, number> = new Map();
   private readonly lastExecutionTime: Map<string, number> = new Map();
   private readonly pendingApprovals: Map<string, PendingApprovalExecution> = new Map();
@@ -774,11 +777,13 @@ export class AutoStopLossService {
    * Records an execution event and updates rate limit counters.
    */
   private recordEvent(event: StopLossEvent, playbookId?: string): void {
-    this.executionHistory.push(event);
+    const seq = this.executionHistorySeq++;
+    this.executionHistory.set(seq, event);
 
-    // Keep history bounded to prevent memory exhaustion
-    if (this.executionHistory.length > 1000) {
-      this.executionHistory.splice(0, this.executionHistory.length - 1000);
+    // Keep history bounded to prevent memory exhaustion - O(1) eviction
+    while (this.executionHistory.size > this.MAX_EXECUTION_HISTORY) {
+      const oldestSeq = Math.min(...this.executionHistory.keys());
+      this.executionHistory.delete(oldestSeq);
     }
 
     // Update rate limit counters (reset hourly via hour key)
@@ -820,8 +825,16 @@ export class AutoStopLossService {
    * @returns true if the approval/rejection was successful
    */
   async approvePendingExecution(eventId: string, approved: boolean): Promise<boolean> {
-    const event = this.executionHistory.find((e) => e.id === eventId);
-    if (!event || event.completedAt !== null) return false;
+    let foundSeq: number | null = null;
+    let event: StopLossEvent | undefined;
+    for (const [seq, e] of this.executionHistory.entries()) {
+      if (e.id === eventId) {
+        foundSeq = seq;
+        event = e;
+        break;
+      }
+    }
+    if (foundSeq === null || !event || event.completedAt !== null) return false;
     const pendingExecution = this.pendingApprovals.get(eventId);
     if (!pendingExecution) {
       return false;
@@ -862,7 +875,7 @@ export class AutoStopLossService {
    * Returns all pending approval requests (events awaiting human approval).
    */
   getPendingApprovals(): StopLossEvent[] {
-    return this.executionHistory.filter((e) => e.errorMessage === "Pending human approval");
+    return [...this.executionHistory.values()].filter((e) => e.errorMessage === "Pending human approval");
   }
 
   // ── History ─────────────────────────────────────────────────────────
@@ -871,7 +884,10 @@ export class AutoStopLossService {
    * Returns the most recent execution events up to the specified limit.
    */
   getExecutionHistory(limit: number = 100): StopLossEvent[] {
-    return this.executionHistory.slice(-limit);
+    const sortedSeqs = [...this.executionHistory.keys()].sort((a, b) => a - b);
+    const startIdx = Math.max(0, sortedSeqs.length - limit);
+    const selectedSeqs = sortedSeqs.slice(startIdx);
+    return selectedSeqs.map((seq) => this.executionHistory.get(seq)!);
   }
 
   /**
@@ -883,10 +899,11 @@ export class AutoStopLossService {
     failedExecutions: number;
     pendingApprovals: number;
   } {
+    const events = [...this.executionHistory.values()];
     return {
-      totalExecutions: this.executionHistory.length,
-      successfulExecutions: this.executionHistory.filter((e) => e.success).length,
-      failedExecutions: this.executionHistory.filter((e) => !e.success && e.completedAt !== null).length,
+      totalExecutions: events.length,
+      successfulExecutions: events.filter((e) => e.success).length,
+      failedExecutions: events.filter((e) => !e.success && e.completedAt !== null).length,
       pendingApprovals: this.getPendingApprovals().length,
     };
   }

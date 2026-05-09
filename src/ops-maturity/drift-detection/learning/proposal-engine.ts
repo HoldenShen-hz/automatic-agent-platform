@@ -15,12 +15,12 @@ export type ProposalKind =
   | 'threshold_tuning';
 
 export type ProposalStatus =
-  | 'proposed'
-  | 'testing'
-  | 'canary'
-  | 'active'
+  | 'draft'
+  | 'reviewed'
+  | 'staged'
+  | 'stable'
+  | 'retired'
   | 'rejected'
-  | 'rolled_back';
 
 export interface ImprovementProposal {
   id: string;
@@ -31,14 +31,16 @@ export interface ImprovementProposal {
   patch: string;
   rationale: string;
   risk: 'low' | 'medium' | 'high';
+  reviewRequirement: 'auto' | 'manual_review';
   evidenceIds: string[];
   status: ProposalStatus;
   createdAt: string;
   updatedAt: string;
-  // R13-36: Track when proposal entered proposed status (lifecycle per spec)
-  proposedAt: string;
-  // R13-36: Track when proposal became active (lifecycle per spec)
-  activatedAt?: string;
+  draftedAt: string;
+  reviewedAt?: string;
+  stagedAt?: string;
+  stabilizedAt?: string;
+  retiredAt?: string;
   expectedBenefit?: {
     quality?: number;
     latency?: number;
@@ -106,7 +108,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         return 'high';
       }
       // Security-related targets always at least medium
-      const securityKeywords = ['security', 'auth', 'permission', 'access_control', 'validation'];
+      const securityKeywords = ['security', 'auth', 'permission', 'access_control'];
       if (securityKeywords.some(kw => target.toLowerCase().includes(kw) || rootCause.includes(kw))) {
         return 'high';
       }
@@ -117,9 +119,12 @@ export class SimpleProposalEngine implements ProposalEngine {
       // Default to low for tool_routing_rule and skill_doc
       return 'low';
     };
+    const determineReviewRequirement = (risk: 'low' | 'medium' | 'high'): ImprovementProposal['reviewRequirement'] =>
+      risk === 'high' || risk === 'medium' ? 'manual_review' : 'auto';
 
     if (rootCause.includes('type') || rootCause.includes('schema')) {
       const kind: ProposalKind = 'tool_routing_rule';
+      const risk = determineRisk(kind, 'type_validation');
       proposals.push({
         id: `prop_${++this.proposalIdCounter}`,
         title: 'Tool Routing Optimization',
@@ -128,10 +133,11 @@ export class SimpleProposalEngine implements ProposalEngine {
         target: 'type_validation',
         patch: this.generateToolRoutingPatch(reflection),
         rationale: `Tool routing optimization based on ${reflection.evidenceIds.length} failures`,
-        risk: determineRisk(kind, 'type_validation'),
+        risk,
+        reviewRequirement: determineReviewRequirement(risk),
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
-        proposedAt: now,
+        status: 'draft',
+        draftedAt: now,
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.15, cost: 0.05 },
@@ -140,6 +146,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('test')) {
       const kind: ProposalKind = 'skill_doc';
+      const risk = determineRisk(kind, 'testing_guidelines');
       proposals.push({
         id: `prop_${++this.proposalIdCounter}`,
         title: 'Improve Testing Guidelines',
@@ -148,10 +155,11 @@ export class SimpleProposalEngine implements ProposalEngine {
         target: 'testing_guidelines',
         patch: this.generateSkillDocPatch(reflection),
         rationale: `Improve testing guidelines based on ${reflection.evidenceIds.length} test failures`,
-        risk: determineRisk(kind, 'testing_guidelines'),
+        risk,
+        reviewRequirement: determineReviewRequirement(risk),
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
-        proposedAt: now,
+        status: 'draft',
+        draftedAt: now,
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { quality: 0.10 },
@@ -160,6 +168,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('complex') || rootCause.includes('planning')) {
       const kind: ProposalKind = 'workflow_template';
+      const risk = determineRisk(kind, 'complex_task_template');
       proposals.push({
         id: `prop_${++this.proposalIdCounter}`,
         title: 'Workflow Template Improvement',
@@ -168,10 +177,11 @@ export class SimpleProposalEngine implements ProposalEngine {
         target: 'complex_task_template',
         patch: this.generateWorkflowPatch(reflection),
         rationale: `Improve workflow template for complex tasks`,
-        risk: determineRisk(kind, 'complex_task_template'),
+        risk,
+        reviewRequirement: determineReviewRequirement(risk),
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
-        proposedAt: now,
+        status: 'draft',
+        draftedAt: now,
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.20, latency: -0.10 },
@@ -180,6 +190,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('security')) {
       const kind: ProposalKind = 'prompt_patch';
+      const risk: ImprovementProposal['risk'] = 'high';
       proposals.push({
         id: `prop_${++this.proposalIdCounter}`,
         title: 'Security Guidelines Enhancement',
@@ -188,10 +199,11 @@ export class SimpleProposalEngine implements ProposalEngine {
         target: 'security_guidelines',
         patch: this.generatePromptPatch(reflection),
         rationale: `Strengthen security guidelines`,
-        risk: 'high',
+        risk,
+        reviewRequirement: determineReviewRequirement(risk),
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
-        proposedAt: now,
+        status: 'draft',
+        draftedAt: now,
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.30 },
@@ -230,11 +242,12 @@ export class SimpleProposalEngine implements ProposalEngine {
       patch: input.description,
       rationale: input.description,
       risk: input.risk,
+      reviewRequirement: input.risk === 'low' ? 'auto' : 'manual_review',
       evidenceIds: input.evidenceIds,
-      status: 'proposed',
+      status: 'draft',
       createdAt: now,
       updatedAt: now,
-      proposedAt: now,
+      draftedAt: now,
     };
 
     this.proposals.set(id, proposal);
@@ -244,18 +257,20 @@ export class SimpleProposalEngine implements ProposalEngine {
   async submitForApproval(proposalId: string): Promise<void> {
     const proposal = this.proposals.get(proposalId);
     if (proposal) {
-      proposal.status = 'testing';
-      proposal.updatedAt = new Date().toISOString();
+      const updatedAt = new Date().toISOString();
+      proposal.status = 'reviewed';
+      proposal.reviewedAt = updatedAt;
+      proposal.updatedAt = updatedAt;
     }
   }
 
   async listPending(): Promise<ImprovementProposal[]> {
-    return Array.from(this.proposals.values()).filter((p) => p.status === 'proposed');
+    return Array.from(this.proposals.values()).filter((p) => p.status === 'draft');
   }
 
   async listActive(): Promise<ImprovementProposal[]> {
     return Array.from(this.proposals.values()).filter(
-      (p) => p.status === 'testing' || p.status === 'canary' || p.status === 'active'
+      (p) => p.status === 'reviewed' || p.status === 'staged' || p.status === 'stable'
     );
   }
 

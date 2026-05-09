@@ -517,3 +517,97 @@ export class HitlResumeService {
     return this.resumeResults.get(resultId) ?? null;
   }
 }
+
+// =============================================================================
+// Force Terminate Capability
+// =============================================================================
+
+export interface ForceTerminateRequest {
+  readonly requestId: string;
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly requestedBy: string;
+  readonly reason: string;
+  readonly riskLevel: "high" | "critical";
+}
+
+export interface ForceTerminateResult {
+  readonly resultId: string;
+  readonly requestId: string;
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly terminated: boolean;
+  readonly terminatedAt: string | null;
+  readonly approvedBy: string | null;
+  readonly errorMessage: string | null;
+}
+
+export class HitlForceTerminateService {
+  private readonly requests = new Map<string, ForceTerminateRequest>();
+  private readonly results = new Map<string, ForceTerminateResult>();
+
+  public requestForceTerminate(input: Omit<ForceTerminateRequest, "requestId">): ForceTerminateRequest {
+    if (input.reason.trim().length === 0) {
+      throw new Error("hitl_force_terminate.requires_reason");
+    }
+    const request: ForceTerminateRequest = {
+      ...input,
+      requestId: newId("hitl_force_terminate_request"),
+    };
+    this.requests.set(request.requestId, request);
+    return request;
+  }
+
+  public approveForceTerminate(
+    requestId: string,
+    approvedBy: string,
+    executor: (taskId: string, executionId: string | null) => boolean,
+  ): ForceTerminateResult {
+    const request = this.requests.get(requestId);
+    if (!request) {
+      throw new Error(`hitl_force_terminate_request.not_found:${requestId}`);
+    }
+    const terminated = executor(request.taskId, request.executionId);
+    const result: ForceTerminateResult = {
+      resultId: newId("hitl_force_terminate_result"),
+      requestId,
+      taskId: request.taskId,
+      executionId: request.executionId,
+      terminated,
+      terminatedAt: terminated ? nowIso() : null,
+      approvedBy,
+      errorMessage: terminated ? null : "Force terminate execution failed",
+    };
+    this.results.set(result.resultId, result);
+    this.requests.delete(requestId);
+    return result;
+  }
+
+  public rejectForceTerminate(requestId: string): ForceTerminateResult {
+    const request = this.requests.get(requestId);
+    if (!request) {
+      throw new Error(`hitl_force_terminate_request.not_found:${requestId}`);
+    }
+    const result: ForceTerminateResult = {
+      resultId: newId("hitl_force_terminate_result"),
+      requestId,
+      taskId: request.taskId,
+      executionId: request.executionId,
+      terminated: false,
+      terminatedAt: null,
+      approvedBy: null,
+      errorMessage: "Force terminate request rejected",
+    };
+    this.results.set(result.resultId, result);
+    this.requests.delete(requestId);
+    return result;
+  }
+
+  public getRequest(requestId: string): ForceTerminateRequest | null {
+    return this.requests.get(requestId) ?? null;
+  }
+
+  public getResult(resultId: string): ForceTerminateResult | null {
+    return this.results.get(resultId) ?? null;
+  }
+}

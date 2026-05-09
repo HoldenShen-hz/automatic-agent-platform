@@ -18,6 +18,7 @@ import type { ApiAuthService } from "../api-auth-service.js";
 import type { ApprovalService } from "../../../control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { ApiPrincipal } from "../api-auth-service.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -35,6 +36,75 @@ export interface ApprovalRouteDeps {
   authService: ApiAuthService | null;
   approvalService: ApprovalService;
   inspectService: InspectService;
+}
+
+const MAX_APPROVAL_ID_LENGTH = 128;
+const APPROVAL_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+function validateApprovalId(approvalId: string | undefined): string {
+  if (!approvalId || typeof approvalId !== "string") {
+    throw new ApiError(404, "api.approval_not_found", "Approval route requires approvalId.");
+  }
+  if (approvalId.length > MAX_APPROVAL_ID_LENGTH) {
+    throw new ApiError(400, "api.invalid_approval_id", `approvalId exceeds maximum length of ${MAX_APPROVAL_ID_LENGTH}.`);
+  }
+  if (!APPROVAL_ID_PATTERN.test(approvalId)) {
+    throw new ApiError(400, "api.invalid_approval_id", "Invalid approvalId format.");
+  }
+  return approvalId;
+}
+
+function parseAllowedActorIds(approvalView: unknown): readonly string[] {
+  const requestJson = (approvalView as { approval?: { requestJson?: unknown } })?.approval?.requestJson;
+  if (typeof requestJson !== "string" || requestJson.trim().length === 0) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(requestJson) as { context?: { allowedActorIds?: unknown } };
+    return Array.isArray(parsed.context?.allowedActorIds)
+      ? parsed.context.allowedActorIds.filter((value): value is string => typeof value === "string" && value.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function assertApprovalAccess(
+  principal: ApiPrincipal,
+  actorId: string,
+  approvalView: unknown,
+): void {
+  if (principal.roles.includes("admin")) {
+    return;
+  }
+
+  const resourceTenantId = (approvalView as { task?: { tenantId?: string | null } })?.task?.tenantId ?? null;
+  if (principal.tenantId != null && resourceTenantId !== null && principal.tenantId !== resourceTenantId) {
+    throw new ApiError(403, "api.approval_forbidden", "Actor not authorized for this approval.");
+  }
+
+  const allowedActorIds = parseAllowedActorIds(approvalView);
+  if (allowedActorIds.length > 0 && !allowedActorIds.includes(actorId)) {
+    throw new ApiError(403, "api.approval_forbidden", "Actor not authorized for this approval.");
+  }
+}
+
+function getAuthorizedApprovalView(
+  deps: ApprovalRouteDeps,
+  principal: ApiPrincipal,
+  actorId: string,
+  approvalId: string,
+): unknown {
+  try {
+    const approvalView = deps.inspectService.getApprovalInspectView(approvalId);
+    assertApprovalAccess(principal, actorId, approvalView);
+    return approvalView;
+  } catch (error) {
+    if ((error as { code?: string })?.code === "inspect.approval_not_found") {
+      throw new ApiError(404, "api.approval_not_found", `Approval not found: ${approvalId}`);
+    }
+    throw error;
+  }
 }
 
 export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[] {
@@ -69,11 +139,10 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         ) {
           return null;
         }
-        const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
-        const approvalId = segments[1];
-        if (!approvalId) {
-          throw new ApiError(404, "api.approval_not_found", "Approval route requires approvalId.");
-        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const actorId = principal.actorId;
+        const approvalId = validateApprovalId(segments[1]);
+        getAuthorizedApprovalView(deps, principal, actorId, approvalId);
         const decision = parseApprovalDecisionPayload(
           approvalId,
           actorId,
@@ -115,11 +184,10 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         ) {
           return null;
         }
-        const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
-        const approvalId = segments[2];
-        if (!approvalId) {
-          throw new ApiError(404, "api.approval_not_found", "Approval route requires approvalId.");
-        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const actorId = principal.actorId;
+        const approvalId = validateApprovalId(segments[2]);
+        getAuthorizedApprovalView(deps, principal, actorId, approvalId);
         const decision = parseApprovalDecisionPayload(
           approvalId,
           actorId,

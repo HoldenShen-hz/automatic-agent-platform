@@ -72,6 +72,12 @@ export interface RegisterExtensionPackageInput {
   };
   /** Whether the package signature has been verified */
   signatureVerified: boolean;
+  /** Whether an SBOM scan has completed and passed */
+  sbomVerified?: boolean;
+  /** Whether sandbox certification has completed and passed */
+  sandboxCertVerified?: boolean;
+  /** Whether egress policy review has completed and passed */
+  egressPolicyCompliant?: boolean;
   /** SHA-256 checksum of the manifest */
   manifestChecksum: string;
   /** Current lifecycle state (defaults to installed) */
@@ -178,6 +184,7 @@ export interface RetireExtensionInput {
   packageId: string;
   tenantId?: string | null;
   reasonCode: string;
+  migrationCompletionRatio?: number;
   retiredAt?: string;
 }
 
@@ -313,6 +320,9 @@ function hashPermissionSurface(permissions: readonly string[]): string {
   const canonical = [...permissions].sort().join("|");
   return createHash("sha256").update(canonical).digest("hex");
 }
+
+const MIN_SUNSET_GRACE_DAYS = 180;
+const MIN_MIGRATION_COMPLETION_RATIO = 0.95;
 
 /**
  * Builds a Markdown governance report.
@@ -519,47 +529,38 @@ export class MarketplaceGovernanceService {
       ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
       : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
 
-    // Review is required if the package has reviewRequired flag
-    if (reviewRecord == null) {
-      throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
-        retryable: false,
-        details: { packageId: packageRecord.packageId },
-      });
-    }
+    // Review is required only if the package has reviewRequired flag
+    if (packageRecord.reviewRequired === 1) {
+      if (reviewRecord == null) {
+        throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
+          retryable: false,
+          details: { packageId: packageRecord.packageId },
+        });
+      }
 
-    // Package must be approved before publication
-    if (reviewRecord.status !== "approved") {
-      throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          reviewId: reviewRecord.reviewId,
-          reviewStatus: reviewRecord.status,
-        },
-      });
-    }
+      // Package must be approved before publication
+      if (reviewRecord.status !== "approved") {
+        throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
+          retryable: false,
+          details: {
+            packageId: packageRecord.packageId,
+            reviewId: reviewRecord.reviewId,
+            reviewStatus: reviewRecord.status,
+          },
+        });
+      }
 
-    // Review must match the package being published
-    if (reviewRecord.packageId !== packageRecord.packageId) {
-      throw new ValidationError("marketplace.review_package_mismatch", "marketplace.review_package_mismatch", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          reviewPackageId: reviewRecord.packageId,
-          reviewId: reviewRecord.reviewId,
-        },
-      });
-    }
-
-    // Check review requirement if package has reviewRequired flag
-    if (packageRecord.reviewRequired === 1 && reviewRecord.status !== "approved") {
-      throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
-          reviewId: reviewRecord.reviewId,
-        },
-      });
+      // Review must match the package being published
+      if (reviewRecord.packageId !== packageRecord.packageId) {
+        throw new ValidationError("marketplace.review_package_mismatch", "marketplace.review_package_mismatch", {
+          retryable: false,
+          details: {
+            packageId: packageRecord.packageId,
+            reviewPackageId: reviewRecord.packageId,
+            reviewId: reviewRecord.reviewId,
+          },
+        });
+      }
     }
 
     // Non-internal packages require signature verification
@@ -572,6 +573,9 @@ export class MarketplaceGovernanceService {
         },
       });
     }
+
+    this.assertPublicationCertificationGates(packageRecord);
+    this.assertPackageLifecyclePublishable(packageRecord);
 
     // Cannot publish if already has an active publication
     if (this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined) != null) {
@@ -635,7 +639,18 @@ export class MarketplaceGovernanceService {
 
   public deprecatePackage(input: DeprecateExtensionInput): ExtensionPackageRecord {
     const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    if (packageRecord.lifecycleState === "sunset" || packageRecord.lifecycleState === "retired") {
+      throw new PolicyDeniedError("marketplace.invalid_lifecycle_transition", "marketplace.invalid_lifecycle_transition", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          currentState: packageRecord.lifecycleState,
+          targetState: "deprecated",
+        },
+      });
+    }
     const deprecatedAt = input.deprecatedAt == null ? nowIso() : assertTimestamp(input.deprecatedAt, "marketplace.invalid_deprecated_at");
+
     const updatedPackage: ExtensionPackageRecord = {
       ...packageRecord,
       lifecycleState: "deprecated",
@@ -643,7 +658,9 @@ export class MarketplaceGovernanceService {
     };
     this.store.marketplace.upsertExtensionPackage(updatedPackage);
 
-    const publication = this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined);
+    const publication = this.store.marketplace
+      .listMarketplacePublications(100, packageRecord.tenantId ?? undefined)
+      .find((item) => item.packageId === packageRecord.packageId) ?? null;
     if (publication != null) {
       this.store.marketplace.upsertMarketplacePublication({
         ...publication,
@@ -661,7 +678,38 @@ export class MarketplaceGovernanceService {
 
   public retirePackage(input: RetireExtensionInput): ExtensionPackageRecord {
     const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    if (packageRecord.lifecycleState !== "sunset") {
+      throw new PolicyDeniedError("marketplace.sunset_required_before_retire", "marketplace.sunset_required_before_retire", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          currentState: packageRecord.lifecycleState,
+        },
+      });
+    }
     const retiredAt = input.retiredAt == null ? nowIso() : assertTimestamp(input.retiredAt, "marketplace.invalid_retired_at");
+    const sunsetAt = new Date(packageRecord.updatedAt);
+    const daysInSunset = (new Date(retiredAt).getTime() - sunsetAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysInSunset < MIN_SUNSET_GRACE_DAYS) {
+      throw new PolicyDeniedError("marketplace.sunset_grace_period_not_elapsed", "marketplace.sunset_grace_period_not_elapsed", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          requiredDays: MIN_SUNSET_GRACE_DAYS,
+          actualDays: Math.max(0, Math.floor(daysInSunset)),
+        },
+      });
+    }
+    if ((input.migrationCompletionRatio ?? 0) < MIN_MIGRATION_COMPLETION_RATIO) {
+      throw new PolicyDeniedError("marketplace.migration_threshold_not_met", "marketplace.migration_threshold_not_met", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          requiredRatio: MIN_MIGRATION_COMPLETION_RATIO,
+          actualRatio: input.migrationCompletionRatio ?? 0,
+        },
+      });
+    }
     const updatedPackage: ExtensionPackageRecord = {
       ...packageRecord,
       lifecycleState: "retired",
@@ -698,20 +746,37 @@ export class MarketplaceGovernanceService {
    */
   public sunsetPackage(input: SunsetExtensionInput): ExtensionPackageRecord {
     const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    if (packageRecord.lifecycleState !== "deprecated") {
+      throw new PolicyDeniedError("marketplace.deprecated_required_before_sunset", "marketplace.deprecated_required_before_sunset", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          currentState: packageRecord.lifecycleState,
+        },
+      });
+    }
     const sunsetAt = input.sunsetAt == null ? nowIso() : assertTimestamp(input.sunsetAt, "marketplace.invalid_sunset_at");
     const endOfLifeAt = input.endOfLifeAt == null ? null : assertTimestamp(input.endOfLifeAt, "marketplace.invalid_end_of_life_at");
+    if (endOfLifeAt == null) {
+      throw new ValidationError("marketplace.end_of_life_required", "marketplace.end_of_life_required");
+    }
+    const requiredEndOfLife = new Date(sunsetAt);
+    requiredEndOfLife.setUTCDate(requiredEndOfLife.getUTCDate() + MIN_SUNSET_GRACE_DAYS);
+    if (new Date(endOfLifeAt).getTime() < requiredEndOfLife.getTime()) {
+      throw new PolicyDeniedError("marketplace.sunset_window_too_short", "marketplace.sunset_window_too_short", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          requiredDays: MIN_SUNSET_GRACE_DAYS,
+          sunsetAt,
+          endOfLifeAt,
+        },
+      });
+    }
 
     // Evaluate threshold conditions to determine if EOL should be accelerated
     let effectiveEndOfLifeAt = endOfLifeAt;
     if (input.thresholdConditions && input.thresholdConditions.length > 0) {
-      // In production, this would evaluate actual conditions against live metrics
-      // For now, we record the threshold conditions for runtime evaluation
-      const thresholdJson = JSON.stringify(input.thresholdConditions.map((c) => ({
-        conditionId: c.conditionId,
-        description: c.description,
-        severityThreshold: c.severityThreshold,
-        actionOnTrigger: c.actionOnTrigger,
-      })));
       // If EOL is already past, trigger immediate transition
       if (effectiveEndOfLifeAt != null && new Date(effectiveEndOfLifeAt) < new Date()) {
         effectiveEndOfLifeAt = nowIso();
@@ -721,11 +786,13 @@ export class MarketplaceGovernanceService {
     const updatedPackage: ExtensionPackageRecord = {
       ...packageRecord,
       lifecycleState: "sunset",
-      updatedAt: nowIso(),
+      updatedAt: sunsetAt,
     };
     this.store.marketplace.upsertExtensionPackage(updatedPackage);
 
-    const publication = this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined);
+    const publication = this.store.marketplace
+      .listMarketplacePublications(100, packageRecord.tenantId ?? undefined)
+      .find((item) => item.packageId === packageRecord.packageId) ?? null;
     if (publication != null) {
       this.store.marketplace.upsertMarketplacePublication({
         ...publication,
@@ -737,7 +804,7 @@ export class MarketplaceGovernanceService {
           input.migrationTarget == null ? null : `migration_target:${assertSimpleIdentifier(input.migrationTarget, "marketplace.invalid_migration_target")}`,
           ...(input.replacementSuggestions ?? []).map((item) => `replacement:${assertSimpleIdentifier(item, "marketplace.invalid_replacement_suggestion")}`),
         ].filter((item): item is string => item != null).join("|"),
-        updatedAt: nowIso(),
+        updatedAt: sunsetAt,
       });
     }
     return updatedPackage;
@@ -798,10 +865,11 @@ export class MarketplaceGovernanceService {
       // Check publication status
       if (publication == null) {
         reasonCodes.push("not_published");
-      } else if (publication.status === "revoked" || publication.status === "deprecated" || publication.status === "retired") {
+      } else if (publication.status === "revoked" || publication.status === "deprecated" || publication.status === "retired" || publication.status === "sunset") {
         reasonCodes.push(`revoked:${publication.revocationReasonCode ?? "unspecified"}`);
       }
-      if (record.lifecycleState === "deprecated" || record.lifecycleState === "retired") {
+      // R15-63: Include sunset in lifecycle state checks
+      if (record.lifecycleState === "deprecated" || record.lifecycleState === "retired" || record.lifecycleState === "sunset") {
         reasonCodes.push(`lifecycle_${record.lifecycleState}`);
       }
 
@@ -952,5 +1020,39 @@ export class MarketplaceGovernanceService {
       });
     }
     return packageRecord;
+  }
+
+  private assertPackageLifecyclePublishable(packageRecord: ExtensionPackageRecord): void {
+    if (packageRecord.lifecycleState === "deprecated" || packageRecord.lifecycleState === "sunset" || packageRecord.lifecycleState === "retired") {
+      throw new PolicyDeniedError("marketplace.package_not_publishable_in_current_lifecycle", "marketplace.package_not_publishable_in_current_lifecycle", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          lifecycleState: packageRecord.lifecycleState,
+        },
+      });
+    }
+  }
+
+  private assertPublicationCertificationGates(packageRecord: ExtensionPackageRecord): void {
+    const blockedBy: string[] = [];
+    if (packageRecord.sbomVerified !== 1) {
+      blockedBy.push("sbom_verification_required");
+    }
+    if (packageRecord.sandboxCertVerified !== 1) {
+      blockedBy.push("sandbox_certification_required");
+    }
+    if (packageRecord.egressPolicyCompliant !== 1) {
+      blockedBy.push("egress_policy_review_required");
+    }
+    if (blockedBy.length > 0) {
+      throw new PolicyDeniedError("marketplace.certification_gate_failed", "marketplace.certification_gate_failed", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          blockedBy,
+        },
+      });
+    }
   }
 }

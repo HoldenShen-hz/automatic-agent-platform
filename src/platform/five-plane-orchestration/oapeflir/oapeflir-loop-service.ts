@@ -300,9 +300,20 @@ export class OapeflirLoopService {
         }
         fsm.recordStageEntry("execute");
 
-        loopStepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
-          input.stepOutputs ?? await this.executeViaBridge(loopPlan, { taskId: input.taskId })
-        ), {
+        loopStepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => {
+          // R31-16 FIX: Validate stepOutputs before using them directly
+          if (input.stepOutputs != null) {
+            const validation = validateStepOutputs(input.stepOutputs);
+            if (!validation.ok) {
+              this.boundaryLogger.warn("[boundary:E] input.stepOutputs validation failed — executing via bridge instead", {
+                data: { taskId: input.taskId, boundary: "E" },
+              });
+              return this.executeViaBridge(loopPlan, { taskId: input.taskId });
+            }
+            return input.stepOutputs;
+          }
+          return this.executeViaBridge(loopPlan, { taskId: input.taskId });
+        }, {
           taskId: input.taskId,
           planId: loopPlan.planId,
         });

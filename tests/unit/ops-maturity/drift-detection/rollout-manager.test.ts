@@ -14,10 +14,12 @@ function createProposal(id: string): ImprovementProposal {
     patch: "test patch",
     rationale: "test rationale",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: [],
-    status: "proposed",
+    status: "draft",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    draftedAt: new Date().toISOString(),
   };
 }
 
@@ -62,6 +64,20 @@ test("SimpleRolloutManager.updateMetrics updates rollout metrics", async () => {
 
   const record = await manager.getRollout("prop_1");
   assert.equal(record?.metrics?.successRate, 0.98);
+});
+
+test("SimpleRolloutManager.evaluateAndTriggerRollback enters rollback_pending on safety violations", async () => {
+  const manager = new SimpleRolloutManager();
+  const proposal = createProposal("prop_sec");
+  await manager.start(proposal, "canary", 5);
+  await manager.updateMetrics("prop_sec", createMetrics({ securityViolations: 1 }));
+
+  const triggered = await manager.evaluateAndTriggerRollback("prop_sec");
+  const record = await manager.getRollout("prop_sec");
+
+  assert.equal(triggered, true);
+  assert.equal(record?.status, "rollback_pending");
+  assert.match(record?.failureReason ?? "", /securityViolations/);
 });
 
 test("SimpleRolloutManager.updateMetrics does nothing for unknown proposal", async () => {
