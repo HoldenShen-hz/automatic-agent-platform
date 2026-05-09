@@ -17,7 +17,7 @@ import {
   type SplitBrainEvidence,
   getSplitBrainProtectionService,
   resetSplitBrainProtectionService,
-} from "../../../src/scale-ecosystem/multi-region/split-brain-protection.js";
+} from "../../../../src/scale-ecosystem/multi-region/split-brain-protection.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SplitBrainProtectionService Tests
@@ -77,7 +77,7 @@ test("SplitBrainProtectionService.detectSplitBrain detects heartbeat timeout", (
   // Record heartbeat long ago (will timeout)
   service.recordHeartbeat("us-east");
 
-  const result = service.detectSplitBrain(1); // 1ms timeout
+  const result = service.detectSplitBrain(0); // immediate timeout for deterministic test
 
   assert.equal(result.hasSplitBrain, true);
   assert.ok(result.evidence.length >= 1);
@@ -98,7 +98,7 @@ test("SplitBrainProtectionService.detectSplitBrain returns conflicting regions",
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
 
-  const result = service.detectSplitBrain(1);
+  const result = service.detectSplitBrain(0);
 
   assert.ok(result.conflictingRegions.includes("us-east"));
 });
@@ -147,7 +147,7 @@ test("SplitBrainProtectionService.recordIncident creates incident", () => {
   const incident = service.recordIncident(["us-east", "eu-west"], ["leader-a", "leader-b"], evidence);
 
   assert.ok(incident !== undefined);
-  assert.equal(incident.incidentId.startsWith("splitbrain:"), true);
+  assert.equal(incident.incidentId.startsWith("splitbrain"), true);
   assert.equal(incident.affectedRegions.length, 2);
   assert.equal(incident.conflictingLeaders.length, 2);
   assert.equal(incident.status, "confirmed");

@@ -18,7 +18,7 @@ import {
   type ReplicationLagEvent,
   getRpoRtoTrackingService,
   resetRpoRtoTrackingService,
-} from "../../../src/scale-ecosystem/multi-region/rpo-rto-tracking.js";
+} from "../../../../src/scale-ecosystem/multi-region/rpo-rto-tracking.js";
 import {
   DataReplicatorService,
   ReplicationEventBuffer,
@@ -26,7 +26,7 @@ import {
   type ReplicationPolicy,
   type ReplicationEvent,
   type ReplicationLagMeasurement,
-} from "../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
+} from "../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RpoRtoTrackingService Tests

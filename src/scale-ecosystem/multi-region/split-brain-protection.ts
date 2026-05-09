@@ -127,7 +127,7 @@ export class SplitBrainProtectionService {
     // Check heartbeat timeouts
     for (const [regionId, lastHeartbeat] of this.heartbeatTimers.entries()) {
       const elapsed = now - new Date(lastHeartbeat).getTime();
-      if (elapsed > heartbeatTimeoutMs) {
+        if (elapsed >= heartbeatTimeoutMs) {
         evidence.push({
           type: "heartbeat_timeout",
           regionId,
@@ -146,7 +146,7 @@ export class SplitBrainProtectionService {
         const [regionA, epochA] = epochs[i]!;
         const [regionB, epochB] = epochs[j]!;
         // If epochs differ significantly, could indicate split-brain
-        if (Math.abs(epochA - epochB) > 1) {
+        if (Math.abs(epochA - epochB) >= 1) {
           evidence.push({
             type: "fencing_epoch_conflict",
             regionId: regionA,
@@ -188,6 +188,9 @@ export class SplitBrainProtectionService {
       }
     }
 
+    if (totalWeight === 0) {
+      return "fencing_token_invalidation";
+    }
     if (connectedWeight >= totalWeight * requiredQuorumWeight) {
       return "leader_abdication";
     }

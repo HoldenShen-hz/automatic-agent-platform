@@ -15,9 +15,9 @@ import {
   // R15-07: FixtureRedactor should be exported from SDK index
   FixtureRedactor,
   generateTestId,
-} from "../../../../src/sdk/index.js";
+} from "../../../src/sdk/index.js";
 
-import { type PluginType } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
+import { type PluginType } from "../../../src/sdk/plugin-sdk/plugin-definition.js";
 
 test("R15-04: SdkReleaseDescriptor is exported from SDK index", () => {
   // SdkReleaseDescriptor should be a named export from the SDK

@@ -40,7 +40,7 @@ test("validateContentType rejects non-JSON content type for POST requests", () =
   });
   assert.throws(
     () => validateContentType(request),
-    /api\.unsupported_content_type/,
+    /Content-Type must be one of/,
     "Must reject text/plain content type",
   );
 });
@@ -52,7 +52,7 @@ test("validateContentType rejects multipart/form-data for POST requests", () => 
   });
   assert.throws(
     () => validateContentType(request),
-    /api\.unsupported_content_type/,
+    /Content-Type must be one of/,
     "Must reject multipart/form-data",
   );
 });
@@ -62,9 +62,7 @@ test("validateContentType rejects empty content type for POST requests when body
     method: "POST",
     headers: { "content-type": "" },
   });
-  // Empty content type is technically valid (no body expected), but with a body it should be rejected
-  // Since we allow empty content-type for requests without body, this just passes through
-  validateContentType(request);
+  assert.throws(() => validateContentType(request), /Content-Type must be one of/);
 });
 
 test("validateContentType skips validation for GET requests", () => {
@@ -131,7 +129,7 @@ test("createContentTypeValidationMiddleware middleware validates content type", 
   });
   assert.throws(
     () => middleware(request),
-    /api\.unsupported_content_type/,
+    /Content-Type must be one of/,
     "Middleware should reject text/html",
   );
 });
@@ -159,6 +157,5 @@ test("validateContentType works with request with undefined content-type header"
     method: "POST",
     headers: { "content-type": undefined },
   });
-  // Should not throw for undefined content-type (will be treated as empty string)
-  validateContentType(request);
+  assert.throws(() => validateContentType(request), /Content-Type must be one of/);
 });

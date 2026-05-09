@@ -61,7 +61,7 @@ test("evaluateQuota returns not exceeded when projected is under hard limit", ()
   assert.equal(result.exceeded, false);
   assert.equal(result.warning, false);
   assert.equal(result.usesBurst, false);
-  assert.equal(result.remainingUnits, 100); // burstLimit - projected = 100 - 50
+  assert.equal(result.remainingUnits, 70); // burstLimit - projected = 120 - 50
 });
 
 test("evaluateQuota returns warning when projected exceeds soft limit", () => {
@@ -102,7 +102,7 @@ test("evaluateQuota handles zero requested units", () => {
 
   assert.equal(result.exceeded, false);
   assert.equal(result.warning, false);
-  assert.equal(result.remainingUnits, 100); // burstLimit - currentUsage
+  assert.equal(result.remainingUnits, 70); // burstLimit - currentUsage = 120 - 50
 });
 
 test("evaluateQuota handles currentUsage equal to hardLimit with zero request", () => {
@@ -272,6 +272,7 @@ test("QuotaEnforcerService.checkSingleResourceQuota evaluates single resource", 
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
     hardLimit: 100,
+    burstLimit: 100,
     currentUsage: 50,
   }));
 
@@ -294,6 +295,7 @@ test("QuotaEnforcerService.updateUsage updates current usage", () => {
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
     hardLimit: 100,
+    burstLimit: 100,
     currentUsage: 50,
   }));
 

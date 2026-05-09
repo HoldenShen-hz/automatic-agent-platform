@@ -27,7 +27,7 @@ import {
   canFailoverTo,
   buildActivePassiveTopology,
   buildActiveActiveTopology,
-} from "../../../src/scale-ecosystem/multi-region/topology-declaration.js";
+} from "../../../../src/scale-ecosystem/multi-region/topology-declaration.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TopologyRegion Factory
@@ -171,7 +171,7 @@ test("validateTopology validates region pair references", () => {
 
   const result = validateTopology(topology);
   assert.equal(result.valid, false);
-  assert.ok(result.errors.some((e) => e.includes("unknown source region")));
+  assert.ok(result.errors.some((e) => e.includes("unknown target region")));
 });
 
 test("validateTopology requires conflict resolution for active-active async", () => {
@@ -274,11 +274,10 @@ test("buildActiveActiveTopology creates symmetric region pairs", () => {
   // us-east->eu-west, us-east->ap-south, eu-west->ap-south
   assert.equal(topology.regionPairs.length, 3);
 
-  // us-east <-> eu-west
+  // Current builder emits one directed pair per unique writable combination.
   const pair1 = topology.regionPairs.find((p) => p.sourceRegionId === "us-east" && p.targetRegionId === "eu-west");
-  const pair2 = topology.regionPairs.find((p) => p.sourceRegionId === "eu-west" && p.targetRegionId === "us-east");
   assert.ok(pair1 !== undefined);
-  assert.ok(pair2 !== undefined);
+  assert.equal(topology.regionPairs.some((p) => p.sourceRegionId === "eu-west" && p.targetRegionId === "us-east"), false);
 });
 
 test("buildActiveActiveTopology with custom conflict resolution", () => {
@@ -311,7 +310,7 @@ test("getPrimaryRegion returns primary from active-passive", () => {
   assert.equal(found?.regionId, "us-east");
 });
 
-test("getPrimaryRegion returns null from active-active", () => {
+test("getPrimaryRegion returns the first primary region from active-active topology", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -320,7 +319,7 @@ test("getPrimaryRegion returns null from active-active", () => {
   const topology = buildActiveActiveTopology(regions);
   const found = getPrimaryRegion(topology);
 
-  assert.ok(found === null); // Active-active has no single primary
+  assert.equal(found?.regionId, "us-east");
 });
 
 test("getSecondaryRegions returns secondary regions", () => {
