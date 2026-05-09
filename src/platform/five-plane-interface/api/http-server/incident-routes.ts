@@ -64,13 +64,20 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
+        // R20-30: Support cursor-based pagination with nextToken
+        const urlStr = ctx.request.url;
+        const cursor = urlStr ? (new URL(urlStr).searchParams.get("cursor") ?? null) : null;
         const limit = readLimit(ctx.request, 50);
-        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit, tenantId);
+        const { incidents, nextToken } = deps.incidentService.listIncidentsPaginated(limit, tenantId, cursor);
 
-        return buildJsonResponse(ctx.requestId, 200, {
+        const response: Record<string, unknown> = {
           incidents,
           total: incidents.length,
-        });
+        };
+        if (nextToken != null) {
+          response.nextCursor = nextToken;
+        }
+        return buildJsonResponse(ctx.requestId, 200, response);
       },
     },
     {

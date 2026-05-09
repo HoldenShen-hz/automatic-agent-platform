@@ -63,9 +63,10 @@ import type {
  * impact: 4×5=20, irreversibility: 4×5=20, dataSensitivity: 3×5=15
  * autonomyModeRisk: 2×5=10, tenantImpact: 2×5=10, blastRadius: 2×5=10
  * historicalFailureRate: 2×5=10, evidenceConfidence: 1×5=5
- * Total max raw = 100, normalized by dividing by 20 -> max normalized = 1.0
+ * Total max raw = 100
+ * Normalized to 0-1 by dividing by 100 -> max normalized = 1.0 (critical threshold)
  */
-const MAX_POSSIBLE_SCORE = 20;
+const MAX_POSSIBLE_SCORE = 100;
 
 export class RiskEvaluationEngine {
   private readonly config: RiskConfig;
@@ -116,69 +117,85 @@ export class RiskEvaluationEngine {
   }
 
   /**
-   * Compute weighted factor breakdown per §10.2 formula
+   * Compute weighted factor breakdown per ADR-026 v4.3 8-factor formula
    */
   private computeFactorBreakdown(
     factors: RiskEvaluationRequest["factors"],
   ): RiskEvaluationResult["factorBreakdown"] {
     const { factorWeights } = this.config;
 
-    const stepTypeValue = this.config.stepTypeRiskValues[factors.stepTypeRisk];
-    const targetValue = this.config.targetSystemRiskValues[factors.targetSystemRisk];
-    const dataClassValue = this.config.dataClassRiskValues[factors.dataClassRisk];
-    const blastRadiusValue = this.config.blastRadiusValues[factors.blastRadius];
-    const priorFailureValue = this.computePriorFailureValue(factors.priorFailureRatePercent);
-    const confidenceValue = this.config.confidenceValues[factors.confidence];
+    // Map evidenceConfidence string to numeric value
+    const evidenceConfidenceMap: Record<string, number> = {
+      high: 1,
+      medium: 3,
+      low: 5,
+    };
+    const evidenceValue = evidenceConfidenceMap[factors.evidenceConfidence] ?? 3;
+
+    // Map historicalFailureRate (0-100%) to 1-5 scale
+    const historicalFailureValue = this.computeHistoricalFailureValue(factors.historicalFailureRate);
 
     return [
       {
-        factor: "stepTypeRisk",
-        value: stepTypeValue,
-        weight: factorWeights.stepTypeRisk,
-        weightedValue: stepTypeValue * factorWeights.stepTypeRisk,
+        factor: "impact",
+        value: factors.impact,
+        weight: factorWeights.impact,
+        weightedValue: factors.impact * factorWeights.impact,
       },
       {
-        factor: "targetSystemRisk",
-        value: targetValue,
-        weight: factorWeights.targetSystemRisk,
-        weightedValue: targetValue * factorWeights.targetSystemRisk,
+        factor: "irreversibility",
+        value: factors.irreversibility,
+        weight: factorWeights.irreversibility,
+        weightedValue: factors.irreversibility * factorWeights.irreversibility,
       },
       {
-        factor: "dataClassRisk",
-        value: dataClassValue,
-        weight: factorWeights.dataClassRisk,
-        weightedValue: dataClassValue * factorWeights.dataClassRisk,
+        factor: "dataSensitivity",
+        value: factors.dataSensitivity,
+        weight: factorWeights.dataSensitivity,
+        weightedValue: factors.dataSensitivity * factorWeights.dataSensitivity,
+      },
+      {
+        factor: "autonomyModeRisk",
+        value: factors.autonomyModeRisk,
+        weight: factorWeights.autonomyModeRisk,
+        weightedValue: factors.autonomyModeRisk * factorWeights.autonomyModeRisk,
+      },
+      {
+        factor: "tenantImpact",
+        value: factors.tenantImpact,
+        weight: factorWeights.tenantImpact,
+        weightedValue: factors.tenantImpact * factorWeights.tenantImpact,
       },
       {
         factor: "blastRadius",
-        value: blastRadiusValue,
+        value: factors.blastRadius,
         weight: factorWeights.blastRadius,
-        weightedValue: blastRadiusValue * factorWeights.blastRadius,
+        weightedValue: factors.blastRadius * factorWeights.blastRadius,
       },
       {
-        factor: "priorFailureRate",
-        value: priorFailureValue,
-        weight: factorWeights.priorFailureRate,
-        weightedValue: priorFailureValue * factorWeights.priorFailureRate,
+        factor: "historicalFailureRate",
+        value: historicalFailureValue,
+        weight: factorWeights.historicalFailureRate,
+        weightedValue: historicalFailureValue * factorWeights.historicalFailureRate,
       },
       {
-        factor: "confidence",
-        value: confidenceValue,
-        weight: factorWeights.confidence,
-        weightedValue: confidenceValue * factorWeights.confidence,
+        factor: "evidenceConfidence",
+        value: evidenceValue,
+        weight: factorWeights.evidenceConfidence,
+        weightedValue: evidenceValue * factorWeights.evidenceConfidence,
       },
     ];
   }
 
   /**
-   * Map prior failure rate percentage to factor value per §10.2
+   * Map historical failure rate percentage to factor value (1-5 scale) per ADR-026 v4.3
    */
-  private computePriorFailureValue(percent: number): number {
-    const { priorFailureRateThresholds } = this.config;
-    if (percent <= priorFailureRateThresholds.low.maxPercent) return priorFailureRateThresholds.low.value;
-    if (percent <= priorFailureRateThresholds.medium.maxPercent) return priorFailureRateThresholds.medium.value;
-    if (percent <= priorFailureRateThresholds.high.maxPercent) return priorFailureRateThresholds.high.value;
-    return priorFailureRateThresholds.critical.value;
+  private computeHistoricalFailureValue(percent: number): number {
+    const { historicalFailureRateThresholds } = this.config;
+    if (percent <= historicalFailureRateThresholds.low.maxPercent) return historicalFailureRateThresholds.low.value;
+    if (percent <= historicalFailureRateThresholds.medium.maxPercent) return historicalFailureRateThresholds.medium.value;
+    if (percent <= historicalFailureRateThresholds.high.maxPercent) return historicalFailureRateThresholds.high.value;
+    return historicalFailureRateThresholds.critical.value;
   }
 
   /**

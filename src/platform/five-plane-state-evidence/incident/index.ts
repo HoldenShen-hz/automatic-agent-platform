@@ -111,6 +111,30 @@ export class IncidentCaseService {
       .slice(0, Math.max(0, limit));
   }
 
+  // R20-30: Cursor-based pagination for incidents
+  public listIncidentsPaginated(limit = 50, cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null } {
+    const sorted = [...this.incidents.values()]
+      .sort((left, right) => {
+        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+        if (createdAtOrder !== 0) {
+          return createdAtOrder;
+        }
+        return (this.incidentOrder.get(right.incidentId) ?? 0) - (this.incidentOrder.get(left.incidentId) ?? 0);
+      });
+
+    let startIndex = 0;
+    if (cursor != null) {
+      const cursorIndex = sorted.findIndex((incident) => incident.incidentId === cursor);
+      if (cursorIndex !== -1) {
+        startIndex = cursorIndex + 1;
+      }
+    }
+
+    const page = sorted.slice(startIndex, startIndex + Math.max(0, limit));
+    const nextToken = startIndex + limit < sorted.length ? page[page.length - 1]?.incidentId ?? null : null;
+    return { incidents: page, nextToken };
+  }
+
   private getRequired(incidentId: string): IncidentCase {
     const incident = this.getIncident(incidentId);
     if (incident == null) {

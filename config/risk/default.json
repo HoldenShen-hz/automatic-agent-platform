@@ -9,29 +9,49 @@
     "strategic"
   ],
   "factorWeights": {
-    "stepTypeRisk": 3,
-    "targetSystemRisk": 4,
-    "dataClassRisk": 3,
+    "impact": 4,
+    "irreversibility": 4,
+    "dataSensitivity": 3,
+    "autonomyModeRisk": 2,
+    "tenantImpact": 2,
     "blastRadius": 2,
-    "priorFailureRate": 2,
-    "confidence": 1
+    "historicalFailureRate": 2,
+    "evidenceConfidence": 1
   },
-  "stepTypeRiskValues": {
-    "read": 1,
-    "write": 3,
-    "delete": 5,
-    "external_call": 4
+  "impactValues": {
+    "minimal": 1,
+    "low": 2,
+    "medium": 3,
+    "high": 4,
+    "critical": 5
   },
-  "targetSystemRiskValues": {
-    "internal": 1,
-    "staging": 2,
-    "production": 5
+  "irreversibilityValues": {
+    "reversible": 1,
+    "low": 2,
+    "medium": 3,
+    "high": 4,
+    "permanent": 5
   },
-  "dataClassRiskValues": {
+  "dataSensitivityValues": {
     "public": 1,
     "internal": 2,
-    "confidential": 4,
-    "restricted": 5
+    "confidential": 3,
+    "restricted": 4,
+    "highly_restricted": 5
+  },
+  "autonomyModeRiskValues": {
+    "manual_only": 1,
+    "semi_auto": 2,
+    "auto_approve": 3,
+    "full_auto": 4,
+    "unbounded": 5
+  },
+  "tenantImpactValues": {
+    "individual": 1,
+    "team": 2,
+    "division": 3,
+    "organization": 4,
+    "platform": 5
   },
   "blastRadiusValues": {
     "single_task": 1,
@@ -39,13 +59,13 @@
     "tenant": 3,
     "platform": 5
   },
-  "priorFailureRateThresholds": {
+  "historicalFailureRateThresholds": {
     "low": { "maxPercent": 10, "value": 1 },
     "medium": { "maxPercent": 30, "value": 2 },
     "high": { "maxPercent": 50, "value": 3 },
     "critical": { "maxPercent": 100, "value": 5 }
   },
-  "confidenceValues": {
+  "evidenceConfidenceValues": {
     "high": 1,
     "medium": 3,
     "low": 5

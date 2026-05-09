@@ -57,6 +57,8 @@ export class ComplianceGovernanceService {
   private readonly frameworks = new Map<string, ComplianceFramework>();
   private readonly bindings = new Map<string, DepartmentComplianceBinding[]>();
   private readonly evidenceCollector = new ComplianceEvidenceCollector();
+  // R17-84 fix: Store exception workflows for persistence and tracking
+  private readonly exceptionWorkflows = new Map<string, ComplianceExceptionWorkflow>();
 
   public constructor(
     private readonly nodes: readonly OrgNode[],
@@ -111,7 +113,7 @@ export class ComplianceGovernanceService {
       throw new Error("compensatingControls are required and must not be empty");
     }
 
-    return {
+    const workflow: ComplianceExceptionWorkflow = {
       exceptionId: `compliance_exception:${input.scope}:${input.expiresAt}`,
       scope: input.scope,
       expiresAt: input.expiresAt,
@@ -119,6 +121,37 @@ export class ComplianceGovernanceService {
       compensatingControls: [...input.compensatingControls],
       auditRef: input.auditRef,
     };
+
+    // R17-84 fix: Persist the workflow for tracking
+    this.exceptionWorkflows.set(workflow.exceptionId, workflow);
+
+    return workflow;
+  }
+
+  /**
+   * R17-84 fix: Lists all exception workflows, optionally filtered by status.
+   * Note: Currently all stored workflows are considered "active" since expiry is checked at access time.
+   */
+  public listExceptionWorkflows(): ComplianceExceptionWorkflow[] {
+    return [...this.exceptionWorkflows.values()];
+  }
+
+  /**
+   * R17-84 fix: Gets a specific exception workflow by ID.
+   * Returns null if not found or if the workflow has expired.
+   */
+  public getExceptionWorkflow(exceptionId: string): ComplianceExceptionWorkflow | null {
+    const workflow = this.exceptionWorkflows.get(exceptionId);
+    if (!workflow) return null;
+
+    // Check if the workflow has expired
+    const now = new Date();
+    const expiryDate = new Date(workflow.expiresAt);
+    if (expiryDate <= now) {
+      return null;
+    }
+
+    return workflow;
   }
 
   public scoreEvidenceQuality(frameworkId: string): EvidenceQualityScore {

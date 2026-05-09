@@ -40,24 +40,29 @@ export function loadRiskConfig(
 
   return {
     factorWeights: {
-      stepTypeRisk: parsed.factorWeights.stepTypeRisk,
-      targetSystemRisk: parsed.factorWeights.targetSystemRisk,
-      dataClassRisk: parsed.factorWeights.dataClassRisk,
+      // ADR-026 v4.3: 8-factor canonical weights
+      impact: parsed.factorWeights.impact,
+      irreversibility: parsed.factorWeights.irreversibility,
+      dataSensitivity: parsed.factorWeights.dataSensitivity,
+      autonomyModeRisk: parsed.factorWeights.autonomyModeRisk,
+      tenantImpact: parsed.factorWeights.tenantImpact,
       blastRadius: parsed.factorWeights.blastRadius,
-      priorFailureRate: parsed.factorWeights.priorFailureRate,
-      confidence: parsed.factorWeights.confidence,
+      historicalFailureRate: parsed.factorWeights.historicalFailureRate,
+      evidenceConfidence: parsed.factorWeights.evidenceConfidence,
     },
-    stepTypeRiskValues: parsed.stepTypeRiskValues,
-    targetSystemRiskValues: parsed.targetSystemRiskValues,
-    dataClassRiskValues: parsed.dataClassRiskValues,
+    impactValues: parsed.impactValues,
+    irreversibilityValues: parsed.irreversibilityValues,
+    dataSensitivityValues: parsed.dataSensitivityValues,
+    autonomyModeRiskValues: parsed.autonomyModeRiskValues,
+    tenantImpactValues: parsed.tenantImpactValues,
     blastRadiusValues: parsed.blastRadiusValues,
-    priorFailureRateThresholds: {
-      low: { maxPercent: parsed.priorFailureRateThresholds.low.maxPercent, value: parsed.priorFailureRateThresholds.low.value },
-      medium: { maxPercent: parsed.priorFailureRateThresholds.medium.maxPercent, value: parsed.priorFailureRateThresholds.medium.value },
-      high: { maxPercent: parsed.priorFailureRateThresholds.high.maxPercent, value: parsed.priorFailureRateThresholds.high.value },
-      critical: { maxPercent: parsed.priorFailureRateThresholds.critical.maxPercent, value: parsed.priorFailureRateThresholds.critical.value },
+    historicalFailureRateThresholds: {
+      low: { maxPercent: parsed.historicalFailureRateThresholds.low.maxPercent, value: parsed.historicalFailureRateThresholds.low.value },
+      medium: { maxPercent: parsed.historicalFailureRateThresholds.medium.maxPercent, value: parsed.historicalFailureRateThresholds.medium.value },
+      high: { maxPercent: parsed.historicalFailureRateThresholds.high.maxPercent, value: parsed.historicalFailureRateThresholds.high.value },
+      critical: { maxPercent: parsed.historicalFailureRateThresholds.critical.maxPercent, value: parsed.historicalFailureRateThresholds.critical.value },
     },
-    confidenceValues: parsed.confidenceValues,
+    evidenceConfidenceValues: parsed.evidenceConfidenceValues,
     riskLevelThresholds: {
       low: parsed.riskLevelThresholds.low,
       medium: parsed.riskLevelThresholds.medium,

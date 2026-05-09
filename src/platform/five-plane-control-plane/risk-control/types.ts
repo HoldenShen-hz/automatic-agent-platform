@@ -108,27 +108,33 @@ export interface RiskEvaluationEngineOptions {
 
 /**
  * Risk configuration loaded from config/risk/default.json
+ * ADR-026 v4.3: 8-factor canonical model
  */
 export interface RiskConfig {
   readonly factorWeights: {
-    readonly stepTypeRisk: number;
-    readonly targetSystemRisk: number;
-    readonly dataClassRisk: number;
+    // ADR-026 v4.3 canonical 8-factor weights
+    readonly impact: number;
+    readonly irreversibility: number;
+    readonly dataSensitivity: number;
+    readonly autonomyModeRisk: number;
+    readonly tenantImpact: number;
     readonly blastRadius: number;
-    readonly priorFailureRate: number;
-    readonly confidence: number;
+    readonly historicalFailureRate: number;
+    readonly evidenceConfidence: number;
   };
-  readonly stepTypeRiskValues: Record<StepTypeRisk, number>;
-  readonly targetSystemRiskValues: Record<TargetSystemRisk, number>;
-  readonly dataClassRiskValues: Record<DataClassRisk, number>;
-  readonly blastRadiusValues: Record<BlastRadius, number>;
-  readonly priorFailureRateThresholds: {
+  readonly impactValues: Record<string, number>;
+  readonly irreversibilityValues: Record<string, number>;
+  readonly dataSensitivityValues: Record<string, number>;
+  readonly autonomyModeRiskValues: Record<string, number>;
+  readonly tenantImpactValues: Record<string, number>;
+  readonly blastRadiusValues: Record<string, number>;
+  readonly historicalFailureRateThresholds: {
     readonly low: { readonly maxPercent: number; readonly value: number };
     readonly medium: { readonly maxPercent: number; readonly value: number };
     readonly high: { readonly maxPercent: number; readonly value: number };
     readonly critical: { readonly maxPercent: number; readonly value: number };
   };
-  readonly confidenceValues: Record<ConfidenceLevel, number>;
+  readonly evidenceConfidenceValues: Record<string, number>;
   readonly riskLevelThresholds: {
     readonly low: number;
     readonly medium: number;

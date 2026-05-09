@@ -26,6 +26,8 @@ export const UnifiedAssessmentSchema = z.object({
     modelClass: z.string().min(1),
     maxTokens: z.number().int().positive(),
     timeoutMs: z.number().int().positive(),
+    // R20-05: Worker pool capacity for parallelism limit validation
+    workerPoolCapacity: z.number().int().positive().optional(),
   }),
   approvalPolicy: z.object({
     required: z.boolean(),

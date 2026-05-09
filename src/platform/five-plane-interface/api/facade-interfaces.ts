@@ -179,6 +179,8 @@ export interface KnowledgeFacadeService {
  */
 export interface IncidentFacadeService {
   listIncidents(limit?: number, tenantId?: string | null): IncidentCase[];
+  // R20-30: Cursor-based pagination for incidents
+  listIncidentsPaginated(limit: number, tenantId?: string | null, cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null };
   getIncident(incidentId: string, tenantId?: string | null): IncidentCase | null;
   openIncident(input: {
     severity: IncidentSeverity;
@@ -200,6 +202,10 @@ export interface IncidentFacadeService {
 class NoOpIncidentFacadeService implements IncidentFacadeService {
   public listIncidents(limit?: number, _tenantId?: string | null): IncidentCase[] {
     return [];
+  }
+  // R20-30: Cursor-based pagination for incidents
+  public listIncidentsPaginated(_limit: number, _tenantId?: string | null, _cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null } {
+    return { incidents: [], nextToken: null };
   }
   public getIncident(_incidentId: string, _tenantId?: string | null): IncidentCase | null {
     return null;

@@ -181,6 +181,14 @@ export class PlanEvaluator {
     if (tokenEstimation.totalTokens > assessment.resourceAllocation.maxTokens) {
       issues.push("planning.resource_budget_exceeded");
     }
+
+    // R20-05: Check parallelism limit vs worker pool capacity
+    const maxConcurrency = estimateMaxConcurrency(plan);
+    const workerPoolCapacity = assessment.resourceAllocation.workerPoolCapacity ?? Infinity;
+    if (maxConcurrency > workerPoolCapacity) {
+      issues.push(`planning.parallelism_limit_exceeded:${maxConcurrency}>${workerPoolCapacity}`);
+    }
+
     return {
       viable: issues.length === 0,
       riskLevel: assessment.risk,

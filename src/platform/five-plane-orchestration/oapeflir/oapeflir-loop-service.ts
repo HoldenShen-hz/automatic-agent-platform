@@ -116,6 +116,8 @@ export class OapeflirLoopService {
   private readonly rollout = new PolicyRolloutService();
   private readonly executeBridge: ExecuteBridge;
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
+  // R19-06 fix: Store eventPublisher for emitting state change events per §14.3
+  private readonly eventPublisher?: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -129,6 +131,8 @@ export class OapeflirLoopService {
     this.knowledgePromotion = new KnowledgePromotionService({
       eventPublisher: options.eventPublisher ?? null,
     });
+    // R19-06 fix: Store eventPublisher for stage event emission
+    this.eventPublisher = options.eventPublisher ?? undefined;
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {

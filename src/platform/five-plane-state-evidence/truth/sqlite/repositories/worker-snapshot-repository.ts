@@ -108,8 +108,8 @@ export class WorkerSnapshotRepository {
         sandbox_success_rate, repo_cache_hit_rate, registration_verified_at, registration_challenge_id,
         capabilities_json, running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
         restarted_from_runtime_instance_id, restart_generation, cpu_pct, memory_mb, tool_backlog_count,
-        current_step_id, last_progress_at, last_heartbeat_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        current_step_id, last_progress_at, last_heartbeat_at, updated_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(worker_id) DO UPDATE SET
         status = excluded.status,
         placement = excluded.placement,
@@ -143,7 +143,8 @@ export class WorkerSnapshotRepository {
         current_step_id = excluded.current_step_id,
         last_progress_at = excluded.last_progress_at,
         last_heartbeat_at = excluded.last_heartbeat_at,
-        updated_at = excluded.updated_at`,
+        updated_at = excluded.updated_at,
+        version = excluded.version + 1`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -178,6 +179,7 @@ export class WorkerSnapshotRepository {
       snapshot.lastProgressAt,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
+      snapshot.version,
     );
   }
 
