@@ -12,9 +12,8 @@ import {
   signContractEnvelope,
   verifyContractEnvelopeSignature,
   type ContractEnvelopeVerificationResult,
-  nowIso,
-  newId,
 } from "../../platform/contracts/executable-contracts/index.js";
+import { nowIso, newId } from "../../platform/contracts/types/ids.js";
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -100,6 +99,20 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
     ...(config.sdkVersion ? { "X-SDK-Version": config.sdkVersion } : {}),
     ...(config.contractVersion ? { "X-Contract-Version": config.contractVersion } : {}),
   };
+}
+
+// R8-20 FIX: Event subscription/streaming API
+/**
+ * Event subscription callback type.
+ */
+type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
+
+/**
+ * Event subscription handle for unsubscribe.
+ */
+interface EventSubscription<TEvent> {
+  unsubscribe(): void;
+  closed: boolean;
 }
 
 /**
@@ -237,20 +250,6 @@ export class RetryableApiClient {
   ): Promise<ApiResponse<TResponse>> {
     const signedEnvelope = secretKey ? this.signEnvelope(envelope, secretKey) : envelope;
     return this.post<TResponse>(path, signedEnvelope);
-  }
-
-  // R8-20 FIX: Event subscription/streaming API
-  /**
-   * Event subscription callback type.
-   */
-  type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
-
-  /**
-   * Event subscription handle for unsubscribe.
-   */
-  interface EventSubscription<TEvent> {
-    unsubscribe(): void;
-    closed: boolean;
   }
 
   /**
@@ -408,6 +407,20 @@ export class RetryableApiClient {
       throw error;
     }
   }
+}
+
+// R8-20 FIX: Event subscription/streaming API
+/**
+ * Event subscription callback type.
+ */
+export type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
+
+/**
+ * Event subscription handle for unsubscribe.
+ */
+export interface EventSubscription<TEvent> {
+  unsubscribe(): void;
+  closed: boolean;
 }
 
 /**

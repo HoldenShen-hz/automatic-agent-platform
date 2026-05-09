@@ -37,8 +37,8 @@ export interface WorkflowRunState {
   failedSteps: string[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
-  processedEventIds: string[];
+  /** R11-13: Set of processed event IDs for O(1) idempotency check */
+  processedEventIds: ReadonlySet<string>;
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
@@ -104,7 +104,8 @@ export function createEmptyWorkflowRunState(): WorkflowRunState {
     completedSteps: [],
     failedSteps: [],
     eventCount: 0,
-    processedEventIds: [],
+    // R11-13: Use Set instead of array for O(1) lookup
+    processedEventIds: new Set<string>(),
     firstEventAt: null,
     lastEventAt: null,
     error: null,
@@ -130,9 +131,10 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 
 /**
  * Checks if an event has already been processed (idempotency check)
+ * R11-13: Uses Set.has() for O(1) lookup instead of O(n) array.includes()
  */
 function isEventProcessed(state: WorkflowRunState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+  return state.processedEventIds.has(eventId);
 }
 
 /**
@@ -193,7 +195,8 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   newState.timeline = [...newState.timeline, timelineEntry];
 
   // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // R11-13: Use Set for O(1) lookup - create new Set with existing + new eventId
+  newState.processedEventIds = new Set([...newState.processedEventIds, event.eventId]);
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type

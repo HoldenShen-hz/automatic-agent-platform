@@ -121,6 +121,61 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "stream_bridge",
     consumers: [],
   },
+  // R8-09 FIX: Add canonical platform.harness_run.* events alongside legacy task:status_changed
+  "platform.harness_run.status_changed": {
+    type: "platform.harness_run.status_changed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.created": {
+    type: "platform.harness_run.created",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.completed": {
+    type: "platform.harness_run.completed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.failed": {
+    type: "platform.harness_run.failed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.status_changed": {
+    type: "platform.node_run.status_changed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.started": {
+    type: "platform.node_run.started",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.node_run.completed": {
+    type: "platform.node_run.completed",
+    tier: "tier_1",
+    producer: "runtime_state_machine",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget_ledger.status_changed": {
+    type: "platform.budget_ledger.status_changed",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget_reservation.status_changed": {
+    type: "platform.budget_reservation.status_changed",
+    tier: "tier_1",
+    producer: "budget_allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
   "dispatch:ticket_created": {
     type: "dispatch:ticket_created",
     tier: "tier_2",

@@ -28,10 +28,16 @@ interface DomainRetrieverPlugin {
   retrieve(request: RetrievalRequest): Promise<RetrievalHit[]>;
 
   // 生命周期
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+}
+
+interface PluginLifecycleContext {
+  pluginId: string;
+  domainId?: string;
+  capabilityIds: string[];
 }
 
 interface RetrievalRequest {
@@ -56,10 +62,11 @@ interface DomainValidatorPlugin {
   // 验证输入/输出
   validate(input: unknown, context: ValidationContext): Promise<ValidationResult>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface ValidationContext {
@@ -101,10 +108,11 @@ interface DomainPlannerPlugin {
   // 为特定 domain 生成计划
   plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface UnifiedAssessment {
@@ -131,10 +139,11 @@ interface DomainPresenterPlugin {
   // 格式化输出
   present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface OutputFormat {
@@ -250,11 +259,13 @@ const PluginDescriptorSchema = z.object({
 
 ## 8. 约束
 
+- Plugin 生命周期 hook 命名统一为 `onLoad / onActivate / onDeactivate / onUnload`。
 - Plugin 必须在独立进程执行（`plugin-runtime-host.ts`）。
 - Plugin 与宿主之间通过 `plugin-runtime-protocol.ts` 的序列化协议通信。
 - 不信任 Plugin 返回的数据：所有返回值必须经过 schema 校验。
 - Plugin 超时：`timeoutMs` 默认 30s，三级超时处理（warn → kill → dead-letter）。
-- R4-TYPES 约束：Phase 1 仅支持 3 类学习 Plugin，不得扩展直到约束解除。
+- hook 失败不得提升权限；默认降级为禁用该 SPI 实例或阻断加载。
+- SPI 只能消费 manifest 声明过的 capability 与 setting，不得运行时偷偷扩权。
 
 
 ## v4.3 Architecture Remediation

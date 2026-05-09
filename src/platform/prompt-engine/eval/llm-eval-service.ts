@@ -118,6 +118,36 @@ export interface AbTestOptions {
   llmEvaluator?: {
     evaluateCase: (input: AbTestCaseEvaluatorInput) => Promise<AbTestCaseEvaluation> | AbTestCaseEvaluation;
   };
+  /**
+   * Optional LLM client for real evaluation.
+   * When provided, the A/B test will use actual LLM calls instead of deterministic scoring.
+   */
+  llmClient?: LlmEvaluationClient;
+}
+
+/**
+ * Interface for LLM evaluation client.
+ * Implement this to provide real LLM-based evaluation.
+ */
+export interface LlmEvaluationClient {
+  /**
+   * Evaluate a single test case using an LLM.
+   * @param modelId - The model to use for evaluation
+   * @param promptVersion - The prompt version to use
+   * @param input - The test case input
+   * @param expectedOutput - The expected output for comparison
+   * @returns The evaluation result with actual output and score
+   */
+  evaluate(input: {
+    modelId: string;
+    promptVersion: string;
+    input: string;
+    expectedOutput: string;
+  }): Promise<{
+    actualOutput: EvalStructuredOutput;
+    score: number;
+    latencyMs: number;
+  }>;
 }
 
 /**
@@ -362,6 +392,9 @@ export class LlmEvalService {
    *
    * Executes the same evaluation suite against control and treatment configurations,
    * then computes statistical significance of the difference in scores.
+   *
+   * R8-08 FIX: When llmClient is provided in options, uses real LLM evaluation
+   * instead of deterministic scoring for authentic A/B test results.
    */
   async runAbTest(
     suiteId: string,
@@ -373,25 +406,61 @@ export class LlmEvalService {
 
     const suite = this.getSuite(suiteId);
     const cases = suite ? this.parseCases(suite) : [];
+
+    // Use real LLM evaluation if client is provided, otherwise use deterministic fallback
+    const useRealLlм = options.llmClient != null;
     const evaluator = options.llmEvaluator ?? createDeterministicAbEvaluator();
 
     for (const c of cases) {
-      const controlEvaluation = await evaluator.evaluateCase({
-        suite: suite ?? controlRunSuiteFallback(suiteId),
-        caseDefinition: c,
-        modelId: config.controlModelId,
-        promptVersion: config.controlPromptVersion,
-        arm: "control",
-        expectedOutput: c.expectedOutput,
-      });
-      const treatmentEvaluation = await evaluator.evaluateCase({
-        suite: suite ?? controlRunSuiteFallback(suiteId),
-        caseDefinition: c,
-        modelId: config.treatmentModelId,
-        promptVersion: config.treatmentPromptVersion,
-        arm: "treatment",
-        expectedOutput: c.expectedOutput,
-      });
+      let controlEvaluation: AbTestCaseEvaluation;
+      let treatmentEvaluation: AbTestCaseEvaluation;
+
+      if (useRealLlм) {
+        // R8-08 FIX: Real LLM evaluation
+        const [controlResult, treatmentResult] = await Promise.all([
+          options.llmClient!.evaluate({
+            modelId: config.controlModelId,
+            promptVersion: config.controlPromptVersion,
+            input: c.input,
+            expectedOutput: c.expectedOutput,
+          }),
+          options.llmClient!.evaluate({
+            modelId: config.treatmentModelId,
+            promptVersion: config.treatmentPromptVersion,
+            input: c.input,
+            expectedOutput: c.expectedOutput,
+          }),
+        ]);
+        controlEvaluation = {
+          actualOutput: controlResult.actualOutput,
+          score: controlResult.score,
+          latencyMs: controlResult.latencyMs,
+        };
+        treatmentEvaluation = {
+          actualOutput: treatmentResult.actualOutput,
+          score: treatmentResult.score,
+          latencyMs: treatmentResult.latencyMs,
+        };
+      } else {
+        // Fallback to deterministic evaluation
+        controlEvaluation = await evaluator.evaluateCase({
+          suite: suite ?? controlRunSuiteFallback(suiteId),
+          caseDefinition: c,
+          modelId: config.controlModelId,
+          promptVersion: config.controlPromptVersion,
+          arm: "control",
+          expectedOutput: c.expectedOutput,
+        });
+        treatmentEvaluation = await evaluator.evaluateCase({
+          suite: suite ?? controlRunSuiteFallback(suiteId),
+          caseDefinition: c,
+          modelId: config.treatmentModelId,
+          promptVersion: config.treatmentPromptVersion,
+          arm: "treatment",
+          expectedOutput: c.expectedOutput,
+        });
+      }
+
       this.recordCaseResult({
         runId: controlRun.id,
         caseId: c.id,

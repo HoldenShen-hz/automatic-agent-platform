@@ -513,7 +513,58 @@ export class WorkerRegistryService {
     };
 
     this.store.worker.upsertWorkerSnapshot(record);
+
+    // R13-18 fix: Emit auto-scaling signals based on worker load state
+    const runningExecutions = parseJsonArray(record.runningExecutionsJson);
+    const currentLoad = runningExecutions.length;
+    const saturation = record.saturation ?? (currentLoad / Math.max(record.maxConcurrency, 1));
+    const targetLoad = 0.7; // Target 70% utilization for scale decisions
+
+    // Scale up signal: high saturation or load approaching capacity
+    if (saturation >= 0.85 || currentLoad >= record.maxConcurrency - 1) {
+      this.emitScaleSignal("scale_up", record.workerId, currentLoad, targetLoad, record, occurredAt);
+    }
+    // Scale down signal: low saturation and excess capacity
+    else if (saturation <= 0.3 && currentLoad <= 1 && record.activeLeaseCount <= 1) {
+      this.emitScaleSignal("scale_down", record.workerId, currentLoad, targetLoad, record, occurredAt);
+    }
+
     return this.toView(record);
+  }
+
+  private emitScaleSignal(
+    signalType: "scale_up" | "scale_down",
+    workerId: string,
+    currentLoad: number,
+    targetLoad: number,
+    record: WorkerSnapshotRecord,
+    occurredAt: string,
+  ): void {
+    try {
+      const eventBus = (this.store as unknown as {
+        _eventBus?: { publish: (event: unknown) => void };
+      })._eventBus;
+      if (eventBus) {
+        eventBus.publish({
+          eventType: signalType,
+          executionId: null,
+          payload: {
+            workerId,
+            reason: signalType === "scale_up" ? "high_saturation" : "low_utilization",
+            currentLoad,
+            targetLoad,
+            saturation: record.saturation,
+            cpuPct: record.cpuPct,
+            memoryMb: record.memoryMb,
+            activeLeaseCount: record.activeLeaseCount,
+            maxConcurrency: record.maxConcurrency,
+            occurredAt,
+          },
+        });
+      }
+    } catch {
+      // Scale signal emission should not interrupt heartbeat recording
+    }
   }
 
   public verifyRemoteWorkerRegistration(input: VerifyRemoteWorkerRegistrationInput): RegisteredWorkerView {

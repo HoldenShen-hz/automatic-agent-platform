@@ -317,6 +317,26 @@ export class HarnessSdk {
     private readonly interPlaneSecurity?: HarnessSdkInterPlaneSecurityConfig,
   ) {}
 
+  // R8-22 FIX: PlanGraphBundle build/validate API
+  /**
+   * Build a PlanGraphBundle from nodes and edges.
+   * Provides canonical graph construction with validation per R8-22.
+   */
+  public buildPlanGraph(input: PlanGraphBuildInput): {
+    readonly bundle: PlanGraphBundle;
+    readonly validationReport: ReturnType<typeof validatePlanGraph>;
+  } {
+    return buildPlanGraphBundle(input);
+  }
+
+  /**
+   * Validate a PlanGraphBundle.
+   * Checks graph structure, reachability, and duplicate node IDs per R8-22.
+   */
+  public validatePlanGraph(bundle: PlanGraphBundle): ReturnType<typeof validatePlanGraphBundle> {
+    return validatePlanGraphBundle(bundle);
+  }
+
   public createRun(input: HarnessSdkCreateRunInput): HarnessRun {
     if (!input.tenantId?.trim()) {
       throw new HarnessSdkError("harness_sdk.missing_tenant", "harness_sdk.missing_tenant: HarnessSdk.createRun requires tenantId.");
@@ -404,29 +424,6 @@ export class HarnessSdk {
     }
 
     // R8-21 FIX: Always produce NodeAttemptReceipt for tracking
-    // @ts-ignore - exactOptionalPropertyTypes mismatch on optional fields
-    const receipt = createNodeAttemptReceipt({
-      nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
-      nodeRunId: input.nodeRunId,
-      harnessRunId: updatedRun.harnessRunId,
-      planGraphId: input.planGraphId,
-      graphVersion: input.graphVersion ?? 1,
-      receiptKind: input.receiptKind ?? "tool",
-      status: options.status ?? "succeeded",
-      duration: options.duration ?? 0,
-      ...(options.outputRef != null ? { outputRef: options.outputRef } : {}),
-      ...(options.error != null ? { error: options.error as NodeAttemptReceipt["error"] } : {}),
-      errorDetail: options.error?.message ?? "",
-    });
-    return { run: updatedRun, receipt };
-  }
-
-  public appendStepWithReceipt(
-    run: HarnessRun,
-    input: HarnessSdkAppendStepInput,
-    options: HarnessSdkReceiptOptions = {},
-  ): { run: HarnessRun; receipt: NodeAttemptReceipt } {
-    const updatedRun = this.appendStep(run, input);
     // @ts-ignore - exactOptionalPropertyTypes mismatch on optional fields
     const receipt = createNodeAttemptReceipt({
       nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),

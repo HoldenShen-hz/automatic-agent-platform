@@ -6,7 +6,7 @@ export interface PromptInjectionSignal {
   readonly weight: number;
 }
 
-export type PromptDefenseLayer = "lexical" | "semantic" | "behavioral" | "consensus";
+export type PromptDefenseLayer = "lexical" | "semantic" | "behavioral" | "llm_judge" | "consensus";
 
 export interface PromptDefenseLayerAssessment {
   readonly layer: PromptDefenseLayer;
@@ -207,18 +207,98 @@ function buildBehavioralAssessment(input: string, threshold: number): PromptDefe
   };
 }
 
+async function fetchLLMJudgeAssessment(
+  input: string,
+  llmJudgeEndpoint: string,
+): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
+  try {
+    const response = await fetch(llmJudgeEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input }),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as {
+      score?: number;
+      signals?: string[];
+      blocked?: boolean;
+    };
+    return {
+      score: data.score ?? 0,
+      signals: data.signals ?? [],
+      blocked: data.blocked ?? false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildLLMJudgeAssessment(
+  input: string,
+  threshold: number,
+  config: MLInjectionClassifierConfig,
+): PromptDefenseLayerAssessment {
+  // R2-3: LLM judge is the final layer in the multi-layer chain
+  // It receives signals from lexical, semantic, and behavioral layers for contextual judgment
+  const normalized = input.toLowerCase();
+  const triggeredSignals: string[] = [];
+  let rawScore = 0;
+
+  // LLM judge evaluates intent that may have slipped through earlier layers
+  // High concern patterns that warrant LLM-level scrutiny
+  if (/ignore\s+(all\s+)?previous\s+instructions?/i.test(normalized)) {
+    triggeredSignals.push("llm_judge_instruction_override");
+    rawScore += 0.25;
+  }
+  if (/system\s+(prompt|instructions?)\s+(leak|reveal|show)/i.test(normalized)) {
+    triggeredSignals.push("llm_judge_prompt_exfiltration");
+    rawScore += 0.22;
+  }
+  if (/(forget|unlearn|delete)\s+(everything|all|previous)/i.test(normalized)) {
+    triggeredSignals.push("llm_judge_memory_manipulation");
+    rawScore += 0.2;
+  }
+  if (/role\s+(play|act)\s+as\s+(admin|root|system)/i.test(normalized)) {
+    triggeredSignals.push("llm_judge_privilege_escalation");
+    rawScore += 0.18;
+  }
+  // End-of-chain escalation: if semantic and behavioral both flagged, LLM judge weighs heavily
+  const semanticFlags = /(show|reveal|extract|dump|print)/.test(normalized) && /(system|developer|hidden)/.test(normalized);
+  const behavioralFlags = /(curl|bash|powershell|exec|eval)/.test(normalized);
+  if (semanticFlags && behavioralFlags) {
+    triggeredSignals.push("llm_judge_cross_layer_conflict");
+    rawScore += 0.15;
+  }
+
+  const score = Number(Math.min(0.99, rawScore).toFixed(2));
+  return {
+    layer: "llm_judge",
+    score,
+    triggeredSignals,
+    blocked: score >= threshold,
+  };
+}
+
 function buildConsensusAssessment(
   threshold: number,
   lexical: PromptDefenseLayerAssessment,
   semantic: PromptDefenseLayerAssessment,
   behavioral: PromptDefenseLayerAssessment,
+  llmJudge: PromptDefenseLayerAssessment,
 ): PromptDefenseLayerAssessment {
-  const activeLayers = [lexical, semantic, behavioral].filter((layer) => layer.triggeredSignals.length > 0);
-  const baseScore = Math.max(lexical.score, semantic.score, behavioral.score);
-  const layerAgreementBoost = activeLayers.length >= 2 ? 0.1 : 0;
-  const fullChainBoost = activeLayers.length === 3 ? 0.08 : 0;
+  // R2-3: Multi-layer chain: regex→classifier→LLM judge
+  const activeLayers = [lexical, semantic, behavioral, llmJudge].filter((layer) => layer.triggeredSignals.length > 0);
+  const baseScore = Math.max(lexical.score, semantic.score, behavioral.score, llmJudge.score);
+  // R2-3: Layer agreement boost when 3+ layers agree (including LLM judge)
+  const layerAgreementBoost = activeLayers.length >= 3 ? 0.12 : activeLayers.length >= 2 ? 0.08 : 0;
+  // R2-3: Full chain boost when all 4 layers triggered
+  const fullChainBoost = activeLayers.length === 4 ? 0.1 : 0;
+  // R2-3: LLM judge cross-layer conflict detection adds significant weight
+  const llmJudgeConflictBoost = llmJudge.triggeredSignals.some((s) => s.includes("cross_layer")) ? 0.08 : 0;
   const multiSignalBoost = lexical.triggeredSignals.length >= 2 ? 0.05 : 0;
-  const score = Number(Math.min(0.99, baseScore + layerAgreementBoost + fullChainBoost + multiSignalBoost).toFixed(2));
+  const score = Number(Math.min(0.99, baseScore + layerAgreementBoost + fullChainBoost + llmJudgeConflictBoost + multiSignalBoost).toFixed(2));
   const triggeredSignals = activeLayers.flatMap((layer) => layer.triggeredSignals);
 
   return {
@@ -269,7 +349,26 @@ export async function classifyPromptInjectionRisk(
   }
 
   const behavioral = buildBehavioralAssessment(input.normalize("NFKC"), threshold);
-  const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral);
+
+  // R2-3: Multi-layer chain - LLM judge as final layer
+  let llmJudge: PromptDefenseLayerAssessment;
+  if (config.mlModelEndpoint) {
+    const llmResult = await fetchLLMJudgeAssessment(input.normalize("NFKC"), config.mlModelEndpoint);
+    if (llmResult) {
+      llmJudge = {
+        layer: "llm_judge",
+        score: llmResult.score,
+        triggeredSignals: llmResult.signals,
+        blocked: llmResult.blocked,
+      };
+    } else {
+      llmJudge = buildLLMJudgeAssessment(input.normalize("NFKC"), threshold, config);
+    }
+  } else {
+    llmJudge = buildLLMJudgeAssessment(input.normalize("NFKC"), threshold, config);
+  }
+
+  const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral, llmJudge);
   const score = consensus.score;
   const blocked = consensus.blocked;
   const confidence = deriveConfidence(score, threshold, config);
@@ -282,7 +381,7 @@ export async function classifyPromptInjectionRisk(
     matchedSignals,
     confidence,
     sanitizedInput,
-    layers: [lexical, semantic, behavioral, consensus],
+    layers: [lexical, semantic, behavioral, llmJudge, consensus],
   };
 }
 

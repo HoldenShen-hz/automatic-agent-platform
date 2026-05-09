@@ -371,14 +371,44 @@ export class DegradationController {
 
   /**
    * Gets available fallback candidates from all providers.
-   * This would typically be enhanced to read from a provider registry.
+   * Returns candidates that can serve as fallback options during degraded routing.
    */
   private getFallbackCandidates(): ModelFallbackCandidate[] {
+    // R8-06 FIX: Ensure fallback candidates are returned even if getAvailableProfiles
+    // returns empty. Try multiple sources to find fallback candidates.
+    const candidates: ModelFallbackCandidate[] = [];
+
+    // Try primary provider
     const fromPrimary = this.primaryProvider.getAvailableProfiles?.() ?? [];
+    candidates.push(...fromPrimary);
+
+    // Try fallback provider if available
     const fromFallback = this.fallbackProvider?.getAvailableProfiles?.() ?? [];
+    candidates.push(...fromFallback);
+
+    // If still no candidates, try to get profiles directly from the provider
+    if (candidates.length === 0) {
+      // Check if provider has a registry or direct profile access
+      const primaryAny = this.primaryProvider as unknown as Record<string, unknown>;
+      if (typeof primaryAny.getProfiles === "function") {
+        const profiles = primaryAny.getProfiles() as ModelFallbackCandidate[];
+        candidates.push(...profiles);
+      }
+      if (this.fallbackProvider != null) {
+        const fallbackAny = this.fallbackProvider as unknown as Record<string, unknown>;
+        if (typeof fallbackAny.getProfiles === "function") {
+          const profiles = fallbackAny.getProfiles() as ModelFallbackCandidate[];
+          candidates.push(...profiles);
+        }
+      }
+    }
+
+    // Dedupe by profile name
     const deduped = new Map<string, ModelFallbackCandidate>();
-    for (const candidate of [...fromPrimary, ...fromFallback]) {
-      deduped.set(candidate.profileName, candidate);
+    for (const candidate of candidates) {
+      if (candidate.profileName && candidate.provider) {
+        deduped.set(candidate.profileName, candidate);
+      }
     }
     return [...deduped.values()];
   }

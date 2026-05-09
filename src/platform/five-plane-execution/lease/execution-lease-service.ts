@@ -411,6 +411,42 @@ export class ExecutionLeaseService {
         };
       }
 
+      // R13-20 fix: Verify worker capabilities/isolation level/repo version for lease handover
+      if (input.requiredCapabilities && input.requiredCapabilities.length > 0) {
+        const workerCapabilities = parseJsonArray(nextWorker.capabilitiesJson, logger);
+        const missingCapabilities = input.requiredCapabilities.filter((cap) => !workerCapabilities.includes(cap));
+        if (missingCapabilities.length > 0) {
+          return {
+            outcome: "blocked",
+            reasonCode: "worker_capabilities_mismatch",
+            previousLease: previousLease ?? null,
+            lease: null,
+          };
+        }
+      }
+
+      if (input.requiredIsolationLevel) {
+        const workerIsolationLevel = nextWorker.isolationLevel ?? "standard";
+        const ISOLATION_ORDER: Record<WorkerIsolationLevel, number> = { standard: 0, hardened: 1, strict: 2 };
+        if (ISOLATION_ORDER[workerIsolationLevel] < ISOLATION_ORDER[input.requiredIsolationLevel]) {
+          return {
+            outcome: "blocked",
+            reasonCode: "worker_isolation_mismatch",
+            previousLease: previousLease ?? null,
+            lease: null,
+          };
+        }
+      }
+
+      if (input.requiredRepoVersion != null && nextWorker.repoVersion !== input.requiredRepoVersion) {
+        return {
+          outcome: "blocked",
+          reasonCode: "worker_repo_version_mismatch",
+          previousLease: previousLease ?? null,
+          lease: null,
+        };
+      }
+
       const nextWorkerRunningExecutionIds = parseJsonArray(nextWorker.runningExecutionsJson, logger);
       if (
         !nextWorkerRunningExecutionIds.includes(previousLease.executionId)

@@ -376,6 +376,14 @@ export class UnifiedChatProvider {
       );
     };
 
+    // R2-2: AbortSignal check interval for streaming - verify abort is not triggered during chunk processing
+    const checkAbortInterval = runtimeSignal != null ? setInterval(() => {
+      if (runtimeSignal.aborted) {
+        throw new Error("streaming.aborted");
+      }
+    }, 100) : null;
+
+    try {
     switch (provider) {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
@@ -477,6 +485,11 @@ export class UnifiedChatProvider {
         }
         recordStreamingLatency(request.model);
         return;
+      }
+    }
+    } finally {
+      if (checkAbortInterval != null) {
+        clearInterval(checkAbortInterval);
       }
     }
   }

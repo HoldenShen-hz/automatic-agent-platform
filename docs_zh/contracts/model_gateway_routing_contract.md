@@ -15,6 +15,9 @@
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
+  harnessRunId: string | null;
+  nodeRunId: string | null;
+  attemptId: string | null;
   taskId: string | null;
   sessionId: string | null;
   tenantId: string | null;
@@ -47,11 +50,12 @@ interface ModelRouteDecision {
 
 规则：
 
+- `harnessRunId / nodeRunId / attemptId` 为权威关联键，用于追踪路由决策上下文。
 - `preferredModel` 仅代表偏好，不代表强制 pin；若调用方显式 pin，必须单独建模。
 - `requiredCapabilities` 不满足时必须 fail-close，不得静默降级到不兼容模型。
 - `decisionReason` 必须包含至少一个可审计原因，如 `policy_allow`、`cost_guard`、`latency_guard`、`provider_cooldown`。
 - `compliance_constrained` 必须优先满足 residency、policy、allowlist 与 provider trust boundary，再考虑成本或延迟。
-- `hybrid` 必须显式声明其主目标与次目标，不得作为“任意自由裁量”兜底模式。
+- `hybrid` 必须显式声明其主目标与次目标，不得作为”任意自由裁量”兜底模式。
 
 ## 4. Fallback 与粘性
 

@@ -17,7 +17,14 @@ export {
   PluginSpiTypeSchema,
 } from "../domains/registry/plugin-spi.js";
 export { PluginSpiRegistry } from "../domains/registry/plugin-spi-registry.js";
-export { createBuiltinPlugin, listBuiltinPluginIds } from "./builtin-plugin-registry.js";
+// R8-24 FIX: Export built-in plugin manifest functions
+export {
+  createBuiltinPlugin,
+  createBuiltinPluginWithManifest,
+  listBuiltinPluginIds,
+  getBuiltinPluginManifest,
+  listBuiltinPluginManifests,
+} from "./builtin-plugin-registry.js";
 export * from "./adapters/index.js";
 export * from "./planners/index.js";
 export * from "./presenters/index.js";

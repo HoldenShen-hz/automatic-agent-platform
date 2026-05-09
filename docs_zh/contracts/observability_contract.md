@@ -23,6 +23,9 @@
 - `timestamp`
 - `level`
 - `message`
+- `harness_run_id` (required)
+- `node_run_id?`
+- `attempt_id?`
 - `task_id?`
 - `agent_id?`
 - `stage?`

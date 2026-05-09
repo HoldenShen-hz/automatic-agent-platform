@@ -83,6 +83,35 @@ export interface BudgetExecutionSession {
 }
 
 /**
+ * Atomic budget state machine states.
+ */
+export type BudgetStateMachineState = "idle" | "reserved" | "executing" | "settled" | "released";
+
+/**
+ * Atomic budget execution session with state machine.
+ * Provides reserve→execute→settle atomic flow per R8-01.
+ */
+export interface AtomicBudgetSession {
+  readonly sessionId: string;
+  readonly state: BudgetStateMachineState;
+  readonly ledger: BudgetLedger;
+  readonly reservation: BudgetReservation | null;
+  readonly reservedAmount: number;
+  readonly actualAmount: number | null;
+  readonly request: BudgetReservationRequest;
+}
+
+/**
+ * Result of atomic budget state transition.
+ */
+export interface BudgetStateTransitionResult {
+  readonly session: AtomicBudgetSession;
+  readonly success: boolean;
+  readonly reasonCode: string | null;
+  error?: Error;
+}
+
+/**
  * Evaluates whether a task can proceed given its current cost and next step estimate.
  *
  * Compares projected total cost against the policy limit and determines
@@ -90,9 +119,232 @@ export interface BudgetExecutionSession {
  */
 export class BudgetGuard {
   private readonly allocator: BudgetAllocator;
+  private readonly sessionManager: BudgetExecutionSessionManager;
+  private readonly atomicSessions = new Map<string, AtomicBudgetSession>();
 
   public constructor(options: { readonly allocator?: BudgetAllocator } = {}) {
     this.allocator = options.allocator ?? new BudgetAllocator();
+    this.sessionManager = new BudgetExecutionSessionManager({ allocator: this.allocator });
+  }
+
+  /**
+   * Atomically reserve budget and create an execution session.
+   * This is the entry point for the reserve→execute→settle state machine.
+   */
+  public atomicReserve(input: BudgetReservationRequest): BudgetStateTransitionResult {
+    const evaluation = this.evaluateExecutionChain({
+      policy: input.policy,
+      spend: input.spend,
+    });
+
+    if (!evaluation.allowed || input.spend.nextEstimatedCostUsd <= 0) {
+      const session: AtomicBudgetSession = {
+        sessionId: newId("abs"),
+        state: "idle",
+        ledger: input.ledger ?? createBudgetLedger({
+          tenantId: input.tenantId,
+          harnessRunId: input.harnessRunId,
+          currency: "USD",
+          hardCap: input.policy.maxTaskCostUsd,
+          softCap: Number((input.policy.maxTaskCostUsd * input.policy.warnAtRatio).toFixed(4)),
+        }),
+        reservation: null,
+        reservedAmount: 0,
+        actualAmount: null,
+        request,
+      };
+      this.atomicSessions.set(session.sessionId, session);
+      return {
+        session,
+        success: false,
+        reasonCode: evaluation.reasonCode,
+      };
+    }
+
+    const session = this.sessionManager.reserveAndCreateSession(
+      input,
+      Number(input.spend.nextEstimatedCostUsd.toFixed(4)),
+    );
+
+    const atomicSession: AtomicBudgetSession = {
+      sessionId: session.sessionId,
+      state: "reserved",
+      ledger: session.ledger,
+      reservation: session.reservation,
+      reservedAmount: input.spend.nextEstimatedCostUsd,
+      actualAmount: null,
+      request,
+    };
+    this.atomicSessions.set(atomicSession.sessionId, atomicSession);
+
+    return {
+      session: atomicSession,
+      success: true,
+      reasonCode: "budget.reserved",
+    };
+  }
+
+  /**
+   * Transition session from reserved to executing state.
+   * This marks the beginning of actual execution.
+   */
+  public atomicExecute(sessionId: string): BudgetStateTransitionResult {
+    const session = this.atomicSessions.get(sessionId);
+    if (!session) {
+      return {
+        session: this.createErrorSession(sessionId, "idle", "budget.session_not_found"),
+        success: false,
+        reasonCode: "budget.session_not_found",
+      };
+    }
+
+    if (session.state !== "reserved") {
+      return {
+        session: this.createErrorSession(sessionId, session.state, `budget.invalid_state_transition:${session.state}→executing`),
+        success: false,
+        reasonCode: `budget.invalid_state_transition:${session.state}→executing`,
+      };
+    }
+
+    const updatedSession: AtomicBudgetSession = {
+      ...session,
+      state: "executing",
+    };
+    this.atomicSessions.set(sessionId, updatedSession);
+
+    return {
+      session: updatedSession,
+      success: true,
+      reasonCode: "budget.executing",
+    };
+  }
+
+  /**
+   * Transition session from executing to settled state with actual cost.
+   * This finalizes the budget consumption.
+   */
+  public atomicSettle(sessionId: string, actualAmount: number): BudgetStateTransitionResult {
+    const session = this.atomicSessions.get(sessionId);
+    if (!session) {
+      return {
+        session: this.createErrorSession(sessionId, "idle", "budget.session_not_found"),
+        success: false,
+        reasonCode: "budget.session_not_found",
+      };
+    }
+
+    if (session.state !== "executing" && session.state !== "reserved") {
+      return {
+        session: this.createErrorSession(sessionId, session.state, `budget.invalid_state_transition:${session.state}→settled`),
+        success: false,
+        reasonCode: `budget.invalid_state_transition:${session.state}→settled`,
+      };
+    }
+
+    if (!session.reservation) {
+      return {
+        session: this.createErrorSession(sessionId, session.state, "budget.no_reservation_to_settle"),
+        success: false,
+        reasonCode: "budget.no_reservation_to_settle",
+      };
+    }
+
+    const settledLedger = this.sessionManager.settle(sessionId, actualAmount);
+
+    const updatedSession: AtomicBudgetSession = {
+      ...session,
+      state: "settled",
+      ledger: settledLedger,
+      actualAmount,
+    };
+    this.atomicSessions.set(sessionId, updatedSession);
+
+    return {
+      session: updatedSession,
+      success: true,
+      reasonCode: "budget.settled",
+    };
+  }
+
+  /**
+   * Release a reserved session without execution (e.g., task cancelled).
+   */
+  public atomicRelease(sessionId: string): BudgetStateTransitionResult {
+    const session = this.atomicSessions.get(sessionId);
+    if (!session) {
+      return {
+        session: this.createErrorSession(sessionId, "idle", "budget.session_not_found"),
+        success: false,
+        reasonCode: "budget.session_not_found",
+      };
+    }
+
+    if (session.state === "settled" || session.state === "released") {
+      return {
+        session: this.createErrorSession(sessionId, session.state, `budget.invalid_state_transition:${session.state}→released`),
+        success: false,
+        reasonCode: `budget.invalid_state_transition:${session.state}→released`,
+      };
+    }
+
+    const releasedLedger = this.sessionManager.settle(sessionId, 0);
+
+    const updatedSession: AtomicBudgetSession = {
+      ...session,
+      state: "released",
+      ledger: releasedLedger,
+      actualAmount: 0,
+    };
+    this.atomicSessions.set(sessionId, updatedSession);
+
+    return {
+      session: updatedSession,
+      success: true,
+      reasonCode: "budget.released",
+    };
+  }
+
+  /**
+   * Get the current atomic session state.
+   */
+  public getAtomicSession(sessionId: string): AtomicBudgetSession | null {
+    return this.atomicSessions.get(sessionId) ?? null;
+  }
+
+  private createErrorSession(sessionId: string, state: BudgetStateMachineState, reasonCode: string): AtomicBudgetSession {
+    return {
+      sessionId,
+      state,
+      ledger: createBudgetLedger({
+        tenantId: "unknown",
+        harnessRunId: "unknown",
+        currency: "USD",
+        hardCap: 0,
+        softCap: 0,
+      }),
+      reservation: null,
+      reservedAmount: 0,
+      actualAmount: null,
+      request: {
+        policy: {
+          maxTaskCostUsd: 0,
+          maxDailyCostUsd: 0,
+          maxMonthlyCostUsd: 0,
+          warnAtRatio: 0.8,
+          mode: "auto",
+        },
+        spend: {
+          currentTaskCostUsd: 0,
+          nextEstimatedCostUsd: 0,
+          currentDailyCostUsd: 0,
+          currentMonthlyCostUsd: 0,
+        },
+        tenantId: "unknown",
+        harnessRunId: "unknown",
+        traceId: "unknown",
+        emittedBy: "budget-guard",
+      },
+    };
   }
 
   public evaluateTaskSpend(input: {

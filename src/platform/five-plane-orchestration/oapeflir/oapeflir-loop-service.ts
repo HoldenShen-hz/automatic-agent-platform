@@ -16,7 +16,7 @@ import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } 
 import { PlanBuilder } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
 import type { FeedbackBatch, LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { ExecutionOutcomeEvaluator, type ExecutionOutcomeEvaluation } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
+import { ExecutionOutcomeEvaluator, type ExecutionOutcomeEvaluation, type EvaluationReport } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
 import { PostExecutionQualityGate } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import type { PostExecutionQualityGateDecision } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import { ReplanningService } from "../planner/replanning-service.js";
@@ -349,7 +349,7 @@ export class OapeflirLoopService {
         fsm.recordStageCompletion("feedback");
 
         // R5-2: Compute quality gate and replan decision after each feedback collection
-        loopOutcome = this.outcomeEvaluator.evaluateWithBreakdown(loopPlan, loopFeedback);
+        loopOutcome = this.outcomeEvaluator.evaluateWithBreakdown(loopPlan, loopFeedback) as ExecutionOutcomeEvaluation;
         loopQualityGate = this.qualityGate.decide(loopOutcome);
         loopReplanTrigger = this.replanning.createTrigger(
           input.taskId,

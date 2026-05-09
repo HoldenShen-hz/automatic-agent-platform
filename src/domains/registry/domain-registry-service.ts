@@ -36,7 +36,7 @@ export class DomainRegistryService {
     this.eventPublisher = options.eventPublisher ?? null;
   }
 
-  public register(input: DomainDefinition): DomainDefinition {
+  public register(input: DomainDefinition, options?: { skipSmokeTest?: boolean }): DomainDefinition {
     const parsed = DomainDefinitionSchema.parse(input);
     const normalized = parsed.status === "draft" || parsed.status === "validated"
       ? { ...parsed, status: "registered" as const }
@@ -52,6 +52,20 @@ export class DomainRegistryService {
       throw this.validationError("domain_registry.duplicate_domain", "Domain ID is already registered.");
     }
     this.validateDefinition(normalizedDefinition);
+
+    // R8-30 FIX: Add smoke test gate to register()
+    // Run smoke test before completing registration unless explicitly skipped
+    if (options?.skipSmokeTest !== true) {
+      const smoke = this.smokeTests.run(normalizedDefinition);
+      if (!smoke.passed) {
+        throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during registration.", {
+          category: "validation",
+          source: "internal",
+          details: { issues: smoke.issues },
+        });
+      }
+    }
+
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);

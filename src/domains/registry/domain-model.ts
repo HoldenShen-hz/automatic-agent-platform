@@ -135,3 +135,22 @@ export type DomainDefinition = Omit<DomainDefinitionParsed, "status" | "pluginBi
   executionProfile?: DomainDefinitionParsed["executionProfile"];
 };
 export type DomainDefinitionExtended = DomainDefinition;
+
+// R8-27 FIX: DomainManifest type for domain metadata
+export const DomainManifestSchema = z.object({
+  domainId: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().min(1),
+  version: z.string().min(1),
+  owner: z.string().min(1),
+  lifecycleState: z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]).default("draft"),
+  capabilityIds: z.array(z.string().min(1)).default([]),
+  requiredPlugins: z.array(z.string().min(1)).default([]),
+  securityLevel: z.enum(["standard", "elevated", "restricted"]).default("standard"),
+  trustTier: z.enum(["internal", "trusted", "community", "external"]).default("trusted"),
+  publicSdkSurface: z.string().min(1),
+  settingsSchema: z.record(z.string(), z.unknown()).default({}),
+  tags: z.array(z.string()).default([]),
+});
+
+export type DomainManifest = z.infer<typeof DomainManifestSchema>;

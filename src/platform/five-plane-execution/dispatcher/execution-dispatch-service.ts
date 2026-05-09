@@ -109,6 +109,8 @@ export class ExecutionDispatchService {
         id: newId("ticket"),
         executionId: execution.id,
         taskId: execution.taskId,
+        // R13-15 fix: tenantId for per-tenant fair scheduling
+        tenantId: task.tenantId ?? "default",
         priority: input.priority ?? task.priority,
         queueName: input.queueName ?? null,
         dispatchTarget: resolveDispatchTarget(input.dispatchTarget),
@@ -227,6 +229,60 @@ export class ExecutionDispatchService {
     });
   }
 
+  /**
+   * R13-15 fix: Interleaves tickets from different tenants to prevent single tenant flooding.
+   *
+   * Groups tickets by tenant, then round-robins across tenant groups to ensure
+   * fair dispatch opportunity. Max burst per tenant prevents any single tenant
+   * from consuming all dispatch slots.
+   *
+   * @param tickets - Sorted tickets to interleave
+   * @returns Tenant-interleaved ticket array
+   */
+  private interleaveByTenant(tickets: ExecutionTicketRecord[], maxBurstPerTenant = 3): ExecutionTicketRecord[] {
+    if (tickets.length <= 1) {
+      return tickets;
+    }
+
+    // Group by tenant
+    const byTenant = new Map<string, ExecutionTicketRecord[]>();
+    for (const ticket of tickets) {
+      const tenant = ticket.tenantId ?? "default";
+      const group = byTenant.get(tenant) ?? [];
+      group.push(ticket);
+      byTenant.set(tenant, group);
+    }
+
+    // Round-robin across tenants with burst limit
+    const result: ExecutionTicketRecord[] = [];
+    const tenantIterators = new Map<string, Iterator<ExecutionTicketRecord>>();
+
+    for (const [tenant, group] of byTenant) {
+      tenantIterators.set(tenant, group[Symbol.iterator]());
+    }
+
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (const [tenant, iter] of tenantIterators) {
+        let burst = 0;
+        let next: IteratorResult<ExecutionTicketRecord>;
+        while (burst < maxBurstPerTenant) {
+          next = iter.next();
+          if (next.done) {
+            tenantIterators.delete(tenant);
+            break;
+          }
+          result.push(next.value);
+          burst++;
+          progress = true;
+        }
+      }
+    }
+
+    return result;
+  }
+
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
     let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
@@ -243,6 +299,9 @@ export class ExecutionDispatchService {
 
     // R6-4: Apply deterministic graph scheduling for consistent ticket ordering per §14.9
     tickets = this.sortTicketsForDeterministicDispatch(tickets);
+
+    // R13-15 fix: Interleave by tenant to prevent single tenant flooding
+    tickets = this.interleaveByTenant(tickets);
 
     const queueAvailability = this.queueAvailabilitySnapshot?.();
     if (queueAvailability?.state === "unavailable") {

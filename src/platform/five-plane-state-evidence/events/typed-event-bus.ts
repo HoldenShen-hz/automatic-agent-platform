@@ -23,6 +23,7 @@ import type {
   WorkerLifecyclePayload,
   WorkflowStepCompletedPayload,
   CircuitBreakerStateChangePayload,
+  WorkerScaleSignalPayload,
 } from "./typed-event-payloads.js";
 
 /**
@@ -161,6 +162,9 @@ export interface TypedEventPayloadMap {
   "perf:burst_event": Record<string, unknown>;
   "test:capacity": Record<string, unknown>;
   "test:many_events": Record<string, unknown>;
+  // R13-18: Auto-scaling signals for worker pool
+  "worker:scale_up": WorkerScaleSignalPayload;
+  "worker:scale_down": WorkerScaleSignalPayload;
 }
 
 /**

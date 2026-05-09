@@ -474,6 +474,12 @@ export class ModelRoutingService {
           filteredOut.push(`${profileName}:judge_independence_missing`);
           return false;
         }
+        // R8-04: Latency SLO enforcement - filter profiles that exceed latency SLO target
+        const profileLatencyP99Ms = profile.latencyP99Ms ?? this.registry.providers[profile.provider]?.latencyP99Ms ?? null;
+        if (profileLatencyP99Ms != null && profileLatencyP99Ms > latencySloTargetMs) {
+          filteredOut.push(`${profileName}:latency_slo_exceeded:${profileLatencyP99Ms}ms>${latencySloTargetMs}ms`);
+          return false;
+        }
         if (getGovernanceStatus(profileName) === "disabled") {
           filteredOut.push(`${profileName}:governance_disabled`);
           return false;

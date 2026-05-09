@@ -102,18 +102,36 @@ export class DashboardWebSocketServer {
   }
 
   /**
- * Registers a new client connection.
- *
- * @param dashboardIds - Dashboards the client wants to subscribe to
- * @param principal - Principal ID for authentication (required by §11.1)
- * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
- * @returns Client ID and acknowledgment message
- */
+   * Registers a new client connection.
+   *
+   * @param dashboardIds - Dashboards the client wants to subscribe to
+   * @param principal - Principal ID for authentication (required by §11.1)
+   * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
+   * @returns Client ID and acknowledgment message
+   * @throws Error if authentication fails or tenantId is invalid
+   */
 public registerClient(
   dashboardIds: readonly string[],
   principal: string,
   tenantId: string,
 ): { clientId: string; ack: DashboardPushMessage } {
+  // R4-38: Validate authentication and tenantId per §11.1
+  if (!principal || principal.trim().length === 0) {
+    const errorAck = this.createMessage("error", "", {
+      error: "invalid_principal",
+      message: "Authentication required: principal ID must be provided",
+    });
+    return { clientId: "", ack: errorAck };
+  }
+
+  if (!tenantId || tenantId.trim().length === 0) {
+    const errorAck = this.createMessage("error", "", {
+      error: "invalid_tenant",
+      message: "Tenant isolation required: tenantId must be provided",
+    });
+    return { clientId: "", ack: errorAck };
+  }
+
   if (this.connections.size >= this.config.maxClients) {
     const errorAck = this.createMessage("error", "", {
       error: "max_clients_reached",

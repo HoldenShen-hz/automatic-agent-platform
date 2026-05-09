@@ -4,6 +4,10 @@
  * States: CLOSED (normal) -> OPEN (failing) -> HALF_OPEN (testing recovery)
  */
 
+import { getGlobalEventBus } from "../five-plane-state-evidence/events/durable-event-bus.js";
+import { CIRCUIT_BREAKER_EVENTS } from "../five-plane-state-evidence/events/typed-event-payloads.js";
+import { nowIso } from "../contracts/types/ids.js";
+
 export enum CircuitState {
   CLOSED = "CLOSED",
   OPEN = "OPEN",

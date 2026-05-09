@@ -1,4 +1,4 @@
-import type { ExecutionLeaseRecord } from "../../contracts/types/domain.js";
+import type { ExecutionLeaseRecord, WorkerIsolationLevel } from "../../contracts/types/domain.js";
 
 export const DEFAULT_LEASE_TTL_MS = 10_000;
 export const MIN_LEASE_TTL_MS = 5_000;
@@ -32,6 +32,10 @@ export interface HandoverExecutionLeaseInput {
   workerId: string;
   newWorkerId: string;
   ttlMs: number;
+  // R13-20: Verification requirements for lease handover
+  requiredCapabilities?: string[];
+  requiredIsolationLevel?: WorkerIsolationLevel | null;
+  requiredRepoVersion?: string | null;
   reasonCode?: string | null;
   occurredAt?: string;
 }

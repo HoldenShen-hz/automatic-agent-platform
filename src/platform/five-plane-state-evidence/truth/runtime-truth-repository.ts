@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import {
   type BudgetLedger,
@@ -17,6 +18,22 @@ import {
   type RuntimeTransitionResult,
 } from "../../execution/runtime-state-machine.js";
 
+/** R11-12: Snapshot version for CAS operations */
+export interface SnapshotVersion {
+  readonly versionId: string;
+  readonly version: number;
+  readonly stateHash: string;
+  readonly createdAt: string;
+}
+
+/** R11-12: CAS operation result */
+export interface CasResult<TAggregate> {
+  readonly success: boolean;
+  readonly aggregate?: TAggregate;
+  readonly expectedVersion?: number;
+  readonly actualVersion?: number;
+}
+
 export interface RuntimeTruthRepositorySnapshot {
   readonly harnessRuns: readonly HarnessRun[];
   readonly nodeRuns: readonly NodeRun[];
@@ -28,6 +45,8 @@ export interface RuntimeTruthRepositorySnapshot {
   readonly events: readonly PlatformFactEvent[];
   readonly outbox: readonly PlatformFactEvent[];
   readonly auditRefs: readonly string[];
+  /** R11-12: Snapshot metadata with versioning */
+  readonly snapshotVersion: SnapshotVersion;
 }
 
 export interface RuntimeRepository {
@@ -51,6 +70,8 @@ interface RuntimeTruthRepositoryState {
   readonly events: PlatformFactEvent[];
   readonly outbox: PlatformFactEvent[];
   readonly auditRefs: string[];
+  /** R11-12: Current snapshot version for CAS */
+  readonly snapshotVersion: number;
 }
 
 export class RuntimeTruthRepository implements RuntimeRepository {
@@ -63,6 +84,78 @@ export class RuntimeTruthRepository implements RuntimeRepository {
 
   public seed(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
     this.storeAggregate(aggregateType, aggregate);
+  }
+
+  /**
+   * R11-12: CAS (Compare-And-Swap) upsert with version checking
+   * Ensures atomic updates by verifying expected version before committing
+   */
+  public upsertWithCas<TAggregate extends RuntimeStateAggregate>(params: {
+    aggregateType: RuntimeStateAggregateType;
+    aggregateId: string;
+    aggregate: TAggregate;
+    expectedVersion: number;
+  }): CasResult<TAggregate> {
+    const currentVersion = this.getAggregateVersion(params.aggregateType, params.aggregateId);
+
+    if (currentVersion !== null && currentVersion !== params.expectedVersion) {
+      return {
+        success: false,
+        expectedVersion: params.expectedVersion,
+        actualVersion: currentVersion,
+      };
+    }
+
+    this.storeAggregate(params.aggregateType, params.aggregate);
+    return {
+      success: true,
+      aggregate: params.aggregate,
+    };
+  }
+
+  /**
+   * R11-12: Get the current version of an aggregate
+   */
+  public getAggregateVersion(aggregateType: RuntimeStateAggregateType, aggregateId: string): number | null {
+    const aggregate = this.getAggregate(aggregateType, aggregateId);
+    if (aggregate == null) return null;
+
+    switch (aggregateType) {
+      case "HarnessRun":
+        return (aggregate as HarnessRun).currentSeq ?? 0;
+      case "NodeRun":
+        return (aggregate as NodeRun).currentSeq ?? 0;
+      case "BudgetLedger":
+        return (aggregate as BudgetLedger).version;
+      case "BudgetReservation":
+        return 0; // Reservations don't have sequential versions
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * R11-12: Verify state integrity using hash comparison
+   */
+  public verifyStateIntegrity(expectedHash: string): boolean {
+    const currentHash = this.computeStateHash();
+    return currentHash === expectedHash;
+  }
+
+  /**
+   * R11-12: Compute hash of current state for integrity verification
+   */
+  private computeStateHash(): string {
+    const normalizedState = {
+      harnessRuns: [...this.state.harnessRuns.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      nodeRuns: [...this.state.nodeRuns.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      sideEffects: [...this.state.sideEffects.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      budgetLedgers: [...this.state.budgetLedgers.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      budgetReservations: [...this.state.budgetReservations.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+    };
+
+    const stateJson = JSON.stringify(normalizedState);
+    return createHash("sha256").update(stateJson).digest("hex");
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
@@ -140,6 +233,9 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public snapshot(): RuntimeTruthRepositorySnapshot {
+    const stateHash = this.computeStateHash();
+    const now = new Date().toISOString();
+
     return {
       harnessRuns: [...this.state.harnessRuns.values()],
       nodeRuns: [...this.state.nodeRuns.values()],
@@ -151,6 +247,13 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       events: [...this.state.events],
       outbox: [...this.state.outbox],
       auditRefs: [...this.state.auditRefs],
+      // R11-12: Include snapshot version metadata
+      snapshotVersion: {
+        versionId: `snapshot-${now}`,
+        version: this.state.snapshotVersion + 1,
+        stateHash,
+        createdAt: now,
+      },
     };
   }
 
@@ -255,6 +358,8 @@ function createEmptyState(): RuntimeTruthRepositoryState {
     events: [],
     outbox: [],
     auditRefs: [],
+    // R11-12: Initialize snapshot version
+    snapshotVersion: 0,
   };
 }
 
@@ -270,6 +375,7 @@ function cloneState(state: RuntimeTruthRepositoryState): RuntimeTruthRepositoryS
     events: [...state.events],
     outbox: [...state.outbox],
     auditRefs: [...state.auditRefs],
+    snapshotVersion: state.snapshotVersion,
   };
 }
 

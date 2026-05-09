@@ -1,10 +1,20 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
-import { createAssessmentRef, parsePlan, type Plan, type PlanStep, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
+import { createAssessmentRef, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
 import { TaskDecompositionService } from "./task-decomposition-service.js";
 import { PlanDagValidator } from "./plan-dag-validator.js";
 import { PlanStrategySelector } from "./plan-strategy-selector.js";
-import { PlanGraphNormalizer, type GraphNormalizationResult } from "./plan-graph-normalizer.js";
+import { PlanGraphNormalizer } from "./plan-graph-normalizer.js";
+import {
+  createPlanGraphBundle,
+  createGraph,
+  type PlanGraphBundle,
+  type PlanNode,
+  type PlanEdge,
+  type RiskPreview,
+} from "../../contracts/executable-contracts/index.js";
+import { createHash } from "node:crypto";
+import type { PlanStep } from "../oapeflir/types/index.js";
 
 export interface PlanBuilderInput {
   observation: TaskSituation;
@@ -25,7 +35,11 @@ export class PlanBuilder {
   private readonly strategySelector = new PlanStrategySelector();
   private readonly graphNormalizer = new PlanGraphNormalizer();
 
-  public build(input: PlanBuilderInput, options: BuildPlanOptions = {}): Plan {
+  /**
+   * Builds a PlanGraphBundle from the workflow input.
+   * This is the canonical output format per R8-03 replacing legacy Plan(steps array).
+   */
+  public build(input: PlanBuilderInput, options: BuildPlanOptions = {}): PlanGraphBundle {
     const decomposed = this.decomposition.decompose(input.workflow);
     const steps: PlanStep[] = decomposed.map((item, index) => ({
       stepId: input.workflow.executionSteps[index]?.stepId ?? `step_${index + 1}`,
@@ -46,7 +60,6 @@ export class PlanBuilder {
     }));
 
     const dagValidation = this.dagValidator.validate(steps);
-    const strategy = this.strategySelector.select(input);
 
     // R5-9: Apply graph normalization and risk propagation if enabled
     let normalizedSteps = dagValidation.orderedSteps;
@@ -57,23 +70,127 @@ export class PlanBuilder {
       }
     }
 
-    return parsePlan({
-      planId: newId("plan"),
-      taskId: input.observation.taskId,
-      assessmentRef: createAssessmentRef(input.assessment),
-      version: input.version ?? 1,
-      strategy: input.version != null && input.version > 1 ? "replanned" : strategy,
-      steps: normalizedSteps,
-      createdAt: Date.now(),
-      parentVersion: input.parentVersion,
+    // Convert steps to PlanNodes
+    const nodes: PlanNode[] = normalizedSteps.map((step, index) => ({
+      nodeId: step.stepId,
+      nodeType: this.inferNodeType(step.action),
+      inputRefs: step.inputs.inputKeys,
+      outputSchemaRef: `output://${step.stepId}`,
+      riskClass: input.assessment.risk,
+      budgetIntent: {
+        maxCostUsd: input.workflow.executionSteps[index]?.estimatedCostUsd ?? 0.01,
+        priority: "normal",
+      },
+      sideEffectProfile: {
+        hasSideEffects: step.outputs.length > 0,
+        isolationLevel: "sandbox",
+      },
+      retryPolicyRef: `retry://${step.stepId}`,
+      timeoutMs: step.timeout,
+    }));
+
+    // Convert dependencies to PlanEdges
+    const edges: PlanEdge[] = [];
+    const stepIdToNodeId = new Map(normalizedSteps.map((s) => [s.stepId, s.stepId]));
+
+    for (const step of normalizedSteps) {
+      for (const dep of step.dependencies ?? []) {
+        const depNodeId = stepIdToNodeId.get(dep);
+        if (depNodeId) {
+          edges.push({
+            edgeId: `edge:${depNodeId}:${step.stepId}`,
+            fromNodeId: depNodeId,
+            toNodeId: step.stepId,
+            condition: true,
+            dependencyType: "hard",
+          });
+        }
+      }
+    }
+
+    // Compute entry and terminal node IDs
+    const nodeIds = new Set(nodes.map((n) => n.nodeId));
+    const entryNodeIds = nodes
+      .filter((n) => !edges.some((e) => e.toNodeId === n.nodeId))
+      .map((n) => n.nodeId);
+    const terminalNodeIds = nodes
+      .filter((n) => !edges.some((e) => e.fromNodeId === n.nodeId))
+      .map((n) => n.nodeId);
+
+    // Compute graph hash
+    const graphHash = createHash("sha256")
+      .update(JSON.stringify({ nodes, edges }))
+      .digest("hex");
+
+    const harnessRunId = input.workflow.executionSteps[0]?.harnessRunId ?? newId("hr");
+    const planGraphBundleId = newId("pgb");
+
+    const graph = createGraph({
+      graphId: newId("pg"),
+      nodes,
+      edges,
+      entryNodeIds,
+      terminalNodeIds,
+      joinStrategy: "all",
+      graphHash,
+    });
+
+    const riskProfile: RiskPreview = {
+      riskClass: input.assessment.risk,
+      reasons: [input.assessment.reason ?? "assessment_complete"],
+    };
+
+    return createPlanGraphBundle({
+      planGraphBundleId,
+      harnessRunId,
+      graph,
+      schedulerPolicy: {
+        policyId: newId("sp"),
+        strategy: "deterministic_fifo",
+      },
+      budgetPlanRef: `budget://${planGraphBundleId}`,
+      riskProfile,
+      validationReport: dagValidation.valid
+        ? { valid: true, findings: [] }
+        : { valid: false, findings: dagValidation.issues },
+      artifactRefs: [],
+      createdAt: nowIso(),
     });
   }
 
-  public replan(previousPlan: Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">, options: BuildPlanOptions = {}): Plan {
+  /**
+   * Replans from a previous PlanGraphBundle.
+   */
+  public replan(previousPlan: PlanGraphBundle, input: Omit<PlanBuilderInput, "version" | "parentVersion">, options: BuildPlanOptions = {}): PlanGraphBundle {
     return this.build({
       ...input,
-      version: previousPlan.version + 1,
-      parentVersion: previousPlan.version,
+      version: previousPlan.graphVersion + 1,
+      parentVersion: previousPlan.graphVersion,
     }, options);
+  }
+
+  private inferNodeType(action: string): PlanNode["nodeType"] {
+    if (action.includes("llm") || action.includes("model")) {
+      return "llm";
+    }
+    if (action.includes("tool") || action.includes("execute")) {
+      return "tool";
+    }
+    if (action.includes("wait") || action.includes("hitl")) {
+      return "hitl_wait";
+    }
+    if (action.includes("subgraph")) {
+      return "subgraph";
+    }
+    if (action.includes("evaluator")) {
+      return "evaluator";
+    }
+    if (action.includes("router") || action.includes("route")) {
+      return "router";
+    }
+    if (action.includes("compensate")) {
+      return "compensation";
+    }
+    return "tool";
   }
 }

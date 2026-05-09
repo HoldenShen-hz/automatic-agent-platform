@@ -212,27 +212,126 @@ export interface DivisionRecoveryOverview {
 }
 
 /**
+ * Compensation action types for saga rollback.
+ */
+export type CompensationActionType =
+  | "release_budget_reservation"
+  | "release_lock"
+  | "delete_artifact"
+  | "restore_checkpoint"
+  | "record_dead_letter"
+  | "emit_recovery_event";
+
+/**
+ * A single compensation action in a compensation plan.
+ */
+export interface CompensationAction {
+  actionType: CompensationActionType;
+  targetId: string;
+  targetType: "budget_reservation" | "lock" | "artifact" | "checkpoint" | "dead_letter" | "event";
+  payload: Record<string, unknown>;
+  executedAt?: string;
+  success?: boolean;
+  error?: string;
+}
+
+/**
+ * Compensation plan for a failed execution.
+ */
+export interface CompensationPlan {
+  executionId: string;
+  taskId: string;
+  actions: CompensationAction[];
+  createdAt: string;
+  status: "pending" | "executing" | "completed" | "failed";
+  executedActions: number;
+  failedActions: number;
+}
+
+/**
+ * Result of executing compensation.
+ */
+export interface CompensationResult {
+  planId: string;
+  success: boolean;
+  executedActions: number;
+  failedActions: number;
+  errors: string[];
+}
+
+/**
+ * Context for compensation execution.
+ */
+export interface CompensationContext {
+  readonly traceId: string;
+  readonly tenantId: string;
+  readonly emittedBy: string;
+  readonly principal: string;
+}
+
+/**
+ * Interface for compensation executor operations.
+ */
+export interface CompensationExecutor {
+  releaseBudgetReservation(reservationId: string, context: CompensationContext): Promise<boolean>;
+  releaseLock(lockId: string, context: CompensationContext): Promise<boolean>;
+  deleteArtifact(artifactId: string, context: CompensationContext): Promise<boolean>;
+  restoreCheckpoint(checkpointId: string, context: CompensationContext): Promise<boolean>;
+  recordDeadLetter(executionId: string, reason: string, context: CompensationContext): Promise<boolean>;
+  emitRecoveryEvent(eventType: string, payload: Record<string, unknown>, context: CompensationContext): Promise<boolean>;
+}
+
+/**
+ * Default compensation executor that provides no-op implementations.
+ * Real implementations should override these methods with actual compensation logic.
+ */
+export class DefaultCompensationExecutor implements CompensationExecutor {
+  public async releaseBudgetReservation(_reservationId: string, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+  public async releaseLock(_lockId: string, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+  public async deleteArtifact(_artifactId: string, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+  public async restoreCheckpoint(_checkpointId: string, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+  public async recordDeadLetter(_executionId: string, _reason: string, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+  public async emitRecoveryEvent(_eventType: string, _payload: Record<string, unknown>, _context: CompensationContext): Promise<boolean> {
+    return true;
+  }
+}
+
+/**
  * Main service for runtime recovery analysis. Provides methods to
  * identify recoverable executions, build diagnostic views, and
  * generate recovery overviews by division.
  *
- * This service is read-only - it queries the store for recovery
- * candidates and builds analysis views but does not modify state.
- * State modifications are performed by RuntimeRepairService.
+ * This service is read-only for analysis - it queries the store for recovery
+ * candidates and builds analysis views. State modifications are performed by
+ * RuntimeRepairService. Compensation execution is handled by the CompensationExecutor.
  */
 export class RuntimeRecoveryService {
   private readonly config: ExceptionRecoveryConfig;
+  private readonly compensationExecutor: CompensationExecutor;
 
   /**
    * Creates a new RuntimeRecoveryService instance.
    * @param store - The AuthoritativeTaskStore used for querying execution and task data
    * @param config - Optional exception recovery configuration (defaults to loading from config/exception-recovery/default.json)
+   * @param compensationExecutor - Optional compensation executor for saga rollback (defaults to DefaultCompensationExecutor)
    */
   public constructor(
     private readonly store: AuthoritativeTaskStore,
     config?: ExceptionRecoveryConfig,
+    compensationExecutor?: CompensationExecutor,
   ) {
     this.config = config ?? loadExceptionRecoveryConfig();
+    this.compensationExecutor = compensationExecutor ?? new DefaultCompensationExecutor();
   }
 
   /**
@@ -398,6 +497,156 @@ export class RuntimeRecoveryService {
 
     // Sort by division ID for consistent ordering
     return [...divisions.values()].sort((left, right) => left.divisionId.localeCompare(right.divisionId));
+  }
+
+  /**
+   * Builds a compensation plan for a failed execution.
+   *
+   * A compensation plan outlines the actions needed to rollback or clean up
+   * after a failed execution. This includes releasing budget reservations,
+   * locks, and other resources.
+   *
+   * @param executionId - The execution to build compensation plan for
+   * @param tenantId - Optional tenant ID
+   * @returns Compensation plan or null if execution not found
+   */
+  public buildCompensationPlan(executionId: string, tenantId?: string | null): CompensationPlan | null {
+    const candidates = this.store.operations.buildRuntimeRecoveryView(
+      this.store.task.getTaskByExecutionId?.(executionId, tenantId)?.taskId ?? "",
+      tenantId,
+    );
+
+    const candidate = candidates.find((c) => c.executionId === executionId);
+    if (!candidate) {
+      return null;
+    }
+
+    const actions: CompensationAction[] = [];
+
+    // Add budget reservation release if there's a precheck with resolved budget
+    if (candidate.latestPrecheck?.resolvedBudgetUsd != null) {
+      actions.push({
+        actionType: "release_budget_reservation",
+        targetId: executionId,
+        targetType: "budget_reservation",
+        payload: { executionId, resolvedBudgetUsd: candidate.latestPrecheck.resolvedBudgetUsd },
+      });
+    }
+
+    // Add dead letter recording for failed executions
+    if (candidate.status === "failed") {
+      actions.push({
+        actionType: "record_dead_letter",
+        targetId: executionId,
+        targetType: "dead_letter",
+        payload: {
+          executionId,
+          taskId: candidate.taskId,
+          errorCode: candidate.latestErrorCode,
+          reason: candidate.reason,
+        },
+      });
+    }
+
+    // Add recovery event emission
+    actions.push({
+      actionType: "emit_recovery_event",
+      targetId: executionId,
+      targetType: "event",
+      payload: {
+        eventType: "recovery:compensation_plan_built",
+        executionId,
+        taskId: candidate.taskId,
+        actionCount: actions.length,
+      },
+    });
+
+    return {
+      executionId,
+      taskId: candidate.taskId,
+      actions,
+      createdAt: nowIso(),
+      status: "pending",
+      executedActions: 0,
+      failedActions: 0,
+    };
+  }
+
+  /**
+   * Executes a compensation plan using the configured compensation executor.
+   *
+   * @param plan - The compensation plan to execute
+   * @param context - The compensation context (traceId, tenantId, etc.)
+   * @returns Result of compensation execution
+   */
+  public async executeCompensation(plan: CompensationPlan, context: CompensationContext): Promise<CompensationResult> {
+    const errors: string[] = [];
+    let executedActions = 0;
+    let failedActions = 0;
+
+    plan.status = "executing";
+
+    for (const action of plan.actions) {
+      try {
+        let success = false;
+        switch (action.actionType) {
+          case "release_budget_reservation":
+            success = await this.compensationExecutor.releaseBudgetReservation(action.targetId, context);
+            break;
+          case "release_lock":
+            success = await this.compensationExecutor.releaseLock(action.targetId, context);
+            break;
+          case "delete_artifact":
+            success = await this.compensationExecutor.deleteArtifact(action.targetId, context);
+            break;
+          case "restore_checkpoint":
+            success = await this.compensationExecutor.restoreCheckpoint(action.targetId, context);
+            break;
+          case "record_dead_letter":
+            success = await this.compensationExecutor.recordDeadLetter(
+              action.targetId,
+              (action.payload.reason as string) ?? "compensation_execution",
+              context,
+            );
+            break;
+          case "emit_recovery_event":
+            success = await this.compensationExecutor.emitRecoveryEvent(
+              (action.payload.eventType as string) ?? "recovery:compensation_executed",
+              action.payload,
+              context,
+            );
+            break;
+        }
+
+        action.executedAt = nowIso();
+        action.success = success;
+
+        if (success) {
+          executedActions++;
+        } else {
+          failedActions++;
+          errors.push(`Action ${action.actionType} on ${action.targetId} returned false`);
+        }
+      } catch (error) {
+        action.executedAt = nowIso();
+        action.success = false;
+        action.error = error instanceof Error ? error.message : String(error);
+        failedActions++;
+        errors.push(`Action ${action.actionType} on ${action.targetId} threw: ${action.error}`);
+      }
+    }
+
+    plan.status = failedActions === 0 ? "completed" : "failed";
+    plan.executedActions = executedActions;
+    plan.failedActions = failedActions;
+
+    return {
+      planId: plan.executionId,
+      success: failedActions === 0,
+      executedActions,
+      failedActions,
+      errors,
+    };
   }
 }
 

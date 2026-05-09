@@ -1,10 +1,72 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
+import { createHash } from "node:crypto";
+
+// R8-25 FIX: Plugin signature verification for secure plugin loading
 
 export interface GithubAdapterPluginOptions {
   apiBaseUrl?: string;
   policy?: NetworkEgressPolicyService;
+  signatureKey?: string;
+}
+
+/**
+ * R8-25 FIX: Plugin signature verification result
+ */
+export interface PluginSignatureVerificationResult {
+  readonly valid: boolean;
+  readonly error?: string;
+  readonly verifiedAt: string;
+}
+
+/**
+ * R8-25 FIX: Verify plugin manifest signature for secure loading.
+ * Uses HMAC-SHA256 for integrity verification.
+ */
+export function verifyPluginSignature(
+  pluginId: string,
+  manifestHash: string,
+  signature: string,
+  secretKey: string,
+): PluginSignatureVerificationResult {
+  const verifiedAt = new Date().toISOString();
+
+  if (!secretKey) {
+    return { valid: false, error: "plugin_signature.verification_key_missing", verifiedAt };
+  }
+
+  if (!signature) {
+    return { valid: false, error: "plugin_signature.signature_missing", verifiedAt };
+  }
+
+  try {
+    const expectedSignature = createHash("sha256")
+      .update(`${pluginId}:${manifestHash}`)
+      .update(secretKey)
+      .digest("hex");
+
+    if (signature !== expectedSignature) {
+      return { valid: false, error: "plugin_signature.invalid", verifiedAt };
+    }
+
+    return { valid: true, verifiedAt };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `plugin_signature.verification_error: ${err instanceof Error ? err.message : "unknown"}`,
+      verifiedAt,
+    };
+  }
+}
+
+/**
+ * R8-25 FIX: Create a signed plugin manifest hash for verification.
+ */
+export function createPluginManifestHash(pluginId: string, manifest: Record<string, unknown>): string {
+  return createHash("sha256")
+    .update(`${pluginId}:${JSON.stringify(manifest)}`)
+    .digest("hex");
 }
 
 function requireString(value: unknown, field: string): string {

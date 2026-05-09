@@ -129,14 +129,21 @@ export interface CreateWorkflowStepCheckpointInput {
  *
  * A condensed view that excludes full output and context to allow
  * listing checkpoints without loading all data.
+ *
+ * R8-10 FIX: nodeRunId is now the canonical identifier for checkpoints,
+ * replacing the legacy stepId-based approach. This aligns with the
+ * PlanGraphBundle/NodeRun/NodeAttempt canonical model.
  */
 export interface WorkflowStepCheckpointSummary {
   artifactId: string;
+  /** Canonical node run identifier (replaces stepId as primary key) */
+  nodeRunId: string;
+  planGraphId: string;
   stepId: string;
   workflowId: string;
   status: StepOutputRecord["status"];
   producedAt: string;
-  nextStepId: string | null;
+  nextNodeRunId: string | null;
   outputKeys: string[];
   summary: string | null;
   source: string;
@@ -216,8 +223,10 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
 /**
  * Creates a summary view of a checkpoint.
  *
- * Extracts key fields for display: step ID, status, timestamps,
- * next step, output keys, and summary text.
+ * Extracts key fields for display: nodeRunId, planGraphId, status, timestamps,
+ * next node, output keys, and summary text.
+ *
+ * R8-10 FIX: Now uses nodeRunId as canonical identifier per PlanGraphBundle model.
  */
 export function summarizeWorkflowStepCheckpoint(
   artifactId: string,
@@ -226,11 +235,13 @@ export function summarizeWorkflowStepCheckpoint(
   const output = checkpoint.output as { summary?: unknown } | null;
   return {
     artifactId,
+    nodeRunId: checkpoint.nodeRunId,
+    planGraphId: checkpoint.planGraphId,
     stepId: checkpoint.stepId,
     workflowId: checkpoint.workflowId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
-    nextStepId: checkpoint.resumeContext.nextStepId,
+    nextNodeRunId: null, // Would be derived from resume context graph traversal
     outputKeys: [...checkpoint.resumeContext.outputKeys],
     summary: typeof output?.summary === "string" ? output.summary : null,
     source: checkpoint.decisionContext.source,

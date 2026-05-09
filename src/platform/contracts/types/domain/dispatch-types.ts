@@ -37,6 +37,8 @@ export interface ExecutionTicketRecord {
   id: string;
   executionId: string;
   taskId: string;
+  // R13-15: tenantId for per-tenant fair scheduling
+  tenantId: string;
   priority: TaskPriority;
   queueName: string | null;
   dispatchTarget?: DispatchTarget | null;

@@ -159,6 +159,20 @@ export interface WorkerLifecyclePayload {
   reasonCode?: string | null;
 }
 
+// R13-18: Auto-scaling signal payload for worker pool management
+export interface WorkerScaleSignalPayload {
+  workerId: string;
+  reason: string;
+  currentLoad: number;
+  targetLoad: number;
+  saturation: number | null;
+  cpuPct: number | null;
+  memoryMb: number | null;
+  activeLeaseCount: number;
+  maxConcurrency: number;
+  occurredAt: string;
+}
+
 export interface TakeoverPayload {
   takeoverId: string;
   executionId: string;
