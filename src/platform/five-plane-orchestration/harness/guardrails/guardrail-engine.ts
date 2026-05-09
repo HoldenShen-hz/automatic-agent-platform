@@ -4,10 +4,11 @@ export type GuardrailSeverity = "info" | "warn" | "block";
 
 export interface GuardrailFinding {
   readonly layer:
+    // R3-1 fix: Add explicit Input and Memory guardrail layers
     | "input"
+    | "memory"
     | "planning"
     | "tool"
-    | "memory"
     | "output"
     | "policy"
     | "risk"

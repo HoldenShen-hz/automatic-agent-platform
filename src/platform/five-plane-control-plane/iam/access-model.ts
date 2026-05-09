@@ -267,13 +267,16 @@ export function evaluateAuthorizationContext(input: {
     };
   }
 
+  // R12-18: Default deny when no context rules match.
+  // Previous behavior returned allowed:true when no rules matched, which is
+  // a dangerous default for a security boundary. Fix by defaulting to deny.
   return {
-    allowed: true,
+    allowed: false,
     requiresApproval: false,
-    reasonCode: null,
-    matchedRuleRefs: ["context.default_allow"],
+    reasonCode: "policy.context_no_match_default_deny",
+    matchedRuleRefs: [],
     constraints: {},
-    explainSummary: "Context-aware authorization allows this action.",
+    explainSummary: "Context-aware authorization denies this action by default when no rules match.",
   };
 }
 

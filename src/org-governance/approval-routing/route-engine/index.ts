@@ -149,7 +149,49 @@ export function applySodPolicy(
       blocked.add(ownerId);
     }
   }
+  // Prevent same-chain approval: if any candidate approver shares a management chain
+  // with another candidate approver, block that person to ensure no circular approvals
+  const sameChainBlocked = new Set<string>();
+  for (const approverA of candidateApprovers) {
+    for (const approverB of candidateApprovers) {
+      if (approverA === approverB) continue;
+      if (sharesManagementChain(approverA, approverB, nodes)) {
+        sameChainBlocked.add(approverA);
+        sameChainBlocked.add(approverB);
+      }
+    }
+  }
+  for (const id of sameChainBlocked) {
+    blocked.add(id);
+  }
   return candidateApprovers.filter((approverId) => !blocked.has(approverId));
+}
+
+function sharesManagementChain(a: string, b: string, nodes: readonly OrgNode[]): boolean {
+  const nodeOf = (userId: string): OrgNode | undefined =>
+    nodes.find((n) => n.ownerUserIds.includes(userId));
+  const aNode = nodeOf(a);
+  const bNode = nodeOf(b);
+  if (!aNode || !bNode) return false;
+  // Check if a and b share any ancestor in the org hierarchy (same approval lineage)
+  const aAncestors = collectAncestorIds(aNode, nodes);
+  const bAncestors = collectAncestorIds(bNode, nodes);
+  return aAncestors.has(b) || bAncestors.has(a);
+}
+
+function collectAncestorIds(node: OrgNode, nodes: readonly OrgNode[]): Set<string> {
+  const ancestors = new Set<string>();
+  let current: OrgNode | undefined = node;
+  while (current?.parentOrgNodeId) {
+    const parent = nodes.find((n) => n.orgNodeId === current!.parentOrgNodeId);
+    if (!parent) break;
+    ancestors.add(parent.orgNodeId);
+    for (const ownerId of parent.ownerUserIds) {
+      ancestors.add(ownerId);
+    }
+    current = parent;
+  }
+  return ancestors;
 }
 
 export function resolveApprovalRoute(

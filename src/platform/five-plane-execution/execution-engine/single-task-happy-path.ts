@@ -33,6 +33,8 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
+import { createPlatformFactEvent, createPrincipalRef, createSideEffectRecord, type SideEffectRecord, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import { createEvidenceRecord } from "../../contracts/index.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
@@ -305,6 +307,10 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
 
     // R4-25 fix: ExecutionRecord now created with harnessRunId association via HarnessRun
+    // R4-32 (INV-RISK-001): Implement risk-proportional approval instead of hardcoded 0
+    // Note: requiresApproval is 0|1 per domain types, so high/critical both map to 1
+    const riskLevel = harnessRun.riskLevel ?? "medium";
+    const riskProportionalApproval = (riskLevel === "critical" || riskLevel === "high") ? 1 : 0;
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
@@ -322,7 +328,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       budgetUsdLimit: 1,
       budgetReservationId: null,
       budgetLedgerId: null,
-      requiresApproval: 0,
+      requiresApproval: riskProportionalApproval, // R4-32 fix: Risk-proportional approval based on harnessRun riskLevel
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
       allowedPathsJson: JSON.stringify([]),
@@ -493,6 +499,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         executionId,
         workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
         divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
+        harnessRunId,
+        nodeRunId: executionId,
+        planGraphId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
         stepId: step.stepId,
         roleId: step.roleId,
         outputKey: step.outputKey,
@@ -587,6 +596,34 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           roleId: stepOutput.roleId,
           status: stepOutput.status,
         }, stepCompletionTrace),
+      });
+
+      // R4-28 (INV-STATE-001): Append PlatformFactEvent for step completion to ensure event sourcing
+      const stepCompletionEvent = createPlatformFactEvent({
+        eventType: "platform.workflow.step_completed",
+        aggregateType: "WorkflowState",
+        aggregateId: taskId,
+        aggregateSeq: 1,
+        tenantId: input.tenantId ?? "tenant:local",
+        runId: traceId,
+        traceId,
+        payload: {
+          stepId: stepOutput.stepId ?? null,
+          roleId: stepOutput.roleId,
+          status: stepOutput.status,
+          outputKey: step.outputKey,
+        },
+        source: "single_task_execution",
+        replayBehavior: "replay_as_fact",
+      });
+      store.event.insertEvent({
+        id: newId("evt"),
+        taskId,
+        executionId,
+        eventType: stepCompletionEvent.eventType,
+        payloadJson: JSON.stringify(stepCompletionEvent.payload),
+        traceId,
+        createdAt: nowIso(),
       });
     });
     maybeInjectWorkflowCrash(input.crashInjection, {

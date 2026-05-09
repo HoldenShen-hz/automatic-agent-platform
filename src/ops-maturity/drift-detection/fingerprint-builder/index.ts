@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 export interface BehaviorFingerprintInput {
   agentId: string;
+  subjectType?: string;
+  baselineRef?: string | null;
   tools: readonly string[];
   failureCategories: readonly string[];
   averageLatencyMs: number;
@@ -19,13 +21,19 @@ export interface BehaviorFingerprintInput {
 
 export interface BehaviorFingerprint {
   fingerprintId: string;
+  subjectType: string;
+  baselineRef: string | null;
   normalizedFeatures: string[];
   hash: string;
 }
 
 export class BehaviorFingerprintBuilder {
   public build(input: BehaviorFingerprintInput): BehaviorFingerprint {
+    const subjectType = input.subjectType ?? "agent";
+    const baselineRef = input.baselineRef ?? null;
     const normalizedFeatures = [
+      `subject_type:${subjectType}`,
+      `baseline_ref:${baselineRef ?? "none"}`,
       `agent:${input.agentId}`,
       `tools:${[...input.tools].sort().join(",")}`,
       `failures:${[...input.failureCategories].sort().join(",")}`,
@@ -42,6 +50,8 @@ export class BehaviorFingerprintBuilder {
     const hash = createHash("sha256").update(normalizedFeatures.join("|")).digest("hex");
     return {
       fingerprintId: `fingerprint:${input.agentId}`,
+      subjectType,
+      baselineRef,
       normalizedFeatures,
       hash,
     };

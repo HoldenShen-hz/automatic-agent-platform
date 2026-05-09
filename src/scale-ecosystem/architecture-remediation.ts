@@ -3,7 +3,7 @@ export type RemoteSessionState = "connecting" | "connected" | "reconnecting" | "
 export type SlaBreachType = "latency" | "success_rate" | "queue_wait" | "execution_timeout" | "dependency_unavailability";
 
 export interface MarketplaceCatalogEntry {
-  readonly listingId: string;
+  readonly entryId: string;
   readonly publisherId: string;
   readonly artifactType: "pack" | "plugin" | "connector" | "model_profile";
   readonly artifactRef: string;
@@ -54,8 +54,8 @@ export interface CostAttributionRecord {
 }
 
 export interface ListingDependency {
-  readonly listingId: string;
-  readonly dependsOnListingId: string;
+  readonly entryId: string;
+  readonly dependsOnEntryId: string;
   readonly versionRange: string;
   readonly compatibilityEvidenceRef: string;
 }
@@ -96,7 +96,7 @@ export function buildBillingAdjustment(input: Omit<BillingAdjustment, "preserves
 export function validateListingDependencies(dependencies: readonly ListingDependency[]): { readonly valid: boolean; readonly missingEvidenceIds: readonly string[] } {
   const missingEvidenceIds = dependencies
     .filter((dependency) => dependency.compatibilityEvidenceRef.trim().length === 0)
-    .map((dependency) => dependency.dependsOnListingId);
+    .map((dependency) => dependency.dependsOnEntryId);
   return { valid: missingEvidenceIds.length === 0, missingEvidenceIds };
 }
 

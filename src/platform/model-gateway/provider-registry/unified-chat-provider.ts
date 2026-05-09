@@ -69,12 +69,12 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
-  /** @required for audit - caller must provide traceId for request correlation */
-  traceId?: string;
-  /** @required for audit - caller must provide tenantId for multi-tenant isolation */
-  tenantId?: string | null;
-  /** @required for audit - caller must provide costTag for chargeback attribution */
-  costTag?: string;
+  /** @required - caller must provide traceId for request correlation */
+  traceId: string;
+  /** @required - caller must provide tenantId for multi-tenant isolation */
+  tenantId: string | null;
+  /** @required - caller must provide costTag for chargeback attribution */
+  costTag: string;
   spanId?: string;
   principalId?: string | null;
   timeoutMs?: number;

@@ -87,17 +87,18 @@ queued -> pending -> in_progress -> done
 - `planning`
 - `ready`
 - `running`
-- `replanning`
-- `compensating`
 - `pausing`
 - `paused`
 - `resuming`
+- `replanning`
+- `compensating`
 - `completing`
 - `completed`
 - `failed`
 - `cancelling`
 - `cancelled`
 - `timed_out`
+- `aborted`
 
 允许跃迁：
 
@@ -119,6 +120,8 @@ queued -> pending -> in_progress -> done
 - `running -> cancelling`
 - `cancelling -> cancelled`
 - `running -> timed_out`
+- `running -> aborted`
+- `paused -> aborted`
 
 约束：
 
@@ -187,44 +190,60 @@ queued -> pending -> in_progress -> done
 
 ## 6. ExecutionStatus（legacy execution projection）
 
-> 注意：`ExecutionStatus` 只保留为旧 `executions` 投影视图与迁移说明；新实现入口不得再把它作为权威执行状态枚举。
+> 注意：`ExecutionStatus` 只保留为旧 `executions` 投影视图与迁移说明；新实现入口不得再把它作为权威执行状态枚举。v4.3 truth 执行状态以 `NodeRun.status`（14态）为准。
 
 枚举：
 
-- `pending`
-- `prechecking`
+- `created`
 - `ready`
+- `leased`
 - `running`
-- `blocked`
+- `retry_wait`
+- `awaiting_hitl`
+- `reconciling`
 - `succeeded`
 - `failed`
+- `skipped`
 - `cancelled`
-- `timed_out`
+- `dependency_failed`
+- `policy_blocked`
+- `aborted`
 
 允许跃迁：
 
-- `pending -> prechecking`
-- `pending -> cancelled`
-- `prechecking -> ready`
-- `prechecking -> blocked`
-- `prechecking -> cancelled`
-- `ready -> running`
-- `running -> blocked`
+- `created -> ready`
+- `ready -> leased`
+- `leased -> running`
+- `running -> retry_wait`
+- `running -> awaiting_hitl`
+- `running -> reconciling`
 - `running -> succeeded`
 - `running -> failed`
+- `running -> skipped`
 - `running -> cancelled`
-- `running -> timed_out`
-- `blocked -> prechecking`
-- `blocked -> running`
-- `blocked -> cancelled`
-- `blocked -> failed`
+- `running -> dependency_failed`
+- `running -> policy_blocked`
+- `running -> aborted`
+- `retry_wait -> running`
+- `retry_wait -> failed`
+- `awaiting_hitl -> running`
+- `awaiting_hitl -> failed`
+- `reconciling -> succeeded`
+- `reconciling -> failed`
+- `skipped -> aborted`
+- `cancelled -> aborted`
+- `dependency_failed -> aborted`
+- `policy_blocked -> aborted`
 
 约束：
 
-- `prechecking` 是正式运行态的一部分，不是可忽略的临时字段。
-- `blocked` 必须伴随明确原因，例如 `approval_required`、`dependency_unavailable`。
-- 重试语义不再由独立状态表达，而通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入 `failed` 或 `cancelled`。
-- `succeeded`、`failed`、`cancelled`、`timed_out` 为终态。
+- `retry_wait` 是正式运行态的一部分，用于重试等待期。
+- `awaiting_hitl` 必须伴随明确原因，例如 `approval_required`、`human_input_required`。
+- `reconciling` 用于协调 side effect 和补偿逻辑。
+- `dependency_failed` 表示上游依赖节点失败导致本节点不可执行。
+- `policy_blocked` 表示策略引擎阻止了执行。
+- 重试语义通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入终态。
+- `succeeded`、`failed`、`cancelled`、`timed_out`、`aborted` 为终态。
 - v4.3 truth 执行状态以 `NodeRun.status` 和 `NodeAttemptReceipt` append-only 回执为准，`ExecutionStatus` 不得反向驱动运行时合法性判断。
 
 ## 7. 跨状态一致性约束

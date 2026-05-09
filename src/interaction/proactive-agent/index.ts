@@ -100,6 +100,8 @@ export interface ProactiveAgentServiceOptions {
   readonly maxConsecutiveFailures?: number;
   readonly dailyTriggerBudgetByDomain?: Readonly<Record<string, number>>;
   readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
+  // R5-27: Link autonomy level to proactive triggers
+  readonly initialAutonomyLevel?: "suggestion" | "supervised" | "semi_auto" | "full_auto";
 }
 
 interface TriggerRuntimeState {
@@ -208,12 +210,58 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly dailyTriggerUsage = new Map<string, number>();
   private readonly budgetPoolsByDomain: Readonly<Record<string, ProactiveBudgetPool>>;
   private readonly incidents: ProactiveIncident[] = [];
+  // R5-27: Autonomy level linked to proactive triggers
+  private currentAutonomyLevel: "suggestion" | "supervised" | "semi_auto" | "full_auto" = "full_auto";
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
+    this.currentAutonomyLevel = options.initialAutonomyLevel ?? "full_auto";
+  }
+
+  /**
+   * R5-27: Update autonomy level - changes affect trigger action mode
+   */
+  public setAutonomyLevel(level: "suggestion" | "supervised" | "semi_auto" | "full_auto"): void {
+    this.currentAutonomyLevel = level;
+  }
+
+  /**
+   * R5-27: Get current autonomy level
+   */
+  public getAutonomyLevel(): "suggestion" | "supervised" | "semi_auto" | "full_auto" {
+    return this.currentAutonomyLevel;
+  }
+
+  /**
+   * R5-27: Get autonomy-adjusted action mode based on current autonomy level
+   * Lower autonomy levels restrict auto_execute more heavily
+   */
+  private getAutonomyAdjustedActionMode(
+    baseActionMode: "auto_execute" | "suggest" | "silent_record",
+  ): "auto_execute" | "suggest" | "silent_record" {
+    // If base mode is already suggest or silent_record, keep it
+    if (baseActionMode !== "auto_execute") {
+      return baseActionMode;
+    }
+
+    // R5-27: Restrict auto_execute based on autonomy level
+    switch (this.currentAutonomyLevel) {
+      case "suggestion":
+        // Suggestion level only allows suggest mode
+        return "suggest";
+      case "supervised":
+        // Supervised only allows suggest for most actions
+        return "suggest";
+      case "semi_auto":
+        // Semi-auto can auto_execute low-risk actions only
+        return "auto_execute";
+      case "full_auto":
+        // Full auto can use base mode
+        return baseActionMode;
+    }
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -313,8 +361,17 @@ export class ProactiveAgentService implements ProactiveAgentPort {
         state.pendingEvents = state.pendingEvents.filter(
           (e) => now - e.timestamp <= batchWindowMs,
         );
-        // R5-29: If batch has multiple events, only fire when batch window closes
+        // R5-29: If this is not the first event in the batch window, aggregate and fire
+        // If this IS the first event (pendingEvents.length was 0 or 1 before this push),
+        // delay firing until batch window closes or more events arrive
         if (state.pendingEvents.length > 1) {
+          // We have multiple events - batch is complete, fire with aggregated events
+          // Clear the batch after we decide to fire
+          state.pendingEvents = [];
+        } else if (state.pendingEvents.length === 1) {
+          // First event in batch - delay firing by adding pending reason
+          // The event stays in pendingEvents and will be aggregated with subsequent events
+          // or fired when the next evaluation occurs after the window has passed
           reasons.push("proactive_agent.batch_aggregation_pending");
         }
       }
@@ -335,7 +392,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
-    const actionMode = state.trigger.action.requireConfirmation
+    const baseActionMode = state.trigger.action.requireConfirmation
       ? "suggest"
       : state.trigger.riskLevel === "critical"
         ? "silent_record"
@@ -345,6 +402,8 @@ export class ProactiveAgentService implements ProactiveAgentPort {
           : state.trigger.riskLevel === "medium" || state.trigger.riskLevel === "high"
             ? "suggest"
             : "auto_execute";
+    // R5-27: Apply autonomy level adjustment to action mode
+    const actionMode = this.getAutonomyAdjustedActionMode(baseActionMode);
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {

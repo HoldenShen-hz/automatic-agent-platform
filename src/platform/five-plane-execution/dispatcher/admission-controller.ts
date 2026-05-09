@@ -38,6 +38,14 @@ export interface AdmissionRequest {
   priority: TaskPriority;
   estimatedCostUsd?: number | null;
   budgetRemainingUsd?: number | null;
+  // R6-3: Risk class for isolation/tenant-quota enforcement per §39.6
+  riskClass?: "low" | "medium" | "high" | "critical" | null;
+  // R6-3: Required sandbox type for this execution
+  requiredSandboxType?: string | null;
+  // R6-3: Tenant quota reference for resource governance
+  tenantQuotaRef?: string | null;
+  // R6-3: Required capability class for worker matching
+  capabilityClass?: string | null;
 }
 
 export interface AdmissionBackpressureSnapshot {

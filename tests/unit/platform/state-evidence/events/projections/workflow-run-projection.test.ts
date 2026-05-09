@@ -165,6 +165,45 @@ test("workflowRunProjectionHandler handles task:status_changed to failed", () =>
   assert.equal(state.error!.message, "Something went wrong");
 });
 
+test("workflowRunProjectionHandler handles workflow_run lifecycle events", () => {
+  const created = makeEvent(
+    "evt_created",
+    "workflow_run.created",
+    "task_1",
+    '{"workflowRunId":"run_1"}',
+  );
+  const completed = makeEvent(
+    "evt_completed",
+    "workflow_run.completed",
+    "task_1",
+    '{"workflowRunId":"run_1"}',
+    "2026-04-19T10:05:00.000Z",
+  );
+
+  const afterCreated = workflowRunProjectionHandler(null, created) as unknown as WorkflowRunState;
+  const afterCompleted = workflowRunProjectionHandler(afterCreated as unknown as Record<string, unknown>, completed) as unknown as WorkflowRunState;
+
+  assert.equal(afterCreated.workflowId, "run_1");
+  assert.equal(afterCreated.status, "running");
+  assert.equal(afterCompleted.status, "completed");
+  assert.equal(afterCompleted.completedAt, "2026-04-19T10:05:00.000Z");
+});
+
+test("workflowRunProjectionHandler handles workflow_run.failed", () => {
+  const failed = makeEvent(
+    "evt_failed",
+    "workflow_run.failed",
+    "task_1",
+    '{"workflowRunId":"run_2","reasonCode":"timeout","reasonDetail":"workflow timed out"}',
+  );
+
+  const state = workflowRunProjectionHandler(null, failed) as unknown as WorkflowRunState;
+  assert.equal(state.workflowId, "run_2");
+  assert.equal(state.status, "failed");
+  assert.equal(state.error?.code, "timeout");
+  assert.equal(state.error?.message, "workflow timed out");
+});
+
 test("workflowRunProjectionHandler is idempotent - same event applied twice", () => {
   const event = makeEvent(
     "evt_idempotent",

@@ -44,8 +44,44 @@ import {
   type SecretRotationPolicy,
 } from "./secret-management-support.js";
 
+/**
+ * R12-21: Rate limiter for secret resolution operations.
+ * Prevents abuse by limiting the number of secret resolutions per time window.
+ */
+class SecretResolutionRateLimiter {
+  private readonly windowMs: number;
+  private readonly maxRequests: number;
+  private readonly requests: Map<string, number[]> = new Map();
+
+  constructor(windowMs = 60_000, maxRequests = 100) {
+    this.windowMs = windowMs;
+    this.maxRequests = maxRequests;
+  }
+
+  /**
+   * R12-21: Check if a caller is within rate limits.
+   * @returns true if allowed, false if rate limited
+   */
+  check(callerId: string): boolean {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const timestamps = this.requests.get(callerId) ?? [];
+    const validTimestamps = timestamps.filter((t) => t > windowStart);
+
+    if (validTimestamps.length >= this.maxRequests) {
+      this.requests.set(callerId, validTimestamps);
+      return false;
+    }
+
+    validTimestamps.push(now);
+    this.requests.set(callerId, validTimestamps);
+    return true;
+  }
+}
+
 export class SecretManagementService {
   private readonly providers: Record<SecretProviderKind, ManagedSecretProvider>;
+  private readonly rateLimiter = new SecretResolutionRateLimiter();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -115,6 +151,14 @@ export class SecretManagementService {
    * @returns The secret value with audit record
    */
   public async resolveSecret(input: ResolveManagedSecretInput): Promise<ManagedSecretResolution> {
+    // R12-21: Check rate limit before resolving secret
+    const callerId = assertNonEmpty(input.requestedBy, "secret.invalid_requested_by");
+    if (!this.rateLimiter.check(callerId)) {
+      throw new PolicyDeniedError("secret.rate_limited", "secret.rate_limited", {
+        details: { callerId, windowMs: 60_000, maxRequests: 100 },
+      });
+    }
+
     return this.db.transaction(async () => {
       const registry = this.requireRegistryRecord(input.secretRef);
       if (registry.status === "disabled" || registry.status === "revoked") {

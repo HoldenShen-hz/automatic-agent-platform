@@ -15,7 +15,9 @@ import {
   recordWizardAnswer,
   saveWizardSession,
   getWizardProgress,
+  getWizardRiskPreview,
   getVisibleSteps,
+  validateWizardStep,
   type WizardSession,
   type WizardStep,
 } from "../../../../../src/interaction/ux/wizard/index.js";
@@ -272,4 +274,46 @@ test("goBackWizard restores previous current step", () => {
   assert.notEqual(back, null);
   assert.equal(back.currentStepId, "step_2");
   assert.deepEqual(back.history, ["step_1"]);
+});
+
+test("validateWizardStep reports missing required answers", () => {
+  const session = createSession({
+    steps: [
+      {
+        stepId: "risk_setup",
+        title: "Risk Setup",
+        completed: true,
+        requiredAnswerKeys: ["budget", "owner"],
+      },
+    ],
+    currentStepId: "risk_setup",
+    answers: { budget: "100" },
+  });
+
+  const validation = validateWizardStep(session);
+  assert.equal(validation.valid, false);
+  assert.deepEqual(validation.missingAnswerKeys, ["owner"]);
+  assert.equal(canAdvanceWizard(session), false);
+});
+
+test("getWizardRiskPreview surfaces medium+ risk steps and review requirement", () => {
+  const session = createSession({
+    steps: [
+      { stepId: "basic", title: "Basic", completed: true },
+      {
+        stepId: "governance",
+        title: "Governance",
+        completed: false,
+        riskLevel: "high",
+        riskHints: ["human_approval_required"],
+      },
+    ],
+    currentStepId: "basic",
+  });
+
+  const preview = getWizardRiskPreview(session);
+  assert.equal(preview.highestRisk, "high");
+  assert.deepEqual(preview.flaggedStepIds, ["governance"]);
+  assert.equal(preview.reviewRequired, true);
+  assert.deepEqual(preview.hints, ["human_approval_required"]);
 });

@@ -38,11 +38,15 @@ export class StateTransitionMachine<TState extends string> {
 
   /**
    * Asserts that a transition is valid, throwing WorkflowStateError if not.
-   * Idempotent - returns without error if current === next (no-op transition).
+   * Rejects no-op transitions (current === next) per RuntimeStateMachine spec.
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
-      return;
+      throw new WorkflowStateError(
+        `${this.entityKind}.noop_transition_denied`,
+        `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`,
+        { details: { entityKind: this.entityKind, current, next } },
+      );
     }
 
     if (!this.transitions[current]?.includes(next)) {

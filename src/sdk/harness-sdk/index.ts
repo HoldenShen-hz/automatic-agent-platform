@@ -343,12 +343,30 @@ export class HarnessSdk {
   }
 
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
+    // R8-21 FIX: appendStep now produces NodeAttemptReceipt for proper tracking
+    // Use appendStepWithReceipt if you need explicit access to the receipt
+    const result = this.appendStepWithReceipt(run, input);
+    return result.run;
+  }
+
+  /**
+   * R8-21 FIX: appendStepWithReceipt produces NodeAttemptReceipt for proper node tracking.
+   * Uses nodeRunId-based routing instead of stage string routing.
+   */
+  public appendStepWithReceipt(
+    run: HarnessRun,
+    input: HarnessSdkAppendStepInput,
+    options: HarnessSdkReceiptOptions = {},
+  ): { run: HarnessRun; receipt: NodeAttemptReceipt } {
     const mutableRun = this.resolveMutableRun(run);
+    let updatedRun: HarnessRun;
+
     if (mutableRun != null) {
+      // Use nodeRunId for routing (not stage string) per R8-21 fix
       const updated = this.runtime.appendStep(mutableRun, {
         role: input.role,
         nodeRunId: input.nodeRunId,
-        stage: input.phase ?? input.stage ?? input.nodeRunId,
+        stage: input.nodeRunId,  // R8-21 FIX: Use nodeRunId instead of stage string
         inputs: {
           ...input.inputs,
           nodeRunId: input.nodeRunId,
@@ -358,32 +376,49 @@ export class HarnessSdk {
         ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
       });
       this.runtime.persistRun(updated);
-      return updated as unknown as HarnessRun;
+      updatedRun = updated as unknown as HarnessRun;
+    } else {
+      const timelineEntry: HarnessTimelineEvent = {
+        eventId: newId("timeline"),
+        runId: run.harnessRunId,
+        type: "step_completed",
+        payload: {
+          role: input.role,
+          nodeRunId: input.nodeRunId,
+          planGraphId: input.planGraphId,
+        },
+        recordedAt: nowIso(),
+      };
+
+      // Cast through HarnessRunRuntimeState to access timeline and currentSeq
+      // @ts-ignore - timeline may not exist on HarnessRunRuntimeState
+      const timeline = [
+        ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
+        timelineEntry,
+      ];
+      updatedRun = {
+        ...run,
+        currentSeq: ((run as unknown as Partial<HarnessRunRuntimeState>).currentSeq ?? 0) + 1,
+        timeline,
+      } as HarnessRun;
     }
 
-    const timelineEntry: HarnessTimelineEvent = {
-      eventId: newId("timeline"),
-      runId: run.harnessRunId,
-      type: "step_completed",
-      payload: {
-        role: input.role,
-        nodeRunId: input.nodeRunId,
-        planGraphId: input.planGraphId,
-      },
-      recordedAt: nowIso(),
-    };
-
-    // Cast through HarnessRunRuntimeState to access timeline and currentSeq (which exist on runtime state but not on CanonicalHarnessRun)
-    // @ts-ignore - timeline may not exist on HarnessRunRuntimeState
-    const timeline = [
-      ...(((run as unknown as Partial<HarnessRunRuntimeState>).timeline ?? []) as HarnessTimelineEvent[]),
-      timelineEntry,
-    ];
-    return {
-      ...run,
-      currentSeq: ((run as unknown as Partial<HarnessRunRuntimeState>).currentSeq ?? 0) + 1,
-      timeline,
-    } as HarnessRun;
+    // R8-21 FIX: Always produce NodeAttemptReceipt for tracking
+    // @ts-ignore - exactOptionalPropertyTypes mismatch on optional fields
+    const receipt = createNodeAttemptReceipt({
+      nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
+      nodeRunId: input.nodeRunId,
+      harnessRunId: updatedRun.harnessRunId,
+      planGraphId: input.planGraphId,
+      graphVersion: input.graphVersion ?? 1,
+      receiptKind: input.receiptKind ?? "tool",
+      status: options.status ?? "succeeded",
+      duration: options.duration ?? 0,
+      ...(options.outputRef != null ? { outputRef: options.outputRef } : {}),
+      ...(options.error != null ? { error: options.error as NodeAttemptReceipt["error"] } : {}),
+      errorDetail: options.error?.message ?? "",
+    });
+    return { run: updatedRun, receipt };
   }
 
   public appendStepWithReceipt(

@@ -117,6 +117,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
 
   store.upsertWorkerSnapshot({
     workerId: seededWorkerId,
+    version: 0,
     status: "busy",
     placement: "local",
     isolationLevel: "standard",

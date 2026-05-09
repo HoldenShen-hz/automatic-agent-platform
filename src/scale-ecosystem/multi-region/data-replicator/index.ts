@@ -192,7 +192,7 @@ export class DataReplicatorService {
         containsPii: options?.containsPii ?? false,
         purpose: options?.purpose ?? aggregateType,
         payload: isRecord(payload) ? payload : null,
-        allowedDataFields: options?.allowedDataFields,
+        allowedDataFields: options?.allowedDataFields ?? [],
       });
       if (!assessment.allowed) {
         return null;
@@ -359,18 +359,21 @@ export function createDataReplicator(
   policy: ReplicationPolicy,
   options?: Partial<Omit<DataReplicatorConfig, "sourceRegionId" | "targetRegionIds" | "policy">>,
 ): DataReplicatorService {
-  return new DataReplicatorService({
+  const config: DataReplicatorConfig = {
     sourceRegionId,
     targetRegionIds,
     policy,
-    sourceJurisdiction: options?.sourceJurisdiction,
-    targetJurisdictions: options?.targetJurisdictions,
-    transferComplianceService: options?.transferComplianceService,
+    sourceJurisdiction: options?.sourceJurisdiction ?? "unknown",
+    targetJurisdictions: options?.targetJurisdictions ?? {},
     batchSize: options?.batchSize ?? 100,
     flushIntervalMs: options?.flushIntervalMs ?? 5000,
     retryAttempts: options?.retryAttempts ?? 3,
     checksumAlgorithm: options?.checksumAlgorithm ?? "sha256",
-  });
+  };
+  if (options?.transferComplianceService != null) {
+    config.transferComplianceService = options.transferComplianceService;
+  }
+  return new DataReplicatorService(config);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

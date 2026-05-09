@@ -8,6 +8,7 @@ import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,
 } from "./runtime-state-machine.js";
+import { newId } from "../contracts/types/ids.js";
 
 export interface SideEffectManagerOptions {
   readonly stateMachine?: RuntimeStateMachine;
@@ -67,10 +68,14 @@ export class SideEffectManager {
     context: SideEffectManagerContext & { readonly reasonCode: string },
   ): RuntimeTransitionResult<SideEffectRecord> {
     return this.stateMachine.transition({
+      commandId: newId("sidefx-cmd"),
+      entityType: "SideEffectRecord",
+      entityId: sideEffect.sideEffectId,
       aggregateType: "SideEffectRecord",
       aggregate: sideEffect,
       fromStatus: sideEffect.status,
       toStatus,
+      principal: context.emittedBy,
       tenantId: context.tenantId,
       traceId: context.traceId,
       reasonCode: context.reasonCode,

@@ -266,6 +266,7 @@ export class BudgetExecutionSessionManager {
       reservation: session.reservation,
       actualAmount,
       context: {
+        principal: session.request.emittedBy,
         tenantId: session.request.tenantId,
         traceId: session.request.traceId,
         emittedBy: session.request.emittedBy,

@@ -198,6 +198,18 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
 
   // Update state based on event type
   switch (event.eventType) {
+    case "workflow_run.created":
+      handleWorkflowRunCreated(newState, payload);
+      break;
+
+    case "workflow_run.completed":
+      handleWorkflowRunCompleted(newState, payload, event.createdAt);
+      break;
+
+    case "workflow_run.failed":
+      handleWorkflowRunFailed(newState, payload, event.createdAt);
+      break;
+
     case "workflow:step_completed":
       handleStepCompleted(newState, payload);
       break;
@@ -229,6 +241,51 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
 
   return newState as unknown as Record<string, unknown>;
 };
+
+function handleWorkflowRunCreated(
+  state: WorkflowRunState,
+  payload: Record<string, unknown>,
+): void {
+  const workflowId = (payload.workflowRunId ?? payload.workflowId) as string | undefined;
+  if (workflowId) {
+    state.workflowId = workflowId;
+  }
+  if (state.status === "pending") {
+    state.status = "running";
+  }
+}
+
+function handleWorkflowRunCompleted(
+  state: WorkflowRunState,
+  payload: Record<string, unknown>,
+  timestamp: string,
+): void {
+  state.status = "completed";
+  state.completedAt = timestamp;
+  const workflowId = (payload.workflowRunId ?? payload.workflowId) as string | undefined;
+  if (workflowId) {
+    state.workflowId = workflowId;
+  }
+}
+
+function handleWorkflowRunFailed(
+  state: WorkflowRunState,
+  payload: Record<string, unknown>,
+  timestamp: string,
+): void {
+  state.status = "failed";
+  state.failedAt = timestamp;
+  state.error = {
+    code: (payload.reasonCode as string | null) ?? (payload.errorCode as string | null) ?? null,
+    message: (payload.reasonDetail as string | null) ?? (payload.errorMessage as string | null) ?? null,
+    failedStepId: (payload.stepId as string | null) ?? null,
+    failedAt: timestamp,
+  };
+  const workflowId = (payload.workflowRunId ?? payload.workflowId) as string | undefined;
+  if (workflowId) {
+    state.workflowId = workflowId;
+  }
+}
 
 /**
  * Handle workflow:step_completed event

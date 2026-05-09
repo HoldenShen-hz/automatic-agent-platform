@@ -367,6 +367,7 @@ export class BillingService {
           reservation: reservedBudget.reservation,
           actualAmount: ledgerEntry.amountUsd,
           context: {
+            principal: input.budgetControl!.emittedBy,
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId,
             emittedBy: input.budgetControl!.emittedBy,
@@ -379,6 +380,7 @@ export class BillingService {
           reservation: reservedBudget.reservation,
           reasonCode: "budget.billing_usage_record_failed",
           context: {
+            principal: input.budgetControl!.emittedBy,
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId,
             emittedBy: input.budgetControl!.emittedBy,

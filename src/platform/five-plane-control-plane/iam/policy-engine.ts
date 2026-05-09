@@ -166,6 +166,36 @@ export interface PolicyEngineOptions {
 
   /** Enable kill switch functionality */
   killSwitchEnabled?: boolean;
+
+  /** R12-17: Optional audit service to emit policy evaluation events */
+  auditService?: PolicyAuditService;
+}
+
+/**
+ * R12-17: Policy audit event for tracking policy decisions.
+ * Emitted whenever evaluate() makes a decision.
+ */
+export interface PolicyAuditEvent {
+  id: string;
+  timestamp: string;
+  decisionId: string;
+  taskId: string;
+  subjectId: string;
+  action: string;
+  riskCategory: string;
+  mode: string;
+  decision: string;
+  reasonCode: string;
+  killSwitchApplied: boolean;
+  estimatedCostUsd: number;
+}
+
+/**
+ * R12-17: Service interface for policy audit events.
+ * Implementations should persist these events for compliance auditing.
+ */
+export interface PolicyAuditService {
+  recordPolicyDecision(event: PolicyAuditEvent): void;
 }
 
 /**
@@ -179,14 +209,40 @@ export class PolicyEngine {
   public constructor(private readonly options: PolicyEngineOptions) {}
 
   /**
+   * R12-17: Emits an audit event for a policy decision.
+   * Calls the configured audit service if present.
+   */
+  private emitAuditEvent(result: PolicyDecisionResult, input: PolicyDecisionRequest): void {
+    const auditService = this.options.auditService;
+    if (!auditService) return;
+
+    const event: PolicyAuditEvent = {
+      id: `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      timestamp: new Date().toISOString(),
+      decisionId: input.decisionId,
+      taskId: input.taskId,
+      subjectId: input.subjectId,
+      action: input.action,
+      riskCategory: input.riskCategory,
+      mode: input.mode,
+      decision: result.decision,
+      reasonCode: result.reasonCode,
+      killSwitchApplied: result.killSwitchApplied,
+      estimatedCostUsd: input.estimatedCostUsd ?? 0,
+    };
+    auditService.recordPolicyDecision(event);
+  }
+
+  /**
    * Evaluates a policy decision request.
    * This is the main entry point for policy evaluation.
    *
    * The evaluation order is:
    * 1. Input validation
-   * 2. Kill switch check
-   * 3. Budget check
-   * 4. Risk-based escalation
+   * 2. Deny-by-default for high-risk actions regardless of mode
+   * 3. Kill switch check
+   * 4. Budget check
+   * 5. Risk-based escalation
    *
    * @param input - The policy decision request
    * @returns The policy decision result
@@ -195,9 +251,36 @@ export class PolicyEngine {
     // V-01: Validate input before processing
     validatePolicyRequest(input);
 
+    // R12-13: §10.1 requires deny-by-default - high-risk actions are always denied
+    // regardless of execution mode. full-auto mode does not bypass this requirement.
+    const isHighRisk =
+      input.riskCategory === "destructive" ||
+      input.riskCategory === "irreversible" ||
+      input.riskCategory === "prod_affecting";
+
+    if (isHighRisk) {
+      const result: PolicyDecisionResult = {
+        decision: "deny",
+        reasonCode: "policy.high_risk_deny_by_default",
+        requiresApproval: false,
+        enforcedConstraints: {},
+        killSwitchApplied: false,
+        auditPayload: {
+          action: input.action,
+          riskCategory: input.riskCategory,
+          estimatedCostUsd: input.estimatedCostUsd ?? 0,
+          mode: input.mode,
+        },
+        evaluatedPolicyVersion: "authoritative.v1",
+        explainSummary: "Action denied: high-risk actions are denied by default per §10.1 policy.",
+      };
+      this.emitAuditEvent(result, input);
+      return result;
+    }
+
     // Step 1: Kill switch check
     if (this.options.killSwitchEnabled) {
-      return {
+      const result: PolicyDecisionResult = {
         decision: "deny",
         reasonCode: "policy.kill_switch_active",
         requiresApproval: false,
@@ -207,12 +290,14 @@ export class PolicyEngine {
         evaluatedPolicyVersion: "authoritative.v1",
         explainSummary: "Action denied because kill switch is active.",
       };
+      this.emitAuditEvent(result, input);
+      return result;
     }
 
     // Step 2: Budget check
     const budget = this.evaluateBudget(input);
     if (!budget.allowed) {
-      return {
+      const result: PolicyDecisionResult = {
         decision: "deny",
         reasonCode: budget.reasonCode ?? "budget.denied",
         requiresApproval: false,
@@ -224,27 +309,29 @@ export class PolicyEngine {
         evaluatedPolicyVersion: "authoritative.v1",
         explainSummary: "Action denied because task budget would be exceeded.",
       };
+      this.emitAuditEvent(result, input);
+      return result;
     }
 
     // Step 3: Risk-based escalation
-    const isHighRisk =
+    const requiresEscalation =
       input.riskCategory === "destructive" ||
       input.riskCategory === "irreversible" ||
       input.riskCategory === "prod_affecting" ||
       input.riskCategory === "org_changing";
 
     // In supervised mode, high-risk or budget-warning actions escalate
-    if (input.mode === "supervised" && (isHighRisk || budget.requiresApproval)) {
+    if (input.mode === "supervised" && (requiresEscalation || budget.requiresApproval)) {
       return this.escalate(input, budget, "policy.supervised_escalation");
     }
 
     // In auto mode, high-risk actions require approval
-    if (input.mode === "auto" && isHighRisk) {
+    if (input.mode === "auto" && requiresEscalation) {
       return this.escalate(input, budget, "policy.high_risk_requires_approval");
     }
 
     // Default: allow with constraints
-    return {
+    const result: PolicyDecisionResult = {
       decision: "allow_with_constraints",
       reasonCode: budget.requiresApproval ? "policy.allow_under_budget_warning" : "policy.allow",
       requiresApproval: false,
@@ -260,6 +347,8 @@ export class PolicyEngine {
       evaluatedPolicyVersion: "authoritative.v1",
       explainSummary: "Action allowed under current mode and budget constraints.",
     };
+    this.emitAuditEvent(result, input);
+    return result;
   }
 
   /**
@@ -274,14 +363,14 @@ export class PolicyEngine {
   }
 
   /**
-   * Creates an escalation decision for actions requiring approval.
+   * R12-17: Creates an escalation decision for actions requiring approval.
    */
   private escalate(
     input: PolicyDecisionRequest,
     budget: BudgetGuardResult,
     reasonCode: string,
   ): PolicyDecisionResult {
-    return {
+    const result: PolicyDecisionResult = {
       decision: "escalate_for_approval",
       reasonCode,
       requiresApproval: true,
@@ -297,6 +386,8 @@ export class PolicyEngine {
       evaluatedPolicyVersion: "authoritative.v1",
       explainSummary: "Action requires approval under current risk or budget policy.",
     };
+    this.emitAuditEvent(result, input);
+    return result;
   }
 }
 

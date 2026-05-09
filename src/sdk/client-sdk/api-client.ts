@@ -2,9 +2,19 @@
  * @fileoverview Client SDK - Extended API Client
  *
  * Implements §22.1 Client SDK: API client with retry, pagination, and error handling.
+ * R8-19 FIX: ContractEnvelope wrapper for inter-plane messages.
  */
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import {
+  type ContractEnvelope,
+  createContractEnvelope,
+  signContractEnvelope,
+  verifyContractEnvelopeSignature,
+  type ContractEnvelopeVerificationResult,
+  nowIso,
+  newId,
+} from "../../platform/contracts/executable-contracts/index.js";
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -187,6 +197,161 @@ export class RetryableApiClient {
 
   async publishPack<T>(packId: string, body: unknown): Promise<ApiResponse<T>> {
     return this.post<T>(`/packs/${encodeURIComponent(packId)}/publish`, body);
+  }
+
+  // R8-19 FIX: ContractEnvelope wrapper for inter-plane messages
+  /**
+   * Create a ContractEnvelope wrapper for inter-plane messages.
+   * All inter-plane messages must carry schemaVersion/commandId/correlationId/signature
+   * per the five-plane boundary contract per §5.5.
+   */
+  createEnvelope<TPayload>(payload: TPayload, metadata?: Readonly<Record<string, string>>, ttl?: number | null): ContractEnvelope<TPayload> {
+    return createContractEnvelope({
+      payload,
+      metadata: metadata ?? {},
+      ttl: ttl ?? 30000,
+    });
+  }
+
+  /**
+   * Sign a ContractEnvelope for inter-plane delivery using HMAC-SHA256.
+   */
+  signEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>, secretKey: string): ContractEnvelope<TPayload> {
+    return signContractEnvelope(envelope, secretKey);
+  }
+
+  /**
+   * Verify a ContractEnvelope signature for authenticity.
+   */
+  verifyEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>, secretKey: string): ContractEnvelopeVerificationResult {
+    return verifyContractEnvelopeSignature(envelope, secretKey);
+  }
+
+  /**
+   * Send a wrapped ContractEnvelope request with automatic retry.
+   */
+  async sendEnvelope<TResponse, TPayload>(
+    path: string,
+    envelope: ContractEnvelope<TPayload>,
+    secretKey?: string,
+  ): Promise<ApiResponse<TResponse>> {
+    const signedEnvelope = secretKey ? this.signEnvelope(envelope, secretKey) : envelope;
+    return this.post<TResponse>(path, signedEnvelope);
+  }
+
+  // R8-20 FIX: Event subscription/streaming API
+  /**
+   * Event subscription callback type.
+   */
+  type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
+
+  /**
+   * Event subscription handle for unsubscribe.
+   */
+  interface EventSubscription<TEvent> {
+    unsubscribe(): void;
+    closed: boolean;
+  }
+
+  /**
+   * Subscribe to domain events via Server-Sent Events (SSE).
+   * Returns a subscription handle with unsubscribe method.
+   */
+  subscribeToEvents<TEvent>(
+    path: string,
+    callback: EventSubscriptionCallback<TEvent>,
+    options?: {
+      eventTypes?: readonly string[];
+      filter?: Record<string, string>;
+    },
+  ): EventSubscription<TEvent> {
+    let closed = false;
+    let abortController: AbortController | null = null;
+
+    const buildSseUrl = () => {
+      const url = new URL(`${this.config.baseUrl.replace(/\/+$/, "")}/${this.config.apiVersion.replace(/^\/+|\/+$/g, "")}${path}`);
+      if (this.config.tenantId?.trim()) {
+        url.searchParams.set("tenantId", this.config.tenantId.trim());
+      }
+      if (options?.eventTypes?.length) {
+        url.searchParams.set("eventTypes", options.eventTypes.join(","));
+      }
+      if (options?.filter) {
+        for (const [key, value] of Object.entries(options.filter)) {
+          url.searchParams.set(`filter_${key}`, value);
+        }
+      }
+      return url.toString();
+    };
+
+    const connect = async () => {
+      if (closed) return;
+
+      abortController = new AbortController();
+      const url = buildSseUrl();
+      const headers: Record<string, string> = {
+        accept: "text/event-stream",
+        ...(this.config.bearerToken ? { authorization: `Bearer ${this.config.bearerToken}` } : {}),
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`SSE connection failed: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("SSE response body is not readable");
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!closed) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ") && !closed) {
+              try {
+                const event = JSON.parse(line.slice(6)) as TEvent;
+                await callback(event);
+              } catch {
+                // Skip malformed event data
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (!closed && !(error instanceof Error && error.name === "AbortError")) {
+          // Reconnect on error after delay
+          setTimeout(connect, 1000);
+        }
+      }
+    };
+
+    // Start connection
+    connect();
+
+    return {
+      unsubscribe() {
+        closed = true;
+        abortController?.abort();
+      },
+      get closed() {
+        return closed;
+      },
+    };
   }
 
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {

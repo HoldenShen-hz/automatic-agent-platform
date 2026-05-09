@@ -263,6 +263,98 @@ test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
   });
 });
 
+test("WebSocketBridge replays missed task updates from last_event_id on reconnect", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const firstClient = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+      let phase: "seed" | "replay" = "seed";
+
+      firstClient.on("open", () => {
+        firstClient.send(JSON.stringify({ type: "subscribe", taskId: "task-replay" }));
+      });
+
+      firstClient.on("message", (data: Buffer) => {
+        const msg = JSON.parse(data.toString());
+        if (phase === "seed" && msg.type === "subscribed") {
+          bridge.broadcastToTask("task-replay", {
+            eventType: "status_changed",
+            taskId: "task-replay",
+            status: "running",
+            timestamp: new Date().toISOString(),
+          }, "evt-1");
+          bridge.broadcastToTask("task-replay", {
+            eventType: "progress",
+            taskId: "task-replay",
+            progress: 50,
+            timestamp: new Date().toISOString(),
+          }, "evt-2");
+          phase = "replay";
+          firstClient.close();
+          const replayClient = new WebSocket(
+            `http://127.0.0.1:${address.port}/ws/v1/stream?taskId=task-replay&last_event_id=evt-1`,
+            "test-token",
+          );
+          replayClient.on("message", (replayData: Buffer) => {
+            const replayMsg = JSON.parse(replayData.toString());
+            if (replayMsg.type === "task_update") {
+              assert.equal(replayMsg.eventId, "evt-2");
+              replayClient.close();
+              bridge.close().then(() => {
+                server.close();
+                resolve();
+              });
+            }
+          });
+          replayClient.on("error", reject);
+        }
+      });
+
+      firstClient.on("error", reject);
+    });
+  });
+});
+
+test("WebSocketBridge emits stream_gap when last_event_id is no longer replayable", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    bridge.broadcastToTask("task-gap", {
+      eventType: "status_changed",
+      taskId: "task-gap",
+      status: "queued",
+      timestamp: new Date().toISOString(),
+    }, "evt-latest");
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(
+        `http://127.0.0.1:${address.port}/ws/v1/stream?taskId=task-gap&last_event_id=evt-missing`,
+        "test-token",
+      );
+
+      ws.on("message", (data: Buffer) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === "stream_gap") {
+          assert.equal(msg.fromEventId, "evt-missing");
+          assert.equal(msg.toEventId, "evt-latest");
+          ws.close();
+          bridge.close().then(() => {
+            server.close();
+            resolve();
+          });
+        }
+      });
+
+      ws.on("error", reject);
+    });
+  });
+});
+
 test("WebSocketBridge rejects subscriptions above per-client cap", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();

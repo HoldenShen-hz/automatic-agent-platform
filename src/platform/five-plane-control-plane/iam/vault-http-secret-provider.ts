@@ -109,6 +109,14 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   }
 
   /**
+   * R12-19: Checks if cached token is still valid.
+   * Returns true only if token exists and has not expired (with 30s buffer).
+   */
+  private isTokenCacheValid(): boolean {
+    return this._cachedToken !== null && Date.now() < this._tokenExpiry - 30_000;
+  }
+
+  /**
    * Performs a fetch with a timeout.
    * Aborts the request if it takes too long.
    *
@@ -135,9 +143,9 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
    * @throws ValidationError if no valid auth method is configured
    */
   private async getToken(): Promise<string> {
-    // Use cached token if still valid (with 30s buffer)
-    if (this._cachedToken && Date.now() < this._tokenExpiry - 30_000) {
-      return this._cachedToken;
+    // R12-19: Use explicit cache validity check with expiry
+    if (this.isTokenCacheValid()) {
+      return this._cachedToken!;
     }
 
     // Try AppRole authentication first
@@ -222,16 +230,21 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   }
 
   /**
-   * Checks if Vault is available and configured.
+   * R12-24: Check if Vault is available and configured.
+   * Only sends a token if one is actually configured - never sends dummy token.
    *
    * @returns true if Vault address is set and responds
    */
   public async isAvailable(): Promise<boolean> {
     if (!this.env["AA_VAULT_ADDR"]) return false;
     try {
-      const resp = await this.fetchWithTimeout(`${this.addr}/v1/sys/health`, {
-        headers: { "X-Vault-Token": this.env["AA_VAULT_TOKEN"] ?? "dummy" },
-      });
+      // R12-24: Only send token header if we have an actual token configured
+      const headers: Record<string, string> = {};
+      const token = this.env["AA_VAULT_TOKEN"];
+      if (token && token.trim().length > 0) {
+        headers["X-Vault-Token"] = token;
+      }
+      const resp = await this.fetchWithTimeout(`${this.addr}/v1/sys/health`, { headers });
       return resp.ok;
     } catch (err) {
       vaultLogger.log({ level: "warn", message: "Vault health check failed", data: { error: err instanceof Error ? err.message : String(err) } });

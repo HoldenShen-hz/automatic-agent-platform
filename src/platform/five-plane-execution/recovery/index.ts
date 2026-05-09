@@ -14,3 +14,5 @@ export * from './failure-classification.js';
 export * from './repair-pipeline.js';
 export * from './exception-recovery-types.js';
 export * from './exception-recovery-config-loader.js';
+export * from './recovery-cadence.js';
+export * from './recovery-report.js';

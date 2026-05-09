@@ -12,7 +12,7 @@ export const RegionDescriptorSchema = z.object({
   countryCode: z.string().min(2).default("XX"),
   jurisdiction: z.string().min(1),
   capabilities: z.array(z.string()).default([]),
-  status: z.enum(["active", "standby", "draining"]).default("active"),
+  status: z.enum(["active", "standby", "degraded", "draining", "failed"]).default("active"),
   latencyScore: z.number().nonnegative().default(0),
   residencyAllowed: z.boolean().default(true),
 });

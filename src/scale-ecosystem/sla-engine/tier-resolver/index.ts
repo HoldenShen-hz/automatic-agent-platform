@@ -16,6 +16,10 @@ export const SlaTierSchema = z.object({
   maxQueueWaitMs: z.number().int().nonnegative().optional().default(3000),
   preemptionPriority: z.number().int().nonnegative().optional().default(0),
   reservedCapacityPercent: z.number().min(0).max(100).optional().default(0),
+  executionTimeoutMs: z.number().int().positive().optional().default(30000),
+  degradationTolerancePercent: z.number().min(0).max(100).optional().default(5),
+  recoveryAction: z.enum(["skip", "retry", "escalate", "freeze"]).optional().default("retry"),
+  budgetAllocationPercent: z.number().min(0).max(100).optional().default(0),
 });
 
 export type SlaTier = z.input<typeof SlaTierSchema>;

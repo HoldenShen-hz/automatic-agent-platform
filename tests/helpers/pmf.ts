@@ -213,6 +213,7 @@ function insertStepOutput(
 ): void {
   store.insertStepOutput({
     id: input.id,
+    nodeRunId: input.id,
     taskId: input.taskId,
     stepId: "deliver_result",
     roleId: "general_executor",

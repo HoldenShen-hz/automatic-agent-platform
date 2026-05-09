@@ -181,8 +181,12 @@ export class DriftDetectorService implements IDriftDetector {
     }
     // Map recommendedAction to valid DriftResponseActionType
     const action = signal.recommendedAction === "pause_agent"
+      || signal.recommendedAction === "freeze"
+      || signal.recommendedAction === "rollback"
       ? "pause_agent"
       : signal.recommendedAction === "require_review"
+        || signal.recommendedAction === "throttle"
+        || signal.recommendedAction === "downgrade"
         ? "require_review"
         : "observe";
     return {
@@ -251,12 +255,12 @@ export class DriftDetectorService implements IDriftDetector {
     return "behavioral_drift";
   }
 
-  private severityToAction(severity: DriftSignal["severity"]): "observe" | "require_review" | "pause_agent" {
+  private severityToAction(severity: DriftSignal["severity"]): DriftSignal["recommendedAction"] {
     switch (severity) {
       case "high":
-        return "pause_agent";
+        return "rollback";
       case "medium":
-        return "require_review";
+        return "downgrade";
       case "low":
         return "observe";
       default:

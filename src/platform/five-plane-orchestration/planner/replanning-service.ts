@@ -36,13 +36,28 @@ export class ReplanningService {
     const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
     const shouldReplan = repairable || failed;
 
+    // R5-5: Handle downgrade_mode branch - if feedback indicates a need to reduce scope or complexity
+    const downgradeMode = feedback.signals.some((signal) =>
+      signal.category === "correction" ||
+      (signal.payload as Record<string, unknown>)?.reasonCode === "scope_too_broad" ||
+      (signal.payload as Record<string, unknown>)?.reasonCode === "complexity_exceeded"
+    );
+
+    let strategy: Plan["strategy"] | null = shouldReplan ? "replanned" : null;
+    let reasonCode = trigger?.reasonCode ?? (shouldReplan ? "planning.execution_deviation" : "planning.no_replan_required");
+
+    if (downgradeMode) {
+      strategy = "replanned";
+      reasonCode = "planning.downgrade_mode";
+    }
+
     return {
       decisionId: newId("replan_decision"),
       taskId: plan.taskId,
-      shouldReplan,
-      nextPlanVersion: shouldReplan ? plan.version + 1 : null,
-      strategy: shouldReplan ? "replanned" : null,
-      reasonCode: trigger?.reasonCode ?? (shouldReplan ? "planning.execution_deviation" : "planning.no_replan_required"),
+      shouldReplan: shouldReplan || downgradeMode,
+      nextPlanVersion: shouldReplan || downgradeMode ? plan.version + 1 : null,
+      strategy,
+      reasonCode,
       decidedAt: Date.now(),
     };
   }

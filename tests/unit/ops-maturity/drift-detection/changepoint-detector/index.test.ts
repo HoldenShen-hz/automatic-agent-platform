@@ -16,6 +16,7 @@ test("ChangepointDetectorService detects large score shifts", () => {
 
   assert.equal(result.detected, true);
   assert.equal(result.reasonCode, "drift.changepoint_detected");
+  assert.equal(result.recommendedAction, "freeze");
 });
 
 test("ChangepointDetectorService reports stable when recent scores stay within threshold", () => {
@@ -134,4 +135,32 @@ test("ChangepointDetectorService suppresses repeated alerts inside false-positiv
   assert.equal(first.detected, true);
   assert.equal(second.detected, false);
   assert.equal(second.reasonCode, "drift.false_positive_suppressed");
+});
+
+test("ChangepointDetectorService uses downgrade/throttle actions for medium drift and builds response plan", () => {
+  const service = new ChangepointDetectorService();
+  const result = service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T01:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T02:00:00.000Z", score: 1.0 },
+    { observedAt: "2026-04-20T03:00:00.000Z", score: 0.8 },
+    { observedAt: "2026-04-20T04:00:00.000Z", score: 0.79 },
+    { observedAt: "2026-04-20T05:00:00.000Z", score: 0.78 },
+  ], 3, 3);
+
+  assert.equal(result.detected, true);
+  assert.equal(result.recommendedAction, "downgrade");
+
+  const plan = service.buildResponsePlan({
+    subjectId: "agent-a",
+    subjectType: "agent",
+    generatedAt: "2026-04-20T06:00:00.000Z",
+    linkedSignalId: "drift_sig_1",
+    baselineRef: "baseline:v1",
+    result,
+  });
+
+  assert.ok(plan);
+  assert.equal(plan?.primaryAction, "downgrade");
+  assert.deepEqual(plan?.fallbackActions, ["throttle", "require_review"]);
 });

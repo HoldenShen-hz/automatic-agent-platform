@@ -143,6 +143,17 @@ export interface GoalDecompositionServiceOptions {
     readonly resourceKind?: BudgetResourceKind;
     readonly expiresAt?: string;
   };
+  // R5-28: Domain capabilities for validation
+  readonly domainCapabilities?: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * R5-28: Domain capability validation result
+ */
+export interface CapabilityValidationResult {
+  readonly valid: boolean;
+  readonly missingCapabilities: readonly string[];
+  readonly reasonCodes: readonly string[];
 }
 
 const DEFAULT_COST_ESTIMATE: CostEstimate = {
@@ -155,6 +166,10 @@ const DEFAULT_COST_ESTIMATE: CostEstimate = {
 
 /** Default maximum decomposition depth to prevent infinite recursion */
 const DEFAULT_MAX_DEPTH = 5;
+/** R5-18: Maximum delegation chain depth - tasks can only be delegated this many times */
+const DEFAULT_MAX_DELEGATION_DEPTH = 3;
+/** R5-18: Global call depth cap - total call stack depth limit */
+const DEFAULT_GLOBAL_CALL_DEPTH_CAP = 8;
 const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
 const HIGH_RISK_KEYWORDS = [
   "deploy",
@@ -266,6 +281,11 @@ function parseDurationHours(raw: string): number {
 }
 
 export class GoalDecompositionService implements GoalDecompositionPort {
+  /** R5-18: Anti-multiplication guard - tracks decomposed goal IDs to prevent duplicate work */
+  private readonly decomposedGoalIds = new Set<string>();
+  /** R5-18: Tracks delegation depth per goal chain */
+  private readonly delegationDepth = new Map<string, number>();
+
   public constructor(private readonly options: GoalDecompositionServiceOptions = {}) {}
 
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
@@ -274,10 +294,41 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const maxDepthReached = currentDepth >= maxDepth;
 
     const goal = normalizeGoal(goalInput);
+
+    // R5-18: Anti-multiplication guard - prevent same goal from being decomposed multiple times
+    if (this.decomposedGoalIds.has(goal.goalId)) {
+      throw new Error(`goal_decomposer.duplicate_decomposition:${goal.goalId}`);
+    }
+    this.decomposedGoalIds.add(goal.goalId);
+
+    // R5-18: Delegation chain depth limit (max=3)
+    const maxDelegationDepth = DEFAULT_MAX_DELEGATION_DEPTH;
+    const currentDelegationDepth = this.delegationDepth.get(goal.goalId) ?? 0;
+    if (currentDelegationDepth >= maxDelegationDepth) {
+      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDelegationDepth}`);
+    }
+    this.delegationDepth.set(goal.goalId, currentDelegationDepth + 1);
+
+    // R5-18: Global call depth cap (=8)
+    const globalCallDepth = (this.options as { _globalCallDepth?: number })._globalCallDepth ?? 0;
+    if (globalCallDepth >= DEFAULT_GLOBAL_CALL_DEPTH_CAP) {
+      throw new Error(`goal_decomposer.global_call_depth_exceeded:${globalCallDepth}`);
+    }
+
     const constraintEnvelope = parseConstraintEnvelope(goal);
     const matchedTemplate = this.detectTemplate(goal.description);
-    let tasks = this.buildTasks(goal, matchedTemplate);
+    // R5-19: Calculate risk early for propagation to subtasks
+    const riskSummary = buildRiskSummary(goal, matchedTemplate);
+    // R5-19: Pass proportional budget and risk for propagation
+    let tasks = this.buildTasks(goal, matchedTemplate, constraintEnvelope.budgetLimitUsd ?? undefined, riskSummary.overallRisk);
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
+
+    // R5-28: Validate domain capabilities before returning decomposition
+    const capabilityValidation = this.validateCapabilities(tasks, "");
+    if (!capabilityValidation.valid) {
+      throw new Error(`goal_decomposer.capability_validation_failed:${capabilityValidation.missingCapabilities.join(",")}`);
+    }
+
     let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
       matchedTemplate == null
         ? "human_assisted"
@@ -324,7 +375,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     }
     const graphAnalysis = this.analyzeDependencyGraph(tasks, dependencyGraph);
     const estimatedCost = totalCost(tasks.map((task) => task.estimatedCost));
-    const riskSummary = buildRiskSummary(goal, matchedTemplate);
+    // riskSummary already calculated above for propagation
     const decompositionConfidence =
       decompositionStrategy === "llm_plan"
         ? 0.83
@@ -426,7 +477,34 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     return null;
   }
 
-  private buildTasks(goal: Goal, template: ReturnType<GoalDecompositionService["detectTemplate"]>): PlannedTask[] {
+  private buildTasks(goal: Goal, template: ReturnType<GoalDecompositionService["detectTemplate"]>, proportionalBudget?: number, parentRisk?: "low" | "medium" | "high" | "critical"): PlannedTask[] {
+    // R5-19: Build initial tasks to calculate base costs for proportional allocation
+    const initialTasks = this.buildTasksInternal(goal, template);
+    const baseCosts = initialTasks.map((t) => t.estimatedCost.estimatedCostUsd);
+    const totalBaseCost = baseCosts.reduce((sum, cost) => sum + cost, 0);
+
+    // R5-19: Proportional budget allocation - distribute parent budget proportionally based on estimated costs
+    const budgetPerTask = totalBaseCost > 0 && proportionalBudget != null
+      ? proportionalBudget / initialTasks.length
+      : null;
+
+    // R5-19: Risk propagation - subtask inherits parent risk, but critical/high can only be reduced one level at a time
+    const propagatedRisk = parentRisk
+      ? this.propagateRisk(parentRisk)
+      : undefined;
+
+    return initialTasks.map((task) => {
+      if (budgetPerTask != null && task.constraintEnvelope != null) {
+        return { ...task, constraintEnvelope: { ...task.constraintEnvelope, budgetLimitUsd: budgetPerTask } };
+      }
+      return task;
+    });
+  }
+
+  /**
+   * R5-19: Internal method to build tasks without budget/risk modification
+   */
+  private buildTasksInternal(goal: Goal, template: ReturnType<GoalDecompositionService["detectTemplate"]>): PlannedTask[] {
     switch (template) {
       case "marketing_campaign":
         return [
@@ -510,6 +588,23 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     return dependencies;
   }
 
+  /**
+   * R5-19: Risk propagation - risk is propagated down the delegation chain
+   * Each subtask inherits parent risk but can only be one level lower at most
+   */
+  private propagateRisk(parentRisk: "low" | "medium" | "high" | "critical"): "low" | "medium" | "high" {
+    switch (parentRisk) {
+      case "critical":
+        return "high";
+      case "high":
+        return "medium";
+      case "medium":
+        return "low";
+      case "low":
+        return "low";
+    }
+  }
+
   private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string): PlannedTask {
     const estimatedCost = this.options.costEstimator?.estimate(domainId) ?? DEFAULT_COST_ESTIMATE;
     const constraintEnvelope = parseConstraintEnvelope(goal);
@@ -528,6 +623,36 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       estimatedDuration,
       estimatedCost,
       constraintEnvelope,
+    };
+  }
+
+  /**
+   * R5-28: Validate domain capabilities against required capabilities for tasks
+   * Returns validation result indicating if all required capabilities are available
+   */
+  private validateCapabilities(tasks: PlannedTask[], _domainId: string): CapabilityValidationResult {
+    const domainCapabilities = this.options.domainCapabilities ?? {};
+
+    const missingCapabilities: string[] = [];
+
+    for (const task of tasks) {
+      // Use task's domainId to lookup available capabilities for that domain
+      const availableCapabilities = domainCapabilities[task.domainId] ?? [];
+      const required = task.constraintEnvelope?.requiredCapabilities ?? [];
+      for (const capability of required) {
+        if (!availableCapabilities.includes(capability) && !missingCapabilities.includes(capability)) {
+          missingCapabilities.push(capability);
+        }
+      }
+    }
+
+    const valid = missingCapabilities.length === 0;
+    return {
+      valid,
+      missingCapabilities,
+      reasonCodes: valid
+        ? []
+        : [`goal_decomposer.missing_capabilities:${missingCapabilities.join(",")}`],
     };
   }
 

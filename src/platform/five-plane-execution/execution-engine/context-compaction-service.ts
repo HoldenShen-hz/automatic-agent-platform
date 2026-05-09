@@ -90,7 +90,10 @@ function isProtectedMessage(message: MessageRecord, latestUserMessageId: string 
     message.messageType === "user_request" ||
     message.messageType === "assistant_plan" ||
     message.messageType === "approval_decision" ||
-    message.messageType === "compaction_summary"
+    message.messageType === "compaction_summary" ||
+    message.messageType === "feedback_signal" ||
+    message.messageType === "learning_object" ||
+    message.messageType === "learning_object_summary"
   );
 }
 

@@ -21,9 +21,24 @@ import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-
 export interface DashboardRouteDeps {
   authService: ApiAuthService | null;
   missionControlService: MissionControlService;
+  platformWorkbenchSnapshotService?: PlatformWorkbenchSnapshotService;
+  benchmarkInventoryService?: BenchmarkInventoryService;
+  deploymentInventoryService?: DeploymentInventoryService;
+  projectionInventoryService?: ProjectionInventoryService;
+  complianceProgramTemplateService?: ComplianceProgramTemplateService;
+  judgeProviderRegistryService?: JudgeProviderRegistryService;
 }
 
 export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition[] {
+  const platformWorkbenchSnapshotService =
+    deps.platformWorkbenchSnapshotService ?? new PlatformWorkbenchSnapshotService();
+  const benchmarkInventoryService = deps.benchmarkInventoryService ?? new BenchmarkInventoryService();
+  const deploymentInventoryService = deps.deploymentInventoryService ?? new DeploymentInventoryService();
+  const projectionInventoryService = deps.projectionInventoryService ?? new ProjectionInventoryService();
+  const complianceProgramTemplateService =
+    deps.complianceProgramTemplateService ?? new ComplianceProgramTemplateService();
+  const judgeProviderRegistryService =
+    deps.judgeProviderRegistryService ?? new JudgeProviderRegistryService();
   return [
     {
       method: "GET",
@@ -50,7 +65,7 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         assertGlobalTenantScopeSupported(principal, "platform workbench");
         const missionControl = deps.missionControlService.getSnapshot();
-        const workbench = new PlatformWorkbenchSnapshotService().buildSnapshot({
+        const workbench = platformWorkbenchSnapshotService.buildSnapshot({
           generatedAt: missionControl.generatedAt,
           dashboard: {
             attentionQueue: missionControl.pendingApprovals.slice(0, 5).map((approval) => ({
@@ -89,11 +104,11 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
             status: approval.status,
           })),
           inventorySummary: {
-            benchmarkCount: new BenchmarkInventoryService().listBenchmarks().length,
-            projectionCount: new ProjectionInventoryService().listProjectionInventory().length,
-            deploymentCount: new DeploymentInventoryService().listDeployments().length,
-            judgeCount: new JudgeProviderRegistryService().registerDefaults().length,
-            complianceProgramCount: new ComplianceProgramTemplateService().listTemplates().length,
+            benchmarkCount: benchmarkInventoryService.listBenchmarks().length,
+            projectionCount: projectionInventoryService.listProjectionInventory().length,
+            deploymentCount: deploymentInventoryService.listDeployments().length,
+            judgeCount: judgeProviderRegistryService.registerDefaults().length,
+            complianceProgramCount: complianceProgramTemplateService.listTemplates().length,
           },
         });
         return buildJsonResponse(ctx.requestId, 200, workbench);

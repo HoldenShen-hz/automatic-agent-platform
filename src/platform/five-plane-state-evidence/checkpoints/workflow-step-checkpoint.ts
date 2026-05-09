@@ -81,6 +81,9 @@ export interface WorkflowStepCheckpoint {
   executionId: string | null;
   workflowId: string;
   divisionId: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphId: string;
   stepId: string;
   roleId: string;
   outputKey: string;
@@ -105,6 +108,9 @@ export interface CreateWorkflowStepCheckpointInput {
   executionId: string | null;
   workflowId: string;
   divisionId: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphId: string;
   stepId: string;
   roleId: string;
   outputKey: string;
@@ -151,6 +157,9 @@ export function createWorkflowStepCheckpoint(
     executionId: input.executionId,
     workflowId: input.workflowId,
     divisionId: input.divisionId,
+    harnessRunId: input.harnessRunId,
+    nodeRunId: input.nodeRunId,
+    planGraphId: input.planGraphId,
     stepId: input.stepId,
     roleId: input.roleId,
     outputKey: input.outputKey,

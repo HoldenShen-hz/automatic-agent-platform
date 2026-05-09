@@ -285,10 +285,15 @@ export class NetworkEgressPolicyService {
     const parsed = parseUrlForAudit(url);
     const hostname = parsed?.host?.toLowerCase() ?? destination.toLowerCase();
 
+    // R12-20: Blocked destinations should return allowed:false when mode is deny/enforce.
+    // Previously used `this.mode !== "enforce"` which incorrectly returned allowed:true
+    // when mode was "deny" (the default). Now we explicitly check for audit_only mode.
+    const allowed = this.mode === "audit_only" ? true : false;
+
     // Check internal hostname block
     if (!this.allowInternalHosts && isInternalHostname(hostname)) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed,
         destinationType,
         destination,
         reasonCode: "EGRESS_INTERNAL_BLOCKED",
@@ -298,7 +303,7 @@ export class NetworkEgressPolicyService {
     // Check blocked destination types
     if (this.blockedDestinationTypes.includes(destinationType)) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed,
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_BLOCKED",
@@ -311,7 +316,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDestinationTypes.includes(destinationType)
     ) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed,
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_NOT_ALLOWED",
@@ -321,7 +326,7 @@ export class NetworkEgressPolicyService {
     // Check blocked domains
     if (this.blockedDomains.some((item) => domainMatches(hostname, item))) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed,
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_BLOCKED",
@@ -334,7 +339,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDomains.some((item) => domainMatches(hostname, item))
     ) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed,
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_NOT_ALLOWED",

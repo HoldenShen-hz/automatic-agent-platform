@@ -35,54 +35,40 @@ export class ChineseWallAccessSaga {
   public constructor(private readonly handlers: ChineseWallAccessSagaHandlers = {}) {}
 
   public execute(accessId: string, steps: readonly ChineseWallAccessStep[]): ChineseWallAccessSagaReceipt {
-    const committedActions: ChineseWallAccessStep["action"][] = [];
-    const executionLog: Array<ChineseWallAccessSagaReceipt["executionLog"][number]> = [];
+    // Two-phase commit: Phase 1 (prepare) - all participants vote yes/no
+    const prepareResults: Array<{ action: ChineseWallAccessStep["action"]; votedYes: boolean }> = [];
     let failedAction: ChineseWallAccessStep["action"] | null = null;
     const context = (): ChineseWallAccessSagaHandlerContext => ({ accessId, failedAction });
 
     for (const step of steps) {
       if (step.action === "audit") {
         this.handlers.audit?.(step, context());
-        executionLog.push({
-          stepId: step.stepId,
-          action: step.action,
-          outcome: "audited",
-        });
         continue;
       }
-      if (!step.succeeded) {
-        failedAction = step.action;
-        executionLog.push({
-          stepId: step.stepId,
-          action: step.action,
-          outcome: "failed",
-        });
-        break;
+      if (step.action === "prepare_grant" || step.action === "prepare_release") {
+        // Phase 1: Prepare voting - call the handler to check if it can commit
+        this.runAction(step, context());
+        const votedYes = step.succeeded;
+        prepareResults.push({ action: step.action, votedYes });
+        if (!votedYes) {
+          failedAction = step.action;
+          break;
+        }
       }
-      this.runAction(step, context());
-      committedActions.push(step.action);
-      executionLog.push({
-        stepId: step.stepId,
-        action: step.action,
-        outcome: "committed",
-      });
     }
 
+    // Phase 2: Commit or Rollback based on prepare results
+    const committedActions: ChineseWallAccessStep["action"][] = [];
+    const executionLog: Array<ChineseWallAccessSagaReceipt["executionLog"][number]> = [];
     const failed = failedAction != null;
-    const compensatedActions = failed
-      ? [...committedActions]
-        .reverse()
-        .map((action) => action === "commit_grant"
-          ? "prepare_release"
-          : action === "prepare_grant"
-            ? "commit_release"
-            : action)
-      : [];
+
     if (failed) {
-      for (const action of compensatedActions) {
+      // Phase 2a: Rollback - compensate all prepared actions
+      for (const { action } of prepareResults.reverse()) {
+        const rollbackAction = action === "prepare_grant" ? "commit_release" : "commit_release";
         const syntheticStep: ChineseWallAccessStep = {
-          stepId: `${accessId}:${action}`,
-          action,
+          stepId: `${accessId}:rollback:${action}`,
+          action: rollbackAction,
           succeeded: true,
         };
         this.runAction(syntheticStep, context());
@@ -92,6 +78,38 @@ export class ChineseWallAccessSaga {
           outcome: "compensated",
         });
       }
+    } else {
+      // Phase 2b: Commit - execute all committed actions in order
+      for (const step of steps) {
+        if (step.action === "audit") {
+          this.handlers.audit?.(step, context());
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "audited",
+          });
+          continue;
+        }
+        if (step.action === "prepare_grant") {
+          const commitStep: ChineseWallAccessStep = { ...step, action: "commit_grant" };
+          this.runAction(commitStep, context());
+          committedActions.push("commit_grant");
+          executionLog.push({
+            stepId: commitStep.stepId,
+            action: "commit_grant",
+            outcome: "committed",
+          });
+        } else if (step.action === "prepare_release") {
+          const commitStep: ChineseWallAccessStep = { ...step, action: "commit_release" };
+          this.runAction(commitStep, context());
+          committedActions.push("commit_release");
+          executionLog.push({
+            stepId: commitStep.stepId,
+            action: "commit_release",
+            outcome: "committed",
+          });
+        }
+      }
     }
 
     return {
@@ -99,7 +117,7 @@ export class ChineseWallAccessSaga {
       status: failed ? "rolled_back" : "committed",
       committedActions: failed ? [] : committedActions,
       rollbackRequired: failed,
-      compensatedActions,
+      compensatedActions: failed ? prepareResults.map((r) => r.action) : [],
       failedAction,
       executionLog,
     };

@@ -165,6 +165,64 @@ test("Projection rebuild result structure", () => {
   assert.equal(typeof service.registerHandler, "function");
 });
 
+test("ProjectionRebuildService rebuildProjection threads state across events", () => {
+  const service = new ProjectionRebuildService({
+    listAllEvents: () => [
+      {
+        id: "evt_1",
+        taskId: "task_1",
+        eventType: "task:created",
+        payloadJson: "{}",
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+      {
+        id: "evt_2",
+        taskId: "task_1",
+        eventType: "task:status_changed",
+        payloadJson: "{}",
+        createdAt: "2024-01-01T00:01:00Z",
+      },
+    ],
+  } as any);
+  service.registerHandler("threading_projection", (state, event) => ({
+    eventCount: ((state?.eventCount as number) ?? 0) + 1,
+    lastEventId: event.eventId,
+  }));
+
+  const result = service.rebuildProjection("threading_projection");
+  const snapshot = service.getProjectionSnapshotStatus("threading_projection").active;
+
+  assert.equal(result.eventsProcessed, 2);
+  assert.equal(snapshot?.state.eventCount, 2);
+  assert.equal(snapshot?.state.lastEventId, "evt_2");
+});
+
+test("ProjectionRebuildService supports shadow build, compare, and cutover", () => {
+  const service = new ProjectionRebuildService({
+    listAllEvents: () => [
+      {
+        id: "evt_1",
+        taskId: "task_1",
+        eventType: "task:created",
+        payloadJson: '{"status":"created"}',
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ],
+  } as any);
+  service.registerHandler("shadow_projection", (_state, event) => ({
+    lastEventId: event.eventId,
+  }));
+
+  service.rebuildProjection("shadow_projection");
+  service.shadowBuildProjection("shadow_projection");
+  const comparison = service.compareShadowProjection("shadow_projection");
+  const cutover = service.cutoverShadowProjection("shadow_projection");
+
+  assert.equal(comparison.matches, true);
+  assert.ok(cutover);
+  assert.equal(service.getProjectionSnapshotStatus("shadow_projection").shadow, null);
+});
+
 test("Custom projection handler registration", () => {
   // Mock event repository
   const mockEventRepo = {} as any;

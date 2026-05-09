@@ -1,4 +1,4 @@
-export type ReplayMode = "trace_replay" | "reexecution_replay";
+export type ReplayMode = "trace_replay" | "reexecution_replay" | "projection_replay";
 
 export interface ReplayOperation {
   readonly operationId: string;
@@ -18,8 +18,9 @@ export interface ReplayBoundaryDecision {
 
 export class ReplayBoundaryGuard {
   public evaluate(mode: ReplayMode, operations: readonly ReplayOperation[]): ReplayBoundaryDecision {
+    // trace_replay and reexecution_replay block real side effects; projection_replay allows them
     const realSideEffectIds = operations
-      .filter((operation) => mode === "trace_replay" && operation.hasRealSideEffect)
+      .filter((operation) => (mode === "trace_replay" || mode === "reexecution_replay") && operation.hasRealSideEffect)
       .map((operation) => operation.operationId);
     if (realSideEffectIds.length > 0) {
       return {
@@ -29,8 +30,9 @@ export class ReplayBoundaryGuard {
       };
     }
 
+    // projection_replay allows tombstone for projection resources
     const tombstoneViolations = operations
-      .filter((operation) => operation.tombstoneReplay && operation.resourceKind !== "projection")
+      .filter((operation) => operation.tombstoneReplay && (mode !== "projection_replay" || operation.resourceKind !== "projection"))
       .map((operation) => operation.operationId);
     if (tombstoneViolations.length > 0) {
       return {

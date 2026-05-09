@@ -165,3 +165,34 @@ test("GET /v1/workbench/snapshot returns aggregated workbench payload", async ()
   assert.equal(Array.isArray(body.data.approvalQueue), true);
   assert.equal(Array.isArray(body.data.operatorActions), true);
 });
+
+test("GET /v1/workbench/snapshot reuses injected singleton services instead of new per request", async () => {
+  let buildSnapshotCalls = 0;
+  let benchmarkCalls = 0;
+  const deps = {
+    authService: createMockAuthService(),
+    missionControlService: createMockMissionControlService(),
+    platformWorkbenchSnapshotService: {
+      buildSnapshot(input: Record<string, unknown>) {
+        buildSnapshotCalls++;
+        return { ...input, operatorActions: [] };
+      },
+    } as any,
+    benchmarkInventoryService: {
+      listBenchmarks() {
+        benchmarkCalls++;
+        return [];
+      },
+    } as any,
+    deploymentInventoryService: { listDeployments: () => [] } as any,
+    projectionInventoryService: { listProjectionInventory: () => [] } as any,
+    complianceProgramTemplateService: { listTemplates: () => [] } as any,
+    judgeProviderRegistryService: { registerDefaults: () => [] } as any,
+  };
+  const routes = createDashboardRoutes(deps);
+  const route = routes.find((r) => r.pathname === "/v1/workbench/snapshot")!;
+  await route.handler(createMockContext());
+  await route.handler(createMockContext());
+  assert.equal(buildSnapshotCalls, 2);
+  assert.equal(benchmarkCalls, 2);
+});

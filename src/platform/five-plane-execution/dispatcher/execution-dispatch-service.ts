@@ -171,9 +171,65 @@ export class ExecutionDispatchService {
       };
     });
   }
+  /**
+   * R6-4: §14.9 Deterministic graph scheduler - sorts tickets for deterministic dispatch ordering.
+   *
+   * Ordering policy (highest priority first):
+   * 1. Critical path rank (higher = more critical for overall execution time)
+   * 2. Priority (urgent > high > medium > low)
+   * 3. Risk class (critical > high > medium > low) for isolation routing
+   * 4. Scheduler seed (lexicographic for determinism across restarts)
+   *
+   * @param tickets - Array of execution tickets to sort
+   * @returns Sorted array of tickets
+   */
+  private sortTicketsForDeterministicDispatch(tickets: ExecutionTicketRecord[]): ExecutionTicketRecord[] {
+    const RISK_CLASS_ORDER: Record<string, number> = {
+      critical: 4,
+      high: 3,
+      medium: 2,
+      low: 1,
+    };
+    const PRIORITY_ORDER: Record<TaskPriority, number> = {
+      critical: 5,
+      urgent: 4,
+      high: 3,
+      normal: 2,
+      low: 1,
+    };
+
+    return [...tickets].sort((left, right) => {
+      // 1. Critical path rank (higher = more critical, sort descending)
+      const leftRank = left.criticalPathRank ?? 0;
+      const rightRank = right.criticalPathRank ?? 0;
+      if (leftRank !== rightRank) {
+        return rightRank - leftRank;
+      }
+
+      // 2. Priority (urgent > high > medium > low)
+      const leftPriority = PRIORITY_ORDER[left.priority] ?? 0;
+      const rightPriority = PRIORITY_ORDER[right.priority] ?? 0;
+      if (leftPriority !== rightPriority) {
+        return rightPriority - leftPriority;
+      }
+
+      // 3. Risk class for isolation routing (critical > high > medium > low)
+      const leftRisk = RISK_CLASS_ORDER[left.riskClass ?? "low"] ?? 0;
+      const rightRisk = RISK_CLASS_ORDER[right.riskClass ?? "low"] ?? 0;
+      if (leftRisk !== rightRisk) {
+        return rightRisk - leftRisk;
+      }
+
+      // 4. Scheduler seed for deterministic ordering across restarts
+      const leftSeed = left.schedulerSeed ?? "";
+      const rightSeed = right.schedulerSeed ?? "";
+      return leftSeed.localeCompare(rightSeed);
+    });
+  }
+
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
-    const tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
+    let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
     if (tickets.length === 0) {
       return {
         outcome: "no_ticket",
@@ -184,6 +240,9 @@ export class ExecutionDispatchService {
         trace: null,
       };
     }
+
+    // R6-4: Apply deterministic graph scheduling for consistent ticket ordering per §14.9
+    tickets = this.sortTicketsForDeterministicDispatch(tickets);
 
     const queueAvailability = this.queueAvailabilitySnapshot?.();
     if (queueAvailability?.state === "unavailable") {
@@ -247,6 +306,33 @@ export class ExecutionDispatchService {
           fallbackApplied: false,
           evaluations: [],
         });
+        // R6-6: Emit dispatch_backpressure_rejected event and move to DLQ for rejected tickets
+        this.db.transaction(() => {
+          this.store.worker.invalidateExecutionTicket({
+            ticketId: ticket.id,
+            status: "cancelled",
+            invalidatedAt: occurredAt,
+          });
+          this.store.event.insertEvent({
+            id: newId("evt"),
+            taskId: ticket.taskId,
+            executionId: ticket.executionId,
+            eventType: "dispatch:backpressure_rejected",
+            eventTier: "tier_2",
+            payloadJson: JSON.stringify({
+              ticketId: ticket.id,
+              executionId: ticket.executionId,
+              taskId: ticket.taskId,
+              queueName: ticket.queueName,
+              priority: ticket.priority,
+              riskClass: ticket.riskClass,
+              reasonCode: blockedByBackpressure,
+              backpressureSnapshot: backpressure,
+            }),
+            traceId: this.store.dispatch.getExecution(ticket.executionId)?.traceId ?? null,
+            createdAt: occurredAt,
+          });
+        });
         continue;
       }
 
@@ -277,7 +363,8 @@ export class ExecutionDispatchService {
       );
       let eligibleWorkers = selection.workers;
       let preemptionTrace: DispatchDecisionTrace["preemption"] = null;
-      if (eligibleWorkers.length === 0 && ticket.priority === "urgent") {
+      // R6-5: Emergency lane for critical/urgent NodeRun - allow preemption for both urgent priority AND critical risk class
+      if (eligibleWorkers.length === 0 && (ticket.priority === "urgent" || ticket.riskClass === "critical")) {
         const preemption = this.preemption.preemptForUrgentTicket({
           ticket,
           dispatchTarget,
@@ -694,12 +781,21 @@ export class ExecutionDispatchService {
     occurredAt: string,
     input: Omit<DispatchDecisionTrace, "ticketId" | "executionId" | "taskId" | "queueName">,
   ): DispatchDecisionTrace {
+    // R6-7: Build ready_set and selected_node_ids from evaluations for trace
+    const readySet = input.evaluations.map((e) => e.workerId);
+    const selectedNodeIds = input.selectedWorkerId ? [input.selectedWorkerId] : [];
+    const orderingPolicyVersion = "1.0"; // R6-7: Version of ordering policy per §14.9
+
     const trace: DispatchDecisionTrace = {
       ticketId: ticket.id,
       executionId: ticket.executionId,
       taskId: ticket.taskId,
       queueName: ticket.queueName,
       ...input,
+      // R6-7: Add scheduler event fields per §14.9
+      readySet,
+      selectedNodeIds,
+      orderingPolicyVersion,
     };
     const execution = this.store.dispatch.getExecution(ticket.executionId);
 

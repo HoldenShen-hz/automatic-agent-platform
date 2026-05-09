@@ -1,3 +1,5 @@
+export type CleanupCallback = (resourceId: string) => Promise<boolean>;
+
 export type CleanupResourceKind =
   | "lease"
   | "secret"
@@ -28,6 +30,7 @@ export interface RunTerminationCleanupReceipt {
   readonly cleanupOrder: readonly CleanupResourceKind[];
   readonly cleanedResourceIds: readonly string[];
   readonly skippedResourceIds: readonly string[];
+  readonly failedResourceIds: readonly string[];
   readonly completedAt: string;
   readonly complete: boolean;
 }
@@ -43,16 +46,42 @@ const CLEANUP_ORDER: readonly CleanupResourceKind[] = [
 ];
 
 export class RunTerminationCleanup {
-  public execute(request: RunTerminationCleanupRequest, completedAt = request.requestedAt): RunTerminationCleanupReceipt {
+  public async execute(
+    request: RunTerminationCleanupRequest,
+    callbacks: Readonly<Record<CleanupResourceKind, CleanupCallback>>,
+    completedAt = request.requestedAt,
+  ): Promise<RunTerminationCleanupReceipt> {
     const ordered = [...request.resources].sort((left, right) => (
       CLEANUP_ORDER.indexOf(left.resourceKind) - CLEANUP_ORDER.indexOf(right.resourceKind)
     ));
-    const cleanedResourceIds = ordered
-      .filter((resource) => resource.cleanupRequired)
-      .map((resource) => resource.resourceId);
-    const skippedResourceIds = ordered
-      .filter((resource) => !resource.cleanupRequired)
-      .map((resource) => resource.resourceId);
+
+    const cleanedResourceIds: string[] = [];
+    const skippedResourceIds: string[] = [];
+    const failedResourceIds: string[] = [];
+
+    for (const resource of ordered) {
+      if (!resource.cleanupRequired) {
+        skippedResourceIds.push(resource.resourceId);
+        continue;
+      }
+
+      const callback = callbacks[resource.resourceKind];
+      if (!callback) {
+        skippedResourceIds.push(resource.resourceId);
+        continue;
+      }
+
+      try {
+        const success = await callback(resource.resourceId);
+        if (success) {
+          cleanedResourceIds.push(resource.resourceId);
+        } else {
+          failedResourceIds.push(resource.resourceId);
+        }
+      } catch {
+        failedResourceIds.push(resource.resourceId);
+      }
+    }
 
     return {
       runId: request.runId,
@@ -61,8 +90,9 @@ export class RunTerminationCleanup {
       cleanupOrder: CLEANUP_ORDER,
       cleanedResourceIds,
       skippedResourceIds,
+      failedResourceIds,
       completedAt,
-      complete: true,
+      complete: failedResourceIds.length === 0,
     };
   }
 }

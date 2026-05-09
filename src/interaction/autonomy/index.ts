@@ -50,6 +50,8 @@ export interface CapabilityTrustScore {
   readonly lastIncidentAgeDays: number | null;
   /** Severity of the most recent incident (P0=P0, P1=P1, etc.) */
   readonly lastIncidentSeverity?: IncidentSeverity;
+  // R5-23: Cost budget tracking - ratio of actual cost to budget (e.g., 2.0 = 200% of budget)
+  readonly costOverbudgetRatio?: number;
 }
 
 export interface AgentTrustProfile {
@@ -99,6 +101,9 @@ export interface AutonomyChangeImpactReport {
 }
 
 export class TrustDecayWorker {
+  /** R5-26: After 180 days of no execution, agent should be demoted to suggestion */
+  private static readonly NO_EXECUTION_DEMOTION_THRESHOLD_DAYS = 180;
+
   public run(
     profile: AgentTrustProfile,
     options: {
@@ -111,9 +116,25 @@ export class TrustDecayWorker {
       capabilityScores: profile.capabilityScores.map((item) => ({
         ...item,
         trustScore: applyTrustDecay(item.trustScore, options.inactiveDays, options.decayRate),
+        // R5-26: If inactive for 180+ days with no executions, demote to suggestion
+        currentAutonomy: this.shouldDemoteToSuggestion(item, options.inactiveDays)
+          ? "suggestion"
+          : item.currentAutonomy,
       })),
       lastEvaluation: nowIso(),
     };
+  }
+
+  /**
+   * R5-26: Determine if agent should be demoted to suggestion due to long no-execution period
+   */
+  private shouldDemoteToSuggestion(item: CapabilityTrustScore, inactiveDays: number): boolean {
+    // Only demote if there's been no execution activity for the threshold period
+    if (inactiveDays < TrustDecayWorker.NO_EXECUTION_DEMOTION_THRESHOLD_DAYS) {
+      return false;
+    }
+    // Only demote if the agent is currently at a higher autonomy level
+    return item.currentAutonomy !== "suggestion" && item.totalExecutions > 0;
   }
 }
 
@@ -126,6 +147,10 @@ export interface AutonomyEvaluationOptions {
   minVolumeForDemotion?: number;
   highRiskDomainIds?: readonly string[];
   resolveDomainRiskSpec?: (domainId: string) => DomainRiskSpec | null;
+  /** R5-22: Time windows for incident-free bonuses (in days) */
+  incidentFreeWindows?: readonly number[];
+  /** R5-23: Cost budget threshold for demotion (multiplier, e.g., 2.0 = 200%) */
+  costBudgetThreshold?: number;
 }
 
 const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
@@ -136,6 +161,10 @@ const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
   minVolumeForDemotion: 3,
   highRiskDomainIds: ["medical", "healthcare", "financial-services", "finance-accounting", "quant-trading", "legal"],
   resolveDomainRiskSpec,
+  // R5-22: Default incident-free time windows for bonuses
+  incidentFreeWindows: [30, 60, 90],
+  // R5-23: Default cost budget threshold - exceeding this triggers demotion
+  costBudgetThreshold: 2.0,
 };
 
 function successRate(score: CapabilityTrustScore): number {
@@ -147,11 +176,12 @@ function overrideRate(score: CapabilityTrustScore): number {
 }
 
 function trustLevelFromScore(score: number): TrustLevel {
-  if (score >= 95) return "fully_trusted";
-  if (score >= 85) return "trusted";
-  if (score >= 70) return "semi_trusted";
-  if (score >= 50) return "supervised";
-  if (score >= 30) return "probation";
+  // R5-21: Scale thresholds to 0-1000 range per §42.1
+  if (score >= 950) return "fully_trusted";
+  if (score >= 850) return "trusted";
+  if (score >= 700) return "semi_trusted";
+  if (score >= 500) return "supervised";
+  if (score >= 300) return "probation";
   return "untrusted";
 }
 
@@ -159,12 +189,13 @@ function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
   const overridePenalty = overrideRate(score) * 20;
   const incidentPenalty = score.incidents * 15;
-  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
+  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
+  // R5-21: Scale to 0-1000 per §42.1
   return Math.max(
     0,
     Math.min(
-      100,
-      Math.round(success * 100 - overridePenalty - incidentPenalty + volumeBonus),
+      1000,
+      Math.round(success * 1000 - overridePenalty * 10 - incidentPenalty * 10 + volumeBonus),
     ),
   );
 }
@@ -210,6 +241,13 @@ function decideLevel(
   const success = successRate(score);
   const overrides = overrideRate(score);
 
+  // R5-23: Cost budget demotion rule - exceeding 200% cost budget triggers demotion
+  const costThreshold = options.costBudgetThreshold ?? 2.0;
+  if (score.costOverbudgetRatio != null && score.costOverbudgetRatio >= costThreshold) {
+    // Demote one level for cost overbudget, but not below suggestion
+    return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
+  }
+
   // §42 P0/P1 Demotion Logic:
   // - P0 incidents: freeze immediately (as before)
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
@@ -240,13 +278,24 @@ function decideLevel(
     return score.currentAutonomy === "suggestion" ? "supervised" : score.currentAutonomy;
   }
 
-  if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01) {
+  // R5-22: Time-window incident-free checks for promotion
+  // Get the required incident-free days from options (default: 30d, 60d, 90d)
+  const windows = options.incidentFreeWindows ?? [30, 60, 90];
+  const supervisedWindow = windows[0] ?? 30;
+  const semiAutoWindow = windows[1] ?? 60;
+  const fullAutoWindow = windows[2] ?? 90;
+  const incidentFreeDays = score.lastIncidentAgeDays ?? 0;
+
+  // full_auto requires 90 days incident-free (or configured fullAutoWindow)
+  if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01 && incidentFreeDays >= fullAutoWindow) {
     return "full_auto";
   }
-  if (score.totalExecutions >= 200 && success >= 0.98 && overrides < 0.05) {
+  // semi_auto requires 60 days incident-free (or configured semiAutoWindow)
+  if (score.totalExecutions >= 200 && success >= 0.98 && overrides < 0.05 && incidentFreeDays >= semiAutoWindow) {
     return "semi_auto";
   }
-  if (score.totalExecutions >= (options.minVolumeForPromotion ?? 50) && success >= 0.95) {
+  // supervised requires 30 days incident-free (or configured supervisedWindow)
+  if (score.totalExecutions >= (options.minVolumeForPromotion ?? 50) && success >= 0.95 && incidentFreeDays >= supervisedWindow) {
     return "supervised";
   }
   return "suggestion";

@@ -16,6 +16,8 @@
  * @see docs_zh/architecture/00-platform-architecture.md §25.4
  */
 
+import { createHash } from "node:crypto";
+
 import type { EventRecord } from "../../contracts/types/domain.js";
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { ProjectionRecord } from "./index.js";
@@ -85,6 +87,27 @@ export interface ProjectionRebuildResult {
   errors: readonly string[];
 }
 
+export interface ProjectionSnapshot {
+  versionId: string;
+  projectionName: string;
+  builtAt: string;
+  sourceEventCount: number;
+  stateHash: string;
+  state: Record<string, unknown>;
+  stale: boolean;
+  staleReason: string | null;
+}
+
+export interface ProjectionComparisonResult {
+  matches: boolean;
+  activeVersionId: string | null;
+  shadowVersionId: string | null;
+  activeHash: string | null;
+  shadowHash: string | null;
+  stale: boolean;
+  mismatchKeys: readonly string[];
+}
+
 /**
  * Registry of projection handlers by projection name
  */
@@ -121,6 +144,9 @@ export class ProjectionHandlerRegistry {
  */
 export class ProjectionRebuildService {
   private readonly registry: ProjectionHandlerRegistry;
+  private readonly activeSnapshots = new Map<string, ProjectionSnapshot>();
+  private readonly previousSnapshots = new Map<string, ProjectionSnapshot>();
+  private readonly shadowSnapshots = new Map<string, ProjectionSnapshot>();
 
   public constructor(private readonly eventRepository: EventRepository) {
     this.registry = new ProjectionHandlerRegistry();
@@ -180,14 +206,114 @@ export class ProjectionRebuildService {
     projectionName: string,
     options: ProjectionRebuildOptions = {},
   ): ProjectionRebuildResult {
+    const result = this.rebuildProjectionState(projectionName, options);
+    if (result.snapshot != null) {
+      this.activeSnapshots.set(projectionName, result.snapshot);
+    }
+    return result.rebuildResult;
+  }
+
+  public shadowBuildProjection(
+    projectionName: string,
+    options: ProjectionRebuildOptions = {},
+  ): ProjectionRebuildResult {
+    const result = this.rebuildProjectionState(projectionName, options);
+    if (result.snapshot != null) {
+      this.shadowSnapshots.set(projectionName, result.snapshot);
+    }
+    return result.rebuildResult;
+  }
+
+  public compareShadowProjection(projectionName: string): ProjectionComparisonResult {
+    const active = this.activeSnapshots.get(projectionName) ?? null;
+    const shadow = this.shadowSnapshots.get(projectionName) ?? null;
+    if (active == null || shadow == null) {
+      return {
+        matches: false,
+        activeVersionId: active?.versionId ?? null,
+        shadowVersionId: shadow?.versionId ?? null,
+        activeHash: active?.stateHash ?? null,
+        shadowHash: shadow?.stateHash ?? null,
+        stale: (active?.stale ?? false) || (shadow?.stale ?? false),
+        mismatchKeys: [],
+      };
+    }
+    const activeKeys = new Set(Object.keys(active.state));
+    const shadowKeys = new Set(Object.keys(shadow.state));
+    const mismatchKeys = [...new Set([...activeKeys, ...shadowKeys])]
+      .filter((key) => JSON.stringify(active.state[key]) !== JSON.stringify(shadow.state[key]));
+    return {
+      matches: active.stateHash === shadow.stateHash,
+      activeVersionId: active.versionId,
+      shadowVersionId: shadow.versionId,
+      activeHash: active.stateHash,
+      shadowHash: shadow.stateHash,
+      stale: active.stale || shadow.stale,
+      mismatchKeys,
+    };
+  }
+
+  public cutoverShadowProjection(projectionName: string): ProjectionSnapshot | null {
+    const shadow = this.shadowSnapshots.get(projectionName) ?? null;
+    if (shadow == null) {
+      return null;
+    }
+    const currentActive = this.activeSnapshots.get(projectionName);
+    if (currentActive != null) {
+      this.previousSnapshots.set(projectionName, currentActive);
+    }
+    const promoted = {
+      ...shadow,
+      stale: false,
+      staleReason: null,
+    };
+    this.activeSnapshots.set(projectionName, promoted);
+    this.shadowSnapshots.delete(projectionName);
+    return promoted;
+  }
+
+  public markProjectionStale(projectionName: string, reason: string): void {
+    const current = this.activeSnapshots.get(projectionName);
+    if (current == null) {
+      return;
+    }
+    this.activeSnapshots.set(projectionName, {
+      ...current,
+      stale: true,
+      staleReason: reason,
+    });
+  }
+
+  public getProjectionSnapshotStatus(projectionName: string): {
+    active: ProjectionSnapshot | null;
+    previous: ProjectionSnapshot | null;
+    shadow: ProjectionSnapshot | null;
+  } {
+    return {
+      active: this.activeSnapshots.get(projectionName) ?? null,
+      previous: this.previousSnapshots.get(projectionName) ?? null,
+      shadow: this.shadowSnapshots.get(projectionName) ?? null,
+    };
+  }
+
+  private rebuildProjectionState(
+    projectionName: string,
+    options: ProjectionRebuildOptions,
+  ): {
+    rebuildResult: ProjectionRebuildResult;
+    snapshot: ProjectionSnapshot | null;
+  } {
     const handler = this.registry.get(projectionName);
     if (!handler) {
       return {
-        eventsProcessed: 0,
-        projectionsUpdated: 0,
-        eventsSkipped: 0,
-        durationMs: 0,
-        errors: [`Unknown projection: ${projectionName}`],
+        rebuildResult: {
+          eventsProcessed: 0,
+          projectionsUpdated: 0,
+          eventsSkipped: 0,
+          durationMs: 0,
+          errors: [`Unknown projection: ${projectionName}`],
+        },
+        snapshot: null,
       };
     }
 
@@ -201,6 +327,7 @@ export class ProjectionRebuildService {
     // Process events in batches
     let offset = 0;
     let hasMore = true;
+    let accumulatedState: Record<string, unknown> | null = null;
 
     while (hasMore) {
       const events = this.fetchEvents(options, batchSize, offset);
@@ -212,9 +339,8 @@ export class ProjectionRebuildService {
 
       for (const event of events) {
         try {
-          // Apply event to projection if it matches the handler's event types
           const inputEvent = this.toProjectionInputEvent(event);
-          handler(null, inputEvent); // Note: actual state tracking would be done in a real implementation
+          accumulatedState = handler(accumulatedState, inputEvent);
           eventsProcessed++;
         } catch (error) {
           errors.push(`Error processing event ${event.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -230,11 +356,16 @@ export class ProjectionRebuildService {
     }
 
     return {
-      eventsProcessed,
-      projectionsUpdated,
-      eventsSkipped,
-      durationMs: Date.now() - startTime,
-      errors,
+      rebuildResult: {
+        eventsProcessed,
+        projectionsUpdated,
+        eventsSkipped,
+        durationMs: Date.now() - startTime,
+        errors,
+      },
+      snapshot: accumulatedState == null
+        ? null
+        : this.createSnapshot(projectionName, accumulatedState, eventsProcessed),
     };
   }
 
@@ -250,6 +381,26 @@ export class ProjectionRebuildService {
     }
 
     return results;
+  }
+
+  private createSnapshot(
+    projectionName: string,
+    state: Record<string, unknown>,
+    sourceEventCount: number,
+  ): ProjectionSnapshot {
+    const normalizedState = sortRecord(state);
+    const builtAt = new Date().toISOString();
+    const stateHash = createHash("sha256").update(JSON.stringify(normalizedState)).digest("hex");
+    return {
+      versionId: `${projectionName}:${builtAt}`,
+      projectionName,
+      builtAt,
+      sourceEventCount,
+      stateHash,
+      state: normalizedState,
+      stale: false,
+      staleReason: null,
+    };
   }
 
   /**
@@ -500,4 +651,18 @@ export class ProjectionRebuildService {
       return {};
     }
   }
+}
+
+function sortRecord(value: unknown): any {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortRecord(item));
+  }
+  if (value != null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, sortRecord(child)]),
+    );
+  }
+  return value;
 }

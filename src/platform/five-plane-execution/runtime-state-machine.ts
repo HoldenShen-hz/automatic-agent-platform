@@ -36,10 +36,14 @@ type RuntimeStatus<TAggregate extends RuntimeStateAggregate> = TAggregate extend
           : never;
 
 export interface RuntimeTransitionCommand<TAggregate extends RuntimeStateAggregate> {
+  readonly commandId: string;
+  readonly entityType: RuntimeStateAggregateType;
+  readonly entityId: string;
   readonly aggregateType: RuntimeStateAggregateType;
   readonly aggregate: TAggregate;
   readonly fromStatus: RuntimeStatus<TAggregate>;
   readonly toStatus: RuntimeStatus<TAggregate>;
+  readonly principal: string;
   readonly expectedSeq?: number;
   readonly expectedVersion?: number;
   readonly leaseId?: string;
@@ -338,37 +342,86 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
 function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): void {
-  if (command.aggregateType !== "NodeRun") {
+  // R4-30 (INV-FENCING-001): Extend lease and fencing checks to all execution entities
+  // NodeRun transitions require lease+fencing per R4-30 (original scope)
+  // HarnessRun transitions for critical states also require fencing
+  // SideEffectRecord commits require fencing token verification
+  const requiresFencingCheck =
+    command.aggregateType === "NodeRun" ||
+    command.aggregateType === "HarnessRun" ||
+    command.aggregateType === "SideEffectRecord";
+
+  if (!requiresFencingCheck) {
     return;
   }
-  const nodeRun = command.aggregate as NodeRun;
-  const executionStatuses: readonly string[] = [
-    "leased",
-    "running",
-    "retry_wait",
-    "awaiting_hitl",
-    "reconciling",
-    "succeeded",
-    "failed",
-  ];
-  if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
-    throw new WorkflowStateError(
-      "runtime_state_machine.lease_and_fencing_required",
-      "NodeRun execution transitions require an active lease and fencing token.",
-      { details: { nodeRunId: nodeRun.nodeRunId } },
-    );
+
+  if (command.aggregateType === "NodeRun") {
+    const nodeRun = command.aggregate as NodeRun;
+    const executionStatuses: readonly string[] = [
+      "leased",
+      "running",
+      "retry_wait",
+      "awaiting_hitl",
+      "reconciling",
+      "succeeded",
+      "failed",
+    ];
+    if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.lease_and_fencing_required",
+        "NodeRun execution transitions require an active lease and fencing token.",
+        { details: { nodeRunId: nodeRun.nodeRunId } },
+      );
+    }
+    if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
+      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "NodeRun transition requires the active lease.", {
+        details: { nodeRunId: nodeRun.nodeRunId },
+      });
+    }
+    if (nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.fencing_token_mismatch",
+        "NodeRun transition requires the active fencing token.",
+        { details: { nodeRunId: nodeRun.nodeRunId } },
+      );
+    }
   }
-  if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
-    throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "NodeRun transition requires the active lease.", {
-      details: { nodeRunId: nodeRun.nodeRunId },
-    });
+
+  if (command.aggregateType === "HarnessRun") {
+    const harnessRun = command.aggregate as HarnessRun;
+    // R4-30: HarnessRun planning/running transitions require fencing token
+    const criticalStatuses: readonly string[] = ["planning", "ready", "running", "pausing", "paused", "resuming", "replanning"];
+    if (criticalStatuses.includes(command.toStatus as string)) {
+      if (command.fencingToken == null) {
+        throw new WorkflowStateError(
+          "runtime_state_machine.harness_fencing_required",
+          "HarnessRun critical transitions require a fencing token.",
+          { details: { harnessRunId: harnessRun.harnessRunId } },
+        );
+      }
+      if (harnessRun.fencingToken != null && command.fencingToken !== harnessRun.fencingToken) {
+        throw new WorkflowStateError(
+          "runtime_state_machine.harness_fencing_token_mismatch",
+          "HarnessRun transition requires the active fencing token.",
+          { details: { harnessRunId: harnessRun.harnessRunId } },
+        );
+      }
+    }
   }
-  if (nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
-    throw new WorkflowStateError(
-      "runtime_state_machine.fencing_token_mismatch",
-      "NodeRun transition requires the active fencing token.",
-      { details: { nodeRunId: nodeRun.nodeRunId } },
-    );
+
+  if (command.aggregateType === "SideEffectRecord") {
+    const sideEffect = command.aggregate as SideEffectRecord;
+    // R4-30: SideEffectRecord commit path transitions require fencing token
+    const commitStatuses: readonly string[] = ["approved", "reserved", "committing", "committed", "confirming", "confirmed"];
+    if (commitStatuses.includes(command.toStatus as string)) {
+      if (command.fencingToken == null) {
+        throw new WorkflowStateError(
+          "runtime_state_machine.side_effect_fencing_required",
+          "SideEffectRecord commit transitions require a fencing token.",
+          { details: { sideEffectId: sideEffect.sideEffectId } },
+        );
+      }
+    }
   }
 }
 

@@ -258,6 +258,28 @@ test("isProtectedMessage protects compaction_summary type", () => {
   assert.equal(summaryMsg.protected, true);
 });
 
+test("isProtectedMessage protects feedback and learning summaries from compaction", () => {
+  const db = createMockDb();
+  const messages = [
+    createTestMessage({ id: "feedback-1", direction: "system", messageType: "feedback_signal", content: "Feedback summary" }),
+    createTestMessage({ id: "learning-1", direction: "system", messageType: "learning_object_summary", content: "Learning summary" }),
+    createTestMessage({ id: "tool-1", direction: "outbound", messageType: "tool_result", content: "Tool result" }),
+  ];
+  const store = createMockStore(messages);
+  const service = new ContextCompactionService(db, store);
+
+  const result = service.compactContext({
+    taskId: "task-1",
+    sessionId: "sess-1",
+    maxContextTokens: 20,
+    stage1TriggerRatio: 0.01,
+    stage2TriggerRatio: 0.01,
+  });
+
+  assert.equal(result.contextMessages.find((m) => m.messageId === "feedback-1")?.protected, true);
+  assert.equal(result.contextMessages.find((m) => m.messageId === "learning-1")?.protected, true);
+});
+
 // ---------------------------------------------------------------------------
 // isFixedPrefixMessage function edge cases
 // ---------------------------------------------------------------------------

@@ -50,9 +50,9 @@
 ## 4. CostEvent 最小字段
 
 - `harness_run_id`
-- `task_id?`
 - `node_run_id?`
 - `attempt_id?`
+- `task_id`
 - `session_id?`
 - `agent_id?`
 - `stage?`
@@ -61,6 +61,7 @@
 - `input_tokens`
 - `output_tokens`
 - `cost_usd`
+- `budget_reservation_id?`
 - `created_at`
 
 ## 5. 行为约束
@@ -100,6 +101,7 @@
 - `cost_event_id`
 - `provider_request_id?`
 - `budget_scope`
+- `budget_reservation_id?`
 - `pricing_version`
 
 ### 7.3 BYOK 区分
@@ -115,8 +117,8 @@
 | --- | --- | --- |
 | 上下文压缩（compaction stage 2 summarize） | 归属到触发压缩的 session 和 task | `budget_scope: compaction`、关联 `session_id` 和 `task_id` |
 | skill 缓存未命中后的模型调用 | 归属到触发 skill 执行的 harness run 和 node run | `budget_scope: skill_execution`、关联 `harness_run_id / node_run_id` |
-| 自愈 / 恢复重试 | 归属到原始 task（非新建恢复任务） | `budget_scope: recovery_retry`、关联原始 `task_id` |
-| guardian / reviewer subagent 推理 | 归属到触发审批的 task | `budget_scope: approval_review`、关联 `approval_id` |
+| 自愈 / 恢复重试 | 归属到原始 task（非新建恢复任务） | `budget_scope: recovery_retry`、关联原始 `task_id` 和 `node_run_id / attempt_id` |
+| guardian / reviewer subagent 推理 | 归属到触发审批的 task | `budget_scope: approval_review`、关联 `approval_id`、`harness_run_id` |
 
 规则：
 

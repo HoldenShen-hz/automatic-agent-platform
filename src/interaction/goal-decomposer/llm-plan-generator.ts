@@ -134,6 +134,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           reservation: reservedBudget.reservation,
           actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
           context: {
+            principal: this.options.budgetControl!.emittedBy,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
@@ -195,6 +196,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           reservation: reservedBudget.reservation,
           reasonCode: "budget.goal_decomposer_llm_plan_failed",
           context: {
+            principal: this.options.budgetControl!.emittedBy,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,

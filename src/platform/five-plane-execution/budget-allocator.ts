@@ -11,12 +11,15 @@ import {
 import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,
+  type RuntimeTransitionCommand,
 } from "./runtime-state-machine.js";
+import { newId } from "../contracts/types/ids.js";
 
 export interface BudgetAllocatorContext {
   readonly tenantId: string;
   readonly traceId: string;
   readonly emittedBy: string;
+  readonly principal: string;
 }
 
 export interface BudgetSettlementResult {
@@ -66,11 +69,15 @@ export class BudgetAllocator {
       input.reservation.status === "reserved" &&
       input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
-    const reservation = this.stateMachine.transition({
+    const command: RuntimeTransitionCommand<BudgetReservation> = {
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "settled",
+      principal: input.context.principal,
       tenantId: input.context.tenantId,
       traceId: input.context.traceId,
       reasonCode: "budget.settled",
@@ -80,7 +87,8 @@ export class BudgetAllocator {
         hardCapSatisfied,
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
-    });
+    };
+    const reservation = this.stateMachine.transition(command);
     return {
       reservation,
       settlement,
@@ -106,10 +114,14 @@ export class BudgetAllocator {
       settlementKind: "release_unused",
     });
     const reservation = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "released",
+      principal: input.context.principal,
       tenantId: input.context.tenantId,
       traceId: input.context.traceId,
       reasonCode: input.reasonCode ?? "budget.released_without_execution",

@@ -12,12 +12,6 @@ console.warn(
  * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
  * This type is retained for legacy adapter compatibility only.
  */
-export type ControlDirectiveKind = "pause" | "resume" | "cancel" | "rollback" | "escalate";
-
-/**
- * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
- * This interface is retained for legacy adapter compatibility only.
- */
 export interface ControlDirective {
   directiveId: string;
   kind: ControlDirectiveKind;
@@ -29,6 +23,11 @@ export interface ControlDirective {
   metadata: Record<string, unknown>;
   createdAt: string;
 }
+
+/**
+ * @deprecated ControlDirectiveKind is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
+ */
+export type ControlDirectiveKind = "pause" | "resume" | "cancel" | "rollback" | "escalate";
 
 // =============================================================================
 // Canonical Directive Types (P2 → P3/P4 per §4.3)

@@ -16,8 +16,7 @@ import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } 
 import { PlanBuilder } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
 import type { FeedbackBatch, LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { ExecutionOutcomeEvaluator } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
-import type { ExecutionOutcomeEvaluation } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
+import { ExecutionOutcomeEvaluator, type ExecutionOutcomeEvaluation } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
 import { PostExecutionQualityGate } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import type { PostExecutionQualityGateDecision } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import { ReplanningService } from "../planner/replanning-service.js";
@@ -350,7 +349,7 @@ export class OapeflirLoopService {
         fsm.recordStageCompletion("feedback");
 
         // R5-2: Compute quality gate and replan decision after each feedback collection
-        loopOutcome = this.outcomeEvaluator.evaluate(loopPlan, loopFeedback);
+        loopOutcome = this.outcomeEvaluator.evaluateWithBreakdown(loopPlan, loopFeedback);
         loopQualityGate = this.qualityGate.decide(loopOutcome);
         loopReplanTrigger = this.replanning.createTrigger(
           input.taskId,
@@ -514,33 +513,67 @@ export class OapeflirLoopService {
           }
           fsm.recordStageEntry("release");
 
-          const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
-          let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
-            taskId: input.taskId,
-            candidateId: approved.candidateId,
-          });
-          // I→R boundary: validate rollout record — skip release on failure (per §L.14)
-          const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
-          rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
-          if (!rolloutValidation.ok) {
-            this.boundaryLogger.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record", {
-              data: { taskId: input.taskId, boundary: "I→R" },
+          // R5-8: Add gates before calling PolicyRolloutService.start()
+          // EvaluationGate: only proceed if evaluation verdict is "accept"
+          if (loopEvaluationReport.verdict !== "accept") {
+            this.boundaryLogger.warn("[gate:release] EvaluationGate blocked release", {
+              data: { taskId: input.taskId, verdict: loopEvaluationReport.verdict },
             });
-          }
-          timeline.record(
-            "release",
-            rolloutRecord ? "completed" : "skipped",
-            rolloutRecord?.recordId ?? null,
-            rolloutRecord ? null : "release.validation_failed",
-            rolloutRecord
-              ? "Started rollout for the approved strategy version."
-              : "Rollout output failed validation and was nulled before release completion.",
-          );
-          // R5-3: Record release completion or skip
-          if (rolloutRecord) {
-            fsm.recordStageCompletion("release");
+            timeline.record("release", "skipped", null, "release.evaluation_gate_blocked", `Release blocked by EvaluationGate with verdict: ${loopEvaluationReport.verdict}`);
+            fsm.recordStageSkipped("release", "release.evaluation_gate_blocked");
+            rolloutRecord = null;
           } else {
-            fsm.recordStageSkipped("release", "release.validation_failed");
+            // Approval check: if assessment requires approval, block release
+            const approvalRequired = validatedAssessment.approvalPolicy.required;
+            if (approvalRequired) {
+              this.boundaryLogger.warn("[gate:release] Approval required - blocking release", {
+                data: { taskId: input.taskId, approvalLevel: validatedAssessment.approvalPolicy.level },
+              });
+              timeline.record("release", "skipped", null, "release.approval_required", `Release blocked by approval requirement: ${validatedAssessment.approvalPolicy.level}`);
+              fsm.recordStageSkipped("release", "release.approval_required");
+              rolloutRecord = null;
+            } else {
+              // Canary check: only proceed if not in blocked canary state
+              const canaryBlocked = loopEvaluationReport.notes?.includes("canary_blocked") ?? false;
+              if (canaryBlocked) {
+                this.boundaryLogger.warn("[gate:release] Canary blocked - rolling back", {
+                  data: { taskId: input.taskId },
+                });
+                timeline.record("release", "skipped", null, "release.canary_blocked", "Release blocked due to canary routing failure");
+                fsm.recordStageSkipped("release", "release.canary_blocked");
+                rolloutRecord = null;
+              } else {
+                const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
+                // R5-8: All gates passed - call PolicyRolloutService.start() with gates
+                let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
+                  taskId: input.taskId,
+                  candidateId: approved.candidateId,
+                });
+                // I→R boundary: validate rollout record — skip release on failure (per §L.14)
+                const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
+                rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
+                if (!rolloutValidation.ok) {
+                  this.boundaryLogger.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record", {
+                    data: { taskId: input.taskId, boundary: "I→R" },
+                  });
+                }
+                timeline.record(
+                  "release",
+                  rolloutRecord ? "completed" : "skipped",
+                  rolloutRecord?.recordId ?? null,
+                  rolloutRecord ? null : "release.validation_failed",
+                  rolloutRecord
+                    ? "Started rollout for the approved strategy version."
+                    : "Rollout output failed validation and was nulled before release completion.",
+                );
+                // R5-3: Record release completion or skip
+                if (rolloutRecord) {
+                  fsm.recordStageCompletion("release");
+                } else {
+                  fsm.recordStageSkipped("release", "release.validation_failed");
+                }
+              }
+            }
           }
         } else {
           runtimeMetricsRegistry.recordOapeflirStageEntry("improve");

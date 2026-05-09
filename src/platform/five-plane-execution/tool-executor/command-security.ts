@@ -76,8 +76,8 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["sed", { allowed: true, riskLevel: "medium" }],
   ["tr", { allowed: true, riskLevel: "low" }],
   ["sleep", { allowed: true, riskLevel: "low" }],
-  ["env", { allowed: true, riskLevel: "medium" }],
-  ["printenv", { allowed: true, riskLevel: "medium" }],
+  ["env", { allowed: false, riskLevel: "medium", reasonCode: "tool.command_env_denied" }],
+  ["printenv", { allowed: false, riskLevel: "medium", reasonCode: "tool.command_printenv_denied" }],
   ["which", { allowed: true, riskLevel: "low" }],
   ["ps", { allowed: true, riskLevel: "medium" }],
   ["git", { allowed: true, riskLevel: "high" }],
@@ -271,6 +271,25 @@ function validateCommandSignature(command: string, args: readonly string[], risk
 // an amplifier for adversarial input.
 const DEFAULT_CACHE_MAX_ENTRIES = 1024;
 
+/**
+ * R12-22: URL whitelist patterns for curl/wget.
+ * Only URLs matching these patterns are allowed.
+ * HTTPS is required for all web URLs.
+ */
+const ALLOWED_URL_PATTERNS = [
+  /^https:\/\//,  // HTTPS required for all web URLs
+  /^http:\/\/localhost(:\d+)?\//,  // localhost only (for development)
+  /^http:\/\/127\.\d+\.\d+\.\d+(:\d+)?\//,  // IPv4 loopback
+];
+
+/**
+ * R12-22: Checks if a URL is allowed by the whitelist.
+ * Returns true if the URL matches an allowed pattern.
+ */
+function isUrlAllowed(url: string): boolean {
+  return ALLOWED_URL_PATTERNS.some((pattern) => pattern.test(url));
+}
+
 export class CommandSafetyClassifier {
   private readonly cache = new Map<string, CachedCommandAssessment>();
   private readonly maxCacheEntries: number;
@@ -299,6 +318,11 @@ export class CommandSafetyClassifier {
     // more specific remote-script diagnostic.
     if (this.containsRemoteScriptPipe(normalizedCommand, args)) {
       return deniedAssessment("tool.remote_script_pipe_denied", "critical");
+    }
+
+    // R12-22: Check for curl/wget with URLs not in the allowed list
+    if (this.containsDisallowedUrl(normalizedCommand, args)) {
+      return deniedAssessment("tool.command_url_not_allowed", "critical");
     }
 
     if (
@@ -385,6 +409,30 @@ export class CommandSafetyClassifier {
           ) {
             return true;
           }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * R12-22: Checks if curl/wget command contains URL arguments that are not allowed.
+   * Returns true if a disallowed URL is found.
+   */
+  private containsDisallowedUrl(command: string, args: readonly string[]): boolean {
+    const normalizedCommand = normalizeCommandName(command);
+    if (!["curl", "wget"].includes(normalizedCommand)) {
+      return false;
+    }
+
+    for (const arg of args) {
+      // Skip flags and options
+      if (arg.startsWith("-")) continue;
+
+      // Check if this looks like a URL
+      if (/^https?:\/\//i.test(arg)) {
+        if (!isUrlAllowed(arg)) {
+          return true;
         }
       }
     }

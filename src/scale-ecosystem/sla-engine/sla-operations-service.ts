@@ -33,6 +33,7 @@ export interface SlaOperationsRequest {
   readonly reservedCapacityPlan?: readonly ReservedCapacityAllocation[];
   readonly totalCapacityUnits: number;
   readonly observedAt: string;
+  readonly workflowClassSlaMap?: Readonly<Record<WorkflowClass, WorkflowClassSlaProfile>>;
 }
 
 export interface SlaOperationsDecision {
@@ -65,6 +66,38 @@ const WORKFLOW_CLASS_LATENCY_MULTIPLIER: Record<WorkflowClass, number> = {
   hitl_waiting: 2.0,
 };
 
+export interface WorkflowClassSlaProfile {
+  readonly workflowClass: WorkflowClass;
+  readonly targetLatencyMs: number;
+  readonly targetSuccessRate: number;
+  readonly maxQueueWaitMs: number;
+  readonly preemptionPriority: number;
+}
+
+const DEFAULT_WORKFLOW_CLASS_SLA_MAP: Record<WorkflowClass, WorkflowClassSlaProfile> = {
+  deterministic: {
+    workflowClass: "deterministic",
+    targetLatencyMs: 500,
+    targetSuccessRate: 0.999,
+    maxQueueWaitMs: 1000,
+    preemptionPriority: 10,
+  },
+  llm_assisted: {
+    workflowClass: "llm_assisted",
+    targetLatencyMs: 2000,
+    targetSuccessRate: 0.98,
+    maxQueueWaitMs: 5000,
+    preemptionPriority: 5,
+  },
+  hitl_waiting: {
+    workflowClass: "hitl_waiting",
+    targetLatencyMs: 10000,
+    targetSuccessRate: 0.95,
+    maxQueueWaitMs: 30000,
+    preemptionPriority: 1,
+  },
+};
+
 export class SlaOperationsService {
   public evaluate(request: SlaOperationsRequest): SlaOperationsDecision {
     const selectedTier = request.selectedTierId == null
@@ -92,12 +125,15 @@ export class SlaOperationsService {
       };
     }
 
-    const latencyMultiplier = WORKFLOW_CLASS_LATENCY_MULTIPLIER[request.workflowClass];
-    const adjustedMaxLatency = (selectedTier.targetLatencyMs ?? 1000) * latencyMultiplier;
+    const workflowClassSlaMap = request.workflowClassSlaMap ?? DEFAULT_WORKFLOW_CLASS_SLA_MAP;
+    const workflowClassSla = workflowClassSlaMap[request.workflowClass];
+    const adjustedMaxLatency = workflowClassSla?.targetLatencyMs ?? (selectedTier.targetLatencyMs ?? 1000) * WORKFLOW_CLASS_LATENCY_MULTIPLIER[request.workflowClass];
+    const adjustedMinSuccessRate = workflowClassSla?.targetSuccessRate ?? selectedTier.targetSuccessRate ?? 0.99;
+    const adjustedMaxQueueWaitMs = workflowClassSla?.maxQueueWaitMs ?? selectedTier.maxQueueWaitMs ?? 3000;
     const commitment: SlaCommitment = {
       maxLatencyMs: adjustedMaxLatency,
-      minSuccessRate: selectedTier.targetSuccessRate ?? 0.99,
-      maxQueueWaitMs: selectedTier.maxQueueWaitMs ?? 3000,
+      minSuccessRate: adjustedMinSuccessRate,
+      maxQueueWaitMs: adjustedMaxQueueWaitMs,
     };
     const breachCodes = detectSlaBreach(request.observation, commitment);
 

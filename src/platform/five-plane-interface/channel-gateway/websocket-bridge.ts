@@ -18,12 +18,13 @@ const WS_PATH = "/ws/v1/stream";
 const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
 const CLOSE_TIMEOUT_MS = 100;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
+const MAX_TASK_EVENT_HISTORY = 200;
 
 export type WebSocketMessageType =
   | { type: "ping" }
   | { type: "pong" }
   | { type: "ack"; sequenceNum: number; delivered: boolean }
-  | { type: "subscribe"; taskId: string }
+  | { type: "subscribe"; taskId: string; lastEventId?: string | null }
   | { type: "unsubscribe"; taskId: string }
   | { type: "subscribed"; taskId: string }
   | { type: "unsubscribed"; taskId: string }
@@ -58,6 +59,7 @@ export class WebSocketBridge {
   private readonly wss: WebSocketServer;
   private readonly clients = new Map<WebSocket, ClientConnection>();
   private readonly taskSubscribers = new Map<string, Set<WebSocket>>();
+  private readonly taskEventHistory = new Map<string, Array<{ eventId: string; event: TaskWebSocketEvent }>>();
   private readonly slowConsumers = new Set<WebSocket>();
   private readonly tenantScopeFilter: TenantScopeFilter | null;
 
@@ -76,6 +78,7 @@ export class WebSocketBridge {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const token = this.extractBearerToken(req.headers["sec-websocket-protocol"]);
     const initialTaskId = url.searchParams.get("taskId");
+    const initialLastEventId = url.searchParams.get("last_event_id");
 
     if (!token) {
       ws.close(4001, "Missing token");
@@ -106,7 +109,7 @@ export class WebSocketBridge {
     this.clients.set(ws, client);
 
     if (initialTaskId) {
-      this.subscribeToTask(ws, initialTaskId);
+      this.subscribeToTask(ws, initialTaskId, initialLastEventId);
     }
 
     ws.on("message", (data) => {
@@ -144,7 +147,7 @@ export class WebSocketBridge {
         return;
       case "subscribe":
         if (typeof message.taskId === "string" && message.taskId.length > 0) {
-          const result = this.subscribeToTask(ws, message.taskId);
+          const result = this.subscribeToTask(ws, message.taskId, message.lastEventId ?? null);
           ws.send(JSON.stringify(result === "subscribed"
             ? { type: "subscribed", taskId: message.taskId }
             : {
@@ -167,7 +170,11 @@ export class WebSocketBridge {
     }
   }
 
-  private subscribeToTask(ws: WebSocket, taskId: string): SubscriptionResult {
+  private subscribeToTask(
+    ws: WebSocket,
+    taskId: string,
+    lastEventId: string | null = null,
+  ): SubscriptionResult {
     const client = this.clients.get(ws);
     if (!client) {
       return "scope_denied";
@@ -184,6 +191,7 @@ export class WebSocketBridge {
       this.taskSubscribers.set(taskId, new Set());
     }
     this.taskSubscribers.get(taskId)!.add(ws);
+    this.replayMissedEvents(ws, client, taskId, lastEventId);
     return "subscribed";
   }
 
@@ -217,6 +225,7 @@ export class WebSocketBridge {
 
   public broadcastToTask(taskId: string, event: TaskWebSocketEvent, eventId: string = `evt-${Date.now()}`): void {
     const subscribers = this.taskSubscribers.get(taskId);
+    this.recordTaskEvent(taskId, eventId, event);
     if (subscribers == null || subscribers.size === 0) {
       return;
     }
@@ -229,57 +238,7 @@ export class WebSocketBridge {
       if (scopeDecision != null && !scopeDecision.allowed) {
         continue;
       }
-      const bufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
-      if (
-        bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES
-        && (event.eventType === "status_changed" || event.eventType === "progress" || event.eventType === "message_delta")
-      ) {
-        this.slowConsumers.add(ws);
-        client.bufferedEventCount = client.pendingAcks.size;
-        ws.send(JSON.stringify({
-          type: "backpressure_warning",
-          taskId,
-          bufferedCount: client.bufferedEventCount,
-          reason: "slow_consumer",
-        } satisfies WebSocketMessageType));
-        continue;
-      }
-      const sequenceNum = client.nextExpectedSequenceNum++;
-      if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
-        ws.send(JSON.stringify({
-          type: "stream_gap",
-          taskId,
-          fromEventId: client.lastEventId,
-          toEventId: eventId,
-          reason: "missed_events",
-        } satisfies WebSocketMessageType));
-      }
-      client.lastEventId = eventId;
-      client.pendingAcks.set(sequenceNum, {
-        eventId,
-        taskId,
-        sentAt: new Date().toISOString(),
-      });
-      client.bufferedEventCount = client.pendingAcks.size;
-      const message: WebSocketMessageType = {
-        type: "task_update",
-        taskId,
-        eventId,
-        sequenceNum,
-        event,
-      };
-      ws.send(JSON.stringify(message));
-      if (bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES) {
-        this.slowConsumers.add(ws);
-        ws.send(JSON.stringify({
-          type: "backpressure_warning",
-          taskId,
-          bufferedCount: client.bufferedEventCount,
-          reason: "slow_consumer",
-        } satisfies WebSocketMessageType));
-      } else {
-        this.slowConsumers.delete(ws);
-      }
+      this.sendTaskUpdate(ws, client, taskId, event, eventId);
     }
   }
 
@@ -325,5 +284,102 @@ export class WebSocketBridge {
     const header = Array.isArray(protocolHeader) ? protocolHeader.join(",") : protocolHeader ?? "";
     const token = header.split(",")[0]?.trim() ?? "";
     return token.length > 0 ? token : null;
+  }
+
+  private replayMissedEvents(
+    ws: WebSocket,
+    client: ClientConnection,
+    taskId: string,
+    lastEventId: string | null,
+  ): void {
+    if (lastEventId == null) {
+      return;
+    }
+    const history = this.taskEventHistory.get(taskId) ?? [];
+    if (history.length === 0) {
+      return;
+    }
+    const lastSeenIndex = history.findIndex((item) => item.eventId === lastEventId);
+    if (lastSeenIndex < 0) {
+      ws.send(JSON.stringify({
+        type: "stream_gap",
+        taskId,
+        fromEventId: lastEventId,
+        toEventId: history[history.length - 1]!.eventId,
+        reason: "missed_events",
+      } satisfies WebSocketMessageType));
+      return;
+    }
+    for (const item of history.slice(lastSeenIndex + 1)) {
+      this.sendTaskUpdate(ws, client, taskId, item.event, item.eventId);
+    }
+  }
+
+  private sendTaskUpdate(
+    ws: WebSocket,
+    client: ClientConnection,
+    taskId: string,
+    event: TaskWebSocketEvent,
+    eventId: string,
+  ): void {
+    const bufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
+    if (
+      bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES
+      && (event.eventType === "status_changed" || event.eventType === "progress" || event.eventType === "message_delta")
+    ) {
+      this.slowConsumers.add(ws);
+      client.bufferedEventCount = client.pendingAcks.size;
+      ws.send(JSON.stringify({
+        type: "backpressure_warning",
+        taskId,
+        bufferedCount: client.bufferedEventCount,
+        reason: "slow_consumer",
+      } satisfies WebSocketMessageType));
+      return;
+    }
+    const sequenceNum = client.nextExpectedSequenceNum++;
+    if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
+      ws.send(JSON.stringify({
+        type: "stream_gap",
+        taskId,
+        fromEventId: client.lastEventId,
+        toEventId: eventId,
+        reason: "missed_events",
+      } satisfies WebSocketMessageType));
+    }
+    client.lastEventId = eventId;
+    client.pendingAcks.set(sequenceNum, {
+      eventId,
+      taskId,
+      sentAt: new Date().toISOString(),
+    });
+    client.bufferedEventCount = client.pendingAcks.size;
+    ws.send(JSON.stringify({
+      type: "task_update",
+      taskId,
+      eventId,
+      sequenceNum,
+      event,
+    } satisfies WebSocketMessageType));
+    if (bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES) {
+      this.slowConsumers.add(ws);
+      ws.send(JSON.stringify({
+        type: "backpressure_warning",
+        taskId,
+        bufferedCount: client.bufferedEventCount,
+        reason: "slow_consumer",
+      } satisfies WebSocketMessageType));
+    } else {
+      this.slowConsumers.delete(ws);
+    }
+  }
+
+  private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {
+    const history = this.taskEventHistory.get(taskId) ?? [];
+    history.push({ eventId, event });
+    while (history.length > MAX_TASK_EVENT_HISTORY) {
+      history.shift();
+    }
+    this.taskEventHistory.set(taskId, history);
   }
 }

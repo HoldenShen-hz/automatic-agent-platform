@@ -92,7 +92,8 @@
 
 每个步骤至少包含：
 
-- `step_id`
+- `node_run_id`
+- `harness_run_id`
 - `role_id`
 - `input_binding`
 - `output_key`
@@ -105,6 +106,7 @@
 
 规则：
 
+- `node_run_id` 是步骤的唯一主键，关联到 `NodeRun` truth。
 - `input_binding` 必须可解析为上游输出、任务输入或系统上下文。
 - `output_key` 在同一 workflow 内唯一。
 - `approval_policy` 仅定义是否需要升级，不承载渠道交互细节。
@@ -142,9 +144,11 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `step_id` | `string` | 步骤 ID |
+| `node_run_id` | `string` | 关联 NodeRun ID |
+| `harness_run_id` | `string` | 关联 HarnessRun ID |
+| `attempt_id` | `string` | 关联 NodeAttempt ID |
 | `role_id` | `string` | 执行角色 |
-| `status` | `succeeded \| failed \| partial_success` | 步骤结果 |
+| `status` | `succeeded \| failed \| partial_success \| skipped` | 步骤结果 |
 | `data` | `json` | 主输出数据 |
 | `summary` | `string?` | 输出摘要 |
 | `artifacts` | `ArtifactRef[]?` | 附件引用 |

@@ -16,7 +16,7 @@ export interface ChangepointDetectionResult {
   relativeShift: number;
   reasonCode: string;
   severity: "low" | "medium" | "high" | "none";
-  recommendedAction: "observe" | "require_review" | "pause_agent" | "none";
+  recommendedAction: DriftResponseActionType;
   sampleSize: number;
   minSampleSize: number;
   distributionAssumption: DriftDetectorConfig["distributionAssumption"];
@@ -30,7 +30,15 @@ export interface ChangepointDetectionResult {
 const BASELINE_WINDOW_HOURS = 24;
 
 export type DriftWindowType = "1h" | "6h" | "24h" | "7d";
-export type DriftResponseActionType = "observe" | "require_review" | "pause_agent" | "none";
+export type DriftResponseActionType =
+  | "observe"
+  | "require_review"
+  | "pause_agent"
+  | "throttle"
+  | "downgrade"
+  | "rollback"
+  | "freeze"
+  | "none";
 export type DriftSignal = {
   signalId: string;
   subjectId: string;
@@ -43,6 +51,17 @@ export type DriftSignal = {
   reasonCode: string;
   recommendedAction: DriftResponseActionType;
   metadata?: Record<string, unknown>;
+};
+export type DriftResponsePlan = {
+  planId: string;
+  subjectId: string;
+  subjectType: string;
+  generatedAt: string;
+  linkedSignalId: string | null;
+  baselineRef: string | null;
+  primaryAction: DriftResponseActionType;
+  fallbackActions: readonly DriftResponseActionType[];
+  guardrails: readonly string[];
 };
 export type DriftDetectorConfig = {
   minSampleSize: number;
@@ -192,7 +211,13 @@ export class ChangepointDetectorService {
         ? "drift.false_positive_suppressed"
         : finalDetected ? "drift.changepoint_detected" : "drift.stable",
       severity,
-      recommendedAction: severity === "high" ? "pause_agent" : severity === "medium" ? "require_review" : severity === "low" ? "observe" : "none",
+      recommendedAction: severity === "high"
+        ? relativeShift <= -0.35 ? "freeze" : "rollback"
+        : severity === "medium"
+          ? relativeShift <= -0.20 ? "downgrade" : "throttle"
+          : severity === "low"
+            ? "observe"
+            : "none",
       sampleSize: samples.length,
       minSampleSize: this.config.minSampleSize,
       distributionAssumption: this.config.distributionAssumption,
@@ -208,6 +233,44 @@ export class ChangepointDetectorService {
     // Use default single-window detection as fallback
     // The DriftDetectorConfig is used by DriftDetectorService to configure multi-window analysis
     return [this.detect(samples)];
+  }
+
+  public buildResponsePlan(input: {
+    subjectId: string;
+    subjectType: string;
+    generatedAt: string;
+    linkedSignalId?: string | null;
+    baselineRef?: string | null;
+    result: ChangepointDetectionResult;
+  }): DriftResponsePlan | null {
+    if (!input.result.detected || input.result.recommendedAction === "none") {
+      return null;
+    }
+    const fallbackActions: DriftResponseActionType[] = [];
+    if (input.result.recommendedAction === "freeze") {
+      fallbackActions.push("rollback", "downgrade", "require_review");
+    } else if (input.result.recommendedAction === "rollback") {
+      fallbackActions.push("downgrade", "require_review");
+    } else if (input.result.recommendedAction === "downgrade") {
+      fallbackActions.push("throttle", "require_review");
+    } else if (input.result.recommendedAction === "throttle") {
+      fallbackActions.push("observe", "require_review");
+    }
+    return {
+      planId: `drift_plan:${input.subjectType}:${input.subjectId}:${input.generatedAt}`,
+      subjectId: input.subjectId,
+      subjectType: input.subjectType,
+      generatedAt: input.generatedAt,
+      linkedSignalId: input.linkedSignalId ?? null,
+      baselineRef: input.baselineRef ?? null,
+      primaryAction: input.result.recommendedAction,
+      fallbackActions,
+      guardrails: [
+        `reason:${input.result.reasonCode}`,
+        `severity:${input.result.severity}`,
+        `sample_size:${input.result.sampleSize}`,
+      ],
+    };
   }
 }
 

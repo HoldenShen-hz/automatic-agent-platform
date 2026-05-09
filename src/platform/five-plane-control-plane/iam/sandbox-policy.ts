@@ -105,6 +105,15 @@ export interface SandboxPolicy {
 
   /** Default rule for process execution */
   processRuleMode: ProcessRuleMode;
+
+  /** R12-15: Time limit for command execution in milliseconds (0 = no limit) */
+  timeLimitMs: number;
+
+  /** R12-15: Memory limit for command execution in bytes (0 = no limit) */
+  memoryLimitBytes: number;
+
+  /** R12-15: CPU limit as a fraction of available cores (0 = no limit) */
+  cpuLimitFraction: number;
 }
 
 /**
@@ -345,8 +354,10 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
     };
   }
 
-  // Second check: Is path outside allowed roots (except for restricted_exec mode)?
-  if (policy.mode !== "restricted_exec" && containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
+  // Second check: Is path outside allowed roots?
+  // R12-14: Path boundary checks are enforced in ALL modes including restricted_exec.
+  // The executor policy must not bypass fundamental path containment.
+  if (containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
     return {
       allowed: false,
       normalizedPath: resolvedInputPath,
@@ -393,8 +404,8 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
   }
 
   // Sixth check: Is resolved path outside allowed roots?
+  // R12-14: Path boundary checks are enforced in ALL modes including restricted_exec.
   if (
-    policy.mode !== "restricted_exec" &&
     containsPathTraversalOutside(normalizedPath, effectiveAllowedRoots)
   ) {
     return {
@@ -433,6 +444,9 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 300_000,   // R12-15: 5 minutes default
+    memoryLimitBytes: 512 * 1024 * 1024,  // R12-15: 512MB default
+    cpuLimitFraction: 0.5,  // R12-15: 50% of available cores default
   };
 }
 
@@ -445,6 +459,9 @@ export function createReadOnlyPolicy(workspaceRoot: string): SandboxPolicy {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    timeLimitMs: 60_000,    // R12-15: 1 minute for read-only
+    memoryLimitBytes: 256 * 1024 * 1024,  // R12-15: 256MB for read-only
+    cpuLimitFraction: 0.25, // R12-15: 25% for read-only
   };
 }
 
@@ -457,6 +474,9 @@ export function createScopedExternalAccessPolicy(workspaceRoot: string): Sandbox
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 300_000,   // R12-15: 5 minutes
+    memoryLimitBytes: 512 * 1024 * 1024,  // R12-15: 512MB
+    cpuLimitFraction: 0.5,  // R12-15: 50%
   };
 }
 
@@ -469,6 +489,9 @@ export function createRestrictedExecPolicy(workspaceRoot: string): SandboxPolicy
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 60_000,    // R12-15: 1 minute for restricted exec
+    memoryLimitBytes: 128 * 1024 * 1024,  // R12-15: 128MB for restricted exec
+    cpuLimitFraction: 0.25, // R12-15: 25% for restricted exec
   };
 }
 
@@ -494,5 +517,8 @@ export function createConfigReadPolicy(configRoot: string): SandboxPolicy {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    timeLimitMs: 30_000,    // R12-15: 30 seconds for config read
+    memoryLimitBytes: 64 * 1024 * 1024,  // R12-15: 64MB for config read
+    cpuLimitFraction: 0.1,  // R12-15: 10% for config read
   };
 }

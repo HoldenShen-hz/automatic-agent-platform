@@ -34,6 +34,7 @@ import { IntakeRouter } from "../../platform/orchestration/routing/intake-router
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
 import { createRequestEnvelope, type RequestEnvelopeLegacy } from "../../platform/contracts/types/index.js";
+import { nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;
@@ -92,6 +93,12 @@ export interface IntentParseResult {
   readonly securityFindings: readonly PromptInjectionFinding[];
   readonly blockedByPolicy: boolean;
   readonly priorConversationTurns: readonly ConversationTurn[];
+  // R5-16: Independent risk classification result (separate pipeline stage from intent parsing)
+  readonly riskClassification?: {
+    readonly riskLevel: "low" | "medium" | "high" | "critical";
+    readonly riskFactors: readonly string[];
+    readonly requiresApproval: boolean;
+  };
 }
 
 export interface RiskPreview {
@@ -160,6 +167,9 @@ export interface ClarificationState {
   readonly state: "none" | "required" | "blocked";
   readonly reasonCodes: readonly string[];
   readonly questions: readonly string[];
+  // R5-30: Round tracking for clarification sessions
+  readonly rounds: number;
+  readonly maxRounds: number;
 }
 
 export interface UserConfirmationReceipt {
@@ -168,6 +178,10 @@ export interface UserConfirmationReceipt {
   readonly state: "not_required" | "pending_user_confirmation";
   readonly reasonCodes: readonly string[];
   readonly summary: string;
+  // R5-32: Additional confirmation receipt fields
+  readonly scope?: string;
+  readonly time?: string;
+  readonly riskPreviewVersion?: string;
 }
 
 export interface TaskBuildResult {
@@ -256,6 +270,8 @@ export interface DryRunPreview {
 
 const INTENT_CONFIDENCE_THRESHOLD = 0.8;
 const SLOT_CONFIDENCE_THRESHOLD = 0.85;
+// R5-30: Default maximum clarification rounds
+const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 const PROMPT_INJECTION_PATTERNS = [
   /ignore (all|any|previous|prior) instructions/i,
   /reveal (the )?(system|developer) prompt/i,
@@ -392,6 +408,11 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "clarify":
     case "chitchat":
       return "status_inquiry";
+    // R5-17: Add "why" intent type mapping
+    case "why":
+    case "explain":
+    case "reason":
+      return "why";
     default:
       return "task_query";
   }
@@ -798,6 +819,10 @@ export class NlEntryService implements NlEntryPort {
       urgency: deriveUrgency(request.message),
       confidence: resolvedConfidence,
     };
+    // R5-16: Independent risk classification pipeline stage
+    // This stage runs AFTER intent parsing and is independent of intent confidence
+    const riskClassification = this.classifyRisk(request.message, detectedIntent.intentType);
+
     const slotResolution = buildSlotClarificationState(
       entities,
       inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId),
@@ -824,7 +849,10 @@ export class NlEntryService implements NlEntryPort {
       || resolvedConfidence < this.clarificationThreshold
       || slotConfidence < SLOT_CONFIDENCE_THRESHOLD
       || !slotResolution.isComplete
-      || clarificationQuestions.length > 0;
+      || clarificationQuestions.length > 0
+      // R5-16: Risk classification is an independent gate - high/critical risk requires clarification regardless of intent confidence
+      || riskClassification.riskLevel === "critical"
+      || riskClassification.riskLevel === "high";
     const clarificationState: ClarificationState = {
       state: blockedByPolicy ? "blocked" : requiresClarification ? "required" : "none",
       reasonCodes: [
@@ -832,8 +860,14 @@ export class NlEntryService implements NlEntryPort {
         ...(resolvedConfidence < this.clarificationThreshold ? ["nl_gateway.intent_confidence_low"] : []),
         ...(slotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
         ...(!slotResolution.isComplete ? ["nl_gateway.required_slots_missing"] : []),
+        // R5-16: Risk-based reason code for independent risk gate
+        ...(riskClassification.riskLevel === "critical" ? ["nl_gateway.risk_classification_critical"] : []),
+        ...(riskClassification.riskLevel === "high" ? ["nl_gateway.risk_classification_high"] : []),
       ],
       questions: clarificationQuestions,
+      // R5-30: Initialize rounds to 0, maxRounds defaults to 3
+      rounds: 0,
+      maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
     };
 
     return {
@@ -851,8 +885,46 @@ export class NlEntryService implements NlEntryPort {
       securityFindings,
       blockedByPolicy,
       priorConversationTurns: [],
+      // R5-16: Include risk classification result
+      riskClassification,
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
     };
+  }
+
+  /**
+   * R5-16: Independent risk classification pipeline stage
+   * This is a separate, independent gate that evaluates risk without dependence on intent confidence.
+   * It classifies the request based on content analysis alone.
+   */
+  private classifyRisk(message: string, intentType: DetectedIntent["intentType"]): { riskLevel: "low" | "medium" | "high" | "critical"; riskFactors: readonly string[]; requiresApproval: boolean } {
+    const normalized = message.toLowerCase();
+    const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+    const high = critical || HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+    const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+    const riskFactors: string[] = [];
+
+    if (critical) {
+      riskFactors.push("请求涉及破坏性或生产级变更");
+    } else if (high) {
+      riskFactors.push("请求可能影响线上系统、审批流或成本");
+    }
+    if (intentType === "approval_action") {
+      riskFactors.push("请求属于审批类动作，需要审计和责任链");
+    }
+    if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
+      riskFactors.push("可能改变成本或预算分配");
+    }
+    if (/(deploy|release|publish|发布|上线)/i.test(message)) {
+      riskFactors.push("可能影响运行中的环境或用户体验");
+    }
+    if (/(delete|drop|remove|删除|清空)/i.test(message)) {
+      riskFactors.push("可能移除已有数据或配置");
+    }
+
+    const riskLevel = critical ? "critical" : high ? "high" : intentType === "task_modify" ? "medium" : "low";
+    const requiresApproval = critical || high || intentType === "approval_action";
+
+    return { riskLevel, riskFactors, requiresApproval };
   }
 
   public async buildTask(request: NlEntryRequest): Promise<TaskBuildResult> {
@@ -898,40 +970,50 @@ export class NlEntryService implements NlEntryPort {
         ...(detailed.blockedByPolicy ? ["nl_gateway.security_review_required"] : []),
       ],
       summary: humanSummary,
+      // R5-32: Additional confirmation receipt fields
+      scope: detailed.suggestedDivisionId,
+      time: nowIso(),
+      riskPreviewVersion: `v1:${riskPreview.overallRisk}`,
     };
+
+    // R5-15: Only emit RequestEnvelope when confirmation is NOT pending
+    // When confirmation is pending, we return null to prevent premature task dispatch
+    const shouldEmitEnvelope = confirmationReceipt.state !== "pending_user_confirmation";
 
     return {
       // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope
-      requestEnvelope: createRequestEnvelope<NlRequestPayload>({
-        principal: createPlatformPrincipal({
-          actorId: request.userId,
-          tenantId: request.tenantId,
-          roles: ["requester"],
-          authMethod: "nl_entry",
-        }),
-        tenantId: request.tenantId,
-        payload: {
-          userId: request.userId,
-          title: deriveTitle(request.message),
-          request: request.message,
-          locale: detailed.locale,
-          channel: request.channel ?? null,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          intent: primaryIntent.intentType,
-          continuation: detailed.continuation,
-          entities: primaryIntent.entities,
-          confirmationRequired,
-          generatedSummary: humanSummary,
-        },
-        metadata: {
-          source: "nl_entry",
-          confirmationRequired,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          locale: detailed.locale,
-        },
-      }),
+      requestEnvelope: shouldEmitEnvelope
+        ? createRequestEnvelope<NlRequestPayload>({
+            principal: createPlatformPrincipal({
+              actorId: request.userId,
+              tenantId: request.tenantId,
+              roles: ["requester"],
+              authMethod: "nl_entry",
+            }),
+            tenantId: request.tenantId,
+            payload: {
+              userId: request.userId,
+              title: deriveTitle(request.message),
+              request: request.message,
+              locale: detailed.locale,
+              channel: request.channel ?? null,
+              divisionId: detailed.suggestedDivisionId,
+              workflowId: detailed.suggestedWorkflowId,
+              intent: primaryIntent.intentType,
+              continuation: detailed.continuation,
+              entities: primaryIntent.entities,
+              confirmationRequired,
+              generatedSummary: humanSummary,
+            },
+            metadata: {
+              source: "nl_entry",
+              confirmationRequired,
+              divisionId: detailed.suggestedDivisionId,
+              workflowId: detailed.suggestedWorkflowId,
+              locale: detailed.locale,
+            },
+          })
+        : null,
       riskPreview,
       costEstimate,
       confirmationRequired,

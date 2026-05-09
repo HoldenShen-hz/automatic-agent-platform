@@ -29,9 +29,16 @@
  * @see Tier 1 audit contract: docs_zh/contracts/audit_event_integrity_contract.md
  */
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import type { EventRecord } from "../../contracts/types/domain.js";
+
+/**
+ * R12-16: HMAC secret key for audit event integrity.
+ * In production, this should come from a secure secrets manager.
+ * This is a module-level constant for the HMAC key derivation.
+ */
+const AUDIT_INTEGRITY_HMAC_KEY = process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ?? "audit-integrity-secret-key-32-bytes!";
 
 /**
  * Integrity record stored alongside each Tier 1 audit event.
@@ -120,15 +127,14 @@ type Tier1AuditEventShape = Pick<
 >;
 
 /**
- * Computes a SHA-256 checksum for a Tier 1 audit event.
- * The checksum covers all fields that must remain immutable for integrity.
- * Changes to any of these fields would indicate tampering.
+ * R12-16: Computes HMAC checksum for a Tier 1 audit event.
+ * Uses keyed HMAC for tamper detection.
  *
  * @param event - The event to compute checksum for
- * @returns Hex-encoded SHA-256 checksum string
+ * @returns Hex-encoded HMAC-SHA256 checksum string
  */
 export function computeTier1AuditEventChecksum(event: Tier1AuditEventShape): string {
-  return sha256(JSON.stringify({
+  return hmacSha256(JSON.stringify({
     id: event.id,
     taskId: event.taskId,
     sessionId: event.sessionId,
@@ -142,16 +148,15 @@ export function computeTier1AuditEventChecksum(event: Tier1AuditEventShape): str
 }
 
 /**
- * Computes the chain hash that links this event to the previous one.
- * This creates the tamper-evident chain property - changing any event
- * breaks all subsequent chain hashes.
+ * R12-16: Computes HMAC-based chain hash for Tier 1 audit events.
+ * Uses keyed HMAC to prevent tampering with the chain.
  *
  * @param input - Components needed for chain hash computation
  * @param input.chainPosition - Position in the chain (1-indexed)
  * @param input.previousChainHash - Hash of the previous event (null for first)
  * @param input.eventChecksum - Checksum of this event
  * @param input.eventId - ID of this event
- * @returns Hex-encoded chain hash
+ * @returns Hex-encoded HMAC chain hash
  */
 export function computeTier1AuditChainHash(input: {
   chainPosition: number;
@@ -159,7 +164,7 @@ export function computeTier1AuditChainHash(input: {
   eventChecksum: string;
   eventId: string;
 }): string {
-  return sha256(JSON.stringify({
+  return hmacSha256(JSON.stringify({
     chainPosition: input.chainPosition,
     previousChainHash: input.previousChainHash,
     eventChecksum: input.eventChecksum,
@@ -261,11 +266,22 @@ export function verifyTier1AuditIntegrity(
 }
 
 /**
- * Internal SHA-256 hashing utility.
- * Uses Node.js crypto module for fast, reliable hashing.
+ * R12-16: Computes HMAC-SHA256 for audit event integrity.
+ * Uses keyed HMAC to prevent tampering even if an attacker gains read access.
  *
  * @param value - String to hash
- * @returns Hex-encoded hash string
+ * @returns Hex-encoded HMAC-SHA256 string
+ */
+function hmacSha256(value: string): string {
+  return createHmac("sha256", AUDIT_INTEGRITY_HMAC_KEY).update(value, "utf8").digest("hex");
+}
+
+/**
+ * R12-16: Legacy SHA-256 hash for backward compatibility during migration.
+ * New code should use HMAC-based hashing.
+ *
+ * @param value - String to hash
+ * @returns Hex-encoded SHA-256 hash string
  */
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
