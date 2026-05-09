@@ -16,6 +16,7 @@ import type {
   TakeoverPayload,
   TaskStatusChangedPayload,
   DomainLifecyclePayload,
+  PluginIsolationEventPayload,
   PluginLifecycleEventPayload,
   PluginInvocationEventPayload,
   KnowledgeChunkIndexedPayload,
@@ -86,7 +87,7 @@ export interface TypedEventPayloadMap {
   "domain:archived": DomainLifecyclePayload;
   "plugin:spi_registered": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;
-  "plugin:error_isolated": PluginLifecycleEventPayload;
+  "plugin:error_isolated": PluginIsolationEventPayload;
   "plugin:suspended": PluginLifecycleEventPayload;
   "plugin:invocation_started": PluginInvocationEventPayload;
   "plugin:invocation_completed": PluginInvocationEventPayload;

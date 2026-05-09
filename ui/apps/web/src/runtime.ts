@@ -5,6 +5,7 @@ import {
   InMemoryWSClient,
   createAuthInterceptor,
   createCsrfInterceptor,
+  createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
@@ -42,6 +43,7 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
   }).send(request), [
     createTraceInterceptor(),
     createCsrfInterceptor(),
+    createIdempotencyKeyInterceptor(),
     createAuthInterceptor(config.authToken ?? null),
     createTenantInterceptor(config.tenantId ?? null),
     createOfflineQueueInterceptor(offlineQueue),

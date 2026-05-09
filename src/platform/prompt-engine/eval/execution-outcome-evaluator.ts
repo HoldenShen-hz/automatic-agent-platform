@@ -171,14 +171,17 @@ export class ExecutionOutcomeEvaluator {
    * R11-04: Now consumes PlanGraphBundle instead of legacy Plan
    * R11-03: Evaluates all dimensions: quality, constraint compliance, budget adherence, risk
    * R11-05: Uses risk-adjusted quality gate thresholds
+   * R16-18 fix: Uses delta-based quality comparison per §17.3 (quality_score_delta >= -0.05)
+   *             when baselineQualityScore is provided, otherwise falls back to threshold-based check.
    */
   public evaluate(
     planGraphBundle: PlanGraphBundle,
     feedback: FeedbackBatch,
     actualDurationMs?: number,
     actualCost?: number,
+    baselineQualityScore?: number | null,
   ): EvaluationOutcome {
-    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback);
+    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback, baselineQualityScore);
 
     // R11-03: Evaluate constraint compliance dimension
     const constraintCompliance = this.evaluateConstraintCompliance(planGraphBundle, feedback);

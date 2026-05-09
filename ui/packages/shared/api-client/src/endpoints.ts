@@ -78,6 +78,7 @@ export const endpointCatalog = {
   webhooks: { id: "admin.webhooks", path: "/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
+  contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
 } satisfies Record<string, EndpointDefinition>;
 
 export interface ListQueryParams {
@@ -280,4 +281,8 @@ export async function fetchWebhooks(client: RESTClient): Promise<readonly Webhoo
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {
   return client.get<UserPreferenceDTO>(endpointCatalog.preferences.path);
+}
+
+export async function fetchContractVersion(client: RESTClient): Promise<{ contractVersion: string; minServerVersion?: string }> {
+  return client.get<{ contractVersion: string; minServerVersion?: string }>(endpointCatalog.contractVersion.path);
 }

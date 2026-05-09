@@ -150,7 +150,7 @@ const PROVIDER_FROM_MODEL: Record<string, ChatProviderType> = {
   "MiniMax-Text-01": "minimax",
 };
 
-function detectProviderFromModel(modelId: string): ChatProviderType {
+function detectProviderFromModel(modelId: string): ChatProviderType | null {
   const modelLower = modelId.toLowerCase();
 
   if (modelLower.includes("claude")) {
@@ -170,8 +170,9 @@ function detectProviderFromModel(modelId: string): ChatProviderType {
     }
   }
 
-  // Default to openai for unknown models (most common)
-  return "openai";
+  // R16-20 fix: Return null for unknown models instead of silently defaulting to openai.
+  // Caller should handle the null case appropriately.
+  return null;
 }
 
 export class UnifiedChatProvider {
@@ -257,6 +258,11 @@ export class UnifiedChatProvider {
 
   private getProviderForModel(modelId: string): { provider: ChatProviderType; service: AnthropicChatService | OpenAIChatService | MiniMaxChatService } {
     const detectedProvider = detectProviderFromModel(modelId);
+
+    // R16-20 fix: Handle unknown model detection result
+    if (detectedProvider === null) {
+      throw new AppError("provider.unknown_model", `Unknown model provider for model: ${modelId}. Cannot route to a provider.`, { category: "provider", source: "provider", retryable: false });
+    }
 
     switch (detectedProvider) {
       case "anthropic":
@@ -352,7 +358,10 @@ export class UnifiedChatProvider {
     }
 
     const totalSeconds = (Date.now() - startedAt) / 1000;
-    runtimeMetricsRegistry.recordLlmLatency(totalSeconds, totalSeconds, result.model, result.provider);
+    // R16-21 fix: recordLlmLatency expects (ttftSeconds, totalSeconds, model, provider)
+    // We now have firstChunkLatencyMs available from the result, use it for accurate TTFT measurement
+    const ttftSeconds = result.latencyMs > 0 ? result.latencyMs / 1000 : 0;
+    runtimeMetricsRegistry.recordLlmLatency(ttftSeconds, totalSeconds, result.model, result.provider);
     return result;
   }
 

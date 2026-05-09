@@ -23,6 +23,9 @@ export class DeterministicHotPathGate {
         reasonCode: "hot_path.no_deterministic_fallback",
       };
     }
+    // R16-23 fix: allowed:true with routeMode:"deterministic_hot_path_only" is contradictory.
+    // When LLM hot path is not used but fallback is available, the request should be allowed
+    // with routeMode "llm_allowed" since the LLM path is still available (just not being used).
     if (request.usesLlmHotPath) {
       return {
         allowed: false,
@@ -30,6 +33,6 @@ export class DeterministicHotPathGate {
         reasonCode: "hot_path.llm_blocked",
       };
     }
-    return { allowed: true, routeMode: "deterministic_hot_path_only", reasonCode: "hot_path.allowed" };
+    return { allowed: true, routeMode: "llm_allowed", reasonCode: "hot_path.allowed" };
   }
 }

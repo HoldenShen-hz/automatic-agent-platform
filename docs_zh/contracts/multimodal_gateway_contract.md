@@ -10,6 +10,10 @@
 - `MultimodalInputPart`
 - `ModalityRouteDecision`
 - `MultimodalSafetyFinding`
+- `VideoPipelineOutput`
+- `VideoTranscriptSegment`
+- `VideoTimeline`
+- `VideoFrame`
 
 ## 3. `MultimodalRequest` 最小字段
 
@@ -38,6 +42,7 @@
 - `ModalityRouter` 必须显式选择 provider / processor。
 - 未通过安全检查的模态输入不得进入模型调用。
 - `video` 输入必须通过结构化 video pipeline 标准化，至少产出 metadata、scene timeline、keyframe、quality/readiness assessment；若 transcript segment 不可得，必须以 conditional safety finding 暴露，而不是静默忽略。
+- video pipeline 的 scene timeline / keyframe / transcript segment 结构以 `video_multimodal_pipeline_contract.md` 为准，gateway 不得把这些字段压缩成不可追踪的自由文本摘要。
 
 ## 5. 测试要求
 

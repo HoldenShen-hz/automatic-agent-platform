@@ -59,6 +59,8 @@ export const TIER_1_EVENT_TYPES = [
   "platform.node_run.completed",
   "platform.budget_ledger.status_changed",
   "platform.budget_reservation.status_changed",
+  // §28.1: Side effect events for replay safety classification
+  "platform.side_effect.status_changed",
 ] as const;
 
 /**
@@ -90,6 +92,8 @@ export const REQUIRED_CONSUMERS_BY_EVENT_TYPE: Record<Tier1EventType, readonly s
   "platform.node_run.completed": ["truth_projector", "audit_projection"],
   "platform.budget_ledger.status_changed": ["truth_projector", "audit_projection"],
   "platform.budget_reservation.status_changed": ["truth_projector", "audit_projection"],
+  // §28.1: Side effect event for skip_side_effect replay behavior
+  "platform.side_effect.status_changed": ["truth_projector", "audit_projection"],
 };
 
 /**

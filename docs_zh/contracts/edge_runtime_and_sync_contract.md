@@ -6,10 +6,18 @@
 
 ## 2. Canonical 对象
 
+- `EdgeDeploymentMode`
 - `EdgeRuntimeProfile`
 - `OfflineExecutionRecord`
 - `SyncEnvelope`
 - `ConflictResolutionDecision`
+
+`EdgeDeploymentMode` 允许以下分类：
+
+- `edge_micro`
+- `edge_standard`
+- `edge_mobile`
+- `edge_hybrid`
 
 ## 3. `EdgeRuntimeProfile` 最小字段
 
@@ -19,6 +27,7 @@
 - `checkpoint_required_before_preempt`
 - `capabilities`
 - `connectivity_mode`
+- `deployment_mode?`
 - `max_local_retention_hours`
 - `allowed_models`
 - `sync_policy`
@@ -28,6 +37,7 @@
 - canonical edge runtime 必须显式声明 `stateful = true`，因为离线执行会持有本地 state、checkpoint 与待同步 evidence。
 - `lease_migration_supported` 必须声明该 edge runtime 是否允许在回连或抢占时迁移 lease / ownership。
 - 若 `checkpoint_required_before_preempt = true`，在抢占、升级或 region 接管前必须先完成 checkpoint，再允许终止本地执行。
+- 若 `deployment_mode` 未显式提供，runtime 必须根据 capability / connectivity 自动解析为 `edge_micro | edge_standard | edge_mobile | edge_hybrid` 之一，避免边缘运行态未分类。
 
 ## 4. 规则
 

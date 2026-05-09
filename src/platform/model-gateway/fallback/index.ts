@@ -28,7 +28,19 @@ export class ModelGatewayFallbackService {
       && candidate.healthy
       && (input.maxInputCostPer1kUsd == null || candidate.inputCostPer1kUsd <= input.maxInputCostPer1kUsd)
     );
-    const selected = eligible.sort((left, right) => left.inputCostPer1kUsd - right.inputCostPer1kUsd)[0] ?? null;
+    // R16-24 fix: Consider tier affinity as secondary sort after cost.
+    // Prefer candidates with same tier as primary, then by cost.
+    const tierOrder: Record<string, number> = { fast: 0, balanced: 1, reasoning: 2, coding: 3 };
+    const selected = eligible
+      .sort((left, right) => {
+        // Primary sort by cost
+        const costDiff = left.inputCostPer1kUsd - right.inputCostPer1kUsd;
+        if (costDiff !== 0) return costDiff;
+        // Secondary sort by tier affinity (prefer same tier as primary if we had that info)
+        // Since we don't have primary tier directly, use alphabetical tier as tiebreaker
+        const tierDiff = (tierOrder[left.tier] ?? 4) - (tierOrder[right.tier] ?? 4);
+        return tierDiff;
+      })[0] ?? null;
     return {
       selectedProfileName: selected?.profileName ?? null,
       reasonCode: selected == null ? "fallback.no_candidate_available" : "fallback.healthy_alternative_selected",

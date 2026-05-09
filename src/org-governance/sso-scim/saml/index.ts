@@ -14,11 +14,12 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
  * 4. Validate the certificate fingerprint against known IdP certificates
  * 5. Check signature algorithm to prevent algorithm confusion attacks
  *
- * TODO (SAML production hardening - Phase 2):
- * - Add X.509 certificate validation with proper trust chain verification
- * - Implement XML signature canonicalization (C14N) validation
- * - Add replay attack prevention with assertion ID tracking
- * - Support for encrypted assertions
+ * TODO (R7-46 - Phase 2 - SAML Production Hardening):
+ * - R7-46: Add X.509 certificate validation with proper trust chain verification
+ * - R7-46: Implement XML signature canonicalization (C14N) validation
+ * - R7-46: Add replay attack prevention with assertion ID tracking
+ * - R7-46: Support for encrypted assertions
+ * - R7-46: Implement X.509 trust-chain validation per §11.3
  */
 
 export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", "http://www.w3.org/2000/09/xmldsig#rsa-sha1"] as const;

@@ -32,6 +32,8 @@
 - Tier 1 事件必须声明 producer、consumer、ack 策略和重放要求。
 - Tier 2 / 3 即使不强制 ack，也要明确使用场景，避免事件语义漂移。
 - 每条注册事件自动携带 `payloadSchemaRef`（默认 `event://{domain}/{action}/v1`）和 `compatibilityPolicy`（默认 `backward_compatible_additive`），供 typed event bus 层做编译期校验。
+- `producer` 字段表示稳定的生产者服务标识，不等同于 truth event namespace；`platform.*` / `oapeflir.view.*` 由 `event_type` 决定。
+- 历史 `task:*` / `workflow:*` / `dispatch:*` / `worker:*` 事件允许保留兼容 producer id，避免旧投影器、回放工具和审计证据链断裂；truth fact 是否 canonical 以 `event_type` namespace 为准。
 
 ## 4. Ring 1 / Ring 2 事件注册表
 

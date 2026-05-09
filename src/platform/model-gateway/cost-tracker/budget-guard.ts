@@ -35,6 +35,8 @@ export interface BudgetPolicy {
   maxPackCostUsd?: number;
   /** Step-level budget cap (optional per-step limit) */
   maxStepCostUsd?: number;
+  /** R23-64: Optional per-stage budgets across the OAPEFLIR loop */
+  stageBudgets?: readonly StageBudgetPolicy[];
   maxTaskCostUsd: number;
   maxDailyCostUsd: number;
   maxMonthlyCostUsd: number;
@@ -42,8 +44,118 @@ export interface BudgetPolicy {
   maxSteps?: number;
   maxDurationMs?: number;
   warnAtRatio: number;
+  /** R23-73: Named cost-estimation templates available to the runtime */
+  costEstimationTemplates?: readonly CostEstimationTemplate[];
+  /** R23-74: Cost isolation between platform governance spend and BYOK/user-model spend */
+  byokCostIsolation?: ByokCostIsolationPolicy;
   /** R23-62: Expanded to 8 values: supervised, auto, full-auto, preview, simulation, audit, enforcement, learning */
   mode: "supervised" | "auto" | "full-auto" | "preview" | "simulation" | "audit" | "enforcement" | "learning";
+}
+
+export type BudgetExecutionStage =
+  | "observe"
+  | "assess"
+  | "plan"
+  | "execute"
+  | "feedback"
+  | "learn"
+  | "improve"
+  | "release";
+
+export interface StageBudgetPolicy {
+  readonly stage: BudgetExecutionStage;
+  readonly maxCostUsd: number;
+  readonly warnAtRatio?: number;
+  readonly approvalThresholdUsd?: number;
+}
+
+export interface CostEstimationTemplate {
+  readonly templateId: "passthrough" | "fast" | "standard" | "full";
+  readonly description: string;
+  readonly confidence: "low" | "medium" | "high";
+  readonly multiplier: number;
+}
+
+export interface ByokCostIsolationPolicy {
+  readonly enabled: boolean;
+  readonly platformGovernanceBudgetUsd?: number;
+  readonly userModelBudgetUsd?: number;
+  readonly defaultChargeTarget: "platform_governance" | "tenant_model" | "split";
+}
+
+export interface CostEvent {
+  readonly eventId: string;
+  readonly tenantId: string;
+  readonly harnessRunId: string;
+  readonly traceId: string;
+  readonly stage: BudgetExecutionStage;
+  readonly scope: "platform" | "pack" | "step";
+  readonly totalCostUsd: number;
+  readonly platformGovernanceCostUsd: number;
+  readonly tenantModelCostUsd: number;
+  readonly packId?: string;
+  readonly stepId?: string;
+  readonly byok: boolean;
+  readonly templateId?: CostEstimationTemplate["templateId"];
+  readonly recordedAt: string;
+  readonly metadata?: Record<string, unknown>;
+}
+
+export const DEFAULT_COST_ESTIMATION_TEMPLATES: readonly CostEstimationTemplate[] = [
+  { templateId: "passthrough", description: "Use provider estimate as-is", confidence: "low", multiplier: 1 },
+  { templateId: "fast", description: "Low-latency estimate for lightweight steps", confidence: "medium", multiplier: 1.05 },
+  { templateId: "standard", description: "Balanced estimate for normal executions", confidence: "medium", multiplier: 1.15 },
+  { templateId: "full", description: "Conservative estimate with governance overhead", confidence: "high", multiplier: 1.3 },
+];
+
+export function actualizeCostEvent(input: {
+  readonly tenantId: string;
+  readonly harnessRunId: string;
+  readonly traceId: string;
+  readonly stage: BudgetExecutionStage;
+  readonly scope: CostEvent["scope"];
+  readonly observedCostUsd: number;
+  readonly governanceOverheadUsd?: number;
+  readonly byok?: boolean;
+  readonly templateId?: CostEstimationTemplate["templateId"];
+  readonly packId?: string;
+  readonly stepId?: string;
+  readonly recordedAt: string;
+  readonly metadata?: Record<string, unknown>;
+  readonly policy?: Pick<BudgetPolicy, "byokCostIsolation">;
+}): CostEvent {
+  const governanceOverheadUsd = Math.max(0, input.governanceOverheadUsd ?? 0);
+  const observedCostUsd = Math.max(0, input.observedCostUsd);
+  const byok = input.byok ?? false;
+  const split = input.policy?.byokCostIsolation?.defaultChargeTarget ?? "split";
+  let platformGovernanceCostUsd = governanceOverheadUsd;
+  let tenantModelCostUsd = observedCostUsd;
+
+  if (!byok || split === "platform_governance") {
+    platformGovernanceCostUsd = observedCostUsd + governanceOverheadUsd;
+    tenantModelCostUsd = 0;
+  } else if (split === "tenant_model") {
+    platformGovernanceCostUsd = 0;
+    tenantModelCostUsd = observedCostUsd + governanceOverheadUsd;
+  }
+
+  return {
+    eventId: newId("cost_evt"),
+    tenantId: input.tenantId,
+    harnessRunId: input.harnessRunId,
+    traceId: input.traceId,
+    stage: input.stage,
+    scope: input.scope,
+    totalCostUsd: Number((platformGovernanceCostUsd + tenantModelCostUsd).toFixed(4)),
+    platformGovernanceCostUsd: Number(platformGovernanceCostUsd.toFixed(4)),
+    tenantModelCostUsd: Number(tenantModelCostUsd.toFixed(4)),
+    ...(input.packId != null ? { packId: input.packId } : {}),
+    ...(input.stepId != null ? { stepId: input.stepId } : {}),
+    byok,
+    ...(input.templateId != null ? { templateId: input.templateId } : {}),
+    recordedAt: input.recordedAt,
+    ...(input.metadata != null ? { metadata: input.metadata } : {}),
+  };
 }
 
 /**
@@ -61,9 +173,10 @@ export interface ExecutionChainBudgetSpend {
   readonly nextEstimatedCostUsd: number;
   readonly currentDailyCostUsd: number;
   readonly currentMonthlyCostUsd: number;
+  readonly stage?: BudgetExecutionStage;
 }
 
-export type BudgetViolationScope = "task" | "daily" | "monthly" | "platform" | "pack" | "step";
+export type BudgetViolationScope = "task" | "daily" | "monthly" | "platform" | "pack" | "step" | "stage";
 
 export interface BudgetGuardCascadeResult extends BudgetGuardResult {
   readonly projectedTaskCostUsd: number;
@@ -370,6 +483,101 @@ export class BudgetGuard {
     };
   }
 
+  /**
+   * Executes a task with atomic budget reservation→execute→settle flow.
+   * Returns the settled ledger and actual cost, or an error result.
+   *
+   * R8-01 FIX: Provides atomic reserve→execute→settle flow that was missing.
+   * Budget evaluation is now stateful with proper reservation lifecycle.
+   *
+   * @param request - Budget reservation request with policy and spend info
+   * @param executeFn - Function to execute after budget is reserved
+   * @returns Result containing settled ledger and actual amount, or error
+   */
+  public async executeWithBudget(
+    request: BudgetReservationRequest,
+    executeFn: () => Promise<unknown>,
+  ): Promise<{
+    success: boolean;
+    ledger: BudgetLedger;
+    actualAmount: number;
+    error: string | undefined;
+  }> {
+    // Phase 1: Reserve budget atomically
+    const reserveResult = this.atomicReserve(request);
+    if (!reserveResult.success) {
+      const result: {
+        success: boolean;
+        ledger: BudgetLedger;
+        actualAmount: number;
+        error?: string;
+      } = {
+        success: false,
+        ledger: reserveResult.session.ledger,
+        actualAmount: 0,
+      };
+      if (reserveResult.reasonCode != null) {
+        result.error = reserveResult.reasonCode;
+      }
+      return result;
+    }
+
+    // Phase 2: Transition to executing state
+    const executeResult = this.atomicExecute(reserveResult.session.sessionId);
+    if (!executeResult.success) {
+      // Release reserved budget on failure
+      this.atomicRelease(reserveResult.session.sessionId);
+      const result: {
+        success: boolean;
+        ledger: BudgetLedger;
+        actualAmount: number;
+        error?: string;
+      } = {
+        success: false,
+        ledger: executeResult.session.ledger,
+        actualAmount: 0,
+      };
+      if (executeResult.reasonCode != null) {
+        result.error = executeResult.reasonCode;
+      }
+      return result;
+    }
+
+    // Phase 3: Execute the task
+    let actualCost = 0;
+    try {
+      await executeFn();
+      // Estimate actual cost based on spend (in production, this would come from actual metering)
+      actualCost = request.spend.nextEstimatedCostUsd;
+    } catch (err) {
+      // Release on execution failure
+      this.atomicRelease(reserveResult.session.sessionId);
+      return {
+        success: false,
+        ledger: reserveResult.session.ledger,
+        actualAmount: 0,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+
+    // Phase 4: Settle with actual cost
+    const settleResult = this.atomicSettle(reserveResult.session.sessionId, actualCost);
+    const result: {
+      success: boolean;
+      ledger: BudgetLedger;
+      actualAmount: number;
+      error?: string;
+    } = {
+      success: settleResult.success,
+      ledger: settleResult.session.ledger,
+      actualAmount: settleResult.session.actualAmount ?? actualCost,
+    };
+    if (!settleResult.success && settleResult.reasonCode != null) {
+      result.error = settleResult.reasonCode;
+    }
+    return result;
+  }
+
   public evaluateTaskSpend(input: {
     policy: BudgetPolicy;
     currentTaskCostUsd: number;
@@ -406,7 +614,7 @@ export class BudgetGuard {
     const projectedDaily = input.spend.currentDailyCostUsd + next;
     const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
 
-    const checks: { scope: "task" | "daily" | "monthly" | "platform" | "pack" | "step"; projected: number; limit: number }[] = [
+    const checks: { scope: BudgetViolationScope; projected: number; limit: number }[] = [
       { scope: "task", projected: projectedTask, limit: input.policy.maxTaskCostUsd },
       { scope: "daily", projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
       { scope: "monthly", projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
@@ -422,9 +630,20 @@ export class BudgetGuard {
     if (input.policy.maxStepCostUsd != null && input.policy.maxStepCostUsd > 0) {
       checks.push({ scope: "step" as const, projected: next, limit: input.policy.maxStepCostUsd });
     }
+    const stageBudget = input.spend.stage == null
+      ? null
+      : input.policy.stageBudgets?.find((policy) => policy.stage === input.spend.stage) ?? null;
+    if (stageBudget != null && stageBudget.maxCostUsd > 0) {
+      checks.push({ scope: "stage", projected: next, limit: stageBudget.maxCostUsd });
+    }
     const violation = checks.find((check) => check.projected > check.limit) ?? null;
     const warningScopes = checks
-      .filter((check) => check.projected >= check.limit * input.policy.warnAtRatio)
+      .filter((check) => {
+        const warnAtRatio = check.scope === "stage" && stageBudget?.warnAtRatio != null
+          ? stageBudget.warnAtRatio
+          : input.policy.warnAtRatio;
+        return check.projected >= check.limit * warnAtRatio;
+      })
       .map((check) => check.scope);
     const remainingBudgetUsd = Math.max(
       0,
@@ -432,6 +651,7 @@ export class BudgetGuard {
         input.policy.maxTaskCostUsd - projectedTask,
         input.policy.maxDailyCostUsd - projectedDaily,
         input.policy.maxMonthlyCostUsd - projectedMonthly,
+        stageBudget != null ? stageBudget.maxCostUsd - next : Number.POSITIVE_INFINITY,
       ),
     );
 

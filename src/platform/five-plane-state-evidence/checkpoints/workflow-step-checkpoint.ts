@@ -18,9 +18,30 @@
  * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readFile } from "node:fs";
+import { promisify } from "node:util";
 
-import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
+const readFileAsync = promisify(readFile);
+
+/**
+ * @fileoverview Workflow Step Checkpoint - Snapshot and recovery for workflow steps.
+ *
+ * Provides checkpointing functionality for multi-step workflow execution. Each step
+ * can produce a checkpoint that captures:
+ * - Step output and status
+ * - Decision context (how routing decisions were made)
+ * - Resume context (where to resume if interrupted)
+ * - File diff summary (what files were changed)
+ * - Upstream artifact references
+ * - Compensation model for undo
+ *
+ * Checkpoints enable:
+ * - Recovery after crashes: Resume from the last successful step
+ * - Audit trail: Track exactly what happened at each step
+ * - Compensation: Undo steps using the compensation model
+ *
+ * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
+ */
 import type { CompensationModel } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
@@ -217,7 +238,9 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
   }
 
   try {
-    const parsed = JSON.parse(readFileSync(record.storagePath, "utf8")) as unknown;
+    // R12-31: Use async readFile with promisify for non-blocking I/O
+    const fileContent = await readFileAsync(record.storagePath, "utf8");
+    const parsed = JSON.parse(fileContent) as unknown;
     return isWorkflowStepCheckpoint(parsed) ? parsed : null;
   } catch (err) {
     logger.log({

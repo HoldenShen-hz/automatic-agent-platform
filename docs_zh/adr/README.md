@@ -9,7 +9,7 @@
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
 | [003A](./003-memory-six-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
-| [003B](./003-memory-seven-layers.md) | 七层记忆模型（历史稿） | Superseded by ADR-020 | 2026-04-02 |
+| [003B](./003-memory-seven-layers.md) | 七层记忆模型（历史别名 / 跳转页） | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
@@ -127,7 +127,7 @@
 
 ## 备注
 
-- 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`，两者均已被 ADR-020 取代；索引中显式列出，避免遗漏旧引用。
+- 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`；其中 `seven-layers` 仅保留为历史别名 / 跳转页，规范内容以 `003-memory-six-layers.md` 为准。
 - 原始历史文件中存在 `066` 号双占用，且后续保留了 `071-plugin-spi-framework.md` 作为重编号副本；为避免破坏既有引用，当前全部保留并在索引中显式列出。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。

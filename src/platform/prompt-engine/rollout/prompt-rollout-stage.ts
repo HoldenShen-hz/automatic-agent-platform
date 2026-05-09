@@ -1,3 +1,5 @@
+// R8-17 FIX: "ready" stage removed per §16.3 which specifies canary_5 → canary_20 → stable pipeline.
+// The "ready" stage was a misunderstanding of the §16.3 spec which only includes three rollout stages.
 export const PROMPT_ROLLOUT_STAGES = [
   "canary_5",
   "canary_20",

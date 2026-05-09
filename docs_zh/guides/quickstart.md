@@ -8,7 +8,7 @@
 
 1. 先读 [平台骨架](../architecture/00-platform-architecture.md)，建立全局心智模型。
 2. 再读 [ADR-001](../adr/001-three-layer-architecture.md)、[ADR-004](../adr/004-workflow-routing.md)、[ADR-009](../adr/009-deployment-ops.md)，理解核心主链路。
-3. 如果当前要实现记忆、成本或安全，再分别补读 [ADR-003](../adr/003-memory-seven-layers.md)、[ADR-008](../adr/008-cost-model.md)、[ADR-005](../adr/005-security-model.md)。
+3. 如果当前要实现记忆、成本或安全，再分别补读 [ADR-003](../adr/003-memory-six-layers.md)、[ADR-008](../adr/008-cost-model.md)、[ADR-005](../adr/005-security-model.md)。
 4. 如果当前要新增业务能力，最后读 [Division Authoring](./division-authoring.md)。
 
 ## 当前建议实现范围

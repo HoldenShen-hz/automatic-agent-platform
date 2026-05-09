@@ -81,8 +81,8 @@ const DEFAULT_POLICY: AdmissionPolicy = {
 };
 
 function isPriorityElevated(priority: TaskPriority): boolean {
-  // R6-8 fix: "critical" priority also requires elevated handling
-  return priority === "high" || priority === "urgent" || priority === "critical";
+  // R6-8 fix: Use "critical" per §5.3 canonical priority levels, not "urgent"
+  return priority === "high" || priority === "critical";
 }
 
 export class AdmissionController {

@@ -743,6 +743,23 @@ export class HumanTakeoverService {
         mutation.payload,
         feedbackSignalInjected,
       );
+      const manualOverride = this.buildManualOverrideRecord({
+        session,
+        executionId,
+        actionType,
+        reasonCode,
+        payload: mutation.payload,
+        feedbackSignalInjected,
+        improvementCandidateCreated,
+        createdAt: now,
+      });
+      const incidentContextBundle = this.buildIncidentContextBundle({
+        session,
+        executionId,
+        takeoverSessionId,
+        manualOverride,
+        createdAt: now,
+      });
 
       // R23-70: Emit feedback signal received event for OAPEFLIR learn stage
       if (feedbackSignalInjected) {
@@ -777,15 +794,17 @@ export class HumanTakeoverService {
         executionId,
         eventType: "takeover:action_applied",
         eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          takeoverSessionId,
-          operatorActionId,
-          actionType,
-          reasonCode,
-          feedbackSignalInjected,
-          improvementCandidateCreated,
-          ...mutation.payload,
-        }),
+          payloadJson: JSON.stringify({
+            takeoverSessionId,
+            operatorActionId,
+            actionType,
+            reasonCode,
+            feedbackSignalInjected,
+            improvementCandidateCreated,
+            manualOverride,
+            incidentContextBundle,
+            ...mutation.payload,
+          }),
         traceId: newId("trace"),
         createdAt: now,
       });
@@ -880,6 +899,105 @@ export class HumanTakeoverService {
     });
 
     return true;
+  }
+
+  private buildManualOverrideRecord(input: {
+    session: TakeoverSessionRecord;
+    executionId: string | null;
+    actionType: OperatorActionType;
+    reasonCode: string;
+    payload: Record<string, unknown>;
+    feedbackSignalInjected: boolean;
+    improvementCandidateCreated: boolean;
+    createdAt: string;
+  }): ManualOverride {
+    return {
+      overrideId: newId("override"),
+      taskId: input.session.taskId,
+      executionId: input.executionId,
+      operatorId: input.session.operatorId,
+      actionType: this.mapActionType(input.actionType),
+      reasonCode: input.reasonCode,
+      targetStage: this.resolveTargetStage(input.actionType),
+      overridePayloadJson: JSON.stringify(input.payload),
+      feedbackSignalInjected: input.feedbackSignalInjected,
+      improvementCandidateCreated: input.improvementCandidateCreated,
+      createdAt: input.createdAt,
+      traceId: `${input.session.id}:${input.actionType}`,
+    };
+  }
+
+  private buildIncidentContextBundle(input: {
+    session: TakeoverSessionRecord;
+    executionId: string | null;
+    takeoverSessionId: string;
+    manualOverride: ManualOverride;
+    createdAt: string;
+  }): IncidentContextBundle {
+    return {
+      bundleId: newId("incident_bundle"),
+      incidentId: null,
+      taskId: input.session.taskId,
+      executionId: input.executionId,
+      overrideIds: [input.manualOverride.overrideId],
+      takeoverSessionIds: [input.takeoverSessionId],
+      operatorIds: [input.session.operatorId],
+      severity: this.resolveIncidentSeverity(input.manualOverride.actionType),
+      status: "active",
+      createdAt: input.createdAt,
+      resolvedAt: null,
+      metadataJson: JSON.stringify({
+        reasonCode: input.manualOverride.reasonCode,
+        targetStage: input.manualOverride.targetStage,
+      }),
+    };
+  }
+
+  private mapActionType(actionType: OperatorActionType): ManualOverride["actionType"] {
+    switch (actionType) {
+      case "modify_input":
+        return "input_modification";
+      case "switch_worker":
+        return "worker_switch";
+      case "set_current_step":
+        return "step_skip";
+      case "complete_task":
+        return "task_complete";
+      case "retry_execution":
+        return "execution_retry";
+      default:
+        return "step_modification";
+    }
+  }
+
+  private resolveTargetStage(actionType: OperatorActionType): ManualOverride["targetStage"] {
+    switch (actionType) {
+      case "modify_input":
+        return "observe";
+      case "switch_worker":
+        return "execute";
+      case "retry_execution":
+        return "feedback";
+      case "set_current_step":
+        return "plan";
+      case "complete_task":
+        return "release";
+      default:
+        return null;
+    }
+  }
+
+  private resolveIncidentSeverity(actionType: ManualOverride["actionType"]): IncidentContextBundle["severity"] {
+    switch (actionType) {
+      case "task_complete":
+      case "execution_retry":
+        return "high";
+      case "worker_switch":
+      case "step_skip":
+        return "medium";
+      default:
+        return "low";
+    }
   }
 
   /**

@@ -510,6 +510,9 @@ export class RuntimeRecoveryService {
    * @param tenantId - Optional tenant ID
    * @returns Compensation plan or null if execution not found
    */
+  // R8-02 FIX: This service is read-only for analysis - compensation execution
+  // is delegated to RuntimeRecoveryDecisionService which owns the recovery workflow.
+  // Build plan only, do not execute. Keep this service truly read-only.
   public buildCompensationPlan(executionId: string, tenantId?: string | null): CompensationPlan | null {
     const candidates = this.store.operations.buildRuntimeRecoveryView(
       this.store.task.getTask?.(executionId, tenantId)?.id ?? "",
@@ -578,75 +581,9 @@ export class RuntimeRecoveryService {
    * @param context - The compensation context (traceId, tenantId, etc.)
    * @returns Result of compensation execution
    */
-  public async executeCompensation(plan: CompensationPlan, context: CompensationContext): Promise<CompensationResult> {
-    const errors: string[] = [];
-    let executedActions = 0;
-    let failedActions = 0;
-
-    plan.status = "executing";
-
-    for (const action of plan.actions) {
-      try {
-        let success = false;
-        switch (action.actionType) {
-          case "release_budget_reservation":
-            success = await this.compensationExecutor.releaseBudgetReservation(action.targetId, context);
-            break;
-          case "release_lock":
-            success = await this.compensationExecutor.releaseLock(action.targetId, context);
-            break;
-          case "delete_artifact":
-            success = await this.compensationExecutor.deleteArtifact(action.targetId, context);
-            break;
-          case "restore_checkpoint":
-            success = await this.compensationExecutor.restoreCheckpoint(action.targetId, context);
-            break;
-          case "record_dead_letter":
-            success = await this.compensationExecutor.recordDeadLetter(
-              action.targetId,
-              (action.payload.reason as string) ?? "compensation_execution",
-              context,
-            );
-            break;
-          case "emit_recovery_event":
-            success = await this.compensationExecutor.emitRecoveryEvent(
-              (action.payload.eventType as string) ?? "recovery:compensation_executed",
-              action.payload,
-              context,
-            );
-            break;
-        }
-
-        action.executedAt = nowIso();
-        action.success = success;
-
-        if (success) {
-          executedActions++;
-        } else {
-          failedActions++;
-          errors.push(`Action ${action.actionType} on ${action.targetId} returned false`);
-        }
-      } catch (error) {
-        action.executedAt = nowIso();
-        action.success = false;
-        action.error = error instanceof Error ? error.message : String(error);
-        failedActions++;
-        errors.push(`Action ${action.actionType} on ${action.targetId} threw: ${action.error}`);
-      }
-    }
-
-    plan.status = failedActions === 0 ? "completed" : "failed";
-    plan.executedActions = executedActions;
-    plan.failedActions = failedActions;
-
-    return {
-      planId: plan.executionId,
-      success: failedActions === 0,
-      executedActions,
-      failedActions,
-      errors,
-    };
-  }
+  // R8-02 FIX: Removed executeCompensation method to maintain read-only contract.
+  // Compensation execution is handled by RuntimeRecoveryDecisionService which
+  // owns the recovery workflow and can properly sequence rollback/compensation actions.
 }
 
 /**

@@ -36,7 +36,8 @@ export function normalizePromptRolloutMode(mode: string): PromptRolloutMode {
   return normalized ?? "L0_off";
 }
 
-export type PromptRolloutStatus = "canary_5" | "canary_20" | "stable" | "blocked" | "rolled_back";
+// R16-04 fix: PromptRolloutStatus must include all lifecycle states per §16.1
+export type PromptRolloutStatus = "ready" | "canary_5" | "canary_20" | "stable" | "blocked" | "rolled_back";
 
 export interface PromptRolloutRecord {
   rolloutId: string;
@@ -106,7 +107,9 @@ export class PromptRolloutService {
 
   public activateRollout(rolloutId: string): PromptRolloutRecord {
     const record = this.getRequired(rolloutId);
+    // R16-04 & R16-13 fix: Activate rollout from ready status to canary_5 (traffic split phase)
     const nextStatusByCurrent: Partial<Record<PromptRolloutStatus, PromptRolloutStatus>> = {
+      ready: "canary_5",
       canary_5: "canary_20",
       canary_20: "stable",
     };

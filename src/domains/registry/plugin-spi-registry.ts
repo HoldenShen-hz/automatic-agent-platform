@@ -835,6 +835,7 @@ export class PluginSpiRegistry {
         occurredAt: nowIso(),
         reasonCode: error instanceof ValidationError ? error.code : phase,
         errorMessage: error instanceof Error ? error.message : String(error),
+        phase: "loaded",
       },
     });
   }

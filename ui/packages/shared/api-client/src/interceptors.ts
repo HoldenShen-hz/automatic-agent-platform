@@ -95,3 +95,16 @@ function readCsrfToken(): string | null {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="aa-csrf-token"]');
   return meta?.content ?? null;
 }
+
+export function createIdempotencyKeyInterceptor(): RestClientInterceptor {
+  return {
+    onRequest(request) {
+      if (request.method !== "GET") {
+        const idempotencyKey = crypto.randomUUID();
+        request.headers.set("Idempotency-Key", idempotencyKey);
+        request.headers.set("x-idempotency-key", idempotencyKey);
+      }
+      return request;
+    },
+  };
+}

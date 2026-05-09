@@ -712,12 +712,12 @@ export class ExecutionDispatchService {
         : [this.workers.getWorker(options.preferredWorkerId)].filter((worker): worker is RegisteredWorkerView => worker != null);
 
     return candidates.map((worker) => {
-        // R6-10: Check heartbeat staleness - reject workers with stale heartbeats
+        // R6-10: Check heartbeat staleness - reject workers with stale heartbeats (>30s per §14)
         const now = nowIso();
-        const heartbeatStalenessThresholdMs = 300_000; // 5 minutes default
+        const heartbeatStalenessThresholdMs = 30_000; // 30 seconds per §14 gap detection
         const lastHeartbeatAgeMs = Date.parse(now) - Date.parse(worker.lastHeartbeatAt);
         if (lastHeartbeatAgeMs > heartbeatStalenessThresholdMs) {
-          return this.toWorkerEvaluation(worker, false, "worker_unavailable", []);
+          return this.toWorkerEvaluation(worker, false, "worker_heartbeat_missing", []);
         }
 
         if (dispatchTarget === "local_only" && worker.placement === "remote") {

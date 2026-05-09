@@ -210,17 +210,28 @@ export class DataReplicatorService {
     if (!shouldReplicateToRegion(this.config.policy, targetRegionId)) {
       return null;
     }
-    // R15-54: Check data residency policy before replication
+    // R15-54: Check data residency policy - local_only blocks all cross-region replication
     const targetResidency = this.config.targetDataResidencyPolicies?.[targetRegionId];
     if (targetResidency === "local_only") {
-      // local_only policy blocks all cross-region replication for this target
       return null;
     }
     let effectivePayload = payload;
     if (this.config.transferComplianceService != null
       && this.config.sourceJurisdiction != null
       && this.config.targetJurisdictions?.[targetRegionId] != null) {
-      const assessment = this.config.transferComplianceService.assessTransfer({
+      // R15-54: Build request with only defined residency policy
+      const transferRequest: {
+        sourceRegionId: string;
+        targetRegionId: string;
+        sourceJurisdiction: string;
+        targetJurisdiction: string;
+        dataCategories: readonly string[];
+        containsPii: boolean;
+        purpose: string;
+        payload: Record<string, unknown> | null;
+        allowedDataFields: readonly string[];
+        dataResidencyPolicy?: "local_only" | "regional" | "global";
+      } = {
         sourceRegionId: this.config.sourceRegionId,
         targetRegionId,
         sourceJurisdiction: this.config.sourceJurisdiction,
@@ -230,9 +241,12 @@ export class DataReplicatorService {
         purpose: options?.purpose ?? aggregateType,
         payload: isRecord(payload) ? payload : null,
         allowedDataFields: options?.allowedDataFields ?? [],
-        // R15-54: Pass residency policy to compliance service for blocking decisions
-        dataResidencyPolicy: targetResidency,
-      });
+      };
+      // Only add residency policy if defined (exactOptionalPropertyTypes compliance)
+      if (targetResidency != null) {
+        transferRequest.dataResidencyPolicy = targetResidency;
+      }
+      const assessment = this.config.transferComplianceService.assessTransfer(transferRequest);
       if (!assessment.allowed) {
         return null;
       }

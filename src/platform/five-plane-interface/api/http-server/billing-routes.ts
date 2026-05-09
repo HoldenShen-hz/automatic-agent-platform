@@ -76,7 +76,14 @@ export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
     {
       method: "POST",
       pathname: "/billing/webhooks/reconcile",
-      handler: (ctx) => handleReconcileWebhook(ctx, deps),
+      handler: (ctx) => {
+        const response = handleReconcileWebhook(ctx, deps);
+        // R14-20: Mark legacy route as deprecated
+        response.headers["Deprecation"] = "true";
+        response.headers["Sunset"] = "Sat, 31 Dec 2026 23:59:59 GMT";
+        response.headers["X-API-Version"] = "v1";
+        return response;
+      },
     },
     {
       method: "POST",

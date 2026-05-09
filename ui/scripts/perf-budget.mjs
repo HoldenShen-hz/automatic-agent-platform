@@ -5,7 +5,7 @@ import { pipeline } from "node:stream/promises";
 
 const distRoot = join(process.cwd(), "apps/web/dist/assets");
 const budgets = {
-  maxJsChunkBytes: 550 * 1024,
+  maxJsChunkBytes: 100 * 1024, // §7.3.1: main<200KB gz, lazy chunk<100KB gz – use stricter 100KB limit for all chunks
   maxCssChunkBytes: 150 * 1024,
   totalBytes: 1200 * 1024,
 };

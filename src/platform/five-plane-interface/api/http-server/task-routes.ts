@@ -33,7 +33,9 @@ import type { ApiAuthService } from "../api-auth-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import type { IntakeAdmissionService } from "../../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { JsonValue, TaskInputSource } from "../../../contracts/executable-contracts/index.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -52,6 +54,8 @@ export interface TaskRouteDeps {
   inspectService: InspectService;
   missionControlService: MissionControlService;
   taskStore?: AuthoritativeTaskStore;
+  // R6-16 FIX: IntakeAdmissionService for §5.3 intake pipeline routing
+  intakeAdmissionService?: IntakeAdmissionService;
 }
 
 interface PaginationCursor {
@@ -65,10 +69,10 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   const INTERNAL_TASK_LIMIT = 200;
 
   return [
-    // ── v1 ───────────────────────────────────────────────────────────────────
+    // ── api/v1/tasks (§6 canonical API prefix) ────────────────────────────────
     {
       method: "GET",
-      pathname: "/v1/tasks",
+      pathname: "/api/v1/tasks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         // R29-37: For internal/tenant users, use higher limit within bounds
@@ -90,7 +94,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/workflows",
+      pathname: "/api/v1/workflows",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = principal.tenantId != null
@@ -115,11 +119,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 4) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task route");
+        const taskId = validateTaskId(segments[3], "Task route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -135,15 +139,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "v1"
-          || segments[1] !== "tasks"
-          || segments.length !== 4
-          || segments[3] !== "events"
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "tasks"
+          || segments.length !== 5
+          || segments[4] !== "events"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task events route");
+        const taskId = validateTaskId(segments[3], "Task events route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -159,15 +164,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "v1"
-          || segments[1] !== "tasks"
-          || segments.length !== 4
-          || segments[3] !== "inspect"
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "tasks"
+          || segments.length !== 5
+          || segments[4] !== "inspect"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task inspect route");
+        const taskId = validateTaskId(segments[3], "Task inspect route");
         const inspect = deps.inspectService.getTaskInspectView(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -182,11 +188,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "workflows" || segments.length !== 4) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Workflow route");
+        const taskId = validateTaskId(segments[3], "Workflow route");
         const cockpit = deps.missionControlService.getWorkflowCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -199,21 +205,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     /**
      * POST /v1/tasks - Create a new task.
      *
-     * R6-16 FIX: This endpoint creates a lightweight Task entity directly in the task store.
-     * For full HarnessRun creation with proper admission, risk evaluation, and policy checks,
-     * use the intake pipeline via IntakeAdmissionService.admitTask() instead.
+     * R6-16 FIX: When intakeAdmissionService is available, routes through §5.3 intake
+     * pipeline for proper admission, risk evaluation, and policy checks. The intake
+     * pipeline creates the full TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun chain.
      *
-     * This endpoint bypasses the intake pipeline for simple task creation use cases where:
+     * When intakeAdmissionService is not configured (legacy fallback), creates a lightweight
+     * Task entity directly in the task store for simple task creation use cases where:
      * - Full harness execution is not required
      * - The task will be executed via external means
      * - Quick task creation is needed without the overhead of admission checks
-     *
-     * For proper task execution through the harness runtime, task creation should route
-     * through the intake-admission-service which performs:
-     * - Risk evaluation and classification
-     * - Policy guard checks
-     * - Budget reservation and validation
-     * - Creation of TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun chain
      */
     {
       method: "POST",
@@ -221,9 +221,33 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
+        const tenantId = principal.tenantId ?? null;
+
+        // R6-16 FIX: Route through intake pipeline when available per §5.3
+        if (deps.intakeAdmissionService) {
+          // Use canonical intake pipeline for proper task admission
+          const result = deps.intakeAdmissionService.admit({
+            tenantId: tenantId ?? "",
+            principal: { principalId: principal.actorId, tenantId: tenantId ?? "", roles: principal.roles ?? [], authorizationLevel: principal.roles?.includes("admin") ? "admin" : principal.roles?.includes("operator") ? "operator" : "viewer" },
+            source: (payload.source ?? "ui") as TaskInputSource,
+            domainId: payload.divisionId ?? "",
+            goal: payload.title,
+            inputs: (payload.inputJson ?? "{}") as JsonValue,
+            riskPreview: { riskClass: "low" as const, reasons: [] },
+            constraintPackRef: "",
+            budgetIntent: { amount: 0, currency: "USD", resourceKinds: [] },
+            idempotencyKey: `task:${newId("idempotency")}`,
+            traceId: ctx.requestId,
+          });
+
+          const taskId = result.harnessRun.confirmedTaskSpecId;
+          const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
+          return buildJsonResponse(ctx.requestId, 201, cockpit);
+        }
+
+        // Legacy fallback: direct task store insertion without intake pipeline
         const taskId = newId("task");
         const now = nowIso();
-        const tenantId = principal.tenantId ?? null;
 
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");

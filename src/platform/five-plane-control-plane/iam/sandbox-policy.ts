@@ -239,6 +239,40 @@ export interface SandboxCapabilityProfile {
 }
 
 /**
+ * R23-60: AuthSession - canonical runtime auth session state for IAM/OAuth handshakes
+ */
+export interface AuthSession {
+  sessionId: string;
+  providerBindingId: string;
+  actorId: string;
+  tenantId: string | null;
+  status: "pending" | "authorized" | "expired" | "revoked";
+  scopes: readonly string[];
+  accessTokenRef: string | null;
+  refreshTokenRef: string | null;
+  codeVerifierRef: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * R23-60/R23-75: AuthProviderBinding - canonical provider binding with PKCE-by-default posture
+ */
+export interface AuthProviderBinding {
+  providerBindingId: string;
+  providerId: string;
+  tenantId: string | null;
+  clientId: string;
+  redirectUri: string;
+  scopes: readonly string[];
+  pkceRequired: boolean;
+  tokenEndpointAuthMethod: "client_secret_basic" | "client_secret_post" | "private_key_jwt" | "none";
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
  * Result of checking a path against the sandbox policy.
  * Contains the normalized path and whether access is permitted.
  */

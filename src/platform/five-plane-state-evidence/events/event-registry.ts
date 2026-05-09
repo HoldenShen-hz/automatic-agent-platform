@@ -58,6 +58,13 @@ interface RawEventSchemaDefinition {
  * Tier 3 events (best-effort, no ack required):
  * - stream:chunk_emitted
  *
+ * Compatibility note:
+ * - Legacy namespaces such as `task:*`, `workflow:*`, `dispatch:*`, and `worker:*`
+ *   intentionally keep their historical producer identifiers for backward-compatible
+ *   consumers and migration tooling.
+ * - Canonical truth facts live under `platform.*` and are described through
+ *   `RUNTIME_EVENT_REPLAY_METADATA` / `getEventSchema()`.
+ *
  * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
  */
 const RAW_EVENT_SCHEMA_REGISTRY = {

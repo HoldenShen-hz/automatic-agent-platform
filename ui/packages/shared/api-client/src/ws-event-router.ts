@@ -81,6 +81,7 @@ export function mapEventToQuery(event: WSEventEnvelope): RoutedRealtimeEvent {
     "agent.load_changed": { scope: "query", queryKey: ["agents"] },
     "nl.session.updated": { scope: "query", queryKey: ["tasks"] },
     "nl.plan.created": { scope: "query", queryKey: ["workflows"] },
+    "nl.clarification_needed": { scope: "query", queryKey: ["tasks"] },
     "config.domain.updated": { scope: "query", queryKey: ["domain-configs"] },
     "config.feature-flags.updated": { scope: "query", queryKey: ["feature-flags"] },
     "cost.alert.triggered": { scope: "query", queryKey: ["costs"] },

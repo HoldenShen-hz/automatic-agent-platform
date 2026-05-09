@@ -39,6 +39,13 @@ export interface DecisionExplanation {
   confidenceScore: number;
   generatedAt: string;
   contextSnapshot: Record<string, unknown>;
+  matched_rule_or_policy: string | null;
+  reason_source: string | null;
+  remediation_hint: string | null;
+  routingExplanation?: RoutingExplanation;
+  riskExplanation?: RiskExplanation;
+  fallbackExplanation?: FallbackExplanation;
+  takeoverJustification?: TakeoverJustification;
 }
 
 export interface DecisionFactor {
@@ -78,6 +85,31 @@ export interface OperatorMetrics {
   commonFrustrations: FeedbackCategory[];
   suggestedImprovements: string[];
   lastInterventionAt: string | null;
+}
+
+export interface RoutingExplanation {
+  routeId: string;
+  selectedPath: string;
+  candidatePaths: string[];
+  rationale: string;
+}
+
+export interface RiskExplanation {
+  riskLevel: "low" | "medium" | "high" | "critical";
+  riskDrivers: string[];
+  mitigationStatus: "covered" | "partial" | "missing";
+}
+
+export interface FallbackExplanation {
+  fallbackMode: "retry" | "degrade" | "handoff" | "abort";
+  trigger: string;
+  expectedImpact: string;
+}
+
+export interface TakeoverJustification {
+  takeoverType: "manual_override" | "approval_gate" | "incident_response";
+  operatorId: string | null;
+  justification: string;
 }
 
 export interface ExplainabilityConfig {
@@ -254,6 +286,13 @@ export class HITLExplainabilityService {
       executionId?: string | null;
       takeoverSessionId?: string | null;
       contextSnapshot?: Record<string, unknown>;
+      matchedRuleOrPolicy?: string | null;
+      reasonSource?: string | null;
+      remediationHint?: string | null;
+      routingExplanation?: RoutingExplanation;
+      riskExplanation?: RiskExplanation;
+      fallbackExplanation?: FallbackExplanation;
+      takeoverJustification?: TakeoverJustification;
     },
   ): DecisionExplanation {
     const explanationId = newId("explain");
@@ -276,6 +315,13 @@ export class HITLExplainabilityService {
       confidenceScore: Math.max(0, Math.min(1, confidenceScore)),
       generatedAt: nowIso(),
       contextSnapshot: context?.contextSnapshot ?? {},
+      matched_rule_or_policy: context?.matchedRuleOrPolicy ?? this.resolveMatchedRuleOrPolicy(decisionType, factors),
+      reason_source: context?.reasonSource ?? this.resolveReasonSource(decisionType),
+      remediation_hint: context?.remediationHint ?? template.recommendationTemplates[0] ?? null,
+      ...(context?.routingExplanation != null ? { routingExplanation: context.routingExplanation } : {}),
+      ...(context?.riskExplanation != null ? { riskExplanation: context.riskExplanation } : {}),
+      ...(context?.fallbackExplanation != null ? { fallbackExplanation: context.fallbackExplanation } : {}),
+      ...(context?.takeoverJustification != null ? { takeoverJustification: context.takeoverJustification } : {}),
     };
 
     if (this.config.enableDecisionExplanations) {
@@ -384,6 +430,35 @@ export class HITLExplainabilityService {
       result = result.replace(`{${factor.name}}`, String(factor.value));
     }
     return result;
+  }
+
+  private resolveMatchedRuleOrPolicy(decisionType: DecisionType, factors: DecisionFactor[]): string | null {
+    const policyFactor = factors.find((factor) => factor.name === "policy" || factor.name === "policy_name");
+    if (policyFactor != null) {
+      return String(policyFactor.value);
+    }
+    switch (decisionType) {
+      case "approval_required":
+        return "manual_approval_policy";
+      case "policy_violation":
+        return "policy_violation_guardrail";
+      case "manual_override":
+        return "human_takeover_override_policy";
+      default:
+        return null;
+    }
+  }
+
+  private resolveReasonSource(decisionType: DecisionType): string {
+    switch (decisionType) {
+      case "manual_override":
+        return "human_operator";
+      case "approval_required":
+      case "policy_violation":
+        return "policy_engine";
+      default:
+        return "runtime_signal";
+    }
   }
 
   getExplanation(explanationId: string): DecisionExplanation | null {

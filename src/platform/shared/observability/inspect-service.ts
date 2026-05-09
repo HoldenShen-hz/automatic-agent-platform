@@ -198,9 +198,9 @@ export class InspectService {
 
   public queryTaskInspectSummaries(query: TaskInspectQuery = {}): TaskInspectSummary[] {
     const limit = normalizeLimit(query.limit, 25);
+    // R14-18: Pass limit and tenantId to listTasks to avoid over-fetching all tasks into memory
     return this.store
-      .listTasks()
-      .filter((task) => query.tenantId === undefined || (task.tenantId ?? null) === query.tenantId)
+      .listTasks(limit, query.tenantId)
       .map((task) => this.buildTaskInspectSummary(task))
       .filter((summary) => {
         if (query.taskStatus && summary.taskStatus !== query.taskStatus) {

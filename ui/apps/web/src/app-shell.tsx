@@ -3,23 +3,8 @@ import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-route
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
+import type { FeatureGuardContext } from "@aa/shared-types";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
-
-const demoGuardContext = createFeatureGuardContext({
-  permissions: [
-    "authenticated",
-    "platform_sre",
-    "pack_developer+",
-    "domain_admin+",
-    "org_admin+",
-  ],
-  featureFlags: {
-    analytics: true,
-    "workflow-builder": true,
-    "workflow-debugger": true,
-    marketplace: true,
-  },
-});
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
@@ -27,12 +12,17 @@ export interface WebAppShellProps {
   readonly wsClient?: WSClient;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
+  readonly authContext?: Partial<FeatureGuardContext>;
 }
 
-function renderGuardedFeature(features: readonly FeatureModule[], path: string): ReactElement {
+function renderGuardedFeature(
+  features: readonly FeatureModule[],
+  path: string,
+  authContext: FeatureGuardContext,
+): ReactElement {
   const feature = features.find((candidate) => candidate.route.path === path) ?? features[0]!;
   const guard = createRouteGuardChain(feature.route.permission, feature.manifest.kind === "planned" ? feature.manifest.id : undefined);
-  const result = guard.evaluate(demoGuardContext);
+  const result = guard.evaluate(authContext);
 
   if (!result.allowed) {
     return (
@@ -55,7 +45,7 @@ function AppRouter(
   return <BrowserRouter>{children}</BrowserRouter>;
 }
 
-function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactElement {
+function AppFrame({ features, authContext }: { features: readonly FeatureModule[]; authContext: FeatureGuardContext }): ReactElement {
   const systemStatus = useSystemStatus();
   const groupedFeatures = Object.entries(
     features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
@@ -99,25 +89,37 @@ function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactEl
         <SystemStatusBar status={systemStatus} />
         <Routes>
           {features.map((feature) => (
-            <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path)} path={feature.route.path} />
+            <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path, authContext)} path={feature.route.path} />
           ))}
-          <Route element={renderGuardedFeature(features, features[0]!.route.path)} path="*" />
+          <Route element={renderGuardedFeature(features, features[0]!.route.path, authContext)} path="*" />
         </Routes>
       </main>
     </div>
   );
 }
 
-export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries }: WebAppShellProps): ReactElement {
+export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
   };
 
+  const effectiveAuthContext = createFeatureGuardContext({
+    authenticated: true,
+    tenantId: "tenant-default",
+    domainId: "platform",
+    permissions: ["authenticated"],
+    roles: ["operator"],
+    featureFlags: {},
+    featureVisibility: {},
+    mode: "enterprise",
+    ...authContext,
+  });
+
   return (
     <UiRuntimeProvider {...runtimeProps}>
       <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
-        <AppFrame features={features} />
+        <AppFrame features={features} authContext={effectiveAuthContext} />
       </AppRouter>
     </UiRuntimeProvider>
   );

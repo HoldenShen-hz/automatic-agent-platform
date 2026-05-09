@@ -62,6 +62,8 @@ export interface DegradationConfig {
   deescalateErrorRateThreshold: number;
   /** Latency P99 threshold to trigger escalation (ms) */
   escalateLatencyP99Ms: number;
+  /** R16-22 fix: TTFT threshold to trigger escalation (ms) per §15.6 */
+  escalateTtftMs: number;
   /** Minimum consecutive healthy evaluations before de-escalation */
   deescalateMinHealthyCount: number;
   /** Maximum degradation level for automatic de-escalation */
@@ -97,7 +99,10 @@ export interface LLMDegradationResponse {
 export const DEFAULT_DEGRADATION_CONFIG: DegradationConfig = {
   escalateErrorRateThreshold: 50,
   deescalateErrorRateThreshold: 5,
+  // R16-22 fix: TTFT threshold is 10s (10000ms) per §15.6, P99 latency threshold is 5s.
+  // These are separate metrics - TTFT measures time to first token, P99 measures end-to-end latency.
   escalateLatencyP99Ms: 5000,
+  escalateTtftMs: 10000,
   deescalateMinHealthyCount: 3,
   maxAutoDeescalateLevel: DegradationLevel.D0,
 };
@@ -203,57 +208,6 @@ export class DegradationController {
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     return this.routeWithDepth(request, 0);
-  }
-
-  private async routeWithDepth(request: LLMDegradationRequest, depth: number): Promise<LLMDegradationResponse> {
-    const MAX_ROUTE_DEPTH = 4; // D0 through D4 = max 4 escalations within one route call
-    this.lastEscalationReason = null;
-    let attemptLevel = this.currentLevel;
-    const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      switch (attemptLevel) {
-        case DegradationLevel.D0:
-          try {
-            return await this.routeD0(request);
-          } catch (error) {
-            if (depth >= MAX_ROUTE_DEPTH) {
-              throw new ProviderError(
-                "degradation.max_depth_exceeded",
-                "LLM service failed after maximum degradation attempts.",
-                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
-              );
-            }
-            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d0_failed");
-            this.escalate();
-            attemptLevel = this.currentLevel;
-            return this.routeWithDepth(request, depth + 1);
-          }
-        case DegradationLevel.D1:
-          try {
-            return await this.routeD1(request);
-          } catch (error) {
-            if (depth >= MAX_ROUTE_DEPTH) {
-              throw new ProviderError(
-                "degradation.max_depth_exceeded",
-                "LLM service failed after maximum degradation attempts.",
-                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
-              );
-            }
-            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d1_failed");
-            this.escalate();
-            attemptLevel = this.currentLevel;
-            return this.routeWithDepth(request, depth + 1);
-          }
-        case DegradationLevel.D2:
-          return this.routeD2(request);
-        case DegradationLevel.D3:
-          return this.routeD3(request);
-        case DegradationLevel.D4:
-          return this.routeD4(request);
-      }
-    }
-    return this.routeD4(request);
   }
 
   /**
@@ -483,6 +437,61 @@ export class DegradationController {
   }
 
   /**
+   * R16-10 fix: routeD0 routes through D0, not D1. The recursive escalation is bounded by depth and MAX_ROUTE_DEPTH.
+   * R16-22 fix: Use TTFT threshold (10s = 10000ms) per §15.6, not P99 latency threshold.
+   */
+  private async routeWithDepth(request: LLMDegradationRequest, depth: number): Promise<LLMDegradationResponse> {
+    const MAX_ROUTE_DEPTH = 4; // D0 through D4 = max 4 escalations within one route call
+    this.lastEscalationReason = null;
+    let attemptLevel = this.currentLevel;
+    const maxAttempts = DegradationLevel.D4 - attemptLevel + 1;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      switch (attemptLevel) {
+        case DegradationLevel.D0:
+          try {
+            return await this.routeD0(request);
+          } catch (error) {
+            if (depth >= MAX_ROUTE_DEPTH) {
+              throw new ProviderError(
+                "degradation.max_depth_exceeded",
+                "LLM service failed after maximum degradation attempts.",
+                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
+              );
+            }
+            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d0_failed");
+            this.escalate();
+            attemptLevel = this.currentLevel;
+            return this.routeWithDepth(request, depth + 1);
+          }
+        case DegradationLevel.D1:
+          try {
+            return await this.routeD1(request);
+          } catch (error) {
+            if (depth >= MAX_ROUTE_DEPTH) {
+              throw new ProviderError(
+                "degradation.max_depth_exceeded",
+                "LLM service failed after maximum degradation attempts.",
+                { retryable: true, details: { depth, degradationLevel: this.currentLevel } },
+              );
+            }
+            this.lastEscalationReason ??= this.describeEscalationReason(error, "route_d1_failed");
+            this.escalate();
+            attemptLevel = this.currentLevel;
+            return this.routeWithDepth(request, depth + 1);
+          }
+        case DegradationLevel.D2:
+          return this.routeD2(request);
+        case DegradationLevel.D3:
+          return this.routeD3(request);
+        case DegradationLevel.D4:
+          return this.routeD4(request);
+      }
+    }
+    return this.routeD4(request);
+  }
+
+  /**
    * R4-47: Emit OperationalDirective if emitter is configured.
    */
   private emitOperationalDirective(type: OperationalDirective["type"], fromLevel: DegradationLevel, toLevel: DegradationLevel, reason: string): void {
@@ -510,12 +519,13 @@ export class DegradationController {
   } {
     const { errorRate, latencyP99Ms, ttftP99Ms } = metrics;
     const latencyHealthy = latencyP99Ms <= this.config.escalateLatencyP99Ms;
-    const ttftHealthy = ttftP99Ms <= 10000;
+    // R16-22 fix: Use dedicated TTFT threshold (escalateTtftMs) per §15.6, not P99 latency threshold
+    const ttftHealthy = ttftP99Ms <= this.config.escalateTtftMs;
     const errorHealthy = errorRate < this.config.deescalateErrorRateThreshold;
 
     // Check for escalation conditions
-    // §15: TTFT >10s triggers escalation
-    if (ttftP99Ms > 10000) {
+    // R16-22 fix: Use TTFT threshold from config per §15.6, not inline 10000
+    if (ttftP99Ms > this.config.escalateTtftMs) {
       if (this.currentLevel < DegradationLevel.D4) {
         this.escalate();
         return {

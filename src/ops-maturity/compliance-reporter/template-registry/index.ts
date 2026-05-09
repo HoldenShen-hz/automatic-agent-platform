@@ -13,6 +13,8 @@ export const ComplianceReportTemplateSchema = z.object({
   legalVersion: z.string().default("current"),
   effectiveDate: z.string().default("1970-01-01"),
   migrationRule: z.string().default("no_migration_required"),
+  /** Required data sources that must be present for report generation. */
+  requiredDataSources: z.array(z.string()).default([]),
   // Extended fields for comprehensive compliance reporting
   /** Controls that must be covered by this report. */
   controls: z.array(z.object({

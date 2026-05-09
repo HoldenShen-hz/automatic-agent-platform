@@ -315,6 +315,39 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 }
 
 /**
+ * Result of context truncation when evicting memories from working layer.
+ * Per §29.2, facts must not be silently discarded - compression requires loss report.
+ */
+export interface ContextTruncationReport {
+  evictedMemories: readonly {
+    memoryId: string;
+    scope: HierarchicalMemoryLayer;
+    reason: string;
+    qualityScore: number | null;
+    importanceScore: number | null;
+  }[];
+  retainedMemories: number;
+  totalEvicted: number;
+  truncationTimestamp: string;
+}
+
+/**
+ * Eviction options for memory layer.
+ */
+export interface EvictionOptions {
+  /**
+   * Callback invoked when memory is evicted, providing loss report.
+   * Per §29.2, facts must not be silently discarded.
+   */
+  onEvict?: (memory: MemoryRecord, reason: string) => void;
+  /**
+   * Optional callback for truncation reports when multiple memories are evicted.
+   * Per §29.2, compression requires loss report.
+   */
+  onTruncation?: (report: ContextTruncationReport) => void;
+}
+
+/**
  * Determines if a memory should be evicted based on its layer's eviction strategy.
  * R16-39 fix: Added optional callback for loss reporting when evicting memories.
  * Per §29.2, silent discarding is prohibited - eviction must be reported.
@@ -329,7 +362,30 @@ export function shouldEvict(
   candidateCount: number,
   maxLayerSize?: number,
   onEvict?: (memory: MemoryRecord, reason: string) => void,
+): boolean;
+export function shouldEvict(
+  memory: MemoryRecord,
+  candidateCount: number,
+  maxLayerSize: number | undefined,
+  options?: EvictionOptions,
+): boolean;
+export function shouldEvict(
+  memory: MemoryRecord,
+  candidateCount: number,
+  maxLayerSize?: number,
+  optionsOrOnEvict?: EvictionOptions | ((memory: MemoryRecord, reason: string) => void),
 ): boolean {
+  // Support both old (onEvict callback) and new (options object) signatures
+  let onEvict: ((memory: MemoryRecord, reason: string) => void) | undefined;
+  let onTruncation: ((report: ContextTruncationReport) => void) | undefined;
+
+  if (typeof optionsOrOnEvict === "function") {
+    onEvict = optionsOrOnEvict;
+  } else if (optionsOrOnEvict && typeof optionsOrOnEvict === "object") {
+    onEvict = optionsOrOnEvict.onEvict;
+    onTruncation = optionsOrOnEvict.onTruncation;
+  }
+
   if (isMemoryStale(memory)) {
     // R16-39 fix: Report stale eviction to prevent silent loss
     onEvict?.(memory, "ttl_expired");

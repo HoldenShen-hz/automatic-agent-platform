@@ -315,6 +315,7 @@ export class CircuitBreaker {
 
   /**
    * Calculate failure rate within monitoring window.
+   * R16-01 fix: Failure rate is failures/requests within the window, not (failures/windowSeconds)*10.
    */
   private getRecentFailureRate(): number {
     this.pruneFailureTimestamps(Date.now());

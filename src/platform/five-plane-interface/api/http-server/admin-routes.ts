@@ -21,6 +21,7 @@
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
 
+import type { ResumePlan } from "../../../../ops-maturity/emergency/resume-protocol/index.js";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
@@ -83,13 +84,19 @@ const panicDirectiveSchema = z.object({
 }).strict();
 
 const resumeDirectiveSchema = z.object({
+  planId: nonEmptyStringSchema.optional(),
   scope: nonEmptyStringSchema,
+  scopeRef: nonEmptyStringSchema.optional(),
   approvedBy: z.array(nonEmptyStringSchema).min(2),
   approvedRoles: z.array(resumeApprovalRoleSchema).min(2),
+  approvalCount: z.number().optional(),
+  compatibilityCheckRef: nonEmptyStringSchema.optional(),
+  mode: z.enum(["standard", "dry_run", "break_glass"]).optional(),
   checkpointsVerified: z.boolean(),
   forensicSnapshotReviewed: z.boolean(),
   rollbackPlanReady: z.boolean(),
   validationRunPassed: z.boolean(),
+  createdAt: z.string().optional(),
 }).strict();
 
 export interface AdminConfigUpdatePayload {
@@ -465,7 +472,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         if (service == null) {
           throw new ApiError(503, "api.resume_directives_unavailable", "Resume directive service is not configured.");
         }
-        const receipt = service.submitResumeDirective(payload);
+        const receipt = service.submitResumeDirective(payload as ResumePlan);
         if (!receipt.resumed) {
           if (receipt.directiveId == null) {
             throw new ApiError(404, "api.resume_directive_not_found", "No active panic directive matched the requested scope.");

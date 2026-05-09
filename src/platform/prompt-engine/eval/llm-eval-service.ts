@@ -356,7 +356,9 @@ export class LlmEvalService {
 
     let verdict: QualityVerdict;
     if (failed === 0) verdict = "pass";
-    else if (passed / results.length >= 0.8) verdict = "degraded";
+    // R16-16 fix: §17.3 requires ≥95% pass rate for "pass" verdict, ≥80% for "degraded"
+    else if (passed / results.length >= 0.95) verdict = "pass";
+    else if (passed / results.length >= 0.80) verdict = "degraded";
     else verdict = "fail";
 
     const status: EvalStatus = verdict === "pass" ? "passed" : (verdict === "degraded" ? "degraded" : "failed");
@@ -403,6 +405,10 @@ export class LlmEvalService {
     config: AbTestConfig,
     options: AbTestOptions = {},
   ): Promise<AbTestResult> {
+    // R16-17 fix: Validate judge independence per §17.5 - control and treatment must use different model/family/provider
+    if (config.controlModelId === config.treatmentModelId) {
+      throw new Error("ab_test.judge_independence_required: control and treatment must use different models per §17.5");
+    }
     const controlRun = this.startRun(suiteId, config.controlModelId, config.controlPromptVersion, "ab_test");
     const treatmentRun = this.startRun(suiteId, config.treatmentModelId, config.treatmentPromptVersion, "ab_test");
 

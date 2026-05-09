@@ -137,10 +137,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           throw new ApiError(400, "incident.invalid_id", "Invalid incident ID format.");
         }
         const incidentId = parsedIncidentId.data;
+        const tenantId = resolveTenantScope(principal, undefined);
         const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
 
         void principal;
-        const incident = deps.incidentService.getIncident(incidentId);
+        const incident = deps.incidentService.getIncident(incidentId, tenantId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", "Incident not found.");
         }

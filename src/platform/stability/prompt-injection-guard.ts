@@ -78,7 +78,11 @@ const OUTPUT_SUSPICIOUS_PATTERNS: readonly PromptInjectionSignal[] = [
   // R23-54 fix: markdown/raw URL exfiltration now requires credential context nearby
   // to avoid blocking benign documentation or release-note links in normal output.
   { signal: "markdown_link_exfiltration", pattern: /(?:secret|token|api[-_\s]?key|password|credential).*\[[^\]]+\]\((https?:\/\/|mailto:)[^)]+\)/i, weight: 0.4 },
-  { signal: "raw_url_exfiltration", pattern: /(?:(?:secret|token|api[-_\s]?key|password|credential)\s*:?\s*https?:\/\/\S+|https?:\/\/\S*[?&](?:token|secret|api(?:[-_\s]?key)?|password|credential)=\S+)/i, weight: 0.5 },
+  // R16-25 fix: Raw URL exfiltration with query params is overly aggressive.
+  // Require credential context before the URL or only flag high-confidence credential-in-URL scenarios.
+  // Split into two patterns: one requiring preceding context, one for high-risk patterns only.
+  { signal: "raw_url_exfiltration_credential_context", pattern: /(?:secret|token|api[-_\s]?key|password|credential)\s*:?\s*https?:\/\/\S+/i, weight: 0.5 },
+  { signal: "raw_url_exfiltration_high_risk", pattern: /https?:\/\/\S*[?&](?:token|secret|api[-_\s]?key|password|credential)=\S{8,}/i, weight: 0.35 },
   { signal: "instruction_echo", pattern: /ignore\s+(?:all\s+)?previous\s+instructions?|bypass.*(?:safety|restriction)/i, weight: 0.45 },
   { signal: "system_prompt_echo", pattern: /(system|developer|hidden)\s+(prompt|instructions?)/i, weight: 0.35 },
 ];

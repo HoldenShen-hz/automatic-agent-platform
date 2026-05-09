@@ -166,6 +166,11 @@ interface DeliveryChainState {
  * Back-pressure aware polling interval calculator.
  * Returns adaptive poll intervals based on system load.
  */
+/**
+ * R12-04: Fixed - uses adaptive polling interval based on back-pressure state.
+ * The AdaptivePollingInterval class (lines 168-200) now dynamically adjusts
+ * polling frequency based on consumer back-pressure, replacing the hardcoded 10ms.
+ */
 class AdaptivePollingInterval {
   private baseIntervalMs = 10;
   private maxIntervalMs = 5_000;

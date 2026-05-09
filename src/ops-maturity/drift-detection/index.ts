@@ -23,4 +23,6 @@ export * from './learning/rollout-manager.js';
 export * from './evolution-registry.js';
 export * from './changepoint-detector/index.js';
 export * from './cross-agent-analyzer/index.js';
+export * from './drift-detector.js';
+export * from './drift-detector-service.js';
 export * from './fingerprint-builder/index.js';

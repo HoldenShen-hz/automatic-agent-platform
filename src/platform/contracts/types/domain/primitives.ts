@@ -81,7 +81,9 @@ export type DispatchWorkerRejectionReason =
   | "worker_remote_session_unready"
   // R6-3: Risk class isolation routing rejection reasons
   | "risk_class_isolation_mismatch"
-  | "sandbox_type_mismatch";
+  | "sandbox_type_mismatch"
+  // R6-10: Heartbeat staleness rejection reason per §14 gap detection
+  | "worker_heartbeat_missing";
 export type LeaseAuditEventType =
   | "lease_granted"
   | "lease_renewed"

@@ -77,8 +77,8 @@ const ORCHESTRATION_HINTS = [
   "方案",
 ] as const;
 
-/** R6-11: Confidence threshold below which LLM intent extraction should be used */
-const CONFIDENCE_THRESHOLD = 0.65;
+/** R6-11: Confidence threshold below which LLM intent extraction should be used per §39.3 */
+const CONFIDENCE_THRESHOLD = 0.80;
 
 /** R6-11: Low confidence threshold for ambiguous intent classification */
 const LOW_CONFIDENCE_THRESHOLD = 0.55;

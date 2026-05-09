@@ -1,7 +1,0 @@
-packages:
-  - "packages/shared/*"
-  - "packages/ui-core"
-  - "packages/ui-mobile"
-  - "packages/features/*"
-  - "apps/*"
-  - "tools/*"

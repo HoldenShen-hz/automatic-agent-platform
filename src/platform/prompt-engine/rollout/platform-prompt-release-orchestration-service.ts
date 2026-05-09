@@ -34,6 +34,9 @@ export interface PlatformPromptReleaseInput {
   baseline?: EvalDatasetBaselineMetrics | undefined;
   gatePolicy?: EvalDatasetGatePolicy | undefined;
   autoActivate?: boolean | undefined;
+  // R16-14 fix: Required gate fields per contract §16 release gates
+  domainOwnerApproval?: boolean | undefined;
+  rollbackPlanPresent?: boolean | undefined;
 }
 
 export interface PlatformPromptReleaseResult {
@@ -51,6 +54,19 @@ export class PlatformPromptReleaseOrchestrationService {
   ) {}
 
   public createRelease(input: PlatformPromptReleaseInput): PlatformPromptReleaseResult {
+    // R16-14 fix: Validate release gate requirements per §16
+    if (!input.domainOwnerApproval) {
+      throw new ValidationError(
+        "platform_prompt_release.missing_domain_owner_approval",
+        "Release requires domain_owner_approval gate to be true per §16 release policy",
+      );
+    }
+    if (!input.rollbackPlanPresent) {
+      throw new ValidationError(
+        "platform_prompt_release.missing_rollback_plan",
+        "Release requires rollback_plan_present gate to be true per §16 release policy",
+      );
+    }
     const template = this.templates.registerTemplate(input.template);
     const dataset = this.datasets.getDataset(input.datasetId);
     if (dataset == null) {

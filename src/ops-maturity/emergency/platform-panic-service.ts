@@ -43,6 +43,8 @@ export interface PanicPropagationRecord {
 export interface PanicActivationRequest extends PanicDirectiveInput {
   readonly issuedBy: string;
   readonly issuedAt?: string;
+  readonly scopeRef?: string;
+  readonly expiresAt?: string;
   readonly freezeModes?: readonly PanicFreezeMode[];
   readonly requiredApprovers?: readonly string[];
   readonly allowList?: readonly string[];
@@ -103,6 +105,17 @@ export interface PlatformPanicActivation {
   readonly acknowledgments: readonly PanicAcknowledgment[];
 }
 
+export interface PanicDrillRequest {
+  readonly scope: string;
+  readonly initiatedBy: string;
+  readonly drillType: PanicDrillRecord["drillType"];
+  readonly directiveId?: string | null;
+  readonly freezeModesTested?: readonly PanicFreezeMode[];
+  readonly targetPlanes?: readonly ("P1" | "P2" | "P3" | "P4" | "P5")[];
+  readonly notes?: string | null;
+  readonly traceId?: string | null;
+}
+
 function matchesScope(activeScope: string, requestedScope: string): boolean {
   return requestedScope === activeScope || requestedScope.startsWith(`${activeScope}/`);
 }
@@ -135,6 +148,7 @@ function normalizeRequiredApprovers(
 export class PlatformPanicService {
   private readonly activations = new Map<string, PlatformPanicActivation>();
   private readonly resumeReceipts = new Map<string, PanicResumeReceipt>();
+  private readonly drills = new Map<string, PanicDrillRecord>();
 
   public activate(request: PanicActivationRequest): PlatformPanicActivation {
     if (!shouldEnterPanicMode(request)) {
@@ -154,6 +168,8 @@ export class PlatformPanicService {
       severity: (request.severity as "full" | "partial") ?? "full",
       reconfirmationAfterSeconds: 300,
       rollbackStrategy: "manual",
+      ...(request.scopeRef != null ? { scopeRef: request.scopeRef } : {}),
+      ...(request.expiresAt != null ? { expiresAt: request.expiresAt } : {}),
       ...(request.allowList != null ? { allowList: request.allowList } : {}),
     };
     const panicPlanes = ["P1", "P2", "P3", "P4", "P5"] as const;
@@ -198,11 +214,14 @@ export class PlatformPanicService {
   }
 
   public getActive(scope: string): PlatformPanicActivation | null {
-    return this.activations.get(scope) ?? null;
+    return this.getNonExpiredActivation(scope);
   }
 
   public listActive(): PlatformPanicActivation[] {
-    return [...this.activations.values()].sort((left, right) => left.directive.scope.localeCompare(right.directive.scope));
+    return [...this.activations.keys()]
+      .map((scope) => this.getNonExpiredActivation(scope))
+      .filter((activation): activation is PlatformPanicActivation => activation != null)
+      .sort((left, right) => left.directive.scope.localeCompare(right.directive.scope));
   }
 
   public evaluateExecution(check: PanicExecutionCheck): PanicExecutionDecision {
@@ -275,8 +294,59 @@ export class PlatformPanicService {
     return this.resumeReceipts.get(scope) ?? null;
   }
 
+  public startDrill(request: PanicDrillRequest): PanicDrillRecord {
+    const now = nowIso();
+    const record: PanicDrillRecord = {
+      drillId: newId("panic_drill"),
+      scope: request.scope,
+      scopeLevel: deriveScopeLevel(request.scope),
+      drillType: request.drillType,
+      initiatedBy: request.initiatedBy,
+      initiatedAt: now,
+      completedAt: null,
+      status: "in_progress",
+      directiveId: request.directiveId ?? null,
+      freezeModesTested: request.freezeModesTested ?? defaultFreezeModes("panic.drill"),
+      targetPlanes: request.targetPlanes ?? ["P1", "P2", "P3", "P4", "P5"],
+      acknowledgmentsReceived: 0,
+      acknowledgmentsExpected: (request.targetPlanes ?? ["P1", "P2", "P3", "P4", "P5"]).length,
+      findingsJson: null,
+      notes: request.notes ?? null,
+      traceId: request.traceId ?? null,
+    };
+    this.drills.set(record.drillId, record);
+    return record;
+  }
+
+  public completeDrill(drillId: string, input: {
+    readonly status: "completed" | "cancelled" | "failed";
+    readonly acknowledgmentsReceived: number;
+    readonly findingsJson?: string | null;
+    readonly notes?: string | null;
+  }): PanicDrillRecord {
+    const existing = this.drills.get(drillId);
+    if (existing == null) {
+      throw new Error(`panic.drill_not_found:${drillId}`);
+    }
+    const updated: PanicDrillRecord = {
+      ...existing,
+      status: input.status,
+      acknowledgmentsReceived: input.acknowledgmentsReceived,
+      findingsJson: input.findingsJson ?? existing.findingsJson,
+      notes: input.notes ?? existing.notes,
+      completedAt: nowIso(),
+    };
+    this.drills.set(drillId, updated);
+    return updated;
+  }
+
+  public listDrills(): PanicDrillRecord[] {
+    return [...this.drills.values()].sort((left, right) => left.initiatedAt.localeCompare(right.initiatedAt));
+  }
+
   private resolveActivation(scope: string): PlatformPanicActivation | null {
     const matches = [...this.activations.values()]
+      .filter((activation) => !this.isDirectiveExpired(activation.directive))
       .filter((activation) =>
         activation.propagationRecords.some((record) => matchesScope(record.targetScope, scope)))
       .sort((left, right) => {
@@ -289,5 +359,21 @@ export class PlatformPanicService {
         return rightSpecificity - leftSpecificity;
       });
     return matches[0] ?? null;
+  }
+
+  private getNonExpiredActivation(scope: string): PlatformPanicActivation | null {
+    const activation = this.activations.get(scope) ?? null;
+    if (activation == null) {
+      return null;
+    }
+    if (!this.isDirectiveExpired(activation.directive)) {
+      return activation;
+    }
+    this.activations.delete(scope);
+    return null;
+  }
+
+  private isDirectiveExpired(directive: PlatformPanicDirective): boolean {
+    return directive.expiresAt != null && Date.parse(directive.expiresAt) <= Date.now();
   }
 }
