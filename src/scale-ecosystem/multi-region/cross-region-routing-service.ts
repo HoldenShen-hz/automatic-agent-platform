@@ -7,7 +7,8 @@ export interface ResidencyPolicy {
   readonly allowedJurisdictions: readonly string[];
   readonly blockedRegionIds?: readonly string[];
   readonly requiredCapabilities?: readonly string[];
-  readonly allowCrossBorder: boolean;
+  /** Cross-border transfer classification - 5-step chain: local_only < jurisdiction_approved < contractual_safeguards < adequacy_decision < free_transfer */
+  readonly crossBorderTransferClass: "local_only" | "jurisdiction_approved" | "contractual_safeguards" | "adequacy_decision" | "free_transfer";
 }
 
 export interface CrossRegionRouteRequest {
@@ -76,7 +77,7 @@ export class CrossRegionRoutingService {
     const auditTrail = [
       `policy:${request.policy.policyId}`,
       `operation:${operationType}`,
-      `cross_border:${request.policy.allowCrossBorder ? "allowed" : "blocked"}`,
+      `cross_border_class:${request.policy.crossBorderTransferClass}`,
       `blocked:${blockedRegions.join(",") || "none"}`,
     ];
     return {
@@ -104,9 +105,15 @@ export class CrossRegionRoutingService {
     candidateDescriptors: readonly RegionDescriptor[],
     request: CrossRegionRouteRequest,
   ): RegionDescriptor | null {
-    if (request.primaryRegionHealthy && request.primaryRegionId != null) {
-      return candidateDescriptors.find((region) => region.regionId === request.primaryRegionId) ?? null;
+    // Writes must go to the partition leader for truth consistency
+    const leaderRegion = candidateDescriptors.find(
+      (region) => (region as RegionDescriptor & { isPartitionLeader?: boolean }).isPartitionLeader === true,
+    );
+    if (leaderRegion != null && request.primaryRegionHealthy) {
+      return leaderRegion;
     }
+
+    // If primary is unhealthy, use failover logic to find new leader
     const failoverTarget = resolveRegionFailover({
       primaryHealthy: request.primaryRegionHealthy,
       currentLeaderRegionId: request.primaryRegionId ?? null,

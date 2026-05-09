@@ -81,8 +81,13 @@ type EvidenceType =
 ## 交叉引用
 
 - [ADR-059 Agent 可解释性](./059-agent-explainability-and-decision-transparency.md)
+- [ADR-085 组织治理与知识边界](./085-organization-governance-and-knowledge-boundary.md)
 - [平台架构 §23 合规与数据治理](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 
 - `§66` 合规报告自动生成引擎
+
+## v4.3 ADR Remediation
+
+- R5-65: 本 ADR 原先引用不存在的 `§B`/`§G` 附录，已移除。合规框架映射内容保留，但引用路径已更正为实际存在的文档。

@@ -234,13 +234,22 @@ export interface KnowledgeChunkIndexedPayload {
   occurredAt: string;
 }
 
+// R13-09: Extended to support batch promotion with all objects' metadata
 export interface LearningKnowledgePromotedPayload {
-  learningObjectId: string;
-  learningType: string;
-  documentId: string;
+  learningObjectId?: string;  // Single object ID (for backward compat)
+  learningType?: string;       // Single object type (for backward compat)
+  documentId?: string;          // Single document ID (for backward compat)
   namespace: string;
   trustLevel: string;
   promotedCount: number;
+  promotedObjects?: Array<{
+    learningObjectId: string;
+    documentId: string;
+    learningType: string;
+    title: string;
+    summary: string;
+    confidence: number;
+  }>;
   occurredAt: string;
 }
 

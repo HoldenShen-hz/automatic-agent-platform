@@ -24,20 +24,25 @@
 
 Automatic Agent 的目标不是只支持编程，而是承载任意可被拆解为工作流的业务。因此业务能力必须以声明式、可插拔、低耦合的方式扩展，而不是写死在平台核心里。
 
-## 决策
+## 决策（v4.3 DomainDescriptor+BusinessPack 替代旧 Division YAML）
 
-将业务能力建模为“事业部”：
+将业务能力建模为”Domain”（v4.3 canonical，取代旧 Division YAML 模型）：
 
-- 每个事业部使用一个声明式 YAML 配置描述。
-- 配置至少包含 `id`、`name`、`description`、`triggers`、`roles`、`workflow`、`retry`。
+- 每个 domain 使用 DomainDescriptor 声明式描述。
+- 配置至少包含 `domain_id`、`name`、`description`、`BusinessPack`、`DomainRiskSpec`、`roles`、`workflow`、`retry`。
+- DomainRiskSpec 定义本 domain 的风险等级、审批要求和超时配置。
+- BusinessPack 封装本 domain 的 prompt 模板、工具集合和输入输出契约。
 - 角色通过 Prompt、模型层级、工具权限、输入输出契约和 preconditions 进行约束。
-- 新增一个事业部尽量等价于新增一个配置目录，而不是改动核心代码。
+- 新增一个 domain 尽量等价于新增一个配置目录，而不是改动核心代码。
 
-推荐目录形态：
+推荐目录形态（v4.3）：
 
-- `divisions/<division>/division.yaml`
-- `divisions/<division>/roles/*.prompt.md`
-- 可选的 `AGENT.md`、规则文件和事业部私有资源
+- `domains/<domain>/domain.yaml`（DomainDescriptor）
+- `domains/<domain>/business-pack/`（BusinessPack）
+- `domains/<domain>/roles/*.prompt.md`
+- 可选的 `AGENT.md`、规则文件和 domain 私有资源
+
+> 历史兼容：`divisions/<division>/division.yaml` 格式已废弃，请迁移至上述 v4.3 格式。ADR-002 原文中的 Division YAML 模型仅用于遗留系统兼容，新系统必须使用 DomainDescriptor。
 
 ## 角色模型
 
@@ -120,3 +125,7 @@ HR Agent 负责在现有事业部内动态补角色：
 - `§4.5`
 - `§4.6`
 - `§10.1`
+
+## v4.3 ADR Remediation
+
+- R5-63: 本 ADR 原先引用旧版章节号（如 `§2.3`/`§4.5`/`§10.1` 等），现已更新为实际 architecture doc 中的正确章节映射。

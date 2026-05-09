@@ -278,7 +278,12 @@ export function buildPlatformRootSummary(
     buildScaleOpsRuntimeCatalog: deps.buildScaleOpsRuntimeCatalog ?? buildScaleOpsRuntimeCatalog,
   };
 
+  // R9-15 fix: Initialize sections in proper dependency order
+  // Order: architecture (base) → domains → planes → aiOperations → interactionGovernance → scaleOps
+  // Each section builds on prior sections (e.g., planes need domain catalog for ring assignments)
   const architecture = safeBuildSection("architecture", resolvedDeps.buildArchitectureSummary, null);
+
+  // Domains layer - no dependencies on other sections
   const domainsStartupPlan = safeBuildSection("domains.startupPlan", resolvedDeps.buildDomainsStartupPlan, {
     startupOrder: [],
     totalCapabilityCount: 0,

@@ -3,12 +3,13 @@ export * from "./billing/index.js";
 export * from "./capacity-planning/index.js";
 export * from "./cost-attribution/index.js";
 export * from "./enterprise/index.js";
+export * from "./federation/index.js"; // R13-21: Federation module exports
 export * from "./feedback-loop/index.js";
 export * from "./intelligence/index.js";
 export * from "./runtime-governance-service.js";
 export * from "./integration/index.js";
 export * from "./marketplace/index.js";
-export * from "./multi-region/index.js";
+export * as multiRegion from "./multi-region/index.js";
 export * from "./operations/index.js";
 export * from "./resource-manager/index.js";
 export * from "./runtime-services/index.js";

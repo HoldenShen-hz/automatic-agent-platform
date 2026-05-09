@@ -196,3 +196,4 @@ interface RolloutScheduler {
 ## v4.3 ADR Remediation
 
 - A-35: 本 ADR 原先把 `L1` 级别直接命名为 `shadow`，并把 `shadow_enabled` 同时当作 rollout status 使用，根因是 release level 与 rollout status 两个维度被混成一个命名体系，继续继承了 ADR-018 的历史 shadow 话语。修复：正文现把 `L1` 级别改为 `evaluate_0`，状态改为 `evaluation_enabled`，从而把 level 和 status 清晰拆开，避免级别编号与旧 shadow 语义冲突。
+- R3-63: 本 ADR 原先定义 `ImprovementCandidateStatus` 为 12 态，根因是状态机设计时未收敛到 canonical 简化模型。修复：正文现将状态机简化为 4 态核心（candidate_created/under_review/released/rolled_back），其余中间状态归入 rollout level 维度。

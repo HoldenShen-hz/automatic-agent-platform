@@ -19,6 +19,10 @@ export class KnowledgeArchive {
   public upsert(record: ArchivedKnowledgeRecord): ArchivedKnowledgeRecord {
     const existing = this.documentsByChecksum.get(record.source.checksum);
     if (existing) {
+      // Remove old chunk records to prevent stale entries
+      for (const oldChunk of existing.chunks) {
+        this.recordsByChunkId.delete(oldChunk.chunkId);
+      }
       const updated: ArchivedKnowledgeRecord = {
         ...existing,
         document: {

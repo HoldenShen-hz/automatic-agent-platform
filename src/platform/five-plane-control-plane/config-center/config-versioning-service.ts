@@ -22,6 +22,8 @@ import {
   stableStringify,
   type ConfigDiffEntry,
 } from "./config-governance-support.js";
+import type { SqliteConnection } from "../../state-evidence/truth/sqlite/query-helper.js";
+import { queryAllOrEmpty, queryOne, execute } from "../../state-evidence/truth/sqlite/query-helper.js";
 
 /**
  * Represents a configuration version snapshot.
@@ -95,6 +97,8 @@ export interface ConfigVersioningServiceOptions {
   maxVersionsPerPath?: number;
   /** Maximum age of versions in milliseconds (default: 30 days) */
   maxVersionAgeMs?: number;
+  /** SQLite connection for durable storage (R10-07) */
+  sqliteDb?: SqliteConnection | null;
 }
 
 /**
@@ -105,22 +109,239 @@ export interface ConfigVersioningServiceOptions {
  * - Comparing any two versions
  * - Rolling back to previous configurations
  * - Audit trail of changes
+ *
+ * R10-07: Supports durable SQLite storage for snapshots and rollback points.
  */
 export class ConfigVersioningService {
   private readonly eventBus: DurableEventBus | null;
   private readonly maxVersionsPerPath: number;
   private readonly maxVersionAgeMs: number;
+  private readonly sqliteDb: SqliteConnection | null;
+  private readonly useDurableStorage: boolean;
 
-  /** In-memory storage for version snapshots */
+  /** In-memory storage for version snapshots (fallback when no SQLite) */
   private readonly snapshots = new Map<string, ConfigVersionSnapshot[]>();
 
-  /** In-memory storage for rollback points */
+  /** In-memory storage for rollback points (fallback when no SQLite) */
   private readonly rollbackPoints = new Map<string, ConfigRollbackPoint[]>();
 
   public constructor(options: ConfigVersioningServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
     this.maxVersionsPerPath = options.maxVersionsPerPath ?? 50;
     this.maxVersionAgeMs = options.maxVersionAgeMs ?? 30 * 24 * 60 * 60 * 1000;
+    this.sqliteDb = options.sqliteDb ?? null;
+    this.useDurableStorage = this.sqliteDb != null;
+
+    if (this.useDurableStorage) {
+      this.initializeDurableStorage();
+    }
+  }
+
+  /**
+   * R10-07: Initialize SQLite tables for durable storage.
+   */
+  private initializeDurableStorage(): void {
+    if (!this.sqliteDb) return;
+
+    this.sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS config_version_snapshots (
+        snapshot_id TEXT PRIMARY KEY,
+        config_path TEXT NOT NULL,
+        layer TEXT NOT NULL,
+        source_id TEXT,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        created_by TEXT,
+        reason TEXT,
+        parent_version_id TEXT,
+        key TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_config_versions_key ON config_version_snapshots(key);
+      CREATE INDEX IF NOT EXISTS idx_config_versions_created_at ON config_version_snapshots(created_at);
+
+      CREATE TABLE IF NOT EXISTS config_rollback_points (
+        rollback_id TEXT PRIMARY KEY,
+        version_id TEXT NOT NULL,
+        config_path TEXT NOT NULL,
+        layer TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        key TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_rollback_points_key ON config_rollback_points(key);
+    `);
+  }
+
+  /**
+   * R10-07: Load snapshots from SQLite for a given key.
+   */
+  private loadSnapshotsFromDb(key: string): ConfigVersionSnapshot[] {
+    if (!this.sqliteDb) return [];
+
+    interface SnapshotRow {
+      snapshot_id: string;
+      config_path: string;
+      layer: string;
+      source_id: string | null;
+      content: string;
+      content_hash: string;
+      created_at: string;
+      created_by: string | null;
+      reason: string | null;
+      parent_version_id: string | null;
+    }
+
+    const rows = queryAllOrEmpty<SnapshotRow>(
+      this.sqliteDb,
+      `SELECT * FROM config_version_snapshots WHERE key = ? ORDER BY created_at ASC`,
+      key,
+    );
+
+    return rows.map((row) => ({
+      versionId: row.snapshot_id,
+      configPath: row.config_path,
+      layer: row.layer,
+      sourceId: row.source_id,
+      content: JSON.parse(row.content),
+      contentHash: row.content_hash,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      reason: row.reason,
+      parentVersionId: row.parent_version_id,
+    }));
+  }
+
+  /**
+   * R10-07: Load rollback points from SQLite for a given key.
+   */
+  private loadRollbackPointsFromDb(key: string): ConfigRollbackPoint[] {
+    if (!this.sqliteDb) return [];
+
+    interface RollbackRow {
+      rollback_id: string;
+      version_id: string;
+      config_path: string;
+      layer: string;
+      created_at: string;
+      created_by: string;
+    }
+
+    const rows = queryAllOrEmpty<RollbackRow>(
+      this.sqliteDb,
+      `SELECT * FROM config_rollback_points WHERE key = ? ORDER BY created_at ASC`,
+      key,
+    );
+
+    return rows.map((row) => ({
+      rollbackId: row.rollback_id,
+      versionId: row.version_id,
+      configPath: row.config_path,
+      layer: row.layer,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+    }));
+  }
+
+  /**
+   * R10-07: Save a snapshot to SQLite.
+   */
+  private saveSnapshotToDb(key: string, snapshot: ConfigVersionSnapshot): void {
+    if (!this.sqliteDb) return;
+
+    execute(
+      this.sqliteDb,
+      `INSERT OR REPLACE INTO config_version_snapshots
+       (snapshot_id, config_path, layer, source_id, content, content_hash, created_at, created_by, reason, parent_version_id, key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      snapshot.versionId,
+      snapshot.configPath,
+      snapshot.layer,
+      snapshot.sourceId,
+      JSON.stringify(snapshot.content),
+      snapshot.contentHash,
+      snapshot.createdAt,
+      snapshot.createdBy,
+      snapshot.reason,
+      snapshot.parentVersionId,
+      key,
+    );
+  }
+
+  /**
+   * R10-07: Save a rollback point to SQLite.
+   */
+  private saveRollbackPointToDb(key: string, point: ConfigRollbackPoint): void {
+    if (!this.sqliteDb) return;
+
+    execute(
+      this.sqliteDb,
+      `INSERT OR REPLACE INTO config_rollback_points
+       (rollback_id, version_id, config_path, layer, created_at, created_by, key)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      point.rollbackId,
+      point.versionId,
+      point.configPath,
+      point.layer,
+      point.createdAt,
+      point.createdBy,
+      key,
+    );
+  }
+
+  /**
+   * R10-07: Get snapshots for a key, loading from DB if using durable storage.
+   */
+  private getSnapshots(key: string): ConfigVersionSnapshot[] {
+    if (this.useDurableStorage) {
+      return this.loadSnapshotsFromDb(key);
+    }
+    return this.snapshots.get(key) ?? [];
+  }
+
+  /**
+   * R10-07: Set snapshots for a key, saving to DB if using durable storage.
+   */
+  private setSnapshots(key: string, snapshots: ConfigVersionSnapshot[]): void {
+    if (this.useDurableStorage) {
+      // Delete existing and re-insert (simplified approach)
+      if (this.sqliteDb) {
+        execute(this.sqliteDb, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
+        for (const snapshot of snapshots) {
+          this.saveSnapshotToDb(key, snapshot);
+        }
+      }
+    } else {
+      this.snapshots.set(key, snapshots);
+    }
+  }
+
+  /**
+   * R10-07: Get rollback points for a key, loading from DB if using durable storage.
+   */
+  private getRollbackPointsForKey(key: string): ConfigRollbackPoint[] {
+    if (this.useDurableStorage) {
+      return this.loadRollbackPointsFromDb(key);
+    }
+    return this.rollbackPoints.get(key) ?? [];
+  }
+
+  /**
+   * R10-07: Set rollback points for a key, saving to DB if using durable storage.
+   */
+  private setRollbackPoints(key: string, points: ConfigRollbackPoint[]): void {
+    if (this.useDurableStorage) {
+      if (this.sqliteDb) {
+        execute(this.sqliteDb, `DELETE FROM config_rollback_points WHERE key = ?`, key);
+        for (const point of points) {
+          this.saveRollbackPointToDb(key, point);
+        }
+      }
+    } else {
+      this.rollbackPoints.set(key, points);
+    }
   }
 
   /**
@@ -143,7 +364,7 @@ export class ConfigVersioningService {
     reason: string | null = null,
   ): ConfigVersionSnapshot {
     const key = this.buildKey(configPath, layer, sourceId);
-    const versions = this.snapshots.get(key) ?? [];
+    const versions = this.getSnapshots(key);
 
     // Get parent version ID
     const parentVersionId = versions.length > 0 ? versions[versions.length - 1]!.versionId : null;
@@ -164,12 +385,12 @@ export class ConfigVersioningService {
 
     // Add to versions list
     versions.push(snapshot);
-    this.snapshots.set(key, versions);
+    this.setSnapshots(key, versions);
 
     // Cleanup old versions
     this.pruneVersionsInternal(key);
 
-    // Emit event
+    // Emit event - R5-54 fix: use correct event type for version creation
     this.emitVersionEvent("config.version.created", snapshot);
 
     return snapshot;
@@ -189,7 +410,7 @@ export class ConfigVersioningService {
     sourceId: string | null,
   ): ConfigVersionSnapshot | null {
     const key = this.buildKey(configPath, layer, sourceId);
-    const versions = this.snapshots.get(key);
+    const versions = this.getSnapshots(key);
     if (!versions || versions.length === 0) {
       return null;
     }
@@ -203,6 +424,42 @@ export class ConfigVersioningService {
    * @returns The version snapshot or null if not found
    */
   public getVersion(versionId: string): ConfigVersionSnapshot | null {
+    if (this.useDurableStorage && this.sqliteDb) {
+      // For durable storage, we need to search across all keys
+      // This is less efficient but necessary for ID-based lookups
+      interface SnapshotRow {
+        snapshot_id: string;
+        config_path: string;
+        layer: string;
+        source_id: string | null;
+        content: string;
+        content_hash: string;
+        created_at: string;
+        created_by: string | null;
+        reason: string | null;
+        parent_version_id: string | null;
+      }
+      const rows = queryAllOrEmpty<SnapshotRow>(
+        this.sqliteDb,
+        `SELECT * FROM config_version_snapshots WHERE snapshot_id = ?`,
+        versionId,
+      );
+      if (rows.length === 0) return null;
+      const row = rows[0]!;
+      return {
+        versionId: row.snapshot_id,
+        configPath: row.config_path,
+        layer: row.layer,
+        sourceId: row.source_id,
+        content: JSON.parse(row.content),
+        contentHash: row.content_hash,
+        createdAt: row.created_at,
+        createdBy: row.created_by,
+        reason: row.reason,
+        parentVersionId: row.parent_version_id,
+      };
+    }
+
     for (const versions of this.snapshots.values()) {
       const found = versions.find((v) => v.versionId === versionId);
       if (found) {
@@ -226,7 +483,7 @@ export class ConfigVersioningService {
     sourceId: string | null,
   ): ConfigVersionSnapshot[] {
     const key = this.buildKey(configPath, layer, sourceId);
-    return this.snapshots.get(key) ?? [];
+    return this.getSnapshots(key);
   }
 
   /**
@@ -277,7 +534,7 @@ export class ConfigVersioningService {
     }
 
     const key = this.buildKey(configPath, layer, sourceId);
-    const points = this.rollbackPoints.get(key) ?? [];
+    const points = this.getRollbackPointsForKey(key);
 
     const rollbackPoint: ConfigRollbackPoint = {
       rollbackId: newId("rbp"),
@@ -289,7 +546,7 @@ export class ConfigVersioningService {
     };
 
     points.push(rollbackPoint);
-    this.rollbackPoints.set(key, points);
+    this.setRollbackPoints(key, points);
 
     this.emitRollbackPointEvent("config.rollback_point.created", rollbackPoint);
 
@@ -310,7 +567,7 @@ export class ConfigVersioningService {
     sourceId: string | null,
   ): ConfigRollbackPoint[] {
     const key = this.buildKey(configPath, layer, sourceId);
-    return this.rollbackPoints.get(key) ?? [];
+    return this.getRollbackPointsForKey(key);
   }
 
   /**
@@ -381,8 +638,20 @@ export class ConfigVersioningService {
    */
   public pruneAllVersions(): number {
     let totalPruned = 0;
-    for (const key of this.snapshots.keys()) {
-      totalPruned += this.pruneVersionsInternal(key);
+    if (this.useDurableStorage && this.sqliteDb) {
+      // For durable storage, get distinct keys from the database
+      interface KeyRow { key: string; }
+      const keys = queryAllOrEmpty<KeyRow>(
+        this.sqliteDb,
+        `SELECT DISTINCT key FROM config_version_snapshots`,
+      );
+      for (const { key } of keys) {
+        totalPruned += this.pruneVersionsInternal(key);
+      }
+    } else {
+      for (const key of this.snapshots.keys()) {
+        totalPruned += this.pruneVersionsInternal(key);
+      }
     }
     return totalPruned;
   }
@@ -398,8 +667,8 @@ export class ConfigVersioningService {
    * Internal prune logic for a specific key.
    */
   private pruneVersionsInternal(key: string): number {
-    const versions = this.snapshots.get(key);
-    if (!versions) {
+    const versions = this.getSnapshots(key);
+    if (!versions || versions.length === 0) {
       return 0;
     }
 
@@ -420,11 +689,16 @@ export class ConfigVersioningService {
     }
 
     if (countPrunedByAge === versions.length) {
-      this.snapshots.delete(key);
+      // All versions pruned - delete from storage
+      if (this.useDurableStorage && this.sqliteDb) {
+        execute(this.sqliteDb, `DELETE FROM config_version_snapshots WHERE key = ?`, key);
+      } else {
+        this.snapshots.delete(key);
+      }
       return totalPruned;
     }
 
-    this.snapshots.set(key, retainedVersions);
+    this.setSnapshots(key, retainedVersions);
     return totalPruned;
   }
 

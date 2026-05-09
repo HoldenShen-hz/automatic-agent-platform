@@ -392,7 +392,8 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           fromLevel: item.currentAutonomy,
           toLevel: nextLevel,
           trigger: item.incidents > 0 ? "incident_response" : "rule_engine",
-          approvedBy: "auto",
+          // R5-44: Add approval gate - promotions require manual approval, demotions can be auto
+          approvedBy: eventType === "agent.autonomy.promoted" ? "pending_approval" : "auto",
           evidence,
         };
         changeEvents.push(changeEvent);

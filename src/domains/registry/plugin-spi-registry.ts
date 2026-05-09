@@ -529,7 +529,7 @@ export class PluginSpiRegistry {
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
-        promise.finally(() => clearTimeout(timer)).catch(() => undefined);
+        promise.finally(() => clearTimeout(timer));
       });
       try {
         return await Promise.race([promise, timeoutPromise]);

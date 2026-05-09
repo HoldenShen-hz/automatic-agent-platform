@@ -15,9 +15,9 @@
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
-  harnessRunId: string | null;
-  nodeRunId: string | null;
-  attemptId: string | null;
+  harnessRunId: string;  // v4.3: required for budget tracking (INV-BUDGET-001)
+  nodeRunId: string | null;   // null when no node scheduled yet
+  attemptId: string | null;  // null before attempt starts
   taskId: string | null;
   sessionId: string | null;
   tenantId: string | null;
@@ -50,6 +50,7 @@ interface ModelRouteDecision {
 
 规则：
 
+- `harnessRunId` 为必填，用于预算追踪（INV-BUDGET-001）；`nodeRunId` / `attemptId` 在节点未调度时可为空。
 - `harnessRunId / nodeRunId / attemptId` 为权威关联键，用于追踪路由决策上下文。
 - `preferredModel` 仅代表偏好，不代表强制 pin；若调用方显式 pin，必须单独建模。
 - `requiredCapabilities` 不满足时必须 fail-close，不得静默降级到不兼容模型。
@@ -92,5 +93,6 @@ type RouteFailureCode =
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
 - T-10: 路由策略枚举 cost_optimized/latency_optimized/quality_optimized 3种，架构§19定义5种含 compliance_constrained/hybrid。根因：旧路由文档只覆盖性能/成本三目标，没有把合规约束与多目标折中策略写进 canonical request。修复：`ModelRouteRequest.routingStrategy` 已补齐 5 种规范枚举，并增加 `compliance_constrained` 与 `hybrid` 的治理约束。
+- T-21: 原 `ModelRouteRequest.harnessRunId` 为可选，无法满足 INV-BUDGET-001 预算追踪要求。修复：`harnessRunId` 改为必填，`nodeRunId` / `attemptId` 在节点未调度时可为空；路由决策上下文以 `harnessRunId` 为预算主体关联键。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

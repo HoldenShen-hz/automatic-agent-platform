@@ -46,6 +46,7 @@ export interface ApprovalAmountSnapshot {
 export interface ApprovalRouteSnapshot {
   readonly snapshotId: string;
   readonly createdAt: string;
+  readonly expiresAt: string;
   readonly orgVersion: string;
   readonly policyVersion: string;
   readonly requesterId: string;
@@ -65,6 +66,9 @@ export interface ApprovalRouteSnapshot {
     readonly blockedApproverIds: readonly string[];
   };
   readonly legalEntityApprovalRoles: readonly string[];
+  // R9-33: Routing mode support for parallel/countersign
+  readonly routingMode?: ApprovalRoutingMode;
+  readonly routeGraph?: readonly ApprovalRouteNode[];
 }
 
 export interface ApprovalRouteDecision {
@@ -113,9 +117,10 @@ export function resolveAmountRoute(
   nodes: readonly OrgNode[],
   request: ApprovalRouteRequest,
   rules: readonly AmountThresholdRule[],
+  fxSnapshot: ApprovalFxSnapshot | null = null,
 ): OrgNode | null {
   const normalizedAmount = normalizeApprovalAmount(request);
-  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item)) ?? null;
+  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item, fxSnapshot)) ?? null;
   if (!matchedRule) {
     return nodes.find((item) => item.nodeType === "company") ?? null;
   }
@@ -194,11 +199,87 @@ function collectAncestorIds(node: OrgNode, nodes: readonly OrgNode[]): Set<strin
   return ancestors;
 }
 
+/**
+ * R9-33: Approval routing mode - supports linear, parallel, and countersign workflows
+ */
+export type ApprovalRoutingMode = "linear" | "parallel" | "countersign";
+
+/**
+ * R9-33: Approval step node for representing parallel/countersign routing
+ */
+export interface ApprovalRouteNode {
+  readonly approverIds: readonly string[];
+  readonly mode: ApprovalRoutingMode;
+  readonly threshold?: number; // For countersign: required number of approvals
+  readonly label?: string;
+}
+
+/**
+ * R9-33: Resolved approval route with support for parallel/countersign chains
+ */
+export interface ResolvedApprovalRouteChain {
+  readonly linearizedChain: readonly string[]; // Flat list for backwards compatibility
+  readonly routeGraph: readonly ApprovalRouteNode[];
+  readonly routingMode: ApprovalRoutingMode;
+}
+
+function resolveApprovalRouteWithMode(
+  nodes: readonly OrgNode[],
+  request: ApprovalRouteRequest,
+  delegationMap: Readonly<Record<string, string>>,
+  routingMode: ApprovalRoutingMode,
+): ResolvedApprovalRouteChain {
+  const strategies: RoutingStrategy[] = [];
+  if (request.amount != null && request.amount.value > 100_000) {
+    // R9-33: High-value requests (>100k CNY) get parallel routing for faster approval
+    routingMode = "parallel";
+  }
+  if (request.conflictedApproverIds.length > 2) {
+    // R9-33: High conflict scenarios require countersign to ensure accountability
+    routingMode = "countersign";
+  }
+
+  const matched = nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
+    ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
+    ?? nodes[0];
+  const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
+  const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
+  const baseApproverChain = applySodPolicy(request, delegatedChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
+
+  if (routingMode === "parallel" || routingMode === "countersign") {
+    // R9-33: For parallel/countersign, split approvers into groups
+    const threshold = routingMode === "countersign" ? Math.ceil(baseApproverChain.length / 2) : baseApproverChain.length;
+    const routeGraph: ApprovalRouteNode[] = [{
+      approverIds: baseApproverChain,
+      mode: routingMode,
+      threshold,
+      label: routingMode === "countersign" ? "Countersign Required" : "Parallel Approval",
+    }];
+    return {
+      linearizedChain: baseApproverChain,
+      routeGraph,
+      routingMode,
+    };
+  }
+
+  // Linear mode: single chain
+  return {
+    linearizedChain: baseApproverChain,
+    routeGraph: [{
+      approverIds: baseApproverChain,
+      mode: "linear",
+      label: "Sequential Approval",
+    }],
+    routingMode: "linear",
+  };
+}
+
 export function resolveApprovalRoute(
   nodes: readonly OrgNode[],
   request: ApprovalRouteRequest,
   delegationMap: Readonly<Record<string, string>> = {},
   amountRules: readonly AmountThresholdRule[] = [],
+  routingMode: ApprovalRoutingMode = "linear",
 ): ApprovalRouteDecision {
   const strategies: RoutingStrategy[] = amountRules.length > 0
     ? [new AmountBasedRoutingStrategy(amountRules), new OrgChartRoutingStrategy()]
@@ -209,7 +290,10 @@ export function resolveApprovalRoute(
     ?? nodes[0];
   const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
-  const approverChain = applySodPolicy(request, delegatedChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
+
+  // R9-33: Use mode-aware resolution for parallel/countersign support
+  const resolved = resolveApprovalRouteWithMode(nodes, request, delegationMap, routingMode);
+  const approverChain = resolved.linearizedChain;
   const amount = normalizeApprovalAmount(request);
   const matchedBoundary = matched?.legalEntityBoundary ?? null;
   const requesterBoundary = nodes.find((item) => item.orgNodeId === request.orgNodeId)?.legalEntityBoundary ?? null;
@@ -219,6 +303,7 @@ export function resolveApprovalRoute(
   const routeSnapshot: ApprovalRouteSnapshot = {
     snapshotId: `approval_route_snapshot:${request.requesterId}:${matched?.orgNodeId ?? request.orgNodeId}:${strategy.strategyId}`,
     createdAt: amount.fxSnapshot?.capturedAt ?? "1970-01-01T00:00:00.000Z",
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // R5-35: 24h default expiry
     orgVersion: request.orgVersion,
     policyVersion: request.policyVersion,
     requesterId: request.requesterId,
@@ -238,6 +323,9 @@ export function resolveApprovalRoute(
       blockedApproverIds: (request.conflictedApproverIds ?? []).filter((approverId) => delegatedChain.includes(approverId)),
     },
     legalEntityApprovalRoles,
+    // R9-33: Include routing mode in snapshot
+    routingMode: resolved.routingMode,
+    routeGraph: resolved.routeGraph,
   };
   return {
     matchedOrgNodeId: matched?.orgNodeId ?? request.orgNodeId,
@@ -290,17 +378,40 @@ export function revalidateApprovalRoute(
   };
 }
 
-function normalizeThresholdCny(rule: AmountThresholdRule): number {
+// R9-34: Configurable default FX rate for USD->CNY conversion
+// This can be overridden via RouteEngineOptions.defaultFxRateUsdToCny
+const DEFAULT_USD_TO_CNY_RATE = 7.2;
+
+/**
+ * R9-34: Route engine configuration options
+ */
+export interface RouteEngineOptions {
+  /** Default USD to CNY exchange rate fallback when no FX snapshot is available */
+  readonly defaultFxRateUsdToCny?: number;
+  /** Maximum age of FX snapshot before requiring refresh (in milliseconds) */
+  readonly fxSnapshotMaxAgeMs?: number;
+}
+
+function normalizeThresholdCny(
+  rule: AmountThresholdRule,
+  fxSnapshot: ApprovalFxSnapshot | null = null,
+  defaultFxRate: number = DEFAULT_USD_TO_CNY_RATE,
+): number {
   if (rule.maxAmountCny != null) {
     return rule.maxAmountCny;
   }
   if (rule.maxAmountUsd != null) {
-    return rule.maxAmountUsd * 7.2;
+    // R9-34: Use FX snapshot rate if available, otherwise fall back to configured default
+    const rate = fxSnapshot?.rate ?? defaultFxRate;
+    return rule.maxAmountUsd * rate;
   }
   return Number.POSITIVE_INFINITY;
 }
 
-function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountSnapshot {
+function normalizeApprovalAmount(
+  request: ApprovalRouteRequest,
+  defaultFxRate: number = DEFAULT_USD_TO_CNY_RATE,
+): ApprovalAmountSnapshot {
   if (request.amount != null) {
     const currency = request.amount.currency.toUpperCase();
     if (currency === "CNY") {
@@ -331,11 +442,11 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
-    amountCny: legacyAmountUsd * 7.2,
+    amountCny: legacyAmountUsd * defaultFxRate,
     fxSnapshot: {
       baseCurrency: "USD",
       quoteCurrency: "CNY",
-      rate: 7.2,
+      rate: defaultFxRate,
       source: "legacy_amount_usd_default",
       capturedAt: "1970-01-01T00:00:00.000Z",
     },

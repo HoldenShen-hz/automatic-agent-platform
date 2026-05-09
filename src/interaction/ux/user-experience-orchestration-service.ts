@@ -2,6 +2,7 @@ import {
   UserPortalService,
   type DomainOnboardingWizard,
   type DraggableComponent,
+  type UserPortalSessionRepository,
   type UserPortalContext,
   type UserPortalSession,
 } from "./onboarding/index.js";
@@ -44,8 +45,16 @@ export interface UserExperienceBootstrapResult {
 }
 
 export class UserExperienceOrchestrationService {
-  private readonly portalService = new UserPortalService();
-  private readonly workflowBuilderService = new WorkflowBuilderService();
+  private readonly portalService: UserPortalService;
+  private readonly workflowBuilderService: WorkflowBuilderService;
+
+  public constructor(options: {
+    readonly portalRepository?: UserPortalSessionRepository;
+    readonly workflowBuilderService?: WorkflowBuilderService;
+  } = {}) {
+    this.portalService = new UserPortalService(options.portalRepository);
+    this.workflowBuilderService = options.workflowBuilderService ?? new WorkflowBuilderService();
+  }
 
   public async bootstrap(request: UserExperienceBootstrapRequest): Promise<UserExperienceBootstrapResult> {
     const sessionId = await this.portalService.createSession(request.session, request.context);

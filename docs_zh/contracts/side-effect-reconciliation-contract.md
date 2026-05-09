@@ -29,9 +29,12 @@
 `SideEffectStatus`：
 
 - `proposed`
+- `approved`
 - `reserved`
 - `committing`
+- `awaiting_confirmation` (equivalent to `confirming`)
 - `confirmed`
+- `committed`
 - `ambiguous`
 - `reconciling`
 - `compensating`

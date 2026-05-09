@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import type { RuntimeLifecycleRepository } from "../../../platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 
 export interface UserPortalSession {
   readonly userId: string;
@@ -72,6 +73,13 @@ export interface DraggableComponent {
   readonly icon: string;
   readonly domainId: string;
   readonly riskLevel: "low" | "medium" | "high" | "critical";
+  readonly sideEffectProfile?: {
+    readonly mayCommitExternalEffect: boolean;
+    readonly reversible: boolean;
+  };
+  readonly compensationModel?: {
+    readonly strategy: "none" | "retry_only" | "idempotent_replay" | "automatic_rollback" | "manual_rollback";
+  };
   readonly configSchema: Record<string, unknown>;
   readonly previewDescription: string;
 }
@@ -106,7 +114,7 @@ export interface VisualWorkflowBuilder {
   };
 }
 
-interface StoredPortalSession {
+export interface StoredPortalSession {
   readonly sessionId: string;
   readonly session: UserPortalSession;
   readonly createdAt: string;
@@ -114,8 +122,80 @@ interface StoredPortalSession {
   readonly context: UserPortalContext;
 }
 
-export class UserPortalService implements UserPortalPort {
+export interface UserPortalSessionRepository {
+  saveSession(record: StoredPortalSession): void;
+  loadSession(sessionId: string): StoredPortalSession | null;
+}
+
+export class InMemoryUserPortalSessionRepository implements UserPortalSessionRepository {
   private readonly sessions = new Map<string, StoredPortalSession>();
+
+  public saveSession(record: StoredPortalSession): void {
+    this.sessions.set(record.sessionId, record);
+  }
+
+  public loadSession(sessionId: string): StoredPortalSession | null {
+    return this.sessions.get(sessionId) ?? null;
+  }
+}
+
+export class DurableUserPortalSessionRepository implements UserPortalSessionRepository {
+  public constructor(
+    private readonly runtimeRepository: RuntimeLifecycleRepository,
+    private readonly options: { readonly prefix?: string } = {},
+  ) {}
+
+  public saveSession(record: StoredPortalSession): void {
+    const key = this.buildStorageKey(record.sessionId);
+    this.runtimeRepository.updateWorkflowState(
+      key,
+      "portal_session",
+      0,
+      JSON.stringify(record),
+      record.createdAt,
+      record.sessionId,
+    );
+  }
+
+  public loadSession(sessionId: string): StoredPortalSession | null {
+    const state = this.runtimeRepository.getWorkflowState(this.buildStorageKey(sessionId));
+    if (state == null) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(state.outputsJson) as Partial<StoredPortalSession>;
+      if (
+        typeof parsed.sessionId !== "string"
+        || parsed.session == null
+        || typeof parsed.createdAt !== "string"
+        || parsed.mode == null
+        || parsed.context == null
+      ) {
+        return null;
+      }
+      return {
+        sessionId: parsed.sessionId,
+        session: parsed.session,
+        createdAt: parsed.createdAt,
+        mode: parsed.mode,
+        context: parsed.context,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private buildStorageKey(sessionId: string): string {
+    return `${this.options.prefix ?? "portal_session"}:${sessionId}`;
+  }
+}
+
+export class UserPortalService implements UserPortalPort {
+  private readonly repository: UserPortalSessionRepository;
+
+  public constructor(repository: UserPortalSessionRepository = new InMemoryUserPortalSessionRepository()) {
+    this.repository = repository;
+  }
 
   public async createSession(session: UserPortalSession, context?: UserPortalContext): Promise<string> {
     const sessionId = newId("portal_session");
@@ -125,7 +205,7 @@ export class UserPortalService implements UserPortalPort {
       requiresSso: false,
     };
     const mode = this.resolveMode(resolvedContext);
-    this.sessions.set(sessionId, {
+    this.repository.saveSession({
       sessionId,
       session,
       createdAt: nowIso(),
@@ -136,7 +216,7 @@ export class UserPortalService implements UserPortalPort {
   }
 
   public getSession(sessionId: string): StoredPortalSession | null {
-    return this.sessions.get(sessionId) ?? null;
+    return this.repository.loadSession(sessionId);
   }
 
   public resolveMode(context: UserPortalContext): PlatformMode {
@@ -322,6 +402,13 @@ export class UserPortalService implements UserPortalPort {
               icon: "play",
               domainId: "platform",
               riskLevel: "low",
+              sideEffectProfile: {
+                mayCommitExternalEffect: false,
+                reversible: true,
+              },
+              compensationModel: {
+                strategy: "none",
+              },
               configSchema: { type: "object", properties: {} },
               previewDescription: "由用户手动启动流程。",
             },
@@ -335,6 +422,13 @@ export class UserPortalService implements UserPortalPort {
             icon: "bolt",
             domainId,
             riskLevel: this.resolveDomainRiskLevel(domainId, description),
+            sideEffectProfile: {
+              mayCommitExternalEffect: true,
+              reversible: domainId !== "finance",
+            },
+            compensationModel: {
+              strategy: domainId === "finance" ? "manual_rollback" : "automatic_rollback",
+            },
             configSchema: { type: "object", properties: { target: { type: "string" } } },
             previewDescription: `在 ${domainId} 域中执行核心动作。`,
           })),
@@ -349,6 +443,13 @@ export class UserPortalService implements UserPortalPort {
                 icon: "shield",
                 domainId: "platform",
                 riskLevel: "high" as const,
+                sideEffectProfile: {
+                  mayCommitExternalEffect: false,
+                  reversible: true,
+                },
+                compensationModel: {
+                  strategy: "retry_only" as const,
+                },
                 configSchema: { type: "object", properties: { approverGroup: { type: "string" } } },
                 previewDescription: "在执行前校验预算、权限和审批策略。",
               },
@@ -364,6 +465,13 @@ export class UserPortalService implements UserPortalPort {
               icon: "file-text",
               domainId: "platform",
               riskLevel: "low",
+              sideEffectProfile: {
+                mayCommitExternalEffect: true,
+                reversible: true,
+              },
+              compensationModel: {
+                strategy: "idempotent_replay" as const,
+              },
               configSchema: { type: "object", properties: { format: { type: "string" } } },
               previewDescription: "输出摘要、报表或通知。",
             },
@@ -398,42 +506,116 @@ export class UserPortalService implements UserPortalPort {
     readonly reasons: readonly string[];
   } {
     const normalized = description.toLowerCase();
-    const lexicon: Readonly<Record<string, readonly string[]>> = {
-      advertising: ["marketing", "campaign", "广告", "投放", "增长", "roi", "线索"],
-      finance: ["finance", "invoice", "budget", "财务", "预算", "付款", "发票", "工资"],
-      hr: ["recruit", "hire", "hr", "招聘", "入职", "候选人", "员工"],
-      customer_support: ["support", "customer", "客服", "工单", "ticket", "sla", "投诉"],
-      engineering_ops: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布", "生产环境", "pipeline"],
-    };
+
+    // Rich domain scoring signals
+    interface DomainScoringSignal {
+      readonly domainId: string;
+      readonly keywords: readonly string[];
+      readonly baseScore: number;
+      readonly riskMultiplier: number;
+      readonly userModeBonus?: Record<string, number>;
+    }
+
+    const DOMAIN_SCORING_SIGNALS: readonly DomainScoringSignal[] = [
+      {
+        domainId: "advertising",
+        keywords: ["marketing", "campaign", "广告", "投放", "增长", "roi", "线索", "素材", "推广", "advertise"],
+        baseScore: 2,
+        riskMultiplier: 1.2,
+        userModeBonus: { executive: 1 },
+      },
+      {
+        domainId: "finance",
+        keywords: ["finance", "invoice", "budget", "财务", "预算", "付款", "发票", "工资", "账务", "结算", "转账"],
+        baseScore: 2,
+        riskMultiplier: 1.5,
+        userModeBonus: { executive: 2, operator: 1 },
+      },
+      {
+        domainId: "hr",
+        keywords: ["recruit", "hire", "hr", "招聘", "入职", "候选人", "员工", "人事", "绩效", "培训"],
+        baseScore: 2,
+        riskMultiplier: 1.0,
+        userModeBonus: { operator: 1 },
+      },
+      {
+        domainId: "customer_support",
+        keywords: ["support", "customer", "客服", "工单", "ticket", "sla", "投诉", "售后", "服务"],
+        baseScore: 2,
+        riskMultiplier: 1.1,
+      },
+      {
+        domainId: "engineering_ops",
+        keywords: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布", "生产环境", "pipeline", "ci/cd", "测试", "staging"],
+        baseScore: 2,
+        riskMultiplier: 1.3,
+        userModeBonus: { operator: 2 },
+      },
+    ];
+
+    const HIGH_RISK_KEYWORD_PATTERN = /(?:deploy|production|prod|付款|工资|预算|审批|删除|清空)/i;
     const scores = new Map<string, number>();
     const reasons = new Map<string, string[]>();
-    for (const [domainId, keywords] of Object.entries(lexicon)) {
+
+    for (const signal of DOMAIN_SCORING_SIGNALS) {
       let score = 0;
-      for (const keyword of keywords) {
+      const matchedKeywords: string[] = [];
+
+      for (const keyword of signal.keywords) {
         if (normalized.includes(keyword.toLowerCase())) {
-          score += /(deploy|production|prod|付款|工资|预算)/i.test(keyword) ? 3 : 2;
-          reasons.set(domainId, [...(reasons.get(domainId) ?? []), `keyword:${keyword}`]);
+          const isHighRisk = HIGH_RISK_KEYWORD_PATTERN.test(keyword);
+          score += signal.baseScore * (isHighRisk ? 1.5 : 1);
+          matchedKeywords.push(keyword);
         }
       }
-      if (context?.historicalDomainPreferences?.includes(domainId)) {
+
+      // Apply user mode bonus
+      if (context?.userMode && signal.userModeBonus != null) {
+        const modeBonus = signal.userModeBonus[context.userMode];
+        if (modeBonus != null) {
+          score += modeBonus;
+          matchedKeywords.push(`mode_bonus:${context.userMode}`);
+        }
+      }
+
+      // Apply enterprise/integration bonus
+      if (context?.requiresSso && signal.domainId === "engineering_ops") {
+        score += 1;
+        matchedKeywords.push("enterprise_integration");
+      }
+
+      // Historical affinity bonus
+      if (context?.historicalDomainPreferences?.includes(signal.domainId)) {
         score += 2;
-        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "history_affinity"]);
+        matchedKeywords.push("history_affinity");
       }
-      if (context?.userMode === "executive" && domainId === "finance") {
-        score += 1;
-        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "executive_budget_focus"]);
+
+      // Apply risk multiplier for high-risk signals
+      if (score > 0 && signal.riskMultiplier > 1) {
+        score = Math.round(score * signal.riskMultiplier * 10) / 10;
+        matchedKeywords.push(`risk_adjusted:${signal.riskMultiplier}x`);
       }
-      if (context?.requiresSso && domainId === "engineering_ops") {
-        score += 1;
-        reasons.set(domainId, [...(reasons.get(domainId) ?? []), "enterprise_integration"]);
-      }
+
       if (score > 0) {
-        scores.set(domainId, score);
+        scores.set(signal.domainId, score);
+        reasons.set(signal.domainId, matchedKeywords.map((k) => `signal:${k}`));
       }
     }
+
+    // Add general_ops as fallback if no domain matched
+    if (scores.size === 0 && normalized.length > 0) {
+      scores.set("general_ops", 1);
+      reasons.set("general_ops", ["fallback:general_ops"]);
+    }
+
     const ranked = [...scores.entries()]
-      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .sort((left, right) => {
+        const scoreDelta = right[1] - left[1];
+        if (scoreDelta !== 0) return scoreDelta;
+        return left[0].localeCompare(right[0]);
+      })
       .map(([domainId]) => domainId);
+
     const domains = ranked.length > 0 ? ranked : normalized.length > 0 ? ["general_ops"] : [];
     return {
       domains,

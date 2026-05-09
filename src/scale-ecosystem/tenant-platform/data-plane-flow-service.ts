@@ -609,34 +609,38 @@ export class DataPlaneFlowService {
    * @throws TenantBoundaryError if movement crosses a boundary
    */
   private assertScopeCompatibility(sourceNamespace: DataNamespaceRecord, targetNamespace: DataNamespaceRecord): void {
-    // Check tenant boundary
-    if (sourceNamespace.tenantId != null && targetNamespace.tenantId != null && sourceNamespace.tenantId !== targetNamespace.tenantId) {
+    // R13-31: Fix tenantId:null bypass - proper cross-scope detection
+    // Check tenant boundary (either null means cross-scope if other is set)
+    const sourceTenant = sourceNamespace.tenantId;
+    const targetTenant = targetNamespace.tenantId;
+    if (sourceTenant !== targetTenant) {
+      // Mismatch - either both different, or one is set and other is null (cross-scope to/from global)
       throw new TenantBoundaryError("data_plane.cross_tenant_movement_denied", "data_plane.cross_tenant_movement_denied", {
         retryable: false,
         details: {
-          sourceTenantId: sourceNamespace.tenantId,
-          targetTenantId: targetNamespace.tenantId,
+          sourceTenantId: sourceTenant,
+          targetTenantId: targetTenant,
         },
       });
     }
 
     // Check organization boundary
-    if (
-      sourceNamespace.organizationId != null
-      && targetNamespace.organizationId != null
-      && sourceNamespace.organizationId !== targetNamespace.organizationId
-    ) {
+    const sourceOrg = sourceNamespace.organizationId;
+    const targetOrg = targetNamespace.organizationId;
+    if (sourceOrg !== targetOrg) {
       throw new TenantBoundaryError("data_plane.cross_organization_movement_denied", "data_plane.cross_organization_movement_denied", {
         retryable: false,
         details: {
-          sourceOrganizationId: sourceNamespace.organizationId,
-          targetOrganizationId: targetNamespace.organizationId,
+          sourceOrganizationId: sourceOrg,
+          targetOrganizationId: targetOrg,
         },
       });
     }
 
     // Check workspace boundary
-    if (sourceNamespace.workspaceId != null && targetNamespace.workspaceId != null && sourceNamespace.workspaceId !== targetNamespace.workspaceId) {
+    const sourceWorkspace = sourceNamespace.workspaceId;
+    const targetWorkspace = targetNamespace.workspaceId;
+    if (sourceWorkspace !== targetWorkspace) {
       throw new TenantBoundaryError("data_plane.cross_workspace_movement_denied", "data_plane.cross_workspace_movement_denied", {
         retryable: false,
         details: {

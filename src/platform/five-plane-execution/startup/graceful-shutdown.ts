@@ -36,7 +36,7 @@ export interface GracefulShutdownOptions {
 
 export interface ShutdownHandler {
   name: string;
-  handler: () => Promise<void>;
+  handler: (signal?: AbortSignal) => Promise<void>;
   timeoutMs?: number;
   critical?: boolean;
 }
@@ -226,19 +226,18 @@ export class GracefulShutdown {
 
     for (const { name, handler, timeoutMs, critical } of [...this.handlers].reverse()) {
       const handlerTimeout = timeoutMs ?? this.timeoutMs;
+      const abortController = new AbortController();
+      let timer: NodeJS.Timeout | null = null;
       try {
-        let timer: NodeJS.Timeout | null = null;
         const timeoutPromise = new Promise<void>((_, reject) => {
           timer = setTimeout(() => {
+            abortController.abort();
             reject(new Error(`Handler ${name} timed out after ${handlerTimeout}ms`));
           }, handlerTimeout);
           timer.unref?.();
         });
 
-        await Promise.race([handler(), timeoutPromise]);
-        if (timer != null) {
-          clearTimeout(timer);
-        }
+        await Promise.race([handler(abortController.signal), timeoutPromise]);
         handlersRun++;
         this.logger.log({
           level: "debug",
@@ -254,6 +253,11 @@ export class GracefulShutdown {
           message: "Shutdown handler failed",
           data: { handlerName: name, error: errorMsg, critical },
         });
+      } finally {
+        if (timer != null) {
+          clearTimeout(timer);
+        }
+        abortController.abort();
       }
     }
 

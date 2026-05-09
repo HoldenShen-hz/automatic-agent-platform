@@ -3,6 +3,10 @@ import type { DomainValidatorPlugin } from "../../domains/registry/plugin-spi.js
 interface BasicValidationContract {
   requiredFields?: string[];
   fieldTypes?: Record<string, "string" | "number" | "boolean" | "array" | "object">;
+  expectedOutcomeFields?: string[];
+  highRiskFields?: string[];
+  qualityThreshold?: number;
+  requiresHumanReviewOnRisk?: boolean;
 }
 
 /** R11-14: Quality scoring weights configuration */
@@ -17,13 +21,26 @@ interface QualityEvaluationResult {
   readonly valid: boolean;
   readonly errors: Array<{ field: string; message: string; severity: "error" | "warning" }>;
   readonly suggestions: string[];
-  /** R11-14: Quality score from 0-1 */
   readonly qualityScore: number;
-  /** R11-14: Breakdown of score factors */
+  readonly qualityThreshold: number;
   readonly scoreBreakdown: {
     readonly completenessScore: number;
     readonly typeAccuracyScore: number;
     readonly suggestionPenalty: number;
+  };
+  readonly goalDeviation: {
+    readonly missingOutcomes: string[];
+    readonly unexpectedFields: string[];
+    readonly severity: "none" | "low" | "medium" | "high";
+  };
+  readonly riskFindings: Array<{
+    readonly code: string;
+    readonly message: string;
+    readonly severity: "low" | "medium" | "high";
+  }>;
+  readonly harnessDecision: {
+    readonly action: "accept" | "repair" | "requires_human" | "reject";
+    readonly reasonCodes: string[];
   };
 }
 
@@ -96,8 +113,50 @@ function validateWithQualityScoring(
     typeAccuracyScore = Math.max(0, 1 - (typeMismatchCount / totalTypedFields));
   }
 
+  const expectedOutcomeFields = contract.expectedOutcomeFields ?? [];
+  const missingOutcomes = expectedOutcomeFields.filter((field) => !(field in payload) || payload[field] == null);
+  const unexpectedFields = expectedOutcomeFields.length === 0
+    ? []
+    : Object.keys(payload).filter(
+      (field) =>
+        !expectedOutcomeFields.includes(field)
+        && !(contract.highRiskFields ?? []).includes(field)
+        && !(contract.requiredFields ?? []).includes(field)
+        && !Object.prototype.hasOwnProperty.call(contract.fieldTypes ?? {}, field),
+    );
+  const goalDeviationSeverity = missingOutcomes.length >= 2
+    ? "high"
+    : missingOutcomes.length === 1
+      ? "medium"
+      : unexpectedFields.length > 0
+        ? "low"
+        : "none";
+  for (const field of missingOutcomes) {
+    suggestions.push(`Populate expected outcome field "${field}".`);
+  }
+
+  const riskFindings: Array<{
+    code: string;
+    message: string;
+    severity: "low" | "medium" | "high";
+  }> = (contract.highRiskFields ?? [])
+    .filter((field) => payload[field] != null)
+    .map((field) => ({
+      code: `risk.high_value_field:${field}`,
+      message: `High-risk field "${field}" requires additional review.`,
+      severity: "high" as const,
+    }));
+  if (contract.requiresHumanReviewOnRisk && riskFindings.length === 0 && Object.keys(payload).length > 0) {
+    riskFindings.push({
+      code: "risk.manual_review_required",
+      message: "Contract requires human review for this evaluator result.",
+      severity: "medium" as const,
+    });
+  }
+
   // Calculate suggestion penalty
   const suggestionPenalty = Math.min(1, suggestions.length * scoringConfig.suggestionPenalty);
+  const qualityThreshold = contract.qualityThreshold ?? 0.75;
 
   // Calculate overall quality score
   const qualityScore = Math.max(
@@ -110,16 +169,50 @@ function validateWithQualityScoring(
     )
   );
 
+  const reasonCodes = [
+    ...(errors.length > 0 ? ["validator.schema_errors"] : []),
+    ...(missingOutcomes.length > 0 ? ["validator.goal_deviation"] : []),
+    ...(riskFindings.length > 0 ? ["validator.risk_detected"] : []),
+    ...(qualityScore < qualityThreshold ? ["validator.quality_below_threshold"] : []),
+  ];
+  const harnessDecision = riskFindings.some((finding) => finding.severity === "high")
+    ? {
+        action: "requires_human" as const,
+        reasonCodes: reasonCodes.length > 0 ? reasonCodes : ["validator.high_risk_requires_human"],
+      }
+    : errors.length > 0 && qualityScore < qualityThreshold
+      ? {
+          action: "reject" as const,
+          reasonCodes: reasonCodes.length > 0 ? reasonCodes : ["validator.reject"],
+        }
+      : errors.length > 0 || missingOutcomes.length > 0
+        ? {
+            action: "repair" as const,
+            reasonCodes: reasonCodes.length > 0 ? reasonCodes : ["validator.repair"],
+          }
+        : {
+            action: "accept" as const,
+            reasonCodes: reasonCodes.length > 0 ? reasonCodes : ["validator.accept"],
+          };
+
   return {
-    valid: errors.length === 0,
+    valid: errors.length === 0 && missingOutcomes.length === 0,
     errors,
     suggestions,
     qualityScore: Number(qualityScore.toFixed(2)),
+    qualityThreshold,
     scoreBreakdown: {
       completenessScore: Number(completenessScore.toFixed(2)),
       typeAccuracyScore: Number(typeAccuracyScore.toFixed(2)),
       suggestionPenalty: Number(suggestionPenalty.toFixed(2)),
     },
+    goalDeviation: {
+      missingOutcomes,
+      unexpectedFields,
+      severity: goalDeviationSeverity,
+    },
+    riskFindings,
+    harnessDecision,
   };
 }
 
@@ -146,6 +239,13 @@ function createBasicValidatorPluginInternal(pluginId: string): DomainValidatorPl
         valid: result.valid,
         errors: result.errors,
         suggestions: result.suggestions,
+        evaluation: {
+          qualityScore: result.qualityScore,
+          qualityThreshold: result.qualityThreshold,
+          goalDeviation: result.goalDeviation,
+          riskFindings: result.riskFindings,
+          harnessDecision: result.harnessDecision,
+        },
       };
     },
   };
@@ -189,9 +289,13 @@ export function createBasicEvaluatorPluginWithScoring(
         valid: result.valid,
         errors: result.errors,
         suggestions: result.suggestions,
-        // R11-14: Include quality score in result
-        qualityScore: result.qualityScore,
-        scoreBreakdown: result.scoreBreakdown,
+        evaluation: {
+          qualityScore: result.qualityScore,
+          qualityThreshold: result.qualityThreshold,
+          goalDeviation: result.goalDeviation,
+          riskFindings: result.riskFindings,
+          harnessDecision: result.harnessDecision,
+        },
       };
     },
   };

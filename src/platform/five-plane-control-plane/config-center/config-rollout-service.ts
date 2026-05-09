@@ -430,20 +430,26 @@ export class ConfigRolloutService {
   }
 
   private resolveInitialStage(targetPercentage: number): RolloutStage {
-    if (targetPercentage <= 0) {
-      return this.stages.find((stage) => stage.phase === RolloutPhase.PENDING) ?? this.stages[0]!;
+    const pendingStage = this.stages.find((stage) => stage.phase === RolloutPhase.PENDING);
+    if (targetPercentage <= 0 && pendingStage != null) {
+      return pendingStage;
     }
 
-    const firstCanaryStage = this.stages.find((stage) =>
-      stage.percentage > 0 &&
-      stage.phase !== RolloutPhase.CANCELLED &&
-      stage.phase !== RolloutPhase.FULL,
-    );
-    if (targetPercentage >= 100 && firstCanaryStage != null) {
-      return firstCanaryStage;
+    const progressiveStages = this.stages.filter((stage) => (
+      stage.phase !== RolloutPhase.PENDING &&
+      stage.phase !== RolloutPhase.CANCELLED
+    ));
+    if (progressiveStages.length === 0) {
+      return this.stages[0]!;
     }
 
-    return this.stages.find((stage) => stage.percentage >= targetPercentage) ?? this.stages[this.stages.length - 1]!;
+    // Full rollouts must still begin at the initial canary stage so that
+    // health gates can observe 5%/25%/50% progression before 100%.
+    if (targetPercentage >= 100) {
+      return progressiveStages[0]!;
+    }
+
+    return progressiveStages.find((stage) => stage.percentage >= targetPercentage) ?? progressiveStages.at(-1)!;
   }
 
   private passesHealthGate(snapshot: RolloutHealthSnapshot | undefined): boolean {

@@ -66,12 +66,14 @@ interface StructuredLog {
 }
 ```
 
-### Trace span 层级
+### Trace span 层级（修复 step deprecated 问题）
+
+> 注意：R5-64 修复 - `step` 术语已在 v4.3 中废弃，请使用 `node_run`/`node_attempt` 替代。
 
 - span 语义应按 `service -> operation -> node_run -> node_attempt` 组织，旧 `step` 术语仅允许出现在兼容投影视图中。
 
 - OTel SDK 实现分布式追踪
-- span 层级：service → operation → step
+- span 层级：service → operation → node_run → node_attempt（废弃 `step`）
 
 ## 后果
 

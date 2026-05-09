@@ -128,6 +128,18 @@ function getTemplateKey(taskType?: string): string {
 }
 
 /**
+ * OperationalDirective - sent when degradation level changes
+ * R4-47: DegradationController must emit OperationalDirective on level change
+ */
+export interface OperationalDirective {
+  readonly type: "degradation_escalation" | "degradation_deescalation";
+  readonly timestamp: string;
+  readonly fromLevel: DegradationLevel;
+  readonly toLevel: DegradationLevel;
+  readonly reason: string;
+}
+
+/**
  * DegradationController
  *
  * Routes LLM requests through D0-D4 degradation levels based on provider health.
@@ -144,6 +156,8 @@ export class DegradationController {
   private readonly fallbackService: ModelGatewayFallbackService;
   private readonly cacheService: ModelGatewayCacheService<string>;
   private readonly templates: Record<string, string>;
+  /** R4-47: Optional emitter for OperationalDirective events on degradation level changes */
+  private readonly operationalDirectiveEmitter: ((directive: OperationalDirective) => void) | undefined;
 
   constructor(options: {
     primaryProvider: UnifiedChatProvider;
@@ -152,6 +166,8 @@ export class DegradationController {
     cacheService: ModelGatewayCacheService<string>;
     templates?: Record<string, string>;
     config?: Partial<DegradationConfig>;
+    /** R4-47: Optional callback to emit OperationalDirective on level changes */
+    onOperationalDirective?: (directive: OperationalDirective) => void;
   }) {
     this.primaryProvider = options.primaryProvider;
     this.fallbackProvider = options.fallbackProvider ?? null;
@@ -159,6 +175,7 @@ export class DegradationController {
     this.cacheService = options.cacheService;
     this.templates = { ...DEFAULT_TEMPLATE_RESPONSES, ...(options.templates ?? {}) };
     this.config = { ...DEFAULT_DEGRADATION_CONFIG, ...options.config };
+    this.operationalDirectiveEmitter = options.onOperationalDirective ?? undefined;
   }
 
   /**
@@ -422,21 +439,42 @@ export class DegradationController {
 
   /**
    * Escalates to the next degradation level.
+   * R4-47: Emits OperationalDirective on level change.
    */
   public escalate(): void {
     if (this.currentLevel < DegradationLevel.D4) {
+      const fromLevel = this.currentLevel;
       this.currentLevel++;
       this.consecutiveHealthyCount = 0;
+      this.emitOperationalDirective("degradation_escalation", fromLevel, this.currentLevel, this.lastEscalationReason ?? "error_threshold_exceeded");
     }
   }
 
   /**
    * De-escalates to the previous degradation level if health criteria are met.
+   * R4-47: Emits OperationalDirective on level change.
    */
   public deescalate(): void {
     if (this.currentLevel > DegradationLevel.D0) {
+      const fromLevel = this.currentLevel;
       this.currentLevel--;
       this.consecutiveHealthyCount = 0;
+      this.emitOperationalDirective("degradation_deescalation", fromLevel, this.currentLevel, "health_recovered");
+    }
+  }
+
+  /**
+   * R4-47: Emit OperationalDirective if emitter is configured.
+   */
+  private emitOperationalDirective(type: OperationalDirective["type"], fromLevel: DegradationLevel, toLevel: DegradationLevel, reason: string): void {
+    if (this.operationalDirectiveEmitter) {
+      this.operationalDirectiveEmitter({
+        type,
+        timestamp: new Date().toISOString(),
+        fromLevel,
+        toLevel,
+        reason,
+      });
     }
   }
 
@@ -486,14 +524,20 @@ export class DegradationController {
       errorRate < this.config.deescalateErrorRateThreshold &&
       this.currentLevel > this.config.maxAutoDeescalateLevel;
 
+    // Check for de-escalation conditions
+    const shouldDeescalate =
+      errorRate < this.config.deescalateErrorRateThreshold &&
+      this.currentLevel > this.config.maxAutoDeescalateLevel;
+
     if (shouldDeescalate) {
+      const healthyCountBefore = this.consecutiveHealthyCount;
       this.consecutiveHealthyCount++;
       if (this.consecutiveHealthyCount >= this.config.deescalateMinHealthyCount) {
         this.deescalate();
         return {
           action: "deescalate",
           newLevel: this.currentLevel,
-          reason: `recovered_after_${this.consecutiveHealthyCount}_checks`,
+          reason: `recovered_after_${healthyCountBefore}_checks`,
         };
       }
       return {

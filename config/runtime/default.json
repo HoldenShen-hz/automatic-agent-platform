@@ -19,5 +19,15 @@
   },
   "configDriftReconciler": {
     "interval": 300000
+  },
+  "healthCheckIntervalMs": 30000,
+  "shutdownGracePeriodMs": 10000,
+  "logLevel": "info",
+  "metricsEnabled": true,
+  "tracingEnabled": true,
+  "retryPolicy": {
+    "maxRetries": 3,
+    "backoffMs": 1000,
+    "maxBackoffMs": 30000
   }
 }

@@ -13,6 +13,40 @@ export const ComplianceReportTemplateSchema = z.object({
   legalVersion: z.string().default("current"),
   effectiveDate: z.string().default("1970-01-01"),
   migrationRule: z.string().default("no_migration_required"),
+  // Extended fields for comprehensive compliance reporting
+  /** Controls that must be covered by this report. */
+  controls: z.array(z.object({
+    controlId: z.string().min(1),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    owner: z.string().optional(),
+    frequency: z.enum(["continuous", "daily", "weekly", "monthly", "quarterly", "annually"]).optional(),
+    evidenceRequirements: z.array(z.string()).default([]),
+  })).default([]),
+  /** Evidence types required per control. */
+  controlEvidenceMapping: z.record(z.string(), z.array(z.string())).default({}),
+  /** Required evidence quality thresholds. */
+  qualityThresholds: z.object({
+    minCompleteness: z.number().min(0).max(1).default(0.8),
+    minFreshnessHours: z.number().min(0).default(72),
+    minTrustworthiness: z.number().min(0).max(1).default(0.7),
+    minTamperProof: z.number().min(0).max(1).default(0.7),
+  }).default({}),
+  /** Attestation requirements. */
+  attestation: z.object({
+    requireHumanSignoff: z.boolean().default(false),
+    signoffDueDays: z.number().min(0).default(7),
+    escalationOwner: z.string().optional(),
+    timeoutAction: z.enum(["escalate_owner", "freeze_report", "expire_report"]).default("escalate_owner"),
+  }).default({}),
+  /** Auditor access requirements. */
+  auditorAccess: z.object({
+    requiredPermissions: z.array(z.string()).default([]),
+    allowPiiAccess: z.boolean().default(false),
+    redactionRequired: z.boolean().default(true),
+  }).default({}),
+  /** Framework-specific metadata. */
+  frameworkMetadata: z.record(z.string(), z.unknown()).default({}),
 });
 
 export type ComplianceReportTemplate = z.infer<typeof ComplianceReportTemplateSchema>;

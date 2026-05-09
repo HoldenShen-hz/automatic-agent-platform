@@ -59,17 +59,29 @@ export function createCsrfInterceptor(token: string | null = readCsrfToken()): R
   };
 }
 
+export interface OfflineQueueRequest extends RestClientRequest {
+  readonly queuedAt: string;
+  readonly queueId: string;
+}
+
 export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientInterceptor {
   return {
     onRequest(request) {
       if (request.method !== "GET" && typeof navigator !== "undefined" && navigator.onLine === false) {
+        const queueId = crypto.randomUUID();
         queue.enqueue({
-          id: crypto.randomUUID(),
+          id: queueId,
           endpoint: request.path,
           method: request.method,
           body: request.body,
           createdAt: new Date().toISOString(),
         });
+        // Short-circuit the request by returning a mock response that signals queued state
+        return {
+          ...request,
+          queueId,
+          queuedAt: new Date().toISOString(),
+        } as unknown as RestClientRequest;
       }
       return request;
     },

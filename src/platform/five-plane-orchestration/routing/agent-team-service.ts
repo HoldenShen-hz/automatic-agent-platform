@@ -137,13 +137,35 @@ export class AgentTeamService {
       },
     ];
 
+    // R9-13 fix: Compute adaptive execution loop based on risk level
+    // Low-risk changes go through minimal stages, high-risk go through full pipeline
+    const executionLoop = computeAdaptiveExecutionLoop(riskLevel);
+
     return {
       teamId: `team:${workflow.workflow.workflowId}:${input.taskId}`,
       taskId: input.taskId,
       workflowId: workflow.workflow.workflowId,
       riskLevel,
       lanes,
-      executionLoop: ["plan", "build", "review", "validate", "repair", "validate", "release"],
+      executionLoop,
     };
+  }
+}
+
+/**
+ * R9-13 fix: Computes adaptive execution loop based on risk level.
+ * Low-risk changes use minimal stages, high-risk use full validation pipeline.
+ */
+function computeAdaptiveExecutionLoop(riskLevel: "low" | "medium" | "high"): AgentTeamStage[] {
+  switch (riskLevel) {
+    case "low":
+      // Minimal loop for low-risk: skip review/repair stages
+      return ["plan", "build", "release"];
+    case "medium":
+      // Standard loop with validation but no repair loop
+      return ["plan", "build", "review", "validate", "release"];
+    case "high":
+      // Full loop with repair cycle for high-risk changes
+      return ["plan", "build", "review", "validate", "repair", "validate", "release"];
   }
 }

@@ -267,7 +267,7 @@ execution plane 完成单次 attempt 后，truth 输出必须先落 `NodeAttempt
 - `last_heartbeat_at`
 - `max_concurrency`
 - `queue_affinity?`
-- `isolation_level` (`standard | hardened | strict`)
+- `isolation_level` (`read_only | workspace_write | scoped_external_access | restricted_exec`)
 - `saturation`（负载饱和度）
 - `repo_version?`
 - `remote_session_status?`（`connecting | connected | reconnecting | degraded | failed | viewer_only`）
@@ -430,5 +430,6 @@ Execution plane 的核心不是“把运行挪到多进程”，而是把 execut
 
 - T-14: 本文原先把 `PlanDTO + steps[] + dag` 和 `DualChannelStepOutput / FeedbackSignal` 直接写成执行平面主输入输出，根因是旧 execution plane 文档沿用了 ADR-060/079 的线性 plan 与反馈桥接草案，没有随着 `PlanGraphBundle` / `NodeAttemptReceipt` 成为 canonical truth 一起重写对象模型。修复：正文现把 P3 -> P4 输入收敛到 `PlanGraphBundle`，P4 truth 输出收敛到 `NodeAttemptReceipt`，其余对象只允许作为派生 view。
 - T-75: 本文原先在 Execute -> Feedback 边界里继续使用 `nodeAttemptReceiptId`，根因是 execution plane contract 在 v4.3 重命名后没有把 API 级字段形状同步收口。修复：正文现统一使用 `receiptId` 作为回执主键。
+- T-20: 原 `WorkerSnapshot.isolation_level` 引用废弃枚举 `standard/hardened/strict`，未对齐架构 §25.8 定义的 `read_only/workspace_write/scoped_external_access/restricted_exec`。修复：§10 `WorkerSnapshot` 字段已更新为规范枚举；`ExecutionTicket.required_isolation_level` 字段（§8）保持一致。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -11,80 +11,68 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  analyzeSlaBreach,
   detectSlaBreach,
   type SlaObservation,
   type SlaCommitment,
-} from "../../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
+} from "../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2131: Burn-rate and error-budget tracking
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("breach-detector-2131: SlaObservation includes burn-rate fields", () => {
-  // Issue #2131: SlaObservation should track burn-rate related fields
-  // The current SlaObservation interface does not include:
-  // - errorBudgetUsed
-  // - errorBudgetRemaining
-  // - burnRate
-  // - timeToBreach
-
+test("breach-detector-2131: SlaObservation accepts request-count and window metadata for burn-rate analysis", () => {
   const observation: SlaObservation = {
     latencyMs: 100,
     successRate: 0.99,
     queueWaitMs: 500,
+    requestCount: 10_000,
+    windowMs: 60_000,
   };
 
-  // These fields don't exist in the current interface
-  // This test documents the missing functionality
-
-  // Verify basic fields exist
-  assert.equal(observation.latencyMs, 100);
-  assert.equal(observation.successRate, 0.99);
-  assert.equal(observation.queueWaitMs, 500);
+  assert.equal(observation.requestCount, 10_000);
+  assert.equal(observation.windowMs, 60_000);
 });
 
-test("breach-detector-2131: detectSlaBreach does not calculate burn-rate", () => {
-  // Issue #2131: detectSlaBreach currently only checks if thresholds are exceeded
-  // It should also track burn-rate and predict time to breach
-
+test("breach-detector-2131: analyzeSlaBreach calculates burn-rate and error-budget state", () => {
   const observation: SlaObservation = {
     latencyMs: 100,
-    successRate: 0.99,
+    successRate: 0.95,
     queueWaitMs: 500,
+    requestCount: 10_000,
+    windowMs: 60_000,
   };
 
   const commitment: SlaCommitment = {
     maxLatencyMs: 100,
     minSuccessRate: 0.99,
     maxQueueWaitMs: 500,
+    warningBurnRateThreshold: 1,
+    criticalBurnRateThreshold: 2,
   };
 
-  const breaches = detectSlaBreach(observation, commitment);
-
-  // Current behavior: only returns breach codes, no burn-rate calculation
-  assert.ok(Array.isArray(breaches));
+  const analysis = analyzeSlaBreach(observation, commitment);
+  assert.ok(Math.abs(analysis.budget.errorBudget - 100) < 1e-9);
+  assert.ok(Math.abs(analysis.budget.errorBudgetConsumed - 500) < 1e-9);
+  assert.ok(Math.abs(analysis.budget.errorBudgetRemaining + 400) < 1e-9);
+  assert.equal(analysis.budget.burnRate, 5);
+  assert.ok(analysis.alerts.includes("sla.error_budget_burn_critical"));
+  assert.ok(analysis.alerts.includes("sla.error_budget_exhausted"));
 });
 
-test("breach-detector-2131: SlaCommitment does not include error-budget fields", () => {
-  // Issue #2131: SlaCommitment should include error budget configuration
-  // The current interface does not include:
-  // - errorBudgetPercent
-  // - budgetWindowMs
-  // - burnRateThreshold
-
+test("breach-detector-2131: SlaCommitment includes error-budget thresholds", () => {
   const commitment: SlaCommitment = {
     maxLatencyMs: 100,
     minSuccessRate: 0.99,
     maxQueueWaitMs: 500,
+    errorBudgetPercent: 0.01,
+    budgetWindowMs: 60_000,
+    warningBurnRateThreshold: 1,
+    criticalBurnRateThreshold: 2,
   };
 
-  // These fields don't exist in the current interface
-  // This test documents the missing functionality
-
-  // Verify basic fields exist
-  assert.equal(commitment.maxLatencyMs, 100);
-  assert.equal(commitment.minSuccessRate, 0.99);
-  assert.equal(commitment.maxQueueWaitMs, 500);
+  assert.equal(commitment.errorBudgetPercent, 0.01);
+  assert.equal(commitment.budgetWindowMs, 60_000);
 });
 
 test("breach-detector-2131: burn-rate tracking requires historical observations", () => {
@@ -101,45 +89,24 @@ test("breach-detector-2131: burn-rate tracking requires historical observations"
   assert.equal(observations.length, 3);
 });
 
-test("breach-detector-2131: error-budget calculation is missing", () => {
-  // Issue #2131: error-budget should be calculated as:
-  // errorBudget = (1 - errorRate) * totalRequests * timeWindow
-  // burnRate = currentErrorRate / targetErrorRate
-
+test("breach-detector-2131: detectSlaBreach remains backward-compatible for breach codes", () => {
   const currentSuccessRate = 0.95;
-  const targetSuccessRate = 0.99;
-  const totalRequests = 10000;
+  const breaches = detectSlaBreach(
+    {
+      latencyMs: 100,
+      successRate: currentSuccessRate,
+      queueWaitMs: 500,
+      requestCount: 10_000,
+      windowMs: 60_000,
+    },
+    {
+      maxLatencyMs: 100,
+      minSuccessRate: 0.99,
+      maxQueueWaitMs: 500,
+    },
+  );
 
-  // Calculate error rates
-  const currentErrorRate = 1 - currentSuccessRate; // 0.05
-  const targetErrorRate = 1 - targetSuccessRate; // 0.01
-
-  // Calculate error budget (allowed errors in window)
-  const errorBudget = targetErrorRate * totalRequests; // 100 errors
-
-  // Calculate budget consumed
-  const errorsConsumed = currentErrorRate * totalRequests; // 500 errors
-  const budgetRemaining = errorBudget - errorsConsumed; // -400 (over budget)
-
-  // Calculate burn rate
-  const burnRate = currentErrorRate / targetErrorRate; // 5x
-
-  // These calculations are not performed by current implementation
-  assert.equal(burnRate, 5);
-  assert.equal(budgetRemaining, -400);
-});
-
-test("breach-detector-2131: time-to-breach prediction is missing", () => {
-  // Issue #2131: Should predict when breach will occur based on burn-rate
-  // Formula: timeToBreach = remainingBudget / (currentErrorRate * requestsPerMs)
-
-  const remainingBudget = -400; // Over budget already
-  const errorsPerMs = 0.05 * 10000 / 60000; // Simplified
-  const timeToBreachMs = remainingBudget / errorsPerMs;
-
-  // Negative time means already in breach
-  // Current implementation doesn't calculate this
-  assert.ok(timeToBreachMs < 0);
+  assert.ok(breaches.includes("sla.success_rate_breach"));
 });
 
 test("breach-detector-2131: multiple burn-rate breach types", () => {

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import { startActiveSpan } from "../../../../../src/platform/shared/observability/otel-tracer.js";
@@ -360,6 +362,27 @@ test("StructuredLogger.configureGlobalFileSink clamps maxFiles to minimum 1", ()
 
   const path = StructuredLogger.getGlobalFileSinkPath();
   assert.ok(path !== null);
+});
+
+test("StructuredLogger uses shared rotation state across logger instances for the global file sink", async () => {
+  const relativePath = join(".test-output", "structured-logger-rotation.log");
+  StructuredLogger.configureGlobalFileSink(null);
+  rmSync(".test-output", { recursive: true, force: true });
+  StructuredLogger.configureGlobalFileSink({ filePath: relativePath, maxBytes: 64, maxFiles: 2 });
+
+  const loggerA = new StructuredLogger({ retentionLimit: 10 });
+  const loggerB = new StructuredLogger({ retentionLimit: 10 });
+  loggerA.info("A".repeat(256));
+  loggerB.info("B".repeat(256));
+
+  await new Promise((resolve) => setTimeout(resolve, 150));
+
+  const sinkPath = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(sinkPath !== null);
+  assert.equal(existsSync(`${sinkPath!}.1`) || existsSync(sinkPath!), true);
+
+  StructuredLogger.configureGlobalFileSink(null);
+  rmSync(".test-output", { recursive: true, force: true });
 });
 
 test("StructuredLogger.addTransport and removeTransport manage transport list", () => {

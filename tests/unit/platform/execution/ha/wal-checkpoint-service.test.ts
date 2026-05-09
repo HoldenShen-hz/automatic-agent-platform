@@ -44,6 +44,10 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
         get(...args: unknown[]) {
           const table = extractTable(sql);
           const data = storage.get(table) ?? [];
+          if (sql.toLowerCase().includes("max(sequence_number)")) {
+            const maxSequence = data.reduce((max, row) => Math.max(max, Number(row.seq ?? row.sequence_number ?? 0)), 0);
+            return { max_sequence: maxSequence };
+          }
           const whereIdx = sql.toLowerCase().indexOf("where");
           if (whereIdx > 0) {
             return data.find(row => Object.values(row).some(v => args.includes(v))) as Record<string, unknown> | undefined;
@@ -256,6 +260,26 @@ test("WalCheckpointService writeWalEntry returns WalEntry with sequence number",
   assert.equal(entry.taskId, "task-1");
   assert.equal(entry.sequenceNumber, 1);
   assert.deepStrictEqual(entry.payload, { key: "value" });
+});
+
+test("WalCheckpointService resumes sequence numbers from persisted WAL state", () => {
+  const db = createMockDatabase();
+  const firstService = new WalCheckpointService({
+    db,
+    haLevel: "HA_2",
+    config: { walEnabled: true },
+  });
+  firstService.writeWalEntry({ entryType: "execution_start", executionId: "exec-1" });
+  firstService.writeWalEntry({ entryType: "execution_complete", executionId: "exec-1" });
+
+  const resumedService = new WalCheckpointService({
+    db,
+    haLevel: "HA_2",
+    config: { walEnabled: true },
+  });
+  const resumedEntry = resumedService.writeWalEntry({ entryType: "checkpoint", executionId: "exec-1" });
+
+  assert.equal(resumedEntry.sequenceNumber, 3);
 });
 
 test("WalCheckpointService writeWalEntry increments sequence for each entry", () => {

@@ -258,6 +258,55 @@ test("isProtectedMessage protects compaction_summary type", () => {
   assert.equal(summaryMsg.protected, true);
 });
 
+test("compactContext populates kvCacheFixedPrefixCacheKey for preserved system prefix", () => {
+  const db = createMockDb();
+  const messages = [
+    createTestMessage({ id: "sys-1", direction: "system", messageType: "assistant_plan", content: "System prefix" }),
+    createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "Hello" }),
+  ];
+  const store = createMockStore(messages);
+  const service = new ContextCompactionService(db, store);
+
+  const result = service.compactContext({
+    taskId: "task-1",
+    sessionId: "sess-1",
+    maxContextTokens: 128,
+    kvCacheConfig: {
+      strategy: {
+        kvCacheEnabled: true,
+      },
+    } as any,
+  });
+
+  assert.equal(typeof result.kvCacheFixedPrefixCacheKey, "string");
+  assert.equal(result.kvCacheFixedPrefixCacheKey?.length, 64);
+});
+
+test("compactContext populates kvCacheDomainBlockCacheKey for non-prefix conversation body", () => {
+  const db = createMockDb();
+  const messages = [
+    createTestMessage({ id: "sys-1", direction: "system", messageType: "assistant_plan", content: "System prefix" }),
+    createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "Body request" }),
+    createTestMessage({ id: "assistant-1", direction: "outbound", messageType: "assistant_response", content: "Body response" }),
+  ];
+  const store = createMockStore(messages);
+  const service = new ContextCompactionService(db, store);
+
+  const result = service.compactContext({
+    taskId: "task-1",
+    sessionId: "sess-1",
+    maxContextTokens: 128,
+    kvCacheConfig: {
+      strategy: {
+        kvCacheEnabled: true,
+      },
+    } as any,
+  });
+
+  assert.equal(typeof result.kvCacheDomainBlockCacheKey, "string");
+  assert.equal(result.kvCacheDomainBlockCacheKey?.length, 64);
+});
+
 test("isProtectedMessage protects feedback and learning summaries from compaction", () => {
   const db = createMockDb();
   const messages = [

@@ -53,6 +53,29 @@ export interface ReplicationResult {
   errors: readonly string[];
 }
 
+/**
+ * Replication lag measurement for RPO tracking
+ */
+export interface ReplicationLagMeasurement {
+  readonly measurementId: string;
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly measuredAt: string;
+  readonly sourceSequence: number;
+  readonly targetSequence: number;
+  readonly lagMs: number;
+  readonly pendingEvents: number;
+  readonly exceedsRpo: boolean;
+}
+
+/**
+ * Lag measurement configuration
+ */
+export interface LagMeasurementConfig {
+  readonly rpoMs: number;
+  readonly measureIntervalMs: number;
+}
+
 export interface DataReplicatorConfig {
   sourceRegionId: string;
   targetRegionIds: readonly string[];
@@ -65,6 +88,10 @@ export interface DataReplicatorConfig {
   retryAttempts: number;
   checksumAlgorithm: "sha256" | "md5";
   emit?: (targetRegionId: string, event: ReplicationEvent) => void;
+  /** RPO target in milliseconds for lag measurement */
+  rpoMs?: number;
+  /** Lag measurement configuration */
+  lagMeasurementConfig?: LagMeasurementConfig;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +165,8 @@ export class DataReplicatorService {
   private checkpoints = new Map<string, ReplicationCheckpoint>();
   private readonly eventHandlers = new Map<string, (event: ReplicationEvent) => Promise<void>>();
   private readonly emit: (targetRegionId: string, event: ReplicationEvent) => void;
+  private readonly lagMeasurements = new Map<string, ReplicationLagMeasurement>();
+  private readonly sourceSequences = new Map<string, number>();
 
   public constructor(config: DataReplicatorConfig) {
     this.config = { ...config };
@@ -336,6 +365,68 @@ export class DataReplicatorService {
       });
     }
     return status;
+  }
+
+  /**
+   * Record source sequence number for lag measurement
+   */
+  public recordSourceSequence(targetRegionId: string, sequence: number): void {
+    const key = `${this.config.sourceRegionId}:${targetRegionId}`;
+    this.sourceSequences.set(key, sequence);
+  }
+
+  /**
+   * Measure replication lag for a target region
+   */
+  public measureReplicationLag(targetRegionId: string): ReplicationLagMeasurement | null {
+    const key = `${this.config.sourceRegionId}:${targetRegionId}`;
+    const checkpoint = this.checkpoints.get(key);
+    const sourceSequence = this.sourceSequences.get(key) ?? 0;
+    const targetSequence = checkpoint?.sequenceNumber ?? 0;
+    const pendingEvents = Math.max(0, sourceSequence - targetSequence);
+
+    // Estimate lag based on pending events and flush interval
+    const rpoMs = this.config.rpoMs ?? 30000;
+    const lagMs = pendingEvents * (this.config.flushIntervalMs / Math.max(1, this.config.batchSize));
+
+    const measurement: ReplicationLagMeasurement = {
+      measurementId: `lag_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      sourceRegionId: this.config.sourceRegionId,
+      targetRegionId,
+      measuredAt: nowIso(),
+      sourceSequence,
+      targetSequence,
+      lagMs,
+      pendingEvents,
+      exceedsRpo: lagMs > rpoMs,
+    };
+
+    this.lagMeasurements.set(key, measurement);
+    return measurement;
+  }
+
+  /**
+   * Get current replication lag for a target region
+   */
+  public getCurrentLag(targetRegionId: string): number {
+    const key = `${this.config.sourceRegionId}:${targetRegionId}`;
+    const measurement = this.lagMeasurements.get(key);
+    return measurement?.lagMs ?? 0;
+  }
+
+  /**
+   * Check if RPO is being met for a target region
+   */
+  public isRpoMet(targetRegionId: string): boolean {
+    const measurement = this.measureReplicationLag(targetRegionId);
+    return measurement ? !measurement.exceedsRpo : true;
+  }
+
+  /**
+   * Get all lag measurements
+   */
+  public getLagMeasurements(): ReadonlyMap<string, ReplicationLagMeasurement> {
+    return new Map(this.lagMeasurements);
   }
 
   private async sendToTarget(targetRegionId: string, event: ReplicationEvent): Promise<void> {

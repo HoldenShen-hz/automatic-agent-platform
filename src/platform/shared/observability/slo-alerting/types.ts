@@ -45,6 +45,7 @@ export interface SliRecord {
 
 /**
  * Definition of an SLO with target and evaluation parameters.
+ * §R14-06: SLO includes per-domain scope for multi-tenant/multi-service isolation.
  */
 export interface SloDefinition {
   id: string;
@@ -55,6 +56,7 @@ export interface SloDefinition {
   operator: "lte" | "gte" | "lt" | "gt";
   windowMinutes: number;
   status: SloStatus;
+  domain: string | null; // Per-domain scope for SLO isolation
   createdAt: string;
   updatedAt: string;
 }
@@ -145,6 +147,7 @@ CREATE TABLE IF NOT EXISTS slo_definitions (
   operator TEXT NOT NULL DEFAULT 'lte',
   window_minutes INTEGER NOT NULL DEFAULT 60,
   status TEXT NOT NULL DEFAULT 'unknown',
+  domain TEXT NULL,  -- Per-domain scope for SLO isolation (§R14-06)
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

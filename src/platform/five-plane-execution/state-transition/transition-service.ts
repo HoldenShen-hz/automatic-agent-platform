@@ -498,39 +498,80 @@ class TaskTerminalTransitionService {
     const workflowTerminal: WorkflowStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
+    const shouldTransitionExecution = input.currentExecutionStatus !== executionTerminal;
 
     taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
     workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
     sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
-    executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
+    if (shouldTransitionExecution) {
+      executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
+    }
 
     this.repository.updateTaskOutput(input.taskId, input.taskOutputJson, input.context.occurredAt);
-    this.repository.updateTaskStatus(
+    // R9-02 fix: Use CAS update to detect concurrent modifications
+    const taskAffected = this.repository.updateTaskStatusCas(
       input.taskId,
+      input.currentTaskStatus,
       input.terminalStatus,
       input.context.occurredAt,
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
       input.context.occurredAt,
     );
+    if (taskAffected === 0) {
+      throw new Error(
+        `task.terminal_transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`,
+      );
+    }
     const currentWorkflow = this.repository.getWorkflowState(input.taskId);
     const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
 
-    this.repository.updateWorkflowState(
+    // R9-02 fix: Use CAS update for workflow
+    const workflowAffected = this.repository.updateWorkflowStateCas(
       input.taskId,
+      currentWorkflow?.currentStepIndex ?? 0,
+      input.currentWorkflowStatus,
       workflowTerminal,
       terminalStepIndex,
       input.outputsJson,
       input.context.occurredAt,
     );
-    this.repository.updateSessionStatus(input.sessionId, sessionTerminal, input.context.occurredAt);
-    this.repository.updateExecutionStatus(
-      input.executionId,
-      executionTerminal,
+    if (workflowAffected === 0) {
+      throw new Error(
+        `workflow.terminal_transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`,
+      );
+    }
+
+    // R9-02 fix: Use CAS update for session
+    const sessionAffected = this.repository.updateSessionStatusCas(
+      input.sessionId,
+      input.currentSessionStatus,
+      sessionTerminal,
       input.context.occurredAt,
-      null,
-      input.context.occurredAt,
-      input.terminalStatus === "failed" ? input.context.reasonCode : null,
     );
+    if (sessionAffected === 0) {
+      throw new Error(
+        `session.terminal_transition_cas_failed:${input.sessionId}:${input.currentSessionStatus}->${sessionTerminal}`,
+      );
+    }
+
+    // R9-02 fix: Use CAS update for execution
+    if (shouldTransitionExecution) {
+      const executionAffected = this.repository.updateExecutionStatusCas(
+        input.executionId,
+        input.currentExecutionStatus,
+        executionTerminal,
+        input.context.occurredAt,
+        null,
+        input.context.occurredAt,
+        input.terminalStatus === "failed" ? input.context.reasonCode : null,
+      );
+      if (executionAffected === 0) {
+        throw new Error(
+          `execution.terminal_transition_cas_failed:${input.executionId}:${input.currentExecutionStatus}->${executionTerminal}`,
+        );
+      }
+    }
+
     this.repository.createTier1StatusEvent({
       taskId: input.taskId,
       executionId: input.executionId,

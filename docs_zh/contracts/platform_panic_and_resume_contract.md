@@ -21,7 +21,7 @@
 - `issued_at`
 - `freeze_modes`
 - `allow_list?`
-- `expires_at?`
+- `expires_at`
 
 `scope` canonical enum:
 

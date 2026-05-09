@@ -9,7 +9,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assessCommand, CommandSafetyClassifier } from "../../../../../src/platform/execution/tool-executor/command-security.js";
+import {
+  assessCommand,
+  CommandSafetyClassifier,
+  createDefaultCommandPolicies,
+} from "../../../../../src/platform/execution/tool-executor/command-security.js";
 
 const CLASSIFIER = new CommandSafetyClassifier();
 
@@ -270,17 +274,29 @@ test("CommandSafetyClassifier blocks node -e flag", () => {
   assert.equal(result.reasonCode, "tool.inline_code_denied");
 });
 
-test("CommandSafetyClassifier blocks interpreter with later flag arguments", () => {
-  // S-04: Flag-like args after script path should also be blocked
+test("CommandSafetyClassifier allows interpreter script arguments after script path", () => {
   const result = CLASSIFIER.assess("python3", ["script.py", "--version"]);
-  assert.equal(result.allowed, false);
-  assert.equal(result.reasonCode, "tool.command_interpreter_flag_denied");
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, null);
+  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
 });
 
 test("CommandSafetyClassifier allows interpreter with only script path", () => {
   const result = CLASSIFIER.assess("python", ["script.py"]);
   assert.equal(result.allowed, true);
   assert.equal(result.riskLevel, "high");
+});
+
+test("CommandSafetyClassifier allows shell-safe glob arguments", () => {
+  const result = CLASSIFIER.assess("ls", ["*.ts"]);
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, null);
+});
+
+test("createDefaultCommandPolicies includes a single write-aware touch and mkdir policy", () => {
+  const policies = createDefaultCommandPolicies();
+  assert.deepEqual(policies.get("touch")?.writePathArgPositions, [0]);
+  assert.deepEqual(policies.get("mkdir")?.writePathArgPositions, [0]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

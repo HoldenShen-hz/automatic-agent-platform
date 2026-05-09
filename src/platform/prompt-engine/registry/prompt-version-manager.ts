@@ -85,10 +85,21 @@ export class PromptVersionManager {
   /**
    * Compares two version strings.
    * Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+   *
+   * R10-31 fix: Now handles both string versions (displayVersion) and number versions.
+   * Per §16.2, version should be an incrementing integer for deterministic ordering,
+   * while displayVersion provides human-readable semver format.
    */
-  public compareVersions(v1: string, v2: string): number {
-    const parsed1 = this.parseVersion(v1);
-    const parsed2 = this.parseVersion(v2);
+  public compareVersions(v1: string | number, v2: string | number): number {
+    // Handle number versions directly (per §16.2)
+    if (typeof v1 === "number" && typeof v2 === "number") {
+      return v1 - v2;
+    }
+    // Handle string versions (semver format for display)
+    const strV1 = String(v1);
+    const strV2 = String(v2);
+    const parsed1 = this.parseVersion(strV1);
+    const parsed2 = this.parseVersion(strV2);
 
     if (parsed1.major !== parsed2.major) {
       return parsed1.major - parsed2.major;
@@ -227,12 +238,15 @@ export class PromptVersionManager {
         trafficWeight: entry.bundle.metadata.trafficAllocation.weight,
         createdAt: entry.createdAt,
         deprecated: entry.bundle.metadata.deprecated,
-        lifecycleStatus: entry.bundle.metadata.lifecycleStatus,
+        lifecycleStatus: entry.bundle.metadata.lifecycleStatus as "draft" | "active" | "deprecated" | "archived",
       };
     });
   }
 }
 
+/**
+ * R2-8: Prompt lifecycle now includes deprecated phase
+ */
 export interface VersionLineage {
   current: string;
   previous?: string;

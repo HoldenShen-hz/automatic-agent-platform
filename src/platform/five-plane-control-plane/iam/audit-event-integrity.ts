@@ -258,7 +258,7 @@ export function verifyTier1AuditIntegrity(
     compromisedEvents: compromisedEventIds.size,
     missingEvents: missingEventIds.size,
     chainBreaks,
-    latestChainHash: entries.at(-1)?.integrityRecord.chainHash ?? null,
+    latestChainHash: [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition).at(-1)?.integrityRecord.chainHash ?? null,
     compromisedEventIds: Array.from(compromisedEventIds).sort(),
     missingEventIds: Array.from(missingEventIds).sort(),
     findings: Array.from(findings).sort(),

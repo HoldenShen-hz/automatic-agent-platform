@@ -54,6 +54,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 0.95,
     operator: "gte",
     windowMinutes: 60,
+    domain: null,
   },
   {
     name: "approval_delivery_availability",
@@ -62,6 +63,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 0.99,
     operator: "gte",
     windowMinutes: 60,
+    domain: null,
   },
   {
     name: "recovery_success_rate",
@@ -70,6 +72,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 0.90,
     operator: "gte",
     windowMinutes: 60,
+    domain: null,
   },
   {
     name: "tier1_event_delivery_latency",
@@ -78,6 +81,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 10,
     operator: "lte",
     windowMinutes: 5,
+    domain: null,
   },
   {
     name: "db_writability",
@@ -86,6 +90,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 1,
     operator: "gte",
     windowMinutes: 5,
+    domain: null,
   },
   {
     name: "queue_backlog_pressure",
@@ -94,6 +99,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 20,
     operator: "lte",
     windowMinutes: 5,
+    domain: null,
   },
   {
     name: "provider_health_rate",
@@ -102,6 +108,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 0.95,
     operator: "gte",
     windowMinutes: 5,
+    domain: null,
   },
   {
     name: "memory_pressure",
@@ -110,6 +117,7 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     targetValue: 512,
     operator: "lte",
     windowMinutes: 5,
+    domain: null,
   },
 ];
 

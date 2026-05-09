@@ -58,6 +58,9 @@ export interface ConfigOverrideRecord extends ConfigOverrideAttempt {
   allowed: boolean;
   reason?: string;
   highRiskObject?: HighRiskConfigObject;
+  auditRequired?: boolean;
+  auditedAt?: string;
+  auditDigest?: string;
 }
 
 /**
@@ -286,6 +289,7 @@ export class ConfigOverrideGovernanceService {
   public recordOverride(attempt: ConfigOverrideAttempt): ConfigOverrideRecord {
     const validation = this.validateOverride(attempt);
     const highRiskObject = this.detectHighRiskObject(attempt.path);
+    const auditRequired = this.rules.get(attempt.layer)?.requireAudit ?? false;
 
     const baseRecord: ConfigOverrideRecord = {
       id: generateOverrideId(attempt),
@@ -295,6 +299,8 @@ export class ConfigOverrideGovernanceService {
       value: attempt.value,
       timestamp: attempt.timestamp,
       allowed: validation.allowed,
+      auditRequired,
+      auditedAt: nowIso(),
     };
 
     if (validation.reason !== undefined) {
@@ -304,17 +310,12 @@ export class ConfigOverrideGovernanceService {
     if (highRiskObject !== undefined) {
       baseRecord.highRiskObject = highRiskObject;
     }
+    baseRecord.auditDigest = generateOverrideAuditDigest(baseRecord);
 
     this.auditLog.record(baseRecord);
 
     if (!validation.allowed) {
       return baseRecord;
-    }
-
-    const rule = this.rules.get(attempt.layer);
-    if (rule?.requireAudit && !validation.allowed) {
-      baseRecord.allowed = false;
-      baseRecord.reason = `config_override.audit_required:${attempt.path}`;
     }
 
     return baseRecord;
@@ -403,6 +404,21 @@ export class ConfigOverrideGovernanceService {
 function generateOverrideId(attempt: ConfigOverrideAttempt): string {
   const content = `${attempt.path}:${attempt.layer}:${attempt.source}:${attempt.timestamp}`;
   return createHash("sha256").update(content).digest("hex").slice(0, 16);
+}
+
+function generateOverrideAuditDigest(record: ConfigOverrideRecord): string {
+  const content = JSON.stringify({
+    id: record.id,
+    path: record.path,
+    layer: record.layer,
+    source: record.source,
+    timestamp: record.timestamp,
+    allowed: record.allowed,
+    reason: record.reason ?? null,
+    highRiskObject: record.highRiskObject ?? null,
+    auditRequired: record.auditRequired ?? false,
+  });
+  return createHash("sha256").update(content).digest("hex");
 }
 
 /**

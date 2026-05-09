@@ -13,12 +13,16 @@ import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.j
 
 /**
  * Configuration source type in the hierarchy.
+ * R10-06: Added "environment" and "runtime" layers for dynamic config.
+ * Order: platform < tenant < pack < task_type < environment < runtime
  */
 export type ConfigHierarchyLayer =
   | "platform"
   | "tenant"
   | "pack"
-  | "task_type";
+  | "task_type"
+  | "environment"
+  | "runtime";
 
 /**
  * Represents a configuration value at a specific hierarchy level.
@@ -70,6 +74,7 @@ export class HierarchicalConfigLoader {
 
   /**
    * Loads and merges configurations from all hierarchy levels.
+   * R10-06: Added environment and runtime layers for dynamic config.
    *
    * @param platformConfig - Base platform configuration
    * @param tenantConfigs - Map of tenantId to tenant config
@@ -78,6 +83,10 @@ export class HierarchicalConfigLoader {
    * @param activeTenantId - Currently active tenant ID (for tenant override)
    * @param activePackId - Currently active pack ID (for pack override)
    * @param activeTaskTypeId - Currently active task type ID (for task-type override)
+   * @param environmentConfigs - Map of environmentId to environment config (e.g., dev/staging/prod)
+   * @param runtimeConfigs - Map of runtimeId to runtime config (e.g., instance-specific overrides)
+   * @param activeEnvironmentId - Currently active environment ID
+   * @param activeRuntimeId - Currently active runtime ID
    */
   public loadConfig(
     platformConfig: Record<string, unknown>,
@@ -87,6 +96,10 @@ export class HierarchicalConfigLoader {
     activeTenantId: string | null = null,
     activePackId: string | null = null,
     activeTaskTypeId: string | null = null,
+    environmentConfigs: Record<string, Record<string, unknown>> = {},
+    runtimeConfigs: Record<string, Record<string, unknown>> = {},
+    activeEnvironmentId: string | null = null,
+    activeRuntimeId: string | null = null,
   ): HierarchicalConfigResult {
     const sources: HierarchyConfigSource[] = [];
     const layerMap: Record<string, ConfigHierarchyLayer> = {};
@@ -126,7 +139,7 @@ export class HierarchicalConfigLoader {
       sources.push(packSource);
     }
 
-    // Task-type layer (most specific, highest priority)
+    // Task-type layer (more specific, higher priority)
     if (activeTaskTypeId && taskTypeConfigs[activeTaskTypeId]) {
       const taskTypeSource: HierarchyConfigSource = {
         layer: "task_type",
@@ -136,6 +149,30 @@ export class HierarchicalConfigLoader {
         updatedAt: now,
       };
       sources.push(taskTypeSource);
+    }
+
+    // Environment layer (R10-06: dynamic environment/runtime overrides)
+    if (activeEnvironmentId && environmentConfigs[activeEnvironmentId]) {
+      const environmentSource: HierarchyConfigSource = {
+        layer: "environment",
+        sourceId: activeEnvironmentId,
+        config: environmentConfigs[activeEnvironmentId],
+        version: this.computeVersion(environmentConfigs[activeEnvironmentId]),
+        updatedAt: now,
+      };
+      sources.push(environmentSource);
+    }
+
+    // Runtime layer (most specific, highest priority)
+    if (activeRuntimeId && runtimeConfigs[activeRuntimeId]) {
+      const runtimeSource: HierarchyConfigSource = {
+        layer: "runtime",
+        sourceId: activeRuntimeId,
+        config: runtimeConfigs[activeRuntimeId],
+        version: this.computeVersion(runtimeConfigs[activeRuntimeId]),
+        updatedAt: now,
+      };
+      sources.push(runtimeSource);
     }
 
     // Merge configs: later sources override earlier ones

@@ -22,6 +22,12 @@ test("sanitizeToolOutput removes control characters except newline and tab", () 
   assert.equal(result.controlCharsRemoved, 2);
 });
 
+test("sanitizeToolOutput removes FS GS RS US control characters", () => {
+  const result = sanitizeToolOutput("a\u001Cb\u001Dc\u001Ed\u001F");
+  assert.equal(result.sanitizedText, "abcd");
+  assert.equal(result.controlCharsRemoved, 4);
+});
+
 test("sanitizeToolOutput preserves newlines and tabs", () => {
   const result = sanitizeToolOutput("line1\n\tline2");
   assert.equal(result.sanitizedText, "line1\n\tline2");

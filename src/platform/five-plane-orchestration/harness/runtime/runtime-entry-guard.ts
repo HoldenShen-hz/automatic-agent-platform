@@ -1,6 +1,6 @@
 import { ValidationError } from "../../../contracts/errors.js";
 import type { PlanGraphBundle } from "../../../contracts/executable-contracts/index.js";
-import { LEGACY_CONTRACT_NAMES } from "../../../contracts/executable-contracts/index.js";
+import { LEGACY_CONTRACT_NAMES, type LegacyContractName } from "../../../contracts/index.js";
 
 export interface RuntimeEntryGuardResult {
   readonly accepted: true;
@@ -32,7 +32,8 @@ export class RuntimeEntryGuard {
 public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
     // R6-24 FIX: Emit runtime warning for migration aid
     // Use LEGACY_CONTRACT_NAMES from executable-contracts for consistent enforcement
-    if (input.contractName != null && LEGACY_CONTRACT_NAMES.includes(input.contractName as any)) {
+    // Use type-safe includes() by casting to readonly string[] first
+    if (input.contractName != null && this.isLegacyContractName(input.contractName)) {
       console.warn(
         `[DEPRECATION] Legacy contract '${input.contractName}' used. ` +
         `Migrate to canonical contracts per §4.3. ` +
@@ -54,6 +55,15 @@ public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonl
         "Runtime truth writes must be backed by platform.* fact events.",
       );
     }
+  }
+
+  /**
+   * Type-safe check if a contract name is a legacy contract.
+   * @param name - The contract name to check
+   * @returns true if the contract is a legacy contract
+   */
+  private isLegacyContractName(name: string): boolean {
+    return (LEGACY_CONTRACT_NAMES as readonly string[]).includes(name);
   }
 }
 

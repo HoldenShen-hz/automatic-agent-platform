@@ -17,9 +17,10 @@
  * @see docs_zh/contracts/billing_contract.md for billing-account binding rules
  */
 
-import { MonetizationError, TenantBoundaryError, ValidationError } from "../../platform/contracts/errors.js";
+import { MonetizationError, PolicyDeniedError, TenantBoundaryError, ValidationError } from "../../platform/contracts/errors.js";
 import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { NoisyNeighborProtectionService, getNoisyNeighborProtectionService, type ResourceType } from "../multi-region/noisy-neighbor-protection.js";
 import type {
   DataNamespacePlane,
   DataNamespaceRecord,
@@ -211,17 +212,116 @@ export interface TenantTopologySummary {
 }
 
 /**
+ * Tenant lifecycle stage (maps to TenantRecord.status field)
+ */
+export type TenantLifecycleStage = "provisioning" | "active" | "suspended" | "deactivated" | "decommissioned";
+
+/**
+ * Input for lifecycle operations
+ */
+export interface TenantLifecycleInput {
+  /** Tenant ID */
+  tenantId: string;
+  /** Actor initiating the change */
+  actor: string;
+  /** Reason for the change */
+  reason: string;
+}
+
+/**
+ * Maps lifecycle stage to TenantRecord.status value
+ */
+function toTenantStatus(stage: TenantLifecycleStage): "active" | "suspended" | "terminated" {
+  switch (stage) {
+    case "provisioning":
+    case "active":
+    case "deactivated":
+      return "active";
+    case "suspended":
+      return "suspended";
+    case "decommissioned":
+      return "terminated";
+  }
+}
+
+/**
+ * Maps TenantRecord.status to lifecycle stage
+ */
+function fromTenantStatus(status: "active" | "suspended" | "terminated" | undefined): TenantLifecycleStage {
+  switch (status) {
+    case "suspended":
+      return "suspended";
+    case "terminated":
+      return "decommissioned";
+    case "active":
+    default:
+      return "active";
+  }
+}
+
+/**
+ * Valid tenant lifecycle transitions
+ */
+const VALID_LIFECYCLE_TRANSITIONS: Record<TenantLifecycleStage, TenantLifecycleStage[]> = {
+  provisioning: ["active", "decommissioned"],
+  active: ["suspended", "deactivated", "decommissioned"],
+  suspended: ["active", "deactivated", "decommissioned"],
+  deactivated: ["active", "decommissioned"],
+  decommissioned: [],
+};
+
+/**
  * Service for managing the tenant platform topology.
  *
  * Provides CRUD operations for organizations, workspaces, tenants,
  * deployment bindings, and data namespaces. Enforces organizational
  * boundaries and validates scope relationships when creating namespaces.
+ * Integrates noisy-neighbor protection for quota enforcement (R13-27, R13-32).
  */
 export class TenantPlatformService {
+  private readonly quotaService: NoisyNeighborProtectionService;
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
-  ) {}
+    quotaService?: NoisyNeighborProtectionService,
+  ) {
+    this.quotaService = quotaService ?? getNoisyNeighborProtectionService();
+  }
+
+  /**
+   * Enforce quota limits for a tenant before performing an operation (R13-27, R13-32).
+   * Checks rate limits and records usage for the specified resource type.
+   *
+   * @param tenantId - Tenant to check quotas for
+   * @param resourceType - Type of resource being consumed
+   * @param cost - Cost of the operation (default 1)
+   * @throws PolicyDeniedError if quota is exceeded
+   */
+  private enforceQuota(tenantId: string, resourceType: ResourceType, cost: number = 1): void {
+    // R13-27: quota-enforcer is now called
+    const decision = this.quotaService.checkRateLimit(tenantId, resourceType, cost);
+    if (!decision.allowed) {
+      throw new PolicyDeniedError(
+        "tenant.quota_exceeded",
+        `Quota exceeded for ${resourceType}: ${decision.currentUsage}/${decision.limit}`,
+        {
+          retryable: decision.retryAfterMs !== null,
+          details: {
+            tenantId,
+            resourceType,
+            currentUsage: decision.currentUsage,
+            limit: decision.limit,
+            remaining: decision.remaining,
+            retryAfterMs: decision.retryAfterMs,
+            quotaId: decision.quotaId,
+          },
+        },
+      );
+    }
+    // Record the usage
+    this.quotaService.recordUsage(tenantId, resourceType, cost);
+  }
 
   /**
    * Creates a new workspace and adds the owner as a member with "owner" role.
@@ -231,6 +331,13 @@ export class TenantPlatformService {
    */
   public createWorkspace(input: CreateWorkspaceInput): WorkspaceRecord {
     return this.db.transaction(() => {
+      // R13-32: Enforce tenant-scoped quota before creating workspace
+      // Use organization-scoped quota if tenantId is not available
+      const org = input.organizationId ? this.requireOrganization(input.organizationId) : null;
+      if (org?.defaultTenantId) {
+        this.enforceQuota(org.defaultTenantId, "api_requests", 1);
+      }
+
       const createdAt = input.createdAt ?? nowIso();
       const workspace: WorkspaceRecord = {
         workspaceId: assertIdentifier(input.workspaceId ?? newId("workspace"), "tenant.invalid_workspace_id"),
@@ -367,6 +474,12 @@ export class TenantPlatformService {
   public createTenant(input: CreateTenantInput): TenantRecord {
     return this.db.transaction(() => {
       const organization = this.requireOrganization(input.organizationId);
+      // R13-32: Enforce tenant-scoped quota before creating tenant
+      // Use organization's default tenant for quota tracking if available
+      if (organization.defaultTenantId) {
+        this.enforceQuota(organization.defaultTenantId, "task_executions", 1);
+      }
+
       const createdAt = input.createdAt ?? nowIso();
       const tenantId = assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id");
       const tenant: TenantRecord = {
@@ -408,6 +521,9 @@ export class TenantPlatformService {
   public createDeploymentBinding(input: CreateDeploymentBindingInput): DeploymentBindingRecord {
     return this.db.transaction(() => {
       const tenant = this.requireTenant(input.tenantId);
+      // R13-32: Enforce tenant-scoped quota before creating deployment binding
+      this.enforceQuota(tenant.tenantId, "concurrent_connections", 1);
+
       const createdAt = input.createdAt ?? nowIso();
       const binding: DeploymentBindingRecord = {
         bindingId: assertIdentifier(input.bindingId ?? newId("binding"), "tenant.invalid_binding_id"),
@@ -482,6 +598,15 @@ export class TenantPlatformService {
         });
       }
 
+      // R13-32: Enforce tenant-scoped quota before creating data namespace
+      // Quota is checked against the tenant if available
+      if (tenant?.tenantId) {
+        this.enforceQuota(tenant.tenantId, "storage", 1);
+      } else if (organization?.defaultTenantId) {
+        // Fall back to organization's default tenant for quota tracking
+        this.enforceQuota(organization.defaultTenantId, "storage", 1);
+      }
+
       const createdAt = input.createdAt ?? nowIso();
       const namespace: DataNamespaceRecord = {
         namespaceId: assertIdentifier(input.namespaceId ?? newId("namespace"), "tenant.invalid_namespace_id"),
@@ -543,6 +668,103 @@ export class TenantPlatformService {
       deploymentBindings,
       dataNamespaces,
     };
+  }
+
+  /**
+   * Suspend a tenant (R13-25: lifecycle management)
+   */
+  public suspendTenant(input: TenantLifecycleInput): TenantRecord {
+    return this.db.transaction(() => {
+      const tenant = this.requireTenant(input.tenantId);
+      const currentStage = fromTenantStatus(tenant.status);
+      // Validate transition is allowed
+      if (!VALID_LIFECYCLE_TRANSITIONS[currentStage]?.includes("suspended")) {
+        throw new ValidationError("tenant.invalid_lifecycle_transition", "tenant.invalid_lifecycle_transition", {
+          category: "tenant",
+          source: "runtime",
+          details: { tenantId: input.tenantId, currentStage, targetStage: "suspended" },
+        });
+      }
+      const updated: TenantRecord = {
+        ...tenant,
+        status: toTenantStatus("suspended"),
+        updatedAt: nowIso(),
+      };
+      this.store.organization.upsertTenantRecord(updated);
+      return updated;
+    });
+  }
+
+  /**
+   * Deactivate a tenant (R13-25: lifecycle management)
+   */
+  public deactivateTenant(input: TenantLifecycleInput): TenantRecord {
+    return this.db.transaction(() => {
+      const tenant = this.requireTenant(input.tenantId);
+      const currentStage = fromTenantStatus(tenant.status);
+      if (!VALID_LIFECYCLE_TRANSITIONS[currentStage]?.includes("deactivated")) {
+        throw new ValidationError("tenant.invalid_lifecycle_transition", "tenant.invalid_lifecycle_transition", {
+          category: "tenant",
+          source: "runtime",
+          details: { tenantId: input.tenantId, currentStage, targetStage: "deactivated" },
+        });
+      }
+      const updated: TenantRecord = {
+        ...tenant,
+        status: toTenantStatus("deactivated"),
+        updatedAt: nowIso(),
+      };
+      this.store.organization.upsertTenantRecord(updated);
+      return updated;
+    });
+  }
+
+  /**
+   * Decommission a tenant (R13-25: lifecycle management)
+   */
+  public decommissionTenant(input: TenantLifecycleInput): TenantRecord {
+    return this.db.transaction(() => {
+      const tenant = this.requireTenant(input.tenantId);
+      const currentStage = fromTenantStatus(tenant.status);
+      if (!VALID_LIFECYCLE_TRANSITIONS[currentStage]?.includes("decommissioned")) {
+        throw new ValidationError("tenant.invalid_lifecycle_transition", "tenant.invalid_lifecycle_transition", {
+          category: "tenant",
+          source: "runtime",
+          details: { tenantId: input.tenantId, currentStage, targetStage: "decommissioned" },
+        });
+      }
+      const updated: TenantRecord = {
+        ...tenant,
+        status: toTenantStatus("decommissioned"),
+        updatedAt: nowIso(),
+      };
+      this.store.organization.upsertTenantRecord(updated);
+      return updated;
+    });
+  }
+
+  /**
+   * Reactivate a suspended or deactivated tenant (R13-25: lifecycle management)
+   */
+  public reactivateTenant(input: TenantLifecycleInput): TenantRecord {
+    return this.db.transaction(() => {
+      const tenant = this.requireTenant(input.tenantId);
+      const currentStage = fromTenantStatus(tenant.status);
+      if (!VALID_LIFECYCLE_TRANSITIONS[currentStage]?.includes("active")) {
+        throw new ValidationError("tenant.invalid_lifecycle_transition", "tenant.invalid_lifecycle_transition", {
+          category: "tenant",
+          source: "runtime",
+          details: { tenantId: input.tenantId, currentStage, targetStage: "active" },
+        });
+      }
+      const updated: TenantRecord = {
+        ...tenant,
+        status: toTenantStatus("active"),
+        updatedAt: nowIso(),
+      };
+      this.store.organization.upsertTenantRecord(updated);
+      return updated;
+    });
   }
 
   /** Validates and returns a workspace record, throwing if not found */

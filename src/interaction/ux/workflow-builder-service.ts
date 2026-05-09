@@ -1,4 +1,16 @@
+import { createHash } from "node:crypto";
+
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import {
+  createPlanGraphBundle,
+  type GraphRiskFinding,
+  type GraphWorstPathAnalysis,
+  type PlanEdge,
+  type PlanGraphBundle,
+  type PlanNode,
+  type PlanNodeType,
+  type RiskClass,
+} from "../../platform/contracts/executable-contracts/index.js";
 import type { RuntimeLifecycleRepository } from "../../platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { applyInteractionTemplate, type InteractionTemplate } from "./template-engine/index.js";
 import { canAdvanceWizard, type WizardSession, type WizardStep } from "./wizard/index.js";
@@ -160,15 +172,22 @@ export interface WorkflowBuilderSaveReview {
   readonly normalizedGraph: {
     readonly nodeIds: readonly string[];
     readonly edgePairs: readonly string[];
+    readonly entryNodeIds: readonly string[];
+    readonly terminalNodeIds: readonly string[];
+    readonly planGraphBundle: PlanGraphBundle;
   };
   readonly validationMessages: readonly string[];
   readonly riskPropagation: {
     readonly highestRisk: "low" | "medium" | "high" | "critical";
     readonly riskyNodeIds: readonly string[];
+    readonly findings: readonly GraphRiskFinding[];
   };
   readonly worstPathAnalysis: {
     readonly nodeIds: readonly string[];
     readonly score: number;
+    readonly riskClass: RiskClass;
+    readonly estimatedBudgetAmount: number;
+    readonly timeoutMs: number;
   };
 }
 
@@ -209,10 +228,300 @@ function buildPreview(template: InteractionTemplate, steps: readonly WizardStep[
   };
 }
 
-function normalizeGraph(nodes: readonly { nodeId: string; label: string }[], edges: readonly { fromNodeId: string; toNodeId: string }[]): WorkflowBuilderSaveReview["normalizedGraph"] {
+type BuilderCanvasNode = VisualWorkflowBuilder["canvas"]["nodes"][number];
+type BuilderCanvasEdge = VisualWorkflowBuilder["canvas"]["edges"][number];
+type BuilderComponentProfile = DraggableComponent & { readonly category: ComponentCategory["category"] };
+
+function riskRank(riskClass: RiskClass): number {
+  switch (riskClass) {
+    case "low":
+      return 0;
+    case "medium":
+      return 1;
+    case "high":
+      return 2;
+    case "critical":
+      return 3;
+  }
+}
+
+function maxRisk(left: RiskClass, right: RiskClass): RiskClass {
+  return riskRank(left) >= riskRank(right) ? left : right;
+}
+
+function categorizeComponent(component: DraggableComponent): ComponentCategory["category"] {
+  if (component.componentId.includes("trigger")) {
+    return "trigger";
+  }
+  if (component.componentId.includes("condition")) {
+    return "condition";
+  }
+  if (component.componentId.includes("approval")) {
+    return "approval";
+  }
+  if (component.componentId.includes("output")) {
+    return "output";
+  }
+  return "action";
+}
+
+function determineNodeType(component: BuilderComponentProfile | null): PlanNodeType {
+  switch (component?.category) {
+    case "condition":
+      return "router";
+    case "approval":
+      return "hitl_wait";
+    default:
+      return "tool";
+  }
+}
+
+function resolveComponentProfile(component: BuilderComponentProfile | null, index: number): Pick<PlanNode, "riskClass" | "sideEffectProfile" | "budgetIntent" | "retryPolicyRef" | "timeoutMs"> {
+  const riskClass = component?.riskLevel ?? "medium";
+  const sideEffectProfile = component?.sideEffectProfile ?? {
+    mayCommitExternalEffect: component?.category === "action" || component?.category === "output",
+    reversible: riskClass !== "critical",
+  };
+  const retryPolicyRef = component?.compensationModel?.strategy === "none"
+    ? "retry.none"
+    : component?.compensationModel?.strategy === "manual_rollback"
+      ? "retry.manual_review"
+      : component?.compensationModel?.strategy === "automatic_rollback"
+        ? "retry.auto_compensate"
+        : component?.compensationModel?.strategy === "idempotent_replay"
+          ? "retry.idempotent"
+          : "retry.default";
+  const budgetBase = sideEffectProfile.mayCommitExternalEffect ? 120 : 40;
+  const budgetAmount = budgetBase + (riskRank(riskClass) * 40) + (index * 5);
+
   return {
-    nodeIds: [...new Set(nodes.map((node) => node.nodeId))],
-    edgePairs: [...new Set(edges.map((edge) => `${edge.fromNodeId}->${edge.toNodeId}`))],
+    riskClass,
+    sideEffectProfile,
+    budgetIntent: {
+      amount: budgetAmount,
+      currency: "usd",
+      resourceKinds: ["token"],
+    },
+    retryPolicyRef,
+    timeoutMs: riskClass === "critical" ? 180_000 : riskClass === "high" ? 120_000 : 60_000,
+  };
+}
+
+function buildPlanGraphNodes(
+  nodes: readonly BuilderCanvasNode[],
+  edges: readonly BuilderCanvasEdge[],
+  componentIndex: ReadonlyMap<string, BuilderComponentProfile>,
+): readonly PlanNode[] {
+  const incomingByNode = new Map<string, string[]>();
+  for (const edge of edges) {
+    incomingByNode.set(edge.toNodeId, [...(incomingByNode.get(edge.toNodeId) ?? []), edge.fromNodeId]);
+  }
+
+  return nodes.map((node, index) => {
+    const component = componentIndex.get(node.componentId) ?? null;
+    const profile = resolveComponentProfile(component, index);
+    return {
+      nodeId: node.nodeId,
+      nodeType: determineNodeType(component),
+      inputRefs: incomingByNode.get(node.nodeId) ?? [],
+      outputSchemaRef: `${node.componentId}.output`,
+      riskClass: profile.riskClass,
+      budgetIntent: profile.budgetIntent,
+      sideEffectProfile: profile.sideEffectProfile,
+      retryPolicyRef: profile.retryPolicyRef,
+      timeoutMs: profile.timeoutMs,
+    };
+  });
+}
+
+function buildPlanGraphEdges(edges: readonly BuilderCanvasEdge[]): readonly PlanEdge[] {
+  return [...new Set(edges.map((edge) => `${edge.fromNodeId}->${edge.toNodeId}`))]
+    .map((pair, index) => {
+      const [fromNodeId, toNodeId] = pair.split("->");
+      return {
+        edgeId: `edge_${index + 1}`,
+        fromNodeId: fromNodeId!,
+        toNodeId: toNodeId!,
+        condition: true,
+        dependencyType: "hard" as const,
+      };
+    });
+}
+
+function buildRiskPropagation(planNodes: readonly PlanNode[]): WorkflowBuilderSaveReview["riskPropagation"] {
+  const findings = planNodes
+    .filter((node) => node.sideEffectProfile.mayCommitExternalEffect || node.riskClass === "high" || node.riskClass === "critical")
+    .map((node) => ({
+      nodeId: node.nodeId,
+      inheritedRiskClass: node.sideEffectProfile.mayCommitExternalEffect ? maxRisk(node.riskClass, "high") : node.riskClass,
+      reasons: [
+        node.sideEffectProfile.mayCommitExternalEffect ? "side_effect_external_commit" : "intrinsic_risk",
+        node.sideEffectProfile.reversible ? "reversible" : "non_reversible",
+      ],
+    } satisfies GraphRiskFinding));
+  const highestRisk = findings.reduce<RiskClass>(
+    (current, finding) => maxRisk(current, finding.inheritedRiskClass),
+    "low",
+  );
+  return {
+    highestRisk,
+    riskyNodeIds: findings.map((finding) => finding.nodeId),
+    findings,
+  };
+}
+
+function analyzeWorstPath(
+  planNodes: readonly PlanNode[],
+  edges: readonly PlanEdge[],
+): WorkflowBuilderSaveReview["worstPathAnalysis"] {
+  if (planNodes.length === 0) {
+    return {
+      nodeIds: [],
+      score: 0,
+      riskClass: "low",
+      estimatedBudgetAmount: 0,
+      timeoutMs: 0,
+    };
+  }
+
+  const adjacency = new Map<string, string[]>();
+  const incomingCounts = new Map<string, number>();
+  const nodeIndex = new Map(planNodes.map((node) => [node.nodeId, node] as const));
+  for (const node of planNodes) {
+    adjacency.set(node.nodeId, []);
+    incomingCounts.set(node.nodeId, 0);
+  }
+  for (const edge of edges) {
+    adjacency.set(edge.fromNodeId, [...(adjacency.get(edge.fromNodeId) ?? []), edge.toNodeId]);
+    incomingCounts.set(edge.toNodeId, (incomingCounts.get(edge.toNodeId) ?? 0) + 1);
+  }
+
+  const queue = planNodes.filter((node) => (incomingCounts.get(node.nodeId) ?? 0) === 0).map((node) => node.nodeId);
+  const scores = new Map<string, number>();
+  const parents = new Map<string, string | null>();
+  const pathRisk = new Map<string, RiskClass>();
+  const pathBudget = new Map<string, number>();
+  const pathTimeout = new Map<string, number>();
+
+  for (const node of planNodes) {
+    scores.set(node.nodeId, Number.NEGATIVE_INFINITY);
+    pathRisk.set(node.nodeId, "low");
+    pathBudget.set(node.nodeId, 0);
+    pathTimeout.set(node.nodeId, 0);
+  }
+
+  for (const nodeId of queue) {
+    const node = nodeIndex.get(nodeId)!;
+    scores.set(nodeId, 1 + (riskRank(node.riskClass) * 10) + (node.sideEffectProfile.mayCommitExternalEffect ? 5 : 0));
+    parents.set(nodeId, null);
+    pathRisk.set(nodeId, node.riskClass);
+    pathBudget.set(nodeId, node.budgetIntent.amount);
+    pathTimeout.set(nodeId, node.timeoutMs);
+  }
+
+  for (let pointer = 0; pointer < queue.length; pointer += 1) {
+    const nodeId = queue[pointer]!;
+    const currentNode = nodeIndex.get(nodeId)!;
+    for (const nextNodeId of adjacency.get(nodeId) ?? []) {
+      const nextNode = nodeIndex.get(nextNodeId)!;
+      const candidateScore = (scores.get(nodeId) ?? 0) + 1 + (riskRank(nextNode.riskClass) * 10) + (nextNode.sideEffectProfile.mayCommitExternalEffect ? 5 : 0);
+      if (candidateScore > (scores.get(nextNodeId) ?? Number.NEGATIVE_INFINITY)) {
+        scores.set(nextNodeId, candidateScore);
+        parents.set(nextNodeId, nodeId);
+        pathRisk.set(nextNodeId, maxRisk(pathRisk.get(nodeId) ?? currentNode.riskClass, nextNode.riskClass));
+        pathBudget.set(nextNodeId, (pathBudget.get(nodeId) ?? 0) + nextNode.budgetIntent.amount);
+        pathTimeout.set(nextNodeId, (pathTimeout.get(nodeId) ?? 0) + nextNode.timeoutMs);
+      }
+      incomingCounts.set(nextNodeId, (incomingCounts.get(nextNodeId) ?? 1) - 1);
+      if ((incomingCounts.get(nextNodeId) ?? 0) === 0) {
+        queue.push(nextNodeId);
+      }
+    }
+  }
+
+  const terminalNode = [...scores.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? planNodes[0]!.nodeId;
+  const nodeIds: string[] = [];
+  let currentNodeId: string | null = terminalNode;
+  while (currentNodeId != null) {
+    nodeIds.unshift(currentNodeId);
+    currentNodeId = parents.get(currentNodeId) ?? null;
+  }
+
+  return {
+    nodeIds,
+    score: Math.max(scores.get(terminalNode) ?? planNodes.length, planNodes.length),
+    riskClass: pathRisk.get(terminalNode) ?? "low",
+    estimatedBudgetAmount: pathBudget.get(terminalNode) ?? 0,
+    timeoutMs: pathTimeout.get(terminalNode) ?? 0,
+  };
+}
+
+function normalizeGraph(
+  nodes: readonly BuilderCanvasNode[],
+  edges: readonly BuilderCanvasEdge[],
+  components: readonly DraggableComponent[],
+  harnessRunId: string,
+  validationMessages: readonly string[],
+): WorkflowBuilderSaveReview["normalizedGraph"] {
+  const componentIndex = new Map<string, BuilderComponentProfile>();
+  for (const component of components) {
+    componentIndex.set(component.componentId, {
+      ...component,
+      category: categorizeComponent(component),
+    });
+  }
+  const nodeIds = [...new Set(nodes.map((node) => node.nodeId))];
+  const edgePairs = [...new Set(edges.map((edge) => `${edge.fromNodeId}->${edge.toNodeId}`))];
+  const planNodes = buildPlanGraphNodes(nodes, edges, componentIndex);
+  const planEdges = buildPlanGraphEdges(edges);
+  const entryNodeIds = nodeIds.filter((nodeId) => !planEdges.some((edge) => edge.toNodeId === nodeId));
+  const terminalNodeIds = nodeIds.filter((nodeId) => !planEdges.some((edge) => edge.fromNodeId === nodeId));
+  const riskPropagation = buildRiskPropagation(planNodes);
+  const worstPath = analyzeWorstPath(planNodes, planEdges);
+  const graphHash = createHash("sha256")
+    .update(JSON.stringify({ nodeIds, edgePairs, risk: riskPropagation.highestRisk }))
+    .digest("hex");
+
+  const planGraphBundle = createPlanGraphBundle({
+    harnessRunId,
+    graph: {
+      graphId: `${harnessRunId}:graph`,
+      nodes: planNodes,
+      edges: planEdges,
+      entryNodeIds,
+      terminalNodeIds,
+      joinStrategy: "all",
+      graphHash,
+    },
+    schedulerPolicy: {
+      policyId: "workflow_builder_fifo",
+      strategy: "deterministic_fifo",
+    },
+    budgetPlanRef: `${harnessRunId}:budget`,
+    riskProfile: {
+      riskClass: riskPropagation.highestRisk,
+      reasons: riskPropagation.findings.flatMap((finding) => finding.reasons),
+    },
+    validationReport: {
+      valid: validationMessages.length === 0,
+      findings: [...validationMessages],
+      normalizedNodeIds: nodeIds,
+      riskPropagation: riskPropagation.findings,
+      worstPath: {
+        pathNodeIds: worstPath.nodeIds,
+        riskClass: worstPath.riskClass,
+        estimatedBudgetAmount: worstPath.estimatedBudgetAmount,
+        timeoutMs: worstPath.timeoutMs,
+      } satisfies GraphWorstPathAnalysis,
+    },
+  });
+
+  return {
+    nodeIds,
+    edgePairs,
+    entryNodeIds,
+    terminalNodeIds,
+    planGraphBundle,
   };
 }
 
@@ -262,35 +571,6 @@ function validateGraph(nodes: readonly { nodeId: string; label: string }[], edge
   return messages;
 }
 
-function propagateRisk(nodes: readonly { nodeId: string; label: string }[]): WorkflowBuilderSaveReview["riskPropagation"] {
-  const riskyNodeIds = nodes
-    .filter((node) => /(approve|deploy|publish|delete|approval|发布|删除)/i.test(node.label))
-    .map((node) => node.nodeId);
-  return {
-    highestRisk: riskyNodeIds.length === 0
-      ? "low"
-      : riskyNodeIds.length >= 3
-        ? "critical"
-        : riskyNodeIds.length >= 2
-          ? "high"
-          : "medium",
-    riskyNodeIds,
-  };
-}
-
-function analyzeWorstPath(nodes: readonly { nodeId: string }[], edges: readonly { fromNodeId: string; toNodeId: string }[]): WorkflowBuilderSaveReview["worstPathAnalysis"] {
-  if (nodes.length === 0) {
-    return {
-      nodeIds: [],
-      score: 0,
-    };
-  }
-  return {
-    nodeIds: [nodes[0]!.nodeId, ...(edges.map((edge) => edge.toNodeId))].slice(0, Math.max(1, nodes.length)),
-    score: edges.length + nodes.length,
-  };
-}
-
 export class WorkflowBuilderService {
   private readonly repository: WorkflowBuilderRepository | null;
 
@@ -331,11 +611,24 @@ export class WorkflowBuilderService {
         defaultExpandedCategories: [],
       },
     };
+    const validationMessages = validateGraph(builder.canvas.nodes, builder.canvas.edges);
+    const normalizedGraph = normalizeGraph(
+      builder.canvas.nodes,
+      builder.canvas.edges,
+      request.components,
+      request.session.sessionId,
+      validationMessages,
+    );
+    const worstPathAnalysis = analyzeWorstPath(
+      normalizedGraph.planGraphBundle.graph.nodes,
+      normalizedGraph.planGraphBundle.graph.edges,
+    );
+    const riskPropagation = buildRiskPropagation(normalizedGraph.planGraphBundle.graph.nodes);
     const saveReview: WorkflowBuilderSaveReview = {
-      normalizedGraph: normalizeGraph(builder.canvas.nodes, builder.canvas.edges),
-      validationMessages: validateGraph(builder.canvas.nodes, builder.canvas.edges),
-      riskPropagation: propagateRisk(builder.canvas.nodes),
-      worstPathAnalysis: analyzeWorstPath(builder.canvas.nodes, builder.canvas.edges),
+      normalizedGraph,
+      validationMessages,
+      riskPropagation,
+      worstPathAnalysis,
     };
 
     return {

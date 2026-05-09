@@ -126,6 +126,33 @@ test("command executor respects timeout", async () => {
   }
 });
 
+test("command executor fails closed when stdout and stderr exceed the capture budget", async () => {
+  const workspace = createTempWorkspace("aa-command-");
+  const oversizedLog = join(workspace, "oversized.log");
+
+  try {
+    createFile(oversizedLog, `${"overflow\n".repeat(2000)}`);
+    const executor = new CommandExecutor({ maxCapturedOutputBytes: 4096 });
+    const result = await executor.execute({
+      callId: "call-output-limit",
+      taskId: "task-output-limit",
+      agentId: "agent-output-limit",
+      traceId: "trace-output-limit",
+      toolName: "command_exec",
+      timeoutMs: 1000,
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+      command: "cat",
+      args: [oversizedLog],
+      cwd: workspace,
+    });
+
+    assert.equal(result.status, "failed");
+    assert.equal(result.error?.code, "tool.output_limit_exceeded");
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("command executor succeeds for safe command inside workspace", async () => {
   const workspace = createTempWorkspace("aa-command-");
 

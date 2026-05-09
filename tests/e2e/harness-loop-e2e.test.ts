@@ -17,16 +17,21 @@ import {
 } from "../../src/platform/orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  // R10-39 fix: Use proper ConstraintPack structure instead of @ts-ignore bypass
   return {
     policyIds: ["policy.e2e.default"],
     approvalMode: "none",
-// @ts-ignore
-    autonomyMode: "auto",
+    autonomyMode: "full_auto",
     tool_policy: { allowedTools: ["read", "write", "bash"] },
-// @ts-ignore
-    sandboxRequirement: "workspace_write",
-// @ts-ignore
-    approvalRequirement: "none",
+    sandboxRequirement: {
+      sandboxMode: "persistent",
+      timeoutMs: 300_000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: ["critical"],
+      approverRoles: ["security_operator"],
+      escalationTimeoutMs: 60_000,
+    },
     risk_policy: {
       maxRiskScore: 80,
       escalationThreshold: 60,
@@ -35,7 +40,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
       requiredEvidence: [],
       redactSensitiveData: false,
     },
-    budget: {
+    budgetEnvelope: {
       maxSteps: 9,
       maxCost: 10,
       maxDurationMs: 60_000,

@@ -78,6 +78,13 @@ function allocateBudgetShare(
 
 function deriveEstimateConfidence(goal: Goal, goalBudget: GoalBudgetEnvelope, taskCount: number): PlannedTask["estimatedCost"]["confidence"] {
   const evidenceSignals = goal.successCriteria.length + goal.constraints.length + taskCount;
+  // Prioritize critical/high goals regardless of evidence signals
+  if (goal.priority === "critical") {
+    return "high";
+  }
+  if (goal.priority === "high" && evidenceSignals >= 2) {
+    return "high";
+  }
   if (goalBudget.totalBudgetUsd != null && evidenceSignals >= 4) {
     return "high";
   }
@@ -88,7 +95,32 @@ function deriveEstimateConfidence(goal: Goal, goalBudget: GoalBudgetEnvelope, ta
 }
 
 function deriveEstimateSampleCount(goal: Goal, taskCount: number): number {
-  return Math.max(1, goal.successCriteria.length + goal.constraints.length + taskCount);
+  // Sample count reflects the evidence available for the cost estimate
+  // Higher when goal has explicit success criteria and constraints
+  const base = goal.successCriteria.length + goal.constraints.length;
+  const taskContribution = Math.min(taskCount * 2, 10); // Cap task contribution at 10
+  return Math.max(1, base + taskContribution);
+}
+
+/**
+ * Derives per-task estimate confidence based on task-specific signals.
+ * Tasks with more explicit outputs and longer descriptions get higher confidence.
+ */
+function derivePerTaskConfidence(
+  taskDescription: string,
+  expectedOutputCount: number,
+  baseConfidence: PlannedTask["estimatedCost"]["confidence"],
+): PlannedTask["estimatedCost"]["confidence"] {
+  const descriptionLength = taskDescription.length;
+  // Richer task descriptions suggest more thought went into planning
+  const richnessBoost = descriptionLength > 80 ? 1 : descriptionLength > 40 ? 0 : -1;
+  const outputBonus = expectedOutputCount > 2 ? 1 : 0;
+
+  const confidenceOrder = ["low", "medium", "high"] as const;
+  // Map "default" to "medium" baseline
+  const baseIndex = baseConfidence === "default" ? 1 : confidenceOrder.indexOf(baseConfidence);
+  const adjustedIndex = Math.max(0, Math.min(2, baseIndex + richnessBoost + outputBonus));
+  return confidenceOrder[adjustedIndex] ?? "medium";
 }
 
 export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
@@ -110,6 +142,12 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         resourceKind: this.options.budgetControl.resourceKind ?? "token",
         expiresAt: this.options.budgetControl.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         expectedVersion: this.options.budgetControl.ledger.version,
+        context: {
+          tenantId: this.options.budgetControl.tenantId,
+          traceId: this.options.budgetControl.traceId,
+          emittedBy: this.options.budgetControl.emittedBy,
+          principal: this.options.budgetControl.emittedBy,
+        },
       });
 
     try {
@@ -165,7 +203,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           estimatedDuration: task.estimatedDuration,
           estimatedCost: {
             estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
-            confidence: estimateConfidence,
+            confidence: derivePerTaskConfidence(task.description, task.expectedOutputs.length, estimateConfidence),
             sampleCount: estimateSampleCount,
             divisionId: task.domainId,
             basedOn: "default",

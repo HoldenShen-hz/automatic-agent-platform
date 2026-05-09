@@ -15,7 +15,10 @@ import type { DelegationOptions } from "./delegation-types.js";
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const DEFAULT_MAX_DEPTH = 3;
+// R9-11 fix: Unified max depth limit (previously conflicted with CallDepthBudget's maxCallDepth=8)
+// These two limits should be consistent: CallDepthBudget uses 8 for total depth,
+// and TopologyValidator uses 3 for delegation depth only. Using 8 as the canonical limit.
+export const DEFAULT_MAX_DEPTH = 8;
 export const DEFAULT_MAX_FANOUT = 10;
 
 export interface TopologyValidatorConfig {

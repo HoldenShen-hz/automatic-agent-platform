@@ -11,6 +11,8 @@
 
 ### 资源池模型
 
+ResourcePool/ResourceAllocation 与 BudgetLedger/BudgetReservation 深度集成，统一管理资源分配与预算扣费，三者共同构成资源分配的原子单元：
+
 ```typescript
 interface ResourcePool {
   pool_id: string;
@@ -24,6 +26,7 @@ interface ResourceAllocation {
   reserved: number;
   used: number;
   priority: number;
+  budgetLedgerEntry: string;  // 关联 BudgetLedger 记录
 }
 ```
 

@@ -3,15 +3,66 @@ export interface TaskMetricSnapshot {
   readonly done: number;
   readonly inProgress: number;
   readonly failed: number;
+  readonly pending: number;
+  readonly cancelled: number;
 }
 
+/**
+ * Derives a task metric snapshot from an array of task status strings.
+ * Expands status coverage beyond the basic 4 states to include pending and cancelled.
+ */
 export function summarizeTaskMetrics(statuses: readonly string[]): TaskMetricSnapshot {
   return {
     total: statuses.length,
     done: statuses.filter((item) => item === "done").length,
-    inProgress: statuses.filter((item) => item === "in_progress").length,
+    inProgress: statuses.filter((item) => item === "in_progress" || item === "running").length,
     failed: statuses.filter((item) => item === "failed").length,
+    pending: statuses.filter((item) => item === "pending" || item === "queued" || item === "scheduled").length,
+    cancelled: statuses.filter((item) => item === "cancelled" || item === "aborted").length,
   };
+}
+
+/**
+ * Derives a time-windowed snapshot that captures state transitions.
+ * Useful for dashboards showing recent activity vs current snapshot.
+ */
+export function summarizeTaskMetricsWithHistory(
+  currentStatuses: readonly string[],
+  previousStatuses: readonly string[],
+): TaskMetricSnapshot & {
+  readonly deltaDone: number;
+  readonly deltaFailed: number;
+  readonly deltaInProgress: number;
+} {
+  const current = summarizeTaskMetrics(currentStatuses);
+  const previous = summarizeTaskMetrics(previousStatuses);
+  return {
+    ...current,
+    deltaDone: current.done - previous.done,
+    deltaFailed: current.failed - previous.failed,
+    deltaInProgress: current.inProgress - previous.inProgress,
+  };
+}
+
+/**
+ * Aggregates task metrics across multiple time windows.
+ * Returns both per-window snapshots and aggregate totals.
+ */
+export function aggregateTaskMetrics(windowSnapshots: readonly TaskMetricSnapshot[]): TaskMetricSnapshot {
+  if (windowSnapshots.length === 0) {
+    return { total: 0, done: 0, inProgress: 0, failed: 0, pending: 0, cancelled: 0 };
+  }
+  return windowSnapshots.reduce(
+    (acc, snapshot) => ({
+      total: acc.total + snapshot.total,
+      done: acc.done + snapshot.done,
+      inProgress: acc.inProgress + snapshot.inProgress,
+      failed: acc.failed + snapshot.failed,
+      pending: acc.pending + snapshot.pending,
+      cancelled: acc.cancelled + snapshot.cancelled,
+    }),
+    { total: 0, done: 0, inProgress: 0, failed: 0, pending: 0, cancelled: 0 },
+  );
 }
 
 /**

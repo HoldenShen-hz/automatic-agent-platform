@@ -63,6 +63,10 @@ class InMemoryHarnessRunStore {
     return updated;
   }
 
+  delete(id: string): boolean {
+    return this.runs.delete(id);
+  }
+
   list(limit: number, cursor: string | undefined): {
     runs: readonly CanonicalHarnessRun[];
     nextCursor: string | null;
@@ -233,6 +237,29 @@ export function createHarnessRunsRoutes(deps: HarnessRunsRouteDeps): RouteDefini
           ...(body.terminalReason !== undefined ? { terminalReason: body.terminalReason as string } : {}),
         });
         return buildJsonResponse(ctx.requestId, 200, updated);
+      },
+    },
+    // ── DELETE /api/v1/harness-runs/:id ─────────────────────────────────────────
+    {
+      method: "DELETE",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "harness-runs" || segments.length !== 4) {
+          return null;
+        }
+        const _principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const harnessRunId = segments[3];
+        if (harnessRunId == null) {
+          throw new HarnessRunsApiError(400, "api.invalid_harness_run_id", "Invalid harness run ID.");
+        }
+        const existing = harnessRunStore.get(harnessRunId);
+        if (!existing) {
+          throw new HarnessRunsApiError(404, "api.harness_run_not_found", "Harness run not found.");
+        }
+        harnessRunStore.delete(harnessRunId);
+        return buildJsonResponse(ctx.requestId, 200, { harnessRunId, status: "deleted" });
       },
     },
   ];

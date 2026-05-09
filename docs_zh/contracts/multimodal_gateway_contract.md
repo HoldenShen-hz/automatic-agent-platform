@@ -14,6 +14,10 @@
 ## 3. `MultimodalRequest` 最小字段
 
 - `request_id`
+- `harness_run_id`
+- `node_run_id?`
+- `tenant_id`
+- `trace_id`
 - `modalities`
 - `input_parts`
 - `requested_outputs`

@@ -178,12 +178,13 @@ export interface KnowledgeFacadeService {
  * Abstraction for incident case operations (P5).
  */
 export interface IncidentFacadeService {
-  listIncidents(limit?: number): IncidentCase[];
-  getIncident(incidentId: string): IncidentCase | null;
+  listIncidents(limit?: number, tenantId?: string | null): IncidentCase[];
+  getIncident(incidentId: string, tenantId?: string | null): IncidentCase | null;
   openIncident(input: {
     severity: IncidentSeverity;
     title: string;
     linkedEvidenceRefs?: string[];
+    tenantId?: string | null;
   }): IncidentCase;
   acknowledge(incidentId: string, owner: string): IncidentCase;
   startMitigation(incidentId: string): IncidentCase;
@@ -197,13 +198,13 @@ export interface IncidentFacadeService {
  * Used as a default when incidentService is not provided.
  */
 class NoOpIncidentFacadeService implements IncidentFacadeService {
-  public listIncidents(limit?: number): IncidentCase[] {
+  public listIncidents(limit?: number, _tenantId?: string | null): IncidentCase[] {
     return [];
   }
-  public getIncident(_incidentId: string): IncidentCase | null {
+  public getIncident(_incidentId: string, _tenantId?: string | null): IncidentCase | null {
     return null;
   }
-  public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
+  public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[]; tenantId?: string | null }): IncidentCase {
     throw new Error("Incident service not configured");
   }
   public acknowledge(_incidentId: string, _owner: string): IncidentCase {

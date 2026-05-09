@@ -258,6 +258,7 @@ Policy Engine 的意义不是再造一层抽象，而是把过去分散在权限
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-17: 本文原先把运行模式压缩成 `supervised / auto / full-auto` 三值，根因是早期策略合同只覆盖“是否自动执行”，没有把架构中的降级保护模式也视为一等治理对象。修复：正文现把 `mode` 收敛到 `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode` 八种规范模式，并把旧三值降为 legacy 输入。
+- T-17: 本文原先把运行模式压缩成 `supervised / auto / full-auto` 三值，根因是早期策略合同只覆盖”是否自动执行”，没有把架构中的降级保护模式也视为一等治理对象。修复：正文现把 `mode` 收敛到 `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode` 八种规范模式，并把旧三值降为 legacy 输入。
+- T-19: 原 `PolicyDecisionRequest` 字段已正确使用 `harness_run_id / node_run_id / attempt_id` 作为权威关联键，未使用废弃的 `execution_id`。R2-19 系 audit 误判；本文§3.1 自始即对齐 v4.3 规范，无须修改。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

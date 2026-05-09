@@ -13,6 +13,14 @@ export const FeedbackSignalSchema = z.object({
   payload: z.record(z.string(), z.unknown()).default({}),
   stepOutputRefs: z.array(z.string()).default([]),
   timestamp: z.number().int().nonnegative(),
+  /** Composite trust score [0,1] derived from source reliability, signal consistency, and validation history. */
+  feedbackTrustScore: z.number().min(0).max(1).default(0.5),
+  /** Individual trust factor scores for transparency. */
+  trustFactors: z.object({
+    sourceReliability: z.number().min(0).max(1).default(0.5),
+    signalConsistency: z.number().min(0).max(1).default(0.5),
+    validationHistory: z.number().min(0).max(1).default(0.5),
+  }).default({}),
 });
 
 export type FeedbackSource = z.infer<typeof FeedbackSourceSchema>;

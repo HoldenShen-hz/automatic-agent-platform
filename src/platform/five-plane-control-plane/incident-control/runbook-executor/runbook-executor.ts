@@ -30,6 +30,38 @@ import type {
 } from "./types.js";
 import { parseRunbookMarkdown } from "./markdown-parser.js";
 
+const READ_ONLY_KUBECTL_SUBCOMMANDS = new Set(["get", "describe", "logs", "top", "api-resources", "api-versions", "cluster-info", "config", "version"]);
+const READ_ONLY_DOCKER_SUBCOMMANDS = new Set(["ps", "images", "inspect", "logs", "events", "stats", "version", "info"]);
+
+function isReadOnlyDiagnosticCommand(command: string): boolean {
+  const trimmed = command.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const executable = parts[0]?.toLowerCase();
+  const subcommand = parts[1]?.toLowerCase();
+
+  if (executable == null) {
+    return false;
+  }
+
+  if (["curl", "git", "ls", "cat", "grep", "echo", "pwd", "ps", "top", "free", "df"].includes(executable)) {
+    return true;
+  }
+
+  if (executable === "kubectl") {
+    return subcommand != null && READ_ONLY_KUBECTL_SUBCOMMANDS.has(subcommand);
+  }
+
+  if (executable === "docker") {
+    return subcommand != null && READ_ONLY_DOCKER_SUBCOMMANDS.has(subcommand);
+  }
+
+  return false;
+}
+
 /**
  * Result of a single step execution.
  */
@@ -235,10 +267,7 @@ export class RunbookExecutor {
     }
 
     // Default: assume success for diagnostic/read-only commands
-    const readOnlyPatterns = [
-      /^(curl|kubectl|docker|git|ls|cat|grep|echo|pwd|ps|top|free|df)/i,
-    ];
-    const isReadOnly = readOnlyPatterns.some((pattern) => pattern.test(command));
+    const isReadOnly = isReadOnlyDiagnosticCommand(command);
 
     return {
       success: true,

@@ -18,7 +18,7 @@ export interface WSClient {
 }
 
 export interface WebSocketFactory {
-  new(url: string): WebSocket;
+  new(url: string, protocols?: string | string[]): WebSocket;
 }
 
 export class InMemoryWSClient implements WSClient {
@@ -76,6 +76,13 @@ export class BrowserWSClient implements WSClient {
   private socket: WebSocket | null = null;
   private status: WSStatus = "disconnected";
   private subscribedChannels = new Set<string>();
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 10;
+  private readonly baseReconnectDelayMs = 500;
+  private readonly maxReconnectDelayMs = 30000;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private currentUrl: string | null = null;
+  private currentToken: string | null = null;
 
   public constructor(
     private readonly websocketFactory: WebSocketFactory = WebSocket,
@@ -83,11 +90,21 @@ export class BrowserWSClient implements WSClient {
   ) {}
 
   public connect(url: string, token: string): void {
+    this.currentUrl = url;
+    this.currentToken = token;
+    this.reconnectAttempts = 0;
+    this.establishConnection(url, token);
+  }
+
+  private establishConnection(url: string, token: string): void {
     this.setStatus("connecting");
+    this.clearReconnectTimer();
     try {
-      const socket = new this.websocketFactory(`${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`);
+      // Use Sec-WebSocket-Protocol header for auth token instead of URL query param
+      const socket = new this.websocketFactory(url, ["aa-auth-v1", `Bearer-${encodeURIComponent(token)}`]);
       this.socket = socket;
       socket.onopen = () => {
+        this.reconnectAttempts = 0;
         this.setStatus("connected");
         for (const channel of this.subscribedChannels) {
           socket.send(JSON.stringify({ action: "subscribe", channel }));
@@ -99,24 +116,57 @@ export class BrowserWSClient implements WSClient {
       };
       socket.onclose = () => {
         this.setStatus("reconnecting");
+        this.scheduleReconnect();
       };
       socket.onerror = () => {
         this.setStatus("reconnecting");
         if (this.fallbackClient != null) {
           this.fallbackClient.connect(url, token);
         }
+        this.scheduleReconnect();
       };
     } catch {
       this.setStatus("reconnecting");
       if (this.fallbackClient != null) {
         this.fallbackClient.connect(url, token);
       }
+      this.scheduleReconnect();
+    }
+  }
+
+  private calculateReconnectDelay(): number {
+    const delay = this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempts);
+    return Math.min(delay, this.maxReconnectDelayMs);
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.setStatus("disconnected");
+      return;
+    }
+    const delay = this.calculateReconnectDelay();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectAttempts++;
+      if (this.currentUrl != null && this.currentToken != null) {
+        this.establishConnection(this.currentUrl, this.currentToken);
+      }
+    }, delay);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 
   public disconnect(): void {
+    this.clearReconnectTimer();
+    this.reconnectAttempts = this.maxReconnectAttempts;
     this.socket?.close();
     this.socket = null;
+    this.currentUrl = null;
+    this.currentToken = null;
     this.fallbackClient?.disconnect();
     this.setStatus("disconnected");
   }

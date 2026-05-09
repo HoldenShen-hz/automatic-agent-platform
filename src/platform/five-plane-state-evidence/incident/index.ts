@@ -2,7 +2,7 @@ import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved";
+export type IncidentStatus = "open" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
 
 export interface IncidentCase {
   incidentId: string;
@@ -43,20 +43,50 @@ export class IncidentCaseService {
     return incident;
   }
 
-  public acknowledge(incidentId: string, owner: string): IncidentCase {
+  /**
+   * Transitions incident to triaged status with an assigned owner.
+   * §R14-03: Triaged state for incident lifecycle.
+   */
+  public triage(incidentId: string, owner: string): IncidentCase {
     const incident = this.getRequired(incidentId);
-    return this.update(incidentId, { ...incident, status: "acknowledged", owner, updatedAt: nowIso() });
-  }
-
-  public startMitigation(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
-    if (incident.status === "open") {
+    if (incident.status !== "open") {
       throw new ValidationError(
-        "incident.must_acknowledge_before_mitigation",
-        "Incident must be acknowledged before mitigation can begin.",
+        "incident.must_be_open_for_triage",
+        "Incident must be in open state before it can be triaged.",
       );
     }
-    return this.update(incidentId, { ...incident, status: "mitigating", updatedAt: nowIso() });
+    return this.update(incidentId, { ...incident, status: "triaged", owner, updatedAt: nowIso() });
+  }
+
+  /**
+   * Transitions incident to reviewed status after mitigation.
+   * §R14-03: Reviewed state for incident lifecycle.
+   */
+  public review(incidentId: string): IncidentCase {
+    const incident = this.getRequired(incidentId);
+    if (incident.status !== "mitigating") {
+      throw new ValidationError(
+        "incident.must_be_mitigating_for_review",
+        "Incident must be in mitigating state before it can be reviewed.",
+      );
+    }
+    return this.update(incidentId, { ...incident, status: "reviewed", updatedAt: nowIso() });
+  }
+
+  /**
+   * Closes a resolved incident.
+   * §R14-03: Closed state completes the incident lifecycle.
+   */
+  public close(incidentId: string): IncidentCase {
+    const incident = this.getRequired(incidentId);
+    if (incident.status !== "reviewed" && incident.status !== "resolved") {
+      throw new ValidationError(
+        "incident.must_be_resolved_for_closure",
+        "Incident must be in reviewed or resolved state before it can be closed.",
+      );
+    }
+    const now = nowIso();
+    return this.update(incidentId, { ...incident, status: "closed", updatedAt: now });
   }
 
   public resolve(incidentId: string): IncidentCase {

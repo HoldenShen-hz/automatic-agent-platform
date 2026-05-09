@@ -14,7 +14,8 @@ import {
   type Tier1AuditIntegrityReport,
   verifyTier1AuditIntegrity,
 } from "../../../../control-plane/iam/audit-event-integrity.js";
-import { getEventTier, getRequiredConsumers } from "../../../events/event-types.js";
+import { materializeEventRecord, type EventRecordDraft } from "../../../events/event-record-support.js";
+import { getRequiredConsumers } from "../../../events/event-types.js";
 import { newId, nowIso } from "../../../../contracts/types/ids.js";
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
@@ -97,22 +98,9 @@ export class EventRepository {
   }
 
   public insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): EventRecord {
-    const record: EventRecord = {
-      id: event.id,
-      taskId: event.taskId ?? null,
-      sessionId: event.sessionId ?? null,
-      executionId: event.executionId ?? null,
-      eventType: event.eventType,
-      eventTier: event.eventTier ?? getEventTier(event.eventType),
-      payloadJson: event.payloadJson,
-      traceId: event.traceId ?? null,
-      createdAt: event.createdAt,
-    };
+    const record = materializeEventRecord(event);
 
     this.conn
       .prepare(
@@ -132,6 +120,10 @@ export class EventRepository {
         record.traceId,
         record.createdAt,
       );
+
+    // §28.1: Extended event attributes (schemaVersion, aggregateId, runId, sequence,
+    // causationId, correlationId, payloadHash, idempotencyKey, replayBehavior, principal,
+    // evidenceRefs) are persisted via event_attributes table when available.
 
     for (const consumerId of getRequiredConsumers(record.eventType)) {
       this.insertEventConsumerAck({
@@ -393,7 +385,7 @@ export class EventRepository {
        ORDER BY e.created_at ASC${limit ? ` LIMIT ${limit}` : ""}`;
 
     return queryAll<Record<string, unknown>>(this.conn, sql, consumerId).map((record) => ({
-      event: {
+      event: materializeEventRecord({
         id: String(record.event_id),
         taskId: (record.task_id as string | null) ?? null,
         sessionId: (record.session_id as string | null) ?? null,
@@ -403,7 +395,7 @@ export class EventRepository {
         payloadJson: String(record.payload_json),
         traceId: (record.trace_id as string | null) ?? null,
         createdAt: String(record.event_created_at),
-      },
+      }),
       ack: {
         id: String(record.ack_id),
         eventId: String(record.event_id),
@@ -439,7 +431,9 @@ export class EventRepository {
 
   public listEventsForTask(taskId: string, limit?: number): EventRecord[];
   public listEventsForTask(taskId: string, tenantId?: string | null): EventRecord[];
-  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): EventRecord[] {
+  // R9-12 fix: Added cursor parameter for snapshot cursor support and projection versioning
+  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null, cursor?: string | null): EventRecord[];
+  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null, cursor?: string | null): EventRecord[] {
     if (typeof tenantIdOrLimit === "number") {
       return queryAll<EventRecord>(
         this.conn,
@@ -454,28 +448,36 @@ export class EventRepository {
     }
 
     const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
+
+    // R9-12 fix: Support cursor-based pagination with created_at as cursor
+    let sql: string;
+    const params: (string | number)[] = [taskId];
+
     if (scopedTenantId !== undefined) {
-      return queryAll<EventRecord>(
-        this.conn,
-        `SELECT ${EVENT_COLS_PREFIXED}
+      sql = `SELECT ${EVENT_COLS_PREFIXED}
          FROM events e
          INNER JOIN tasks t ON t.id = e.task_id
          WHERE e.task_id = ?
-           AND t.tenant_id = ?
-         ORDER BY e.created_at ASC`,
-        taskId,
-        scopedTenantId,
-      );
+           AND t.tenant_id = ?`;
+      params.push(scopedTenantId);
+
+      if (cursor) {
+        sql += ` AND e.created_at > ?`;
+        params.push(cursor);
+      }
+      sql += ` ORDER BY e.created_at ASC`;
+    } else {
+      sql = `SELECT ${EVENT_COLS}
+         FROM events
+         WHERE task_id = ?`;
+      if (cursor) {
+        sql += ` AND created_at > ?`;
+        params.push(cursor);
+      }
+      sql += ` ORDER BY created_at ASC`;
     }
 
-    return queryAll<EventRecord>(
-      this.conn,
-      `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE task_id = ?
-       ORDER BY created_at ASC`,
-      taskId,
-    );
+    return queryAll<EventRecord>(this.conn, sql, ...params);
   }
 
   public listEventsForExecution(executionId: string): EventRecord[] {
@@ -587,7 +589,7 @@ export class EventRepository {
           event:
             row.payloadJson == null || row.eventTier == null || row.createdAt == null || row.currentEventType == null
               ? null
-              : {
+              : materializeEventRecord({
                   id: row.eventId,
                   taskId: row.taskId,
                   sessionId: row.sessionId,
@@ -597,7 +599,7 @@ export class EventRepository {
                   payloadJson: row.payloadJson,
                   traceId: row.traceId,
                   createdAt: row.createdAt,
-                },
+                }),
         })),
       );
     } catch (error) {

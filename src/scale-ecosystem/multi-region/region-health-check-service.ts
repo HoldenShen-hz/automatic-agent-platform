@@ -278,18 +278,27 @@ export class RegionHealthCheckService {
   }
 
   /**
-   * Perform the actual health check
+   * Perform the actual health check via real network probe
    */
   private async performHealthCheck(
     config: RegionHealthCheckConfig,
   ): Promise<{ metrics: HealthCheckMetric[] }> {
     const snapshot = config.metricSnapshot ?? {};
+
+    // Perform real network probe if no snapshot is provided
+    let measuredLatencyMs: number;
+    if (snapshot.latencyMs != null) {
+      measuredLatencyMs = snapshot.latencyMs;
+    } else {
+      measuredLatencyMs = await this.measureNetworkLatency(config.endpoint, config.timeoutMs);
+    }
+
     const metrics: HealthCheckMetric[] = [
       {
         metricName: "latency",
-        value: snapshot.latencyMs ?? Math.min(config.thresholds.maxLatencyMs, config.endpoint.length * 10),
+        value: measuredLatencyMs,
         threshold: config.thresholds.maxLatencyMs,
-        isHealthy: (snapshot.latencyMs ?? config.endpoint.length * 10) <= config.thresholds.maxLatencyMs,
+        isHealthy: measuredLatencyMs <= config.thresholds.maxLatencyMs,
       },
       {
         metricName: "error_rate",
@@ -312,6 +321,34 @@ export class RegionHealthCheckService {
     ];
 
     return { metrics };
+  }
+
+  /**
+   * Measure actual network latency to a region endpoint using HTTP HEAD request
+   */
+  private async measureNetworkLatency(endpoint: string, timeoutMs: number): Promise<number> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const startTime = Date.now();
+    try {
+      // Use HTTP HEAD request to measure latency with minimal payload
+      const url = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
+      const response = await fetch(`${url}/health`, {
+        method: "HEAD",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "RegionHealthCheck/1.0",
+        },
+      });
+      clearTimeout(timeout);
+      // If response is received, calculate actual RTT
+      return Date.now() - startTime;
+    } catch {
+      clearTimeout(timeout);
+      // On error, return a high latency value to indicate unhealthy connection
+      return timeoutMs + 1;
+    }
   }
 
   /**

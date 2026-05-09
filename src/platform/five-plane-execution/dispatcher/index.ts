@@ -118,6 +118,7 @@ class MultiStepToolRegistry {
       maxTaskCostUsd: 10,
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
+      maxPlatformCostUsd: 0,
       warnAtRatio: 0.8,
       mode: "auto",
     };

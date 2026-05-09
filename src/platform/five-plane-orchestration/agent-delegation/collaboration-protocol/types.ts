@@ -29,6 +29,12 @@ export const ACPMessageSchema = z.object({
   trace_id: z.string(),
   payload: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
+  delegation_id: z.string().optional(),
+  child_run_id: z.string().optional(),
+  capability_intersection: z.array(z.string()).optional(),
+  budget_cap: z.number().min(0).optional(),
+  data_boundary: z.string().optional(),
+  deadline: z.string().optional(),
 });
 export type ACPMessage = z.infer<typeof ACPMessageSchema>;
 

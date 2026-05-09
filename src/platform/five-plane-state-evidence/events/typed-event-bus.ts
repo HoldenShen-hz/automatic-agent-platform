@@ -163,8 +163,23 @@ export interface TypedEventPayloadMap {
   "test:capacity": Record<string, unknown>;
   "test:many_events": Record<string, unknown>;
   // R13-18: Auto-scaling signals for worker pool
-  "worker:scale_up": WorkerScaleSignalPayload;
-  "worker:scale_down": WorkerScaleSignalPayload;
+  "worker:scale_up": WorkerScaleSignalPayload,
+  "worker:scale_down": WorkerScaleSignalPayload,
+  // §28.1: Canonical platform events
+  "platform.harness_run.status_changed": Record<string, unknown>;
+  "platform.harness_run.created": Record<string, unknown>;
+  "platform.harness_run.completed": Record<string, unknown>;
+  "platform.harness_run.failed": Record<string, unknown>;
+  "platform.node_run.status_changed": Record<string, unknown>;
+  "platform.node_run.started": Record<string, unknown>;
+  "platform.node_run.completed": Record<string, unknown>;
+  "platform.budget_ledger.status_changed": Record<string, unknown>;
+  "platform.budget_reservation.status_changed": Record<string, unknown>;
+  "platform.side_effect.status_changed": Record<string, unknown>;
+  // OAPEFLR events
+  "oapeflir.view.run_lifecycle": Record<string, unknown>;
+  "oapeflir.graph.scheduled": Record<string, unknown>;
+  "oapeflir.node.executed": Record<string, unknown>;
 }
 
 /**

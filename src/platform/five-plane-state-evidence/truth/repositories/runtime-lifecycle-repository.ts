@@ -1,5 +1,6 @@
 import type { ApprovalRecord, EventRecord, WorkflowStateRecord } from "../../../contracts/types/domain.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
+import type { EventRecordDraft } from "../../events/event-record-support.js";
 import { AuthoritativeTaskStore } from "../authoritative-task-store.js";
 
 const runtimeLifecycleRepositoryLogger = new StructuredLogger({ retentionLimit: 100 });
@@ -93,10 +94,7 @@ export interface RuntimeLifecycleRepository {
     requestJson: string;
   }): void;
   insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): EventRecord;
 }
 
@@ -237,10 +235,7 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
   }
 
   public insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): EventRecord {
     return this.store.event.insertEvent(event);
   }
@@ -407,10 +402,7 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   }
 
   public insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): EventRecord {
     return this.run("insertEvent", () => this.inner.insertEvent(event));
   }
@@ -566,10 +558,7 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   }
 
   public insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): EventRecord {
     return this.observe("insertEvent", () => this.inner.insertEvent(event));
   }

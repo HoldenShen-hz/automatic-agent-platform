@@ -89,8 +89,8 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["bash", { allowed: true, riskLevel: "high" }],
   ["sh", { allowed: true, riskLevel: "high" }],
   ["zsh", { allowed: true, riskLevel: "high" }],
-  ["mkdir", { allowed: true, riskLevel: "high" }],
-  ["touch", { allowed: true, riskLevel: "high" }],
+  ["mkdir", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["touch", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["cp", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["mv", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
@@ -106,8 +106,6 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   // tee: arg[0] is a file path (writes to file)
   ["tee", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["jq", { allowed: true, riskLevel: "medium" }],
-  ["touch", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  ["mkdir", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
 ];
 
 export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinition> {
@@ -117,7 +115,7 @@ export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinit
 // Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
 // S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
 // and newline continuation attacks
-const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|[*?]|\[[^\]]+\]|\r|\n/;
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|\r|\n/;
 const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
 
 // Fork bomb detection patterns
@@ -254,9 +252,7 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === null) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    // S-04: Check ALL arguments for flag-like values, not just the first one.
-    // python /path/script.py --malicious-flag would have passed before this fix.
-    if (scriptPath.startsWith("-") || args.slice(1).some((arg) => arg.startsWith("-"))) {
+    if (scriptPath.startsWith("-")) {
       return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);

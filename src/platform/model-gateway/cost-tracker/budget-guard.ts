@@ -6,6 +6,7 @@
  * and estimated next step cost against configured limits.
  */
 
+import { newId } from "../../contracts/types/ids.js";
 import {
   createBudgetLedger,
   type BudgetLedger,
@@ -17,11 +18,16 @@ import { BudgetAllocator } from "../../execution/budget-allocator.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.
+ * R2-6: 3-level hierarchy - platform / pack / step
  */
 export interface BudgetPolicy {
-  maxTaskCostUsd: number;
-  maxPackCostUsd?: number;
+  /** Platform-level hard cap (top-level budget ceiling). Defaults to 0 (disabled). */
   maxPlatformCostUsd?: number;
+  /** Pack-level budget cap (optional intermediate limit) */
+  maxPackCostUsd?: number;
+  /** Step-level budget cap (optional per-step limit) */
+  maxStepCostUsd?: number;
+  maxTaskCostUsd: number;
   maxDailyCostUsd: number;
   maxMonthlyCostUsd: number;
   maxModelTokens?: number;
@@ -48,12 +54,16 @@ export interface ExecutionChainBudgetSpend {
   readonly currentMonthlyCostUsd: number;
 }
 
+export type BudgetViolationScope = "task" | "daily" | "monthly" | "platform" | "pack" | "step";
+
 export interface BudgetGuardCascadeResult extends BudgetGuardResult {
   readonly projectedTaskCostUsd: number;
   readonly projectedDailyCostUsd: number;
   readonly projectedMonthlyCostUsd: number;
-  readonly violatedScope: "task" | "daily" | "monthly" | null;
-  readonly warningScopes: readonly ("task" | "daily" | "monthly")[];
+  /** R2-6: Scope that violated the budget limit */
+  readonly violatedScope: BudgetViolationScope | null;
+  /** R2-6: Warning scopes approaching their limits */
+  readonly warningScopes: readonly BudgetViolationScope[];
 }
 
 export interface BudgetReservationRequest {
@@ -63,6 +73,10 @@ export interface BudgetReservationRequest {
   readonly harnessRunId: string;
   readonly traceId: string;
   readonly emittedBy: string;
+  /** R2-6: Pack identifier for pack-level budget tracking */
+  readonly packId?: string;
+  /** R2-6: Step identifier for step-level budget tracking */
+  readonly stepId?: string;
   readonly ledger?: BudgetLedger;
   readonly resourceKind?: BudgetResourceKind;
   readonly expiresAt?: string;
@@ -151,7 +165,7 @@ export class BudgetGuard {
         reservation: null,
         reservedAmount: 0,
         actualAmount: null,
-        request,
+        request: input,
       };
       this.atomicSessions.set(session.sessionId, session);
       return {
@@ -173,7 +187,7 @@ export class BudgetGuard {
       reservation: session.reservation,
       reservedAmount: input.spend.nextEstimatedCostUsd,
       actualAmount: null,
-      request,
+      request: session.request,
     };
     this.atomicSessions.set(atomicSession.sessionId, atomicSession);
 
@@ -383,11 +397,22 @@ export class BudgetGuard {
     const projectedDaily = input.spend.currentDailyCostUsd + next;
     const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
 
-    const checks = [
-      { scope: "task" as const, projected: projectedTask, limit: input.policy.maxTaskCostUsd },
-      { scope: "daily" as const, projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
-      { scope: "monthly" as const, projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
+    const checks: { scope: "task" | "daily" | "monthly" | "platform" | "pack" | "step"; projected: number; limit: number }[] = [
+      { scope: "task", projected: projectedTask, limit: input.policy.maxTaskCostUsd },
+      { scope: "daily", projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
+      { scope: "monthly", projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
     ];
+
+    // R2-6: 3-level budget hierarchy: add platform/pack/step checks if configured
+    if ((input.policy.maxPlatformCostUsd ?? 0) > 0) {
+      checks.push({ scope: "platform" as const, projected: projectedTask, limit: input.policy.maxPlatformCostUsd! });
+    }
+    if (input.policy.maxPackCostUsd != null && input.policy.maxPackCostUsd > 0) {
+      checks.push({ scope: "pack" as const, projected: projectedTask, limit: input.policy.maxPackCostUsd });
+    }
+    if (input.policy.maxStepCostUsd != null && input.policy.maxStepCostUsd > 0) {
+      checks.push({ scope: "step" as const, projected: next, limit: input.policy.maxStepCostUsd });
+    }
     const violation = checks.find((check) => check.projected > check.limit) ?? null;
     const warningScopes = checks
       .filter((check) => check.projected >= check.limit * input.policy.warnAtRatio)
@@ -456,6 +481,12 @@ export class BudgetGuard {
       resourceKind: input.resourceKind ?? "token",
       expiresAt: input.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       expectedVersion: ledger.version,
+      context: {
+        tenantId: input.tenantId,
+        traceId: input.traceId,
+        emittedBy: input.emittedBy,
+        principal: input.emittedBy,
+      },
     });
 
     return {
@@ -492,6 +523,12 @@ export class BudgetExecutionSessionManager {
       resourceKind: request.resourceKind ?? "token",
       expiresAt: request.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       expectedVersion: ledger.version,
+      context: {
+        tenantId: request.tenantId,
+        traceId: request.traceId,
+        emittedBy: request.emittedBy,
+        principal: request.emittedBy,
+      },
     });
     const session: BudgetExecutionSession = {
       sessionId: reserved.reservation.budgetReservationId,

@@ -126,6 +126,10 @@ export class AssessmentService {
       ? (risk === "critical" ? 0.95 : risk === "high" ? 0.75 : risk === "medium" ? 0.45 : 0.15)
       : 0.1;
 
+    // R9-17 fix: Derive division from task situation domain hints, not hardcoded "coding"
+    // Domain detection based on available tools, file types, and blockers
+    const division = this.deriveDivision(situation);
+
     const riskAssessment: RiskAssessment = {
       level: risk,
       score: riskScore,
@@ -147,7 +151,7 @@ export class AssessmentService {
         factors: riskFactors,
       },
       routingDecision: {
-        division: "coding",
+        division,
         workflow,
         rationale: `complexity=${complexity};risk=${risk};files=${situation.fileRefs.length}`,
       },
@@ -189,5 +193,46 @@ export class AssessmentService {
       return "simple";
     }
     return "trivial";
+  }
+
+  /**
+   * R9-17 fix: Derives the operational division from task situation context.
+   * Previously hardcoded to "coding" - now uses domain hints from the situation.
+   */
+  private deriveDivision(situation: TaskSituation): string {
+    const tools = situation.environmentContext.availableTools;
+    const blockers = situation.blockers.map(b => b.description.toLowerCase());
+    const objective = situation.userIntent.raw.toLowerCase();
+
+    // Data/analytics division: data processing, queries, pipelines
+    if (tools.some(t => /data|query|pipeline|etl|warehouse|analytics/.test(t)) ||
+        blockers.some(b => /data|query|pipeline|etl/.test(b)) ||
+        /data |analytics |pipeline |etl |query /.test(objective)) {
+      return "data";
+    }
+
+    // Infrastructure division: deployment, DevOps, cloud ops
+    if (tools.some(t => /deploy|kubernetes|terraform|aws|gcp|azure|docker|container/.test(t)) ||
+        blockers.some(b => /deploy|infrastructure|cloud|docker|kubernetes/.test(b)) ||
+        /deploy |infrastructure |kubernetes |docker |cloud |devops/.test(objective)) {
+      return "infrastructure";
+    }
+
+    // Security division: security扫描, vuln, auth
+    if (tools.some(t => /security|scan|vuln|auth|identity|oauth|jwt|cert/.test(t)) ||
+        blockers.some(b => /security|vuln|auth|cert|pki/.test(b)) ||
+        /security |vuln |auth |oauth |pki/.test(objective)) {
+      return "security";
+    }
+
+    // Research/ML division: training, model, ml, llm
+    if (tools.some(t => /train|model|ml|llm|ai|infer|tensor|gpu/.test(t)) ||
+        blockers.some(b => /model|ml|llm|ai|train|tensor/.test(b)) ||
+        /model |ml |llm |train |ai |machine learning/.test(objective)) {
+      return "research";
+    }
+
+    // Default to coding division for general development tasks
+    return "coding";
   }
 }

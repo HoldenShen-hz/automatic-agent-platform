@@ -5,6 +5,7 @@ import {
   type BudgetPolicy,
 } from "../../platform/model-gateway/cost-tracker/index.js";
 import type { RiskPreview } from "../nl-gateway/index.js";
+import { matchDomainRecipe, type DomainRecipe } from "../../domains/recipes/index.js";
 import type { LlmPlanGenerator } from "./llm-plan-generator.js";
 export * from "./llm-plan-generator.js";
 
@@ -145,6 +146,12 @@ export interface GoalDecompositionServiceOptions {
   };
   // R5-28: Domain capabilities for validation
   readonly domainCapabilities?: Readonly<Record<string, readonly string[]>>;
+  readonly domainRecipes?: readonly DomainRecipe[];
+  // R9-46: Domain recipe service for template detection
+  readonly domainRecipeService?: {
+    matchRecipe(domainId: string, input: string): { archetype?: string; triggerPhrases?: readonly string[] } | null;
+  } | null;
+  readonly planGraphHarnessRuntime?: unknown;
 }
 
 /**
@@ -153,7 +160,9 @@ export interface GoalDecompositionServiceOptions {
 export interface CapabilityValidationResult {
   readonly valid: boolean;
   readonly missingCapabilities: readonly string[];
+  readonly unauthorizedPermissions: readonly string[];
   readonly reasonCodes: readonly string[];
+  readonly validationMessages: readonly string[];
 }
 
 const DEFAULT_COST_ESTIMATE: CostEstimate = {
@@ -171,6 +180,34 @@ const DEFAULT_MAX_DELEGATION_DEPTH = 3;
 /** R5-18: Global call depth cap - total call stack depth limit */
 const DEFAULT_GLOBAL_CALL_DEPTH_CAP = 8;
 const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
+const DEFAULT_DOMAIN_CAPABILITIES: Readonly<Record<string, readonly string[]>> = {
+  advertising: [],
+  communications: [],
+  content_production: [],
+  data_analysis: ["analytics"],
+  engineering_ops: [],
+  finance: ["approval_workflow"],
+  general_ops: ["analytics", "approval_workflow"],
+  hr: [],
+  legal: ["approval_workflow"],
+  operations: ["approval_workflow"],
+  quality_assurance: [],
+  security: [],
+};
+const DEFAULT_DOMAIN_PERMISSIONS: Readonly<Record<string, readonly string[]>> = {
+  advertising: [],
+  communications: [],
+  content_production: [],
+  data_analysis: [],
+  engineering_ops: ["deployment:write"],
+  finance: [],
+  general_ops: [],
+  hr: [],
+  legal: [],
+  operations: ["deployment:write"],
+  quality_assurance: [],
+  security: [],
+};
 const HIGH_RISK_KEYWORDS = [
   "deploy",
   "release",
@@ -324,10 +361,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
 
     // R5-28: Validate domain capabilities before returning decomposition
-    const capabilityValidation = this.validateCapabilities(tasks, "");
-    if (!capabilityValidation.valid) {
-      throw new Error(`goal_decomposer.capability_validation_failed:${capabilityValidation.missingCapabilities.join(",")}`);
-    }
+    const capabilityValidation = this.validateCapabilities(tasks, constraintEnvelope);
 
     let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
       matchedTemplate == null
@@ -389,6 +423,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       ...(graphAnalysis.hasCycle ? ["goal_decomposer.cycle_detected"] : []),
       ...(constraintEnvelope.requiresApproval ? ["goal_decomposer.approval_constraint_propagated"] : []),
       ...(budgetBlockedLlmPlan ? ["goal_decomposer.llm_budget_reservation_blocked"] : []),
+      ...capabilityValidation.validationMessages,
     ];
     const lifecycleState: GoalLifecycleState = "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
@@ -427,7 +462,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         decompositionConfidence < 0.7
         || riskSummary.overallRisk === "critical"
         || goal.priority === "critical"
-        || graphAnalysis.hasCycle,
+        || graphAnalysis.hasCycle
+        || !capabilityValidation.valid,
       decompositionStrategy,
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
@@ -459,6 +495,33 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
     const normalized = description.toLowerCase();
+
+    const matchedRecipe = this.options.domainRecipes == null
+      ? null
+      : matchDomainRecipe(this.options.domainRecipes, description);
+    if (matchedRecipe != null) {
+      const recipeMapped = this.mapArchetypeToTemplate(matchedRecipe.archetype);
+      if (recipeMapped != null) {
+        return recipeMapped;
+      }
+    }
+
+    // R9-46: First try DomainRecipe integration if service is configured
+    const recipeService = this.options.domainRecipeService;
+    if (recipeService != null) {
+      // Try to match against registered domain recipes
+      // Use "general_ops" as default domain since we're doing broad template detection
+      const matched = recipeService.matchRecipe("general_ops", description);
+      if (matched?.archetype != null) {
+        const serviceMapped = this.mapArchetypeToTemplate(matched.archetype);
+        if (serviceMapped != null) {
+          return serviceMapped;
+        }
+      }
+      // If recipe matched but archetype doesn't map, fall through to regex patterns
+    }
+
+    // R9-46: Fall back to regex pattern matching (was previously hardcoded 5 patterns)
     if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
       return "marketing_campaign";
     }
@@ -473,6 +536,25 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     }
     if (description.trim().length > 20) {
       return "generic_multi_step";
+    }
+    return null;
+  }
+
+  private mapArchetypeToTemplate(
+    archetype: string,
+  ): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | null {
+    const archetypeLower = archetype.toLowerCase();
+    if (archetypeLower.includes("marketing") || archetypeLower.includes("campaign") || archetypeLower.includes("creative")) {
+      return "marketing_campaign";
+    }
+    if (archetypeLower.includes("release") || archetypeLower.includes("deploy") || archetypeLower.includes("launch") || archetypeLower.includes("realtime")) {
+      return "release_launch";
+    }
+    if (archetypeLower.includes("incident") || archetypeLower.includes("operations") || archetypeLower.includes("triage")) {
+      return "incident_response";
+    }
+    if (archetypeLower.includes("hire") || archetypeLower.includes("recruit") || archetypeLower.includes("hr")) {
+      return "hiring_pipeline";
     }
     return null;
   }
@@ -494,10 +576,22 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       : undefined;
 
     return initialTasks.map((task) => {
-      if (budgetPerTask != null && task.constraintEnvelope != null) {
-        return { ...task, constraintEnvelope: { ...task.constraintEnvelope, budgetLimitUsd: budgetPerTask } };
-      }
-      return task;
+      const domainPermissions = DEFAULT_DOMAIN_PERMISSIONS[task.domainId] ?? [];
+      const updatedConstraintEnvelope = task.constraintEnvelope
+        ? {
+            ...task.constraintEnvelope,
+            ...(budgetPerTask != null ? { budgetLimitUsd: budgetPerTask } : {}),
+            // R5-19/R9-42: Propagate risk to subtasks (critical/high can only reduce one level at a time)
+            ...(propagatedRisk != null ? { riskTolerance: propagatedRisk } : {}),
+            requiredPermissions: (task.constraintEnvelope.requiredPermissions ?? []).filter((permission) =>
+              domainPermissions.includes(permission),
+            ),
+          }
+        : undefined;
+      return {
+        ...task,
+        ...(updatedConstraintEnvelope ? { constraintEnvelope: updatedConstraintEnvelope } : {}),
+      };
     });
   }
 
@@ -630,29 +724,51 @@ export class GoalDecompositionService implements GoalDecompositionPort {
    * R5-28: Validate domain capabilities against required capabilities for tasks
    * Returns validation result indicating if all required capabilities are available
    */
-  private validateCapabilities(tasks: PlannedTask[], _domainId: string): CapabilityValidationResult {
-    const domainCapabilities = this.options.domainCapabilities ?? {};
-
+  private validateCapabilities(
+    tasks: PlannedTask[],
+    goalConstraintEnvelope?: GoalConstraintEnvelope,
+  ): CapabilityValidationResult {
+    const domainCapabilities = { ...DEFAULT_DOMAIN_CAPABILITIES, ...(this.options.domainCapabilities ?? {}) };
+    const domainPermissions = DEFAULT_DOMAIN_PERMISSIONS;
     const missingCapabilities: string[] = [];
+    const unauthorizedPermissions: string[] = [];
+    const validationMessages: string[] = [];
 
     for (const task of tasks) {
-      // Use task's domainId to lookup available capabilities for that domain
       const availableCapabilities = domainCapabilities[task.domainId] ?? [];
+      const availablePermissions = domainPermissions[task.domainId] ?? [];
       const required = task.constraintEnvelope?.requiredCapabilities ?? [];
       for (const capability of required) {
-        if (!availableCapabilities.includes(capability) && !missingCapabilities.includes(capability)) {
-          missingCapabilities.push(capability);
+        if (!availableCapabilities.includes(capability)) {
+          const capabilityMarker = `${task.domainId}:${capability}`;
+          if (!missingCapabilities.includes(capabilityMarker)) {
+            missingCapabilities.push(capabilityMarker);
+            validationMessages.push(`goal_decomposer.missing_capability:${task.taskId}:${task.domainId}:${capability}`);
+          }
+        }
+      }
+      const requiredPermissions = goalConstraintEnvelope?.requiredPermissions ?? task.constraintEnvelope?.requiredPermissions ?? [];
+      for (const permission of requiredPermissions) {
+        if (!availablePermissions.includes(permission)) {
+          const permissionMarker = `${task.domainId}:${permission}`;
+          if (!unauthorizedPermissions.includes(permissionMarker)) {
+            unauthorizedPermissions.push(permissionMarker);
+            validationMessages.push(`goal_decomposer.unauthorized_permission:${task.taskId}:${task.domainId}:${permission}`);
+          }
         }
       }
     }
 
-    const valid = missingCapabilities.length === 0;
+    const valid = missingCapabilities.length === 0 && unauthorizedPermissions.length === 0;
     return {
       valid,
       missingCapabilities,
-      reasonCodes: valid
-        ? []
-        : [`goal_decomposer.missing_capabilities:${missingCapabilities.join(",")}`],
+      unauthorizedPermissions,
+      reasonCodes: [
+        ...missingCapabilities.map((marker) => `goal_decomposer.missing_capabilities:${marker}`),
+        ...unauthorizedPermissions.map((marker) => `goal_decomposer.unauthorized_permissions:${marker}`),
+      ],
+      validationMessages,
     };
   }
 

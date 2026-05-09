@@ -162,6 +162,30 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
     return this.transaction(() => {
+      // R5-44: Lease/fencing validation for HarnessRun transitions
+      if (command.aggregateType === "HarnessRun") {
+        const harnessRun = command.aggregate as HarnessRun;
+        const currentRun = this.getHarnessRun(harnessRun.harnessRunId);
+        if (currentRun) {
+          // Check lease token if present
+          if (harnessRun.leaseId != null && currentRun.leaseId != null && harnessRun.leaseId !== currentRun.leaseId) {
+            throw new ValidationError(
+              "runtime_truth_repository.lease_conflict",
+              `HarnessRun ${harnessRun.harnessRunId} has an active lease held by another process`,
+              { details: { harnessRunId: harnessRun.harnessRunId, expectedLease: currentRun.leaseId, actualLease: harnessRun.leaseId } },
+            );
+          }
+          // Check fencing token if present
+          if (harnessRun.fencingToken != null && currentRun.fencingToken != null && harnessRun.fencingToken !== currentRun.fencingToken) {
+            throw new ValidationError(
+              "runtime_truth_repository.fencing_token_conflict",
+              `HarnessRun ${harnessRun.harnessRunId} has a conflicting fencing token`,
+              { details: { harnessRunId: harnessRun.harnessRunId, expectedToken: currentRun.fencingToken, actualToken: harnessRun.fencingToken } },
+            );
+          }
+        }
+      }
+
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
       const result = this.stateMachine.transition({
         ...command,

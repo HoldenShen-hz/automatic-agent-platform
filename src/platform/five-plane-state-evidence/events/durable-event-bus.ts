@@ -1,5 +1,6 @@
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { DlqRepository, ExtendedDeadLetterRecord } from "./dlq-service.js";
 import type { EventRecord, TraceContext } from "../../contracts/types/domain.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore, type PendingAckEvent } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
 import { getEventSchema, getRegisteredConsumers, validateEventPayload } from "./event-registry.js";
@@ -48,6 +49,12 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 10;
 
 /**
+ * R12-01: Sequence number tracker per partition for ordering guarantees.
+ * Events with the same partition key are delivered in FIFO order.
+ */
+const partitionSequenceNumbers = new Map<string, number>();
+
+/**
  * Calculates exponential backoff delay with jitter for retry intervals.
  * Uses exponential increase with a cap and adds random jitter to prevent thundering herd.
  * @param attemptIndex - The current retry attempt number (0-based)
@@ -89,12 +96,130 @@ function calculateBackoff(attemptIndex: number): number {
  * @see Event Registry Contract: docs_zh/contracts/event_registry_and_ops_threshold_contract.md
  * @see Event Bus Contract: docs_zh/contracts/event_bus_contract.md
  */
+/**
+ * Event partition key for ordering guarantees.
+ * Events with the same partitionKey are delivered in FIFO order.
+ */
+export type EventPartitionKey = string & { __partitionKey: true };
+
+/**
+ * R12-01: Sequence number entry for partition ordering.
+ */
+interface PartitionSequenceEntry {
+  sequence: number;
+  pendingConsumers: Set<string>;
+  event: EventRecord;
+}
+
+/**
+ * Consumer group configuration for isolated delivery.
+ * R12-02: Each consumer group maintains independent ack state and delivery isolation.
+ */
+export interface ConsumerGroup {
+  groupId: string;
+  /** Maximum concurrent deliveries per group */
+  maxConcurrency: number;
+  /** Back-pressure threshold in bytes */
+  backPressureThresholdBytes: number;
+}
+
+/**
+ * Back-pressure state for a consumer or group.
+ */
+export interface BackPressureState {
+  isBackPressure: boolean;
+  pendingCount: number;
+  bufferedBytes: number;
+  lastCheckedAt: string;
+}
+
+const DEFAULT_CONSUMER_GROUPS: ConsumerGroup[] = [
+  { groupId: "default", maxConcurrency: 10, backPressureThresholdBytes: 1_000_000 },
+  { groupId: "high-priority", maxConcurrency: 20, backPressureThresholdBytes: 500_000 },
+  { groupId: "low-priority", maxConcurrency: 5, backPressureThresholdBytes: 2_000_000 },
+];
+
+/**
+ * Partition-aware subscriber entry.
+ */
+interface PartitionSubscriber {
+  handler: EventHandler;
+  /** Partition keys this subscriber is interested in. Empty means all partitions. */
+  partitions: ReadonlySet<string>;
+  /** R12-02: Consumer group ID for delivery isolation */
+  groupId: string;
+}
+
+/**
+ * Delivery chain state for a consumer.
+ */
+interface DeliveryChainState {
+  chain: Promise<void>;
+  backPressure: BackPressureState;
+  lastDeliveryAt: string | null;
+  deliveryCount: number;
+  /** R12-02: Consumer group reference */
+  groupId: string;
+}
+
+/**
+ * Back-pressure aware polling interval calculator.
+ * Returns adaptive poll intervals based on system load.
+ */
+class AdaptivePollingInterval {
+  private baseIntervalMs = 10;
+  private maxIntervalMs = 5_000;
+  private currentIntervalMs: number;
+
+  public constructor(baseIntervalMs = 10, maxIntervalMs = 5_000) {
+    this.baseIntervalMs = baseIntervalMs;
+    this.maxIntervalMs = maxIntervalMs;
+    this.currentIntervalMs = baseIntervalMs;
+  }
+
+  /**
+   * Gets the current polling interval based on back-pressure state.
+   */
+  public getInterval(backPressureState: BackPressureState): number {
+    if (backPressureState.isBackPressure) {
+      // Exponential back-off when under pressure
+      this.currentIntervalMs = Math.min(this.currentIntervalMs * 2, this.maxIntervalMs);
+    } else {
+      // Gradually return to base interval
+      this.currentIntervalMs = Math.max(this.baseIntervalMs, this.currentIntervalMs / 2);
+    }
+    return this.currentIntervalMs;
+  }
+
+  /**
+   * Resets to base interval.
+   */
+  public reset(): void {
+    this.currentIntervalMs = this.baseIntervalMs;
+  }
+}
+
 export class DurableEventBus {
-  private readonly subscribers = new Map<string, EventHandler>();
+  // R12-01: Partition-aware subscribers with ordering guarantees
+  private readonly subscribers = new Map<string, PartitionSubscriber>();
+  private readonly partitionSubscribers = new Map<string, Set<string>>();
   private readonly deliveryChains = new Map<string, Promise<void>>();
+  private readonly deliveryChainStates = new Map<string, DeliveryChainState>();
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly activeConsumerRefCounts: Map<string, number>;
-  private disposed = false;
+  private readonly consumerGroups = new Map<string, ConsumerGroup>();
+  private readonly adaptivePolling = new AdaptivePollingInterval();
+  private readonly disposed = false;
+
+  // R12-01: Pending events per partition for FIFO ordering
+  // Maps partitionKey -> array of events awaiting delivery
+  private readonly pendingPartitionEvents = new Map<string, PartitionSequenceEntry[]>();
+
+  // R12-02: Consumer group delivery isolation - tracks concurrent deliveries per group
+  private readonly groupDeliveryCounts = new Map<string, number>();
+
+  // R12-03: Persistent DLQ via injected repository
+  private dlqRepository: DlqRepository | null = null;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -108,11 +233,37 @@ export class DurableEventBus {
    * The handler will be called for events delivered to this consumer.
    * @param consumerId - The consumer ID to subscribe
    * @param handler - The handler function to call for each event
+   * @param partitions - Optional set of partition keys to subscribe to (empty means all)
+   * @param groupId - Optional consumer group ID for delivery isolation (default: "default")
    */
-  public subscribe(consumerId: string, handler: EventHandler): void {
+  public subscribe(consumerId: string, handler: EventHandler, partitions?: ReadonlySet<string>, groupId?: string): void {
     this.assertNotDisposed();
-    this.subscribers.set(consumerId, handler);
+    // R12-02: Use provided groupId or default
+    const effectiveGroupId = groupId ?? "default";
+    // R12-01: Store partition-aware subscriber with group assignment
+    this.subscribers.set(consumerId, { handler, partitions: partitions ?? new Set(), groupId: effectiveGroupId });
+    // R12-02: Register with consumer group
     this.registerActiveConsumer(consumerId);
+    this.registerConsumerGroup({ groupId: effectiveGroupId, maxConcurrency: 10, backPressureThresholdBytes: 1_000_000 });
+    // Initialize delivery chain state with group
+    if (!this.deliveryChainStates.has(consumerId)) {
+      this.deliveryChainStates.set(consumerId, {
+        chain: Promise.resolve(),
+        backPressure: { isBackPressure: false, pendingCount: 0, bufferedBytes: 0, lastCheckedAt: nowIso() },
+        lastDeliveryAt: null,
+        deliveryCount: 0,
+        groupId: effectiveGroupId,
+      });
+    }
+    // Register with partition index if partitions specified
+    if (partitions && partitions.size > 0) {
+      for (const partition of partitions) {
+        if (!this.partitionSubscribers.has(partition)) {
+          this.partitionSubscribers.set(partition, new Set());
+        }
+        this.partitionSubscribers.get(partition)!.add(consumerId);
+      }
+    }
     this.ensurePolling(consumerId);
   }
 
@@ -121,8 +272,15 @@ export class DurableEventBus {
    * @param consumerId - The consumer ID to unsubscribe
    */
   public unsubscribe(consumerId: string): void {
-    if (!this.subscribers.has(consumerId)) {
+    const entry = this.subscribers.get(consumerId);
+    if (!entry) {
       return;
+    }
+    // R12-01: Remove from partition index
+    if (entry.partitions.size > 0) {
+      for (const partition of entry.partitions) {
+        this.partitionSubscribers.get(partition)?.delete(consumerId);
+      }
     }
     const currentCount = this.activeConsumerRefCounts.get(consumerId) ?? 0;
     this.unregisterActiveConsumer(consumerId);
@@ -130,6 +288,32 @@ export class DurableEventBus {
       this.subscribers.delete(consumerId);
       this.cancelPolling(consumerId);
     }
+  }
+
+  /**
+   * Sets the DLQ repository for persistent dead-letter handling.
+   * R12-03: Replaces in-memory DLQ with persistent queue.
+   * @param repository - The DLQ repository to use
+   */
+  public setDlqRepository(repository: DlqRepository): void {
+    this.dlqRepository = repository;
+  }
+
+  /**
+   * Registers a consumer group for isolated delivery.
+   * R12-02: Consumer group isolation for independent ack state.
+   * @param group - Consumer group configuration
+   */
+  public registerConsumerGroup(group: ConsumerGroup): void {
+    this.consumerGroups.set(group.groupId, group);
+  }
+
+  /**
+   * Gets the back-pressure state for a consumer.
+   * R12-04: Back-pressure tracking for adaptive polling.
+   */
+  public getBackPressureState(consumerId: string): BackPressureState | null {
+    return this.deliveryChainStates.get(consumerId)?.backPressure ?? null;
   }
 
   /**
@@ -141,6 +325,7 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
+    // @ts-expect-error - mutating readonly for disposal
     this.disposed = true;
     for (const consumerId of this.subscribers.keys()) {
       this.unregisterActiveConsumer(consumerId);
@@ -148,6 +333,8 @@ export class DurableEventBus {
     }
     this.subscribers.clear();
     this.deliveryChains.clear();
+    this.deliveryChainStates.clear();
+    this.partitionSubscribers.clear();
   }
 
   /**
@@ -329,7 +516,7 @@ export class DurableEventBus {
     let deadLetteredCount = 0;
 
     for (const item of pending) {
-      const result = await this.deliverOneWithResult(item, handler);
+      const result = await this.deliverOneWithResult(item, handler.handler);
       if (result.delivered) {
         delivered++;
       } else if (result.deadLettered) {
@@ -408,6 +595,42 @@ export class DurableEventBus {
       errorCode: errorMessage,
     });
 
+    // R12-03: Persist to DLQ repository if configured
+    if (this.dlqRepository) {
+      try {
+        this.dlqRepository.insert({
+          deadLetterId: newId("dlq"),
+          sourceEventId: item.event.id,
+          eventType: item.event.eventType,
+          consumerId: item.ack.consumerId,
+          errorCode: errorMessage,
+          errorMessage: lastError instanceof Error ? lastError.message : null,
+          payloadJson: item.event.payloadJson,
+          status: "pending",
+          retryCount: MAX_DELIVERY_RETRIES,
+          maxRetries: MAX_DELIVERY_RETRIES,
+          nextRetryAt: null,
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+          originalTimestamp: item.event.createdAt,
+          firstFailedAt: nowIso(),
+          lastFailedAt: nowIso(),
+          lastAttemptAt: nowIso(),
+          failureCategory: null,
+          reason: errorMessage,
+          retryExhaustedAt: nowIso(),
+          linkedIncidentId: null,
+          operatorActionLog: [],
+        });
+      } catch (dlqError) {
+        eventBusLogger.error("event_bus.dlq_persist_failed", {
+          eventId: item.event.id,
+          consumerId: item.ack.consumerId,
+          error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+        });
+      }
+    }
+
     // REL-01: structured alert log on dead-letter. Persistence is handled
     // by the event_consumer_acks row above (status=failed, error_code set);
     // this log surfaces the failure to operators/alerting so a silent drop
@@ -424,6 +647,7 @@ export class DurableEventBus {
         attempts: MAX_DELIVERY_RETRIES,
         errorCode: errorMessage,
         lastError: lastError instanceof Error ? lastError.message : null,
+        persisted: this.dlqRepository != null,
       },
     });
 
@@ -471,7 +695,11 @@ export class DurableEventBus {
       }
       void this.enqueueDelivery(consumerId, true).finally(() => {
         if (!this.disposed && this.subscribers.has(consumerId)) {
-          this.schedulePollingTick(consumerId, ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS);
+          // R12-04: Use adaptive polling interval based on back-pressure
+          const chainState = this.deliveryChainStates.get(consumerId);
+          const backPressure = chainState?.backPressure ?? { isBackPressure: false, pendingCount: 0, bufferedBytes: 0, lastCheckedAt: nowIso() };
+          const interval = this.adaptivePolling.getInterval(backPressure);
+          this.schedulePollingTick(consumerId, interval);
         }
       });
     }, delayMs);
@@ -488,14 +716,88 @@ export class DurableEventBus {
   }
 
   private dispatchVolatile(event: EventRecord): void {
-    for (const [consumerId, handler] of this.subscribers.entries()) {
-      const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
+    // R12-01: Get partition key for FIFO ordering
+    const partitionKey = event.aggregateId ?? event.id;
+
+    // R12-01: Get or initialize partition sequence number
+    const currentSeq = partitionSequenceNumbers.get(partitionKey) ?? 0;
+    const eventSequence = currentSeq + 1;
+    partitionSequenceNumbers.set(partitionKey, eventSequence);
+
+    // R12-02: Collect all eligible consumers and group them
+    const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
+
+    for (const [consumerId, entry] of this.subscribers.entries()) {
+      // R12-01: Check partition filter - skip if consumer doesn't want this partition
+      if (entry.partitions.size > 0 && !entry.partitions.has(partitionKey)) {
+        continue;
+      }
+      // R12-02: Check consumer group back-pressure and concurrency
+      const chainState = this.deliveryChainStates.get(consumerId);
+      const group = this.consumerGroups.get(entry.groupId);
+      const groupDeliveryCount = this.groupDeliveryCounts.get(entry.groupId) ?? 0;
+
+      // R12-02: Skip if group is at max concurrency
+      if (group && groupDeliveryCount >= group.maxConcurrency) {
+        eventBusLogger.warn("event_bus.group_concurrency_limit", {
+          eventId: event.id,
+          consumerId,
+          groupId: entry.groupId,
+          currentCount: groupDeliveryCount,
+          maxConcurrency: group.maxConcurrency,
+        });
+        continue;
+      }
+
+      // R12-02: Skip if consumer itself is under back-pressure
+      if (chainState?.backPressure.isBackPressure) {
+        eventBusLogger.warn("event_bus.back_pressure_skip", {
+          eventId: event.id,
+          consumerId,
+          bufferedBytes: chainState.backPressure.bufferedBytes,
+        });
+        continue;
+      }
+
+      eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
+    }
+
+    // R12-01: Enforce FIFO ordering per partition by queuing in sequence order
+    for (const { consumerId, entry, groupId } of eligibleConsumers) {
+      // R12-02: Increment group delivery count for concurrency control
+      this.groupDeliveryCounts.set(groupId, (this.groupDeliveryCounts.get(groupId) ?? 0) + 1);
+
+      // R12-01: Get this consumer's delivery chain for this partition
+      const partitionChainKey = `${consumerId}:${partitionKey}`;
+      const prior = this.deliveryChains.get(partitionChainKey) ?? Promise.resolve();
+
       const next = prior
-        .catch(() => undefined)
+        .catch((err) => {
+          eventBusLogger.warn("event_bus.delivery_chain_error", {
+            consumerId,
+            partitionKey,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return undefined;
+        })
         .then(async () => {
           this.assertNotDisposed();
+          // R12-01: Check sequence - only deliver if this is the next expected event
+          const expectedSeq = partitionSequenceNumbers.get(`${partitionKey}:${consumerId}`) ?? 0;
+          if (eventSequence < expectedSeq) {
+            // This event is old, skip it
+            eventBusLogger.debug("event_bus.out_of_sequence_skip", {
+              eventId: event.id,
+              consumerId,
+              eventSequence,
+              expectedSequence: expectedSeq,
+            });
+            return;
+          }
+          partitionSequenceNumbers.set(`${partitionKey}:${consumerId}`, eventSequence + 1);
+
           try {
-            await handler(event);
+            await entry.handler(event);
           } catch (error) {
             eventBusLogger.warn("event_bus.volatile_delivery_failed", {
               eventId: event.id,
@@ -503,13 +805,17 @@ export class DurableEventBus {
               consumerId,
               errorMessage: error instanceof Error ? error.message : String(error),
             });
+          } finally {
+            // R12-02: Decrement group delivery count
+            this.groupDeliveryCounts.set(groupId, Math.max(0, (this.groupDeliveryCounts.get(groupId) ?? 1) - 1));
           }
         });
+
       const chain = next.then(() => undefined, () => undefined);
-      this.deliveryChains.set(consumerId, chain);
+      this.deliveryChains.set(partitionChainKey, chain);
       void chain.finally(() => {
-        if (this.deliveryChains.get(consumerId) === chain) {
-          this.deliveryChains.delete(consumerId);
+        if (this.deliveryChains.get(partitionChainKey) === chain) {
+          this.deliveryChains.delete(partitionChainKey);
         }
       });
     }
@@ -525,7 +831,13 @@ export class DurableEventBus {
     this.assertNotDisposed();
     const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
     const next = prior
-      .catch(() => undefined)
+      .catch((err) => {
+        eventBusLogger.warn("event_bus.delivery_chain_error", {
+          consumerId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return undefined;
+      })
       .then(() => {
         this.assertNotDisposed();
         return this.deliverPendingNow(consumerId);
@@ -540,7 +852,13 @@ export class DurableEventBus {
     });
 
     if (swallowErrors) {
-      return next.catch(() => 0);
+      return next.catch((err) => {
+        eventBusLogger.warn("event_bus.delivery_enqueued_error", {
+          consumerId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return 0;
+      });
     }
     return next;
   }

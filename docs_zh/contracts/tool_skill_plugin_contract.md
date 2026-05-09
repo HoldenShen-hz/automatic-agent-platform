@@ -168,6 +168,7 @@ SPI runtime lifecycle 至少覆盖：
 - `enabled` 不等于 `active`；只有通过 compatibility、permission 和 trust gate 后才允许进入 active。
 - `reloaded` 必须保留前后版本、配置摘要和错误原因，方便审计与回滚。
 - trust warning、permission retry、plugin settings 只能作为体验层安全阀，不能替代 runtime policy、sandbox 和 capability boundary。
+- SPI runtime lifecycle 状态命名必须与 [plugin_spi_contract.md](./plugin_spi_contract.md) §4 的 `PluginSpiRegistry` 状态机一致；两文档不得各自定义不同的 SPI lifecycle 状态名称。
 
 ## 7. Domain Tool Bundle
 

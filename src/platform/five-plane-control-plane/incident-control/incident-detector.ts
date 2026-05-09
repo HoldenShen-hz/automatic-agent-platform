@@ -5,12 +5,16 @@
  * detecting anomalies, and classifying incident severity levels.
  * Works in conjunction with the Doctor service to identify and classify
  * incidents that require human attention or automated remediation.
+ *
+ * Severity levels use SEV1-4 per unified severity standard (§R14-02).
+ * Incident lifecycle states: open -> triaged -> mitigating -> reviewed -> resolved -> closed (§R14-03).
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
+import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
 
-export type IncidentSeverity = "p1" | "p2" | "p3" | "p4";
-export type IncidentStatus = "open" | "acknowledged" | "resolved" | "closed";
+export type IncidentSeverity = UnifiedSeverity;
+export type IncidentStatus = "open" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
 export type IncidentCategory =
   | "system_health"
   | "security"
@@ -49,7 +53,9 @@ export class IncidentDetector {
 
   /**
    * Detects incidents from doctor check reports.
-   * Analyzes health check results and classifies issues as incidents.
+   * Analyzes health check results and classifies issues as incidents using SEV1-4.
+   * Also applies detection rules for additional SEV1-3 coverage.
+   * §R14-05: Five rules for SEV1-3 detection.
    */
   public detectFromChecks(checks: Array<{
     checkId: string;
@@ -64,7 +70,7 @@ export class IncidentDetector {
       if (check.status === "fail_closed") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "p1",
+          severity: "SEV1",
           title: `Critical failure in ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
@@ -74,13 +80,29 @@ export class IncidentDetector {
       } else if (check.status === "degraded") {
         incidents.push(this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
-          severity: "p2",
+          severity: "SEV2",
           title: `Degraded ${check.checkId}`,
           description: check.summary,
           sourceCheckId: check.checkId,
           symptoms: check.findings,
           metrics: check.metrics,
         }));
+      }
+
+      // Apply detection rules for additional SEV1-3 coverage
+      const ruleResults = applyDetectionRules(check.metrics);
+      for (const { rule, matched } of ruleResults) {
+        if (matched) {
+          incidents.push(this.createIncident({
+            category: rule.category,
+            severity: rule.severity,
+            title: rule.name,
+            description: rule.description,
+            sourceCheckId: check.checkId,
+            symptoms: check.findings,
+            metrics: check.metrics,
+          }));
+        }
       }
     }
 
@@ -120,22 +142,23 @@ export class IncidentDetector {
    */
   public classifyUrgency(severity: IncidentSeverity): "critical" | "high" | "medium" | "low" {
     switch (severity) {
-      case "p1":
+      case "SEV1":
         return "critical";
-      case "p2":
+      case "SEV2":
         return "high";
-      case "p3":
+      case "SEV3":
         return "medium";
-      case "p4":
+      case "SEV4":
         return "low";
     }
   }
 
   /**
    * Determines if an incident should auto-escalate based on time.
+   * SEV1 incidents auto-escalate after configured threshold.
    */
   public shouldAutoEscalate(detectedAt: string, severity: IncidentSeverity): boolean {
-    if (severity !== "p1") {
+    if (severity !== "SEV1") {
       return false;
     }
     const elapsedSeconds = (Date.now() - Date.parse(detectedAt)) / 1000;
@@ -160,9 +183,91 @@ export class IncidentDetector {
   }
 
   /**
-   * Generates a unique incident ID.
+   * Generates a cryptographically unique incident ID.
    */
   private generateIncidentId(): string {
-    return `incident_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return `incident_${crypto.randomUUID()}`;
   }
+}
+
+/**
+ * Detection rule for incident classification.
+ * §R14-05: Five rules for SEV1-3 detection.
+ */
+export interface IncidentDetectionRule {
+  ruleId: string;
+  name: string;
+  description: string;
+  severity: IncidentSeverity;
+  condition: (metrics: Record<string, string | number | boolean | null>) => boolean;
+  category: IncidentCategory;
+}
+
+/**
+ * Default detection rules for SEV1-3 incidents.
+ * Five rules covering different failure modes.
+ */
+export const DEFAULT_DETECTION_RULES: IncidentDetectionRule[] = [
+  {
+    ruleId: "sev1_availability_collapse",
+    name: "SEV1 Availability Collapse",
+    description: "Availability drops below 95% or error rate exceeds 5%",
+    severity: "SEV1",
+    condition: (m) => {
+      const availability = typeof m.availability === "number" ? m.availability : null;
+      const errorRate = typeof m.error_rate === "number" ? m.error_rate : null;
+      return (availability !== null && availability < 95) || (errorRate !== null && errorRate > 5);
+    },
+    category: "availability",
+  },
+  {
+    ruleId: "sev1_data_integrity_failure",
+    name: "SEV1 Data Integrity Failure",
+    description: "Critical data integrity check failure",
+    severity: "SEV1",
+    condition: (m) => typeof m.data_integrity_check === "boolean" && m.data_integrity_check === false,
+    category: "data_integrity",
+  },
+  {
+    ruleId: "sev2_degraded_service",
+    name: "SEV2 Degraded Service",
+    description: "Service degraded with latency above threshold or error rate elevated",
+    severity: "SEV2",
+    condition: (m) => {
+      const latency = typeof m.latency_p99 === "number" ? m.latency_p99 : null;
+      const errorRate = typeof m.error_rate === "number" ? m.error_rate : null;
+      return (latency !== null && latency > 1000) || (errorRate !== null && errorRate > 1);
+    },
+    category: "performance",
+  },
+  {
+    ruleId: "sev2_security_anomaly",
+    name: "SEV2 Security Anomaly",
+    description: "Security anomaly detected requiring investigation",
+    severity: "SEV2",
+    condition: (m) => typeof m.security_events === "number" && m.security_events > 10,
+    category: "security",
+  },
+  {
+    ruleId: "sev3_config_drift",
+    name: "SEV3 Configuration Drift",
+    description: "Configuration drift detected that may impact reliability",
+    severity: "SEV3",
+    condition: (m) => typeof m.config_drift_detected === "boolean" && m.config_drift_detected === true,
+    category: "configuration",
+  },
+];
+
+/**
+ * Applies detection rules to metrics and returns matching incidents.
+ * §R14-05: Five rules for SEV1-3.
+ */
+export function applyDetectionRules(
+  metrics: Record<string, string | number | boolean | null>,
+  rules: IncidentDetectionRule[] = DEFAULT_DETECTION_RULES,
+): Array<{ rule: IncidentDetectionRule; matched: boolean }> {
+  return rules.map((rule) => ({
+    rule,
+    matched: rule.condition(metrics),
+  }));
 }

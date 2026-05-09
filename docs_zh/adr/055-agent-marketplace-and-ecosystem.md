@@ -38,7 +38,7 @@ type ListingCategory =
 1. 开发者开发 Pack
 2. 本地测试（覆盖率 ≥80%）
 3. 提交审核
-4. 认证评估（Prompt Injection 检查）
+4. 认证评估（Prompt Injection 检查、代码签名验证、SBOM 审查、漏洞扫描）
 5. 上架市场
 
 ### 定价模型

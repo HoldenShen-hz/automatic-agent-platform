@@ -31,7 +31,7 @@ interface AgentComponent {
 }
 ```
 
-### 生命周期状态
+### 生命周期状态（§61.3 reconciliation）
 
 | 状态 | 说明 |
 |------|------|
@@ -43,11 +43,17 @@ interface AgentComponent {
 | deprecated | 废弃 |
 | retired | 退役 |
 | archived | 归档 |
+| superseded | 已取代（终态） |
 
 约束：
-- 状态流转顺序：draft → requirements_locked → testing → staging → production → deprecated → retired → archived
+- 状态流转顺序：draft → requirements_locked → testing → staging → production → deprecated → retired → archived → superseded
 - requirements_locked 后不再接受轻率需求变更，需走变更委员会流程
 - archived 状态保留审计历史，不可逆回活跃态
+- superseded 为终态，表示被新版本完全取代
+
+## v4.3 ADR Remediation
+
+- R3-52: 本 ADR 原先定义 8 态生命周期（draft/requirements_locked/testing/staging/production/deprecated/retired/archived），根因是生命周期 ADR 遗漏了 superseded 终态。修复：正文现增加 superseded 终态，形成 9 态完整状态机，与 §61.3 架构要求对齐。
 
 - Semantic versioning (major.minor.patch)
 - 版本兼容性检查

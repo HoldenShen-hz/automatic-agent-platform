@@ -38,7 +38,9 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 |------|------|
 | warn | 超时前警告 |
 | escalate | 超时后升级 |
-| auto_action | 超时后自动执行预设动作 |
+| break_glass | 触发 break-glass 流程，需要双重审批才能继续 |
+
+注：`auto_action` 策略已被移除。超时后必须走 break-glass + 双重审批流程，禁止自动执行预设动作。
 
 ### 路由规则引擎
 

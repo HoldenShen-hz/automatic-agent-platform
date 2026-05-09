@@ -6,7 +6,9 @@
 
 ## 背景
 
-OAPEFLIR Learn Hub 产出的学习结果需要持久化存储并供后续任务检索。Knowledge Plane（知识平面）提供统一的知识摄取、索引、检索和治理能力，支持 BM25 关键词索引、语义向量索引和 AST 结构索引三种检索方式。
+OAPEFLIR Learn Hub 产出的学习结果需要持久化存储并供后续任务检索。Knowledge Plane（知识平面）是 P5 State&Evidence 平面内的子域，提供统一的知识摄取、索引、检索和治理能力，支持 BM25 关键词索引、语义向量索引和 AST 结构索引三种检索方式。
+
+> 注意：Knowledge Plane 是 P5 State&Evidence 的子域，不是独立架构平面。所有 Knowledge 操作最终回链到 P5 的 truth/events 体系。
 
 现有 `knowledge/` 模块（23 文件）已实现完整管线，本 ADR 正式确立 Knowledge Plane 的治理架构和信任模型。
 

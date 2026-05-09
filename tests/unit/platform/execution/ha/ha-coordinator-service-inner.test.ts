@@ -743,6 +743,17 @@ test("HaCoordinatorService - verifyWriteAuthority returns false for stale token"
   assert.equal(valid, false);
 });
 
+test("HaCoordinatorService - verifyWriteAuthority rejects mismatched future fencing tokens", () => {
+  const service = createService();
+
+  service.registerNode("node-1", "us-east-1");
+  const result = service.acquireLeadership({ nodeId: "node-1" });
+
+  const valid = service.verifyWriteAuthority(result.fencingToken + 1);
+
+  assert.equal(valid, false);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests: Cleanup
 // ─────────────────────────────────────────────────────────────────────────────

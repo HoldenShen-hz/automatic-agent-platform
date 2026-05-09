@@ -23,25 +23,32 @@ export class PostExecutionQualityGate {
         reasonCodes: ["quality.accepted"],
       };
     }
+    if ("nextAction" in evaluation && evaluation.nextAction === "approve") {
+      return {
+        accepted: false,
+        releaseStage: "approval",
+        reasonCodes: ["quality.approval_required"],
+      };
+    }
     if (verdict === "escalate") {
       return {
         accepted: false,
         releaseStage: "blocked",
-        reasonCodes: ["quality.escalate"],
+        reasonCodes: ["quality.blocked", "quality.escalate"],
       };
     }
     if (verdict === "retry") {
       return {
         accepted: false,
         releaseStage: "repair",
-        reasonCodes: ["quality.retry_required"],
+        reasonCodes: ["quality.repair_required", "quality.retry_required"],
       };
     }
     if (verdict === "replan") {
       return {
         accepted: false,
         releaseStage: "repair",
-        reasonCodes: ["quality.replan_required"],
+        reasonCodes: ["quality.repair_required", "quality.replan_required"],
       };
     }
     return {

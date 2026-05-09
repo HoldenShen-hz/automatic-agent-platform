@@ -94,7 +94,6 @@ test("E2E Budget: Budget settlement updates ledger correctly", async () => {
   try {
     const allocator = new BudgetAllocator();
     const ledger = createTestLedger({ reservedAmount: 5000 });
-    const context = createTestContext();
 
     const context = createTestContext();
 

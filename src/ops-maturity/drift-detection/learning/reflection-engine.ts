@@ -16,6 +16,8 @@ export interface ReflectionRecord {
   confidence: number;
   createdAt: string;
   metadata?: Record<string, unknown>;
+  // R13-05: Track pattern type
+  patternType: 'failure' | 'success';
 }
 
 export interface ReflectionEngine {
@@ -29,13 +31,20 @@ export class SimpleReflectionEngine implements ReflectionEngine {
   async reflect(evidence: EvidenceRecord[]): Promise<ReflectionRecord[]> {
     const reflections: ReflectionRecord[] = [];
 
-    // Group by failure mode
+    // R13-05: Group by failure mode AND success pattern
     const byFailureMode = new Map<string, EvidenceRecord[]>();
+    const bySuccessPattern = new Map<string, EvidenceRecord[]>();
+
     for (const record of evidence) {
       if (!record.success && record.failureMode) {
         const existing = byFailureMode.get(record.failureMode) ?? [];
         existing.push(record);
         byFailureMode.set(record.failureMode, existing);
+      } else if (record.success) {
+        // R13-05: Also analyze successes - group by task type for success patterns
+        const existing = bySuccessPattern.get(record.taskType) ?? [];
+        existing.push(record);
+        bySuccessPattern.set(record.taskType, existing);
       }
     }
 
@@ -43,7 +52,16 @@ export class SimpleReflectionEngine implements ReflectionEngine {
     for (const [failureMode, records] of byFailureMode) {
       if (records.length >= 2) {
         // Multiple failures of same type warrant a reflection
-        const reflection = await this.generateReflection(failureMode, records);
+        const reflection = await this.generateReflection(failureMode, records, 'failure');
+        reflections.push(reflection);
+      }
+    }
+
+    // R13-05: Generate reflection for each success pattern
+    for (const [taskType, records] of bySuccessPattern) {
+      if (records.length >= 3) {
+        // More successes needed to form a reliable pattern
+        const reflection = await this.generateSuccessReflection(taskType, records);
         reflections.push(reflection);
       }
     }
@@ -52,12 +70,16 @@ export class SimpleReflectionEngine implements ReflectionEngine {
   }
 
   async reflectSingle(failure: EvidenceRecord): Promise<ReflectionRecord> {
-    return this.generateReflection(failure.failureMode ?? 'unknown', [failure]);
+    if (failure.success) {
+      return this.generateSuccessReflection(failure.taskType, [failure]);
+    }
+    return this.generateReflection(failure.failureMode ?? 'unknown', [failure], 'failure');
   }
 
   private async generateReflection(
     failureMode: string,
-    records: EvidenceRecord[]
+    records: EvidenceRecord[],
+    patternType: 'failure' | 'success' = 'failure'
   ): Promise<ReflectionRecord> {
     const id = `refl_${++this.reflectionIdCounter}`;
     const firstRecord = records[0];
@@ -70,6 +92,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
         recommendation: 'Provide evidence records',
         confidence: 0,
         createdAt: new Date().toISOString(),
+        patternType,
       };
     }
     const taskType = firstRecord.taskType;
@@ -92,6 +115,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
       recommendation,
       confidence,
       createdAt: new Date().toISOString(),
+      patternType,
       metadata: {
         failureMode,
         sampleSize: records.length,
@@ -99,6 +123,78 @@ export class SimpleReflectionEngine implements ReflectionEngine {
         avgCostUsd: avgCost,
       },
     };
+  }
+
+  // R13-05: New method to generate reflections from success patterns
+  private async generateSuccessReflection(
+    taskType: string,
+    records: EvidenceRecord[]
+  ): Promise<ReflectionRecord> {
+    const id = `refl_${++this.reflectionIdCounter}`;
+    const evidenceIds = records.map((r) => r.id);
+
+    // Analyze patterns from successful executions
+    const avgCost = records.reduce((sum, r) => sum + r.costUsd, 0) / records.length;
+    const avgLatency = records.reduce((sum, r) => sum + r.latencyMs, 0) / records.length;
+    const avgToolCalls = records.reduce((sum, r) => sum + r.toolCalls, 0) / records.length;
+    const avgRepairRounds = records.reduce((sum, r) => sum + r.repairRounds, 0) / records.length;
+
+    const rootCause = this.analyzeSuccessPattern(taskType, records);
+    const recommendation = this.generateSuccessRecommendation(taskType, records);
+    const confidence = this.calculateSuccessConfidence(records.length, avgRepairRounds);
+
+    return {
+      id,
+      evidenceIds,
+      taskType,
+      rootCause,
+      recommendation,
+      confidence,
+      createdAt: new Date().toISOString(),
+      patternType: 'success',
+      metadata: {
+        successPattern: true,
+        sampleSize: records.length,
+        avgCostUsd: avgCost,
+        avgLatencyMs: avgLatency,
+        avgToolCalls,
+        avgRepairRounds,
+      },
+    };
+  }
+
+  private analyzeSuccessPattern(taskType: string, records: EvidenceRecord[]): string {
+    const first = records[0];
+    if (!first) return 'Unknown success pattern';
+
+    // Identify what made these successful
+    if (first.repairRounds === 0 && first.toolCalls < 5) {
+      return `Direct resolution pattern: ${taskType} tasks complete in single pass with minimal tool usage`;
+    }
+    if (first.toolCalls > 10) {
+      return `Complex workflow pattern: ${taskType} tasks require multi-step execution but succeed reliably`;
+    }
+    return `Standard success pattern: ${taskType} tasks complete with average complexity`;
+  }
+
+  private generateSuccessRecommendation(taskType: string, records: EvidenceRecord[]): string {
+    const first = records[0];
+    if (!first) return 'Continue current approach';
+
+    if (first.repairRounds === 0 && first.toolCalls < 5) {
+      return `Capture direct resolution approach for ${taskType} tasks - prefer minimal tool usage patterns`;
+    }
+    if (first.toolCalls > 10) {
+      return `Document multi-step workflow for ${taskType} tasks - reliable execution suggests good planning`;
+    }
+    return `Standard workflow suitable for ${taskType} tasks - maintain current approach`;
+  }
+
+  private calculateSuccessConfidence(sampleSize: number, avgRepairRounds: number): number {
+    // Success patterns need more evidence since we're positive-biased
+    let confidence = Math.min(sampleSize / 7, 1) * 0.5; // Up to 0.5 from sample size
+    confidence += (1 - Math.min(avgRepairRounds / 2, 1)) * 0.5; // Up to 0.5 from low repair rounds
+    return Math.round(confidence * 100) / 100;
   }
 
   private analyzeRootCause(failureMode: string, records: EvidenceRecord[]): string {

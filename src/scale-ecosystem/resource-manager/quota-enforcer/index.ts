@@ -1,24 +1,17 @@
 import { z } from "zod";
 
-export const QuotaPolicySchema = z.object({
-  scope: z.string().min(1).default("tenant"),
-  scopeId: z.string().min(1).optional(),
-  resourceType: z.string().min(1).default("runtime_units"),
-  hardLimit: z.number().nonnegative(),
-  softLimit: z.number().nonnegative().optional(),
-  burstLimit: z.number().nonnegative().optional(),
-  resetWindow: z.string().min(1).default("1h"),
-  currentUsage: z.number().nonnegative(),
-});
-
-export type QuotaPolicy = z.input<typeof QuotaPolicySchema>;
-
-const QuotaDimensionSchema = z.object({
+export const QuotaDimensionSchema = z.object({
   hardLimit: z.number().nonnegative(),
   softLimit: z.number().nonnegative().optional(),
   burstLimit: z.number().nonnegative().optional(),
   currentUsage: z.number().nonnegative(),
 });
+
+export type QuotaDimension = z.input<typeof QuotaDimensionSchema>;
+
+/** Supported quota dimensions (7 total) */
+export const QUOTA_DIMENSIONS = ["workerUnits", "qps", "tpm", "budgetUsd", "storageGb", "concurrentSessions", "apiCallsPerDay"] as const;
+export type QuotaDimensionKey = typeof QUOTA_DIMENSIONS[number];
 
 export const MultiResourceQuotaVectorSchema = z.object({
   scope: z.string().min(1).default("tenant"),
@@ -28,9 +21,19 @@ export const MultiResourceQuotaVectorSchema = z.object({
   tpm: QuotaDimensionSchema.optional(),
   budgetUsd: QuotaDimensionSchema.optional(),
   storageGb: QuotaDimensionSchema.optional(),
+  /** Concurrent active session count */
+  concurrentSessions: QuotaDimensionSchema.optional(),
+  /** Daily API call quota */
+  apiCallsPerDay: QuotaDimensionSchema.optional(),
 });
 
 export type MultiResourceQuotaVector = z.input<typeof MultiResourceQuotaVectorSchema>;
+
+/**
+ * Unified quota policy - always 7-dimensional (MultiResourceQuotaVector).
+ * Single-dimension quota evaluation uses evaluateQuota() directly.
+ */
+export const QuotaPolicySchema = MultiResourceQuotaVectorSchema;
 
 export interface QuotaDecision {
   readonly exceeded: boolean;
@@ -49,11 +52,14 @@ export interface MultiResourceQuotaDecision {
   readonly remainingByDimension: Readonly<Record<string, number>>;
 }
 
-export function evaluateQuota(policy: QuotaPolicy, requestedUnits: number): QuotaDecision {
-  const projected = policy.currentUsage + requestedUnits;
-  const hardLimit = policy.hardLimit;
-  const softLimit = policy.softLimit ?? hardLimit;
-  const burstLimit = policy.burstLimit ?? hardLimit;
+/**
+ * Evaluate a single dimension quota against a quota dimension (hardLimit/softLimit/burstLimit/currentUsage).
+ */
+export function evaluateQuota(dimension: QuotaDimension, requestedUnits: number): QuotaDecision {
+  const projected = dimension.currentUsage + requestedUnits;
+  const hardLimit = dimension.hardLimit;
+  const softLimit = dimension.softLimit ?? hardLimit;
+  const burstLimit = dimension.burstLimit ?? hardLimit;
   const exceeded = projected > burstLimit;
   return {
     exceeded,
@@ -63,8 +69,8 @@ export function evaluateQuota(policy: QuotaPolicy, requestedUnits: number): Quot
   };
 }
 
-export function isQuotaExceeded(policy: QuotaPolicy, requestedUnits: number): boolean {
-  return evaluateQuota(policy, requestedUnits).exceeded;
+export function isQuotaExceeded(dimension: QuotaDimension, requestedUnits: number): boolean {
+  return evaluateQuota(dimension, requestedUnits).exceeded;
 }
 
 export function evaluateMultiDimensionalQuota(
@@ -76,22 +82,13 @@ export function evaluateMultiDimensionalQuota(
   const warningDimensions: string[] = [];
   const burstDimensions: string[] = [];
 
-  for (const dimension of ["workerUnits", "qps", "tpm", "budgetUsd", "storageGb"] as const) {
-    const policy = vector[dimension];
-    if (policy == null) {
+  for (const dimension of QUOTA_DIMENSIONS) {
+    const dim = vector[dimension];
+    if (dim == null) {
       continue;
     }
     const requested = requestedUnits[dimension] ?? 0;
-    const decision = evaluateQuota({
-      scope: vector.scope,
-      scopeId: vector.scopeId,
-      resourceType: dimension,
-      hardLimit: policy.hardLimit,
-      softLimit: policy.softLimit,
-      burstLimit: policy.burstLimit,
-      currentUsage: policy.currentUsage,
-      resetWindow: "1h",
-    }, requested);
+    const decision = evaluateQuota(dim, requested);
     remainingByDimension[dimension] = decision.remainingUnits;
     if (decision.exceeded) {
       exceededDimensions.push(dimension);

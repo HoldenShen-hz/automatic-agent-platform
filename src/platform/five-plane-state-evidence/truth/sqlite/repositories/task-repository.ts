@@ -197,6 +197,13 @@ export class TaskRepository {
     execute(this.conn, `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ?`, outputJson, updatedAt, taskId);
   }
 
+  /**
+   * Update task title.
+   */
+  public updateTaskTitle(taskId: string, title: string, updatedAt: string): void {
+    execute(this.conn, `UPDATE tasks SET title = ?, updated_at = ? WHERE id = ?`, title, updatedAt, taskId);
+  }
+
   public updateTaskInput(taskId: string, inputJson: string, normalizedInputJson: string, updatedAt: string): void {
     execute(
       this.conn,

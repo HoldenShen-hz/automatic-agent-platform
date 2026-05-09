@@ -9,12 +9,18 @@
 
 ## 决策
 
-采用三级分权架构：
+采用五平面架构（v4.3 canonical，取代旧 CEO/VP 三层分权）：
 
-- `strategic_governor`（业务别名：CEO）：只负责战略判断、HITL 升级、感知情报研判、组织审批和异常干预。
-- `operations_supervisor`（业务别名：VP 运营）：负责用户消息接入、消息分诊、任务分类、事业部路由、资源预算分配和状态持久化。
-- `execution_orchestrator`（业务别名：VP 编排）：负责跨事业部拆分、依赖图构建、schema 兼容性预检、结果聚合、失败升级、成本熔断响应和卡死 Agent 干预。
-- `division_lead`（业务别名：Lead Agent）：在事业部内部自治编排 workflow，控制角色执行顺序和本地自愈。
+- **P1 接口面**：用户消息接入、消息分诊、入口规范化、NL 解析。
+- **P2 控制面**：策略判断、路由决策、风险评估、治理约束注入。
+- **P3 编排面**：跨 domain 拆分、依赖图构建、PlanGraphBundle 生成、结果聚合。
+- **P4 执行面**（HarnessRuntime）：唯一执行运行时，承接 P3→P4 handoff。
+- **P5 证据面**：状态持久化、事件记录、checkpoint、artifact storage。
+- **X1 扩展面**：感知情报、HR 审批升级（按需触发）。
+
+说明：
+- 文档中如需保留 CEO / VP 运营 / VP 编排等旧叙事名称，必须同时给出 canonical 平面 ID，代码、目录、事件和契约层一律以 canonical ID 为准。
+- CEO 不是常驻进程，而是按需生成：仅在升级事件、感知情报和 HR 审批场景中触发，通过持久记忆跨升级保留上下文，同时只允许一个 CEO 会话执行，其他升级事件按优先级排队。
 
 说明：
 
@@ -26,19 +32,19 @@ CEO 不是常驻进程，而是按需生成：
 - 通过持久记忆跨升级保留上下文。
 - 同时只允许一个 CEO 会话执行，其他升级事件按优先级排队。
 
-## 角色边界
+## 角色边界（v4.3 五平面映射）
 
-总部角色分工：
+总部角色分工（映射到 P1/P2/P3）：
 
-- CEO 只做判断，不参与日常路由和常规编排。
-- VP 运营专注任务入口与资源分配，不做复杂跨事业部推理。
-- VP 编排只处理跨事业部协调和异常干预，不接管事业部内部细节。
-- 感知模块作为服务模块存在，不参与 Agent 生命周期，但作为 CEO 的外部输入源。
+- P1 接口面只做入口处理，不参与日常路由和常规编排。
+- P2 控制面专注任务分诊与资源分配，不做复杂跨 domain 推理。
+- P3 编排面只处理跨 domain 协调和异常干预，不接管 domain 内部细节。
+- X1 感知模块作为服务模块存在，不参与 Agent 生命周期，但作为 CEO 的外部输入源。
 
-事业部角色分工：
+Domain 角色分工：
 
-- 每个事业部至少有一个 Lead Agent 承担本地自治编排。
-- Lead Agent 之下的角色只负责各自契约内的输入输出，不直接承担总部协调职责。
+- 每个 domain 至少有一个 domain agent 承担本地自治编排。
+- domain agent 之下的角色只负责各自契约内的输入输出，不直接承担总部协调职责。
 
 ## 选择这个方案的原因
 
@@ -80,11 +86,17 @@ CEO 不是常驻进程，而是按需生成：
 - VP 运营与 VP 编排之间必须建立可靠的状态同步机制。
 - 任务看板、消息总线和升级队列成为新的关键基础设施。
 
-## OAPEFLIR 八阶段认知循环（2026-04-17 更新）
+## OAPEFLIR 角色澄清（§13/§45 reconciliation）
 
-三层分权架构与 OAPEFLIR 八阶段模型的关系：
+根据 §13/§45，OAPEFLIR 八阶段认知循环在平台中的定位如下：
 
-### 双链拓扑
+### 官方立场
+
+- OAPEFLIR **不是** active orchestration loop（该角色由 HarnessRuntime 承担）
+- OAPEFLIR 的定位是 **StageRationale（阶段推理）** 和 **Audit View（审计视图）**
+- OapeflirLoopService 仅用于阶段转换时的推理记录和审计追溯，不参与实时执行调度
+
+### 双链拓扑（修订）
 
 ```
 主链（实时执行）：
@@ -93,7 +105,7 @@ CEO 不是常驻进程，而是按需生成：
 副链（异步改进）：                  Feedback → Learn → Improve → Rollout
 ```
 
-- **主链**：用户请求驱动的实时执行链路，强调低延迟和确定性。
+- **主链**：用户请求驱动的实时执行链路，强调低延迟和确定性，由 HarnessRuntime 驱动。
 - **副链**：事件驱动的异步改进链路，强调学习和积累。
 - 两条链路通过 `Feedback→Learn` 耦合，主链不等待副链完成。
 
@@ -105,14 +117,14 @@ CEO 不是常驻进程，而是按需生成：
 | **Artifact Plane** | Plan/Execute | 执行产物（代码/文档）存储与发布 |
 | **Memory Layer** | 全部 8 阶段 | L1-L6 记忆支撑上下文连续性 |
 
-### 阶段与三层架构的映射
+### 阶段与五平面架构的映射
 
-| 三层架构 | 对应 OAPEFLIR 组件 |
-|---------|-------------------|
-| strategic_governor (CEO) | 参与 L0-L1 rollout 审批、异常升级 |
-| operations_supervisor (VP 运营) | OapeflirLoopService 编排 8 阶段 |
-| execution_orchestrator (VP 编排) | RuntimeExecuteBridge 执行 Plan DTO |
-| division_lead (Lead Agent) | Domain Plugin 支撑 domain-specific 检索/验证/规划 |
+| 五平面 | 对应 OAPEFLIR 组件 |
+|--------|-------------------|
+| P1 接口面 | StageRationale 入口、Audit View |
+| P2 控制面 | 策略判断、风险评估（Assess） |
+| P3 编排面 | Plan DTO 生成、GraphBundle |
+| HarnessRuntime | Execute 执行（OAPEFLIR 不参与） |
 
 ### 关键架构约束
 

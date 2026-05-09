@@ -694,7 +694,7 @@ test("E2E: DataReplicatorService records events and flushes when buffer full", a
   const result = replicator.recordEvent("us-west-2", "task", "task-2", { action: "update" });
 
   // Second event should trigger flush, returning event with checksum
-  assert.ok(result.checksum.length > 0, "checksum should be computed");
+  assert.ok(result != null && result.checksum.length > 0, "checksum should be computed");
 });
 
 test("E2E: DataReplicatorService computes checksum correctly", (t) => {
@@ -740,6 +740,9 @@ test("E2E: DataReplicatorService validates incoming event checksum", async (t) =
   });
 
   const event = replicator.recordEvent("us-west-2", "task", "task-1", { validated: true });
+  if (event == null) {
+    throw new Error("event should not be null");
+  }
 
   assert.equal(replicator.validateEvent(event), true, "event should be valid with matching checksum");
 
@@ -780,6 +783,9 @@ test("E2E: DataReplicatorService registers and handles incoming events", async (
   });
 
   const event = replicator.recordEvent("us-west-2", "task", "task-1", { hello: "world" });
+  if (event == null) {
+    throw new Error("event should not be null");
+  }
 
   // handleIncomingEvent looks up handler by event.sourceRegionId
   await replicator.handleIncomingEvent(event);

@@ -76,6 +76,7 @@ export interface CommandExecutorOptions {
   persistedMessageLimitChars?: number;
   artifactRootDirName?: string;
   store?: AuthoritativeTaskStore;
+  maxCapturedOutputBytes?: number;
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -157,6 +158,7 @@ export class CommandExecutor {
   private readonly artifactRootDirName: string;
   private readonly store: AuthoritativeTaskStore | null;
   private readonly processTracker: ProcessTracker;
+  private readonly maxCapturedOutputBytes: number;
 
   // Process concurrency limiter to prevent fork bomb / resource exhaustion
   private static readonly MAX_CONCURRENT_PROCESSES = 16;
@@ -167,6 +169,7 @@ export class CommandExecutor {
     this.artifactRootDirName = options.artifactRootDirName?.trim() || ".aa-tool-artifacts";
     this.store = options.store ?? null;
     this.processTracker = getProcessTracker();
+    this.maxCapturedOutputBytes = Math.max(4096, Math.trunc(options.maxCapturedOutputBytes ?? 1_048_576));
   }
 
   /**
@@ -367,15 +370,29 @@ export class CommandExecutor {
 
     let stdout = "";
     let stderr = "";
+    let capturedOutputBytes = 0;
+    let outputLimitExceeded = false;
     let exitCode: number | null = null;
 
     const effect = EffectBuilder.create("callback_invoke", `spawn:${normalizedRequest.command}`)
       .withExecute(async () => {
         return new Promise<void>((resolve, reject) => {
           child.stdout?.on("data", (chunk: Buffer) => {
+            capturedOutputBytes += chunk.byteLength;
+            if (capturedOutputBytes > this.maxCapturedOutputBytes) {
+              outputLimitExceeded = true;
+              killProcessTree(child);
+              return;
+            }
             stdout += chunk.toString("utf8");
           });
           child.stderr?.on("data", (chunk: Buffer) => {
+            capturedOutputBytes += chunk.byteLength;
+            if (capturedOutputBytes > this.maxCapturedOutputBytes) {
+              outputLimitExceeded = true;
+              killProcessTree(child);
+              return;
+            }
             stderr += chunk.toString("utf8");
           });
           child.on("error", reject);
@@ -464,6 +481,15 @@ export class CommandExecutor {
           retryable: true,
           source: "tool",
         }, `timeout:${normalizedRequest.callId}`, coercedRequestResult.traces);
+      }
+
+      if (outputLimitExceeded) {
+        return this.buildResult(normalizedRequest, "failed", output, artifacts, durationMs, {
+          code: "tool.output_limit_exceeded",
+          message: `Command output exceeded ${this.maxCapturedOutputBytes} bytes`,
+          retryable: false,
+          source: "tool",
+        }, `output_limit:${normalizedRequest.callId}`, coercedRequestResult.traces);
       }
 
       if (exitCode !== 0) {

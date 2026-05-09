@@ -186,3 +186,37 @@ test("validate handles payload with undefined machineOutput", async () => {
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0].field, "field1");
 });
+
+test("validate returns evaluation metadata with quality score and harness decision", async () => {
+  const plugin = createBasicEvaluatorPlugin();
+  const result = await plugin.validate({
+    machineOutput: { payload: { summary: "ok", amount: 1000 } },
+    contract: {
+      requiredFields: ["summary"],
+      expectedOutcomeFields: ["summary"],
+      highRiskFields: ["amount"],
+      qualityThreshold: 0.8,
+    } as any,
+  });
+
+  assert.equal(typeof result.evaluation?.qualityScore, "number");
+  assert.equal(result.evaluation?.goalDeviation.severity, "none");
+  assert.equal(result.evaluation?.riskFindings[0]?.code, "risk.high_value_field:amount");
+  assert.equal(result.evaluation?.harnessDecision.action, "requires_human");
+});
+
+test("validate marks goal deviation and repair decision when expected outcomes are missing", async () => {
+  const plugin = createBasicEvaluatorPlugin();
+  const result = await plugin.validate({
+    machineOutput: { payload: { draft: "partial" } },
+    contract: {
+      expectedOutcomeFields: ["summary", "final_status"],
+      qualityThreshold: 0.7,
+    } as any,
+  });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.evaluation?.goalDeviation.missingOutcomes, ["summary", "final_status"]);
+  assert.equal(result.evaluation?.goalDeviation.severity, "high");
+  assert.equal(result.evaluation?.harnessDecision.action, "repair");
+});

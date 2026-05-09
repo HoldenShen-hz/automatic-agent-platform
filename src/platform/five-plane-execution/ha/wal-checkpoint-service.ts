@@ -155,6 +155,7 @@ export class WalCheckpointService {
 
     this.onCheckpointCreated = options.onCheckpointCreated ?? undefined;
     this.onWalEntryWritten = options.onWalEntryWritten ?? undefined;
+    this.syncSequenceCounterFromStorage();
 
     if (!this.config.walEnabled) {
       logger.log({
@@ -181,6 +182,7 @@ export class WalCheckpointService {
    */
   public initializeSchema(): void {
     this.db.connection.exec(WAL_CHECKPOINT_DDL);
+    this.syncSequenceCounterFromStorage();
     logger.log({
       level: "info",
       message: "wal_checkpoint_service.schema_initialized",
@@ -623,6 +625,20 @@ export class WalCheckpointService {
   private nextSequence(): number {
     this.sequenceCounter.value += 1;
     return this.sequenceCounter.value;
+  }
+
+  private syncSequenceCounterFromStorage(): void {
+    try {
+      const row = this.db.connection
+        .prepare(`SELECT MAX(sequence_number) AS max_sequence FROM wal_entries`)
+        .get() as Record<string, unknown> | undefined;
+      const persistedMax = Number(row?.max_sequence ?? row?.MAX ?? 0);
+      if (Number.isFinite(persistedMax) && persistedMax > this.sequenceCounter.value) {
+        this.sequenceCounter.value = persistedMax;
+      }
+    } catch {
+      // Table may not exist yet during first bootstrap. The counter will sync after schema init.
+    }
   }
 
   /**

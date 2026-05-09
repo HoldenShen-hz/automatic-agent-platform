@@ -31,7 +31,7 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
-import type { ExecutionLeaseRecord, LeaseAuditRecord, WorkerSnapshotRecord } from "../../contracts/types/domain.js";
+import type { ExecutionLeaseRecord, LeaseAuditRecord, WorkerSnapshotRecord, WorkerIsolationLevel } from "../../contracts/types/domain.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
@@ -48,6 +48,10 @@ import type {
   ReleaseExecutionLeaseInput,
   RenewExecutionLeaseInput,
   ValidateExecutionWriteInput,
+} from "./types.js";
+import {
+  MIN_LEASE_TTL_MS,
+  MAX_LEASE_TTL_MS,
 } from "./types.js";
 import {
   buildWorkerSnapshotRefreshInput,
@@ -134,6 +138,8 @@ export class ExecutionLeaseService {
       }
 
       // Create new lease with incremented fencing token
+      // R9-08 fix: Enforce MIN/MAX bounds on TTL
+      const enforcedTtlMs = Math.min(Math.max(input.ttlMs, MIN_LEASE_TTL_MS), MAX_LEASE_TTL_MS);
       const lease: ExecutionLeaseRecord = {
         id: newId("lease"),
         executionId: input.executionId,
@@ -144,7 +150,7 @@ export class ExecutionLeaseService {
         queueName: input.queueName ?? null,
         status: "active",
         leasedAt: occurredAt,
-        expiresAt: plusMs(occurredAt, input.ttlMs),
+        expiresAt: plusMs(occurredAt, enforcedTtlMs),
         lastHeartbeatAt: occurredAt,
         releasedAt: null,
         reasonCode: null,
@@ -428,7 +434,7 @@ export class ExecutionLeaseService {
       if (input.requiredIsolationLevel) {
         const workerIsolationLevel = nextWorker.isolationLevel ?? "standard";
         const ISOLATION_ORDER: Record<WorkerIsolationLevel, number> = { standard: 0, hardened: 1, strict: 2 };
-        if (ISOLATION_ORDER[workerIsolationLevel] < ISOLATION_ORDER[input.requiredIsolationLevel]) {
+        if (ISOLATION_ORDER[workerIsolationLevel]! < ISOLATION_ORDER[input.requiredIsolationLevel]!) {
           return {
             outcome: "blocked",
             reasonCode: "worker_isolation_mismatch",
@@ -626,6 +632,26 @@ export class ExecutionLeaseService {
           reasonCode: "no_active_lease",
           authoritativeFencingToken,
           activeLeaseId: null,
+        };
+      }
+
+      // R9-01 fix: Also reject if lease has expired (TTL check)
+      if (activeLease.expiresAt <= occurredAt) {
+        this.insertLeaseAudit({
+          executionId: activeLease.executionId,
+          leaseId: activeLease.id,
+          workerId: input.workerId,
+          fencingToken: input.fencingToken,
+          eventType: "stale_write_rejected",
+          reasonCode: "lease_expired",
+          recordedAt: occurredAt,
+        });
+
+        return {
+          allowed: false,
+          reasonCode: "lease_expired",
+          authoritativeFencingToken,
+          activeLeaseId: activeLease.id,
         };
       }
 

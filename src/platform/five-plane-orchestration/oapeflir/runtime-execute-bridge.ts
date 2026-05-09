@@ -224,8 +224,9 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
    * and mapped to `DualChannelStepOutput[]`.
    */
   async executePlan(plan: Plan, context: ExecutionContext): Promise<ExecutionResult> {
-    // Dynamically import the orchestrator to avoid circular dependencies at module load.
-    const { runMultiStepOrchestration } = await import("../../../core/runtime/orchestrator/index.js");
+    // R9-29 fix: Import from execution-engine within src/platform/ (not ../core/runtime/)
+    // This removes cross-plane coupling by using the execution plane directly
+    const { runMultiStepOrchestration } = await import("../../execution/execution-engine/multi-step-orchestration.js");
 
     const request = serialiseOapeflirPlan(plan.steps);
 
@@ -283,7 +284,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
    * Executes only the specified subset of steps, treating them as an independent unit.
    */
   async executeSubgraph(subgraph: PlanStep[], context: ExecutionContext): Promise<ExecutionResult> {
-    const { runMultiStepOrchestration } = await import("../../../core/runtime/orchestrator/index.js");
+    // R9-29 fix: Import from execution-engine within src/platform/ (not ../core/runtime/)
+    const { runMultiStepOrchestration } = await import("../../execution/execution-engine/multi-step-orchestration.js");
 
     const request = serialiseOapeflirPlan(subgraph);
 
@@ -323,7 +325,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     context: ExecutionContext,
     parentRunId: string,
   ): Promise<ExecutionResult> {
-    const { runMultiStepOrchestration } = await import("../../../core/runtime/orchestrator/index.js");
+    // R9-29 fix: Import from execution-engine within src/platform/ (not ../core/runtime/)
+    const { runMultiStepOrchestration } = await import("../../execution/execution-engine/multi-step-orchestration.js");
 
     const request = serialiseOapeflirPlan(plan.steps);
 

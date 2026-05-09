@@ -32,12 +32,21 @@ test("ModelRouteRequest structure is correct", () => {
     turnId: "turn_123",
     fallbackLease: null,
     governanceSnapshot: null,
+    data_residency: "eu-west",
+    pii_input_detected: true,
+    model_training_opt_out: true,
+    judge_independence: true,
+    latency_slo_target_ms: 1200,
     maxInputPer1kUsd: 1.5,
     allowStrongUpgrade: true,
   };
   assert.equal(request.routeClass, "coding");
   assert.equal(request.riskLevel, "medium");
   assert.deepEqual(request.requiredCapabilities, ["function_calling"]);
+  assert.equal(request.data_residency, "eu-west");
+  assert.equal(request.pii_input_detected, true);
+  assert.equal(request.model_training_opt_out, true);
+  assert.equal(request.judge_independence, true);
 });
 
 test("ModelRouteRequest allows minimal definition", () => {
@@ -57,11 +66,14 @@ test("ModelRouteRequest allows null optional fields", () => {
     turnId: null,
     fallbackLease: null,
     governanceSnapshot: null,
+    data_residency: null,
+    latency_slo_target_ms: null,
     maxInputPer1kUsd: null,
     allowStrongUpgrade: false,
   };
   assert.equal(request.preferredProfileName, null);
   assert.equal(request.turnId, null);
+  assert.equal(request.data_residency, null);
 });
 
 test("ModelRouteFallbackLease structure is correct", () => {

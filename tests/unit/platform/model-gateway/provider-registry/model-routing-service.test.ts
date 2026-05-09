@@ -132,6 +132,35 @@ test("model routing respects explicit pin and fails closed for unavailable profi
   );
 });
 
+test("model routing enforces data residency, pii safety, training opt-out, and judge independence filters", () => {
+  const registry = buildRegistry();
+  registry.providers.anthropic.region = "us-east";
+  registry.providers.openai.region = "eu-west";
+  registry.profiles.balanced.provider = "anthropic";
+  registry.profiles.balanced.region = "us-east";
+  registry.profiles.balanced.piiSafe = false;
+  registry.profiles.balanced.trainingOptOutSupported = false;
+  registry.profiles.balanced.judgeIndependent = false;
+  registry.profiles["reasoning-medium"].provider = "openai";
+  registry.profiles["reasoning-medium"].region = "eu-west";
+  registry.profiles["reasoning-medium"].piiSafe = true;
+  registry.profiles["reasoning-medium"].trainingOptOutSupported = true;
+  registry.profiles["reasoning-medium"].judgeIndependent = true;
+
+  const service = new ModelRoutingService({ registry });
+  const result = service.route({
+    routeClass: "reasoning",
+    riskLevel: "critical",
+    data_residency: "eu-west",
+    pii_input_detected: true,
+    model_training_opt_out: true,
+    judge_independence: true,
+  });
+
+  assert.equal(result.profileName, "reasoning-medium");
+  assert.ok(result.trace.filteredOut.includes("balanced:data_residency_mismatch"));
+});
+
 test("model routing issues a turn-scoped fallback lease when preferred profile is unavailable for the current turn", () => {
   const service = new ModelRoutingService({
     registry: buildCrossProviderRegistry(),

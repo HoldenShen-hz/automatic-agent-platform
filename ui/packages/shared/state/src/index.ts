@@ -39,6 +39,8 @@ import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
 import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
 import { createUiStore, type UiStoreState } from "./stores/ui-store";
+import { createNotificationStore, type NotificationStoreState, type Notification, type NotificationKind } from "./stores/notification-store";
+import { createThemeStore, type ThemeStoreState, type ThemeMode, type ResolvedThemeName } from "./stores/theme-store";
 
 export type { AuthStoreState } from "./stores/auth-store";
 export { createAuthStore } from "./stores/auth-store";
@@ -48,7 +50,11 @@ export type { RealtimeStoreState } from "./stores/realtime-store";
 export { createRealtimeStore } from "./stores/realtime-store";
 export type { SyncStoreState } from "./stores/sync-store";
 export { createSyncStore } from "./stores/sync-store";
+export { createNotificationStore, createThemeStore } from "./stores/index";
+export type { NotificationStoreState, Notification, NotificationKind } from "./stores/notification-store";
+export type { ThemeStoreState, ThemeMode, ResolvedThemeName } from "./stores/theme-store";
 export { createQueryClientFactory } from "./query-client";
+export * from "./mutations/index";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
 const WsClientContext = createContext<WSClient | null>(null);

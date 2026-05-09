@@ -26,6 +26,9 @@ export interface ApprovalEscalationEvaluationContext {
   readonly escalationDepth?: number;
   readonly lastEscalatedAtIso?: string | null;
   readonly slaBreached?: boolean;
+  // R5-36: OrgTree for hierarchy traversal
+  readonly orgNodeId?: string;
+  readonly orgNodes?: ReadonlyArray<{ orgNodeId: string; parentOrgNodeId: string | null; ownerUserIds: readonly string[] }>;
 }
 
 export interface ApprovalEscalationDecision {
@@ -38,6 +41,37 @@ export interface ApprovalEscalationDecision {
     | "threshold_not_reached"
     | "cooldown_active"
     | "eligible";
+}
+
+/**
+ * R5-36: Traverse OrgTree hierarchy to find the next approver
+ * Walks up the management chain from the current org node to find a parent approver
+ */
+export function traverseOrgHierarchy(
+  currentOrgNodeId: string,
+  orgNodes: ReadonlyArray<{ orgNodeId: string; parentOrgNodeId: string | null; ownerUserIds: readonly string[] }>,
+  maxDepth: number = 3,
+): string | null {
+  let currentNodeId: string | null = currentOrgNodeId;
+  let depth = 0;
+
+  while (currentNodeId != null && depth < maxDepth) {
+    const currentNode = orgNodes.find((n) => n.orgNodeId === currentNodeId);
+    if (!currentNode) {
+      break;
+    }
+
+    // If current node has owners, return the first one as the escalation target
+    if (currentNode.ownerUserIds.length > 0) {
+      return currentNode.ownerUserIds[0] ?? null;
+    }
+
+    // Move to parent
+    currentNodeId = currentNode.parentOrgNodeId;
+    depth++;
+  }
+
+  return null;
 }
 
 export function evaluateApprovalEscalation(
@@ -89,16 +123,21 @@ export function evaluateApprovalEscalation(
     }
   }
 
-  const notificationTargetIds = context.slaBreached && rule.notifyOnSlaBreach === true
+  // R5-36: Resolve escalation target via hierarchy traversal if orgNodes provided
+  const escalationTarget = context.orgNodes != null && context.orgNodeId != null
+    ? traverseOrgHierarchy(context.orgNodeId, context.orgNodes, rule.maxEscalationDepth ?? 1)
+    : rule.escalateToApproverId;
+
+  const notificationTargetIds: string[] = context.slaBreached && rule.notifyOnSlaBreach === true
     ? ((rule.slaBreachNotificationTargetIds?.length ?? 0) > 0
         ? [...(rule.slaBreachNotificationTargetIds ?? [])]
-        : [rule.escalateToApproverId])
+        : escalationTarget != null ? [escalationTarget as string] : [])
     : [];
 
   return {
     shouldEscalate: true,
     shouldNotifySlaBreach: notificationTargetIds.length > 0,
-    notificationTargetIds,
+    notificationTargetIds: notificationTargetIds.filter((targetId): targetId is string => targetId != null),
     reason: "eligible",
   };
 }

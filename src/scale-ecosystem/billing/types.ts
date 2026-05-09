@@ -70,6 +70,8 @@ export interface RecordUsageInput {
   /** @deprecated legacy projection identifier; use nodeRunId */
   stepId?: string | null;
   metricType: BillingMetricType;
+  /** Per-metric breakdown quantities for multi-metric usage records */
+  metricQuantities?: Readonly<Record<BillingMetricType, number>>;
   quantity: number;
   source: BillingUsageSource;
   capturedAt?: string;

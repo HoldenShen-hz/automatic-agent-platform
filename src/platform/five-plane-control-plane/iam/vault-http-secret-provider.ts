@@ -142,6 +142,22 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
    * @returns Valid Vault token
    * @throws ValidationError if no valid auth method is configured
    */
+  /**
+   * R12-19: Static token TTL in seconds.
+   * Configurable via AA_VAULT_STATIC_TOKEN_TTL_SEC environment variable.
+   * Default is 3600 seconds (1 hour).
+   */
+  private get staticTokenTtlSec(): number {
+    const envVal = this.env["AA_VAULT_STATIC_TOKEN_TTL_SEC"];
+    if (envVal) {
+      const parsed = parseInt(envVal, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.min(parsed, 86400); // Cap at 24 hours for security
+      }
+    }
+    return 3600;
+  }
+
   private async getToken(): Promise<string> {
     // R12-19: Use explicit cache validity check with expiry
     if (this.isTokenCacheValid()) {
@@ -179,7 +195,8 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
       );
     }
     this._cachedToken = staticToken;
-    this._tokenExpiry = Date.now() + 3600 * 1000;
+    // R12-19: Use configurable TTL instead of hardcoded 3600 seconds
+    this._tokenExpiry = Date.now() + this.staticTokenTtlSec * 1000;
     return this._cachedToken;
   }
 

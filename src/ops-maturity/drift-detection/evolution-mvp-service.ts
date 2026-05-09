@@ -144,6 +144,17 @@ export class EvolutionMvpService {
         }),
         traceId: null,
         createdAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
     });
 
@@ -276,6 +287,17 @@ export class EvolutionMvpService {
         }),
         traceId: null,
         createdAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
     });
 
@@ -480,6 +502,17 @@ export class EvolutionMvpService {
         }),
         traceId: null,
         createdAt: appliedAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
     });
 
@@ -562,6 +595,17 @@ export class EvolutionMvpService {
         }),
         traceId: null,
         createdAt: rolledBackAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
     });
 

@@ -118,6 +118,41 @@ test("ComplianceReportPipelineService.generate builds evidence map correctly", (
   assert.ok(report.evidenceMap["incident_log"]);
 });
 
+test("ComplianceReportPipelineService.generate requires human signoff when the template attestation policy says so", () => {
+  const service = new ComplianceReportPipelineService([{
+    templateId: "soc2-attested",
+    framework: "SOC2",
+    reportType: "Type II",
+    requiredEvidenceTypes: ["access_log"],
+    renderSchema: ["template"],
+    version: "1.0",
+    attestation: {
+      requireHumanSignoff: true,
+      signoffDueDays: 14,
+      escalationOwner: "governance_oncall",
+      timeoutAction: "freeze_report",
+    },
+  }]);
+
+  const report = service.generate({
+    templateId: "soc2-attested",
+    evidence: createEvidence(["access_log"]),
+    requestedBy: "auditor-1",
+  });
+  const signoff = service.evaluateHumanSignoff({
+    artifact: report,
+    signoffDueAt: "2026-06-01T00:00:00.000Z",
+    now: "2026-06-02T00:00:00.000Z",
+    escalationOwner: "governance_oncall",
+    timeoutAction: "freeze_report",
+  });
+
+  assert.equal(report.status, "human_signoff");
+  assert.equal(signoff.status, "not_attested_expired");
+  assert.equal(signoff.escalationOwner, "governance_oncall");
+  assert.equal(signoff.timeoutAction, "freeze_report");
+});
+
 test("ComplianceReportPipelineService.recordReadAccess creates receipt", () => {
   const service = new ComplianceReportPipelineService(createTestTemplates());
   const report = service.generate({

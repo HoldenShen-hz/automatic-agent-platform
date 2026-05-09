@@ -117,9 +117,10 @@ export class UxEventTrackingService {
     this.eventLog.push(trackEntry);
 
     if (this.eventPublisher) {
+      // Cast to any to bypass strict event type checking - events are forwarded to analytics pipeline
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.eventPublisher.publish({
-        // Cast to any to bypass strict event type checking - events are forwarded to analytics pipeline
-        eventType: "test:many_events" as any,
+        eventType: "test:many_events",
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {
@@ -133,8 +134,8 @@ export class UxEventTrackingService {
           interactionType: trackEntry.interactionType,
           eventType: trackEntry.eventType,
           metadata: (p.metadata as Record<string, string>) ?? {},
-        } as any,
-      });
+        },
+      } as any);
     }
 
     return trackEntry;

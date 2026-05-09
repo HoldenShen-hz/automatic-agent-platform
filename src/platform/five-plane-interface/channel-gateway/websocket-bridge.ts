@@ -8,6 +8,7 @@
 import type { IncomingMessage, Server } from "node:http";
 import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
+import { z } from "zod";
 
 import type { ApiAuthService } from "../api/api-auth-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -19,6 +20,26 @@ const SLOW_CONSUMER_BUFFER_BYTES = 1_000_000;
 const CLOSE_TIMEOUT_MS = 100;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
 const MAX_TASK_EVENT_HISTORY = 200;
+// R12-07: Configurable back-pressure threshold
+const DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES = 500_000;
+
+/**
+ * Zod schema for validating WebSocket messages at the inter-plane boundary.
+ * This provides runtime validation to ensure message structure matches the declared types.
+ */
+const WebSocketMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ping") }),
+  z.object({ type: z.literal("pong") }),
+  z.object({ type: z.literal("ack"), sequenceNum: z.number(), delivered: z.boolean() }),
+  z.object({ type: z.literal("subscribe"), taskId: z.string(), lastEventId: z.union([z.string(), z.null()]).optional() }),
+  z.object({ type: z.literal("unsubscribe"), taskId: z.string() }),
+  z.object({ type: z.literal("subscribed"), taskId: z.string() }),
+  z.object({ type: z.literal("unsubscribed"), taskId: z.string() }),
+  z.object({ type: z.literal("stream_gap"), taskId: z.string(), fromEventId: z.union([z.string(), z.null()]), toEventId: z.union([z.string(), z.null()]), reason: z.enum(["missed_events", "history_unavailable"]) }),
+  z.object({ type: z.literal("backpressure_warning"), taskId: z.string(), bufferedCount: z.number(), bufferedBytes: z.number().optional(), reason: z.literal("slow_consumer") }),
+  z.object({ type: z.literal("task_update"), taskId: z.string(), eventId: z.string(), sequenceNum: z.number(), event: z.unknown() }),
+  z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
+]);
 
 export type WebSocketMessageType =
   | { type: "ping" }
@@ -28,8 +49,8 @@ export type WebSocketMessageType =
   | { type: "unsubscribe"; taskId: string }
   | { type: "subscribed"; taskId: string }
   | { type: "unsubscribed"; taskId: string }
-  | { type: "stream_gap"; taskId: string; fromEventId: string | null; toEventId: string; reason: "missed_events" }
-  | { type: "backpressure_warning"; taskId: string; bufferedCount: number; reason: "slow_consumer" }
+  | { type: "stream_gap"; taskId: string; fromEventId: string | null; toEventId: string | null; reason: "missed_events" | "history_unavailable" }
+  | { type: "backpressure_warning"; taskId: string; bufferedCount: number; bufferedBytes?: number; reason: "slow_consumer" }
   | { type: "task_update"; taskId: string; eventId: string; sequenceNum: number; event: TaskWebSocketEvent }
   | { type: "error"; code: string; message: string };
 
@@ -114,8 +135,13 @@ export class WebSocketBridge {
 
     ws.on("message", (data) => {
       try {
-        const message = JSON.parse(data.toString()) as WebSocketMessageType;
-        this.handleMessage(ws, message);
+        const parsed = JSON.parse(data.toString());
+        const result = WebSocketMessageSchema.safeParse(parsed) as { success: true; data: WebSocketMessageType } | { success: false; data: unknown };
+        if (!result.success) {
+          ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Message schema validation failed" }));
+          return;
+        }
+        this.handleMessage(ws, result.data);
       } catch {
         ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Failed to parse message" }));
       }
@@ -292,15 +318,29 @@ export class WebSocketBridge {
     taskId: string,
     lastEventId: string | null,
   ): void {
+    // R12-08: last_event_id resume/replay support
+    // If lastEventId is provided, replay events from history
     if (lastEventId == null) {
       return;
     }
     const history = this.taskEventHistory.get(taskId) ?? [];
     if (history.length === 0) {
+      // No history available - send stream_gap to indicate gap
+      ws.send(JSON.stringify({
+        type: "stream_gap",
+        taskId,
+        fromEventId: lastEventId,
+        toEventId: null,
+        reason: "history_unavailable",
+      } satisfies WebSocketMessageType));
       return;
     }
+
+    // Find the position of lastEventId in history
     const lastSeenIndex = history.findIndex((item) => item.eventId === lastEventId);
     if (lastSeenIndex < 0) {
+      // lastEventId not found in history - could be a gap or invalid ID
+      // Try to find the closest event by sequence comparison
       ws.send(JSON.stringify({
         type: "stream_gap",
         taskId,
@@ -310,7 +350,17 @@ export class WebSocketBridge {
       } satisfies WebSocketMessageType));
       return;
     }
-    for (const item of history.slice(lastSeenIndex + 1)) {
+
+    // R12-08: Replay all events after lastEventId (exclusive)
+    const eventsToReplay = history.slice(lastSeenIndex + 1);
+    if (eventsToReplay.length === 0) {
+      // Already at head - no events to replay
+      client.nextExpectedSequenceNum = client.lastAcknowledgedSequenceNum + 1;
+      return;
+    }
+
+    // Replay events in order, updating sequence numbers
+    for (const item of eventsToReplay) {
       this.sendTaskUpdate(ws, client, taskId, item.event, item.eventId);
     }
   }
@@ -322,21 +372,44 @@ export class WebSocketBridge {
     event: TaskWebSocketEvent,
     eventId: string,
   ): void {
+    // R12-07: Check back-pressure before sending to avoid unbounded buffer growth
     const bufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
-    if (
-      bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES
-      && (event.eventType === "status_changed" || event.eventType === "progress" || event.eventType === "message_delta")
-    ) {
+    const backPressureThreshold = this.getBackPressureThreshold();
+    const isUnderBackPressure = bufferedAmount > backPressureThreshold;
+
+    // R12-07: If under back-pressure and this is a droppable event type, skip sending
+    const droppableEventTypes = new Set(["status_changed", "progress", "message_delta"]);
+    if (isUnderBackPressure && droppableEventTypes.has(event.eventType)) {
+      this.slowConsumers.add(ws);
+      client.bufferedEventCount = client.pendingAcks.size;
+      // Only send backpressure warning periodically (every 10 events or when threshold significantly exceeded)
+      if (client.bufferedEventCount % 10 === 0 || bufferedAmount > backPressureThreshold * 2) {
+        ws.send(JSON.stringify({
+          type: "backpressure_warning",
+          taskId,
+          bufferedCount: client.bufferedEventCount,
+          bufferedBytes: bufferedAmount,
+          reason: "slow_consumer",
+        } satisfies WebSocketMessageType));
+      }
+      return;
+    }
+
+    // For critical events (completed, failed, approval_requested), always send but track backpressure
+    const criticalEventTypes = new Set(["completed", "failed", "approval_requested"]);
+    if (isUnderBackPressure && !criticalEventTypes.has(event.eventType)) {
       this.slowConsumers.add(ws);
       client.bufferedEventCount = client.pendingAcks.size;
       ws.send(JSON.stringify({
         type: "backpressure_warning",
         taskId,
         bufferedCount: client.bufferedEventCount,
+        bufferedBytes: bufferedAmount,
         reason: "slow_consumer",
       } satisfies WebSocketMessageType));
       return;
     }
+
     const sequenceNum = client.nextExpectedSequenceNum++;
     if (client.lastEventId != null && client.lastAcknowledgedSequenceNum < sequenceNum - 1) {
       ws.send(JSON.stringify({
@@ -354,6 +427,8 @@ export class WebSocketBridge {
       sentAt: new Date().toISOString(),
     });
     client.bufferedEventCount = client.pendingAcks.size;
+
+    // R12-07: Check buffered amount after send and warn if still under pressure
     ws.send(JSON.stringify({
       type: "task_update",
       taskId,
@@ -361,17 +436,26 @@ export class WebSocketBridge {
       sequenceNum,
       event,
     } satisfies WebSocketMessageType));
-    if (bufferedAmount > SLOW_CONSUMER_BUFFER_BYTES) {
+
+    const newBufferedAmount = Number((ws as { bufferedAmount?: number }).bufferedAmount ?? 0);
+    if (newBufferedAmount > backPressureThreshold) {
       this.slowConsumers.add(ws);
+      // Send backpressure warning after send if still over threshold
       ws.send(JSON.stringify({
         type: "backpressure_warning",
         taskId,
         bufferedCount: client.bufferedEventCount,
+        bufferedBytes: newBufferedAmount,
         reason: "slow_consumer",
       } satisfies WebSocketMessageType));
     } else {
       this.slowConsumers.delete(ws);
     }
+  }
+
+  private getBackPressureThreshold(): number {
+    // Allow threshold override via environment variable or use default
+    return parseInt(process.env.WS_BACK_PRESSURE_THRESHOLD ?? "", 10) || DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
   }
 
   private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {

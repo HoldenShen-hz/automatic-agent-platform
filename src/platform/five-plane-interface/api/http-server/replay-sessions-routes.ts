@@ -62,8 +62,9 @@ const createReplaySessionSchema = z.object({
 
 function matchesReplaySessionRoute(segments: string[], expectedTailLength: number): boolean {
   return (
-    segments[0] === "v1"
-    && segments[1] === "replay-sessions"
+    segments[0] === "api"
+    && segments[1] === "v1"
+    && segments[2] === "replay-sessions"
     && segments.length === expectedTailLength + 1
   );
 }
@@ -73,13 +74,8 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
     // GET /api/v1/replay-sessions - List replay sessions
     {
       method: "GET",
-      pathname: null,
-      segments: true,
+      pathname: "/api/v1/replay-sessions",
       handler: (ctx) => {
-        const { segments } = ctx.route;
-        if (!matchesReplaySessionRoute(segments, 1)) {
-          return null;
-        }
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = readLimit(ctx.request, 50);
         const sessions = Array.from(replaySessionsStore.values()).slice(0, limit);
@@ -111,8 +107,8 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
         if ((segments[2] ?? "").length === 0) {
           return null;
         }
-        requirePrincipal(ctx.request, deps.authService, "viewer");
         const replaySessionId = validateTaskId(segments[2], "Replay sessions route");
+        requirePrincipal(ctx.request, deps.authService, "viewer");
         const session = replaySessionsStore.get(replaySessionId);
         if (!session) {
           throw new ApiError(404, "api.replay_session_not_found", "Replay session not found.");
@@ -135,13 +131,8 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
     // POST /api/v1/replay-sessions - Create replay session
     {
       method: "POST",
-      pathname: null,
-      segments: true,
+      pathname: "/api/v1/replay-sessions",
       handler: (ctx) => {
-        const { segments } = ctx.route;
-        if (!matchesReplaySessionRoute(segments, 1)) {
-          return null;
-        }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const body = readValidatedJsonBody(ctx.request.body, (b) => b);
         const payload = createReplaySessionSchema.parse(body);
@@ -190,8 +181,8 @@ export function createReplaySessionRoutes(deps: ReplaySessionRouteDeps): RouteDe
         if ((segments[2] ?? "").length === 0) {
           return null;
         }
-        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const replaySessionId = validateTaskId(segments[2], "DELETE replay session");
+        requirePrincipal(ctx.request, deps.authService, "admin");
         const session = replaySessionsStore.get(replaySessionId);
         if (!session) {
           throw new ApiError(404, "api.replay_session_not_found", "Replay session not found.");

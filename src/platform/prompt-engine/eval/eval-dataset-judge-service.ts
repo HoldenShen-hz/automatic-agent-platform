@@ -1,7 +1,7 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
-export type EvalDatasetStage = "observe" | "assess" | "plan" | "feedback";
+export type EvalDatasetStage = "observe" | "assess" | "plan" | "feedback" | "deprecated";
 export type EvalDatasetStatus = "draft" | "active" | "archived";
 export type EvalCasePriority = "critical" | "standard";
 export type QualityCriterionType =
@@ -384,13 +384,14 @@ export class EvalDatasetJudgeService {
     if (passRate < policy.minPassRate) {
       blockingFindings.push(`pass_rate_below_threshold:${passRate}`);
     }
-    // R2-12: When critical_case_pass==100%, add advisory finding but do not block release
+    // R2-12: critical_case_pass==100% is a hard gate that blocks release
+    // 100% pass rate on critical cases is required for release - this is NOT advisory
     if (policy.requireCriticalPass) {
       if (criticalPassRate < 1) {
         blockingFindings.push(`critical_case_failed:${criticalPassRate}`);
-      } else if (criticalPassRate === 1) {
-        advisoryFindings.push(`critical_case_pass_rate_100:${criticalPassRate}`);
       }
+      // R2-12: When criticalPassRate === 1, this satisfies the hard gate - no finding needed
+      // The gate passes silently when requirement is met
     }
     if (input.baseline?.averageLatencyMs != null && input.baseline.averageLatencyMs > 0) {
       const ratio = averageLatencyMs / input.baseline.averageLatencyMs;

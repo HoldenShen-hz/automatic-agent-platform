@@ -8,16 +8,30 @@
  * - Proposals are created (to feed into the approval workflow)
  */
 
-import type { EvidenceRecord } from './evidence-store.js';
-import type { ReflectionRecord } from './reflection-engine.js';
-import type { ProposalKind } from './proposal-engine.js';
-import { InMemoryEvidenceStore } from './evidence-store.js';
-import { SimpleReflectionEngine } from './reflection-engine.js';
-import { SimpleProposalEngine } from './proposal-engine.js';
-import { SimpleBenchmarkRunner } from './benchmark-runner.js';
-import { PromotionGate, DEFAULT_PROMOTION_GATE_CONFIG } from './promotion-gate.js';
+import type { EvidenceRecord } from './learning/evidence-store.js';
+import type { ReflectionRecord } from './learning/reflection-engine.js';
+import type { ProposalKind } from './learning/proposal-engine.js';
+import { InMemoryEvidenceStore } from './learning/evidence-store.js';
+import { SimpleReflectionEngine } from './learning/reflection-engine.js';
+import { SimpleProposalEngine } from './learning/proposal-engine.js';
+import { SimpleBenchmarkRunner } from './learning/benchmark-runner.js';
+import { PromotionGate, DEFAULT_PROMOTION_GATE_CONFIG } from './learning/promotion-gate.js';
 import type { AuthoritativeTaskStore } from '../../platform/state-evidence/truth/authoritative-task-store.js';
 import type { ApprovalService } from '../../platform/control-plane/approval-center/approval-service.js';
+import type { LearningObject } from '../../platform/orchestration/learn/learning-object-model.js';
+
+/**
+ * R13-06: Bridge interface to the main learning pipeline.
+ * Allows EvolutionIntegrationService to produce LearningObjects
+ * that feed into StrategyLearningService.
+ */
+export interface LearningBridge {
+  /**
+   * Called when evolution produces validated LearningObjects.
+   * Implementations should forward these to the main learning pipeline.
+   */
+  onLearningObjects(objects: LearningObject[]): Promise<void>;
+}
 
 export interface EvolutionIntegrationConfig {
   reflectionThreshold: number;  // Min failures before triggering reflection
@@ -34,6 +48,9 @@ export const DEFAULT_CONFIG: EvolutionIntegrationConfig = {
 /**
  * Service that integrates evidence collection, reflection, and proposal
  * generation into the existing runtime flow.
+ *
+ * R13-06: This service now bridges with the main learning pipeline (StrategyLearningService)
+ * via the LearningBridge interface to unify the two parallel learning pipelines.
  */
 export class EvolutionIntegrationService {
   private readonly evidenceStore: InMemoryEvidenceStore;
@@ -42,6 +59,7 @@ export class EvolutionIntegrationService {
   private readonly benchmarkRunner: SimpleBenchmarkRunner;
   private readonly promotionGate: PromotionGate;
   private readonly config: EvolutionIntegrationConfig;
+  private learningBridge: LearningBridge | null = null;
 
   constructor(
     private readonly store: AuthoritativeTaskStore,
@@ -54,6 +72,80 @@ export class EvolutionIntegrationService {
     this.benchmarkRunner = new SimpleBenchmarkRunner();
     this.promotionGate = new PromotionGate(DEFAULT_PROMOTION_GATE_CONFIG);
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /**
+   * R13-06: Sets the learning bridge to connect with the main learning pipeline.
+   * When set, evolution-produced proposals will be converted to LearningObjects
+   * and forwarded to StrategyLearningService via the bridge.
+   */
+  public setLearningBridge(bridge: LearningBridge): void {
+    this.learningBridge = bridge;
+  }
+
+  /**
+   * R13-06: Syncs approved proposals to the main learning pipeline.
+   * Converts active proposals to LearningObjects and forwards them
+   * to StrategyLearningService via the configured bridge.
+   */
+  public async syncWithLearningPipeline(): Promise<void> {
+    if (!this.learningBridge) {
+      return;
+    }
+
+    const activeProposals = await this.proposalEngine.listActive();
+    if (activeProposals.length === 0) {
+      return;
+    }
+
+    const learningObjects = activeProposals.map((proposal) =>
+      this.proposalToLearningObject(proposal)
+    );
+
+    await this.learningBridge.onLearningObjects(learningObjects);
+  }
+
+  /**
+   * R13-06: Converts an ImprovementProposal to a LearningObject
+   * for integration with the main learning pipeline.
+   */
+  private proposalToLearningObject(proposal: import('./learning/proposal-engine.js').ImprovementProposal): LearningObject {
+    const now = new Date().toISOString();
+    // Map proposal kind to learning type
+    const learningType = this.proposalKindToLearningType(proposal.kind);
+
+    return {
+      learningObjectId: `evo_${proposal.id}`,
+      learningType,
+      title: proposal.title,
+      summary: proposal.description,
+      confidence: 0.7, // Proposals have baseline confidence
+      evidenceRefs: proposal.evidenceIds,
+      sourceSignalIds: [`proposal:${proposal.id}`],
+      recommendation: proposal.rationale,
+      validatedBy: 'shadow_execution',
+      promotionStatus: 'validated',
+      createdAt: now,
+    };
+  }
+
+  /**
+   * R13-06: Maps proposal kind to learning type.
+   */
+  private proposalKindToLearningType(
+    kind: import('./learning/proposal-engine.js').ProposalKind
+  ): LearningObject['learningType'] {
+    switch (kind) {
+      case 'prompt_patch':
+      case 'skill_doc':
+        return 'user_correction';
+      case 'workflow_template':
+        return 'recovery_playbook';
+      case 'tool_routing_rule':
+      case 'threshold_tuning':
+      default:
+        return 'failure_pattern';
+    }
   }
 
   /**
@@ -153,12 +245,16 @@ export class EvolutionIntegrationService {
    * Creates an improvement proposal based on a reflection.
    */
   private async createProposalFromReflection(reflection: ReflectionRecord): Promise<void> {
+    const kind = this.inferProposalKind(reflection.taskType);
+    // R13-11: Use dynamic risk assessment instead of hardcoded 'low'
+    const risk = this.determineRisk(kind, reflection.taskType);
+
     const proposal = await this.proposalEngine.create({
       title: `Auto-generated: ${reflection.rootCause.slice(0, 50)}`,
       description: reflection.recommendation,
-      kind: this.inferProposalKind(reflection.taskType),
+      kind,
       target: reflection.taskType,
-      risk: 'low',
+      risk,
       agentId: 'evolution-system',
       evidenceIds: reflection.evidenceIds,
     });
@@ -228,5 +324,31 @@ export class EvolutionIntegrationService {
     if (taskType.includes('timeout')) return 'threshold_tuning';
     if (taskType.includes('test')) return 'prompt_patch';
     return 'skill_doc';
+  }
+
+  /**
+   * R13-11: Dynamically determines risk level based on proposal characteristics.
+   * Security-related proposals and significant changes get higher risk assessment.
+   */
+  private determineRisk(kind: ProposalKind, taskType: string): 'low' | 'medium' | 'high' {
+    const securityKeywords = ['security', 'auth', 'permission', 'access', 'forbidden', 'validation'];
+
+    // High-risk categories always high
+    if (kind === 'prompt_patch' || kind === 'threshold_tuning') {
+      return 'high';
+    }
+
+    // Security-related task types always high
+    if (securityKeywords.some(kw => taskType.toLowerCase().includes(kw))) {
+      return 'high';
+    }
+
+    // Workflow template changes are medium risk
+    if (kind === 'workflow_template') {
+      return 'medium';
+    }
+
+    // Default to low for tool_routing_rule and skill_doc
+    return 'low';
   }
 }

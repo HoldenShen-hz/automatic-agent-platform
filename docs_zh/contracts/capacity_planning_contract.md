@@ -13,6 +13,8 @@
 
 ## 3. `CapacitySignal` 最小字段
 
+- `tenant_id`
+- `harness_run_id?`
 - `resource_type`
 - `region_id?`
 - `timestamp`

@@ -28,6 +28,8 @@ export * from "./types/recovery-cadence.js";
 export * from "./types/status.js";
 export * from "./types/unified-runtime-mode.js";
 export * from "./types/unified-severity.js";
+// R13-33: Export ResponsibilityBoundary types per §3.2 ResponsibilityBoundary spec
+export * from "./types/responsibility-boundary.js";
 
 // -----------------------------------------------------------------------------
 // Platform-Level Aggregated Contracts (re-exports canonical + platform types)

@@ -6,6 +6,10 @@ export const HITL_MODES = [
   "collaborative_edit",
   "informed_confirmation",
   "circuit_breaker_human",
+  // R13-34/R13-37/R13-38: Add §45.18 HITL 5-capability modes
+  "modify_and_approve",
+  "override_decision",
+  "force_terminate",
 ] as const;
 
 export type HitlMode = typeof HITL_MODES[number];
@@ -63,5 +67,24 @@ export function validateHitlModeRequest(input: {
         throw new Error("hitl_mode.circuit_breaker_auto_approve_forbidden");
       }
       return { mode: input.mode, summary: "Circuit-breaker mode requires a blocking human decision." };
+    // R13-34/R13-37/R13-38: Add §45.18 HITL 5-capability modes
+    case "modify_and_approve":
+      // modify_and_approve requires at least one option for the modified version
+      if (input.options.length < 1) {
+        throw new Error("hitl_mode.modify_and_approve_requires_option");
+      }
+      return { mode: input.mode, summary: "Modify-and-approve mode allows human modification before approval." };
+    case "override_decision":
+      // override_decision requires at least one option to override
+      if (input.options.length < 1) {
+        throw new Error("hitl_mode.override_decision_requires_option");
+      }
+      return { mode: input.mode, summary: "Override-decision mode allows human to override system decision." };
+    case "force_terminate":
+      // force_terminate is a critical capability - high/critical risk only
+      if (input.riskLevel !== "high" && input.riskLevel !== "critical") {
+        throw new Error("hitl_mode.force_terminate_requires_high_risk");
+      }
+      return { mode: input.mode, summary: "Force-terminate mode allows immediate termination of execution." };
   }
 }

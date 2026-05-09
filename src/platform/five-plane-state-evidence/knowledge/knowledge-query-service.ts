@@ -14,6 +14,7 @@ import type { RetrievalHit } from "./knowledge-model.js";
 import { AstStructuralIndex, type AstIndexedSymbol } from "./indexing/ast-index.js";
 import { KnowledgeRetrievalService, type KnowledgeQueryOptions } from "./retrieval/knowledge-retrieval.js";
 import type { SemanticKnowledgeGraph } from "./semantic-knowledge-graph.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /** Query depth levels per §10 design */
 export enum QueryLevel {
@@ -177,6 +178,9 @@ export class KnowledgeQueryService {
    * Synchronous query with explicit level.
    */
   private queryWithLevel(keyword: string, options: KnowledgeQueryOptions, level: QueryLevel): RetrievalHit[] {
+    // R5-49: Validate tenant/domain boundary before querying
+    this.validateQueryBoundaries(options);
+
     switch (level) {
       case QueryLevel.Quick:
         return this.executeQuickQuery(keyword, options);
@@ -185,6 +189,56 @@ export class KnowledgeQueryService {
       case QueryLevel.Deep:
         // Deep requires async, fall back to sync-safe subset
         return this.executeStandardQuery(keyword, { ...options, limit: 30 });
+    }
+  }
+
+  /**
+   * R5-49: Validates tenant and domain boundaries for query access.
+   * Queries without proper domain context are restricted to shared/public namespaces.
+   * Validates that accessPrincipal's domain matches the query domain when provided.
+   */
+  private validateQueryBoundaries(options: KnowledgeQueryOptions): void {
+    const { namespace, domainId, accessPrincipal } = options;
+
+    // R5-49 fix: Validate tenant/domain boundary using accessPrincipal
+    // If accessPrincipal has a domainId, ensure query domain matches or is compatible
+    if (accessPrincipal?.domainId != null) {
+      const principalDomainId = accessPrincipal.domainId;
+      // If query has a domainId, it must match the principal's domain
+      if (domainId != null && domainId !== principalDomainId) {
+        // Check if principal has cross_domain_reader role for cross-domain access
+        const hasCrossDomainAccess = accessPrincipal.roles?.includes("cross_domain_reader");
+        if (!hasCrossDomainAccess) {
+          throw new ValidationError(
+            "knowledge_query.tenant_boundary_violation",
+            "Query domain does not match principal's domain",
+            { details: { principalDomainId, queryDomainId: domainId } },
+          );
+        }
+      }
+      // If no query domain specified, restrict namespace to principal's permitted namespaces
+      if (domainId == null && namespace != null && namespace !== "shared") {
+        const permittedNamespaces = accessPrincipal.permittedNamespaces;
+        if (permittedNamespaces && !permittedNamespaces.includes(namespace)) {
+          throw new ValidationError(
+            "knowledge_query.namespace_not_permitted",
+            "Namespace not in principal's permitted namespaces",
+            { details: { namespace, permittedNamespaces } },
+          );
+        }
+      }
+    }
+
+    // If no domain context provided, restrict to shared namespace only
+    if (domainId == null && accessPrincipal?.domainId == null) {
+      // Allow only if explicitly requesting shared namespace
+      if (namespace !== undefined && namespace !== "shared") {
+        throw new ValidationError(
+          "knowledge_query.domain_boundary_violation",
+          "Query requires domain context for non-shared namespaces",
+          { details: { namespace, domainId } },
+        );
+      }
     }
   }
 

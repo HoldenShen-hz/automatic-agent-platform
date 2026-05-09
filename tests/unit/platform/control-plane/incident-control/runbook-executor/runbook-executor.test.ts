@@ -67,6 +67,24 @@ test("RunbookExecutor parse handles bullet points with fallback numbering", () =
   assert.equal(symptoms.steps[2]!.stepNumber, 3);
 });
 
+test("RunbookExecutor executeStep does not classify destructive kubectl/docker commands as read-only", async () => {
+  const executor = new RunbookExecutor({ autoExecute: true });
+  const runbook = parseRunbookMarkdown(`# Test Runbook
+
+## Mitigation
+
+1. Remove broken container
+docker rm old-container
+`);
+  const execution = executor.initializeExecution(runbook, "tester");
+  const stepResult = await executor.executeStep(execution.executionId, "Mitigation", 0);
+
+  assert.ok(stepResult);
+  assert.equal(stepResult!.status, "completed");
+  assert.match(stepResult!.output, /\[OK\] Action completed/);
+  assert.doesNotMatch(stepResult!.output, /Command completed successfully/);
+});
+
 test("RunbookExecutor parse handles checkbox items", () => {
   const markdown = `# Test Runbook
 

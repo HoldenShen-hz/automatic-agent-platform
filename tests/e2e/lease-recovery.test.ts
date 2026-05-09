@@ -334,6 +334,7 @@ test("E2E: ticket dispatch - pending ticket can be claimed by worker", () => {
       id: ticketId,
       executionId: executionId,
       taskId,
+      tenantId: "test-tenant",
       priority: "high",
       queueName: "default",
       requiredCapabilitiesJson: "[]",

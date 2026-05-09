@@ -45,4 +45,11 @@ export interface FinalResponse {
   disclaimer: string | null;
   /** ISO 8601 timestamp of generation */
   generatedAt: string;
+  // R9-18 fix: Add missing fields for complete execution metadata
+  /** Total execution duration in milliseconds */
+  executionDurationMs: number;
+  /** Model ID used for generation */
+  modelId: string;
+  /** Number of retries attempted */
+  retryCount: number;
 }

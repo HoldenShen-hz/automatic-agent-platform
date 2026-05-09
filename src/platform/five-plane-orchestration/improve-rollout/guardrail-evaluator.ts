@@ -1,6 +1,7 @@
 import type { ImprovementCandidate } from "./improvement-candidate-registry.js";
 import type { RolloutMetrics } from "./auto-rollback-service.js";
 import type { StrategyVersion } from "./strategy-versioning.js";
+import type { RolloutLevel } from "../oapeflir/types/rollout-record.js";
 
 export interface GuardrailEvaluation {
   allowed: boolean;
@@ -39,11 +40,19 @@ export class GuardrailEvaluator {
     if (candidate.sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_missing_learning_object");
     }
+    if (candidate.learningObjectId.length === 0) {
+      reasonCodes.push("improvement.guardrail_missing_primary_learning_object");
+    }
     if (strategyVersion.sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
-    if (strategyVersion.releaseLevel === "shadow" && candidate.status !== "approved" && candidate.status !== "shadow_running") {
-      reasonCodes.push("improvement.guardrail_shadow_requires_approval");
+    if (strategyVersion.releaseLevel !== "off" && candidate.status !== "approved") {
+      reasonCodes.push("improvement.guardrail_requires_approval");
+    }
+    for (const guardrail of candidate.guardrails) {
+      if (rolloutLevelRank(strategyVersion.releaseLevel) < rolloutLevelRank(guardrail.requiredLevel)) {
+        reasonCodes.push(`improvement.guardrail_level_blocked:${guardrail.guardrailId}`);
+      }
     }
 
     return {
@@ -90,5 +99,22 @@ export class GuardrailEvaluator {
       blockingIssues,
       guardrailResults,
     };
+  }
+}
+
+function rolloutLevelRank(level: RolloutLevel): number {
+  switch (level) {
+    case "off":
+      return 0;
+    case "evaluate_0":
+      return 1;
+    case "canary_5":
+      return 2;
+    case "partial_25":
+      return 3;
+    case "stable_75":
+      return 4;
+    case "stable_100":
+      return 5;
   }
 }

@@ -504,4 +504,176 @@ export class HierarchicalPromptRegistryService {
   private findCurrentScopeBundle(scopeKey: string): PromptBundle | null {
     return this.selectDefaultBundle([...(this.versionsByScope.get(scopeKey)?.values() ?? [])]);
   }
+
+  /**
+   * R10-32 fix: Render template variables in a prompt segment.
+   *
+   * Replaces template variables in the format {{variableName}} with provided values.
+   * Supports default values via {{variableName:defaultValue}} syntax.
+   *
+   * @param content - The content string with template variables
+   * @param variables - Map of variable names to values
+   * @returns Rendered content with variables replaced
+   */
+  public renderTemplateVariables(
+    content: string,
+    variables: Record<string, string | number | boolean>,
+  ): string {
+    return content.replace(/\{\{(\w+)(?::([^}]*))?\}\}/g, (match, varName, defaultValue) => {
+      if (varName in variables) {
+        const value = variables[varName];
+        return value !== undefined && value !== null ? String(value) : match;
+      }
+      // Use default value if provided, otherwise keep the template variable
+      return defaultValue ?? match;
+    });
+  }
+
+  /**
+   * R10-32 fix: Render a prompt bundle segment with variables.
+   *
+   * @param segment - The prompt segment to render
+   * @param variables - Variables to substitute
+   * @returns Rendered segment content
+   */
+  public renderPromptSegment(
+    segment: PromptBundleSegment,
+    variables: Record<string, string | number | boolean>,
+  ): string {
+    const renderedContent = this.renderTemplateVariables(segment.content, variables);
+    // Also render in templateVariables array if present
+    const renderedVariables = segment.templateVariables.map((v) =>
+      this.renderTemplateVariables(v, variables),
+    );
+    return renderedContent;
+  }
+
+  /**
+   * R10-33 fix: Validate PromptBundleCompatibilityMatrix.
+   *
+   * Ensures all required compatibility dimensions are covered:
+   * - Tool schema versions
+   * - Evaluator schema versions
+   * - Domain descriptor versions
+   * - Model routing profiles
+   *
+   * @param bundle - The bundle to validate
+   * @throws ValidationError if compatibility matrix is incomplete
+   */
+  public validateCompatibilityMatrix(bundle: PromptBundle): void {
+    const matrix = bundle.compatibilityMatrix;
+
+    if (!matrix) {
+      throw new ValidationError(
+        "prompt_bundle.missing_compatibility_matrix",
+        `Prompt bundle ${bundle.name}@${bundle.version} must have a compatibility matrix`,
+      );
+    }
+
+    const errors: string[] = [];
+
+    // Validate tool schema versions
+    if (!matrix.toolSchemaVersions || matrix.toolSchemaVersions.length === 0) {
+      errors.push("toolSchemaVersions is required and must not be empty");
+    } else {
+      for (const tool of matrix.toolSchemaVersions) {
+        if (!tool.toolName || typeof tool.schemaVersion !== "number") {
+          errors.push(`Invalid tool schema entry: ${JSON.stringify(tool)}`);
+        }
+      }
+    }
+
+    // Validate evaluator schema versions
+    if (!matrix.evaluatorSchemaVersions || matrix.evaluatorSchemaVersions.length === 0) {
+      errors.push("evaluatorSchemaVersions is required and must not be empty");
+    } else {
+      for (const evalEntry of matrix.evaluatorSchemaVersions) {
+        if (!evalEntry.evaluatorName || typeof evalEntry.schemaVersion !== "number") {
+          errors.push(`Invalid evaluator schema entry: ${JSON.stringify(evalEntry)}`);
+        }
+      }
+    }
+
+    // Validate domain descriptor versions
+    if (!matrix.domainDescriptorVersions || matrix.domainDescriptorVersions.length === 0) {
+      errors.push("domainDescriptorVersions is required and must not be empty");
+    } else {
+      for (const domain of matrix.domainDescriptorVersions) {
+        if (!domain.domainId || typeof domain.version !== "number") {
+          errors.push(`Invalid domain descriptor entry: ${JSON.stringify(domain)}`);
+        }
+      }
+    }
+
+    // Validate model routing profiles
+    if (!matrix.modelRoutingProfiles || matrix.modelRoutingProfiles.length === 0) {
+      errors.push("modelRoutingProfiles is required and must not be empty");
+    } else {
+      for (const model of matrix.modelRoutingProfiles) {
+        if (!model.modelId || typeof model.profileVersion !== "number") {
+          errors.push(`Invalid model routing profile entry: ${JSON.stringify(model)}`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new ValidationError(
+        "prompt_bundle.invalid_compatibility_matrix",
+        `Prompt bundle ${bundle.name}@${bundle.version} has invalid compatibility matrix: ${errors.join("; ")}`,
+      );
+    }
+  }
+
+  /**
+   * R10-33 fix: Check if a bundle is compatible with given versions.
+   *
+   * @param bundle - The bundle to check
+   * @param toolSchemaVersions - Required tool schema versions
+   * @param evaluatorSchemaVersions - Required evaluator schema versions
+   * @param domainDescriptorVersions - Required domain descriptor versions
+   * @param modelRoutingProfiles - Required model routing profiles
+   * @returns true if compatible, false otherwise
+   */
+  public isCompatibleWith(
+    bundle: PromptBundle,
+    toolSchemaVersions: ReadonlyArray<{ toolName: string; schemaVersion: number }>,
+    evaluatorSchemaVersions: ReadonlyArray<{ evaluatorName: string; schemaVersion: number }>,
+    domainDescriptorVersions: ReadonlyArray<{ domainId: string; version: number }>,
+    modelRoutingProfiles: ReadonlyArray<{ modelId: string; profileVersion: number }>,
+  ): boolean {
+    const matrix = bundle.compatibilityMatrix;
+
+    if (!matrix) return false;
+
+    const hasTool = toolSchemaVersions.every((required) =>
+      matrix.toolSchemaVersions.some(
+        (available) =>
+          available.toolName === required.toolName && available.schemaVersion >= required.schemaVersion,
+      ),
+    );
+
+    const hasEvaluator = evaluatorSchemaVersions.every((required) =>
+      matrix.evaluatorSchemaVersions.some(
+        (available) =>
+          available.evaluatorName === required.evaluatorName &&
+          available.schemaVersion >= required.schemaVersion,
+      ),
+    );
+
+    const hasDomain = domainDescriptorVersions.every((required) =>
+      matrix.domainDescriptorVersions.some(
+        (available) =>
+          available.domainId === required.domainId && available.version >= required.version,
+      ),
+    );
+
+    const hasModel = modelRoutingProfiles.every((required) =>
+      matrix.modelRoutingProfiles.some(
+        (available) =>
+          available.modelId === required.modelId && available.profileVersion >= required.profileVersion,
+      ),
+    );
+
+    return hasTool && hasEvaluator && hasDomain && hasModel;
+  }
 }

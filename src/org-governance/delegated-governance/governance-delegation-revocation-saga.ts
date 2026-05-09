@@ -3,6 +3,8 @@ export interface GovernanceDelegationRevocationRequest {
   readonly requestedAtMs: number;
   readonly derivedResourceIds: readonly string[];
   readonly derivedDelegationIds?: readonly string[];
+  /** Cascade scope: max depth for cascade operations (1 = immediate delegates only, 2+ = transitive) */
+  readonly cascadeScope?: number;
 }
 
 export interface GovernanceDelegationRevocationSagaContext {
@@ -24,6 +26,10 @@ export interface GovernanceDelegationRevocationReceipt {
   readonly revokedDerivedDelegationIds: readonly string[];
   readonly revokeWithinSlo: boolean;
   readonly cascadeWithinSlo: boolean;
+  /** Actual cascade depth applied (0 = no cascade, 1 = immediate, 2+ = transitive) */
+  readonly cascadeDepthApplied: number;
+  /** Max cascade depth that was permitted per request */
+  readonly cascadeScopeRequested: number;
   readonly completedAtMs: number;
   readonly sagaStages: readonly ("prepare" | "commit" | "compensate" | "audit")[];
   readonly compensationResourceIds: readonly string[];
@@ -52,6 +58,9 @@ export class GovernanceDelegationRevocationSaga {
       delegationId: request.delegationId,
       failedStage,
     });
+    // Cascade depth tracking: each level of derived delegation revoked increments depth
+    let cascadeDepthApplied = 0;
+    const maxCascadeScope = request.cascadeScope ?? 1;
 
     let currentStage: "prepare" | "commit" = "prepare";
     try {
@@ -60,11 +69,14 @@ export class GovernanceDelegationRevocationSaga {
         frozenResourceIds.push(resourceId);
         executionLog.push({ stage: "prepare", subjectId: resourceId, outcome: "completed" });
       }
-      currentStage = "commit";
-      for (const delegationId of request.derivedDelegationIds ?? []) {
-        this.handlers.revokeDerivedDelegation?.(delegationId, context());
-        revokedDerivedDelegationIds.push(delegationId);
-        executionLog.push({ stage: "commit", subjectId: delegationId, outcome: "completed" });
+      if (maxCascadeScope >= 1) {
+        currentStage = "commit";
+        for (const delegationId of request.derivedDelegationIds ?? []) {
+          this.handlers.revokeDerivedDelegation?.(delegationId, context());
+          revokedDerivedDelegationIds.push(delegationId);
+          cascadeDepthApplied = Math.max(cascadeDepthApplied, 1);
+          executionLog.push({ stage: "commit", subjectId: delegationId, outcome: "completed" });
+        }
       }
     } catch {
       failedStage = currentStage;
@@ -89,7 +101,9 @@ export class GovernanceDelegationRevocationSaga {
       frozenResourceIds,
       revokedDerivedDelegationIds,
       revokeWithinSlo: elapsed <= 60_000,
-      cascadeWithinSlo: elapsed <= 300_000 && (request.derivedDelegationIds?.length ?? 0) >= 0,
+      cascadeWithinSlo: elapsed <= 300_000 && cascadeDepthApplied <= maxCascadeScope,
+      cascadeDepthApplied,
+      cascadeScopeRequested: maxCascadeScope,
       completedAtMs,
       sagaStages: compensationResourceIds.length > 0
         ? ["prepare", "commit", "compensate", "audit"]

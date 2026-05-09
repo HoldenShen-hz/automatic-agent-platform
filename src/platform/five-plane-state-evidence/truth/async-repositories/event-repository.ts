@@ -2,7 +2,8 @@
  * AsyncEventRepository - Async data access for events and acknowledgements.
  */
 
-import { getEventTier, getRequiredConsumers } from "../../events/event-types.js";
+import { materializeEventRecord, type EventRecordDraft } from "../../events/event-record-support.js";
+import { getRequiredConsumers } from "../../events/event-types.js";
 import { newId } from "../../../contracts/types/ids.js";
 import type { EventConsumerAckRecord, EventDeadLetterRecord, EventRecord } from "../../../contracts/types/domain.js";
 import type { AsyncSqlConnection } from "../async-sql-database.js";
@@ -17,22 +18,9 @@ export class AsyncEventRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
   public async insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: EventRecordDraft,
   ): Promise<EventRecord> {
-    const record: EventRecord = {
-      id: event.id,
-      taskId: event.taskId ?? null,
-      sessionId: event.sessionId ?? null,
-      executionId: event.executionId ?? null,
-      eventType: event.eventType,
-      eventTier: event.eventTier ?? getEventTier(event.eventType),
-      payloadJson: event.payloadJson,
-      traceId: event.traceId ?? null,
-      createdAt: event.createdAt,
-    };
+    const record = materializeEventRecord(event);
 
     await asyncExecute(
       this.conn,
@@ -157,7 +145,8 @@ export class AsyncEventRepository {
     );
   }
 
-  public async listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): Promise<EventRecord[]> {
+  // R9-12 fix: Added cursor parameter for snapshot cursor support and projection versioning
+  public async listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null, cursor?: string | null): Promise<EventRecord[]> {
     if (typeof tenantIdOrLimit === "number") {
       return asyncQueryAll<EventRecord>(
         this.conn,
@@ -166,21 +155,33 @@ export class AsyncEventRepository {
       );
     }
     const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
+
+    // R9-12 fix: Support cursor-based pagination with created_at as cursor
+    let sql: string;
+    const params: (string | number)[] = [taskId];
+
     if (scopedTenantId !== undefined) {
-      return asyncQueryAll<EventRecord>(
-        this.conn,
-        `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
+      sql = `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
           e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
           e.trace_id AS "traceId", e.created_at AS "createdAt"
-         FROM events e INNER JOIN tasks t ON t.id = e.task_id WHERE e.task_id = $1 AND t.tenant_id = $2 ORDER BY e.created_at ASC`,
-        taskId, scopedTenantId,
-      );
+         FROM events e INNER JOIN tasks t ON t.id = e.task_id WHERE e.task_id = $1 AND t.tenant_id = $2`;
+      params.push(scopedTenantId);
+
+      if (cursor) {
+        sql += ` AND e.created_at > $${params.length + 1}`;
+        params.push(cursor);
+      }
+      sql += ` ORDER BY e.created_at ASC`;
+    } else {
+      sql = `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1`;
+      if (cursor) {
+        sql += ` AND created_at > $2`;
+        params.push(cursor);
+      }
+      sql += ` ORDER BY created_at ASC`;
     }
-    return asyncQueryAll<EventRecord>(
-      this.conn,
-      `SELECT ${EVENT_COLS} FROM events WHERE task_id = $1 ORDER BY created_at ASC`,
-      taskId,
-    );
+
+    return asyncQueryAll<EventRecord>(this.conn, sql, ...params);
   }
 
   public async getEvent(eventId: string): Promise<EventRecord | null> {

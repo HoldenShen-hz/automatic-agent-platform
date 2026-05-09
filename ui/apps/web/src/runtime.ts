@@ -16,15 +16,21 @@ import { createPersistentOfflineQueue } from "@aa/shared-sync";
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
   readonly wsUrl?: string;
+  readonly authToken?: string;
+  readonly tenantId?: string;
 }
 
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = typeof env.VITE_API_BASE_URL === "string" && env.VITE_API_BASE_URL.length > 0 ? env.VITE_API_BASE_URL : undefined;
   const wsUrl = typeof env.VITE_WS_URL === "string" && env.VITE_WS_URL.length > 0 ? env.VITE_WS_URL : undefined;
+  const authToken = typeof env.VITE_AUTH_TOKEN === "string" && env.VITE_AUTH_TOKEN.length > 0 ? env.VITE_AUTH_TOKEN : undefined;
+  const tenantId = typeof env.VITE_TENANT_ID === "string" && env.VITE_TENANT_ID.length > 0 ? env.VITE_TENANT_ID : undefined;
 
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
     ...(wsUrl == null ? {} : { wsUrl }),
+    ...(authToken == null ? {} : { authToken }),
+    ...(tenantId == null ? {} : { tenantId }),
   };
 }
 
@@ -36,8 +42,8 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
   }).send(request), [
     createTraceInterceptor(),
     createCsrfInterceptor(),
-    createAuthInterceptor("ui-runtime-access"),
-    createTenantInterceptor("tenant-default"),
+    createAuthInterceptor(config.authToken ?? null),
+    createTenantInterceptor(config.tenantId ?? null),
     createOfflineQueueInterceptor(offlineQueue),
   ]);
 

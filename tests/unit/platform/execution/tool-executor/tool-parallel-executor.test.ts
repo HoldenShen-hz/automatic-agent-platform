@@ -188,6 +188,7 @@ test("executeToolsInParallel single failure", async () => {
   const result = await executeToolsInParallel(fns, metas);
   assert.equal(result.allSucceeded, false);
   assert.equal(result.anyFailed, true);
+  assert.deepEqual(result.results, []);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0]!.index, 0);
   assert.equal(result.errors[0]!.toolName, "t1");
@@ -238,6 +239,24 @@ test("executeToolsInParallel failFast works between batches", async () => {
   assert.equal(result.anyFailed, true);
   // Within a parallel group, Promise.allSettled runs both before checking failFast
   assert.equal(secondCalled, true);
+});
+
+test("executeToolsInParallel compacts failed positions instead of returning undefined holes", async () => {
+  const fns = [
+    async () => "first",
+    async () => { throw new Error("boom"); },
+    async () => "third",
+  ];
+  const metas = [
+    makeMetadata({ toolName: "t1", readOnly: true }),
+    makeMetadata({ toolName: "t2", readOnly: true }),
+    makeMetadata({ toolName: "t3", readOnly: true }),
+  ];
+
+  const result = await executeToolsInParallel(fns, metas, { maxParallelism: 3 });
+  assert.deepEqual(result.results, ["first", "third"]);
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0]!.index, 1);
 });
 
 test("executeToolItemsInParallel passes through correctly", async () => {

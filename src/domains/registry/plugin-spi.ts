@@ -167,6 +167,24 @@ export interface DomainValidatorPlugin extends PluginLifecycleHooks {
     valid: boolean;
     errors: Array<{ field: string; message: string; severity: "error" | "warning" }>;
     suggestions: string[];
+    evaluation?: {
+      qualityScore: number;
+      qualityThreshold: number;
+      goalDeviation: {
+        missingOutcomes: string[];
+        unexpectedFields: string[];
+        severity: "none" | "low" | "medium" | "high";
+      };
+      riskFindings: Array<{
+        code: string;
+        message: string;
+        severity: "low" | "medium" | "high";
+      }>;
+      harnessDecision: {
+        action: "accept" | "repair" | "requires_human" | "reject";
+        reasonCodes: string[];
+      };
+    };
   }>;
 }
 

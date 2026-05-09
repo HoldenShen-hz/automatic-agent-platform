@@ -37,7 +37,7 @@ test("workerStatusProjectionHandler initializes state correctly", () => {
   assert.equal(state.taskId, "task_1");
   assert.equal(state.status, "active");
   assert.equal(state.eventCount, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_1"]));
   assert.equal(state.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(state.lastEventAt, "2026-04-19T10:00:00.000Z");
 });
@@ -159,7 +159,7 @@ test("workerStatusProjectionHandler is idempotent - same event twice", () => {
   // Second event should be skipped
   assert.equal(state2.eventCount, 1);
   assert.equal(state2.claimsAccepted, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idem_1"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idem_1"]));
 });
 
 test("workerStatusProjectionHandler accumulates multiple events", () => {
@@ -182,7 +182,7 @@ test("workerStatusProjectionHandler accumulates multiple events", () => {
   assert.equal(state2.claimsAccepted, 1);
   assert.equal(state2.heartbeatsReceived, 1);
   assert.equal(state2.eventCount, 2);
-  assert.deepEqual(state2.processedEventIds, ["evt_claim", "evt_hb"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_claim", "evt_hb"]));
 });
 
 test("createWorkerStatusProjectionHandler returns handler function", () => {
@@ -236,7 +236,7 @@ test("createEmptyWorkerStatusState returns correct initial state", () => {
   assert.equal(state.claimsAccepted, 0);
   assert.equal(state.claimsRejected, 0);
   assert.equal(state.heartbeatsReceived, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.deepEqual(state.timeline, []);
 });
 

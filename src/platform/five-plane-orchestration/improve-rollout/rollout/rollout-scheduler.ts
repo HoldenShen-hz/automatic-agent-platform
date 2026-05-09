@@ -29,11 +29,11 @@ export interface RolloutSchedulerOptions {
 }
 
 const NEXT_PROGRESSIVE_STATUS: Readonly<Partial<Record<RolloutStatus, RolloutStatus>>> = {
-  shadow: "canary_5",
+  evaluation_enabled: "canary_5",
   canary_5: "partial_25",
-  partial_25: "partial_50",
-  partial_50: "partial_75",
-  partial_75: "stable",
+  partial_25: "stable_75",
+  stable_75: "stable_100",
+  stable_100: "released",
 };
 
 const DEFAULT_MINIMUM_STAGE_DWELL_MS: Readonly<Partial<Record<RolloutStatus, number>>> = {};
@@ -82,7 +82,7 @@ export class RolloutScheduler {
       : await this.metricsProvider.readMetrics(input.record) ?? null;
     const gate = this.rolloutService.evaluateMetricsGate(input.record, nextStatus, metrics ?? undefined);
     if (!gate.allowed) {
-      if (gate.rollback && metrics && input.record.status !== "shadow") {
+      if (gate.rollback && metrics && input.record.status !== "evaluation_enabled") {
         return {
           action: "rollback",
           record: this.rolloutService.rollback(input.candidate, input.record, metrics, input.approvedBy),
@@ -102,13 +102,7 @@ export class RolloutScheduler {
 
     return {
       action: "promote",
-      record: this.rolloutService.promote(
-        input.candidate,
-        input.record,
-        nextStatus as Exclude<RolloutStatus, "draft" | "rejected" | "rolled_back" | "paused">,
-        metrics ?? undefined,
-        input.approvedBy,
-      ),
+      record: this.rolloutService.promote(input.candidate, input.record, nextStatus as Exclude<RolloutStatus, "candidate_created" | "under_review" | "approved" | "rejected" | "rolled_back" | "paused">, metrics ?? undefined, input.approvedBy),
       nextStatus,
       reasonCodes: gate.reasonCodes.length > 0 ? gate.reasonCodes : ["rollout.scheduler_advanced"],
       metrics,

@@ -11,7 +11,7 @@
 - **Feedback**: 记录恢复证据和残余风险
 - **Learn**: 沉淀失败模式到 learning pipeline
 - **Improve**: 提升恢复策略
-- **Release**: 恢复控制作为 Ring 2 durable-readiness 门禁
+- **Release**: 恢复控制作为 durable-readiness 门禁
 
 ---
 

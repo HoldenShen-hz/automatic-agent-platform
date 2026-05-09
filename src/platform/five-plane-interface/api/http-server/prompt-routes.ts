@@ -4,12 +4,15 @@ import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
 import { buildJsonResponse, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
 import { z } from "zod";
+import type { PromptBundleRegistrationInput } from "../../../contracts/prompt-bundle/index.js";
 
 const promptBundleRequestSchema = z.object({
   level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
   domain: z.string().optional(),
   packId: z.string().optional(),
 }).passthrough();
+
+type PromptBundleRequestPayload = z.infer<typeof promptBundleRequestSchema>;
 
 export interface PromptRouteDeps {
   authService: ApiAuthService | null;
@@ -39,9 +42,16 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       pathname: "/v1/prompts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse) as Record<string, unknown>;
-        const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
-        const bundle = deps.promptRegistryService.registerBundle(payload as any, level, payload.domain as string | undefined, payload.packId as string | undefined);
+        const rawPayload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse) as PromptBundleRequestPayload;
+        const level = rawPayload.level ?? "global";
+        // The request payload is a partial representation that gets transformed
+        // into the full PromptBundleRegistrationInput by the service layer
+        const bundle = deps.promptRegistryService.registerBundle(
+          rawPayload as unknown as PromptBundleRegistrationInput,
+          level,
+          rawPayload.domain,
+          rawPayload.packId,
+        );
         return buildJsonResponse(ctx.requestId, 201, { bundle });
       },
     },

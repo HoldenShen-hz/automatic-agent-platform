@@ -61,9 +61,10 @@ export interface ExecutionLeaseHandoverDecision {
   lease: ExecutionLeaseRecord | null;
 }
 
+// R6-21 FIX: Added "lease_expired" to reasonCode for proper TTL-based validation
 export interface ExecutionWriteValidationResult {
   allowed: boolean;
-  reasonCode: "lease_not_found" | "no_active_lease" | "stale_fencing_token" | "worker_mismatch" | "lease_mismatch" | null;
+  reasonCode: "lease_not_found" | "no_active_lease" | "stale_fencing_token" | "worker_mismatch" | "lease_mismatch" | "lease_expired" | null;
   authoritativeFencingToken: number;
   activeLeaseId: string | null;
 }

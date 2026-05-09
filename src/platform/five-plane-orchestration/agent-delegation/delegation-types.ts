@@ -85,10 +85,11 @@ export interface DelegationSpec {
   outputSchema?: ToolSchema;
   dataClass?: string;
   // Collaboration modes
-  collaborationMode?: "pipeline" | "negotiation";
+  collaborationMode?: "pipeline" | "negotiation" | "broadcast" | "aggregation";
   pipelineStages?: PipelineStageDefinition[];
   negotiationRounds?: number;
   negotiationSelectionPolicy?: "highest_confidence" | "consensus" | "parent_selection";
+  aggregationPolicy?: AggregationPolicy;
 }
 
 export interface PipelineStageDefinition {
@@ -96,6 +97,13 @@ export interface PipelineStageDefinition {
   agentId: string;
   agentType: string;
   inputTransform?: (prev: unknown) => unknown;
+}
+
+export interface AggregationPolicy {
+  aggregationMethod: "sum" | "average" | "max" | "min" | "weighted";
+  weightingField?: string;
+  confidenceThreshold?: number;
+  requiresConsensus?: boolean;
 }
 
 export interface DelegationResult {

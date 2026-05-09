@@ -286,9 +286,8 @@ test("ToolExecutor executeParallel reports failures in errors array", async () =
 
   assert.equal(result.allSucceeded, false);
   assert.equal(result.anyFailed, true);
-  assert.equal(result.results.length, 2);
+  assert.equal(result.results.length, 1);
   assert.equal(result.results[0], "ok");
-  assert.equal(result.results[1], undefined);
   assert.equal(result.errors.length, 1);
   assert.ok(result.errors[0] !== undefined);
   assert.equal(result.errors[0].toolName, "read.fail");

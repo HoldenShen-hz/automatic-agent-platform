@@ -116,8 +116,9 @@ const BUILTIN_PLUGIN_FACTORIES = new Map<string, PluginFactory>([
 ]);
 
 // R8-24 FIX: Built-in plugin manifests for proper plugin metadata
-const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<string, PluginManifest>([
-  ["plugin.coding.retriever", {
+// Using PluginManifestSchema.parse to ensure type safety with exactOptionalPropertyTypes
+const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
+  ["plugin.coding.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.coding.retriever",
     name: "Coding Retriever",
     version: "1.0.0",
@@ -138,9 +139,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.coding.presenter", {
+  })],
+  ["plugin.coding.presenter", PluginManifestSchema.parse({
     pluginId: "plugin.coding.presenter",
     name: "Coding Presenter",
     version: "1.0.0",
@@ -161,9 +165,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.core.basic-validator", {
+  })],
+  ["plugin.core.basic-validator", PluginManifestSchema.parse({
     pluginId: "plugin.core.basic-validator",
     name: "Basic Validator",
     version: "1.0.0",
@@ -184,9 +191,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 16,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.core.basic-evaluator", {
+  })],
+  ["plugin.core.basic-evaluator", PluginManifestSchema.parse({
     pluginId: "plugin.core.basic-evaluator",
     name: "Basic Evaluator",
     version: "1.0.0",
@@ -207,9 +217,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 16,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.core.basic-planner", {
+  })],
+  ["plugin.core.basic-planner", PluginManifestSchema.parse({
     pluginId: "plugin.core.basic-planner",
     name: "Basic Planner",
     version: "1.0.0",
@@ -230,9 +243,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.shared.github_adapter", {
+  })],
+  ["plugin.shared.github_adapter", PluginManifestSchema.parse({
     pluginId: "plugin.shared.github_adapter",
     name: "GitHub Adapter",
     version: "1.0.0",
@@ -254,9 +270,11 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
       allowedExternalDomains: ["api.github.com", "github.com"],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.operations.retriever", {
+  })],
+  ["plugin.operations.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.operations.retriever",
     name: "Operations Retriever",
     version: "1.0.0",
@@ -277,9 +295,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.operations.presenter", {
+  })],
+  ["plugin.operations.presenter", PluginManifestSchema.parse({
     pluginId: "plugin.operations.presenter",
     name: "Operations Presenter",
     version: "1.0.0",
@@ -300,9 +321,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.growth.retriever", {
+  })],
+  ["plugin.growth.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.growth.retriever",
     name: "Growth Retriever",
     version: "1.0.0",
@@ -323,9 +347,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.growth.presenter", {
+  })],
+  ["plugin.growth.presenter", PluginManifestSchema.parse({
     pluginId: "plugin.growth.presenter",
     name: "Growth Presenter",
     version: "1.0.0",
@@ -346,9 +373,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.growth.crm_adapter", {
+  })],
+  ["plugin.growth.crm_adapter", PluginManifestSchema.parse({
     pluginId: "plugin.growth.crm_adapter",
     name: "CRM Adapter",
     version: "1.0.0",
@@ -369,9 +399,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.gamedev.retriever", {
+  })],
+  ["plugin.gamedev.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.gamedev.retriever",
     name: "Game Dev Retriever",
     version: "1.0.0",
@@ -392,9 +425,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.gamedev.unity_adapter", {
+  })],
+  ["plugin.gamedev.unity_adapter", PluginManifestSchema.parse({
     pluginId: "plugin.gamedev.unity_adapter",
     name: "Unity Adapter",
     version: "1.0.0",
@@ -415,9 +451,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.assetproduction.retriever", {
+  })],
+  ["plugin.assetproduction.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.assetproduction.retriever",
     name: "Asset Production Retriever",
     version: "1.0.0",
@@ -438,9 +477,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.assetproduction.figma_adapter", {
+  })],
+  ["plugin.assetproduction.figma_adapter", PluginManifestSchema.parse({
     pluginId: "plugin.assetproduction.figma_adapter",
     name: "Figma Adapter",
     version: "1.0.0",
@@ -461,9 +503,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.livestream.retriever", {
+  })],
+  ["plugin.livestream.retriever", PluginManifestSchema.parse({
     pluginId: "plugin.livestream.retriever",
     name: "Livestream Retriever",
     version: "1.0.0",
@@ -484,9 +529,12 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
-  ["plugin.livestream.obs_adapter", {
+  })],
+  ["plugin.livestream.obs_adapter", PluginManifestSchema.parse({
     pluginId: "plugin.livestream.obs_adapter",
     name: "OBS Adapter",
     version: "1.0.0",
@@ -507,8 +555,11 @@ const BUILTIN_PLUGIN_MANIFESTS: ReadonlyMap<string, PluginManifest> = new Map<st
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
-  }],
+  })],
 ]);
 
 /**

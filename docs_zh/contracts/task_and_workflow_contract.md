@@ -237,5 +237,6 @@ Phase 1a 中只要求能表达跨任务等待关系，不要求完整 DAG 查询
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
 - T-22: 本文原先把 `PlanDTO` 和 `WorkflowState.current_stage` 写成执行主链的权威交接/权威状态，根因是早期 workflow contract 试图同时承载编排 truth 与 UI/认知视图，导致 plan handoff 和 stage view 混在一个对象里。修复：正文现把权威交接收敛到 `PlanGraphBundle`，并把 `WorkflowState.current_stage_view` 明确降为投影字段。
+- T-18: 原 `WorkflowStep` / `StepOutput` 以 `step_id` 为语义主键（legacy workflow step 遗留），但 v4.3 执行 truth 以 `node_run_id` 为准。修复：§6 明确 `node_run_id` 是步骤唯一主键，关联到 `NodeRun` truth；§7 `StepOutput` 关联字段已收敛到 `node_run_id / harness_run_id / attempt_id`。旧 `step_id` 仅作为 legacy projection 追溯字段。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

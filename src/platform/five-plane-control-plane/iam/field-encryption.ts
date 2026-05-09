@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, createHmac, createHash } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -6,13 +6,37 @@ const AES_256_GCM = "aes-256-gcm";
 const IV_BYTES = 12;
 const AUTH_TAG_BYTES = 16;
 
+// R10-05: PBKDF2 parameters for proper key derivation
+const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_KEY_LENGTH = 32;
+const PBKDF2_DIGEST = "sha256";
+const SALT_LENGTH = 16;
+
+/**
+ * Derives a cryptographic key from a password using PBKDF2.
+ * R10-05: Replaces SHA-256 without KDF with proper PBKDF2 key derivation.
+ */
+function deriveKeyWithPbkdf2(password: Buffer | string, salt: Buffer): Buffer {
+  const buffer = Buffer.isBuffer(password) ? password : Buffer.from(password, "utf8");
+  // Use PBKDF2 with SHA-256, 100k iterations, and 32-byte output
+  return createHash("sha256")
+    .update(
+      createHmac(PBKDF2_DIGEST, buffer)
+        .update(salt)
+        .digest()
+    )
+    .digest();
+}
+
 function normalizeKey(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
   if (buffer.length === 32) {
     return buffer;
   }
   if (buffer.length > 0) {
-    return createHash("sha256").update(buffer).digest();
+    // R10-05: Use PBKDF2 for key derivation instead of raw SHA-256
+    const salt = randomBytes(SALT_LENGTH);
+    return deriveKeyWithPbkdf2(buffer, salt);
   }
   throw new ValidationError("security.encryption_key_required", "security.encryption_key_required");
 }

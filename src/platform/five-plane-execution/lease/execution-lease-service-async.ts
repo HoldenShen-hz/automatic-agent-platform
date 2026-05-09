@@ -30,6 +30,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { LeaseAuditRecord } from "../../contracts/types/domain/lease-types.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";
@@ -45,6 +46,10 @@ import type {
   ReleaseExecutionLeaseInput,
   RenewExecutionLeaseInput,
   ValidateExecutionWriteInput,
+} from "./types.js";
+import {
+  MIN_LEASE_TTL_MS,
+  MAX_LEASE_TTL_MS,
 } from "./types.js";
 import {
   buildWorkerSnapshotRefreshInput,
@@ -133,6 +138,8 @@ export class ExecutionLeaseServiceAsync {
     }
 
     // Create new lease with incremented fencing token
+    // R9-08 fix: Enforce MIN/MAX bounds on TTL
+    const enforcedTtlMs = Math.min(Math.max(input.ttlMs, MIN_LEASE_TTL_MS), MAX_LEASE_TTL_MS);
     const lease = {
       id: newId("lease"),
       executionId: input.executionId,
@@ -142,7 +149,7 @@ export class ExecutionLeaseServiceAsync {
       queueName: input.queueName ?? null,
       status: "active" as const,
       leasedAt: occurredAt,
-      expiresAt: plusMs(occurredAt, input.ttlMs),
+      expiresAt: plusMs(occurredAt, enforcedTtlMs),
       lastHeartbeatAt: occurredAt,
       releasedAt: null,
       reasonCode: null,
@@ -262,6 +269,15 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    // R9-03 fix: Only allow release of active leases
+    if (lease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        lease,
+      };
+    }
+
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,
       status: "released",
@@ -324,6 +340,26 @@ export class ExecutionLeaseServiceAsync {
       return {
         allowed: false,
         reasonCode: "worker_mismatch",
+        authoritativeFencingToken: activeLease.fencingToken,
+        activeLeaseId: activeLease.id,
+      };
+    }
+
+    // R9-01 fix: Also reject if lease has expired (TTL check)
+    if (activeLease.expiresAt <= occurredAt) {
+      this.insertLeaseAudit({
+        id: newId("audit"),
+        executionId: input.executionId,
+        leaseId: activeLease.id,
+        workerId: input.workerId,
+        fencingToken: input.fencingToken,
+        eventType: "stale_write_rejected",
+        reasonCode: "lease_expired",
+        recordedAt: occurredAt,
+      });
+      return {
+        allowed: false,
+        reasonCode: "lease_expired",
         authoritativeFencingToken: activeLease.fencingToken,
         activeLeaseId: activeLease.id,
       };
@@ -489,16 +525,7 @@ export class ExecutionLeaseServiceAsync {
     }
   }
 
-  private insertLeaseAudit(audit: {
-    id: string;
-    executionId: string;
-    leaseId: string;
-    workerId: string;
-    fencingToken: number;
-    eventType: "lease_granted" | "lease_renewed" | "lease_expired" | "lease_reclaimed" | "stale_write_rejected" | "lease_released" | "lease_handover";
-    reasonCode: string | null;
-    recordedAt: string;
-  }): void {
-    this.store.worker.insertLeaseAudit(audit as any);
+  private insertLeaseAudit(audit: LeaseAuditRecord): void {
+    this.store.worker.insertLeaseAudit(audit);
   }
 }

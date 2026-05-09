@@ -28,7 +28,7 @@ export interface EventReplayMetadata {
   readonly replayable: boolean;
   readonly sideEffectSafeToReplay: boolean;
   readonly schemaOwner: string;
-  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden";
   readonly consumerContractTests: readonly string[];
 }
 
@@ -766,8 +766,26 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayable: true,
     sideEffectSafeToReplay: true,
     schemaOwner: "oapeflir-projection",
-    replayBehavior: "simulate_projection",
+    replayBehavior: "simulate",
     consumerContractTests: ["layered-event-inbox.test.ts"],
+  },
+  "oapeflir.graph.scheduled": {
+    eventType: "oapeflir.graph.scheduled",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "graph-scheduler",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
+  },
+  "oapeflir.node.executed": {
+    eventType: "oapeflir.node.executed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "harness-runtime",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
   },
 };
 

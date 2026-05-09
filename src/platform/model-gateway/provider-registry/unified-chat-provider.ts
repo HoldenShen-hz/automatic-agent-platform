@@ -37,6 +37,8 @@ export interface ChatCompletionUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Estimated cost in USD based on token usage and model pricing. */
+  estimatedCostUsd: number | null;
 }
 
 export interface ChatCompletionResult {
@@ -53,7 +55,6 @@ export interface ChatCompletionResult {
     function: { name: string; arguments: string };
   }>;
   usage: ChatCompletionUsage;
-  estimatedCostUsd: number | null;
   latencyMs: number;
   model: string;
   provider: string;
@@ -279,6 +280,29 @@ export class UnifiedChatProvider {
   public async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResult> {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
+    // R2-1: Validate required fields - traceId/tenantId/costTag are mandatory for request correlation,
+    // multi-tenant isolation, and chargeback attribution
+    if (!request.traceId?.trim()) {
+      throw new AppError("request.missing_traceId", "ChatCompletionRequest requires traceId for request correlation", {
+        category: "validation",
+        source: "provider",
+        retryable: false,
+      });
+    }
+    if (request.tenantId === undefined || request.tenantId === null) {
+      throw new AppError("request.missing_tenantId", "ChatCompletionRequest requires tenantId for multi-tenant isolation", {
+        category: "validation",
+        source: "provider",
+        retryable: false,
+      });
+    }
+    if (!request.costTag?.trim()) {
+      throw new AppError("request.missing_costTag", "ChatCompletionRequest requires costTag for chargeback attribution", {
+        category: "validation",
+        source: "provider",
+        retryable: false,
+      });
+    }
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
@@ -503,16 +527,20 @@ export class UnifiedChatProvider {
   }
 
   public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    // R2-1: Provide default values for required fields when not explicitly set
+    const traceId = options.traceId ?? "default";
+    const tenantId = options.tenantId ?? null;
+    const costTag = options.costTag ?? "default";
     const result = await this.createChatCompletion({
       model: options.model ?? "MiniMax-M2.7",
       messages: [{ role: "user", content: prompt }],
+      traceId,
+      tenantId,
+      costTag,
       ...(options.system !== undefined ? { system: options.system } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.topP !== undefined ? { topP: options.topP } : {}),
-      ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
-      ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
       ...(options.principalId !== undefined ? { principalId: options.principalId } : {}),
-      ...(options.costTag !== undefined ? { costTag: options.costTag } : {}),
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.abortSignal !== undefined ? { abortSignal: options.abortSignal } : {}),
       ...(options.policyOutcome !== undefined ? { policyOutcome: options.policyOutcome } : {}),
@@ -657,12 +685,12 @@ export class UnifiedChatProvider {
         promptTokens: result.usage.input_tokens,
         completionTokens: result.usage.output_tokens,
         totalTokens: result.usage.input_tokens + result.usage.output_tokens,
+        estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
+          promptTokens: result.usage.input_tokens,
+          completionTokens: result.usage.output_tokens,
+          totalTokens: result.usage.input_tokens + result.usage.output_tokens,
+        }),
       },
-      estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
-        promptTokens: result.usage.input_tokens,
-        completionTokens: result.usage.output_tokens,
-        totalTokens: result.usage.input_tokens + result.usage.output_tokens,
-      }),
       latencyMs,
       model: result.model,
       provider,
@@ -692,12 +720,12 @@ export class UnifiedChatProvider {
         promptTokens: result.usage.prompt_tokens,
         completionTokens: result.usage.completion_tokens,
         totalTokens: result.usage.total_tokens,
+        estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
+          promptTokens: result.usage.prompt_tokens,
+          completionTokens: result.usage.completion_tokens,
+          totalTokens: result.usage.total_tokens,
+        }),
       },
-      estimatedCostUsd: this.estimateCostUsd(result.model || requestedModel, {
-        promptTokens: result.usage.prompt_tokens,
-        completionTokens: result.usage.completion_tokens,
-        totalTokens: result.usage.total_tokens,
-      }),
       latencyMs,
       model: result.model,
       provider,
@@ -723,19 +751,19 @@ export class UnifiedChatProvider {
         promptTokens: result.usage.prompt_tokens ?? 0,
         completionTokens: result.usage.completion_tokens ?? 0,
         totalTokens: result.usage.total_tokens ?? 0,
+        estimatedCostUsd: this.estimateCostUsd(result.model ?? requestedModel, {
+          promptTokens: result.usage.prompt_tokens ?? 0,
+          completionTokens: result.usage.completion_tokens ?? 0,
+          totalTokens: result.usage.total_tokens ?? 0,
+        }),
       },
-      estimatedCostUsd: this.estimateCostUsd(result.model ?? requestedModel, {
-        promptTokens: result.usage.prompt_tokens ?? 0,
-        completionTokens: result.usage.completion_tokens ?? 0,
-        totalTokens: result.usage.total_tokens ?? 0,
-      }),
       latencyMs,
       model: result.model ?? requestedModel,
       provider,
     };
   }
 
-  private estimateCostUsd(modelId: string, usage: ChatCompletionUsage): number | null {
+  private estimateCostUsd(modelId: string, usage: { promptTokens: number; completionTokens: number; totalTokens: number }): number | null {
     const profile = Object.values(DEFAULT_MODEL_METADATA_REGISTRY.profiles).find((candidate) =>
       candidate.modelId === modelId || candidate.modelId.toLowerCase() === modelId.toLowerCase(),
     );

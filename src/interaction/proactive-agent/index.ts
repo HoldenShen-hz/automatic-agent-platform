@@ -80,6 +80,14 @@ export interface ProactiveSuggestion {
   readonly createdAt: string;
   readonly title: string;
   readonly action: TriggerAction;
+  // R9-47: Quality scoring for suggestion ranking
+  readonly qualityScore?: number;
+  readonly context?: {
+    readonly triggerType: string;
+    readonly riskLevel: string;
+    readonly fireCount: number;
+    readonly lastFiredAt: string | null;
+  };
 }
 
 export interface ProactiveBudgetPool {
@@ -462,6 +470,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
   private enqueueSuggestion(trigger: TriggerDefinition): string {
     const suggestionId = newId("suggestion");
+
+    // R9-47: Compute quality score based on context factors
+    const qualityScore = this.computeSuggestionQuality(trigger);
+
     this.suggestions.set(suggestionId, {
       suggestionId,
       triggerId: trigger.triggerId,
@@ -469,8 +481,73 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       createdAt: nowIso(),
       title: `Suggestion from trigger ${trigger.name}`,
       action: trigger.action,
+      qualityScore,
+      context: {
+        triggerType: trigger.type,
+        riskLevel: trigger.riskLevel,
+        fireCount: this.states.get(trigger.triggerId)?.fireCount ?? 0,
+        lastFiredAt: this.states.get(trigger.triggerId)?.lastFiredAt ?? null,
+      },
     });
     return suggestionId;
+  }
+
+  /**
+   * R9-47: Compute quality score for a suggestion based on context
+   * Higher scores indicate better suggestion quality for ranking
+   */
+  private computeSuggestionQuality(trigger: TriggerDefinition): number {
+    let score = 0.5; // Base score
+
+    // Risk level factor: critical/high suggestions should be prioritized
+    switch (trigger.riskLevel) {
+      case "critical":
+        score += 0.3;
+        break;
+      case "high":
+        score += 0.2;
+        break;
+      case "medium":
+        score += 0.1;
+        break;
+      case "low":
+        score -= 0.1;
+        break;
+    }
+
+    // Recency factor: recently fired triggers get higher scores (more relevant)
+    const state = this.states.get(trigger.triggerId);
+    if (state?.lastFiredAt != null) {
+      const timeSinceLastFire = Date.now() - new Date(state.lastFiredAt).getTime();
+      const hourInMs = 3_600_000;
+      if (timeSinceLastFire < hourInMs) {
+        score += 0.15; // Fired within last hour
+      } else if (timeSinceLastFire < hourInMs * 24) {
+        score += 0.1; // Fired within last 24 hours
+      }
+    }
+
+    // Fire count factor: triggers with recent activity are more relevant
+    if (state != null && state.fireCount > 0) {
+      score += Math.min(0.1, state.fireCount * 0.01);
+    }
+
+    // Domain factor: high-risk domains get priority boost
+    const highRiskDomains = ["finance-accounting", "legal", "medical", "healthcare", "quant-trading"];
+    if (highRiskDomains.includes(trigger.domainId)) {
+      score += 0.1;
+    }
+
+    // Cooldown factor: suggestions outside cooldown are more actionable
+    const cooldownMs = parseDurationMs(trigger.cooldown);
+    if (state?.lastFiredAt != null && cooldownMs > 0) {
+      const timeSinceLastFire = Date.now() - new Date(state.lastFiredAt).getTime();
+      if (timeSinceLastFire >= cooldownMs) {
+        score += 0.05; // Outside cooldown window
+      }
+    }
+
+    return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]
   }
 
   private detectFeedbackLoop(triggerId: string): void {

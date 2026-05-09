@@ -13,18 +13,31 @@ export interface RolloutFreezeState {
   frozen: boolean;
   frozenAt: string | null;
   frozenBySloId: string | null;
+  degraded: boolean;
+  degradedAt: string | null;
+  degradedBySloId: string | null;
 }
 
 export class RolloutFreezeManager {
   private frozen = false;
   private frozenAt: string | null = null;
   private frozenBySloId: string | null = null;
+  private degraded = false;
+  private degradedAt: string | null = null;
+  private degradedBySloId: string | null = null;
 
   /**
    * Checks if rollouts are currently frozen.
    */
   public isFrozen(): boolean {
     return this.frozen;
+  }
+
+  /**
+   * Checks if rollouts are currently in degraded mode (slowed, not stopped).
+   */
+  public isDegraded(): boolean {
+    return this.degraded;
   }
 
   /**
@@ -35,11 +48,25 @@ export class RolloutFreezeManager {
       frozen: this.frozen,
       frozenAt: this.frozenAt,
       frozenBySloId: this.frozenBySloId,
+      degraded: this.degraded,
+      degradedAt: this.degradedAt,
+      degradedBySloId: this.degradedBySloId,
     };
   }
 
   /**
+   * Marks rollouts as degraded (slowed) due to error budget warning.
+   * §R14-07: Gradient response - degrade level.
+   */
+  public markDegraded(sloId: string): void {
+    this.degraded = true;
+    this.degradedAt = new Date().toISOString();
+    this.degradedBySloId = sloId;
+  }
+
+  /**
    * Freezes rollouts due to error budget exhaustion.
+   * §R14-07: Gradient response - freeze/full_freeze levels.
    */
   public freeze(sloId: string): void {
     this.frozen = true;
@@ -54,6 +81,9 @@ export class RolloutFreezeManager {
     this.frozen = false;
     this.frozenAt = null;
     this.frozenBySloId = null;
+    this.degraded = false;
+    this.degradedAt = null;
+    this.degradedBySloId = null;
   }
 }
 

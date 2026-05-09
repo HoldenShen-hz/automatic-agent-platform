@@ -47,6 +47,26 @@ Proposed → Accepted → Superseded
 3. **Superseded ADR 必须包含交叉引用**，指向取代它的 ADR
 4. **每个 ADR 必须包含来源章节**，关联到 platform-architecture.md 的具体节号
 
+### v4.3 Remediation 例外条款
+
+> 注意：v4.3 架构升级需要对 30+ ADR 进行直接修改以保持文档与实现同步。经权威决定，以下 remediation 场景享有例外许可，无需遵循"no direct modification"规则：
+
+**例外场景**：
+- v4.3 主架构版本升级时的跨 ADR 同步修改
+- 因五平面 X1 架构引入导致的 ADR 术语统一修正
+- 因 HarnessRuntime 成为唯一执行运行时导致的路由/执行 ADR 更新
+
+**许可条件**：
+- 必须附带 `## v4.3 ADR Remediation` 章节
+- 必须记录根因（root cause）和修复说明
+- 必须明确列出所有被修改的原始 ADR 条目（如 A-18、A-21 等）
+- 同一批次内的多 ADR 修改可共享一个 remediation 章节
+
+**流程要求**：
+- Remediation 修改仍需 review 但可走 fast-track approval
+- 所有 remediation 修改必须合入 main branch
+- 文档管理员每季度审计 remediation 合规性
+
 ### ADR 必需字段
 
 每个 ADR 必须包含：

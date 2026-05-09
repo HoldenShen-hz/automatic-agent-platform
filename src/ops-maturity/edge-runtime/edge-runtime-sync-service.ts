@@ -133,7 +133,8 @@ export class EdgeRuntimeSyncService {
       models.filter((item) => profile.allowedModels.includes(item.modelId)),
       request.modality,
     );
-    const planGraphNodeIds = buildEdgeExecutionPlan([request.taskId]).orderedTaskIds;
+    // R6-22 FIX: Use planGraph.nodes.map(n => n.nodeId) instead of orderedTaskIds for proper graph semantics
+    const planGraphNodeIds = buildEdgeExecutionPlan([request.taskId]).planGraph.nodes.map(n => n.nodeId);
     const deploymentMode = resolveEdgeDeploymentMode(profile);
 
     return {

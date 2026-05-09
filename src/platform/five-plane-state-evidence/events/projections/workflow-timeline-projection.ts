@@ -56,12 +56,16 @@ export interface WorkflowTimelineState {
   statusTransitions: StatusTransitionEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
-  processedEventIds: string[];
+  // R12-10: Set of processed event IDs for O(1) idempotency check
+  processedEventIds: ReadonlySet<string>;
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
+  // R12-11: Freshness tracking
+  lastProjectedAt: string | null;
+  lagMs: number | null;
+  stale: boolean;
   /** Workflow started at */
   startedAt: string | null;
   /** Workflow completed at */
@@ -178,13 +182,43 @@ export function createEmptyWorkflowTimelineState(): WorkflowTimelineState {
     subtaskOutcomes: [],
     statusTransitions: [],
     eventCount: 0,
-    processedEventIds: [],
+    // R12-10: Use Set instead of array for O(1) idempotency lookup
+    processedEventIds: new Set<string>(),
     firstEventAt: null,
     lastEventAt: null,
+    // R12-11: Initialize freshness tracking
+    lastProjectedAt: null,
+    lagMs: null,
+    stale: false,
     startedAt: null,
     completedAt: null,
     failedAt: null,
     error: null,
+  };
+}
+
+/**
+ * Checks if an event has already been processed (idempotency check).
+ * R12-10: Uses Set.has() for O(1) lookup instead of O(n) array.includes()
+ */
+function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolean {
+  return state.processedEventIds.has(eventId);
+}
+
+/**
+ * Computes freshness metadata (lagMs, stale, lastProjectedAt).
+ */
+function computeFreshness(state: WorkflowTimelineState, occurredAt: string): WorkflowTimelineState {
+  const nowMs = Date.now();
+  const eventTimeMs = new Date(occurredAt).getTime();
+  const lagMs = nowMs - eventTimeMs;
+  const STALE_THRESHOLD_MS = 300_000; // 5 minutes
+
+  return {
+    ...state,
+    lastProjectedAt: occurredAt,
+    lagMs,
+    stale: lagMs > STALE_THRESHOLD_MS,
   };
 }
 
@@ -206,13 +240,6 @@ function extractNodeId(payload: Record<string, unknown>): string | null {
   return (payload.nodeId as string | null | undefined)
     ?? (payload.stepId as string | null | undefined)
     ?? null;
-}
-
-/**
- * Checks if an event has already been processed (idempotency check)
- */
-function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
 }
 
 /**
@@ -317,9 +344,13 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   };
   newState.events = [...newState.events, eventEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // R12-10: Mark event as processed using Set for O(1) lookup
+  newState.processedEventIds = new Set([...newState.processedEventIds, event.eventId]);
   newState.eventCount = newState.eventCount + 1;
+
+  // R12-11: Compute freshness metadata
+  const stateWithFreshness = computeFreshness(newState, event.createdAt);
+  Object.assign(newState, stateWithFreshness);
 
   // Update state based on event type
   switch (event.eventType) {

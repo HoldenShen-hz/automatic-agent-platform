@@ -20,7 +20,7 @@ import type { ToolExecutionMetadata } from "./tool-metadata.js";
  * Result of a parallel tool execution containing all individual tool results.
  */
 export interface ParallelToolExecutionResult<T> {
-  /** Results for each tool execution, in the same order as inputs */
+  /** Successful results, preserved in input order without failed-position holes */
   results: readonly T[];
   /** Errors that occurred during parallel execution */
   errors: readonly ParallelToolExecutionError[];
@@ -404,7 +404,7 @@ export async function executeToolsInParallel<T>(
   }
 
   return {
-    results: results as T[],
+    results: results.filter((value): value is T => value !== undefined),
     errors,
     allSucceeded: errors.length === 0,
     anyFailed: errors.length > 0,

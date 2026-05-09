@@ -484,3 +484,171 @@ test("TenantPlatformService throws for empty displayName", () => {
     });
   }, /tenant.invalid_workspace_display_name/);
 });
+
+test("TenantPlatformService supports suspend, reactivate, deactivate, and decommission lifecycle transitions", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_lifecycle",
+    displayName: "Lifecycle Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+  const tenant = service.createTenant({
+    tenantId: "tenant_lifecycle",
+    organizationId: "org_lifecycle",
+    storageScope: "storage_lifecycle",
+    identityScope: "identity_lifecycle",
+    policyScope: "policy_lifecycle",
+    artifactScope: "artifact_lifecycle",
+  });
+
+  const suspended = service.suspendTenant({
+    tenantId: tenant.tenantId,
+    actor: "operator_1",
+    reason: "maintenance",
+  });
+  assert.equal(suspended.status, "suspended");
+
+  const reactivated = service.reactivateTenant({
+    tenantId: tenant.tenantId,
+    actor: "operator_1",
+    reason: "maintenance_complete",
+  });
+  assert.equal(reactivated.status, "active");
+
+  const deactivated = service.deactivateTenant({
+    tenantId: tenant.tenantId,
+    actor: "operator_2",
+    reason: "paused_subscription",
+  });
+  assert.equal(deactivated.status, "active");
+
+  const decommissioned = service.decommissionTenant({
+    tenantId: tenant.tenantId,
+    actor: "operator_3",
+    reason: "tenant_removed",
+  });
+  assert.equal(decommissioned.status, "terminated");
+
+  assert.throws(() => {
+    service.reactivateTenant({
+      tenantId: tenant.tenantId,
+      actor: "operator_4",
+      reason: "should_fail",
+    });
+  }, /tenant.invalid_lifecycle_transition/);
+});
+
+test("TenantPlatformService enforces quota checks before provisioning tenant-scoped resources", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_quota",
+    displayName: "Quota Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const decisions = [];
+  const recorded = [];
+  const quotaService = {
+    checkRateLimit: (tenantId, resourceType, cost) => {
+      decisions.push({ tenantId, resourceType, cost });
+      return {
+        allowed: true,
+        currentUsage: 0,
+        limit: 10,
+        remaining: 10,
+        retryAfterMs: null,
+        quotaId: `${tenantId}:${resourceType}`,
+      };
+    },
+    recordUsage: (tenantId, resourceType, cost) => {
+      recorded.push({ tenantId, resourceType, cost });
+    },
+  };
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store, quotaService);
+  const tenant = service.createTenant({
+    tenantId: "tenant_quota",
+    organizationId: "org_quota",
+    storageScope: "storage_quota",
+    identityScope: "identity_quota",
+    policyScope: "policy_quota",
+    artifactScope: "artifact_quota",
+  });
+
+  service.createDeploymentBinding({
+    bindingId: "binding_quota",
+    tenantId: tenant.tenantId,
+    environmentId: "prod",
+    deploymentMode: "cloud_shared",
+    region: "cn-shanghai",
+    networkBoundary: "vpc-1",
+  });
+  service.createDataNamespace({
+    namespaceId: "namespace_quota",
+    plane: "transactional",
+    tenantId: tenant.tenantId,
+    retentionPolicy: "retain-30d",
+    encryptionPolicy: "kms-tenant-a",
+  });
+
+  assert.deepEqual(
+    decisions.map((item) => item.resourceType),
+    ["concurrent_connections", "storage"],
+  );
+  assert.deepEqual(
+    recorded.map((item) => item.resourceType),
+    ["concurrent_connections", "storage"],
+  );
+});
+
+test("TenantPlatformService rejects resource creation when tenant quota is exceeded", () => {
+  const store = createMockStore();
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_quota_blocked",
+    displayName: "Quota Blocked Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const quotaService = {
+    checkRateLimit: () => ({
+      allowed: false,
+      currentUsage: 10,
+      limit: 10,
+      remaining: 0,
+      retryAfterMs: 60_000,
+      quotaId: "tenant_quota_blocked:storage",
+    }),
+    recordUsage: () => {
+      throw new Error("recordUsage should not be called when quota is exceeded");
+    },
+  };
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store, quotaService);
+  const tenant = service.createTenant({
+    tenantId: "tenant_quota_blocked",
+    organizationId: "org_quota_blocked",
+    storageScope: "storage_blocked",
+    identityScope: "identity_blocked",
+    policyScope: "policy_blocked",
+    artifactScope: "artifact_blocked",
+  });
+
+  assert.throws(() => {
+    service.createDataNamespace({
+      namespaceId: "namespace_blocked",
+      plane: "transactional",
+      tenantId: tenant.tenantId,
+      retentionPolicy: "retain-7d",
+      encryptionPolicy: "kms-tenant-b",
+    });
+  }, /Quota exceeded for storage: 10\/10/);
+});

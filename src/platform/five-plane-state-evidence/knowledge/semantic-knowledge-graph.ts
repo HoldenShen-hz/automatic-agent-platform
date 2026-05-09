@@ -1,7 +1,47 @@
 import type { ArchivedKnowledgeRecord } from "./archive/knowledge-archive.js";
 
-export type KnowledgeGraphNodeType = "namespace" | "document" | "chunk" | "keyword";
-export type KnowledgeGraphEdgeType = "contains" | "shared_keyword" | "same_document";
+/**
+ * Node types in the knowledge graph.
+ * R8-11 FIX: Extended to include entity and trust node types.
+ */
+export type KnowledgeGraphNodeType =
+  | "namespace"
+  | "document"
+  | "chunk"
+  | "keyword"
+  | "entity"        // R8-11: Entity node for semantic relationships
+  | "concept"      // R8-11: Concept node for abstract ideas
+  | "trust_root";  // R8-11: Trust anchor node for trust propagation
+
+/**
+ * Edge types in the knowledge graph.
+ * R8-11 FIX: Extended from 3 to include entity relations and trust propagation.
+ *
+ * Edge categories:
+ * - Containment: contains, same_document
+ * - Similarity: shared_keyword
+ * - Entity relations (R8-11): relates_to, specializes, generalizes, implies
+ * - Trust propagation (R8-11): trusts, verified_by, derived_from
+ */
+export type KnowledgeGraphEdgeType =
+  // Original containment edges
+  | "contains"
+  | "shared_keyword"
+  | "same_document"
+  // R8-11: Entity relation edges
+  | "relates_to"        // General relationship between entities
+  | "specializes"       // Entity is a specialization of another
+  | "generalizes"       // Entity is a generalization of another
+  | "implies"           // Entity implies or leads to another
+  // R8-11: Trust propagation edges
+  | "trusts"            // Trust relationship (A trusts B)
+  | "verified_by"       // Entity verified by evidence/source
+  | "derived_from"      // Knowledge derived from source
+  | "confirms"          // Confirms or corroborates another entity
+  // R13-07: Learned edge types for learning pipeline integration
+  | "learned_from"      // Knowledge learned from evidence/source
+  | "failure_pattern"   // Edge marks a failure pattern node
+  | "causal_relationship"; // Causal relationship between nodes
 
 export interface KnowledgeGraphNode {
   nodeId: string;
@@ -30,6 +70,19 @@ export interface KnowledgeGraphChunkConnections {
   keywords: string[];
   sharedKeywordRefs: string[];
   sameDocumentRefs: string[];
+  // R8-11: Entity relation connections
+  relatedEntityRefs: string[];
+  specializesRefs: string[];
+  generalizesRefs: string[];
+  impliesRefs: string[];
+  // R8-11: Trust propagation connections
+  trustRefs: string[];
+  verifiedByRefs: string[];
+  derivedFromRefs: string[];
+  // R13-07: Learned edge connections
+  learnedFromRefs: string[];
+  failurePatternRefs: string[];
+  causalRelationshipRefs: string[];
 }
 
 function edgeId(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType): string {
@@ -156,6 +209,19 @@ export class SemanticKnowledgeGraph {
         .sort(),
       sharedKeywordRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "shared_keyword"),
       sameDocumentRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "same_document"),
+      // R8-11: Entity relation connections
+      relatedEntityRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "relates_to"),
+      specializesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "specializes"),
+      generalizesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "generalizes"),
+      impliesRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "implies"),
+      // R8-11: Trust propagation connections
+      trustRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "trusts"),
+      verifiedByRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "verified_by"),
+      derivedFromRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "derived_from"),
+      // R13-07: Learned edge connections
+      learnedFromRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "learned_from"),
+      failurePatternRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "failure_pattern"),
+      causalRelationshipRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "causal_relationship"),
     };
   }
 
@@ -243,12 +309,25 @@ export class SemanticKnowledgeGraph {
   }
 
   private collectChunkKnowledgeRefs(chunkNodeId: string, relation: KnowledgeGraphEdgeType): string[] {
+    // R8-11 FIX: Handle different node types based on relation type
+    // For containment/similarity edges, related nodes are chunks
+    // For entity relation edges, related nodes can be entities or chunks
+    // For trust propagation edges, related nodes can be trust_root or entities
+    // R13-07: Learned edges (learned_from, failure_pattern, causal_relationship) connect to chunks/entities
+    const validNodeTypes: KnowledgeGraphNodeType[] = relation === "contains" || relation === "shared_keyword" || relation === "same_document"
+      ? ["chunk"]
+      : relation === "trusts" || relation === "verified_by" || relation === "derived_from" || relation === "confirms"
+        ? ["chunk", "entity", "trust_root"]
+      : relation === "learned_from" || relation === "failure_pattern" || relation === "causal_relationship"
+        ? ["chunk", "entity"]
+        : ["chunk", "entity"];
+
     return [...(this.adjacencyByNodeId.get(chunkNodeId) ?? [])]
       .filter((edge) => edge.relation === relation)
       .map((edge) => this.nodes.get(edge.toNodeId))
-      .filter((node): node is KnowledgeGraphNode => node != null && node.nodeType === "chunk")
+      .filter((node): node is KnowledgeGraphNode => node != null && validNodeTypes.includes(node.nodeType))
       .map((node) => node.knowledgeRef)
-      .filter((knowledgeRef): knowledgeRef is string => knowledgeRef != null)
+      .filter((ref): ref is string => ref != null)
       .sort();
   }
 

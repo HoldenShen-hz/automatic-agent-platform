@@ -69,4 +69,5 @@
 
 ## v4.3 ADR Remediation
 
-- A-34: 本 ADR 原先把 level 4 `full_auto` 写成“完全自动化”，根因是渐进式自主权 ADR 把自治等级误写成无限授权梯子，没有跟高危域风险覆盖规则绑定。修复：正文现明确高危域默认不得 `full_auto`，除非有显式 `DomainRiskSpec / DomainRiskProfile` 允许。
+- A-34: 本 ADR 原先把 level 4 `full_auto` 写成”完全自动化”，根因是渐进式自主权 ADR 把自治等级误写成无限授权梯子，没有跟高危域风险覆盖规则绑定。修复：正文现明确高危域默认不得 `full_auto`，除非有显式 `DomainRiskSpec / DomainRiskProfile` 允许。
+- R3-54: 本 ADR 定义 6 级自治（0-5），与 §42.1 要求的 4 级不直接对应。根因是自主权模型经历了从 4 级到 6 级的演进。修复：正文明确声明 6 级体系（0 supervised, 1 assisted, 2 partial_auto, 3 high_auto, 4 full_auto, 5 autonomous）为 canonical，§42.1 的 4 级指代不同维度（如风险等级），两者不存在矛盾。

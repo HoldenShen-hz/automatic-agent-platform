@@ -15,6 +15,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// R10-37 fix: Import from canonical entry point (index.ts) instead of direct implementation
 import {
   classifyPromptInjectionRisk,
   embedCanaryToken,
@@ -24,7 +25,7 @@ import {
   DEFAULT_ML_CLASSIFIER_CONFIG,
   type PromptInjectionClassification,
   type PromptProtectionPlan,
-} from "../../src/platform/stability/prompt-injection-guard.js";
+} from "../../src/platform/stability/index.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

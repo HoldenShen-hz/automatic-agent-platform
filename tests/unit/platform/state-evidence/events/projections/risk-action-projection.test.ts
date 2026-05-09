@@ -51,7 +51,7 @@ test("createEmptyRiskActionState returns correct initial state", () => {
   assert.equal(state.completedAt, null);
   assert.deepEqual(state.timeline, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
 });
 
 test("riskActionProjectionHandler handles risk:decision_requested", () => {
@@ -188,7 +188,7 @@ test("riskActionProjectionHandler is idempotent - same event applied twice", () 
   const state2 = riskActionProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as RiskActionState;
 
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idem"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idem"]));
 });
 
 test("riskActionProjectionHandler builds timeline in order", () => {

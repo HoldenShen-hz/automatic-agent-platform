@@ -17,6 +17,8 @@
  * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
+import { createHash } from "node:crypto";
+
 import type { CompactionRecord, MessageRecord } from "../../contracts/types/domain.js";
 
 import { estimateMessageTokens } from "../../model-gateway/messages/token-estimator.js";
@@ -291,6 +293,24 @@ export class ContextCompactionService {
         }
       }
 
+      if (fixedPrefixEndIndex > 0) {
+        const fixedPrefixContent = finalMessages
+          .slice(0, Math.min(fixedPrefixEndIndex, finalMessages.length))
+          .map((message) => `${message.messageId}:${message.content}`)
+          .join("\n");
+        if (fixedPrefixContent.length > 0) {
+          kvCacheFixedPrefixCacheKey = createHash("sha256").update(fixedPrefixContent, "utf8").digest("hex");
+        }
+      }
+
+      const domainBlockContent = finalMessages
+        .filter((_, index) => index >= fixedPrefixEndIndex)
+        .map((message) => `${message.messageType}:${message.content}`)
+        .join("\n");
+      if (domainBlockContent.length > 0) {
+        kvCacheDomainBlockCacheKey = createHash("sha256").update(domainBlockContent, "utf8").digest("hex");
+      }
+
       return {
         usageBeforeTokens,
         usageAfterStage1Tokens,
@@ -301,6 +321,8 @@ export class ContextCompactionService {
         contextMessages: finalMessages,
         persistedRecords,
         errorCode,
+        kvCacheFixedPrefixCacheKey,
+        kvCacheDomainBlockCacheKey,
       };
     });
   }

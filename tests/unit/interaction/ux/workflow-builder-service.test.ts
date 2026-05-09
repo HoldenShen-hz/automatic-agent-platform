@@ -511,3 +511,127 @@ test("WorkflowBuilderService.build falls back to template_step when no component
 
   assert.equal(result.builder.canvas.nodes[0]!.componentId, "template_step_1");
 });
+
+test("WorkflowBuilderService.build normalizes graph into a PlanGraphBundle", () => {
+  const service = new WorkflowBuilderService();
+  const session: WizardSession = {
+    sessionId: "session_plan_bundle",
+    currentStepId: "step_1",
+    steps: [{ stepId: "step_1", title: "Step 1", completed: true }],
+  };
+  const template: InteractionTemplate = {
+    templateId: "tpl_plan_bundle",
+    title: "Plan Bundle",
+    steps: ["Manual Trigger", "Finance Action", "Approval"],
+  };
+  const wizard: DomainOnboardingWizard = {
+    steps: [],
+    recommendedDomains: ["finance"],
+    defaultMode: {
+      mode: "department",
+      autoDetected: true,
+      features: {
+        multiTenancy: true,
+        approvalEngine: "full",
+        securityReview: "auto_plus_manual",
+        onboarding: "guided_1week",
+        dashboardLevels: ["L1", "L2", "L3"],
+        governance: "delegated",
+      },
+      upgradePath: "",
+    },
+  };
+  const components: readonly DraggableComponent[] = [
+    {
+      componentId: "manual_trigger",
+      name: "Manual Trigger",
+      icon: "play",
+      domainId: "platform",
+      riskLevel: "low",
+      compensationModel: { strategy: "none" },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      configSchema: {},
+      previewDescription: "Manual Trigger",
+    },
+    {
+      componentId: "finance_action",
+      name: "Finance Action",
+      icon: "bolt",
+      domainId: "finance",
+      riskLevel: "critical",
+      compensationModel: { strategy: "manual_rollback" },
+      sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
+      configSchema: {},
+      previewDescription: "Finance Action",
+    },
+    {
+      componentId: "policy_approval",
+      name: "Approval",
+      icon: "shield",
+      domainId: "platform",
+      riskLevel: "high",
+      compensationModel: { strategy: "retry_only" },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      configSchema: {},
+      previewDescription: "Approval",
+    },
+  ];
+
+  const result = service.build({ session, template, onboardingWizard: wizard, components });
+
+  assert.equal(result.saveReview.normalizedGraph.planGraphBundle.harnessRunId, "session_plan_bundle");
+  assert.equal(result.saveReview.normalizedGraph.planGraphBundle.graph.nodes.length, 3);
+  assert.deepEqual(result.saveReview.normalizedGraph.entryNodeIds, ["node_1"]);
+  assert.deepEqual(result.saveReview.normalizedGraph.terminalNodeIds, ["node_3"]);
+});
+
+test("WorkflowBuilderService.build propagates risk from sideEffectProfile and compensationModel", () => {
+  const service = new WorkflowBuilderService();
+  const session: WizardSession = {
+    sessionId: "session_risk",
+    currentStepId: "step_1",
+    steps: [{ stepId: "step_1", title: "Step 1", completed: true }],
+  };
+  const template: InteractionTemplate = {
+    templateId: "tpl_risk",
+    title: "Risk",
+    steps: ["Critical Payment"],
+  };
+  const wizard: DomainOnboardingWizard = {
+    steps: [],
+    recommendedDomains: ["finance"],
+    defaultMode: {
+      mode: "solo",
+      autoDetected: true,
+      features: {
+        multiTenancy: false,
+        approvalEngine: "self_approve",
+        securityReview: "auto_only",
+        onboarding: "wizard_3min",
+        dashboardLevels: ["L1"],
+        governance: "self",
+      },
+      upgradePath: "",
+    },
+  };
+  const components: readonly DraggableComponent[] = [
+    {
+      componentId: "critical_payment_action",
+      name: "Critical Payment",
+      icon: "banknote",
+      domainId: "finance",
+      riskLevel: "critical",
+      compensationModel: { strategy: "manual_rollback" },
+      sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
+      configSchema: {},
+      previewDescription: "Critical Payment",
+    },
+  ];
+
+  const result = service.build({ session, template, onboardingWizard: wizard, components });
+
+  assert.equal(result.saveReview.riskPropagation.highestRisk, "critical");
+  assert.deepEqual(result.saveReview.riskPropagation.riskyNodeIds, ["node_1"]);
+  assert.ok(result.saveReview.riskPropagation.findings[0]?.reasons.includes("side_effect_external_commit"));
+  assert.equal(result.saveReview.worstPathAnalysis.riskClass, "critical");
+});

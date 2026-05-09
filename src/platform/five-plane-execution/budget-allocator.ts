@@ -194,6 +194,7 @@ export class BudgetAllocator {
 
   /**
    * R11-07: Reserve budget with automatic expiry sweeper tracking
+   * R4-23 FIX: Now uses RuntimeStateMachine.transition() for proper state management
    */
   public reserve(input: {
     readonly ledger: BudgetLedger;
@@ -203,13 +204,40 @@ export class BudgetAllocator {
     readonly expectedVersion: number;
     readonly nodeRunId?: string;
     readonly streamingIncrement?: boolean;
+    readonly context: BudgetAllocatorContext;
   }): BudgetReservationResult {
     const result = reserveBudgetHardCap(input);
+
+    // R4-23 FIX: Use RuntimeStateMachine.transition() for proper state management
+    // This ensures reservation transitions go through the same validation as settle/release
+    const command: RuntimeTransitionCommand<BudgetReservation> = {
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: result.reservation.budgetReservationId,
+      aggregateType: "BudgetReservation",
+      aggregate: result.reservation,
+      fromStatus: result.reservation.status,
+      toStatus: "reserved",
+      principal: input.context.principal,
+      tenantId: input.context.tenantId,
+      traceId: input.context.traceId,
+      reasonCode: "budget.reserved",
+      emittedBy: input.context.emittedBy,
+      budgetPrecondition: {
+        reservationId: result.reservation.budgetReservationId,
+        hardCapSatisfied: true,
+      },
+      auditRef: `audit://budget-reservations/${result.reservation.budgetReservationId}/reserve`,
+    };
+    const transitionedReservation = this.stateMachine.transition(command);
 
     // R11-07: Track reservation for expiry sweeper
     this.activeReservations.set(result.reservation.budgetReservationId, result.reservation);
 
-    return result;
+    return {
+      ...result,
+      reservation: transitionedReservation.aggregate,
+    };
   }
 
   /**

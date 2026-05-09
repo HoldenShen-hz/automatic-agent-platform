@@ -9,7 +9,7 @@ import type { ImprovementProposal } from './proposal-engine.js';
 
 export type RolloutStage = 'shadow' | 'canary' | 'partial' | 'stable';
 
-export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back';
+export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back' | 'rollback_pending';
 
 export interface RolloutRecord {
   proposalId: string;
@@ -22,6 +22,21 @@ export interface RolloutRecord {
   failureReason?: string;
 }
 
+export interface RolloutMetricThresholds {
+  successRateFloor: number;     // Minimum acceptable success rate (e.g., 0.85)
+  errorRateCeiling: number;    // Maximum acceptable error rate (e.g., 0.15)
+  latencyCeilingMs: number;     // Maximum acceptable latency in ms
+  costCeilingUsd: number;       // Maximum acceptable cost per execution
+}
+
+// R13-10: Default thresholds for automatic rollback trigger
+export const DEFAULT_ROLLOUT_THRESHOLDS: RolloutMetricThresholds = {
+  successRateFloor: 0.85,
+  errorRateCeiling: 0.15,
+  latencyCeilingMs: 10000,
+  costCeilingUsd: 1.00,
+};
+
 export interface RolloutMetrics {
   successRate: number;
   errorRate: number;
@@ -32,6 +47,7 @@ export interface RolloutMetrics {
 export interface RolloutManager {
   start(proposal: ImprovementProposal, stage: RolloutStage, percentage: number): Promise<RolloutRecord>;
   updateMetrics(proposalId: string, metrics: RolloutMetrics): Promise<void>;
+  evaluateAndTriggerRollback(proposalId: string, thresholds?: Partial<RolloutMetricThresholds>): Promise<boolean>;
   complete(proposalId: string): Promise<void>;
   fail(proposalId: string, reason: string): Promise<void>;
   rollback(proposalId: string, reason: string): Promise<void>;
@@ -64,6 +80,48 @@ export class SimpleRolloutManager implements RolloutManager {
     if (record) {
       record.metrics = metrics;
     }
+  }
+
+  // R13-10: Evaluate metrics against thresholds and trigger rollback if needed
+  async evaluateAndTriggerRollback(
+    proposalId: string,
+    thresholds?: Partial<RolloutMetricThresholds>
+  ): Promise<boolean> {
+    const record = this.rollouts.get(proposalId);
+    if (!record || !record.metrics || record.status !== 'running') {
+      return false;
+    }
+
+    const effectiveThresholds: RolloutMetricThresholds = {
+      successRateFloor: thresholds?.successRateFloor ?? DEFAULT_ROLLOUT_THRESHOLDS.successRateFloor,
+      errorRateCeiling: thresholds?.errorRateCeiling ?? DEFAULT_ROLLOUT_THRESHOLDS.errorRateCeiling,
+      latencyCeilingMs: thresholds?.latencyCeilingMs ?? DEFAULT_ROLLOUT_THRESHOLDS.latencyCeilingMs,
+      costCeilingUsd: thresholds?.costCeilingUsd ?? DEFAULT_ROLLOUT_THRESHOLDS.costCeilingUsd,
+    };
+
+    const { successRate, errorRate, latencyMs, costUsd } = record.metrics;
+    const violations: string[] = [];
+
+    if (successRate < effectiveThresholds.successRateFloor) {
+      violations.push(`successRate(${successRate}) below floor(${effectiveThresholds.successRateFloor})`);
+    }
+    if (errorRate > effectiveThresholds.errorRateCeiling) {
+      violations.push(`errorRate(${errorRate}) above ceiling(${effectiveThresholds.errorRateCeiling})`);
+    }
+    if (latencyMs > effectiveThresholds.latencyCeilingMs) {
+      violations.push(`latencyMs(${latencyMs}) above ceiling(${effectiveThresholds.latencyCeilingMs})`);
+    }
+    if (costUsd > effectiveThresholds.costCeilingUsd) {
+      violations.push(`costUsd(${costUsd}) above ceiling(${effectiveThresholds.costCeilingUsd})`);
+    }
+
+    if (violations.length > 0) {
+      record.status = 'rollback_pending';
+      record.failureReason = `Metric threshold violations: ${violations.join("; ")}`;
+      return true;
+    }
+
+    return false;
   }
 
   async complete(proposalId: string): Promise<void> {

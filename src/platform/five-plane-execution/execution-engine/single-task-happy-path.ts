@@ -33,7 +33,7 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
-import { createPlatformFactEvent, createPrincipalRef, createSideEffectRecord, type SideEffectRecord, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import { createPlatformFactEvent, createBudgetReservation, createSideEffectRecord, type SideEffectRecord, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord } from "../../contracts/index.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -351,6 +351,64 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       createdAt: now,
       updatedAt: now,
     };
+
+    // R4-27 (INV-RUN-001) fix: Persist HarnessRun to enable canonical execution tracking
+    // The HarnessRun must be stored in the RuntimeTruthRepository for harness runtime
+    // to track execution lifecycle. Without this, the harness run exists only in memory.
+    // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have harnessRun sub-store
+    db.connection.prepare(
+        `INSERT INTO harness_runs (harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, status, domain_id,
+        confirmed_task_spec_id, request_envelope_id, request_hash, constraint_pack_ref, version_lock_id,
+        budget_ledger_id, current_seq, created_at, updated_at, fencing_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        harnessRun.harnessRunId,
+        harnessRun.tenantId,
+        harnessRun.orgId,
+        harnessRun.traceId,
+        harnessRun.goal ?? null,
+        harnessRun.riskLevel,
+        harnessRun.status,
+        harnessRun.domainId,
+        harnessRun.confirmedTaskSpecId,
+        harnessRun.requestEnvelopeId,
+        harnessRun.requestHash,
+        harnessRun.constraintPackRef,
+        harnessRun.versionLockId,
+        harnessRun.budgetLedgerId,
+        harnessRun.currentSeq,
+        harnessRun.createdAt,
+        harnessRun.updatedAt,
+        harnessRun.fencingToken,
+      );
+
+    // R4-25 (INV-BUDGET-001) fix: Create budget reservation BEFORE execution
+    // BudgetAllocator.reserve() must be called to create a proper BudgetReservation
+    // that tracks expected cost before tool/LLM execution
+    const budgetLimit = execution.budgetUsdLimit ?? 1;
+    if (harnessRun.budgetLedgerId) {
+      const budgetReservation = createBudgetReservation({
+        budgetLedgerId: harnessRun.budgetLedgerId,
+        harnessRunId: harnessRun.harnessRunId,
+        amount: budgetLimit,
+        resourceKind: "token",
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      });
+      // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have billing sub-store
+      db.connection.prepare(
+          `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          budgetReservation.budgetReservationId,
+          budgetReservation.budgetLedgerId,
+          budgetReservation.harnessRunId,
+          budgetReservation.amount,
+          budgetReservation.resourceKind,
+          budgetReservation.status,
+          budgetReservation.expiresAt,
+          budgetReservation.createdAt,
+        );
+    }
 
     db.transaction(() => {
       store.task.insertTask(task);

@@ -105,6 +105,8 @@ export interface ExecutionOutcomeEvaluatorOptions {
   readonly config?: QualityGateConfig;
 }
 
+export type EvaluationOutcome = EvaluationReport & ExecutionOutcomeEvaluation;
+
 /** Default quality gate config values */
 const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
   qualityGate: {
@@ -170,22 +172,13 @@ export class ExecutionOutcomeEvaluator {
    * R11-03: Evaluates all dimensions: quality, constraint compliance, budget adherence, risk
    * R11-05: Uses risk-adjusted quality gate thresholds
    */
-  public evaluate(planGraphBundle: PlanGraphBundle, feedback: FeedbackBatch, actualDurationMs?: number, actualCost?: number): EvaluationReport {
-    const failureSignals = feedback.signals.filter((signal) => signal.category === "failure" || signal.category === "timeout");
-    const partialSignals = feedback.signals.filter((signal) => signal.category === "partial");
-    const successSignals = feedback.signals.filter((signal) => signal.category === "success");
-
-    const { successSignal, completionOutcome, failureSignal, partialSignal } = this.config.qualityScoreWeights;
-
-    const successBonus = successSignals.length * successSignal;
-    const completionBonus = feedback.outcome === "completed" ? completionOutcome : 0;
-    const failurePenalty = failureSignals.length * failureSignal;
-    const partialPenalty = partialSignals.length * partialSignal;
-
-    const qualityScore = Math.max(
-      0,
-      Math.min(1, successBonus + completionBonus - failurePenalty - partialPenalty),
-    );
+  public evaluate(
+    planGraphBundle: PlanGraphBundle,
+    feedback: FeedbackBatch,
+    actualDurationMs?: number,
+    actualCost?: number,
+  ): EvaluationOutcome {
+    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback);
 
     // R11-03: Evaluate constraint compliance dimension
     const constraintCompliance = this.evaluateConstraintCompliance(planGraphBundle, feedback);
@@ -199,42 +192,14 @@ export class ExecutionOutcomeEvaluator {
     // R11-03: Evaluate timing SLO dimension
     const timingSlo = this.evaluateTimingSlo(planGraphBundle, actualDurationMs);
 
-    // R11-05: Get risk-adjusted threshold
-    const riskClass = planGraphBundle.riskProfile?.riskClass ?? "medium";
-    const riskAdjustedThreshold = this.riskThresholds[riskClass] ?? this.config.qualityGate.defaultPassThreshold;
-
-    const { completeMinScore, approvalRequiredScore, retryMaxFailures } = this.config.actionThresholds;
-
-    let nextAction: ExecutionOutcomeEvaluation["nextAction"];
-    if (feedback.outcome === "completed" && qualityScore >= completeMinScore) {
-      nextAction = "complete";
-    } else if (feedback.outcome === "repairable") {
-      nextAction = "replan";
-    } else if (failureSignals.some((signal) => String(signal.payload.reasonCode ?? "").includes("approval"))) {
-      nextAction = "approve";
-    } else if (failureSignals.length > retryMaxFailures) {
-      nextAction = "escalate";
-    } else if (failureSignals.length > 0) {
-      nextAction = "retry";
-    } else if (qualityScore < approvalRequiredScore) {
-      nextAction = "escalate";
-    } else {
-      nextAction = "approve";
-    }
-
-    const passed = nextAction === "complete" && qualityScore >= riskAdjustedThreshold;
-
-    const reasons = feedback.signals.map((signal) => `${signal.category}:${String(signal.payload.summary ?? signal.payload.reasonCode ?? signal.category)}`);
-
-    // R5-7: Return EvaluationReport directly instead of ExecutionOutcomeEvaluation
-    // R11-03: Include all evaluation dimensions
     return {
-      verdict: mapNextActionToVerdict(nextAction, passed),
-      score: Number(qualityScore.toFixed(2)),
-      evidenceRefs: reasons as unknown as readonly string[],
-      notes: reasons.length > 0 ? reasons.join("; ") : "",
+      ...legacy,
+      verdict: mapNextActionToVerdict(legacy.nextAction, legacy.passed),
+      score: legacy.qualityScore,
+      evidenceRefs: legacy.reasons,
+      notes: legacy.reasons.length > 0 ? legacy.reasons.join("; ") : "",
       dimensions: {
-        qualityScore,
+        qualityScore: legacy.qualityScore,
         constraintCompliance,
         budgetAdherence,
         riskEvaluation,
@@ -451,7 +416,7 @@ export class ExecutionOutcomeEvaluator {
 
     return {
       evaluationId: newId("outcome_eval"),
-      taskId: planGraphBundle.harnessRunId,
+      taskId: this.resolveTaskId(planGraphBundle),
       passed,
       qualityScore: Number(qualityScore.toFixed(2)),
       nextAction,
@@ -466,6 +431,11 @@ export class ExecutionOutcomeEvaluator {
         partialPenalty: Number(partialPenalty.toFixed(2)),
       },
     };
+  }
+
+  private resolveTaskId(planGraphBundle: PlanGraphBundle): string {
+    const candidate = planGraphBundle as PlanGraphBundle & { taskId?: string; harnessRunId?: string };
+    return candidate.taskId ?? candidate.harnessRunId ?? "unknown_task";
   }
 
   /**

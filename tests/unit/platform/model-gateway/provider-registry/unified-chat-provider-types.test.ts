@@ -56,9 +56,11 @@ test("ChatCompletionUsage structure is correct", () => {
     promptTokens: 100,
     completionTokens: 50,
     totalTokens: 150,
+    estimatedCostUsd: 0.0025,
   };
   assert.equal(usage.promptTokens, 100);
   assert.equal(usage.totalTokens, 150);
+  assert.equal(usage.estimatedCostUsd, 0.0025);
 });
 
 test("ChatCompletionResult structure is correct", () => {
@@ -152,9 +154,15 @@ test("ChatCompletionRequest structure is correct", () => {
     stream: false,
     tools: [],
     toolChoice: "auto",
+    traceId: "trace-1",
+    tenantId: "tenant-1",
+    costTag: "interactive",
   };
   assert.equal(request.model, "claude-3-5-sonnet");
   assert.equal(request.maxTokens, 4096);
+  assert.equal(request.traceId, "trace-1");
+  assert.equal(request.tenantId, "tenant-1");
+  assert.equal(request.costTag, "interactive");
 });
 
 test("ChatCompletionRequest allows minimal definition", () => {
@@ -162,6 +170,9 @@ test("ChatCompletionRequest allows minimal definition", () => {
     model: "gpt-4",
     messages: [{ role: "user", content: "Hi" }],
     maxTokens: 1024,
+    traceId: "trace-min",
+    tenantId: null,
+    costTag: "batch",
   };
   assert.equal(request.system, undefined);
   assert.equal(request.temperature, undefined);

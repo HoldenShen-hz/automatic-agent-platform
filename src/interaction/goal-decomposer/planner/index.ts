@@ -3,6 +3,11 @@ import { topologicallySortTaskIds, type DependencyEdge } from "../dependency-gra
 export interface BuildExecutionBatchesOptions {
   readonly priorities?: Readonly<Record<string, number>>;
   readonly priorityLabels?: Readonly<Record<string, "low" | "normal" | "high" | "critical">>;
+  /**
+   * Task priority values from Goal.priority.
+   * Used to boost critical/high priority tasks within the same dependency level.
+   */
+  readonly taskPriorities?: Readonly<Record<string, "low" | "normal" | "high" | "critical">>;
 }
 
 const PRIORITY_LABEL_WEIGHTS: Readonly<Record<NonNullable<BuildExecutionBatchesOptions["priorityLabels"]>[string], number>> = {
@@ -11,6 +16,37 @@ const PRIORITY_LABEL_WEIGHTS: Readonly<Record<NonNullable<BuildExecutionBatchesO
   high: 300,
   critical: 400,
 };
+
+const PRIORITY_BOOST_FACTOR: Readonly<Record<string, number>> = {
+  critical: 1.5,
+  high: 1.2,
+  normal: 1.0,
+  low: 0.8,
+};
+
+function computeTaskScore(taskId: string, originalOrderIndex: number, options: BuildExecutionBatchesOptions): number {
+  const priorities = options.priorities ?? {};
+  const priorityLabels = options.priorityLabels ?? {};
+  const taskPriorities = options.taskPriorities ?? {};
+
+  // Base score from explicit priority value
+  const explicitPriority = priorities[taskId] ?? 0;
+
+  // Label-based priority weight
+  const labelWeight = PRIORITY_LABEL_WEIGHTS[priorityLabels[taskId] ?? "normal"] ?? 200;
+
+  // Goal.priority-based boost factor
+  const taskPriorityLabel = taskPriorities[taskId] ?? "normal";
+  const boostFactor = PRIORITY_BOOST_FACTOR[taskPriorityLabel] ?? 1.0;
+
+  // Combine: higher priority tasks get boosted effective weight
+  const effectivePriority = explicitPriority > 0
+    ? explicitPriority * boostFactor
+    : labelWeight * boostFactor;
+
+  // Original topological order as tiebreaker
+  return effectivePriority * 1000 + (1000 - originalOrderIndex);
+}
 
 export function buildExecutionBatches(
   taskIds: readonly string[],
@@ -22,8 +58,6 @@ export function buildExecutionBatches(
   }
   const order = topologicallySortTaskIds(taskIds, edges);
   const originalOrder = new Map(order.map((taskId, index) => [taskId, index]));
-  const priorities = options.priorities ?? {};
-  const priorityLabels = options.priorityLabels ?? {};
   const indegree = new Map<string, number>();
   const adjacency = new Map<string, string[]>();
   for (const taskId of taskIds) {
@@ -36,11 +70,11 @@ export function buildExecutionBatches(
   }
 
   const sortReady = (items: readonly string[]): string[] => [...items].sort((left, right) => {
-    const leftPriority = priorities[left] ?? PRIORITY_LABEL_WEIGHTS[priorityLabels[left] ?? "normal"] ?? 0;
-    const rightPriority = priorities[right] ?? PRIORITY_LABEL_WEIGHTS[priorityLabels[right] ?? "normal"] ?? 0;
-    const priorityDelta = rightPriority - leftPriority;
-    if (priorityDelta !== 0) {
-      return priorityDelta;
+    const leftScore = computeTaskScore(left, originalOrder.get(left) ?? 0, options);
+    const rightScore = computeTaskScore(right, originalOrder.get(right) ?? 0, options);
+    const scoreDelta = rightScore - leftScore;
+    if (scoreDelta !== 0) {
+      return scoreDelta;
     }
     return (originalOrder.get(left) ?? 0) - (originalOrder.get(right) ?? 0);
   });

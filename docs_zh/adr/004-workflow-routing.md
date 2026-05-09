@@ -52,13 +52,15 @@
 5. `HarnessRuntime` 执行 `NodeRun / NodeAttempt` 并回传 `NodeAttemptReceipt`。
 6. P1/P2 消费投影结果并回到原渠道。
 
-## Workflow 数据传递
+## Workflow 数据传递（§5.5 deprecates WorkflowState/StepOutput）
 
-工作流中的 `input: "{user_stories}"` 不是字符串替换，而是运行时绑定：
+> 注意：§5.5 已废弃 `WorkflowState` 和 `StepOutput`，请使用 PlanGraphBundle/NodeAttemptReceipt 替代。
 
-- `WorkflowState` 保存步骤输出和当前索引。
-- 每个步骤完成后产出结构化 `StepOutput`。
-- 下游步骤通过 output key 读取上游结果。
+工作流数据传递（v4.3 canonical）：
+
+- `PlanGraphBundle` 保存节点输出和当前执行索引。
+- 每个节点完成后产出结构化 `NodeAttemptReceipt`。
+- 下游节点通过 output key 读取上游结果。
 - 大体积结果进入 artifact store，只在状态里保存引用。
 
 关键要求：

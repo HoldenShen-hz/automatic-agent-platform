@@ -127,10 +127,40 @@ const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_BACKOFF_MS = 30_000;
 
 /**
- * DLQ Service - Handles dead letter queue operations with audit trail
+ * DLQ Service - Handles dead letter queue operations with audit trail.
+ * R12-06: Uses injected repository for persistence across restarts.
  */
 export class DlqService {
+  // R12-06: Optional persistent repository for DLQ records
+  private repository: DlqRepository | null = null;
+  // In-memory cache for when repository is not available
   private readonly records = new Map<string, ExtendedDeadLetterRecord>();
+
+  /**
+   * Sets the DLQ repository for persistence.
+   * When set, operations will use the repository instead of in-memory storage.
+   * @param repo - The DLQ repository to use
+   */
+  public setRepository(repo: DlqRepository): void {
+    this.repository = repo;
+    // Sync existing in-memory records to repository
+    for (const record of this.records.values()) {
+      repo.insert(record);
+    }
+  }
+
+  private getRecords(): Map<string, ExtendedDeadLetterRecord> {
+    // If we have a repository, try to load from it
+    if (this.repository) {
+      const allRecords = this.repository.listAll();
+      const map = new Map<string, ExtendedDeadLetterRecord>();
+      for (const record of allRecords) {
+        map.set(record.deadLetterId, record);
+      }
+      return map;
+    }
+    return this.records;
+  }
 
   /**
    * Enqueue a new dead letter entry
@@ -171,7 +201,12 @@ export class DlqService {
       linkedIncidentId: null,
       operatorActionLog: [],
     };
-    this.records.set(record.deadLetterId, record);
+    // R12-06: Persist to repository if available, otherwise use in-memory
+    if (this.repository) {
+      this.repository.insert(record);
+    } else {
+      this.records.set(record.deadLetterId, record);
+    }
     return record;
   }
 
@@ -199,7 +234,7 @@ export class DlqService {
       lastAttemptAt: now,
       updatedAt: now,
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -227,8 +262,16 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
+  }
+
+  private updateRecord(record: ExtendedDeadLetterRecord): void {
+    if (this.repository) {
+      this.repository.update(record);
+    } else {
+      this.records.set(record.deadLetterId, record);
+    }
   }
 
   /**
@@ -256,7 +299,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -286,7 +329,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -317,7 +360,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -333,7 +376,7 @@ export class DlqService {
       reason,
       updatedAt: now,
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -364,7 +407,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -392,7 +435,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.updateRecord(updated);
     return updated;
   }
 
@@ -400,28 +443,28 @@ export class DlqService {
    * List all dead letter records for a consumer
    */
   public listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).filter((record) => record.consumerId === consumerId);
+    return Array.from(this.getRecords().values()).filter((record) => record.consumerId === consumerId);
   }
 
   /**
    * List all dead letter records
    */
   public listAll(): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return Array.from(this.getRecords().values()).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   /**
    * List dead letter records by status
    */
   public listByStatus(status: DeadLetterStatus): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).filter((record) => record.status === status);
+    return Array.from(this.getRecords().values()).filter((record) => record.status === status);
   }
 
   /**
    * Get a specific dead letter record
    */
   public get(deadLetterId: string): ExtendedDeadLetterRecord | undefined {
-    return this.records.get(deadLetterId);
+    return this.getRecords().get(deadLetterId);
   }
 
   /**
@@ -476,7 +519,7 @@ export class DlqService {
    * Get a required record or throw
    */
   private getRequired(deadLetterId: string): ExtendedDeadLetterRecord {
-    const record = this.records.get(deadLetterId);
+    const record = this.getRecords().get(deadLetterId);
     if (record == null) {
       throw new ValidationError(
         `dlq.not_found:${deadLetterId}`,

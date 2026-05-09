@@ -5,6 +5,17 @@ import { nowIso } from "../../contracts/types/ids.js";
 
 export type PromptTemplateChannel = "system" | "developer" | "user";
 
+/**
+ * R10-43 fix: Agent roles are distinct from prompt channels.
+ * - role: The agent role in the harness loop (planner, generator, evaluator)
+ * - channel: The prompt channel type (system, developer, user)
+ *
+ * These serve different purposes:
+ * - role determines which agent component processes the prompt
+ * - channel determines how the prompt is formatted/sent to the model
+ */
+export type PromptTemplateRole = "planner" | "generator" | "evaluator" | "system";
+
 export interface PromptTemplateVariableSpec {
   key: string;
   required: boolean;
@@ -12,17 +23,25 @@ export interface PromptTemplateVariableSpec {
   defaultValue?: string;
 }
 
+/** Lifecycle status for prompt templates per §20.6 */
+export type PromptTemplateLifecycleStatus = "draft" | "active" | "deprecated" | "archived";
+
 export interface PromptTemplateRecord {
   templateKey: string;
   version: string;
   owner: string;
+  /** R10-43 fix: channel is distinct from role - channel is system|developer|user */
   channel: PromptTemplateChannel;
+  /** Role this template is used for in the harness loop */
+  role: PromptTemplateRole;
   fixedPrefix: string;
   domainBlock: string;
   variableSuffixTemplate: string;
   variableSpecs: PromptTemplateVariableSpec[];
   compatibilityTags: string[];
   fixedPrefixHash: string;
+  /** R10-30 fix: Added lifecycle status field for template management */
+  status: PromptTemplateLifecycleStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,12 +50,17 @@ export interface PromptTemplateRegistrationInput {
   templateKey: string;
   version: string;
   owner: string;
+  /** R10-43 fix: channel is system|developer|user, distinct from role */
   channel?: PromptTemplateChannel;
+  /** Role this template is used for in the harness loop */
+  role?: PromptTemplateRole;
   fixedPrefix: string;
   domainBlock: string;
   variableSuffixTemplate?: string;
   variableSpecs?: PromptTemplateVariableSpec[];
   compatibilityTags?: string[];
+  /** R10-30 fix: Lifecycle status, defaults to active */
+  status?: PromptTemplateLifecycleStatus;
 }
 
 export class PromptTemplateRegistryService {
@@ -66,12 +90,14 @@ export class PromptTemplateRegistryService {
       version,
       owner,
       channel: input.channel ?? "system",
+      role: input.role ?? "system",
       fixedPrefix,
       domainBlock,
       variableSuffixTemplate,
       variableSpecs,
       compatibilityTags,
       fixedPrefixHash: hashPromptPrefix(fixedPrefix),
+      status: input.status ?? "active",
       createdAt: now,
       updatedAt: now,
     };

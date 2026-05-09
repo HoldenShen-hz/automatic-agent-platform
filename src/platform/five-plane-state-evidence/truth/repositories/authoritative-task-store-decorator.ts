@@ -2,7 +2,6 @@ import { StructuredLogger } from "../../../shared/observability/structured-logge
 import type { AuthoritativeTaskStore } from "../authoritative-task-store.js";
 
 const authoritativeTaskStoreDecoratorLogger = new StructuredLogger({ retentionLimit: 100 });
-const synchronousBackoffBuffer = new Int32Array(new SharedArrayBuffer(4));
 
 export interface AuthoritativeTaskStoreDecoratorOperationMetrics {
   calls: number;
@@ -15,7 +14,32 @@ export interface AuthoritativeTaskStoreDecoratorOperationMetrics {
   lastAttemptCount: number;
 }
 
-const decoratorMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
+// R14-22: decoratorMetrics is now per-decorator-instance, not a global singleton
+function createOperationMetrics(): AuthoritativeTaskStoreDecoratorOperationMetrics {
+  return {
+    calls: 0,
+    successes: 0,
+    failures: 0,
+    retries: 0,
+    totalDurationMs: 0,
+    totalBackoffMs: 0,
+    lastDurationMs: 0,
+    lastAttemptCount: 0,
+  };
+}
+
+function getOrCreateOperationMetrics(
+  metrics: Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>,
+  operation: string,
+): AuthoritativeTaskStoreDecoratorOperationMetrics {
+  const existing = metrics.get(operation);
+  if (existing != null) {
+    return existing;
+  }
+  const created = createOperationMetrics();
+  metrics.set(operation, created);
+  return created;
+}
 
 function isRetryableSqliteBusyError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -27,7 +51,10 @@ function sleepSync(ms: number): void {
   if (ms <= 0) {
     return;
   }
-  Atomics.wait(synchronousBackoffBuffer, 0, 0, ms);
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // busy-wait to avoid blocking the event loop properly while still being synchronous
+  }
 }
 
 function computeRetryBackoffMs(
@@ -46,34 +73,15 @@ function computeRetryBackoffMs(
   return exponentialDelay + jitter;
 }
 
-function getOrCreateOperationMetrics(operation: string): AuthoritativeTaskStoreDecoratorOperationMetrics {
-  const existing = decoratorMetrics.get(operation);
-  if (existing != null) {
-    return existing;
-  }
-  const created: AuthoritativeTaskStoreDecoratorOperationMetrics = {
-    calls: 0,
-    successes: 0,
-    failures: 0,
-    retries: 0,
-    totalDurationMs: 0,
-    totalBackoffMs: 0,
-    lastDurationMs: 0,
-    lastAttemptCount: 0,
-  };
-  decoratorMetrics.set(operation, created);
-  return created;
-}
-
+// R14-22: These functions are deprecated since metrics are now per-decorator-instance.
+// They are kept for backward compatibility but return empty results.
 export function getAuthoritativeTaskStoreDecoratorMetricsSnapshot():
 Record<string, AuthoritativeTaskStoreDecoratorOperationMetrics> {
-  return Object.fromEntries(
-    Array.from(decoratorMetrics.entries()).map(([operation, metrics]) => [operation, { ...metrics }]),
-  );
+  return {};
 }
 
 export function resetAuthoritativeTaskStoreDecoratorMetrics(): void {
-  decoratorMetrics.clear();
+  // No-op: metrics are now per-decorator-instance, not global
 }
 
 export interface DecoratedAuthoritativeTaskStoreOptions {
@@ -90,6 +98,8 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
 ): T {
   const logger = options.logger ?? authoritativeTaskStoreDecoratorLogger;
   const maxAttempts = Math.max(1, Math.trunc(options.maxRetryAttempts ?? 3));
+  // R14-22: Per-decorator-instance metrics map instead of global singleton
+  const instanceMetrics = new Map<string, AuthoritativeTaskStoreDecoratorOperationMetrics>();
 
   return new Proxy(store, {
     get(target, property, receiver) {
@@ -103,7 +113,7 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
         const startedAt = Date.now();
         let attempt = 0;
         let totalBackoffMs = 0;
-        const metrics = getOrCreateOperationMetrics(operation);
+        const metrics = getOrCreateOperationMetrics(instanceMetrics, operation);
         metrics.calls += 1;
 
         while (true) {

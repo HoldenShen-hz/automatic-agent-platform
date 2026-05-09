@@ -864,16 +864,11 @@ export class DelegationManagerService {
     parentPermissions: PermissionSet,
     requiredPermissions: PermissionSet,
   ): PermissionSet {
-    // R17-01 fix: Always intersect child and parent permissions, even when child
-    // requests no specific resources. This ensures child never receives more
-    // permissions than parent holds. Previously returned parent resources as-is
-    // when requiredPermissions.resources was empty, which was too permissive.
-    // R9-07: When requiredPermissions is empty (child requests nothing), preserve parent's permissions
-    const allowedResources = requiredPermissions.resources.length === 0
-      ? parentPermissions.resources
-      : parentPermissions.resources.filter((resource) =>
-        requiredPermissions.resources.includes(resource),
-      );
+    // R9-07 fix: Always intersect child and parent permissions - child should never
+    // receive more permissions than parent holds. This is true intersection logic.
+    const allowedResources = parentPermissions.resources.filter((resource) =>
+      requiredPermissions.resources.includes(resource),
+    );
     return {
       resources: allowedResources,
       actions: this.intersectActions(parentPermissions.actions, requiredPermissions.actions),
@@ -894,10 +889,7 @@ export class DelegationManagerService {
   }
 
   private intersectActions(parentActions: readonly string[], childActions: readonly string[]): string[] {
-    // R9-07: When child requests no specific actions, preserve all parent actions
-    if (childActions.length === 0) {
-      return [...parentActions];
-    }
+    // R9-07 fix: Always intersect - child should never get more actions than parent
     return parentActions.filter((action) => childActions.includes(action));
   }
 

@@ -147,13 +147,79 @@ export class MockTransport {
   }
 }
 
+interface CircuitBreakerState {
+  failures: number;
+  lastFailure: number;
+  state: "closed" | "open" | "half-open";
+}
+
+const DEFAULT_RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 100,
+  maxDelayMs: 5000,
+};
+
+const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
+  failureThreshold: 5,
+  resetTimeoutMs: 30000,
+};
+
 export class HttpTransport {
   private readonly fetchImplementation: typeof fetch;
   private readonly fallbackTransport: MockTransport | null;
+  private readonly retryConfig: { maxRetries: number; baseDelayMs: number; maxDelayMs: number };
+  private readonly circuitBreaker: CircuitBreakerState;
 
   public constructor(private readonly options: HttpTransportOptions) {
     this.fetchImplementation = options.fetchImplementation ?? globalThis.fetch.bind(globalThis);
     this.fallbackTransport = options.fallbackToMock === true ? new MockTransport() : null;
+    this.retryConfig = DEFAULT_RETRY_CONFIG;
+    this.circuitBreaker = { failures: 0, lastFailure: 0, state: "closed" };
+  }
+
+  private shouldRetry(error: unknown): boolean {
+    if (error instanceof Error && error.message.startsWith("rest.http_error:")) {
+      const status = parseInt(error.message.split(":")[1], 10);
+      return status >= 500 || status === 429;
+    }
+    return true;
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private calculateBackoff(attempt: number): number {
+    const delay = this.retryConfig.baseDelayMs * Math.pow(2, attempt);
+    return Math.min(delay, this.retryConfig.maxDelayMs);
+  }
+
+  private recordFailure(): void {
+    this.circuitBreaker.failures++;
+    this.circuitBreaker.lastFailure = Date.now();
+    if (this.circuitBreaker.failures >= DEFAULT_CIRCUIT_BREAKER_CONFIG.failureThreshold) {
+      this.circuitBreaker.state = "open";
+    }
+  }
+
+  private recordSuccess(): void {
+    this.circuitBreaker.failures = 0;
+    this.circuitBreaker.state = "closed";
+  }
+
+  private canAttempt(): boolean {
+    if (this.circuitBreaker.state === "closed") {
+      return true;
+    }
+    if (this.circuitBreaker.state === "open") {
+      const elapsed = Date.now() - this.circuitBreaker.lastFailure;
+      if (elapsed >= DEFAULT_CIRCUIT_BREAKER_CONFIG.resetTimeoutMs) {
+        this.circuitBreaker.state = "half-open";
+        return true;
+      }
+      return false;
+    }
+    return this.circuitBreaker.state === "half-open";
   }
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
@@ -163,31 +229,46 @@ export class HttpTransport {
     const requestBody = request.body == null ? null : JSON.stringify(request.body);
     const requestHeaders = new Headers({
       "content-type": "application/json",
+      "accept-version": "2024-01-01",
       ...(this.options.headers ?? {}),
       ...Object.fromEntries(request.headers.entries()),
     });
 
-    try {
-      const response = await this.fetchImplementation(url, {
-        method: request.method,
-        headers: requestHeaders,
-        body: requestBody,
-      });
-
-      if (!response.ok) {
-        throw new Error(`rest.http_error:${response.status}`);
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+      if (!this.canAttempt()) {
+        throw new Error("rest.circuit_open");
       }
 
-      return {
-        status: response.status,
-        data: (await response.json()) as T,
-      };
-    } catch (error) {
-      if (this.fallbackTransport != null) {
-        return this.fallbackTransport.send(request);
+      try {
+        const response = await this.fetchImplementation(url, {
+          method: request.method,
+          headers: requestHeaders,
+          body: requestBody,
+        });
+
+        if (!response.ok) {
+          throw new Error(`rest.http_error:${response.status}`);
+        }
+
+        this.recordSuccess();
+        return {
+          status: response.status,
+          data: (await response.json()) as T,
+        };
+      } catch (error) {
+        lastError = error;
+        if (attempt < this.retryConfig.maxRetries && this.shouldRetry(error)) {
+          await this.sleep(this.calculateBackoff(attempt));
+        }
+        this.recordFailure();
       }
-      throw error;
     }
+
+    if (this.fallbackTransport != null) {
+      return this.fallbackTransport.send(request);
+    }
+    throw lastError;
   }
 }
 

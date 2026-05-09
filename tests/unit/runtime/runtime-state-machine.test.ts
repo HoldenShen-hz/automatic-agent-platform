@@ -581,27 +581,27 @@ test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () =
   assert.equal(result.aggregate.status, "hard_cap_reached");
 });
 
-test("BudgetLedger invalid transition: open -> closed (must go through cap states)", () => {
+test("BudgetLedger valid transition: open -> closed", () => {
   const sm = new RuntimeStateMachine();
   const ledger = createMockBudgetLedger("open");
 
-  assert.throws(
-    () => sm.transition({
-      commandId: "cmd-1",
-      entityType: "BudgetLedger",
-      entityId: "ledger-1",
-      principal: "test-principal",
-      aggregateType: "BudgetLedger",
-      aggregate: ledger,
-      fromStatus: "open",
-      toStatus: "closed",
-      traceId: "trace-1",
-      tenantId: "tenant-1",
-      reasonCode: "test",
-      emittedBy: "test-emitter",
-    }),
-    WorkflowStateError,
-  );
+  const result = sm.transition({
+    commandId: "cmd-1",
+    entityType: "BudgetLedger",
+    entityId: "ledger-1",
+    principal: "test-principal",
+    aggregateType: "BudgetLedger",
+    aggregate: ledger,
+    fromStatus: "open",
+    toStatus: "closed",
+    traceId: "trace-1",
+    tenantId: "tenant-1",
+    reasonCode: "test",
+    emittedBy: "test-emitter",
+  });
+
+  assert.equal(result.aggregate.status, "closed");
+  assert.equal(result.aggregate.version, ledger.version + 1);
 });
 
 // ---------------------------------------------------------------------------

@@ -255,7 +255,7 @@ test("activate emits domain:activated event on success", () => {
 
 test("activate throws when smoke test fails", () => {
   const service = new DomainRegistryService();
-  service.register(domainWithCircularDeps());
+  service.register(domainWithCircularDeps(), { skipSmokeTest: true });
   assert.throws(() => {
     service.activate("cycle_test");
   }, /smoke_test_failed|Domain smoke test failed/);
@@ -271,7 +271,7 @@ test("validate returns passed for valid domain", () => {
 
 test("validate returns failed for domain with circular dependencies", () => {
   const service = new DomainRegistryService();
-  service.register(domainWithCircularDeps());
+  service.register(domainWithCircularDeps(), { skipSmokeTest: true });
   const result = service.validate("cycle_test");
   assert.equal(result.passed, false);
   assert.ok(result.issues.some((i) => i.includes("runtime_checks_failed") || i.includes("dependency")));
@@ -279,7 +279,7 @@ test("validate returns failed for domain with circular dependencies", () => {
 
 test("validate returns failed for missing required tool", () => {
   const service = new DomainRegistryService();
-  service.register(domainWithMissingRequiredTool());
+  service.register(domainWithMissingRequiredTool(), { skipSmokeTest: true });
   const result = service.validate("missing_tool");
   assert.equal(result.passed, false);
   assert.ok(result.issues.some((i) => i.includes("missing_required_tools")));

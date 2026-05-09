@@ -80,6 +80,23 @@ export const endpointCatalog = {
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
 } satisfies Record<string, EndpointDefinition>;
 
+export interface ListQueryParams {
+  readonly offset?: number;
+  readonly limit?: number;
+  readonly sortBy?: string;
+  readonly sortOrder?: "asc" | "desc";
+  readonly filterBy?: string;
+  readonly filterValue?: string;
+}
+
+function buildQueryString(params: ListQueryParams): string {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) return "";
+  return "?" + new URLSearchParams(
+    entries.map(([key, value]) => [key, String(value)])
+  ).toString();
+}
+
 function resolvePath(template: string, params: Record<string, string>): string {
   return Object.entries(params).reduce((resolved, [key, value]) => resolved.replace(`:${key}`, value), template);
 }
@@ -88,8 +105,9 @@ export async function fetchDashboardSnapshot(client: RESTClient): Promise<Dashbo
   return client.get<DashboardSnapshotDTO>(endpointCatalog.dashboardSnapshot.path);
 }
 
-export async function fetchTasks(client: RESTClient): Promise<readonly TaskDTO[]> {
-  return client.get<readonly TaskDTO[]>(endpointCatalog.tasks.path);
+export async function fetchTasks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TaskDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly TaskDTO[]>(`${endpointCatalog.tasks.path}${queryString}`);
 }
 
 export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -104,8 +122,9 @@ export async function deleteTask(client: RESTClient, taskId: string): Promise<{ 
   return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.tasksDelete.path, { taskId }));
 }
 
-export async function fetchWorkflows(client: RESTClient): Promise<readonly WorkflowDTO[]> {
-  return client.get<readonly WorkflowDTO[]>(endpointCatalog.workflows.path);
+export async function fetchWorkflows(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkflowDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly WorkflowDTO[]>(`${endpointCatalog.workflows.path}${queryString}`);
 }
 
 export async function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -132,8 +151,9 @@ export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: s
   return client.get<readonly WorkflowRunStepDTO[]>(resolvePath(endpointCatalog.workflowRunSteps.path, { workflowRunId }));
 }
 
-export async function fetchApprovals(client: RESTClient): Promise<readonly ApprovalDTO[]> {
-  return client.get<readonly ApprovalDTO[]>(endpointCatalog.approvals.path);
+export async function fetchApprovals(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ApprovalDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly ApprovalDTO[]>(`${endpointCatalog.approvals.path}${queryString}`);
 }
 
 export async function approveApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
@@ -148,80 +168,98 @@ export async function delegateApproval(client: RESTClient, approvalId: string, d
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { delegateTo });
 }
 
-export async function fetchIncidents(client: RESTClient): Promise<readonly IncidentDTO[]> {
-  return client.get<readonly IncidentDTO[]>(endpointCatalog.incidents.path);
+export async function fetchIncidents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly IncidentDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly IncidentDTO[]>(`${endpointCatalog.incidents.path}${queryString}`);
 }
 
-export async function fetchWorkers(client: RESTClient): Promise<readonly WorkerDTO[]> {
-  return client.get<readonly WorkerDTO[]>(endpointCatalog.workers.path);
+export async function fetchWorkers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkerDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly WorkerDTO[]>(`${endpointCatalog.workers.path}${queryString}`);
 }
 
-export async function fetchQueues(client: RESTClient): Promise<readonly QueueDTO[]> {
-  return client.get<readonly QueueDTO[]>(endpointCatalog.queues.path);
+export async function fetchQueues(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly QueueDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly QueueDTO[]>(`${endpointCatalog.queues.path}${queryString}`);
 }
 
-export async function fetchAgents(client: RESTClient): Promise<readonly AgentDTO[]> {
-  return client.get<readonly AgentDTO[]>(endpointCatalog.agents.path);
+export async function fetchAgents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AgentDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly AgentDTO[]>(`${endpointCatalog.agents.path}${queryString}`);
 }
 
-export async function fetchAnalytics(client: RESTClient): Promise<readonly AnalyticsMetricDTO[]> {
-  return client.get<readonly AnalyticsMetricDTO[]>(endpointCatalog.analytics.path);
+export async function fetchAnalytics(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AnalyticsMetricDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly AnalyticsMetricDTO[]>(`${endpointCatalog.analytics.path}${queryString}`);
 }
 
-export async function fetchCosts(client: RESTClient): Promise<readonly CostReportDTO[]> {
-  return client.get<readonly CostReportDTO[]>(endpointCatalog.costs.path);
+export async function fetchCosts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly CostReportDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly CostReportDTO[]>(`${endpointCatalog.costs.path}${queryString}`);
 }
 
-export async function fetchMarketplace(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
-  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.marketplace.path);
+export async function fetchMarketplace(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly MarketplacePackDTO[]>(`${endpointCatalog.marketplace.path}${queryString}`);
 }
 
-export async function fetchKnowledge(client: RESTClient): Promise<readonly KnowledgeItemDTO[]> {
-  return client.get<readonly KnowledgeItemDTO[]>(endpointCatalog.knowledge.path);
+export async function fetchKnowledge(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly KnowledgeItemDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly KnowledgeItemDTO[]>(`${endpointCatalog.knowledge.path}${queryString}`);
 }
 
-export async function fetchPacks(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
-  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.packs.path);
+export async function fetchPacks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly MarketplacePackDTO[]>(`${endpointCatalog.packs.path}${queryString}`);
 }
 
 export async function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]> {
   return client.get<readonly PackVersionDTO[]>(resolvePath(endpointCatalog.packVersions.path, { packId }));
 }
 
-export async function fetchPlugins(client: RESTClient): Promise<readonly PluginDTO[]> {
-  return client.get<readonly PluginDTO[]>(endpointCatalog.plugins.path);
+export async function fetchPlugins(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly PluginDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly PluginDTO[]>(`${endpointCatalog.plugins.path}${queryString}`);
 }
 
-export async function fetchPrompts(client: RESTClient): Promise<readonly PromptDTO[]> {
-  return client.get<readonly PromptDTO[]>(endpointCatalog.prompts.path);
+export async function fetchPrompts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly PromptDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly PromptDTO[]>(`${endpointCatalog.prompts.path}${queryString}`);
 }
 
-export async function fetchExplanations(client: RESTClient): Promise<readonly ExplanationDTO[]> {
-  return client.get<readonly ExplanationDTO[]>(endpointCatalog.explanations.path);
+export async function fetchExplanations(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ExplanationDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly ExplanationDTO[]>(`${endpointCatalog.explanations.path}${queryString}`);
 }
 
-export async function fetchRoles(client: RESTClient): Promise<readonly RoleDTO[]> {
-  return client.get<readonly RoleDTO[]>(endpointCatalog.roles.path);
+export async function fetchRoles(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly RoleDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly RoleDTO[]>(`${endpointCatalog.roles.path}${queryString}`);
 }
 
-export async function fetchFeatureFlags(client: RESTClient): Promise<readonly FeatureFlagDTO[]> {
-  return client.get<readonly FeatureFlagDTO[]>(endpointCatalog.featureFlags.path);
+export async function fetchFeatureFlags(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly FeatureFlagDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly FeatureFlagDTO[]>(`${endpointCatalog.featureFlags.path}${queryString}`);
 }
 
-export async function fetchModels(client: RESTClient): Promise<readonly ModelConfigDTO[]> {
-  return client.get<readonly ModelConfigDTO[]>(endpointCatalog.models.path);
+export async function fetchModels(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ModelConfigDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly ModelConfigDTO[]>(`${endpointCatalog.models.path}${queryString}`);
 }
 
-export async function fetchDomainConfigs(client: RESTClient): Promise<readonly DomainConfigDTO[]> {
-  return client.get<readonly DomainConfigDTO[]>(endpointCatalog.domainConfigs.path);
+export async function fetchDomainConfigs(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly DomainConfigDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly DomainConfigDTO[]>(`${endpointCatalog.domainConfigs.path}${queryString}`);
 }
 
-export async function fetchTenants(client: RESTClient): Promise<readonly TenantDTO[]> {
-  return client.get<readonly TenantDTO[]>(endpointCatalog.tenants.path);
+export async function fetchTenants(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TenantDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly TenantDTO[]>(`${endpointCatalog.tenants.path}${queryString}`);
 }
 
-export async function fetchUsers(client: RESTClient): Promise<readonly UserDTO[]> {
-  return client.get<readonly UserDTO[]>(endpointCatalog.users.path);
+export async function fetchUsers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly UserDTO[]> {
+  const queryString = buildQueryString(queryParams ?? {});
+  return client.get<readonly UserDTO[]>(`${endpointCatalog.users.path}${queryString}`);
 }
 
 export async function createUser(client: RESTClient, body: Partial<UserDTO>): Promise<{ ok: true; body?: unknown }> {

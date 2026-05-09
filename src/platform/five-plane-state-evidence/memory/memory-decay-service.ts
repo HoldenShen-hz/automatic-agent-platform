@@ -41,12 +41,13 @@ export interface DecayConfig {
 
 /**
  * Default decay configs per layer
+ * R5-50: working/procedural use linear decay (no silent discard) instead of exponential
  */
 export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
   working: {
     halfLifeSeconds: 300, // 5 minutes
     minFreshness: 0.1,
-    decayRateMultiplier: 1.0,
+    decayRateMultiplier: 0.0, // R5-50: Linear decay only - no exponential
     accessBoostFactor: 0.1,
   },
   session: {
@@ -70,7 +71,7 @@ export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
   procedural: {
     halfLifeSeconds: 2592000, // 30 days
     minFreshness: 0.3,
-    decayRateMultiplier: 0.2,
+    decayRateMultiplier: 0.0, // R5-50: Linear decay only - no exponential
     accessBoostFactor: 0.02,
   },
   meta: {
@@ -132,8 +133,10 @@ export interface DecaySummary {
 /**
  * Calculates the freshness score for a memory
  *
- * Uses exponential decay with access boosting:
+ * Uses exponential decay with access boosting for most layers.
+ * R5-50: working/procedural layers use linear decay instead of exponential.
  * freshness = max(minFreshness, initial * exp(-decayRate * age) * (1 + accessBoost)^hitCount)
+ * For linear decay: freshness = max(minFreshness, 1 - (ageSeconds / halfLifeSeconds))
  */
 export function calculateFreshness(
   memory: MemoryRecord,
@@ -147,8 +150,13 @@ export function calculateFreshness(
   // Base freshness starts at 1.0
   let freshness = 1.0;
 
-  // Apply exponential decay based on layer half-life
-  if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
+  // R5-50: Linear decay for working/procedural (decayRateMultiplier: 0.0)
+  // Linear decay: freshness = max(minFreshness, 1 - age/halfLife)
+  const isLinearDecay = config.decayRateMultiplier === 0.0;
+  if (isLinearDecay && config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
+    freshness = Math.max(config.minFreshness, 1 - (ageSeconds / config.halfLifeSeconds));
+  } else if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
+    // Apply exponential decay based on layer half-life
     const decayRate = Math.LN2 / config.halfLifeSeconds;
     const effectiveDecayRate = decayRate * config.decayRateMultiplier;
     freshness = freshness * Math.exp(-effectiveDecayRate * ageSeconds);

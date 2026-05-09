@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { UserPortalService } from "../../../../src/interaction/ux/onboarding/index.js";
+import {
+  DurableUserPortalSessionRepository,
+  InMemoryUserPortalSessionRepository,
+  UserPortalService,
+} from "../../../../src/interaction/ux/onboarding/index.js";
 import type {
   UserPortalSession,
   UserPortalContext,
@@ -392,4 +396,70 @@ test("UserPortalService visual builder hides advanced categories in solo mode", 
   });
 
   assert.ok(builder.progressiveDisclosure.hiddenCategories.includes("approval"));
+});
+
+test("UserPortalService persists sessions across service instances when sharing repository", async () => {
+  const repository = new InMemoryUserPortalSessionRepository();
+  const firstService = new UserPortalService(repository);
+  const secondService = new UserPortalService(repository);
+
+  const sessionId = await firstService.createSession({
+    userId: "user_shared",
+    tenantId: "tenant_shared",
+  }, {
+    memberCount: 3,
+    departmentCount: 1,
+    requiresSso: false,
+  });
+
+  const stored = secondService.getSession(sessionId);
+  assert.ok(stored != null);
+  assert.equal(stored?.session.userId, "user_shared");
+  assert.equal(stored?.mode.mode, "team");
+});
+
+test("DurableUserPortalSessionRepository round-trips session payload via runtime repository", async () => {
+  const persisted = new Map<string, {
+    taskId: string;
+    status: string;
+    currentStepIndex: number;
+    outputsJson: string;
+    updatedAt: string;
+    startedAt: string;
+    resumableFromStep: string | null;
+  }>();
+  const runtimeRepository = {
+    updateWorkflowState(taskId: string, status: string, currentStepIndex: number, outputsJson: string, updatedAt: string, resumableFromStep?: string | null) {
+      persisted.set(taskId, {
+        taskId,
+        status,
+        currentStepIndex,
+        outputsJson,
+        updatedAt,
+        startedAt: updatedAt,
+        resumableFromStep: resumableFromStep ?? null,
+      });
+    },
+    getWorkflowState(taskId: string) {
+      return persisted.get(taskId) ?? null;
+    },
+  } as any;
+
+  const repository = new DurableUserPortalSessionRepository(runtimeRepository);
+  const service = new UserPortalService(repository);
+
+  const sessionId = await service.createSession({
+    userId: "user_durable",
+    tenantId: "tenant_durable",
+  }, {
+    memberCount: 80,
+    departmentCount: 2,
+    requiresSso: false,
+  });
+
+  const restored = new UserPortalService(repository).getSession(sessionId);
+  assert.ok(restored != null);
+  assert.equal(restored?.session.userId, "user_durable");
+  assert.equal(restored?.mode.mode, "department");
+  assert.equal([...persisted.keys()].some((key) => key.endsWith(sessionId)), true);
 });

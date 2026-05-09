@@ -9,7 +9,12 @@ export interface ChargebackAllocation {
   readonly tenantId: string | null;
   readonly resourceId: string;
   readonly resourceType: CostReportResourceCost["resourceType"];
+  /** R2-7: Original currency for multi-currency chargeback */
   readonly currency: string;
+  /** R2-7: Foreign exchange rate applied when converting from original currency to USD */
+  readonly fxRate: number;
+  /** R2-7: Cost source attribution (e.g., "platform", "pack", "plugin") */
+  readonly costSource: string;
   readonly costUsd: number;
   readonly reportCount: number;
   readonly firstPeriodStart: string;
@@ -34,18 +39,26 @@ export class ChargebackService {
   } = {}): ChargebackReport {
     const reports = this.source.listReports(input.limit ?? 500, input.tenantId ?? undefined);
     const allocations = new Map<string, ChargebackAllocation>();
-    let totalCostUsd = 0;
-    let currency = "USD";
+    let firstCurrency = "USD";
+    let hasMultipleCurrencies = false;
 
     for (const report of reports) {
-      totalCostUsd += report.totalCostUsd;
-      currency = report.currency;
+      if (firstCurrency === "USD") {
+        firstCurrency = report.currency;
+      } else if (report.currency !== firstCurrency) {
+        hasMultipleCurrencies = true;
+      }
       for (const resource of report.resourceCosts) {
+        // R2-7: Determine cost source attribution from resource metadata
+        const costSource = (resource as { costSource?: string }).costSource ?? "platform";
+        // R2-7: Use fxRate from resource if available, default to 1.0 (USD)
+        const fxRate = (resource as { fxRate?: number }).fxRate ?? 1.0;
         const allocationKey = [
           report.tenantId ?? "platform",
           resource.resourceType,
           resource.resourceId,
           resource.currency,
+          costSource,
         ].join(":");
         const current = allocations.get(allocationKey);
         if (current == null) {
@@ -55,6 +68,8 @@ export class ChargebackService {
             resourceId: resource.resourceId,
             resourceType: resource.resourceType,
             currency: resource.currency,
+            fxRate,
+            costSource,
             costUsd: resource.costUsd,
             reportCount: 1,
             firstPeriodStart: report.periodStart,
@@ -72,10 +87,13 @@ export class ChargebackService {
       }
     }
 
+    // Compute totalCostUsd from allocations to avoid cross-currency summation
+    const totalCostUsd = [...allocations.values()].reduce((sum, alloc) => sum + alloc.costUsd, 0);
+
     return {
       generatedAt: new Date().toISOString(),
       tenantId: input.tenantId ?? null,
-      currency,
+      currency: hasMultipleCurrencies ? "MULTI" : firstCurrency,
       totalCostUsd,
       reportCount: reports.length,
       allocations: [...allocations.values()].sort((left, right) => right.costUsd - left.costUsd),

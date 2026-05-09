@@ -101,20 +101,6 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
   };
 }
 
-// R8-20 FIX: Event subscription/streaming API
-/**
- * Event subscription callback type.
- */
-type EventSubscriptionCallback<TEvent> = (event: TEvent) => void | Promise<void>;
-
-/**
- * Event subscription handle for unsubscribe.
- */
-interface EventSubscription<TEvent> {
-  unsubscribe(): void;
-  closed: boolean;
-}
-
 /**
  * Retry client with exponential backoff for resilient API calls.
  */

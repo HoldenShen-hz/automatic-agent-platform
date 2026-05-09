@@ -13,7 +13,7 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
+import { createHarnessRun, createBudgetReservation } from "../../contracts/executable-contracts/index.js";
 import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { ContextCompactionService, type ContextCompactionResult } from "./context-compaction-service.js";
 import {
@@ -279,6 +279,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           payloadJson: JSON.stringify(routing),
           traceId,
           createdAt: nowIso(),
+          schemaVersion: "1.0",
+          aggregateId: null,
+          runId: null,
+          sequence: null,
+          causationId: null,
+          correlationId: null,
+          payloadHash: null,
+          idempotencyKey: newId("idem"),
+          replayBehavior: "replay_as_fact",
+          principal: "system",
+          evidenceRefs: [] as readonly string[],
         });
         store.event.insertEvent({
           id: newId("evt"),
@@ -292,6 +303,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           }, createChildTraceContext(traceContext))),
           traceId,
           createdAt: nowIso(),
+          schemaVersion: "1.0",
+          aggregateId: null,
+          runId: null,
+          sequence: null,
+          causationId: null,
+          correlationId: null,
+          payloadHash: null,
+          idempotencyKey: newId("idem"),
+          replayBehavior: "replay_as_fact",
+          principal: "system",
+          evidenceRefs: [] as readonly string[],
         });
       });
 
@@ -325,6 +347,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           }),
           traceId,
           createdAt: nowIso(),
+          schemaVersion: "1.0",
+          aggregateId: null,
+          runId: null,
+          sequence: null,
+          causationId: null,
+          correlationId: null,
+          payloadHash: null,
+          idempotencyKey: newId("idem"),
+          replayBehavior: "replay_as_fact",
+          principal: "system",
+          evidenceRefs: [] as readonly string[],
         });
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
@@ -367,10 +400,62 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       });
       const harnessRunId = harnessRun.harnessRunId;
 
-      // TODO R4-27 [ARCHITECTURE]: HarnessRun must be persisted to RuntimeTruthRepository
-      // or AuthoritativeTaskStore to enable canonical execution tracking.
-      // Current implementation creates HarnessRun but does NOT persist it.
-      // Required: store.harnessRun.insertHarnessRun(harnessRun) or equivalent
+      // R4-27 (INV-RUN-001) fix: Persist HarnessRun to enable canonical execution tracking
+      // The HarnessRun must be stored in the RuntimeTruthRepository for harness runtime
+      // to track execution lifecycle. Without this, the harness run exists only in memory.
+      // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have harnessRun sub-store
+      db.connection.prepare(
+          `INSERT INTO harness_runs (harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, status, domain_id,
+          confirmed_task_spec_id, request_envelope_id, request_hash, constraint_pack_ref, version_lock_id,
+          budget_ledger_id, current_seq, created_at, updated_at, fencing_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          harnessRun.harnessRunId,
+          harnessRun.tenantId,
+          harnessRun.orgId,
+          harnessRun.traceId,
+          harnessRun.goal ?? null,
+          harnessRun.riskLevel,
+          harnessRun.status,
+          harnessRun.domainId,
+          harnessRun.confirmedTaskSpecId,
+          harnessRun.requestEnvelopeId,
+          harnessRun.requestHash,
+          harnessRun.constraintPackRef,
+          harnessRun.versionLockId,
+          harnessRun.budgetLedgerId,
+          harnessRun.currentSeq,
+          harnessRun.createdAt,
+          harnessRun.updatedAt,
+          harnessRun.fencingToken,
+        );
+
+      // R4-25 (INV-BUDGET-001) fix: Create budget reservation BEFORE execution
+      // BudgetAllocator.reserve() must be called to create a proper BudgetReservation
+      // that tracks expected cost before tool/LLM execution
+      if (harnessRun.budgetLedgerId) {
+        const budgetReservation = createBudgetReservation({
+          budgetLedgerId: harnessRun.budgetLedgerId,
+          harnessRunId: harnessRun.harnessRunId,
+          amount: 1, // Default budget limit per execution
+          resourceKind: "token",
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        });
+        // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have billing sub-store
+        db.connection.prepare(
+            `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            budgetReservation.budgetReservationId,
+            budgetReservation.budgetLedgerId,
+            budgetReservation.harnessRunId,
+            budgetReservation.amount,
+            budgetReservation.resourceKind,
+            budgetReservation.status,
+            budgetReservation.expiresAt,
+            budgetReservation.createdAt,
+          );
+      }
 
       const stepResult = await executeStepLoop(
         {
@@ -433,6 +518,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           }, divisionCompletedTrace)),
           traceId,
           createdAt: nowIso(),
+          schemaVersion: "1.0",
+          aggregateId: null,
+          runId: null,
+          sequence: null,
+          causationId: null,
+          correlationId: null,
+          payloadHash: null,
+          idempotencyKey: newId("idem"),
+          replayBehavior: "replay_as_fact",
+          principal: "system",
+          evidenceRefs: [] as readonly string[],
         });
         streamBridge.emitFromEvent({ streamId, channel: "cli", event: divisionCompleted });
       });

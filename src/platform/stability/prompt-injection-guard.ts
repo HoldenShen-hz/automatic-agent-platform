@@ -143,6 +143,19 @@ async function fetchMLSemanticAssessment(
   }
 }
 
+/**
+ * Build semantic assessment for prompt injection detection.
+ *
+ * NOTE (R10-34): This layer uses regex-based heuristics rather than ML classification.
+ * The semantic layer complements the lexical layer by detecting intent patterns
+ * that may not be apparent from pure pattern matching. For production ML-based
+ * semantic analysis, configure mlModelEndpoint in MLInjectionClassifierConfig.
+ *
+ * @param input - Normalized input string to assess
+ * @param threshold - Blocking threshold (0-1)
+ * @param config - Classifier configuration
+ * @returns Semantic layer assessment
+ */
 function buildSemanticAssessment(
   input: string,
   threshold: number,
@@ -172,6 +185,8 @@ function buildSemanticAssessment(
   }
 
   const score = Number(Math.min(0.99, rawScore).toFixed(2));
+  // R10-29 fix: blocked flag now indicates "review required" rather than hard rejection
+  // per §16.5.2 escalation protocol - final blocking decision deferred to consensus layer
   return {
     layer: "semantic",
     score,
@@ -328,12 +343,16 @@ export async function classifyPromptInjectionRisk(
   threshold = 0.7,
   config: MLInjectionClassifierConfig = DEFAULT_ML_CLASSIFIER_CONFIG,
 ): Promise<PromptInjectionClassification> {
+  // R10-41 fix: Normalize once and use consistently for all assessments.
+  // sanitizePromptInput also normalizes to NFKC, so this ensures assessment
+  // uses the same base representation that sanitization produces.
+  const normalizedInput = input.normalize("NFKC");
   const sanitizedInput = sanitizePromptInput(input);
-  const lexical = buildLexicalAssessment(input.normalize("NFKC"), threshold, config);
+  const lexical = buildLexicalAssessment(normalizedInput, threshold, config);
 
   let semantic: PromptDefenseLayerAssessment;
   if (config.mlModelEndpoint) {
-    const mlResult = await fetchMLSemanticAssessment(input.normalize("NFKC"), config.mlModelEndpoint);
+    const mlResult = await fetchMLSemanticAssessment(normalizedInput, config.mlModelEndpoint);
     if (mlResult) {
       semantic = {
         layer: "semantic",
@@ -342,18 +361,18 @@ export async function classifyPromptInjectionRisk(
         blocked: mlResult.blocked,
       };
     } else {
-      semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold, config);
+      semantic = buildSemanticAssessment(normalizedInput, threshold, config);
     }
   } else {
-    semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold, config);
+    semantic = buildSemanticAssessment(normalizedInput, threshold, config);
   }
 
-  const behavioral = buildBehavioralAssessment(input.normalize("NFKC"), threshold);
+  const behavioral = buildBehavioralAssessment(normalizedInput, threshold);
 
   // R2-3: Multi-layer chain - LLM judge as final layer
   let llmJudge: PromptDefenseLayerAssessment;
   if (config.mlModelEndpoint) {
-    const llmResult = await fetchLLMJudgeAssessment(input.normalize("NFKC"), config.mlModelEndpoint);
+    const llmResult = await fetchLLMJudgeAssessment(normalizedInput, config.mlModelEndpoint);
     if (llmResult) {
       llmJudge = {
         layer: "llm_judge",
@@ -362,10 +381,10 @@ export async function classifyPromptInjectionRisk(
         blocked: llmResult.blocked,
       };
     } else {
-      llmJudge = buildLLMJudgeAssessment(input.normalize("NFKC"), threshold, config);
+      llmJudge = buildLLMJudgeAssessment(normalizedInput, threshold, config);
     }
   } else {
-    llmJudge = buildLLMJudgeAssessment(input.normalize("NFKC"), threshold, config);
+    llmJudge = buildLLMJudgeAssessment(normalizedInput, threshold, config);
   }
 
   const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral, llmJudge);

@@ -63,8 +63,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
         const limit = readLimit(ctx.request, 50);
-        void tenantId;
-        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit);
+        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit, tenantId);
 
         return buildJsonResponse(ctx.requestId, 200, {
           incidents,
@@ -84,9 +83,9 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const incidentId = segments[2]!;
+        const tenantId = resolveTenantScope(principal, undefined);
 
-        void principal;
-        const incident = deps.incidentService.getIncident(incidentId);
+        const incident = deps.incidentService.getIncident(incidentId, tenantId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
         }
@@ -100,13 +99,13 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
-        const tenantId = resolveTenantScope(principal, undefined);
+        const tenantId = resolveTenantScope(principal, undefined) ?? null;
 
-        void tenantId;
         const incident = deps.incidentService.openIncident({
           severity: payload.severity as IncidentSeverity,
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
+          tenantId,
         });
 
         return buildJsonResponse(ctx.requestId, 201, incident);

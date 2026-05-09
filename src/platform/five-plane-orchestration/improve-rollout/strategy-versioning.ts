@@ -1,15 +1,8 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningObject } from "../learn/learning-object-model.js";
+import type { RolloutLevel } from "../oapeflir/types/rollout-record.js";
 
-export type StrategyReleaseLevel =
-  | "off"
-  | "suggest"
-  | "shadow"
-  | "canary_5"
-  | "partial_25"
-  | "partial_50"
-  | "partial_75"
-  | "stable";
+export type StrategyReleaseLevel = RolloutLevel;
 
 export interface StrategyVersion {
   strategyVersionId: string;
@@ -22,7 +15,7 @@ export interface StrategyVersion {
 export function createStrategyVersion(
   title: string,
   learningObjects: readonly LearningObject[],
-  releaseLevel: StrategyReleaseLevel = "suggest",
+  releaseLevel: StrategyReleaseLevel = "evaluate_0",
 ): StrategyVersion {
   return {
     strategyVersionId: newId("strategy_version"),

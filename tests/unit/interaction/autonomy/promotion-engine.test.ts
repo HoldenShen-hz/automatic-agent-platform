@@ -14,7 +14,7 @@ function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTru
     failedExecutions: 0,
     humanOverrides: 0,
     incidents: 0,
-    lastIncidentAgeDays: null,
+    lastIncidentAgeDays: 120,
     ...overrides,
   };
 }

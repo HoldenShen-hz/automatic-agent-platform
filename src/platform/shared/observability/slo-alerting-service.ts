@@ -97,12 +97,28 @@ export interface AlertChannel {
 
 /**
  * Error budget degradation result.
+ * §R14-07: Includes gradient response level (none/degrade/freeze/full_freeze).
  */
 export interface ErrorBudgetDegradationResult {
   degraded: boolean;
   sloId: string;
   sloStatus: SloStatus;
   rolloutFrozen: boolean;
+  alertFired: boolean;
+  alertId: string | null;
+  gradientLevel: "none" | "degrade" | "freeze" | "full_freeze";
+  errorBudgetBurnPercent: number | null;
+}
+
+/**
+ * Burn-rate alert result with multi-window evaluation.
+ * §R14-08: 1h>14.4x→SEV2/6h>6x→SEV3.
+ */
+export interface BurnRateAlertResult {
+  sloId: string;
+  burnRate1h: number | null;
+  burnRate6h: number | null;
+  alertSeverity: "SEV2" | "SEV3" | null;
   alertFired: boolean;
   alertId: string | null;
 }
@@ -431,6 +447,7 @@ export class SloAlertingService {
 
   /**
    * Creates a new SLO definition with the specified parameters.
+   * §R14-06: Supports per-domain scope for SLO isolation.
    */
   defineSlo(input: Omit<SloDefinition, "id" | "status" | "createdAt" | "updatedAt">): SloDefinition {
     const now = nowIso();
@@ -440,14 +457,15 @@ export class SloAlertingService {
       createdAt: now,
       updatedAt: now,
       ...input,
+      domain: input.domain ?? null,
     };
 
     this.db.connection
       .prepare(
-        `INSERT INTO slo_definitions (id, name, description, sli_kind, target_value, operator, window_minutes, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO slo_definitions (id, name, description, sli_kind, target_value, operator, window_minutes, status, domain, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(slo.id, slo.name, slo.description, slo.sliKind, slo.targetValue, slo.operator, slo.windowMinutes, slo.status, slo.createdAt, slo.updatedAt);
+      .run(slo.id, slo.name, slo.description, slo.sliKind, slo.targetValue, slo.operator, slo.windowMinutes, slo.status, slo.domain, slo.createdAt, slo.updatedAt);
 
     return slo;
   }
@@ -464,8 +482,14 @@ export class SloAlertingService {
 
   /**
    * Lists all SLO definitions ordered by name.
+   * §R14-06: Optionally filter by domain scope.
    */
-  listSlos(): SloDefinition[] {
+  listSlos(domain?: string): SloDefinition[] {
+    if (domain) {
+      return (this.db.connection
+        .prepare(`SELECT * FROM slo_definitions WHERE domain = ? ORDER BY name`)
+        .all(domain) as RawRow[]).map((r) => this.mapSlo(r));
+    }
     return (this.db.connection
       .prepare(`SELECT * FROM slo_definitions ORDER BY name`)
       .all() as RawRow[]).map((r) => this.mapSlo(r));
@@ -784,6 +808,7 @@ export class SloAlertingService {
 
   /**
    * Maps a database row to an SloDefinition.
+   * §R14-06: Includes domain scope mapping.
    */
   private mapSlo(row: RawRow): SloDefinition {
     return {
@@ -795,6 +820,7 @@ export class SloAlertingService {
       operator: String(row.operator ?? "lte") as SloDefinition["operator"],
       windowMinutes: Number(row.window_minutes ?? 60),
       status: String(row.status ?? "unknown") as SloStatus,
+      domain: row.domain != null ? String(row.domain) : null,
       createdAt: String(row.created_at ?? ""),
       updatedAt: String(row.updated_at ?? ""),
     };
@@ -943,50 +969,166 @@ export class SloAlertingService {
   }
 
   /**
-   * Triggers error budget auto-degradation for an SLO.
+   * Triggers error budget auto-degradation for an SLO with gradient response.
    *
-   * If the SLO is breached (error budget exhausted):
-   * 1. Sets rollout freeze flag
-   * 2. Fires a page-level alert to on-call
+   * Gradient response policy (§R14-07):
+   * - 50-80% error budget consumed: degrade (slow down rollouts)
+   * - 80-100% error budget consumed: freeze (halt rollouts)
+   * - >100% error budget consumed: full_freeze (halt all deployments and automation)
    *
-   * Returns the degradation result including whether rollout was frozen and alert was fired.
+   * Returns the degradation result including gradient level and alert status.
    */
   public triggerErrorBudgetDegradation(sloId: string): ErrorBudgetDegradationResult {
-    const sloStatus = this.evaluateSlo(sloId);
-
-    // If SLO is not breached, no action needed
-    if (sloStatus !== "breached") {
+    const slo = this.getSlo(sloId);
+    if (!slo) {
       return {
         degraded: false,
         sloId,
-        sloStatus,
+        sloStatus: "unknown",
         rolloutFrozen: rolloutFreezeManager.isFrozen(),
         alertFired: false,
         alertId: null,
+        gradientLevel: "none",
+        errorBudgetBurnPercent: null,
       };
     }
 
-    // SLO is breached - trigger degradation
-    rolloutFreezeManager.freeze(sloId);
+    const sloStatus = this.evaluateSlo(sloId);
 
-    // Fire a page-level alert to on-call
-    const slo = this.getSlo(sloId);
-    const sloName = slo?.name ?? sloId;
-    const alert = this.fireAlertToPagerDuty(
-      `Error Budget Exhausted: ${sloName}`,
-      `SLO "${sloName}" (${sloId}) has breached its error budget. Rollouts have been automatically frozen. ` +
-      `Window: ${slo?.windowMinutes ?? "unknown"} minutes, Target: ${slo?.targetValue ?? "unknown"} ${slo?.sliKind ?? ""}. ` +
-      `Action required: Investigate error budget burn rate and restore service reliability.`,
-    );
+    // Calculate error budget burn percentage
+    const windowStart = new Date(Date.now() - slo.windowMinutes * 60_000).toISOString();
+    const samples = this.db.connection
+      .prepare(`SELECT value FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
+      .all(sloId, windowStart) as RawRow[];
+
+    let errorBudgetBurnPercent: number | null = null;
+    if (samples.length > 0 && slo.operator === "gte") {
+      const values = samples.map((r) => Number(r.value));
+      const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+      const errorBudget = 100 - slo.targetValue;
+      if (errorBudget > 0) {
+        const consumed = Math.max(0, 100 - avgValue);
+        errorBudgetBurnPercent = (consumed / errorBudget) * 100;
+      }
+    }
+
+    // Determine gradient level based on burn percentage
+    let gradientLevel: ErrorBudgetDegradationResult["gradientLevel"] = "none";
+
+    if (errorBudgetBurnPercent !== null) {
+      if (errorBudgetBurnPercent > 100) {
+        gradientLevel = "full_freeze";
+      } else if (errorBudgetBurnPercent >= 80) {
+        gradientLevel = "freeze";
+      } else if (errorBudgetBurnPercent >= 50) {
+        gradientLevel = "degrade";
+      }
+    }
+
+    // If SLO is breached but not yet in gradient range, still track but don't freeze
+    if (sloStatus === "breached" && gradientLevel === "none") {
+      gradientLevel = "degrade";
+    }
+
+    // Apply gradient response
+    let rolloutFrozen = false;
+    if (gradientLevel !== "none") {
+      if (gradientLevel === "full_freeze" || gradientLevel === "freeze") {
+        rolloutFreezeManager.freeze(sloId);
+        rolloutFrozen = true;
+      } else if (gradientLevel === "degrade") {
+        // For degrade level, we just mark it but don't fully freeze
+        rolloutFreezeManager.markDegraded(sloId);
+      }
+    }
+
+    // Fire appropriate alert based on gradient level
+    let alertFired = false;
+    let alertId: string | null = null;
+
+    if (gradientLevel !== "none") {
+      const sloName = slo.name ?? sloId;
+      const alert = this.fireAlertForGradient(
+        gradientLevel,
+        sloName,
+        sloId,
+        errorBudgetBurnPercent,
+        slo.windowMinutes,
+        slo.targetValue,
+        slo.sliKind,
+      );
+      alertId = alert.id;
+      alertFired = true;
+    }
 
     return {
-      degraded: true,
+      degraded: gradientLevel !== "none",
       sloId,
       sloStatus,
-      rolloutFrozen: true,
-      alertFired: true,
-      alertId: alert.id,
+      rolloutFrozen,
+      alertFired,
+      alertId,
+      gradientLevel,
+      errorBudgetBurnPercent,
     };
+  }
+
+  /**
+   * Fires an alert appropriate for the gradient level.
+   * §R14-07: Gradient response alerting.
+   */
+  private fireAlertForGradient(
+    gradientLevel: ErrorBudgetDegradationResult["gradientLevel"],
+    sloName: string,
+    sloId: string,
+    burnPercent: number | null,
+    windowMinutes: number,
+    targetValue: number,
+    sliKind: string,
+  ): AlertEvent {
+    const burnDesc = burnPercent !== null ? ` (${burnPercent.toFixed(1)}% burned)` : "";
+    const severity = gradientLevel === "full_freeze" ? "page" : gradientLevel === "freeze" ? "critical" : "warning";
+
+    let title: string;
+    let detail: string;
+
+    switch (gradientLevel) {
+      case "full_freeze":
+        title = `CRITICAL: Full Freeze - Error Budget Exhausted: ${sloName}`;
+        detail = `SLO "${sloName}" (${sloId}) has exhausted its error budget (>100%). ` +
+          `All deployments and automation have been halted. Immediate action required.`;
+        break;
+      case "freeze":
+        title = `Error Budget Critical: ${sloName}${burnDesc}`;
+        detail = `SLO "${sloName}" (${sloId}) has breached 80-100% of error budget. ` +
+          `Rollouts have been frozen. Window: ${windowMinutes} minutes, Target: ${targetValue} ${sliKind}. ` +
+          `Action required: Investigate and restore service reliability.`;
+        break;
+      case "degrade":
+        title = `Error Budget Degraded: ${sloName}${burnDesc}`;
+        detail = `SLO "${sloName}" (${sloId}) has consumed 50-80% of error budget. ` +
+          `Rollouts are being slowed. Window: ${windowMinutes} minutes, Target: ${targetValue} ${sliKind}. ` +
+          `Consider investigating to prevent further degradation.`;
+        break;
+      default:
+        title = `Error Budget Warning: ${sloName}`;
+        detail = `SLO "${sloName}" (${sloId}) error budget consumption requires attention.`;
+    }
+
+    return this.fireAlertWithSeverity(title, detail, severity);
+  }
+
+  /**
+   * Fires an alert with explicit severity.
+   */
+  private fireAlertWithSeverity(title: string, detail: string, severity: AlertSeverity): AlertEvent {
+    return this.dispatcher.dispatchRaw(
+      "slo_error_budget_gradient",
+      title,
+      detail,
+      severity,
+      "log",
+    );
   }
 
   /**
@@ -1028,5 +1170,101 @@ export class SloAlertingService {
     channelKind: AlertChannelKind,
   ): AlertEvent {
     return this.dispatcher.dispatchRaw(ruleId, title, detail, severity, channelKind);
+  }
+
+  /**
+   * Evaluates burn-rate alerting with multi-window strategy.
+   *
+   * Multi-window alerting policy (§R14-08):
+   * - 1h burn rate > 14.4x → SEV2 alert (fast burn, rapid response needed)
+   * - 6h burn rate > 6x → SEV3 alert (sustained burn, response needed)
+   *
+   * The 1h window catches rapid budget exhaustion (14.4x = 100%/1h = 100%/60min = 1.67%/min)
+   * The 6h window catches sustained degradation (6x = 100%/6h = 100%/360min = 0.28%/min)
+   *
+   * @returns BurnRateAlertResult with burn rates and any fired alert
+   */
+  public evaluateBurnRateAlerting(sloId: string): BurnRateAlertResult {
+    const slo = this.getSlo(sloId);
+    if (!slo) {
+      return {
+        sloId,
+        burnRate1h: null,
+        burnRate6h: null,
+        alertSeverity: null,
+        alertFired: false,
+        alertId: null,
+      };
+    }
+
+    // Compute burn rates for both windows
+    const burnRate1h = this.computeBurnRate(sloId, 60 * 60 * 1000); // 1 hour in ms
+    const burnRate6h = this.computeBurnRate(sloId, 6 * 60 * 60 * 1000); // 6 hours in ms
+
+    // Determine if alert should fire based on multi-window strategy
+    let alertSeverity: BurnRateAlertResult["alertSeverity"] = null;
+    let alertFired = false;
+    let alertId: string | null = null;
+
+    if (burnRate1h > 14.4) {
+      // 1h > 14.4x → SEV2 (fast burn)
+      alertSeverity = "SEV2";
+      const sloName = slo.name ?? sloId;
+      const alert = this.fireBurnRateAlert(
+        sloId,
+        sloName,
+        alertSeverity,
+        burnRate1h,
+        60,
+      );
+      alertId = alert.id;
+      alertFired = true;
+    } else if (burnRate6h > 6) {
+      // 6h > 6x → SEV3 (sustained burn)
+      alertSeverity = "SEV3";
+      const sloName = slo.name ?? sloId;
+      const alert = this.fireBurnRateAlert(
+        sloId,
+        sloName,
+        alertSeverity,
+        burnRate6h,
+        360,
+      );
+      alertId = alert.id;
+      alertFired = true;
+    }
+
+    return {
+      sloId,
+      burnRate1h,
+      burnRate6h,
+      alertSeverity,
+      alertFired,
+      alertId,
+    };
+  }
+
+  /**
+   * Fires a burn-rate alert with appropriate severity.
+   * §R14-08: Multi-window burn-rate alerting.
+   */
+  private fireBurnRateAlert(
+    sloId: string,
+    sloName: string,
+    severity: "SEV2" | "SEV3",
+    burnRate: number,
+    windowMinutes: number,
+  ): AlertEvent {
+    const severityLabel = severity === "SEV2" ? "CRITICAL" : "WARNING";
+    const windowLabel = windowMinutes === 60 ? "1 hour" : "6 hours";
+
+    const title = `${severityLabel}: Fast Burn Rate - ${sloName}`;
+    const detail = `SLO "${sloName}" (${sloId}) has a ${windowLabel} burn rate of ${burnRate.toFixed(2)}x. ` +
+      `This indicates ${severity === "SEV2" ? "rapid" : "sustained"} error budget exhaustion. ` +
+      `Window: ${windowMinutes} minutes. Action required: Investigate and remediate.`;
+
+    const alertSeverity: AlertSeverity = severity === "SEV2" ? "critical" : "warning";
+
+    return this.fireAlertWithSeverity(title, detail, alertSeverity);
   }
 }

@@ -126,9 +126,9 @@ export interface ConstraintPack {
     readonly maxSteps: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
-    readonly max_model_tokens?: number;
-    readonly max_context_tokens?: number;
-    readonly max_output_tokens?: number;
+    readonly maxModelTokens?: number;
+    readonly maxContextTokens?: number;
+    readonly maxOutputTokens?: number;
   };
 }
 
@@ -169,9 +169,9 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       maxSteps: number;
       maxCost: number;
       maxDurationMs: number;
-      max_model_tokens?: number;
-      max_context_tokens?: number;
-      max_output_tokens?: number;
+      maxModelTokens?: number;
+      maxContextTokens?: number;
+      maxOutputTokens?: number;
     };
   } = {
     policyIds: input.policyIds ? [...input.policyIds] : [],
@@ -205,35 +205,35 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       maxDurationMs: budgetEnvelope.maxDurationMs,
     };
     if ("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null) {
-      partial.budget.max_model_tokens = budgetEnvelope.maxTokens;
-      partial.budget.max_context_tokens = budgetEnvelope.maxTokens;
-      partial.budget.max_output_tokens = budgetEnvelope.maxTokens;
+      partial.budget.maxModelTokens = budgetEnvelope.maxTokens as number;
+      partial.budget.maxContextTokens = budgetEnvelope.maxTokens as number;
+      partial.budget.maxOutputTokens = budgetEnvelope.maxTokens as number;
     }
     // R18-01 fix: Copy explicit token budget fields per §45.3
     if ("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null) {
-      partial.budget.max_model_tokens = budgetEnvelope.maxModelTokens;
+      partial.budget.maxModelTokens = budgetEnvelope.maxModelTokens;
     }
     if ("maxContextTokens" in budgetEnvelope && budgetEnvelope.maxContextTokens != null) {
-      partial.budget.max_context_tokens = budgetEnvelope.maxContextTokens;
+      partial.budget.maxContextTokens = budgetEnvelope.maxContextTokens;
     }
     if ("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null) {
-      partial.budget.max_output_tokens = budgetEnvelope.maxOutputTokens;
+      partial.budget.maxOutputTokens = budgetEnvelope.maxOutputTokens;
     }
-    if (legacyBudget?.max_model_tokens != null) {
-      partial.budget.max_model_tokens = legacyBudget.max_model_tokens;
+    if (legacyBudget?.maxModelTokens != null) {
+      partial.budget.maxModelTokens = legacyBudget.maxModelTokens;
     }
-    if (legacyBudget?.max_context_tokens != null) {
-      partial.budget.max_context_tokens = legacyBudget.max_context_tokens;
+    if (legacyBudget?.maxContextTokens != null) {
+      partial.budget.maxContextTokens = legacyBudget.maxContextTokens;
     }
-    if (legacyBudget?.max_output_tokens != null) {
-      partial.budget.max_output_tokens = legacyBudget.max_output_tokens;
+    if (legacyBudget?.maxOutputTokens != null) {
+      partial.budget.maxOutputTokens = legacyBudget.maxOutputTokens;
     }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
       maxCost: budgetEnvelope.maxCost,
       maxDurationMs: budgetEnvelope.maxDurationMs,
       ...("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null
-        ? { maxTokens: budgetEnvelope.maxTokens }
+        ? { maxTokens: budgetEnvelope.maxTokens as number }
         : {}),
       ...("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null
         ? { maxModelTokens: budgetEnvelope.maxModelTokens }
@@ -244,14 +244,14 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       ...("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null
         ? { maxOutputTokens: budgetEnvelope.maxOutputTokens }
         : {}),
-      ...(legacyBudget?.max_model_tokens != null
-        ? { maxModelTokens: legacyBudget.max_model_tokens }
+      ...(legacyBudget?.maxModelTokens != null
+        ? { maxModelTokens: legacyBudget.maxModelTokens }
         : {}),
-      ...(legacyBudget?.max_context_tokens != null
-        ? { maxContextTokens: legacyBudget.max_context_tokens }
+      ...(legacyBudget?.maxContextTokens != null
+        ? { maxContextTokens: legacyBudget.maxContextTokens }
         : {}),
-      ...(legacyBudget?.max_output_tokens != null
-        ? { maxOutputTokens: legacyBudget.max_output_tokens }
+      ...(legacyBudget?.maxOutputTokens != null
+        ? { maxOutputTokens: legacyBudget.maxOutputTokens }
         : {}),
     };
   }
@@ -437,8 +437,13 @@ export interface HarnessRunRuntimeState {
   readonly constraintPack: ConstraintPack;
   readonly planGraphBundle: PlanGraphBundle;
   /**
-   * @deprecated HarnessStep is semantic projection per §5.5. Use nodeRunIds instead.
-   * Kept for legacy adapter compatibility only.
+   * @deprecated Per §5.5, HarnessStep is a semantic projection that must NOT be stored as a
+   * first-class field in runtime state. This field is retained only for legacy adapter
+   * compatibility and will be removed in a future version. Use nodeRunIds (PlanNode references)
+   * for canonical execution tracking instead.
+   *
+   * R6-20 FIX: This field violates §5.5 which requires PlanGraph/PlanNode as the sole
+   * execution structure. The nodeRunIds field should be used for all canonical references.
    */
   readonly steps: readonly HarnessStep[];
   /** @deprecated Use nodeRunIds per §5.5 */

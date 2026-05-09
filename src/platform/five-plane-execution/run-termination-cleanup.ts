@@ -1,4 +1,8 @@
-export type CleanupCallback = (resourceId: string) => Promise<boolean>;
+export type CleanupCallback = (params: {
+  readonly resourceId: string;
+  readonly tenantId: string;
+  readonly runId: string;
+}) => Promise<boolean>;
 
 /** R11-08: Callback type for state evidence flush */
 export type StateEvidenceFlushCallback = (runId: string) => Promise<{
@@ -159,7 +163,11 @@ export class RunTerminationCleanup {
       }
 
       try {
-        const success = await callback(resource.resourceId);
+        const success = await callback({
+          resourceId: resource.resourceId,
+          tenantId: request.tenantId,
+          runId: request.runId,
+        });
         if (success) {
           cleanedResourceIds.push(resource.resourceId);
         } else {
@@ -177,7 +185,7 @@ export class RunTerminationCleanup {
         notificationResult = await callbacks.notification({
           runId: request.runId,
           terminalStatus: request.terminalStatus,
-          ...(request.terminalReason !== undefined && { reason: request.terminalReason }),
+          ...(request.terminalReason !== undefined && { reason: request.terminalReason ?? "" }),
         });
       } catch (error) {
         notificationResult = {
@@ -200,7 +208,8 @@ export class RunTerminationCleanup {
     }
 
     // R11-08/R11-11: Build result with proper optional field handling
-    const result: RunTerminationCleanupReceipt = {
+    // Include optional fields only when they have values
+    return {
       runId: request.runId,
       tenantId: request.tenantId,
       terminalStatus: request.terminalStatus,
@@ -210,19 +219,9 @@ export class RunTerminationCleanup {
       failedResourceIds,
       completedAt,
       cleanupStatus,
+      ...(stateEvidenceFlushResult !== undefined && { stateEvidenceFlush: stateEvidenceFlushResult }),
+      ...(compensationTriggerResult !== undefined && { compensationTrigger: compensationTriggerResult }),
+      ...(notificationResult !== undefined && { notification: notificationResult }),
     };
-
-    // Only include optional fields when they have values
-    if (stateEvidenceFlushResult !== undefined) {
-      result.stateEvidenceFlush = stateEvidenceFlushResult;
-    }
-    if (compensationTriggerResult !== undefined) {
-      result.compensationTrigger = compensationTriggerResult;
-    }
-    if (notificationResult !== undefined) {
-      result.notification = notificationResult;
-    }
-
-    return result;
   }
 }

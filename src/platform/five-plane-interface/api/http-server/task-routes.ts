@@ -71,7 +71,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           ? 25
           : readLimit(ctx.request, 25);
         const tasks = deps.inspectService.queryTaskInspectSummaries({
-          limit: 200,
+          limit,
           ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
         });
         const page = paginateByCursor(tasks, limit, readCursor(ctx.request));
@@ -92,7 +92,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           ? 25
           : readLimit(ctx.request, 25);
         const workflows = deps.missionControlService.listWorkflowCockpits(
-          200,
+          limit,
           principal.tenantId != null ? principal.tenantId : undefined,
         );
         const page = paginateByCursor(workflows, limit, readCursor(ctx.request));
@@ -191,6 +191,25 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       },
     },
     // ── Task Write Operations ─────────────────────────────────────────────────
+    /**
+     * POST /v1/tasks - Create a new task.
+     *
+     * R6-16 FIX: This endpoint creates a lightweight Task entity directly in the task store.
+     * For full HarnessRun creation with proper admission, risk evaluation, and policy checks,
+     * use the intake pipeline via IntakeAdmissionService.admitTask() instead.
+     *
+     * This endpoint bypasses the intake pipeline for simple task creation use cases where:
+     * - Full harness execution is not required
+     * - The task will be executed via external means
+     * - Quick task creation is needed without the overhead of admission checks
+     *
+     * For proper task execution through the harness runtime, task creation should route
+     * through the intake-admission-service which performs:
+     * - Risk evaluation and classification
+     * - Policy guard checks
+     * - Budget reservation and validation
+     * - Creation of TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun chain
+     */
     {
       method: "POST",
       pathname: "/v1/tasks",
@@ -253,7 +272,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
         const now = nowIso();
         if (payload.title != null) {
-          deps.taskStore.task.updateTaskInput(taskId, existing.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
+          deps.taskStore.task.updateTaskTitle(taskId, payload.title, now);
         }
         if (payload.status != null) {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);

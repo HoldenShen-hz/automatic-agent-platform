@@ -77,6 +77,25 @@ export interface PolicyStrictnessResult {
   readonly reason: string;
 }
 
+/**
+ * R5-37: PolicyStrictnessComparator interface for custom comparison implementations
+ */
+export interface PolicyStrictnessComparator {
+  compare(left: Readonly<Record<string, unknown>>, right: Readonly<Record<string, unknown>>): PolicyStrictnessResult;
+}
+
+/**
+ * R5-37: Default comparator implementation using field-level heuristics
+ */
+export class DefaultPolicyStrictnessComparator implements PolicyStrictnessComparator {
+  public compare(
+    left: Readonly<Record<string, unknown>>,
+    right: Readonly<Record<string, unknown>>,
+  ): PolicyStrictnessResult {
+    return comparePolicyStrictness(left, right);
+  }
+}
+
 export function comparePolicyStrictness(
   left: Readonly<Record<string, unknown>>,
   right: Readonly<Record<string, unknown>>,

@@ -10,10 +10,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ChaosExperimentScheduler } from "../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
-import { SimpleReflectionEngine } from "../../../src/ops-maturity/drift-detection/reflection-engine.js";
-import { SimpleRolloutManager } from "../../../src/ops-maturity/drift-detection/rollout-manager.js";
+import { SimpleReflectionEngine } from "../../../src/ops-maturity/drift-detection/learning/reflection-engine.js";
+import { SimpleRolloutManager } from "../../../src/ops-maturity/drift-detection/learning/rollout-manager.js";
 import { CrossAgentAnalyzerService } from "../../../src/ops-maturity/drift-detection/cross-agent-analyzer/index.js";
-import type { EvidenceRecord } from "../../../src/ops-maturity/drift-detection/evidence-store.js";
+import type { EvidenceRecord } from "../../../src/ops-maturity/drift-detection/learning/evidence-store.js";
 import type { ImprovementProposal } from "../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
 function createEvidence(overrides: Partial<EvidenceRecord> = {}): EvidenceRecord {

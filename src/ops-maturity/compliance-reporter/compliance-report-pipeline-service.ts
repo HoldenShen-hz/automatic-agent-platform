@@ -15,6 +15,34 @@ export interface ComplianceReportTemplateDefinition {
   readonly legalVersion?: string;
   readonly effectiveDate?: string;
   readonly migrationRule?: string;
+  // Extended fields
+  readonly controls?: readonly {
+    controlId: string;
+    title?: string;
+    description?: string;
+    owner?: string;
+    frequency?: "continuous" | "daily" | "weekly" | "monthly" | "quarterly" | "annually";
+    evidenceRequirements?: readonly string[];
+  }[];
+  readonly controlEvidenceMapping?: Readonly<Record<string, readonly string[]>>;
+  readonly qualityThresholds?: {
+    minCompleteness?: number;
+    minFreshnessHours?: number;
+    minTrustworthiness?: number;
+    minTamperProof?: number;
+  };
+  readonly attestation?: {
+    requireHumanSignoff?: boolean;
+    signoffDueDays?: number;
+    escalationOwner?: string;
+    timeoutAction?: "escalate_owner" | "freeze_report" | "expire_report";
+  };
+  readonly auditorAccess?: {
+    requiredPermissions?: readonly string[];
+    allowPiiAccess?: boolean;
+    redactionRequired?: boolean;
+  };
+  readonly frameworkMetadata?: Readonly<Record<string, unknown>>;
 }
 
 export interface ComplianceReportRequest {
@@ -226,6 +254,15 @@ export class ComplianceReportPipelineService {
     const coverage = this.evidenceMapper.summarizeCoverage(request.evidence, template.requiredEvidenceTypes);
     const quality = this.evidenceMapper.summarizeQuality(request.evidence, template.requiredEvidenceTypes);
     const missingEvidenceTypes = coverage.missingTypes;
+
+    // Determine initial status: partial if evidence gaps exist
+    const baseStatus: ComplianceReportArtifact["status"] =
+      missingEvidenceTypes.length === 0 ? "generated" : "partial";
+
+    // If attestation requires human signoff, upgrade to human_signoff regardless of evidence completeness
+    const requireSignoff = (template as ComplianceReportTemplateDefinition).attestation?.requireHumanSignoff === true;
+    const status: ComplianceReportArtifact["status"] = requireSignoff ? "human_signoff" : baseStatus;
+
     const sections = this.buildSections(template, evidenceMap, missingEvidenceTypes, quality);
 
     return {
@@ -239,7 +276,7 @@ export class ComplianceReportPipelineService {
       legalVersion: template.legalVersion ?? "current",
       effectiveDate: template.effectiveDate ?? "1970-01-01",
       migrationRule: template.migrationRule ?? "no_migration_required",
-      status: missingEvidenceTypes.length === 0 ? "generated" : "partial",
+      status,
       missingEvidenceTypes,
       evidenceMap,
       controlPointMap,
@@ -285,7 +322,7 @@ export class ComplianceReportPipelineService {
     readonly now: string;
   }): ComplianceReportHumanSignoff {
     const signedAt = input.signedAt ?? null;
-    if (signedAt != null && signedAt <= input.signoffDueAt) {
+    if (signedAt != null && new Date(signedAt) <= new Date(input.signoffDueAt)) {
       return {
         artifactId: input.artifact.artifactId,
         signerId: input.signerId ?? null,
@@ -304,7 +341,7 @@ export class ComplianceReportPipelineService {
       timeoutAction: input.timeoutAction ?? "escalate_owner",
       signoffDueAt: input.signoffDueAt,
       signedAt,
-      status: input.now > input.signoffDueAt ? "not_attested_expired" : "signoff_overdue",
+      status: new Date(input.now) > new Date(input.signoffDueAt) ? "not_attested_expired" : "signoff_overdue",
     };
   }
 

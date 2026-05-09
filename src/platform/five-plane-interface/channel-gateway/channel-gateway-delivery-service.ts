@@ -3,6 +3,31 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { z } from "zod";
+
+/**
+ * Schema for validating delivery message payloads at runtime.
+ */
+const DeliveryPayloadSchema = z.record(z.unknown());
+
+/**
+ * Safely parses JSON with schema validation for inter-plane boundary.
+ * @param jsonString - Raw JSON string to parse
+ * @param errorContext - Context string for error messages
+ * @returns Validated parsed object
+ */
+function safeJsonParsePayload(jsonString: string, errorContext: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return DeliveryPayloadSchema.parse(parsed);
+  } catch (err) {
+    logger.warn(`${errorContext}: payload validation failed`, {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Return empty object on validation failure to allow processing to continue
+    return {};
+  }
+}
 import {
   buildDeadLetterCountQuery,
   buildDeadLetterQuery,
@@ -537,7 +562,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: safeJsonParsePayload(String(row.payload_json), "getPendingDeliveries"),
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       createdAt: String(row.created_at),
@@ -695,7 +720,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: safeJsonParsePayload(String(row.payload_json), "getDeadLetters"),
       failureReason: String(row.failure_reason),
       lastErrorMessage: row.last_error_message as string | null,
       lastResponseStatus: row.last_response_status as number | null,
@@ -743,7 +768,7 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: safeJsonParsePayload(String(row.payload_json), "getRetryableMessages"),
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       nextRetryAt: (row.next_retry_at as string | null) ?? null,

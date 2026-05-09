@@ -40,7 +40,7 @@ test("governanceProjectionHandler initializes state correctly", () => {
   assert.equal(state.taskId, "task_1");
   assert.equal(state.status, "active");
   assert.equal(state.eventCount, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_1"]));
   assert.equal(state.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(state.lastEventAt, "2026-04-19T10:00:00.000Z");
 });
@@ -360,7 +360,7 @@ test("governanceProjectionHandler is idempotent - same event applied twice", () 
 
   // Should only count once
   assert.equal(state2.eventCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idempotent"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idempotent"]));
   assert.equal(state2.status, "approved");
 });
 
@@ -396,7 +396,7 @@ test("governanceProjectionHandler deduplicates event_ids", () => {
 
   // Should only count once
   assert.equal(state3.eventCount, 1);
-  assert.deepEqual(state3.processedEventIds, ["evt_dedup"]);
+  assert.deepEqual(state3.processedEventIds, new Set(["evt_dedup"]));
 });
 
 test("governanceProjectionHandler accumulates timeline in order", () => {
@@ -541,7 +541,7 @@ test("governanceProjectionHandler handles unknown event types gracefully", () =>
   // Should still update basic tracking
   assert.equal(state.eventCount, 1);
   assert.equal(state.timeline.length, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_unknown"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_unknown"]));
 });
 
 test("governanceProjectionHandler infers actionType from payload for unknown event types", () => {
@@ -823,7 +823,7 @@ test("createEmptyGovernanceState returns correct initial state", () => {
   assert.equal(state.occurredAt, null);
   assert.deepEqual(state.timeline, []);
   assert.equal(state.eventCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.equal(state.firstEventAt, null);
   assert.equal(state.lastEventAt, null);
 });

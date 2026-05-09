@@ -1,4 +1,4 @@
-import { newId } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import { createAssessmentRef, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
 import { TaskDecompositionService } from "./task-decomposition-service.js";
@@ -7,8 +7,8 @@ import { PlanStrategySelector } from "./plan-strategy-selector.js";
 import { PlanGraphNormalizer } from "./plan-graph-normalizer.js";
 import {
   createPlanGraphBundle,
-  createGraph,
   type PlanGraphBundle,
+  type PlanGraph,
   type PlanNode,
   type PlanEdge,
   type RiskPreview,
@@ -71,23 +71,30 @@ export class PlanBuilder {
     }
 
     // Convert steps to PlanNodes
-    const nodes: PlanNode[] = normalizedSteps.map((step, index) => ({
-      nodeId: step.stepId,
-      nodeType: this.inferNodeType(step.action),
-      inputRefs: step.inputs.inputKeys,
-      outputSchemaRef: `output://${step.stepId}`,
-      riskClass: input.assessment.risk,
-      budgetIntent: {
-        maxCostUsd: input.workflow.executionSteps[index]?.estimatedCostUsd ?? 0.01,
-        priority: "normal",
-      },
-      sideEffectProfile: {
-        hasSideEffects: step.outputs.length > 0,
-        isolationLevel: "sandbox",
-      },
-      retryPolicyRef: `retry://${step.stepId}`,
-      timeoutMs: step.timeout,
-    }));
+    const nodes: PlanNode[] = normalizedSteps.map((step, index) => {
+      // step.inputs is Record<string, unknown>, access inputKeys property
+      const inputsRecord = step.inputs as Record<string, unknown>;
+      const inputKeysArray = Array.isArray(inputsRecord.inputKeys) ? inputsRecord.inputKeys as readonly string[] : [];
+      const hasSideEffects = (step.outputs ?? []).length > 0;
+      return {
+        nodeId: step.stepId,
+        nodeType: this.inferNodeType(step.action),
+        inputRefs: inputKeysArray,
+        outputSchemaRef: `output://${step.stepId}`,
+        riskClass: input.assessment.risk,
+        budgetIntent: {
+          amount: 0.01,
+          currency: "USD",
+          resourceKinds: ["token"],
+        },
+        sideEffectProfile: {
+          mayCommitExternalEffect: hasSideEffects,
+          reversible: false,
+        },
+        retryPolicyRef: `retry://${step.stepId}`,
+        timeoutMs: step.timeout,
+      };
+    });
 
     // Convert dependencies to PlanEdges
     const edges: PlanEdge[] = [];
@@ -109,7 +116,6 @@ export class PlanBuilder {
     }
 
     // Compute entry and terminal node IDs
-    const nodeIds = new Set(nodes.map((n) => n.nodeId));
     const entryNodeIds = nodes
       .filter((n) => !edges.some((e) => e.toNodeId === n.nodeId))
       .map((n) => n.nodeId);
@@ -122,10 +128,11 @@ export class PlanBuilder {
       .update(JSON.stringify({ nodes, edges }))
       .digest("hex");
 
-    const harnessRunId = input.workflow.executionSteps[0]?.harnessRunId ?? newId("hr");
+    const harnessRunId = newId("hr");
     const planGraphBundleId = newId("pgb");
 
-    const graph = createGraph({
+    // Create graph object directly (PlanGraph is an interface)
+    const graph: PlanGraph = {
       graphId: newId("pg"),
       nodes,
       edges,
@@ -133,11 +140,11 @@ export class PlanBuilder {
       terminalNodeIds,
       joinStrategy: "all",
       graphHash,
-    });
+    };
 
     const riskProfile: RiskPreview = {
       riskClass: input.assessment.risk,
-      reasons: [input.assessment.reason ?? "assessment_complete"],
+      reasons: ["assessment_complete"],
     };
 
     return createPlanGraphBundle({

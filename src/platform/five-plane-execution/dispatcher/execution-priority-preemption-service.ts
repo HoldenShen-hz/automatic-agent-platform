@@ -28,6 +28,7 @@ import type {
   ExecutionRecord,
   ExecutionTicketRecord,
   TaskPriority,
+  TaskRecord,
   WorkerIsolationLevel,
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
@@ -94,6 +95,7 @@ interface PreemptionCandidate {
   worker: RegisteredWorkerView;
   execution: ExecutionRecord;
   workflow: WorkflowStateRecord;
+  task: TaskRecord;
   taskPriority: TaskPriority;
   activeLease: ExecutionLeaseRecord;
   latestTicket: ExecutionTicketRecord | null;
@@ -242,6 +244,17 @@ export class ExecutionPriorityPreemptionService {
         }),
         traceId: candidate.execution.traceId,
         createdAt: input.occurredAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
       this.store.event.insertEvent({
         id: newId("evt"),
@@ -263,6 +276,17 @@ export class ExecutionPriorityPreemptionService {
         }),
         traceId: candidate.execution.traceId,
         createdAt: input.occurredAt,
+        schemaVersion: "1.0",
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: newId("idem"),
+        replayBehavior: "replay_as_fact",
+        principal: "system",
+        evidenceRefs: [] as readonly string[],
       });
 
       return this.buildTrace(input.ticket.priority, candidate, replacementTicket.id, "priority_preemption_applied");
@@ -408,6 +432,7 @@ export class ExecutionPriorityPreemptionService {
       worker,
       execution,
       workflow,
+      task,
       taskPriority: candidatePriority,
       activeLease,
       latestTicket,
@@ -431,6 +456,7 @@ export class ExecutionPriorityPreemptionService {
       id: newId("ticket"),
       executionId: candidate.execution.id,
       taskId: candidate.execution.taskId,
+      tenantId: candidate.task.tenantId ?? "global",
       priority: candidate.latestTicket?.priority ?? candidate.taskPriority,
       queueName: candidate.latestTicket?.queueName ?? null,
       dispatchTarget: candidate.latestTicket?.dispatchTarget ?? "any",

@@ -160,13 +160,14 @@ export class ExplanationPipelineService {
       generatedAt: request.generatedAt ?? nowIso(),
     };
     const versionLockRef = options.versionLockRef ?? buildVersionLockRef(rationaleWithoutLock);
+    const causalSummary = buildCausalChainSummary(request.causalLinks ?? []);
+    const cacheKey = explanationCacheKey(request.taskId, stageId, depth);
+    const rendered = this.renderBundle({ ...rationaleWithoutLock, versionLockRef }, depth, causalSummary, redactedEvidenceRefs);
     const rationale: StageRationale = {
       ...rationaleWithoutLock,
       versionLockRef,
+      renderedExplanation: rendered,
     };
-    const causalSummary = buildCausalChainSummary(request.causalLinks ?? []);
-    const cacheKey = explanationCacheKey(request.taskId, stageId, depth);
-    const rendered = this.renderBundle(rationale, depth, causalSummary, redactedEvidenceRefs);
 
     this.cache = putExplanationCacheEntry(this.cache, {
       cacheKey,

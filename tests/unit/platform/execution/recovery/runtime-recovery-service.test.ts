@@ -119,6 +119,27 @@ test("RuntimeRecoveryService.listStaleRuns returns candidates", () => {
   assert.equal(results[0]!.suggestedAction, "retry_new_ticket");
 });
 
+test("RuntimeRecoveryService.findStaleExecuting computes staleBefore in the past", () => {
+  let capturedStaleBefore: string | null = null;
+  const now = Date.now();
+  const store = createMockStore({
+    operations: {
+      listStaleRuns: (staleBefore?: string) => {
+        capturedStaleBefore = staleBefore ?? null;
+        return [];
+      },
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  service.findStaleExecuting({ stalenessThresholdMs: 60_000 });
+
+  assert.ok(capturedStaleBefore !== null);
+  const staleBeforeMs = new Date(capturedStaleBefore!).getTime();
+  assert.ok(staleBeforeMs <= now - 55_000, `expected staleBefore in the past, got ${capturedStaleBefore}`);
+  assert.ok(staleBeforeMs >= now - 65_000, `expected staleBefore close to threshold, got ${capturedStaleBefore}`);
+});
+
 test("RuntimeRecoveryService.listBlockedRunsAwaitingApproval returns candidates", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",

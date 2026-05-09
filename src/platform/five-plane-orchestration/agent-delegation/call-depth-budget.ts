@@ -15,11 +15,11 @@ export class CallDepthBudget {
   private readonly maxCallDepth = 8 as const;
 
   public evaluate(request: CallDepthBudgetRequest): CallDepthBudgetDecision {
-    const effectiveCallDepth = Math.max(
-      request.currentCallDepth,
-      request.goalDecompositionDepth,
-      request.delegationDepth,
-    );
+    // R5-46: Sum all depth dimensions for total call depth budget check
+    const effectiveCallDepth =
+      request.currentCallDepth +
+      request.goalDecompositionDepth +
+      request.delegationDepth;
     return {
       allowed: effectiveCallDepth <= this.maxCallDepth,
       effectiveCallDepth,

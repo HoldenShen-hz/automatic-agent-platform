@@ -17,6 +17,8 @@ export interface SecurityScanInput {
   packId: string;
   version: string;
   sourceUri: string;
+  /** Actual source code content for static analysis (required for proper security scanning) */
+  sourceCode: string;
   manifestChecksum: string;
   capabilities: readonly string[];
   permissions: readonly string[];
@@ -52,6 +54,21 @@ export interface DependencyConflict {
   conflictType: "capability_overlap" | "permission_conflict" | "api_contract_incompatible";
   details: string;
   resolution?: string;
+}
+
+export interface CveVulnerability {
+  cveId: string;
+  severity: "critical" | "high" | "medium" | "low";
+  description: string;
+  affectedVersionRange: string;
+  fixedVersion?: string;
+}
+
+export interface DependencyVulnerabilityResult {
+  packId: string;
+  version: string;
+  vulnerabilities: CveVulnerability[];
+  scanCompletedAt: string;
 }
 
 export interface DependencyResolutionResult {
@@ -201,10 +218,11 @@ export class PackSecurityService {
 
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
-    const manifestContent = input.sourceUri;
+    // Scan actual source code, not the URI string
+    const sourceContent = input.sourceCode;
 
     for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
-      if (pattern.test(manifestContent)) {
+      if (pattern.test(sourceContent)) {
         issues.push({
           severity: "high",
           category: "static_analysis",

@@ -357,6 +357,7 @@ async function runDuplicateDeliveryScenario(outputDir: string): Promise<StableQu
       id: duplicateTicketId,
       executionId: "exec-duplicate-delivery",
       taskId: "task-duplicate-delivery",
+      tenantId: "tenant-duplicate-delivery",
       priority: "normal",
       queueName: "default",
       dispatchTarget: "any",

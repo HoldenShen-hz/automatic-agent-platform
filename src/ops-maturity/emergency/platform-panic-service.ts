@@ -45,6 +45,8 @@ export interface PanicActivationRequest extends PanicDirectiveInput {
   readonly targetScopes?: readonly string[];
   readonly forensicArtifactIds?: readonly string[];
   readonly severity?: string;
+  readonly reconfirmationAfterSeconds?: number;
+  readonly rollbackStrategy?: "automatic" | "manual" | "none";
   readonly triggerSignals?: readonly string[];
 }
 

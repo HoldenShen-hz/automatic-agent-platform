@@ -5,10 +5,10 @@
  * evaluations, and rollout records.
  */
 
-import type { ImprovementProposal, ProposalStatus } from './proposal-engine.js';
-import type { EvaluationReport } from './benchmark-runner.js';
-import type { RolloutRecord } from './rollout-manager.js';
-import type { ReflectionRecord } from './reflection-engine.js';
+import type { ImprovementProposal, ProposalStatus } from './learning/proposal-engine.js';
+import type { EvaluationReport } from './learning/benchmark-runner.js';
+import type { RolloutRecord } from './learning/rollout-manager.js';
+import type { ReflectionRecord } from './learning/reflection-engine.js';
 
 export interface EvolutionRegistry {
   // Proposal operations

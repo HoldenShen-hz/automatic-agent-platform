@@ -2,8 +2,12 @@
  * Incident Resolver
  *
  * Provides incident resolution capabilities including root cause analysis,
- * remediation suggestions, and resolution tracking. Works with the IncidentDetector
- * to process detected incidents and determine appropriate resolution strategies.
+ * remediation suggestions, resolution tracking, and automated post-mortem generation.
+ * Works with the IncidentDetector to process detected incidents and determine
+ * appropriate resolution strategies.
+ *
+ * §R14-03: Incident lifecycle states updated to include triaged/mitigating/reviewed.
+ * §R14-04: Post-mortem automation with 72h Post-Incident Report generation.
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
@@ -12,6 +16,52 @@ import type {
   IncidentSeverity,
   IncidentStatus,
 } from "./incident-detector.js";
+
+/**
+ * Post-mortem report generation result.
+ */
+export interface PostMortemReport {
+  readonly reportId: string;
+  readonly incidentId: string;
+  readonly incidentTitle: string;
+  readonly severity: IncidentSeverity;
+  readonly detectedAt: string;
+  readonly resolvedAt: string | null;
+  readonly totalDurationMinutes: number | null;
+  readonly rootCause: string;
+  readonly timeline: readonly PostMortemTimelineEvent[];
+  readonly impact: PostMortemImpact;
+  readonly lessonsLearned: readonly string[];
+  readonly actionItems: readonly PostMortemActionItem[];
+  readonly generatedAt: string;
+  readonly followUpRequired: boolean;
+  readonly followUpDueInHours: number | null;
+}
+
+export interface PostMortemTimelineEvent {
+  readonly timestamp: string;
+  readonly event: string;
+  readonly authorId: string | null;
+  readonly phase: "detection" | "triage" | "mitigation" | "recovery" | "review";
+}
+
+export interface PostMortemImpact {
+  readonly usersAffected: number | null;
+  readonly revenueImpact: string | null;
+  readonly durationMinutes: number | null;
+  readonly servicesAffected: readonly string[];
+}
+
+export interface PostMortemActionItem {
+  readonly actionId: string;
+  readonly description: string;
+  readonly owner: string | null;
+  readonly dueInHours: number | null;
+  readonly priority: "high" | "medium" | "low";
+  readonly status: "open" | "in_progress" | "completed";
+}
+
+const POST_MORTEM_AUTO_TRIGGER_HOURS = 72;
 
 export type ResolutionStrategy = "self_heal" | "automated" | "assisted" | "manual";
 export type ResolutionStatus = "pending" | "in_progress" | "completed" | "failed";
@@ -83,8 +133,8 @@ export class IncidentResolver {
    * Determines the appropriate resolution strategy based on incident characteristics.
    */
   public determineStrategy(incident: IncidentDetection): ResolutionStrategy {
-    // P1 incidents require immediate manual intervention
-    if (incident.severity === "p1") {
+    // SEV1 incidents require immediate manual intervention
+    if (incident.severity === "SEV1") {
       return "manual";
     }
 
@@ -259,6 +309,180 @@ export class IncidentResolver {
    * Generates a unique resolution ID.
    */
   private generateResolutionId(): string {
-    return `resolution_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return `resolution_${crypto.randomUUID()}`;
+  }
+
+  /**
+   * Generates a cryptographically unique post-mortem report ID.
+   */
+  private generateReportId(): string {
+    return `postmortem_${crypto.randomUUID()}`;
+  }
+
+  /**
+   * Checks if a resolved incident is due for automatic post-mortem generation.
+   * Incidents are due 72 hours after resolution.
+   * §R14-04: 72h Post-Incident Report automation.
+   */
+  public isPostMortemDue(resolvedAt: string | null, currentTime = new Date()): boolean {
+    if (!resolvedAt) return false;
+
+    const resolvedTime = new Date(resolvedAt).getTime();
+    const hoursSinceResolution = (currentTime.getTime() - resolvedTime) / (1000 * 60 * 60);
+
+    return hoursSinceResolution >= POST_MORTEM_AUTO_TRIGGER_HOURS;
+  }
+
+  /**
+   * Generates an automated post-mortem report for a resolved incident.
+   * Creates a structured report with timeline, impact, lessons learned, and action items.
+   * §R14-04: 72h Post-Incident Report automation.
+   */
+  public generatePostMortem(
+    incident: IncidentDetection,
+    resolution: IncidentResolution,
+    timeline: readonly { timestamp: string; event: string; authorId?: string; phase: PostMortemTimelineEvent["phase"] }[],
+    options?: {
+      usersAffected?: number;
+      revenueImpact?: string;
+      servicesAffected?: readonly string[];
+    },
+  ): PostMortemReport {
+    const detectedAt = incident.detectedAt;
+    const resolvedAt = resolution.completedAt;
+    const totalDurationMinutes = resolvedAt
+      ? Math.round((new Date(resolvedAt).getTime() - new Date(detectedAt).getTime()) / (1000 * 60))
+      : null;
+
+    // Generate lessons learned based on incident category and resolution
+    const lessonsLearned = this.generateLessonsLearned(incident, resolution);
+
+    // Generate action items based on resolution strategy
+    const actionItems = this.generateActionItems(resolution, lessonsLearned);
+
+    const report: PostMortemReport = {
+      reportId: this.generateReportId(),
+      incidentId: incident.incidentId,
+      incidentTitle: incident.title,
+      severity: incident.severity,
+      detectedAt,
+      resolvedAt,
+      totalDurationMinutes,
+      rootCause: resolution.rootCause ?? "Root cause analysis pending",
+      timeline: timeline.map((e) => ({
+        timestamp: e.timestamp,
+        event: e.event,
+        authorId: e.authorId ?? null,
+        phase: e.phase,
+      })),
+      impact: {
+        usersAffected: options?.usersAffected ?? null,
+        revenueImpact: options?.revenueImpact ?? null,
+        durationMinutes: totalDurationMinutes,
+        servicesAffected: options?.servicesAffected ?? [],
+      },
+      lessonsLearned,
+      actionItems,
+      generatedAt: nowIso(),
+      followUpRequired: actionItems.some((a) => a.priority === "high"),
+      followUpDueInHours: actionItems.some((a) => a.priority === "high") ? 168 : 720, // 1 week for high, 30 days for others
+    };
+
+    return report;
+  }
+
+  /**
+   * Generates lessons learned based on incident characteristics and resolution.
+   */
+  private generateLessonsLearned(
+    incident: IncidentDetection,
+    resolution: IncidentResolution,
+  ): readonly string[] {
+    const lessons: string[] = [];
+
+    // Add category-specific lessons
+    switch (incident.category) {
+      case "availability":
+        lessons.push("Review availability monitoring and alerting thresholds");
+        lessons.push("Consider implementing automatic failover for critical services");
+        break;
+      case "performance":
+        lessons.push("Performance testing should include failure mode analysis");
+        lessons.push("Consider implementing circuit breakers for dependent services");
+        break;
+      case "data_integrity":
+        lessons.push("Data validation and consistency checks should be enhanced");
+        lessons.push("Consider implementing automatic data repair mechanisms");
+        break;
+      case "security":
+        lessons.push("Security review needed for affected components");
+        lessons.push("Consider implementing additional security monitoring");
+        break;
+      case "configuration":
+        lessons.push("Configuration management process should be reviewed");
+        lessons.push("Consider implementing configuration validation");
+        break;
+      default:
+        lessons.push("Incident response process should be reviewed");
+    }
+
+    // Add resolution-specific lessons
+    switch (resolution.strategy) {
+      case "self_heal":
+        lessons.push("Self-healing mechanisms worked as expected");
+        lessons.push("Review effectiveness of automated remediation");
+        break;
+      case "automated":
+        lessons.push("Automated remediation helped reduce MTTR");
+        lessons.push("Review automation coverage for similar incidents");
+        break;
+      case "assisted":
+        lessons.push("Human expertise was critical for resolution");
+        lessons.push("Consider additional tooling for faster diagnosis");
+        break;
+      case "manual":
+        lessons.push("Manual intervention was required - evaluate automation opportunities");
+        lessons.push("Consider runbook automation for similar incidents");
+        break;
+    }
+
+    return lessons;
+  }
+
+  /**
+   * Generates action items from lessons learned.
+   */
+  private generateActionItems(
+    resolution: IncidentResolution,
+    lessons: readonly string[],
+  ): readonly PostMortemActionItem[] {
+    const actionItems: PostMortemActionItem[] = [];
+
+    // Create action items from lessons learned
+    for (let i = 0; i < lessons.length; i++) {
+      const lesson = lessons[i]!;
+      actionItems.push({
+        actionId: `actionitem_${crypto.randomUUID()}`,
+        description: lesson,
+        owner: null,
+        dueInHours: i === 0 ? 168 : 720, // First item due in 1 week
+        priority: i === 0 ? "high" : i < 3 ? "medium" : "low",
+        status: "open",
+      });
+    }
+
+    // Add resolution-specific action items
+    if (resolution.strategy === "manual") {
+      actionItems.push({
+        actionId: `actionitem_${crypto.randomUUID()}`,
+        description: "Evaluate automation opportunities to prevent similar manual interventions",
+        owner: null,
+        dueInHours: 720,
+        priority: "medium",
+        status: "open",
+      });
+    }
+
+    return actionItems;
   }
 }

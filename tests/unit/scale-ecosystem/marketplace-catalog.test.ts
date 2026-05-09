@@ -4,6 +4,10 @@ import test from "node:test";
 import {
   sortMarketplaceCatalog,
   MarketplaceCatalogEntrySchema,
+  validateListingDependencies,
+  analyzeDependencyGraph,
+  calculateUpgradePathForEntry,
+  detectBreakingChanges,
   type MarketplaceCatalogEntry,
 } from "../../../src/scale-ecosystem/marketplace/catalog/index.js";
 
@@ -13,6 +17,13 @@ function createCatalogEntry(overrides: Partial<MarketplaceCatalogEntry> = {}): M
     title: overrides.title ?? "Test Listing",
     trustLevel: overrides.trustLevel ?? "community",
     lifecycleState: overrides.lifecycleState ?? "active",
+    version: overrides.version ?? "1.0.0",
+    dependencies: overrides.dependencies ?? [],
+    artifactType: overrides.artifactType ?? "pack",
+    compatibility: overrides.compatibility ?? {
+      minPlatformVersion: "0.0.0",
+      supportedArtifactTypes: [],
+    },
     qualityMetrics: overrides.qualityMetrics ?? {
       reliabilityScore: 0.8,
       usabilityScore: 0.8,
@@ -258,4 +269,71 @@ test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality 
   });
 
   assert.equal(result.success, true);
+});
+
+test("validateListingDependencies enforces semver version ranges", () => {
+  const listing = createCatalogEntry({
+    listingId: "parent",
+    version: "1.0.0",
+    dependencies: [
+      { listingId: "dep-a", versionRange: "^2.1.0", optional: false },
+    ],
+  });
+  const available = [
+    listing,
+    createCatalogEntry({
+      listingId: "dep-a",
+      version: "2.0.0",
+    }),
+  ];
+
+  const result = validateListingDependencies(listing, available);
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.versionMismatches, ["dep-a: need ^2.1.0, got 2.0.0"]);
+});
+
+test("analyzeDependencyGraph detects transitive dependency cycles", () => {
+  const root = createCatalogEntry({
+    listingId: "root",
+    version: "1.0.0",
+    dependencies: [{ listingId: "dep-a", versionRange: "^1.0.0", optional: false }],
+  });
+  const depA = createCatalogEntry({
+    listingId: "dep-a",
+    version: "1.0.0",
+    dependencies: [{ listingId: "dep-b", versionRange: "^1.0.0", optional: false }],
+  });
+  const depB = createCatalogEntry({
+    listingId: "dep-b",
+    version: "1.0.0",
+    dependencies: [{ listingId: "dep-a", versionRange: "^1.0.0", optional: false }],
+  });
+
+  const result = analyzeDependencyGraph(root, [root, depA, depB]);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.cycles.length, 1);
+  assert.deepEqual(result.cycles[0], ["dep-a", "dep-b", "dep-a"]);
+});
+
+test("calculateUpgradePathForEntry returns stepwise upgrade path and breaking-change flag", () => {
+  const listing = createCatalogEntry({
+    listingId: "upgrade-target",
+    version: "1.2.3",
+  });
+
+  const result = calculateUpgradePathForEntry(listing, "2.0.0");
+
+  assert.equal(result.listingId, "upgrade-target");
+  assert.equal(result.currentVersion, "1.2.3");
+  assert.equal(result.targetVersion, "2.0.0");
+  assert.equal(result.isBreaking, true);
+  assert.ok(result.path.length > 0);
+  assert.equal(result.path.at(-1), "2.0.0");
+});
+
+test("detectBreakingChanges distinguishes patch upgrades from major upgrades", () => {
+  assert.equal(detectBreakingChanges("1.2.3", "1.2.4"), false);
+  assert.equal(detectBreakingChanges("1.2.3", "2.0.0"), true);
 });

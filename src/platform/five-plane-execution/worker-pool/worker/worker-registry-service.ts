@@ -525,7 +525,7 @@ export class WorkerRegistryService {
       this.emitScaleSignal("scale_up", record.workerId, currentLoad, targetLoad, record, occurredAt);
     }
     // Scale down signal: low saturation and excess capacity
-    else if (saturation <= 0.3 && currentLoad <= 1 && record.activeLeaseCount <= 1) {
+    else if (saturation <= 0.3 && currentLoad <= 1 && normalizeNonNegativeInt(record.activeLeaseCount) <= 1) {
       this.emitScaleSignal("scale_down", record.workerId, currentLoad, targetLoad, record, occurredAt);
     }
 

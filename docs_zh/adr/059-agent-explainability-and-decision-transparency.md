@@ -14,7 +14,9 @@ EU AI Act 等法规要求 AI 决策可解释，平台需要提供决策透明度
 ```typescript
 interface DecisionRecord {
   decision_id: string;
-  agent_id: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphId: string;
   context: DecisionContext;
   reasoning: string;
   evidence: Evidence[];

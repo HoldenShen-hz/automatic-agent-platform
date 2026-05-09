@@ -3,6 +3,7 @@ export interface SdkVersionHandshakePolicy {
   readonly contractVersion: string;
   readonly minimumSdkVersion: string;
   readonly recommendedSdkVersion?: string;
+  readonly platformMinimumVersion?: string;
 }
 
 export interface SdkVersionHandshakeRequest {
@@ -23,10 +24,28 @@ export class SdkVersionHandshakeService {
   public evaluate(request: SdkVersionHandshakeRequest): SdkVersionHandshakeDecision {
     const sdkVersion = this.header(request.headers, "x-sdk-version");
     const contractVersion = this.header(request.headers, "x-contract-version");
+    const platformMinVersion = this.header(request.headers, "x-platform-min-version");
     const warnings: string[] = [];
 
     if (contractVersion != null && contractVersion !== this.policy.contractVersion) {
       warnings.push(`compatibility_warning:contract=${contractVersion};expected=${this.policy.contractVersion}`);
+    }
+
+    // R5-53: Validate platform minimum version compatibility
+    // R5-53 fix: Reject handshake if platform_min_version is below minimum, not just warn
+    if (platformMinVersion != null && this.policy.platformMinimumVersion != null) {
+      if (this.compareSemver(platformMinVersion, this.policy.platformMinimumVersion) < 0) {
+        return {
+          accepted: false,
+          statusCode: 426,
+          reasonCode: "sdk.upgrade_required",
+          responseHeaders: this.buildHeaders("upgrade_required"),
+          warnings: [
+            `compatibility_error:platform_min=${platformMinVersion};required=${this.policy.platformMinimumVersion}`,
+            ...warnings,
+          ],
+        };
+      }
     }
 
     if (sdkVersion == null || this.compareSemver(sdkVersion, this.policy.minimumSdkVersion) < 0) {

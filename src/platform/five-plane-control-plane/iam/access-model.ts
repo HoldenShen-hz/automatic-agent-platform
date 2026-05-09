@@ -128,6 +128,23 @@ const ROLE_CAPABILITY_MAP = {
   ],
 } as const satisfies Record<PlatformRole, readonly PlatformCapability[]>;
 
+/**
+ * R10-01: Role inheritance hierarchy.
+ * Roles can inherit capabilities from parent roles.
+ * Inheritance chain: role -> parent -> grandparent -> ... -> base role (with empty capabilities)
+ */
+const ROLE_INHERITANCE_HIERARCHY: Record<PlatformRole, PlatformRole | null> = {
+  viewer: null,                           // Base role, no parent
+  human_operator: "viewer",               // Inherits from viewer
+  approver: "viewer",                    // Inherits from viewer
+  platform_admin: null,                   // Top-level admin, no parent needed (has all)
+  agent_runtime: null,                    // Base agent role
+  service_operator: null,                 // Base service role
+  worker_runtime: null,                  // Base worker role
+  plugin_runtime: null,                   // Base plugin role
+  system_runtime: null,                   // Base system role
+};
+
 const DEFAULT_ROLES_BY_PRINCIPAL = {
   user: ["viewer"],
   agent: ["agent_runtime"],
@@ -165,21 +182,40 @@ export function defaultRolesForPrincipalType(principalType: PlatformPrincipalTyp
   return DEFAULT_ROLES_BY_PRINCIPAL[principalType];
 }
 
+/**
+ * R10-01: Resolves capabilities for a role, including inherited capabilities from parent roles.
+ */
 export function capabilitiesForRole(role: PlatformRole): readonly PlatformCapability[] {
-  return ROLE_CAPABILITY_MAP[role];
+  // Collect capabilities from inheritance chain
+  const capabilities = new Set<PlatformCapability>();
+  let currentRole: PlatformRole | null = role;
+
+  while (currentRole !== null) {
+    const roleCaps = ROLE_CAPABILITY_MAP[currentRole];
+    for (const cap of roleCaps) {
+      capabilities.add(cap);
+    }
+    currentRole = ROLE_INHERITANCE_HIERARCHY[currentRole];
+  }
+
+  return [...capabilities];
 }
 
 export function inferCapabilitiesForAction(action: AuthorizationAction): readonly PlatformCapability[] {
   return ACTION_CAPABILITY_MAP[action];
 }
 
+/**
+ * R10-01: Resolves principal access profile with hierarchical role inheritance.
+ */
 export function resolvePrincipalAccessProfile(input: {
   principalType: PlatformPrincipalType;
   roles?: readonly PlatformRole[];
   capabilities?: readonly PlatformCapability[];
 }): PrincipalAccessProfile {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
-  const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => ROLE_CAPABILITY_MAP[role]));
+  // R10-01: Use hierarchical capabilitiesForRole to resolve inherited capabilities
+  const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
   const capabilities = dedupeCapabilities(input.capabilities?.length ? input.capabilities : roleCapabilities);
   return {
     principalType: input.principalType,
@@ -188,11 +224,15 @@ export function resolvePrincipalAccessProfile(input: {
   };
 }
 
+/**
+ * R10-01: Checks if the given roles grant the required capabilities, considering hierarchical inheritance.
+ */
 export function roleGrantsCapabilities(
   roles: readonly PlatformRole[],
   requiredCapabilities: readonly PlatformCapability[],
 ): boolean {
-  const granted = new Set(roles.flatMap((role) => ROLE_CAPABILITY_MAP[role]));
+  // R10-01: Use hierarchical capabilitiesForRole to resolve inherited capabilities
+  const granted = new Set(roles.flatMap((role) => capabilitiesForRole(role)));
   return requiredCapabilities.every((capability) => granted.has(capability));
 }
 

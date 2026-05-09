@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+export type FingerprintWindowPreset = "1h" | "6h" | "24h" | "7d" | "30d" | "90d";
+
 export interface BehaviorFingerprintInput {
   agentId: string;
   subjectType?: string;
@@ -9,14 +11,35 @@ export interface BehaviorFingerprintInput {
   averageLatencyMs: number;
   averageCostUsd: number;
   avgStepCount?: number;
-  window?: {
-    readonly start: string;
-    readonly end: string;
-  };
+  /** Enumerated time window preset for fingerprinting. */
+  windowPreset?: FingerprintWindowPreset | null;
   toolUsageDistribution?: Readonly<Record<string, number>>;
   successRate?: number;
   riskDistribution?: Readonly<Record<"low" | "medium" | "high" | "critical", number>>;
   driftScore?: number;
+}
+
+/** Legacy free-form window - preserved for backward compatibility during transition. */
+export interface BehaviorFingerprintWindow {
+  readonly start: string;
+  readonly end: string;
+}
+
+function resolveWindowPreset(preset: FingerprintWindowPreset | null | undefined): string {
+  if (preset == null) {
+    return "none";
+  }
+  const now = new Date();
+  const past = new Date(now);
+  switch (preset) {
+    case "1h": past.setHours(past.getHours() - 1); break;
+    case "6h": past.setHours(past.getHours() - 6); break;
+    case "24h": past.setDate(past.getDate() - 1); break;
+    case "7d": past.setDate(past.getDate() - 7); break;
+    case "30d": past.setDate(past.getDate() - 30); break;
+    case "90d": past.setDate(past.getDate() - 90); break;
+  }
+  return `${past.toISOString()}:${now.toISOString()}:${preset}`;
 }
 
 export interface BehaviorFingerprint {
@@ -41,7 +64,7 @@ export class BehaviorFingerprintBuilder {
       `cost_bucket:${bucketCost(input.averageCostUsd)}`,
       `avg_step_count:${input.avgStepCount ?? 0}`,
       `step_count_bucket:${bucketStepCount(input.avgStepCount ?? 0)}`,
-      `window:${input.window?.start ?? "na"}:${input.window?.end ?? "na"}`,
+      `window:${resolveWindowPreset(input.windowPreset)}`,
       `tool_usage:${JSON.stringify(input.toolUsageDistribution ?? {})}`,
       `success_rate:${input.successRate ?? 0}`,
       `risk_distribution:${JSON.stringify(input.riskDistribution ?? {})}`,

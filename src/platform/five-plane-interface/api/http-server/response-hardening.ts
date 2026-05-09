@@ -10,12 +10,12 @@ export interface CorsConfig {
 }
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
-  allowedOrigins: ["*"],
+  allowedOrigins: [],
   allowedMethods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
   exposedHeaders: ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"],
   maxAgeSeconds: 86_400,
-  credentials: true,
+  credentials: false,
 };
 
 const DEFAULT_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
@@ -62,6 +62,10 @@ export function isOriginAllowed(origin: string | undefined, config: CorsConfig):
     return false;
   }
   if (config.allowedOrigins.includes("*")) {
+    // Wildcard origin is never allowed when credentials are enabled (security violation)
+    if (config.credentials) {
+      return false;
+    }
     return true;
   }
   return config.allowedOrigins.includes(origin.trim());

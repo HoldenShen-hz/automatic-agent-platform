@@ -43,6 +43,145 @@ export type {
 export { GatewayRateLimitError } from "./errors.js";
 
 /**
+ * Interface for channel adapters.
+ * R12-12: Pluggable adapter registry to support any channel protocol.
+ */
+export interface ChannelAdapter {
+  /** Unique channel identifier (e.g., "telegram", "slack", "custom") */
+  readonly channelType: string;
+  /** Sends a message through this channel */
+  sendMessage(input: {
+    targetId: string;
+    externalTargetId: string | null;
+    text: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<GatewayDeliveryReceipt>;
+  /** Checks if this adapter supports the given channel type */
+  supports(channel: string): boolean;
+}
+
+/**
+ * Registry for channel adapters.
+ * R12-12: Allows dynamic registration of new channel types.
+ */
+export class ChannelAdapterRegistry {
+  private readonly adapters = new Map<string, ChannelAdapter>();
+
+  /**
+   * Registers a channel adapter.
+   */
+  public register(adapter: ChannelAdapter): void {
+    this.adapters.set(adapter.channelType, adapter);
+  }
+
+  /**
+   * Gets an adapter for a channel type.
+   */
+  public get(channel: string): ChannelAdapter | null {
+    return this.adapters.get(channel) ?? null;
+  }
+
+  /**
+   * Gets all registered channel types.
+   */
+  public getChannelTypes(): string[] {
+    return Array.from(this.adapters.keys());
+  }
+
+  /**
+   * Checks if a channel type is supported.
+   */
+  public supports(channel: string): boolean {
+    return this.adapters.has(channel);
+  }
+}
+
+/**
+ * R12-12: Built-in adapter for Telegram channels.
+ */
+class TelegramChannelAdapter implements ChannelAdapter {
+  public readonly channelType = "telegram";
+
+  public constructor(
+    private readonly sendFn: (
+      targetId: string,
+      externalTargetId: string | null,
+      text: string,
+    ) => Promise<GatewayDeliveryReceipt>,
+  ) {}
+
+  public supports(channel: string): boolean {
+    return channel === "telegram";
+  }
+
+  public async sendMessage(input: {
+    targetId: string;
+    externalTargetId: string | null;
+    text: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<GatewayDeliveryReceipt> {
+    return this.sendFn(input.targetId, input.externalTargetId, input.text);
+  }
+}
+
+/**
+ * R12-12: Built-in adapter for Slack channels.
+ */
+class SlackChannelAdapter implements ChannelAdapter {
+  public readonly channelType = "slack";
+
+  public constructor(
+    private readonly sendFn: (
+      targetId: string,
+      externalTargetId: string | null,
+      text: string,
+    ) => Promise<GatewayDeliveryReceipt>,
+  ) {}
+
+  public supports(channel: string): boolean {
+    return channel === "slack";
+  }
+
+  public async sendMessage(input: {
+    targetId: string;
+    externalTargetId: string | null;
+    text: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<GatewayDeliveryReceipt> {
+    return this.sendFn(input.targetId, input.externalTargetId, input.text);
+  }
+}
+
+/**
+ * R12-12: Built-in adapter for Webhook channels.
+ */
+class WebhookChannelAdapter implements ChannelAdapter {
+  public readonly channelType = "webhook";
+
+  public constructor(
+    private readonly sendFn: (
+      targetId: string,
+      externalTargetId: string | null,
+      text: string,
+      metadata: Record<string, unknown>,
+    ) => Promise<GatewayDeliveryReceipt>,
+  ) {}
+
+  public supports(channel: string): boolean {
+    return channel === "webhook";
+  }
+
+  public async sendMessage(input: {
+    targetId: string;
+    externalTargetId: string | null;
+    text: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<GatewayDeliveryReceipt> {
+    return this.sendFn(input.targetId, input.externalTargetId, input.text, input.metadata ?? {});
+  }
+}
+
+/**
  * Central service for sending messages through channel gateways (Telegram, Slack, webhooks).
  *
  * This service handles:
@@ -61,6 +200,8 @@ export class ChannelGatewayService {
   private readonly circuitBreakerFailureThreshold: number;
   private readonly circuitBreakerResetMs: number;
   private readonly circuitBreakerState = new Map<string, { failureCount: number; openUntil: number | null }>();
+  // R12-12: Pluggable adapter registry
+  private readonly adapterRegistry: ChannelAdapterRegistry;
 
   public constructor(
     /** Storage port for target lookups */
@@ -69,6 +210,8 @@ export class ChannelGatewayService {
     private readonly targetDirectory: GatewayTargetDirectoryService,
     /** Optional configuration for channel gateways */
     private readonly options: ChannelGatewayServiceOptions = {},
+    /** Optional adapter registry for pluggable channel support */
+    adapterRegistry?: ChannelAdapterRegistry,
   ) {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.requestTimeoutMs = Math.max(
@@ -80,6 +223,37 @@ export class ChannelGatewayService {
     );
     this.circuitBreakerFailureThreshold = Math.max(1, Math.trunc(options.circuitBreakerFailureThreshold ?? 3));
     this.circuitBreakerResetMs = Math.max(1, Math.trunc(options.circuitBreakerResetMs ?? 30_000));
+    // R12-12: Initialize adapter registry with default adapters or provided one
+    this.adapterRegistry = adapterRegistry ?? this.createDefaultRegistry();
+  }
+
+  /**
+   * Creates the default adapter registry with built-in adapters.
+   * R12-12: This replaces the hardcoded switch statement.
+   */
+  private createDefaultRegistry(): ChannelAdapterRegistry {
+    const registry = new ChannelAdapterRegistry();
+
+    // R12-12: Register built-in adapters that delegate to internal methods
+    registry.register(new TelegramChannelAdapter(
+      (targetId, externalTargetId, text) => this.sendTelegramMessage(targetId, externalTargetId, text)
+    ));
+    registry.register(new SlackChannelAdapter(
+      (targetId, externalTargetId, text) => this.sendSlackMessage(targetId, externalTargetId, text)
+    ));
+    registry.register(new WebhookChannelAdapter(
+      (targetId, externalTargetId, text, metadata) => this.sendWebhookMessage(targetId, externalTargetId, text, metadata)
+    ));
+
+    return registry;
+  }
+
+  /**
+   * Gets the adapter registry for custom adapter registration.
+   * R12-12: Allows external code to register additional adapters.
+   */
+  public getAdapterRegistry(): ChannelAdapterRegistry {
+    return this.adapterRegistry;
   }
 
   /**
@@ -407,6 +581,7 @@ export class ChannelGatewayService {
 
   /**
    * Routes delivery to the appropriate channel-specific method.
+   * R12-12: Uses adapter registry for pluggable channel support.
    *
    * @param input - Delivery input with channel, target, and message details
    * @returns Delivery receipt from the channel provider
@@ -419,6 +594,18 @@ export class ChannelGatewayService {
     metadata?: Record<string, unknown>;
   }): Promise<GatewayDeliveryReceipt> {
     return this.executeProtectedDelivery(input.channel, async () => {
+      // R12-12: Try adapter registry first for pluggable adapters
+      const adapter = this.adapterRegistry.get(input.channel);
+      if (adapter) {
+        return adapter.sendMessage({
+          targetId: input.targetId,
+          externalTargetId: input.externalTargetId,
+          text: input.text,
+          metadata: input.metadata ?? {},
+        });
+      }
+
+      // Fall back to built-in adapters for backward compatibility
       switch (input.channel) {
         case "telegram":
           return this.sendTelegramMessage(input.targetId, input.externalTargetId, input.text);

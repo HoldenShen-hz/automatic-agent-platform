@@ -326,12 +326,15 @@ test("buildCapabilityEntry throws for unknown domain", () => {
 
 test("activate throws when smoke test fails", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({
-    domainId: "smoke_fail",
-    status: "registered",
-    // no workflows — smoke test will fail
-    workflows: [],
-  }));
+  service.register(
+    makeMinimalDefinition({
+      domainId: "smoke_fail",
+      status: "registered",
+      // no workflows — smoke test will fail
+      workflows: [],
+    }),
+    { skipSmokeTest: true },
+  );
 
   assert.throws(() => service.activate("smoke_fail"), (err: unknown) => {
     return err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed";

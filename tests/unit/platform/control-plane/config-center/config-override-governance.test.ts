@@ -229,6 +229,8 @@ test("ConfigOverrideGovernanceService records override in audit log", () => {
   const record = service.recordOverride(attempt);
   assert.equal(record.allowed, true);
   assert.equal(record.path, "runtime.timeout");
+  assert.equal(record.auditRequired, false);
+  assert.equal(typeof record.auditDigest, "string");
   assert.equal(auditLog.size(), 1);
 });
 
@@ -246,6 +248,8 @@ test("ConfigOverrideGovernanceService records denied override in audit log", () 
 
   const record = service.recordOverride(attempt);
   assert.equal(record.allowed, false);
+  assert.equal(record.auditRequired, true);
+  assert.equal(record.auditDigest?.length, 64);
   assert.equal(auditLog.size(), 1);
 });
 

@@ -29,7 +29,7 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 | Action 类型 | 说明 |
 |-------------|------|
-| create_task | 创建任务 |
+| create_task | 创建任务（必须经过 intake pipeline） |
 | create_goal | 创建目标 |
 | suggest_to_user | 向用户建议 |
 | update_dashboard | 更新看板 |

@@ -175,9 +175,9 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: false,
-      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
-      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
-      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      traceId: request.traceId ?? "",
+      tenantId: request.tenantId ?? null,
+      costTag: request.costTag ?? "",
       ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
@@ -206,9 +206,9 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: true,
-      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
-      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
-      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      traceId: request.traceId ?? "",
+      tenantId: request.tenantId ?? null,
+      costTag: request.costTag ?? "",
       ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
@@ -319,6 +319,7 @@ export class ModelCallProviderService {
       maxTaskCostUsd: 10,
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
+      maxPlatformCostUsd: 0,
       warnAtRatio: 0.8,
       mode: "auto",
     };

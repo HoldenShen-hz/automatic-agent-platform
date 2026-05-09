@@ -26,6 +26,7 @@ import {
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError } from "../../contracts/errors.js";
+import { DlqService, type FailureCategory } from "../../state-evidence/events/dlq-service.js";
 import {
   AFFINITY_SELECTION_BONUS,
   buildDispatchAgentExecutionRecord,
@@ -67,6 +68,10 @@ export class ExecutionDispatchService {
   private readonly leases: ExecutionLeaseService;
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
+  // R9-10 fix: Reuse single HealthService instance instead of creating per-ticket O(n) scan
+  private readonly healthService: HealthService;
+  // R6-6: DLQ service for dead-letter queue integration
+  private readonly dlqService: DlqService;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -76,6 +81,12 @@ export class ExecutionDispatchService {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
+    // R9-10 fix: Initialize HealthService once instead of per-ticket
+    this.healthService = new HealthService(this.db, this.store, {
+      ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
+    });
+    // R6-6: Initialize DLQ service for backpressure rejection handling
+    this.dlqService = new DlqService();
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
@@ -344,10 +355,7 @@ export class ExecutionDispatchService {
       const requiredRepoVersion = resolveRequiredRepoVersion(ticket.requiredRepoVersion);
       const backpressure =
         this.backpressureSnapshot?.() ??
-        new HealthService(this.db, this.store, {
-          ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
-          nowMsSupplier: () => Date.parse(occurredAt),
-        }).getReport();
+        this.healthService.getReport();
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;
@@ -372,6 +380,30 @@ export class ExecutionDispatchService {
             status: "cancelled",
             invalidatedAt: occurredAt,
           });
+          // R6-6: Enqueue to DLQ for retry or manual intervention
+          const execution = this.store.dispatch.getExecution(ticket.executionId);
+          const dlqRecord = this.dlqService.enqueue({
+            sourceEventId: ticket.id,
+            eventType: "dispatch:backpressure_rejected",
+            consumerId: ticket.queueName ?? "dispatch",
+            errorCode: blockedByBackpressure ?? "backpressure_rejected",
+            errorMessage: `Ticket ${ticket.id} rejected due to backpressure: ${blockedByBackpressure}`,
+            payloadJson: JSON.stringify({
+              ticketId: ticket.id,
+              executionId: ticket.executionId,
+              taskId: ticket.taskId,
+              priority: ticket.priority,
+              riskClass: ticket.riskClass,
+              tenantId: ticket.tenantId,
+              queueName: ticket.queueName,
+              reasonCode: blockedByBackpressure,
+              backpressureSnapshot: backpressure,
+              traceId: execution?.traceId ?? null,
+            }),
+            originalTimestamp: ticket.createdAt,
+            failureCategory: this.categorizeFailure(blockedByBackpressure),
+            reason: `Backpressure rejection: ${blockedByBackpressure}`,
+          });
           this.store.event.insertEvent({
             id: newId("evt"),
             taskId: ticket.taskId,
@@ -387,8 +419,9 @@ export class ExecutionDispatchService {
               riskClass: ticket.riskClass,
               reasonCode: blockedByBackpressure,
               backpressureSnapshot: backpressure,
+              dlqEntryId: dlqRecord.deadLetterId,
             }),
-            traceId: this.store.dispatch.getExecution(ticket.executionId)?.traceId ?? null,
+            traceId: execution?.traceId ?? null,
             createdAt: occurredAt,
           });
         });
@@ -622,6 +655,14 @@ export class ExecutionDispatchService {
         : [this.workers.getWorker(options.preferredWorkerId)].filter((worker): worker is RegisteredWorkerView => worker != null);
 
     return candidates.map((worker) => {
+        // R6-10: Check heartbeat staleness - reject workers with stale heartbeats
+        const now = nowIso();
+        const heartbeatStalenessThresholdMs = 300_000; // 5 minutes default
+        const lastHeartbeatAgeMs = Date.parse(now) - Date.parse(worker.lastHeartbeatAt);
+        if (lastHeartbeatAgeMs > heartbeatStalenessThresholdMs) {
+          return this.toWorkerEvaluation(worker, false, "worker_unavailable", []);
+        }
+
         if (dispatchTarget === "local_only" && worker.placement === "remote") {
           return this.toWorkerEvaluation(worker, false, "worker_placement_mismatch", []);
         }
@@ -880,6 +921,20 @@ export class ExecutionDispatchService {
     });
 
     return trace;
+  }
+
+  /**
+   * R6-6: Categorize backpressure failure for DLQ classification.
+   * Maps backpressure reason codes to failure categories for triage.
+   */
+  private categorizeFailure(reasonCode: string | null): FailureCategory {
+    if (reasonCode == null) return "unknown";
+    if (reasonCode.includes("read_only_mode")) return "configuration";
+    if (reasonCode.includes("pause_non_critical")) return "transient";
+    if (reasonCode.includes("starvation_protection")) return "resource";
+    if (reasonCode.includes("queue_only")) return "transient";
+    if (reasonCode.includes("budget")) return "resource";
+    return "unknown";
   }
 
   private upsertAgentExecutionRecord(

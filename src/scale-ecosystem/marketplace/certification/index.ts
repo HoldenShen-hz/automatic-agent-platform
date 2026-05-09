@@ -1,16 +1,159 @@
 import { z } from "zod";
 
+/**
+ * Extended lifecycle states for marketplace certifications including sunset and threshold-based states.
+ */
+export const CertificationStatusSchema = z.enum([
+  "pending",
+  "reviewing",
+  "under_review",
+  "published",
+  "suspended",
+  "approved",
+  "rejected",
+  "revoked",
+  "expired",
+  "sunset",
+  "degraded",
+]);
+export type CertificationStatus = z.infer<typeof CertificationStatusSchema>;
+
+/**
+ * Certification health score thresholds for determining certification status.
+ */
+export interface CertificationHealthThresholds {
+  minHealthScore: number;
+  maxFindingsAllowed: number;
+  minReviewIntervalDays: number;
+}
+
+export const DEFAULT_HEALTH_THRESHOLDS: CertificationHealthThresholds = {
+  minHealthScore: 0.7,
+  maxFindingsAllowed: 5,
+  minReviewIntervalDays: 90,
+};
+
 export const CertificationRecordSchema = z.object({
   listingId: z.string().min(1),
   certificationId: z.string().min(1),
-  status: z.enum(["pending", "approved", "revoked"]),
+  status: CertificationStatusSchema,
   approvedAt: z.string().nullable().default(null),
+  /** Health score [0-1] based on security scan, review recency, and compliance history. */
+  healthScore: z.number().min(0).max(1).default(1.0),
+  /** Timestamp when certification sun-setting begins (must be renewed before this date). */
+  sunsetAt: z.string().nullable().default(null),
+  /** Timestamp when certification expires and becomes invalid. */
+  expiresAt: z.string().nullable().default(null),
+  /** Last review timestamp for interval-based re-certification checks. */
+  lastReviewedAt: z.string().nullable().default(null),
+  /** Number of active findings against this certification. */
+  activeFindings: z.number().int().nonnegative().default(0),
 });
 
 export type CertificationRecord = z.infer<typeof CertificationRecordSchema>;
 
+/**
+ * Determines if a listing is certified based on full certification record including health score,
+ * sunset/ expiration dates, and findings count.
+ */
 export function isMarketplaceListingCertified(record: CertificationRecord): boolean {
-  return record.status === "approved";
+  if (record.status !== "approved") {
+    return false;
+  }
+  const now = new Date();
+
+  // Check if expired
+  if (record.expiresAt != null && new Date(record.expiresAt) < now) {
+    return false;
+  }
+
+  // Check if sunset (should be renewed)
+  if (record.sunsetAt != null && new Date(record.sunsetAt) < now) {
+    return false;
+  }
+
+  // Check health thresholds
+  const thresholds = DEFAULT_HEALTH_THRESHOLDS;
+  if (record.healthScore < thresholds.minHealthScore) {
+    return false;
+  }
+  if (record.activeFindings > thresholds.maxFindingsAllowed) {
+    return false;
+  }
+
+  // Check if re-review is overdue
+  if (record.lastReviewedAt != null) {
+    const lastReviewed = new Date(record.lastReviewedAt);
+    const daysSinceReview = (now.getTime() - lastReviewed.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceReview > thresholds.minReviewIntervalDays) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Returns the detailed certification status including sunset/degraded state.
+ */
+export function getCertificationHealthStatus(record: CertificationRecord): {
+  status: CertificationStatus;
+  isValid: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+  const now = new Date();
+
+  if (record.status === "revoked" || record.status === "rejected") {
+    reasons.push(`Certification status is ${record.status}`);
+    return { status: record.status, isValid: false, reasons };
+  }
+
+  if (record.status === "expired") {
+    reasons.push("Certification has expired");
+    return { status: record.status, isValid: false, reasons };
+  }
+
+  if (record.status === "sunset") {
+    reasons.push("Certification is in sunset period and requires renewal");
+    return { status: record.status, isValid: false, reasons };
+  }
+
+  if (record.expiresAt != null && new Date(record.expiresAt) < now) {
+    reasons.push(`Certification expired at ${record.expiresAt}`);
+    return { status: "expired", isValid: false, reasons };
+  }
+
+  if (record.sunsetAt != null && new Date(record.sunsetAt) < now) {
+    reasons.push(`Certification sunset at ${record.sunsetAt} - renewal required`);
+    return { status: "sunset", isValid: false, reasons };
+  }
+
+  const thresholds = DEFAULT_HEALTH_THRESHOLDS;
+  if (record.healthScore < thresholds.minHealthScore) {
+    reasons.push(`Health score ${record.healthScore.toFixed(2)} below threshold ${thresholds.minHealthScore}`);
+  }
+  if (record.activeFindings > thresholds.maxFindingsAllowed) {
+    reasons.push(`Active findings ${record.activeFindings} exceed limit ${thresholds.maxFindingsAllowed}`);
+  }
+
+  if (record.lastReviewedAt != null) {
+    const lastReviewed = new Date(record.lastReviewedAt);
+    const daysSinceReview = (now.getTime() - lastReviewed.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceReview > thresholds.minReviewIntervalDays) {
+      reasons.push(`Review overdue: ${Math.floor(daysSinceReview)} days since last review`);
+    }
+  }
+
+  const isDegraded = record.healthScore < thresholds.minHealthScore
+    || record.activeFindings > thresholds.maxFindingsAllowed
+    || (record.lastReviewedAt != null && (now.getTime() - new Date(record.lastReviewedAt).getTime()) / (1000 * 60 * 60 * 24) > thresholds.minReviewIntervalDays * 0.8);
+
+  return {
+    status: isDegraded ? "degraded" : record.status,
+    isValid: reasons.length === 0,
+    reasons,
+  };
 }
 
 // Agent and Pack certification types

@@ -4,7 +4,10 @@ import test from "node:test";
 import {
   InteractionTemplateSchema,
   applyInteractionTemplate,
+  instantiateTemplate,
+  recommendTemplatesForDomain,
   type InteractionTemplate,
+  validateTemplateForDomain,
 } from "../../../../src/interaction/ux/template-engine/index.js";
 
 test("InteractionTemplateSchema validates correct template", () => {
@@ -121,4 +124,88 @@ test("InteractionTemplate type is correctly inferred", () => {
   assert.equal(template.templateId, "tpl_test");
   assert.equal(template.title, "Inferred Template");
   assert.equal(template.steps.length, 3);
+});
+
+test("template engine persists domainId riskProfile and version metadata", () => {
+  const result = InteractionTemplateSchema.parse({
+    templateId: "tpl_domain",
+    title: "Domain Template",
+    domainId: "finance",
+    riskProfile: "high",
+    version: "2026.05",
+    steps: ["capture_invoice"],
+  });
+
+  assert.equal(result.domainId, "finance");
+  assert.equal(result.riskProfile, "high");
+  assert.equal(result.version, "2026.05");
+});
+
+test("validateTemplateForDomain rejects missing capabilities and domain mismatch", () => {
+  const template: InteractionTemplate = {
+    templateId: "tpl_finance",
+    title: "Finance",
+    domainId: "finance",
+    requiredCapabilities: ["invoice.write"],
+    steps: ["invoice_step"],
+  };
+
+  const result = validateTemplateForDomain(template, "hr", ["employee.read"]);
+
+  assert.equal(result.compatible, false);
+  assert.deepEqual(result.missingCapabilities, ["invoice.write"]);
+});
+
+test("recommendTemplatesForDomain ranks domain and risk aligned templates higher", () => {
+  const templates: InteractionTemplate[] = [
+    {
+      templateId: "tpl_finance_high",
+      title: "Finance High",
+      domainId: "finance",
+      riskProfile: "high",
+      requiredCapabilities: ["invoice.write"],
+      catalogTags: ["payables"],
+      steps: ["invoice_step"],
+    },
+    {
+      templateId: "tpl_general",
+      title: "General",
+      catalogTags: ["ops"],
+      steps: ["general_step"],
+    },
+  ];
+
+  const recommendations = recommendTemplatesForDomain(templates, {
+    domainId: "finance",
+    desiredRiskProfile: "high",
+    desiredTags: ["payables"],
+    availableCapabilities: ["invoice.write"],
+  });
+
+  assert.equal(recommendations[0]?.templateId, "tpl_finance_high");
+  assert.ok(recommendations[0]?.reasons.includes("domain_match"));
+  assert.ok(recommendations[0]?.reasons.includes("risk_profile_match"));
+});
+
+test("instantiateTemplate binds structured steps and required parameters", () => {
+  const result = instantiateTemplate({
+    templateId: "tpl_bind",
+    title: "Bind",
+    parameters: [{
+      name: "region",
+      label: "Region",
+      type: "string",
+      required: true,
+    }],
+    steps: [{
+      stepId: "step_capture",
+      inputMappings: { region: "{{region}}" },
+      outputMappings: {},
+    }],
+  }, {
+    region: "cn-east",
+  });
+
+  assert.deepEqual(result.boundSteps, ["step_capture"]);
+  assert.equal(result.parameterValues.region, "cn-east");
 });

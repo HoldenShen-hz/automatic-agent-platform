@@ -78,9 +78,58 @@ queued -> pending -> in_progress -> done
 - `awaiting_decision` 只用于等待外部审批/人工输入，不替代普通 pause。
 - `done`、`failed`、`cancelled` 为终态，终态后只能通过新建恢复任务进入新生命周期。
 
-## 3. WorkflowStatus（legacy projection）
+## 3. HarnessRunStatus（v4.3 canonical run status, 13态）
 
-枚举：
+> 注意：本文档原用 `WorkflowStatus` 作为 run 状态枚举。v4.3 canonical run 状态以 `HarnessRun.status`（13态）为准。`WorkflowStatus` 仅保留为旧 workflow 投影视图，不应再作为 authoritative run 状态。
+
+`HarnessRunStatus` 枚举（13态）：
+
+- `created`
+- `admitted`
+- `planning`
+- `ready`
+- `running`
+- `pausing`
+- `paused`
+- `resuming`
+- `replanning`
+- `compensating`
+- `completed`
+- `failed`
+- `aborted`
+
+终态：`completed`、`failed`、`aborted`。终态不可迁出。
+
+允许跃迁：
+
+- `created -> admitted`
+- `admitted -> planning`
+- `planning -> ready`
+- `ready -> running`
+- `running -> pausing`
+- `running -> replanning`
+- `running -> compensating`
+- `running -> completed`
+- `running -> failed`
+- `running -> aborted`
+- `pausing -> paused`
+- `paused -> resuming`
+- `resuming -> running`
+- `replanning -> running`
+- `compensating -> running`
+- `paused -> aborted`
+
+约束：
+
+- `paused` 必须伴随可恢复原因，例如审批等待、人工输入等待、外部依赖等待。
+- `resuming` 仅作为短暂中间态，用于恢复前的状态修复和 preflight 检查。
+- `replanning` / `compensating` 为 OAPEFLIR 期间的活跃运行态，不是独立终态。
+- `HarnessRunStatus` 是 v4.3 truth run 状态；旧 `WorkflowStatus` / `TaskStatus` 只作为 legacy projection。
+- 具体闭环阶段进度由 `current_stage + StageStatus` 表达，不得把二者混成一个字段。
+
+### 3A. Legacy WorkflowStatus（deprecated projection）
+
+以下枚举仅保留为历史 workflow 读模型投影，不应用于新实现入口：
 
 - `created`
 - `admitted`
@@ -100,37 +149,10 @@ queued -> pending -> in_progress -> done
 - `timed_out`
 - `aborted`
 
-允许跃迁：
+规则：
 
-- `created -> admitted`
-- `admitted -> planning`
-- `planning -> ready`
-- `ready -> running`
-- `running -> replanning`
-- `running -> compensating`
-- `running -> pausing`
-- `running -> completing`
-- `replanning -> running`
-- `compensating -> running`
-- `pausing -> paused`
-- `paused -> resuming`
-- `resuming -> running`
-- `completing -> completed`
-- `running -> failed`
-- `running -> cancelling`
-- `cancelling -> cancelled`
-- `running -> timed_out`
-- `running -> aborted`
-- `paused -> aborted`
-
-约束：
-
-- `completed`、`failed`、`cancelled`、`timed_out` 为终态。
-- `paused` 必须伴随可恢复原因，例如审批等待、人工输入等待、外部依赖等待。
-- `resuming` 仅作为短暂中间态，用于恢复前的状态修复和 preflight 检查。
-- `replanning` / `compensating` 为 OAPEFLIR 期间的活跃运行态，不是独立终态。
-- `WorkflowStatus` 只允许作为历史 workflow projection；v4.3 truth run 状态以 `HarnessRun.status` 为准。
-- 具体闭环阶段进度由 `current_stage + StageStatus` 表达，不得把二者混成一个字段。
+- `completing / cancelling / timed_out` 是旧 workflow 特有状态，在 v4.3 HarnessRun 中不存在对应状态。
+- 所有 legacy 状态仅作为 read model / migration input，不得作为新实现的 authoritative 状态。
 
 ## 4. SessionStatus
 
@@ -188,14 +210,16 @@ queued -> pending -> in_progress -> done
 - `approved` / `rejected` 决策只允许生效一次。
 - 新请求替代旧请求时，旧请求必须写成 `superseded`，不能静默覆盖。
 
-## 6. ExecutionStatus（legacy execution projection）
+## 6. NodeRunStatus（canonical execution truth per v4.3）
 
-> 注意：`ExecutionStatus` 只保留为旧 `executions` 投影视图与迁移说明；新实现入口不得再把它作为权威执行状态枚举。v4.3 truth 执行状态以 `NodeRun.status`（14态）为准。
+> 注意：本文档原先使用 `ExecutionStatus` 作为执行状态枚举。v4.3 canonical 执行状态以 `NodeRun.status`（14态）为准。`ExecutionStatus` 仅保留为旧 `executions` 投影视图与迁移说明；新实现不得再把它作为权威执行状态枚举。
 
-枚举：
+`NodeRunStatus` 枚举（14态）：
 
 - `created`
+- `blocked`
 - `ready`
+- `queued`
 - `leased`
 - `running`
 - `retry_wait`
@@ -205,13 +229,14 @@ queued -> pending -> in_progress -> done
 - `failed`
 - `skipped`
 - `cancelled`
-- `dependency_failed`
-- `policy_blocked`
 - `aborted`
+
+终态：`succeeded`、`failed`、`skipped`、`cancelled`、`aborted`。
 
 允许跃迁：
 
-- `created -> ready`
+- `created -> queued`
+- `queued -> ready`
 - `ready -> leased`
 - `leased -> running`
 - `running -> retry_wait`
@@ -221,30 +246,27 @@ queued -> pending -> in_progress -> done
 - `running -> failed`
 - `running -> skipped`
 - `running -> cancelled`
-- `running -> dependency_failed`
-- `running -> policy_blocked`
 - `running -> aborted`
-- `retry_wait -> running`
+- `retry_wait -> ready`
 - `retry_wait -> failed`
 - `awaiting_hitl -> running`
 - `awaiting_hitl -> failed`
 - `reconciling -> succeeded`
 - `reconciling -> failed`
+- `blocked -> ready`（依赖满足时）
 - `skipped -> aborted`
 - `cancelled -> aborted`
-- `dependency_failed -> aborted`
-- `policy_blocked -> aborted`
 
 约束：
 
-- `retry_wait` 是正式运行态的一部分，用于重试等待期。
+- `retry_wait` 是正式运行态的一部分，用于重试等待期，必须记录 `wakeAt`、`retryPolicyRef`、`attemptId` 和 backoff reason。
 - `awaiting_hitl` 必须伴随明确原因，例如 `approval_required`、`human_input_required`。
 - `reconciling` 用于协调 side effect 和补偿逻辑。
-- `dependency_failed` 表示上游依赖节点失败导致本节点不可执行。
-- `policy_blocked` 表示策略引擎阻止了执行。
-- 重试语义通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入终态。
-- `succeeded`、`failed`、`cancelled`、`timed_out`、`aborted` 为终态。
-- v4.3 truth 执行状态以 `NodeRun.status` 和 `NodeAttemptReceipt` append-only 回执为准，`ExecutionStatus` 不得反向驱动运行时合法性判断。
+- `blocked` 表示因上游依赖未满足而不可执行，不得伪装成 `queued` 或 `ready`。
+- `queued` 表示已进入调度队列等待调度器挑选，区别于 `blocked`（依赖未满足）。
+- 重试语义通过创建新的 `NodeAttempt`（递增 `attemptNo` 字段）实现，不得更新旧 `NodeRun` 状态。
+- `succeeded`、`failed`、`skipped`、`cancelled`、`aborted` 为终态，终态不可迁出。
+- v4.3 truth 执行状态以 `NodeRunStatus` 和 `NodeAttemptReceipt` append-only 回执为准，旧 `ExecutionStatus` 不得反向驱动运行时合法性判断。
 
 ## 7. 跨状态一致性约束
 
@@ -275,6 +297,6 @@ queued -> pending -> in_progress -> done
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-1: ExecutionStatus 用 running/paused/cancelled/completed/failed 5态，架构 NodeRun 用 pending/ready/running/blocked/succeeded/failed/skipped/cancelled/timed_out 9态；WorkflowStatus 6态 vs HarnessRun 13态。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-1: 原 ExecutionStatus 用 13态但缺 `blocked/queued`，且以旧名称 `ExecutionStatus` 替代 `NodeRun.status`；WorkflowStatus 17态（含 `completing/cancelling/timed_out`）vs HarnessRun 13态。修复：§6 重命名 ExecutionStatus → NodeRunStatus，补齐 14 态（`created/blocked/ready/queued/leased/running/retry_wait/awaiting_hitl/reconciling/succeeded/failed/skipped/cancelled/aborted`）；§3 明确 HarnessRunStatus 为 v4.3 canonical 13态 run 状态，原 WorkflowStatus 降为 legacy projection。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

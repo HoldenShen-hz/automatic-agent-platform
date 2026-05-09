@@ -95,6 +95,42 @@ const RECENT_WINDOW_HOURS = 3;
  */
 const DRIFT_THRESHOLD_RELATIVE = -0.10;
 
+/**
+ * ChangepointDetectorConfig - per-window-type detection thresholds.
+ * Supports multiple window types with independent thresholds.
+ */
+export const DRIFT_DETECTION_WINDOWS: Record<DriftWindowType, {
+  baselineHours: number;
+  recentHours: number;
+  defaultThreshold: number;
+  severityThresholds: { low: number; medium: number; high: number };
+}> = {
+  "1h": {
+    baselineHours: 1,
+    recentHours: 15,       // 15min baseline vs 5min recent
+    defaultThreshold: -0.05,
+    severityThresholds: { low: -0.05, medium: -0.10, high: -0.20 },
+  },
+  "6h": {
+    baselineHours: 6,
+    recentHours: 1,        // 6h baseline vs 1h recent
+    defaultThreshold: -0.08,
+    severityThresholds: { low: -0.08, medium: -0.15, high: -0.25 },
+  },
+  "24h": {
+    baselineHours: 24,
+    recentHours: 3,        // 24h baseline vs 3h recent
+    defaultThreshold: -0.10,
+    severityThresholds: { low: -0.10, medium: -0.15, high: -0.25 },
+  },
+  "7d": {
+    baselineHours: 168,   // 7 days
+    recentHours: 24,       // 24h recent window
+    defaultThreshold: -0.12,
+    severityThresholds: { low: -0.12, medium: -0.20, high: -0.30 },
+  },
+};
+
 export class ChangepointDetectorService {
   private readonly config: DriftDetectorConfig;
   private lastAlertSampleIndex: number | null = null;
@@ -124,17 +160,41 @@ export class ChangepointDetectorService {
   }
 
   /**
-   * Detects changepoints using 24h sliding window and -10% relative threshold.
+   * Detects changepoints across multiple window types.
+   * Returns results for all configured windows (1h, 6h, 24h, 7d).
    *
    * @param samples Time-ordered drift samples (oldest first)
-   * @param baselineWindow Number of samples for baseline (default 24 for 24h)
-   * @param recentWindow Number of samples for recent window (default 3)
+   * @param windowTypes Which windows to evaluate (defaults to all)
+   * @returns ChangepointDetectionResult[] with results per window
+   */
+  public detectAll(samples: DriftSample[], windowTypes: DriftWindowType[] = ["1h", "6h", "24h", "7d"]): readonly ChangepointDetectionResult[] {
+    const results: ChangepointDetectionResult[] = [];
+    for (const windowType of windowTypes) {
+      const windowConfig = DRIFT_DETECTION_WINDOWS[windowType];
+      const baselineSamples = Math.floor(windowConfig.baselineHours * this.config.samplesPerHour);
+      const recentSamples = Math.floor(windowConfig.recentHours * this.config.samplesPerHour);
+      const result = this.detect(samples, baselineSamples, recentSamples, windowType, windowConfig.defaultThreshold);
+      results.push(result);
+    }
+    return results;
+  }
+
+  /**
+   * Detects changepoints using configured window parameters.
+   *
+   * @param samples Time-ordered drift samples (oldest first)
+   * @param baselineWindow Number of samples for baseline
+   * @param recentWindow Number of samples for recent window
+   * @param windowType Window type for severity thresholds
+   * @param threshold Override detection threshold
    * @returns ChangepointDetectionResult with SEV3 severity if drift detected
    */
   public detect(
     samples: DriftSample[],
     baselineWindow: number = BASELINE_WINDOW_HOURS,
     recentWindow: number = RECENT_WINDOW_HOURS,
+    windowType: DriftWindowType = "24h",
+    threshold: number = DRIFT_THRESHOLD_RELATIVE,
   ): ChangepointDetectionResult {
     const effectiveBaselineWindow = Math.min(baselineWindow, Math.max(samples.length - recentWindow, 0));
     const baseline = samples.slice(0, effectiveBaselineWindow);
@@ -157,9 +217,6 @@ export class ChangepointDetectorService {
       };
     }
 
-    // Fall back to the available pre-recent history when the full baseline window
-    // is not available yet, but still require at least one full recent window of
-    // baseline samples so comparisons are not made against a trivially small set.
     if (baseline.length < recentWindow || samples.length < Math.max(this.config.minSampleSize, recentWindow + 1)) {
       return {
         detected: false,
@@ -182,10 +239,10 @@ export class ChangepointDetectorService {
     const absoluteShift = recentMean - baselineMean;
     const relativeShift = baselineMean !== 0 ? absoluteShift / baselineMean : 0;
 
-    // §17: Detect -10% change (negative relative shift indicates performance degradation)
-    // Use <= with epsilon to handle floating point precision errors
+    // Detect using window-specific threshold
+    const windowConfig = DRIFT_DETECTION_WINDOWS[windowType];
     const EPSILON = 1e-9;
-    const detected = relativeShift <= DRIFT_THRESHOLD_RELATIVE + EPSILON;
+    const detected = relativeShift <= (threshold ?? windowConfig.defaultThreshold) + EPSILON;
 
     const suppressedByWindow = detected
       && this.lastAlertSampleIndex != null
@@ -196,9 +253,9 @@ export class ChangepointDetectorService {
     }
     const severity = !finalDetected
       ? "none"
-      : relativeShift <= -0.25
+      : relativeShift <= windowConfig.severityThresholds.high
         ? "high"
-        : relativeShift <= -0.15
+        : relativeShift <= windowConfig.severityThresholds.medium
           ? "medium"
           : "low";
     return {
@@ -212,9 +269,9 @@ export class ChangepointDetectorService {
         : finalDetected ? "drift.changepoint_detected" : "drift.stable",
       severity,
       recommendedAction: severity === "high"
-        ? relativeShift <= -0.35 ? "freeze" : "rollback"
+        ? relativeShift <= windowConfig.severityThresholds.high - 0.10 ? "freeze" : "rollback"
         : severity === "medium"
-          ? relativeShift <= -0.20 ? "downgrade" : "throttle"
+          ? relativeShift <= (windowConfig.severityThresholds.medium - 0.05) ? "downgrade" : "throttle"
           : severity === "low"
             ? "observe"
             : "none",
@@ -223,16 +280,6 @@ export class ChangepointDetectorService {
       distributionAssumption: this.config.distributionAssumption,
       falsePositiveRate: this.config.falsePositiveRate,
     };
-  }
-
-  /**
-   * Batch detection across multiple sample windows.
-   * Returns results for all windows configured in DriftDetectorConfig.
-   */
-  public detectAll(samples: DriftSample[]): readonly ChangepointDetectionResult[] {
-    // Use default single-window detection as fallback
-    // The DriftDetectorConfig is used by DriftDetectorService to configure multi-window analysis
-    return [this.detect(samples)];
   }
 
   public buildResponsePlan(input: {

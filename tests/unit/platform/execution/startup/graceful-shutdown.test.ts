@@ -239,6 +239,31 @@ test("GracefulShutdown - shutdown reports failures", async () => {
   shutdown.reset();
 });
 
+test("GracefulShutdown - aborts timed out handlers to avoid zombie async work", async () => {
+  let aborted = false;
+  const shutdown = new GracefulShutdown({
+    registerSignalHandlers: false,
+    timeoutMs: 20,
+  });
+
+  shutdown.addHandler({
+    name: "slow-handler",
+    handler: async (signal) => new Promise<void>((resolve) => {
+      signal?.addEventListener("abort", () => {
+        aborted = true;
+        resolve();
+      }, { once: true });
+    }),
+  });
+
+  const result = await shutdown.shutdown();
+
+  assert.equal(result.success, false);
+  assert.equal(aborted, true);
+  assert.ok(result.errors.some((error) => error.includes("timed out")));
+  shutdown.reset();
+});
+
 test("GracefulShutdown - shutdown is idempotent", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,

@@ -16,7 +16,11 @@ import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } 
 import { PlanBuilder } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
 import type { FeedbackBatch, LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { ExecutionOutcomeEvaluator, type ExecutionOutcomeEvaluation, type EvaluationReport } from "../../prompt-engine/eval/execution-outcome-evaluator.js";
+import {
+  ExecutionOutcomeEvaluator,
+  type ExecutionOutcomeEvaluation,
+  type EvaluationReport,
+} from "../../prompt-engine/eval/execution-outcome-evaluator.js";
 import { PostExecutionQualityGate } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import type { PostExecutionQualityGateDecision } from "../../prompt-engine/eval/post-execution-quality-gate.js";
 import { ReplanningService } from "../planner/replanning-service.js";
@@ -84,13 +88,6 @@ export interface OapeflirLoopResult {
   replanDecision: ReplanningDecision;
   graphPatch: GraphPatch | null;
   harnessDecision: HarnessDecision | null;
-}
-
-export interface EvaluationReport {
-  verdict: "accept" | "replan" | "retry" | "escalate";
-  score: number;
-  evidenceRefs: readonly string[];
-  notes?: string;
 }
 
 export interface OapeflirLoopServiceOptions {
@@ -267,15 +264,18 @@ export class OapeflirLoopService {
       let loopGraphPatch: GraphPatch | null = null;
       let loopEvaluationReport: EvaluationReport;
 
-      // R5-2: Initial plan build
-      loopPlan = await this.runStage<Plan>("plan", () => this.planBuilder.build({
+      // R5-1: Build PlanGraphBundle directly from PlanBuilder (canonical output per §13.7)
+      // R5-9: Enable graph normalization and risk propagation per §13.9
+      loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.build({
         observation: observedTask,
         assessment: validatedAssessment,
         workflow: input.workflow,
-      }), {
+      }, { normalizeGraph: true, propagateRisk: true }), {
         taskId: input.taskId,
       });
-      timeline.record("plan", "completed", loopPlan.planId, null, "Built an execution plan from validated observation, assessment, and workflow inputs.");
+      // R5-1: Keep legacy Plan for backward-compatible interfaces only
+      loopPlan = this.toLegacyPlan(loopPlanGraphBundle, input.taskId);
+      timeline.record("plan", "completed", loopPlan.planId, null, "Built a PlanGraphBundle from validated observation, assessment, and workflow inputs.");
       fsm.recordStageCompletion("plan");
 
       // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
@@ -286,8 +286,9 @@ export class OapeflirLoopService {
 
       // R5-2: Main loop — execute until no replan needed and quality gate passes
       while (true) {
-        // R5-1: Build PlanGraphBundle from Plan
-        loopPlanGraphBundle = this.buildPlanGraphBundle(loopPlan, input.taskId, input.workflow.executionSteps.length);
+        // R5-1: loopPlanGraphBundle is now the authoritative plan representation.
+        // Initial build captures it directly from PlanBuilder (above).
+        // Replan steps (below) refresh it directly — no buildPlanGraphBundle() round-trip needed.
 
         // R5-3: Execute stage transition check
         const executeTransition = fsm.canTransitionTo("execute");
@@ -349,8 +350,14 @@ export class OapeflirLoopService {
         fsm.recordStageCompletion("feedback");
 
         // R5-2: Compute quality gate and replan decision after each feedback collection
-        loopOutcome = this.outcomeEvaluator.evaluateWithBreakdown(loopPlan, loopFeedback) as ExecutionOutcomeEvaluation;
-        loopQualityGate = this.qualityGate.decide(loopOutcome);
+        // R5-7: Use EvaluationReport as the canonical input to quality gate
+        loopOutcome = this.outcomeEvaluator.evaluateWithBreakdown(loopPlanGraphBundle, loopFeedback) as ExecutionOutcomeEvaluation;
+        loopEvaluationReport = this.outcomeEvaluator.evaluate(
+          loopPlanGraphBundle,
+          loopFeedback,
+        );
+        // R5-7: Pass EvaluationReport to quality gate (canonical format)
+        loopQualityGate = this.qualityGate.decide(loopEvaluationReport);
         loopReplanTrigger = this.replanning.createTrigger(
           input.taskId,
           loopQualityGate.accepted ? "planning.no_replan_required" : "planning.quality_gate_replan",
@@ -358,14 +365,6 @@ export class OapeflirLoopService {
           loopQualityGate.reasonCodes.join(","),
         );
         loopReplanDecision = this.replanning.decide(loopPlan, loopFeedback, loopReplanTrigger);
-
-        // R5-7: Build EvaluationReport from ExecutionOutcomeEvaluation
-        loopEvaluationReport = {
-          verdict: loopQualityGate.accepted ? "accept" : loopOutcome.nextAction === "replan" ? "replan" : loopOutcome.nextAction === "retry" ? "retry" : "escalate",
-          score: loopOutcome.qualityScore,
-          evidenceRefs: loopOutcome.reasons,
-          notes: loopOutcome.reasons.join("; "),
-        };
 
         // R5-12: Build GraphPatch if replan is needed
         loopGraphPatch = loopReplanDecision.shouldReplan ? this.buildGraphPatch(loopPlan, loopPlan.version + 1) : null;
@@ -387,14 +386,18 @@ export class OapeflirLoopService {
         }
         fsm.recordStageEntry("plan");
 
-        loopPlan = await this.runStage<Plan>("plan", () => this.planBuilder.build({
+        // R5-1: Build fresh PlanGraphBundle directly (no toLegacyPlan round-trip)
+        // R5-9: Enable graph normalization and risk propagation per §13.9
+        loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.build({
           observation: observedTask,
           assessment: validatedAssessment,
           workflow: input.workflow,
-        }), {
+        }, { normalizeGraph: true, propagateRisk: true }), {
           taskId: input.taskId,
         });
-        timeline.record("plan", "completed", loopPlan.planId, null, "Re-built execution plan from validated observation, assessment, and workflow inputs.");
+        // R5-1: Refresh legacy Plan from the authoritative PlanGraphBundle
+        loopPlan = this.toLegacyPlan(loopPlanGraphBundle, input.taskId);
+        timeline.record("plan", "completed", loopPlan.planId, null, "Re-built PlanGraphBundle from validated observation, assessment, and workflow inputs.");
         fsm.recordStageCompletion("plan");
 
         // Validate the new plan
@@ -448,7 +451,7 @@ export class OapeflirLoopService {
 
       // G7: Promote validated learning objects into the knowledge plane
       if (learningObjects.length > 0) {
-        this.knowledgePromotion.promote(learningObjects, input.taskId);
+        await this.knowledgePromotion.promote(learningObjects, input.taskId);
       }
 
       let rolloutRecord: RolloutRecord | null = null;
@@ -499,7 +502,42 @@ export class OapeflirLoopService {
             description: "Promote feedback-derived planning guidance into the shadow rollout lane.",
             expectedBenefit: "Reduce repeat repair loops without changing live execution.",
           });
-          const approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
+
+          // R13-03: Add gates before approval - no immediate approval
+          // EvaluationGate: only approve if evaluation verdict is "accept"
+          let approved = candidate;
+          if (loopEvaluationReport.verdict === "accept") {
+            // Offline eval gate: check that quality score meets threshold
+            const qualityScore = loopEvaluationReport.score ?? 0;
+            if (qualityScore >= 0.95) {
+              // Risk scan gate: security-related proposals need higher scrutiny
+              const hasSecurityContent = validatedLearningObjects.some(
+                (obj) =>
+                  obj.learningType === "failure_pattern" &&
+                  (obj.title.toLowerCase().includes("security") ||
+                    obj.summary.toLowerCase().includes("security") ||
+                    obj.recommendation.toLowerCase().includes("security"))
+              );
+              if (!hasSecurityContent || candidate.changeScope !== "policy") {
+                approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
+                this.boundaryLogger.info("[gate:improve] Candidate passed all gates, approved for shadow rollout", {
+                  data: { candidateId: candidate.candidateId, taskId: input.taskId },
+                });
+              } else {
+                this.boundaryLogger.warn("[gate:improve] Security-related proposal requires manual review", {
+                  data: { candidateId: candidate.candidateId, taskId: input.taskId },
+                });
+              }
+            } else {
+              this.boundaryLogger.warn("[gate:improve] Quality score too low for auto-approval", {
+                data: { candidateId: candidate.candidateId, qualityScore, taskId: input.taskId },
+              });
+            }
+          } else {
+            this.boundaryLogger.warn("[gate:improve] EvaluationGate blocked approval", {
+              data: { candidateId: candidate.candidateId, verdict: loopEvaluationReport.verdict, taskId: input.taskId },
+            });
+          }
           timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
           fsm.recordStageCompletion("improve");
 
@@ -543,7 +581,7 @@ export class OapeflirLoopService {
                 fsm.recordStageSkipped("release", "release.canary_blocked");
                 rolloutRecord = null;
               } else {
-                const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
+                const strategyVersion = createStrategyVersion("Evaluation planning guidance", validatedLearningObjects, "evaluate_0");
                 // R5-8: All gates passed - call PolicyRolloutService.start() with gates
                 let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
                   taskId: input.taskId,
@@ -601,29 +639,35 @@ export class OapeflirLoopService {
 
       // R5-4: Integrate HarnessLoopController for loop control decisions
       const harnessDecision = await this.runStage<HarnessDecision | null>("harness_decide", async () => {
-        const defaultConstraintPack: ConstraintPack = {
+        // R5-4: Use the input ConstraintPack (not a default) so loop limits are respected
+        const constraintPack = input.constraintPack ?? {
           policyIds: [],
-          approvalMode: "none",
-          autonomyMode: "full_auto",
-          tool_policy: { allowedTools: [] },
-          sandboxRequirement: { sandboxMode: "none", timeoutMs: 300000 },
-          approvalRequirement: { requiredForRiskClass: [], approverRoles: [], escalationTimeoutMs: 60000 },
+          approvalMode: "none" as const,
+          autonomyMode: "full_auto" as const,
+          tool_policy: { allowedTools: [] as const[] },
+          sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: 300000 },
+          approvalRequirement: { requiredForRiskClass: [] as const[], approverRoles: [] as const[], escalationTimeoutMs: 60000 },
         };
-        const controller = new HarnessLoopController(defaultConstraintPack, {}, { startedAt: Date.now() });
+        const controller = new HarnessLoopController(constraintPack, {}, { startedAt: Date.now() });
 
-        // R5-4: Evaluate loop progress using controller
+        // R5-4: Evaluate loop progress using controller with accurate remaining iterations
         const loopProgress = controller.evaluateProgress(
           loopReplanDecision.shouldReplan ? "replan" : "accept",
-          true,
+          constraintPack.budgetEnvelope ? constraintPack.budgetEnvelope.maxSteps > 0 : true,
         );
 
-        // R5-4: Create HarnessDecision based on loop state
-        if (loopProgress.violation !== null) {
+        // R5-4: Check all loop guards and abort if any limit is breached
+        const iterationViolation = controller.checkIterationLimit();
+        const costViolation = controller.checkCostLimit();
+        const durationViolation = controller.checkDurationLimit();
+        const guardViolation = iterationViolation ?? costViolation ?? durationViolation;
+
+        if (guardViolation !== null) {
           return {
             decisionId: newId("harness_decision"),
             harnessDecisionId: newId("harness_decision"),
             action: "abort" as const,
-            reasonCodes: [loopProgress.violation, ...loopProgress.reasonCodes],
+            reasonCodes: [guardViolation],
             confidence: 0,
             createdAt: nowIso(),
           };
@@ -646,7 +690,7 @@ export class OapeflirLoopService {
 
       return {
         observation: taskObservation,
-        assessment,
+        assessment: validatedAssessment,
         plan: loopPlan,
         planGraphBundle: loopPlanGraphBundle,
         stepOutputs: loopStepOutputs,
@@ -862,6 +906,32 @@ export class OapeflirLoopService {
         reasons: [`plan:${plan.planId}`],
       },
     });
+  }
+
+  private toLegacyPlan(bundle: PlanGraphBundle, taskId: string): Plan {
+    const steps = bundle.graph.nodes.map((node) => ({
+      stepId: node.nodeId,
+      action: node.outputSchemaRef,
+      title: node.nodeId,
+      inputs: {},
+      outputs: [node.outputSchemaRef],
+      dependencies: bundle.graph.edges
+        .filter((edge) => edge.toNodeId === node.nodeId)
+        .map((edge) => edge.fromNodeId),
+      status: "pending" as const,
+      timeout: node.timeoutMs,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    }));
+    return {
+      planId: bundle.planGraphBundleId,
+      taskId,
+      version: bundle.graphVersion,
+      assessmentRef: bundle.budgetPlanRef,
+      strategy: "linear",
+      steps,
+      createdAt: Date.parse(bundle.createdAt) || Date.now(),
+      ...(bundle.graphVersion > 1 ? { parentVersion: bundle.graphVersion - 1 } : {}),
+    };
   }
 
   /**

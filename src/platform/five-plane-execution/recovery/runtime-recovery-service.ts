@@ -394,7 +394,7 @@ export class RuntimeRecoveryService {
 
   public findStaleExecuting(query: LegacyStaleExecutionQuery = {}): LegacyRecoveryCandidate[] {
     const thresholdMs = Math.max(0, query.stalenessThresholdMs ?? this.config.staleExecutionThresholdMs);
-    const staleBefore = new Date(Date.now() + thresholdMs).toISOString();
+    const staleBefore = new Date(Date.now() - thresholdMs).toISOString();
     return this.listStaleRuns(staleBefore, query.tenantId).map((candidate) => ({
       ...candidate,
       errorClassification: classifyLegacyError(candidate.latestErrorCode),
@@ -512,7 +512,7 @@ export class RuntimeRecoveryService {
    */
   public buildCompensationPlan(executionId: string, tenantId?: string | null): CompensationPlan | null {
     const candidates = this.store.operations.buildRuntimeRecoveryView(
-      this.store.task.getTaskByExecutionId?.(executionId, tenantId)?.taskId ?? "",
+      this.store.task.getTask?.(executionId, tenantId)?.id ?? "",
       tenantId,
     );
 
@@ -543,7 +543,6 @@ export class RuntimeRecoveryService {
           executionId,
           taskId: candidate.taskId,
           errorCode: candidate.latestErrorCode,
-          reason: candidate.reason,
         },
       });
     }

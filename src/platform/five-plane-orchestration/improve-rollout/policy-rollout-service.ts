@@ -22,9 +22,8 @@ export interface MetricsGateDecision {
 const PROGRESSIVE_STATUSES: ReadonlySet<RolloutStatus> = new Set([
   "canary_5",
   "partial_25",
-  "partial_50",
-  "partial_75",
-  "stable",
+  "stable_75",
+  "stable_100",
 ]);
 
 export class PolicyRolloutService {
@@ -41,7 +40,7 @@ export class PolicyRolloutService {
     if (rolloutFreezeManager.isFrozen()) {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: "rollout.frozen_error_budget",
         reasonCodes: ["rollout.frozen_error_budget: rollouts are frozen due to error budget exhaustion"],
       };
@@ -51,15 +50,15 @@ export class PolicyRolloutService {
     if (!guardrailDecision.allowed) {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: guardrailDecision.reasonCodes[0] ?? "improvement.guardrail_blocked",
         reasonCodes: guardrailDecision.reasonCodes,
       };
     }
-    if (candidate.status !== "approved" && strategyVersion.releaseLevel === "shadow") {
+    if (candidate.status !== "approved" && strategyVersion.releaseLevel !== "off") {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: "improvement.candidate_not_approved",
         reasonCodes: ["improvement.candidate_not_approved"],
       };
@@ -81,13 +80,15 @@ export class PolicyRolloutService {
       approvedBy,
       strategyVersionId: strategyVersion.strategyVersionId,
       guardrailReasonCodes: decision.reasonCodes,
+      triggeredBy: approvedBy == null ? "scheduler" : "human",
+      triggerReason: decision.reasonCode,
     });
   }
 
   public promote(
     candidate: ImprovementCandidate,
     current: RolloutRecord,
-    targetStatus: Exclude<RolloutStatus, "draft" | "rejected" | "rolled_back" | "paused">,
+    targetStatus: Exclude<RolloutStatus, "candidate_created" | "under_review" | "approved" | "rejected" | "rolled_back" | "paused">,
     metrics?: RolloutMetrics,
     approvedBy?: string,
   ): RolloutRecord {
@@ -104,6 +105,14 @@ export class PolicyRolloutService {
       approvedBy,
       strategyVersionId: current.strategyVersionId,
       guardrailReasonCodes: metricsGate.reasonCodes,
+      triggeredBy: approvedBy == null ? "scheduler" : "human",
+      triggerReason: metricsGate.reasonCodes[0] ?? `rollout.promote.${targetStatus}`,
+      metrics: metrics == null ? undefined : {
+        errorRate: metrics.failureRate,
+        latencyP99: metrics.p99LatencyMs,
+        successRate: Math.max(0, 1 - metrics.failureRate),
+        sampleCount: metrics.requestCount,
+      },
     });
   }
 
@@ -120,6 +129,14 @@ export class PolicyRolloutService {
       approvedBy,
       strategyVersionId: current.strategyVersionId,
       guardrailReasonCodes: rollbackDecision.reasonCodes,
+      triggeredBy: "auto_rollback",
+      triggerReason: rollbackDecision.reasonCodes[0] ?? "rollout.auto_rollback",
+      metrics: {
+        errorRate: metrics.failureRate,
+        latencyP99: metrics.p99LatencyMs,
+        successRate: Math.max(0, 1 - metrics.failureRate),
+        sampleCount: metrics.requestCount,
+      },
     });
   }
 
@@ -156,24 +173,23 @@ export class PolicyRolloutService {
 
 function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
   switch (status) {
-    case "draft":
+    case "candidate_created":
+    case "under_review":
+    case "approved":
     case "rejected":
     case "rolled_back":
     case "paused":
       return "off";
-    case "pending_approval":
-      return "suggest";
-    case "shadow":
-      return "shadow";
+    case "evaluation_enabled":
+      return "evaluate_0";
     case "canary_5":
       return "canary_5";
     case "partial_25":
       return "partial_25";
-    case "partial_50":
-      return "partial_50";
-    case "partial_75":
-      return "partial_75";
-    case "stable":
-      return "stable";
+    case "stable_75":
+      return "stable_75";
+    case "stable_100":
+    case "released":
+      return "stable_100";
   }
 }

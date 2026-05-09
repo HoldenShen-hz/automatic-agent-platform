@@ -165,6 +165,10 @@ export class AdapterExecutor {
       durationMs: Date.now() - startedAt,
       output: {
         error: lastError instanceof Error ? lastError.message : String(lastError),
+        // R4-48: Include retry exhaustion details for incident/DLQ handling
+        retryExhausted: true,
+        maxAttempts,
+        lastErrorCode: lastError instanceof Error ? lastError.name : undefined,
       },
     };
   }

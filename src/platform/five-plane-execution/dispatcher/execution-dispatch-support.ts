@@ -333,5 +333,6 @@ export function resolveDispatchBackpressureReason(
 }
 
 export function isElevatedPriority(priority: TaskPriority): boolean {
-  return priority === "high" || priority === "urgent";
+  // R6-8 fix: "critical" priority also requires elevated handling
+  return priority === "high" || priority === "urgent" || priority === "critical";
 }

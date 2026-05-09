@@ -1,5 +1,5 @@
+import { createElement, type ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
-import type { ReactElement } from "react";
 import { useAlertsVm } from "../hooks";
 
 export function AlertsWebView(): ReactElement {
@@ -10,6 +10,7 @@ export function AlertsWebView(): ReactElement {
         items={vm.items}
         actions={[
           { id: "alerts-ack", label: "确认告警", tone: "accent" },
+          { id: "alerts-dismiss", label: "忽略选中", tone: "neutral" },
           { id: "alerts-mute", label: "静默 30 分钟", tone: "neutral" },
           { id: "alerts-escalate", label: "升级为事件", tone: "danger" },
         ]}

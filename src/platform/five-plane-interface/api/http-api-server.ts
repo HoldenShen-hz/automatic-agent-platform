@@ -221,7 +221,7 @@ export class HttpApiServer {
         this.server,
         this.options.authService,
       );
-      logger.info("WebSocket bridge initialized", { path: "/ws" });
+      logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
     }
 
     const address = this.server.address();

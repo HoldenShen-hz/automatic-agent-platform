@@ -81,6 +81,12 @@ const ORCHESTRATION_HINTS = [
   "方案",
 ] as const;
 
+/** R6-11: Confidence threshold below which LLM intent extraction should be used */
+const CONFIDENCE_THRESHOLD = 0.65;
+
+/** R6-11: Low confidence threshold for ambiguous intent classification */
+const LOW_CONFIDENCE_THRESHOLD = 0.55;
+
 /** Intent detection rules mapping intents to keyword lists */
 const INTENT_RULES: Readonly<Record<IntakeIntent, readonly string[]>> = {
   query: [
@@ -288,6 +294,8 @@ export interface IntakeRouteInput {
   title?: string;
   /** The detailed request content or description */
   request: string;
+  /** Optional capabilities required for this request (used for capability matching) */
+  requiredCapabilities?: readonly string[];
 }
 
 /**
@@ -364,42 +372,129 @@ export class IntakeRouter {
     routeTrace.push(`intent:${classification.intent}`);
     routeTrace.push(`continuation:${classification.continuation}`);
     routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
+
+    // R6-11: If confidence is below threshold, use LLM-based intent extraction
+    // This improves routing accuracy for ambiguous requests
+    let finalClassification = classification;
+    if (classification.confidence < CONFIDENCE_THRESHOLD) {
+      // Use LLM extraction for low-confidence classification
+      const llmExtraction = extractIntentWithConfidence(normalized);
+      routeTrace.push(`llm_extraction:attempted`);
+      routeTrace.push(`llm_confidence:${llmExtraction.confidence.toFixed(2)}`);
+      routeTrace.push(`ambiguity_flags:${llmExtraction.ambiguityFlags.join(",") || "none"}`);
+
+      // Only use LLM extraction if it has higher confidence
+      if (llmExtraction.confidence > classification.confidence) {
+        finalClassification = {
+          intent: classification.intent, // Keep keyword-based intent for safety
+          continuation: classification.continuation,
+          confidence: llmExtraction.confidence,
+          matchedRules: classification.matchedRules,
+        };
+        routeTrace.push(`llm_extraction:adopted`);
+      }
+    }
     routeTrace.push(
       classification.matchedRules.length > 0
         ? `matched_intent_rules:${classification.matchedRules.join(",")}`
         : "matched_intent_rules:none",
     );
 
-    // Select the best matching division based on trigger patterns
-    const division = this.selectDivision(normalized, routeTrace);
+    // R9-09 fix: Add capability matching to routing decision
+    // First select division via triggers, then try capability-based matching
+    const triggerSelectedDivision = this.selectDivision(normalized, routeTrace);
+    const capabilityMatchResult = this.matchCapabilities(input.requiredCapabilities ?? [], triggerSelectedDivision, routeTrace);
 
+    // Use capability-matched division if available, otherwise use trigger-selected division
+    const division = capabilityMatchResult.matchedDivision ?? triggerSelectedDivision;
+
+    // R6-11: Use finalClassification (possibly LLM-enhanced) for routing decision
     // Determine if orchestration is required based on complexity signals
-    if (shouldRequireOrchestration(normalized, matchedHints, classification)) {
+    if (shouldRequireOrchestration(normalized, matchedHints, finalClassification)) {
       // Use orchestration workflow (specific or fallback)
       const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
       routeTrace.push(`route:selected:${workflowId}`);
+      routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
       return {
         workflowId,
         divisionId: division?.id ?? "general_ops",
-        routeReason: "route.multi_step_or_high_context",
+        routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.multi_step_or_high_context",
         routeTrace,
         requiresOrchestration: true,
-        classification,
+        classification: finalClassification,
       };
     }
 
     // Simple request - use the division's default workflow
     const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
     routeTrace.push(`route:selected:${workflowId}`);
+    routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
     return {
       workflowId,
       divisionId: division?.id ?? "general_ops",
       agentId: `${division?.id ?? "general_ops"}_agent`,
-      routeReason: "route.simple_request",
+      routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.simple_request",
       routeTrace,
       requiresOrchestration: false,
-      classification,
+      classification: finalClassification,
     };
+  }
+
+  /**
+   * R9-09 fix: Matches required capabilities against division roles.
+   * Returns the best matching division if capabilities are specified and matched.
+   */
+  private matchCapabilities(
+    requiredCapabilities: readonly string[],
+    currentDivision: LoadedDivisionDefinition | null,
+    routeTrace: string[],
+  ): { matchedDivision: LoadedDivisionDefinition | null; matched: boolean } {
+    if (requiredCapabilities.length === 0) {
+      return { matchedDivision: null, matched: false };
+    }
+
+    const registry = this.divisionRegistry;
+    if (!registry) {
+      routeTrace.push("capability_match:registry_unavailable");
+      return { matchedDivision: null, matched: false };
+    }
+
+    // Find all divisions that have roles with matching capabilities
+    const capableDivisions: Array<{ division: LoadedDivisionDefinition; matchedCapabilities: string[] }> = [];
+
+    for (const division of registry.divisions.values()) {
+      const matchedCapabilities = new Set<string>();
+      for (const role of division.roles) {
+        for (const capability of requiredCapabilities) {
+          if (role.tools.includes(capability)) {
+            matchedCapabilities.add(capability);
+          }
+        }
+      }
+      if (matchedCapabilities.size > 0) {
+        capableDivisions.push({
+          division,
+          matchedCapabilities: [...matchedCapabilities],
+        });
+      }
+    }
+
+    if (capableDivisions.length === 0) {
+      routeTrace.push("capability_match:none_found");
+      return { matchedDivision: null, matched: false };
+    }
+
+    // Sort by most capabilities matched (descending), then by priority (descending)
+    capableDivisions.sort((a, b) => {
+      if (b.matchedCapabilities.length !== a.matchedCapabilities.length) {
+        return b.matchedCapabilities.length - a.matchedCapabilities.length;
+      }
+      return b.division.priority - a.division.priority;
+    });
+
+    const best = capableDivisions[0]!;
+    routeTrace.push(`capability_match:${best.division.id}:${best.matchedCapabilities.join(",")}`);
+    return { matchedDivision: best.division, matched: true };
   }
 
   /**
@@ -515,6 +610,83 @@ function classifyIntent(
     continuation,
     confidence,
     matchedRules,
+  };
+}
+
+/**
+ * R6-11: Result of intent extraction with confidence scoring.
+ */
+interface IntentExtractionResult {
+  extractedGoal: string;
+  confidence: number; // 0.0 - 1.0
+  ambiguityDetected: boolean;
+  ambiguityFlags: readonly string[];
+  suggestedClarifications: readonly string[];
+}
+
+/**
+ * R6-11: Pattern-based intent extraction with confidence scoring.
+ * Acts as fallback when LLM is unavailable - uses pattern matching to estimate confidence.
+ * For actual LLM extraction, integration with LLM model gateway would be needed.
+ */
+function extractIntentWithConfidence(goal: string): IntentExtractionResult {
+  const ambiguityFlags: string[] = [];
+
+  // Check for vague goal language
+  if (/\b(maybe|perhaps|possibly|some|several|about|roughly)\b/i.test(goal)) {
+    ambiguityFlags.push("vague_goal_language");
+  }
+
+  // Check for ambiguous temporal references
+  if (/\b(soon|later|eventually|when possible)\b/i.test(goal)) {
+    ambiguityFlags.push("ambiguous_timing");
+  }
+
+  // Check for conditional language
+  if (/\b(if|unless|maybe|either|perhaps|depending on)\b/i.test(goal)) {
+    ambiguityFlags.push("conditional_language");
+  }
+
+  // Check for underspecified constraints
+  if (goal.length < 30) {
+    ambiguityFlags.push("short_goal");
+  }
+
+  // Check for conflicting requirements indicators
+  if (/\b(but|however|although|though)\b/i.test(goal) && goal.length < 80) {
+    ambiguityFlags.push("potential_conflict");
+  }
+
+  // Calculate confidence based on ambiguity flags
+  // Base confidence is high when no ambiguity flags present
+  const baseConfidence = 0.80;
+  const penaltyPerFlag = 0.12;
+  const confidence = Math.max(0.35, baseConfidence - (ambiguityFlags.length * penaltyPerFlag));
+
+  // Generate suggested clarifications based on flags
+  const suggestedClarifications: string[] = [];
+  if (ambiguityFlags.includes("vague_goal_language")) {
+    suggestedClarifications.push("Specify concrete requirements or criteria");
+  }
+  if (ambiguityFlags.includes("ambiguous_timing")) {
+    suggestedClarifications.push("Provide a specific deadline or time frame");
+  }
+  if (ambiguityFlags.includes("short_goal")) {
+    suggestedClarifications.push("Provide more details about the desired outcome");
+  }
+  if (ambiguityFlags.includes("conditional_language")) {
+    suggestedClarifications.push("Clarify the conditions or dependencies");
+  }
+  if (ambiguityFlags.includes("potential_conflict")) {
+    suggestedClarifications.push("Resolve potential conflicts in requirements");
+  }
+
+  return {
+    extractedGoal: goal,
+    confidence,
+    ambiguityDetected: ambiguityFlags.length > 0,
+    ambiguityFlags,
+    suggestedClarifications,
   };
 }
 

@@ -6,7 +6,12 @@ export function createQueryClientFactory() {
       queries: {
         staleTime: 30_000,
         gcTime: 5 * 60_000,
-        retry: 1,
+        retry: 3,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+      },
+      mutations: {
+        retry: 2,
       },
     },
   });

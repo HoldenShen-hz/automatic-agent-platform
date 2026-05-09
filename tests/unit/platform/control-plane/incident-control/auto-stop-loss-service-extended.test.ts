@@ -92,6 +92,27 @@ test("AutoStopLossService evaluateAnomaly respects rate limiting", () => {
   assert.equal(result.shouldExecute, true);
 });
 
+test("AutoStopLossService prunes stale hourly rate-limit counters when the hour window advances", async () => {
+  let currentTime = new Date("2026-05-09T10:00:00.000Z");
+  const service = new AutoStopLossService({
+    playbooks: [],
+    now: () => currentTime,
+  });
+  const playbook = createTestPlaybook({
+    id: "hourly-prune-playbook",
+    maxExecutionsPerHour: 1,
+  });
+  service.registerPlaybook(playbook);
+
+  await service.executePlaybook(playbook, "first hour");
+  const blockedSameHour = service.evaluateAnomaly("critical", "error_rate");
+  assert.equal(blockedSameHour.matchingPlaybooks.length, 0);
+
+  currentTime = new Date("2026-05-09T11:00:00.000Z");
+  const nextHour = service.evaluateAnomaly("critical", "error_rate");
+  assert.equal(nextHour.matchingPlaybooks.length, 1);
+});
+
 test("AutoStopLossService evaluateAnomaly returns correct escalation levels per severity", () => {
   const service = new AutoStopLossService();
 
@@ -106,6 +127,19 @@ test("AutoStopLossService evaluateAnomaly returns correct escalation levels per 
     const result = service.evaluateAnomaly(severity, "test_metric");
     assert.equal(result.escalation, expectedEscalation, `Failed for severity ${severity}`);
   }
+});
+
+test("AutoStopLossService normalizes anomaly severity strings before deriving escalation", () => {
+  const service = createIsolatedService();
+  service.registerPlaybook(createTestPlaybook({
+    id: "normalized-emergency-playbook",
+    triggerCondition: { type: "anomaly_severity", severityThreshold: "emergency" },
+  }));
+
+  const result = service.evaluateHealth("unhealthy", { anomalySeverity: "SEV-EMERGENCY" });
+
+  assert.equal(result.escalation, "critical");
+  assert.equal(result.matchingPlaybooks.length, 1);
 });
 
 test("AutoStopLossService evaluateHealth matches health status playbooks", () => {
@@ -225,9 +259,12 @@ test("AutoStopLossService approvePendingExecution approves pending event", async
   });
 
   const event = await service.executePlaybook(playbook, "Pending approval");
-  const approved = service.approvePendingExecution(event.id, true);
+  const approved = await service.approvePendingExecution(event.id, true);
 
   assert.equal(approved, true);
+  const approvedEvent = service.getExecutionHistory().find((candidate) => candidate.id === event.id);
+  assert.deepEqual(approvedEvent?.actionsExecuted, ["escalate_to_human"]);
+  assert.equal(approvedEvent?.humanApproved, true);
 });
 
 test("AutoStopLossService approvePendingExecution rejects pending event", async () => {
@@ -239,15 +276,15 @@ test("AutoStopLossService approvePendingExecution rejects pending event", async 
   });
 
   const event = await service.executePlaybook(playbook, "Pending approval");
-  const rejected = service.approvePendingExecution(event.id, false);
+  const rejected = await service.approvePendingExecution(event.id, false);
 
   assert.equal(rejected, true);
 });
 
-test("AutoStopLossService approvePendingExecution returns false for unknown event", () => {
+test("AutoStopLossService approvePendingExecution returns false for unknown event", async () => {
   const service = new AutoStopLossService();
 
-  const result = service.approvePendingExecution("unknown-event-id", true);
+  const result = await service.approvePendingExecution("unknown-event-id", true);
 
   assert.equal(result, false);
 });

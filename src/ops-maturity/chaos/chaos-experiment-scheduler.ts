@@ -6,6 +6,9 @@
  * - Steady-state hypothesis validation
  * - Automated experiment termination on violation
  * - Experiment result classification (success/failure/inconclusive)
+ * - Rollback and boundary control for safe chaos engineering
+ *
+ * §R14-09: Added rollback automation and boundary control for chaos experiments.
  *
  * Architecture anchors:
  * - docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md
@@ -14,6 +17,48 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+
+/**
+ * Boundary control configuration for chaos experiments.
+ * Limits the blast radius and ensures safe experimentation.
+ * §R14-09: Boundary control for chaos experiments.
+ */
+export interface BoundaryControl {
+  maxAffectedInstances: number;
+  maxAffectedPercent: number;
+  allowedTargets: readonly string[];
+  blockedTargets: readonly string[];
+  abortOnThreshold: boolean;
+  autoRollbackOnViolation: boolean;
+  rollbackTimeoutMs: number;
+}
+
+/**
+ * Rollback action for a violated experiment.
+ * §R14-09: Rollback automation for chaos experiments.
+ */
+export interface RollbackAction {
+  actionId: string;
+  experimentId: string;
+  actionType: "stop_fault" | "restore_state" | "notify" | "complete";
+  status: "pending" | "executing" | "completed" | "failed";
+  executedAt: string | null;
+  completedAt: string | null;
+  result: string | null;
+}
+
+/**
+ * Default boundary control settings.
+ */
+export const DEFAULT_BOUNDARY_CONTROL: BoundaryControl = {
+  maxAffectedInstances: 1,
+  maxAffectedPercent: 5,
+  allowedTargets: [],
+  blockedTargets: ["production", "primary", "master"],
+  abortOnThreshold: true,
+  autoRollbackOnViolation: true,
+  rollbackTimeoutMs: 30000,
+};
 
 export interface ChaosArchitectureAnchor {
   readonly contractRef: string;
@@ -54,12 +99,15 @@ export interface ChaosExperiment {
   target: ExperimentTarget;
   fault: FaultInjection;
   steadyStateHypotheses: readonly SteadyStateHypothesis[];
-  status: "scheduled" | "running" | "completed" | "cancelled" | "violated";
+  status: "scheduled" | "running" | "completed" | "cancelled" | "violated" | "rollback";
   scheduledAt: string;
   startedAt: string | null;
   completedAt: string | null;
   maxDurationMs: number;
   results: readonly ExperimentResult[];
+  boundaryControl: BoundaryControl;
+  rollbackActions: readonly RollbackAction[];
+  violationDetectedAt: string | null;
 }
 
 export interface ExperimentResult {
@@ -79,6 +127,7 @@ export interface ExperimentScheduleInput {
   steadyStateHypotheses: readonly SteadyStateHypothesis[];
   scheduledAt: string;
   maxDurationMs: number;
+  boundaryControl?: Partial<BoundaryControl>;
 }
 
 export interface GameDayScheduleInput {
@@ -112,8 +161,18 @@ export class ChaosExperimentScheduler {
   private readonly experiments = new Map<string, ChaosExperiment>();
   private readonly steadyStateCache = new Map<string, number>();
   private readonly gameDays = new Map<string, ChaosGameDay>();
+  private readonly rollbackQueue = new Map<string, RollbackAction[]>();
 
+  /**
+   * Schedules a new chaos experiment with boundary control.
+   * §R14-09: Boundary control and rollback automation.
+   */
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
+    const boundaryControl: BoundaryControl = {
+      ...DEFAULT_BOUNDARY_CONTROL,
+      ...input.boundaryControl,
+    };
+
     const experiment: ChaosExperiment = {
       experimentId: newId("chaos"),
       name: input.name,
@@ -127,21 +186,73 @@ export class ChaosExperimentScheduler {
       completedAt: null,
       maxDurationMs: input.maxDurationMs,
       results: [],
+      boundaryControl,
+      rollbackActions: [],
+      violationDetectedAt: null,
     };
 
     this.experiments.set(experiment.experimentId, experiment);
     return experiment;
   }
 
+  /**
+   * Starts a chaos experiment.
+   * Validates boundary control before starting.
+   */
   public startExperiment(experimentId: string): boolean {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "scheduled") return false;
+
+    // Validate boundary control
+    if (!this.validateBoundaryControl(experiment)) {
+      experiment.status = "cancelled";
+      experiment.completedAt = nowIso();
+      return false;
+    }
 
     experiment.status = "running";
     experiment.startedAt = nowIso();
     return true;
   }
 
+  /**
+   * Validates boundary control settings for an experiment.
+   * Returns false if experiment would violate safety boundaries.
+   * §R14-09: Boundary control validation.
+   */
+  public validateBoundaryControl(experiment: ChaosExperiment): boolean {
+    const { boundaryControl, target } = experiment;
+
+    // Check if target is in blocked list
+    if (boundaryControl.blockedTargets.length > 0) {
+      const targetId = target.targetId.toLowerCase();
+      for (const blocked of boundaryControl.blockedTargets) {
+        if (targetId.includes(blocked.toLowerCase())) {
+          console.warn(`[ChaosScheduler] Target ${target.targetId} matches blocked pattern ${blocked}`);
+          return false;
+        }
+      }
+    }
+
+    // Check if target is in allowed list (if specified)
+    if (boundaryControl.allowedTargets.length > 0) {
+      const targetId = target.targetId.toLowerCase();
+      const isAllowed = boundaryControl.allowedTargets.some(
+        (allowed) => targetId.includes(allowed.toLowerCase()),
+      );
+      if (!isAllowed) {
+        console.warn(`[ChaosScheduler] Target ${target.targetId} not in allowed targets list`);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Records steady state hypothesis result and triggers rollback if violated.
+   * §R14-09: Rollback on violation.
+   */
   public recordSteadyStateResult(
     experimentId: string,
     hypothesisName: string,
@@ -166,9 +277,176 @@ export class ChaosExperimentScheduler {
     // Check if all hypotheses have been evaluated
     if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
       const allPassed = experiment.results.every((r) => r.passed);
-      experiment.status = allPassed ? "completed" : "violated";
+
+      if (!allPassed) {
+        // Violation detected - trigger rollback if configured
+        experiment.violationDetectedAt = nowIso();
+        experiment.status = "violated";
+
+        if (experiment.boundaryControl.autoRollbackOnViolation) {
+          this.initiateRollback(experimentId);
+        }
+      } else {
+        experiment.status = "completed";
+      }
       experiment.completedAt = nowIso();
     }
+  }
+
+  /**
+   * Initiates rollback procedure for a violated experiment.
+   * §R14-09: Rollback automation.
+   */
+  public initiateRollback(experimentId: string): boolean {
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment) return false;
+
+    // Create rollback actions
+    const stopFaultAction: RollbackAction = {
+      actionId: newId("rollback"),
+      experimentId,
+      actionType: "stop_fault",
+      status: "pending",
+      executedAt: null,
+      completedAt: null,
+      result: null,
+    };
+
+    const restoreStateAction: RollbackAction = {
+      actionId: newId("rollback"),
+      experimentId,
+      actionType: "restore_state",
+      status: "pending",
+      executedAt: null,
+      completedAt: null,
+      result: null,
+    };
+
+    const notifyAction: RollbackAction = {
+      actionId: newId("rollback"),
+      experimentId,
+      actionType: "notify",
+      status: "pending",
+      executedAt: null,
+      completedAt: null,
+      result: null,
+    };
+
+    const rollbackActions = [stopFaultAction, restoreStateAction, notifyAction];
+    experiment.rollbackActions = rollbackActions;
+    experiment.status = "rollback";
+
+    // Queue rollback actions
+    this.rollbackQueue.set(experimentId, rollbackActions);
+
+    // Execute rollback with timeout
+    this.executeRollbackWithTimeout(experimentId, experiment.boundaryControl.rollbackTimeoutMs);
+
+    return true;
+  }
+
+  /**
+   * Executes rollback actions with a timeout.
+   */
+  private executeRollbackWithTimeout(experimentId: string, timeoutMs: number): void {
+    const timeout = setTimeout(() => {
+      this.completeRollbackActions(experimentId, "failed", "Rollback timed out");
+    }, timeoutMs);
+
+    // Execute rollback actions asynchronously
+    this.executeRollbackActions(experimentId).then((result) => {
+      clearTimeout(timeout);
+      this.completeRollbackActions(experimentId, "completed", result);
+    }).catch((error) => {
+      clearTimeout(timeout);
+      this.completeRollbackActions(experimentId, "failed", String(error));
+    });
+  }
+
+  /**
+   * Executes rollback actions for an experiment.
+   */
+  private async executeRollbackActions(experimentId: string): Promise<string> {
+    const actions = this.rollbackQueue.get(experimentId);
+    if (!actions) return "No rollback actions";
+
+    for (const action of actions) {
+      action.status = "executing";
+      action.executedAt = nowIso();
+
+      // Simulate rollback action execution
+      await this.simulateRollbackAction(action);
+
+      action.status = "completed";
+      action.completedAt = nowIso();
+      action.result = `Action ${action.actionType} completed successfully`;
+    }
+
+    return "All rollback actions completed";
+  }
+
+  /**
+   * Simulates rollback action execution.
+   * In real implementation, this would call actual rollback mechanisms.
+   */
+  private async simulateRollbackAction(action: RollbackAction): Promise<void> {
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    switch (action.actionType) {
+      case "stop_fault":
+        console.log(`[ChaosScheduler] Stopping fault injection for experiment ${action.experimentId}`);
+        break;
+      case "restore_state":
+        console.log(`[ChaosScheduler] Restoring state for experiment ${action.experimentId}`);
+        break;
+      case "notify":
+        console.log(`[ChaosScheduler] Notifying about rollback for experiment ${action.experimentId}`);
+        break;
+      case "complete":
+        console.log(`[ChaosScheduler] Completing rollback for experiment ${action.experimentId}`);
+        break;
+    }
+  }
+
+  /**
+   * Completes rollback actions with final status.
+   */
+  private completeRollbackActions(
+    experimentId: string,
+    status: "completed" | "failed",
+    result: string,
+  ): void {
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment) return;
+
+    for (const action of experiment.rollbackActions) {
+      if (action.status === "executing" || action.status === "pending") {
+        action.status = status;
+        if (action.executedAt && !action.completedAt) {
+          action.completedAt = nowIso();
+        }
+        action.result = result;
+      }
+    }
+
+    this.rollbackQueue.delete(experimentId);
+  }
+
+  /**
+   * Checks if rollback is in progress for an experiment.
+   */
+  public isRollbackInProgress(experimentId: string): boolean {
+    const experiment = this.experiments.get(experimentId);
+    return experiment?.status === "rollback";
+  }
+
+  /**
+   * Gets rollback actions for an experiment.
+   */
+  public getRollbackActions(experimentId: string): readonly RollbackAction[] {
+    const experiment = this.experiments.get(experimentId);
+    return experiment?.rollbackActions ?? [];
   }
 
   public injectFault(experimentId: string): FaultInjection | null {

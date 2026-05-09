@@ -12,18 +12,44 @@ export const KnowledgeShareGrantSchema = z.object({
 
 export type KnowledgeShareGrant = z.infer<typeof KnowledgeShareGrantSchema>;
 
+export interface KnowledgeShareDecision {
+  readonly allowed: boolean;
+  readonly reason: string;
+  readonly matchedGrantId: string | null;
+  readonly evaluatedAt: string;
+}
+
 export function evaluateKnowledgeShare(
   boundary: KnowledgeBoundary,
   requesterOrgNodeId: string,
   grants: readonly KnowledgeShareGrant[],
   nowIso: string,
-): boolean {
+): KnowledgeShareDecision {
   const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
   if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
-    return true;
+    return {
+      allowed: true,
+      reason: "owner_or_allowed_org_node",
+      matchedGrantId: null,
+      evaluatedAt: nowIso,
+    };
   }
-  return grants.some((item) =>
+  const matchedGrant = grants.find((item) =>
     item.boundaryId === boundary.boundaryId
     && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
     && (item.expiresAt == null || item.expiresAt >= nowIso));
+  if (matchedGrant) {
+    return {
+      allowed: true,
+      reason: "active_grant",
+      matchedGrantId: matchedGrant.grantId,
+      evaluatedAt: nowIso,
+    };
+  }
+  return {
+    allowed: false,
+    reason: "no_matching_grant_or_not_allowed",
+    matchedGrantId: null,
+    evaluatedAt: nowIso,
+  };
 }

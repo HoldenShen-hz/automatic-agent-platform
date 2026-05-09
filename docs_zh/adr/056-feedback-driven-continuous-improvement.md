@@ -44,9 +44,17 @@ interface LearningObject {
 
 ### 改进管线
 
+```
+LearnHub → ImproveHub → P2 Release Governance 门禁 → 六级 Release
+     ↓           ↓                ↓                  ↓
+ LearningObject  Improvement   门禁审核          Rollout
+                 Candidate     (必须通过)
+```
+
 - LearnHub 生成 LearningObject
 - ImproveHub 评估 ImprovementCandidate
-- Release 六级发布
+- P2 Release Governance 门禁审核（必须通过才能进入 Release）
+- Release 六级发布（alpha/beta/stable/ga/lts/archived）
 
 ## 后果
 

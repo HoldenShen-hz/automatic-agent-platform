@@ -19,6 +19,7 @@ import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-databa
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { OutboxRepository } from "../../shared/outbox/outbox-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { materializeEventRecord } from "./event-record-support.js";
 
 /**
  * Options for transactional event append
@@ -81,7 +82,7 @@ export class TransactionalEventAppender {
     const eventId = eventData.id ?? newId("evt");
     const now = nowIso();
 
-    const event: EventRecord = {
+    const event = materializeEventRecord({
       id: eventId,
       taskId: eventData.taskId ?? null,
       sessionId: null,
@@ -91,12 +92,10 @@ export class TransactionalEventAppender {
       payloadJson: eventData.payloadJson,
       traceId: options.traceId ?? null,
       createdAt: now,
-    };
+    });
 
-    // Use a transaction to ensure atomicity
-    this.db.connection.exec("BEGIN TRANSACTION");
-
-    try {
+    // R12-05: Use proper db.transaction() wrapper for atomicity
+    const result = this.db.transaction(() => {
       // Step 1: Insert event into event store
       const insertedEvent = this.insertEventInternal(event);
 
@@ -109,16 +108,13 @@ export class TransactionalEventAppender {
         );
       }
 
-      this.db.connection.exec("COMMIT");
+      return { insertedEvent, outboxEntryId };
+    });
 
-      return {
-        event: insertedEvent,
-        outboxEntryId,
-      };
-    } catch (error) {
-      this.db.connection.exec("ROLLBACK");
-      throw error;
-    }
+    return {
+      event: result.insertedEvent,
+      outboxEntryId: result.outboxEntryId,
+    };
   }
 
   /**
@@ -134,16 +130,14 @@ export class TransactionalEventAppender {
     }>,
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult[] {
-    const results: TransactionalAppendResult[] = [];
-
-    this.db.connection.exec("BEGIN TRANSACTION");
-
-    try {
+    // R12-05: Use proper db.transaction() wrapper for atomicity
+    const results = this.db.transaction(() => {
+      const appended: TransactionalAppendResult[] = [];
       for (const eventData of events) {
         const eventId = eventData.id ?? newId("evt");
         const now = nowIso();
 
-        const event: EventRecord = {
+        const event = materializeEventRecord({
           id: eventId,
           taskId: eventData.taskId ?? null,
           sessionId: null,
@@ -153,7 +147,7 @@ export class TransactionalEventAppender {
           payloadJson: eventData.payloadJson,
           traceId: options.traceId ?? null,
           createdAt: now,
-        };
+        });
 
         const insertedEvent = this.insertEventInternal(event);
         let outboxEntryId: string | undefined;
@@ -162,15 +156,12 @@ export class TransactionalEventAppender {
           outboxEntryId = this.writeOutboxEntryInternal(event, options.traceId);
         }
 
-        results.push({ event: insertedEvent, outboxEntryId });
+        appended.push({ event: insertedEvent, outboxEntryId });
       }
+      return appended;
+    });
 
-      this.db.connection.exec("COMMIT");
-      return results;
-    } catch (error) {
-      this.db.connection.exec("ROLLBACK");
-      throw error;
-    }
+    return results;
   }
 
   /**

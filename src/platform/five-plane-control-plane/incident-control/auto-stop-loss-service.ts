@@ -11,6 +11,9 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AnomalySeverity } from "../../shared/observability/anomaly-detection-service.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -64,6 +67,12 @@ export interface StopLossEvent {
   errorMessage?: string;
   autoTriggered: boolean;
   humanApproved: boolean;
+}
+
+interface PendingApprovalExecution {
+  playbook: StopLossPlaybook;
+  triggerReason: string;
+  context?: Record<string, unknown>;
 }
 
 export interface AutoStopLossConfig {
@@ -190,6 +199,7 @@ const HEALTH_TO_ESCALATION: Record<string, EscalationLevel> = {
 export interface AutoStopLossServiceOptions {
   config?: Partial<AutoStopLossConfig>;
   playbooks?: StopLossPlaybook[];
+  now?: () => Date;
 }
 
 /**
@@ -200,10 +210,12 @@ export interface AutoStopLossServiceOptions {
  */
 export class AutoStopLossService {
   private readonly config: AutoStopLossConfig;
+  private readonly now: () => Date;
   private readonly playbooks: Map<string, StopLossPlaybook> = new Map();
   private readonly executionHistory: StopLossEvent[] = [];
   private readonly executionCounts: Map<string, number> = new Map();
   private readonly lastExecutionTime: Map<string, number> = new Map();
+  private readonly pendingApprovals: Map<string, PendingApprovalExecution> = new Map();
   private readonly actionHandlers: Map<StopLossAction, ActionHandler> = new Map();
   private lastHealthCheck: SystemHealthSnapshot | null = null;
 
@@ -216,6 +228,7 @@ export class AutoStopLossService {
       enableHumanEscalation: options?.config?.enableHumanEscalation ?? true,
       healthCheckIntervalMs: options?.config?.healthCheckIntervalMs ?? 30000,
     };
+    this.now = options?.now ?? (() => new Date());
 
     // Register default playbooks
     for (const playbook of options?.playbooks ?? DEFAULT_PLAYBOOKS) {
@@ -533,8 +546,7 @@ export class AutoStopLossService {
   }
 
   private getContextAnomalySeverity(context: Record<string, unknown> | undefined): AnomalySeverity | undefined {
-    const severity = context?.anomalySeverity ?? context?.severity;
-    return this.isAnomalySeverity(severity) ? severity : undefined;
+    return this.normalizeAnomalySeverity(context?.anomalySeverity ?? context?.severity);
   }
 
   private getContextHealthStatus(context: Record<string, unknown> | undefined): SystemHealthSnapshot["status"] | undefined {
@@ -549,6 +561,36 @@ export class AutoStopLossService {
 
   private isAnomalySeverity(value: unknown): value is AnomalySeverity {
     return value === "info" || value === "warning" || value === "critical" || value === "emergency";
+  }
+
+  private normalizeAnomalySeverity(value: unknown): AnomalySeverity | undefined {
+    if (this.isAnomalySeverity(value)) {
+      return value;
+    }
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (normalized === "warn") {
+      return "warning";
+    }
+    if (normalized === "crit") {
+      return "critical";
+    }
+    if (normalized.includes("emergency")) {
+      return "emergency";
+    }
+    if (normalized.includes("critical")) {
+      return "critical";
+    }
+    if (normalized.includes("warning") || normalized.includes("warn")) {
+      return "warning";
+    }
+    if (normalized.includes("info")) {
+      return "info";
+    }
+    return undefined;
   }
 
   private isHealthStatus(value: unknown): value is SystemHealthSnapshot["status"] {
@@ -573,14 +615,16 @@ export class AutoStopLossService {
   private isPlaybookInCooldown(playbook: StopLossPlaybook): boolean {
     const lastExec = this.lastExecutionTime.get(playbook.id);
     if (lastExec === undefined) return false;
-    return Date.now() - lastExec < playbook.cooldownMs;
+    return this.now().getTime() - lastExec < playbook.cooldownMs;
   }
 
   /**
    * Checks if a playbook has exceeded its hourly execution limit.
    */
   private isPlaybookRateLimited(playbook: StopLossPlaybook): boolean {
-    const count = this.executionCounts.get(`${playbook.id}_${this.getHourKey()}`) ?? 0;
+    const hourKey = this.getHourKey();
+    this.pruneExecutionCounts(hourKey);
+    const count = this.executionCounts.get(`${playbook.id}_${hourKey}`) ?? 0;
     return count >= playbook.maxExecutionsPerHour;
   }
 
@@ -603,9 +647,10 @@ export class AutoStopLossService {
   ): Promise<StopLossEvent> {
     const eventId = newId("stoploss");
     const startTime = nowIso();
-    const actionsExecuted: StopLossAction[] = [];
+    let actionsExecuted: StopLossAction[] = [];
     let allSuccess = true;
     let errorMessage: string | undefined;
+    const escalationLevel = this.resolveEscalationLevel(playbook, context);
 
     // Check if human approval is required
     if (playbook.requireHumanApproval && this.config.enableHumanEscalation) {
@@ -616,7 +661,7 @@ export class AutoStopLossService {
         playbookName: playbook.name,
         triggerReason,
         actionsExecuted: [],
-        escalationLevel: SEVERITY_TO_ESCALATION[triggerReason.includes("emergency") ? "emergency" : "critical"],
+        escalationLevel,
         executedAt: startTime,
         completedAt: null,
         success: false,
@@ -624,33 +669,18 @@ export class AutoStopLossService {
         autoTriggered: false,
         humanApproved: false,
       };
+      this.pendingApprovals.set(eventId, {
+        playbook,
+        triggerReason,
+        ...(context !== undefined ? { context } : {}),
+      });
       this.recordEvent(event, playbook.id);
+      this.lastExecutionTime.set(playbook.id, this.now().getTime());
       return event;
     }
 
     // Execute each action
-    for (const action of playbook.actions) {
-      const handler = this.actionHandlers.get(action);
-      if (!handler) {
-        errorMessage = `No handler for action: ${action}`;
-        allSuccess = false;
-        break;
-      }
-
-      try {
-        const result = await handler({ playbookId: playbook.id, reason: triggerReason, ...context });
-        if (!result.success) {
-          errorMessage = result.message;
-          allSuccess = false;
-          break;
-        }
-        actionsExecuted.push(action);
-      } catch (err) {
-        errorMessage = err instanceof Error ? err.message : String(err);
-        allSuccess = false;
-        break;
-      }
-    }
+    ({ actionsExecuted, allSuccess, errorMessage } = await this.executeActions(playbook, triggerReason, context));
 
     const event: StopLossEvent = {
       id: eventId,
@@ -658,7 +688,7 @@ export class AutoStopLossService {
       playbookName: playbook.name,
       triggerReason,
       actionsExecuted,
-      escalationLevel: this.determineEscalation(playbook),
+      escalationLevel,
       executedAt: startTime,
       completedAt: nowIso(),
       success: allSuccess,
@@ -668,7 +698,7 @@ export class AutoStopLossService {
     };
 
     this.recordEvent(event, playbook.id);
-    this.lastExecutionTime.set(playbook.id, Date.now());
+    this.lastExecutionTime.set(playbook.id, this.now().getTime());
 
     return event;
   }
@@ -687,6 +717,59 @@ export class AutoStopLossService {
     return "warn";
   }
 
+  private resolveEscalationLevel(
+    playbook: StopLossPlaybook,
+    context?: Record<string, unknown>,
+  ): EscalationLevel {
+    const severity = this.getContextAnomalySeverity(context);
+    if (severity !== undefined) {
+      return SEVERITY_TO_ESCALATION[severity];
+    }
+    const healthStatus = this.getContextHealthStatus(context);
+    if (healthStatus !== undefined) {
+      return HEALTH_TO_ESCALATION[healthStatus] ?? "observe";
+    }
+    return this.determineEscalation(playbook);
+  }
+
+  private async executeActions(
+    playbook: StopLossPlaybook,
+    triggerReason: string,
+    context?: Record<string, unknown>,
+  ): Promise<{ actionsExecuted: StopLossAction[]; allSuccess: boolean; errorMessage?: string }> {
+    const actionsExecuted: StopLossAction[] = [];
+    for (const action of playbook.actions) {
+      const handler = this.actionHandlers.get(action);
+      if (!handler) {
+        return {
+          actionsExecuted,
+          allSuccess: false,
+          errorMessage: `No handler for action: ${action}`,
+        };
+      }
+
+      try {
+        const result = await handler({ playbookId: playbook.id, reason: triggerReason, ...context });
+        if (!result.success) {
+          return {
+            actionsExecuted,
+            allSuccess: false,
+            errorMessage: result.message,
+          };
+        }
+        actionsExecuted.push(action);
+      } catch (err) {
+        return {
+          actionsExecuted,
+          allSuccess: false,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    return { actionsExecuted, allSuccess: true };
+  }
+
   /**
    * Records an execution event and updates rate limit counters.
    */
@@ -701,9 +784,18 @@ export class AutoStopLossService {
     // Update rate limit counters (reset hourly via hour key)
     if (playbookId) {
       const hourKey = this.getHourKey();
+      this.pruneExecutionCounts(hourKey);
       const countKey = `${playbookId}_${hourKey}`;
       const currentCount = this.executionCounts.get(countKey) ?? 0;
       this.executionCounts.set(countKey, currentCount + 1);
+    }
+  }
+
+  private pruneExecutionCounts(currentHourKey: string): void {
+    for (const countKey of this.executionCounts.keys()) {
+      if (!countKey.endsWith(`_${currentHourKey}`)) {
+        this.executionCounts.delete(countKey);
+      }
     }
   }
 
@@ -711,8 +803,11 @@ export class AutoStopLossService {
    * Generates a key based on the current hour for rate limiting.
    */
   private getHourKey(): string {
-    const now = new Date();
-    return `${now.getFullYear()}${now.getMonth()}${now.getDate()}${now.getHours()}`;
+    const now = this.now();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    return `${now.getFullYear()}${month}${day}${hours}`;
   }
 
   // ── Human Approval ──────────────────────────────────────────────────
@@ -724,19 +819,41 @@ export class AutoStopLossService {
    * @param approved - Whether to approve (true) or reject (false) the execution
    * @returns true if the approval/rejection was successful
    */
-  approvePendingExecution(eventId: string, approved: boolean): boolean {
+  async approvePendingExecution(eventId: string, approved: boolean): Promise<boolean> {
     const event = this.executionHistory.find((e) => e.id === eventId);
     if (!event || event.completedAt !== null) return false;
+    const pendingExecution = this.pendingApprovals.get(eventId);
+    if (!pendingExecution) {
+      return false;
+    }
 
     if (approved) {
+      const executionResult = await this.executeActions(
+        pendingExecution.playbook,
+        pendingExecution.triggerReason,
+        pendingExecution.context,
+      );
       event.humanApproved = true;
       event.completedAt = nowIso();
-      delete event.errorMessage;
+      event.success = executionResult.allSuccess;
+      event.actionsExecuted = executionResult.actionsExecuted;
+      event.escalationLevel = this.resolveEscalationLevel(
+        pendingExecution.playbook,
+        pendingExecution.context,
+      );
+      if (executionResult.errorMessage !== undefined) {
+        event.errorMessage = executionResult.errorMessage;
+      } else {
+        delete event.errorMessage;
+      }
+      this.lastExecutionTime.set(pendingExecution.playbook.id, this.now().getTime());
+      this.pendingApprovals.delete(eventId);
       return true;
     } else {
       event.completedAt = nowIso();
       event.success = false;
       event.errorMessage = "Rejected by human";
+      this.pendingApprovals.delete(eventId);
       return true;
     }
   }
@@ -796,12 +913,17 @@ export class AutoStopLossService {
     });
 
     // Execute matching playbooks asynchronously (fire-and-forget)
+    // R11-30 fix: properly handle rejections with logger.error instead of silent swallow
     for (const playbook of matchingPlaybooks) {
-      this.executePlaybook(playbook, `Health check: ${snapshot.status}`, {
+      void this.executePlaybook(playbook, `Health check: ${snapshot.status}`, {
         healthStatus: snapshot.status,
         ...snapshot,
-      }).catch(() => {
-        // Log error but don't block the health check loop
+      }).catch((err) => {
+        logger.error("auto_stop_loss.playbook_execution_failed", {
+          playbookId: playbook.id,
+          healthStatus: snapshot.status,
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
     }
   }

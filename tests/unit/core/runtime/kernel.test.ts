@@ -54,7 +54,7 @@ test("StateTransitionMachine assertTransition invalid transition throws", () => 
   }, WorkflowStateError);
 });
 
-test("StateTransitionMachine noop transition is idempotent", () => {
+test("StateTransitionMachine rejects noop transition", () => {
   const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress", "cancelled"],
     in_progress: ["done", "failed", "cancelled"],
@@ -64,9 +64,9 @@ test("StateTransitionMachine noop transition is idempotent", () => {
   };
   const machine = new StateTransitionMachine("task", transitions);
 
-  assert.doesNotThrow(() => {
+  assert.throws(() => {
     machine.assertTransition("queued", "queued");
-  });
+  }, WorkflowStateError);
 });
 
 test("StateTransitionMachine works with workflow entity", () => {

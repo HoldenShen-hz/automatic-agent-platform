@@ -31,6 +31,41 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { EventRecord } from "../../contracts/types/domain.js";
+import { z } from "zod";
+
+const logger = console;
+
+/**
+ * Schema for validating task status change payloads.
+ */
+const TaskStatusChangePayloadSchema = z.object({
+  toStatus: z.string().optional(),
+});
+
+/**
+ * Schema for validating event record payloads at inter-plane boundary.
+ */
+const EventRecordPayloadSchema = z.record(z.unknown());
+
+/**
+ * Safely parses JSON with schema validation for inter-plane boundary.
+ * @param jsonString - Raw JSON string to parse
+ * @param schema - Zod schema for validation
+ * @param errorContext - Context string for error messages
+ * @returns Validated parsed object
+ */
+function safeJsonParse<T>(jsonString: string, schema: z.ZodType<T>, errorContext: string): T {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return schema.parse(parsed);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      logger.warn(`${errorContext}: schema validation failed`, { error: err.errors });
+    }
+    // Fallback: return object with raw content if schema validation fails
+    return { originalJson: jsonString } as unknown as T;
+  }
+}
 
 /**
  * Event types that can be dropped from the replay buffer when it exceeds max size.
@@ -144,7 +179,7 @@ export interface SseFrame {
 function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
   switch (event.eventType) {
     case "task:status_changed": {
-      const payload = JSON.parse(event.payloadJson) as { toStatus?: string };
+      const payload = safeJsonParse(event.payloadJson, TaskStatusChangePayloadSchema, "mapEventType:task:status_changed");
       if (payload.toStatus === "done") {
         return "completed";
       }
@@ -248,7 +283,7 @@ export class StreamBridge {
       taskId: input.event.taskId ?? "unknown_task",
       channel: input.channel,
       eventType: mapEventType(input.event),
-      payload: JSON.parse(input.event.payloadJson) as Record<string, unknown>,
+      payload: safeJsonParse(input.event.payloadJson, EventRecordPayloadSchema, "emitFromEvent"),
       createdAt: input.event.createdAt,
     });
   }
@@ -374,16 +409,41 @@ export class StreamBridge {
    * the oldest frame regardless of type. Critical events (completed, failed,
    * approval_requested) are preserved by checking the type before dropping.
    *
+   * R12-09: Fixed to ensure critical events are never dropped via splice(0,1).
+   * Instead, only non-critical (droppable) events are removed first.
+   *
    * @param frame - The frame to append
    */
   private appendToReplayBuffer(frame: StreamEventFrame): void {
     const next = [...(this.replayBuffer.get(frame.streamId) ?? []), frame];
 
     while (next.length > this.options.maxReplayFrames) {
-      // Find the first droppable frame (search from oldest)
-      const indexToDrop = next.findIndex((candidate) => DROPPABLE_EVENT_TYPES.has(candidate.eventType));
-      // If no droppable found, fall back to oldest (index 0)
-      const removed = next.splice(indexToDrop >= 0 ? indexToDrop : 0, 1)[0];
+      // R12-09: Critical events are NEVER dropped - find droppable events only
+      const criticalEventTypes = new Set(["completed", "failed", "approval_requested"]);
+
+      // Find index of first droppable (non-critical) frame from oldest (index 0)
+      let indexToDrop = -1;
+      for (let i = 0; i < next.length; i++) {
+        if (!criticalEventTypes.has(next[i]!.eventType)) {
+          indexToDrop = i;
+          break;
+        }
+      }
+
+      // R12-09: If no droppable found, buffer is full of critical events
+      // In this case, we cannot drop any events - stop buffering
+      if (indexToDrop < 0) {
+        // Buffer is full and all events are critical - log warning and stop
+        logger?.warn?.("stream.replay_buffer_full_critical", {
+          streamId: frame.streamId,
+          frameSequence: frame.sequence,
+          bufferedCount: next.length,
+        });
+        break;
+      }
+
+      // Drop the droppable event
+      const removed = next.splice(indexToDrop, 1)[0];
       if (removed != null) {
         // Track the lowest dropped sequence so clients know buffer was truncated
         const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;

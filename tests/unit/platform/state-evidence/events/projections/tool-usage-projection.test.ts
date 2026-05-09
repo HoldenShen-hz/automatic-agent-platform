@@ -37,7 +37,7 @@ test("toolUsageProjectionHandler initializes state correctly", () => {
   assert.equal(state.taskId, "task_1");
   assert.equal(state.status, "started");
   assert.equal(state.eventCount, 1);
-  assert.deepEqual(state.processedEventIds, ["evt_1"]);
+  assert.deepEqual(state.processedEventIds, new Set(["evt_1"]));
   assert.equal(state.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(state.lastEventAt, "2026-04-19T10:00:00.000Z");
 });
@@ -133,7 +133,7 @@ test("toolUsageProjectionHandler is idempotent - same event twice", () => {
   // Should be the same - second event is skipped
   assert.equal(state2.eventCount, 1);
   assert.equal(state2.successCount, 1);
-  assert.deepEqual(state2.processedEventIds, ["evt_idem_1"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_idem_1"]));
 });
 
 test("toolUsageProjectionHandler accumulates multiple events", () => {
@@ -156,7 +156,7 @@ test("toolUsageProjectionHandler accumulates multiple events", () => {
   assert.equal(state2.invocationCount, 1);
   assert.equal(state2.successCount, 1);
   assert.equal(state2.eventCount, 2);
-  assert.deepEqual(state2.processedEventIds, ["evt_start", "evt_succ"]);
+  assert.deepEqual(state2.processedEventIds, new Set(["evt_start", "evt_succ"]));
 });
 
 test("createToolUsageProjectionHandler returns handler function", () => {
@@ -215,7 +215,7 @@ test("createEmptyToolUsageState returns correct initial state", () => {
   assert.equal(state.cacheHitCount, 0);
   assert.equal(state.cacheMissCount, 0);
   assert.equal(state.retryCount, 0);
-  assert.deepEqual(state.processedEventIds, []);
+  assert.deepEqual(state.processedEventIds, new Set());
   assert.deepEqual(state.timeline, []);
 });
 

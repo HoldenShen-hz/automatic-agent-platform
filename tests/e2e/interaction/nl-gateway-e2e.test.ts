@@ -18,7 +18,7 @@ import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { parseIntentTokens } from "../../../src/interaction/nl-gateway/intent-parser/index.js";
 import { DisambiguationHandler } from "../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
 import { resolveRequiredSlots } from "../../../src/interaction/nl-gateway/slot-resolver/index.js";
-import type { NlRequest, ParsedIntent, DisambiguationOption, ExtractedEntity } from "../../../src/interaction/nl-gateway/types.js";
+import type { NlRequest, ParsedIntent, DisambiguationOption } from "../../../src/interaction/nl-gateway/types.js";
 
 // Mock IntentParser class that wraps the available functions
 class MockIntentParser {
@@ -45,7 +45,12 @@ class MockIntentParser {
       fallbackWorkflowId = "generic_handler";
     }
 
-    return { intent: intentType, confidence, workflowId, fallbackWorkflowId };
+    return {
+      intent: intentType,
+      confidence,
+      ...(workflowId !== undefined && { workflowId }),
+      ...(fallbackWorkflowId !== undefined && { fallbackWorkflowId }),
+    };
   }
 }
 

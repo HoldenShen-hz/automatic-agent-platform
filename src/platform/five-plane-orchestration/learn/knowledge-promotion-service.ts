@@ -96,25 +96,30 @@ export class KnowledgePromotionService {
     // Emit learning:knowledge_promoted event (Tier 2) for downstream consumers
     if (promoted.length > 0 && this.eventPublisher) {
       const promotedCount = promoted.length;
-      for (const { objectId, documentId } of promoted) {
+      // R13-09: Emit a single batch event with all promoted objects' metadata
+      const allObjectsMetadata = promoted.map(({ objectId, documentId }) => {
         const obj = learningObjects.find((item) => item.learningObjectId === objectId);
-        if (!obj) {
-          continue;
-        }
-        this.eventPublisher.publish({
-          eventType: "learning:knowledge_promoted",
-          taskId,
-          payload: {
-            learningObjectId: obj.learningObjectId,
-            learningType: obj.learningType,
-            documentId,
-            namespace: "system.learned.patterns",
-            trustLevel: "reviewed",
-            promotedCount,
-            occurredAt: nowIso(),
-          },
-        });
-      }
+        return {
+          learningObjectId: objectId,
+          documentId,
+          learningType: obj?.learningType ?? "unknown",
+          title: obj?.title ?? "",
+          summary: obj?.summary ?? "",
+          confidence: obj?.confidence ?? 0,
+        };
+      });
+
+      this.eventPublisher.publish({
+        eventType: "learning:knowledge_promoted",
+        taskId,
+        payload: {
+          promotedCount,
+          promotedObjects: allObjectsMetadata,
+          namespace: "system.learned.patterns",
+          trustLevel: "reviewed",
+          occurredAt: nowIso(),
+        },
+      });
     }
 
     return {

@@ -16,9 +16,29 @@ export interface CrossAgentAnalysisResult {
   bestAgentId: string | null;
   worstAgentId: string | null;
   divergenceScore: number;
-  recommendation: string;
+  /** Structured actionable recommendation with code, action, and rationale. */
+  recommendation: CrossAgentRecommendation;
   alerts: readonly CrossAgentDriftAlert[];
 }
+
+/** Structured recommendation format replacing generic string. */
+export interface CrossAgentRecommendation {
+  code: string;
+  action: CrossAgentAction;
+  rationale: string;
+  priority: "low" | "medium" | "high" | "critical";
+  affectedAgents: readonly string[];
+}
+
+export type CrossAgentAction =
+  | "rebalance_workload"
+  | "immediate_rollback"
+  | "monitoring_enhanced"
+  | "anti_gaming_review"
+  | "cost_optimization"
+  | "latency_investigation"
+  | "agents_consistent"
+  | "insufficient_data";
 
 export interface CrossAgentDriftAlert {
   readonly alertId: string;
@@ -27,7 +47,7 @@ export interface CrossAgentDriftAlert {
   readonly agentsInvolved: readonly string[];
   readonly divergenceScore: number;
   readonly antiGamingDetected: boolean;
-  readonly recommendation: string;
+  readonly recommendation: CrossAgentRecommendation;
 }
 
 export class CrossAgentAnalyzerService {
@@ -39,7 +59,13 @@ export class CrossAgentAnalyzerService {
         bestAgentId: null,
         worstAgentId: null,
         divergenceScore: 0,
-        recommendation: "insufficient_data",
+        recommendation: {
+          code: "INSUFFICIENT_DATA",
+          action: "insufficient_data",
+          rationale: "No agent metrics available for cross-agent analysis.",
+          priority: "low",
+          affectedAgents: [],
+        },
         alerts: [],
       };
     }
@@ -54,12 +80,82 @@ export class CrossAgentAnalyzerService {
     if (alert) {
       this.alertHistory.push(alert);
     }
+
+    // Build structured recommendation based on analysis results
+    const recommendation = this.buildStructuredRecommendation(ranked, divergenceScore, antiGamingDetected);
     return {
       bestAgentId: best.agentId,
       worstAgentId: worst.agentId,
       divergenceScore,
-      recommendation: divergenceScore >= 0.2 ? "rebalance_or_rollout_review" : "agents_are_consistent",
+      recommendation,
       alerts: [...this.alertHistory],
+    };
+  }
+
+  private buildStructuredRecommendation(
+    ranked: CrossAgentMetric[],
+    divergenceScore: number,
+    antiGamingDetected: boolean,
+  ): CrossAgentRecommendation {
+    const agentIds = ranked.map((m) => m.agentId);
+
+    if (antiGamingDetected) {
+      return {
+        code: "ANTI_GAMING_DETECTED",
+        action: "anti_gaming_review",
+        rationale: `Anti-gaming pattern detected: high success rate with anomalous task mix (synthetic/keepalive > 50%). Divergence score: ${divergenceScore.toFixed(3)}.`,
+        priority: "critical",
+        affectedAgents: agentIds,
+      };
+    }
+
+    if (divergenceScore >= 0.4) {
+      return {
+        code: "HIGH_DIVERGENCE",
+        action: "immediate_rollback",
+        rationale: `Critical divergence (${(divergenceScore * 100).toFixed(1)}%) between best/worst agents. Best: ${ranked[0]?.agentId}, Worst: ${ranked.at(-1)?.agentId}. Significant workload rebalance or rollback required.`,
+        priority: "critical",
+        affectedAgents: [ranked[0]?.agentId ?? "", ranked.at(-1)?.agentId ?? ""].filter(Boolean),
+      };
+    }
+
+    if (divergenceScore >= 0.2) {
+      // Check if cost or latency is the primary divergence driver
+      const costVariance = this.computeVariance(ranked.map((m) => m.averageCostUsd));
+      const latencyVariance = this.computeVariance(ranked.map((m) => m.averageLatencyMs));
+      if (costVariance > 0.05) {
+        return {
+          code: "COST_DIVERGENCE",
+          action: "cost_optimization",
+          rationale: `Moderate divergence (${(divergenceScore * 100).toFixed(1)}%) driven by cost variance. Agents should be reviewed for cost efficiency rebalancing.`,
+          priority: "medium",
+          affectedAgents: agentIds,
+        };
+      }
+      if (latencyVariance > 0.1) {
+        return {
+          code: "LATENCY_DIVERGENCE",
+          action: "latency_investigation",
+          rationale: `Moderate divergence (${(divergenceScore * 100).toFixed(1)}%) driven by latency variance. High-latency agents should be investigated.`,
+          priority: "medium",
+          affectedAgents: agentIds,
+        };
+      }
+      return {
+        code: "MODERATE_DIVERGENCE",
+        action: "rebalance_workload",
+        rationale: `Moderate divergence (${(divergenceScore * 100).toFixed(1)}%) detected. Workload rebalance or rollout review recommended.`,
+        priority: "medium",
+        affectedAgents: agentIds,
+      };
+    }
+
+    return {
+      code: "CONSISTENT",
+      action: "agents_consistent",
+      rationale: `Agents are performing consistently. Divergence score: ${(divergenceScore * 100).toFixed(1)}%. No immediate action required.`,
+      priority: "low",
+      affectedAgents: agentIds,
     };
   }
 
@@ -107,9 +203,7 @@ export class CrossAgentAnalyzerService {
       agentsInvolved: ranked.map((m) => m.agentId),
       divergenceScore,
       antiGamingDetected,
-      recommendation: antiGamingDetected
-        ? "anti_gaming_review_required"
-        : divergenceScore >= 0.4 ? "immediate_rebalance_required" : "monitoring_recommended",
+      recommendation: this.buildStructuredRecommendation(ranked, divergenceScore, antiGamingDetected),
     };
   }
 }
