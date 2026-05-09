@@ -160,9 +160,10 @@ export interface ChaosGameDay {
 
 export class ChaosExperimentScheduler {
   private readonly experiments = new Map<string, ChaosExperiment>();
-  private readonly steadyStateCache = new Map<string, number>();
+  private readonly steadyStateCache = new Map<string, { value: number; timestamp: number }>();
   private readonly gameDays = new Map<string, ChaosGameDay>();
   private readonly rollbackQueue = new Map<string, RollbackAction[]>();
+  private readonly monitoringIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
   /**
    * Schedules a new chaos experiment with boundary control.
@@ -576,5 +577,93 @@ export class ChaosExperimentScheduler {
       planesAcknowledged,
       generatedAt: nowIso(),
     };
+  }
+
+  /**
+   * Starts continuous monitoring for an experiment.
+   * Periodically evaluates steady-state hypotheses at the given interval.
+   * R17-72 fix: Continuous monitoring loop for ongoing steady-state validation.
+   */
+  public startContinuousMonitoring(
+    experimentId: string,
+    intervalMs: number,
+    evaluator: () => Promise<{ passed: boolean; measuredValue: number | null; message: string }>,
+  ): void {
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment || experiment.status !== "running") return;
+
+    // Clear any existing interval for this experiment
+    this.stopContinuousMonitoring(experimentId);
+
+    const interval = setInterval(async () => {
+      const currentExp = this.experiments.get(experimentId);
+      if (!currentExp || currentExp.status !== "running") {
+        this.stopContinuousMonitoring(experimentId);
+        return;
+      }
+
+      const result = await evaluator();
+      this.recordSteadyStateResult(
+        experimentId,
+        currentExp.steadyStateHypotheses[0]?.name ?? "default",
+        result.measuredValue,
+        result.passed,
+        result.message,
+      );
+
+      const updatedExp = this.experiments.get(experimentId);
+      if (!updatedExp || updatedExp.status !== "running") {
+        this.stopContinuousMonitoring(experimentId);
+      }
+    }, intervalMs);
+
+    this.monitoringIntervals.set(experimentId, interval);
+  }
+
+  /**
+   * Stops continuous monitoring for an experiment.
+   * R17-72 fix: Cleanup interval on stop.
+   */
+  public stopContinuousMonitoring(experimentId: string): void {
+    const interval = this.monitoringIntervals.get(experimentId);
+    if (interval) {
+      clearInterval(interval);
+      this.monitoringIntervals.delete(experimentId);
+    }
+  }
+
+  /**
+   * Caches a steady-state metric value with timestamp.
+   * R17-62 fix: Richer cache type for tracking historical measurements.
+   */
+  public cacheSteadyStateMetric(experimentId: string, hypothesisName: string, value: number): void {
+    this.steadyStateCache.set(`${experimentId}:${hypothesisName}`, {
+      value,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Gets a cached steady-state metric value.
+   * R17-62 fix: Returns richer type with timestamp.
+   */
+  public getSteadyStateMetric(experimentId: string, hypothesisName: string): { value: number; timestamp: number } | null {
+    return this.steadyStateCache.get(`${experimentId}:${hypothesisName}`) ?? null;
+  }
+
+  /**
+   * Clears all cached steady-state metrics for an experiment.
+   * R17-62 fix: Cleanup cache when experiment ends.
+   */
+  public clearSteadyStateCache(experimentId: string): void {
+    const keysToDelete: string[] = [];
+    for (const key of this.steadyStateCache.keys()) {
+      if (key.startsWith(`${experimentId}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this.steadyStateCache.delete(key);
+    }
   }
 }

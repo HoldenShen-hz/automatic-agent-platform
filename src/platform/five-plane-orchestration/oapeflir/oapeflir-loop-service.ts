@@ -117,7 +117,7 @@ export class OapeflirLoopService {
   private readonly executeBridge: ExecuteBridge;
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
   // R19-06 fix: Store eventPublisher for emitting state change events per §14.3
-  private readonly eventPublisher?: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
+  private readonly eventPublisher: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | undefined;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -132,7 +132,7 @@ export class OapeflirLoopService {
       eventPublisher: options.eventPublisher ?? null,
     });
     // R19-06 fix: Store eventPublisher for stage event emission
-    this.eventPublisher = options.eventPublisher ?? undefined;
+    this.eventPublisher = options.eventPublisher ?? null;
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
@@ -555,6 +555,9 @@ export class OapeflirLoopService {
           }
           timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
           fsm.recordStageCompletion("improve");
+
+          // R19-06 fix: Emit stage completion event
+          this.emitStageEvent("improve", input.taskId, { status: "completed", candidateId: approved.candidateId });
 
           // R5-3: Release stage transition check
           const releaseTransition = fsm.canTransitionTo("release");

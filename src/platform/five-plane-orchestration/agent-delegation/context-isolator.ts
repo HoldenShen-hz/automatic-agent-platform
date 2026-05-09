@@ -150,7 +150,8 @@ export class ContextIsolator {
     );
 
     return {
-      resources: override.resources.length > 0 ? override.resources : base.resources,
+      // R26-04 fix: intersect resources to ensure override doesn't exceed base scope
+      resources: this.intersectLists(override.resources.length > 0 ? override.resources : base.resources, base.resources),
       actions: this.mergeActions(base.actions, override.actions),
       constraints: {
         ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),

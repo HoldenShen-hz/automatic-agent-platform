@@ -254,3 +254,49 @@ test("DelegationAuditService.listEvents returns all events", () => {
   assert.equal(events.length, 1);
   assert.equal(events[0]?.delegationId, "dlg_1");
 });
+
+// R26-07 fix: delegation depth tracking - depth is now tracked in completed/failed events
+test("R26-07: recordDelegationCompleted tracks actual depth instead of hardcoding 0", () => {
+  const service = new DelegationAuditService();
+  const event = service.recordDelegationCompleted({
+    delegationId: "dlg_1",
+    parentAgentId: "agent_1",
+    childAgentId: "agent_2",
+    durationMs: 5000,
+    depth: 3, // R26-07 fix: pass actual depth
+    actorId: "agent_2",
+    actorType: "agent",
+  });
+
+  assert.equal(event.depth, 3, "Should track actual delegation depth");
+});
+
+test("R26-07: recordDelegationFailed tracks actual depth instead of hardcoding 0", () => {
+  const service = new DelegationAuditService();
+  const event = service.recordDelegationFailed({
+    delegationId: "dlg_1",
+    parentAgentId: "agent_1",
+    childAgentId: "agent_2",
+    error: "timeout",
+    depth: 5, // R26-07 fix: pass actual depth
+    actorId: "agent_2",
+    actorType: "agent",
+  });
+
+  assert.equal(event.depth, 5, "Should track actual delegation depth");
+});
+
+test("R26-07: depth defaults to 0 when not provided (backward compatibility)", () => {
+  const service = new DelegationAuditService();
+  const event = service.recordDelegationCompleted({
+    delegationId: "dlg_1",
+    parentAgentId: "agent_1",
+    childAgentId: "agent_2",
+    durationMs: 5000,
+    // No depth provided - should default to 0
+    actorId: "agent_2",
+    actorType: "agent",
+  });
+
+  assert.equal(event.depth, 0, "Should default to depth 0 when not provided");
+});
