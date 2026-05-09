@@ -24,13 +24,17 @@ export type RecoveryScope = "node" | "graph";
 const RETRY_BACKOFF_BASE_MS = 1_000; // 1 second base
 const RETRY_BACKOFF_MAX_MS = 60_000; // 60 second cap
 const RETRY_MAX_ATTEMPTS = 5; // Max retries before escalation
+const RETRY_JITTER_FACTOR = 0.1; // 10% jitter per §9.3
 
 /**
- * Computes exponential backoff delay with cap per §9.3.
- * delay = min(maxDelay, base * 2^(attempt - 1))
+ * Computes exponential backoff delay with cap and jitter per §9.3.
+ * delay = min(maxDelay, base * 2^(attempt - 1)) + jitter
  */
 function computeBackoffDelayMs(attempt: number): number {
-  return Math.min(RETRY_BACKOFF_MAX_MS, RETRY_BACKOFF_BASE_MS * 2 ** Math.max(0, attempt - 1));
+  const exponentialDelay = RETRY_BACKOFF_BASE_MS * 2 ** Math.max(0, attempt - 1);
+  const cappedDelay = Math.min(exponentialDelay, RETRY_BACKOFF_MAX_MS);
+  const jitter = cappedDelay * RETRY_JITTER_FACTOR * Math.random();
+  return Math.floor(cappedDelay + jitter);
 }
 
 export class RecoveryController {

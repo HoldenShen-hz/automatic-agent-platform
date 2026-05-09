@@ -424,7 +424,7 @@ export class BillingRepository {
           `SELECT ${BILLING_INVOICE_COLS}
            FROM billing_invoices
            WHERE invoice_id = ?
-             AND tenant_id IS ?`,
+             AND tenant_id = ?`,
           invoiceId,
           scopedTenantId,
         )
@@ -450,7 +450,7 @@ export class BillingRepository {
           `SELECT ${BILLING_INVOICE_COLS}
            FROM billing_invoices
            WHERE account_id = ?
-             AND tenant_id IS ?
+             AND tenant_id = ?
            ORDER BY created_at DESC
            LIMIT ?`,
           accountId,
@@ -478,7 +478,7 @@ export class BillingRepository {
            FROM billing_payment_sessions s
            INNER JOIN billing_invoices i ON i.invoice_id = s.invoice_id
            WHERE s.session_id = ?
-             AND i.tenant_id IS ?`,
+             AND i.tenant_id = ?`,
           sessionId,
           scopedTenantId,
         )
@@ -505,7 +505,7 @@ export class BillingRepository {
            INNER JOIN billing_invoices i ON i.invoice_id = s.invoice_id
            WHERE s.gateway_kind = ?
              AND s.gateway_session_ref = ?
-             AND i.tenant_id IS ?
+             AND i.tenant_id = ?
            ORDER BY s.created_at DESC
            LIMIT 1`,
           gatewayKind,
@@ -539,7 +539,7 @@ export class BillingRepository {
            FROM billing_payment_sessions s
            INNER JOIN billing_invoices i ON i.invoice_id = s.invoice_id
            WHERE s.invoice_id = ?
-             AND i.tenant_id IS ?
+             AND i.tenant_id = ?
            ORDER BY s.created_at DESC
            LIMIT ?`,
           invoiceId,
@@ -577,7 +577,7 @@ export class BillingRepository {
       parameters.push(options.gatewayKind);
     }
     if (scopedTenantId !== undefined) {
-      conditions.push("i.tenant_id IS ?");
+      conditions.push("i.tenant_id = ?");
       parameters.push(scopedTenantId);
     }
 

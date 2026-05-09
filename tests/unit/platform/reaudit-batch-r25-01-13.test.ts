@@ -8,7 +8,10 @@ import { HttpApiServer } from "../../../src/platform/interface/api/http-api-serv
 import { buildJsonErrorResponse } from "../../../src/platform/interface/api/http-server/utils.js";
 import { normalizeError } from "../../../src/platform/interface/api/http-server/api-error.js";
 import { GatewayTargetNotFoundError } from "../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
-import { ChannelGatewayDeliveryService } from "../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
+import {
+  CHANNEL_DELIVERY_DDL,
+  ChannelGatewayDeliveryService,
+} from "../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
 import { WebSocketBridge } from "../../../src/platform/interface/channel-gateway/websocket-bridge.js";
 import { StreamBridge } from "../../../src/platform/interface/channel-gateway/stream-bridge.js";
 import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite-database.js";
@@ -85,6 +88,7 @@ function createDeliveryHarness() {
   const workspace = createTempWorkspace("reaudit-r25-delivery-");
   const db = new SqliteDatabase(join(workspace, "delivery.db"));
   db.migrate();
+  db.connection.exec(CHANNEL_DELIVERY_DDL);
   const service = new ChannelGatewayDeliveryService(db);
   return {
     workspace,
@@ -218,10 +222,10 @@ test("R25-09 StreamBridge replay buffer remains bounded and evicts old droppable
   bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "completed", payload: { ok: true } });
 
   const replayWindow = bridge.getReplayWindow(streamId);
-  const replay = bridge.replay(streamId, 0);
+  const bufferedFrames = bridge.replayAfterSequence(streamId, 1);
   assert.equal(replayWindow.bufferedFrameCount, 2);
-  assert.equal(replay.frames.length, 2);
-  assert.equal(replay.frames.some((frame) => frame.eventType === "completed"), true);
+  assert.equal(bufferedFrames.length, 2);
+  assert.equal(bufferedFrames.some((frame) => frame.eventType === "completed"), true);
 });
 
 test("R25-08 and R25-11 WebSocketBridge heartbeat sweep drops dead clients and subscribe path enforces tenant scope", async () => {

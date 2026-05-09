@@ -91,7 +91,7 @@ export class OperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
     if (options.metricName != null) {
@@ -159,7 +159,7 @@ export class OperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
     if (options.bundleType != null) {
@@ -225,7 +225,7 @@ export class OperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
     if (options.datasetType != null) {

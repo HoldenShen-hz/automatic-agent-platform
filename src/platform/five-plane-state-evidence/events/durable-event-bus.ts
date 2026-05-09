@@ -736,10 +736,9 @@ export class DurableEventBus {
     // R12-01: Get partition key for FIFO ordering
     const partitionKey = event.aggregateId ?? event.id;
 
-    // R12-01: Get or initialize partition sequence number
-    const currentSeq = partitionSequenceNumbers.get(partitionKey) ?? 0;
-    const eventSequence = currentSeq + 1;
-    partitionSequenceNumbers.set(partitionKey, eventSequence);
+    // R12-01: Use the event's own sequence field as the sequence number for ordering
+    // This ensures events with the same aggregateId are delivered in sequence order
+    const eventSequence = event.sequence ?? 0;
 
     // R12-02: Collect all eligible consumers and group them
     const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
@@ -800,7 +799,9 @@ export class DurableEventBus {
         .then(async () => {
           this.assertNotDisposed();
           // R12-01: Check sequence - only deliver if this is the next expected event
-          const expectedSeq = partitionSequenceNumbers.get(`${partitionKey}:${consumerId}`) ?? 0;
+          // Use the per-partition-per-consumer sequence tracker to ensure ordering
+          const consumerPartitionKey = `${partitionKey}:${consumerId}`;
+          const expectedSeq = partitionSequenceNumbers.get(consumerPartitionKey) ?? 0;
           if (eventSequence < expectedSeq) {
             // This event is old, skip it
             eventBusLogger.debug("event_bus.out_of_sequence_skip", {
@@ -811,7 +812,7 @@ export class DurableEventBus {
             });
             return;
           }
-          partitionSequenceNumbers.set(`${partitionKey}:${consumerId}`, eventSequence + 1);
+          partitionSequenceNumbers.set(consumerPartitionKey, eventSequence + 1);
 
           try {
             await entry.handler(event);

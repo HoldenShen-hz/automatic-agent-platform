@@ -214,7 +214,7 @@ export class OrganizationRepository {
            created_at AS createdAt,
            updated_at AS updatedAt
          FROM workspaces
-         WHERE organization_id IS ?
+         WHERE organization_id = ?
          ORDER BY updated_at DESC, workspace_id ASC
          LIMIT ?`,
         options.organizationId,
@@ -345,7 +345,7 @@ export class OrganizationRepository {
            created_at AS createdAt,
            updated_at AS updatedAt
          FROM tenants
-         WHERE organization_id IS ?
+         WHERE organization_id = ?
          ORDER BY updated_at DESC, tenant_id ASC
          LIMIT ?`,
         options.organizationId,
@@ -409,7 +409,7 @@ export class OrganizationRepository {
            created_at AS createdAt,
            updated_at AS updatedAt
          FROM deployment_bindings
-         WHERE tenant_id IS ?
+         WHERE tenant_id = ?
          ORDER BY updated_at DESC, binding_id ASC
          LIMIT ?`,
         options.tenantId,
@@ -469,15 +469,15 @@ export class OrganizationRepository {
       parameters.push(options.plane);
     }
     if (options.tenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
     if (options.organizationId !== undefined) {
-      conditions.push("organization_id IS ?");
+      conditions.push("organization_id = ?");
       parameters.push(options.organizationId);
     }
     if (options.workspaceId !== undefined) {
-      conditions.push("workspace_id IS ?");
+      conditions.push("workspace_id = ?");
       parameters.push(options.workspaceId);
     }
 

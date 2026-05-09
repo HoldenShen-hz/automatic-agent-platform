@@ -172,7 +172,7 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      conditions.push(`tenant_id = $${parameters.length + 1}`);
       parameters.push(options.tenantId);
     }
     if (options.metricName != null) {
@@ -239,7 +239,7 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      conditions.push(`tenant_id = $${parameters.length + 1}`);
       parameters.push(options.tenantId);
     }
     if (options.bundleType != null) {
@@ -304,7 +304,7 @@ export class AsyncOperationsRepository {
       parameters.push(options.namespaceId);
     }
     if (options.tenantId !== undefined) {
-      conditions.push(`tenant_id IS $${parameters.length + 1}`);
+      conditions.push(`tenant_id = $${parameters.length + 1}`);
       parameters.push(options.tenantId);
     }
     if (options.datasetType != null) {

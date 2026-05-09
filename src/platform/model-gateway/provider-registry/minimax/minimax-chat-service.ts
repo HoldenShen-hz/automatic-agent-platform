@@ -406,6 +406,16 @@ export class MiniMaxChatService {
                 }
               }
             } catch (err) {
+              // Business errors from assertMiniMaxBusinessSuccess must be propagated,
+              // not silently swallowed at debug level. Re-throw so the caller sees them.
+              if (err instanceof MiniMaxAPIError) {
+                logger.log({
+                  level: "error",
+                  message: "MiniMax streaming business error",
+                  data: { error: err.message },
+                });
+                throw err;
+              }
               logger.log({
                 level: "debug",
                 message: "Skipped malformed JSON in stream",

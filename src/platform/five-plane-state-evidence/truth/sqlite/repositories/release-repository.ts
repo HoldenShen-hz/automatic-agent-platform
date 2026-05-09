@@ -224,7 +224,7 @@ export class ReleaseRepository {
     if (options.environment !== undefined) {
       return queryAll<ReleaseBundleRecord>(
         this.db.connection,
-        `${sql} WHERE environment IS ? ORDER BY exported_at DESC, bundle_id DESC LIMIT ?`,
+        `${sql} WHERE environment = ? ORDER BY exported_at DESC, bundle_id DESC LIMIT ?`,
         options.environment,
         safeLimit,
       );
@@ -348,7 +348,7 @@ export class ReleaseRepository {
     if (options.environment !== undefined) {
       return queryAll<ReleaseExecutionReportRecord>(
         this.db.connection,
-        `${sql} WHERE environment IS ? ORDER BY exported_at DESC, execution_id DESC LIMIT ?`,
+        `${sql} WHERE environment = ? ORDER BY exported_at DESC, execution_id DESC LIMIT ?`,
         options.environment,
         safeLimit,
       );
@@ -398,7 +398,7 @@ export class ReleaseRepository {
     if (options.environment !== undefined) {
       return queryAll<DeploymentExecutionReportRecord>(
         this.db.connection,
-        `${sql} WHERE environment IS ? ORDER BY exported_at DESC, execution_id DESC LIMIT ?`,
+        `${sql} WHERE environment = ? ORDER BY exported_at DESC, execution_id DESC LIMIT ?`,
         options.environment,
         safeLimit,
       );
@@ -434,7 +434,7 @@ export class ReleaseRepository {
     if (options.targetEnvironment !== undefined) {
       return queryAll<EnvironmentPromotionHistoryRecord>(
         this.db.connection,
-        `${sql} WHERE target_environment IS ? ORDER BY recorded_at DESC, promotion_id DESC LIMIT ?`,
+        `${sql} WHERE target_environment = ? ORDER BY recorded_at DESC, promotion_id DESC LIMIT ?`,
         options.targetEnvironment,
         safeLimit,
       );

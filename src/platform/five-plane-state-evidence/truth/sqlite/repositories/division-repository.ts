@@ -27,7 +27,7 @@ export class DivisionRepository {
     const parameters: Array<string | number | null> = [];
 
     if (options.tenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(options.tenantId);
     }
     if (options.status != null) {

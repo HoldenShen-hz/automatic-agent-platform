@@ -142,7 +142,7 @@ export class IntelligenceRepository {
          created_at AS createdAt,
          updated_at AS updatedAt
        FROM perception_sources
-       WHERE source_id = ? AND tenant_id IS ?`,
+       WHERE source_id = ? AND tenant_id = ?`,
       sourceId,
       scopedTenantId,
     ) ?? null;
@@ -157,7 +157,7 @@ export class IntelligenceRepository {
       conditions.push("enabled = 1");
     }
     if (scopedTenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(scopedTenantId);
     }
 
@@ -227,7 +227,7 @@ export class IntelligenceRepository {
          captured_at AS capturedAt,
          expires_at AS expiresAt
        FROM intel_items
-       WHERE source_id = ? AND dedupe_key = ? AND tenant_id IS ?
+       WHERE source_id = ? AND dedupe_key = ? AND tenant_id = ?
        LIMIT 1`,
       sourceId,
       dedupeKey,
@@ -251,7 +251,7 @@ export class IntelligenceRepository {
       parameters.push(...options.sourceIds);
     }
     if (scopedTenantId !== undefined) {
-      conditions.push("tenant_id IS ?");
+      conditions.push("tenant_id = ?");
       parameters.push(scopedTenantId);
     }
     if (options.since) {
@@ -316,7 +316,7 @@ export class IntelligenceRepository {
     }
     return queryAll<IntelItemRecord>(
       this.db.connection,
-      `${sqlBase} AND tenant_id IS ?`,
+      `${sqlBase} AND tenant_id = ?`,
       ...intelIds,
       scopedTenantId,
     );
@@ -341,7 +341,7 @@ export class IntelligenceRepository {
     }
     return queryOne<IntelBriefRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ?`,
+      `${sql} AND tenant_id = ?`,
       briefId,
       scopedTenantId,
     ) ?? null;
@@ -370,7 +370,7 @@ export class IntelligenceRepository {
     }
     return queryAll<IntelBriefRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id IS ? ORDER BY generated_at DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ? ORDER BY generated_at DESC LIMIT ?`,
       scopedTenantId,
       safeLimit,
     );
@@ -403,7 +403,7 @@ export class IntelligenceRepository {
     }
     return queryAll<ActionProposalRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? ORDER BY created_at ASC`,
+      `${sql} AND tenant_id = ? ORDER BY created_at ASC`,
       briefId,
       scopedTenantId,
     );

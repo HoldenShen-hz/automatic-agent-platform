@@ -166,7 +166,7 @@ export class AsyncMarketplaceRepository {
     }
     const result = await asyncQueryOne<ExtensionPackageRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      `${sql} AND tenant_id = $2 LIMIT 1`,
       packageId,
       scopedTenantId,
     );
@@ -205,7 +205,7 @@ export class AsyncMarketplaceRepository {
     }
     return asyncQueryAll<ExtensionPackageRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY updated_at DESC, package_id DESC LIMIT $2`,
+      `${sql} WHERE tenant_id = $1 ORDER BY updated_at DESC, package_id DESC LIMIT $2`,
       scopedTenantId,
       safeLimit,
     );
@@ -233,7 +233,7 @@ export class AsyncMarketplaceRepository {
     }
     const result = await asyncQueryOne<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      `${sql} AND tenant_id = $2 LIMIT 1`,
       reviewId,
       scopedTenantId,
     );
@@ -265,7 +265,7 @@ export class AsyncMarketplaceRepository {
     }
     return asyncQueryAll<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY submitted_at DESC, review_id DESC LIMIT $2`,
+      `${sql} WHERE tenant_id = $1 ORDER BY submitted_at DESC, review_id DESC LIMIT $2`,
       scopedTenantId,
       safeLimit,
     );
@@ -300,7 +300,7 @@ export class AsyncMarketplaceRepository {
     }
     const result = await asyncQueryOne<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
+      `${sql} AND tenant_id = $2 ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
       packageId,
       scopedTenantId,
     );
@@ -335,7 +335,7 @@ export class AsyncMarketplaceRepository {
     }
     const result = await asyncQueryOne<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      `${sql} AND tenant_id = $2 LIMIT 1`,
       publicationId,
       scopedTenantId,
     );
@@ -370,7 +370,7 @@ export class AsyncMarketplaceRepository {
     }
     const result = await asyncQueryOne<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
+      `${sql} AND tenant_id = $2 ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
       packageId,
       scopedTenantId,
     );
@@ -404,7 +404,7 @@ export class AsyncMarketplaceRepository {
     }
     return asyncQueryAll<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY updated_at DESC, publication_id DESC LIMIT $2`,
+      `${sql} WHERE tenant_id = $1 ORDER BY updated_at DESC, publication_id DESC LIMIT $2`,
       scopedTenantId,
       safeLimit,
     );
@@ -432,7 +432,7 @@ export class AsyncMarketplaceRepository {
     }
     return asyncQueryAll<MarketplaceGovernanceReportRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY generated_at DESC LIMIT $2`,
+      `${sql} WHERE tenant_id = $1 ORDER BY generated_at DESC LIMIT $2`,
       scopedTenantId,
       safeLimit,
     );

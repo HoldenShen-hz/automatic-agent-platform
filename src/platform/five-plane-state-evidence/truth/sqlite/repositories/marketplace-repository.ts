@@ -175,7 +175,7 @@ export class MarketplaceRepository {
     }
     return queryOne<ExtensionPackageRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? LIMIT 1`,
+      `${sql} AND tenant_id = ? LIMIT 1`,
       packageId,
       scopedTenantId,
     ) ?? null;
@@ -216,7 +216,7 @@ export class MarketplaceRepository {
     }
     return queryAll<ExtensionPackageRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id IS ? ORDER BY updated_at DESC, package_id DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ? ORDER BY updated_at DESC, package_id DESC LIMIT ?`,
       scopedTenantId,
       safeLimit,
     );
@@ -243,7 +243,7 @@ export class MarketplaceRepository {
     }
     return queryOne<MarketplaceReviewRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? LIMIT 1`,
+      `${sql} AND tenant_id = ? LIMIT 1`,
       reviewId,
       scopedTenantId,
     ) ?? null;
@@ -274,7 +274,7 @@ export class MarketplaceRepository {
     }
     return queryAll<MarketplaceReviewRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id IS ? ORDER BY submitted_at DESC, review_id DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ? ORDER BY submitted_at DESC, review_id DESC LIMIT ?`,
       scopedTenantId,
       safeLimit,
     );
@@ -305,7 +305,7 @@ export class MarketplaceRepository {
     }
     return queryOne<MarketplaceReviewRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
+      `${sql} AND tenant_id = ? ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
       packageId,
       scopedTenantId,
     ) ?? null;
@@ -331,7 +331,7 @@ export class MarketplaceRepository {
     }
     return queryOne<MarketplacePublicationRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? LIMIT 1`,
+      `${sql} AND tenant_id = ? LIMIT 1`,
       publicationId,
       scopedTenantId,
     ) ?? null;
@@ -364,7 +364,7 @@ export class MarketplaceRepository {
     }
     return queryOne<MarketplacePublicationRecord>(
       this.db.connection,
-      `${sql} AND tenant_id IS ? ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
+      `${sql} AND tenant_id = ? ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
       packageId,
       scopedTenantId,
     ) ?? null;
@@ -394,7 +394,7 @@ export class MarketplaceRepository {
     }
     return queryAll<MarketplacePublicationRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id IS ? ORDER BY updated_at DESC, publication_id DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ? ORDER BY updated_at DESC, publication_id DESC LIMIT ?`,
       scopedTenantId,
       safeLimit,
     );
@@ -419,7 +419,7 @@ export class MarketplaceRepository {
     }
     return queryAll<MarketplaceGovernanceReportRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id IS ? ORDER BY generated_at DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ? ORDER BY generated_at DESC LIMIT ?`,
       scopedTenantId,
       safeLimit,
     );

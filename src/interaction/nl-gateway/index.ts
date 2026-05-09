@@ -1106,9 +1106,11 @@ export class NlEntryService implements NlEntryPort {
       riskPreviewVersion: `v1:${riskPreview.overallRisk}`,
     };
 
-    // R5-15: Only emit RequestEnvelope when confirmation is NOT pending
-    // When confirmation is pending, we return null to prevent premature task dispatch
-    const shouldEmitEnvelope = confirmationReceipt.state !== "pending_user_confirmation";
+    // R5-15/R23-01: Only emit RequestEnvelope when confirmationReceipt.state === "confirmed"
+    // This enforces §39.6: only confirmed can dispatch.
+    // When state is "pending_user_confirmation" (awaiting confirmation) or "not_required"
+    // (for any reason including risk), block dispatch by keeping requestEnvelope null.
+    const shouldEmitEnvelope = confirmationReceipt.state === "confirmed";
 
     return {
       // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope

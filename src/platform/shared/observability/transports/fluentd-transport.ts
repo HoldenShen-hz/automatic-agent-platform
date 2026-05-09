@@ -116,8 +116,16 @@ export class FluentdTransport implements LogTransport {
 
   async flush(): Promise<void> {
     return new Promise((resolve) => {
-      if (this.socket?.writable) {
-        this.socket.once("drain", resolve);
+      const socket = this.socket;
+      if (socket?.writable) {
+        // Only wait for drain if the write buffer actually has data waiting.
+        // If writableLength is 0, the socket buffer is empty and 'drain'
+        // will never fire, causing the promise to hang indefinitely.
+        if (socket.writableLength === 0) {
+          resolve();
+        } else {
+          socket.once("drain", resolve);
+        }
       } else {
         resolve();
       }

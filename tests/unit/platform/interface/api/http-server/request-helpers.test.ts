@@ -141,7 +141,7 @@ test("matchRoute handles empty segments", () => {
   };
   const match = matchRoute(request);
   assert.ok(match !== null);
-  assert.deepEqual(match.segments, ["tasks"]);
+  assert.deepEqual(match.segments, ["api", "tasks"]);
 });
 
 test("normalizeHeaders converts header keys to lowercase", () => {

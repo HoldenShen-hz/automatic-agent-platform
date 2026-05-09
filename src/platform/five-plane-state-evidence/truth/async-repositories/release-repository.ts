@@ -225,7 +225,7 @@ export class AsyncReleaseRepository {
     if (options.environment !== undefined) {
       return asyncQueryAll<ReleaseBundleRecord>(
         this.conn,
-        `${sql} WHERE environment IS $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
+        `${sql} WHERE environment = $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
         options.environment,
         safeLimit,
       );
