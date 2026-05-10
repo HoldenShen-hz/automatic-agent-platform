@@ -12,6 +12,9 @@
 
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
+// R20-07: Maximum size for processedEventIds before eviction
+const MAX_PROCESSED_EVENT_IDS = 10_000;
+
 /**
  * Dispatch Ticket Projection State
  *
@@ -172,6 +175,7 @@ export function createInitialDispatchTicketState(): DispatchTicketState {
 /**
  * Checks if an event has already been processed (idempotency check).
  * Uses O(1) Set lookup for efficiency.
+ * R20-07: Set with eviction when size exceeds MAX_PROCESSED_EVENT_IDS to prevent unbounded growth.
  */
 function isEventProcessed(state: DispatchTicketState, eventId: string): boolean {
   return state.processedEventIds.has(eventId);
@@ -211,8 +215,17 @@ export const dispatchProjectionHandler: ProjectionHandler = (
     stale = lagMs > 300000;
   }
 
-  // Mark event as processed using O(1) Set add - create new Set with existing + new eventId
-  const newProcessedEventIds = new Set([...baseState.processedEventIds, event.eventId]);
+  // R12-10: Mark event as processed using O(1) Set add - create new Set with existing + new eventId
+  // R20-07: Evict oldest entries when size exceeds limit to prevent unbounded growth
+  // Set preserves insertion order, so iterators give the oldest entry first
+  const newProcessedEventIds = new Set(baseState.processedEventIds);
+  while (newProcessedEventIds.size >= MAX_PROCESSED_EVENT_IDS) {
+    const oldestKey = newProcessedEventIds.keys().next().value;
+    if (oldestKey !== undefined) {
+      newProcessedEventIds.delete(oldestKey);
+    }
+  }
+  newProcessedEventIds.add(event.eventId);
   const newState: DispatchTicketState = {
     ...baseState,
     processedEventIds: newProcessedEventIds,

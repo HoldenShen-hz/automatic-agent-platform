@@ -102,6 +102,21 @@ export interface ReplicationLagStatus {
 }
 
 /**
+ * CDC lag breach error - thrown when replication lag exceeds RPO SLA
+ */
+export class CdcLagBreachError extends Error {
+  constructor(
+    public readonly sourceRegionId: string,
+    public readonly targetRegionId: string,
+    public readonly lagMs: number,
+    public readonly lagSloMs: number,
+  ) {
+    super(`CDC_LAG_BREACH:${sourceRegionId}->${targetRegionId} lag=${lagMs}ms exceeds RPO=${lagSloMs}ms`);
+    this.name = "CdcLagBreachError";
+  }
+}
+
+/**
  * CDC replication service for multi-region data sync
  */
 export class CDCReplicationService {
@@ -335,6 +350,40 @@ export class CDCReplicationService {
       lagSloMs,
       withinSlo: lagMs <= lagSloMs,
     };
+  }
+
+  /**
+   * R21-06: Assert CDC replication lag is within RPO SLA.
+   * Throws CdcLagBreachError if lag exceeds the configured threshold.
+   * Used to enforce §52 RPO guarantees - RPO<1min SLA.
+   */
+  public assertReplicationLagWithinSlo(
+    sourceRegionId: string,
+    targetRegionId: string,
+    sourceEvents: readonly CDCReplicationEvent[],
+    lagSloMs = 30_000,
+  ): void {
+    const status = this.getReplicationLagStatus(sourceRegionId, targetRegionId, sourceEvents, lagSloMs);
+    if (!status.withinSlo) {
+      throw new CdcLagBreachError(sourceRegionId, targetRegionId, status.lagMs, status.lagSloMs);
+    }
+  }
+
+  /**
+   * R21-06: Get replication lag status and throw if SLA breached.
+   * Returns the status object regardless; throws on breach.
+   */
+  public getReplicationLagStatusOrThrow(
+    sourceRegionId: string,
+    targetRegionId: string,
+    sourceEvents: readonly CDCReplicationEvent[],
+    lagSloMs = 30_000,
+  ): ReplicationLagStatus {
+    const status = this.getReplicationLagStatus(sourceRegionId, targetRegionId, sourceEvents, lagSloMs);
+    if (!status.withinSlo) {
+      throw new CdcLagBreachError(sourceRegionId, targetRegionId, status.lagMs, status.lagSloMs);
+    }
+    return status;
   }
 
   /**

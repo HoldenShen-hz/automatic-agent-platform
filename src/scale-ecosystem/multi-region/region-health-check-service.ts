@@ -462,6 +462,21 @@ export class RegionHealthCheckService {
 }
 
 /**
+ * RTO breach error - thrown when failover duration exceeds RTO SLA
+ */
+export class RtoBreachError extends Error {
+  constructor(
+    public readonly sourceRegionId: string,
+    public readonly targetRegionId: string,
+    public readonly elapsedMs: number,
+    public readonly rtoMs: number,
+  ) {
+    super(`RTO_BREACH:${sourceRegionId}->${targetRegionId} failover elapsed=${elapsedMs}ms exceeds RTO=${rtoMs}ms`);
+    this.name = "RtoBreachError";
+  }
+}
+
+/**
  * Region failover orchestrator
  *
  * Coordinates automatic failover based on health checks.
@@ -472,6 +487,8 @@ export class RegionFailoverOrchestrator {
   private readonly failoverRecords: FailoverRecord[] = [];
   private readonly failoverEvents: FailoverControlEvent[] = [];
   private readonly fencingEpochByRegion = new Map<string, number>();
+  /** Default RTO target in milliseconds (30 seconds per §52) */
+  private readonly defaultRtoMs = 30_000;
 
   public constructor(healthCheckService?: RegionHealthCheckService) {
     this.healthCheckService = healthCheckService ?? new RegionHealthCheckService();
@@ -543,6 +560,66 @@ export class RegionFailoverOrchestrator {
   }
 
   /**
+   * R21-06: Start tracking failover timer for RTO SLA compliance.
+   * Returns the start timestamp for the failover.
+   */
+  public startFailoverTimer(
+    sourceRegionId: string,
+    targetRegionId: string,
+  ): number {
+    const key = `${sourceRegionId}:${targetRegionId}`;
+    const startTime = Date.now();
+    this.fencingEpochByRegion.set(`failover_start:${key}`, startTime);
+    return startTime;
+  }
+
+  /**
+   * R21-06: Get elapsed failover time in milliseconds.
+   * Returns the time since failover was started, or 0 if not started.
+   */
+  public getFailoverElapsedMs(sourceRegionId: string, targetRegionId: string): number {
+    const key = `${sourceRegionId}:${targetRegionId}`;
+    const startTime = this.fencingEpochByRegion.get(`failover_start:${key}`);
+    if (startTime == null) {
+      return 0;
+    }
+    return Date.now() - startTime;
+  }
+
+  /**
+   * R21-06: Assert failover completed within RTO SLA.
+   * Throws RtoBreachError if failover duration exceeds the RTO target.
+   * Used to enforce §52 RTO guarantees - RTO<30s SLA.
+   */
+  public assertFailoverWithinRto(
+    sourceRegionId: string,
+    targetRegionId: string,
+    rtoMs = this.defaultRtoMs,
+  ): void {
+    const elapsedMs = this.getFailoverElapsedMs(sourceRegionId, targetRegionId);
+    if (elapsedMs > rtoMs) {
+      throw new RtoBreachError(sourceRegionId, targetRegionId, elapsedMs, rtoMs);
+    }
+  }
+
+  /**
+   * R21-06: Complete failover and assert RTO SLA compliance.
+   * Throws RtoBreachError if the failover took longer than RTO target.
+   */
+  public completeFailoverWithRtoCheck(
+    sourceRegionId: string,
+    targetRegionId: string,
+    rtoMs = this.defaultRtoMs,
+  ): void {
+    const elapsedMs = this.getFailoverElapsedMs(sourceRegionId, targetRegionId);
+    const key = `${sourceRegionId}:${targetRegionId}`;
+    this.fencingEpochByRegion.delete(`failover_start:${key}`);
+    if (elapsedMs > rtoMs) {
+      throw new RtoBreachError(sourceRegionId, targetRegionId, elapsedMs, rtoMs);
+    }
+  }
+
+  /**
    * Orchestrate failover from source to target region
    */
   public async orchestrateFailover(
@@ -563,10 +640,11 @@ export class RegionFailoverOrchestrator {
     const fencingEpoch = (this.fencingEpochByRegion.get(sourceRegionId) ?? 0) + 1;
     this.fencingEpochByRegion.set(sourceRegionId, fencingEpoch);
 
-    // R21-06: Track failover for RTO SLA compliance
+    // R21-06: Track failover for RTO SLA compliance - start timer BEFORE failover
     const rpoRtoService = getRpoRtoTrackingService();
     const regionPairId = `${sourceRegionId}->${targetRegionId}`;
     rpoRtoService.startFailover(sourceRegionId, targetRegionId);
+    this.startFailoverTimer(sourceRegionId, targetRegionId);
 
     const record: FailoverRecord = {
       failoverId: newId("failover"),
@@ -606,6 +684,10 @@ export class RegionFailoverOrchestrator {
 
     // R21-06: Complete failover tracking and assert RTO SLA compliance
     rpoRtoService.completeFailover(sourceRegionId, targetRegionId, true, null);
+
+    // R21-06: Enforce RTO<30s SLA - throw if exceeded
+    this.assertFailoverWithinRto(sourceRegionId, targetRegionId);
+
     try {
       rpoRtoService.assertSlaCompliance(regionPairId);
     } catch (slaError) {

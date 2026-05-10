@@ -36,8 +36,8 @@ import {
 } from "../../platform/prompt-engine/eval/llm-eval-service.js";
 import {
   PromptModelPolicyGovernanceService,
-  type ModelGovernanceSnapshot,
 } from "../../platform/prompt-engine/eval/prompt-model-policy-governance-service.js";
+import type { ModelGovernanceSnapshot } from "../../platform/contracts/types/governance.js";
 import {
   ModelRoutingService,
 } from "../../platform/model-gateway/provider-registry/model-routing-service.js";

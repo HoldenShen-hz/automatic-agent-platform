@@ -26,14 +26,19 @@ Minimum fields:
 | `createdAt` | `timestamp` | Creation timestamp |
 | `updatedAt` | `timestamp` | Update timestamp |
 
-`SideEffectStatus`:
+`SideEffectStatus` (16 states, R20-52 aligned):
 
 - `proposed`
+- `approved`
 - `reserved`
 - `committing`
+- `committed`
+- `confirming` (equivalent to `awaiting_confirmation`)
 - `confirmed`
 - `ambiguous`
 - `reconciling`
+- `manual_review_required`
+- `compensation_required`
 - `compensating`
 - `compensated`
 - `failed`

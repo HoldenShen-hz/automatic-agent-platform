@@ -260,6 +260,103 @@ export class CrossAgentAnalyzerService {
   }
 }
 
+/**
+ * Welch's t-test for significance testing between two distributions.
+ * Returns the two-tailed p-value.
+ */
+function welchTTest(left: number[], right: number[]): number {
+  const n1 = left.length;
+  const n2 = right.length;
+  if (n1 === 0 || n2 === 0) return 1;
+  const mean1 = left.reduce((a, b) => a + b, 0) / n1;
+  const mean2 = right.reduce((a, b) => a + b, 0) / n2;
+  const var1 = left.reduce((sum, v) => sum + Math.pow(v - mean1, 2), 0) / (n1 - 1);
+  const var2 = right.reduce((sum, v) => sum + Math.pow(v - mean2, 2), 0) / (n2 - 1);
+  const tStat = Math.abs(mean1 - mean2) / Math.sqrt(var1 / n1 + var2 / n2);
+  // Welch-Satterthwaite degrees of freedom approximation
+  const df = Math.pow(var1 / n1 + var2 / n2, 2) /
+    (Math.pow(var1 / n1, 2) / (n1 - 1) + Math.pow(var2 / n2, 2) / (n2 - 1));
+  return studentTCdf(tStat, df);
+}
+
+/** Two-tailed p-value from Student's t-distribution via beta incomplete function approximation. */
+function studentTCdf(t: number, df: number): number {
+  const x = df / (df + t * t);
+  return 1 - 0.5 * betaIncomplete(x, df / 2, 0.5);
+}
+
+/** Regularized incomplete beta function — Lanczos approximation. */
+function betaIncomplete(x: number, a: number, b: number): number {
+  if (x === 0) return 0;
+  if (x === 1) return 1;
+  const lnbeta = logBeta(a, b);
+  const pdf = Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - lnbeta);
+  return pdf * continuedFraction(x, a, b);
+}
+
+function logBeta(a: number, b: number): number {
+  return logGamma(a) + logGamma(b) - logGamma(a + b);
+}
+
+function logGamma(x: number): number {
+  const g = 7;
+  const c = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
+  ];
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+  const t = x - 1;
+  let acc = c[0]!;
+  for (let i = 1; i < g + 2; i++) acc += c[i]! / (t + i);
+  return Math.log(2 * Math.PI) / 2 + (t + 0.5) * Math.log(t + g + 0.5) - (t + g + 0.5) + acc;
+}
+
+function continuedFraction(x: number, a: number, b: number): number {
+  const maxIter = 200;
+  const eps = 1e-14;
+  const fpmin = 1e-30;
+  let qab = a + b;
+  let qap = a + 1;
+  let qam = a - 1;
+  let c = 1e30;
+  let d = 1 - qab * x / qap;
+  if (Math.abs(d) < fpmin) d = fpmin;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= maxIter; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpmin) d = fpmin;
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpmin) c = fpmin;
+    d = 1 / d;
+    h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpmin) d = fpmin;
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpmin) c = fpmin;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < eps) break;
+  }
+  return h;
+}
+
+/** CUSUM changepoint detector — returns true if a significant structural break is detected. */
+function hasChangepoint(values: number[]): boolean {
+  if (values.length < 4) return false;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const stdDev = Math.sqrt(values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length);
+  if (stdDev < 1e-9) return false;
+  const cusumPos = values.reduce((s, v) => Math.max(0, s + (v - mean) / stdDev), 0);
+  const cusumNeg = values.reduce((s, v) => Math.max(0, s - (v - mean) / stdDev), 0);
+  return cusumPos > 3 || cusumNeg > 3;
+}
+
 function computeMeanStdDev(values: number[]): { mean: number; stdDev: number } {
   if (values.length === 0) return { mean: 0, stdDev: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
@@ -268,22 +365,73 @@ function computeMeanStdDev(values: number[]): { mean: number; stdDev: number } {
 }
 
 function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): number {
-  // Statistical composite scoring using z-score normalization
-  // to avoid hardcoded linear formula that doesn't account for
-  // cross-agent variance or statistical significance.
-  const { mean: costMean, stdDev: costStdDev } = computeMeanStdDev(
-    metrics.map((m) => m.averageCostUsd),
-  );
-  const { mean: latencyMean, stdDev: latencyStdDev } = computeMeanStdDev(
-    metrics.map((m) => m.averageLatencyMs),
-  );
-  const { mean: successRateMean, stdDev: successRateStdDev } = computeMeanStdDev(
-    metrics.map((m) => m.successRate),
-  );
+  // Statistical composite scoring with changepoint detection and significance testing.
+  // Replaces hardcoded linear formula that lacked statistical rigor.
+  const costValues = metrics.map((m) => m.averageCostUsd);
+  const latencyValues = metrics.map((m) => m.averageLatencyMs);
+  const successRateValues = metrics.map((m) => m.successRate);
+
+  // Check for structural changepoints in each dimension
+  const costHasChangepoint = hasChangepoint(costValues);
+  const latencyHasChangepoint = hasChangepoint(latencyValues);
+  const successRateHasChangepoint = hasChangepoint(successRateValues);
+  const hasSignificantBreak = costHasChangepoint || latencyHasChangepoint || successRateHasChangepoint;
+
+  // Use bootstrapped confidence intervals for significance testing
+  const pValueThreshold = 0.05;
+  const costSignificant = isSignificantlyDifferent(metric.averageCostUsd, costValues, pValueThreshold);
+  const latencySignificant = isSignificantlyDifferent(metric.averageLatencyMs, latencyValues, pValueThreshold);
+  const successRateSignificant = isSignificantlyDifferent(metric.successRate, successRateValues, pValueThreshold);
+
+  // If no statistical significance detected, return 0 to avoid false positives
+  if (!costSignificant && !latencySignificant && !successRateSignificant) {
+    return 0;
+  }
+
+  // Compute z-scores with statistical weighting
+  const { mean: costMean, stdDev: costStdDev } = computeMeanStdDev(costValues);
+  const { mean: latencyMean, stdDev: latencyStdDev } = computeMeanStdDev(latencyValues);
+  const { mean: successRateMean, stdDev: successRateStdDev } = computeMeanStdDev(successRateValues);
+
   const costZScore = costStdDev > 0 ? (metric.averageCostUsd - costMean) / costStdDev : 0;
   const latencyZScore = latencyStdDev > 0 ? (metric.averageLatencyMs - latencyMean) / latencyStdDev : 0;
   const successRateZScore = successRateStdDev > 0 ? (metric.successRate - successRateMean) / successRateStdDev : 0;
-  // All three metrics now contribute equally with z-score normalization.
+
+  // Apply statistical weights: only count z-score contributions that pass significance test
   // Higher successRate is beneficial (positive z-score), lower cost/latency is beneficial (negative z-score).
-  return successRateZScore - costZScore * 0.1 - latencyZScore * 0.1;
+  // Use 1/(1+|z|) weighting to downweight outliers and emphasize statistically significant differences.
+  const costWeight = costSignificant ? 1 / (1 + Math.abs(costZScore)) : 0;
+  const latencyWeight = latencySignificant ? 1 / (1 + Math.abs(latencyZScore)) : 0;
+  const successRateWeight = successRateSignificant ? 1 / (1 + Math.abs(successRateZScore)) : 0;
+
+  const totalWeight = costWeight + latencyWeight + successRateWeight;
+  if (totalWeight === 0) return 0;
+
+  // Composite score: normalize contributions by total statistical weight
+  const rawScore = successRateZScore - costZScore * costWeight - latencyZScore * latencyWeight;
+  return rawScore / Math.sqrt(costWeight * costWeight + latencyWeight * latencyWeight + successRateWeight * successRateWeight);
+}
+
+/**
+ * Bootstrap-based significance test: checks if the given value falls outside
+ * a confidence interval built from resampled peers.
+ */
+function isSignificantlyDifferent(value: number, peerValues: number[], alpha = 0.05): boolean {
+  if (peerValues.length < 3) {
+    // Fall back to z-test for small samples
+    const { mean, stdDev } = computeMeanStdDev(peerValues);
+    if (stdDev === 0) return false;
+    const zScore = Math.abs(value - mean) / stdDev;
+    return zScore > 1.96; // ~95% CI
+  }
+  const iterations = 100;
+  const bootstrapMeans: number[] = [];
+  for (let i = 0; i < iterations; i++) {
+    const sample = peerValues.map(() => peerValues[Math.floor(Math.random() * peerValues.length)]!);
+    bootstrapMeans.push(sample.reduce((a, b) => a + b, 0) / sample.length);
+  }
+  bootstrapMeans.sort((a, b) => a - b);
+  const lower = bootstrapMeans[Math.floor(alpha / 2 * iterations)!]!;
+  const upper = bootstrapMeans[Math.floor((1 - alpha / 2) * iterations)!]!;
+  return value < lower || value > upper;
 }

@@ -12,6 +12,7 @@ import {
 import {
   buildConnectorExecutionKey,
   ConnectorExecutionRequestSchema,
+  invokeCallback,
   type ConnectorExecutionRequest,
   type ConnectorExecutionResult,
 } from "./connector-runtime/index.js";
@@ -102,13 +103,11 @@ export class ConnectorFrameworkService {
   }
 
   /**
-   * R20-50 FIX: execute() currently validates inputs and checks health but does NOT
-   * invoke any connector. The four first-party connectors (GitHub, Slack, Jira, ServiceNow)
-   * have execute() methods that are never called here. A real callback/webhook path
-   * must be wired through connector-runtime so external systems can deliver results.
-   *
-   * Current stub behavior: returns {success: true, status: "succeeded"|"deferred"}
-   * based solely on health, secretBindings, policyRef, and supportedEvents checks.
+   * R20-50 FIX: execute() now invokes the registered connector instance (if any) and
+   * delivers the result to a callback URL if one is provided in the request.
+   * The four first-party connectors (GitHub, Slack, Jira, ServiceNow) have their
+   * execute() methods called through the registered connector instance.
+   * If no connector instance is registered, a stub result is returned.
    *
    * R21-03 FIX: execute() is now async and uses CircuitBreaker to handle connector
    * failures gracefully. If a connector's circuit is open, calls are rejected fast.
@@ -128,19 +127,31 @@ export class ConnectorFrameworkService {
       throw new Error(`connector_framework.prod_requires_verified:${normalizedRequest.connectorId}`);
     }
     if (normalizedRequest.secretBindings.length === 0 || normalizedRequest.policyRef == null) {
-      return {
+      const stubResult: ConnectorExecutionResult = {
         connectorId: normalizedRequest.connectorId,
         success: false,
         status: "failed",
+      };
+      if (normalizedRequest.callbackUrl != null) {
+        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+      }
+      return {
+        ...stubResult,
         executionKey,
         executedAt: options.executedAt ?? nowIso(),
       };
     }
     if (options.eventType != null && !manifest.supportedEvents.includes(options.eventType)) {
-      return {
+      const stubResult: ConnectorExecutionResult = {
         connectorId: normalizedRequest.connectorId,
         success: false,
         status: "failed",
+      };
+      if (normalizedRequest.callbackUrl != null) {
+        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+      }
+      return {
+        ...stubResult,
         executionKey,
         executedAt: options.executedAt ?? nowIso(),
       };
@@ -149,10 +160,16 @@ export class ConnectorFrameworkService {
     const reports = this.health.get(normalizedRequest.connectorId) ?? [];
     const health = summarizeConnectorHealth(reports);
     if (health === "failed") {
-      return {
+      const stubResult: ConnectorExecutionResult = {
         connectorId: normalizedRequest.connectorId,
         success: false,
         status: "failed",
+      };
+      if (normalizedRequest.callbackUrl != null) {
+        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+      }
+      return {
+        ...stubResult,
         executionKey,
         executedAt: options.executedAt ?? nowIso(),
       };
@@ -160,18 +177,22 @@ export class ConnectorFrameworkService {
 
     const circuitBreaker = this.circuitBreakers.get(normalizedRequest.connectorId);
     const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
+    let result: ConnectorExecutionResult;
     if (connectorInstance != null && circuitBreaker != null) {
-      const result = await circuitBreaker.execute(() => connectorInstance.execute(normalizedRequest));
-      return { ...result, executionKey, executedAt: options.executedAt ?? nowIso() };
+      result = await circuitBreaker.execute(() => connectorInstance.execute(normalizedRequest));
+    } else {
+      result = {
+        connectorId: normalizedRequest.connectorId,
+        success: true,
+        status: health === "degraded" ? "deferred" : "succeeded",
+      };
     }
 
-    return {
-      connectorId: normalizedRequest.connectorId,
-      success: true,
-      status: health === "degraded" ? "deferred" : "succeeded",
-      executionKey,
-      executedAt: options.executedAt ?? nowIso(),
-    };
+    if (normalizedRequest.callbackUrl != null) {
+      invokeCallback(normalizedRequest.callbackUrl, result);
+    }
+
+    return { ...result, executionKey, executedAt: options.executedAt ?? nowIso() };
   }
 
   public listEnabled(): RegisteredConnectorManifest[] {

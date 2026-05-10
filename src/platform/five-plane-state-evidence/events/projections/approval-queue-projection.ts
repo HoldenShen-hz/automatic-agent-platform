@@ -13,6 +13,9 @@
 
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
+// R20-07: Maximum size for processedEventIds before eviction
+const MAX_PROCESSED_EVENT_IDS = 10_000;
+
 /**
  * Approval Queue Projection State
  *
@@ -232,12 +235,22 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   newState.timeline = [...newState.timeline, timelineEntry];
 
   // R12-10: Mark event as processed using Set for O(1) lookup
-  newState.processedEventIds = new Set([...newState.processedEventIds, event.eventId]);
+  // R20-07: Evict oldest entries when size exceeds limit to prevent unbounded growth
+  const processedEventIds = new Set(newState.processedEventIds);
+  while (processedEventIds.size >= MAX_PROCESSED_EVENT_IDS) {
+    const oldestKey = processedEventIds.keys().next().value;
+    if (oldestKey !== undefined) {
+      processedEventIds.delete(oldestKey);
+    }
+  }
+  processedEventIds.add(event.eventId);
+  newState.processedEventIds = processedEventIds;
   newState.eventCount = newState.eventCount + 1;
 
-  // R12-11: Compute freshness metadata
-  const stateWithFreshness = computeFreshness(newState, event.createdAt);
-  Object.assign(newState, stateWithFreshness);
+  // R12-11: Compute freshness metadata (direct assignment to avoid stale reference)
+  newState.lastProjectedAt = event.createdAt;
+  newState.lagMs = Date.now() - new Date(event.createdAt).getTime();
+  newState.stale = newState.lagMs > 300_000;
 
   // Extract multi-party counts from context if available
   const context = payload.context as Record<string, unknown> | null | undefined;

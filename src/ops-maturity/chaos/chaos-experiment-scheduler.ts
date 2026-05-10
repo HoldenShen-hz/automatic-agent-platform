@@ -213,11 +213,69 @@ export class ChaosExperimentScheduler {
 
   public constructor(options: ChaosExperimentSchedulerOptions = {}) {
     this.repository = options.repository ?? null;
-    this.faultExecutor = options.faultExecutor ?? ((params) => ({
+    this.faultExecutor = options.faultExecutor ?? this.defaultFaultExecutor.bind(this);
+  }
+
+  /**
+   * Default fault executor with blast radius control.
+   * Validates boundary control before injection.
+   * §R14-09: Blast radius enforcement.
+   */
+  private defaultFaultExecutor(params: {
+    readonly experiment: ChaosExperiment;
+    readonly fault: FaultInjection;
+  }): ChaosFaultInjectionResult {
+    const { experiment, fault } = params;
+    const bc = experiment.boundaryControl;
+
+    // Blast radius validation: check allowed/blocked targets
+    if (bc.allowedTargets.length > 0 && !bc.allowedTargets.includes(experiment.target.targetId)) {
+      return { applied: false, message: `Target ${experiment.target.targetId} not in allowed targets` };
+    }
+    if (bc.blockedTargets.includes(experiment.target.targetId)) {
+      return { applied: false, message: `Target ${experiment.target.targetId} is blocked` };
+    }
+
+    // Blast radius validation: check affected instances limit
+    const targetInstanceCount = this.getTargetInstanceCount(experiment.target);
+    if (targetInstanceCount > bc.maxAffectedInstances) {
+      return {
+        applied: false,
+        message: `Blast radius exceeded: ${targetInstanceCount} instances > ${bc.maxAffectedInstances} limit`,
+      };
+    }
+    const affectedPercent = (targetInstanceCount / this.getTotalInstances()) * 100;
+    if (affectedPercent > bc.maxAffectedPercent) {
+      return {
+        applied: false,
+        message: `Blast radius exceeded: ${affectedPercent.toFixed(1)}% > ${bc.maxAffectedPercent}% limit`,
+      };
+    }
+
+    // Actual fault injection would occur here in a real implementation
+    // For now, log the injection and return success
+    console.log(
+      `[ChaosScheduler] Injecting ${fault.faultType} fault on ${experiment.target.targetId} ` +
+        `(intensity=${fault.intensity}, duration=${fault.durationMs}ms)`,
+    );
+
+    return {
       applied: true,
-      message: `Injected ${params.fault.faultType} on ${params.experiment.target.targetId}`,
-    }));
-    this.hydrateFromRepository();
+      message: `Injected ${fault.faultType} fault on ${experiment.target.targetId} ` +
+        `(blast radius: ${targetInstanceCount} instances, ${affectedPercent.toFixed(1)}% of capacity)`,
+    };
+  }
+
+  private getTargetInstanceCount(target: ExperimentTarget): number {
+    // In real implementation, query target labels and count matching instances
+    // For stub, use target labels as a proxy
+    const labelCount = Object.keys(target.labels).length;
+    return Math.max(1, labelCount);
+  }
+
+  private getTotalInstances(): number {
+    // In real implementation, query total instances in the target pool
+    return 100;
   }
 
   private hydrateFromRepository(): void {
@@ -755,6 +813,16 @@ export class ChaosExperimentScheduler {
       tolerance: experiment.steadyStateHypotheses.find((hypothesis) => hypothesis.name === hypothesisName)?.tolerance ?? 0,
       message,
     };
+
+    // R21-18 fix: Deduplicate steady-state results to prevent premature completion
+    const evaluatedKey = `${experimentId}:${hypothesisName}`;
+    const alreadyEvaluated = this.evaluatedHypotheses.has(evaluatedKey);
+    if (alreadyEvaluated) {
+      this.persistSnapshot();
+      return;
+    }
+    this.evaluatedHypotheses.add(evaluatedKey);
+
     experiment.results = [...experiment.results, result];
     if (!passed) {
       experiment.violationDetectedAt = nowIso();

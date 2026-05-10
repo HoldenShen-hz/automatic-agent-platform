@@ -215,7 +215,7 @@ export class ChangepointDetectorService {
 
   public detectAll(
     samples: DriftSample[],
-    windowTypes: DriftWindowType[] = ["1h", "6h", "24h", "7d", "30d", "90d"],
+    windowTypes: DriftWindowType[] = ["1h", "6h", "24h", "7d"],
   ): readonly ChangepointDetectionResult[] {
     return windowTypes.map((windowType) => {
       const windowConfig = DRIFT_DETECTION_WINDOWS[windowType];

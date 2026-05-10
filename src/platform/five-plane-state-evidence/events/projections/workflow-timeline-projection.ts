@@ -364,9 +364,10 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   newState.processedEventIds = processedEventIds;
   newState.eventCount = newState.eventCount + 1;
 
-  // R12-11: Compute freshness metadata
-  const stateWithFreshness = computeFreshness(newState, event.createdAt);
-  Object.assign(newState, stateWithFreshness);
+  // R12-11: Compute freshness metadata (direct assignment to avoid stale reference)
+  newState.lastProjectedAt = event.createdAt;
+  newState.lagMs = Date.now() - new Date(event.createdAt).getTime();
+  newState.stale = newState.lagMs > 300_000;
 
   // Update state based on event type
   switch (event.eventType) {

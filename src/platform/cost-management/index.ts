@@ -23,6 +23,5 @@
 // adapted via CostEstimationServicePort when needed by Control Plane.
 export { type CostEstimate, type CostEstimationConfig, type CostEstimationServicePort } from "../contracts/types/cost.js";
 
-// Note: CostEstimationService is implemented in scale-ecosystem/billing/ and
-// exposed via CostEstimationServicePort. Control Plane should use the port
-// interface to avoid direct scale-ecosystem coupling.
+// Note: CostEstimationService is exposed via CostEstimationServicePort.
+// Control Plane should use the port interface to avoid direct coupling.

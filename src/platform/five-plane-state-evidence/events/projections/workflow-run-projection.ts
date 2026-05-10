@@ -13,6 +13,9 @@
 
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
+// R20-07: Maximum size for processedEventIds before eviction
+const MAX_PROCESSED_EVENT_IDS = 10_000;
+
 /**
  * Workflow Run Projection State
  *
@@ -196,7 +199,16 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
 
   // Mark event as processed
   // R11-13: Use Set for O(1) lookup - create new Set with existing + new eventId
-  newState.processedEventIds = new Set([...newState.processedEventIds, event.eventId]);
+  // R20-07: Evict oldest entries when size exceeds limit to prevent unbounded growth
+  const processedEventIds = new Set(newState.processedEventIds);
+  while (processedEventIds.size >= MAX_PROCESSED_EVENT_IDS) {
+    const oldestKey = processedEventIds.keys().next().value;
+    if (oldestKey !== undefined) {
+      processedEventIds.delete(oldestKey);
+    }
+  }
+  processedEventIds.add(event.eventId);
+  newState.processedEventIds = processedEventIds;
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
