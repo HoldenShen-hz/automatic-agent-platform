@@ -18,6 +18,7 @@ import {
   TopologyValidator,
   createTopologyValidator,
   DEFAULT_MAX_DEPTH,
+  type DelegationTopologyEdge,
   type TopologyValidatorConfig,
 } from "./topology-validator.js";
 import { CollaborationProtocolService, type ACPMessage, type InvariantContext } from "./collaboration-protocol/index.js";
@@ -844,20 +845,115 @@ export class DelegationManagerService {
   // ── Private Methods ───────────────────────────────────────────────────────
 
   private async validateTopology(parent: AgentContext, spec: DelegationSpec): Promise<void> {
-    // Get the delegation chain for cycle detection
-    // R9-06: getDelegationChain is now async when repository is available
-    const chain = await this.getDelegationChain(parent.agentId);
+    const rootAgentId = this.resolveRootAgentId(parent);
+    const packEdges = await this.collectPackTopologyEdges(rootAgentId);
+    const agentEdges = await this.collectAgentTopologyEdges(rootAgentId);
     const chainPackIds = [
       parent.packId,
-      ...(parent.delegationDepth > 0 ? chain?.nodes.map((n) => n.packId) ?? [] : []),
-    ].filter((packId): packId is string => typeof packId === "string");
+      ...packEdges.flatMap((edge) => [edge.fromId, edge.toId]),
+    ].filter((packId, index, items): packId is string => typeof packId === "string" && items.indexOf(packId) === index);
+    const chainAgentIds = [
+      parent.agentId,
+      ...agentEdges.flatMap((edge) => [edge.fromId, edge.toId]),
+    ].filter((agentId, index, items): agentId is string => typeof agentId === "string" && items.indexOf(agentId) === index);
 
     this.topologyValidator.validate({
       currentDepth: parent.delegationDepth,
       activeDelegations: parent.activeDelegations.length,
       targetPackId: spec.targetPackId,
       delegationChain: chainPackIds,
+      sourcePackId: parent.packId,
+      existingEdges: packEdges,
     });
+    this.topologyValidator.validate({
+      currentDepth: parent.delegationDepth,
+      activeDelegations: parent.activeDelegations.length,
+      targetPackId: spec.targetAgentId,
+      delegationChain: chainAgentIds,
+      sourcePackId: parent.agentId,
+      existingEdges: agentEdges,
+    });
+  }
+
+  private async collectPackTopologyEdges(rootAgentId: string): Promise<DelegationTopologyEdge[]> {
+    const chain = this.chainStore.get(rootAgentId);
+    if (chain && chain.nodes.length > 0) {
+      const rootDelegation = chain.nodes.find((node) => node.parentDelegationId === null);
+      const fallbackRootPackId = rootDelegation?.packId ?? rootAgentId;
+      const nodeByDelegationId = new Map(chain.nodes.map((node) => [node.delegationId, node]));
+      return chain.nodes
+        .map((node) => {
+          const parentPackId = node.parentDelegationId
+            ? nodeByDelegationId.get(node.parentDelegationId)?.packId
+            : fallbackRootPackId;
+          if (parentPackId == null || node.packId == null) {
+            return null;
+          }
+          return { fromId: parentPackId, toId: node.packId };
+        })
+        .filter((edge): edge is DelegationTopologyEdge => edge != null);
+    }
+
+    if (!this.delegationRepository) {
+      return [];
+    }
+
+    const records = await this.getRepositoryActiveDelegationsForRoot(rootAgentId);
+    return records.flatMap((record) => {
+      const edges: DelegationTopologyEdge[] = [];
+      for (let index = 0; index < record.delegationChain.length - 1; index += 1) {
+        const fromId = record.delegationChain[index];
+        const toId = record.delegationChain[index + 1];
+        if (fromId && toId) {
+          edges.push({ fromId, toId });
+        }
+      }
+      return edges;
+    });
+  }
+
+  private async collectAgentTopologyEdges(rootAgentId: string): Promise<DelegationTopologyEdge[]> {
+    if (this.delegationRepository) {
+      const records = await this.getRepositoryActiveDelegationsForRoot(rootAgentId);
+      return records.map((record) => ({
+        fromId: record.parentAgentId,
+        toId: record.childAgentId,
+      }));
+    }
+
+    const chain = this.chainStore.get(rootAgentId);
+    if (!chain) {
+      return [];
+    }
+    const nodeByDelegationId = new Map(chain.nodes.map((node) => [node.delegationId, node]));
+    return chain.nodes
+      .map((node) => {
+        const parentAgentId = node.parentDelegationId
+          ? nodeByDelegationId.get(node.parentDelegationId)?.agentId
+          : rootAgentId;
+        if (!parentAgentId) {
+          return null;
+        }
+        return { fromId: parentAgentId, toId: node.agentId };
+      })
+      .filter((edge): edge is DelegationTopologyEdge => edge != null);
+  }
+
+  private async getRepositoryActiveDelegationsForRoot(rootAgentId: string): Promise<DelegationRecord[]> {
+    if (!this.delegationRepository) {
+      return [];
+    }
+    const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
+    const recordsById = new Map<string, DelegationRecord>();
+    for (const status of activeStatuses) {
+      const records = await this.delegationRepository.findByStatus(status);
+      for (const record of records) {
+        if (record.delegationChain.includes(rootAgentId)) {
+          recordsById.set(record.delegationId, record);
+        }
+      }
+    }
+    return [...recordsById.values()];
   }
 
   private narrowPermissions(

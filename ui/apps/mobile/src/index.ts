@@ -6,6 +6,9 @@ export interface MobileShellManifest {
   readonly platforms: readonly ["android", "ios"];
   readonly supportsPush: boolean;
   readonly supportsBiometric: boolean;
+  readonly supportsOfflineSqlite: boolean;
+  readonly supportsGestures: boolean;
+  readonly supportsWidgets: boolean;
   readonly supportsDeepLink: boolean;
   readonly supportsScreenSecurity: boolean;
 }
@@ -15,6 +18,9 @@ export const mobileShellManifest: MobileShellManifest = {
   platforms: ["android", "ios"],
   supportsPush: true,
   supportsBiometric: true,
+  supportsOfflineSqlite: true,
+  supportsGestures: true,
+  supportsWidgets: true,
   supportsDeepLink: true,
   supportsScreenSecurity: true,
 };

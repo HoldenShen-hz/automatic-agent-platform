@@ -4,7 +4,7 @@ export const mobileNavigationBaseline = [
   { tab: "home", title: "Dashboard" },
   { tab: "tasks", title: "Tasks" },
   { tab: "approvals", title: "Approvals" },
-  { tab: "marketplace", title: "Marketplace" },
+  { tab: "dashboard", title: "Dashboard" },
   { tab: "more", title: "More" },
 ] as const;
 

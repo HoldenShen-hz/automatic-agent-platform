@@ -11,7 +11,7 @@ import {
 
 export interface MobileScreenDescriptor {
   readonly featureId: string;
-  readonly tab: "home" | "tasks" | "approvals" | "marketplace" | "more";
+  readonly tab: "home" | "tasks" | "approvals" | "dashboard" | "more";
   readonly title: string;
 }
 

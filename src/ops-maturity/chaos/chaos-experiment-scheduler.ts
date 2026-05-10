@@ -109,6 +109,9 @@ export interface ChaosExperiment {
   boundaryControl: BoundaryControl;
   rollbackActions: readonly RollbackAction[];
   violationDetectedAt: string | null;
+  faultInjectedAt: string | null;
+  faultExecutionStatus: "idle" | "applied" | "failed";
+  faultExecutionMessage: string | null;
 }
 
 export interface ExperimentResult {
@@ -158,12 +161,100 @@ export interface ChaosGameDay {
   completedAt: string | null;
 }
 
+export interface ChaosExperimentSchedulerSnapshot {
+  readonly experiments: readonly ChaosExperiment[];
+  readonly steadyStateMetrics: readonly { key: string; value: number; timestamp: number }[];
+  readonly gameDays: readonly ChaosGameDay[];
+  readonly rollbackQueues: readonly { experimentId: string; actions: readonly RollbackAction[] }[];
+}
+
+export interface ChaosExperimentSchedulerRepository {
+  loadSnapshot(): ChaosExperimentSchedulerSnapshot | null;
+  saveSnapshot(snapshot: ChaosExperimentSchedulerSnapshot): void;
+}
+
+export class InMemoryChaosExperimentSchedulerRepository implements ChaosExperimentSchedulerRepository {
+  private snapshot: ChaosExperimentSchedulerSnapshot | null = null;
+
+  public loadSnapshot(): ChaosExperimentSchedulerSnapshot | null {
+    return this.snapshot;
+  }
+
+  public saveSnapshot(snapshot: ChaosExperimentSchedulerSnapshot): void {
+    this.snapshot = snapshot;
+  }
+}
+
+export interface ChaosFaultInjectionResult {
+  readonly applied: boolean;
+  readonly message: string;
+}
+
+export type ChaosFaultExecutor = (params: {
+  readonly experiment: ChaosExperiment;
+  readonly fault: FaultInjection;
+}) => ChaosFaultInjectionResult;
+
+export interface ChaosExperimentSchedulerOptions {
+  readonly repository?: ChaosExperimentSchedulerRepository;
+  readonly faultExecutor?: ChaosFaultExecutor;
+}
+
 export class ChaosExperimentScheduler {
+  private readonly repository: ChaosExperimentSchedulerRepository | null;
+  private readonly faultExecutor: ChaosFaultExecutor;
   private readonly experiments = new Map<string, ChaosExperiment>();
   private readonly steadyStateCache = new Map<string, { value: number; timestamp: number }>();
   private readonly gameDays = new Map<string, ChaosGameDay>();
   private readonly rollbackQueue = new Map<string, RollbackAction[]>();
   private readonly monitoringIntervals = new Map<string, ReturnType<typeof setInterval>>();
+
+  public constructor(options: ChaosExperimentSchedulerOptions = {}) {
+    this.repository = options.repository ?? null;
+    this.faultExecutor = options.faultExecutor ?? ((params) => ({
+      applied: true,
+      message: `Injected ${params.fault.faultType} on ${params.experiment.target.targetId}`,
+    }));
+    this.hydrateFromRepository();
+  }
+
+  private hydrateFromRepository(): void {
+    const snapshot = this.repository?.loadSnapshot();
+    if (!snapshot) {
+      return;
+    }
+    for (const experiment of snapshot.experiments) {
+      this.experiments.set(experiment.experimentId, { ...experiment });
+    }
+    for (const metric of snapshot.steadyStateMetrics) {
+      this.steadyStateCache.set(metric.key, { value: metric.value, timestamp: metric.timestamp });
+    }
+    for (const gameDay of snapshot.gameDays) {
+      this.gameDays.set(gameDay.gameDayId, { ...gameDay });
+    }
+    for (const queueEntry of snapshot.rollbackQueues) {
+      this.rollbackQueue.set(queueEntry.experimentId, [...queueEntry.actions]);
+    }
+  }
+
+  private persistSnapshot(): void {
+    if (!this.repository) {
+      return;
+    }
+    this.repository.saveSnapshot({
+      experiments: [...this.experiments.values()].map((experiment) => ({ ...experiment })),
+      steadyStateMetrics: [...this.steadyStateCache.entries()].map(([key, metric]) => ({
+        key,
+        value: metric.value,
+        timestamp: metric.timestamp,
+      })),
+      gameDays: [...this.gameDays.values()].map((gameDay) => ({ ...gameDay })),
+      rollbackQueues: [...this.rollbackQueue.entries()].map(([experimentId, actions]) => ({
+        experimentId,
+        actions: actions.map((action) => ({ ...action })),
+      })),
+    });
+  }
 
   /**
    * Schedules a new chaos experiment with boundary control.
@@ -191,9 +282,13 @@ export class ChaosExperimentScheduler {
       boundaryControl,
       rollbackActions: [],
       violationDetectedAt: null,
+      faultInjectedAt: null,
+      faultExecutionStatus: "idle",
+      faultExecutionMessage: null,
     };
 
     this.experiments.set(experiment.experimentId, experiment);
+    this.persistSnapshot();
     return experiment;
   }
 
@@ -209,11 +304,13 @@ export class ChaosExperimentScheduler {
     if (!this.validateBoundaryControl(experiment)) {
       experiment.status = "cancelled";
       experiment.completedAt = nowIso();
+      this.persistSnapshot();
       return false;
     }
 
     experiment.status = "running";
     experiment.startedAt = nowIso();
+    this.persistSnapshot();
     return true;
   }
 
@@ -228,8 +325,10 @@ export class ChaosExperimentScheduler {
     // Check if target is in blocked list
     if (boundaryControl.blockedTargets.length > 0) {
       const targetId = target.targetId.toLowerCase();
+      const labelValues = Object.values(target.labels).map((value) => value.toLowerCase());
       for (const blocked of boundaryControl.blockedTargets) {
-        if (targetId.includes(blocked.toLowerCase())) {
+        const blockedLower = blocked.toLowerCase();
+        if (targetId.includes(blockedLower) || labelValues.some((value) => value.includes(blockedLower))) {
           console.warn(`[ChaosScheduler] Target ${target.targetId} matches blocked pattern ${blocked}`);
           return false;
         }
@@ -239,13 +338,33 @@ export class ChaosExperimentScheduler {
     // Check if target is in allowed list (if specified)
     if (boundaryControl.allowedTargets.length > 0) {
       const targetId = target.targetId.toLowerCase();
+      const labelValues = Object.values(target.labels).map((value) => value.toLowerCase());
       const isAllowed = boundaryControl.allowedTargets.some(
-        (allowed) => targetId.includes(allowed.toLowerCase()),
+        (allowed) => {
+          const allowedLower = allowed.toLowerCase();
+          return targetId.includes(allowedLower) || labelValues.some((value) => value.includes(allowedLower));
+        },
       );
       if (!isAllowed) {
         console.warn(`[ChaosScheduler] Target ${target.targetId} not in allowed targets list`);
         return false;
       }
+    }
+
+    const affectedInstances = Number(target.labels.affected_instances ?? target.labels.instance_count ?? "1");
+    if (Number.isFinite(affectedInstances) && affectedInstances > boundaryControl.maxAffectedInstances) {
+      console.warn(
+        `[ChaosScheduler] Target ${target.targetId} exceeds max affected instances (${affectedInstances} > ${boundaryControl.maxAffectedInstances})`,
+      );
+      return false;
+    }
+
+    const affectedPercent = Number(target.labels.affected_percent ?? target.labels.blast_radius_percent ?? "0");
+    if (Number.isFinite(affectedPercent) && affectedPercent > boundaryControl.maxAffectedPercent) {
+      console.warn(
+        `[ChaosScheduler] Target ${target.targetId} exceeds max affected percent (${affectedPercent} > ${boundaryControl.maxAffectedPercent})`,
+      );
+      return false;
     }
 
     return true;
@@ -293,6 +412,7 @@ export class ChaosExperimentScheduler {
       }
       experiment.completedAt = nowIso();
     }
+    this.persistSnapshot();
   }
 
   /**
@@ -343,6 +463,7 @@ export class ChaosExperimentScheduler {
 
     // Execute rollback with timeout
     this.executeRollbackWithTimeout(experimentId, experiment.boundaryControl.rollbackTimeoutMs);
+    this.persistSnapshot();
 
     return true;
   }
@@ -433,6 +554,7 @@ export class ChaosExperimentScheduler {
     }
 
     this.rollbackQueue.delete(experimentId);
+    this.persistSnapshot();
   }
 
   /**
@@ -454,6 +576,11 @@ export class ChaosExperimentScheduler {
   public injectFault(experimentId: string): FaultInjection | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "running") return null;
+    const execution = this.faultExecutor({ experiment, fault: experiment.fault });
+    experiment.faultInjectedAt = nowIso();
+    experiment.faultExecutionStatus = execution.applied ? "applied" : "failed";
+    experiment.faultExecutionMessage = execution.message;
+    this.persistSnapshot();
     return experiment.fault;
   }
 
@@ -464,8 +591,17 @@ export class ChaosExperimentScheduler {
     if (experiment.startedAt) {
       const elapsed = Date.now() - new Date(experiment.startedAt).getTime();
       if (elapsed >= experiment.maxDurationMs) {
+        experiment.violationDetectedAt = nowIso();
+        if (experiment.boundaryControl.autoRollbackOnViolation && experiment.faultExecutionStatus === "applied") {
+          experiment.status = "violated";
+          experiment.completedAt = nowIso();
+          this.persistSnapshot();
+          this.initiateRollback(experimentId);
+          return true;
+        }
         experiment.status = "cancelled";
         experiment.completedAt = nowIso();
+        this.persistSnapshot();
         return true;
       }
     }
@@ -502,6 +638,8 @@ export class ChaosExperimentScheduler {
     }
     experiment.status = "cancelled";
     experiment.completedAt = nowIso();
+    this.stopContinuousMonitoring(experimentId);
+    this.persistSnapshot();
     return true;
   }
 
@@ -517,6 +655,7 @@ export class ChaosExperimentScheduler {
       completedAt: null,
     };
     this.gameDays.set(gameDay.gameDayId, gameDay);
+    this.persistSnapshot();
     return gameDay;
   }
 
@@ -530,6 +669,7 @@ export class ChaosExperimentScheduler {
     }
     gameDay.status = "running";
     gameDay.startedAt = nowIso();
+    this.persistSnapshot();
     return true;
   }
 
@@ -544,11 +684,13 @@ export class ChaosExperimentScheduler {
     if (experiments.some((item) => item.status === "violated")) {
       gameDay.status = "violated";
       gameDay.completedAt = nowIso();
+      this.persistSnapshot();
       return gameDay;
     }
     if (experiments.length > 0 && experiments.every((item) => item.status === "completed")) {
       gameDay.status = "completed";
       gameDay.completedAt = nowIso();
+      this.persistSnapshot();
     }
     return gameDay;
   }
@@ -579,6 +721,42 @@ export class ChaosExperimentScheduler {
     };
   }
 
+  private recordContinuousSteadyStateSample(
+    experimentId: string,
+    hypothesisName: string,
+    measuredValue: number | null,
+    passed: boolean,
+    message: string,
+  ): void {
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment || experiment.status !== "running") {
+      return;
+    }
+    if (measuredValue != null) {
+      this.cacheSteadyStateMetric(experimentId, hypothesisName, measuredValue);
+    }
+    const result: ExperimentResult = {
+      timestamp: nowIso(),
+      steadyStateName: hypothesisName,
+      passed,
+      measuredValue,
+      tolerance: experiment.steadyStateHypotheses.find((hypothesis) => hypothesis.name === hypothesisName)?.tolerance ?? 0,
+      message,
+    };
+    experiment.results = [...experiment.results, result];
+    if (!passed) {
+      experiment.violationDetectedAt = nowIso();
+      experiment.status = "violated";
+      experiment.completedAt = nowIso();
+      this.persistSnapshot();
+      if (experiment.boundaryControl.autoRollbackOnViolation) {
+        this.initiateRollback(experimentId);
+      }
+      return;
+    }
+    this.persistSnapshot();
+  }
+
   /**
    * Starts continuous monitoring for an experiment.
    * Periodically evaluates steady-state hypotheses at the given interval.
@@ -603,7 +781,7 @@ export class ChaosExperimentScheduler {
       }
 
       const result = await evaluator();
-      this.recordSteadyStateResult(
+      this.recordContinuousSteadyStateSample(
         experimentId,
         currentExp.steadyStateHypotheses[0]?.name ?? "default",
         result.measuredValue,
@@ -641,6 +819,7 @@ export class ChaosExperimentScheduler {
       value,
       timestamp: Date.now(),
     });
+    this.persistSnapshot();
   }
 
   /**
@@ -665,5 +844,6 @@ export class ChaosExperimentScheduler {
     for (const key of keysToDelete) {
       this.steadyStateCache.delete(key);
     }
+    this.persistSnapshot();
   }
 }

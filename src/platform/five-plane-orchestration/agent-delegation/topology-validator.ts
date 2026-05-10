@@ -21,6 +21,11 @@ import type { DelegationOptions } from "./delegation-types.js";
 export const DEFAULT_MAX_DEPTH = 8;
 export const DEFAULT_MAX_FANOUT = 10;
 
+export interface DelegationTopologyEdge {
+  fromId: string;
+  toId: string;
+}
+
 export interface TopologyValidatorConfig {
   maxDepth: number;
   maxFanout: number;
@@ -125,6 +130,43 @@ export class TopologyValidator {
     }
   }
 
+  public detectGraphCycle(
+    sourceId: string,
+    targetId: string,
+    edges: readonly DelegationTopologyEdge[],
+  ): void {
+    if (sourceId === targetId) {
+      throw new DelegationCycleDetectedError(targetId, [sourceId, targetId]);
+    }
+    if (edges.length === 0) {
+      return;
+    }
+    const adjacency = new Map<string, string[]>();
+    for (const edge of edges) {
+      const current = adjacency.get(edge.fromId) ?? [];
+      current.push(edge.toId);
+      adjacency.set(edge.fromId, current);
+    }
+    const queue = [targetId];
+    const visited = new Set<string>(queue);
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current == null) {
+        continue;
+      }
+      if (current === sourceId) {
+        throw new DelegationCycleDetectedError(targetId, [...visited]);
+      }
+      const nextIds = adjacency.get(current) ?? [];
+      for (const nextId of nextIds) {
+        if (!visited.has(nextId)) {
+          visited.add(nextId);
+          queue.push(nextId);
+        }
+      }
+    }
+  }
+
   /**
    * Validates that a pack_id is in the allowed list.
    *
@@ -152,10 +194,15 @@ export class TopologyValidator {
     activeDelegations: number;
     targetPackId: string;
     delegationChain: readonly string[];
+    sourcePackId?: string;
+    existingEdges?: readonly DelegationTopologyEdge[];
   }): void {
     this.validateDepth(params.currentDepth);
     this.validateFanout(params.activeDelegations);
     this.detectCycle(params.targetPackId, params.delegationChain);
+    if (params.sourcePackId && params.existingEdges) {
+      this.detectGraphCycle(params.sourcePackId, params.targetPackId, params.existingEdges);
+    }
     this.validatePackId(params.targetPackId);
   }
 

@@ -41,6 +41,10 @@ export interface EscalationDecision {
   decision: EscalationDecisionType;
   reasonCode: string;
   requiresOperatorAction: boolean;
+  blocksExecution: boolean;
+  approvalRequestId?: string | null;
+  operatorNotificationId?: string | null;
+  workflowState?: "pending_approval" | "paused_for_takeover" | "panic_stop" | null;
   panicActivation?: {
     activated: boolean;
     directiveId: string | null;
@@ -61,7 +65,41 @@ export interface EscalationRequest {
   slaDeadline: string | null;
   /** R29-07 fix: Timeout in milliseconds for human takeover — exceeded SLA triggers escalation */
   timeoutMs: number | null;
+  /** R17-19: Per-request cost threshold override to avoid hard-coded $10 policy. */
+  costThresholdUsd?: number;
 }
+
+export interface EscalationApprovalRequest {
+  readonly approvalRequestId: string;
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly tenantId: string | null;
+  readonly stage: EscalationStage;
+  readonly riskLevel: EscalationRiskLevel;
+  readonly reasonCode: string;
+  readonly requestedAt: string;
+}
+
+export interface EscalationOperatorNotification {
+  readonly notificationId: string;
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly tenantId: string | null;
+  readonly decision: EscalationDecisionType;
+  readonly reasonCode: string;
+  readonly requiresOperatorAction: boolean;
+  readonly createdAt: string;
+}
+
+export interface EscalationServiceOptions {
+  readonly panicService?: PlatformPanicService;
+  readonly approvalRequestHandler?: (request: EscalationApprovalRequest) => EscalationApprovalRequest;
+  readonly operatorNotificationHandler?: (
+    notification: EscalationOperatorNotification,
+  ) => EscalationOperatorNotification;
+}
+
+const DEFAULT_COST_THRESHOLD_USD = 10;
 
 /**
  * Default freeze modes for platform panic.
@@ -81,9 +119,21 @@ const DEFAULT_PANIC_FREEZE_MODES: readonly PanicFreezeMode[] = ["deploy", "autom
  */
 export class EscalationService {
   private readonly panicService: PlatformPanicService;
+  private readonly approvalRequestHandler: ((request: EscalationApprovalRequest) => EscalationApprovalRequest) | null;
+  private readonly operatorNotificationHandler:
+    | ((notification: EscalationOperatorNotification) => EscalationOperatorNotification)
+    | null;
 
-  public constructor(panicService?: PlatformPanicService) {
-    this.panicService = panicService ?? new PlatformPanicService();
+  public constructor(options: EscalationServiceOptions | PlatformPanicService = {}) {
+    if (options instanceof PlatformPanicService) {
+      this.panicService = options;
+      this.approvalRequestHandler = null;
+      this.operatorNotificationHandler = null;
+      return;
+    }
+    this.panicService = options.panicService ?? new PlatformPanicService();
+    this.approvalRequestHandler = options.approvalRequestHandler ?? null;
+    this.operatorNotificationHandler = options.operatorNotificationHandler ?? null;
   }
 
   /**
@@ -107,6 +157,9 @@ export class EscalationService {
         decision: activation.activated ? "panic_activate" : "panic_stop",
         reasonCode: activation.error ?? "escalation.critical_prod_panic",
         requiresOperatorAction: true,
+        blocksExecution: true,
+        workflowState: "panic_stop",
+        operatorNotificationId: this.notifyOperator(input, activation.activated ? "panic_activate" : "panic_stop"),
         panicActivation,
       };
     }
@@ -117,15 +170,24 @@ export class EscalationService {
         decision: "takeover",
         reasonCode: "escalation.human_takeover_required",
         requiresOperatorAction: true,
+        blocksExecution: true,
+        workflowState: "paused_for_takeover",
+        operatorNotificationId: this.notifyOperator(input, "takeover"),
       };
     }
 
     // Production-affecting or high cost = approval required
-    if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= 10 || input.riskLevel === "high") {
+    const costThresholdUsd = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
+    if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThresholdUsd || input.riskLevel === "high") {
+      const approvalRequest = this.createApprovalRequest(input);
       return {
         decision: "approval",
         reasonCode: "escalation.approval_required",
         requiresOperatorAction: true,
+        blocksExecution: true,
+        approvalRequestId: approvalRequest?.approvalRequestId ?? null,
+        operatorNotificationId: this.notifyOperator(input, "approval"),
+        workflowState: "pending_approval",
       };
     }
 
@@ -133,6 +195,8 @@ export class EscalationService {
       decision: "none",
       reasonCode: "escalation.not_required",
       requiresOperatorAction: false,
+      blocksExecution: false,
+      workflowState: null,
     };
   }
 
@@ -203,5 +267,41 @@ export class EscalationService {
    */
   public getPanicService(): PlatformPanicService {
     return this.panicService;
+  }
+
+  private createApprovalRequest(input: EscalationRequest): EscalationApprovalRequest | null {
+    if (!this.approvalRequestHandler) {
+      return null;
+    }
+    return this.approvalRequestHandler({
+      approvalRequestId: newId("approval"),
+      taskId: input.taskId,
+      executionId: input.executionId,
+      tenantId: input.tenantId,
+      stage: input.stage,
+      riskLevel: input.riskLevel,
+      reasonCode: input.reasonCode,
+      requestedAt: nowIso(),
+    });
+  }
+
+  private notifyOperator(
+    input: EscalationRequest,
+    decision: EscalationDecisionType,
+  ): string | null {
+    if (!this.operatorNotificationHandler) {
+      return null;
+    }
+    const notification = this.operatorNotificationHandler({
+      notificationId: newId("esc_notify"),
+      taskId: input.taskId,
+      executionId: input.executionId,
+      tenantId: input.tenantId,
+      decision,
+      reasonCode: input.reasonCode,
+      requiresOperatorAction: decision !== "none",
+      createdAt: nowIso(),
+    });
+    return notification.notificationId;
   }
 }

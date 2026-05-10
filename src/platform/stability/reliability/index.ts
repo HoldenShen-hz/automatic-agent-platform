@@ -7,4 +7,5 @@
 
 export * from "./circuit-breaker.js";
 export * from "./retry.js";
+export * from "./slo-tracking.js";
 export * from "./timeout.js";
