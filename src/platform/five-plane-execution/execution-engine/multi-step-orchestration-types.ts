@@ -18,6 +18,13 @@ export interface MultiStepToolExecutionInput {
   /** Optional tenant scope for the created task (R4-27 fix) */
   tenantId?: string | null;
   contextBudgetTokens?: number;
+  /**
+   * Pre-allocated budget ledger ID for INV-BUDGET-001 compliance.
+   * When provided, the orchestrator uses this ledger for budget reservation
+   * instead of creating a new one, ensuring budget is reserved BEFORE any
+   * cost-bearing execution (LLM calls, tool calls, side effects).
+   */
+  budgetLedgerId?: string;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;
   crashInjection?: import("../recovery/workflow-crash-simulator.js").WorkflowCrashInjection;

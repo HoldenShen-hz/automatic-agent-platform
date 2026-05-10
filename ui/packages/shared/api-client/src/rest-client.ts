@@ -380,3 +380,7 @@ export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>)
   }
   return new DefaultRESTClient((request) => new MockTransport().send(request));
 }
+
+export function createRESTClient(options?: Partial<HttpTransportOptions>): RESTClient {
+  return createRuntimeRESTClient(options);
+}

@@ -1,3 +1,5 @@
+export { animation } from "./animation";
+
 export interface PrimitiveDesignTokens {
   readonly color: {
     readonly slate050: string;

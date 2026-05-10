@@ -56,7 +56,7 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
           : sorted.findIndex((item) =>
               decodedCursor != null &&
               (item.bundle.createdAt < decodedCursor.createdAt ||
-                (item.bundle.createdAt === decodedCursor.createdAt && item.bundle.bundleId > decodedCursor.bundleId))
+                (item.bundle.createdAt === decodedCursor.createdAt && item.bundle.bundleId < decodedCursor.bundleId))
             );
         const normalizedStart = startIndex < 0 ? sorted.length : startIndex;
         const pageItems = sorted.slice(normalizedStart, normalizedStart + limit);

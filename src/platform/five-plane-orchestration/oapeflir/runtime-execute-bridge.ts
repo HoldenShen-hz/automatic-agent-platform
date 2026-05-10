@@ -35,6 +35,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { createBudgetReservation } from "../../contracts/executable-contracts/index.js";
 import type { Plan, PlanStep } from "./types/plan.js";
 import type { DualChannelStepOutput } from "./types/dual-channel-step-output.js";
 import type {
@@ -238,6 +239,11 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     if (context.tokenBudget != null) {
       orchInput.contextBudgetTokens = context.tokenBudget;
     }
+    // R19-04 fix: Pass pre-allocated budgetLedgerId for INV-BUDGET-001 compliance
+    // BudgetAllocator.reserve() must be called before any cost-bearing execution
+    if (context.budgetLedgerId != null) {
+      orchInput.budgetLedgerId = context.budgetLedgerId;
+    }
     const orchResult = await runMultiStepOrchestration(orchInput);
 
     const stepRecords = extractStepOutputRecords(orchResult);
@@ -297,6 +303,10 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     if (context.tokenBudget != null) {
       orchInput.contextBudgetTokens = context.tokenBudget;
     }
+    // R19-04 fix: Pass pre-allocated budgetLedgerId for INV-BUDGET-001 compliance
+    if (context.budgetLedgerId != null) {
+      orchInput.budgetLedgerId = context.budgetLedgerId;
+    }
     const orchResult = await runMultiStepOrchestration(orchInput);
 
     const stepRecords = extractStepOutputRecords(orchResult);
@@ -337,6 +347,10 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     };
     if (context.tokenBudget != null) {
       orchInput.contextBudgetTokens = context.tokenBudget;
+    }
+    // R19-04 fix: Pass pre-allocated budgetLedgerId for INV-BUDGET-001 compliance
+    if (context.budgetLedgerId != null) {
+      orchInput.budgetLedgerId = context.budgetLedgerId;
     }
     const orchResult = await runMultiStepOrchestration(orchInput);
 

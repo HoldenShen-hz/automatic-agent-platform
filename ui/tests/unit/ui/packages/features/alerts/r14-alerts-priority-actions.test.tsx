@@ -11,14 +11,11 @@ import React from "react";
 // Mock the dependencies before importing the module under test
 vi.mock("@aa/shared-state", () => ({
   useIncidentsQuery: vi.fn(),
-  useWsClient: vi.fn(),
-}));
-
-vi.mock("@aa/shared-state/mutations", () => ({
   useMutation: vi.fn(() => ({
     mutate: vi.fn(),
     status: "idle",
   })),
+  useWsClient: vi.fn(),
 }));
 
 vi.mock("@aa/shared-api-client", () => ({

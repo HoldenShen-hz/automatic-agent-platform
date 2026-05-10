@@ -4,6 +4,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      "react-native": new URL("./src/react-native-web-stub.tsx", import.meta.url).pathname,
+    },
+  },
   build: {
     sourcemap: true,
     rollupOptions: {

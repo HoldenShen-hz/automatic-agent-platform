@@ -40,6 +40,12 @@ export interface ExecutionContext {
   modelId?: string;
   /** Abort signal for cancellation */
   abortSignal?: AbortSignal;
+  /**
+   * Pre-allocated budget ledger ID for INV-BUDGET-001 compliance.
+   * When provided, the orchestrator uses this ledger instead of creating a new one,
+   * ensuring budget reservation precedes any cost-bearing execution.
+   */
+  budgetLedgerId?: string;
 }
 
 /**

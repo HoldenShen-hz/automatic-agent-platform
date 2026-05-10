@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRESTClient } from "@aa/shared-api-client";
-import { useIncidentsQuery, useWsClient } from "@aa/shared-state";
-import { useMutation } from "@aa/shared-state/mutations";
+import { useIncidentsQuery, useMutation, useWsClient } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
 
 const restClient = createRESTClient();
@@ -110,6 +109,8 @@ export function buildAlertsVm(
     dismissAlert: actions.onDismiss,
   };
 }
+
+export const mapAlertsToVm = buildAlertsVm;
 
 export function useAlertsVm(): AlertsVm {
   const wsClient = useWsClient();

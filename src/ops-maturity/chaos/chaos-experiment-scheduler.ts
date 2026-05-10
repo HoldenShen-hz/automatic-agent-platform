@@ -395,8 +395,6 @@ export class ChaosExperimentScheduler {
       message,
     };
 
-    experiment.results = [...experiment.results, result];
-
     // R21-18 fix: Track evaluated hypotheses to prevent duplicate evaluations
     const evaluatedKey = `${experimentId}:${hypothesisName}`;
     const alreadyEvaluated = this.evaluatedHypotheses.has(evaluatedKey);
@@ -405,6 +403,8 @@ export class ChaosExperimentScheduler {
       return;
     }
     this.evaluatedHypotheses.add(evaluatedKey);
+
+    experiment.results = [...experiment.results, result];
 
     // Check if all hypotheses have been evaluated
     if (experiment.results.length >= experiment.steadyStateHypotheses.length) {

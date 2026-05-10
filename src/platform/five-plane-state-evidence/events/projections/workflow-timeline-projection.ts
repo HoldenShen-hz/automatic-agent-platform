@@ -17,6 +17,9 @@
 
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
+// R20-07: Maximum size for processedEventIds before eviction
+const MAX_PROCESSED_EVENT_IDS = 10_000;
+
 /**
  * Workflow Timeline Projection State
  *
@@ -57,7 +60,8 @@ export interface WorkflowTimelineState {
   /** Count of all events processed */
   eventCount: number;
   // R12-10: Set of processed event IDs for O(1) idempotency check
-  processedEventIds: ReadonlySet<string>;
+  // R20-07: Changed to Map to track insertion order for eviction when size exceeds limit
+  processedEventIds: ReadonlyMap<string, boolean>;
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
@@ -182,8 +186,9 @@ export function createEmptyWorkflowTimelineState(): WorkflowTimelineState {
     subtaskOutcomes: [],
     statusTransitions: [],
     eventCount: 0,
-    // R12-10: Use Set instead of array for O(1) idempotency lookup
-    processedEventIds: new Set<string>(),
+    // R12-10: Use Map instead of Set for O(1) idempotency lookup + insertion order tracking
+    // R20-07: Map preserves insertion order enabling oldest-entry eviction
+    processedEventIds: new Map<string, boolean>(),
     firstEventAt: null,
     lastEventAt: null,
     // R12-11: Initialize freshness tracking
@@ -199,7 +204,8 @@ export function createEmptyWorkflowTimelineState(): WorkflowTimelineState {
 
 /**
  * Checks if an event has already been processed (idempotency check).
- * R12-10: Uses Set.has() for O(1) lookup instead of O(n) array.includes()
+ * R12-10: Uses Map.has() for O(1) lookup instead of O(n) array.includes()
+ * R20-07: Map preserves insertion order enabling oldest-entry eviction
  */
 function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolean {
   return state.processedEventIds.has(eventId);
@@ -344,8 +350,18 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   };
   newState.events = [...newState.events, eventEntry];
 
-  // R12-10: Mark event as processed using Set for O(1) lookup
-  newState.processedEventIds = new Set([...newState.processedEventIds, event.eventId]);
+  // R12-10: Mark event as processed using Map for O(1) lookup
+  // R20-07: Evict oldest entries when size exceeds limit to prevent unbounded growth
+  // Map preserves insertion order, so keys().next().value gives the oldest entry
+  const processedEventIds = new Map(newState.processedEventIds);
+  while (processedEventIds.size >= MAX_PROCESSED_EVENT_IDS) {
+    const oldestKey = processedEventIds.keys().next().value;
+    if (oldestKey !== undefined) {
+      processedEventIds.delete(oldestKey);
+    }
+  }
+  processedEventIds.set(event.eventId, true);
+  newState.processedEventIds = processedEventIds;
   newState.eventCount = newState.eventCount + 1;
 
   // R12-11: Compute freshness metadata
@@ -472,7 +488,7 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
       };
       newState.subtaskOutcomes = [...newState.subtaskOutcomes, entry];
       if (nodeId && event.eventType === "subtask:completed") {
-        newState.completedSteps[nodeId] = event.createdAt;
+        newState.completedSteps = { ...newState.completedSteps, [nodeId]: event.createdAt };
       }
       break;
     }

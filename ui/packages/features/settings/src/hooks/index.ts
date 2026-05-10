@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useDomainConfigsQuery,
   useFeatureFlagsQuery,
+  useMutation,
   useModelsQuery,
   usePreferencesQuery,
   useRolesQuery,
   useTenantsQuery,
   useWebhooksQuery,
 } from "@aa/shared-state";
-import { useMutation } from "@aa/shared-state/mutations";
 import type { UserPreferenceDTO } from "@aa/shared-types";
 import { createRESTClient } from "@aa/shared-api-client";
 import { getSharedTranslationService, translateMessage } from "@aa/shared-i18n";

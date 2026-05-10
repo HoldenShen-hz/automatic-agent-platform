@@ -36,15 +36,49 @@ export interface RiskAssessment {
   readonly escalated: boolean;
 }
 
+export interface ComplexityThresholds {
+  readonly fileCount: {
+    readonly critical: number; // default 20
+    readonly high: number;      // default 10
+    readonly moderate: number;  // default 4
+    readonly simple: number;   // default 2
+  };
+  readonly blockerCount: {
+    readonly critical: number; // default 3
+    readonly high: number;     // default 2
+    readonly moderate: number; // default 1
+  };
+}
+
 export interface AssessmentServiceOptions {
   highRiskTools?: readonly string[];
+  complexityThresholds?: Partial<ComplexityThresholds>;
 }
 
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
+  private readonly fileCountThresholds: { critical: number; high: number; moderate: number; simple: number };
+  private readonly blockerCountThresholds: { critical: number; high: number; moderate: number };
 
   public constructor(options: AssessmentServiceOptions = {}) {
     this.highRiskTools = new Set(options.highRiskTools ?? ["apply_patch", "shell", "deploy"]);
+
+    const defaults: ComplexityThresholds = {
+      fileCount: { critical: 20, high: 10, moderate: 4, simple: 2 },
+      blockerCount: { critical: 3, high: 2, moderate: 1 },
+    };
+    const cfg = options.complexityThresholds ?? {} as Partial<ComplexityThresholds>;
+    this.fileCountThresholds = {
+      critical: cfg.fileCount?.critical ?? defaults.fileCount.critical,
+      high: cfg.fileCount?.high ?? defaults.fileCount.high,
+      moderate: cfg.fileCount?.moderate ?? defaults.fileCount.moderate,
+      simple: cfg.fileCount?.simple ?? defaults.fileCount.simple,
+    };
+    this.blockerCountThresholds = {
+      critical: cfg.blockerCount?.critical ?? defaults.blockerCount.critical,
+      high: cfg.blockerCount?.high ?? defaults.blockerCount.high,
+      moderate: cfg.blockerCount?.moderate ?? defaults.blockerCount.moderate,
+    };
   }
 
   /**
@@ -180,16 +214,16 @@ export class AssessmentService {
     const blockerCount = situation.blockers.length;
     const memoryCount = situation.relevantMemory.length;
 
-    if (risk === "critical" || fileCount >= 20 || blockerCount >= 3) {
+    if (risk === "critical" || fileCount >= this.fileCountThresholds.critical || blockerCount >= this.blockerCountThresholds.critical) {
       return "critical";
     }
-    if (risk === "high" || fileCount >= 10 || blockerCount >= 2) {
+    if (risk === "high" || fileCount >= this.fileCountThresholds.high || blockerCount >= this.blockerCountThresholds.high) {
       return "complex";
     }
-    if (fileCount >= 4 || memoryCount > 0 || blockerCount >= 1) {
+    if (fileCount >= this.fileCountThresholds.moderate || memoryCount > 0 || blockerCount >= this.blockerCountThresholds.moderate) {
       return "moderate";
     }
-    if (fileCount >= 2) {
+    if (fileCount >= this.fileCountThresholds.simple) {
       return "simple";
     }
     return "trivial";

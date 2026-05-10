@@ -395,7 +395,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         requestHash: `hash:${taskId}`,
         constraintPackRef: `constraint_pack:${plannedWorkflow.workflow.divisionId}`,
         versionLockId: newId("version_lock"),
-        budgetLedgerId: newId("bledger"),
+        budgetLedgerId: input.budgetLedgerId ?? newId("bledger"),
         status: "created",
       });
       const harnessRunId = harnessRun.harnessRunId;
@@ -431,8 +431,10 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         );
 
       // R4-25 (INV-BUDGET-001) fix: Create budget reservation BEFORE execution
-      // BudgetAllocator.reserve() must be called to create a proper BudgetReservation
-      // that tracks expected cost before tool/LLM execution
+      // NOTE: BudgetAllocator.reserve() uses reserveBudgetHardCap which requires a full BudgetLedger
+      // with state machine transitions and version checks. Here we have only a budgetLedgerId string
+      // from input, not a full BudgetLedger. createBudgetReservation() is the appropriate factory
+      // for this context - it creates the BudgetReservation object which is then persisted via raw SQL.
       if (harnessRun.budgetLedgerId) {
         const budgetReservation = createBudgetReservation({
           budgetLedgerId: harnessRun.budgetLedgerId,

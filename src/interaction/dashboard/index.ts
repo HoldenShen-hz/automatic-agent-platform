@@ -368,6 +368,7 @@ export class DashboardAggregationService implements DashboardPort {
     for (const task of tasks) {
       if (task.taskStatus === "failed") {
         queue.push({
+          id: `attention:${task.taskId}`,
           itemType: "incident",
           priority: "high",
           title: `Task failed: ${task.title}`,
@@ -380,6 +381,7 @@ export class DashboardAggregationService implements DashboardPort {
       }
       if (task.taskStatus === "pending") {
         queue.push({
+          id: `attention:${task.taskId}:pending`,
           itemType: "approval_needed",
           priority: "normal",
           title: `Pending task: ${task.title}`,
@@ -394,6 +396,7 @@ export class DashboardAggregationService implements DashboardPort {
 
     if (system.healthStatus !== "ok") {
       queue.push({
+        id: "attention:platform:health",
         itemType: "incident",
         priority: system.healthStatus === "unhealthy" ? "critical" : "high",
         title: "Platform health degraded",
@@ -407,6 +410,7 @@ export class DashboardAggregationService implements DashboardPort {
 
     if (this.costBurnUsd > this.forecastCostUsd && this.forecastCostUsd > 0) {
       queue.push({
+        id: "attention:platform:budget",
         itemType: "budget_warning",
         priority: "high",
         title: "Cost burn exceeds forecast",

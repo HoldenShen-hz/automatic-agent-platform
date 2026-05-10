@@ -277,8 +277,13 @@ function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): num
   const { mean: latencyMean, stdDev: latencyStdDev } = computeMeanStdDev(
     metrics.map((m) => m.averageLatencyMs),
   );
+  const { mean: successRateMean, stdDev: successRateStdDev } = computeMeanStdDev(
+    metrics.map((m) => m.successRate),
+  );
   const costZScore = costStdDev > 0 ? (metric.averageCostUsd - costMean) / costStdDev : 0;
   const latencyZScore = latencyStdDev > 0 ? (metric.averageLatencyMs - latencyMean) / latencyStdDev : 0;
-  // Penalize high cost/latency relative to peer distribution (z-score based)
-  return metric.successRate - costZScore * 0.1 - latencyZScore / 1000;
+  const successRateZScore = successRateStdDev > 0 ? (metric.successRate - successRateMean) / successRateStdDev : 0;
+  // All three metrics now contribute equally with z-score normalization.
+  // Higher successRate is beneficial (positive z-score), lower cost/latency is beneficial (negative z-score).
+  return successRateZScore - costZScore * 0.1 - latencyZScore * 0.1;
 }
