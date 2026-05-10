@@ -15,15 +15,12 @@ import type { OutboxRepository } from "../../../../src/platform/shared/outbox/ou
 import type { OutboxRecord } from "../../../../src/platform/shared/outbox/outbox-types.js";
 
 // Mock WebhookIngressService
-function createMockWebhookIngressService(): WebhookIngressService & {
-  receiveCalls: Array<InboundWebhookRequest & { traceId?: string | null }>;
-  rollbackCalls: Array<{ endpointId: string; idempotencyKey: string; envelopeId: string }>;
-} {
-  return {
-    receiveCalls: [],
-    rollbackCalls: [],
-    receive(input) {
-      this.receiveCalls.push(input);
+function createMockWebhookIngressService() {
+  const mock = {
+    receiveCalls: [] as Array<InboundWebhookRequest & { traceId?: string | null }>,
+    rollbackCalls: [] as Array<{ endpointId: string; idempotencyKey: string; envelopeId: string }>,
+    receive(input: InboundWebhookRequest) {
+      mock.receiveCalls.push(input);
       // Parse body to get eventType (InboundWebhookRequest only has body, headers, endpointId, receivedAt)
       let eventType = "webhook.event";
       let idempotencyKey = "idem-default";
@@ -51,26 +48,25 @@ function createMockWebhookIngressService(): WebhookIngressService & {
       };
       return envelope;
     },
-    rollbackAcceptedEnvelope(endpointId, idempotencyKey, envelopeId) {
-      this.rollbackCalls.push({ endpointId, idempotencyKey, envelopeId });
+    rollbackAcceptedEnvelope(endpointId: string, idempotencyKey: string, envelopeId: string) {
+      mock.rollbackCalls.push({ endpointId, idempotencyKey, envelopeId });
     },
   };
+  return mock as typeof mock & WebhookIngressService;
 }
 
 // Mock OutboxRepository
-function createMockOutboxRepository(): OutboxRepository & {
-  insertedEntries: Array<{
-    aggregateType: string;
-    aggregateId: string;
-    eventType: string;
-    payloadJson: string;
-    traceId: string | null;
-    createdAt: string;
-  }>;
-} {
-  return {
-    insertedEntries: [],
-    insertOutboxEntry(aggregateType, aggregateId, eventType, payloadJson, traceId, createdAt): OutboxRecord {
+function createMockOutboxRepository() {
+  const mock = {
+    insertedEntries: [] as Array<{
+      aggregateType: string;
+      aggregateId: string;
+      eventType: string;
+      payloadJson: string;
+      traceId: string | null;
+      createdAt: string;
+    }>,
+    insertOutboxEntry(aggregateType: string, aggregateId: string, eventType: string, payloadJson: string, traceId: string | null, createdAt: string): OutboxRecord {
       const record: OutboxRecord = {
         id: `outbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         aggregateType,
@@ -84,7 +80,7 @@ function createMockOutboxRepository(): OutboxRepository & {
         lastError: null,
         lastAttemptAt: null,
       };
-      this.insertedEntries.push({ aggregateType, aggregateId, eventType, payloadJson, traceId, createdAt });
+      mock.insertedEntries.push({ aggregateType, aggregateId, eventType, payloadJson, traceId, createdAt });
       return record;
     },
     insertOutboxEntries() {
@@ -115,11 +111,12 @@ function createMockOutboxRepository(): OutboxRepository & {
       return 0;
     },
   };
+  return mock as typeof mock & OutboxRepository;
 }
 
 test("[ARCH-P2-1] WebhookService writes to outbox table before returning", () => {
-  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
-  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
+  const mockIngress = createMockWebhookIngressService();
+  const mockRepo = createMockOutboxRepository();
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
   const request: InboundWebhookRequest & { traceId?: string | null } = {
@@ -144,8 +141,8 @@ test("[ARCH-P2-1] WebhookService writes to outbox table before returning", () =>
 });
 
 test("[ARCH-P2-1] WebhookService marks duplicate when idempotency key is reused", () => {
-  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
-  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
+  const mockIngress = createMockWebhookIngressService();
+  const mockRepo = createMockOutboxRepository();
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
   const request: InboundWebhookRequest & { traceId?: string | null } = {
@@ -187,8 +184,8 @@ test("[ARCH-P2-1] WebhookService marks duplicate when idempotency key is reused"
 });
 
 test("[ARCH-P2-1] WebhookService rolls back envelope when outbox insert fails", () => {
-  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
-  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
+  const mockIngress = createMockWebhookIngressService();
+  const mockRepo = createMockOutboxRepository();
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
   // Make insertOutboxEntry throw
@@ -216,8 +213,8 @@ test("[ARCH-P2-1] WebhookService rolls back envelope when outbox insert fails", 
 });
 
 test("[ARCH-P2-1] Outbox entry contains correct payload structure", () => {
-  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
-  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
+  const mockIngress = createMockWebhookIngressService();
+  const mockRepo = createMockOutboxRepository();
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
   const request: InboundWebhookRequest & { traceId?: string | null } = {

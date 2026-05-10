@@ -76,7 +76,7 @@ test("evaluateMultiDimensionalQuota passes when all dimensions within limits", (
     },
   });
 
-  const requested: MultiResourceQuotaVector = {
+  const decision = evaluateMultiDimensionalQuota(policy, {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -84,9 +84,7 @@ test("evaluateMultiDimensionalQuota passes when all dimensions within limits", (
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-  };
-
-  const decision = evaluateMultiDimensionalQuota(policy, requested);
+  });
 
   assert.strictEqual(decision.passed, true);
   assert.strictEqual(decision.failedDimensions.length, 0);
@@ -106,7 +104,7 @@ test("evaluateMultiDimensionalQuota fails when dimension exceeds hard limit", ()
     },
   });
 
-  const requested: MultiResourceQuotaVector = {
+  const decision = evaluateMultiDimensionalQuota(policy, {
     worker_concurrency: 5,
     tool_qps: 60, // exceeds 50 limit
     model_tpm: 50000,
@@ -114,10 +112,7 @@ test("evaluateMultiDimensionalQuota fails when dimension exceeds hard limit", ()
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-    promotion_budget: 0,
-  };
-
-  const decision = evaluateMultiDimensionalQuota(policy, requested);
+  });
 
   assert.strictEqual(decision.passed, false);
   assert.ok(decision.failedDimensions.includes("tool_qps"));
@@ -137,7 +132,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft (80%) of h
     },
   });
 
-  const requested: MultiResourceQuotaVector = {
+  const decision = evaluateMultiDimensionalQuota(policy, {
     worker_concurrency: 5,
     tool_qps: 45, // 90% of 50, over 80% soft threshold
     model_tpm: 50000,
@@ -145,10 +140,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft (80%) of h
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-    promotion_budget: 0,
-  };
-
-  const decision = evaluateMultiDimensionalQuota(policy, requested);
+  });
 
   assert.strictEqual(decision.passed, true, "Should pass since not over hard limit");
   assert.strictEqual(decision.failedDimensions.length, 0);
@@ -157,7 +149,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft (80%) of h
 
 test("evaluateMultiDimensionalQuota falls back to single-dimension when no multiResourceHardLimits", () => {
   const policy = makePolicy({ currentUsage: 90 });
-  const requested: MultiResourceQuotaVector = {
+  const decision = evaluateMultiDimensionalQuota(policy, {
     worker_concurrency: 20,
     tool_qps: 0,
     model_tpm: 0,
@@ -165,10 +157,7 @@ test("evaluateMultiDimensionalQuota falls back to single-dimension when no multi
     budget_amount: 0,
     approval_capacity: 0,
     storage_io: 0,
-    promotion_budget: 0,
-  };
-
-  const decision = evaluateMultiDimensionalQuota(policy, requested);
+  });
 
   // currentUsage=90, requested=20, total=110, burst=120, hard=100
   // single dimension: projected=110 > burst=120? No. So passed=false? Wait
@@ -222,7 +211,7 @@ test("evaluateMultiDimensionalQuota across all dimensions simultaneously", () =>
   });
 
   // All dimensions at exactly at 50% - no warnings, no failures
-  const requested: MultiResourceQuotaVector = {
+  const decision = evaluateMultiDimensionalQuota(policy, {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -230,9 +219,7 @@ test("evaluateMultiDimensionalQuota across all dimensions simultaneously", () =>
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-  };
-
-  const decision = evaluateMultiDimensionalQuota(policy, requested);
+  });
 
   assert.strictEqual(decision.passed, true);
   assert.strictEqual(decision.failedDimensions.length, 0);

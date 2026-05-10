@@ -8,7 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { buildTaskResultEnvelope, buildStepResultEnvelope } from "../../../../src/platform/contracts/result-envelope/index.js";
-import type { TaskRecord, StepOutputRecord, ArtifactRecord, WorkflowStateRecord } from "../../../../src/platform/contracts/types/domain.js";
+import type { TaskRecord, StepOutputRecord, ArtifactRecord, WorkflowStateRecord, TaskSource } from "../../../../src/platform/contracts/types/domain.js";
 
 test("result-envelope: buildTaskResultEnvelope returns null when task has no output and no artifacts", () => {
   const task = createMockTaskRecord("done", null);
@@ -136,12 +136,16 @@ test("result-envelope: buildStepResultEnvelope handles artifact references", () 
     {
       artifactId: "artifact_1",
       taskId: stepOutput.taskId,
-      stepId: stepOutput.stepId,
+      executionId: null,
+      nodeRunId: null,
+      stepId: stepOutput.stepId ?? null,
       kind: "output",
       storagePath: "/path/to/artifact",
+      fileName: "artifact_1.json",
       mimeType: "application/json",
       sizeBytes: 100,
       checksum: "abc123",
+      lineageJson: null,
       createdAt: "2026-01-01T00:00:00.000Z",
     },
   ];
@@ -149,8 +153,8 @@ test("result-envelope: buildStepResultEnvelope handles artifact references", () 
   const result = buildStepResultEnvelope(stepOutput, artifacts);
 
   assert.equal(result.artifacts.length, 1);
-  assert.equal(result.artifacts[0].artifactId, "artifact_1");
-  assert.equal(result.artifacts[0].mimeType, "application/json");
+  assert.equal(result.artifacts[0]!.artifactId, "artifact_1");
+  assert.equal(result.artifacts[0]!.mimeType, "application/json");
 });
 
 // Helper functions
@@ -186,10 +190,11 @@ function createMockStepOutputRecord(
   return {
     id: "step_output_123",
     taskId: "task_test_123",
+    nodeRunId: "nrun_123",
     stepId: "step_1",
     roleId: "general_executor",
     status,
-    dataJson,
+    dataJson: dataJson ?? '{"empty":true}',
     summary: null,
     artifactsJson: null,
     validationJson: null,

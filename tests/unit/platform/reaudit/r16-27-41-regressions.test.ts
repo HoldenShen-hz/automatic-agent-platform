@@ -28,7 +28,6 @@ test("R16-27 durable event bus publishes referenced truth rows atomically with e
     const event = bus.publish({
       eventType: "task:status_changed",
       taskId,
-      executionId: "exec-r16-27",
       traceId: "trace-r16-27",
       payload: {
         fromStatus: "queued",

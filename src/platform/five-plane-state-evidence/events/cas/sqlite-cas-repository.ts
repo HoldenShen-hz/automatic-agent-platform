@@ -38,7 +38,21 @@ interface CasRecordRow {
  * persists to SQLite for durability across restarts.
  */
 export class SqliteCasRepository {
-  public constructor(private readonly conn: SqliteConnection) {}
+  public constructor(private readonly conn: SqliteConnection) {
+    this.ensureSchema();
+  }
+
+  private ensureSchema(): void {
+    this.conn.exec(`
+      CREATE TABLE IF NOT EXISTS cas_records (
+        cas_key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_cas_records_version ON cas_records(version);
+    `);
+  }
 
   /**
    * Gets a CAS record by key.
