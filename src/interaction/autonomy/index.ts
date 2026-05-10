@@ -271,7 +271,8 @@ function decideLevel(
       return "suggestion";
     }
 
-    if (options.freezeOnIncident) {
+    if (options.freezeOnIncident && severity === "P0") {
+      // Only P0 gets frozen; P1 always demotes (not freeze) per §42 spec
       return "frozen";
     }
     return "suggestion";

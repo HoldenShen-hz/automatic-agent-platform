@@ -97,6 +97,19 @@ export interface EscalationServiceOptions {
   readonly operatorNotificationHandler?: (
     notification: EscalationOperatorNotification,
   ) => EscalationOperatorNotification;
+  /** R14-01 fix: Routes takeover decisions to HITL/panic controller */
+  readonly hitlTakeoverHandler?: (request: EscalationTakeoverRequest) => EscalationTakeoverRequest;
+}
+
+/** R14-01: Takeover request routed to HITL/panic controller */
+export interface EscalationTakeoverRequest {
+  readonly taskId: string;
+  readonly executionId: string | null;
+  readonly tenantId: string | null;
+  readonly stage: EscalationStage;
+  readonly riskLevel: EscalationRiskLevel;
+  readonly reasonCode: string;
+  readonly createdAt: string;
 }
 
 const DEFAULT_COST_THRESHOLD_USD = 10;
@@ -123,17 +136,21 @@ export class EscalationService {
   private readonly operatorNotificationHandler:
     | ((notification: EscalationOperatorNotification) => EscalationOperatorNotification)
     | null;
+  /** R14-01 fix: Routes takeover decisions to HITL/panic controller */
+  private readonly hitlTakeoverHandler: ((request: EscalationTakeoverRequest) => EscalationTakeoverRequest) | null;
 
   public constructor(options: EscalationServiceOptions | PlatformPanicService = {}) {
     if (options instanceof PlatformPanicService) {
       this.panicService = options;
       this.approvalRequestHandler = null;
       this.operatorNotificationHandler = null;
+      this.hitlTakeoverHandler = null;
       return;
     }
     this.panicService = options.panicService ?? new PlatformPanicService();
     this.approvalRequestHandler = options.approvalRequestHandler ?? null;
     this.operatorNotificationHandler = options.operatorNotificationHandler ?? null;
+    this.hitlTakeoverHandler = options.hitlTakeoverHandler ?? null;
   }
 
   /**
@@ -166,6 +183,7 @@ export class EscalationService {
 
     // High risk or critical (non-production) = human takeover
     if (input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute")) {
+      this.routeToHitlTakeover(input);
       return {
         decision: "takeover",
         reasonCode: "escalation.human_takeover_required",
@@ -267,6 +285,24 @@ export class EscalationService {
    */
   public getPanicService(): PlatformPanicService {
     return this.panicService;
+  }
+
+  /**
+   * Routes takeover decisions to HITL/panic controller.
+   * R14-01 fix: Ensures escalation decisions are routed to HITL/panic controller.
+   */
+  private routeToHitlTakeover(input: EscalationRequest): void {
+    if (this.hitlTakeoverHandler) {
+      this.hitlTakeoverHandler({
+        taskId: input.taskId,
+        executionId: input.executionId,
+        tenantId: input.tenantId,
+        stage: input.stage,
+        riskLevel: input.riskLevel,
+        reasonCode: input.reasonCode,
+        createdAt: nowIso(),
+      });
+    }
   }
 
   private createApprovalRequest(input: EscalationRequest): EscalationApprovalRequest | null {

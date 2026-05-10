@@ -124,26 +124,29 @@ export class UxEventTrackingService {
     }
 
     if (this.eventPublisher) {
-      // R29-36: Use actual eventType instead of hardcoded "test:many_events"
-      // Note: UxEventType is not in TypedEventPayloadMap, so we cast through unknown.
-      // The event is still logged to eventLog for internal tracking purposes.
-      this.eventPublisher.publish({
-        eventType: trackEntry.eventType as unknown as "test:many_events",
-        sessionId: trackEntry.sessionId,
-        taskId: trackEntry.taskId,
-        payload: {
-          eventId,
-          occurredAt,
-          userId: payload.userId,
-          sessionId: (p.sessionId as string | null) ?? null,
-          taskId: (p.taskId as string | null) ?? null,
-          abTestGroup: (p.abTestGroup as string | null) ?? null,
-          elementId: (p.elementId as string | null) ?? null,
-          interactionType: trackEntry.interactionType,
+      // R29-36: Only publish events that are registered in TypedEventPayloadMap.
+      // UxEventType values (e.g. "ux:button_click") are NOT in TypedEventPayloadMap,
+      // so skip publishing for those. The event is still logged to eventLog for internal tracking.
+      if (!trackEntry.eventType.startsWith("ux:")) {
+        // Cast through unknown to bypass type checking on the payload shape
+        (this.eventPublisher.publish as (input: unknown) => void)({
           eventType: trackEntry.eventType,
-          metadata: (p.metadata as Record<string, string>) ?? {},
-        },
-      });
+          sessionId: trackEntry.sessionId,
+          taskId: trackEntry.taskId,
+          payload: {
+            eventId,
+            occurredAt,
+            userId: payload.userId,
+            sessionId: (p.sessionId as string | null) ?? null,
+            taskId: (p.taskId as string | null) ?? null,
+            abTestGroup: (p.abTestGroup as string | null) ?? null,
+            elementId: (p.elementId as string | null) ?? null,
+            interactionType: trackEntry.interactionType,
+            eventType: trackEntry.eventType,
+            metadata: (p.metadata as Record<string, string>) ?? {},
+          },
+        });
+      }
     }
 
     return trackEntry;
