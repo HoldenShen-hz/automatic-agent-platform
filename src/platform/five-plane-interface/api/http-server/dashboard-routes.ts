@@ -8,7 +8,7 @@
  */
 
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported } from "./utils.js";
+import { buildJsonResponse, decodeOpaqueCursor, encodeOpaqueCursor, readCursor, readLimit, requirePrincipal, assertGlobalTenantScopeSupported } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import { PlatformWorkbenchSnapshotService } from "../../../shared/ux/platform-workbench-snapshot-service.js";
@@ -27,6 +27,11 @@ export interface DashboardRouteDeps {
   projectionInventoryService?: ProjectionInventoryService;
   complianceProgramTemplateService?: ComplianceProgramTemplateService;
   judgeProviderRegistryService?: JudgeProviderRegistryService;
+}
+
+interface DashboardCursor {
+  readonly approvalIndex: number;
+  readonly taskBoardIndex: number;
 }
 
 export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition[] {
@@ -64,11 +69,31 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         assertGlobalTenantScopeSupported(principal, "platform workbench");
+        const cursorStr = readCursor(ctx.request);
+        const limit = readLimit(ctx.request, 25);
+        const decodedCursor = cursorStr == null ? null : decodeOpaqueCursor<DashboardCursor>(cursorStr);
         const missionControl = deps.missionControlService.getSnapshot();
+        const allApprovals = missionControl.pendingApprovals;
+        const allTaskBoard = missionControl.taskBoard;
+        const approvalStartIndex = decodedCursor?.approvalIndex ?? 0;
+        const taskBoardStartIndex = decodedCursor?.taskBoardIndex ?? 0;
+        const slicedApprovals = allApprovals.slice(approvalStartIndex, approvalStartIndex + Math.min(limit, 10));
+        const slicedTaskBoard = allTaskBoard.slice(taskBoardStartIndex, taskBoardStartIndex + Math.min(limit, 5));
+        const approvalHasMore = approvalStartIndex + Math.min(limit, 10) < allApprovals.length;
+        const taskBoardHasMore = taskBoardStartIndex + Math.min(limit, 5) < allTaskBoard.length;
+        const hasMore = approvalHasMore || taskBoardHasMore;
+        const lastApprovalIdx = approvalStartIndex + slicedApprovals.length;
+        const lastTaskBoardIdx = taskBoardStartIndex + slicedTaskBoard.length;
+        const nextCursor = hasMore
+          ? encodeOpaqueCursor({
+              approvalIndex: lastApprovalIdx < allApprovals.length ? lastApprovalIdx : 0,
+              taskBoardIndex: lastTaskBoardIdx < allTaskBoard.length ? lastTaskBoardIdx : 0,
+            })
+          : null;
         const workbench = platformWorkbenchSnapshotService.buildSnapshot({
           generatedAt: missionControl.generatedAt,
           dashboard: {
-            attentionQueue: missionControl.pendingApprovals.slice(0, 5).map((approval) => ({
+            attentionQueue: slicedApprovals.slice(0, 5).map((approval) => ({
               itemType: "approval_needed",
               priority: toAttentionPriority(parseApprovalRisk(approval.requestJson)),
               title: parseApprovalTitle(approval.requestJson),
@@ -92,11 +117,11 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
             agentHealthCards: [],
             costBurn: { consumedUsd: 0, forecastUsd: 0 },
             activeGoals: [],
-            recentCompletions: missionControl.taskBoard.filter((item) => item.taskStatus === "done").slice(0, 5),
+            recentCompletions: slicedTaskBoard.filter((item) => item.taskStatus === "done").slice(0, 5),
             proactiveSuggestions: [],
             metricRegistry: [],
           },
-          approvalQueue: missionControl.pendingApprovals.slice(0, 10).map((approval) => ({
+          approvalQueue: slicedApprovals.slice(0, 10).map((approval) => ({
             approvalId: approval.id,
             taskId: approval.taskId,
             riskLevel: parseApprovalRisk(approval.requestJson),
@@ -111,7 +136,11 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
             complianceProgramCount: complianceProgramTemplateService.listTemplates().length,
           },
         });
-        return buildJsonResponse(ctx.requestId, 200, workbench);
+        const response: Record<string, unknown> = { workbench };
+        if (nextCursor != null) {
+          response.nextCursor = nextCursor;
+        }
+        return buildJsonResponse(ctx.requestId, 200, response);
       },
     },
   ];

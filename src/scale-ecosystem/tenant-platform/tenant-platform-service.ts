@@ -331,6 +331,69 @@ export class TenantPlatformService {
     return this.fairSchedulingService;
   }
 
+  /**
+   * R21-08: Retrieve preemption candidates for a tenant.
+   *
+   * Finds all active executions for the tenant that are eligible for preemption,
+   * including checkpoint information needed for the preemption logic.
+   *
+   * @param tenantId - Tenant to get candidates for
+   * @returns Array of preemption candidates with execution details
+   */
+  private getPreemptionCandidatesForTenant(tenantId: string): PreemptionCandidate[] {
+    const candidates: PreemptionCandidate[] = [];
+
+    // Get all active executions (executing, blocked status)
+    const activeExecutions = this.store.dispatch.listExecutionsByStatuses(["executing", "blocked"]);
+
+    for (const execution of activeExecutions) {
+      // Get task to check tenant ownership
+      const task = this.store.task.getTask(execution.taskId);
+      if (!task || task.tenantId !== tenantId) {
+        continue;
+      }
+
+      // Get workflow state to check status and checkpoint info
+      const workflow = this.store.workflow.getWorkflowState(execution.taskId);
+      if (!workflow || workflow.status !== "running") {
+        continue;
+      }
+
+      // Get active lease via worker repository (which has getActiveExecutionLease)
+      const activeLease = this.store.worker.getActiveExecutionLease(execution.id);
+      if (!activeLease) {
+        continue;
+      }
+
+      // Get agent execution record for checkpoint info
+      const agentExecution = this.store.worker.getAgentExecutionRecord(execution.id);
+
+      // Calculate progress percentage from workflow step index
+      // Estimate 100 steps total for progress calculation if not available
+      const totalSteps = 100;
+      const progressPercent = workflow.currentStepIndex != null
+        ? (workflow.currentStepIndex / totalSteps) * 100
+        : 0;
+
+      // Get checkpoint timestamp from workflow updatedAt as fallback
+      const lastCheckpointTimestampMs = workflow.updatedAt
+        ? new Date(workflow.updatedAt).getTime()
+        : 0;
+
+      // Determine priority - default to normal if not set
+      const priority = task.priority === "urgent" ? 100 : task.priority === "high" ? 75 : task.priority === "normal" ? 50 : 25;
+
+      candidates.push({
+        executionId: execution.id,
+        priority,
+        progressPercent,
+        lastCheckpointTimestampMs,
+      });
+    }
+
+    return candidates;
+  }
+
   public getDedicatedPoolIsolation(tenantId: string): DedicatedPoolIsolationRecord | null {
     return this.dedicatedPoolIsolations.get(tenantId) ?? null;
   }
@@ -472,7 +535,15 @@ export class TenantPlatformService {
       // Use organization-scoped quota if tenantId is not available
       const org = input.organizationId ? this.requireOrganization(input.organizationId) : null;
       if (org?.defaultTenantId) {
-        this.enforceQuota(org.defaultTenantId, "api_requests", 1);
+        // R21-08: Use preemption-aware quota enforcement
+        const candidates = this.getPreemptionCandidatesForTenant(org.defaultTenantId);
+        const schedulingClass: SchedulingClass = {
+          tenantId: org.defaultTenantId,
+          domainId: "workspace_creation",
+          slaTierId: "default",
+          priority: 50,
+        };
+        this.enforceQuota(org.defaultTenantId, "api_requests", 1, schedulingClass, candidates);
       }
 
       const createdAt = input.createdAt ?? nowIso();
@@ -617,7 +688,15 @@ export class TenantPlatformService {
       // R13-32: Enforce tenant-scoped quota before creating tenant
       // Use organization's default tenant for quota tracking if available
       if (organization.defaultTenantId) {
-        this.enforceQuota(organization.defaultTenantId, "task_executions", 1);
+        // R21-08: Use preemption-aware quota enforcement
+        const candidates = this.getPreemptionCandidatesForTenant(organization.defaultTenantId);
+        const schedulingClass: SchedulingClass = {
+          tenantId: organization.defaultTenantId,
+          domainId: "tenant_creation",
+          slaTierId: "default",
+          priority: 50,
+        };
+        this.enforceQuota(organization.defaultTenantId, "task_executions", 1, schedulingClass, candidates);
       }
 
       const createdAt = input.createdAt ?? nowIso();
@@ -716,7 +795,15 @@ export class TenantPlatformService {
     return this.db.transaction(() => {
       const tenant = this.requireTenant(input.tenantId);
       // R13-32: Enforce tenant-scoped quota before creating deployment binding
-      this.enforceQuota(tenant.tenantId, "concurrent_connections", 1);
+      // R21-08: Use preemption-aware quota enforcement
+      const candidates = this.getPreemptionCandidatesForTenant(tenant.tenantId);
+      const schedulingClass: SchedulingClass = {
+        tenantId: tenant.tenantId,
+        domainId: "deployment_binding",
+        slaTierId: "default",
+        priority: 50,
+      };
+      this.enforceQuota(tenant.tenantId, "concurrent_connections", 1, schedulingClass, candidates);
 
       const createdAt = input.createdAt ?? nowIso();
       const binding: DeploymentBindingRecord = {
@@ -794,11 +881,26 @@ export class TenantPlatformService {
 
       // R13-32: Enforce tenant-scoped quota before creating data namespace
       // Quota is checked against the tenant if available
+      // R21-08: Use preemption-aware quota enforcement
       if (tenant?.tenantId) {
-        this.enforceQuota(tenant.tenantId, "storage", 1);
+        const candidates = this.getPreemptionCandidatesForTenant(tenant.tenantId);
+        const schedulingClass: SchedulingClass = {
+          tenantId: tenant.tenantId,
+          domainId: "data_namespace",
+          slaTierId: "default",
+          priority: 50,
+        };
+        this.enforceQuota(tenant.tenantId, "storage", 1, schedulingClass, candidates);
       } else if (organization?.defaultTenantId) {
         // Fall back to organization's default tenant for quota tracking
-        this.enforceQuota(organization.defaultTenantId, "storage", 1);
+        const candidates = this.getPreemptionCandidatesForTenant(organization.defaultTenantId);
+        const schedulingClass: SchedulingClass = {
+          tenantId: organization.defaultTenantId,
+          domainId: "data_namespace",
+          slaTierId: "default",
+          priority: 50,
+        };
+        this.enforceQuota(organization.defaultTenantId, "storage", 1, schedulingClass, candidates);
       }
 
       const createdAt = input.createdAt ?? nowIso();

@@ -736,6 +736,10 @@ export class OapeflirLoopService {
         shouldReplan: loopReplanDecision.shouldReplan,
       });
 
+      if (harnessDecision) {
+        this.emitStageEvent("harness_decide", input.taskId, { status: "completed", action: harnessDecision.action });
+      }
+
       return {
         observation: taskObservation,
         assessment: validatedAssessment,

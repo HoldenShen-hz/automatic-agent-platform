@@ -3,6 +3,8 @@ import {
   type ReconciliationJobInput,
   type ReconciliationScanResult,
 } from "../failover-reconciliation-job.js";
+import { getFencingTokenService, type FencingToken } from "../fencing-token-service.js";
+import { getSplitBrainProtectionService } from "../split-brain-protection.js";
 
 /**
  * Region failover input with consensus support
@@ -387,6 +389,46 @@ export class RegionFailoverController {
 
   public getState(partitionKey = "global"): FencingEpochState | null {
     return this.stateByPartition.get(partitionKey) ?? null;
+  }
+
+  /**
+   * R21-02: Validate fencing token during failover to ensure proper isolation.
+   * Before a new leader accepts writes, it must present a valid fencing token
+   * that was acquired during the failover process. This prevents split-brain
+   * scenarios where two regions simultaneously believe they are the leader.
+   */
+  public validateFencingTokenForFailover(regionId: string, token: FencingToken, partitionKey = "global"): boolean {
+    const fencingService = getFencingTokenService();
+    const validation = fencingService.validateFencingToken(regionId, token);
+
+    // Also check split-brain detection to ensure no conflicting leader
+    const splitBrainService = getSplitBrainProtectionService();
+    const state = this.stateByPartition.get(partitionKey ?? "global");
+    if (state != null && state.leaderRegionId !== regionId) {
+      // This region is not the current leader - token should not be valid
+      return false;
+    }
+
+    return validation.valid;
+  }
+
+  /**
+   * R21-02: Acquire fencing token for a region during failover.
+   * This establishes the isolation token needed for the new leader to safely
+   * accept writes after failover. The token is tied to the epoch of the failover.
+   */
+  public acquireFencingTokenForFailover(regionId: string, partitionKey = "global"): FencingToken | null {
+    const state = this.stateByPartition.get(partitionKey ?? "global");
+    const epoch = state?.fencingEpoch ?? 1;
+
+    const fencingService = getFencingTokenService();
+    const token = fencingService.acquireLeadership(regionId, partitionKey);
+
+    // Sync the epoch back to split-brain protection for tracking
+    const splitBrainService = getSplitBrainProtectionService();
+    splitBrainService.syncFencingEpochFromFailover(partitionKey, epoch, regionId);
+
+    return token;
   }
 }
 
