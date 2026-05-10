@@ -12,6 +12,9 @@ import type {
   HarnessRun,
   NodeRunStatus,
   NodeRun,
+  PlanGraphBundle,
+} from "../../src/platform-architecture-types.js";
+import type {
   PlanNodeType,
   PlanNode,
   PlanEdge,
@@ -26,9 +29,8 @@ import type {
   RiskPreview,
   BudgetReservation,
   ArtifactRef,
-  PlanGraphBundle,
   JsonValue,
-} from "../../src/platform-architecture-types.js";
+} from "../../src/platform/contracts/executable-contracts/index.js";
 
 test("integration: PlatformArchitectureLayer type can be used in composite structures", () => {
   const layers: PlatformArchitectureLayer[] = ["platform", "domains", "interaction"];
@@ -73,6 +75,14 @@ test("integration: HarnessRun and NodeRun can reference each other", () => {
   const harnessRun: HarnessRun = {
     harnessRunId: "run-001",
     tenantId: "tenant-001",
+    orgId: "org-001",
+    traceId: "trace-run-001",
+    riskLevel: "medium",
+    riskProfile: { riskClass: "medium", reasons: [] },
+    ownership: { ownerId: "tenant-001", ownerType: "tenant" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
+    domainId: "domain-001",
     confirmedTaskSpecId: "spec-001",
     requestEnvelopeId: "env-001",
     requestHash: "hash-001",
@@ -80,9 +90,11 @@ test("integration: HarnessRun and NodeRun can reference each other", () => {
     constraintPackRef: "cp-001",
     versionLockId: "vl-001",
     budgetLedgerId: "bl-001",
+    budgetEnvelope: { budgetLedgerId: "bl-001", currency: "credits" },
     currentSeq: 5,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:01:00Z",
+    fencingToken: "fence:run-001:5",
   };
 
   const nodeRun: NodeRun = {
@@ -93,9 +105,12 @@ test("integration: HarnessRun and NodeRun can reference each other", () => {
     nodeId: "node-001",
     status: "running",
     attemptCount: 1,
+    sideEffects: [],
+    compensation: [],
     currentSeq: 1,
     createdAt: "2026-01-01T00:00:05Z",
     updatedAt: "2026-01-01T00:00:30Z",
+    fencingToken: "node-001-fence",
   };
 
   assert.equal(nodeRun.harnessRunId, harnessRun.harnessRunId);
@@ -126,7 +141,7 @@ test("integration: BudgetIntent works with BudgetReservation", () => {
     budgetLedgerId: "bl-001",
     harnessRunId: "run-001",
     amount: budgetIntent.amount,
-    resourceKind: budgetIntent.resourceKinds[0],
+    resourceKind: budgetIntent.resourceKinds[0]!,
     status: "reserved",
     expiresAt: "2026-01-01T01:00:00Z",
     createdAt: "2026-01-01T00:00:00Z",
@@ -159,9 +174,12 @@ test("integration: NodeRunStatus lifecycle transitions are valid", () => {
     nodeId: "node-001",
     status: terminalStatus,
     attemptCount: 1,
+    sideEffects: [],
+    compensation: [],
     currentSeq: 5,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:05:00Z",
+    fencingToken: "node-001-fence",
   };
 
   assert.deepEqual(
@@ -184,6 +202,14 @@ test("integration: HarnessRunStatus lifecycle transitions are valid", () => {
   const harnessRun: HarnessRun = {
     harnessRunId: "run-lifecycle",
     tenantId: "tenant-001",
+    orgId: "org-001",
+    traceId: "trace-lifecycle",
+    riskLevel: "medium",
+    riskProfile: { riskClass: "medium", reasons: [] },
+    ownership: { ownerId: "tenant-001", ownerType: "tenant" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
+    domainId: "domain-001",
     confirmedTaskSpecId: "spec-001",
     requestEnvelopeId: "env-001",
     requestHash: "hash-001",
@@ -191,11 +217,13 @@ test("integration: HarnessRunStatus lifecycle transitions are valid", () => {
     constraintPackRef: "cp-001",
     versionLockId: "vl-001",
     budgetLedgerId: "bl-001",
+    budgetEnvelope: { budgetLedgerId: "bl-001", currency: "credits" },
     currentSeq: 10,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:10:00Z",
     terminalAt: "2026-01-01T00:10:00Z",
     terminalReason: "Completed successfully",
+    fencingToken: "fence:run-lifecycle:10",
   };
 
   assert.equal(harnessRun.status, "completed");
@@ -333,11 +361,11 @@ test("integration: PlatformStartupTargetKind with PlatformAppManifest", () => {
   }));
 
   assert.equal(targets.length, 5);
-  assert.equal(targets[0].appManifest?.kind, "api");
-  assert.equal(targets[1].appManifest?.kind, "console");
-  assert.equal(targets[2].appManifest?.kind, "worker");
-  assert.equal(targets[3].appManifest, null);
-  assert.equal(targets[4].appManifest, null);
+  assert.equal(targets[0]!.appManifest?.kind, "api");
+  assert.equal(targets[1]!.appManifest?.kind, "console");
+  assert.equal(targets[2]!.appManifest?.kind, "worker");
+  assert.equal(targets[3]!.appManifest, null);
+  assert.equal(targets[4]!.appManifest, null);
 });
 
 test("integration: GraphValidationReport with PlanGraph", () => {
@@ -408,9 +436,9 @@ test("integration: RiskPreview with RiskClass and BudgetIntent", () => {
   }));
 
   assert.equal(riskProfiles.length, 4);
-  assert.equal(riskProfiles[3].riskClass, "critical");
-  assert.equal(budgetIntents[3].amount, 10000);
-  assert.deepEqual(budgetIntents[3].resourceKinds, ["token", "compute", "human"]);
+  assert.equal(riskProfiles[3]!.riskClass, "critical");
+  assert.equal(budgetIntents[3]!.amount, 10000);
+  assert.deepEqual(budgetIntents[3]!.resourceKinds, ["token", "compute", "human"]);
 });
 
 test("integration: SideEffectProfile affects PlanNode behavior", () => {
@@ -442,10 +470,10 @@ test("integration: SideEffectProfile affects PlanNode behavior", () => {
     },
   ];
 
-  assert.equal(nodesWithExternalEffect[0].sideEffectProfile.mayCommitExternalEffect, true);
-  assert.equal(nodesWithExternalEffect[0].sideEffectProfile.reversible, false);
-  assert.equal(nodesWithoutExternalEffect[0].sideEffectProfile.mayCommitExternalEffect, false);
-  assert.equal(nodesWithoutExternalEffect[0].sideEffectProfile.reversible, true);
+  assert.equal(nodesWithExternalEffect[0]!.sideEffectProfile.mayCommitExternalEffect, true);
+  assert.equal(nodesWithExternalEffect[0]!.sideEffectProfile.reversible, false);
+  assert.equal(nodesWithoutExternalEffect[0]!.sideEffectProfile.mayCommitExternalEffect, false);
+  assert.equal(nodesWithoutExternalEffect[0]!.sideEffectProfile.reversible, true);
 });
 
 test("integration: ReadyNodeSchedulingPolicy strategies work with PlanGraphBundle", () => {
@@ -486,9 +514,9 @@ test("integration: ReadyNodeSchedulingPolicy strategies work with PlanGraphBundl
   }));
 
   assert.equal(bundles.length, 3);
-  assert.equal(bundles[0].schedulerPolicy.strategy, "deterministic_fifo");
-  assert.equal(bundles[1].schedulerPolicy.strategy, "priority_then_fifo");
-  assert.equal(bundles[2].schedulerPolicy.strategy, "risk_isolated");
+  assert.equal(bundles[0]!.schedulerPolicy.strategy, "deterministic_fifo");
+  assert.equal(bundles[1]!.schedulerPolicy.strategy, "priority_then_fifo");
+  assert.equal(bundles[2]!.schedulerPolicy.strategy, "risk_isolated");
 });
 
 // Helper function used in tests above

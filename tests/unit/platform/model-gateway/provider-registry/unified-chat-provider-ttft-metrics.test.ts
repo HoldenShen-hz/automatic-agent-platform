@@ -32,6 +32,9 @@ test("UnifiedChatProvider does not record total latency as TTFT for non-streamin
     model: "gpt-4o",
     messages: [{ role: "user", content: "hello" }],
     maxTokens: 64,
+    traceId: "ttft-metrics-test",
+    tenantId: "tenant-test",
+    costTag: "metrics-test",
   });
 
   assert.equal(runtimeMetricsRegistry.getHistograms("llm_ttfb_seconds").length, 0);

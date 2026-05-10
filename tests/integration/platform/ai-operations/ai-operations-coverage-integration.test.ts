@@ -180,7 +180,7 @@ test("integration: ai operations coverage tests prompt rendering with budget gua
       candidateProviderFamily: "openai",
       candidateModel: "gpt-coverage-primary",
       owner: "coverage@example.com",
-      mode: "shadow",
+      mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
       results: [
@@ -309,6 +309,15 @@ test("integration: ai operations coverage tests harness runtime with constraint 
         maxSteps: 6,
         maxCost: 5,
         maxDurationMs: 20_000,
+      },
+      sandboxRequirement: {
+        sandboxMode: "ephemeral",
+        timeoutMs: 30_000,
+      },
+      approvalRequirement: {
+        requiredForRiskClass: ["low", "medium"],
+        approverRoles: ["approver"],
+        escalationTimeoutMs: 60_000,
       },
     };
 

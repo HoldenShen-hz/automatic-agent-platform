@@ -146,7 +146,9 @@ test("RecoveryOrchestratorService handles worker errors gracefully", async () =>
   const badReport = report.workerReports.find(r => r.workerId === "bad-worker");
   assert.ok(badReport, "Should have report for bad worker");
   assert.equal(badReport!.errors.length, 1, "Bad worker should have error");
-  assert.ok(badReport!.errors[0].message.includes("Simulated worker failure"));
+  const firstError = badReport!.errors[0];
+  assert.ok(firstError, "First error should exist");
+  assert.ok(firstError.message.includes("Simulated worker failure"));
 });
 
 test("RecoveryOrchestratorService uses default orchestrator ID", async () => {

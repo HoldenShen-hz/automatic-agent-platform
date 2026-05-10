@@ -12,13 +12,15 @@ import assert from "node:assert/strict";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { DomainSmokeTestRunner } from "../../../../src/domains/registry/domain-smoke-test.js";
 import type { DomainDefinition, DomainCapabilityProfile } from "../../../../src/domains/registry/domain-model.js";
-import { DomainCapabilityProfileSchema } from "../../../../src/domains/registry/domain-model.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { DomainCapabilityProfileSchema } from "../../../../src/domains/registry/domain-model.js";
 
-const defaultCapabilities = DomainCapabilityProfileSchema.parse({});
-
-function createTestDomain(overrides: Partial<DomainDefinition> & { capabilities?: Partial<DomainCapabilityProfile> } = {}): DomainDefinition {
+function createTestDomain(overrides: {
+  domainId?: string;
+  capabilities?: Partial<DomainCapabilityProfile>;
+} = {}): DomainDefinition {
   const { capabilities: capOverrides, ...rest } = overrides;
+  const defaultCapabilities = DomainCapabilityProfileSchema.parse({});
   return {
     domainId: "quota-test-domain",
     name: "Quota Test Domain",
@@ -51,15 +53,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> & { capabilities?
     ],
     outputContracts: [],
     promptOverrides: {},
-    capabilities: {
-      supportedTaskTypes: ["quota"],
-      requiredTools: ["calculator"],
-      optionalTools: [],
-      modelPreferences: {},
-      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "restricted",
-      ...capOverrides,
-    },
+    capabilities: (capOverrides ? { ...defaultCapabilities, ...capOverrides } : defaultCapabilities) as DomainCapabilityProfile,
     status: "registered" as DomainDefinition["status"],
     externalAdapters: [],
     pluginBindings: [],

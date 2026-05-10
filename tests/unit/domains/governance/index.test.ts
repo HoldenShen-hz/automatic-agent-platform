@@ -22,8 +22,8 @@ import {
   type RawDivisionRoleConfig,
   type RawWorkflowConfig,
   type RawWorkflowStepConfig,
-  type SandboxPolicy,
 } from "../../../../src/domains/governance/index.js";
+import type { SandboxPolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // parseLimitedYaml
@@ -221,6 +221,8 @@ test("RawWorkflowStepConfig accepts valid structure", () => {
     role_id: "role-1",
     input_keys: ["input-a"],
     output_key: "output-a",
+    timeout_ms: 30000,
+    max_attempts: 3,
   };
   assert.equal(step.step_id, "step-1");
   assert.equal(step.role_id, "role-1");

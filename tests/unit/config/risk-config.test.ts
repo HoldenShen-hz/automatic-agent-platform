@@ -50,10 +50,10 @@ test("risk-config threshold ordering is consistent", () => {
 });
 
 test("risk-config value maps and thresholds stay wired", () => {
-  assert.equal(riskConfig.stepTypeRiskValues.external_call, 4);
-  assert.equal(riskConfig.targetSystemRiskValues.production, 5);
-  assert.equal(riskConfig.dataClassRiskValues.restricted, 5);
+  assert.equal(riskConfig.impactValues.external_call, 4);
+  assert.equal(riskConfig.tenantImpactValues.production, 5);
+  assert.equal(riskConfig.dataSensitivityValues.restricted, 5);
   assert.equal(riskConfig.blastRadiusValues.platform, 5);
-  assert.equal(riskConfig.priorFailureRateThresholds.high.value, 3);
-  assert.equal(riskConfig.confidenceValues.low, 5);
+  assert.equal(riskConfig.historicalFailureRateThresholds.high.value, 3);
+  assert.equal(riskConfig.evidenceConfidenceValues.low, 5);
 });

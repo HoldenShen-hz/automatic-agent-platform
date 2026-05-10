@@ -104,11 +104,12 @@ test("mainline bootstrap is consistent with module catalog interface", async () 
   const mainlineIds = mainlineCapabilities.map((c) => c.capabilityId);
 
   for (const id of mainlineIds) {
-    if (id === "x1-fabric" || id === "shared" || id === "contracts") {
+    const idStr = id as string;
+    if (idStr === "x1-fabric" || idStr === "shared" || idStr === "contracts") {
       continue;
     }
     assert.ok(
-      surfaceIds.includes(id as any),
+      surfaceIds.includes(idStr as any),
       `Mainline capability ${id} should exist in surface manifest catalog`,
     );
   }
@@ -138,6 +139,7 @@ test("full roundtrip: list all and resolve all", () => {
 
 test("compliance capability is last in the list and covers data governance", () => {
   const compliance = PLATFORM_MAINLINE_CAPABILITIES[PLATFORM_MAINLINE_CAPABILITIES.length - 1];
+  assert.ok(compliance != null, "Compliance capability should exist");
   assert.equal(compliance.capabilityId, "compliance");
 
   assert.ok(compliance.criticalSubmodules.includes("crypto-shredding"));

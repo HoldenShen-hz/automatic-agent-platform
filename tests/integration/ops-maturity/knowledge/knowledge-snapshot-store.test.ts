@@ -74,8 +74,10 @@ test("integration: KnowledgeSnapshotStore saves and loads a knowledge snapshot",
     const saved = store.save(input);
 
     assert.strictEqual(saved.namespaces.length, 1);
+    assert.ok(saved.namespaces[0], "namespaces[0] should exist");
     assert.strictEqual(saved.namespaces[0].namespaceId, "ns-test-001");
     assert.strictEqual(saved.records.length, 1);
+    assert.ok(saved.records[0], "records[0] should exist");
     assert.strictEqual(saved.records[0].document.documentId, "doc-001");
     assert.ok(saved.generatedAt, "should have generatedAt timestamp");
 
@@ -113,6 +115,8 @@ test("integration: KnowledgeSnapshotStore overwrites existing snapshot", () => {
     });
 
     const first = store.load();
+    assert.ok(first, "first should not be null");
+    assert.ok(first!.namespaces[0], "namespaces[0] should exist");
     assert.strictEqual(first!.namespaces[0].namespaceId, "ns-first");
 
     store.save({
@@ -121,7 +125,9 @@ test("integration: KnowledgeSnapshotStore overwrites existing snapshot", () => {
     });
 
     const second = store.load();
+    assert.ok(second, "second should not be null");
     assert.strictEqual(second!.namespaces.length, 1);
+    assert.ok(second!.namespaces[0], "namespaces[0] should exist");
     assert.strictEqual(second!.namespaces[0].namespaceId, "ns-second");
   } finally {
     cleanupPath(workspace);
@@ -212,9 +218,12 @@ test("integration: KnowledgeSnapshotStore accepts absolute paths within tmpdir",
       records: [],
     });
 
+    assert.strictEqual(saved.namespaces.length, 1);
+    assert.ok(saved.namespaces[0], "namespaces[0] should exist");
     assert.strictEqual(saved.namespaces[0].namespaceId, "ns-tmpdir");
     const loaded = store.load();
     assert.ok(loaded !== null);
+    assert.ok(loaded!.namespaces[0], "namespaces[0] should exist");
     assert.strictEqual(loaded!.namespaces[0].namespaceId, "ns-tmpdir");
   } finally {
     cleanupPath(workspace);
