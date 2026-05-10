@@ -205,7 +205,11 @@ export class OapeflirLoopService {
           timestamp: Date.now(),
           objective: input.objective,
           currentPhase: "planning",
-          userIntent: { raw: input.objective, normalized: input.objective, confidence: 0.5 },
+          userIntent: {
+            raw: input.objective,
+            normalized: input.objective,
+            confidence: this.deriveFallbackIntentConfidence(input),
+          },
           blockers: [],
           codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
           environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
@@ -308,6 +312,7 @@ export class OapeflirLoopService {
         fsm.recordStageEntry("execute");
 
         loopStepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => {
+          const executionContext = this.buildExecutionContext(input, loopPlanGraphBundle, loopPlan, validatedAssessment);
           // R31-16 FIX: Validate stepOutputs before using them directly
           if (input.stepOutputs != null) {
             const validation = validateStepOutputs(input.stepOutputs);
@@ -315,11 +320,11 @@ export class OapeflirLoopService {
               this.boundaryLogger.warn("[boundary:E] input.stepOutputs validation failed — executing via bridge instead", {
                 data: { taskId: input.taskId, boundary: "E" },
               });
-              return this.executeViaBridge(loopPlan, { taskId: input.taskId });
+              return this.executeViaBridge(loopPlan, executionContext);
             }
             return input.stepOutputs;
           }
-          return this.executeViaBridge(loopPlan, { taskId: input.taskId });
+          return this.executeViaBridge(loopPlan, executionContext);
         }, {
           taskId: input.taskId,
           planId: loopPlan.planId,
@@ -756,6 +761,19 @@ export class OapeflirLoopService {
     return this.executeBridge.toDualChannelStepOutputs(executionResult);
   }
 
+  private buildExecutionContext(
+    input: OapeflirLoopInput,
+    planGraphBundle: PlanGraphBundle,
+    plan: Plan,
+    assessment: UnifiedAssessment,
+  ): ExecutionContext {
+    return {
+      taskId: input.taskId,
+      tokenBudget: assessment.resourceAllocation.maxTokens,
+      budgetLedgerId: `${planGraphBundle.budgetPlanRef ?? `budget:${input.taskId}`}:execute:v${plan.version}`,
+    };
+  }
+
   /**
    * R5-13: Execute a subgraph of steps via the bridge.
    * Used when the loop needs to execute a subset of steps for parallel branches,
@@ -908,6 +926,12 @@ export class OapeflirLoopService {
       return payload.summary;
     }
     return "";
+  }
+
+  private deriveFallbackIntentConfidence(input: OapeflirLoopInput): number {
+    const objectiveSignal = input.objective.trim().length > 0 ? 0.68 : 0.65;
+    const contextSignal = Math.min((input.fileRefs?.length ?? 0) * 0.03 + (input.blockerSummaries?.length ?? 0) * 0.02, 0.12);
+    return Number(Math.min(0.8, objectiveSignal + contextSignal).toFixed(2));
   }
 
   /**

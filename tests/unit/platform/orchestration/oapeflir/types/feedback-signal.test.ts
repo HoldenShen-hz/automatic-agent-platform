@@ -22,7 +22,7 @@ test("FeedbackSourceSchema rejects invalid source", () => {
 });
 
 test("FeedbackCategorySchema accepts valid categories", () => {
-  const categories = ["success", "failure", "correction", "timeout", "partial"] as const;
+  const categories = ["success", "failure", "correction", "timeout", "partial", "blocker", "regression"] as const;
   for (const category of categories) {
     assert.equal(FeedbackCategorySchema.parse(category), category);
   }

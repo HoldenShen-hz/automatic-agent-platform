@@ -35,7 +35,6 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createBudgetReservation } from "../../contracts/executable-contracts/index.js";
 import type { Plan, PlanStep } from "./types/plan.js";
 import type { DualChannelStepOutput } from "./types/dual-channel-step-output.js";
 import type {
@@ -91,6 +90,16 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
     }
   }
 
+  let validationPassed = false;
+  if (record.validationJson) {
+    try {
+      const parsed = JSON.parse(record.validationJson) as { valid?: unknown };
+      validationPassed = parsed.valid === true;
+    } catch {
+      validationPassed = false;
+    }
+  }
+
   return {
     stepId: record.stepId ?? "unknown",
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
@@ -101,7 +110,7 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
     artifacts,
     modelId: "runtime", // Supervisor doesn't track per-step model; record at plan level
     retryCount: 0, // Supervisor doesn't expose retry count per record
-    validationPassed: record.validationJson != null,
+    validationPassed,
   };
 }
 

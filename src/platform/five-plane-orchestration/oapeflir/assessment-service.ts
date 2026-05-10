@@ -55,6 +55,11 @@ export interface AssessmentServiceOptions {
   complexityThresholds?: Partial<ComplexityThresholds>;
 }
 
+interface ComplexityScoreAssessment {
+  readonly level: AssessmentComplexity;
+  readonly score: number;
+}
+
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
   private readonly fileCountThresholds: { critical: number; high: number; moderate: number; simple: number };
@@ -151,7 +156,8 @@ export class AssessmentService {
             ? "medium"
             : "low";
 
-    const complexity = this.deriveComplexity(situation, risk);
+    const complexityAssessment = this.scoreComplexity(situation, risk, riskFactors);
+    const complexity = complexityAssessment.level;
     const approvalRequired = risk === "high" || risk === "critical";
     const workflow = complexity === "trivial" || complexity === "simple" ? "single-step" : "multi-step";
 
@@ -187,7 +193,7 @@ export class AssessmentService {
       routingDecision: {
         division,
         workflow,
-        rationale: `complexity=${complexity};risk=${risk};files=${situation.fileRefs.length}`,
+        rationale: `complexity=${complexity};complexityScore=${complexityAssessment.score};risk=${risk};files=${situation.fileRefs.length}`,
       },
       resourceAllocation: {
         modelClass: complexity === "critical" || complexity === "complex" ? "large" : complexity === "moderate" ? "medium" : "small",
@@ -209,24 +215,81 @@ export class AssessmentService {
     return { assessment, riskAssessment };
   }
 
-  private deriveComplexity(situation: TaskSituation, risk: UnifiedAssessment["risk"]): AssessmentComplexity {
+  private scoreComplexity(
+    situation: TaskSituation,
+    risk: UnifiedAssessment["risk"],
+    riskFactors: readonly string[],
+  ): ComplexityScoreAssessment {
     const fileCount = Math.max(situation.fileRefs.length, situation.codebaseSnapshot.fileCount);
     const blockerCount = situation.blockers.length;
     const memoryCount = situation.relevantMemory.length;
+    const blockerSeverityScore = situation.blockers.reduce((sum, blocker) => {
+      switch (blocker.severity) {
+        case "critical":
+          return sum + 12;
+        case "high":
+          return sum + 7;
+        case "medium":
+          return sum + 4;
+        default:
+          return sum + 2;
+      }
+    }, 0);
+    const fileScore =
+      fileCount >= this.fileCountThresholds.critical
+        ? 12
+        : fileCount >= this.fileCountThresholds.high
+          ? 8
+          : fileCount >= this.fileCountThresholds.moderate
+            ? 5
+            : fileCount >= this.fileCountThresholds.simple
+              ? 2
+              : 0;
+    const blockerCountScore =
+      blockerCount >= this.blockerCountThresholds.critical
+        ? 12
+        : blockerCount >= this.blockerCountThresholds.high
+          ? 8
+          : blockerCount >= this.blockerCountThresholds.moderate
+            ? 4
+            : 0;
+    const memoryScore = memoryCount >= 10 ? 4 : memoryCount >= 4 ? 2 : memoryCount > 0 ? 1 : 0;
+    const riskScore =
+      risk === "critical"
+        ? 6
+        : risk === "high"
+          ? 4
+          : risk === "medium"
+            ? 2
+            : 0;
+    const uncertaintyScore = situation.userIntent.confidence < 0.65 ? 2 : 0;
+    const approvalScore = riskFactors.includes("approval_pending") ? 1.5 : 0;
+    const toolingScore = riskFactors.includes("high_risk_tooling") ? 1.5 : 0;
+    const score = Number(
+      (
+        fileScore
+        + Math.max(blockerSeverityScore, blockerCountScore)
+        + memoryScore
+        + riskScore
+        + uncertaintyScore
+        + approvalScore
+        + toolingScore
+      ).toFixed(2),
+    );
 
-    if (risk === "critical" || fileCount >= this.fileCountThresholds.critical || blockerCount >= this.blockerCountThresholds.critical) {
-      return "critical";
+    if (score >= 12) {
+      return { level: "critical", score };
     }
-    if (risk === "high" || fileCount >= this.fileCountThresholds.high || blockerCount >= this.blockerCountThresholds.high) {
-      return "complex";
+    if (score >= 8) {
+      return { level: "complex", score };
     }
-    if (fileCount >= this.fileCountThresholds.moderate || memoryCount > 0 || blockerCount >= this.blockerCountThresholds.moderate) {
-      return "moderate";
+    if (score >= 5) {
+      return { level: "moderate", score };
     }
-    if (fileCount >= this.fileCountThresholds.simple) {
-      return "simple";
+    if (score >= 2) {
+      return { level: "simple", score };
     }
-    return "trivial";
+    return { level: "trivial", score };
   }
 
   /**

@@ -209,6 +209,32 @@ test("mapStepOutputRecord parses dataJson successfully", () => {
   assert.equal(result.validationPassed, true);
 });
 
+test("mapStepOutputRecord only accepts validationJson when valid===true", () => {
+  const invalidRecord: StepOutputRecord = {
+    id: "sor_invalid_validation",
+    stepId: "step_invalid_validation",
+    taskId: "task_1",
+    roleId: "agent",
+    status: "succeeded",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: "Step completed with invalid validation payload",
+    durationMs: 10,
+    tokenCost: 5,
+    validationJson: "{\"valid\":false}",
+    producedAt: "2026-04-01T00:00:00.000Z",
+  };
+  const malformedRecord: StepOutputRecord = {
+    ...invalidRecord,
+    id: "sor_malformed_validation",
+    stepId: "step_malformed_validation",
+    validationJson: "{not-json",
+  };
+
+  assert.equal(mapStepOutputRecord(invalidRecord).validationPassed, false);
+  assert.equal(mapStepOutputRecord(malformedRecord).validationPassed, false);
+});
+
 test("mapStepOutputRecord handles invalid dataJson gracefully", () => {
   const record: StepOutputRecord = {
     id: "sor_2",

@@ -49,6 +49,7 @@ export interface StageEntryCondition {
 }
 
 const STAGE_ORDER: readonly OapeflirStage[] = OAPEFLIR_STAGES;
+const FEEDBACK_REENTRY_TARGETS: readonly OapeflirStage[] = ["observe", "assess", "plan", "execute"];
 
 const VALID_PREDECESSORS: ReadonlyMap<OapeflirStage, readonly OapeflirStage[]> = new Map([
   ["observe", []],
@@ -125,12 +126,12 @@ export class StageTransitionFSM {
 
     if (targetIndex < currentIndex) {
       const feedbackCompleted = this.stageStatuses.get("feedback") === "completed";
-      if (feedbackCompleted && (targetStage === "plan" || targetStage === "observe")) {
+      if (feedbackCompleted && FEEDBACK_REENTRY_TARGETS.includes(targetStage)) {
         return {
           allowed: true,
           targetStage,
           reasonCode: "fsm.feedback_driven_replan",
-          reasonCodes: [`fsm.feedback_driven_replan: feedback → ${targetStage}`],
+          reasonCodes: [`fsm.feedback_driven_replan: ${currentStage} → ${targetStage}`],
         };
       }
       return {
