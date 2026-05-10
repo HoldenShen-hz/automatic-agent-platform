@@ -17,79 +17,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { OapeflirLoopService } from "../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
-import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
-import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../src/platform/orchestration/oapeflir/execute-bridge.js";
-import type { Plan, PlanStep } from "../../src/platform/orchestration/oapeflir/types/plan.js";
-import type { DualChannelStepOutput } from "../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
-
-// Deterministic bridge that never fails — used to isolate loop logic
-// @ts-ignore
-class DeterministicE2EBridge implements ExecuteBridge {
-  executeStep(_step: PlanStep, _context: ExecutionContext): Promise<StepResult> {
-    return Promise.resolve({
-      stepId: _step.stepId,
-      status: "succeeded",
-      durationMs: 1,
-      tokenCost: 1,
-      summary: `E2E executed ${_step.stepId}`,
-      outputs: {},
-      artifacts: [],
-      modelId: "e2e-deterministic",
-      retryCount: 0,
-      validationPassed: true,
-    });
-  }
-
-  executePlan(plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
-    return Promise.resolve({
-      planId: plan.planId,
-      results: plan.steps.map((step) => ({
-        stepId: step.stepId,
-        status: "succeeded" as const,
-        durationMs: 1,
-        tokenCost: 1,
-        summary: `E2E executed ${step.stepId}`,
-        outputs: {},
-        artifacts: [],
-        modelId: "e2e-deterministic",
-        retryCount: 0,
-        validationPassed: true,
-      })),
-      totalDurationMs: plan.steps.length,
-      totalTokenCost: plan.steps.length,
-      allSucceeded: true,
-      skippedStepIds: [],
-      failedStepIds: [],
-    });
-  }
-
-  toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
-    return result.results.map((stepResult) => ({
-      stepId: stepResult.stepId,
-      planRef: result.planId,
-      userFacingResult: {
-        summary: stepResult.summary,
-        artifacts: stepResult.artifacts,
-      },
-      systemTelemetry: {
-        durationMs: stepResult.durationMs,
-        tokensUsed: stepResult.tokenCost,
-        modelId: stepResult.modelId,
-        retryCount: stepResult.retryCount,
-        validationPassed: stepResult.validationPassed,
-      },
-    }));
-  }
-}
+import { RuntimeExecuteBridge } from "../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
+import { createE2EHarness } from "../helpers/e2e-harness.js";
 
 test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", async () => {
-  const workspace = createTempWorkspace("e2e-oapeflir-");
-
+  const harness = createE2EHarness("e2e-oapeflir-");
   try {
-    const service = new OapeflirLoopService({
-// @ts-ignore
-      executeBridge: new DeterministicE2EBridge(),
-    });
+    // ADR-029 fix: OAPEFLIR Execute phase must route through HarnessRuntime via
+    // RuntimeExecuteBridge, which calls runMultiStepOrchestration (the canonical
+    // execution path). This replaces the DeterministicE2EBridge which bypassed
+    // HarnessRuntime and violated ADR-029 architecture layering.
+    const executeBridge = new RuntimeExecuteBridge(harness.dbPath);
+    const service = new OapeflirLoopService({ executeBridge });
 
     const result = await service.run({
       taskId: "task_e2e_happy",
@@ -167,18 +106,19 @@ test("E2E: OAPEFLIR loop completes all 8 stages in sequence — happy path", asy
 // @ts-ignore
     assert.equal(result.outcome.nextAction, "complete");
   } finally {
-    cleanupPath(workspace);
+    harness.cleanup();
   }
 });
 
 test("E2E: OAPEFLIR loop with failure signal triggers learn/improve/release chain", async () => {
-  const workspace = createTempWorkspace("e2e-oapeflir-failure-");
-
+  const harness = createE2EHarness("e2e-oapeflir-failure-");
   try {
-    const service = new OapeflirLoopService({
-// @ts-ignore
-      executeBridge: new DeterministicE2EBridge(),
-    });
+    // ADR-029 fix: OAPEFLIR Execute phase must route through HarnessRuntime via
+    // RuntimeExecuteBridge, which calls runMultiStepOrchestration (the canonical
+    // execution path). This replaces the DeterministicE2EBridge which bypassed
+    // HarnessRuntime and violated ADR-029 architecture layering.
+    const executeBridge = new RuntimeExecuteBridge(harness.dbPath);
+    const service = new OapeflirLoopService({ executeBridge });
 
     const result = await service.run({
       taskId: "task_e2e_failure",
@@ -255,6 +195,6 @@ test("E2E: OAPEFLIR loop with failure signal triggers learn/improve/release chai
     // Replan decision must be triggered
     assert.equal(result.replanDecision.shouldReplan, true, "Replan must be triggered on failure");
   } finally {
-    cleanupPath(workspace);
+    harness.cleanup();
   }
 });

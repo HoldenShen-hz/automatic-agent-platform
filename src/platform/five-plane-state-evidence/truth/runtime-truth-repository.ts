@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
+import { newId } from "../../contracts/types/ids.js";
 import {
   type BudgetLedger,
   type BudgetReservation,
@@ -57,6 +58,15 @@ export interface RuntimeRepository {
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
   snapshot(): RuntimeTruthRepositorySnapshot;
+  /**
+   * R24-34: Replay events to rebuild aggregate state from event store.
+   * This enables event-sourced reconstruction of aggregates from their event history.
+   * Events are processed in sequence; each event's status change is applied to
+   * reconstruct the current aggregate state.
+   *
+   * @param events - Sorted list of PlatformFactEvents to replay
+   */
+  replayEvents(events: readonly PlatformFactEvent[]): void;
 }
 
 interface RuntimeTruthRepositoryState {
@@ -254,6 +264,55 @@ export class RuntimeTruthRepository implements RuntimeRepository {
 
   public listAuditRefs(): readonly string[] {
     return [...this.state.auditRefs];
+  }
+
+  /**
+   * R24-34: Replay events to rebuild aggregate state from event store.
+   * Events are processed in sequence, applying status changes to reconstruct aggregates.
+   * This enables event-sourced reconstruction when state needs to be rebuilt from events.
+   */
+  public replayEvents(events: readonly PlatformFactEvent[]): void {
+    for (const event of events) {
+      // Get the current aggregate state
+      const aggregateId = event.aggregateId;
+      const aggregateType = event.aggregateType as RuntimeStateAggregateType;
+      const currentAggregate = this.getAggregate(aggregateType, aggregateId);
+
+      if (currentAggregate == null) {
+        // Cannot replay event for aggregate that doesn't exist - skip
+        continue;
+      }
+
+      // Apply event to reconstruct state - we extract the toStatus from the event payload
+      const payload = event.payload as { toStatus?: string; fromStatus?: string } | null;
+      if (!payload?.toStatus) {
+        continue;
+      }
+
+      // Create a transition command to apply the event's status change
+      const command: RuntimeTransitionCommand<RuntimeStateAggregate> = {
+        commandId: newId("replay"),
+        entityType: aggregateType,
+        entityId: aggregateId,
+        aggregateType: aggregateType,
+        aggregate: currentAggregate,
+        fromStatus: payload.fromStatus as any,
+        toStatus: payload.toStatus as any,
+        principal: "system",
+        traceId: event.traceId ?? newId("trace"),
+        tenantId: event.tenantId,
+        reasonCode: "event_replay",
+        emittedBy: "runtime_truth_repository.replay",
+        occurredAt: event.occurredAt,
+      };
+
+      // Apply the transition which will update the aggregate and emit a new event
+      const result = this.stateMachine.transition(command);
+      this.storeAggregate(aggregateType, result.aggregate);
+
+      // Also append to outbox for event sourcing integrity
+      this.appendEvent(result.event);
+    }
   }
 
   public snapshot(): RuntimeTruthRepositorySnapshot {

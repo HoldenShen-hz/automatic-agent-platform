@@ -52,6 +52,11 @@ type SimpleStateCommandInput<TPayload> = {
   readonly entityKind: string;
   readonly entityId: string;
   readonly action: StateCommandAction;
+  readonly traceId?: string;
+  readonly principal?: PlatformPrincipalLike;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
+  readonly event?: string;
   readonly expectedVersion?: number | null;
   readonly expectedStatus?: string | null;
   readonly payload: TPayload;

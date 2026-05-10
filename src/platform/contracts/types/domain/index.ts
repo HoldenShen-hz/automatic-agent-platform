@@ -245,3 +245,12 @@ export type {
   ApprovalStatusTransitionCommand,
   TaskSnapshot,
 } from "./core-types.js";
+
+// Re-export five core execution objects from executable-contracts
+export type {
+  HarnessRun,
+  NodeRun,
+  NodeAttempt,
+  SideEffectRecord,
+  BudgetReservation,
+} from "../../executable-contracts/index.js";

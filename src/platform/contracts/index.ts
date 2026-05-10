@@ -89,6 +89,18 @@ export {
 // -----------------------------------------------------------------------------
 export * from "./evidence-record/index.js";
 
+// -----------------------------------------------------------------------------
+// R23-76: Compliance canonical types (exposed via five-plane-control-plane)
+// These types bridge the canonical contracts with compliance domain requirements.
+// -----------------------------------------------------------------------------
+export {
+  type EvidenceMappingRule,
+  type ComplianceReportRequest,
+  type Artifact,
+  type EvidenceRecord as ComplianceEvidenceRecord,
+  type AuditAppendCommand as ComplianceAuditAppendCommand,
+} from "../five-plane-control-plane/compliance/index.js";
+
 // =============================================================================
 // Deprecated Contracts - DO NOT USE IN NEW CODE
 // =============================================================================

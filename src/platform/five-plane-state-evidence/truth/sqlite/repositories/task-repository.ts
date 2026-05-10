@@ -191,14 +191,46 @@ export class TaskRepository {
   }
 
   /**
-   * Update task output.
+   * Update task output with CAS (Compare-And-Swap) semantics.
+   * Only updates if the current output matches expected output.
+   * @returns Number of rows affected (1 if successful, 0 if CAS failed)
+   */
+  public updateTaskOutputCas(taskId: string, outputJson: string, updatedAt: string, expectedOutputJson: string): number {
+    return execute(
+      this.conn,
+      `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND output_json = ?`,
+      outputJson,
+      updatedAt,
+      taskId,
+      expectedOutputJson,
+    );
+  }
+
+  /**
+   * Update task output (without optimistic locking).
    */
   public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
     execute(this.conn, `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ?`, outputJson, updatedAt, taskId);
   }
 
   /**
-   * Update task title.
+   * Update task title with CAS (Compare-And-Swap) semantics.
+   * Only updates if current title matches expected title.
+   * @returns Number of rows affected (1 if successful, 0 if CAS failed)
+   */
+  public updateTaskTitleCas(taskId: string, title: string, updatedAt: string, expectedTitle: string): number {
+    return execute(
+      this.conn,
+      `UPDATE tasks SET title = ?, updated_at = ? WHERE id = ? AND title = ?`,
+      title,
+      updatedAt,
+      taskId,
+      expectedTitle,
+    );
+  }
+
+  /**
+   * Update task title (without optimistic locking).
    */
   public updateTaskTitle(taskId: string, title: string, updatedAt: string): void {
     execute(this.conn, `UPDATE tasks SET title = ?, updated_at = ? WHERE id = ?`, title, updatedAt, taskId);

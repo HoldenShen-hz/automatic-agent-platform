@@ -27,7 +27,10 @@ export type ExecutionReceiptStatus = "accepted" | "started" | "completed" | "fai
 export interface ExecutionReceipt {
   receiptId: string;
   planId: string;
-  nodeRunId?: string | null;
+  harnessRunId: string | null;
+  planGraphId: string | null;
+  nodeRunId: string | null;
+  attemptId: string | null;
   /** @deprecated legacy execution projection; use nodeRunId */
   stepId?: string | null;
   status: ExecutionReceiptStatus;

@@ -360,8 +360,9 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
   const harness = createE2EHarness("aa-e2e-max-cost-");
   try {
     const service = new HarnessRuntimeService();
-    // Even with a low cost budget, runLoop doesn't track per-iteration cost
-    // so the cost guard won't trigger. But the loop should still complete properly.
+    // With maxSteps=30 and single iteration, loop completes before cost guard can trigger.
+    // Cost guard only fires when totalCost > maxCost during shouldContinue() evaluation.
+    // Since score is 0.85 >= 0.75 threshold, loop accepts and exits after first iteration.
     const constraintPack = createConstraintPack({
       budget: { maxSteps: 30, maxCost: 0.001, maxDurationMs: 60_000 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
@@ -371,14 +372,15 @@ test("E2E: loop terminates when evaluator score is high and records decision", (
       taskId: "task-e2e-max-cost-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-cost-001" },
-      generatorOutput: { artifact: "high-cost-op" },
+      plannerOutput: { planId: "plan-cost-001", costUsd: 0.0004 },
+      generatorOutput: { artifact: "high-cost-op", costUsd: 0.0004 },
       evaluatorOutput: { verdict: "pass" },
       evaluatorScore: 0.85,
       producedEvidenceRefs: [],
     });
 
     // With high evaluator score (0.85 >= 0.75), loop accepts and completes
+    // even though individual iteration cost (0.0008) < maxCost (0.001), so no guard fires
     assert.ok(run.status === "completed" || run.status === "aborted");
     assert.ok(run.decision, "decision should be present");
     // With high score, should be accept
@@ -414,6 +416,43 @@ test("E2E: loop aborts when max duration exceeded", (t) => {
       }),
       /harness\.invariant_violation.*duration_exceeds_budget/,
       "runLoop should throw when max duration exceeded"
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 5b: Cost guard triggers when accumulated cost exceeds budget
+// ---------------------------------------------------------------------------
+
+test("E2E: loop aborts when max cost exceeded and cost guard triggers", (t) => {
+  // R10-38 fix: The cost guard triggers when totalCost > maxCost.
+  // With maxCost=0.001 and outputs containing costUsd fields, the guard
+  // will fire after iteration cost exceeds the budget, causing abort.
+  const harness = createE2EHarness("aa-e2e-cost-guard-");
+  try {
+    const service = new HarnessRuntimeService();
+    // Set maxCost very low so even small iteration costs trigger the guard
+    const constraintPack = createConstraintPack({
+      budget: { maxSteps: 30, maxCost: 0.001, maxDurationMs: 60_000 },
+      output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    });
+
+    // Verify the run aborts due to cost guard - it throws instead of returning
+    assert.throws(
+      () => service.runLoop({
+        taskId: "task-e2e-cost-001",
+        domainId: "coding",
+        constraintPack,
+        plannerOutput: { planId: "plan-cost-001", costUsd: 0.002 },
+        generatorOutput: { artifact: "cost-test", costUsd: 0.002 },
+        evaluatorOutput: { verdict: "pass" },
+        evaluatorScore: 0.85,
+        producedEvidenceRefs: [],
+      }),
+      /harness\.invariant_violation.*cost_exceeds_budget/,
+      "runLoop should throw when max cost exceeded"
     );
   } finally {
     harness.cleanup();

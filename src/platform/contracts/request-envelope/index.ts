@@ -1,6 +1,7 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { PrincipalRef } from "../executable-contracts/index.js";
+import type { OperationalDirective, DecisionDirective } from "../control-directive/index.js";
 
 // Runtime warning for imports from legacy contract path
 console.warn(
@@ -27,6 +28,11 @@ export interface RequestEnvelope<TBody = Record<string, unknown>> {
   readonly mode: "sync" | "async";
   readonly body: TBody;
   readonly createdAt: string;
+  // R24-58 FIX: ADR-021 requires 4/8 mandatory fields for inter-plane routing.
+  // Missing fields: principal (already present), source_plane, target_plane, directives.
+  readonly sourcePlane?: string;
+  readonly targetPlane?: string;
+  readonly directives?: readonly (OperationalDirective | DecisionDirective)[];
 }
 
 /**
