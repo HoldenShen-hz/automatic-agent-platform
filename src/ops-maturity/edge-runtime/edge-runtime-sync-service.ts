@@ -34,6 +34,10 @@ export interface OfflineExecutionRequest {
   readonly taskId: string;
   readonly modality: string;
   readonly createdAt?: string;
+  /** Risk score of the task/workflow payload (0.0 - 1.0). Used for R21-15 edge risk gate. */
+  readonly riskScore?: number;
+  /** Task type classification. Used for R21-15 edge risk gate. */
+  readonly taskType?: string;
 }
 
 export interface SyncEnvelope {
@@ -116,6 +120,15 @@ export class EdgeRuntimeSyncService {
     }
     if (profile.riskLevel == null || (profile.riskLevel !== "low" && profile.riskLevel !== "medium")) {
       throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_or_medium_risk");
+    }
+    // R21-15 FIX: Gate execution requests by their own risk, not just profile classification.
+    // Offline execution only allowed when request riskScore <= 0.5 (medium threshold) and no high-risk taskType.
+    const HIGH_RISK_TASK_TYPES = new Set(["code_execution", "system_config", "data_delete", "security_ops", "credential_modify"]);
+    if (request.riskScore != null && request.riskScore > 0.5) {
+      throw new Error(`edge_runtime.risk_score_exceeds_limit:offline_requires_riskScore_lte_0.5_got_${request.riskScore}`);
+    }
+    if (request.taskType != null && HIGH_RISK_TASK_TYPES.has(request.taskType)) {
+      throw new Error(`edge_runtime.high_risk_task_type_blocked:offline_execution_denied_for_${request.taskType}`);
     }
     const createdAt = request.createdAt ?? nowIso();
     const createdAtMillis = Date.parse(createdAt);

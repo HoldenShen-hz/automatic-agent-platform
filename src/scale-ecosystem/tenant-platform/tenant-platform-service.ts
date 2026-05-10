@@ -327,36 +327,69 @@ export class TenantPlatformService {
     return this.resourcePoolService;
   }
 
+  public getFairSchedulingService(): FairSchedulingService {
+    return this.fairSchedulingService;
+  }
+
   public getDedicatedPoolIsolation(tenantId: string): DedicatedPoolIsolationRecord | null {
     return this.dedicatedPoolIsolations.get(tenantId) ?? null;
   }
 
   /**
-   * Enforce quota limits for a tenant before performing an operation (R13-27, R13-32).
-   * Checks rate limits and records usage for the specified resource type.
+   * R21-09: Enforce quota limits for a tenant before performing an operation (R13-27, R13-32).
+   *
+   * Uses FairSchedulingService to determine if quota-exceeded requests can be served
+   * via preemption of lower-priority tenant workloads. This implements weighted fair
+   * queuing with priority-based preemption for tenant-aware scheduling.
    *
    * @param tenantId - Tenant to check quotas for
    * @param resourceType - Type of resource being consumed
    * @param cost - Cost of the operation (default 1)
-   * @throws PolicyDeniedError if quota is exceeded
+   * @param schedulingClass - Optional scheduling class for priority-aware preemption decisions
+   * @param preemptionCandidates - Optional candidates for preemption when quota is exceeded
+   * @throws PolicyDeniedError if quota is exceeded and preemption is not possible
    */
-  private enforceQuota(tenantId: string, resourceType: ResourceType, cost: number = 1): void {
-    // R13-27: quota-enforcer is now called
-    const decision = this.quotaService.checkRateLimit(tenantId, resourceType, cost);
-    if (!decision.allowed) {
+  private enforceQuota(
+    tenantId: string,
+    resourceType: ResourceType,
+    cost: number = 1,
+    schedulingClass?: SchedulingClass,
+    preemptionCandidates?: readonly PreemptionCandidate[],
+  ): void {
+    // R21-09: Integrate fair scheduling for weighted fair queue and tenant-aware scheduling
+    const quotaCheck = this.quotaService.checkRateLimit(tenantId, resourceType, cost);
+
+    if (!quotaCheck.allowed) {
+      // If preemption candidates provided and scheduling class available, try preemption
+      if (schedulingClass && preemptionCandidates && preemptionCandidates.length > 0) {
+        const preemptionDecision = this.enforceQuotaWithPreemption(
+          tenantId,
+          resourceType,
+          cost,
+          schedulingClass,
+          preemptionCandidates,
+        );
+
+        if (preemptionDecision.shouldPreempt && preemptionDecision.victimExecutionId) {
+          // Preemption allowed - quota satisfied via victim eviction
+          return;
+        }
+        // Preemption not possible or not allowed - fall through to rejection
+      }
+
       throw new PolicyDeniedError(
         "tenant.quota_exceeded",
-        `Quota exceeded for ${resourceType}: ${decision.currentUsage}/${decision.limit}`,
+        `Quota exceeded for ${resourceType}: ${quotaCheck.currentUsage}/${quotaCheck.limit}`,
         {
-          retryable: decision.retryAfterMs !== null,
+          retryable: quotaCheck.retryAfterMs !== null,
           details: {
             tenantId,
             resourceType,
-            currentUsage: decision.currentUsage,
-            limit: decision.limit,
-            remaining: decision.remaining,
-            retryAfterMs: decision.retryAfterMs,
-            quotaId: decision.quotaId,
+            currentUsage: quotaCheck.currentUsage,
+            limit: quotaCheck.limit,
+            remaining: quotaCheck.remaining,
+            retryAfterMs: quotaCheck.retryAfterMs,
+            quotaId: quotaCheck.quotaId,
           },
         },
       );

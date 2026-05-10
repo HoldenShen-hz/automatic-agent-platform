@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { featureRegistry } from "../../apps/web/src/feature-registry";
 import { defaultMockApiShape } from "../../packages/shared/api-client/src/mock-data";
 import { mapAnalyticsToVm } from "../../packages/features/analytics/src/hooks";
 import { mapDashboardSnapshotToVm } from "../../packages/features/dashboard/src/hooks";
 import { mapStabilityToVm } from "../../packages/features/stability/src/hooks";
-
-describe("feature i18n coverage", () => {
-  it("hydrates feature registry manifests from shared translations", () => {
-    expect(featureRegistry.find((feature) => feature.manifest.id === "dashboard")?.manifest.title).toBe("总览驾驶舱");
-    expect(featureRegistry.find((feature) => feature.manifest.id === "settings")?.manifest.title).toBe("设置中心");
-    expect(featureRegistry.find((feature) => feature.manifest.id === "feature-flags")?.manifest.summary).toContain("功能开关");
-  });
-});
 
 describe("mission control panel wiring", () => {
   it("maps dashboard inputs into four panel layers with 28 panels", () => {

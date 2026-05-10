@@ -14,6 +14,7 @@ export interface DashboardPort {
 }
 
 export interface AttentionItem {
+  readonly id: string;
   readonly itemType: "approval_needed" | "incident" | "budget_warning" | "quality_alert" | "suggestion";
   readonly priority: "low" | "normal" | "high" | "critical";
   readonly title: string;
@@ -105,6 +106,12 @@ export interface DashboardSystemSituation {
   readonly healthStatus: "ok" | "degraded" | "overloaded" | "unhealthy";
   readonly queueBacklog: ReadonlySet<string>;
   readonly findings: readonly unknown[];
+  readonly providerHealth?: {
+    readonly status: "healthy" | "degraded" | "failed";
+    readonly successRate: number;
+  };
+  readonly queueDepth?: number;
+  readonly degraded?: boolean;
 }
 
 export interface DashboardSystemSource {
@@ -311,16 +318,16 @@ export class DashboardAggregationService implements DashboardPort {
         },
         {
           component: "model_gateway",
-          status: system.providerHealth.status === "failed" ? "down" : system.providerHealth.status === "healthy" ? "healthy" : "degraded",
-          uptime30d: Number((system.providerHealth.successRate * 100).toFixed(1)),
-          errorBudgetRemaining: Number((system.providerHealth.successRate * 100).toFixed(0)),
+          status: system.providerHealth?.status === "failed" ? "down" : system.providerHealth?.status === "healthy" ? "healthy" : "degraded",
+          uptime30d: Number(((system.providerHealth?.successRate ?? 0) * 100).toFixed(1)),
+          errorBudgetRemaining: Number(((system.providerHealth?.successRate ?? 0) * 100).toFixed(0)),
         },
       ],
       queueMetrics: [
         {
           queueName: "default",
           depth: system.queueBacklog.size,
-          avgWaitMs: system.queueBacklog.degraded ? 2000 : 250,
+          avgWaitMs: system.degraded ? 2000 : 250,
           dlqCount: 0,
         },
       ],
@@ -356,7 +363,7 @@ export class DashboardAggregationService implements DashboardPort {
     };
   }
 
-  private buildAttentionQueue(tasks: readonly TaskBoardItem[], system: SystemSituation): AttentionItem[] {
+  private buildAttentionQueue(tasks: readonly TaskBoardItem[], system: DashboardSystemSituation): AttentionItem[] {
     const queue: AttentionItem[] = [];
     for (const task of tasks) {
       if (task.taskStatus === "failed") {
