@@ -116,10 +116,21 @@ test("AgentLifecycleService and ExplanationPipelineService integrate for agent d
   // Register an agent
   const agent: ManagedAgentDefinition = {
     agentId: "coding-agent-001",
-    agentType: "coding",
+    name: "Coding Agent",
+    domainId: "coding",
+    owner: { orgNodeId: "team-ai", path: "/teams/ai" },
+    components: {
+      pack: { version: "1.0", packId: "coding-pack" },
+      connectorBindings: [],
+      promptBundle: { version: "1.0", bundleId: "coding-bundle" },
+      modelBinding: { modelRef: "gpt-4o", fallbackRefs: [] },
+      trustProfile: { minTrustScore: 0.5 },
+      triggerSet: [],
+      autonomyConfig: { mode: "manual_only", maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "active",
     currentVersionId: "v1.0.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   lifecycleService.registerAgent(agent);
@@ -159,18 +170,40 @@ test("OpsMaturityScoreService and AgentLifecycleService integrate for agent-leve
   // Register multiple agents
   lifecycleService.registerAgent({
     agentId: "agent-alpha",
-    agentType: "coding",
+    name: "Alpha Agent",
+    domainId: "coding",
+    owner: { orgNodeId: "team-ai", path: "/teams/ai" },
+    components: {
+      pack: { version: "1.0", packId: "alpha-pack" },
+      connectorBindings: [],
+      promptBundle: { version: "1.0", bundleId: "alpha-bundle" },
+      modelBinding: { modelRef: "gpt-4o", fallbackRefs: [] },
+      trustProfile: { minTrustScore: 0.5 },
+      triggerSet: [],
+      autonomyConfig: { mode: "manual_only", maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "active",
     currentVersionId: "v2.0.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
   lifecycleService.registerAgent({
     agentId: "agent-beta",
-    agentType: "quant-trading",
+    name: "Beta Agent",
+    domainId: "quant-trading",
+    owner: { orgNodeId: "team-trading", path: "/teams/trading" },
+    components: {
+      pack: { version: "1.0", packId: "beta-pack" },
+      connectorBindings: [],
+      promptBundle: { version: "1.0", bundleId: "beta-bundle" },
+      modelBinding: { modelRef: "gpt-4o", fallbackRefs: [] },
+      trustProfile: { minTrustScore: 0.5 },
+      triggerSet: [],
+      autonomyConfig: { mode: "manual_only", maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "staging",
     currentVersionId: "v1.5.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 
@@ -227,7 +260,7 @@ test("CostOptimizationService and ExplanationPipelineService integrate for cost 
   const request: ExplanationRequest = {
     taskId: "task-expensive-001",
     stage: "cost_analysis",
-    summary: `High cost task exceeded budget threshold: $${expensiveTaskRec?.currentCostUsd ?? record.amountUsd}`,
+    summary: `High cost task exceeded budget threshold: $${record.amountUsd}`,
     decision: expensiveTaskRec?.riskLevel === "high" ? "escalate_to_human" : "accept",
     decisionFactors: [
       "cost_exceeds_threshold",
@@ -252,10 +285,21 @@ test("AgentLifecycleService transition updates agent and score history", async (
 
   const agent: ManagedAgentDefinition = {
     agentId: "agent-transition-test",
-    agentType: "coding",
+    name: "Transition Test Agent",
+    domainId: "coding",
+    owner: { orgNodeId: "team-test", path: "/teams/test" },
+    components: {
+      pack: { version: "1.0", packId: "test-pack" },
+      connectorBindings: [],
+      promptBundle: { version: "1.0", bundleId: "test-bundle" },
+      modelBinding: { modelRef: "gpt-4o", fallbackRefs: [] },
+      trustProfile: { minTrustScore: 0.5 },
+      triggerSet: [],
+      autonomyConfig: { mode: "manual_only", maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "staging",
     currentVersionId: "v1.0.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   lifecycleService.registerAgent(agent);
@@ -290,10 +334,21 @@ test("Multiple services work together for platform operations workflow", async (
   // 1. Register an agent
   lifecycleService.registerAgent({
     agentId: "ops-agent-001",
-    agentType: "platform-ops",
+    name: "Ops Agent",
+    domainId: "platform-ops",
+    owner: { orgNodeId: "team-ops", path: "/teams/ops" },
+    components: {
+      pack: { version: "1.0", packId: "ops-pack" },
+      connectorBindings: [],
+      promptBundle: { version: "1.0", bundleId: "ops-bundle" },
+      modelBinding: { modelRef: "gpt-4o", fallbackRefs: [] },
+      trustProfile: { minTrustScore: 0.5 },
+      triggerSet: [],
+      autonomyConfig: { mode: "manual_only", maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "staging",
     currentVersionId: "v0.9.0",
-    registeredAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 

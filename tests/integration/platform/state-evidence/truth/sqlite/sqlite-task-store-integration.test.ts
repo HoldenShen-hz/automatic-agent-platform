@@ -17,8 +17,8 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TaskRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
 import { ExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
-import type { TaskStatus, TaskSource, TaskPriority } from "../../../../../../src/platform/contracts/types/status.js";
-import type { RunKind, ExecutionStatus } from "../../../../../../src/platform/contracts/types/status.js";
+import type { TaskStatus, ExecutionStatus } from "../../../../../../src/platform/contracts/types/status.js";
+import type { TaskSource, TaskPriority, RunKind } from "../../../../../../src/platform/contracts/types/domain/primitives.js";
 import type { ExecutionRecord } from "../../../../../../src/platform/contracts/types/domain/execution-types.js";
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ function createExecutionRecord(
     agentId: overrides.agentId ?? "agent-test",
     roleId: overrides.roleId ?? "general_executor",
     runKind: overrides.runKind ?? "task_run",
-    status: overrides.status ?? "pending",
+    status: overrides.status ?? "created",
     inputRef: overrides.inputRef ?? null,
     traceId: overrides.traceId ?? `trace-${execId}`,
     attempt: overrides.attempt ?? 1,
@@ -279,7 +279,7 @@ test("AuthoritativeTaskStore - Task CRUD: list tasks returns all tasks", () => {
       store.insertTask(createTaskRecord({ id: "t1", tenantId: "tenant-a", status: "queued" }));
       store.insertTask(createTaskRecord({ id: "t2", tenantId: "tenant-a", status: "in_progress" }));
       store.insertTask(createTaskRecord({ id: "t3", tenantId: "tenant-b", status: "queued" }));
-      store.insertTask(createTaskRecord({ id: "t4", tenantId: "tenant-a", status: "completed" }));
+      store.insertTask(createTaskRecord({ id: "t4", tenantId: "tenant-a", status: "done" }));
     });
 
     // Without filters - should return all
@@ -366,11 +366,11 @@ test("AuthoritativeTaskStore - Task CRUD: count queued tasks", () => {
       store.insertTask(createTaskRecord({ id: "task-q-1", tenantId, status: "queued" }));
       store.insertTask(createTaskRecord({ id: "task-q-2", tenantId, status: "queued" }));
       store.insertTask(createTaskRecord({ id: "task-q-3", tenantId, status: "queued" }));
-      // Insert 2 pending tasks
-      store.insertTask(createTaskRecord({ id: "task-p-1", tenantId, status: "pending" }));
-      store.insertTask(createTaskRecord({ id: "task-p-2", tenantId, status: "pending" }));
-      // Insert 1 completed task (should not be counted)
-      store.insertTask(createTaskRecord({ id: "task-c-1", tenantId, status: "completed" }));
+      // Insert 2 in_progress tasks (which is an active status like pending)
+      store.insertTask(createTaskRecord({ id: "task-p-1", tenantId, status: "in_progress" }));
+      store.insertTask(createTaskRecord({ id: "task-p-2", tenantId, status: "in_progress" }));
+      // Insert 1 done task (should not be counted)
+      store.insertTask(createTaskRecord({ id: "task-c-1", tenantId, status: "done" }));
     });
 
     const count = store.countQueuedTasks(tenantId);
@@ -438,7 +438,7 @@ test("AuthoritativeTaskStore - Execution: update execution status", () => {
 
     db.transaction(() => {
       store.insertTask(createTaskRecord({ id: taskId }));
-      store.insertExecution(createExecutionRecord(taskId, { id: executionId, status: "pending" }));
+      store.insertExecution(createExecutionRecord(taskId, { id: executionId, status: "created" }));
     });
 
     // updateExecutionStatus takes (executionId, status, updatedAt, startedAt, finishedAt, lastErrorCode)
@@ -500,7 +500,7 @@ test("AuthoritativeTaskStore - Execution: CAS updateExecutionStatusCas only upda
 
     db.transaction(() => {
       store.insertTask(createTaskRecord({ id: taskId }));
-      store.insertExecution(createExecutionRecord(taskId, { id: executionId, status: "pending" }));
+      store.insertExecution(createExecutionRecord(taskId, { id: executionId, status: "created" }));
     });
 
     // Correct expected status - should succeed
@@ -534,7 +534,7 @@ test("AuthoritativeTaskStore - Execution: count active executions", () => {
       // Use different attempt values
       store.insertExecution(createExecutionRecord(taskId, { id: "exec-count-1", status: "executing", attempt: 1 }));
       store.insertExecution(createExecutionRecord(taskId, { id: "exec-count-2", status: "executing", attempt: 2 }));
-      store.insertExecution(createExecutionRecord(taskId, { id: "exec-count-3", status: "completed", attempt: 3 }));
+      store.insertExecution(createExecutionRecord(taskId, { id: "exec-count-3", status: "succeeded", attempt: 3 }));
     });
 
     const count = store.countActiveExecutions();

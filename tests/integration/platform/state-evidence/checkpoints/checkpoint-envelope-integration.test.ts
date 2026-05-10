@@ -179,7 +179,7 @@ test("getEnvelopeCompressionRatio calculates ratio correctly", async () => {
 });
 
 test("getEnvelopeCompressionRatio handles zero original size", async () => {
-  const envelope = {
+  const envelope: CheckpointEnvelope = {
     version: CHECKPOINT_ENVELOPE_SCHEMA_VERSION,
     schema: "test.v1",
     payload: "",

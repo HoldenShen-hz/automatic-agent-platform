@@ -6,19 +6,19 @@ import { createDelegationRequest } from "../../../../src/platform/contracts/dele
 import { createExecutionPlan } from "../../../../src/platform/contracts/execution-plan/index.js";
 import { createExecutionReceipt } from "../../../../src/platform/contracts/execution-receipt/index.js";
 import { createModelRequest } from "../../../../src/platform/contracts/model-request/index.js";
-import { createRequestEnvelope } from "../../../../src/platform/contracts/request-envelope/index.js";
 import { createStateCommand } from "../../../../src/platform/contracts/state-command/index.js";
 import { ValidationError, UnimplementedError } from "../../../../src/platform/contracts/errors.js";
+import { createPlatformPrincipal, createRequestEnvelope } from "../../../../src/platform/contracts/types/platform-contracts.js";
 
 test("integration: supported platform contract objects compose while legacy plan/directive/receipt factories fail fast", () => {
-  const envelope = createRequestEnvelope({
-    requestId: "request-1",
-    taskId: "task-1",
+  const principal = createPlatformPrincipal({
+    actorId: "user_1",
     tenantId: "tenant-1",
-    sessionId: "session-1",
-    traceId: "trace-1",
-    mode: "async",
-    body: { prompt: "deploy the approved change" },
+  });
+  const envelope = createRequestEnvelope({
+    principal,
+    tenantId: "tenant-1",
+    payload: { prompt: "deploy the approved change" },
   });
   const modelRequest = createModelRequest({
     model: "gpt-5.4-mini",

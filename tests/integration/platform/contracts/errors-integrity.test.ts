@@ -379,7 +379,7 @@ test("integration: Error context propagates through plan graph creation", () => 
       inputRefs: [],
       outputSchemaRef: "schema://output",
       riskClass: "high" as const,
-      budgetIntent: { amount: 50, currency: "USD", resourceKinds: ["api"] },
+      budgetIntent: { amount: 50, currency: "USD", resourceKinds: ["api"] as const },
       sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
       retryPolicyRef: "retry://default",
       timeoutMs: 30000,
@@ -400,7 +400,7 @@ test("integration: Error context propagates through plan graph creation", () => 
   });
 
   assert.ok(bundle.planGraphBundleId.startsWith("pgb_"));
-  assert.equal(bundle.graph.nodes[0].riskClass, "high");
+  assert.equal(bundle.graph.nodes[0]!.riskClass, "high");
 });
 
 test("integration: Multiple error types can be distinguished in batch processing", () => {

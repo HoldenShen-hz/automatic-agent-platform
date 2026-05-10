@@ -14,6 +14,7 @@ import { ArtifactPublishService } from "../../../../src/platform/state-evidence/
 import { MemoryService } from "../../../../src/platform/state-evidence/memory/memory-service.js";
 import { SessionSummaryService } from "../../../../src/platform/state-evidence/memory/session-summary-service.js";
 import { EventOpsService } from "../../../../src/platform/state-evidence/events/event-ops-service.js";
+import type { ArtifactRecordExtended } from "../../../../src/platform/five-plane-state-evidence/artifacts/artifact-model.js";
 import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
@@ -81,18 +82,18 @@ test("integration: state-evidence artifact bundle builds and publishes artifacts
       artifacts: [
         {
           artifactId: newId("artifact"),
+          harnessRunId: "harness-artifact-001",
+          nodeRunId: undefined,
           taskId: "task-artifact-001",
-          executionId: null,
-          stepId: "step-001",
-          kind: "source_code",
-          storagePath: "test.ts",
-          fileName: "test.ts",
+          executionId: "exec-artifact-001",
+          type: "source_code",
+          path: "test.ts",
           mimeType: "text/typescript",
           sizeBytes: 1024,
           checksum: "hash_artifact_001",
-          lineageJson: null,
+          version: 1,
           createdAt: nowIso(),
-        },
+        } as unknown as ArtifactRecordExtended,
       ],
     });
 

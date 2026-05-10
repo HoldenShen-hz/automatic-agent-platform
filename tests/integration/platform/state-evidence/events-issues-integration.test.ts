@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { LayeredEventInbox } from "../../../../src/platform/state-evidence/events/layered-event-inbox.js";
 import { DurableEventBus } from "../../../../src/platform/state-evidence/events/durable-event-bus.js";
 import { DlqService } from "../../../../src/platform/state-evidence/events/dlq-service.js";
+import { EventEnvelope } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import {
   getEventSchema,
   validateEventPayload,
@@ -200,7 +201,7 @@ test("integration: LayeredEventInbox has no compress method - Issue #2242", () =
   // Issue #2242: There is no compress() method to reclaim memory
   // Verify that the method does not exist
   assert.equal(
-    typeof (inbox as Record<string, unknown>).compress,
+    typeof (inbox as unknown as Record<string, unknown>).compress,
     "undefined",
     "Issue #2242: LayeredEventInbox should have no compress method",
   );

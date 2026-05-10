@@ -132,7 +132,7 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
           stepOutputRefs: ["connector_dispatch"],
           timestamp: Date.parse("2026-04-22T08:06:00.000Z"),
           feedbackTrustScore: 0.85,
-          trustFactors: { authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
+          trustFactors: { sourceReliability: 0.9, historicalAccuracy: 0.85, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
         },
         {
           signalId: "sig_user_fix",
@@ -144,7 +144,7 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
           stepOutputRefs: ["connector_dispatch"],
           timestamp: Date.parse("2026-04-22T08:07:00.000Z"),
           feedbackTrustScore: 0.9,
-          trustFactors: { authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
+          trustFactors: { sourceReliability: 0.95, historicalAccuracy: 0.9, authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
         },
       ],
     });

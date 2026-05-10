@@ -223,8 +223,6 @@ test("integration: multi-dimensional quota tracks multiple resource types", () =
 
   // First request - all within limits
   const request1 = {
-    scope: "tenant" as const,
-    scopeId: "tenant-1",
     worker_concurrency: 5,
     tool_qps: 50,
     model_tpm: 25000,
@@ -240,8 +238,6 @@ test("integration: multi-dimensional quota tracks multiple resource types", () =
 
   // Second request - exceeds one dimension
   const request2 = {
-    scope: "tenant" as const,
-    scopeId: "tenant-1",
     worker_concurrency: 5,
     tool_qps: 50,
     model_tpm: 25000,

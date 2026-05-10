@@ -29,7 +29,7 @@ import { PlatformPanicService } from "../../../../src/ops-maturity/emergency/pla
 import { ExplanationPipelineService } from "../../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
 import { PlatformOpsAgentService } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 import { ComplianceReportPipelineService } from "../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
-import { EdgeRuntimeSyncService } from "../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
+import { EdgeRuntimeSyncService, type EdgeRuntimeProfile } from "../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 import { WorkflowDebuggerService } from "../../../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
 import { AgentLifecycleService } from "../../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 import { CapacityPlanningService } from "../../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
@@ -739,7 +739,7 @@ test("contract: ComplianceReportPipelineService cannot mark missing-evidence rep
 
 test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync policy forbids them", () => {
   const service = new EdgeRuntimeSyncService();
-  const profile = {
+  const profile: EdgeRuntimeProfile = {
     edgeNodeId: "edge_store_1",
     deviceId: "device_edge_store_1",
     offlineMaxDuration: 31536000000,
@@ -753,7 +753,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       requireOrdering: true,
     },
     deviceAttestation: { status: "valid" as const, attestedAt: "2026-04-20T00:00:00.000Z" },
-    certificateStatus: "active" as const,
+    certificateStatus: "valid" as const,
     riskLevel: "low" as const,
   };
   const execution = service.executeOffline(
@@ -808,9 +808,10 @@ test("contract: retired agents cannot be bound to new tasks", () => {
     owner: { path: "ops_lead", orgNodeId: "ops" },
     components: {
       pack: { packId: "ops-pack", version: "1.0.0" },
+      connectorBindings: [],
       promptBundle: { bundleId: "ops-prompts", version: "1.0.0" },
       modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
-      trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+      trustProfile: { initialLevel: "supervised_auto", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
       triggerSet: [],
       autonomyConfig: { maxAutomationLevel: "supervised_auto", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },
@@ -868,6 +869,12 @@ test("contract: unsourced cost records cannot enter optimization recommendations
       subjectId: "task_a",
       costType: "model",
       amountUsd: 5,
+      llmCostUsd: 0,
+      toolCostUsd: 0,
+      computeCostUsd: 0,
+      storageCostUsd: 0,
+      egressCostUsd: 0,
+      humanReviewCostUsd: 0,
       decisionRef: "",
       capturedAt: "2026-04-20T00:00:00.000Z",
     });
@@ -956,14 +963,23 @@ test("contract: guided onboarding must produce structured session and workflow d
       templateId: "tmpl_ops",
       title: "Ops Flow",
       steps: ["approval", "notify"],
+      requiredCapabilities: [],
+      parameters: [
+        { name: "param1", label: "Param 1", type: "string" as const, required: false, options: [] },
+      ],
+      catalogTags: [],
     },
     wizardSession: {
       sessionId: "wizard_ops",
       currentStepId: "capability_setup",
       steps: [
-        { stepId: "business_type", title: "Business", completed: true },
-        { stepId: "capability_setup", title: "Capability", completed: true },
+        { stepId: "business_type", title: "Business", completed: true, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
+        { stepId: "capability_setup", title: "Capability", completed: true, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
       ],
+      schemaVersion: 1,
+      history: [],
+      answers: {},
+      visitedStepIds: [],
     },
     components: [
       {
@@ -996,14 +1012,14 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
   const routing = new CrossRegionRoutingService();
   const route = routing.route({
     regions: [
-      { regionId: "cn-sh", jurisdiction: "CN", latencyScore: 20, residencyAllowed: true, capabilities: ["llm", "storage"] },
-      { regionId: "us-west-2", jurisdiction: "US", latencyScore: 10, residencyAllowed: true, capabilities: ["llm", "storage"] },
+      { regionId: "cn-sh", jurisdiction: "CN", latencyScore: 20, residencyAllowed: true, capabilities: ["llm", "storage"], provider: "aws", endpoints: { api: "https://cn-sh.api.example.com" }, dataResidencyPolicy: "regional" as const },
+      { regionId: "us-west-2", jurisdiction: "US", latencyScore: 10, residencyAllowed: true, capabilities: ["llm", "storage"], provider: "aws", endpoints: { api: "https://us-west-2.api.example.com" }, dataResidencyPolicy: "regional" as const },
     ],
     policy: {
       policyId: "cn_only",
       allowedJurisdictions: ["CN"],
       requiredCapabilities: ["llm", "storage"],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only" as const,
     },
     primaryRegionHealthy: false,
   });
@@ -1013,9 +1029,9 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
   const scheduling = new FairSchedulingService();
   const queue = scheduling.schedule({
     quotaPolicy: {
+      scope: "tenant",
       scopeId: "tenant_a",
-      hardLimit: 5,
-      currentUsage: 4,
+      worker_concurrency: 5,
     },
     claim: {
       claimId: "claim_a",

@@ -45,8 +45,8 @@ test("scale-ecosystem support modules coordinate connector, region, quota, and S
   );
 
   const selectedRegion = selectPreferredRegion([
-    { regionId: "cn-sh", jurisdiction: "CN", latencyScore: 30, residencyAllowed: true },
-    { regionId: "us-west-2", jurisdiction: "US", latencyScore: 120, residencyAllowed: true },
+    { regionId: "cn-sh", provider: "aws", jurisdiction: "CN", latencyScore: 30, residencyAllowed: true, endpoints: { api: "https://cn-sh.api.example.com" }, dataResidencyPolicy: "local_only" as const },
+    { regionId: "us-west-2", provider: "aws", jurisdiction: "US", latencyScore: 120, residencyAllowed: true, endpoints: { api: "https://us-west-2.api.example.com" }, dataResidencyPolicy: "regional" as const },
   ]);
   assert.equal(selectedRegion?.regionId, "cn-sh");
 

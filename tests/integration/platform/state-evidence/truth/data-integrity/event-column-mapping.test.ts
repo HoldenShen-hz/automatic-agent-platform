@@ -55,6 +55,7 @@ test("data integrity: event insert and retrieval preserves all fields", () => {
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
@@ -64,6 +65,8 @@ test("data integrity: event insert and retrieval preserves all fields", () => {
         attempt: 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -89,7 +92,22 @@ test("data integrity: event insert and retrieval preserves all fields", () => {
       payloadJson: JSON.stringify({ key: "value" }),
       traceId: "trace-123",
       createdAt: "2026-04-15T10:00:00.000Z",
+      schemaVersion: null,
+      aggregateId: null,
+      runId: null,
+      sequence: null,
+      causationId: null,
+      correlationId: null,
+      payloadHash: null,
+      idempotencyKey: null,
+      replayBehavior: null,
+      principal: null,
+      evidenceRefs: [],
     };
+
+    repo.insertEvent(event);
+
+    const retrieved = repo.getEvent(event.id);
 
     repo.insertEvent(event);
 
@@ -150,6 +168,7 @@ test("data integrity: event payload JSON is preserved exactly", () => {
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
@@ -159,6 +178,8 @@ test("data integrity: event payload JSON is preserved exactly", () => {
         attempt: 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",

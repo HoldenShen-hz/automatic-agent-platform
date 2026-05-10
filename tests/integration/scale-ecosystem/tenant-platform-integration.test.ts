@@ -12,10 +12,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { TenantPlatformService } from "../../../src/scale-ecosystem/tenant-platform/tenant-platform-service.js";
-import type {
-  AuthoritativeSqlDatabase,
-  AuthoritativeTaskStore,
-} from "../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Store and Database Setup
@@ -220,7 +218,6 @@ test("integration: add workspace membership", () => {
 
   const membership = service.addWorkspaceMembership({
     workspaceId: workspace.workspaceId,
-    callerUserId: "owner_x",
     userId: "developer_001",
     role: "developer",
   });
@@ -422,7 +419,7 @@ test("integration: create multiple deployment bindings for same tenant", () => {
   const binding2 = service.createDeploymentBinding({
     tenantId: "tenant_multi_binding",
     environmentId: "env_production",
-    deploymentMode: "cloud_dedicated",
+    deploymentMode: "private_cloud",
     region: "us-west-2",
     networkBoundary: "boundary_private",
   });
@@ -782,7 +779,6 @@ test("integration: reject non-existent billing account", () => {
 
   assert.throws(() => {
     service.createOrganization({
-      ownerId: "owner_bad_billing",
       displayName: "Bad Billing Org",
       billingAccountId: "nonexistent_billing",
     });
