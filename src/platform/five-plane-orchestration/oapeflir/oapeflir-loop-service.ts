@@ -152,7 +152,7 @@ export class OapeflirLoopService {
       const observeTransition = fsm.canTransitionTo("observe");
       if (!observeTransition.allowed) {
         this.boundaryLogger.error("[fsm:observe] Stage transition not allowed", {
-          data: { taskId: input.taskId, reasonCode: observeTransition.reasonCode },
+          data: { taskId: input.taskId, reasonCode: observeTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
         });
         throw new Error(`FSM transition denied: observe - ${observeTransition.reasonCode}`);
       }
@@ -187,7 +187,7 @@ export class OapeflirLoopService {
       const assessTransition = fsm.canTransitionTo("assess");
       if (!assessTransition.allowed) {
         this.boundaryLogger.error("[fsm:assess] Stage transition not allowed", {
-          data: { taskId: input.taskId, reasonCode: assessTransition.reasonCode },
+          data: { taskId: input.taskId, reasonCode: assessTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
         });
         throw new Error(`FSM transition denied: assess - ${assessTransition.reasonCode}`);
       }
@@ -233,7 +233,7 @@ export class OapeflirLoopService {
       const planTransition = fsm.canTransitionTo("plan");
       if (!planTransition.allowed) {
         this.boundaryLogger.error("[fsm:plan] Stage transition not allowed", {
-          data: { taskId: input.taskId, reasonCode: planTransition.reasonCode },
+          data: { taskId: input.taskId, reasonCode: planTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
         });
         throw new Error(`FSM transition denied: plan - ${planTransition.reasonCode}`);
       }
@@ -305,7 +305,7 @@ export class OapeflirLoopService {
         const executeTransition = fsm.canTransitionTo("execute");
         if (!executeTransition.allowed) {
           this.boundaryLogger.error("[fsm:execute] Stage transition not allowed", {
-            data: { taskId: input.taskId, reasonCode: executeTransition.reasonCode },
+            data: { taskId: input.taskId, reasonCode: executeTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
           });
           throw new Error(`FSM transition denied: execute - ${executeTransition.reasonCode}`);
         }
@@ -356,7 +356,7 @@ export class OapeflirLoopService {
         const feedbackTransition = fsm.canTransitionTo("feedback");
         if (!feedbackTransition.allowed) {
           this.boundaryLogger.error("[fsm:feedback] Stage transition not allowed", {
-            data: { taskId: input.taskId, reasonCode: feedbackTransition.reasonCode },
+            data: { taskId: input.taskId, reasonCode: feedbackTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
           });
           throw new Error(`FSM transition denied: feedback - ${feedbackTransition.reasonCode}`);
         }
@@ -400,15 +400,15 @@ export class OapeflirLoopService {
         }
 
         // R5-2: Re-enter at Plan stage — record replan and rebuild plan
-        fsm.resetToStage("plan");
-
+        // R19-33 fix: check transition BEFORE reset to match guard pattern used elsewhere
         const replanTransition = fsm.canTransitionTo("plan");
         if (!replanTransition.allowed) {
           this.boundaryLogger.error("[fsm:replan] Stage transition not allowed", {
-            data: { taskId: input.taskId, reasonCode: replanTransition.reasonCode },
+            data: { taskId: input.taskId, reasonCode: replanTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
           });
           throw new Error(`FSM transition denied: replan - ${replanTransition.reasonCode}`);
         }
+        fsm.resetToStage("plan");
         fsm.recordStageEntry("plan");
 
         // R5-1: Build fresh PlanGraphBundle directly (no toLegacyPlan round-trip)
@@ -454,7 +454,7 @@ export class OapeflirLoopService {
       const learnTransition = fsm.canTransitionTo("learn");
       if (!learnTransition.allowed) {
         this.boundaryLogger.error("[fsm:learn] Stage transition not allowed", {
-          data: { taskId: input.taskId, reasonCode: learnTransition.reasonCode },
+          data: { taskId: input.taskId, reasonCode: learnTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
         });
         throw new Error(`FSM transition denied: learn - ${learnTransition.reasonCode}`);
       }
@@ -520,7 +520,7 @@ export class OapeflirLoopService {
           const improveTransition = fsm.canTransitionTo("improve");
           if (!improveTransition.allowed) {
             this.boundaryLogger.error("[fsm:improve] Stage transition not allowed", {
-              data: { taskId: input.taskId, reasonCode: improveTransition.reasonCode },
+              data: { taskId: input.taskId, reasonCode: improveTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
             });
             throw new Error(`FSM transition denied: improve - ${improveTransition.reasonCode}`);
           }
@@ -584,7 +584,7 @@ export class OapeflirLoopService {
           const releaseTransition = fsm.canTransitionTo("release");
           if (!releaseTransition.allowed) {
             this.boundaryLogger.error("[fsm:release] Stage transition not allowed", {
-              data: { taskId: input.taskId, reasonCode: releaseTransition.reasonCode },
+              data: { taskId: input.taskId, reasonCode: releaseTransition.reasonCode, fsmState: fsm.getExecutionSummary() },
             });
             throw new Error(`FSM transition denied: release - ${releaseTransition.reasonCode}`);
           }
