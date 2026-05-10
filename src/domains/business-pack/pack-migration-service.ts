@@ -13,6 +13,10 @@
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 
+function resolveMigrationNodeId(step: { readonly nodeId?: string; readonly stepId: string }): string {
+  return step.nodeId?.trim() || step.stepId;
+}
+
 // ============================================================================
 // Migration Types
 // ============================================================================
@@ -91,7 +95,8 @@ export interface MigrationExecutionResult {
 
 export interface MigrationStepExecutionRecord {
   readonly planId: string;
-  readonly nodeId?: string;
+  readonly nodeId: string;
+  /** @deprecated legacy migration label; use nodeId */
   readonly stepId: string;
   readonly phase: "execute" | "rollback";
   readonly status: "completed";
@@ -298,8 +303,8 @@ export class PackMigrationService {
 
     try {
       // Rollback in reverse order
-      for (const stepId of [...steps].reverse()) {
-        await this.rollbackStep(planId, stepId);
+      for (const nodeId of [...steps].reverse()) {
+        await this.rollbackStep(planId, nodeId);
         rolledBackSteps++;
       }
 
@@ -413,15 +418,16 @@ export class PackMigrationService {
   }
 
   private async executeStep(planId: string, step: MigrationPlanStep): Promise<void> {
+    const nodeId = resolveMigrationNodeId(step);
     // Track executed step
     const steps = this.executedSteps.get(planId) ?? [];
-    steps.push(step.stepId);
+    steps.push(nodeId);
     this.executedSteps.set(planId, steps);
     const plan = this.requirePlan(planId);
     const detail = this.applyStep(plan, step);
     this.appendTrace(planId, {
       planId,
-      nodeId: step.nodeId ?? step.stepId,
+      nodeId,
       stepId: step.stepId,
       phase: "execute",
       status: "completed",
@@ -431,13 +437,14 @@ export class PackMigrationService {
     await Promise.resolve();
   }
 
-  private async rollbackStep(planId: string, stepId: string): Promise<void> {
+  private async rollbackStep(planId: string, nodeId: string): Promise<void> {
     const plan = this.requirePlan(planId);
-    const detail = this.revertStep(plan, stepId);
+    const step = plan.steps.find((candidate) => resolveMigrationNodeId(candidate) === nodeId);
+    const detail = this.revertStep(plan, nodeId);
     this.appendTrace(planId, {
       planId,
-      nodeId: stepId,
-      stepId,
+      nodeId,
+      stepId: step?.stepId ?? nodeId,
       phase: "rollback",
       status: "completed",
       detail,
@@ -455,19 +462,20 @@ export class PackMigrationService {
   }
 
   private applyStep(plan: MigrationPlan, step: MigrationPlanStep): string {
-    if (step.stepId.endsWith("_export_state")) {
+    const nodeId = resolveMigrationNodeId(step);
+    if (nodeId.endsWith("_export_state")) {
       const snapshot = { ...(this.packStates.get(plan.fromPackId) ?? { packId: plan.fromPackId, exportedAt: nowIso() }) };
       this.exportedSnapshots.set(plan.planId, snapshot);
       return `exported_state:${plan.fromPackId}`;
     }
-    if (step.stepId.endsWith("_validate_target")) {
+    if (nodeId.endsWith("_validate_target")) {
       const target = this.packStates.get(plan.toPackId);
       if (target?.["migrationLocked"] === true) {
         throw this.validationError("pack_migration.target_locked", `Target pack ${plan.toPackId} is locked for migration.`);
       }
       return `validated_target:${plan.toPackId}`;
     }
-    if (step.stepId.endsWith("_transfer")) {
+    if (nodeId.endsWith("_transfer")) {
       const snapshot = this.exportedSnapshots.get(plan.planId) ?? { sourcePackId: plan.fromPackId };
       this.packStates.set(plan.toPackId, {
         ...snapshot,
@@ -476,32 +484,32 @@ export class PackMigrationService {
       });
       return `transferred_state:${plan.fromPackId}->${plan.toPackId}`;
     }
-    if (step.stepId.endsWith("_verify")) {
+    if (nodeId.endsWith("_verify")) {
       const target = this.packStates.get(plan.toPackId);
       if (target == null) {
         throw this.validationError("pack_migration.target_missing", `Target pack ${plan.toPackId} has no migrated state.`);
       }
       return `verified_target:${plan.toPackId}`;
     }
-    return `executed_step:${step.stepId}`;
+    return `executed_step:${nodeId}`;
   }
 
-  private revertStep(plan: MigrationPlan, stepId: string): string {
-    if (stepId.endsWith("_verify")) {
+  private revertStep(plan: MigrationPlan, nodeId: string): string {
+    if (nodeId.endsWith("_verify")) {
       return `reverted_verification:${plan.toPackId}`;
     }
-    if (stepId.endsWith("_transfer")) {
+    if (nodeId.endsWith("_transfer")) {
       this.packStates.delete(plan.toPackId);
       return `reverted_transfer:${plan.toPackId}`;
     }
-    if (stepId.endsWith("_validate_target")) {
+    if (nodeId.endsWith("_validate_target")) {
       return `reverted_validation:${plan.toPackId}`;
     }
-    if (stepId.endsWith("_export_state")) {
+    if (nodeId.endsWith("_export_state")) {
       this.exportedSnapshots.delete(plan.planId);
       return `reverted_export:${plan.fromPackId}`;
     }
-    return `reverted_step:${stepId}`;
+    return `reverted_step:${nodeId}`;
   }
 
   private appendTrace(planId: string, record: MigrationStepExecutionRecord): void {

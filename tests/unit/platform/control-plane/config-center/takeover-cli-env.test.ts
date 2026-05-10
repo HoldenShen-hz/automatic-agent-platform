@@ -8,6 +8,7 @@ test("takeover env loader parses tenant-scoped workflow repair inputs", () => {
     AA_DB_PATH: "/tmp/takeover.db",
     AA_TAKEOVER_ACTION: "write_step_output",
     AA_TAKEOVER_SESSION_ID: "takeover-1",
+    AA_NODE_RUN_ID: "nrun-manual-1",
     AA_STEP_OUTPUT_JSON: "{\"ok\":true}",
     AA_STEP_INDEX: "2",
     AA_STEP_STATUS: "partial_success",
@@ -18,6 +19,7 @@ test("takeover env loader parses tenant-scoped workflow repair inputs", () => {
 
   assert.equal(config.action, "write_step_output");
   assert.equal(config.takeoverSessionId, "takeover-1");
+  assert.equal(config.nodeRunId, "nrun-manual-1");
   assert.equal(config.stepIndex, 2);
   assert.equal(config.stepStatus, "partial_success");
   assert.equal(config.reasonCode, "takeover.manual_repair");

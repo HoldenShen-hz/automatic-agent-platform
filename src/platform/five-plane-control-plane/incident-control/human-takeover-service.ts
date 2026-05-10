@@ -372,6 +372,7 @@ export class HumanTakeoverService {
     takeoverSessionId: string;
     outputJson: string;
     reasonCode: string;
+    nodeRunId?: string;
     stepId?: string;
     stepIndex?: number;
     status?: StepOutputRecord["status"];
@@ -392,7 +393,8 @@ export class HumanTakeoverService {
       const normalizedOutputJson = normalizeJson(input.outputJson, "takeover.output_json_invalid");
       const parsedOutput = JSON.parse(normalizedOutputJson) as unknown;
       const status = input.status ?? "succeeded";
-      const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId, parsedOutput);
+      const nodeRunId = input.nodeRunId?.trim().length ? input.nodeRunId : newId("nrun");
+      const summary = input.summary ?? resolveManualStepOutputSummary(nodeRunId, parsedOutput);
 
       // Store the output keyed by the step's outputKey
       outputs[target.step.outputKey] = parsedOutput;
@@ -400,7 +402,7 @@ export class HumanTakeoverService {
       // Insert step output record with manual override flag
       this.store.workflow.insertStepOutput({
         id: newId("step"),
-        nodeRunId: newId("step"),
+        nodeRunId,
         taskId: snapshot.task.id,
         stepId: target.step.stepId,
         roleId: target.step.roleId,
@@ -433,6 +435,7 @@ export class HumanTakeoverService {
         eventType: "workflow:step_completed",
         traceId: newId("trace"),
         payload: {
+          nodeRunId,
           stepId: target.step.stepId,
           roleId: target.step.roleId,
           status,
@@ -443,6 +446,7 @@ export class HumanTakeoverService {
 
       return {
         payload: {
+          nodeRunId,
           stepId: target.step.stepId,
           stepIndex: target.stepIndex,
           status,
@@ -487,6 +491,7 @@ export class HumanTakeoverService {
       }
 
       const outputs = parseOutputs(workflow.outputsJson);
+      const nodeRunId = newId("nrun");
       const manualOutput = {
         manualOverride: true,
         skipped: true,
@@ -496,7 +501,7 @@ export class HumanTakeoverService {
 
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
-        nodeRunId: newId("step"),
+        nodeRunId,
         taskId: snapshot.task.id,
         stepId: step.stepId,
         roleId: step.roleId,
@@ -522,6 +527,7 @@ export class HumanTakeoverService {
         eventType: "workflow:step_completed",
         traceId: newId("trace"),
         payload: {
+          nodeRunId,
           stepId: step.stepId,
           roleId: step.roleId,
           status: "partial_success",
@@ -585,6 +591,7 @@ export class HumanTakeoverService {
 
       return {
         payload: {
+          skippedNodeRunId: nodeRunId,
           skippedStepId: step.stepId,
           nextStepIndex,
           reachedTerminal,

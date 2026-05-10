@@ -29,6 +29,7 @@ import type {
   ArtifactRef,
 } from "../../platform/contracts/executable-contracts/index.js";
 import { createCompensationRecord } from "../../platform/contracts/executable-contracts/index.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 export type CompensationStatus =
   | "planned"
@@ -54,7 +55,9 @@ export interface CompensationPlan {
 }
 
 export interface CompensationStep {
-  readonly stepId: string;
+  readonly nodeRunId: string;
+  /** @deprecated legacy semantic projection; use nodeRunId for canonical correlation */
+  readonly stepId?: string;
   readonly stepType: "reverse" | "compensate" | "notify" | "rollback";
   readonly targetRef: string;
   readonly action: string;
@@ -75,6 +78,10 @@ export interface CompensationContext {
   readonly traceId: string;
   readonly operatorId: string;
   readonly reason: string;
+}
+
+function resolveCompensationNodeRunId(step: CompensationStep): string {
+  return step.nodeRunId;
 }
 
 /**
@@ -229,17 +236,19 @@ export class CompensationManager {
           finalStatus = "failed";
           break;
         }
+        const nodeRunId = resolveCompensationNodeRunId(step);
         // Record evidence reference for each executed step
         evidenceRefs.push({
-          artifactId: step.stepId,
-          uri: `compensation://${plan.compensationId}/${step.stepId}`,
+          artifactId: nodeRunId,
+          uri: `compensation://${plan.compensationId}/${nodeRunId}`,
           kind: "compensation_step",
         });
       } catch (error) {
         finalStatus = "failed";
+        const nodeRunId = resolveCompensationNodeRunId(step);
         evidenceRefs.push({
-          artifactId: step.stepId,
-          uri: `compensation://${plan.compensationId}/${step.stepId}/error`,
+          artifactId: nodeRunId,
+          uri: `compensation://${plan.compensationId}/${nodeRunId}/error`,
           kind: "compensation_error",
         });
         break;
@@ -346,8 +355,10 @@ export class CompensationManager {
    */
   private deriveCompensationSteps(sideEffect: SideEffectRecord): readonly CompensationStep[] {
     // Generate basic compensation steps based on effect kind
+    const nodeRunId = newId("nrun");
     const baseStep: CompensationStep = {
-      stepId: `step-1-${Date.now()}`,
+      nodeRunId,
+      stepId: nodeRunId,
       stepType: "reverse",
       targetRef: sideEffect.externalRef ?? sideEffect.idempotencyKey,
       action: `reverse_${sideEffect.effectKind}`,

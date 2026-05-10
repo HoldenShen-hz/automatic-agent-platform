@@ -29,6 +29,7 @@ export interface TakeoverCliEnvConfig {
   terminalStatus: TaskTerminalStatus | null;
   reasonCode: string | null;
   outputJson: string | null;
+  nodeRunId: string | null;
   stepId: string | null;
   stepIndex: number | null;
   stepOutputJson: string | null;
@@ -96,6 +97,7 @@ export function loadTakeoverCliEnv(env: NodeJS.ProcessEnv = process.env): Takeov
     terminalStatus: readTerminalStatus(env),
     reasonCode: readTrimmedEnv(env, "AA_REASON_CODE") ?? null,
     outputJson: readTrimmedEnv(env, "AA_OUTPUT_JSON") ?? null,
+    nodeRunId: readTrimmedEnv(env, "AA_NODE_RUN_ID") ?? null,
     stepId: readTrimmedEnv(env, "AA_STEP_ID") ?? null,
     stepIndex: readOptionalInteger(env, "AA_STEP_INDEX"),
     stepOutputJson: readTrimmedEnv(env, "AA_STEP_OUTPUT_JSON") ?? null,

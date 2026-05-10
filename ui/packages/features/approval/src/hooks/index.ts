@@ -47,6 +47,19 @@ function removeApproval(
 export function useApprovalCenterVm(): ApprovalCenterVm {
   const client = useRestClient();
   const queryApprovals = useApprovalsQuery().data ?? [];
+  const approvalFeedVersion = queryApprovals
+    .map((approval) => [
+      approval.approvalId,
+      approval.taskId,
+      approval.riskLevel,
+      approval.reasonSummary,
+      approval.deadline ?? "",
+      approval.policySource ?? "",
+      approval.recommendedOption ?? "",
+      String(approval.currentLevel ?? ""),
+      String(approval.totalLevels ?? ""),
+    ].join(":"))
+    .join("|");
   const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(queryApprovals);
   const [selectedId, setSelectedId] = useState<string | null>(queryApprovals[0]?.approvalId ?? null);
   const [actionHistory, setActionHistory] = useState<readonly { title: string; description: string }[]>([]);
@@ -60,7 +73,7 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
       }
       return queryApprovals[0]?.approvalId ?? null;
     });
-  }, [queryApprovals]);
+  }, [approvalFeedVersion]);
 
   const baseVm = useMemo(() => mapApprovalsToVm(approvals), [approvals]);
   const selectedApproval = approvals.find((approval) => approval.approvalId === selectedId) ?? approvals[0] ?? null;

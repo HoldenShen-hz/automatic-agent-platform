@@ -177,8 +177,8 @@ test("serializeSnapshot formats snapshot correctly", () => {
     execution: { id: "exec_1", status: "active" },
     session: { id: "sess_1", status: "open" },
     stepOutputs: [
-      { stepId: "step_1", status: "completed" },
-      { stepId: "step_2", status: "failed" },
+      { nodeRunId: "nrun_1", stepId: "step_1", status: "completed" },
+      { nodeRunId: "nrun_2", stepId: "step_2", status: "failed" },
     ],
     events: [
       { eventType: "task:started" },
@@ -193,8 +193,8 @@ test("serializeSnapshot formats snapshot correctly", () => {
   assert.equal(result.execution, snapshot.execution);
   assert.equal(result.session, snapshot.session);
   assert.deepEqual(result.stepOutputs, [
-    { stepId: "step_1", status: "completed" },
-    { stepId: "step_2", status: "failed" },
+    { nodeRunId: "nrun_1", stepId: "step_1", status: "completed" },
+    { nodeRunId: "nrun_2", stepId: "step_2", status: "failed" },
   ]);
   assert.deepEqual(result.recentEventTypes, ["task:started", "task:completed"]);
 });

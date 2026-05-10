@@ -738,6 +738,8 @@ test("resolveArtifactRefs falls back to stepId when nodeRunId has no matches", (
   });
 
   assert.notEqual(result, null);
-  // No artifacts match nodeRunId "node_run_1", and no stepId fallback since stepOutput has no stepId
-  assert.equal(result!.artifacts.length, 0);
+  // No artifacts match nodeRunId "node_run_1", and no stepId fallback since stepOutput has no stepId.
+  // buildTaskResultEnvelope therefore falls back to task-level artifacts.
+  assert.equal(result!.artifacts.length, 1);
+  assert.equal(result!.artifacts[0]?.artifactId, "fallback_art");
 });

@@ -85,7 +85,7 @@ export interface ModifyInputPayload { type: "modify_input"; sessionId: string; i
 export interface SwitchWorkerPayload { type: "switch_worker"; sessionId: string; agentId: string; reasonCode: string; tenantId?: string | null | undefined }
 export interface RetryExecutionPayload { type: "retry_execution"; sessionId: string; reasonCode: string; tenantId?: string | null | undefined }
 export interface SetCurrentStepPayload { type: "set_current_step"; sessionId: string; reasonCode: string; stepId?: string; stepIndex?: number; tenantId?: string | null | undefined }
-export interface WriteStepOutputPayload { type: "write_step_output"; sessionId: string; outputJson: string; reasonCode: string; stepId?: string; stepIndex?: number; status?: StepOutputRecord["status"]; summary?: string; tenantId?: string | null | undefined }
+export interface WriteStepOutputPayload { type: "write_step_output"; sessionId: string; outputJson: string; reasonCode: string; nodeRunId?: string; stepId?: string; stepIndex?: number; status?: StepOutputRecord["status"]; summary?: string; tenantId?: string | null | undefined }
 export interface SkipCurrentStepPayload { type: "skip_current_step"; sessionId: string; note?: string; reasonCode: string; tenantId?: string | null | undefined }
 export interface CompleteTaskPayload { type: "complete_task"; sessionId: string; terminalStatus: TaskTerminalStatus; reasonCode: string; outputJson?: string; tenantId?: string | null | undefined }
 export interface AcknowledgeTakeoverPayload { type: "acknowledge_takeover"; sessionId: string; operatorId: string; tenantId?: string | null | undefined }
@@ -554,6 +554,7 @@ export class HumanTakeoverServiceAsync {
           takeoverSessionId: p.sessionId,
           outputJson: p.outputJson,
           reasonCode: p.reasonCode,
+          ...(p.nodeRunId !== undefined ? { nodeRunId: p.nodeRunId } : {}),
           ...(p.stepId !== undefined ? { stepId: p.stepId } : {}),
           ...(p.stepIndex !== undefined ? { stepIndex: p.stepIndex } : {}),
           ...(p.status !== undefined ? { status: p.status } : {}),

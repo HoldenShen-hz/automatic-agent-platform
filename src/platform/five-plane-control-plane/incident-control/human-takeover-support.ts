@@ -58,12 +58,12 @@ export function normalizeJson(rawJson: string, errorCode: string): string {
   }
 }
 
-export function resolveManualStepOutputSummary(stepId: string, output: unknown): string {
+export function resolveManualStepOutputSummary(executionRef: string, output: unknown): string {
   if (output != null && typeof output === "object" && !Array.isArray(output)) {
     const summary = (output as Record<string, unknown>).summary;
     if (typeof summary === "string" && summary.length > 0) return summary;
   }
-  return `Operator supplied output for ${stepId}`;
+  return `Operator supplied output for ${executionRef}`;
 }
 
 export function resolveWorkflowStepTarget(
@@ -108,7 +108,11 @@ export function serializeSnapshot(snapshot: TaskSnapshot): Record<string, unknow
     workflow: snapshot.workflow,
     execution: snapshot.execution,
     session: snapshot.session,
-    stepOutputs: snapshot.stepOutputs.map((step) => ({ stepId: step.stepId, status: step.status })),
+    stepOutputs: snapshot.stepOutputs.map((step) => ({
+      nodeRunId: step.nodeRunId,
+      stepId: step.stepId,
+      status: step.status,
+    })),
     recentEventTypes: snapshot.events.map((event) => event.eventType),
   };
 }

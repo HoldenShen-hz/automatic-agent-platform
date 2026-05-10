@@ -66,6 +66,7 @@ async function main(): Promise<void> {
         },
         workflow: result.snapshot.workflow,
         stepOutputs: result.snapshot.stepOutputs.map((step) => ({
+          nodeRunId: step.nodeRunId,
           stepId: step.stepId,
           roleId: step.roleId,
           summary: step.summary,

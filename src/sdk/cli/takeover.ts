@@ -13,6 +13,7 @@
  *   - AA_OPERATOR_ID: Operator identifier taking over the task
  *   - AA_TAKEOVER_SESSION_ID: Takeover session identifier
  *   - AA_TENANT_ID: Optional tenant identifier
+ *   - AA_NODE_RUN_ID: Canonical execution reference for manual step output correlation
  *   - Additional action-specific variables documented in loadTakeoverCliEnv
  *
  * Actions:
@@ -116,6 +117,7 @@ function main(): void {
           takeoverSessionId: requireEnvValue(envConfig.takeoverSessionId, "AA_TAKEOVER_SESSION_ID"),
           outputJson: requireEnvValue(envConfig.stepOutputJson, "AA_STEP_OUTPUT_JSON"),
           reasonCode: envConfig.reasonCode ?? "takeover.write_step_output",
+          ...(envConfig.nodeRunId ? { nodeRunId: envConfig.nodeRunId } : {}),
           ...(envConfig.stepId ? { stepId: envConfig.stepId } : {}),
           ...(stepIndex !== undefined ? { stepIndex } : {}),
           ...(stepStatus !== undefined ? { status: stepStatus } : {}),
