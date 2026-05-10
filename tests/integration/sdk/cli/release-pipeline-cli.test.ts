@@ -53,7 +53,7 @@ function upsertTenantForEnvironment(store: AuthoritativeTaskStore, environmentId
     deploymentMode: "private_cloud",
     createdAt: timestamp,
     updatedAt: timestamp,
-  });
+  } as import("../../../../src/platform/contracts/types/domain/workspace-types.js").TenantRecord);
 }
 
 function seedManagedReleaseSecrets(

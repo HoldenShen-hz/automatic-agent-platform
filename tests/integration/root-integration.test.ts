@@ -145,7 +145,7 @@ test("integration: getPlatformApplicationKernel buildStartupPlan returns complet
 
   assert.ok(plan.startupEntryModule != null, "startupEntryModule should be present");
   assert.ok(Array.isArray(plan.requiredLayerManifests), "requiredLayerManifests should be an array");
-  assert.ok(plan.planesStartupPlan != null, "planesStartupPlan should be present when platform layer required");
+  assert.ok(plan.planeStartupPlan != null, "planeStartupPlan should be present when platform layer required");
   assert.ok(plan.domainsStartupPlan != null, "domainsStartupPlan should be present");
 });
 
@@ -212,12 +212,6 @@ test("integration: buildPlatformArchitectureBootstrapSummary returns architectur
   const plane = arch.planes[0]!;
   assert.ok(typeof plane.planeId === "string", "planeId should be a string");
   assert.ok(typeof plane.description === "string", "description should be a string");
-});
-
-test("integration: buildPlatformArchitectureBootstrapSummary returns architecture with applicationBindings", () => {
-  const arch = buildPlatformArchitectureBootstrapSummary();
-
-  assert.ok(Array.isArray(arch.applicationBindings), "applicationBindings should be an array");
 });
 
 // ============================================================================

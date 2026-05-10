@@ -15,7 +15,7 @@ import { TenantPlatformService } from "../../../src/scale-ecosystem/tenant-platf
 import type {
   AuthoritativeSqlDatabase,
   AuthoritativeTaskStore,
-} from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock Store and Database Setup
@@ -108,7 +108,6 @@ test("integration: create organization with billing account", () => {
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
-    ownerId: "owner_enterprise_001",
     displayName: "Enterprise Corp",
     billingAccountId: "bill_acct_001",
   });
@@ -125,7 +124,6 @@ test("integration: create organization without billing account", () => {
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
-    ownerId: "owner_startup_001",
     displayName: "Startup Inc",
   });
 
@@ -140,13 +138,11 @@ test("integration: add organization membership", () => {
   const service = new TenantPlatformService(db, store);
   const organization = service.createOrganization({
     organizationId: "org_001",
-    ownerId: "owner_org_001",
     displayName: "Test Org",
   });
 
   const membership = service.addOrganizationMembership({
     organizationId: organization.organizationId,
-    callerUserId: "owner_org_001",
     userId: "user_001",
     role: "admin",
   });

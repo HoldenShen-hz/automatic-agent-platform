@@ -48,7 +48,6 @@ test("Context propagation - withContextPatch preserves outer values", () => {
     taskId: "task-456",
     tenantId: "tenant-1",
     workspaceId: "workspace-1",
-    agentId: undefined,
   };
 
   provideContext(snapshot, () => {
@@ -77,8 +76,6 @@ test("Context propagation - withContextPatch applies patch on top of current con
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace-1",
     taskId: "task-1",
-    spanId: undefined,
-    parentSpanId: undefined,
   };
 
   provideContext(snapshot, () => {

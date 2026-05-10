@@ -29,6 +29,7 @@ test("integration: workbench service creates snapshot with real manifest validat
       {
         packId: "ops-pack",
         version: "1.0.0",
+        domainId: "ops",
         domain: "ops",
         owner: "admin@example.com",
         capabilities: [
@@ -57,6 +58,7 @@ test("integration: workbench service detects missing contracts across packs", ()
       {
         packId: "marketplace-pack",
         version: "2.0.0",
+        domainId: "marketplace",
         domain: "marketplace",
         owner: "seller@example.com",
         capabilities: [
@@ -94,6 +96,7 @@ test("integration: workbench publish readiness with all contracts satisfied", ()
       {
         packId: "coding-pack",
         version: "1.0.0",
+        domainId: "coding",
         domain: "coding",
         owner: "dev@example.com",
         capabilities: [

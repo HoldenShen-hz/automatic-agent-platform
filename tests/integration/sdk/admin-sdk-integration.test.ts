@@ -35,7 +35,7 @@ function createMockFetchForSeededContext(ctx: SeededApiContext) {
     });
   };
 
-  globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+  globalThis.fetch = async (url: URL | Request | string, init?: RequestInit): Promise<Response> => {
     const urlStr = url instanceof URL ? url.toString() : String(url);
 
     // Tenant endpoints
@@ -312,21 +312,13 @@ test("AdminSdk with seeded context: pauseHarnessRun creates pause directive", ()
       bearerToken: "test-token",
     });
 
-    const directive = sdk.pauseHarnessRun({
-      harnessRunId: "harness-run-123",
-      reason: "Maintenance window",
-      issuedBy: {
-        principalId: "p_admin",
-        tenantId: "t_tenant",
-        roles: ["admin"],
-      },
-    });
+    const directive = sdk.pauseHarnessRun<unknown>("harness-run-123", "Maintenance window");
 
-    assert.equal(directive.type, "pause");
-    assert.equal(directive.scope?.harnessRunId, "harness-run-123");
-    assert.equal(directive.reason, "Maintenance window");
-    assert.equal(directive.issuedBy.principalId, "p_admin");
-    assert.ok(directive.operationalDirectiveId.startsWith("opdir_"));
+    assert.equal((directive as unknown as { type: string }).type, "pause");
+    assert.equal((directive as unknown as { scope: { harnessRunId: string } }).scope?.harnessRunId, "harness-run-123");
+    assert.equal((directive as unknown as { reason: string }).reason, "Maintenance window");
+    assert.equal((directive as unknown as { issuedBy: { principalId: string } }).issuedBy.principalId, "p_admin");
+    assert.ok((directive as unknown as { operationalDirectiveId: string }).operationalDirectiveId.startsWith("opdir_"));
   } finally {
     if (ctx) {
       ctx.db.close();
@@ -347,19 +339,11 @@ test("AdminSdk with seeded context: abortHarnessRun creates kill directive", () 
       bearerToken: "test-token",
     });
 
-    const directive = sdk.abortHarnessRun({
-      harnessRunId: "harness-run-456",
-      reason: "User requested cancellation",
-      issuedBy: {
-        principalId: "p_operator",
-        tenantId: "t_tenant",
-        roles: ["operator"],
-      },
-    });
+    const directive = sdk.abortHarnessRun<unknown>("harness-run-456", "User requested cancellation");
 
-    assert.equal(directive.type, "kill");
-    assert.equal(directive.scope?.harnessRunId, "harness-run-456");
-    assert.equal(directive.issuedBy.principalId, "p_operator");
+    assert.equal((directive as unknown as { type: string }).type, "kill");
+    assert.equal((directive as unknown as { scope: { harnessRunId: string } }).scope?.harnessRunId, "harness-run-456");
+    assert.equal((directive as unknown as { issuedBy: { principalId: string } }).issuedBy.principalId, "p_operator");
   } finally {
     if (ctx) {
       ctx.db.close();

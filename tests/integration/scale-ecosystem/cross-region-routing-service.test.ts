@@ -5,12 +5,32 @@ import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../.
 import { resolveRegionFailover, type RegionFailoverInput } from "../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 import { selectPreferredRegion, type RegionDescriptor } from "../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
+function createMockRegionDescriptor(overrides = {}): RegionDescriptor {
+  return {
+    regionId: "us-east-1",
+    provider: "aws",
+    endpoints: { api: "https://api.us-east-1.example.com" },
+    dataResidencyPolicy: "regional" as const,
+    countryCode: "US",
+    jurisdiction: "US",
+    capabilities: ["compute", "storage"],
+    status: "active",
+    latencyScore: 45,
+    residencyAllowed: true,
+    ...overrides,
+  };
+}
+
+function createRegionDescriptor(overrides = {}): RegionDescriptor {
+  return createMockRegionDescriptor(overrides);
+}
+
 test("cross region routing selects preferred region when available and allowed", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 120, residencyAllowed: true },
-    { regionId: "ap-south-1", countryCode: "IN", jurisdiction: "IN", capabilities: ["compute"], status: "degraded", latencyScore: 180, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 120, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "ap-south-1", countryCode: "IN", jurisdiction: "IN", capabilities: ["compute"], status: "draining", latencyScore: 180, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -20,7 +40,7 @@ test("cross region routing selects preferred region when available and allowed",
       allowedJurisdictions: ["US", "EU", "IN"],
       blockedRegionIds: [],
       requiredCapabilities: [],
-      allowCrossBorder: true,
+      crossBorderTransferClass: "free_transfer",
     },
     primaryRegionId: "us-east-1",
     preferredRegionId: "eu-west-1",
@@ -41,8 +61,8 @@ test("cross region routing selects preferred region when available and allowed",
 test("cross region routing falls back to lowest latency region when preferred is unavailable", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "disabled", latencyScore: 120, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "draining", latencyScore: 120, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -52,7 +72,7 @@ test("cross region routing falls back to lowest latency region when preferred is
       allowedJurisdictions: ["US", "EU"],
       blockedRegionIds: [],
       requiredCapabilities: [],
-      allowCrossBorder: true,
+      crossBorderTransferClass: "free_transfer",
     },
     preferredRegionId: "eu-west-1",
     primaryRegionHealthy: true,
@@ -69,9 +89,9 @@ test("cross region routing falls back to lowest latency region when preferred is
 test("cross region routing blocks regions outside allowed jurisdictions", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "ru-central-1", countryCode: "RU", jurisdiction: "RU", capabilities: ["compute"], status: "active", latencyScore: 80, residencyAllowed: true },
-    { regionId: "cn-north-1", countryCode: "CN", jurisdiction: "CN", capabilities: ["compute"], status: "active", latencyScore: 150, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "ru-central-1", countryCode: "RU", jurisdiction: "RU", capabilities: ["compute"], status: "active", latencyScore: 80, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "cn-north-1", countryCode: "CN", jurisdiction: "CN", capabilities: ["compute"], status: "active", latencyScore: 150, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -81,7 +101,7 @@ test("cross region routing blocks regions outside allowed jurisdictions", () => 
       allowedJurisdictions: ["US", "EU"],
       blockedRegionIds: [],
       requiredCapabilities: [],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only",
     },
     primaryRegionHealthy: true,
     replicationPolicy: null,
@@ -97,9 +117,9 @@ test("cross region routing blocks regions outside allowed jurisdictions", () => 
 test("cross region routing respects required capabilities", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 50, residencyAllowed: true },
-    { regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage", "gpu"], status: "active", latencyScore: 70, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 90, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 50, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage", "gpu"], status: "active", latencyScore: 70, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 90, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -109,7 +129,7 @@ test("cross region routing respects required capabilities", () => {
       allowedJurisdictions: ["US", "EU"],
       blockedRegionIds: [],
       requiredCapabilities: ["gpu", "storage"],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only",
     },
     primaryRegionHealthy: true,
     replicationPolicy: null,
@@ -125,8 +145,8 @@ test("cross region routing respects required capabilities", () => {
 test("cross region routing blocks when no region satisfies all constraints", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 120, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "active", latencyScore: 120, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -136,7 +156,7 @@ test("cross region routing blocks when no region satisfies all constraints", () 
       allowedJurisdictions: ["US"],
       blockedRegionIds: [],
       requiredCapabilities: ["gpu"],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only",
     },
     primaryRegionHealthy: true,
     replicationPolicy: null,
@@ -152,9 +172,9 @@ test("cross region routing blocks when no region satisfies all constraints", () 
 test("cross region routing includes replication targets in recovery topology", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 70, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute", "storage"], status: "active", latencyScore: 120, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 70, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute", "storage"], status: "active", latencyScore: 120, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -164,7 +184,7 @@ test("cross region routing includes replication targets in recovery topology", (
       allowedJurisdictions: ["US", "EU"],
       blockedRegionIds: [],
       requiredCapabilities: [],
-      allowCrossBorder: true,
+      crossBorderTransferClass: "free_transfer",
     },
     primaryRegionId: "us-east-1",
     primaryRegionHealthy: true,
@@ -184,8 +204,8 @@ test("cross region routing includes replication targets in recovery topology", (
 test("cross region routing respects blocked region list", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 70, residencyAllowed: true },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "us-west-2", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 70, residencyAllowed: true }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -195,7 +215,7 @@ test("cross region routing respects blocked region list", () => {
       allowedJurisdictions: ["US"],
       blockedRegionIds: ["us-west-2"],
       requiredCapabilities: [],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only",
     },
     primaryRegionHealthy: true,
     replicationPolicy: null,
@@ -210,8 +230,8 @@ test("cross region routing respects blocked region list", () => {
 test("cross region routing marks residency not allowed as blocked", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
-    { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "cn-north-1", countryCode: "CN", jurisdiction: "CN", capabilities: ["compute"], status: "active", latencyScore: 80, residencyAllowed: false },
+    createRegionDescriptor({ regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute"], status: "active", latencyScore: 45, residencyAllowed: true }),
+    createRegionDescriptor({ regionId: "cn-north-1", countryCode: "CN", jurisdiction: "CN", capabilities: ["compute"], status: "active", latencyScore: 80, residencyAllowed: false }),
   ];
 
   const request: CrossRegionRouteRequest = {
@@ -221,7 +241,7 @@ test("cross region routing marks residency not allowed as blocked", () => {
       allowedJurisdictions: ["US", "CN"],
       blockedRegionIds: [],
       requiredCapabilities: [],
-      allowCrossBorder: true,
+      crossBorderTransferClass: "free_transfer",
     },
     primaryRegionHealthy: true,
     replicationPolicy: null,

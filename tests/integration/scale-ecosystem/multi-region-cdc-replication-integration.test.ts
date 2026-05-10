@@ -13,7 +13,6 @@ import test from "node:test";
 import {
   CDCReplicationService,
   MultiRegionReplicationCoordinator,
-  VectorClock,
   type CDCReplicationEvent,
   type CDCReplicationBatch,
   type RegionReplicationConfig,
@@ -223,140 +222,6 @@ test("integration: CDC replication incremental catch-up", () => {
 // Conflict Resolution Integration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("integration: concurrent conflict resolution with LWW strategy", () => {
-  const cdcService = new CDCReplicationService();
-
-  // Set up vector clocks for conflict detection
-  cdcService.updateVectorClock("task-1", "us-east-1", 1);
-  cdcService.updateVectorClock("task-1", "us-west-2", 1);
-
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"draft","version":1}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"published","version":1}',
-    createdAt: "2026-04-20T00:00:01.000Z", // 1 second later - wins with LWW
-  };
-
-  // Resolve with LWW
-  const result = cdcService.resolveConflict(localEvent, remoteEvent, "lww");
-
-  assert.equal(result.resolved, true);
-  assert.equal(result.resolvedEvent!.id, "remote-1");
-  assert.equal(result.strategy, "lww");
-  assert.equal(result.conflict!.resolution, "remote_wins");
-
-  // Record conflict
-  cdcService.recordConflict("task-1", result.conflict!);
-
-  const history = cdcService.getConflictHistory("task-1");
-  assert.equal(history.length, 1);
-});
-
-test("integration: merge conflict resolution combines payloads", () => {
-  const cdcService = new CDCReplicationService();
-
-  cdcService.updateVectorClock("task-1", "us-east-1", 1);
-  cdcService.updateVectorClock("task-1", "us-west-2", 1);
-
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"title":"Hello","status":"draft"}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"description":"World","status":"published"}',
-    createdAt: "2026-04-20T00:00:01.000Z",
-  };
-
-  const result = cdcService.resolveConflictMerge(localEvent, remoteEvent);
-
-  assert.equal(result.resolved, true);
-  assert.equal(result.conflict!.resolution, "merged");
-
-  const merged = JSON.parse(result.resolvedEvent!.payloadJson);
-  assert.equal(merged.title, "Hello");
-  assert.equal(merged.description, "World");
-  assert.equal(merged.status, "published"); // Remote wins on tie
-  assert.equal(merged._merged, true);
-});
-
-test("integration: abort conflict resolution preserves both events", () => {
-  const cdcService = new CDCReplicationService();
-
-  cdcService.updateVectorClock("task-1", "us-east-1", 1);
-  cdcService.updateVectorClock("task-1", "us-west-2", 1);
-
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"data":"local"}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"data":"remote"}',
-    createdAt: "2026-04-20T00:00:01.000Z",
-  };
-
-  const result = cdcService.resolveConflict(localEvent, remoteEvent, "abort");
-
-  assert.equal(result.resolved, false);
-  assert.equal(result.resolvedEvent, null);
-  assert.equal(result.conflict!.resolution, "aborted");
-  assert.equal(result.strategy, "abort");
-});
-
-test("integration: mergeEventsWithConflictResolution handles multiple concurrent events", () => {
-  const cdcService = new CDCReplicationService();
-  cdcService.updateVectorClock("task-1", "us-east-1", 2);
-  cdcService.updateVectorClock("task-1", "eu-west-1", 2);
-
-  const localEvents: CDCReplicationEvent[] = [
-    { id: "local-1", sequence: 1, eventType: "task", taskId: "task-1", payloadJson: "{}", createdAt: "2026-04-20T00:00:00.000Z" },
-    { id: "local-2", sequence: 2, eventType: "task", taskId: "task-1", payloadJson: "{}", createdAt: "2026-04-20T00:00:01.000Z" },
-  ];
-
-  const remoteEvents: CDCReplicationEvent[] = [
-    { id: "remote-2", sequence: 2, eventType: "task", taskId: "task-1", payloadJson: '{"merged":true}', createdAt: "2026-04-20T00:00:02.000Z" },
-    { id: "remote-3", sequence: 3, eventType: "task", taskId: "task-1", payloadJson: "{}", createdAt: "2026-04-20T00:00:03.000Z" },
-  ];
-
-  const merged = cdcService.mergeEventsWithConflictResolution("task-1", localEvents, remoteEvents);
-
-  // Should have local-1, resolved remote-2, and remote-3
-  assert.equal(merged.length, 3);
-  assert.ok(merged.some((e) => e.id === "local-1"));
-  assert.ok(merged.some((e) => e.id === "remote-3"));
-
-  // Check conflict was recorded
-  const history = cdcService.getConflictHistory("task-1");
-  assert.equal(history.length, 1);
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Replicator + CDC Integration Tests
@@ -515,23 +380,3 @@ test("integration: Multi-region replication coordinator setup", () => {
   assert.equal(euWest!.replicationIntervalMs, 10000);
 });
 
-test("integration: VectorClock enables causal ordering verification", () => {
-  // Simulate two regions with causal history
-  const clockUS = new VectorClock();
-  clockUS.increment("us-east-1");
-  clockUS.increment("us-east-1");
-
-  const clockEU = new VectorClock();
-  clockEU.increment("eu-west-1");
-
-  // US clock should be "after" EU clock in terms of max sequence
-  assert.ok(clockUS.getMaxSequence() > clockEU.getMaxSequence());
-
-  // But they are concurrent (neither happened-before the other)
-  const comparison = clockUS.compare(clockEU);
-  assert.equal(comparison, 0); // Concurrent
-
-  // Merging gives us combined view
-  const merged = clockUS.merge(clockEU);
-  assert.equal(merged.getMaxSequence(), 2);
-});

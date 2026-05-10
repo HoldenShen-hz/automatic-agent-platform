@@ -966,6 +966,7 @@ serialTest("diagnostics CLI returns runtime metrics summaries", async () => {
       id: "ticket-cli-diagnostics-metrics-pending",
       executionId: "exec-cli-diagnostics-metrics-failed",
       taskId: "task-cli-diagnostics-metrics-failed",
+      tenantId: "t_test",
       priority: "normal",
       queueName: "default",
       requiredCapabilitiesJson: JSON.stringify(["bash"]),
@@ -979,7 +980,7 @@ serialTest("diagnostics CLI returns runtime metrics summaries", async () => {
       invalidatedAt: null,
       createdAt: "2026-04-06T12:00:00.000Z",
       updatedAt: "2026-04-06T12:00:00.000Z",
-    });
+    } as import("../../../../src/platform/contracts/types/domain/dispatch-types.js").ExecutionTicketRecord);
     db.close();
 
     const metrics = runCli<{
@@ -1137,6 +1138,8 @@ serialTest("diagnostics CLI returns incident timeline reports and exports markdo
       id: "comp-cli-incident",
       sessionId: snapshot.session.id,
       taskId: snapshot.task.id,
+      harnessRunId: null,
+      nodeRunId: null,
       stage: "summarize",
       sourceMessageIdsJson: JSON.stringify(["msg-cli-incident-tool-result"]),
       summaryText: "Compacted CLI incident evidence for operator handoff.",
@@ -1146,7 +1149,7 @@ serialTest("diagnostics CLI returns incident timeline reports and exports markdo
       autoTriggered: 1,
       tokenReductionEstimate: 96,
       createdAt: "2026-04-06T11:00:04.000Z",
-    });
+    } as import("../../../../src/platform/contracts/types/domain/session-types.js").CompactionRecord);
     approvalService.createRequest({
       taskId: snapshot.task.id,
       executionId: snapshot.execution?.id ?? null,

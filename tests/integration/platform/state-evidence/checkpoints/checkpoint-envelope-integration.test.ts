@@ -13,6 +13,7 @@ import {
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
   CheckpointSizeExceededError,
   CheckpointEnvelopeInvalidError,
+  CheckpointEnvelope,
 } from "../../../../../src/platform/state-evidence/checkpoints/checkpoint-envelope.js";
 import { createWorkflowStepCheckpoint } from "../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
 

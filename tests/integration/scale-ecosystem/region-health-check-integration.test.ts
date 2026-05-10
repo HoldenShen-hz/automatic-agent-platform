@@ -34,7 +34,7 @@ function createHealthCheckConfig(overrides: Partial<RegionHealthCheckConfig> = {
       maxCpuUsage: overrides.thresholds?.maxCpuUsage ?? 0.8,
       maxMemoryUsage: overrides.thresholds?.maxMemoryUsage ?? 0.85,
     },
-    metricSnapshot: overrides.metricSnapshot,
+    ...(overrides.metricSnapshot != null ? { metricSnapshot: overrides.metricSnapshot } : {}),
     ...overrides,
   };
 }

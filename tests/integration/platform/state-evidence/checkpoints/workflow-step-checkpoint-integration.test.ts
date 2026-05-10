@@ -12,6 +12,9 @@ import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 
 test("createWorkflowStepCheckpoint creates valid checkpoint for integration", () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_integ_1",
+    nodeRunId: "node_integ_1",
+    planGraphId: "pg_integ_1",
     taskId: "task_integ_checkpoint_1",
     executionId: "exec_integ_checkpoint_1",
     workflowId: "wf_integ_checkpoint_1",
@@ -59,6 +62,9 @@ test("createWorkflowStepCheckpoint creates valid checkpoint for integration", ()
 
 test("createWorkflowStepCheckpoint handles failed status", () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_failed",
+    nodeRunId: "node_failed",
+    planGraphId: "pg_failed",
     taskId: "task_integ_failed",
     executionId: "exec_integ_failed",
     workflowId: "wf_integ_failed",
@@ -89,6 +95,9 @@ test("createWorkflowStepCheckpoint handles failed status", () => {
 
 test("createWorkflowStepCheckpoint handles partial file diff summary", () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_file_diff",
+    nodeRunId: "node_file_diff",
+    planGraphId: "pg_file_diff",
     taskId: "task_integ_file_diff",
     executionId: null,
     workflowId: "wf_integ_file_diff",
@@ -127,6 +136,9 @@ test("createWorkflowStepCheckpoint creates defensive array copies", () => {
   const dependsOnStepIds = ["s1", "s2"];
 
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_defensive",
+    nodeRunId: "node_defensive",
+    planGraphId: "pg_defensive",
     taskId: "task_integ_defensive",
     executionId: null,
     workflowId: "wf_integ_defensive",
@@ -202,6 +214,9 @@ test("readWorkflowStepCheckpoint returns null for wrong kind", () => {
 
 test("summarizeWorkflowStepCheckpoint extracts summary correctly", () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_summarize",
+    nodeRunId: "node_summarize",
+    planGraphId: "pg_summarize",
     taskId: "task_summarize",
     executionId: "exec_summarize",
     workflowId: "wf_summarize",
@@ -238,6 +253,9 @@ test("summarizeWorkflowStepCheckpoint extracts summary correctly", () => {
 
 test("summarizeWorkflowStepCheckpoint handles missing summary", () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_no_summary",
+    nodeRunId: "node_no_summary",
+    planGraphId: "pg_no_summary",
     taskId: "task_no_summary",
     executionId: null,
     workflowId: "wf_no_summary",
@@ -274,6 +292,9 @@ test("readWorkflowStepCheckpoint parses valid checkpoint artifact", () => {
   try {
     // Create a valid checkpoint artifact
     const checkpoint = createWorkflowStepCheckpoint({
+      harnessRunId: "harness_valid_read",
+      nodeRunId: "node_valid_read",
+      planGraphId: "pg_valid_read",
       taskId: "task_valid_read",
       executionId: "exec_valid_read",
       workflowId: "wf_valid_read",

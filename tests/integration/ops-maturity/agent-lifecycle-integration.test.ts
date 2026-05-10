@@ -12,9 +12,10 @@ test("integration: agent rollout, rollback, retirement, and binding gate follow 
     owner: { path: "eng_lead", orgNodeId: "engineering_ops" },
     components: {
       pack: { packId: "pack_ops", version: "1.0.0" },
+      connectorBindings: [],
       promptBundle: { bundleId: "prompt_ops", version: "1.0.0" },
       modelBinding: { provider: "anthropic", model: "claude-4", fallbackChain: [] },
-      trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+      trustProfile: { initialLevel: "manual_only", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
       triggerSet: [],
       autonomyConfig: { maxAutomationLevel: "manual_only", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },

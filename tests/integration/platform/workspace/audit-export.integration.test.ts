@@ -61,7 +61,7 @@ test("integration: AuditEventSummary aggregates tier counts", () => {
   };
 
   assert.equal(summary.tier1Count + summary.tier2Count + summary.tier3Count, summary.totalEvents);
-  assert.equal(summary.topEventTypes.reduce((sum, t) => sum + t.count, 0), summary.totalEvents);
+  assert.equal(summary.topEventTypes.reduce((sum: number, t: { type: string; count: number }) => sum + t.count, 0), summary.totalEvents);
 });
 
 test("integration: IntegrityCheckResult validates chain", () => {

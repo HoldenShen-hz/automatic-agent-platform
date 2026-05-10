@@ -101,11 +101,11 @@ test("environment-readiness: listReadiness filters by environment", () => {
 
   const staging = service.listReadiness("staging");
   assert.equal(staging.length, 1);
-  assert.equal(staging[0].environment, "staging");
+  assert.equal(staging[0]?.environment, "staging");
 
   const prod = service.listReadiness("prod");
   assert.equal(prod.length, 1);
-  assert.equal(prod[0].environment, "prod");
+  assert.equal(prod[0]?.environment, "prod");
 });
 
 test("environment-readiness: recordDrill creates drill record", () => {
@@ -200,10 +200,10 @@ test("environment-readiness: summarizeEnvironment returns grouped summaries", ()
   });
 
   assert.equal(summaries.length, 1);
-  assert.equal(summaries[0].componentType, "provider");
-  assert.equal(summaries[0].total, 2);
-  assert.equal(summaries[0].ready, 1);
-  assert.equal(summaries[0].notReady, 1);
+  assert.equal(summaries[0]?.componentType, "provider");
+  assert.equal(summaries[0]?.total, 2);
+  assert.equal(summaries[0]?.ready, 1);
+  assert.equal(summaries[0]?.notReady, 1);
 });
 
 test("environment-readiness: evaluatePromotion throws when no readiness records exist", () => {

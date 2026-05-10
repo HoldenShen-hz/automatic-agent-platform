@@ -173,10 +173,10 @@ test("writeStableCrossDivisionRecoveryDrillReport persists report correctly", as
 
     // Verify scenario details are preserved
     for (let i = 0; i < saved.scenarios.length; i++) {
-      assert.equal(saved.scenarios[i].scenarioId, report.scenarios[i].scenarioId);
-      assert.equal(saved.scenarios[i].passed, report.scenarios[i].passed);
-      assert.equal(saved.scenarios[i].durationMs, report.scenarios[i].durationMs);
-      assert.equal(saved.scenarios[i].summary, report.scenarios[i].summary);
+      assert.equal(saved.scenarios[i]?.scenarioId, report.scenarios[i]?.scenarioId);
+      assert.equal(saved.scenarios[i]?.passed, report.scenarios[i]?.passed);
+      assert.equal(saved.scenarios[i]?.durationMs, report.scenarios[i]?.durationMs);
+      assert.equal(saved.scenarios[i]?.summary, report.scenarios[i]?.summary);
     }
   } finally {
     cleanupPath(workspace);

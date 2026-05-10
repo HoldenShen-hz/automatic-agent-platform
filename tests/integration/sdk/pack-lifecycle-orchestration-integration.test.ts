@@ -11,6 +11,7 @@ test("integration: pack lifecycle orchestration combines api diff, compatibility
   const baseManifest = validateBusinessPackManifest({
     packId: "market-ops-pack",
     version: "1.2.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [
@@ -21,6 +22,7 @@ test("integration: pack lifecycle orchestration combines api diff, compatibility
   const nextManifest = validateBusinessPackManifest({
     packId: "market-ops-pack",
     version: "2.0.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [

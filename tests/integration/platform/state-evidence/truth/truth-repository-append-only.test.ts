@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../../helpers/integration-context.js";
-import { createSeededIntegrationContext } from "../../../helpers/integration-context.js";
-import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { createSeededIntegrationContext } from "../../../../helpers/integration-context.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("truth-repository: storeAggregate creates entity with append-only guarantee", () => {
   const ctx = createIntegrationContext("aa-truth-append-");
@@ -417,8 +417,8 @@ test("truth-repository: Cost events append-only tracking", () => {
     assert.equal(events.length, costs.length, "Should have all cost events");
 
     // Verify total cost accumulation (append-only aggregate)
-    const totalCost = events.reduce((sum, e) => sum + e.costUsd, 0);
-    const expectedTotal = costs.reduce((sum, c) => sum + c.costUsd, 0);
+    const totalCost = events.reduce((sum: number, e) => sum + e.costUsd, 0);
+    const expectedTotal = costs.reduce((sum: number, c) => sum + c.costUsd, 0);
     assert.equal(totalCost, expectedTotal, "Total cost should match sum of events");
   } finally {
     ctx.cleanup();

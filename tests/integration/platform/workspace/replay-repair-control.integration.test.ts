@@ -9,6 +9,8 @@ import {
   ReplayRepairControlService,
   type StartupConsistencyFinding,
   type RecoveryCandidate,
+  type RepairAction,
+  type RecoveryDrillResult,
 } from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 // ============================================================================
@@ -33,8 +35,8 @@ test("integration: full recovery drill workflow", () => {
   assert.equal(drill.candidateCount, 3);
   assert.equal(drill.repairActions.length, 3);
 
-  const blockedActions = drill.repairActions.filter((a) => a.status === "blocked");
-  const plannedActions = drill.repairActions.filter((a) => a.status === "planned");
+  const blockedActions = drill.repairActions.filter((a: RepairAction) => a.status === "blocked");
+  const plannedActions = drill.repairActions.filter((a: RepairAction) => a.status === "planned");
 
   assert.equal(blockedActions.length, 0);
   assert.equal(plannedActions.length, 3);
@@ -71,9 +73,9 @@ test("integration: recovery candidates have correct dispositions", () => {
 
   assert.equal(candidates.length, 4);
 
-  const retryCandidates = candidates.filter((c) => c.disposition === "retry");
-  const resumeCandidates = candidates.filter((c) => c.disposition === "resume");
-  const manualCandidates = candidates.filter((c) => c.disposition === "manual_handoff");
+  const retryCandidates = candidates.filter((c: RecoveryCandidate) => c.disposition === "retry");
+  const resumeCandidates = candidates.filter((c: RecoveryCandidate) => c.disposition === "resume");
+  const manualCandidates = candidates.filter((c: RecoveryCandidate) => c.disposition === "manual_handoff");
 
   assert.ok(retryCandidates.length >= 1);
   assert.ok(resumeCandidates.length >= 1);
@@ -93,8 +95,8 @@ test("integration: repair actions planned from candidates", () => {
   const actions = service.planRepairActions(candidates);
 
   assert.equal(actions.length, 2);
-  assert.ok(actions.every((a) => a.status === "planned" || a.status === "blocked"));
-  assert.ok(actions.every((a) => a.actionId.length > 0));
+  assert.ok(actions.every((a: RepairAction) => a.status === "planned" || a.status === "blocked"));
+  assert.ok(actions.every((a: RepairAction) => a.actionId.length > 0));
 });
 
 test("integration: multiple severity levels counted correctly", () => {

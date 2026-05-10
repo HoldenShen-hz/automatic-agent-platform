@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 const now = "2026-04-29T00:00:00.000Z";
 

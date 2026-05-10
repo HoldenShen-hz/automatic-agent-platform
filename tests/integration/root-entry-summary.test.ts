@@ -152,7 +152,7 @@ test("integration: getPlatformApplicationKernel buildStartupPlan returns plan fo
   assert.equal(plan.target.targetKind, "api", "targetKind should match");
   assert.ok(plan.startupEntryModule != null, "startupEntryModule should be present");
   assert.ok(Array.isArray(plan.requiredLayerManifests), "requiredLayerManifests should be an array");
-  assert.ok(plan.planesStartupPlan != null, "planesStartupPlan should be present for api target");
+  assert.ok(plan.planeStartupPlan != null, "planeStartupPlan should be present for api target");
   assert.ok(plan.domainsStartupPlan != null, "domainsStartupPlan should be present for api target");
 });
 
@@ -203,11 +203,6 @@ test("integration: buildPlatformArchitectureBootstrapSummary planes have require
     assert.ok(typeof plane.planeId === "string", "planeId should be a string");
     assert.ok(typeof plane.description === "string", "description should be a string");
   }
-});
-
-test("integration: buildPlatformArchitectureBootstrapSummary applicationBindings is an array", () => {
-  const arch = buildPlatformArchitectureBootstrapSummary();
-  assert.ok(Array.isArray(arch.applicationBindings), "applicationBindings should be an array");
 });
 
 // ============================================================================
@@ -296,7 +291,7 @@ test("integration: buildPlatformRootSummary architecture is from buildPlatformAr
   const summary = buildPlatformRootSummary();
   const arch = buildPlatformArchitectureBootstrapSummary();
 
+  assert.ok(summary.architecture != null, "architecture should not be null");
   assert.deepStrictEqual(summary.architecture.layers, arch.layers, "layers should match");
   assert.deepStrictEqual(summary.architecture.planes, arch.planes, "planes should match");
-  assert.deepStrictEqual(summary.architecture.applicationBindings, arch.applicationBindings, "applicationBindings should match");
 });

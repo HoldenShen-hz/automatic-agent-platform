@@ -19,7 +19,7 @@ import {
   type SlaObservation,
   type SlaCommitment,
   type LatencySloConfig,
-} from "../../../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
+} from "../../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 
 test("breach-detector: calculateBurnRate with empty observations returns zero state", () => {
   const now = Date.now();

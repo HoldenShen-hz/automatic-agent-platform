@@ -137,9 +137,11 @@ test("bootstrap sequencing: ServiceRegistry topological sort respects dependency
 
   // They should appear in order in the topological sort
   for (let i = 1; i < registeredPlanes.length; i++) {
-    const prevIndex = sortedServiceIds.indexOf(registeredPlanes[i - 1]);
-    const currIndex = sortedServiceIds.indexOf(registeredPlanes[i]);
-    assert.ok(prevIndex < currIndex, `${registeredPlanes[i - 1]} should come before ${registeredPlanes[i]} in topological sort`);
+    const prevId = registeredPlanes[i - 1]!;
+    const currId = registeredPlanes[i]!;
+    const prevIndex = sortedServiceIds.indexOf(prevId);
+    const currIndex = sortedServiceIds.indexOf(currId);
+    assert.ok(prevIndex < currIndex, `${prevId} should come before ${currId} in topological sort`);
   }
 
   await registry.reset();

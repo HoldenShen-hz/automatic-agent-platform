@@ -20,7 +20,7 @@ import {
   VcrReplayMode,
   VcrReplayRequest,
   RecordedInteraction,
-} from "../../../../../src/platform/stability/vcr-replay-fixture.js";
+} from "../../../../src/platform/stability/vcr-replay-fixture.js";
 
 function createTempWorkspace(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));

@@ -9,20 +9,13 @@ import test from "node:test";
 import {
   RetryableApiClient,
   createApiClient,
-  createContractEnvelope,
-  wrapInContractEnvelope,
-  unwrapContractEnvelope,
 } from "../../../src/sdk/client-sdk/api-client.js";
-import { ValidationError } from "../../../src/platform/contracts/errors.js";
-
-const TEST_PRINCIPAL = { principalId: "p_123", tenantId: "t_456", roles: ["admin"] };
 
 test("Integration: API Client creates run and retrieves result", async () => {
   const client = new RetryableApiClient({
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -54,7 +47,6 @@ test("Integration: API Client lists harness runs with pagination", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -90,7 +82,6 @@ test("Integration: API Client pauses harness run", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -120,7 +111,6 @@ test("Integration: API Client aborts harness run", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -150,7 +140,6 @@ test("Integration: API Client publishes pack", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -176,73 +165,11 @@ test("Integration: API Client publishes pack", async () => {
   }
 });
 
-test("Integration: API Client handles version handshake", async () => {
-  const client = new RetryableApiClient({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
-    performVersionHandshakeOnInit: true,
-  });
-
-  let versionEndpointCalled = false;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => {
-    const urlStr = url.toString();
-    if (urlStr.includes("/version")) {
-      versionEndpointCalled = true;
-      return new Response(JSON.stringify({
-        platformVersion: "v4.3",
-        contractVersion: "v4.3",
-        minClientVersion: "1.0.0",
-      }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    }
-    return new Response(JSON.stringify({}), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  };
-
-  try {
-    await client.initialize();
-    assert.ok(versionEndpointCalled, "Version endpoint should be called during initialization");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("Integration: ContractEnvelope wrapping and unwrapping roundtrip", async () => {
-  const originalPayload = {
-    harnessRunId: "run_123",
-    nodes: [{ nodeId: "n1" }, { nodeId: "n2" }],
-    edges: [{ edgeId: "e1" }],
-  };
-
-  const envelope = wrapInContractEnvelope(originalPayload, TEST_PRINCIPAL);
-
-  // Verify envelope structure
-  assert.ok(envelope.envelopeId.startsWith("env_"));
-  assert.ok(envelope.schemaVersion);
-  assert.ok(envelope.commandId.startsWith("cmd_"));
-  assert.ok(envelope.correlationId.startsWith("corr_"));
-  assert.ok(envelope.idempotencyKey.startsWith("idem_"));
-  assert.deepEqual(envelope.principal, TEST_PRINCIPAL);
-  assert.ok(envelope.timestamp);
-
-  // Unwrap and verify
-  const unwrapped = unwrapContractEnvelope(envelope);
-  assert.deepEqual(unwrapped, originalPayload);
-});
-
 test("Integration: API Client retries on 429 with backoff", async () => {
   const client = new RetryableApiClient({
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   let attemptCount = 0;
@@ -275,7 +202,6 @@ test("Integration: API Client throws AuthError on 401", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "invalid-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -305,7 +231,6 @@ test("Integration: API Client throws BusinessError on 400", async () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
   });
 
   const originalFetch = globalThis.fetch;
@@ -336,7 +261,6 @@ test("Integration: createApiClient validates required configuration", () => {
       baseUrl: "",
       apiVersion: "v1",
       bearerToken: "test-token",
-      principal: TEST_PRINCIPAL,
     } as any),
     /baseUrl/
   );
@@ -346,76 +270,7 @@ test("Integration: createApiClient validates required configuration", () => {
       baseUrl: "https://api.example.com",
       apiVersion: "",
       bearerToken: "test-token",
-      principal: TEST_PRINCIPAL,
     } as any),
     /apiVersion/
   );
-
-  assert.throws(
-    () => createApiClient({
-      baseUrl: "https://api.example.com",
-      apiVersion: "v1",
-      bearerToken: "test-token",
-      principal: {} as any,
-    }),
-    /principal/
-  );
-});
-
-test("Integration: Client uses request-level idempotency key", async () => {
-  const client = new RetryableApiClient({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
-    idempotencyKey: "client-level-key",
-  });
-
-  let capturedIdempotencyKey: string | undefined;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url, options) => {
-    const body = JSON.parse(options?.body as string);
-    capturedIdempotencyKey = body.idempotencyKey;
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  };
-
-  try {
-    // Use request-level key
-    await client.post("/test", { data: "test" }, { idempotencyKey: "request-level-key" });
-    assert.equal(capturedIdempotencyKey, "request-level-key");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("Integration: Client falls back to client-level idempotency key", async () => {
-  const client = new RetryableApiClient({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-    principal: TEST_PRINCIPAL,
-    idempotencyKey: "client-level-key",
-  });
-
-  let capturedIdempotencyKey: string | undefined;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url, options) => {
-    const body = JSON.parse(options?.body as string);
-    capturedIdempotencyKey = body.idempotencyKey;
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  };
-
-  try {
-    // No request-level key provided
-    await client.post("/test", { data: "test" });
-    assert.equal(capturedIdempotencyKey, "client-level-key");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
 });

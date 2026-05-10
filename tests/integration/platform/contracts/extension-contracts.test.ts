@@ -335,6 +335,9 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
     amountUsd: 5000,
     requesterManagerIds: [],
     conflictedApproverIds: [],
+    evidenceRefs: [],
+    policyVersion: "1.0",
+    orgVersion: "1.0",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:30:00.000Z");
 
   assert.deepEqual(result.approverChain, ["finance_backup", "cfo"]);
@@ -407,6 +410,7 @@ test("contract: KnowledgeBoundaryService logs and redacts denied access", () => 
       defaultVisibility: "private",
       allowedOrgNodeIds: [],
       auditOnAccess: false,
+      fieldAllowlist: [],
     },
     "user_1",
     "dept_hr",
@@ -508,15 +512,22 @@ test("contract: WorkflowBuilderService must block wizard advance when current st
     session: {
       sessionId: "wizard_1",
       currentStepId: "capability_setup",
+      schemaVersion: 1,
       steps: [
         { stepId: "business_type", title: "Business", completed: true, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
         { stepId: "capability_setup", title: "Capability", completed: false, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
       ],
+      history: [],
+      answers: {},
+      visitedStepIds: [],
     },
     template: {
       templateId: "tpl_release",
       title: "Release Template",
       steps: ["select trigger", "deploy"],
+      requiredCapabilities: [],
+      parameters: {},
+      catalogTags: [],
     },
     onboardingWizard: {
       steps: [

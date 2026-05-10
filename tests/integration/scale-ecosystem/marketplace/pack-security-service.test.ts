@@ -26,6 +26,7 @@ test("PackSecurityService runSecurityScan detects critical vulnerability pattern
     packId: "pack_malicious",
     version: "1.0.0",
     sourceUri: "inline:const result = exec(userInput);",
+    sourceCode: "const result = exec(userInput);",
     manifestChecksum: "invalid-checksum-format",
     capabilities: ["exec"],
     permissions: ["exec:bash"],
@@ -52,11 +53,12 @@ test("PackSecurityService runSecurityScan detects user-controlled exec", async (
   const service = new PackSecurityService();
 
   // Pattern requires: exec followed by ( with optional whitespace, then user
-  const sourceCode = "inline:const x = exec (userInput);";
+  const sourceCode = "const x = exec (userInput);";
   const input: SecurityScanInput = {
     packId: "pack_exec_vuln",
     version: "2.0.0",
     sourceUri: sourceCode,
+    sourceCode: sourceCode,
     manifestChecksum: "invalid-checksum", // Will be flagged by checksum validation first
     capabilities: ["exec"],
     permissions: ["exec:bash"],
@@ -77,6 +79,7 @@ test("PackSecurityService runSecurityScan detects user-controlled eval", async (
     packId: "pack_eval_vuln",
     version: "1.0.0",
     sourceUri: "inline:eval(userData);",
+    sourceCode: "eval(userData);",
     manifestChecksum: "b".repeat(64),
     capabilities: ["exec"],
     permissions: ["read:data"],
@@ -96,6 +99,7 @@ test("PackSecurityService runSecurityScan detects broad environment access", asy
     packId: "pack_env_vuln",
     version: "1.0.0",
     sourceUri: "inline:console.log(process.env);",
+    sourceCode: "console.log(process.env);",
     manifestChecksum: "c".repeat(64),
     capabilities: ["read:env"],
     permissions: ["read:environment"],
@@ -114,6 +118,7 @@ test("PackSecurityService runSecurityScan detects shell execution enabled", asyn
     packId: "pack_shell_vuln",
     version: "1.0.0",
     sourceUri: "inline:child_process.spawn('ls', {shell: true});",
+    sourceCode: "child_process.spawn('ls', {shell: true});",
     manifestChecksum: "d".repeat(64),
     capabilities: ["exec"],
     permissions: ["exec:bash"],
@@ -132,6 +137,7 @@ test("PackSecurityService runSecurityScan detects high-risk permissions", async 
     packId: "pack_high_risk_perms",
     version: "1.0.0",
     sourceUri: "inline:// safe source code",
+    sourceCode: "// safe source code",
     manifestChecksum: "e".repeat(64),
     capabilities: ["file_read"],
     permissions: ["file:write", "file:delete", "sql:write"],
@@ -153,6 +159,7 @@ test("PackSecurityService runSecurityScan detects exec capability with bash perm
     packId: "pack_arbitrary_exec",
     version: "1.0.0",
     sourceUri: "inline:// safe-looking code",
+    sourceCode: "// safe-looking code",
     manifestChecksum: "f".repeat(64),
     capabilities: ["exec"],
     permissions: ["exec:bash"],
@@ -172,6 +179,7 @@ test("PackSecurityService runSecurityScan detects over-provisioned capabilities"
     packId: "pack_over_provisioned",
     version: "1.0.0",
     sourceUri: "inline:// safe code",
+    sourceCode: "// safe code",
     manifestChecksum: "0".repeat(64),
     capabilities: ["exec", "file_write", "sql_execute", "network_egress"],
     permissions: ["read:data"],
@@ -191,6 +199,7 @@ test("PackSecurityService runSecurityScan produces valid scan result structure",
     packId: "pack_structure_test",
     version: "1.5.0",
     sourceUri: "inline:// valid source",
+    sourceCode: "// valid source",
     manifestChecksum: "a".repeat(64),
     capabilities: ["read:catalog"],
     permissions: ["read:catalog"],

@@ -134,6 +134,7 @@ test("SloAlertingService.defineSlo creates a persisted SLO and getSlo retrieves 
       targetValue: 0.95,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     assert.ok(slo.id.startsWith("slo_"), "SLO ID should have slo_ prefix");
@@ -167,6 +168,7 @@ test("SloAlertingService.collectSli stores a sample and listSliSamples retrieves
       targetValue: 500,
       operator: "lte",
       windowMinutes: 15,
+      domain: null,
     });
 
     const sli: SliRecord = sloService.collectSli(slo.id, 342.5, "ms", { source: "test" });
@@ -198,6 +200,7 @@ test("SloAlertingService.evaluateSlo returns met when target is met", () => {
       targetValue: 0.90,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     // Collect two samples averaging 0.95 (>= 0.90 target)
@@ -228,6 +231,7 @@ test("SloAlertingService.evaluateSlo returns breached when average violates targ
       targetValue: 0.95,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     // Collect samples averaging 0.80 (< 0.95 target)
@@ -253,7 +257,8 @@ test("SloAlertingService.evaluateSlo returns unknown when no samples in window",
       sliKind: "latency_p99",
       targetValue: 200,
       operator: "lte",
-      windowMinutes: 1, // Very short window
+      windowMinutes: 1,
+      domain: null,
     });
 
     // No samples collected — should return unknown
@@ -277,6 +282,7 @@ test("SloAlertingService.defineAlertRule creates a rule and listAlertRules retur
       targetValue: 0.05,
       operator: "lte",
       windowMinutes: 30,
+      domain: null,
     });
 
     const rule = sloService.defineAlertRule({
@@ -316,6 +322,7 @@ test("SloAlertingService.fireAlert creates an alert event delivered to log chann
       targetValue: 0.99,
       operator: "gte",
       windowMinutes: 30,
+      domain: null,
     });
 
     const rule = sloService.defineAlertRule({

@@ -25,6 +25,7 @@ test("integration: sdk workbench composes client, plugin, and pack manifests int
       {
         packId: "ops-pack",
         version: "1.0.0",
+        domainId: "ops",
         domain: "ops",
         owner: "owner@example.com",
         capabilities: [

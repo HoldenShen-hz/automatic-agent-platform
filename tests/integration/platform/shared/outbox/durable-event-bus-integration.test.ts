@@ -35,8 +35,8 @@ test.describe("DurableEventBus integration tests", () => {
     // Verify event is persisted in store
     const stored = ctx.store.event.getEvent(event.id);
     assert.ok(stored !== null);
-    assert.equal(stored.id, event.id);
-    assert.equal(stored.eventType, "task:status_changed");
+    assert.equal(stored!.id, event.id);
+    assert.equal(stored!.eventType, "task:status_changed");
   });
 
   test("publish creates ack records for required consumers", () => {

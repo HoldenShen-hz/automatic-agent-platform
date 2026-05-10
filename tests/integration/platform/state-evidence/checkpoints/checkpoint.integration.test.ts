@@ -26,6 +26,7 @@ import {
   DEFAULT_MAX_CHECKPOINT_SIZE_BYTES,
   CheckpointSizeExceededError,
   CheckpointEnvelopeInvalidError,
+  CheckpointEnvelope,
 } from "../../../../../src/platform/state-evidence/checkpoints/index.js";
 import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import type { CompensationModel } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
@@ -49,6 +50,9 @@ test("integration: wrap and unwrap workflow step checkpoint preserves all fields
   const tempDir = createTempDir("aa-wrap-unwrap-test");
   try {
     const checkpoint = createWorkflowStepCheckpoint({
+      harnessRunId: "harness_integ_1",
+      nodeRunId: "node_integ_1",
+      planGraphId: "pg_integ_1",
       taskId: "task_integ_1",
       executionId: "exec_integ_1",
       workflowId: "wf_integ_1",
@@ -107,7 +111,7 @@ test("integration: multiple wrap/unwrap cycles produce identical results", async
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_cycle",
     nodeRunId: "node_cycle",
-    planGraphBundleId: "bundle_cycle",
+    planGraphId: "bundle_cycle",
     taskId: "task_cycle",
     executionId: "exec_cycle",
     workflowId: "wf_cycle",
@@ -154,7 +158,7 @@ test("integration: checkpoint with all compensation model types round-trips corr
     const checkpoint = createWorkflowStepCheckpoint({
       harnessRunId: `harness_comp_${model}`,
       nodeRunId: "node_comp",
-      planGraphBundleId: "bundle_comp",
+      planGraphId: "bundle_comp",
       taskId: `task_comp_${model}`,
       executionId: "exec_comp",
       workflowId: "wf_comp",
@@ -191,7 +195,7 @@ test("integration: checkpoint with null compensation model round-trips correctly
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_null_comp",
     nodeRunId: "node_null_comp",
-    planGraphBundleId: "bundle_null_comp",
+    planGraphId: "bundle_null_comp",
     taskId: "task_null_comp",
     executionId: "exec_null_comp",
     workflowId: "wf_null_comp",
@@ -232,7 +236,7 @@ test("integration: checkpoint with object compensationModel - demonstrates issue
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_obj_comp",
     nodeRunId: "node_obj_comp",
-    planGraphBundleId: "bundle_obj_comp",
+    planGraphId: "bundle_obj_comp",
     taskId: "task_obj_comp",
     executionId: "exec_obj_comp",
     workflowId: "wf_obj_comp",
@@ -272,8 +276,9 @@ test("integration: checkpoint with object compensationModel - demonstrates issue
   const unpacked = await unwrapWorkflowStepCheckpoint(envelope);
 
   // This will have the object
-  if (typeof unpacked.data.compensationModel === "object") {
-    assert.equal((unpacked.data.compensationModel as { kind: string }).kind, "compensating_action");
+  if (typeof unpacked.data.compensationModel === "object" && unpacked.data.compensationModel !== null) {
+    const obj = unpacked.data.compensationModel as { kind?: string };
+    assert.equal(obj.kind, "compensating_action");
   }
 });
 
@@ -289,7 +294,7 @@ test("integration: round-trip with object compensationModel fails validation", a
     const checkpoint = createWorkflowStepCheckpoint({
       harnessRunId: "harness_obj_fail",
       nodeRunId: "node_obj_fail",
-      planGraphBundleId: "bundle_obj_fail",
+      planGraphId: "bundle_obj_fail",
       taskId: "task_obj_fail",
       executionId: "exec_obj_fail",
       workflowId: "wf_obj_fail",
@@ -395,6 +400,9 @@ test("integration: readWorkflowStepCheckpoint with valid checkpoint file", async
 
   try {
     const checkpoint = createWorkflowStepCheckpoint({
+      harnessRunId: "harness_read_valid",
+      nodeRunId: "node_read_valid",
+      planGraphId: "pg_read_valid",
       taskId: "task_read_valid",
       executionId: "exec_read_valid",
       workflowId: "wf_read_valid",
@@ -529,6 +537,9 @@ test("integration: readWorkflowStepCheckpoint returns null for non-existent path
 
 test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_summarize",
+    nodeRunId: "node_summarize",
+    planGraphId: "pg_summarize",
     taskId: "task_summarize",
     executionId: "exec_summarize",
     workflowId: "wf_summarize",
@@ -560,7 +571,7 @@ test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async 
   assert.equal(summary.stepId, "step_summarize");
   assert.equal(summary.status, "succeeded");
   assert.equal(summary.producedAt, "2026-05-01T12:30:00.000Z");
-  assert.equal(summary.nextStepId, "step_next");
+  assert.equal(summary.nextNodeRunId, "step_next");
   assert.deepEqual(summary.outputKeys, ["key1", "key2"]);
   assert.equal(summary.summary, "This is the workflow summary");
   assert.equal(summary.source, "summarize_test");
@@ -568,6 +579,9 @@ test("integration: summarizeWorkflowStepCheckpoint with full checkpoint", async 
 
 test("integration: summarizeWorkflowStepCheckpoint with null values", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_null_summary",
+    nodeRunId: "node_null_summary",
+    planGraphId: "pg_null_summary",
     taskId: "task_null_summary",
     executionId: null,
     workflowId: "wf_null_summary",
@@ -596,7 +610,7 @@ test("integration: summarizeWorkflowStepCheckpoint with null values", async () =
 
   assert.equal(summary.artifactId, "artifact_null_summary");
   assert.equal(summary.stepId, "step_null_summary");
-  assert.equal(summary.nextStepId, null);
+  assert.equal(summary.nextNodeRunId, null);
   assert.equal(summary.summary, null);
 });
 
@@ -654,7 +668,7 @@ test("integration: unpackCheckpointEnvelope verifies checksum", async () => {
 
 test("integration: unpackCheckpointEnvelope rejects invalid envelope structure", async () => {
   const invalidEnvelope = {
-    version: "invalid_version",
+    version: "invalid_version" as CheckpointEnvelope["version"],
     schema: "test.v1",
     payload: "abc123",
     metadata: {
@@ -662,7 +676,7 @@ test("integration: unpackCheckpointEnvelope rejects invalid envelope structure",
       compressedSizeBytes: 100,
       checksum: "abc123",
       createdAt: "2026-05-01T00:00:00.000Z",
-      algorithm: "gzip",
+      algorithm: "gzip" as const,
       payloadSchemaVersion: "test.v1",
     },
   };
@@ -693,7 +707,7 @@ test("integration: checkpoint with complex nested output round-trips", async () 
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_complex",
     nodeRunId: "node_complex",
-    planGraphBundleId: "bundle_complex",
+    planGraphId: "bundle_complex",
     taskId: "task_complex",
     executionId: "exec_complex",
     workflowId: "wf_complex",
@@ -735,7 +749,7 @@ test("integration: checkpoint with unicode content round-trips", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_unicode",
     nodeRunId: "node_unicode",
-    planGraphBundleId: "bundle_unicode",
+    planGraphId: "bundle_unicode",
     taskId: "task_unicode",
     executionId: "exec_unicode",
     workflowId: "wf_unicode",
@@ -778,7 +792,7 @@ test("integration: checkpoint with special JSON characters round-trips", async (
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_special",
     nodeRunId: "node_special",
-    planGraphBundleId: "bundle_special",
+    planGraphId: "bundle_special",
     taskId: "task_special",
     executionId: "exec_special",
     workflowId: "wf_special",
@@ -815,7 +829,7 @@ test("integration: envelope includes correct schema version", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
     harnessRunId: "harness_schema",
     nodeRunId: "node_schema",
-    planGraphBundleId: "bundle_schema",
+    planGraphId: "bundle_schema",
     taskId: "task_schema",
     executionId: "exec_schema",
     workflowId: "wf_schema",

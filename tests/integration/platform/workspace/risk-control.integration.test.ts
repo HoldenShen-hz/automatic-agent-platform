@@ -67,8 +67,8 @@ test("integration: risk escalation from low to critical", () => {
 
   const riskOrder: Record<RiskLevel, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
 
-  assert.ok(riskOrder[lowResult.riskLevel] <= riskOrder[medResult.riskLevel]);
-  assert.ok(riskOrder[medResult.riskLevel] <= riskOrder[highResult.riskLevel]);
+  assert.ok(riskOrder[lowResult.riskLevel]! <= riskOrder[medResult.riskLevel]!);
+  assert.ok(riskOrder[medResult.riskLevel]! <= riskOrder[highResult.riskLevel]!);
 });
 
 test("integration: multiple steps compose risk profile", () => {

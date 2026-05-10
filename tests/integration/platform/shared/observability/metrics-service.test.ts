@@ -62,6 +62,7 @@ test("metrics service produces a complete summary from a real database with task
     store.insertStepOutput({
       id: newId("step"),
       taskId,
+      nodeRunId: newId("noderun"),
       stepId: "analyze_request",
       roleId: "general_executor",
       status: "succeeded",

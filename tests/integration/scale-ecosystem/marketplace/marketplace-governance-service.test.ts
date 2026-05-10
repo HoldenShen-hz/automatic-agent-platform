@@ -75,7 +75,7 @@ test("marketplace governance buildCatalog returns correct summary statistics", (
       displayName: "Pending Plugin",
       version: "1.0.0",
       owner: "community.owner",
-      trustLevel: "sandboxed",
+      trustLevel: "community",
       sourceUri: "registry://plugins/pending-plugin",
       capabilities: ["custom_tool"],
       permissions: ["read.workspace"],

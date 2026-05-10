@@ -15,7 +15,7 @@ import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("TaskRepository: insert and retrieve task", () => {
   const workspace = createTempWorkspace("aa-task-repo-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -58,14 +58,14 @@ test("TaskRepository: insert and retrieve task", () => {
     assert.equal(retrieved!.status, "queued");
     assert.equal(retrieved!.tenantId, "tenant-test");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: get task returns undefined for non-existent", () => {
   const workspace = createTempWorkspace("aa-task-notfound-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -78,14 +78,14 @@ test("TaskRepository: get task returns undefined for non-existent", () => {
 
     assert.equal(result, undefined);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: update task status with CAS", () => {
   const workspace = createTempWorkspace("aa-task-cas-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -140,14 +140,14 @@ test("TaskRepository: update task status with CAS", () => {
     assert.equal(rowsFailed, 0, "Should update 0 rows when status doesn't match");
     assert.equal(updated!.status, "in_progress", "Status should remain unchanged");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: list tasks with limit and tenant filter", () => {
   const workspace = createTempWorkspace("aa-task-list-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -194,14 +194,14 @@ test("TaskRepository: list tasks with limit and tenant filter", () => {
     const otherTenantTasks = repo.listTasks(undefined, "other-tenant");
     assert.equal(otherTenantTasks.length, 0, "Should return empty for non-matching tenant");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: update task output", () => {
   const workspace = createTempWorkspace("aa-task-output-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -246,14 +246,14 @@ test("TaskRepository: update task output", () => {
     const updated = repo.getTask(taskId);
     assert.equal(updated!.outputJson, outputJson, "Output should be updated");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: count queued tasks", () => {
   const workspace = createTempWorkspace("aa-task-count-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -346,14 +346,14 @@ test("TaskRepository: count queued tasks", () => {
     const otherTenantQueued = repo.countQueuedTasks("other-tenant");
     assert.equal(otherTenantQueued, 0, "Should count 0 for non-existent tenant");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("TaskRepository: parent-child task relationships", () => {
   const workspace = createTempWorkspace("aa-task-parent-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: TaskRepository;
 
   try {
@@ -419,7 +419,7 @@ test("TaskRepository: parent-child task relationships", () => {
     assert.equal(child!.parentId, parentId);
     assert.equal(child!.rootId, parentId);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });

@@ -233,8 +233,9 @@ test("lifecycle-integration: GracefulShutdown shutdown sequence timing", async (
   const totalTime = Date.now() - startTime;
 
   // fast-handler should execute first (reverse registration order)
-  assert.equal(executionTimes[0].name, "fast-handler");
-  assert.equal(executionTimes[1].name, "slow-handler");
+  assert.equal(executionTimes.length, 2);
+  assert.equal(executionTimes[0]!.name, "fast-handler");
+  assert.equal(executionTimes[1]!.name, "slow-handler");
 
   // Total time should be at least the sum of both handlers (they run sequentially)
   assert.ok(totalTime >= 25, `Expected at least 25ms, got ${totalTime}ms`);

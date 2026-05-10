@@ -41,7 +41,7 @@ test("integration: canary rollout progression", () => {
   assert.equal(fiftyPercent, 50);
 
   const promoted = service.promoteCanary(route.routeId);
-  const promotedCanary = promoted.targets.find((t) => t.targetId === "canary");
+  const promotedCanary = promoted.targets.find((t: { targetId: string }) => t.targetId === "canary");
   assert.equal(promotedCanary?.weight, 100);
 });
 

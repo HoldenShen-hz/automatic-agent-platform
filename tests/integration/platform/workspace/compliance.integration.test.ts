@@ -10,20 +10,20 @@ import {
   type ErasureRequest,
   type ErasureRequestInput,
   type ErasureStatus,
-} from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-request-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
 import {
   ErasureReportService,
   type ErasureReport,
   type GenerateErasureReportInput,
   type CryptoShreddingVerificationSummary,
-} from "../../../../../src/platform/five-plane-control-plane/compliance/erasure-report-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
 import {
   DataEncryptionKeyService,
   type DataEncryptionKey,
   type CreateDekInput,
-} from "../../../../../src/platform/five-plane-control-plane/compliance/data-encryption-key-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
 import {
   DataResidencyService,
@@ -32,9 +32,9 @@ import {
   type CheckResidencyInput,
   type Jurisdiction,
   type DataRegion,
-} from "../../../../../src/platform/five-plane-control-plane/compliance/data-residency-service.js";
+} from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
-import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/types.js";
+import type { ComplianceStore } from "../../../../../src/platform/five-plane-control-plane/compliance/index.js";
 
 // ============================================================================
 // Mock Store for Integration Tests

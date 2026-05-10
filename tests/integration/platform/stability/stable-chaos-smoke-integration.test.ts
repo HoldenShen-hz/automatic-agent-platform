@@ -17,7 +17,7 @@ import {
   writeStableChaosSmokeReport,
   type StableChaosSmokeReport,
   type StableChaosScenarioResult,
-} from "../../../../../src/platform/stability/stable-chaos-smoke.js";
+} from "../../../../src/platform/stability/stable-chaos-smoke.js";
 
 function createTempWorkspace(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
@@ -140,11 +140,11 @@ test("runStableChaosSmoke integration: scenario count matches passed/failed tota
     assert.equal(report.totalScenarios, report.scenarios.length);
     assert.equal(
       report.passedScenarios,
-      report.scenarios.filter((s) => s.passed).length
+      report.scenarios.filter((s: StableChaosScenarioResult) => s.passed).length
     );
     assert.equal(
       report.failedScenarios,
-      report.scenarios.filter((s) => !s.passed).length
+      report.scenarios.filter((s: StableChaosScenarioResult) => !s.passed).length
     );
   } finally {
     cleanupPath(outputDir);
@@ -160,7 +160,7 @@ test("runStableChaosSmoke integration: passed scenarios have pass=true and faile
       if (scenario.passed) {
         assert.equal(
           report.passedScenarios > 0 ||
-            report.scenarios.some((s) => s.passed),
+            report.scenarios.some((s: StableChaosScenarioResult) => s.passed),
           true
         );
       }
@@ -175,7 +175,7 @@ test("runStableChaosSmoke integration: all five scenario IDs are unique", async 
   try {
     const report = await runStableChaosSmoke({ outputDir });
 
-    const scenarioIds = report.scenarios.map((s) => s.scenarioId);
+    const scenarioIds = report.scenarios.map((s: StableChaosScenarioResult) => s.scenarioId);
     const uniqueIds = new Set(scenarioIds);
 
     assert.equal(uniqueIds.size, scenarioIds.length, "All scenario IDs should be unique");
@@ -233,7 +233,7 @@ test("runStableChaosSmoke integration: passed scenarios do not leave failed stat
   try {
     const report = await runStableChaosSmoke({ outputDir });
 
-    const passedScenarios = report.scenarios.filter((s) => s.passed);
+    const passedScenarios = report.scenarios.filter((s: StableChaosScenarioResult) => s.passed);
     assert.ok(passedScenarios.length > 0, "At least some scenarios should pass");
 
     for (const scenario of passedScenarios) {
@@ -252,7 +252,7 @@ test("runStableChaosSmoke integration: details contain before and after status f
   try {
     const report = await runStableChaosSmoke({ outputDir });
 
-    const repairScenarios = report.scenarios.filter((s) =>
+    const repairScenarios = report.scenarios.filter((s: StableChaosScenarioResult) =>
       s.scenarioId.includes("repair") || s.scenarioId.includes("orphan") || s.scenarioId.includes("ack")
     );
 

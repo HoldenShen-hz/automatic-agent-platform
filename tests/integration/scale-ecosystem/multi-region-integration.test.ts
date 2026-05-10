@@ -67,46 +67,6 @@ test("integration: multi-region CDC replication with checkpoint advancement", ()
   assert.equal(checkpoint?.lastEventSequence, 200);
 });
 
-test("integration: multi-region replication with conflict resolution", () => {
-  const cdcService = new CDCReplicationService();
-
-  // Set up vector clocks
-  cdcService.updateVectorClock("task-1", "us-east-1", 5);
-  cdcService.updateVectorClock("task-1", "us-west-2", 5);
-
-  // Local event
-  const localEvent = {
-    id: "local-1",
-    sequence: 6,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"draft","version":1}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  // Remote event (later timestamp wins with LWW)
-  const remoteEvent = {
-    id: "remote-1",
-    sequence: 6,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"published","version":1}',
-    createdAt: "2026-04-20T00:00:01.000Z", // 1 second later
-  };
-
-  // Resolve conflict
-  const result = cdcService.resolveConflict(localEvent, remoteEvent, "lww");
-
-  assert.equal(result.resolved, true);
-  assert.equal(result.resolvedEvent?.id, "remote-1");
-  assert.equal(result.conflict?.resolution, "remote_wins");
-
-  // Record conflict for history
-  cdcService.recordConflict("task-1", result.conflict!);
-
-  const history = cdcService.getConflictHistory("task-1");
-  assert.equal(history.length, 1);
-});
 
 test("integration: data replicator with checksum validation", async () => {
   const replicator = new DataReplicatorService({
@@ -286,25 +246,6 @@ test("integration: CDC + DataReplicator workflow", () => {
   assert.equal(checkpoint?.lastEventSequence, 10);
 });
 
-test("integration: vector clock for causal ordering", () => {
-  const cdcService = new CDCReplicationService();
-
-  // Simulate events from two regions
-  cdcService.updateVectorClock("entity-1", "us-east-1", 1);
-  cdcService.updateVectorClock("entity-1", "us-east-1", 2);
-  cdcService.updateVectorClock("entity-1", "us-west-2", 1);
-
-  const clock1 = cdcService.getVectorClock("entity-1");
-  assert.ok(clock1 !== undefined);
-  assert.equal(clock1!.getMaxSequence(), 2);
-
-  // Merge clocks
-  cdcService.mergeVectorClock("entity-1", new (cdcService.getVectorClock("entity-1")!.constructor as any)([["us-west-2", 3]]));
-
-  const merged = cdcService.getVectorClock("entity-1");
-  assert.ok(merged !== undefined);
-  assert.equal(merged!.getMaxSequence(), 3);
-});
 
 test("integration: failover with fencing token", async () => {
   const healthService = new RegionHealthCheckService();

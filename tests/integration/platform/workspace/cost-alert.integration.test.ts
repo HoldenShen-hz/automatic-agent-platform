@@ -7,10 +7,8 @@ import test from "node:test";
 
 import {
   CostAlertService,
-  CostAlertLevel,
   type CostThresholdExceededEvent,
-  type BudgetScope,
-} from "../../../../../src/platform/five-plane-control-plane/cost-alert/index.js";
+} from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 
 import {
   CostAlertConfigLoader,
@@ -19,6 +17,8 @@ import {
 import type {
   CostAlertConfig,
   StepUsageRecord,
+  CostAlertLevel,
+  BudgetScope,
 } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
 
 // ============================================================================

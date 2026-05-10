@@ -108,6 +108,7 @@ function seedOpsDb(workspace: string): { dbPath: string; taskId: string; manifes
     lastProgressAt: nowIso(),
     lastHeartbeatAt: nowIso(),
     updatedAt: nowIso(),
+    version: 1,
   });
   db.close();
   return { dbPath, taskId, manifestPath, lockfilePath };

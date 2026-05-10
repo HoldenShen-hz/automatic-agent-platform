@@ -209,6 +209,7 @@ test("platform operator CLI summarizes and exports execution-plane promotion evi
       lastProgressAt: generatedAt,
       lastHeartbeatAt: generatedAt,
       updatedAt: generatedAt,
+      version: 1,
     });
     db.close();
 

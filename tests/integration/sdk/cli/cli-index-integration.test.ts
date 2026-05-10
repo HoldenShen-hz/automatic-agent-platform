@@ -175,7 +175,7 @@ test("CliEntrypoint type can be used as type annotation", () => {
 });
 
 test("All CLI_ENTRYPOINTS values satisfy CliEntrypoint type", () => {
-  const entrypoints: CliEntrypoint[] = CLI_ENTRYPOINTS;
+  const entrypoints: CliEntrypoint[] = [...CLI_ENTRYPOINTS];
   assert.equal(entrypoints.length, CLI_ENTRYPOINTS.length);
 });
 

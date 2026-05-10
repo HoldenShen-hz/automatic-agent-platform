@@ -17,6 +17,8 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TaskRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
 import { ExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
+import type { TaskStatus, TaskSource, TaskPriority } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { RunKind, ExecutionStatus } from "../../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures and helpers
@@ -37,9 +39,9 @@ function createTaskRecord(overrides: Partial<{
   divisionId: string;
   tenantId: string | null;
   title: string;
-  status: string;
-  source: string;
-  priority: string;
+  status: TaskStatus;
+  source: TaskSource;
+  priority: TaskPriority;
   inputJson: string;
   normalizedInputJson: string;
   outputJson: string | null;
@@ -80,14 +82,14 @@ function createExecutionRecord(
     parentExecutionId: string | null;
     agentId: string;
     roleId: string;
-    runKind: string;
-    status: string;
+    runKind: RunKind;
+    status: ExecutionStatus;
     inputRef: string | null;
     traceId: string;
     attempt: number;
     timeoutMs: number;
     budgetUsdLimit: number;
-    requiresApproval: number;
+    requiresApproval: 0 | 1;
     sandboxMode: string;
     allowedToolsJson: string;
     allowedPathsJson: string;
@@ -243,10 +245,10 @@ test("AuthoritativeTaskStore - Task CRUD: update task output with CAS semantics"
       store.insertTask(createTaskRecord({ id: taskId, status: "in_progress" }));
     });
 
-    // updateTaskOutput takes (taskId, expectedStatus, outputJson, updatedAt)
+    // updateTaskOutput takes (taskId, outputJson, updatedAt)
     const updateTime = new Date().toISOString();
     db.transaction(() => {
-      store.updateTaskOutput(taskId, "in_progress", outputJson, updateTime);
+      store.updateTaskOutput(taskId, outputJson, updateTime);
     });
 
     const updated = store.getTask(taskId);

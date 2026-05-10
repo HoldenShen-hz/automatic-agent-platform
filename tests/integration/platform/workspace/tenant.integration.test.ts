@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   TenantBoundaryRegistryService,
+  type TenantRecord,
 } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
 
 // ============================================================================
@@ -316,8 +317,8 @@ test("integration: user sees all their tenants", () => {
   const tenants = service.listTenantsForUser("user_multi");
 
   assert.equal(tenants.length, 2);
-  assert.ok(tenants.some((t) => t.tenantId === "tenant_multi_1"));
-  assert.ok(tenants.some((t) => t.tenantId === "tenant_multi_2"));
+  assert.ok(tenants.some((t: TenantRecord) => t.tenantId === "tenant_multi_1"));
+  assert.ok(tenants.some((t: TenantRecord) => t.tenantId === "tenant_multi_2"));
 });
 
 test("integration: cross-tenant access assertion throws", () => {

@@ -26,7 +26,6 @@ import {
 
 import {
   DataClassificationService,
-  type DataClassificationLevel,
 } from "../../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 
 // ============================================================================

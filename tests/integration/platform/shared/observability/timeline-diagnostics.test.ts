@@ -194,6 +194,8 @@ test("incident timeline report assembles messages, logs, compactions, and export
       id: "comp-incident-summary",
       sessionId: snapshot.session.id,
       taskId: snapshot.task.id,
+      harnessRunId: null,
+      nodeRunId: null,
       stage: "summarize",
       sourceMessageIdsJson: JSON.stringify(["msg-incident-tool-result"]),
       summaryText: "Summarized prior tool retries and remote lease mismatch evidence.",

@@ -4,9 +4,6 @@ import test from "node:test";
 import {
   listEnabledConnectors,
   summarizeConnectorHealth,
-  selectPreferredRegion,
-  shouldReplicateToRegion,
-  resolveRegionFailover,
   isQuotaExceeded,
   orderFairQueue,
   choosePreemptionVictim,
@@ -14,6 +11,9 @@ import {
   allocateReservedCapacity,
   resolveHighestPriorityTier,
 } from "../../../src/scale-ecosystem/index.js";
+import { selectPreferredRegion } from "../../../src/scale-ecosystem/multi-region/region-router/index.js";
+import { shouldReplicateToRegion } from "../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
+import { resolveRegionFailover } from "../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 
 test("scale-ecosystem support modules coordinate connector, region, quota, and SLA decisions", () => {
   const connectors = listEnabledConnectors([

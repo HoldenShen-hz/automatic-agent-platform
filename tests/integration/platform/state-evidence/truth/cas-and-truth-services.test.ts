@@ -199,7 +199,7 @@ test("FencingTokenService: generates token with UUID containing dashes", () => {
   assert.equal(parts.length, 4, "Token should have 4 parts");
 
   // First part should be URL-encoded UUID
-  const decodedExecId = decodeURIComponent(parts[0]);
+  const decodedExecId = decodeURIComponent(parts[0]!);
   assert.equal(decodedExecId, executionId, "Execution ID should be preserved");
 });
 
@@ -417,7 +417,7 @@ test("Truth repository: task status updates preserve append-only semantics", () 
 
     // Update status - old value is replaced but transition is logged
     ctx.db.transaction(() => {
-      ctx.store.updateTaskStatus(taskId, "queued", "in_progress", now);
+      ctx.store.updateTaskStatus(taskId, "queued", "in_progress", now, null);
     });
 
     const task = ctx.store.getTask(taskId);
@@ -466,7 +466,7 @@ test("Truth repository: execution lifecycle maintains append-only state", () => 
         agentId: "agent-001",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "pending",
+        status: "queued",
         inputRef: null,
         traceId: `trace-${executionId}`,
         attempt: 1,
@@ -547,16 +547,16 @@ test("Truth repository: workflow state append-only transitions", () => {
     // Insert workflow state
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
-        id: "wf-001",
         taskId,
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 3,
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
         resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+        workflowId: "wf-001",
       });
     });
 
@@ -642,14 +642,11 @@ test("Truth repository: session append-only lifecycle", () => {
       ctx.store.insertSession({
         id: sessionId,
         taskId,
-        tenantId: null,
+        channel: "cli",
         status: "open",
-        inputJson: "{}",
-        outputJson: null,
-        errorCode: null,
+        externalSessionId: null,
         createdAt: now,
         updatedAt: now,
-        completedAt: null,
       });
     });
 
@@ -850,8 +847,13 @@ test("RuntimeTruthRepository: appendNodeAttemptReceipt is append-only", () => {
     nodeAttemptReceiptId: "receipt-001",
     nodeAttemptId: "attempt-001",
     nodeRunId: "nrun-001",
+    harnessRunId: "hrun-001",
+    planGraphId: "pg-001",
+    graphVersion: 1,
     receiptKind: "tool",
     status: "succeeded",
+    duration: 100,
+    errorDetail: "",
   });
 
   repository.appendNodeAttemptReceipt(receipt);

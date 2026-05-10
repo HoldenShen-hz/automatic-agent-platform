@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import {
   createHarnessRun,
   createNodeRun,
@@ -17,8 +17,8 @@ import {
   createNodeAttemptReceipt,
   createRunVersionLock,
   type HarnessRun,
-} from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeTruthRepository } from "../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+} from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
 
 // ---------------------------------------------------------------------------
 // Helper functions

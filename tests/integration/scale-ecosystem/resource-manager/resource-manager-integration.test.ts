@@ -43,9 +43,15 @@ test("integration: quota enforcement coordinates with resource pool allocation",
   poolService.registerPool({
     poolId: "compute-pool",
     resourceType: "compute",
+    scopeType: "shared",
     capacityUnits: 100,
     allocatedUnits: 0,
     burstUnits: 20,
+    failureRateThreshold: 0.3,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Simulate quota policy tracking
@@ -80,13 +86,20 @@ test("integration: resource release restores quota headroom", () => {
   poolService.registerPool({
     poolId: "io-pool",
     resourceType: "io",
+    scopeType: "shared",
     capacityUnits: 50,
     allocatedUnits: 40,
     burstUnits: 10,
+    failureRateThreshold: 0.3,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
-  // Release capacity
-  const pool = poolService.release("io-pool", 30);
+  // Release capacity (consumerId is "workflow-old" since we tracked allocation via allocate)
+  poolService.allocate("io-pool", "workflow-old", 30);
+  const pool = poolService.release("io-pool", "workflow-old", 30);
 
   assert.equal(pool.allocatedUnits, 10);
 
@@ -209,7 +222,9 @@ test("integration: multi-dimensional quota tracks multiple resource types", () =
   });
 
   // First request - all within limits
-  const request1: MultiResourceQuotaVector = {
+  const request1 = {
+    scope: "tenant" as const,
+    scopeId: "tenant-1",
     worker_concurrency: 5,
     tool_qps: 50,
     model_tpm: 25000,
@@ -224,17 +239,17 @@ test("integration: multi-dimensional quota tracks multiple resource types", () =
   assert.equal(decision1.failedDimensions.length, 0);
 
   // Second request - exceeds one dimension
-  const request2: MultiResourceQuotaVector = {
+  const request2 = {
+    scope: "tenant" as const,
+    scopeId: "tenant-1",
     worker_concurrency: 5,
     tool_qps: 50,
     model_tpm: 25000,
     model_rpm: 5000,
     budget_amount: 500,
     approval_capacity: 25,
-    storage_io: 500,
+    storage_io: 1200, // exceeds limit of 1000
   };
-  // Exceed storage_io
-  (request2 as any).storage_io = 1200;
 
   const decision2 = evaluateMultiDimensionalQuota(quotaPolicy, request2);
   assert.equal(decision2.passed, false);
@@ -299,9 +314,15 @@ test("integration: quota resets after window with full usage release", () => {
   poolService.registerPool({
     poolId: "reset-pool",
     resourceType: "compute",
+    scopeType: "shared",
     capacityUnits: 100,
     allocatedUnits: 100, // fully utilized
     burstUnits: 0,
+    failureRateThreshold: 0.3,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Simulate quota policy at limit
@@ -313,8 +334,9 @@ test("integration: quota resets after window with full usage release", () => {
 
   assert.equal(isQuotaExceeded(quotaPolicy, 1), true);
 
-  // Release resources (simulating window reset)
-  poolService.release("reset-pool", 100);
+  // Release resources (simulating window reset) - need to allocate first
+  poolService.allocate("reset-pool", "workflow-pre-reset", 100);
+  poolService.release("reset-pool", "workflow-pre-reset", 100);
   quotaPolicy = createQuotaPolicy({
     scopeId: "tenant-1",
     hardLimit: 100,

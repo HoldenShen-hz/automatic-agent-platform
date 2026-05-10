@@ -16,7 +16,7 @@ import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("EventRepository: insert and retrieve event", () => {
   const workspace = createTempWorkspace("aa-event-repo-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -47,14 +47,14 @@ test("EventRepository: insert and retrieve event", () => {
     assert.equal(event!.id, eventId);
     assert.equal(event!.eventType, "task.created");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: get event returns undefined for non-existent", () => {
   const workspace = createTempWorkspace("aa-event-notfound-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -67,14 +67,14 @@ test("EventRepository: get event returns undefined for non-existent", () => {
 
     assert.equal(result, undefined);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: list events by type", () => {
   const workspace = createTempWorkspace("aa-event-type-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -126,14 +126,14 @@ test("EventRepository: list events by type", () => {
     const executionStartedEvents = repo.listEventsByType("execution.started");
     assert.equal(executionStartedEvents.length, 1);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: consumer ack operations", () => {
   const workspace = createTempWorkspace("aa-event-ack-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -177,14 +177,14 @@ test("EventRepository: consumer ack operations", () => {
     assert.equal(ack!.consumerId, consumerId);
     assert.equal(ack!.status, "pending");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: mark event ack", () => {
   const workspace = createTempWorkspace("aa-event-mark-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -236,14 +236,14 @@ test("EventRepository: mark event ack", () => {
     assert.equal(ack!.status, "acked");
     assert.equal(ack!.attemptCount, 1);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: list events for task", () => {
   const workspace = createTempWorkspace("aa-event-task-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
   let taskRepo: TaskRepository;
 
@@ -298,14 +298,14 @@ test("EventRepository: list events for task", () => {
     const events = repo.listEventsForTask(taskId);
     assert.equal(events.length, 5, "Should list all 5 events for the task");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: insert event dead letter", () => {
   const workspace = createTempWorkspace("aa-event-dlq-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -333,17 +333,17 @@ test("EventRepository: insert event dead letter", () => {
 
     const deadLetters = repo.listEventDeadLetters(10);
     assert.equal(deadLetters.length, 1);
-    assert.equal(deadLetters[0].id, "dlq-001");
-    assert.equal(deadLetters[0].failureCount, 3);
+    assert.equal(deadLetters[0]!.id, "dlq-001");
+    assert.equal(deadLetters[0]!.failureCount, 3);
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });
 
 test("EventRepository: list all events with pagination", () => {
   const workspace = createTempWorkspace("aa-event-all-");
-  let db: SqliteDatabase;
+  let db!: SqliteDatabase;
   let repo: EventRepository;
 
   try {
@@ -378,7 +378,7 @@ test("EventRepository: list all events with pagination", () => {
     const thirdPage = repo.listAllEvents(10, 20);
     assert.equal(thirdPage.length, 5, "Third page should have 5 events");
   } finally {
-    db?.close();
+    db.close();
     cleanupPath(workspace);
   }
 });

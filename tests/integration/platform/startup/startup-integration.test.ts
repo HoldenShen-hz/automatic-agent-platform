@@ -5,14 +5,17 @@ import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/servi
 import {
   buildAiOperationsStartupPlan,
   registerAiOperationsStartupPlan,
+  type AiOperationsStartupPlan,
 } from "../../../../src/platform/ai-operations-startup-plan.js";
 import {
   buildFivePlaneStartupPlan,
   registerFivePlaneStartupPlan,
+  type FivePlaneStartupPlan,
 } from "../../../../src/platform/five-plane-startup-plan.js";
 import {
   buildFivePlaneRuntimeCatalog,
   registerFivePlaneRuntimeCatalog,
+  type FivePlaneRuntimeCatalog,
 } from "../../../../src/platform/five-plane-runtime-bootstrap.js";
 import { AiOperationsRuntimeOrchestrator } from "../../../../src/platform/ai-operations-runtime-orchestrator.js";
 import { FivePlaneRuntimeOrchestrator } from "../../../../src/platform/five-plane-runtime-orchestrator.js";
@@ -21,7 +24,7 @@ test("integration: AI operations startup plan registers and initializes correctl
   const registry = new ServiceRegistry();
 
   registerAiOperationsStartupPlan(registry);
-  const plan = registry.get("aiops.runtime.startup-plan");
+  const plan = registry.get<AiOperationsStartupPlan>("aiops.runtime.startup-plan");
 
   assert.ok(plan != null, "AI ops startup plan should be registered");
   assert.equal(plan.steps.length, 4, "should have 4 steps");
@@ -34,7 +37,7 @@ test("integration: Five plane startup plan registers and initializes correctly",
   const registry = new ServiceRegistry();
 
   registerFivePlaneStartupPlan(registry);
-  const plan = registry.get("plane.runtime.startup-plan");
+  const plan = registry.get<FivePlaneStartupPlan>("plane.runtime.startup-plan");
 
   assert.ok(plan != null, "five plane startup plan should be registered");
   assert.equal(plan.steps.length, 6, "should have 6 steps");
@@ -50,7 +53,7 @@ test("integration: Five plane runtime catalog can be registered and retrieved", 
   const registry = new ServiceRegistry();
 
   registerFivePlaneRuntimeCatalog(registry);
-  const catalog = registry.get("plane.runtime.catalog");
+  const catalog = registry.get<FivePlaneRuntimeCatalog>("plane.runtime.catalog");
 
   assert.ok(catalog != null, "runtime catalog should be registered");
   assert.ok(catalog.interfacePlane.length > 0, "interfacePlane should be populated");

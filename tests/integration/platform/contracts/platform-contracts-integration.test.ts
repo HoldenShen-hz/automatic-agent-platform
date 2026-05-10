@@ -37,8 +37,9 @@ import {
   createPlatformPrincipal,
   createRequestEnvelope as createPlatformRequestEnvelope,
   createEvidenceRecord,
-  createProjectionUpdate,
 } from "../../../../src/platform/contracts/types/platform-contracts.js";
+
+import { createProjectionUpdate } from "../../../../src/platform/contracts/projection-update/index.js";
 
 import {
   createStateCommand,
@@ -219,6 +220,7 @@ test("integration: full task lifecycle from draft to completion", () => {
     status: "succeeded",
     duration: 1500,
     outputRef: outputArtifact,
+    errorDetail: "",
   });
 
   assert.equal(receipt.status, "succeeded");
@@ -268,6 +270,7 @@ test("integration: high-risk task lifecycle with confirmation", () => {
       confirmedBy: principal,
       riskClass: "high",
       confirmedAt: "2026-04-29T00:00:00.000Z",
+      state: "confirmed",
     },
   });
 
@@ -376,6 +379,7 @@ test("integration: side effect lifecycle with reconciliation", () => {
     idempotencyKey: "idem-side-effect-1",
     riskClass: "medium",
     preCommitPolicyProofRef: artifact,
+    deadline: "2026-04-20T01:00:00.000Z",
   });
 
   assert.equal(sideEffect.status, "proposed");
@@ -412,6 +416,7 @@ test("integration: compensation flow for failed side effect", () => {
     idempotencyKey: "idem-comp-1",
     riskClass: "low",
     preCommitPolicyProofRef: artifact,
+    deadline: "2026-04-20T01:00:00.000Z",
   });
 
   // Create compensation record
@@ -1012,6 +1017,7 @@ test("integration: complete workflow with plan graph and patches", () => {
     status: "succeeded",
     duration: 5000,
     outputRef: outputArtifact,
+    errorDetail: "",
   });
 
   assert.equal(receipt1.status, "succeeded");
@@ -1041,6 +1047,7 @@ test("integration: complete workflow with plan graph and patches", () => {
     status: "succeeded",
     duration: 1000,
     outputRef: finalArtifact,
+    errorDetail: "",
   });
 
   assert.equal(receipt2.status, "succeeded");

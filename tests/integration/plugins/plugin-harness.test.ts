@@ -98,6 +98,9 @@ test("PluginHarness: invokeAdapterAuthenticate sets up adapter credentials", asy
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
   });
 
@@ -135,6 +138,9 @@ test("PluginHarness: invokeAdapterExecute performs adapter action", async () => 
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
   });
 
@@ -153,8 +159,9 @@ test("PluginHarness: invokeAdapterExecute performs adapter action", async () => 
     },
   });
 
-  assert.ok(result.endpoint.includes("/repos/test/harness-repo/issues"));
-  assert.equal(result.payload.title, "Harness test issue");
+  const r = result as { endpoint: string; payload: { title: string } };
+  assert.ok(r.endpoint.includes("/repos/test/harness-repo/issues"));
+  assert.equal(r.payload.title, "Harness test issue");
 });
 
 test("PluginHarness: concurrent plugin activation is supported", async () => {

@@ -363,6 +363,7 @@ test("health service surfaces queue governance and stale worker findings", () =>
       id: "ticket-health-findings",
       executionId: "exec-health-findings",
       taskId: "task-health-findings",
+      tenantId: "tenant-health-findings",
       priority: "normal",
       queueName: "default",
       requiredCapabilitiesJson: JSON.stringify(["bash"]),
@@ -394,6 +395,7 @@ test("health service surfaces queue governance and stale worker findings", () =>
       lastProgressAt: oldIso,
       lastHeartbeatAt: oldIso,
       updatedAt: oldIso,
+      version: 0,
     });
 
     const health = healthService.getReport();
@@ -440,6 +442,7 @@ test("health service surfaces sticky load skew findings when an affinity hotspot
       lastProgressAt: nowIso,
       lastHeartbeatAt: nowIso,
       updatedAt: nowIso,
+      version: 0,
     });
     store.upsertWorkerSnapshot({
       workerId: "worker-spare",
@@ -460,6 +463,7 @@ test("health service surfaces sticky load skew findings when an affinity hotspot
       lastProgressAt: nowIso,
       lastHeartbeatAt: nowIso,
       updatedAt: nowIso,
+      version: 0,
     });
 
     const health = new HealthService(db, store).getReport();

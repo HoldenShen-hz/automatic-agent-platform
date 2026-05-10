@@ -9,15 +9,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createControlDirective } from "../../../../../src/platform/contracts/control-directive/index.js";
+import { createExecutionPlan } from "../../../../../src/platform/contracts/execution-plan/index.js";
+import { createExecutionReceipt } from "../../../../../src/platform/contracts/execution-receipt/index.js";
+import { createStateCommand } from "../../../../../src/platform/contracts/state-command/index.js";
 import {
   createPlatformPrincipal,
   createRequestEnvelope,
-  createControlDirective,
-  createExecutionPlan,
-  createExecutionReceipt,
-  createStateCommand,
   createEvidenceRecord,
-} from "../../../../../src/platform/contracts/index.js";
+} from "../../../../../src/platform/contracts/types/platform-contracts.js";
 import { createProjectionUpdate } from "../../../../../src/platform/contracts/projection-update/index.js";
 
 test("platform-contracts: createPlatformPrincipal generates valid principal", () => {
