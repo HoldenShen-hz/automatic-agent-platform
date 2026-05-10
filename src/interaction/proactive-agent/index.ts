@@ -265,8 +265,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
         // Supervised only allows suggest for most actions
         return "suggest";
       case "semi_auto":
-        // Semi-auto can auto_execute low-risk actions only
-        return "auto_execute";
+        return baseActionMode;
       case "full_auto":
         // Full auto can use base mode
         return baseActionMode;
@@ -384,6 +383,11 @@ export class ProactiveAgentService implements ProactiveAgentPort {
           reasons.push("proactive_agent.batch_aggregation_pending");
         }
       }
+    }
+
+    // R5-27 / §42.5: Require semi_auto+ autonomy level to fire triggers
+    if (this.currentAutonomyLevel !== "semi_auto" && this.currentAutonomyLevel !== "full_auto") {
+      reasons.push("proactive_agent.autonomy_level_insufficient");
     }
 
     if (reasons.length > 0) {

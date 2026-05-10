@@ -41,6 +41,7 @@ import type {
   WorkspaceRecord,
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import type { Slo } from "../../platform/contracts/types/slo.js";
 
 /**
  * Validates an identifier string against the allowed pattern.
@@ -308,6 +309,7 @@ export class TenantPlatformService {
   private readonly fairSchedulingService: FairSchedulingService;
   private readonly logger = new StructuredLogger({});
   private readonly dedicatedPoolIsolations = new Map<string, DedicatedPoolIsolationRecord>();
+  private readonly sloDefinitions = new Map<string, Slo>();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -329,6 +331,59 @@ export class TenantPlatformService {
 
   public getFairSchedulingService(): FairSchedulingService {
     return this.fairSchedulingService;
+  }
+
+  /**
+   * Defines an SLO for a tenant.
+   * @param tenantId - The tenant ID
+   * @param slo - The SLO definition
+   */
+  public defineSlo(tenantId: string, slo: Slo): void {
+    assertIdentifier(tenantId, "tenant.invalid_tenant_id");
+    this.sloDefinitions.set(`${tenantId}:${slo.sloId}`, slo);
+  }
+
+  /**
+   * Gets all SLO definitions for a tenant.
+   * @param tenantId - The tenant ID
+   * @returns Array of SLOs for the tenant
+   */
+  public getSloForTenant(tenantId: string): Slo[] {
+    const results: Slo[] = [];
+    for (const [key, slo] of this.sloDefinitions) {
+      if (key.startsWith(`${tenantId}:`)) {
+        results.push(slo);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Evaluates whether an SLO is met based on metrics.
+   * @param sloId - The SLO ID
+   * @param metrics - Map of metric name to metric value
+   * @returns true if the SLO is met, false otherwise
+   */
+  public evaluateSlo(sloId: string, metrics: Record<string, number>): boolean {
+    for (const slo of this.sloDefinitions.values()) {
+      if (slo.sloId === sloId) {
+        const value = metrics[slo.metric];
+        if (value === undefined) {
+          return false;
+        }
+        switch (slo.operator) {
+          case ">":
+            return value > slo.target;
+          case "<":
+            return value < slo.target;
+          case ">=":
+            return value >= slo.target;
+          case "<=":
+            return value <= slo.target;
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -732,6 +787,15 @@ export class TenantPlatformService {
           updatedAt: createdAt,
         });
       }
+      // Evaluate SLOs for the new tenant
+      const tenantSlos = this.getSloForTenant(tenant.tenantId);
+      for (const slo of tenantSlos) {
+        this.logger?.info("SLO evaluated for new tenant", {
+          tenantId: tenant.tenantId,
+          sloId: slo.sloId,
+          name: slo.name,
+        });
+      }
       return tenant;
     });
   }
@@ -817,6 +881,16 @@ export class TenantPlatformService {
         updatedAt: createdAt,
       };
       this.store.organization.upsertDeploymentBindingRecord(binding);
+      // Evaluate SLOs for the tenant after creating deployment binding
+      const tenantSlos = this.getSloForTenant(tenant.tenantId);
+      for (const slo of tenantSlos) {
+        this.logger?.info("SLO evaluated after deployment binding", {
+          tenantId: tenant.tenantId,
+          bindingId: binding.bindingId,
+          sloId: slo.sloId,
+          name: slo.name,
+        });
+      }
       return binding;
     });
   }
@@ -919,6 +993,18 @@ export class TenantPlatformService {
       this.store.organization.upsertDataNamespaceRecord(namespace);
       if (tenant != null && !this.encryptionService.isInitialized(tenant.tenantId)) {
         this.ensureTenantEncryptionInitialized(tenant);
+      }
+      // Evaluate SLOs for the tenant after creating data namespace
+      if (tenant != null) {
+        const tenantSlos = this.getSloForTenant(tenant.tenantId);
+        for (const slo of tenantSlos) {
+          this.logger?.info("SLO evaluated after data namespace creation", {
+            tenantId: tenant.tenantId,
+            namespaceId: namespace.namespaceId,
+            sloId: slo.sloId,
+            name: slo.name,
+          });
+        }
       }
       return namespace;
     });

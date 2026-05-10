@@ -57,6 +57,8 @@ import { StageTransitionFSM, createStageTransitionFSM } from "./stage-transition
 import { HarnessLoopController } from "../harness/loop/index.js";
 import { newId } from "../../contracts/types/ids.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -118,6 +120,8 @@ export class OapeflirLoopService {
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
   // R19-06 fix: Store eventPublisher for emitting state change events per §14.3
   private readonly eventPublisher: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | undefined;
+  // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
+  private readonly dbPath: string | undefined;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -133,6 +137,8 @@ export class OapeflirLoopService {
     });
     // R19-06 fix: Store eventPublisher for stage event emission
     this.eventPublisher = options.eventPublisher ?? undefined;
+    // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
+    this.dbPath = options.dbPath;
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
@@ -324,6 +330,9 @@ export class OapeflirLoopService {
             }
             return input.stepOutputs;
           }
+          // R4-25 (INV-BUDGET-001) fix: Reserve budget BEFORE execution via bridge
+          // BudgetAllocator.reserve() must be called before any cost-bearing execution
+          await this.reserveBudgetForExecution(executionContext, input.taskId);
           return this.executeViaBridge(loopPlan, executionContext);
         }, {
           taskId: input.taskId,
@@ -776,6 +785,79 @@ export class OapeflirLoopService {
       tokenBudget: assessment.resourceAllocation.maxTokens,
       budgetLedgerId: `${planGraphBundle.budgetPlanRef ?? `budget:${input.taskId}`}:execute:v${plan.version}`,
     };
+  }
+
+  /**
+   * R4-25 (INV-BUDGET-001) fix: Reserve budget BEFORE execution via bridge.
+   * BudgetAllocator.reserve() must be called before any cost-bearing execution
+   * to properly track expected cost via the state machine.
+   */
+  private async reserveBudgetForExecution(context: ExecutionContext, taskId: string): Promise<void> {
+    if (!context.budgetLedgerId || !this.dbPath) {
+      return;
+    }
+    const storage = openAuthoritativeStorageContext({ dbPath: this.dbPath });
+    // Query budget ledger via raw SQL since AuthoritativeTaskStore doesn't expose getBudgetLedger
+    const ledgerRow = storage.sql.connection.prepare("SELECT * FROM budget_ledgers WHERE budget_ledger_id = ?").get(context.budgetLedgerId) as {
+      budget_ledger_id: string;
+      tenant_id: string;
+      harness_run_id: string;
+      hard_cap: number;
+      reserved_amount: number;
+      settled_amount: number;
+      released_amount: number;
+      status: string;
+      version: number;
+      currency: string;
+    } | undefined;
+    if (!ledgerRow) {
+      this.boundaryLogger.warn("[budget] No ledger found for budget reservation", {
+        data: { budgetLedgerId: context.budgetLedgerId, taskId },
+      });
+      return;
+    }
+    const ledger = {
+      budgetLedgerId: ledgerRow.budget_ledger_id,
+      tenantId: ledgerRow.tenant_id,
+      harnessRunId: ledgerRow.harness_run_id,
+      hardCap: ledgerRow.hard_cap,
+      reservedAmount: ledgerRow.reserved_amount,
+      settledAmount: ledgerRow.settled_amount,
+      releasedAmount: ledgerRow.released_amount,
+      status: ledgerRow.status as "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing",
+      version: ledgerRow.version,
+      currency: ledgerRow.currency,
+    };
+    const budgetAllocator = new BudgetAllocator();
+    const allocatorContext: BudgetAllocatorContext = {
+      tenantId: ledger.tenantId,
+      traceId: taskId,
+      emittedBy: "oapeflir-loop-service",
+      principal: "oapeflir",
+    };
+    const amount = context.tokenBudget ? context.tokenBudget * 0.001 : 1; // Estimate: $1 per 1000 tokens
+    const result = budgetAllocator.reserve({
+      ledger,
+      amount,
+      resourceKind: "token",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expectedVersion: ledger.version,
+      context: allocatorContext,
+    });
+    // Persist the budget reservation via raw SQL insert
+    storage.sql.connection.prepare(
+      `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      result.reservation.budgetReservationId,
+      result.reservation.budgetLedgerId,
+      result.reservation.harnessRunId,
+      result.reservation.amount,
+      result.reservation.resourceKind,
+      result.reservation.status,
+      result.reservation.expiresAt,
+      result.reservation.createdAt,
+    );
   }
 
   /**
