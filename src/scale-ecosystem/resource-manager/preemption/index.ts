@@ -63,3 +63,5 @@ export function choosePreemptionVictim(
       return right.progressPercent - left.progressPercent;
     })[0] ?? null;
 }
+
+export { PreemptionService, type PreemptionServiceOptions, type PreemptionSelection } from "./preemption-service.js";
