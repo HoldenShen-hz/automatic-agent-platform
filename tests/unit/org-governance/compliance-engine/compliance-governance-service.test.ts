@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { ComplianceGovernanceService, type ComplianceEvaluationInput } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
@@ -149,6 +152,29 @@ test("ComplianceGovernanceService lists all evidence when no framework specified
 
   const allEvidence = service.listEvidence();
   assert.equal(allEvidence.length, 2);
+});
+
+test("ComplianceGovernanceService hydrates durable evidence collector from configured storage path", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "compliance-governance-service-"));
+  const storagePath = join(rootDir, "evidence-snapshot.json");
+  try {
+    const writer = new ComplianceGovernanceService([], {}, [], [], {
+      evidenceStoragePath: storagePath,
+    });
+    writer.collectEvidence({
+      frameworkId: "GDPR",
+      controlId: "data_retention",
+      source: "audit-log",
+      artifactRef: "artifact-123",
+    });
+
+    const reader = new ComplianceGovernanceService([], {}, [], [], {
+      evidenceStoragePath: storagePath,
+    });
+    assert.equal(reader.listEvidence("GDPR").length, 1);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("ComplianceGovernanceService evaluate returns allowed when no policies required", () => {

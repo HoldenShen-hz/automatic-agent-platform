@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { ComplianceEvidenceCollector } from "../../../../src/org-governance/compliance-engine/evidence-collector.js";
@@ -117,4 +120,62 @@ test("ComplianceEvidenceCollector collects multiple records for same framework",
 
   const records = collector.list("SOC2");
   assert.equal(records.length, 5);
+});
+
+test("ComplianceEvidenceCollector persists snapshot and reloads records from storagePath", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "compliance-evidence-collector-"));
+  const storagePath = join(rootDir, "collector-snapshot.json");
+  try {
+    const collector = new ComplianceEvidenceCollector({ storagePath });
+    collector.collect({
+      frameworkId: "SOC2",
+      controlId: "CC1.1",
+      source: "audit-log",
+      artifactRef: "artifact-123",
+    });
+    collector.scheduleEvidenceCollection(
+      "SOC2",
+      "CC1.1",
+      { type: "periodic", intervalMinutes: 60 },
+      30,
+    );
+
+    const reloaded = new ComplianceEvidenceCollector({ storagePath });
+    assert.equal(reloaded.list("SOC2").length, 1);
+    assert.equal(reloaded.listScheduledCollections().length, 1);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("ComplianceEvidenceCollector.verifyChain detects tampered persisted evidence", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "compliance-evidence-chain-"));
+  const storagePath = join(rootDir, "collector-snapshot.json");
+  try {
+    const collector = new ComplianceEvidenceCollector({ storagePath });
+    collector.collect({
+      frameworkId: "SOC2",
+      controlId: "CC1.1",
+      source: "audit-log",
+      artifactRef: "artifact-123",
+    });
+    collector.collect({
+      frameworkId: "SOC2",
+      controlId: "CC1.2",
+      source: "audit-log",
+      artifactRef: "artifact-456",
+    });
+
+    const snapshot = JSON.parse(readFileSync(storagePath, "utf8")) as {
+      records: Record<string, Array<Record<string, unknown>>>;
+    };
+    snapshot.records.SOC2[1]!.artifactRef = "tampered-artifact";
+    writeFileSync(storagePath, JSON.stringify(snapshot, null, 2), "utf8");
+
+    const tamperedCollector = new ComplianceEvidenceCollector({ storagePath });
+    const invalidEvidenceIds = tamperedCollector.verifyChain("SOC2");
+    assert.equal(invalidEvidenceIds.length, 1);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });

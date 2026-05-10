@@ -167,7 +167,7 @@ test("ComplianceGovernanceService.collectEvidence adds evidence record with hash
     artifactRef: "access_log_2024_01",
   });
   assert.ok(evidence.evidenceId.startsWith("compliance_evidence_"));
-  assert.ok(evidence.hash.length > 0);
+  assert.ok((evidence.hash ?? "").length > 0);
   assert.equal(evidence.previousHash, "GENESIS");
 });
 

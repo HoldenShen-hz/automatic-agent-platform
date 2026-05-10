@@ -1,888 +1,163 @@
-/**
- * E2E Workflow Resume Flow Tests
- *
- * End-to-end tests covering workflow pause, resume, and recovery scenarios
- * using the centralized createE2EHarness() helper.
- *
- * Coverage:
- * 1. Workflow paused mid-step and resumes
- * 2. Workflow paused, step advances after resume
- * 3. Workflow paused then cancelled
- * 4. Workflow resume with partial outputs preserved
- */
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
-import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
-import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
+import {
+  HarnessRuntimeService,
+  type HarnessRunRuntimeState,
+} from "../../src/platform/five-plane-orchestration/harness/index.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { createMinimalPlanGraphBundle } from "../helpers/fixtures/base.js";
+import { newId } from "../../src/platform/contracts/types/ids.js";
 
-// ---------------------------------------------------------------------------
-// Helper Functions
-// ---------------------------------------------------------------------------
-
-function makeTaskCommand(
-  taskId: string,
-  fromStatus: TaskStatus,
-  toStatus: TaskStatus,
-  traceId: string,
-  executionId: string | null = null,
-) {
+function makeRuntimeState(overrides: Partial<HarnessRunRuntimeState> = {}): HarnessRunRuntimeState {
+  const createdAt = "2026-05-10T00:00:00.000Z";
   return {
-    entityKind: "task" as const,
-    entityId: taskId,
-    fromStatus,
-    toStatus,
-    executionId,
-    reasonCode: "e2e_resume",
-    traceId,
-    actorType: "system" as const,
-    occurredAt: nowIso(),
+    harnessRunId: "harness_run_resume_test",
+    runId: "run_resume_test",
+    tenantId: "tenant:local",
+    confirmedTaskSpecId: "cts_resume_test",
+    requestEnvelopeId: "req_resume_test",
+    requestHash: "hash_resume_test",
+    constraintPackRef: "constraint_pack:test",
+    versionLockId: "version_lock:test",
+    budgetLedgerId: "budget_ledger:test",
+    fencingToken: "fence_resume_test",
+    currentSeq: 0,
+    taskId: "task_resume_test",
+    domainId: "operations",
+    constraintPack: {
+      policyIds: [],
+      approvalMode: "none",
+      autonomyMode: "full_auto",
+      tool_policy: { allowedTools: ["read_file", "write_file"] },
+      risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
+      output_policy: { requiredEvidence: [], redactSensitiveData: false },
+      budget: { maxSteps: 12, maxCost: 2, maxDurationMs: 60_000 },
+    },
+    planGraphBundle: createMinimalPlanGraphBundle("harness_run_resume_test", {
+      planGraphBundleId: "pgb_resume_test",
+    }),
+    steps: [],
+    nodeRunIds: [],
+    maxIterations: 10,
+    currentIteration: 1,
+    status: "running",
+    createdAt,
+    updatedAt: createdAt,
+    completedAt: null,
+    pauseReason: null,
+    decision: null,
+    contextSnapshots: [],
+    sleepLease: null,
+    recoveryCheckpoint: null,
+    feedbackEnvelope: null,
+    toolbelt: null,
+    guardrailAssessment: null,
+    hitlRequest: null,
+    timeline: [],
+    ...overrides,
   };
 }
 
-function makeExecCommand(
-  executionId: string,
-  fromStatus: ExecutionStatus,
-  toStatus: ExecutionStatus,
-  traceId: string,
-) {
-  return {
-    entityKind: "execution" as const,
-    entityId: executionId,
-    fromStatus,
-    toStatus,
-    reasonCode: "e2e_resume",
-    traceId,
-    actorType: "agent" as const,
-    occurredAt: nowIso(),
-  };
-}
+test("E2E Workflow Resume: canonical runtime sleep pause can be resumed", () => {
+  const service = new HarnessRuntimeService();
+  const run = makeRuntimeState();
 
-// ---------------------------------------------------------------------------
-// Test 1: Workflow Paused Mid-Step and Resumes
-// ---------------------------------------------------------------------------
+  const paused = service.sleep(run, "awaiting external dependency", "2026-05-10T00:05:00.000Z");
+  assert.equal(paused.status, "paused");
+  assert.equal(paused.pauseReason, "sleep");
 
-test("E2E Workflow Resume: workflow paused mid-step can be resumed", async () => {
-  const harness = createE2EHarness("aa-e2e-wf-resume-pause-");
-  try {
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
-    const ts = new TransitionService(harness.db, harness.store);
-    const now = nowIso();
-
-    // Setup: Create task in running state with workflow at step 1
-    harness.db.transaction(() => {
-      harness.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Pause-resume test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-// @ts-ignore
-      harness.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "multi_step_wf",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 120000,
-        budgetUsdLimit: 5,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "multi_step_wf",
-        currentStepIndex: 1,
-        status: "running",
-        outputsJson: JSON.stringify({ step0_output: "completed" }),
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // Verify workflow is at step 1
-    let workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.currentStepIndex, 1, "Workflow should be at step 1");
-    assert.equal(workflow?.status, "running", "Workflow should be running");
-
-    // Pause the workflow
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "completed" }),
-      reasonCode: "user_pause",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "paused", "Workflow should be paused");
-    assert.equal(workflow?.currentStepIndex, 1, "Step index should be preserved");
-
-    // Resume the workflow
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "paused",
-      toStatus: "resuming",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "completed" }),
-      reasonCode: "user_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "resuming", "Workflow should be resuming");
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "resuming",
-      toStatus: "running",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "completed" }),
-      reasonCode: "system_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "running", "Workflow should be running after resume");
-    assert.equal(workflow?.currentStepIndex, 1, "Step index should still be 1");
-    assert.ok(JSON.parse(workflow!.outputsJson).step0_output, "Partial outputs should be preserved");
-
-  } finally {
-    harness.cleanup();
-  }
+  const resumed = service.resume(paused);
+  assert.equal(resumed.status, "running");
+  assert.equal(resumed.pauseReason, null);
 });
 
-// ---------------------------------------------------------------------------
-// Test 2: Workflow Paused Then Step Advances After Resume
-// ---------------------------------------------------------------------------
-
-test("E2E Workflow Resume: step advances after resume completes", async () => {
-  const harness = createE2EHarness("aa-e2e-wf-resume-advance-");
-  try {
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
-    const ts = new TransitionService(harness.db, harness.store);
-    const now = nowIso();
-
-    // Setup: Task at step 1
-    harness.db.transaction(() => {
-      harness.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Resume advance test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-// @ts-ignore
-      harness.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "multi_step_wf",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 120000,
-        budgetUsdLimit: 5,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "multi_step_wf",
-        currentStepIndex: 1,
-        status: "running",
-        outputsJson: JSON.stringify({ step0_output: "done", step1_input: "received" }),
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // Pause workflow
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "done", step1_input: "received" }),
-      reasonCode: "user_pause",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    // Resume workflow
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "paused",
-      toStatus: "resuming",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "done", step1_input: "received" }),
-      reasonCode: "user_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "resuming",
-      toStatus: "running",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0_output: "done", step1_input: "received" }),
-      reasonCode: "system_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    // After resume, step 1 completes and advances to step 2
-    harness.db.transaction(() => {
-      harness.store.updateWorkflowState(
-        taskId,
-        "running",
-        2,
-        JSON.stringify({ step0_output: "done", step1_input: "received", step1_output: "processed" }),
-        nowIso(),
-        null,
-      );
-    });
-
-    let workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.currentStepIndex, 2, "Step index should advance to 2 after resume");
-    const outputs = JSON.parse(workflow!.outputsJson);
-    assert.equal(outputs.step1_output, "processed", "Step 1 output should be added");
-
-    // Complete workflow
-    harness.db.transaction(() => {
-      harness.store.updateWorkflowState(
-        taskId,
-        "completed",
-        3,
-        JSON.stringify({ step0_output: "done", step1_output: "processed", step2_output: "final" }),
-        nowIso(),
-        null,
-      );
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "completed", "Workflow should be completed");
-
-  } finally {
-    harness.cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Test 3: Workflow Paused Then Cancelled
-// ---------------------------------------------------------------------------
-
-test("E2E Workflow Resume: paused workflow can be cancelled", async () => {
-  const harness = createE2EHarness("aa-e2e-wf-resume-cancel-");
-  try {
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
-    const ts = new TransitionService(harness.db, harness.store);
-    const now = nowIso();
-
-    // Setup
-    harness.db.transaction(() => {
-      harness.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Pause cancel test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-// @ts-ignore
-      harness.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "multi_step_wf",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 120000,
-        budgetUsdLimit: 5,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "multi_step_wf",
-        currentStepIndex: 1,
-        status: "running",
-        outputsJson: "{}",
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // Pause the workflow
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 1,
-      outputsJson: "{}",
-      reasonCode: "user_pause",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    let workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "paused", "Workflow should be paused");
-
-    // Cancel task while workflow is paused
-    ts.transitionTaskTerminalState({
-      taskId,
-      sessionId,
-      executionId,
-      currentTaskStatus: "in_progress",
-      currentWorkflowStatus: "paused",
-      currentSessionStatus: "streaming",
-      currentExecutionStatus: "executing",
-      terminalStatus: "cancelled",
-      taskOutputJson: "{}",
-      outputsJson: "{}",
-      context: {
-        reasonCode: "user_cancelled",
-        traceId,
-        actorType: "user",
-        occurredAt: nowIso(),
+test("E2E Workflow Resume: partial step outputs are preserved across pause and resume", () => {
+  const service = new HarnessRuntimeService();
+  const run = makeRuntimeState({
+    steps: [
+      {
+        stepId: "step_extract",
+        role: "generator",
+        status: "completed",
+        startedAt: "2026-05-10T00:00:00.000Z",
+        completedAt: "2026-05-10T00:00:05.000Z",
+        output: { step0_output: "completed" },
+        rationale: "partial progress",
+        evidenceRefs: [],
+        nodeRunRefs: [],
+        toolCalls: [],
+        latency: 5000,
+        cost: 0.01,
+        nextAction: "continue",
       },
-    });
+    ],
+  });
 
-    const task = harness.store.getTask(taskId);
-    assert.equal(task?.status, "cancelled", "Task should be cancelled");
+  const paused = service.sleep(run, "wait for human confirmation", "2026-05-10T00:10:00.000Z");
+  const resumed = service.resume(paused);
 
-    workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "cancelled", "Workflow should be cancelled too");
-
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(resumed.steps.length, 1);
+  assert.deepEqual(resumed.steps[0]?.output, { step0_output: "completed" });
+  assert.equal(resumed.status, "running");
 });
 
-// ---------------------------------------------------------------------------
-// Test 4: Workflow Resume With Partial Outputs Preserved
-// ---------------------------------------------------------------------------
+test("E2E Workflow Resume: paused canonical HarnessRun can be cancelled", () => {
+  const machine = new RuntimeStateMachine();
+  const pausedRun = makeRuntimeState({
+    status: "paused",
+    pauseReason: "sleep",
+  });
 
-test("E2E Workflow Resume: partial outputs are preserved across pause-resume", async () => {
-  const harness = createE2EHarness("aa-e2e-wf-resume-outputs-");
-  try {
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
-    const ts = new TransitionService(harness.db, harness.store);
-    const now = nowIso();
+  const transitioned = machine.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun",
+    entityId: pausedRun.harnessRunId,
+    principal: "workflow-resume-e2e",
+    aggregateType: "HarnessRun",
+    aggregate: pausedRun,
+    fromStatus: "paused",
+    toStatus: "cancelled",
+    tenantId: pausedRun.tenantId,
+    traceId: newId("trace"),
+    reasonCode: "operator.cancelled",
+    emittedBy: "tests/e2e/workflow-resume-flow.test.ts",
+    fencingToken: pausedRun.fencingToken ?? "fence-resume-cancelled",
+    auditRef: "audit://workflow-resume/cancelled",
+  });
 
-    // Setup: workflow at step 2 with partial outputs from steps 0 and 1
-    harness.db.transaction(() => {
-      harness.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Output preservation test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-// @ts-ignore
-      harness.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "multi_step_wf",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 180000,
-        budgetUsdLimit: 10,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "multi_step_wf",
-        currentStepIndex: 2,
-        status: "running",
-        outputsJson: JSON.stringify({
-          step0_data: "initial_result",
-          step1_data: "intermediate_result",
-        }),
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
-
-      harness.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // Verify partial outputs exist
-    let workflow = harness.store.getWorkflowState(taskId);
-    let outputs = JSON.parse(workflow!.outputsJson);
-    assert.equal(outputs.step0_data, "initial_result", "Step 0 output should exist");
-    assert.equal(outputs.step1_data, "intermediate_result", "Step 1 output should exist");
-
-    // Pause at step 2
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 2,
-      outputsJson: JSON.stringify({
-        step0_data: "initial_result",
-        step1_data: "intermediate_result",
-      }),
-      reasonCode: "user_pause",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    outputs = JSON.parse(workflow!.outputsJson);
-    assert.equal(outputs.step0_data, "initial_result", "Outputs preserved after pause");
-    assert.equal(outputs.step1_data, "intermediate_result", "Outputs preserved after pause");
-
-    // Resume and complete step 2
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "paused",
-      toStatus: "resuming",
-      currentStepIndex: 2,
-      outputsJson: JSON.stringify({
-        step0_data: "initial_result",
-        step1_data: "intermediate_result",
-      }),
-      reasonCode: "user_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "resuming",
-      toStatus: "running",
-      currentStepIndex: 2,
-      outputsJson: JSON.stringify({
-        step0_data: "initial_result",
-        step1_data: "intermediate_result",
-      }),
-      reasonCode: "system_resume",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    // Complete workflow with final output
-    harness.db.transaction(() => {
-      harness.store.updateWorkflowState(
-        taskId,
-        "completed",
-        3,
-        JSON.stringify({
-          step0_data: "initial_result",
-          step1_data: "intermediate_result",
-          step2_data: "final_result",
-        }),
-        nowIso(),
-        null,
-      );
-    });
-
-    workflow = harness.store.getWorkflowState(taskId);
-    outputs = JSON.parse(workflow!.outputsJson);
-    assert.equal(outputs.step0_data, "initial_result", "Step 0 output should remain");
-    assert.equal(outputs.step1_data, "intermediate_result", "Step 1 output should remain");
-    assert.equal(outputs.step2_data, "final_result", "Step 2 output should be added");
-    assert.equal(workflow?.status, "completed", "Workflow should be completed");
-
-  } finally {
-    harness.cleanup();
-  }
+  assert.equal(transitioned.aggregate.status, "cancelled");
+  assert.ok(transitioned.aggregate.terminalAt);
 });
 
-// ---------------------------------------------------------------------------
-// Test 5: Multiple Pause-Resume Cycles
-// ---------------------------------------------------------------------------
+test("E2E Workflow Resume: multiple pause-resume cycles preserve canonical runtime invariants", () => {
+  const service = new HarnessRuntimeService();
+  const run = makeRuntimeState();
 
-test("E2E Workflow Resume: workflow survives multiple pause-resume cycles", async () => {
-  const harness = createE2EHarness("aa-e2e-wf-resume-multi-");
-  try {
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
-    const ts = new TransitionService(harness.db, harness.store);
-    const now = nowIso();
+  const pausedOnce = service.sleep(run, "first pause", "2026-05-10T00:15:00.000Z");
+  const resumedOnce = service.resume(pausedOnce);
+  const pausedTwice = service.sleep(resumedOnce, "second pause", "2026-05-10T00:20:00.000Z");
+  const resumedTwice = service.resume(pausedTwice);
 
-    // Setup
-    harness.db.transaction(() => {
-      harness.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Multi pause-resume test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
+  assert.equal(pausedOnce.status, "paused");
+  assert.equal(pausedTwice.status, "paused");
+  assert.equal(resumedTwice.status, "running");
+  assert.equal(resumedTwice.pauseReason, null);
+  assert.ok(service.listTimeline(resumedTwice).length >= 2);
+});
 
-// @ts-ignore
-      harness.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "multi_step_wf",
-        parentExecutionId: null,
-        agentId: "agent-1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 120000,
-        budgetUsdLimit: 5,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
+test("E2E Workflow Resume: HITL pause and approval resume use canonical runtime path", () => {
+  const service = new HarnessRuntimeService();
+  const run = makeRuntimeState();
 
-      harness.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "multi_step_wf",
-        currentStepIndex: 0,
-        status: "running",
-        outputsJson: "{}",
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
+  const paused = service.openHitlReview(run, "high_risk_change", [
+    "evidence://workflow-resume/high-risk-change",
+  ]);
+  assert.equal(paused.status, "paused");
+  assert.equal(paused.pauseReason, "hitl");
+  assert.ok(paused.hitlRequest);
 
-      harness.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // First pause-resume cycle at step 0
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 0,
-      outputsJson: "{}",
-      reasonCode: "pause_1",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "paused",
-      toStatus: "resuming",
-      currentStepIndex: 0,
-      outputsJson: "{}",
-      reasonCode: "resume_1",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "resuming",
-      toStatus: "running",
-      currentStepIndex: 0,
-      outputsJson: "{}",
-      reasonCode: "resume_complete_1",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    // Advance to step 1
-    harness.db.transaction(() => {
-      harness.store.updateWorkflowState(taskId, "running", 1, JSON.stringify({ step0: "done" }), nowIso(), null);
-    });
-
-    // Second pause-resume cycle at step 1
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "running",
-      toStatus: "paused",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0: "done" }),
-      reasonCode: "pause_2",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "paused",
-      toStatus: "resuming",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0: "done" }),
-      reasonCode: "resume_2",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    ts.transitionWorkflowStatus({
-      entityKind: "workflow",
-      entityId: taskId,
-      fromStatus: "resuming",
-      toStatus: "running",
-      currentStepIndex: 1,
-      outputsJson: JSON.stringify({ step0: "done" }),
-      reasonCode: "resume_complete_2",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
-    });
-
-    const workflow = harness.store.getWorkflowState(taskId);
-    assert.equal(workflow?.currentStepIndex, 1, "Should still be at step 1 after cycles");
-    assert.equal(workflow?.status, "running", "Should be running");
-    assert.ok(JSON.parse(workflow!.outputsJson).step0, "Step 0 output should be preserved");
-
-  } finally {
-    harness.cleanup();
-  }
+  const resumed = service.resolveHitlReview(paused, "approved");
+  assert.equal(resumed.status, "running");
+  assert.equal(resumed.pauseReason, null);
 });

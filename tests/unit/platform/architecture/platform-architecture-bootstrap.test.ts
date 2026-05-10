@@ -110,7 +110,7 @@ test("buildPlatformArchitectureBootstrapSummary generatedAt is ISO format", asyn
   assert.ok(summary.generatedAt.includes("T"));
 });
 
-test("registerPlatformArchitectureServices registers four services", async () => {
+test("registerPlatformArchitectureServices registers services without forcing eager initialization", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
@@ -122,11 +122,11 @@ test("registerPlatformArchitectureServices registers four services", async () =>
   assert.ok(Array.isArray(services.startupTargets));
   assert.ok(typeof services.summary === "object");
 
-  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
-  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
-  assert.equal(registry.isInitialized("architecture.app-catalog"), true);
-  assert.equal(registry.isInitialized("architecture.startup-targets"), true);
-  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), false);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
 });
 
 test("getPlatformArchitectureServices returns same services object", async () => {
@@ -149,9 +149,15 @@ test("architecture.bootstrap-summary depends on other three services", async () 
 
   registerPlatformArchitectureServices(registry);
 
-  // Summary should be initialized after others
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
+
+  // Summary should initialize after its dependencies when explicitly resolved.
   const summary = registry.get("architecture.bootstrap-summary");
   assert.ok(typeof summary === "object");
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), true);
 });
 
 test("services object is immutable - layers/apps/startupTargets are readonly", async () => {

@@ -11,11 +11,6 @@ import type { PlatformAppManifest } from "../../src/platform-architecture-types.
 test("platform architecture bootstrap uses health checks before treating services as ready", async () => {
   const registry = new ServiceRegistry();
   try {
-    registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
-      init: () => [],
-      healthCheck: () => false,
-    });
-
     const services = registerPlatformArchitectureServices(registry);
     assert.ok(services.apps.length > 0);
     assert.equal(registry.isInitialized("architecture.app-catalog"), false);
@@ -28,16 +23,15 @@ test("platform architecture bootstrap uses health checks before treating service
 test("platform architecture bootstrap degrades gracefully when summary dependencies are unhealthy", async () => {
   const registry = new ServiceRegistry();
   try {
-    registry.register("architecture.layer-catalog", {
-      init: () => {
-        throw new Error("catalog unavailable");
-      },
-    });
-
-    const services = getPlatformArchitectureServices(registry);
+    const services = registerPlatformArchitectureServices(registry);
     assert.ok(services.layers.length > 0);
     assert.ok(services.summary.layerCount > 0);
     assert.ok(services.summary.startupTargetCount > 0);
+    assert.equal(registry.isInitialized("architecture.layer-catalog"), false);
+
+    const resolved = getPlatformArchitectureServices(registry);
+    assert.equal(resolved.layers.length, services.layers.length);
+    assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
   } finally {
     await registry.reset();
   }

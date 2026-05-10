@@ -29,6 +29,7 @@ test("risk config defines the architecture risk categories", () => {
   assert.deepEqual(config.riskCategories, [
     "operational",
     "financial",
+    "ai",
     "compliance",
     "reputational",
     "safety",

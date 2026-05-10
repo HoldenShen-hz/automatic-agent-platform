@@ -3,6 +3,7 @@
   "riskCategories": [
     "operational",
     "financial",
+    "ai",
     "compliance",
     "reputational",
     "safety",

@@ -32,6 +32,20 @@ export type NotificationCallback = (params: {
   readonly error?: string;
 }>;
 
+export type CleanupIncidentCallback = (params: {
+  readonly runId: string;
+  readonly tenantId: string;
+  readonly terminalStatus: RunTerminationCleanupRequest["terminalStatus"];
+  readonly cleanupStatus: "partial" | "failed";
+  readonly failedResourceIds: readonly string[];
+  readonly cleanedResourceIds: readonly string[];
+  readonly requestedAt: string;
+}) => Promise<{
+  readonly created: boolean;
+  readonly incidentId?: string;
+  readonly error?: string;
+}>;
+
 export type CleanupResourceKind =
   | "lease"
   | "secret"
@@ -87,6 +101,12 @@ export interface RunTerminationCleanupReceipt {
     readonly notificationId?: string;
     readonly error?: string;
   };
+  /** R11-11: Partial/failed cleanup incident escalation result */
+  readonly incident?: {
+    readonly created: boolean;
+    readonly incidentId?: string;
+    readonly error?: string;
+  };
 }
 
 const CLEANUP_ORDER: readonly CleanupResourceKind[] = [
@@ -110,6 +130,8 @@ export interface RunTerminationCleanupCallbacks {
   readonly notification?: NotificationCallback;
   /** R17-03: Optional event bus for emitting cleanup events */
   readonly eventBus?: TypedEventBus;
+  /** R11-11: Optional incident escalation callback for partial/failed cleanup */
+  readonly incident?: CleanupIncidentCallback;
 }
 
 export class RunTerminationCleanup {
@@ -253,6 +275,26 @@ export class RunTerminationCleanup {
       cleanupStatus = "failed";
     }
 
+    let incidentResult: RunTerminationCleanupReceipt["incident"];
+    if (callbacks.incident && cleanupStatus !== "complete") {
+      try {
+        incidentResult = await callbacks.incident({
+          runId: request.runId,
+          tenantId: request.tenantId,
+          terminalStatus: request.terminalStatus,
+          cleanupStatus,
+          failedResourceIds,
+          cleanedResourceIds,
+          requestedAt: request.requestedAt,
+        });
+      } catch (error) {
+        incidentResult = {
+          created: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
     // R11-08/R11-11: Build result with proper optional field handling
     // Include optional fields only when they have values
     const receipt: RunTerminationCleanupReceipt = {
@@ -268,6 +310,7 @@ export class RunTerminationCleanup {
       ...(stateEvidenceFlushResult !== undefined && { stateEvidenceFlush: stateEvidenceFlushResult }),
       ...(compensationTriggerResult !== undefined && { compensationTrigger: compensationTriggerResult }),
       ...(notificationResult !== undefined && { notification: notificationResult }),
+      ...(incidentResult !== undefined && { incident: incidentResult }),
     };
 
     // R17-03: Emit cleanup events to the event bus

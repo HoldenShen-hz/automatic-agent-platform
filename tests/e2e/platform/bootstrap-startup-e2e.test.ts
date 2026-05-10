@@ -57,6 +57,7 @@ test("E2E Bootstrap: architecture services can be registered multiple times with
   // Both should return PlatformArchitectureServices shape
   assert.ok(result1 !== undefined, "First registration should return result");
   assert.ok(result2 !== undefined, "Second registration should return result");
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
 
   // Verify bootstrap-summary depends on other services
   const summary = registry.get("architecture.bootstrap-summary");
@@ -78,6 +79,7 @@ test("E2E Bootstrap: architecture services can be registered multiple times with
 test("E2E Bootstrap: architecture bootstrap-summary waits for dependencies before returning", (t) => {
   const registry = new ServiceRegistry();
   registerPlatformArchitectureServices(registry);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
 
   // Get the bootstrap-summary which depends on other services
   const summary = registry.get("architecture.bootstrap-summary");

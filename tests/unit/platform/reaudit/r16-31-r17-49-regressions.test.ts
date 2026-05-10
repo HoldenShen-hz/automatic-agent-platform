@@ -108,6 +108,7 @@ test("LayeredEventInbox can share consumer cursors and records across instances"
 
 test("RunTerminationCleanup executes cleanup callbacks and reports partial failures instead of always completing", async () => {
   const cleanup = new RunTerminationCleanup();
+  const incidents: string[] = [];
   const receipt = await cleanup.execute(
     {
       runId: "run-1",
@@ -133,12 +134,22 @@ test("RunTerminationCleanup executes cleanup callbacks and reports partial failu
       },
       stateEvidenceFlush: async () => ({ flushed: true, artifactCount: 2 }),
       compensationTrigger: async () => ({ triggered: true, compensationPlanId: "plan-1" }),
+      incident: async ({ cleanupStatus }) => {
+        incidents.push(cleanupStatus);
+        return {
+          created: true,
+          incidentId: "incident-cleanup-1",
+        };
+      },
     },
   );
 
   assert.equal(receipt.cleanupStatus, "partial");
   assert.deepEqual(receipt.cleanedResourceIds, ["lease-1"]);
   assert.deepEqual(receipt.failedResourceIds, ["secret-1"]);
+  assert.deepEqual(incidents, ["partial"]);
+  assert.equal(receipt.incident?.created, true);
+  assert.equal(receipt.incident?.incidentId, "incident-cleanup-1");
 });
 
 test("TopologyValidator rejects graph cycles that are outside the direct ancestor chain", () => {

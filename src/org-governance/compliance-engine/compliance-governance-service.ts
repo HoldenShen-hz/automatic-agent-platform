@@ -9,7 +9,11 @@ import {
   buildGovernanceAuditRecord,
   type GovernanceAuditRecord,
 } from "./audit-enforcer/index.js";
-import { ComplianceEvidenceCollector, type ComplianceEvidenceRecord } from "./evidence-collector.js";
+import {
+  ComplianceEvidenceCollector,
+  type ComplianceEvidenceCollectorOptions,
+  type ComplianceEvidenceRecord,
+} from "./evidence-collector.js";
 import type { PolicyLayer } from "./inheritance/index.js";
 import { resolveCompliancePolicyForNode } from "./policy-resolver/index.js";
 
@@ -53,10 +57,15 @@ export interface ControlCoverageReport {
   readonly coverageRatio: number;
 }
 
+export interface ComplianceGovernanceServiceOptions {
+  readonly evidenceCollector?: ComplianceEvidenceCollector;
+  readonly evidenceStoragePath?: string | null;
+}
+
 export class ComplianceGovernanceService {
   private readonly frameworks = new Map<string, ComplianceFramework>();
   private readonly bindings = new Map<string, DepartmentComplianceBinding[]>();
-  private readonly evidenceCollector = new ComplianceEvidenceCollector();
+  private readonly evidenceCollector: ComplianceEvidenceCollector;
   // R17-84 fix: Store exception workflows for persistence and tracking
   private readonly exceptionWorkflows = new Map<string, ComplianceExceptionWorkflow>();
 
@@ -65,7 +74,13 @@ export class ComplianceGovernanceService {
     private readonly policiesByNodeId: Readonly<Record<string, PolicyLayer[]>>,
     frameworks: readonly ComplianceFramework[] = DEFAULT_COMPLIANCE_FRAMEWORKS,
     bindings: readonly DepartmentComplianceBinding[] = [],
+    options: ComplianceGovernanceServiceOptions = {},
   ) {
+    const collectorOptions: ComplianceEvidenceCollectorOptions = {
+      storagePath: options.evidenceStoragePath ?? null,
+    };
+    this.evidenceCollector = options.evidenceCollector
+      ?? new ComplianceEvidenceCollector(collectorOptions);
     for (const framework of frameworks) {
       this.frameworks.set(framework.frameworkId, framework);
     }

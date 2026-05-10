@@ -20,12 +20,12 @@ test("integration: full bootstrap flow with fresh service registry", async () =>
     // Register architecture services
     const services = registerPlatformArchitectureServices(registry);
 
-    // Verify all services are registered and initialized
-    assert.ok(registry.isInitialized("architecture.layer-catalog"));
-    assert.ok(registry.isInitialized("architecture.plane-catalog"));
-    assert.ok(registry.isInitialized("architecture.app-catalog"));
-    assert.ok(registry.isInitialized("architecture.startup-targets"));
-    assert.ok(registry.isInitialized("architecture.bootstrap-summary"));
+    // Registration should stay lazy until services are explicitly resolved.
+    assert.equal(registry.isInitialized("architecture.layer-catalog"), false);
+    assert.equal(registry.isInitialized("architecture.plane-catalog"), false);
+    assert.equal(registry.isInitialized("architecture.app-catalog"), false);
+    assert.equal(registry.isInitialized("architecture.startup-targets"), false);
+    assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
 
     // Verify service data integrity
     assert.equal(services.layers.length, 9);
@@ -209,7 +209,7 @@ test("integration: teardown clears architecture service instances", async () => 
   const registry = new ServiceRegistry();
 
   // Register and initialize
-  registerPlatformArchitectureServices(registry);
+  getPlatformArchitectureServices(registry);
 
   // Verify initialized
   assert.ok(registry.isInitialized("architecture.layer-catalog"));

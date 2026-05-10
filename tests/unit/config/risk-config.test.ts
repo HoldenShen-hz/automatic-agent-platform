@@ -24,7 +24,7 @@ test("risk-config exposes the canonical weighted factor model", () => {
 });
 
 test("risk-config includes expected categories", () => {
-  for (const category of ["operational", "financial", "compliance", "reputational", "safety", "strategic"]) {
+  for (const category of ["operational", "financial", "ai", "compliance", "reputational", "safety", "strategic"]) {
     assert.ok(rawRiskConfig.riskCategories.includes(category), `riskCategories should include '${category}'`);
   }
 });

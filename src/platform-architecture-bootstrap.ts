@@ -196,27 +196,23 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
     dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
   });
 
-  // R9-23 fix: Verify all registered services are healthy before returning
-  // All services use synchronous init, so we just verify they were registered correctly
-  const layers = registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
-  const planes = registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
-  const apps = registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
-  const startupTargets = registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
-
-  // R9-23 fix: Verify services are not null/undefined (health check)
-  if (!layers || !planes || !apps || !startupTargets) {
-    throw new Error("architecture.service_health_check_failed: one or more architecture services failed to initialize");
-  }
-
-  const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
-  // R9-23 fix: Verify summary was computed correctly
-  if (!summary || summary.layerCount !== layers.length || summary.planeCount !== planes.length) {
-    throw new Error("architecture.summary_health_check_failed: bootstrap summary does not match registered catalogs");
-  }
+  // Keep registration lazy: callers that only want wiring should not force eager initialization.
+  const layers = PLATFORM_LAYER_MANIFESTS;
+  const planes = PLATFORM_PLANE_MANIFESTS;
+  const apps = Object.freeze([...listPlatformApps()]);
+  const startupTargets = Object.freeze([...buildPlatformStartupTargets()]);
+  const summary = buildPlatformArchitectureBootstrapSummary();
 
   return { layers, planes, apps, startupTargets, summary };
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
-  return registerPlatformArchitectureServices(registry);
+  registerPlatformArchitectureServices(registry);
+  return {
+    layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
+    planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
+    apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
+    startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
+    summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
+  };
 }
