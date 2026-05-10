@@ -23,7 +23,6 @@ export function detectLlmTruncation(signal: LearningSignal): FailurePattern | nu
   const finishReason = String(ev.finishReason ?? ev.finish_reason ?? "");
   const maxTokens = Number(ev.maxTokens ?? ev.max_tokens ?? 0);
   const tokensUsed = Number(ev.tokensUsed ?? ev.tokens_used ?? 0);
-  const finishReasonLength = finishReason === "length" || finishReason === "stop";
 
   // Primary signal: explicit finish_reason="length"
   if (finishReason === "length") {

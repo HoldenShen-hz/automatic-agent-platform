@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
+import type { OperationalDirective, DecisionDirective } from "../control-directive/index.js";
 
 export * from "./schemas.js";
 
@@ -228,6 +229,8 @@ export interface RequestEnvelope {
   // These fields were missing, causing no cross-plane routing capability.
   readonly sourcePlane?: string;
   readonly targetPlane?: string;
+  // R27-17 FIX: ADR-021 directives field for runtime control across planes.
+  readonly directives?: readonly (OperationalDirective | DecisionDirective)[];
 }
 
 export interface HarnessBudgetEnvelope {

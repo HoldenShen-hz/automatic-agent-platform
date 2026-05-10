@@ -18,14 +18,24 @@ export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
     async initialize() {
       // OBS WebSocket credentials would be validated here
     },
-    async healthCheck() {
+    async healthCheck(): Promise<boolean> {
+      // Verify OBS WebSocket connectivity and plugin readiness
+      // In production this would ping the OBS WebSocket server or streaming platform API
       return true;
     },
     async shutdown() {
       return undefined;
     },
-    async authenticate(_credentials: Record<string, unknown>): Promise<void> {
-      // OBS credentials validated here
+    async authenticate(credentials: Record<string, unknown>): Promise<void> {
+      // OBS WebSocket token validation
+      const token = credentials.obsToken as string | undefined;
+      if (!token || typeof token !== "string" || token.trim().length === 0) {
+        throw new Error("OBS authentication token is required");
+      }
+      // Validate token format (OBS WebSocket tokens are typically 32+ char alphanumeric strings)
+      if (!/^[A-Za-z0-9+/=]{16,}$/.test(token.trim())) {
+        throw new Error("OBS authentication token format is invalid");
+      }
     },
     async execute(action: string, params: Record<string, unknown>) {
       const { streamId } = params as { streamId?: string };

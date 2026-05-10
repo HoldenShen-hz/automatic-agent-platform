@@ -53,6 +53,9 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       // Return void — fingerprint is stored in credentialFingerprint for later retrieval
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+      if (!/^[a-zA-Z0-9_]+$/.test(action)) {
+        throw new Error("crm_adapter.invalid_action");
+      }
       const decision = policy.evaluate(`${apiBaseUrl}/crm/v3/objects/${action}`);
       if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, `CRM adapter: action "${action}" denied by egress policy`);

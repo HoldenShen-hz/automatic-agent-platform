@@ -139,6 +139,8 @@ export const RequestEnvelopeSchema = z.object({
   submittedAt: z.string().min(1),
   sourcePlane: z.string().min(1).optional(),
   targetPlane: z.string().min(1).optional(),
+  // R27-17 FIX: ADR-021 directives field for runtime control across planes.
+  directives: z.any().optional(),
 });
 
 export const HarnessBudgetEnvelopeSchema = z.object({

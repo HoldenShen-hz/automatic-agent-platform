@@ -39,7 +39,6 @@ const VERSION_REGEX = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
 
 export class PromptVersionManager {
   private readonly config: VersionManagerConfig;
-  private readonly versionCache = new Map<string, SemanticVersion>();
   private readonly bundleVersions = new Map<string, Map<string, { bundle: PromptBundle; createdAt: string }>>();
 
   public constructor(config: Partial<VersionManagerConfig> = {}) {
@@ -93,7 +92,9 @@ export class PromptVersionManager {
   public compareVersions(v1: string | number, v2: string | number): number {
     // Handle number versions directly (per §16.2)
     if (typeof v1 === "number" && typeof v2 === "number") {
-      return v1 - v2;
+      if (v1 < v2) return -1;
+      if (v1 > v2) return 1;
+      return 0;
     }
     // Handle string versions (semver format for display)
     const strV1 = String(v1);
