@@ -64,7 +64,7 @@ export class FairSchedulingService {
     const quotaDecision = evaluateMultiDimensionalQuota(request.quotaPolicy, {
       workerUnits: request.claim.requestedUnits,
     });
-    const quotaExceeded = quotaDecision.exceeded;
+    const quotaExceeded = !quotaDecision.passed;
     const starvedItemIds = request.queueItems
       .filter((item) => item.ageMs >= 15 * 60_000)
       .map((item) => item.itemId);
