@@ -215,9 +215,10 @@ test("JudgeProviderRegistryService integration: sync with EvalDatasetJudgeServic
     provider: "syncprov",
     providerFamily: "syncfam",
     modelId: "sync-model",
-    capabilities: ["llm_judge", "policy_audit"] as const,
+    capabilities: ["llm_judge", "policy_audit"],
+    supportedRiskLevels: ["critical", "high", "medium", "low"] as const,
     maxCostUsd: 0.12,
-    status: "ready" as const,
+    status: "ready",
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
   };

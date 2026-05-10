@@ -46,7 +46,7 @@ test("contract: v2.7 extension barrels export canonical entrypoints", () => {
   assert.equal(typeof domains.DomainEvaluationGateService, "function");
   assert.equal(typeof domains.DomainPromptGovernanceService, "function");
   assert.equal(typeof domains.DomainTaskDesignService, "function");
-  assert.equal(typeof interaction.parseIntentTokens, "function");
+  assert.equal(typeof interaction.parseIntentTokensWithModel, "function");
   assert.equal(typeof interaction.AutonomyGovernanceService, "function");
   assert.equal(typeof interaction.UserExperienceOrchestrationService, "function");
   assert.equal(typeof interaction.WorkflowBuilderService, "function");
@@ -56,7 +56,7 @@ test("contract: v2.7 extension barrels export canonical entrypoints", () => {
   assert.equal(typeof orgGovernance.KnowledgeBoundaryService, "function");
   assert.equal(typeof orgGovernance.IdentitySyncService, "function");
   assert.equal(typeof scaleEcosystem.detectSlaBreach, "function");
-  assert.equal(typeof scaleEcosystem.CrossRegionRoutingService, "function");
+  assert.equal(typeof scaleEcosystem.multiRegion.CrossRegionRoutingService, "function");
   assert.equal(typeof scaleEcosystem.FeedbackImprovementService, "function");
   assert.equal(typeof scaleEcosystem.FairSchedulingService, "function");
   assert.equal(typeof scaleEcosystem.ConnectorFrameworkService, "function");
@@ -141,6 +141,7 @@ test("contract: DomainTaskDesignService preserves review and interaction constra
       {
         recipeId: "recipe_release",
         domainId: "coding",
+        archetype: "research" as const,
         triggerPhrases: ["release"],
         defaultWorkflowId: "wf_release",
         defaultToolBundleIds: ["repo_tools"],
@@ -308,7 +309,10 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
         delegationId: "delegate_finance",
         approverId: "finance_director",
         delegateApproverId: "finance_backup",
+        delegationType: "manager_cover" as const,
         scopeNodeIds: ["dept_finance"],
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "pending" as const,
         startsAt: "2026-04-20T00:00:00.000Z",
         expiresAt: "2026-04-21T00:00:00.000Z",
         active: true,
@@ -329,6 +333,8 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
     orgNodeId: "dept_finance",
     riskLevel: "critical",
     amountUsd: 5000,
+    requesterManagerIds: [],
+    conflictedApproverIds: [],
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T00:30:00.000Z");
 
   assert.deepEqual(result.approverChain, ["finance_backup", "cfo"]);
@@ -371,8 +377,11 @@ test("contract: DelegatedGovernanceService only grants active scoped delegations
       delegationId: "del_1",
       grantorId: "director",
       granteeId: "manager",
+      level: "admin" as const,
+      delegatable: false,
       orgNodeIds: ["dept_finance"],
       domainIds: ["finance"],
+      derivedDelegationIds: [],
       permissions: [],
       guardrails: [],
       expiresAt: "2026-04-21T00:00:00.000Z",

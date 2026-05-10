@@ -76,11 +76,11 @@ test("governance service listReleases filters by releaseType", () => {
 
     const prompts = h.governance.listReleases("prompt");
     assert.equal(prompts.length, 1);
-    assert.equal(prompts[0].releaseType, "prompt");
+    assert.equal(prompts[0]!.releaseType, "prompt");
 
     const models = h.governance.listReleases("model");
     assert.equal(models.length, 1);
-    assert.equal(models[0].releaseType, "model");
+    assert.equal(models[0]!.releaseType, "model");
 
     const policies = h.governance.listReleases("policy");
     assert.equal(policies.length, 0);
@@ -311,7 +311,7 @@ test("governance service evaluateReleaseGate records gate event", () => {
 
     const events = h.governance.listGateEvents(prompt.id);
     assert.equal(events.length, 1);
-    assert.equal(events[0].id, result.event.id);
+    assert.equal(events[0]!.id, result.event.id);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

@@ -8,13 +8,13 @@ import type { OrgNode } from "../../../../../src/org-governance/org-model/org-no
 
 function mockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
-    nodeId: "org-node-1",
-    name: "Test Org Node",
+    orgNodeId: "org-node-1",
+    displayName: "Test Org Node",
     nodeType: "division",
-    parentNodeId: null,
-    path: "/root/org-node-1",
-    level: 1,
+    parentOrgNodeId: null,
+    ownerUserIds: [],
     active: true,
+    costCenter: "",
     metadata: {},
     ...overrides,
   };
@@ -35,11 +35,11 @@ test("OrgGovernanceSaga executes multi-phase governance lifecycle", () => {
   });
 
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "step-2", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
-    { stepId: "step-3", targetOrgNodeId: "org-1", action: "audit", phase: "identity" },
-    { stepId: "step-4", targetOrgNodeId: "org-1", action: "prepare", phase: "approval" },
-    { stepId: "step-5", targetOrgNodeId: "org-1", action: "commit", phase: "approval" },
+    { stepId: "step-1", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-2", targetOrgNodeId: "org-1", action: "commit" },
+    { stepId: "step-3", targetOrgNodeId: "org-1", action: "audit" },
+    { stepId: "step-4", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-5", targetOrgNodeId: "org-1", action: "commit" },
   ];
 
   const result = saga.execute("saga-1", steps);
@@ -50,36 +50,31 @@ test("OrgGovernanceSaga executes multi-phase governance lifecycle", () => {
   assert.strictEqual(result.failedStepId, null);
 });
 
-test("OrgGovernanceSaga respects phase ordering", () => {
-  const phases: Array<{ phase: "identity" | "approval" | "budget" | "domain" | "agent"; order: number }> = [];
+test("OrgGovernanceSaga respects ordering", () => {
+  const actions: Array<{ stepId: string; action: string }> = [];
 
   const testSaga = new OrgGovernanceSaga({
     prepare: (step, _ctx) => {
-      phases.push({ phase: step.phase, order: 0 });
+      actions.push({ stepId: step.stepId, action: step.action });
     },
     commit: (step, _ctx) => {
-      phases.push({ phase: step.phase, order: 1 });
+      actions.push({ stepId: step.stepId, action: step.action });
     },
     compensate: () => {},
   });
 
-  // PHASE_ORDER = ["identity", "approval", "budget", "domain", "agent"]
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-budget", targetOrgNodeId: "org-1", action: "prepare", phase: "budget" },
-    { stepId: "step-identity", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "step-approval", targetOrgNodeId: "org-1", action: "prepare", phase: "approval" },
+    { stepId: "step-budget", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-identity", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-approval", targetOrgNodeId: "org-1", action: "prepare" },
   ];
 
   testSaga.execute("saga-phase-order", steps);
 
-  // Sorted by PHASE_ORDER: identity(0) < approval(1) < budget(2)
-  const phaseOrder = phases.map((p) => p.phase);
-  const identityIdx = phaseOrder.indexOf("identity");
-  const budgetIdx = phaseOrder.indexOf("budget");
-  const approvalIdx = phaseOrder.indexOf("approval");
-  assert.ok(identityIdx < approvalIdx, "identity phase should execute before approval");
-  assert.ok(identityIdx < budgetIdx, "identity phase should execute before budget");
-  assert.ok(approvalIdx < budgetIdx, "approval phase should execute before budget");
+  // Verify steps are executed in order
+  const stepIds = actions.map(a => a.stepId);
+  assert.ok(stepIds.indexOf("step-budget") < stepIds.indexOf("step-identity"), "step-budget should execute before step-identity");
+  assert.ok(stepIds.indexOf("step-identity") < stepIds.indexOf("step-approval"), "step-identity should execute before step-approval");
 });
 
 test("OrgGovernanceSaga compensates on prepare failure", () => {
@@ -96,9 +91,9 @@ test("OrgGovernanceSaga compensates on prepare failure", () => {
   });
 
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-ok", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "step-fail", targetOrgNodeId: "org-2", action: "prepare", phase: "approval" },
-    { stepId: "step-never", targetOrgNodeId: "org-3", action: "commit", phase: "budget" },
+    { stepId: "step-ok", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-fail", targetOrgNodeId: "org-2", action: "prepare" },
+    { stepId: "step-never", targetOrgNodeId: "org-3", action: "commit" },
   ];
 
   const result = saga.execute("saga-compensate", steps);
@@ -118,11 +113,11 @@ test("OrgGovernanceSaga produces receipt with phase ordering", () => {
   });
 
   const steps: OrgGovernanceSagaStep[] = [
-    { stepId: "step-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "step-2", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
-    { stepId: "step-3", targetOrgNodeId: "org-1", action: "audit", phase: "identity" },
-    { stepId: "step-4", targetOrgNodeId: "org-2", action: "prepare", phase: "domain" },
-    { stepId: "step-5", targetOrgNodeId: "org-2", action: "commit", phase: "domain" },
+    { stepId: "step-1", targetOrgNodeId: "org-1", action: "prepare" },
+    { stepId: "step-2", targetOrgNodeId: "org-1", action: "commit" },
+    { stepId: "step-3", targetOrgNodeId: "org-1", action: "audit" },
+    { stepId: "step-4", targetOrgNodeId: "org-2", action: "prepare" },
+    { stepId: "step-5", targetOrgNodeId: "org-2", action: "commit" },
   ];
 
   const result = saga.execute("saga-receipt-1", steps);

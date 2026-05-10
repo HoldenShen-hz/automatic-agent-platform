@@ -38,17 +38,14 @@ test("ChaosIntegration: Full experiment lifecycle with steady state validation",
     ],
     scheduledAt: new Date().toISOString(),
     maxDurationMs: 60000,
-    blastRadius: {
-      maxAffectedServices: 1,
-      maxAffectedNodes: 3,
-      maxAffectedPercentage: 10,
-      containedToLabels: { region: "us-east-1" },
-    },
-    rollbackStrategy: {
-      enabled: true,
-      rollbackOnViolation: true,
-      autoRestoreDurationMs: 5000,
-      notificationsEnabled: true,
+    boundaryControl: {
+      maxAffectedInstances: 1,
+      maxAffectedPercent: 10,
+      allowedTargets: [],
+      blockedTargets: ["production", "primary", "master"],
+      abortOnThreshold: true,
+      autoRollbackOnViolation: true,
+      rollbackTimeoutMs: 5000,
     },
   });
 
@@ -93,8 +90,15 @@ test("ChaosIntegration: Game day orchestrates multiple experiments", () => {
         ],
         scheduledAt: new Date().toISOString(),
         maxDurationMs: 30000,
-        blastRadius: { maxAffectedServices: 2, maxAffectedNodes: 5, maxAffectedPercentage: 20, containedToLabels: null },
-        rollbackStrategy: { enabled: true, rollbackOnViolation: true, autoRestoreDurationMs: null, notificationsEnabled: true },
+        boundaryControl: {
+          maxAffectedInstances: 5,
+          maxAffectedPercent: 20,
+          allowedTargets: [],
+          blockedTargets: ["production", "primary", "master"],
+          abortOnThreshold: true,
+          autoRollbackOnViolation: true,
+          rollbackTimeoutMs: 30000,
+        },
       },
       {
         name: "Database Slowdown",
@@ -106,8 +110,15 @@ test("ChaosIntegration: Game day orchestrates multiple experiments", () => {
         ],
         scheduledAt: new Date().toISOString(),
         maxDurationMs: 30000,
-        blastRadius: { maxAffectedServices: 1, maxAffectedNodes: 1, maxAffectedPercentage: 5, containedToLabels: null },
-        rollbackStrategy: { enabled: true, rollbackOnViolation: true, autoRestoreDurationMs: null, notificationsEnabled: true },
+        boundaryControl: {
+          maxAffectedInstances: 1,
+          maxAffectedPercent: 5,
+          allowedTargets: [],
+          blockedTargets: ["production", "primary", "master"],
+          abortOnThreshold: true,
+          autoRollbackOnViolation: true,
+          rollbackTimeoutMs: 30000,
+        },
       },
     ],
   });
@@ -158,8 +169,15 @@ test("ChaosIntegration: Auto-rollback triggered on hypothesis violation", () => 
     ],
     scheduledAt: new Date().toISOString(),
     maxDurationMs: 60000,
-    blastRadius: { maxAffectedServices: 1, maxAffectedNodes: 1, maxAffectedPercentage: 5, containedToLabels: null },
-    rollbackStrategy: { enabled: true, rollbackOnViolation: true, autoRestoreDurationMs: 5000, notificationsEnabled: true },
+    boundaryControl: {
+      maxAffectedInstances: 1,
+      maxAffectedPercent: 5,
+      allowedTargets: [],
+      blockedTargets: ["production", "primary", "master"],
+      abortOnThreshold: true,
+      autoRollbackOnViolation: true,
+      rollbackTimeoutMs: 5000,
+    },
   });
 
   scheduler.startExperiment(experiment.experimentId);
@@ -169,7 +187,7 @@ test("ChaosIntegration: Auto-rollback triggered on hypothesis violation", () => 
 
   const completed = scheduler.getExperiment(experiment.experimentId);
   assert.equal(completed!.status, "violated");
-  assert.equal(completed!.autoRollbackTriggered, true);
+  assert.equal(completed!.boundaryControl.autoRollbackOnViolation, true);
   assert.ok(completed!.violationDetectedAt !== null);
 });
 
@@ -215,8 +233,15 @@ test("ChaosIntegration: Handle multiple concurrent experiments", () => {
       steadyStateHypotheses: [],
       scheduledAt: new Date().toISOString(),
       maxDurationMs: 60000,
-      blastRadius: { maxAffectedServices: 1, maxAffectedNodes: 1, maxAffectedPercentage: 5, containedToLabels: null },
-      rollbackStrategy: { enabled: false, rollbackOnViolation: false, autoRestoreDurationMs: null, notificationsEnabled: false },
+      boundaryControl: {
+        maxAffectedInstances: 1,
+        maxAffectedPercent: 5,
+        allowedTargets: [],
+        blockedTargets: ["production", "primary", "master"],
+        abortOnThreshold: true,
+        autoRollbackOnViolation: false,
+        rollbackTimeoutMs: 30000,
+      },
     }),
     scheduler.scheduleExperiment({
       name: "Exp2",
@@ -226,8 +251,15 @@ test("ChaosIntegration: Handle multiple concurrent experiments", () => {
       steadyStateHypotheses: [],
       scheduledAt: new Date().toISOString(),
       maxDurationMs: 60000,
-      blastRadius: { maxAffectedServices: 1, maxAffectedNodes: 1, maxAffectedPercentage: 5, containedToLabels: null },
-      rollbackStrategy: { enabled: false, rollbackOnViolation: false, autoRestoreDurationMs: null, notificationsEnabled: false },
+      boundaryControl: {
+        maxAffectedInstances: 1,
+        maxAffectedPercent: 5,
+        allowedTargets: [],
+        blockedTargets: ["production", "primary", "master"],
+        abortOnThreshold: true,
+        autoRollbackOnViolation: false,
+        rollbackTimeoutMs: 30000,
+      },
     }),
     scheduler.scheduleExperiment({
       name: "Exp3",
@@ -237,8 +269,15 @@ test("ChaosIntegration: Handle multiple concurrent experiments", () => {
       steadyStateHypotheses: [],
       scheduledAt: new Date().toISOString(),
       maxDurationMs: 60000,
-      blastRadius: { maxAffectedServices: 2, maxAffectedNodes: 3, maxAffectedPercentage: 10, containedToLabels: null },
-      rollbackStrategy: { enabled: false, rollbackOnViolation: false, autoRestoreDurationMs: null, notificationsEnabled: false },
+      boundaryControl: {
+        maxAffectedInstances: 3,
+        maxAffectedPercent: 10,
+        allowedTargets: [],
+        blockedTargets: ["production", "primary", "master"],
+        abortOnThreshold: true,
+        autoRollbackOnViolation: false,
+        rollbackTimeoutMs: 30000,
+      },
     }),
   ];
 

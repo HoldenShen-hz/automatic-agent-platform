@@ -104,14 +104,21 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         templateId: "budget_approval_notify",
         title: "Budget Approval Notify",
         steps: ["approval", "notify", "audit"],
+        requiredCapabilities: ["approval_review", "notification"],
+        parameters: [],
+        catalogTags: [],
       },
       wizardSession: {
         sessionId: "wizard_finance",
         currentStepId: "capability_setup",
         steps: [
-          { stepId: "business_type", title: "业务类型", completed: true },
-          { stepId: "capability_setup", title: "能力配置", completed: true },
+          { stepId: "business_type", title: "业务类型", completed: true, riskLevel: "medium", requiredAnswerKeys: [], riskHints: [] },
+          { stepId: "capability_setup", title: "能力配置", completed: true, riskLevel: "medium", requiredAnswerKeys: [], riskHints: [] },
         ],
+        schemaVersion: 1,
+        history: [],
+        answers: {},
+        visitedStepIds: [],
       },
       components: [
         {
@@ -161,7 +168,7 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
 
     const decomposition = await new GoalDecompositionService().decompose({
       goalId: "goal_budget_notify",
-      description: taskBuild.requestEnvelope.payload.request,
+      description: (taskBuild.requestEnvelope?.payload as { request?: string })?.request ?? "",
       owner: "manager_finance",
       successCriteria: [
         {
@@ -306,6 +313,9 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         expiresAt: "2026-04-30T00:00:00.000Z",
         revocable: true,
         status: "active",
+        level: "operate",
+        delegatable: false,
+        derivedDelegationIds: [],
       },
       {
         delegationId: "guardrail_finance_budget",
@@ -326,6 +336,9 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         expiresAt: "2026-04-30T00:00:00.000Z",
         revocable: false,
         status: "active",
+        level: "admin",
+        delegatable: false,
+        derivedDelegationIds: [],
       },
     ]);
     const delegationResult = delegatedGovernance.resolve(
@@ -362,6 +375,9 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
           startsAt: "2026-04-20T00:00:00.000Z",
           expiresAt: "2026-04-30T00:00:00.000Z",
           active: true,
+          delegationType: "manager_cover",
+          conflictOfInterestApproverIds: [],
+          coiReviewStatus: "pending",
         },
       ],
       escalationRules: [
@@ -379,6 +395,11 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         orgNodeId: "dept_finance",
         riskLevel: "high",
         amountUsd: 12000,
+        requesterManagerIds: [],
+        conflictedApproverIds: [],
+        policyVersion: "approval-routing/v2",
+        orgVersion: "org-chart/v2",
+        evidenceRefs: [],
       },
       "2026-04-22T00:00:00.000Z",
       "2026-04-22T01:00:00.000Z",
@@ -394,6 +415,8 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         namespaceIds: ["finance.budget"],
         defaultVisibility: "private",
         allowedOrgNodeIds: [],
+        auditOnAccess: false,
+        fieldAllowlist: [],
       },
       "manager_finance",
       "dept_finance",
@@ -411,8 +434,8 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
     assert.equal(knowledge.listRedactedLogs("kb_finance_budget").length, 1);
 
     const dashboardTask: TaskBoardItem = {
-      taskId: taskBuild.requestEnvelope.requestId,
-      title: taskBuild.requestEnvelope.payload.title,
+      taskId: taskBuild.requestEnvelope?.requestId ?? "",
+      title: (taskBuild.requestEnvelope?.payload as { title?: string })?.title ?? "",
       priority: "high",
       taskStatus: "pending",
       workflowStatus: "running",

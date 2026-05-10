@@ -8,10 +8,10 @@ import test from "node:test";
 
 import {
   PromptRolloutService,
-  PromptRolloutMode,
-  PromptRolloutStatus,
-  type PromptTemplateRecord,
+  type PromptRolloutMode,
+  type PromptRolloutStatus,
 } from "../../../../src/platform/prompt-engine/rollout/index.js";
+import type { PromptTemplateRecord } from "../../../../src/platform/prompt-engine/registry/index.js";
 
 test("PromptRolloutService.createRollout creates a ready rollout when regression passes", () => {
   const service = new PromptRolloutService();
@@ -19,7 +19,7 @@ test("PromptRolloutService.createRollout creates a ready rollout when regression
   const template = createMockTemplate("tpl_test_1", "v1.0");
   const record = service.createRollout({
     template,
-    mode: "off",
+    mode: "L0_off",
     owner: "test@example.com",
     regressionSuiteId: "suite_123",
     regressionPassed: true,
@@ -38,7 +38,7 @@ test("PromptRolloutService.createRollout creates a blocked rollout when regressi
   const template = createMockTemplate("tpl_test_2", "v1.0");
   const record = service.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_456",
     regressionPassed: false,
@@ -55,7 +55,7 @@ test("PromptRolloutService.createRollout blocks when domain block incompatible",
   const template = createMockTemplate("tpl_test_3", "v1.0");
   const record = service.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_789",
     regressionPassed: true,
@@ -72,7 +72,7 @@ test("PromptRolloutService.activateRollout transitions ready to active", () => {
   const template = createMockTemplate("tpl_test_4", "v1.0");
   const created = service.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_abc",
     regressionPassed: true,
@@ -91,7 +91,7 @@ test("PromptRolloutService.activateRollout throws for non-ready rollout", () => 
   const template = createMockTemplate("tpl_test_5", "v1.0");
   const created = service.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_def",
     regressionPassed: true,
@@ -114,7 +114,7 @@ test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
   const template = createMockTemplate("tpl_test_6", "v1.0");
   const created = service.createRollout({
     template,
-    mode: "shadow",
+    mode: "L2_shadow",
     owner: "test@example.com",
     regressionSuiteId: "suite_ghi",
     regressionPassed: true,
@@ -133,7 +133,7 @@ test("PromptRolloutService.rollbackRollout works on any status", () => {
   const template = createMockTemplate("tpl_test_7", "v1.0");
   const created = service.createRollout({
     template,
-    mode: "off",
+    mode: "L0_off",
     owner: "test@example.com",
     regressionSuiteId: "suite_jkl",
     regressionPassed: true,
@@ -154,7 +154,7 @@ test("PromptRolloutService.listRollouts returns all rollouts when no filter", ()
 
   service.createRollout({
     template: tpl1,
-    mode: "off",
+    mode: "L0_off",
     owner: "owner1@example.com",
     regressionSuiteId: "s1",
     regressionPassed: true,
@@ -163,7 +163,7 @@ test("PromptRolloutService.listRollouts returns all rollouts when no filter", ()
 
   service.createRollout({
     template: tpl2,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "owner2@example.com",
     regressionSuiteId: "s2",
     regressionPassed: true,
@@ -182,7 +182,7 @@ test("PromptRolloutService.listRollouts filters by templateKey", () => {
 
   service.createRollout({
     template: tplA,
-    mode: "off",
+    mode: "L0_off",
     owner: "owner@example.com",
     regressionSuiteId: "sA",
     regressionPassed: true,
@@ -191,7 +191,7 @@ test("PromptRolloutService.listRollouts filters by templateKey", () => {
 
   service.createRollout({
     template: tplB,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "owner@example.com",
     regressionSuiteId: "sB",
     regressionPassed: true,
@@ -207,7 +207,7 @@ test("PromptRolloutService.evaluateGuardrail allows shadow mode with passing reg
   const service = new PromptRolloutService();
 
   const decision = service.evaluateGuardrail({
-    mode: "shadow",
+    mode: "L2_shadow",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
@@ -221,7 +221,7 @@ test("PromptRolloutService.evaluateGuardrail blocks failed regression", () => {
   const service = new PromptRolloutService();
 
   const decision = service.evaluateGuardrail({
-    mode: "off",
+    mode: "L0_off",
     regressionPassed: false,
     domainBlockCompatible: true,
   });
@@ -235,7 +235,7 @@ test("PromptRolloutService evaluateGuardrail blocks incompatible domain", () => 
   const service = new PromptRolloutService();
 
   const decision = service.evaluateGuardrail({
-    mode: "suggest",
+    mode: "L1_suggest",
     regressionPassed: true,
     domainBlockCompatible: false,
   });
@@ -253,7 +253,7 @@ test("PromptRolloutService multiple rollouts can coexist", () => {
     const tpl = createMockTemplate(`tpl_multi_${i}`, "v1.0");
     const record = service.createRollout({
       template: tpl,
-      mode: "off",
+      mode: "L0_off",
       owner: `owner${i}@example.com`,
       regressionSuiteId: `suite_${i}`,
       regressionPassed: true,

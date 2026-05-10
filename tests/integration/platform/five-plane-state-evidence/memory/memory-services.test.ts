@@ -16,6 +16,7 @@ import {
   getLayerTtlConfig,
   isMemoryStale,
   shouldEvict,
+  type HierarchicalMemoryLayer,
 } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import {
   getMemoryState,
@@ -194,7 +195,7 @@ test("integration: memory quality report generation", () => {
 });
 
 test("integration: layer TTL configs are consistent with architecture", () => {
-  const layers = ["runtime", "session", "agent", "project", "user", "evolution"];
+  const layers: HierarchicalMemoryLayer[] = ["runtime", "session", "agent", "project", "user", "evolution"];
 
   for (const layer of layers) {
     const config = getLayerTtlConfig(layer);
@@ -236,9 +237,9 @@ test("integration: memory recall query with multiple filters", () => {
   const result = filterAndSortMemories(memories, query);
 
   assert.equal(result.length, 1);
-  assert.equal(result[0].id, "mem_mf1");
-  assert.equal(result[0].taskId, "task_1");
-  assert.ok(result[0].qualityScore! >= 0.7);
+  assert.equal(result[0]!.id, "mem_mf1");
+  assert.equal(result[0]!.taskId, "task_1");
+  assert.ok(result[0]!.qualityScore! >= 0.7);
 });
 
 test("integration: cloneMemoryWithLayer preserves data integrity", () => {

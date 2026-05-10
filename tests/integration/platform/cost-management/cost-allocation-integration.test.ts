@@ -60,8 +60,8 @@ function createTestDatabase(): AuthoritativeSqlDatabase {
     getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
     assertSchemaCurrent: () => {},
     integrityCheck: () => [],
-    transaction: ((work: () => unknown) => work()) as unknown,
-    readTransaction: ((work: () => unknown) => work()) as unknown,
+    transaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
+    readTransaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
     backendType: "sqlite" as const,
     async healthCheck(): Promise<boolean> {
       return true;
@@ -210,7 +210,7 @@ test("cost allocation: multi-tenant isolation", () => {
         .run(`${tenants[t]}_task_${i}`, division, "done", "2026-04-01T00:00:00.000Z");
       db.connection
         .prepare("INSERT INTO cost_events (id, task_id, provider, model, cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(`${tenants[t]}_cost_${i}`, `${tenants[t]}_task_${i}`, "anthropic", "claude-3-5-sonnet", costs[t], "2026-04-01T00:00:00.000Z");
+        .run(`${tenants[t]}_cost_${i}`, `${tenants[t]}_task_${i}`, "anthropic", "claude-3-5-sonnet", costs[t]!, "2026-04-01T00:00:00.000Z");
     }
   }
 
@@ -220,7 +220,9 @@ test("cost allocation: multi-tenant isolation", () => {
 
   // Verify tenant isolation
   for (let i = 0; i < tenants.length; i++) {
-    assert.ok(Math.abs(estimates[i]!.estimatedCostUsd - costs[i]) < 0.001);
+    const estimate = estimates[i]!;
+    const cost = costs[i]!;
+    assert.ok(Math.abs(estimate.estimatedCostUsd - cost) < 0.001);
   }
 
   // Verify cost ordering
@@ -264,8 +266,10 @@ test("cost allocation: track costs by workflow using attribution", () => {
   const aggregated = costService.aggregate("workflow");
 
   // Verify workflow cost aggregation
-  assert.ok(aggregated["wf_1:step_1"] > 0);
-  assert.ok(aggregated["wf_2:step_1"] > aggregated["wf_1:step_1"]);
+  const wf1Step1 = aggregated["wf_1:step_1"];
+  const wf2Step1 = aggregated["wf_2:step_1"];
+  assert.ok(wf1Step1 != null && wf1Step1 > 0);
+  assert.ok(wf2Step1 != null && wf2Step1 > wf1Step1);
 });
 
 test("cost allocation: workflow total calculation", () => {
@@ -393,11 +397,13 @@ test("cost allocation: generate reports by tenant", () => {
   const costs = [150.00, 200.00, 75.00];
 
   for (let i = 0; i < tenants.length; i++) {
+    const tenantId = tenants[i]!;
+    const cost = costs[i]!;
     reportService.createReport({
-      tenantId: tenants[i],
+      tenantId,
       periodStart: "2026-04-01T00:00:00.000Z",
       periodEnd: "2026-04-30T23:59:59.999Z",
-      totalCostUsd: costs[i],
+      totalCostUsd: cost,
       currency: "USD",
       resourceCosts: [],
       submittedBy: "admin",
@@ -410,7 +416,7 @@ test("cost allocation: generate reports by tenant", () => {
   assert.equal(allReports.length, 3);
 
   // Verify filtering
-  const tenant1Reports = reportService.listReports(50, tenants[0]);
+  const tenant1Reports = reportService.listReports(50, tenants[0] ?? null);
   assert.equal(tenant1Reports.length, 1);
   assert.equal(tenant1Reports[0]!.totalCostUsd, 150.00);
 });
@@ -552,7 +558,7 @@ test("cost allocation: calculate division cost share", () => {
   assert.equal(total, 1750.00);
 
   // Alpha share: 1000/1750 = 57.14%
-  const alphaShare = (result["division:alpha"] / total) * 100;
+  const alphaShare = ((result["division:alpha"] ?? 0) / total) * 100;
   assert.ok(Math.abs(alphaShare - 57.14) < 0.1);
 });
 
@@ -731,7 +737,7 @@ test("cost allocation: track cost per task accurately", () => {
       .run(`task_acc_${i}`, "division_acc", "done", "2026-04-01T00:00:00.000Z");
     db.connection
       .prepare("INSERT INTO cost_events (id, task_id, provider, model, cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(`cost_acc_${i}`, `task_acc_${i}`, "anthropic", "claude-3-5-sonnet", taskCosts[i], "2026-04-01T00:00:00.000Z");
+      .run(`cost_acc_${i}`, `task_acc_${i}`, "anthropic", "claude-3-5-sonnet", taskCosts[i]!, "2026-04-01T00:00:00.000Z");
   }
 
   const service = new CostEstimationService(db);
@@ -759,10 +765,10 @@ test("cost allocation: complete flow from task to report", () => {
       const taskId = `e2e_${divisions[d]}_task_${i}`;
       db.connection
         .prepare("INSERT INTO tasks (id, division_id, status, created_at) VALUES (?, ?, ?, ?)")
-        .run(taskId, divisions[d], "done", "2026-04-01T00:00:00.000Z");
+        .run(taskId, divisions[d]!, "done", "2026-04-01T00:00:00.000Z");
       db.connection
         .prepare("INSERT INTO cost_events (id, task_id, provider, model, cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(`e2e_cost_${d}_${i}`, taskId, "anthropic", "claude-3-5-sonnet", avgCosts[d], "2026-04-01T00:00:00.000Z");
+        .run(`e2e_cost_${d}_${i}`, taskId, "anthropic", "claude-3-5-sonnet", avgCosts[d]!, "2026-04-01T00:00:00.000Z");
     }
   }
 
@@ -775,25 +781,27 @@ test("cost allocation: complete flow from task to report", () => {
   const totalCosts: number[] = [];
 
   for (let d = 0; d < divisions.length; d++) {
-    const estimate = estimates[d];
-    const numTasks = simulatedTasksPerDivision[d];
+    const estimate = estimates[d]!;
+    const numTasks = simulatedTasksPerDivision[d]!;
     const total = estimate.estimatedCostUsd * numTasks;
     totalCosts.push(total);
   }
 
   // Step 4: Generate allocation report
   for (let d = 0; d < divisions.length; d++) {
+    const totalCost = totalCosts[d]!;
+    const division = divisions[d]!;
     reportService.createReport({
-      tenantId: divisions[d],
+      tenantId: division,
       periodStart: "2026-04-01T00:00:00.000Z",
       periodEnd: "2026-04-30T23:59:59.999Z",
-      totalCostUsd: totalCosts[d],
+      totalCostUsd: totalCost,
       currency: "USD",
       resourceCosts: [
         {
-          resourceId: `tasks_${divisions[d]}`,
+          resourceId: `tasks_${division}`,
           resourceType: "compute",
-          costUsd: totalCosts[d],
+          costUsd: totalCost,
           currency: "USD",
         },
       ],
@@ -826,10 +834,10 @@ test("cost allocation: handle sparse allocation efficiently", () => {
   for (let i = 0; i < subjects.length; i++) {
     costService.recordCost({
       subjectType: "task",
-      subjectId: subjects[i],
+      subjectId: subjects[i]!,
       costType: "total",
-      amountUsd: costs[i],
-      llmCostUsd: costs[i],
+      amountUsd: costs[i]!,
+      llmCostUsd: costs[i]!,
       toolCostUsd: 0,
       computeCostUsd: 0,
       storageCostUsd: 0,

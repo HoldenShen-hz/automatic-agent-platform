@@ -266,7 +266,7 @@ test("integration: WorkflowRepository.updateWorkflowState sets resumableFromStep
     repo.insertWorkflow(workflow);
 
     const updatedAt = new Date().toISOString();
-    repo.updateWorkflowState("task-resumable-001", "failed", 2, "{}", updatedAt, 1);
+    repo.updateWorkflowState("task-resumable-001", "failed", 2, "{}", updatedAt, "1");
 
     const retrieved = repo.getWorkflow("wf-resumable-001");
     assert.notEqual(retrieved, null);

@@ -80,7 +80,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
       candidateProviderFamily: "openai",
       candidateModel: "gpt-ops-primary",
       owner: "ops@example.com",
-      mode: "shadow",
+      mode: "L2_shadow",
       domainBlockCompatible: true,
       autoActivate: true,
       results: [
@@ -265,7 +265,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
       policyIds: ["prompt_release", "model_governance", "compliance_transfer"],
       approvalMode: budget.requiresApproval ? "required" : "supervised",
       autonomyMode: "supervised",
-      toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      tool_policy: { allowedTools: ["knowledge.query", "artifact.publish"] },
       risk_policy: {
         maxRiskScore: 70,
         escalationThreshold: 55,
@@ -278,6 +278,15 @@ test("integration: ai operations mainline composes prompt governance, model roll
         maxSteps: 6,
         maxCost: Number((budget.remainingBudgetUsd + 1.2).toFixed(2)),
         maxDurationMs: 20_000,
+      },
+      sandboxRequirement: {
+        sandboxMode: "ephemeral",
+        timeoutMs: 30_000,
+      },
+      approvalRequirement: {
+        requiredForRiskClass: ["low", "medium", "high", "critical"],
+        approverRoles: ["ops_lead"],
+        escalationTimeoutMs: 300_000,
       },
     };
     const harnessRun = new HarnessRuntimeService().runLoop({

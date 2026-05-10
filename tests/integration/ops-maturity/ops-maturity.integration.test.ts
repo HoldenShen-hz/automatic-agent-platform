@@ -88,13 +88,19 @@ test("emergency integration: full panic lifecycle activate to resume", () => {
   assert.strictEqual(decision.blocked, true);
 
   const resumePlan = {
+    planId: "resume-plan-001",
     scope: "platform/full-lifecycle",
+    scopeRef: "scope-ref-001",
     approvedBy: ["admin-a", "admin-b"],
+    approvalCount: 2,
     approvedRoles: ["platform_admin", "security_team"] as const,
+    compatibilityCheckRef: "compat-check-001",
+    mode: "standard" as const,
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
+    createdAt: new Date().toISOString(),
   };
   const receipt = service.resume("platform/full-lifecycle", resumePlan);
   assert.strictEqual(receipt.resumed, true);
@@ -244,9 +250,9 @@ test("cost integration: record costs, aggregate, build recommendations, and simu
     { scenarioId: "scenario-1", subjectId: "task-cost-001", reductionPercent: 20 },
   ];
   const results = service.simulate(scenarios);
-  assert.strictEqual(results[0].scenarioId, "scenario-1");
-  assert.strictEqual(results[0].currentCostUsd, 25.00);
-  assert.strictEqual(results[0].deltaUsd, -5.00);
+  assert.strictEqual(results[0]!.scenarioId, "scenario-1");
+  assert.strictEqual(results[0]!.currentCostUsd, 25.00);
+  assert.strictEqual(results[0]!.deltaUsd, -5.00);
 
   const dashboard = service.buildDashboardSlice();
   assert.ok(dashboard.totalCostUsd > 0);
@@ -291,6 +297,10 @@ test("drift integration: evidence to reflection to proposal to promotion gate", 
   assert.ok(proposals.length > 0);
 
   const proposal = proposals[0];
+  if (!proposal) {
+    assert.fail("Expected at least one proposal");
+    return;
+  }
   const report = await benchmarkRunner.evaluate(proposal);
   const decision = promotionGate.decide(proposal, report, false);
 
@@ -356,6 +366,10 @@ test("drift integration: promotion gate blocks regression", async () => {
     safetyViolations: 0,
     decision: "reject" as const,
     createdAt: new Date().toISOString(),
+    evaluationVersion: "eval-v1",
+    benchmarkSetId: "benchmark-set/default",
+    baselineSnapshotRef: "baseline:none",
+    lockedCaseIds: [] as string[],
   };
 
   const decision = promotionGate.decide(proposal, report, false);
@@ -467,5 +481,5 @@ test("cost integration: risk level escalation for model LLM costs", () => {
 
   const recommendations = service.buildRecommendations("model");
   assert.ok(recommendations.length > 0);
-  assert.ok(recommendations[0].riskLevel === "medium" || recommendations[0].riskLevel === "high");
+  assert.ok(recommendations[0]!.riskLevel === "medium" || recommendations[0]!.riskLevel === "high");
 });

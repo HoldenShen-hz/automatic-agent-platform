@@ -7,7 +7,7 @@ import { putExplanationCacheEntry } from "../../../src/ops-maturity/explainabili
 import { buildCausalChainSummary } from "../../../src/ops-maturity/explainability/causal-chain-builder/index.js";
 import { EdgeRuntimeSyncService } from "../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 import { buildOfflineExecutionRecord, completeOfflineExecution } from "../../../src/ops-maturity/edge-runtime/edge-executor/index.js";
-import { buildEdgeExecutionPlan } from "../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js";
+import { buildEdgeExecutionPlan, buildLegacyEdgeExecutionPlan } from "../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js";
 import { selectEdgeLocalModel } from "../../../src/ops-maturity/edge-runtime/local-model/index.js";
 import { orderEdgeSyncQueue } from "../../../src/ops-maturity/edge-runtime/sync-queue/index.js";
 import { EvolutionMvpService } from "../../../src/ops-maturity/drift-detection/evolution-mvp-service.js";
@@ -86,10 +86,10 @@ test("collectExplanationEvidenceIds extracts IDs from evidence items", () => {
 });
 
 test("putExplanationCacheEntry stores and retrieves cache entries", () => {
-  const cache: Record<string, { cacheKey: string; summary: string }> = {};
-  const updated = putExplanationCacheEntry(cache, { cacheKey: "key_1", summary: "summary_1" });
+  const cache: Record<string, { cacheKey: string; summary: string; ttlHours: 24 | 0 }> = {};
+  const updated = putExplanationCacheEntry(cache, { cacheKey: "key_1", summary: "summary_1", ttlHours: 24 });
   assert.equal(updated["key_1"]?.summary, "summary_1");
-  const updated2 = putExplanationCacheEntry(updated, { cacheKey: "key_2", summary: "summary_2" });
+  const updated2 = putExplanationCacheEntry(updated, { cacheKey: "key_2", summary: "summary_2", ttlHours: 24 });
   assert.equal(updated2["key_1"]?.summary, "summary_1");
   assert.equal(updated2["key_2"]?.summary, "summary_2");
 });
@@ -184,11 +184,11 @@ test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest",
 });
 
 test("buildEdgeExecutionPlan creates ordered execution plan with priority", () => {
-  const plan = buildEdgeExecutionPlan(["task_1", "task_2", "task_3"], "high");
+  const plan = buildLegacyEdgeExecutionPlan(["task_1", "task_2", "task_3"], "high");
   assert.deepEqual(plan.orderedTaskIds, ["task_1", "task_2", "task_3"]);
   assert.equal(plan.syncRequired, true);
   assert.equal(plan.priority, "high");
-  const planDefault = buildEdgeExecutionPlan(["task_a"]);
+  const planDefault = buildLegacyEdgeExecutionPlan(["task_a"]);
   assert.equal(planDefault.priority, "normal");
 });
 

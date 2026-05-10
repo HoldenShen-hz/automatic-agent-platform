@@ -171,10 +171,9 @@ test("integration: TypedEventBus.pendingForConsumer() returns undelivered events
       traceId: "trace-pending-002",
       traceContext: null,
       payload: {
-        entityKind: "workflow",
-        entityId: "task-pending-001",
         stepId: "step_1",
-        outputJson: '{"result":"ok"}',
+        workflowId: "task-pending-001",
+        outputKey: "result",
         occurredAt: nowIso(),
       },
     });
@@ -275,10 +274,9 @@ test("integration: TypedEventBus filters events by subscribed type", async () =>
       traceId: "trace-filter-002",
       traceContext: null,
       payload: {
-        entityKind: "workflow",
-        entityId: "task-filter-001",
         stepId: "step_1",
-        outputJson: '{"result":"ok"}',
+        workflowId: "task-filter-001",
+        outputKey: "result",
         occurredAt: nowIso(),
       },
     });

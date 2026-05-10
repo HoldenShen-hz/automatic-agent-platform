@@ -23,7 +23,7 @@ test("DiagnosticsService buildTaskSnapshot returns comprehensive snapshot", () =
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -51,7 +51,7 @@ test("DiagnosticsService buildDebugDump returns troubleshooting information", ()
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -77,7 +77,7 @@ test("DiagnosticsService buildDebugDump captures state snapshots correctly", () 
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -96,7 +96,7 @@ test("DiagnosticsService buildDebugDump includes dispatch summary", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -114,7 +114,7 @@ test("DiagnosticsService buildDebugDump captures backpressure metrics", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -135,7 +135,7 @@ test("DiagnosticsService buildTaskSnapshot returns trace summary with IDs", () =
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -154,7 +154,7 @@ test("DiagnosticsService buildTaskSnapshot includes context summary metrics", ()
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -174,7 +174,7 @@ test("DiagnosticsService buildDebugDump generates warning codes", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -193,7 +193,7 @@ test("DiagnosticsService buildDebugDump includes recent tool calls", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -211,7 +211,7 @@ test("DiagnosticsService buildTaskSnapshot includes system information", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -231,7 +231,7 @@ test("DiagnosticsService buildDebugDump includes provider status", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger);
 
@@ -251,7 +251,7 @@ test("DiagnosticsService with retention service includes retention preview", () 
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
     const diagnosticsService = new DiagnosticsService(inspectService, healthService, logger, null);
 
@@ -269,7 +269,7 @@ test("DiagnosticsService buildDebugDump includes log buffer summary", () => {
 
   try {
     const inspectService = new InspectService(ctx.store);
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const logger = new StructuredLogger({ retentionLimit: 100 });
 
     // Add some log entries

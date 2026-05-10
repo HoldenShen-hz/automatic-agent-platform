@@ -63,7 +63,7 @@ test("integration: Tier 1 event types includes core business events", () => {
   ];
 
   for (const event of coreEvents) {
-    assert.ok(TIER_1_EVENT_TYPES.includes(event), `${event} should be Tier 1`);
+    assert.ok((TIER_1_EVENT_TYPES as readonly string[]).includes(event), `${event} should be Tier 1`);
     const consumers = getRequiredConsumers(event);
     assert.ok(consumers.length > 0, `${event} should have consumers`);
   }

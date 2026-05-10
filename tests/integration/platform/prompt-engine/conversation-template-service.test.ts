@@ -124,8 +124,8 @@ test("integration: getTemplatesFromConfig extracts templates from config", () =>
   const templates = getTemplatesFromConfig(config);
 
   assert.equal(templates.length, 2);
-  assert.equal(templates[0].templateId, "extract_test");
-  assert.equal(templates[1].templateId, "extract_test_2");
+  assert.equal(templates[0]!.templateId, "extract_test");
+  assert.equal(templates[1]!.templateId, "extract_test_2");
 });
 
 test("integration: loadConversationTemplateConfig uses default path", () => {
@@ -256,7 +256,7 @@ test("integration: loaded templates preserve all schema fields", () => {
     const templates = getTemplatesFromConfig(config);
 
     assert.equal(templates.length, 1);
-    const template = templates[0];
+    const template = templates[0]!;
 
     assert.equal(template.templateId, "full_schema_test");
     assert.equal(template.name, "Full Schema Test");
@@ -267,7 +267,7 @@ test("integration: loaded templates preserve all schema fields", () => {
     assert.equal(template.isActive, true);
     assert.equal(template.steps.length, 1);
 
-    const step = template.steps[0];
+    const step = template.steps[0]!;
     assert.equal(step.stepId, "approval_type");
     assert.equal(step.prompt, "Select approval type:");
     assert.equal(step.responseTemplate, "Selected: {response}");

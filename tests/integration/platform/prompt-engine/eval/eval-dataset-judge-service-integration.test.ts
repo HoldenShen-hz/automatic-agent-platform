@@ -53,8 +53,7 @@ function generateCasesByPriority(
 function createIntegrationDataset(service: EvalDatasetJudgeService): void {
   const cases: EvalDatasetCase[] = [
     ...generateCasesByPriority("critical", 200, "int-", "exact_match"),
-    ...generateCasesByPriority("high", 100, "int-", "contains"),
-    ...generateCasesByPriority("medium", 50, "int-", "json_schema"),
+    ...generateCasesByPriority("critical", 100, "int-", "contains"),
     ...generateCasesByPriority("standard", 20, "int-", "llm_judge"),
   ];
 
@@ -164,7 +163,7 @@ test("EvalDatasetJudgeService integration: multiple evaluations accumulate repor
 
   const reports = service.listReports("multi-eval-ds");
   assert.equal(reports.length, 2);
-  assert.notEqual(reports[0].candidateModel, reports[1].candidateModel);
+  assert.notEqual(reports[0]!.candidateModel, reports[1]!.candidateModel);
 });
 
 test("EvalDatasetJudgeService integration: custom criterion evaluator via constructor", () => {
@@ -179,7 +178,8 @@ test("EvalDatasetJudgeService integration: custom criterion evaluator via constr
   const service = new EvalDatasetJudgeService(customEval);
   // Use standard priority to avoid large case requirements
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 20, "custom-", "exact_match");
-  cases[0].qualityCriteria[0] = {
+  const firstCase = cases[0]!;
+  firstCase.qualityCriteria[0] = {
     criterionId: "custom_score",
     type: "custom_function",
     config: { functionId: "custom_score" },

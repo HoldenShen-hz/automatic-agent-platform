@@ -25,7 +25,7 @@ test("MetricsService buildSummary with seeded database returns valid metrics", (
   const ctx = createSeededIntegrationContext("aa-metrics-integ-");
 
   try {
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const metricsService = new MetricsService(ctx.db, healthService);
 
     const summary = metricsService.buildSummary();
@@ -104,7 +104,7 @@ test("MetricsService buildSummary accumulates metrics across multiple tasks", ()
         divisionId: "general_ops",
         tenantId: null,
         title: "Active task",
-        status: "executing",
+        status: "in_progress",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -119,7 +119,7 @@ test("MetricsService buildSummary accumulates metrics across multiple tasks", ()
       });
     });
 
-    const healthService = new HealthService(ctx.db, { retentionLimit: 10 });
+    const healthService = new HealthService(ctx.db, ctx.store);
     const metricsService = new MetricsService(ctx.db, healthService);
 
     const summary = metricsService.buildSummary();
@@ -172,7 +172,7 @@ test("startActiveSpan creates trace context that propagates through async operat
       parentContext: { traceId: rootTraceId, spanId: "0000000000000001", parentSpanId: null },
     },
     async (_span, context) => {
-      capturedContext = context;
+      capturedContext = { traceId: context.traceId, spanId: context.spanId, parentSpanId: context.parentSpanId };
 
       // Nested async operation
       await startActiveSpan(
@@ -189,7 +189,7 @@ test("startActiveSpan creates trace context that propagates through async operat
   );
 
   assert.ok(capturedContext != null);
-  assert.equal(capturedContext!.traceId, rootTraceId);
+  assert.equal(capturedContext.traceId, rootTraceId);
 });
 
 test("startActiveSpan derives fallback context when no parent provided", async () => {
@@ -197,10 +197,10 @@ test("startActiveSpan derives fallback context when no parent provided", async (
   let innerContext: { traceId: string; spanId: string; parentSpanId: string | null } | null = null;
 
   await startActiveSpan("outer-span", {}, async (_span, ctx) => {
-    outerContext = ctx;
+    outerContext = { traceId: ctx.traceId, spanId: ctx.spanId, parentSpanId: ctx.parentSpanId };
 
     await startActiveSpan("inner-span", {}, async (_span2, ctx2) => {
-      innerContext = ctx2;
+      innerContext = { traceId: ctx2.traceId, spanId: ctx2.spanId, parentSpanId: ctx2.parentSpanId };
       return undefined;
     });
 
@@ -209,8 +209,8 @@ test("startActiveSpan derives fallback context when no parent provided", async (
 
   assert.ok(outerContext != null);
   assert.ok(innerContext != null);
-  assert.equal(innerContext!.parentSpanId, outerContext!.spanId, "Inner should have outer as parent");
-  assert.notEqual(innerContext!.spanId, outerContext!.spanId, "Spans should have different IDs");
+  assert.equal(innerContext.parentSpanId, outerContext.spanId, "Inner should have outer as parent");
+  assert.notEqual(innerContext.spanId, outerContext.spanId, "Spans should have different IDs");
 });
 
 // =============================================================================

@@ -9,9 +9,6 @@ import {
   registerPlatformArchitectureServices,
   PLATFORM_LAYER_MANIFESTS,
   PLATFORM_PLANE_MANIFESTS,
-  PLATFORM_STARTUP_ORDER,
-  validateStartupOrder,
-  assertStartupOrderEnforced,
 } from "../../src/platform-architecture-bootstrap.js";
 import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-registry.js";
 import { ArchitectureInvariantRegistry, NonOverridableInvariantRegistry } from "../../src/platform/architecture/invariant-registry.js";
@@ -70,10 +67,6 @@ test("integration: non-overridable invariants cannot be overridden", () => {
       `Invariant ${invariantId} should not be overridable`,
     );
   }
-});
-
-test("integration: assertStartupOrderEnforced passes with all invariants present", () => {
-  assert.doesNotThrow(() => assertStartupOrderEnforced());
 });
 
 test("integration: release gate readiness check passes", () => {
@@ -161,26 +154,6 @@ test("integration: app manifests have required capabilities and layers", () => {
   }
 });
 
-test("integration: validateStartupOrder catches various misorderings", () => {
-  // Reversed order
-  const reversed: Array<"P1" | "P2" | "P3" | "P4" | "P5" | "X1"> = ["P1", "P2", "P3", "P4", "P5", "X1"];
-  let result = validateStartupOrder(reversed);
-  assert.notEqual(result, null);
-  assert.equal(result!.violatedPosition, 0);
-
-  // Swapped P2 and P3
-  const swapped23: Array<"P1" | "P2" | "P3" | "P4" | "P5" | "X1"> = ["P5", "X1", "P3", "P2", "P4", "P1"];
-  result = validateStartupOrder(swapped23);
-  assert.notEqual(result, null);
-  assert.equal(result!.violatedPosition, 2);
-
-  // Missing X1 at position 1
-  const missingX1: Array<"P1" | "P2" | "P3" | "P4" | "P5" | "X1"> = ["P5", "P2", "P3", "P4", "P1", "X1"];
-  result = validateStartupOrder(missingX1);
-  assert.notEqual(result, null);
-  assert.equal(result!.violatedPosition, 1);
-});
-
 test("integration: getPlatformArchitectureServices can be called multiple times", async () => {
   const registry = new ServiceRegistry();
 
@@ -196,13 +169,6 @@ test("integration: getPlatformArchitectureServices can be called multiple times"
   } finally {
     await registry.reset();
   }
-});
-
-test("integration: startup order validation works end-to-end", () => {
-  // Correct order should return null (no violation)
-  const correctOrder: Array<"P1" | "P2" | "P3" | "P4" | "P5" | "X1"> = ["P5", "X1", "P2", "P3", "P4", "P1"];
-  const result = validateStartupOrder(correctOrder);
-  assert.equal(result, null);
 });
 
 test("integration: service registry properly initializes all architecture services", async () => {

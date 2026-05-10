@@ -16,7 +16,7 @@ test("integration: agent rollout, rollback, retirement, and binding gate follow 
       modelBinding: { provider: "anthropic", model: "claude-4", fallbackChain: [] },
       trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
       triggerSet: [],
-      autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+      autonomyConfig: { maxAutomationLevel: "manual_only", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },
     lifecycleState: "canary",
     currentVersionId: "v2",

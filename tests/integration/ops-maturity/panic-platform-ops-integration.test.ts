@@ -40,13 +40,19 @@ test("integration: panic blocks ops execution until resume and approval complete
   assert.ok(blockedProposal.blockedBy.includes("ops_agent.blocked_by_panic"));
 
   panicService.resume("platform/runtime", {
+    planId: "resume_001",
     scope: "platform/runtime",
+    scopeRef: "platform/runtime/ref",
     approvedBy: ["sre_manager", "security_lead"],
+    approvalCount: 2,
     approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
+    compatibilityCheckRef: "compat_check_001",
+    mode: "standard",
+    createdAt: "2026-04-20T00:05:00.000Z",
   }, "2026-04-20T00:10:00.000Z");
 
   const activePanic = panicService.evaluateExecution({

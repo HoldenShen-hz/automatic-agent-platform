@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   GovernanceDelegationRevocationSaga,
   type GovernanceDelegationRevocationRequest,
-  type GovernanceDelegationCascadeScope,
+  type GovernanceDelegationRevocationSagaContext,
 } from "../../../../../src/org-governance/delegated-governance/governance-delegation-revocation-saga.js";
 import {
   DelegatedGovernanceService,
@@ -15,14 +15,16 @@ function mockDelegation(overrides: Partial<GovernanceDelegation> = {}): Governan
     delegationId: "delegation-1",
     grantorId: "platform_team",
     granteeId: "division_admin",
+    level: "admin",
+    delegatable: false,
     orgNodeIds: ["org-1"],
     domainIds: ["domain-1"],
+    derivedDelegationIds: [],
     permissions: [],
     guardrails: [],
-    status: "active",
-    grantedAt: "2024-01-01T00:00:00.000Z",
     expiresAt: "2030-01-01T00:00:00.000Z",
-    level: "admin",
+    revocable: true,
+    status: "active",
     ...overrides,
   };
 }
@@ -46,10 +48,10 @@ test("GovernanceDelegationRevocationSaga + DelegatedGovernanceService integratio
 
   // Run revocation saga
   const handlers = {
-    revokePendingApprovals: (_delegationId, _ctx) => {
+    freezeResource: (_resourceId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {
       // mock handler
     },
-    revokeActiveSessions: (_delegationId, _ctx) => {
+    revokeDerivedDelegation: (_delegationId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {
       // mock handler
     },
   };
@@ -59,27 +61,28 @@ test("GovernanceDelegationRevocationSaga + DelegatedGovernanceService integratio
     delegationId: "delegation-revoc-1",
     requestedAtMs: Date.now(),
     derivedResourceIds: ["resource-1", "resource-2"],
-    cascadeScope: { pendingApprovals: true, activeSessions: true, secretLeases: false, workerLeases: false, scheduledTriggers: false },
+    derivedDelegationIds: ["delegation-revoc-1"],
+    cascadeScope: 1,
   };
 
   const receipt = saga.revoke(request, Date.now());
 
   assert.strictEqual(receipt.status, "completed");
-  assert.ok(receipt.revokedPendingApprovals.includes("delegation-revoc-1"));
-  assert.ok(receipt.revokedActiveSessions.includes("delegation-revoc-1"));
-  assert.deepStrictEqual(receipt.frozenResourceIds, ["resource-1", "resource-2"]);
+  assert.ok(receipt.frozenResourceIds.includes("resource-1"));
+  assert.ok(receipt.frozenResourceIds.includes("resource-2"));
+  assert.deepStrictEqual(receipt.revokedDerivedDelegationIds, ["delegation-revoc-1"]);
   assert.strictEqual(receipt.failedStage, null);
 });
 
 test("GovernanceDelegationRevocationSaga compensation triggers when commit fails", () => {
   const saga = new GovernanceDelegationRevocationSaga({
-    freezeResource: (_resourceId, _ctx) => {
+    freezeResource: (_resourceId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {
       // succeeds
     },
-    revokePendingApprovals: (_delegationId, _ctx) => {
+    revokeDerivedDelegation: (_delegationId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {
       throw new Error("Commit failure");
     },
-    compensateResource: (resourceId, _ctx) => {
+    compensateResource: (_resourceId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {
       // compensate
     },
   });
@@ -88,43 +91,34 @@ test("GovernanceDelegationRevocationSaga compensation triggers when commit fails
     delegationId: "delegation-fail-1",
     requestedAtMs: Date.now(),
     derivedResourceIds: ["resource-1"],
-    cascadeScope: { pendingApprovals: true, activeSessions: false, secretLeases: false, workerLeases: false, scheduledTriggers: false },
+    derivedDelegationIds: ["delegation-fail-1"],
+    cascadeScope: 1,
   };
 
   const receipt = saga.revoke(request, Date.now());
 
-  // revokePendingApprovals runs in "prepare" stage (line 98 of saga)
+  // revokeDerivedDelegation runs in "commit" stage
   assert.strictEqual(receipt.status, "compensated");
-  assert.strictEqual(receipt.failedStage, "prepare");
+  assert.strictEqual(receipt.failedStage, "commit");
   assert.ok(receipt.compensationResourceIds.includes("resource-1"));
 });
 
 test("GovernanceDelegationRevocationSaga cascade handles all scope items", () => {
   const handlers = {
-    revokePendingApprovals: (_delegationId, _ctx) => {},
-    revokeActiveSessions: (_delegationId, _ctx) => {},
-    revokeSecretLeases: (_delegationId, _ctx) => {},
-    revokeWorkerLeases: (_delegationId, _ctx) => {},
-    revokeScheduledTriggers: (_delegationId, _ctx) => {},
-    revokeDerivedDelegation: (_delegationId, _ctx) => {},
-    audit: (_receipt, _ctx) => {},
+    freezeResource: (_resourceId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {},
+    revokeDerivedDelegation: (_delegationId: string, _ctx: GovernanceDelegationRevocationSagaContext) => {},
+    audit: (_receipt: any, _ctx: GovernanceDelegationRevocationSagaContext) => {},
   };
 
   const saga = new GovernanceDelegationRevocationSaga(handlers);
-  const fullCascadeScope: GovernanceDelegationCascadeScope = {
-    pendingApprovals: true,
-    activeSessions: true,
-    secretLeases: true,
-    workerLeases: true,
-    scheduledTriggers: true,
-  };
+  const cascadeScope = 2;
 
   const request: GovernanceDelegationRevocationRequest = {
     delegationId: "delegation-cascade-1",
     requestedAtMs: Date.now(),
     derivedResourceIds: [],
     derivedDelegationIds: ["derived-del-1"],
-    cascadeScope: fullCascadeScope,
+    cascadeScope,
   };
 
   const receipt = saga.revoke(request, Date.now());

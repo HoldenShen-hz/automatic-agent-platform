@@ -41,18 +41,14 @@ function makeLedger(overrides: Partial<{
 }> = {}): BudgetLedger {
   return createBudgetLedger({
     tenantId: overrides.tenantId ?? "tenant_budget_test",
-    traceId: "trace_" + Date.now(),
-    emittedBy: "system",
-    budgetLedgerId: overrides.budgetLedgerId ?? "ledger_" + Date.now(),
+    harnessRunId: "harness_" + Date.now(),
+    currency: "credits",
     hardCap: overrides.hardCap ?? 1000,
-    resourceKinds: ["llm", "compute", "storage", "egress"] as readonly BudgetResourceKind[],
     version: overrides.version ?? 1,
-    status: overrides.status ?? "active",
+    status: overrides.status ?? "open",
     reservedAmount: overrides.reservedAmount ?? 0,
     settledAmount: overrides.settledAmount ?? 0,
     releasedAmount: overrides.releasedAmount ?? 0,
-    createdAt: "2026-04-29T00:00:00.000Z",
-    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 }
 
@@ -64,27 +60,27 @@ test("budget tracking: reserve budget successfully", () => {
   const ledger = makeLedger({ hardCap: 1000 });
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "api",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: 1,
   });
 
   assert.equal(reservation.amount, 100);
-  assert.equal(reservation.resourceKind, "llm");
-  assert.ok(reservation.reservationId.length > 0);
+  assert.equal(reservation.resourceKind, "api");
+  assert.ok(reservation.budgetReservationId.length > 0);
 });
 
 test("budget tracking: reserve budget with nodeRunId", () => {
   const ledger = makeLedger();
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
     resourceKind: "compute",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: 1,
     nodeRunId: "node_step_123",
   });
 
@@ -95,11 +91,11 @@ test("budget tracking: multiple reservations accumulate", () => {
   let ledger = makeLedger({ reservedAmount: 0 });
 
   const reservation1 = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = {
@@ -109,11 +105,11 @@ test("budget tracking: multiple reservations accumulate", () => {
   };
 
   const reservation2 = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 150,
     resourceKind: "compute",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = {
@@ -134,11 +130,11 @@ test("budget tracking: settle reservation with actual cost", () => {
   let ledger = makeLedger();
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   // Update ledger with reservation
@@ -150,9 +146,9 @@ test("budget tracking: settle reservation with actual cost", () => {
 
   // Settle with actual cost (less than reserved)
   const settlement = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 85,
+    settlementKind: "partial",
     evidenceRefs: [],
   });
 
@@ -173,17 +169,17 @@ test("budget tracking: settle exact amount", () => {
   const ledger = makeLedger();
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   const settlement = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 100, // Exact match
+    settlementKind: "final",
     evidenceRefs: [],
   });
 
@@ -194,11 +190,11 @@ test("budget tracking: settle with evidence refs", () => {
   const ledger = makeLedger();
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
     resourceKind: "compute",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   const evidenceRefs = [
@@ -207,9 +203,9 @@ test("budget tracking: settle with evidence refs", () => {
   ];
 
   const settlement = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 45,
+    settlementKind: "partial",
     evidenceRefs,
   });
 
@@ -327,11 +323,11 @@ test("budget tracking: track costs from estimation to reservation", () => {
 
   // Reserve budget for the estimated cost
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: estimatedCost,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   assert.equal(reservation.amount, 0.25);
@@ -397,9 +393,9 @@ test("budget tracking: simulate cost optimization scenarios", () => {
 // Budget State Machine Transition Tests
 // =============================================================================
 
-test("budget tracking: state transitions from active to hard_cap_reached", () => {
+test("budget tracking: state transitions from open to hard_cap_reached", () => {
   let ledger = makeLedger({
-    status: "active",
+    status: "open",
     hardCap: 100,
     reservedAmount: 80,
     settledAmount: 20,
@@ -418,9 +414,9 @@ test("budget tracking: state transitions from active to hard_cap_reached", () =>
   assert.equal(ledger.status, "hard_cap_reached");
 });
 
-test("budget tracking: state remains active when below cap", () => {
+test("budget tracking: state remains open when below cap", () => {
   let ledger = makeLedger({
-    status: "active",
+    status: "open",
     hardCap: 1000,
     reservedAmount: 300,
     settledAmount: 200,
@@ -430,7 +426,7 @@ test("budget tracking: state remains active when below cap", () => {
   const activeCommitted = ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount;
   const newStatus = activeCommitted >= ledger.hardCap ? "hard_cap_reached" : ledger.status;
 
-  assert.equal(newStatus, "active");
+  assert.equal(newStatus, "open");
 });
 
 // =============================================================================
@@ -452,20 +448,20 @@ test("budget tracking: tenant budget isolation", () => {
 
   // Reservations for tenant A
   const reservationA = createBudgetReservation({
-    ledger: ledgerA,
+    budgetLedgerId: ledgerA.budgetLedgerId,
+    harnessRunId: ledgerA.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledgerA.version,
   });
 
   // Reservations for tenant B
   const reservationB = createBudgetReservation({
-    ledger: ledgerB,
+    budgetLedgerId: ledgerB.budgetLedgerId,
+    harnessRunId: ledgerB.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledgerB.version,
   });
 
   assert.notEqual(ledgerA.budgetLedgerId, ledgerB.budgetLedgerId);
@@ -475,32 +471,28 @@ test("budget tracking: tenant budget isolation", () => {
 });
 
 test("budget tracking: per-resource-kind budget tracking", () => {
-  const ledger = makeLedger({
-    resourceKinds: ["llm", "compute", "storage", "egress"] as readonly BudgetResourceKind[],
-  });
+  const ledger = makeLedger();
 
   // Reserve for different resource kinds
-  const llmReservation = createBudgetReservation({
-    ledger,
+  const tokenReservation = createBudgetReservation({
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   const computeReservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
     resourceKind: "compute",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   // Both reservations should be valid
-  assert.equal(llmReservation.resourceKind, "llm");
+  assert.equal(tokenReservation.resourceKind, "token");
   assert.equal(computeReservation.resourceKind, "compute");
-  assert.ok(ledger.resourceKinds.includes("llm"));
-  assert.ok(ledger.resourceKinds.includes("compute"));
 });
 
 // =============================================================================
@@ -516,19 +508,19 @@ test("budget tracking: reconcile ledger after settlement", () => {
 
   // First settlement
   const reservation1 = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation1.amount, version: ledger.version + 1 };
 
   const settlement1 = createBudgetSettlement({
-    ledger,
-    reservation: reservation1,
+    budgetReservationId: reservation1.budgetReservationId,
     actualAmount: 90,
+    settlementKind: "partial",
     evidenceRefs: [],
   });
 
@@ -541,19 +533,19 @@ test("budget tracking: reconcile ledger after settlement", () => {
 
   // Second reservation
   const reservation2 = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation2.amount, version: ledger.version + 1 };
 
   const settlement2 = createBudgetSettlement({
-    ledger,
-    reservation: reservation2,
+    budgetReservationId: reservation2.budgetReservationId,
     actualAmount: 100,
+    settlementKind: "final",
     evidenceRefs: [],
   });
 
@@ -606,11 +598,11 @@ test("budget tracking: reservation expiry check", () => {
   const now = "2026-04-30T00:00:00.000Z";
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt,
-    expectedVersion: ledger.version,
   });
 
   // Check expiry
@@ -626,11 +618,11 @@ test("budget tracking: reservation not expired", () => {
   const now = "2026-04-30T00:00:00.000Z";
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt,
-    expectedVersion: ledger.version,
   });
 
   const expired = new Date(now) > new Date(reservation.expiresAt);
@@ -674,19 +666,19 @@ test("budget tracking: track settlement efficiency", () => {
   let ledger = makeLedger();
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 100,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation.amount, version: ledger.version + 1 };
 
   const settlement = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 85,
+    settlementKind: "partial",
     evidenceRefs: [],
   });
 
@@ -705,11 +697,11 @@ test("budget tracking: version increments on state change", () => {
   let ledger = makeLedger({ version: 1 });
 
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 50,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation.amount, version: ledger.version + 1 };
@@ -717,9 +709,9 @@ test("budget tracking: version increments on state change", () => {
   assert.equal(ledger.version, 2);
 
   const settlement = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 45,
+    settlementKind: "partial",
     evidenceRefs: [],
   });
 
@@ -755,11 +747,11 @@ test("budget tracking: complete lifecycle from reservation to release", () => {
 
   // Phase 1: Reserve budget
   const reservation = createBudgetReservation({
-    ledger,
+    budgetLedgerId: ledger.budgetLedgerId,
+    harnessRunId: ledger.harnessRunId,
     amount: 300,
-    resourceKind: "llm",
+    resourceKind: "token",
     expiresAt: "2026-04-30T00:00:00.000Z",
-    expectedVersion: ledger.version,
   });
 
   ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation.amount, version: ledger.version + 1 };
@@ -768,9 +760,9 @@ test("budget tracking: complete lifecycle from reservation to release", () => {
 
   // Phase 2: Settle partial
   const settlement1 = createBudgetSettlement({
-    ledger,
-    reservation,
+    budgetReservationId: reservation.budgetReservationId,
     actualAmount: 200,
+    settlementKind: "partial",
     evidenceRefs: [],
   });
 
@@ -809,19 +801,19 @@ test("budget tracking: multiple sequential reservations and settlements", () => 
 
   for (const task of tasks) {
     const reservation = createBudgetReservation({
-      ledger,
+      budgetLedgerId: ledger.budgetLedgerId,
+      harnessRunId: ledger.harnessRunId,
       amount: task.amount,
-      resourceKind: "llm",
+      resourceKind: "token",
       expiresAt: "2026-04-30T00:00:00.000Z",
-      expectedVersion: ledger.version,
     });
 
     ledger = { ...ledger, reservedAmount: ledger.reservedAmount + reservation.amount, version: ledger.version + 1 };
 
     const settlement = createBudgetSettlement({
-      ledger,
-      reservation,
+      budgetReservationId: reservation.budgetReservationId,
       actualAmount: task.actual,
+      settlementKind: task.actual === task.amount ? "final" : "partial",
       evidenceRefs: [],
     });
 

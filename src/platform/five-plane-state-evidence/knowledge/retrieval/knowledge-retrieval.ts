@@ -294,9 +294,30 @@ export class KnowledgeRetrievalService {
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
     // R24-18 fix: When vector store exists, use it for semantic search
-    // Only fall back to archive-based search when no vector store is available
+    // Previously this method returned [] when semanticVectorStore existed, which
+    // caused semantic search to be skipped entirely for synchronous queries
     if (this.semanticVectorStore) {
-      return [];
+      const queryEmbedding = buildSemanticEmbedding(keyword);
+      if (!queryEmbedding) {
+        return [];
+      }
+      const candidates: Array<[string, number]> = [];
+      for (const record of this.archive.list(options.namespace)) {
+        if (record.document.status !== "indexed" || record.document.archived) {
+          continue;
+        }
+        for (const chunk of record.chunks) {
+          const similarity = cosineSimilarity(chunk.embedding, queryEmbedding);
+          if (similarity < SEMANTIC_MATCH_THRESHOLD) {
+            continue;
+          }
+          const knowledgeRef = `knowledge:${chunk.chunkId}`;
+          candidates.push([knowledgeRef, similarity]);
+        }
+      }
+      return candidates
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, SEMANTIC_CANDIDATE_LIMIT);
     }
     const queryEmbedding = buildSemanticEmbedding(keyword);
     if (!queryEmbedding) {

@@ -13,7 +13,7 @@ import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
 import { ArtifactRepository } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/artifact-repository.js";
-import type { ArtifactRecord } from "../../../../src/contracts/types/domain.js";
+import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("storeArtifact saves artifact with metadata", () => {
   const ctx = createSeededIntegrationContext("aa-artifact-store-");
@@ -158,9 +158,9 @@ test("listArtifactsByTask returns artifacts for execution", () => {
     assert.strictEqual(listed.length, 3, "should return all artifacts for task");
 
     // Verify ordering by created_at ASC
-    assert.strictEqual(listed[0].artifactId, "artifact-list-001");
-    assert.strictEqual(listed[1].artifactId, "artifact-list-002");
-    assert.strictEqual(listed[2].artifactId, "artifact-list-003");
+    assert.strictEqual(listed[0]!.artifactId, "artifact-list-001");
+    assert.strictEqual(listed[1]!.artifactId, "artifact-list-002");
+    assert.strictEqual(listed[2]!.artifactId, "artifact-list-003");
 
     // Verify metadata integrity
     const outputArtifact = listed.find((a) => a.kind === "output");

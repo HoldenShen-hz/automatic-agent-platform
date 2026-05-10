@@ -412,7 +412,11 @@ export function shouldEvict(
         return 1 - ageRatio;
       })()
     : priority;
-  const shouldEvictResult = candidateCount > maxLayerSize && normalizedPriority < 0.5;
+  const shouldEvictResult = candidateCount > maxLayerSize && (
+    strategy === "lru" || strategy === "fifo"
+      ? (1 - normalizedPriority) > 0.5  // For LRU/FIFO: older memories (high ageRatio) should be evicted
+      : normalizedPriority < 0.5  // For priority-based: low priority should be evicted
+  );
   if (shouldEvictResult) {
     // R16-39 fix: Report priority-based eviction to prevent silent loss
     onEvict?.(memory, "capacity_pressure");
@@ -437,7 +441,9 @@ export function mapMemoryScopeToLayer(scope: string): HierarchicalMemoryLayer {
     case "evolution":
       return "evolution";
     default:
-      return "project";
+      // R24-33 FIX: Throw error for unknown layer instead of silent fallback to "project"
+      // Silent fallback causes mis-routing when configuration is incorrect
+      throw new Error(`memory.layer_unknown: Unknown scope "${scope}". Valid scopes: task_runtime, session, agent, workspace, user, experience, evolution.`);
   }
 }
 

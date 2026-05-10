@@ -17,8 +17,8 @@ import {
   createExecutionReceipt,
   createStateCommand,
   createEvidenceRecord,
-  createProjectionUpdate,
-} from "../../../../../src/platform/contracts/types/index.js";
+} from "../../../../../src/platform/contracts/types/platform-contracts.js";
+import { PrincipalRef } from "../../../../../src/platform/contracts/executable-contracts.js";
 
 test("platform-contracts: createPlatformPrincipal generates valid principal", () => {
   const principal = createPlatformPrincipal({

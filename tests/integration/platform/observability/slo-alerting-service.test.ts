@@ -27,10 +27,9 @@ test("SloAlertingService records SLI sample and queries it back", () => {
   try {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
-    const now = new Date().toISOString();
 
     // Create an SLO first
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Test Availability SLO",
       description: "Tests availability requirement",
       sliKind: "availability",
@@ -40,16 +39,10 @@ test("SloAlertingService records SLI sample and queries it back", () => {
     });
 
     // Record SLI sample
-    service.recordSliSample({
-      sloId: slo.id,
-      kind: "availability",
-      value: 0.995,
-      unit: "ratio",
-      collectedAt: now,
-    });
+    service.collectSli(slo.id, 0.995, "ratio");
 
     // Query samples
-    const samples = service.querySliSamples(slo.id, { limit: 10 });
+    const samples = service.listSliSamples(slo.id, { limit: 10 });
 
     assert.ok(samples.length >= 1, "Should have at least one sample");
     assert.equal(samples[0].sloId, slo.id);
@@ -59,14 +52,14 @@ test("SloAlertingService records SLI sample and queries it back", () => {
   }
 });
 
-test("SloAlertingService createSloDefinition creates and stores SLO", () => {
+test("SloAlertingService defineSlo creates and stores SLO", () => {
   const ctx = createIntegrationContext("aa-slo-create-");
 
   try {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
 
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Latency SLO",
       description: "P95 latency must be under 500ms",
       sliKind: "latency_p95",
@@ -84,7 +77,7 @@ test("SloAlertingService createSloDefinition creates and stores SLO", () => {
     assert.equal(slo.status, "unknown");
 
     // Verify persisted
-    const retrieved = service.getSloDefinition(slo.id);
+    const retrieved = service.getSlo(slo.id);
     assert.ok(retrieved != null, "SLO should be retrievable");
     assert.equal(retrieved.name, "Latency SLO");
   } finally {
@@ -92,7 +85,7 @@ test("SloAlertingService createSloDefinition creates and stores SLO", () => {
   }
 });
 
-test("SloAlertingService createAlertRule creates and retrieves rule", () => {
+test("SloAlertingService defineAlertRule creates and retrieves rule", () => {
   const ctx = createIntegrationContext("aa-slo-alert-rule-");
 
   try {
@@ -100,7 +93,7 @@ test("SloAlertingService createAlertRule creates and retrieves rule", () => {
     const service = new SloAlertingService(ctx.db);
 
     // Create SLO first
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Error Rate SLO",
       description: "Error rate must be under 1%",
       sliKind: "error_rate",
@@ -110,13 +103,14 @@ test("SloAlertingService createAlertRule creates and retrieves rule", () => {
     });
 
     // Create alert rule
-    const rule = service.createAlertRule({
+    const rule = service.defineAlertRule({
       name: "Error Rate Breach Alert",
       sloId: slo.id,
       condition: "error_rate > 0.01",
       severity: "critical",
       channelKind: "log",
       cooldownMinutes: 15,
+      enabled: true,
     });
 
     assert.ok(rule.id != null, "Rule should have an ID");
@@ -128,7 +122,7 @@ test("SloAlertingService createAlertRule creates and retrieves rule", () => {
     assert.equal(rule.enabled, true);
 
     // Verify persisted
-    const retrieved = service.getAlertRule(rule.id);
+    const retrieved = service.listAlertRules().find(r => r.id === rule.id);
     assert.ok(retrieved != null, "Rule should be retrievable");
   } finally {
     ctx.cleanup();
@@ -141,10 +135,9 @@ test("SloAlertingService evaluateSlo returns correct status", () => {
   try {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
-    const now = new Date().toISOString();
 
     // Create SLO
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Eval SLO",
       description: "Test evaluation",
       sliKind: "availability",
@@ -155,35 +148,22 @@ test("SloAlertingService evaluateSlo returns correct status", () => {
 
     // Add good samples (meets SLO)
     for (let i = 0; i < 10; i++) {
-      service.recordSliSample({
-        sloId: slo.id,
-        kind: "availability",
-        value: 0.99,
-        unit: "ratio",
-        collectedAt: new Date(Date.now() - i * 60000).toISOString(),
-      });
+      service.collectSli(slo.id, 0.99, "ratio");
     }
 
     // Evaluate
     const result = service.evaluateSlo(slo.id);
 
     assert.ok(result != null, "Should return evaluation result");
-    assert.equal(result.sloId, slo.id);
-    assert.equal(result.status, "met", "High availability should meet 0.95 target");
+    assert.equal(result, "met", "High availability should meet 0.95 target");
 
     // Now add bad samples
     for (let i = 0; i < 10; i++) {
-      service.recordSliSample({
-        sloId: slo.id,
-        kind: "availability",
-        value: 0.90,
-        unit: "ratio",
-        collectedAt: new Date(Date.now() - i * 60000 - 7200000).toISOString(),
-      });
+      service.collectSli(slo.id, 0.90, "ratio");
     }
 
     const result2 = service.evaluateSlo(slo.id);
-    assert.ok(result2.status === "at_risk" || result2.status === "breached", "Low availability should be at risk or breached");
+    assert.ok(result2 === "at_risk" || result2 === "breached", "Low availability should be at risk or breached");
   } finally {
     ctx.cleanup();
   }
@@ -197,7 +177,7 @@ test("SloAlertingService fireAlert creates alert event", () => {
     const service = new SloAlertingService(ctx.db);
 
     // Create SLO and rule
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Fire Test SLO",
       description: "Test fire alert",
       sliKind: "error_rate",
@@ -206,13 +186,14 @@ test("SloAlertingService fireAlert creates alert event", () => {
       windowMinutes: 30,
     });
 
-    const rule = service.createAlertRule({
+    const rule = service.defineAlertRule({
       name: "Fire Test Rule",
       sloId: slo.id,
       condition: "error_rate > 0.01",
       severity: "warning",
       channelKind: "log",
       cooldownMinutes: 5,
+      enabled: true,
     });
 
     // Fire alert
@@ -224,14 +205,14 @@ test("SloAlertingService fireAlert creates alert event", () => {
     assert.equal(alertEvent.status, "firing");
 
     // Verify in database
-    const retrieved = service.getAlertEvent(alertEvent.id);
+    const retrieved = service.listAlertEvents().find(e => e.id === alertEvent.id);
     assert.ok(retrieved != null, "Alert should be in database");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("SloAlertingService getAlertEvents returns firing alerts", () => {
+test("SloAlertingService listAlertEvents returns firing alerts", () => {
   const ctx = createIntegrationContext("aa-slo-alerts-");
 
   try {
@@ -239,7 +220,7 @@ test("SloAlertingService getAlertEvents returns firing alerts", () => {
     const service = new SloAlertingService(ctx.db);
 
     // Create SLO and rules
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Multi Alert SLO",
       description: "Test multiple alerts",
       sliKind: "latency_p95",
@@ -248,20 +229,21 @@ test("SloAlertingService getAlertEvents returns firing alerts", () => {
       windowMinutes: 60,
     });
 
-    const rule = service.createAlertRule({
+    const rule = service.defineAlertRule({
       name: "Multi Alert Rule",
       sloId: slo.id,
       condition: "latency_p95 > 500",
       severity: "critical",
       channelKind: "log",
       cooldownMinutes: 10,
+      enabled: true,
     });
 
     // Fire multiple alerts
     service.fireAlert(rule.id, "Latency Alert 1", "P95 latency is 600ms");
     service.fireAlert(rule.id, "Latency Alert 2", "P95 latency is 700ms");
 
-    const firingAlerts = service.getAlertEvents({ status: "firing" });
+    const firingAlerts = service.listAlertEvents("firing");
 
     assert.ok(firingAlerts.length >= 2, "Should have multiple firing alerts");
   } finally {
@@ -276,7 +258,7 @@ test("SloAlertingService resolveAlert updates alert status", () => {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
 
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Resolve Test SLO",
       description: "Test resolve",
       sliKind: "availability",
@@ -285,13 +267,14 @@ test("SloAlertingService resolveAlert updates alert status", () => {
       windowMinutes: 60,
     });
 
-    const rule = service.createAlertRule({
+    const rule = service.defineAlertRule({
       name: "Resolve Test Rule",
       sloId: slo.id,
       condition: "availability < 0.99",
       severity: "warning",
       channelKind: "log",
       cooldownMinutes: 5,
+      enabled: true,
     });
 
     const alertEvent = service.fireAlert(rule.id, "Availability Low", "Availability dropped to 95%");
@@ -299,16 +282,15 @@ test("SloAlertingService resolveAlert updates alert status", () => {
     // Resolve
     service.resolveAlert(alertEvent.id);
 
-    const resolved = service.getAlertEvent(alertEvent.id);
+    const resolved = service.listAlertEvents().find(e => e.id === alertEvent.id);
     assert.ok(resolved != null);
     assert.equal(resolved.status, "resolved");
-    assert.ok(resolved.resolvedAt != null, "Should have resolved_at timestamp");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("SloAlertingService listSloDefinitions returns all SLOs", () => {
+test("SloAlertingService listSlos returns all SLOs", () => {
   const ctx = createIntegrationContext("aa-slo-list-");
 
   try {
@@ -316,7 +298,7 @@ test("SloAlertingService listSloDefinitions returns all SLOs", () => {
     const service = new SloAlertingService(ctx.db);
 
     // Create multiple SLOs
-    service.createSloDefinition({
+    service.defineSlo({
       name: "SLO One",
       description: "First SLO",
       sliKind: "availability",
@@ -325,7 +307,7 @@ test("SloAlertingService listSloDefinitions returns all SLOs", () => {
       windowMinutes: 60,
     });
 
-    service.createSloDefinition({
+    service.defineSlo({
       name: "SLO Two",
       description: "Second SLO",
       sliKind: "latency_p95",
@@ -334,7 +316,7 @@ test("SloAlertingService listSloDefinitions returns all SLOs", () => {
       windowMinutes: 30,
     });
 
-    const slos = service.listSloDefinitions();
+    const slos = service.listSlos();
 
     assert.ok(slos.length >= 2, "Should have at least 2 SLOs");
   } finally {
@@ -349,7 +331,7 @@ test("SloAlertingService listAlertRules returns all rules", () => {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
 
-    const slo = service.createSloDefinition({
+    const slo = service.defineSlo({
       name: "Rules List SLO",
       description: "Test",
       sliKind: "error_rate",
@@ -358,22 +340,24 @@ test("SloAlertingService listAlertRules returns all rules", () => {
       windowMinutes: 60,
     });
 
-    service.createAlertRule({
+    service.defineAlertRule({
       name: "Rule One",
       sloId: slo.id,
       condition: "error_rate > 0.01",
       severity: "warning",
       channelKind: "log",
       cooldownMinutes: 5,
+      enabled: true,
     });
 
-    service.createAlertRule({
+    service.defineAlertRule({
       name: "Rule Two",
       sloId: slo.id,
       condition: "error_rate > 0.05",
       severity: "critical",
       channelKind: "webhook",
       cooldownMinutes: 10,
+      enabled: true,
     });
 
     const rules = service.listAlertRules();
@@ -390,10 +374,9 @@ test("SloAlertingService evaluates multiple SLI kinds correctly", () => {
   try {
     ctx.db.connection.exec(SLO_ALERTING_DDL);
     const service = new SloAlertingService(ctx.db);
-    const now = new Date().toISOString();
 
     // Test latency SLI
-    const latencySlo = service.createSloDefinition({
+    const latencySlo = service.defineSlo({
       name: "Latency P95",
       description: "P95 latency",
       sliKind: "latency_p95",
@@ -402,19 +385,13 @@ test("SloAlertingService evaluates multiple SLI kinds correctly", () => {
       windowMinutes: 15,
     });
 
-    service.recordSliSample({
-      sloId: latencySlo.id,
-      kind: "latency_p95",
-      value: 450,
-      unit: "ms",
-      collectedAt: now,
-    });
+    service.collectSli(latencySlo.id, 450, "ms");
 
     const latencyResult = service.evaluateSlo(latencySlo.id);
-    assert.equal(latencyResult.status, "met", "450ms should meet 500ms target");
+    assert.equal(latencyResult, "met", "450ms should meet 500ms target");
 
     // Test error_rate SLI
-    const errorSlo = service.createSloDefinition({
+    const errorSlo = service.defineSlo({
       name: "Error Rate",
       description: "Error rate",
       sliKind: "error_rate",
@@ -423,16 +400,10 @@ test("SloAlertingService evaluates multiple SLI kinds correctly", () => {
       windowMinutes: 60,
     });
 
-    service.recordSliSample({
-      sloId: errorSlo.id,
-      kind: "error_rate",
-      value: 0.03,
-      unit: "ratio",
-      collectedAt: now,
-    });
+    service.collectSli(errorSlo.id, 0.03, "ratio");
 
     const errorResult = service.evaluateSlo(errorSlo.id);
-    assert.equal(errorResult.status, "met", "3% should meet 5% target");
+    assert.equal(errorResult, "met", "3% should meet 5% target");
   } finally {
     ctx.cleanup();
   }

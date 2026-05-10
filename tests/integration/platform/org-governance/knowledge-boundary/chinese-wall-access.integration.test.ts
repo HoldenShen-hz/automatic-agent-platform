@@ -14,13 +14,11 @@ import type { ChineseWallPolicy } from "../../../../../src/org-governance/knowle
 function mockBoundary(overrides: Partial<KnowledgeBoundary> = {}): KnowledgeBoundary {
   return {
     boundaryId: "boundary-1",
-    name: "Test Boundary",
-    boundaryType: "project",
     ownerOrgNodeId: "org-1",
-    ownerUserIds: ["owner-1"],
-    accessLevel: "restricted",
-    classification: "confidential",
-    active: true,
+    namespaceIds: [],
+    auditOnAccess: true,
+    allowedOrgNodeIds: [],
+    fieldAllowlist: [],
     ...overrides,
   };
 }
@@ -42,6 +40,7 @@ test("ChineseWallAccessSaga + KnowledgeBoundaryService integration: access decis
 
   const policy: ChineseWallPolicy = {
     policyId: "wall-1",
+    conflictGroups: {},
     blockedOrgNodeIds: ["org-2"],
   };
 

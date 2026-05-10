@@ -26,7 +26,7 @@ function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningOb
     taskId: "task-rollout-001",
     type: "execution_trace",
     content: { summary: "test" },
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -34,44 +34,57 @@ function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningOb
 function makeStrategyVersion(overrides: Partial<StrategyVersion> = {}): StrategyVersion {
   return {
     strategyVersionId: newId("strategy_ver"),
-    strategyId: "strategy-001",
-    releaseLevel: "canary_5",
-    version: 1,
+    title: "test-strategy",
+    sourceLearningObjectIds: [],
+    releaseLevel: "L2_canary",
     createdAt: Date.now(),
     ...overrides,
   };
 }
 
-function makeCandidate(status: ImprovementCandidate["status"] = "approved"): ImprovementCandidate {
+function makeCandidate(status: "candidate_created" | "under_review" | "approved" | "evaluation_enabled" = "approved"): ImprovementCandidate {
   return {
     candidateId: newId("candidate"),
     taskId: "task-candidate-001",
+    learningObjectId: "lo-1",
+    source: "failure_pattern",
+    targetScope: "task",
+    priority: "medium",
+    rolloutLevel: "L0_off",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    guardrails: [],
     sourceSignalRefs: ["signal-1", "signal-2"],
     sourceLearningObjectIds: ["lo-1"],
     changeScope: "policy",
     description: "Test improvement candidate",
     expectedBenefit: "Test benefit",
     status,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
 function makeRolloutMetrics(overrides: Partial<{
-  errorRate: number;
+  requestCount: number;
+  failureRate: number;
   p99LatencyMs: number;
-  requestSuccessRate: number;
-  healthScore: number;
+  baselineP99LatencyMs: number;
 }> = {}): {
-  errorRate: number;
+  requestCount: number;
+  failureRate: number;
   p99LatencyMs: number;
-  requestSuccessRate: number;
-  healthScore: number;
+  baselineP99LatencyMs: number;
 } {
   return {
-    errorRate: 0.01,
+    requestCount: 100,
+    failureRate: 0.01,
     p99LatencyMs: 150,
-    requestSuccessRate: 0.99,
-    healthScore: 0.95,
+    baselineP99LatencyMs: 200,
     ...overrides,
   };
 }
@@ -85,20 +98,20 @@ test("policy-rollout: decide allows approved candidate with canary level", () =>
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const decision = service.decide(candidate, strategy);
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.releaseLevel, "canary_5");
+  assert.equal(decision.releaseLevel, "L2_canary");
 });
 
 test("policy-rollout: decide blocks unapproved candidate", () => {
   const autoRollback = new AutoRollbackService();
   const service = new PolicyRolloutService(autoRollback);
 
-  const candidate = makeCandidate("proposed");
-  const strategy = makeStrategyVersion({ releaseLevel: "evaluate_0" });
+  const candidate = makeCandidate("under_review");
+  const strategy = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const decision = service.decide(candidate, strategy);
 
@@ -111,7 +124,7 @@ test("policy-rollout: decide blocks rollout when frozen", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   // Test that when rollout freeze is triggered (by external state), decision is blocked
   // Note: This would require actual freeze state; here we test the guardrail path
@@ -130,7 +143,7 @@ test("policy-rollout: start creates rollout record for approved candidate", () =
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
 
@@ -143,8 +156,8 @@ test("policy-rollout: start returns null for blocked candidate", () => {
   const autoRollback = new AutoRollbackService();
   const service = new PolicyRolloutService(autoRollback);
 
-  const candidate = makeCandidate("proposed");
-  const strategy = makeStrategyVersion({ releaseLevel: "stable_100" });
+  const candidate = makeCandidate("under_review");
+  const strategy = makeStrategyVersion({ releaseLevel: "L5_full" });
 
   const record = service.start(candidate, strategy);
 
@@ -160,7 +173,7 @@ test("policy-rollout: startWithGating blocks when evaluation gate fails", () => 
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const result = service.startWithGating(candidate, strategy, "operator-1", {
     evaluationGate: {
@@ -181,7 +194,7 @@ test("policy-rollout: startWithGating passes when gate succeeds", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const result = service.startWithGating(candidate, strategy, "operator-1", {
     evaluationGate: {
@@ -202,7 +215,7 @@ test("policy-rollout: startWithGating requires approval when configured", () => 
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("evaluating"); // Not fully approved
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const result = service.startWithGating(candidate, strategy, "operator-1", {
     requireApproval: true,
@@ -221,7 +234,7 @@ test("policy-rollout: promote canary to partial_25 with passing metrics", () => 
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
   assert.ok(record !== null);
@@ -244,7 +257,7 @@ test("policy-rollout: promote triggers rollback on failing metrics", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
 
@@ -271,7 +284,7 @@ test("policy-rollout: metrics gate evaluation requires metrics", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
 
@@ -291,7 +304,7 @@ test("policy-rollout: rollback transitions candidate to rolled_back", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
 
@@ -310,7 +323,7 @@ test("policy-rollout: rollback records reason codes from auto-rollback", () => {
   const service = new PolicyRolloutService(autoRollback);
 
   const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const record = service.start(candidate, strategy, "operator-1");
 
@@ -335,7 +348,7 @@ test("policy-rollout: guardrail blocks rollout for unapproved candidate status",
 
   // Candidate still in proposed state
   const candidate = makeCandidate("proposed");
-  const strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const decision = service.decide(candidate, strategy);
 
@@ -354,7 +367,7 @@ test("policy-rollout: full progression from canary to stable_100", () => {
   const candidate = makeCandidate("approved");
 
   // Start at canary
-  let strategy = makeStrategyVersion({ releaseLevel: "canary_5" });
+  let strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
   let record = service.start(candidate, strategy, "operator-1");
   assert.equal(record!.status, "canary_5");
 

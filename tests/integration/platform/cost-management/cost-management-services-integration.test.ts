@@ -55,8 +55,8 @@ function createTestDatabase(): AuthoritativeSqlDatabase {
     getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
     assertSchemaCurrent: () => {},
     integrityCheck: () => [],
-    transaction: ((work: () => unknown) => work()) as unknown,
-    readTransaction: ((work: () => unknown) => work()) as unknown,
+    transaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
+    readTransaction: ((work: () => unknown) => work()) as <T>(work: () => T) => T,
     backendType: "sqlite" as const,
     async healthCheck(): Promise<boolean> {
       return true;
@@ -354,7 +354,7 @@ test("cost management: only done/failed tasks count for estimation", () => {
   for (let i = 0; i < statuses.length; i++) {
     db.connection
       .prepare("INSERT INTO tasks (id, division_id, status, created_at) VALUES (?, ?, ?, ?)")
-      .run(`task_status_${i}`, "division_status", statuses[i], "2026-04-01T00:00:00.000Z");
+      .run(`task_status_${i}`, "division_status", statuses[i]!, "2026-04-01T00:00:00.000Z");
     db.connection
       .prepare("INSERT INTO cost_events (id, task_id, provider, model, cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?)")
       .run(`cost_status_${i}`, `task_status_${i}`, "anthropic", "claude-3-5-sonnet", 0.10, "2026-04-01T00:00:00.000Z");
