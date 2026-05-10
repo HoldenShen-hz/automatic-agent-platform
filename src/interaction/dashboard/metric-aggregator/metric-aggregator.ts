@@ -35,7 +35,7 @@ export interface AggregatedMetrics {
  * Performance target: >3000 ops/sec.
  */
 export class MetricAggregator {
-  private buffer: MetricSample[];
+  private buffer: (MetricSample | undefined)[];
   private head = 0; // next write position
   private count = 0;
   private readonly windowSize: number;
@@ -59,7 +59,7 @@ export class MetricAggregator {
 
     // Expand buffer if needed (double capacity)
     if (this.count >= this.buffer.length) {
-      const newBuffer = new Array<MetricSample>(this.buffer.length * 2);
+      const newBuffer = new Array<MetricSample | undefined>(this.buffer.length * 2);
       for (let i = 0; i < this.count; i++) {
         newBuffer[i] = this.buffer[(this.head + i) % this.buffer.length];
       }
@@ -99,11 +99,11 @@ export class MetricAggregator {
 
     let systemScoreSum = 0;
     let systemCount = 0;
-    let systemScores: number[] = [];
+    const systemScores: number[] = [];
     let systemQueueBacklogSum = 0;
     let systemFindingSum = 0;
-    let systemProviderHealthScores: number[] = [];
-    let systemProviderSuccessRates: number[] = [];
+    const systemProviderHealthScores: number[] = [];
+    const systemProviderSuccessRates: number[] = [];
 
     let queueTotalDepth = 0;
     let queueTotalEnqueued = 0;
@@ -111,7 +111,7 @@ export class MetricAggregator {
     let queueTotalFailed = 0;
     let queueWaitTimeSum = 0;
     let queueWaitTimeCount = 0;
-    let queueP95WaitTimes: number[] = [];
+    const queueP95WaitTimes: number[] = [];
 
     let costTotal = 0;
     let costCount = 0;
@@ -119,7 +119,9 @@ export class MetricAggregator {
     const costPerAgent = new Map<string, number>();
 
     for (let i = 0; i < this.count; i++) {
-      const sample = this.buffer[(this.head + i) % this.buffer.length];
+      const idx = (this.head + i) % this.buffer.length;
+      const sample = this.buffer[idx];
+      if (!sample) continue;
       switch (sample.metrics.type) {
         case "task": {
           const m = sample.metrics.snapshot;
@@ -150,7 +152,9 @@ export class MetricAggregator {
           systemScores.push(m.score);
           systemQueueBacklogSum += m.queueBacklogSize;
           systemFindingSum += m.findingCount;
-          systemProviderHealthScores.push(m.providerHealthStatus === "healthy" ? 1 : m.providerHealthStatus === "degraded" ? 0.5 : 0);
+          systemProviderHealthScores.push(
+            m.providerHealthStatus === "healthy" ? 1 : m.providerHealthStatus === "degraded" ? 0.5 : 0
+          );
           systemProviderSuccessRates.push(m.providerSuccessRate);
           break;
         }
@@ -179,15 +183,17 @@ export class MetricAggregator {
     let oldestSampleMs: number | null = null;
     let newestSampleMs: number | null = null;
     if (this.count > 0) {
-      oldestSampleMs = this.buffer[this.head].timestamp;
-      newestSampleMs = this.buffer[(this.head - 1 + this.count) % this.count].timestamp;
-      // Correct: find the actual oldest
-      oldestSampleMs = this.buffer[this.head].timestamp;
+      oldestSampleMs = Infinity;
+      newestSampleMs = -Infinity;
       for (let i = 0; i < this.count; i++) {
-        const ts = this.buffer[(this.head + i) % this.buffer.length].timestamp;
-        if (oldestSampleMs === null || ts < oldestSampleMs) oldestSampleMs = ts;
-        if (newestSampleMs === null || ts > newestSampleMs) newestSampleMs = ts;
+        const sample = this.buffer[(this.head + i) % this.buffer.length];
+        if (sample) {
+          if (sample.timestamp < oldestSampleMs) oldestSampleMs = sample.timestamp;
+          if (sample.timestamp > newestSampleMs) newestSampleMs = sample.timestamp;
+        }
       }
+      if (oldestSampleMs === Infinity) oldestSampleMs = null;
+      if (newestSampleMs === -Infinity) newestSampleMs = null;
     }
 
     const avgScore = systemCount > 0 ? systemScoreSum / systemCount : 0;
@@ -200,12 +206,14 @@ export class MetricAggregator {
     const p95WaitIdx = Math.floor(sortedP95Wait.length * 0.95);
     const p95QueueWait = sortedP95Wait.length > 0 ? (sortedP95Wait[p95WaitIdx] ?? sortedP95Wait[sortedP95Wait.length - 1]!) : 0;
 
-    const avgProviderHealth = systemProviderHealthScores.length > 0
-      ? systemProviderHealthScores.reduce((s, v) => s + v, 0) / systemProviderHealthScores.length
-      : 1;
-    const avgProviderSuccessRate = systemProviderSuccessRates.length > 0
-      ? systemProviderSuccessRates.reduce((s, v) => s + v, 0) / systemProviderSuccessRates.length
-      : 1;
+    const avgProviderHealth =
+      systemProviderHealthScores.length > 0
+        ? systemProviderHealthScores.reduce((s, v) => s + v, 0) / systemProviderHealthScores.length
+        : 1;
+    const avgProviderSuccessRate =
+      systemProviderSuccessRates.length > 0
+        ? systemProviderSuccessRates.reduce((s, v) => s + v, 0) / systemProviderSuccessRates.length
+        : 1;
 
     const healthStatus: "ok" | "degraded" | "unhealthy" =
       avgScore >= 0.8 ? "ok" : avgScore >= 0.5 ? "degraded" : "unhealthy";
@@ -213,18 +221,59 @@ export class MetricAggregator {
     const avgWorkflowSteps = workflowStepCount > 0 ? workflowStepSum / workflowStepCount : 0;
     const sortedWorkflowSteps = workflowSteps.length > 0 ? [...workflowSteps].sort((a, b) => a - b) : [];
     const p95WorkflowStepsIdx = Math.floor(sortedWorkflowSteps.length * 0.95);
-    const p95WorkflowSteps = sortedWorkflowSteps.length > 0
-      ? (sortedWorkflowSteps[p95WorkflowStepsIdx] ?? sortedWorkflowSteps[sortedWorkflowSteps.length - 1]!)
-      : 0;
+    const p95WorkflowSteps =
+      sortedWorkflowSteps.length > 0
+        ? (sortedWorkflowSteps[p95WorkflowStepsIdx] ?? sortedWorkflowSteps[sortedWorkflowSteps.length - 1]!)
+        : 0;
 
     const costTrend: "increasing" | "stable" | "decreasing" = "stable";
 
     return {
-      task: { total: taskTotal, done: taskDone, inProgress: taskInProgress, failed: taskFailed, pending: taskPending, cancelled: taskCancelled },
-      workflow: { total: workflowTotal, active: workflowActive, completed: workflowCompleted, failed: workflowFailed, cancelled: workflowCancelled, averageStepCount: avgWorkflowSteps, p95StepCount: p95WorkflowSteps },
-      system: { score: avgScore, status: healthStatus, queueBacklogSize: systemQueueBacklogSum, findingCount: systemFindingSum, providerHealthStatus: avgProviderHealth >= 0.8 ? "healthy" : avgProviderHealth >= 0.5 ? "degraded" : "failed", providerSuccessRate: avgProviderSuccessRate },
-      queue: { totalQueues: this.count, totalDepth: queueTotalDepth, totalEnqueuedPerMinute: queueTotalEnqueued, totalDequeuedPerMinute: queueTotalDequeued, averageWaitTimeMs: avgQueueWait, p95WaitTimeMs: p95QueueWait, totalFailedJobs: queueTotalFailed, overallSuccessRate: queueTotalEnqueued > 0 ? (queueTotalEnqueued - queueTotalFailed) / queueTotalEnqueued : 1 },
-      cost: { totalCostUsd: costTotal, costPerDomain, costPerAgent, costTrend, forecastCostUsd: costTotal, budgetUtilizationPercent: 0 },
+      task: {
+        total: taskTotal,
+        done: taskDone,
+        inProgress: taskInProgress,
+        failed: taskFailed,
+        pending: taskPending,
+        cancelled: taskCancelled,
+      },
+      workflow: {
+        total: workflowTotal,
+        active: workflowActive,
+        completed: workflowCompleted,
+        failed: workflowFailed,
+        cancelled: workflowCancelled,
+        averageStepCount: avgWorkflowSteps,
+        p95StepCount: p95WorkflowSteps,
+      },
+      system: {
+        score: avgScore,
+        status: healthStatus,
+        queueBacklogSize: systemQueueBacklogSum,
+        findingCount: systemFindingSum,
+        providerHealthStatus:
+          avgProviderHealth >= 0.8 ? "healthy" : avgProviderHealth >= 0.5 ? "degraded" : "failed",
+        providerSuccessRate: avgProviderSuccessRate,
+      },
+      queue: {
+        totalQueues: this.count,
+        totalDepth: queueTotalDepth,
+        totalEnqueuedPerMinute: queueTotalEnqueued,
+        totalDequeuedPerMinute: queueTotalDequeued,
+        averageWaitTimeMs: avgQueueWait,
+        p95WaitTimeMs: p95QueueWait,
+        totalFailedJobs: queueTotalFailed,
+        overallSuccessRate:
+          queueTotalEnqueued > 0 ? (queueTotalEnqueued - queueTotalFailed) / queueTotalEnqueued : 1,
+      },
+      cost: {
+        totalCostUsd: costTotal,
+        costPerDomain,
+        costPerAgent,
+        costTrend,
+        forecastCostUsd: costTotal,
+        budgetUtilizationPercent: 0,
+      },
       sampleCount: this.count,
       oldestSampleMs,
       newestSampleMs,
