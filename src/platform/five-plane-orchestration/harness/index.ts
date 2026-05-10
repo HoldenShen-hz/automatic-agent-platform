@@ -142,6 +142,7 @@ export interface ConstraintPack {
     readonly maxContextTokens?: number;
     readonly maxOutputTokens?: number;
   };
+  readonly versionLockRef?: string;
 }
 
 export function getConstraintRiskPolicy(constraintPack: ConstraintPack): ConstraintRiskPolicy {

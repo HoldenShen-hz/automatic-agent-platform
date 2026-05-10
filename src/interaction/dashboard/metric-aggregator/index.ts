@@ -212,6 +212,29 @@ export function deriveQueueMetrics(
 }
 
 /**
+ * Computes z-score normalized values using population standard deviation.
+ * Each value is transformed to (value - mean) / stdDev.
+ * When stdDev is zero (all values identical), returns an array of zeros.
+ */
+export function normalizeZScore(values: readonly number[]): number[] {
+  if (values.length === 0) {
+    return [];
+  }
+
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+
+  const squaredDiffs = values.map((v) => (v - mean) ** 2);
+  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / values.length;
+  const std = Math.sqrt(variance);
+
+  if (std === 0) {
+    return values.map(() => 0);
+  }
+
+  return values.map((v) => (v - mean) / std);
+}
+
+/**
  * Derives cost metrics from cost data per domain and agent.
  */
 export function deriveCostMetrics(

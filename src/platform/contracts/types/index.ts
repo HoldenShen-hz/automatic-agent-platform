@@ -22,6 +22,7 @@ export * from "./unified-severity.js";
 export * from "./feedback.js";
 export * from "./governance.js";
 export * from "./health.js";
+export * from "./slo.js";
 export * from "./cost.js";
 export * from "./domain/index.js";
 
