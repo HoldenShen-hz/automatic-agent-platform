@@ -159,6 +159,10 @@ export class FencingTokenService {
     for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
         // A fence exists - check if we can acquire
+        if (fence.ownerNodeId === this.nodeId) {
+          // Same node already holds a fence - prevent re-acquisition to avoid duplicates
+          return null;
+        }
         if (fence.ownerNodeId !== this.nodeId && fence.mode === "exclusive") {
           // Different node holds exclusive fence - cannot acquire
           return null;

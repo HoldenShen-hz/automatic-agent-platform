@@ -94,7 +94,7 @@ const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
   open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
   streaming: ["awaiting_user", "completed", "failed", "cancelled", "open"],
   awaiting_user: ["streaming", "completed", "failed", "cancelled"],
-  paused: ["streaming", "completed", "failed", "cancelled"],
+  paused: ["streaming", "completed", "failed", "cancelled", "open"],
   completed: [],
   failed: [],
   cancelled: [],

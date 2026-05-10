@@ -352,6 +352,8 @@ function sanitizeTextValue(
   let redactionCount = 0;
   if (options.redactSecrets) {
     for (const pattern of SECRET_PATTERNS) {
+      // Reset lastIndex to avoid issues with /g-flag regex reuse across calls
+      pattern.lastIndex = 0;
       sanitized = sanitized.replace(pattern, () => {
         redactionCount += 1;
         return "[REDACTED]";

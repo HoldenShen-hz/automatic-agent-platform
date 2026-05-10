@@ -17,6 +17,8 @@ function makeCandidate(overrides: Partial<ImprovementCandidate> = {}): Improveme
     taskId: "task-1",
     sourceSignalRefs: ["signal-1"],
     sourceLearningObjectIds: ["lo-1"],
+    learningObjectId: "lo-primary-1",
+    guardrails: [],
     changeScope: "policy",
     description: "Test",
     expectedBenefit: "Test benefit",

@@ -252,8 +252,10 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === null) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    if (scriptPath.startsWith("-")) {
-      return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
+    // Only block inline code execution flags (-c, -e), not all dash-prefixed args.
+    // This allows legitimate uses like "sed -n '1p' file" or "bash -n script.sh".
+    if (scriptPath === "-c" || scriptPath === "-e") {
+      return deniedAssessment("tool.inline_code_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);
   }

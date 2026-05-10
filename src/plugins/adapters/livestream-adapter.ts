@@ -21,7 +21,9 @@ export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
     async healthCheck(): Promise<boolean> {
       // Verify OBS WebSocket connectivity and plugin readiness
       // In production this would ping the OBS WebSocket server or streaming platform API
-      return true;
+      // For now, check if obsToken was provided via environment or config
+      const obsToken = process.env["OBS_WS_TOKEN"] ?? process.env["OBS_TOKEN"];
+      return typeof obsToken === "string" && obsToken.trim().length > 0;
     },
     async shutdown() {
       return undefined;

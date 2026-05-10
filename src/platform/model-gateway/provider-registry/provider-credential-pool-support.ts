@@ -255,7 +255,11 @@ export function computeEffectiveStatus(record: ProviderCredentialRecord, now: st
   if (record.status === "disabled") {
     return "disabled";
   }
-  if (record.status === "cooling_down" && record.cooldownUntil != null && record.cooldownUntil > now) {
+  if (
+    record.status === "cooling_down" &&
+    record.cooldownUntil != null &&
+    new Date(record.cooldownUntil).getTime() > new Date(now).getTime()
+  ) {
     return "cooling_down";
   }
   return "active";

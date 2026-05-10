@@ -63,6 +63,15 @@ export class PlanBuilder {
 
     const dagValidation = this.dagValidator.validate(steps);
 
+    // Reject invalid DAGs: a DAG that fails validation (cycle, missing deps, etc.)
+    // cannot produce a sound execution plan and must be rejected outright.
+    if (!dagValidation.valid) {
+      const error = new Error(`DAG validation failed: ${dagValidation.issues.join("; ")}`);
+      (error as any).code = "INVALID_DAG";
+      (error as any).issues = dagValidation.issues;
+      throw error;
+    }
+
     // R5-9: Apply graph normalization and risk propagation if enabled
     let normalizedSteps = dagValidation.orderedSteps;
     if (options.normalizeGraph) {

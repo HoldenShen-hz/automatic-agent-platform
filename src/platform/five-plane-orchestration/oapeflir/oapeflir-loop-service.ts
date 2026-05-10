@@ -230,7 +230,6 @@ export class OapeflirLoopService {
         taskId: input.taskId,
       });
       const assessment = assessResult.assessment;
-      const riskAssessment = assessResult.riskAssessment;
       timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
       fsm.recordStageCompletion("assess");
       this.emitStageEvent("assess", input.taskId, { status: "completed", routingDivision: assessment.routingDecision.division });
