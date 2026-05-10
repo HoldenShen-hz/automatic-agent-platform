@@ -318,11 +318,11 @@ test("buildRecommendedBudgetPolicy preserves mode from baseline", () => {
       maxDailyCostUsd: 1.0,
       maxMonthlyCostUsd: 10.0,
       warnAtRatio: 0.8,
-      mode: "autonomous",
+      mode: "learning",
     },
   });
 
-  assert.strictEqual(result.mode, "autonomous");
+  assert.strictEqual(result.mode, "learning");
 });
 
 test("buildRecommendedBudgetPolicy preserves other budget fields", () => {

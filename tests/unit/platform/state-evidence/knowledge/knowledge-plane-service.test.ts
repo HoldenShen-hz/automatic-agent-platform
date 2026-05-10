@@ -105,7 +105,7 @@ test("KnowledgePlaneService merges local and domain retriever results", async ()
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -115,7 +115,7 @@ test("KnowledgePlaneService merges local and domain retriever results", async ()
     body: "Retry the build after clearing stale caches.",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const pluginAugmented = plane.ingest({
@@ -123,7 +123,7 @@ test("KnowledgePlaneService merges local and domain retriever results", async ()
     body: "Plugin supplied snippet",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const pluginChunk = pluginAugmented.chunks[0];
@@ -163,7 +163,7 @@ test("KnowledgePlaneService restores namespaces and documents from snapshot stor
         refreshStrategy: "manual",
         refreshIntervalHours: null,
       },
-      trustLevel: "reviewed",
+      trustLevel: "team_reviewed",
       maxDocuments: 100,
       maxTotalSizeBytes: 100000,
     });
@@ -171,7 +171,7 @@ test("KnowledgePlaneService restores namespaces and documents from snapshot stor
       title: "Conventions",
       body: "Always keep route names stable.",
       namespace: "shared/common",
-      trustLevel: "reviewed",
+      trustLevel: "team_reviewed",
     });
 
     const restored = new KnowledgePlaneService({ snapshotStore });
@@ -206,7 +206,7 @@ test("KnowledgePlaneService restores semantic vector records from snapshot store
         refreshStrategy: "manual",
         refreshIntervalHours: null,
       },
-      trustLevel: "reviewed",
+      trustLevel: "team_reviewed",
       maxDocuments: 100,
       maxTotalSizeBytes: 100000,
     });
@@ -215,7 +215,7 @@ test("KnowledgePlaneService restores semantic vector records from snapshot store
       body: "Build failures usually recover after clearing stale caches and re-running the pipeline once.",
       namespace: "shared/common",
       sourceType: "text",
-      trustLevel: "reviewed",
+      trustLevel: "team_reviewed",
     });
 
     const restored = new KnowledgePlaneService({
@@ -292,7 +292,7 @@ test("KnowledgePlaneService emits chunk indexed events for semantic graph ingest
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -301,7 +301,7 @@ test("KnowledgePlaneService emits chunk indexed events for semantic graph ingest
     body: "Retry failed builds.\n\nRetry stale jobs again.",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const graph = plane.inspectGraph({ keyword: "retry" });
@@ -397,7 +397,7 @@ test("KnowledgePlaneService audits and filters cross-domain plugin knowledge acc
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -407,7 +407,7 @@ test("KnowledgePlaneService audits and filters cross-domain plugin knowledge acc
     body: "Quarter close playbook",
     namespace: "shared/finance",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   pluginKnowledgeRef = { knowledgeRef: `knowledge:${ingested.chunks[0]!.chunkId}`, snippet: "Finance chunk", score: 0.9, namespace: "shared/finance", chunkId: ingested.chunks[0]!.chunkId, documentId: "doc:finance", matchType: "semantic" };
@@ -604,7 +604,7 @@ test("KnowledgePlaneService handles plugin KnowledgeRef format when chunk exists
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -614,7 +614,7 @@ test("KnowledgePlaneService handles plugin KnowledgeRef format when chunk exists
     body: "Retry the build after clearing stale caches.",
     namespace: "coding/repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   // Update plugin ref to point to the ingested chunk with refType === "knowledge"
@@ -741,7 +741,7 @@ test("KnowledgePlaneService handles plugin KnowledgeRef format when chunk not in
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -871,7 +871,7 @@ test("KnowledgePlaneService queryForDomain skips plugin retrieval when includePl
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -881,7 +881,7 @@ test("KnowledgePlaneService queryForDomain skips plugin retrieval when includePl
     body: "Test content for query",
     namespace: "test/ns",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   // includePluginRetrieval: false should skip plugin retrieval entirely
@@ -910,7 +910,7 @@ test("KnowledgePlaneService queryForDomain returns local hits when no bindings e
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -920,7 +920,7 @@ test("KnowledgePlaneService queryForDomain returns local hits when no bindings e
     body: "Important test content",
     namespace: "test/ns",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   // Query with domainId that has no plugin bindings
@@ -948,7 +948,7 @@ test("KnowledgePlaneService queryAsync handles error gracefully", async () => {
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -958,7 +958,7 @@ test("KnowledgePlaneService queryAsync handles error gracefully", async () => {
     body: "Content for async query",
     namespace: "async/test",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   // Should complete without error
@@ -982,7 +982,7 @@ test("KnowledgePlaneService inspectGraph returns graph structure for knowledgeRe
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -992,7 +992,7 @@ test("KnowledgePlaneService inspectGraph returns graph structure for knowledgeRe
     body: "Test content with keywords for graph testing",
     namespace: "graph/test",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const graph = plane.inspectGraph({ keyword: "graph" });
@@ -1016,7 +1016,7 @@ test("KnowledgePlaneService inspectGraph returns empty for nonexistent knowledge
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -1026,7 +1026,7 @@ test("KnowledgePlaneService inspectGraph returns empty for nonexistent knowledge
     body: "Some test content",
     namespace: "graph/test2",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const graph = plane.inspectGraph({ knowledgeRef: "knowledge:nonexistent_chunk_id" });
@@ -1051,7 +1051,7 @@ test("KnowledgePlaneService initialize schedules semantic sync when semanticVect
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -1065,7 +1065,7 @@ test("KnowledgePlaneService initialize schedules semantic sync when semanticVect
     body: "Content for initialization test",
     namespace: "init/test",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "team_reviewed",
   });
 
   const hits = await plane.queryAsync("initialization", {

@@ -18,25 +18,20 @@ import {
   mergeVotes,
   createVote,
   determineFinalStatus,
-  type FlowType,
-  type FlowStatus,
-  type NotificationPriority,
-  type DelegationStatus,
+  FlowType,
+  FlowStatus,
+  NotificationPriority,
+  DelegationStatus,
 } from "../../../../src/platform/five-plane-control-plane/approval-center/index.js";
 
 // ============================================================================
 // Type Validation Tests
 // ============================================================================
 
-test("integration: ApprovalDecision structure via direct property check", () => {
-  // Test that enum values exist and are valid
-  const approveVote = VoteType.APPROVE;
-  const rejectVote = VoteType.REJECT;
-  const abstainVote = VoteType.ABSTAIN;
-
-  assert.equal(approveVote, "approve");
-  assert.equal(rejectVote, "reject");
-  assert.equal(abstainVote, "abstain");
+test("integration: VoteType enum values", () => {
+  assert.equal(VoteType.APPROVE, "approve");
+  assert.equal(VoteType.REJECT, "reject");
+  assert.equal(VoteType.ABSTAIN, "abstain");
 });
 
 test("integration: QuorumConfig type structure", () => {
@@ -153,22 +148,52 @@ test("integration: determine final status - approved", () => {
 });
 
 test("integration: FlowType enum values", () => {
-  // These are exported from approval-flow-engine
-  const flowTypes: FlowType[] = ["SINGLE_APPROVER", "MULTI_PARTY", "HUMAN_REVIEW", "AUTO_APPROVE"];
-  assert.equal(flowTypes.length, 4);
+  assert.equal(FlowType.SINGLE, "single");
+  assert.equal(FlowType.MULTI_PARTY, "multi_party");
+  assert.equal(FlowType.DELEGATED, "delegated");
+  assert.equal(FlowType.SEQUENTIAL_CHAIN, "sequential_chain");
 });
 
 test("integration: FlowStatus enum values", () => {
-  const statuses: FlowStatus[] = ["PENDING", "IN_PROGRESS", "COMPLETED", "EXPIRED", "CANCELLED"];
-  assert.equal(statuses.length, 5);
+  assert.equal(FlowStatus.PENDING, "pending");
+  assert.equal(FlowStatus.APPROVED, "approved");
+  assert.equal(FlowStatus.REJECTED, "rejected");
+  assert.equal(FlowStatus.EXPIRED, "expired");
+  assert.equal(FlowStatus.ESCALATED, "escalated");
+  assert.equal(FlowStatus.MAX_ITERATIONS_REACHED, "max_iterations_reached");
+  assert.equal(FlowStatus.CANCELLED, "cancelled");
 });
 
 test("integration: NotificationPriority values", () => {
-  const priorities: NotificationPriority[] = ["LOW", "NORMAL", "HIGH", "URGENT"];
-  assert.equal(priorities.length, 4);
+  assert.equal(NotificationPriority.LOW, "low");
+  assert.equal(NotificationPriority.NORMAL, "normal");
+  assert.equal(NotificationPriority.HIGH, "high");
+  assert.equal(NotificationPriority.URGENT, "urgent");
 });
 
 test("integration: DelegationStatus values", () => {
-  const statuses: DelegationStatus[] = ["ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED"];
-  assert.equal(statuses.length, 4);
+  assert.equal(DelegationStatus.ACTIVE, "active");
+  assert.equal(DelegationStatus.COMPLETED, "completed");
+  assert.equal(DelegationStatus.EXPIRED, "expired");
+  assert.equal(DelegationStatus.CANCELLED, "cancelled");
+});
+
+test("integration: flow status transitions", () => {
+  const validTransitions: Record<FlowStatus, FlowStatus[]> = {
+    [FlowStatus.PENDING]: [FlowStatus.APPROVED, FlowStatus.REJECTED, FlowStatus.EXPIRED, FlowStatus.ESCALATED],
+    [FlowStatus.APPROVED]: [],
+    [FlowStatus.REJECTED]: [],
+    [FlowStatus.EXPIRED]: [],
+    [FlowStatus.ESCALATED]: [FlowStatus.APPROVED, FlowStatus.REJECTED, FlowStatus.CANCELLED],
+    [FlowStatus.MAX_ITERATIONS_REACHED]: [],
+    [FlowStatus.CANCELLED]: [],
+  };
+
+  // PENDING can transition to several states
+  assert.ok(validTransitions[FlowStatus.PENDING].includes(FlowStatus.APPROVED));
+  assert.ok(validTransitions[FlowStatus.PENDING].includes(FlowStatus.REJECTED));
+
+  // Final states have no transitions
+  assert.equal(validTransitions[FlowStatus.APPROVED].length, 0);
+  assert.equal(validTransitions[FlowStatus.REJECTED].length, 0);
 });

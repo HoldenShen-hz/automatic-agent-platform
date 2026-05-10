@@ -36,8 +36,8 @@ function createIssuedBy(overrides?: Partial<{ principalId: string; tenantId: str
 
 function mockFetchForAdminSdk(responses: Array<{ url: string; data: unknown; status?: number }>) {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     const match = responses.find((r) => urlStr.includes(r.url));
     if (match) {
       return new Response(JSON.stringify(match.data), {
@@ -45,7 +45,7 @@ function mockFetchForAdminSdk(responses: Array<{ url: string; data: unknown; sta
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
   return () => {
     globalThis.fetch = originalFetch;
@@ -85,8 +85,8 @@ test("AdminSdk.registerDomain sends POST with domain data", async () => {
 
   let capturedBody: unknown = null;
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     if (urlStr.includes("/domains") && init?.method === "POST") {
       capturedBody = init?.body ? JSON.parse(init.body as string) : null;
       return new Response(JSON.stringify({ domainId: "new-domain", name: "New Domain" }), {
@@ -94,7 +94,7 @@ test("AdminSdk.registerDomain sends POST with domain data", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -152,8 +152,8 @@ test("AdminSdk.publishPack allows admin role", async () => {
 
   let capturedBody: unknown = null;
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     if (urlStr.includes("/packs/pack-1")) {
       capturedBody = init?.body;
       return new Response(JSON.stringify({ published: true }), {
@@ -161,7 +161,7 @@ test("AdminSdk.publishPack allows admin role", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -197,8 +197,8 @@ test("AdminSdk.pauseHarnessRun sends POST to pause endpoint", async () => {
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/harness")) {
       return new Response(JSON.stringify({ runId: "run-1", status: "paused" }), {
@@ -206,7 +206,7 @@ test("AdminSdk.pauseHarnessRun sends POST to pause endpoint", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -223,8 +223,8 @@ test("AdminSdk.abortHarnessRun sends POST to abort endpoint", async () => {
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/harness")) {
       return new Response(JSON.stringify({ runId: "run-1", status: "aborted" }), {
@@ -232,7 +232,7 @@ test("AdminSdk.abortHarnessRun sends POST to abort endpoint", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -253,8 +253,8 @@ test("AdminSdk.triggerPanic sends POST to panic trigger endpoint", async () => {
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/panic/")) {
       return new Response(JSON.stringify({ triggered: true }), {
@@ -262,7 +262,7 @@ test("AdminSdk.triggerPanic sends POST to panic trigger endpoint", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -279,8 +279,8 @@ test("AdminSdk.resumePanic sends POST to panic resume endpoint", async () => {
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/panic/")) {
       return new Response(JSON.stringify({ resumed: true }), {
@@ -288,7 +288,7 @@ test("AdminSdk.resumePanic sends POST to panic resume endpoint", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -309,8 +309,8 @@ test("AdminSdk.manageAgentLifecycle sends POST to agent action endpoint", async 
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/agents/")) {
       return new Response(JSON.stringify({ agentId: "agent-1", action: "pause" }), {
@@ -318,7 +318,7 @@ test("AdminSdk.manageAgentLifecycle sends POST to agent action endpoint", async 
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -336,8 +336,8 @@ test("AdminSdk.manageAgentLifecycle includes body when provided", async () => {
 
   let capturedBody: unknown = null;
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     if (urlStr.includes("/agents/")) {
       capturedBody = init?.body ? JSON.parse(init.body as string) : null;
       return new Response(JSON.stringify({ agentId: "agent-1" }), {
@@ -345,7 +345,7 @@ test("AdminSdk.manageAgentLifecycle includes body when provided", async () => {
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -366,8 +366,8 @@ test("AdminSdk.rotateSecrets sends POST to secrets rotate endpoint", async () =>
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/secrets/")) {
       return new Response(JSON.stringify({ rotated: true }), {
@@ -375,7 +375,7 @@ test("AdminSdk.rotateSecrets sends POST to secrets rotate endpoint", async () =>
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -499,8 +499,8 @@ test("AdminSdk.sendOperationalDirective sends directive via envelope", async () 
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/directives/operational")) {
       return new Response(JSON.stringify({ acknowledged: true }), {
@@ -508,7 +508,7 @@ test("AdminSdk.sendOperationalDirective sends directive via envelope", async () 
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {
@@ -535,8 +535,8 @@ test("AdminSdk.sendDecisionDirective sends directive via envelope", async () => 
 
   let capturedUrl = "";
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | Request, init?: RequestInit) => {
-    const urlStr = url instanceof URL ? url.toString() : String(url);
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit | undefined) => {
+    const urlStr = input instanceof URL ? input.toString() : String(input);
     capturedUrl = urlStr;
     if (urlStr.includes("/directives/decision")) {
       return new Response(JSON.stringify({ acknowledged: true }), {
@@ -544,7 +544,7 @@ test("AdminSdk.sendDecisionDirective sends directive via envelope", async () => 
         headers: { "content-type": "application/json" },
       });
     }
-    return originalFetch(url, init);
+    return originalFetch(input, init);
   };
 
   try {

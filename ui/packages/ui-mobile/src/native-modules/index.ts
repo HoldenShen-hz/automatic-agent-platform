@@ -1,5 +1,3 @@
-import { NativeModules, TurboModuleRegistry } from "react-native";
-
 export interface NativeModuleDescriptor {
   readonly name: string;
   readonly enabled: boolean;
@@ -54,12 +52,14 @@ function getLegacyBridge(): MobileBridgeLike | null {
 }
 
 function getTurboBridge(): MobileBridgeLike | null {
-  const registry = TurboModuleRegistry as unknown as { get?: (name: string) => MobileBridgeLike | null | undefined };
-  return registry.get?.(NATIVE_MODULE_NAME) ?? null;
+  const turboProxy = globalThis.__turboModuleProxy as
+    | ((name: string) => MobileBridgeLike | null | undefined)
+    | undefined;
+  return turboProxy?.(NATIVE_MODULE_NAME) ?? null;
 }
 
 function getNativeModulesBridge(): MobileBridgeLike | null {
-  const nativeModules = NativeModules as Record<string, unknown> | null | undefined;
+  const nativeModules = globalThis.NativeModules as Record<string, unknown> | null | undefined;
   const bridge = nativeModules?.[NATIVE_MODULE_NAME];
   return bridge != null && typeof bridge === "object" ? bridge as MobileBridgeLike : null;
 }

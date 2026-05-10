@@ -182,7 +182,9 @@ test("integration: can list rollbacks", () => {
   const rollbacks = service.listRollbacks(10);
 
   assert.ok(rollbacks.length >= 1);
-  assert.equal(rollbacks[0].trigger, "health_check_failed");
+  const firstRollback = rollbacks[0];
+  assert.ok(firstRollback !== undefined);
+  assert.equal(firstRollback.trigger, "health_check_failed");
 
   db.close();
 });

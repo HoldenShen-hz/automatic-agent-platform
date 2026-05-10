@@ -1,14 +1,13 @@
 /**
  * Integration Tests: Tenant
+ *
+ * Tests the TenantBoundaryRegistryService with actual domain types.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  TenantBoundaryRegistryService,
-  type TenantRecord,
-} from "../../../../src/platform/five-plane-control-plane/tenant/index.js";
+import { TenantBoundaryRegistryService } from "../../../../src/platform/five-plane-control-plane/tenant/index.js";
 
 // ============================================================================
 // Tenant End-to-End Integration Tests
@@ -19,16 +18,25 @@ test("integration: full tenant isolation workflow", () => {
 
   service.registerOrganization({
     organizationId: "org_iso_001",
-    name: "Isolated Org",
+    displayName: "Isolated Org",
+    billingAccountId: null,
+    defaultTenantId: "tenant_iso_001",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_iso_001",
     organizationId: "org_iso_001",
-    name: "Isolated Tenant",
-    status: "active",
+    storageScope: "tenant_iso_001",
+    identityScope: "tenant_iso_001",
+    policyScope: "tenant_iso_001",
+    artifactScope: "tenant_iso_001",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerUser({
@@ -42,7 +50,7 @@ test("integration: full tenant isolation workflow", () => {
     organizationId: "org_iso_001",
     userId: "user_iso_001",
     role: "member",
-    createdAt: "2026-04-29T00:00:00.000Z",
+    joinedAt: "2026-04-29T00:00:00.000Z",
   });
 
   const accessDecision = service.authorizeTenantAccess({
@@ -59,32 +67,48 @@ test("integration: cross-tenant isolation enforced", () => {
 
   service.registerOrganization({
     organizationId: "org_a",
-    name: "Org A",
+    displayName: "Org A",
+    billingAccountId: null,
     defaultTenantId: "tenant_a",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerOrganization({
     organizationId: "org_b",
-    name: "Org B",
+    displayName: "Org B",
+    billingAccountId: null,
     defaultTenantId: "tenant_b",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_a",
     organizationId: "org_a",
-    name: "Tenant A",
-    status: "active",
+    storageScope: "tenant_a",
+    identityScope: "tenant_a",
+    policyScope: "tenant_a",
+    artifactScope: "tenant_a",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_b",
     organizationId: "org_b",
-    name: "Tenant B",
-    status: "active",
+    storageScope: "tenant_b",
+    identityScope: "tenant_b",
+    policyScope: "tenant_b",
+    artifactScope: "tenant_b",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerUser({
@@ -98,14 +122,18 @@ test("integration: cross-tenant isolation enforced", () => {
     organizationId: "org_a",
     userId: "user_cross",
     role: "member",
-    createdAt: "2026-04-29T00:00:00.000Z",
+    joinedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_b",
+    ownerId: "user_cross",
+    displayName: "Workspace B",
+    planId: "default",
+    defaultPolicySet: "default",
     organizationId: "org_b",
-    name: "Workspace B",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -123,17 +151,25 @@ test("integration: governance exception grants temporary access", () => {
 
   service.registerOrganization({
     organizationId: "org_gov",
-    name: "Governance Org",
+    displayName: "Governance Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_gov",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_gov",
     organizationId: "org_gov",
-    name: "Governance Tenant",
-    status: "active",
+    storageScope: "tenant_gov",
+    identityScope: "tenant_gov",
+    policyScope: "tenant_gov",
+    artifactScope: "tenant_gov",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerUser({
@@ -164,17 +200,25 @@ test("integration: disabled user denied access", () => {
 
   service.registerOrganization({
     organizationId: "org_disabled",
-    name: "Disabled Org",
+    displayName: "Disabled Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_disabled",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_disabled",
     organizationId: "org_disabled",
-    name: "Disabled Tenant",
-    status: "active",
+    storageScope: "tenant_disabled",
+    identityScope: "tenant_disabled",
+    policyScope: "tenant_disabled",
+    artifactScope: "tenant_disabled",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerUser({
@@ -188,7 +232,7 @@ test("integration: disabled user denied access", () => {
     organizationId: "org_disabled",
     userId: "user_disabled",
     role: "admin",
-    createdAt: "2026-04-29T00:00:00.000Z",
+    joinedAt: "2026-04-29T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -205,45 +249,72 @@ test("integration: deployment bindings per tenant", () => {
 
   service.registerOrganization({
     organizationId: "org_deploy",
-    name: "Deploy Org",
+    displayName: "Deploy Org",
+    billingAccountId: null,
+    defaultTenantId: null,
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_deploy_001",
     organizationId: "org_deploy",
-    name: "Deploy Tenant 1",
-    status: "active",
+    storageScope: "tenant_deploy_001",
+    identityScope: "tenant_deploy_001",
+    policyScope: "tenant_deploy_001",
+    artifactScope: "tenant_deploy_001",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_deploy_002",
     organizationId: "org_deploy",
-    name: "Deploy Tenant 2",
-    status: "active",
+    storageScope: "tenant_deploy_002",
+    identityScope: "tenant_deploy_002",
+    policyScope: "tenant_deploy_002",
+    artifactScope: "tenant_deploy_002",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerDeploymentBinding({
     bindingId: "binding_1",
     tenantId: "tenant_deploy_001",
-    deploymentId: "deploy_001",
+    environmentId: "env_001",
+    deploymentMode: "single-tenant",
+    region: "us-east-1",
+    networkBoundary: "private",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerDeploymentBinding({
     bindingId: "binding_2",
     tenantId: "tenant_deploy_001",
-    deploymentId: "deploy_002",
+    environmentId: "env_002",
+    deploymentMode: "single-tenant",
+    region: "us-west-2",
+    networkBoundary: "private",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerDeploymentBinding({
     bindingId: "binding_3",
     tenantId: "tenant_deploy_002",
-    deploymentId: "deploy_003",
+    environmentId: "env_003",
+    deploymentMode: "single-tenant",
+    region: "eu-west-1",
+    networkBoundary: "private",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   const tenant1Bindings = service.listDeploymentBindingsForTenant("tenant_deploy_001");
@@ -258,32 +329,48 @@ test("integration: user sees all their tenants", () => {
 
   service.registerOrganization({
     organizationId: "org_multi_1",
-    name: "Org Multi 1",
+    displayName: "Org Multi 1",
+    billingAccountId: null,
     defaultTenantId: "tenant_multi_1",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerOrganization({
     organizationId: "org_multi_2",
-    name: "Org Multi 2",
+    displayName: "Org Multi 2",
+    billingAccountId: null,
     defaultTenantId: "tenant_multi_2",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_multi_1",
     organizationId: "org_multi_1",
-    name: "Multi Tenant 1",
-    status: "active",
+    storageScope: "tenant_multi_1",
+    identityScope: "tenant_multi_1",
+    policyScope: "tenant_multi_1",
+    artifactScope: "tenant_multi_1",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_multi_2",
     organizationId: "org_multi_2",
-    name: "Multi Tenant 2",
-    status: "active",
+    storageScope: "tenant_multi_2",
+    identityScope: "tenant_multi_2",
+    policyScope: "tenant_multi_2",
+    artifactScope: "tenant_multi_2",
+    isolationMode: "full",
+    deploymentMode: "single-tenant",
+    quotas: {},
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerUser({
@@ -297,28 +384,32 @@ test("integration: user sees all their tenants", () => {
     organizationId: "org_multi_1",
     userId: "user_multi",
     role: "member",
-    createdAt: "2026-04-29T00:00:00.000Z",
+    joinedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_multi_2",
+    ownerId: "user_multi",
+    displayName: "Workspace Multi 2",
+    planId: "default",
+    defaultPolicySet: "default",
     organizationId: "org_multi_2",
-    name: "Workspace Multi 2",
     createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
   });
 
   service.addWorkspaceMembership({
     workspaceId: "ws_multi_2",
     userId: "user_multi",
     role: "viewer",
-    createdAt: "2026-04-29T00:00:00.000Z",
+    joinedAt: "2026-04-29T00:00:00.000Z",
   });
 
   const tenants = service.listTenantsForUser("user_multi");
 
   assert.equal(tenants.length, 2);
-  assert.ok(tenants.some((t: TenantRecord) => t.tenantId === "tenant_multi_1"));
-  assert.ok(tenants.some((t: TenantRecord) => t.tenantId === "tenant_multi_2"));
+  assert.ok(tenants.some((t) => t.tenantId === "tenant_multi_1"));
+  assert.ok(tenants.some((t) => t.tenantId === "tenant_multi_2"));
 });
 
 test("integration: cross-tenant access assertion throws", () => {

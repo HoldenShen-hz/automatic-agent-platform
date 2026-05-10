@@ -366,6 +366,7 @@ test("truth-repository: Task with workflow maintains referential integrity", () 
         1,
         JSON.stringify({ step: 1 }),
         now,
+        null,
       );
     });
 
@@ -466,14 +467,11 @@ test("truth-repository: Session append-only lifecycle", () => {
       ctx.store.insertSession({
         id: sessionId,
         taskId,
-        tenantId: null,
+        channel: "cli",
         status: "open",
-        inputJson: "{}",
-        outputJson: null,
-        errorCode: null,
+        externalSessionId: null,
         createdAt: now,
         updatedAt: now,
-        completedAt: null,
       });
     });
 

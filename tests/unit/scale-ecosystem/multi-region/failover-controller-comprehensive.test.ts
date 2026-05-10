@@ -14,33 +14,27 @@ import {
 } from "../../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 
 function createTestFailoverInput(overrides: Partial<RegionFailoverInput> = {}): RegionFailoverInput {
+  const primaryLatencyMs = overrides.primaryLatencyMs;
+  const maxAcceptableLatencyMs = overrides.maxAcceptableLatencyMs;
+  const primaryErrorRate = overrides.primaryErrorRate;
+  const maxAcceptableErrorRate = overrides.maxAcceptableErrorRate;
+  const preferredRegionId = overrides.preferredRegionId;
+  const forceDemote = overrides.forceDemote;
+  const promoteEpoch = overrides.promoteEpoch;
+
   const result: RegionFailoverInput = {
     primaryHealthy: overrides.primaryHealthy ?? true,
     candidateRegionIds: overrides.candidateRegionIds ?? ["us-west-2", "eu-west-1"],
     currentLeaderRegionId: overrides.currentLeaderRegionId ?? null,
     partitionKey: overrides.partitionKey ?? "global",
+    ...(primaryLatencyMs !== undefined ? { primaryLatencyMs } : {}),
+    ...(maxAcceptableLatencyMs !== undefined ? { maxAcceptableLatencyMs } : {}),
+    ...(primaryErrorRate !== undefined ? { primaryErrorRate } : {}),
+    ...(maxAcceptableErrorRate !== undefined ? { maxAcceptableErrorRate } : {}),
+    ...(preferredRegionId !== undefined ? { preferredRegionId } : {}),
+    ...(forceDemote !== undefined ? { forceDemote } : {}),
+    ...(promoteEpoch !== undefined ? { promoteEpoch } : {}),
   };
-  if (overrides.maxAcceptableLatencyMs !== undefined) {
-    result.maxAcceptableLatencyMs = overrides.maxAcceptableLatencyMs;
-  }
-  if (overrides.maxAcceptableErrorRate !== undefined) {
-    result.maxAcceptableErrorRate = overrides.maxAcceptableErrorRate;
-  }
-  if (overrides.primaryLatencyMs !== undefined) {
-    result.primaryLatencyMs = overrides.primaryLatencyMs;
-  }
-  if (overrides.primaryErrorRate !== undefined) {
-    result.primaryErrorRate = overrides.primaryErrorRate;
-  }
-  if (overrides.preferredRegionId !== undefined) {
-    result.preferredRegionId = overrides.preferredRegionId;
-  }
-  if (overrides.forceDemote !== undefined) {
-    result.forceDemote = overrides.forceDemote;
-  }
-  if (overrides.promoteEpoch !== undefined) {
-    result.promoteEpoch = overrides.promoteEpoch;
-  }
   return result;
 }
 

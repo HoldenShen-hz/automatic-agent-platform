@@ -207,6 +207,9 @@ test("integration: multiple denied roots with different sensitivity levels", () 
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+    timeLimitMs: 0,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
   };
 
   // Normal workspace path allowed
