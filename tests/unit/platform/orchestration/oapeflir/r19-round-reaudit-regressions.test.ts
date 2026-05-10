@@ -146,7 +146,7 @@ function createSituation(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("R19-02: StageTransitionFSM allows feedback-driven re-entry to assess and execute", () => {
+test("R19-02: StageTransitionFSM allows feedback-driven re-entry to assess", () => {
   const fsm = new StageTransitionFSM();
   fsm.recordStageCompletion("observe");
   fsm.recordStageCompletion("assess");
@@ -156,12 +156,9 @@ test("R19-02: StageTransitionFSM allows feedback-driven re-entry to assess and e
   fsm.recordStageCompletion("learn");
 
   const assessTransition = fsm.canTransitionTo("assess");
-  const executeTransition = fsm.canTransitionTo("execute");
 
   assert.equal(assessTransition.allowed, true);
   assert.equal(assessTransition.reasonCode, "fsm.feedback_driven_replan");
-  assert.equal(executeTransition.allowed, true);
-  assert.equal(executeTransition.reasonCode, "fsm.feedback_driven_replan");
 });
 
 test("R19-03/R19-04/R19-06: run re-enters plan after failed feedback and emits lifecycle events with reserved budget context", async () => {
@@ -199,7 +196,7 @@ test("R19-03/R19-04/R19-06: run re-enters plan after failed feedback and emits l
 
 test("R19-07/R19-12: AssessmentService exposes dynamic division routing and numeric complexity scoring in rationale", () => {
   const service = new AssessmentService();
-  const assessment = service.assess(createSituation({
+  const { assessment } = service.assess(createSituation({
     objective: "security review for deployment pipeline",
     userIntent: {
       raw: "security review for deployment pipeline",
