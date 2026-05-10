@@ -33,7 +33,7 @@ function makeStrategyVersion(overrides: Partial<StrategyVersion> = {}): Strategy
     strategyVersionId: "sv-1",
     title: "Test Strategy",
     sourceLearningObjectIds: ["lo-1"],
-    releaseLevel: "suggest",
+    releaseLevel: "L1_evaluate",
     createdAt: Date.now(),
     ...overrides,
   };
@@ -43,10 +43,10 @@ function makeRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
   return {
     recordId: "record-1",
     candidateId: "candidate-1",
-    level: "suggest",
-    previousLevel: "off",
+    level: "L1_evaluate",
+    previousLevel: "L0_off",
     strategyVersionId: "sv-1",
-    status: "pending_approval",
+    status: "evaluation_enabled",
     transitionedAt: Date.now(),
     guardrailReasonCodes: [],
     evidence: [],
@@ -72,43 +72,44 @@ test("PolicyRolloutService.decide allows when all checks pass", () => {
     sourceSignalRefs: ["signal-1"],
     sourceLearningObjectIds: ["lo-1"],
   });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "suggest" });
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const decision = service.decide(candidate, strategyVersion);
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.releaseLevel, "suggest");
+  assert.equal(decision.releaseLevel, "L1_evaluate");
 });
 
-test("PolicyRolloutService.decide blocks when candidate not approved for shadow", () => {
+test("PolicyRolloutService.decide blocks when candidate not approved for non-off level", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate({
     status: "proposed",
     sourceSignalRefs: ["signal-1"],
     sourceLearningObjectIds: ["lo-1"],
   });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "shadow" });
+  // Use a valid non-off release level - approval is now required for ALL non-off levels
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const decision = service.decide(candidate, strategyVersion);
 
   assert.equal(decision.allowed, false);
-  // Guardrail blocks first with guardrail_shadow_requires_approval since status is not approved/shadow_running
-  assert.equal(decision.reasonCode, "improvement.guardrail_shadow_requires_approval");
+  // Approval check applies to all non-off levels (not just shadow)
+  assert.equal(decision.reasonCode, "improvement.guardrail_requires_approval");
 });
 
-test("PolicyRolloutService.decide allows approved candidate for shadow", () => {
+test("PolicyRolloutService.decide allows approved candidate for L1_evaluate", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate({
     status: "approved",
     sourceSignalRefs: ["signal-1"],
     sourceLearningObjectIds: ["lo-1"],
   });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "shadow" });
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const decision = service.decide(candidate, strategyVersion);
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.releaseLevel, "shadow");
+  assert.equal(decision.releaseLevel, "L1_evaluate");
 });
 
 test("PolicyRolloutService.decide returns guardrail blocked reason", () => {
@@ -128,7 +129,7 @@ test("PolicyRolloutService.decide returns guardrail blocked reason", () => {
 test("PolicyRolloutService.start returns null when decide returns not allowed", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate({ status: "proposed" });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "shadow" });
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const record = service.start(candidate, strategyVersion);
 
@@ -138,19 +139,19 @@ test("PolicyRolloutService.start returns null when decide returns not allowed", 
 test("PolicyRolloutService.start creates rollout record when allowed", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate({ status: "approved" });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "suggest" });
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const record = service.start(candidate, strategyVersion);
 
   assert.ok(record !== null);
   assert.equal(record.candidateId, "candidate-1");
-  assert.equal(record.status, "pending_approval");
+  assert.equal(record.status, "evaluation_enabled");
 });
 
 test("PolicyRolloutService.start passes approvedBy to state machine", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate({ status: "approved" });
-  const strategyVersion = makeStrategyVersion({ releaseLevel: "suggest" });
+  const strategyVersion = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
 
   const record = service.start(candidate, strategyVersion, "approver-1");
 
@@ -173,7 +174,7 @@ test("PolicyRolloutService.promote throws when metrics gate blocks", () => {
 test("PolicyRolloutService.promote returns record when gate passes", () => {
   const service = new PolicyRolloutService();
   const candidate = makeCandidate();
-  const current = makeRecord({ status: "shadow", transitionedAt: Date.now() - 10000 });
+  const current = makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() - 10000 });
   const metrics = makeMetrics({ failureRate: 0.01 });
 
   const record = service.promote(candidate, current, "canary_5", metrics);
@@ -205,16 +206,16 @@ test("PolicyRolloutService.rollback creates rolled_back record", () => {
 
 test("PolicyRolloutService.evaluateMetricsGate returns allowed for non-progressive statuses", () => {
   const service = new PolicyRolloutService();
-  const current = makeRecord({ status: "shadow" });
+  const current = makeRecord({ status: "evaluation_enabled" });
 
   const gate = service.evaluateMetricsGate(current, "rejected");
 
   assert.equal(gate.allowed, true);
 });
 
-test("PolicyRolloutService.evaluateMetricsGate returns allowed for shadow current status", () => {
+test("PolicyRolloutService.evaluateMetricsGate returns allowed for evaluation_enabled current status", () => {
   const service = new PolicyRolloutService();
-  const current = makeRecord({ status: "shadow" });
+  const current = makeRecord({ status: "evaluation_enabled" });
 
   const gate = service.evaluateMetricsGate(current, "canary_5", makeMetrics());
 
@@ -256,18 +257,17 @@ test("PolicyRolloutService.evaluateMetricsGate passes when metrics good", () => 
 test("PolicyRolloutService can progress through all rollout stages", () => {
   const service = new PolicyRolloutService();
   let candidate = makeCandidate({ status: "approved" });
-  let record = service.start(candidate, makeStrategyVersion({ releaseLevel: "suggest" }));
+  let record = service.start(candidate, makeStrategyVersion({ releaseLevel: "L1_evaluate" }));
 
   assert.ok(record);
-  assert.equal(record.status, "pending_approval");
+  assert.equal(record.status, "evaluation_enabled");
 
   const stages: Array<{ target: RolloutRecord["status"]; level: StrategyVersion["releaseLevel"] }> = [
-    { target: "shadow", level: "shadow" },
-    { target: "canary_5", level: "canary_5" },
-    { target: "partial_25", level: "partial_25" },
-    { target: "partial_50", level: "partial_50" },
-    { target: "partial_75", level: "partial_75" },
-    { target: "stable", level: "stable" },
+    { target: "canary_5", level: "L2_canary" },
+    { target: "partial_25", level: "L3_partial" },
+    { target: "stable_75", level: "L4_stable" },
+    { target: "stable_100", level: "L5_full" },
+    { target: "released", level: "L5_full" },
   ];
 
   for (const { target, level } of stages) {
@@ -277,13 +277,13 @@ test("PolicyRolloutService can progress through all rollout stages", () => {
   }
 });
 
-test("PolicyRolloutService.evaluateMetricsGate with stable status", () => {
+test("PolicyRolloutService.evaluateMetricsGate with stable_75 status", () => {
   const service = new PolicyRolloutService();
-  const current = makeRecord({ status: "stable" });
+  const current = makeRecord({ status: "stable_75" });
   const metrics = makeMetrics();
 
-  // stable->stable still requires metrics since stable is a progressive status
-  const gate = service.evaluateMetricsGate(current, "stable", metrics);
+  // stable_75->stable_100 still requires metrics since stable_75 is a progressive status
+  const gate = service.evaluateMetricsGate(current, "stable_100", metrics);
 
   assert.equal(gate.allowed, true);
 });
