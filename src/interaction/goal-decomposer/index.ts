@@ -452,6 +452,11 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       constraintEnvelope,
     };
 
+    // R23-04 fix: §40.2 requires rejecting with error when cycle is detected, not just warning
+    if (graphAnalysis.hasCycle) {
+      throw new Error(`goal_decomposer.cycle_detected:${goal.goalId}`);
+    }
+
     return {
       goalId: goal.goalId,
       tasks,

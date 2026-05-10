@@ -181,6 +181,7 @@ export class OapeflirLoopService {
       });
       timeline.record("observe", "completed", taskObservation.task.taskId, null, "Aggregated task and system observations for downstream assessment.");
       fsm.recordStageCompletion("observe");
+      this.emitStageEvent("observe", input.taskId, { status: "completed" });
 
       // R5-3: Assess stage transition check
       const assessTransition = fsm.canTransitionTo("assess");
@@ -222,6 +223,7 @@ export class OapeflirLoopService {
       const riskAssessment = assessResult.riskAssessment;
       timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
       fsm.recordStageCompletion("assess");
+      this.emitStageEvent("assess", input.taskId, { status: "completed", routingDivision: assessment.routingDecision.division });
 
       // R5-3: Plan stage transition check
       const planTransition = fsm.canTransitionTo("plan");
@@ -281,6 +283,7 @@ export class OapeflirLoopService {
       loopPlan = this.toLegacyPlan(loopPlanGraphBundle, input.taskId);
       timeline.record("plan", "completed", loopPlan.planId, null, "Built a PlanGraphBundle from validated observation, assessment, and workflow inputs.");
       fsm.recordStageCompletion("plan");
+      this.emitStageEvent("plan", input.taskId, { status: "completed", planGraphBundleId: loopPlanGraphBundle.planGraphBundleId });
 
       // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
       const planValidation = validatePlan(loopPlan);
@@ -323,6 +326,7 @@ export class OapeflirLoopService {
         });
         timeline.record("execute", "completed", loopStepOutputs[loopStepOutputs.length - 1]?.stepId ?? loopPlan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
         fsm.recordStageCompletion("execute");
+        this.emitStageEvent("execute", input.taskId, { status: "completed", stepCount: loopStepOutputs.length });
 
         // E→F boundary: validate step outputs and feedback signals — skip feedback on failure (per §L.14)
         const validatedStepOutputs: DualChannelStepOutput[] = (() => {
@@ -363,6 +367,7 @@ export class OapeflirLoopService {
         });
         timeline.record("feedback", "completed", loopFeedback.feedbackId, null, "Collected execution feedback signals and normalized them for learning.");
         fsm.recordStageCompletion("feedback");
+        this.emitStageEvent("feedback", input.taskId, { status: "completed", signalCount: feedbackSignals.length });
 
         // R5-2: Compute quality gate and replan decision after each feedback collection
         // R5-7: Use EvaluationReport as the canonical input to quality gate
@@ -414,6 +419,7 @@ export class OapeflirLoopService {
         loopPlan = this.toLegacyPlan(loopPlanGraphBundle, input.taskId);
         timeline.record("plan", "completed", loopPlan.planId, null, "Re-built PlanGraphBundle from validated observation, assessment, and workflow inputs.");
         fsm.recordStageCompletion("plan");
+        this.emitStageEvent("plan", input.taskId, { status: "completed", isReplan: true });
 
         // Validate the new plan
         const loopPlanValidation = validatePlan(loopPlan);
@@ -460,8 +466,10 @@ export class OapeflirLoopService {
       // R5-3: Record learn stage completion or skip
       if (learningObjects.length > 0) {
         fsm.recordStageCompletion("learn");
+        this.emitStageEvent("learn", input.taskId, { status: "completed", learningObjectCount: learningObjects.length });
       } else {
         fsm.recordStageSkipped("learn", "learning.no_objects");
+        this.emitStageEvent("learn", input.taskId, { status: "skipped", reason: "learning.no_objects" });
       }
 
       // G7: Promote validated learning objects into the knowledge plane

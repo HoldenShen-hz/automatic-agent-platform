@@ -203,6 +203,12 @@ export class ProviderCredentialPool {
       retryAfterMs = signal.retryAfterMs ?? this.defaultCooldownMs;
       cooldownUntil = signal.resetAt ?? addMilliseconds(occurredAt, retryAfterMs);
     }
+    // R32-17 fix: HTTP 401/403/408 are permanent rejections - disable credential
+    // so it is not repeatedly selected and continues to fail
+    else if (signal.statusCode === 401 || signal.statusCode === 403 || signal.statusCode === 408) {
+      status = "disabled";
+      cooldownUntil = null;
+    }
 
     const updated: ProviderCredentialRecord = {
       ...record,

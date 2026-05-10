@@ -293,9 +293,9 @@ export class KnowledgeRetrievalService {
     keyword: string,
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
-    // When vector store exists, it should be used for semantic search
-    // Fall back to archive-based search only when no vector store is available
-    if (!this.semanticVectorStore) {
+    // R24-18 fix: When vector store exists, use it for semantic search
+    // Only fall back to archive-based search when no vector store is available
+    if (this.semanticVectorStore) {
       return [];
     }
     const queryEmbedding = buildSemanticEmbedding(keyword);

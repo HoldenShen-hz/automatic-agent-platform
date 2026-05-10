@@ -384,9 +384,13 @@ export class QuotaEnforcerService {
   }
 
   public registerQuota(scope: string, scopeId: string, policy: QuotaPolicy | MultiResourceQuotaVector): QuotaPolicy | MultiResourceQuotaVector {
-    const normalized = isCanonicalQuotaVector(policy)
-      ? MultiResourceQuotaVectorSchema.parse({ scope, scopeId, ...policy })
-      : QuotaPolicySchema.parse({ scope, scopeId, ...policy });
+    if (isCanonicalQuotaVector(policy)) {
+      // MultiResourceQuotaVector already has scope/scopeId baked in - store as-is
+      this.registrations.set(registrationKey(scope, scopeId), policy as QuotaPolicy);
+      this.persist();
+      return policy;
+    }
+    const normalized = QuotaPolicySchema.parse(policy);
     this.registrations.set(registrationKey(scope, scopeId), normalized);
     this.persist();
     return normalized;

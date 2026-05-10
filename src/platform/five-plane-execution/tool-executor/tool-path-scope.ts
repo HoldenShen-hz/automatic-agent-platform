@@ -31,15 +31,18 @@ export interface ToolPathScopeCheckResult {
 
 /**
  * Normalizes a path by resolving symlinks via realpath.
- * Falls back to resolve() if realpath fails.
+ * Rejects paths where realpath fails - symlinks cannot be safely canonicalized.
  */
 function normalizePath(path: string): string {
   const resolvedPath = resolve(path);
   try {
     return realpathSync.native(resolvedPath);
   } catch (err) {
-    toolPathScopeLogger.debug("tool_path_scope: realpathSync.native failed, using resolved path", { error: err instanceof Error ? err.message : String(err), path: resolvedPath });
-    return resolvedPath;
+    // R32-02 fix: Fail closed when symlink resolution fails. Falling back to resolve()
+    // would allow symlinks to bypass path scope restrictions. Deny access when we
+    // cannot canonicalize the path.
+    toolPathScopeLogger.debug("tool_path_scope: realpathSync.native failed, denying path", { error: err instanceof Error ? err.message : String(err), path: resolvedPath });
+    throw new Error(`tool.path_scope_canonicalization_failed:${resolvedPath}`);
   }
 }
 
@@ -88,7 +91,17 @@ export function checkToolPathScope(
   inputPath: string,
   roots: readonly string[] | null | undefined,
 ): ToolPathScopeCheckResult {
-  const normalizedPath = normalizePath(inputPath);
+  let normalizedPath: string;
+  try {
+    normalizedPath = normalizePath(inputPath);
+  } catch (err) {
+    // R32-02 fix: If we cannot canonicalize the path (e.g., broken symlink), deny access.
+    return {
+      allowed: false,
+      normalizedPath: inputPath,
+      reasonCode: "tool.path_scope_denied",
+    };
+  }
   const normalizedRoots = normalizeToolPathScopeRoots(roots);
 
   // No restrictions if no roots specified

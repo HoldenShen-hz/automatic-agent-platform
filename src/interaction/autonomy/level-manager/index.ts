@@ -1,6 +1,8 @@
 import type { AutonomyLevel } from "../index.js";
 
 export const AUTONOMY_LEVEL_ORDER: readonly AutonomyLevel[] = [
+  // R23-03 fix: frozen must be first (lowest autonomy) so compareAutonomyLevels and demotion logic work correctly.
+  // Previously frozen was after full_auto, making it appear "higher" than full_auto, causing降级 to be misidentified as 升级.
   "frozen",
   "suggestion",
   "supervised",
