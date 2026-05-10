@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { HA_COORDINATOR_DDL, type HaCoordinatorService } from "../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
+import { HA_COORDINATOR_DDL, HaCoordinatorService } from "../../src/platform/five-plane-execution/ha/ha-coordinator-service-inner.js";
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { createTempWorkspace, cleanupPath } from "./fs.js";
 

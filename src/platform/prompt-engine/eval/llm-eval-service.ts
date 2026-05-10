@@ -233,6 +233,29 @@ export interface CiGateOptions {
 
 type RawRow = Record<string, unknown>;
 
+function inferProviderFamilyFromModel(modelId: string): string {
+  const normalized = modelId.trim().toLowerCase();
+  if (normalized.includes("claude") || normalized.includes("anthropic")) {
+    return "anthropic";
+  }
+  if (normalized.includes("gpt") || normalized.includes("openai")) {
+    return "openai";
+  }
+  if (normalized.includes("gemini") || normalized.includes("google")) {
+    return "google";
+  }
+  if (normalized.includes("llama") || normalized.includes("meta")) {
+    return "meta";
+  }
+  if (normalized.includes("mistral")) {
+    return "mistral";
+  }
+  if (normalized.includes("minimax")) {
+    return "minimax";
+  }
+  return `unknown:${normalized}`;
+}
+
 // ── Service ────────────────────────────────────────────────────────────
 
 /**
@@ -358,6 +381,10 @@ export class LlmEvalService {
    * Completes an evaluation run, computing aggregate scores and verdict.
    */
   completeRun(runId: string): EvalRunRecord | null {
+    const run = this.getRun(runId);
+    if (run == null) {
+      return null;
+    }
     const results = this.db.connection
       .prepare(`SELECT * FROM eval_case_results WHERE run_id = ?`)
       .all(runId) as RawRow[];
@@ -368,12 +395,24 @@ export class LlmEvalService {
     const failed = results.length - passed;
     const scores = results.map((r) => Number(r.score));
     const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const suite = this.getSuite(run.suiteId);
+    const criticalCaseIds = new Set(
+      (suite == null ? [] : this.parseCases(suite))
+        .filter((item) => item.priority === "critical")
+        .map((item) => item.id),
+    );
+    const hasCriticalFailure = results.some((row) =>
+      criticalCaseIds.has(String(row.case_id ?? "")) && !Boolean(row.passed),
+    );
+    const passRate = passed / results.length;
 
     let verdict: QualityVerdict;
-    if (failed === 0) verdict = "pass";
-    // R16-16 fix: §17.3 requires ≥95% pass rate for "pass" verdict, ≥80% for "degraded"
-    else if (passed / results.length >= 0.95) verdict = "pass";
-    else if (passed / results.length >= 0.80) verdict = "degraded";
+    // R16-16 fix: §17.3 requires critical cases to pass 100%; degraded/pass
+    // verdicts are only available when no critical case failed.
+    if (hasCriticalFailure) verdict = "fail";
+    else if (failed === 0) verdict = "pass";
+    else if (passRate >= 0.95) verdict = "pass";
+    else if (passRate >= 0.80) verdict = "degraded";
     else verdict = "fail";
 
     const status: EvalStatus = verdict === "pass" ? "passed" : (verdict === "degraded" ? "degraded" : "failed");
@@ -420,9 +459,15 @@ export class LlmEvalService {
     config: AbTestConfig,
     options: AbTestOptions = {},
   ): Promise<AbTestResult> {
-    // R16-17 fix: Validate judge independence per §17.5 - control and treatment must use different model/family/provider
+    // R16-17 fix: Validate judge independence per §17.5 - control and treatment
+    // must not come from the same model or provider family.
     if (config.controlModelId === config.treatmentModelId) {
       throw new Error("ab_test.judge_independence_required: control and treatment must use different models per §17.5");
+    }
+    const controlFamily = inferProviderFamilyFromModel(config.controlModelId);
+    const treatmentFamily = inferProviderFamilyFromModel(config.treatmentModelId);
+    if (controlFamily === treatmentFamily) {
+      throw new Error("ab_test.judge_independence_required: control and treatment must use different provider families per §17.5");
     }
     const controlRun = this.startRun(suiteId, config.controlModelId, config.controlPromptVersion, "ab_test");
     const treatmentRun = this.startRun(suiteId, config.treatmentModelId, config.treatmentPromptVersion, "ab_test");

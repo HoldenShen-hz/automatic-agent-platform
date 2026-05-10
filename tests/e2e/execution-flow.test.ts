@@ -501,7 +501,7 @@ test("E2E: execution flow includes canonical HarnessRun, PlanGraphBundle, and No
     aggregate: nodeRun,
     fromStatus: "created",
     toStatus: "ready",
-    tenantId: nodeRun.tenantId,
+    tenantId: harnessRun.tenantId,
     traceId,
     reasonCode: "e2e.execution.node_ready",
     emittedBy: "tests/e2e/execution-flow.test.ts",

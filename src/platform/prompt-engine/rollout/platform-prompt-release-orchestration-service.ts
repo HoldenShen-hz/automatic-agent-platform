@@ -103,10 +103,18 @@ export class PlatformPromptReleaseOrchestrationService {
       regressionPassed: evaluationReport.gateDecision === "promote",
       domainBlockCompatible: input.domainBlockCompatible,
     });
-    // @ts-ignore status check - "ready" is not a valid PromptRolloutStatus
-    const rollout = input.autoActivate === true && createdRollout.status === "ready" && evaluationReport.gateDecision === "promote"
-      ? this.rollouts.activateRollout(createdRollout.rolloutId)
-      : createdRollout;
+    let rollout = createdRollout;
+    if (input.autoActivate === true && evaluationReport.gateDecision === "promote") {
+      if (rollout.status === "ready" && input.domainOwnerApproval === true) {
+        rollout = this.rollouts.activateRollout(rollout.rolloutId);
+      }
+      if (rollout.status === "canary_5" && input.domainOwnerApproval === true) {
+        rollout = this.rollouts.activateRollout(rollout.rolloutId);
+      }
+      if (rollout.status === "canary_20" && input.domainOwnerApproval === true && input.rollbackPlanPresent === true) {
+        rollout = this.rollouts.activateRollout(rollout.rolloutId);
+      }
+    }
 
     return {
       template,

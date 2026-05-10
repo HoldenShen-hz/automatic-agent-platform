@@ -200,6 +200,8 @@ test("E2E Task Lifecycle: canonical NodeRun transitions use RuntimeStateMachine.
   });
   const traceId = newId("trace");
 
+  const tenantId = "tenant-test-001";
+
   const ready = machine.transition({
     commandId: newId("cmd"),
     entityType: "NodeRun",
@@ -209,7 +211,7 @@ test("E2E Task Lifecycle: canonical NodeRun transitions use RuntimeStateMachine.
     aggregate: nodeRun,
     fromStatus: "created",
     toStatus: "ready",
-    tenantId: nodeRun.tenantId,
+    tenantId,
     traceId,
     reasonCode: "e2e.task_lifecycle.node_ready",
     emittedBy: "tests/e2e/task-lifecycle.test.ts",
@@ -228,7 +230,7 @@ test("E2E Task Lifecycle: canonical NodeRun transitions use RuntimeStateMachine.
     aggregate: ready.aggregate,
     fromStatus: "ready",
     toStatus: "leased",
-    tenantId: ready.aggregate.tenantId,
+    tenantId,
     traceId,
     reasonCode: "e2e.task_lifecycle.node_leased",
     emittedBy: "tests/e2e/task-lifecycle.test.ts",

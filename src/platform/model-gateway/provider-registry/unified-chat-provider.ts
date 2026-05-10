@@ -358,10 +358,10 @@ export class UnifiedChatProvider {
     }
 
     const totalSeconds = (Date.now() - startedAt) / 1000;
-    // R16-21 fix: recordLlmLatency expects (ttftSeconds, totalSeconds, model, provider)
-    // We now have firstChunkLatencyMs available from the result, use it for accurate TTFT measurement
-    const ttftSeconds = result.latencyMs > 0 ? result.latencyMs / 1000 : 0;
-    runtimeMetricsRegistry.recordLlmLatency(ttftSeconds, totalSeconds, result.model, result.provider);
+    // R16-21 fix: non-streaming completions do not expose true TTFT.
+    // Record only end-to-end latency and leave TTFT absent instead of
+    // incorrectly reusing total latency as a TTFT surrogate.
+    runtimeMetricsRegistry.recordLlmLatency(undefined, totalSeconds, result.model, result.provider);
     return result;
   }
 

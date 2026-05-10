@@ -220,6 +220,14 @@ test("E2E: OAPEFLIR loop with failure signal triggers learn/improve/release chai
           },
           stepOutputRefs: ["step_failure"],
           timestamp: Date.now(),
+          feedbackTrustScore: 0.5,
+          trustFactors: {
+            sourceReliability: 0.5,
+            historicalAccuracy: 0.5,
+            authenticatedSource: false,
+            attackSurfaceExposure: 0.5,
+            holdoutOverlap: 0,
+          },
         },
       ],
     });

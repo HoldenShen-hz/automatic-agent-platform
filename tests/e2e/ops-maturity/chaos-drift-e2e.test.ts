@@ -34,6 +34,7 @@ function createEvidence(overrides: Partial<EvidenceRecord> = {}): EvidenceRecord
 }
 
 function createProposal(id: string): ImprovementProposal {
+  const now = new Date().toISOString();
   return {
     id,
     title: `Proposal ${id}`,
@@ -43,10 +44,12 @@ function createProposal(id: string): ImprovementProposal {
     patch: "test_patch",
     rationale: "test rationale",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: [],
-    status: "proposed",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+    draftedAt: now,
   };
 }
 

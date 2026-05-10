@@ -119,8 +119,15 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
   }
 
-  public recordLlmLatency(ttfbSeconds: number, totalSeconds: number, model: string, provider: string): void {
-    this.observeHistogram("llm_ttfb_seconds", { model, provider }, ttfbSeconds);
+  public recordLlmLatency(
+    ttfbSeconds: number | null | undefined,
+    totalSeconds: number,
+    model: string,
+    provider: string,
+  ): void {
+    if (ttfbSeconds != null && Number.isFinite(ttfbSeconds) && ttfbSeconds >= 0) {
+      this.observeHistogram("llm_ttfb_seconds", { model, provider }, ttfbSeconds);
+    }
     this.observeHistogram("llm_total_seconds", { model, provider }, totalSeconds);
   }
 

@@ -7,8 +7,8 @@ import type {
 export function createCanonicalRiskConfig(): RiskConfig {
   return {
     factorWeights: {
-      operationRisk: 3,
-      targetResourceCriticality: 3,
+      impact: 4,
+      irreversibility: 4,
       dataSensitivity: 3,
       autonomyModeRisk: 2,
       tenantImpact: 2,
@@ -16,13 +16,13 @@ export function createCanonicalRiskConfig(): RiskConfig {
       historicalFailureRate: 2,
       evidenceConfidence: 1,
     },
-    operationRiskValues: {
+    impactValues: {
       read: 0.2,
       write: 0.6,
       delete: 1.0,
       external_call: 0.8,
     },
-    targetResourceCriticalityValues: {
+    irreversibilityValues: {
       internal: 0.2,
       staging: 0.4,
       production: 1.0,
@@ -106,13 +106,13 @@ export function createCanonicalRiskConfig(): RiskConfig {
 
 export function createRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
   return {
-    operationRisk: "write",
-    targetResourceCriticality: "staging",
-    dataSensitivity: "internal",
-    autonomyModeRisk: "supervised",
-    tenantImpact: "workflow",
-    blastRadius: "workflow",
-    historicalFailureRate: "medium",
+    impact: 4,
+    irreversibility: 3,
+    dataSensitivity: 3,
+    autonomyModeRisk: 4,
+    tenantImpact: 3,
+    blastRadius: 3,
+    historicalFailureRate: 30,
     evidenceConfidence: "medium",
     ...overrides,
   };
@@ -120,13 +120,13 @@ export function createRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFac
 
 export function createLowRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
   return createRiskFactors({
-    operationRisk: "read",
-    targetResourceCriticality: "internal",
-    dataSensitivity: "public",
-    autonomyModeRisk: "full_auto",
-    tenantImpact: "single_task",
-    blastRadius: "single_task",
-    historicalFailureRate: "low",
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 5,
     evidenceConfidence: "high",
     ...overrides,
   });
@@ -134,13 +134,13 @@ export function createLowRiskFactors(overrides: Partial<RiskFactors> = {}): Risk
 
 export function createMediumRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
   return createRiskFactors({
-    operationRisk: "write",
-    targetResourceCriticality: "production",
-    dataSensitivity: "internal",
-    autonomyModeRisk: "supervised",
-    tenantImpact: "workflow",
-    blastRadius: "workflow",
-    historicalFailureRate: "medium",
+    impact: 3,
+    irreversibility: 3,
+    dataSensitivity: 3,
+    autonomyModeRisk: 3,
+    tenantImpact: 3,
+    blastRadius: 3,
+    historicalFailureRate: 20,
     evidenceConfidence: "medium",
     ...overrides,
   });
@@ -148,13 +148,13 @@ export function createMediumRiskFactors(overrides: Partial<RiskFactors> = {}): R
 
 export function createHighRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
   return createRiskFactors({
-    operationRisk: "delete",
-    targetResourceCriticality: "production",
-    dataSensitivity: "confidential",
-    autonomyModeRisk: "supervised",
-    tenantImpact: "tenant",
-    blastRadius: "tenant",
-    historicalFailureRate: "high",
+    impact: 5,
+    irreversibility: 5,
+    dataSensitivity: 4,
+    autonomyModeRisk: 3,
+    tenantImpact: 4,
+    blastRadius: 4,
+    historicalFailureRate: 50,
     evidenceConfidence: "low",
     ...overrides,
   });
@@ -162,13 +162,13 @@ export function createHighRiskFactors(overrides: Partial<RiskFactors> = {}): Ris
 
 export function createCriticalRiskFactors(overrides: Partial<RiskFactors> = {}): RiskFactors {
   return createRiskFactors({
-    operationRisk: "delete",
-    targetResourceCriticality: "production",
-    dataSensitivity: "restricted",
-    autonomyModeRisk: "manual",
-    tenantImpact: "platform",
-    blastRadius: "platform",
-    historicalFailureRate: "critical",
+    impact: 5,
+    irreversibility: 5,
+    dataSensitivity: 5,
+    autonomyModeRisk: 5,
+    tenantImpact: 5,
+    blastRadius: 5,
+    historicalFailureRate: 90,
     evidenceConfidence: "low",
     ...overrides,
   });

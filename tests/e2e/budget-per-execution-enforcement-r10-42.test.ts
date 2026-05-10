@@ -332,6 +332,7 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
             reasonCode: "budget.exceeded",
             traceId,
             occurredAt: nowIso(),
+            actorType: "system",
           },
         });
       });
@@ -562,6 +563,7 @@ test("E2E Per-Execution Budget Enforcement: TransitionService applies failed ter
               reasonCode: "budget.exceeded",
               traceId,
               occurredAt: nowIso(),
+              actorType: "system",
             },
           });
         });

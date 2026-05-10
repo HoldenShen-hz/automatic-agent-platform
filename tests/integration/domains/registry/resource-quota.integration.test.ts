@@ -12,7 +12,10 @@ import assert from "node:assert/strict";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { DomainSmokeTestRunner } from "../../../../src/domains/registry/domain-smoke-test.js";
 import type { DomainDefinition, DomainCapabilityProfile } from "../../../../src/domains/registry/domain-model.js";
+import { DomainCapabilityProfileSchema } from "../../../../src/domains/registry/domain-model.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+
+const defaultCapabilities = DomainCapabilityProfileSchema.parse({});
 
 function createTestDomain(overrides: Partial<DomainDefinition> & { capabilities?: Partial<DomainCapabilityProfile> } = {}): DomainDefinition {
   const { capabilities: capOverrides, ...rest } = overrides;

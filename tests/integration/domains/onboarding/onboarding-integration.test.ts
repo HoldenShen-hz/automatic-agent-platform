@@ -176,6 +176,7 @@ test("Onboarding: task design service creates workflow for domain", () => {
           triggerPhrases: ["design", "workflow"],
           defaultWorkflowId: "design_test.primary",
           defaultToolBundleIds: ["design_tools"],
+          archetype: "conversational",
         },
       ],
       promptLibrary: {
@@ -287,6 +288,9 @@ test("Onboarding: persists task and execution during onboarding", () => {
         attempt: 1,
         timeoutMs: 60000,
         budgetUsdLimit: 1,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",

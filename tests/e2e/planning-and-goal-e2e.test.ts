@@ -571,6 +571,14 @@ test("E2E Feedback Quality Grader: human correction receives high grade", () => 
         payload: { summary: "Should have used different approach", reasonCode: "user_correction" },
         stepOutputRefs: ["step-1", "step-2"],
         timestamp: Date.now() - 1000, // recent
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
       },
     ];
 
@@ -603,6 +611,14 @@ test("E2E Feedback Quality Grader: signals exceeding max age get discarded", () 
         payload: { summary: "Old feedback" },
         stepOutputRefs: [],
         timestamp: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10 days old
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
       },
     ];
 
@@ -635,6 +651,14 @@ test("E2E Feedback Quality Grader: diverse signal sources improve score", () => 
         payload: { summary: "User correction" },
         stepOutputRefs: [],
         timestamp: Date.now(),
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
       },
       {
         signalId: "sig-hitl",
@@ -645,6 +669,14 @@ test("E2E Feedback Quality Grader: diverse signal sources improve score", () => 
         payload: { summary: "HITL detected issue" },
         stepOutputRefs: [],
         timestamp: Date.now(),
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
       },
       {
         signalId: "sig-validation",
@@ -655,6 +687,14 @@ test("E2E Feedback Quality Grader: diverse signal sources improve score", () => 
         payload: { summary: "Validation passed" },
         stepOutputRefs: [],
         timestamp: Date.now(),
+        feedbackTrustScore: 0.5,
+        trustFactors: {
+          sourceReliability: 0.5,
+          historicalAccuracy: 0.5,
+          authenticatedSource: false,
+          attackSurfaceExposure: 0.5,
+          holdoutOverlap: 0,
+        },
       },
     ];
 

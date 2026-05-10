@@ -73,6 +73,7 @@ export function createMinimalExecution(
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-test-001",
     roleId: "general_executor",
     runKind: "task_run",
@@ -82,6 +83,8 @@ export function createMinimalExecution(
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1.0,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -204,8 +207,6 @@ export function createMinimalBudgetLedger(
     budgetLedgerId: overrides.budgetLedgerId ?? "ledger-test-001",
     hardCap: overrides.hardCap ?? 1000,
     reservedAmount: overrides.reservedAmount ?? 0,
-    status: overrides.status ?? "open",
-    currency: overrides.currency ?? "USD",
     overrides,
   });
 }

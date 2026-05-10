@@ -9,6 +9,7 @@ import {
 import type { ImprovementProposal } from "../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
 function createMockProposal(overrides: Partial<ImprovementProposal> = {}): ImprovementProposal {
+  const now = new Date().toISOString();
   return {
     id: "prop_integration_1",
     title: "Integration Test Proposal",
@@ -18,10 +19,12 @@ function createMockProposal(overrides: Partial<ImprovementProposal> = {}): Impro
     patch: '{"rules": []}',
     rationale: "Integration testing",
     risk: "low",
+    reviewRequirement: "auto",
     evidenceIds: ["evidence_1", "evidence_2"],
     status: "draft",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
+    draftedAt: now,
     ...overrides,
   };
 }

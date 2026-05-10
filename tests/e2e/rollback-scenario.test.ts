@@ -31,7 +31,7 @@ function createCandidate(overrides: Partial<ImprovementCandidate> = {}): Improve
     changeScope: "prompt",
     description: "E2E test candidate",
     expectedBenefit: "Test improvement",
-    status: "proposed",
+    status: "candidate_created",
     createdAt: Date.now(),
     ...overrides,
   });
@@ -90,7 +90,7 @@ test("E2E: rollout state machine advances through all phases", () => {
   const machine = new RolloutStateMachine();
 
   // Draft -> L1_evaluate (proposed can go to L1_evaluate directly)
-  let candidate = createCandidate({ status: "proposed" });
+  let candidate = createCandidate({ status: "candidate_created" });
   let record = machine.transition(candidate, "L1_evaluate", { approvedBy: "admin-1" });
   assert.equal(record.status, "evaluation_enabled");
 
@@ -269,7 +269,7 @@ test("E2E: rollout state machine allows resume from paused state", () => {
 
 test("E2E: rollout state machine records approval in transition", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createCandidate({ status: "proposed" });
+  const candidate = createCandidate({ status: "candidate_created" });
 
   const record = machine.transition(candidate, "L1_evaluate", {
     approvedBy: "senior-ops-42",

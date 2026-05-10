@@ -107,6 +107,14 @@ export function createMinimalHarnessRun(input: MinimalHarnessRunInput = {}): Har
   return {
     harnessRunId: newId("hrun"),
     tenantId: input.tenantId ?? "tenant-test-001",
+    orgId: input.overrides?.orgId ?? "org-test-001",
+    traceId: input.overrides?.traceId ?? newId("trace"),
+    domainId: input.overrides?.domainId ?? "domain-test-001",
+    riskLevel: input.overrides?.riskLevel ?? "low",
+    riskProfile: input.overrides?.riskProfile ?? createTestRiskPreview("low"),
+    ownership: input.overrides?.ownership ?? { ownerId: "owner-test-001", ownerType: "principal" },
+    auditRefs: input.overrides?.auditRefs ?? [],
+    auditTrail: input.overrides?.auditTrail ?? { auditRefs: [], evidenceRefs: [] },
     confirmedTaskSpecId: input.confirmedTaskSpecId ?? newId("ctspec"),
     requestEnvelopeId: input.requestEnvelopeId ?? newId("request"),
     requestHash: input.requestHash ?? newId("reqhash"),
@@ -115,9 +123,11 @@ export function createMinimalHarnessRun(input: MinimalHarnessRunInput = {}): Har
     versionLockId: input.versionLockId ?? newId("vlock"),
     ...(input.planGraphBundleId != null ? { planGraphBundleId: input.planGraphBundleId } : {}),
     budgetLedgerId: input.budgetLedgerId ?? newId("bledger"),
+    budgetEnvelope: input.overrides?.budgetEnvelope ?? { budgetLedgerId: input.budgetLedgerId ?? newId("bledger"), currency: "USD" },
     currentSeq: input.currentSeq ?? 0,
     createdAt: now,
     updatedAt: input.updatedAt ?? now,
+    fencingToken: input.overrides?.fencingToken ?? "test-fencing-token",
     ...input.overrides,
   };
 }

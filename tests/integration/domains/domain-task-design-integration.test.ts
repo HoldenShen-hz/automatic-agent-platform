@@ -12,6 +12,7 @@ test("integration: domain support modules flow into a single domain task design 
         triggerPhrases: ["bug"],
         defaultWorkflowId: "wf_bugfix",
         defaultToolBundleIds: ["repo_tools", "test_tools"],
+        archetype: "conversational",
       },
     ],
     promptLibrary: {

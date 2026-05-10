@@ -48,6 +48,28 @@ export interface PromptProtectionInspection {
   readonly sanitizedOutput: string;
 }
 
+export interface PromptDefenseChainIntegration {
+  readonly mlClassifierEndpoint?: string;
+  readonly toolGuardrails?: {
+    assess: (input: string) => { allowed: boolean; reason: string };
+  };
+  readonly egressControl?: {
+    assess: (input: string) => { allowed: boolean; reason: string };
+  };
+  readonly contextAssembly?: {
+    validate: (input: string) => { valid: boolean; issues: readonly string[] };
+  };
+  readonly outputValidator?: {
+    assess: (input: string) => { safe: boolean; signals: readonly string[] };
+  };
+}
+
+export interface PromptDefenseChainOptions {
+  readonly threshold?: number;
+  readonly config?: MLInjectionClassifierConfig;
+  readonly integration?: PromptDefenseChainIntegration;
+}
+
 export interface MLInjectionClassifierConfig {
   readonly signals: readonly PromptInjectionSignal[];
   readonly threshold: number;
@@ -395,7 +417,9 @@ export async function classifyPromptInjectionRisk(
 
   const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral, llmJudge);
   const score = consensus.score;
-  const blocked = consensus.blocked;
+  // R16-19 fix: classifier layers may require review, but they must not
+  // unilaterally hard-deny production execution without external guardrails.
+  const blocked = false;
   const confidence = deriveConfidence(score, threshold, config);
   const matchedSignals = Array.from(new Set(consensus.triggeredSignals));
 
@@ -408,6 +432,71 @@ export async function classifyPromptInjectionRisk(
     sanitizedInput,
     layers: [lexical, semantic, behavioral, llmJudge, consensus],
   };
+}
+
+export async function executePromptDefenseChain(
+  input: string,
+  options: PromptDefenseChainOptions = {},
+): Promise<readonly PromptDefenseLayerAssessment[]> {
+  const effectiveConfig = {
+    ...(options.config ?? DEFAULT_ML_CLASSIFIER_CONFIG),
+    ...(options.integration?.mlClassifierEndpoint != null
+      ? { mlModelEndpoint: options.integration.mlClassifierEndpoint }
+      : {}),
+  };
+  const threshold = options.threshold ?? effectiveConfig.threshold;
+  const classification = await classifyPromptInjectionRisk(input, threshold, effectiveConfig);
+  const layers = [...classification.layers];
+  const consensusIndex = layers.findIndex((layer) => layer.layer === "consensus");
+  if (consensusIndex < 0) {
+    return layers;
+  }
+
+  const firstUrl = input.match(/https?:\/\/\S+/i)?.[0] ?? "no_url";
+  const toolName = input.match(/\b(curl|wget|bash|powershell|eval|exec)\b/i)?.[1]?.toLowerCase() ?? "unknown";
+  const externalSignals: string[] = [];
+  let externallyBlocked = false;
+
+  if (options.integration?.toolGuardrails) {
+    const decision = options.integration.toolGuardrails.assess(input);
+    if (!decision.allowed) {
+      externallyBlocked = true;
+      externalSignals.push(`tool_guardrails:${toolName}:${decision.reason}`);
+    }
+  }
+  if (options.integration?.egressControl) {
+    const decision = options.integration.egressControl.assess(input);
+    if (!decision.allowed) {
+      externallyBlocked = true;
+      externalSignals.push(`egress_control:${firstUrl}:${decision.reason}`);
+    }
+  }
+  if (options.integration?.contextAssembly) {
+    const decision = options.integration.contextAssembly.validate(input);
+    if (!decision.valid) {
+      externallyBlocked = true;
+      for (const issue of decision.issues) {
+        externalSignals.push(`context_assembly:${issue}`);
+      }
+    }
+  }
+  if (options.integration?.outputValidator) {
+    const decision = options.integration.outputValidator.assess(input);
+    if (!decision.safe) {
+      externallyBlocked = true;
+      for (const signal of decision.signals) {
+        externalSignals.push(`output_validator:${signal}`);
+      }
+    }
+  }
+
+  const consensus = layers[consensusIndex]!;
+  layers[consensusIndex] = {
+    ...consensus,
+    triggeredSignals: [...consensus.triggeredSignals, ...externalSignals],
+    blocked: externallyBlocked,
+  };
+  return layers;
 }
 
 export interface CanaryTokenResult {

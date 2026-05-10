@@ -35,7 +35,7 @@ function createCandidate(overrides: Partial<ImprovementCandidate> = {}): Improve
     changeScope: "prompt",
     description: "E2E test rollout candidate",
     expectedBenefit: "Test improvement",
-    status: "proposed",
+    status: "candidate_created",
     createdAt: Date.now(),
     ...overrides,
   });
@@ -47,7 +47,7 @@ function createCandidate(overrides: Partial<ImprovementCandidate> = {}): Improve
 
 test("E2E Rollout: full pipeline draft -> shadow -> canary -> stable", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createCandidate({ status: "proposed" });
+  const candidate = createCandidate({ status: "candidate_created" });
 
   // Phase 1: Draft to Shadow (L1_evaluate)
   let record = machine.transition(candidate, "L1_evaluate", { approvedBy: "admin-1" });
@@ -342,7 +342,7 @@ const routing = router.computeCanaryAllocation("stable_100");
 test("E2E Rollout: policy rollout advances through stages with evidence", () => {
   const machine = new RolloutStateMachine();
   const candidate = createCandidate({
-    status: "proposed",
+    status: "candidate_created",
     changeScope: "policy",
     sourceSignalRefs: ["signal:policy-violation", "signal:compliance-gap"],
   });

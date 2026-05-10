@@ -28,7 +28,6 @@ import { runMultiStepOrchestration } from "../../src/platform/execution/executio
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { DurableEventBus } from "../../src/platform/state-evidence/events/durable-event-bus.js";
 import { TypedEventBus } from "../../src/platform/state-evidence/events/typed-event-bus.js";
-import { createPlatformFactEvent, type PlatformFactEvent } from "../../src/platform/contracts/types/platform-contracts.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 
@@ -74,6 +73,7 @@ test("integration: cross-plane event propagation - task status change emits Plat
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-general",
         roleId: "general_executor",
         runKind: "task_run",
@@ -82,7 +82,9 @@ test("integration: cross-plane event propagation - task status change emits Plat
         traceId,
         attempt: 1,
         timeoutMs: 60000,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -189,6 +191,7 @@ test("integration: event sourcing replay - execution lifecycle events are durabl
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-general",
         roleId: "general_executor",
         runKind: "task_run",
@@ -197,7 +200,9 @@ test("integration: event sourcing replay - execution lifecycle events are durabl
         traceId,
         attempt: 1,
         timeoutMs: 60000,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -312,6 +317,7 @@ test("integration: OAPEFLR FSM validation - harness run respects state machine",
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-general",
         roleId: "general_executor",
         runKind: "task_run",
@@ -320,7 +326,9 @@ test("integration: OAPEFLR FSM validation - harness run respects state machine",
         traceId,
         attempt: 1,
         timeoutMs: 60000,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -553,6 +561,7 @@ test("integration: multi-plane coordination - workflow state coordinates task/ex
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-general",
         roleId: "general_executor",
         runKind: "task_run",
@@ -561,7 +570,9 @@ test("integration: multi-plane coordination - workflow state coordinates task/ex
         traceId,
         attempt: 1,
         timeoutMs: 60000,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -768,6 +779,7 @@ test("integration: event sourcing durability - PlanGraph chain events are durabl
           taskId,
           workflowId: "single_agent_minimal",
           parentExecutionId: null,
+          harnessRunId: null,
           agentId: "agent-general",
           roleId: "general_executor",
           runKind: "task_run",
@@ -776,7 +788,9 @@ test("integration: event sourcing durability - PlanGraph chain events are durabl
           traceId,
           attempt: 1,
           timeoutMs: 60000,
-          budgetUsdLimit: 1,
+          budgetUsdLimit: null,
+          budgetReservationId: null,
+          budgetLedgerId: null,
           requiresApproval: 0,
           sandboxMode: "workspace_write",
           allowedToolsJson: "[]",
@@ -928,6 +942,7 @@ test("integration: cross-plane FSM validation - invalid OAPEFLIR transitions are
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
         agentId: "agent-general",
         roleId: "general_executor",
         runKind: "task_run",
@@ -936,7 +951,9 @@ test("integration: cross-plane FSM validation - invalid OAPEFLIR transitions are
         traceId,
         attempt: 1,
         timeoutMs: 60000,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         requiresApproval: 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
@@ -1024,14 +1041,14 @@ test("integration: cross-plane FSM validation - invalid OAPEFLIR transitions are
       "FSM must reject transition from terminal state to non-terminal"
     );
 
-    // Invalid: done -> executing (FSM must reject - skipping states)
+    // Invalid: done -> pending (FSM must reject - skipping states)
     assert.throws(
       () => {
         ts.transitionTaskStatus({
           entityKind: "task",
           entityId: taskId,
           fromStatus: "done",
-          toStatus: "executing",
+          toStatus: "pending",
           executionId: null,
           reasonCode: "task.execute",
           traceId,

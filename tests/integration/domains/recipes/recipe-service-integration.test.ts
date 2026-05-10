@@ -16,6 +16,7 @@ test("integration: DomainRecipeService registers and retrieves recipes", () => {
     triggerPhrases: ["test", "run", "execute"],
     defaultWorkflowId: "test_workflow",
     defaultToolBundleIds: ["tools1", "tools2"],
+    archetype: "conversational",
   };
 
   service.register(recipe);
@@ -37,6 +38,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     triggerPhrases: ["test1"],
     defaultWorkflowId: "wf1",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   });
 
   service.register({
@@ -47,6 +49,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     triggerPhrases: ["test2"],
     defaultWorkflowId: "wf2",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   });
 
   service.register({
@@ -57,6 +60,7 @@ test("integration: DomainRecipeService retrieves recipes by domain", () => {
     triggerPhrases: ["test3"],
     defaultWorkflowId: "wf3",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   });
 
   const domainRecipes = service.getRecipesByDomain("multi-domain");
@@ -75,6 +79,7 @@ test("integration: DomainRecipeService matches recipe by trigger phrase", () => 
     triggerPhrases: ["analyze", "examine", "investigate"],
     defaultWorkflowId: "analysis_wf",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   });
 
   service.register({
@@ -85,6 +90,7 @@ test("integration: DomainRecipeService matches recipe by trigger phrase", () => 
     triggerPhrases: ["implement", "create", "build"],
     defaultWorkflowId: "impl_wf",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   });
 
   const matched = service.matchRecipe("match-domain", "Please analyze this data");
@@ -219,6 +225,7 @@ test("integration: DomainRecipeService validates recipes", () => {
     triggerPhrases: ["valid", "test"],
     defaultWorkflowId: "wf",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   };
 
   const errors = service.validate(validRecipe);
@@ -232,6 +239,7 @@ test("integration: DomainRecipeService validates recipes", () => {
     triggerPhrases: [],
     defaultWorkflowId: "",
     defaultToolBundleIds: [],
+    archetype: "conversational",
   };
 
   const validationErrors = service.validate(invalidRecipe);

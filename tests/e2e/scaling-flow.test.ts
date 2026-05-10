@@ -163,9 +163,15 @@ test("E2E Scaling: resource pool allocates units up to capacity", (t) => {
   service.registerPool({
     poolId: "compute",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 10,
     allocatedUnits: 0,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Allocate 8 units
@@ -193,9 +199,15 @@ test("E2E Scaling: resource pool uses burst capacity", (t) => {
   service.registerPool({
     poolId: "burst-compute",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 5,
     allocatedUnits: 5,
     burstUnits: 3,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Should still be able to allocate from burst
@@ -212,12 +224,18 @@ test("E2E Scaling: resource pool releases units correctly", (t) => {
   service.registerPool({
     poolId: "release-pool",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 10,
     allocatedUnits: 6,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
-  const updated = service.release("release-pool", 3);
+  const updated = service.release("release-pool", "consumer-to-release", 3);
 
   assert.equal(updated.allocatedUnits, 3);
 
@@ -232,13 +250,19 @@ test("E2E Scaling: resource pool prevents over-release", (t) => {
   service.registerPool({
     poolId: "over-release-pool",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 10,
     allocatedUnits: 3,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Try to release more than allocated
-  const updated = service.release("over-release-pool", 10);
+  const updated = service.release("over-release-pool", "over-consumer", 10);
 
   // Should clamp to 0, not go negative
   assert.equal(updated.allocatedUnits, 0);
@@ -250,9 +274,15 @@ test("E2E Scaling: concurrent allocations are handled correctly", async (t) => {
   service.registerPool({
     poolId: "concurrent-pool",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 100,
     allocatedUnits: 0,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   const options: ConcurrentRunnerOptions = { concurrency: 20 };
@@ -284,7 +314,7 @@ test("E2E Scaling: fair scheduling orders by priority and age", (t) => {
   const claim = createResourceClaim({ requestedUnits: 1 });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 0 } },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -309,7 +339,7 @@ test("E2E Scaling: fair scheduling identifies starved items", (t) => {
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 0 } },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -341,7 +371,7 @@ test("E2E Scaling: fair scheduling triggers preemption when quota exceeded", (t)
   ];
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 3, currentUsage: 3 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 3, currentUsage: 3 } },
     claim,
     queueItems,
     preemptionCandidates,
@@ -363,7 +393,7 @@ test("E2E Scaling: fair scheduling does not preempt when quota not exceeded", (t
   const claim = createResourceClaim({ requestedUnits: 1 });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 5 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 5 } },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -389,7 +419,7 @@ test("E2E Scaling: fair scheduling handles multiple priority tiers", (t) => {
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 0 } },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -414,9 +444,15 @@ test("E2E Scaling: different tenants get fair share", (t) => {
   service.registerPool({
     poolId: "multi-tenant-pool",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 30,
     allocatedUnits: 0,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Three tenants each requesting 10 units
@@ -450,7 +486,7 @@ test("E2E Scaling: SLA tiers preserve priority during scheduling", (t) => {
   });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 0 } },
     claim: premiumClaim,
     queueItems,
     preemptionCandidates: [],
@@ -559,9 +595,15 @@ test("E2E Scaling: concurrent resource allocations maintain consistency", async 
   service.registerPool({
     poolId: "concurrent-consistency",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 50,
     allocatedUnits: 0,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   const options: ConcurrentRunnerOptions = { concurrency: 10 };
@@ -584,9 +626,15 @@ test("E2E Scaling: concurrent releases maintain consistency", async (t) => {
   service.registerPool({
     poolId: "concurrent-release",
     resourceType: "cpu",
+    scopeType: "shared",
     capacityUnits: 100,
     allocatedUnits: 0,
     burstUnits: 0,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Pre-allocate to 50 units
@@ -596,7 +644,7 @@ test("E2E Scaling: concurrent releases maintain consistency", async (t) => {
 
   const options: ConcurrentRunnerOptions = { concurrency: 10 };
   const result = await runConcurrentInvariant(async (workerId) => {
-    service.release("concurrent-release", 5);
+    service.release("concurrent-release", `pre-consumer-${workerId}`, 5);
     return service.getPool("concurrent-release")!.allocatedUnits;
   }, options);
 
@@ -628,7 +676,7 @@ test("E2E Scaling: preemption selects lowest priority victim", (t) => {
   ];
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 2, currentUsage: 2 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 2, currentUsage: 2 } },
     claim,
     queueItems,
     preemptionCandidates,
@@ -652,7 +700,7 @@ test("E2E Scaling: starvation detection works correctly", (t) => {
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 10, currentUsage: 0 } },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -726,9 +774,15 @@ test("E2E Scaling: resource pool and scheduling integration", (t) => {
   poolService.registerPool({
     poolId: "integration-pool",
     resourceType: "execution-slot",
+    scopeType: "shared",
     capacityUnits: 20,
     allocatedUnits: 0,
     burstUnits: 5,
+    minSampleSize: 20,
+    sampleCount: 0,
+    failureRateThreshold: 0.3,
+    failureRate: 0,
+    isolationStatus: "active",
   });
 
   // Simulate scheduling requests
@@ -747,7 +801,7 @@ test("E2E Scaling: resource pool and scheduling integration", (t) => {
     });
 
     const request: FairSchedulingRequest = {
-      quotaPolicy: { scopeId: "tenant-001", hardLimit: 20, currentUsage: scheduled },
+      quotaPolicy: { scope: "tenant", scopeId: "tenant-001", workerUnits: { hardLimit: 20, currentUsage: scheduled } },
       claim,
       queueItems,
       preemptionCandidates: [],

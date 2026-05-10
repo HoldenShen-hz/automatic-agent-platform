@@ -16,22 +16,28 @@ test("core/runtime index exports module", () => {
 });
 
 test("core/runtime index re-exports TransitionService", () => {
-  assert.ok("TransitionService" in runtimeIndex || runtimeIndex.TransitionService != null,
+  // TransitionService is re-exported via state-transition/transition-service.js
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.length > 0, "Module should export some keys");
+  assert.ok(keys.includes("TransitionService") || "TransitionService" in runtimeIndex,
     "Should re-export TransitionService");
 });
 
 test("core/runtime index re-exports StateTransitionMachine", () => {
-  assert.ok("StateTransitionMachine" in runtimeIndex || runtimeIndex.StateTransitionMachine != null,
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.includes("StateTransitionMachine") || "StateTransitionMachine" in runtimeIndex,
     "Should re-export StateTransitionMachine");
 });
 
 test("core/runtime index re-exports ExecutionLeaseService", () => {
-  assert.ok("ExecutionLeaseService" in runtimeIndex || runtimeIndex.ExecutionLeaseService != null,
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.includes("ExecutionLeaseService") || "ExecutionLeaseService" in runtimeIndex,
     "Should re-export ExecutionLeaseService");
 });
 
 test("core/runtime index re-exports WorkerRegistryService", () => {
-  assert.ok("WorkerRegistryService" in runtimeIndex || runtimeIndex.WorkerRegistryService != null,
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.includes("WorkerRegistryService") || "WorkerRegistryService" in runtimeIndex,
     "Should re-export WorkerRegistryService");
 });
 
@@ -62,11 +68,13 @@ test("core/runtime index re-exports orchestrator via sub-module", () => {
 });
 
 test("core/runtime index re-exports state-transition components", () => {
-  assert.ok("TransitionService" in runtimeIndex || "StateTransitionMachine" in runtimeIndex,
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.includes("TransitionService") || keys.includes("StateTransitionMachine"),
     "Should re-export state transition components");
 });
 
 test("core/runtime index re-exports workflow-step-checkpoint", () => {
-  assert.ok("WorkflowStepCheckpoint" in runtimeIndex || runtimeIndex.WorkflowStepCheckpoint != null,
+  const keys = Object.keys(runtimeIndex);
+  assert.ok(keys.includes("WorkflowStepCheckpoint") || "WorkflowStepCheckpoint" in runtimeIndex,
     "Should re-export WorkflowStepCheckpoint");
 });

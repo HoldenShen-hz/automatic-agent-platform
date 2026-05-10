@@ -182,7 +182,7 @@ export class ExecutionOutcomeEvaluator {
     actualCost?: number,
     baselineQualityScore?: number | null,
   ): EvaluationOutcome {
-    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback);
+    const legacy = this.evaluateWithBreakdown(planGraphBundle, feedback, baselineQualityScore);
 
     // R11-03: Evaluate constraint compliance dimension
     const constraintCompliance = this.evaluateConstraintCompliance(planGraphBundle, feedback);
@@ -376,7 +376,11 @@ export class ExecutionOutcomeEvaluator {
    * @deprecated R5-7: evaluateWithBreakdown() is kept for backward compatibility.
    * R11-04: Now consumes PlanGraphBundle instead of legacy Plan
    */
-  public evaluateWithBreakdown(planGraphBundle: PlanGraphBundle, feedback: FeedbackBatch): ExecutionOutcomeEvaluation {
+  public evaluateWithBreakdown(
+    planGraphBundle: PlanGraphBundle,
+    feedback: FeedbackBatch,
+    baselineQualityScore?: number | null,
+  ): ExecutionOutcomeEvaluation {
     const failureSignals = feedback.signals.filter((signal) => signal.category === "failure" || signal.category === "timeout");
     const partialSignals = feedback.signals.filter((signal) => signal.category === "partial");
     const successSignals = feedback.signals.filter((signal) => signal.category === "success");
@@ -416,7 +420,25 @@ export class ExecutionOutcomeEvaluator {
       nextAction = "approve";
     }
 
-    const passed = nextAction === "complete" && qualityScore >= riskAdjustedThreshold;
+    const deltaGatePassed = baselineQualityScore == null
+      ? null
+      : qualityScore - baselineQualityScore >= -0.05;
+
+    if (nextAction === "complete" && deltaGatePassed === false) {
+      nextAction = "replan";
+    }
+
+    const passed = nextAction === "complete" && (
+      deltaGatePassed ?? (qualityScore >= riskAdjustedThreshold)
+    );
+    const reasons = feedback.signals.map((signal) =>
+      `${signal.category}:${String(signal.payload.summary ?? signal.payload.reasonCode ?? signal.category)}`,
+    );
+    if (deltaGatePassed === false) {
+      reasons.push(
+        `quality_score_delta_exceeded:${(qualityScore - baselineQualityScore!).toFixed(2)} < -0.05`,
+      );
+    }
 
     return {
       evaluationId: newId("outcome_eval"),
@@ -424,7 +446,7 @@ export class ExecutionOutcomeEvaluator {
       passed,
       qualityScore: Number(qualityScore.toFixed(2)),
       nextAction,
-      reasons: feedback.signals.map((signal) => `${signal.category}:${String(signal.payload.summary ?? signal.payload.reasonCode ?? signal.category)}`),
+      reasons,
       evaluatedAt: Date.now(),
       factorBreakdown: {
         successSignals: successSignals.length,
