@@ -259,7 +259,7 @@ export class OpenAIChatService {
       const response = await this.fetchImpl(url, {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...requestBody, ...(stream ? { stream: true } : {}) }),
+        body: JSON.stringify({ ...requestBody, ...(stream && !("stream" in requestBody) ? { stream: true } : {}) }),
         ...(signal !== undefined ? { signal } : {}),
       });
 

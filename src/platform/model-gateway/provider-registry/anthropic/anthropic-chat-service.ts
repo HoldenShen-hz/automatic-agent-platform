@@ -225,7 +225,7 @@ export class AnthropicChatService {
           "x-api-key": selection.apiKey,
           "anthropic-version": ANTHROPIC_VERSION,
         },
-        body: JSON.stringify({ ...anthropicRequest, ...(stream ? { stream: true } : {}) }),
+        body: JSON.stringify({ ...anthropicRequest, ...(stream && !("stream" in anthropicRequest) ? { stream: true } : {}) }),
         ...(signal !== undefined ? { signal } : {}),
       });
 
@@ -476,7 +476,11 @@ export class AnthropicChatService {
                 }
               } else if (parsed.type === "message_delta") {
                 if (parsed.usage) {
-                  accumulatedUsage = parsed.usage;
+                  if (accumulatedUsage) {
+                    Object.assign(accumulatedUsage, parsed.usage);
+                  } else {
+                    accumulatedUsage = { ...parsed.usage };
+                  }
                 }
                 if (parsed.delta?.type === "text_delta") {
                   // already accumulated above

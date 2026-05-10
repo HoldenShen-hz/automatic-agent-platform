@@ -253,7 +253,7 @@ export class MiniMaxChatService {
           "Content-Type": "application/json",
           Authorization: `Bearer ${selection.apiKey}`,
         },
-        body: JSON.stringify({ ...requestBody, ...(stream ? { stream: true } : {}) }),
+        body: JSON.stringify({ ...requestBody, ...(stream && !("stream" in requestBody) ? { stream: true } : {}) }),
         ...(signal !== undefined ? { signal } : {}),
       });
 

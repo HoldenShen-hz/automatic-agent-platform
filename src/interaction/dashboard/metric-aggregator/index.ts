@@ -264,3 +264,6 @@ export function deriveCostMetrics(
     budgetUtilizationPercent: budgetUtilization,
   };
 }
+
+export { MetricAggregator } from "./metric-aggregator.js";
+export type { AggregatableMetrics, AggregatedMetrics, MetricSample } from "./metric-aggregator.js";
