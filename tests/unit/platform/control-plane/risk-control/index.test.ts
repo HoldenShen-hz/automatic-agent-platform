@@ -25,29 +25,33 @@ import {
 test("RiskEvaluationEngine is exported and instantiable", () => {
   const mockConfig: RiskConfig = {
     factorWeights: {
-      stepTypeRisk: 3,
-      targetSystemRisk: 4,
-      dataClassRisk: 3,
+      impact: 3,
+      irreversibility: 4,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
       blastRadius: 2,
-      priorFailureRate: 2,
-      confidence: 1,
+      historicalFailureRate: 2,
+      evidenceConfidence: 1,
     },
-    stepTypeRiskValues: { read: 1, write: 3, delete: 5, external_call: 4 },
-    targetSystemRiskValues: { internal: 1, staging: 2, production: 5 },
-    dataClassRiskValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    impactValues: { read: 1, write: 3, delete: 5, external_call: 4 },
+    irreversibilityValues: { read: 1, write: 3, delete: 5, external_call: 4 },
+    dataSensitivityValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    autonomyModeRiskValues: { manual: 1, semi_auto: 2, auto: 3 },
+    tenantImpactValues: { single: 1, multiple: 2, all: 3 },
     blastRadiusValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
-    priorFailureRateThresholds: {
+    historicalFailureRateThresholds: {
       low: { maxPercent: 10, value: 1 },
       medium: { maxPercent: 30, value: 2 },
       high: { maxPercent: 50, value: 3 },
       critical: { maxPercent: 100, value: 5 },
     },
-    confidenceValues: { high: 1, medium: 3, low: 5 },
+    evidenceConfidenceValues: { high: 1, medium: 3, low: 5 },
     riskLevelThresholds: { low: 0.25, medium: 0.5, high: 0.75, critical: 1.0 },
     riskLevelActions: {
       low: { autoExecute: true, logLevel: "info", requiresApproval: false, sideEffect: "normal", evidenceLevel: "basic" },
       medium: { autoExecute: true, logLevel: "warn", requiresApproval: false, sideEffect: "normal_with_validation", evidenceLevel: "enhanced" },
-      high: { autoExecute: false, logLevel: "error", requiresApproval: true, sideEffect: "restricted", evidenceLevel: "full" },
+      high: { autoExecute: false, logLevel: "error", requiresApproval: true, approvalType: "standard", sideEffect: "restricted", evidenceLevel: "full" },
       critical: { autoExecute: false, logLevel: "critical", requiresApproval: true, approvalType: "break_glass", sideEffect: "prohibited", evidenceLevel: "legal" },
     },
   };
@@ -88,12 +92,14 @@ test("All types are exported", () => {
   const confidence: ConfidenceLevel = "high";
 
   const factors: RiskFactors = {
-    stepTypeRisk: stepType,
-    targetSystemRisk: target,
-    dataClassRisk: dataClass,
-    blastRadius: blast,
-    priorFailureRatePercent: 5,
-    confidence: confidence,
+    impact: 3,
+    irreversibility: 4,
+    dataSensitivity: 3,
+    autonomyModeRisk: 2,
+    tenantImpact: 2,
+    blastRadius: 2,
+    historicalFailureRate: 5,
+    evidenceConfidence: confidence,
   };
 
   const request: RiskEvaluationRequest = {
@@ -102,41 +108,45 @@ test("All types are exported", () => {
   };
 
   assert.equal(request.taskId, "test-task");
-  assert.equal(request.factors.stepTypeRisk, "read");
+  assert.equal(request.factors.impact, 3);
 });
 
 test("RiskConfig type can be constructed", () => {
   const config: RiskConfig = {
     factorWeights: {
-      stepTypeRisk: 3,
-      targetSystemRisk: 4,
-      dataClassRisk: 3,
+      impact: 3,
+      irreversibility: 4,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
       blastRadius: 2,
-      priorFailureRate: 2,
-      confidence: 1,
+      historicalFailureRate: 2,
+      evidenceConfidence: 1,
     },
-    stepTypeRiskValues: { read: 1, write: 3, delete: 5, external_call: 4 },
-    targetSystemRiskValues: { internal: 1, staging: 2, production: 5 },
-    dataClassRiskValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    impactValues: { read: 1, write: 3, delete: 5, external_call: 4 },
+    irreversibilityValues: { read: 1, write: 3, delete: 5, external_call: 4 },
+    dataSensitivityValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    autonomyModeRiskValues: { manual: 1, semi_auto: 2, auto: 3 },
+    tenantImpactValues: { single: 1, multiple: 2, all: 3 },
     blastRadiusValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
-    priorFailureRateThresholds: {
+    historicalFailureRateThresholds: {
       low: { maxPercent: 10, value: 1 },
       medium: { maxPercent: 30, value: 2 },
       high: { maxPercent: 50, value: 3 },
       critical: { maxPercent: 100, value: 5 },
     },
-    confidenceValues: { high: 1, medium: 3, low: 5 },
+    evidenceConfidenceValues: { high: 1, medium: 3, low: 5 },
     riskLevelThresholds: { low: 0.25, medium: 0.5, high: 0.75, critical: 1.0 },
     riskLevelActions: {
       low: { autoExecute: true, logLevel: "info", requiresApproval: false, sideEffect: "normal", evidenceLevel: "basic" },
       medium: { autoExecute: true, logLevel: "warn", requiresApproval: false, sideEffect: "normal_with_validation", evidenceLevel: "enhanced" },
-      high: { autoExecute: false, logLevel: "error", requiresApproval: true, sideEffect: "restricted", evidenceLevel: "full" },
+      high: { autoExecute: false, logLevel: "error", requiresApproval: true, approvalType: "standard", sideEffect: "restricted", evidenceLevel: "full" },
       critical: { autoExecute: false, logLevel: "critical", requiresApproval: true, approvalType: "break_glass", sideEffect: "prohibited", evidenceLevel: "legal" },
     },
   };
 
   assert.ok(config);
-  assert.equal(config.factorWeights.stepTypeRisk, 3);
+  assert.equal(config.factorWeights.impact, 3);
   assert.equal(config.riskLevelActions.critical.approvalType, "break_glass");
 });
 

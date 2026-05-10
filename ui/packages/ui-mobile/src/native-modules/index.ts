@@ -20,6 +20,13 @@ interface MobileBridgeLike {
   readonly refreshWidget?: (widgetId: string) => Promise<void>;
 }
 
+declare global {
+  interface GlobalThis {
+    __turboModuleProxy?: (name: string) => MobileBridgeLike | null | undefined;
+    NativeModules?: Record<string, unknown>;
+  }
+}
+
 const BRIDGE_METHODS = {
   secureStorage: ["readSecureValue", "writeSecureValue", "deleteSecureValue"],
   deepLink: ["openDeepLink"],

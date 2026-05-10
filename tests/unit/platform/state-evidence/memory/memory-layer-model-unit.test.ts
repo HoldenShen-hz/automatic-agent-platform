@@ -22,19 +22,26 @@ import {
   cloneMemoryWithLayer,
   type HierarchicalMemoryLayer,
   type LayerTtlConfig,
-  type ContextTruncationReport,
-  type EvictionReason,
 } from "../../../../../src/platform/state-evidence/memory/memory-layer-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 /**
  * Stub for createContextTruncationReport since it doesn't exist in source
  */
+interface StubTruncationReport {
+  layer: string;
+  totalEvicted: number;
+  evictedRecords: { recordId: string; scope: string }[];
+  evictedSizeBytes: number;
+  reason: string;
+  timestamp: string;
+}
+
 function createContextTruncationReport(
   layer: string,
   memories: MemoryRecord[],
-  reason: EvictionReason
-): ContextTruncationReport {
+  reason: string
+): StubTruncationReport {
   return {
     layer,
     totalEvicted: memories.length,
@@ -298,7 +305,7 @@ test("getEvictionPriority for quality defaults to 0.5 when qualityScore is null"
 test("getEvictionPriority for trust returns 1 - trustWeight", () => {
   const memory = createMemory({
     scope: "project",
-    sourceTrustLevel: "authoritative",
+    sourceTrustLevel: "trusted",
   });
   const priority = getEvictionPriority(memory);
   // authoritative has weight 1.0, so 1 - 1.0 = 0

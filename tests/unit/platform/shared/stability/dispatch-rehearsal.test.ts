@@ -87,7 +87,7 @@ function seedTaskAndExecution(
       finishedAt: null,
       createdAt: now,
       updatedAt: now,
-    });
+    } as any);
   });
 }
 

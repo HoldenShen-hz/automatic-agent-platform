@@ -92,12 +92,14 @@ test("truth-repository: Multiple tasks maintain independent append-only historie
     }
 
     // Update one task - others should not be affected
-    ctx.db.transaction(() => {
-      ctx.store.updateTaskStatus(taskIds[0], "in_progress", now, null, null);
+    const nowVal = nowIso();
+    const firstTaskId = taskIds[0]!;
+    ctx.db.transaction((): void => {
+      ctx.store.updateTaskStatus(firstTaskId, "in_progress", nowVal, null, null);
     });
 
-    const task0 = ctx.store.getTask(taskIds[0]);
-    const task1 = ctx.store.getTask(taskIds[1]);
+    const task0 = ctx.store.getTask(firstTaskId);
+    const task1 = ctx.store.getTask(taskIds[1]!);
     assert.equal(task0!.status, "in_progress", "First task should be updated");
     assert.equal(task1!.status, "queued", "Second task should remain queued");
   } finally {
@@ -256,14 +258,15 @@ test("truth-repository: CAS update enforces optimistic concurrency", () => {
     });
 
     // Successful CAS update
+    const casNow = nowIso();
     let affected = ctx.db.transaction(() => {
-      return ctx.store.updateTaskStatusCas(taskId, "queued", "in_progress", now);
+      return ctx.store.updateTaskStatusCas(taskId, "queued", "in_progress", casNow, null, null);
     });
     assert.equal(affected, 1, "First CAS should succeed");
 
     // Failed CAS update - wrong expected status
     affected = ctx.db.transaction(() => {
-      return ctx.store.updateTaskStatusCas(taskId, "queued", "running", now);
+      return ctx.store.updateTaskStatusCas(taskId, "queued", "running", casNow, null, null);
     });
     assert.equal(affected, 0, "Second CAS should fail - wrong expected status");
 

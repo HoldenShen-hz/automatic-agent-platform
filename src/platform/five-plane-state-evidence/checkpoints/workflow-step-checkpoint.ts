@@ -241,7 +241,7 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
   try {
     // Use synchronous file read - checkpoint loading is not performance critical
     const fileContent = readFileSync(record.storagePath, "utf8");
-    if (record.checksum.length > 0) {
+    if (record.checksum && record.checksum.length > 0) {
       const actualChecksum = createHash("sha256").update(fileContent).digest("hex");
       if (actualChecksum !== record.checksum) {
         logger.log({

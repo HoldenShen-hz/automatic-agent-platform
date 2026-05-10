@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   const dbPath = join(workspace, "secret-service-test.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
-  const store = new AuthoritativeTaskStore(db);
+  const store = new AuthoritativeTaskStore(db) as any;
   return { workspace, db, store };
 }
 
@@ -322,7 +322,7 @@ test("resolveSecret records usage in audit trail", async () => {
     });
     const summary = service.buildAuditSummary("secret://system/audit");
     assert.equal(summary.usageAudits.length, 1);
-    assert.equal(summary.usageAudits[0].requestedBy, "auditor");
+    assert.equal(summary.usageAudits[0]?.requestedBy, "auditor");
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
