@@ -46,6 +46,8 @@ export const endpointCatalog = {
   workflowsCreate: { id: "workflows.create", path: "/workflows", method: "POST", apiLayer: "C", planned: false },
   workflowsPause: { id: "workflows.pause", path: "/workflows/:workflowId/pause", method: "POST", apiLayer: "C", planned: false },
   workflowsResume: { id: "workflows.resume", path: "/workflows/:workflowId/resume", method: "POST", apiLayer: "C", planned: false },
+  workflowsRecover: { id: "workflows.recover", path: "/workflows/:workflowId/recover", method: "POST", apiLayer: "C", planned: false },
+  workflowsRelease: { id: "workflows.release", path: "/workflows/:workflowId/release", method: "POST", apiLayer: "C", planned: false },
   workflowsPublish: { id: "workflows.publish", path: "/workflows/:workflowId/publish", method: "POST", apiLayer: "C", planned: false },
   workflowsDelete: { id: "workflows.delete", path: "/workflows/:workflowId", method: "DELETE", apiLayer: "C", planned: false },
   workflowRunSteps: { id: "workflow-runs.steps", path: "/workflow-runs/:workflowRunId/steps", method: "GET", apiLayer: "C", planned: false },
@@ -53,6 +55,11 @@ export const endpointCatalog = {
   approvalsApprove: { id: "approvals.approve", path: "/approvals/:approvalId/approve", method: "POST", apiLayer: "C", planned: false },
   approvalsReject: { id: "approvals.reject", path: "/approvals/:approvalId/reject", method: "POST", apiLayer: "C", planned: false },
   approvalsDelegate: { id: "approvals.delegate", path: "/approvals/:approvalId/delegate", method: "POST", apiLayer: "C", planned: false },
+  approvalsRequestContext: { id: "approvals.request-context", path: "/approvals/:approvalId/request-context", method: "POST", apiLayer: "C", planned: false },
+  approvalsEdit: { id: "approvals.edit", path: "/approvals/:approvalId/edit", method: "POST", apiLayer: "C", planned: false },
+  approvalsEscalate: { id: "approvals.escalate", path: "/approvals/:approvalId/escalate", method: "POST", apiLayer: "C", planned: false },
+  approvalsDefer: { id: "approvals.defer", path: "/approvals/:approvalId/defer", method: "POST", apiLayer: "C", planned: false },
+  approvalsTextInput: { id: "approvals.text-input", path: "/approvals/:approvalId/text-input", method: "POST", apiLayer: "C", planned: false },
   incidents: { id: "incidents.list", path: "/incidents", method: "GET", apiLayer: "C", planned: false },
   workers: { id: "workers.list", path: "/admin/workers", method: "GET", apiLayer: "B", planned: false },
   queues: { id: "queues.list", path: "/admin/queues", method: "GET", apiLayer: "B", planned: false },
@@ -67,6 +74,12 @@ export const endpointCatalog = {
   prompts: { id: "prompts.list", path: "/prompts", method: "GET", apiLayer: "C", planned: false },
   explanations: { id: "explanations.list", path: "/explanations", method: "GET", apiLayer: "C", planned: false },
   roles: { id: "admin.roles", path: "/admin/roles", method: "GET", apiLayer: "C", planned: false },
+  compliancePolicies: { id: "admin.compliance-policies", path: "/admin/compliance/policies", method: "GET", apiLayer: "C", planned: false },
+  compliancePoliciesUpdate: { id: "admin.compliance-policies.update", path: "/admin/compliance/policies/:policyId", method: "PATCH", apiLayer: "C", planned: false },
+  auditLogs: { id: "admin.audit-logs", path: "/admin/audit-logs", method: "GET", apiLayer: "C", planned: false },
+  complianceExceptions: { id: "admin.compliance-exceptions", path: "/admin/compliance/exceptions", method: "POST", apiLayer: "C", planned: false },
+  complianceExceptionsApprove: { id: "admin.compliance-exceptions.approve", path: "/admin/compliance/exceptions/:exceptionId/approve", method: "POST", apiLayer: "C", planned: false },
+  complianceExceptionsReject: { id: "admin.compliance-exceptions.reject", path: "/admin/compliance/exceptions/:exceptionId/reject", method: "POST", apiLayer: "C", planned: false },
   featureFlags: { id: "admin.feature-flags", path: "/admin/feature-flags", method: "GET", apiLayer: "C", planned: false },
   models: { id: "admin.models", path: "/admin/models", method: "GET", apiLayer: "C", planned: false },
   domainConfigs: { id: "admin.domains", path: "/admin/domains", method: "GET", apiLayer: "C", planned: false },
@@ -132,8 +145,20 @@ export async function pauseWorkflow(client: RESTClient, workflowId: string): Pro
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPause.path, { workflowId }), { action: "pause" });
 }
 
-export async function resumeWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "resume" });
+export async function resumeWorkflow(
+  client: RESTClient,
+  workflowId: string,
+  mode: "normal" | "replan" | "supervised" | "abort" = "normal",
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "resume", mode });
+}
+
+export async function recoverWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsRecover.path, { workflowId }), { action: "recover" });
+}
+
+export async function releaseWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsRelease.path, { workflowId }), { action: "release" });
 }
 
 export async function publishWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
@@ -142,6 +167,10 @@ export async function publishWorkflow(client: RESTClient, workflowId: string): P
 
 export async function deleteWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
   return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsDelete.path, { workflowId }));
+}
+
+export async function cancelWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return deleteWorkflow(client, workflowId);
 }
 
 export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: string): Promise<readonly WorkflowRunStepDTO[]> {
@@ -163,6 +192,42 @@ export async function rejectApproval(client: RESTClient, approvalId: string): Pr
 
 export async function delegateApproval(client: RESTClient, approvalId: string, delegateTo: string): Promise<{ ok: true; body?: unknown }> {
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { delegateTo });
+}
+
+export async function requestMoreContextApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsRequestContext.path, { approvalId }), { action: "request_more_context" });
+}
+
+export async function editApproval(
+  client: RESTClient,
+  approvalId: string,
+  patch: Record<string, unknown>,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsEdit.path, { approvalId }), patch);
+}
+
+export async function escalateApproval(
+  client: RESTClient,
+  approvalId: string,
+  reason: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsEscalate.path, { approvalId }), { reason });
+}
+
+export async function deferApproval(
+  client: RESTClient,
+  approvalId: string,
+  until: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDefer.path, { approvalId }), { until });
+}
+
+export async function submitApprovalTextInput(
+  client: RESTClient,
+  approvalId: string,
+  input: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsTextInput.path, { approvalId }), { input });
 }
 
 export async function fetchIncidents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly IncidentDTO[]> {
@@ -232,6 +297,57 @@ export async function fetchExplanations(client: RESTClient, queryParams?: ListQu
 export async function fetchRoles(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly RoleDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
   return client.get<readonly RoleDTO[]>(`${endpointCatalog.roles.path}${queryString}`);
+}
+
+export async function fetchCompliancePolicies(
+  client: RESTClient,
+): Promise<readonly { id: string; name: string; severity: string }[]> {
+  return client.get<readonly { id: string; name: string; severity: string }[]>(endpointCatalog.compliancePolicies.path);
+}
+
+export async function updateCompliancePolicy(
+  client: RESTClient,
+  policyId: string,
+  patch: Record<string, unknown>,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.patch<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.compliancePoliciesUpdate.path, { policyId }), patch);
+}
+
+export async function fetchAuditLogs(
+  client: RESTClient,
+): Promise<readonly {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  resource: string;
+  outcome: string;
+  metadata?: Record<string, unknown>;
+}[]> {
+  return client.get(endpointCatalog.auditLogs.path);
+}
+
+export async function submitException(
+  client: RESTClient,
+  reason: string,
+  policyId: string,
+): Promise<{ id: string }> {
+  return client.post(endpointCatalog.complianceExceptions.path, { reason, policyId });
+}
+
+export async function approveException(
+  client: RESTClient,
+  exceptionId: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post(resolvePath(endpointCatalog.complianceExceptionsApprove.path, { exceptionId }), { action: "approve" });
+}
+
+export async function rejectException(
+  client: RESTClient,
+  exceptionId: string,
+  rationale: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post(resolvePath(endpointCatalog.complianceExceptionsReject.path, { exceptionId }), { rationale });
 }
 
 export async function fetchFeatureFlags(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly FeatureFlagDTO[]> {

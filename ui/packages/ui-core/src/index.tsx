@@ -7,6 +7,7 @@ export { createSystemHealthSummary, SystemStatusBar } from "./business";
 export { FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
+export { CodeBlock, DAGVisualization, FileAttachment, Timeline, TimelineChart } from "./components/extended";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
 export { darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";
 

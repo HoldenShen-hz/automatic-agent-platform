@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const DOMAIN_LIFECYCLE_STATE_ALIASES = {
+  draft: "validating",
+  validated: "certified",
+  registered: "canary",
+  updating: "canary",
+  archived: "retired",
+} as const;
+
 const DomainRecipeArchetypeSchemaInternal = z.enum([
   "crud_heavy",
   "analytics",
@@ -15,15 +23,19 @@ const DomainRecipeArchetypeSchemaInternal = z.enum([
   "incident_ops",
 ]);
 
-export const DomainLifecycleStateSchema = z.enum([
-  "draft",
-  "validated",
-  "registered",
-  "active",
-  "updating",
-  "deprecated",
-  "archived",
-]);
+export const DomainLifecycleStateSchema = z.preprocess(
+  (value) => typeof value === "string"
+    ? DOMAIN_LIFECYCLE_STATE_ALIASES[value as keyof typeof DOMAIN_LIFECYCLE_STATE_ALIASES] ?? value
+    : value,
+  z.enum([
+    "validating",
+    "certified",
+    "canary",
+    "active",
+    "deprecated",
+    "retired",
+  ]),
+);
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
 export const DomainHotPathModeSchema = z.enum(["deterministic_only", "llm_allowed"]);
@@ -49,7 +61,7 @@ export const DomainCoreDescriptorSchema = z.object({
   ownerOrgNodeId: z.string().min(1),
   primaryEntities: z.array(z.string().min(1)).default([]),
   recipeArchetype: DomainRecipeArchetypeSchemaInternal,
-  lifecycleState: DomainLifecycleStateSchema.default("draft"),
+  lifecycleState: DomainLifecycleStateSchema.default("validating"),
 });
 
 export const DomainRiskSpecSchema = z.object({

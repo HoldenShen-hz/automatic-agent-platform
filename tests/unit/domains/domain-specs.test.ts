@@ -242,7 +242,7 @@ test("resolveDomainRiskSpec returns spec with default sideEffectTypes and approv
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("DomainLifecycleStateSchema accepts all canonical contract states", () => {
-  const states = ["draft", "validated", "registered", "active", "updating", "deprecated", "archived"] as const;
+  const states = ["validating", "certified", "canary", "active", "deprecated", "retired"] as const;
   for (const state of states) {
     const parsed = DomainLifecycleStateSchema.parse(state);
     assert.equal(parsed, state);
@@ -250,11 +250,11 @@ test("DomainLifecycleStateSchema accepts all canonical contract states", () => {
 });
 
 test("DomainLifecycleStateSchema preserves legacy compatibility aliases", () => {
-  const states = ["registered", "archived", "updating", "validated"] as const;
-  for (const state of states) {
-    const parsed = DomainLifecycleStateSchema.parse(state);
-    assert.equal(parsed, state);
-  }
+  assert.equal(DomainLifecycleStateSchema.parse("draft"), "validating");
+  assert.equal(DomainLifecycleStateSchema.parse("validated"), "certified");
+  assert.equal(DomainLifecycleStateSchema.parse("registered"), "canary");
+  assert.equal(DomainLifecycleStateSchema.parse("updating"), "canary");
+  assert.equal(DomainLifecycleStateSchema.parse("archived"), "retired");
 });
 
 test("DomainLifecycleStateSchema rejects invalid state", () => {
@@ -330,14 +330,14 @@ test("DomainCoreDescriptorSchema accepts valid descriptor", () => {
     ownerOrgNodeId: "org1",
     primaryEntities: ["entity1"],
     recipeArchetype: "analytics",
-    lifecycleState: "draft",
+    lifecycleState: "validating",
   });
 
   assert.equal(descriptor.domainId, "test");
   assert.equal(descriptor.ownerOrgNodeId, "org1");
   assert.deepEqual(descriptor.primaryEntities, ["entity1"]);
   assert.equal(descriptor.recipeArchetype, "analytics");
-  assert.equal(descriptor.lifecycleState, "draft");
+  assert.equal(descriptor.lifecycleState, "validating");
 });
 
 test("DomainCoreDescriptorSchema defaults primaryEntities and lifecycleState", () => {
@@ -348,7 +348,7 @@ test("DomainCoreDescriptorSchema defaults primaryEntities and lifecycleState", (
   });
 
   assert.deepEqual(descriptor.primaryEntities, []);
-  assert.equal(descriptor.lifecycleState, "draft");
+  assert.equal(descriptor.lifecycleState, "validating");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

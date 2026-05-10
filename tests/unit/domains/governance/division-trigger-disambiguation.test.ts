@@ -40,3 +40,33 @@ test("devops and operations deployment trigger overlap remains visible and prior
   assert.ok(devops.includes("priority: 45"));
   assert.ok(operations.includes("priority: 20"));
 });
+
+test("finance-accounting and analytics no longer share a generic reporting trigger", () => {
+  const finance = readDivision("divisions/finance-accounting/division.yaml");
+  const analytics = readDivision("divisions/analytics/division.yaml");
+
+  assert.equal(/^\s*-\s*reporting\s*$/m.test(finance), false);
+  assert.equal(/^\s*-\s*financial reporting\s*$/m.test(finance), true);
+  assert.equal(/^\s*-\s*report\s*$/m.test(analytics), true);
+});
+
+test("engineering and QA bug routing is explicitly partitioned between bugfix and bug reporting", () => {
+  const engineering = readDivision("divisions/engineering_ops/division.yaml");
+  const qa = readDivision("divisions/qa/division.yaml");
+
+  assert.equal(/^\s*-\s*bug\s*$/m.test(engineering), false);
+  assert.equal(/^\s*-\s*bugfix\s*$/m.test(engineering), true);
+  assert.equal(/^\s*-\s*bug\s*$/m.test(qa), true);
+});
+
+test("general_ops no longer shadows research-specific trigger vocabulary", () => {
+  const generalOps = readDivision("divisions/general_ops/division.yaml");
+  const research = readDivision("divisions/research/division.yaml");
+
+  assert.equal(/^\s*-\s*research\s*$/m.test(generalOps), false);
+  assert.equal(/^\s*-\s*analyze\s*$/m.test(generalOps), false);
+  assert.equal(/^\s*-\s*review\s*$/m.test(generalOps), false);
+  assert.equal(/^\s*-\s*research\s*$/m.test(research), true);
+  assert.equal(/^\s*-\s*analyze\s*$/m.test(research), true);
+  assert.equal(/^\s*-\s*review\s*$/m.test(research), true);
+});

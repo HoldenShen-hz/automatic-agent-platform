@@ -8,9 +8,8 @@ orchestration_workflow: phase1b_single_division_orchestration
 triggers:
   - summarize
   - summary
-  - research
-  - analyze
-  - review
+  - triage
+  - intake
 roles:
   - id: general_executor
     name: General Executor

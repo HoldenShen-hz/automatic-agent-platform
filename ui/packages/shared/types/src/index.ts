@@ -156,6 +156,23 @@ export interface WorkflowStepDTO {
   readonly title: string;
   readonly phase: "Observe" | "Assess" | "Plan" | "Execute" | "Feedback" | "Learn" | "Improve" | "Release";
   readonly status: "pending" | "running" | "completed" | "failed";
+  readonly branchId?: string;
+  readonly dependsOnStepIds?: readonly string[];
+  readonly evidenceRefs?: readonly string[];
+}
+
+export interface WorkflowApprovalNodeDTO {
+  readonly nodeId: string;
+  readonly title: string;
+  readonly status: "pending" | "approved" | "rejected" | "delegated";
+  readonly assignee?: string;
+}
+
+export interface WorkflowEvidenceRefDTO {
+  readonly refId: string;
+  readonly type: "artifact" | "log" | "report" | "trace";
+  readonly uri: string;
+  readonly description?: string;
 }
 
 export interface WorkflowDTO {
@@ -165,6 +182,8 @@ export interface WorkflowDTO {
   readonly currentStage: string;
   readonly owner: string;
   readonly steps: readonly WorkflowStepDTO[];
+  readonly approvalNodes?: readonly WorkflowApprovalNodeDTO[];
+  readonly evidenceRefs?: readonly WorkflowEvidenceRefDTO[];
 }
 
 export interface WorkflowRunStepDTO {
@@ -339,6 +358,12 @@ export interface ApprovalDTO {
   readonly taskId: string;
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly reasonSummary: string;
+  readonly deadline?: string;
+  readonly policySource?: string;
+  readonly recommendedOption?: "approve" | "reject" | "delegate" | "request_context";
+  readonly currentLevel?: number;
+  readonly totalLevels?: number;
+  readonly escalationTarget?: string;
 }
 
 export interface UserPreferenceDTO {

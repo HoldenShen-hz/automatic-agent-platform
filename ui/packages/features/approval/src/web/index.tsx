@@ -37,20 +37,42 @@ export function ApprovalWebView(): ReactElement {
                 { key: "Task", value: selectedApproval.taskId },
                 { key: "Risk", value: selectedApproval.riskLevel },
                 { key: "Reason", value: selectedApproval.reasonSummary },
-                { key: "Action", value: "Approve / Reject / Delegate" },
+                { key: "Deadline", value: selectedApproval.deadline ?? "n/a" },
+                { key: "Policy Source", value: selectedApproval.policySource ?? "n/a" },
+                { key: "Recommended Option", value: selectedApproval.recommendedOption ?? "n/a" },
+                { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : "single" },
               ]}
             />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={vm.approve} type="button">Approve</button>
               <button onClick={vm.reject} type="button">Reject</button>
+              <button onClick={() => { void vm.requestMoreContext(); }} type="button">Request Context</button>
               <input onChange={(event) => setDelegateTarget(event.target.value)} value={delegateTarget} />
               <button
                 onClick={() => {
-                  vm.delegate(delegateTarget);
+                  void vm.delegate(delegateTarget);
                 }}
                 type="button"
               >
                 Delegate
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={() => {
+                  void vm.approveBatch(vm.approvals.map((approval) => approval.approvalId));
+                }}
+                type="button"
+              >
+                Batch Approve
+              </button>
+              <button
+                onClick={() => {
+                  void vm.rejectBatch(vm.approvals.map((approval) => approval.approvalId));
+                }}
+                type="button"
+              >
+                Batch Reject
               </button>
             </div>
           </div>

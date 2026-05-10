@@ -55,6 +55,12 @@ export interface FailureContext {
    * Coding-agent specific errors (lint_error, test_failure) should be false.
    */
   isPlatformException: boolean;
+
+  /**
+   * Which classifier surface owns the category.
+   * Platform-wide recovery flows should only rely on platform/shared categories.
+   */
+  surface: "platform" | "coding_agent" | "shared";
 }
 
 export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext, 'repairBudgetUsed'>> = {
@@ -68,6 +74,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     isPlatformException: true, // Schema validation is a platform capability
+    surface: "platform",
   },
   type_error: {
     category: 'type_error',
@@ -77,6 +84,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     isPlatformException: true, // Type checking is a platform capability
+    surface: "platform",
   },
   unit_test_failure: {
     category: 'unit_test_failure',
@@ -86,6 +94,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     isPlatformException: false, // Coding-agent specific
+    surface: "coding_agent",
   },
   lint_error: {
     category: 'lint_error',
@@ -95,6 +104,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     isPlatformException: false, // Coding-agent specific
+    surface: "coding_agent",
   },
   simple_logic_bug: {
     category: 'simple_logic_bug',
@@ -104,6 +114,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
     isPlatformException: false, // Coding-agent specific
+    surface: "coding_agent",
   },
 
   // L2: Model upgrade required
@@ -115,6 +126,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
     isPlatformException: false,
+    surface: "shared",
   },
   review_validate_conflict: {
     category: 'review_validate_conflict',
@@ -124,6 +136,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
     isPlatformException: false,
+    surface: "shared",
   },
   planning_inconsistency: {
     category: 'planning_inconsistency',
@@ -133,6 +146,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
     isPlatformException: false,
+    surface: "shared",
   },
 
   // L3: Human escalation required
@@ -144,6 +158,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
   secret_exposure: {
     category: 'secret_exposure',
@@ -153,6 +168,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
   high_risk_operation: {
     category: 'high_risk_operation',
@@ -162,6 +178,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
   migration_failure: {
     category: 'migration_failure',
@@ -171,6 +188,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
   deployment_failure: {
     category: 'deployment_failure',
@@ -180,6 +198,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
   security_policy_violation: {
     category: 'security_policy_violation',
@@ -189,8 +208,21 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
     isPlatformException: false,
+    surface: "shared",
   },
 };
+
+export type PlatformFailureCategory = Exclude<
+  FailureCategory,
+  "unit_test_failure" | "lint_error" | "simple_logic_bug"
+>;
+
+export const PLATFORM_FAILURE_CLASSIFICATION: Record<
+  PlatformFailureCategory,
+  Omit<FailureContext, "repairBudgetUsed">
+> = Object.fromEntries(
+  Object.entries(FAILURE_CLASSIFICATION).filter(([, failure]) => failure.surface !== "coding_agent"),
+) as Record<PlatformFailureCategory, Omit<FailureContext, "repairBudgetUsed">>;
 
 export function classifyFailure(
   category: FailureCategory,
@@ -198,6 +230,16 @@ export function classifyFailure(
 ): FailureContext {
   return {
     ...FAILURE_CLASSIFICATION[category],
+    repairBudgetUsed,
+  };
+}
+
+export function classifyPlatformFailure(
+  category: PlatformFailureCategory,
+  repairBudgetUsed: number,
+): FailureContext {
+  return {
+    ...PLATFORM_FAILURE_CLASSIFICATION[category],
     repairBudgetUsed,
   };
 }

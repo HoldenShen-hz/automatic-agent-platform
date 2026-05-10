@@ -35,6 +35,16 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
   }
 
   const currentIdx = getStageIndex(currentStage ?? "");
+  const branchGroups = Object.entries(
+    steps.reduce<Record<string, WorkflowStepDTO[]>>((groups, step) => {
+      if (step.branchId == null || step.branchId.length === 0) {
+        return groups;
+      }
+      groups[step.branchId] ??= [];
+      groups[step.branchId]?.push(step);
+      return groups;
+    }, {}),
+  );
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -124,12 +134,28 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
         })}
       </div>
       {/* Step list fallback */}
+      {branchGroups.length > 0 && (
+        <div style={{ marginTop: 16, borderTop: `1px solid ${designTokens.color.border}`, paddingTop: 12 }}>
+          <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>Parallel Branches</div>
+          {branchGroups.map(([branchId, branchSteps]) => (
+            <div key={branchId} style={{ marginBottom: 8 }}>
+              <strong style={{ fontSize: 12 }}>{branchId}</strong>
+              <div style={{ fontSize: 11, color: designTokens.color.subtle }}>
+                {branchSteps.map((step) => `${step.title}:${step.status}`).join(" · ")}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ marginTop: 16, borderTop: `1px solid ${designTokens.color.border}`, paddingTop: 12 }}>
         <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>Step Details</div>
         {steps.map((step, idx) => (
           <div key={step.id} style={{ display: "grid", gridTemplateColumns: "24px 1fr auto", gap: 8, alignItems: "center", padding: "4px 0" }}>
             <span style={{ color: designTokens.color.subtle, fontSize: 10 }}>#{idx + 1}</span>
-            <span style={{ fontSize: 12, color: designTokens.color.text }}>{step.title}</span>
+            <span style={{ fontSize: 12, color: designTokens.color.text }}>
+              {step.title}
+              {step.dependsOnStepIds != null && step.dependsOnStepIds.length > 0 ? ` ← ${step.dependsOnStepIds.join(", ")}` : ""}
+            </span>
             <span
               style={{
                 fontSize: 10,

@@ -21,7 +21,7 @@ test("DomainCoreDescriptorSchema parses authoritative core descriptor", () => {
   });
 
   assert.equal(result.domainId, "legal");
-  assert.equal(result.lifecycleState, "draft");
+  assert.equal(result.lifecycleState, "validating");
   assert.deepEqual(result.primaryEntities, ["case", "clause"]);
 });
 

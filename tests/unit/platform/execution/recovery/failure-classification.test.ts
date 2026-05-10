@@ -3,10 +3,13 @@ import test from "node:test";
 
 import {
   classifyFailure,
+  classifyPlatformFailure,
   shouldEscalate,
   FAILURE_CLASSIFICATION,
+  PLATFORM_FAILURE_CLASSIFICATION,
   type FailureContext,
   type FailureCategory,
+  type PlatformFailureCategory,
 } from "../../../../../src/platform/execution/recovery/failure-classification.js";
 
 test("FAILURE_CLASSIFICATION contains all categories", () => {
@@ -43,6 +46,7 @@ test("classifyFailure returns correct context for L1 category", () => {
   assert.equal(result.requiresHumanEscalation, false);
   assert.equal(result.repairBudgetUsed, 0);
   assert.equal(result.isPlatformException, false); // unit_test_failure is coding-agent specific
+  assert.equal(result.surface, "coding_agent");
 });
 
 test("classifyFailure returns correct context for schema_error as platform exception", () => {
@@ -51,6 +55,7 @@ test("classifyFailure returns correct context for schema_error as platform excep
   assert.equal(result.category, "schema_error");
   assert.equal(result.level, "L1");
   assert.equal(result.isPlatformException, true); // Schema validation is a platform capability
+  assert.equal(result.surface, "platform");
 });
 
 test("classifyFailure returns correct context for L2 category", () => {
@@ -85,6 +90,7 @@ test("shouldEscalate returns true for L3 failures", () => {
     requiresHumanEscalation: true,
     repairBudgetUsed: 0,
     isPlatformException: false,
+    surface: "shared",
   };
 
   assert.equal(shouldEscalate(l3Failure, 3), true);
@@ -100,6 +106,7 @@ test("shouldEscalate returns true for L2 failures after one repair", () => {
     requiresHumanEscalation: false,
     repairBudgetUsed: 1,
     isPlatformException: false,
+    surface: "shared",
   };
 
   assert.equal(shouldEscalate(l2Failure, 3), true);
@@ -115,6 +122,7 @@ test("shouldEscalate returns false for L2 failures before repair", () => {
     requiresHumanEscalation: false,
     repairBudgetUsed: 0,
     isPlatformException: false,
+    surface: "shared",
   };
 
   assert.equal(shouldEscalate(l2Failure, 3), false);
@@ -130,6 +138,7 @@ test("shouldEscalate returns true when repair budget exhausted", () => {
     requiresHumanEscalation: false,
     repairBudgetUsed: 2,
     isPlatformException: false,
+    surface: "coding_agent",
   };
 
   assert.equal(shouldEscalate(l1Failure, 2), true);
@@ -145,6 +154,7 @@ test("shouldEscalate returns false when L1 has budget remaining", () => {
     requiresHumanEscalation: false,
     repairBudgetUsed: 1,
     isPlatformException: false,
+    surface: "coding_agent",
   };
 
   assert.equal(shouldEscalate(l1Failure, 3), false);
@@ -231,4 +241,18 @@ test("all categories have isPlatformException defined", () => {
     assert.ok("isPlatformException" in classification, `${category} should have isPlatformException defined`);
     assert.equal(typeof classification.isPlatformException, "boolean", `${category}.isPlatformException should be a boolean`);
   }
+});
+
+test("platform classifier surface excludes coding-agent-only categories", () => {
+  const categories = Object.keys(PLATFORM_FAILURE_CLASSIFICATION) as PlatformFailureCategory[];
+  assert.ok(!categories.includes("unit_test_failure" as PlatformFailureCategory));
+  assert.ok(!categories.includes("lint_error" as PlatformFailureCategory));
+  assert.ok(!categories.includes("simple_logic_bug" as PlatformFailureCategory));
+});
+
+test("classifyPlatformFailure only returns platform/shared categories", () => {
+  const result = classifyPlatformFailure("schema_error", 2);
+  assert.equal(result.category, "schema_error");
+  assert.equal(result.surface, "platform");
+  assert.equal(result.repairBudgetUsed, 2);
 });

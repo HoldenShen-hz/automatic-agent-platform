@@ -34,6 +34,7 @@ test("ModelRouteRequest structure is correct", () => {
     governanceSnapshot: null,
     data_residency: "eu-west",
     pii_input_detected: true,
+    pii_output_possible: true,
     model_training_opt_out: true,
     judge_independence: true,
     latency_slo_target_ms: 1200,
@@ -45,6 +46,7 @@ test("ModelRouteRequest structure is correct", () => {
   assert.deepEqual(request.requiredCapabilities, ["function_calling"]);
   assert.equal(request.data_residency, "eu-west");
   assert.equal(request.pii_input_detected, true);
+  assert.equal(request.pii_output_possible, true);
   assert.equal(request.model_training_opt_out, true);
   assert.equal(request.judge_independence, true);
 });

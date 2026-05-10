@@ -1,125 +1,184 @@
-import { useCallback, useEffect, useState } from "react";
-import { useMutation } from "@aa/shared-state/mutations";
-import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
-import { createRESTClient } from "@aa/shared-api-client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRestClient, useWsClient } from "@aa/shared-state";
+import type { ApprovalDTO } from "@aa/shared-types";
+import {
+  approveApproval,
+  deferApproval,
+  editApproval,
+  escalateApproval,
+  fetchApprovals,
+  rejectApproval,
+  resumeWorkflow,
+  submitApprovalTextInput,
+} from "@aa/shared-api-client";
 
-const restClient = createRESTClient();
-
-export interface HitlAction {
+export interface HitlItem {
   readonly id: string;
-  readonly type: "inspect" | "takeover" | "resume" | "abort";
+  readonly type: "approval" | "resume";
   readonly title: string;
   readonly description: string;
-  readonly timestamp: string;
-  readonly operator?: string;
-}
-
-export interface HitlContext {
-  readonly planBundle?: unknown;
-  readonly executionState?: string;
-  readonly currentStep?: WorkflowRunStepDTO;
-  readonly taskContext?: TaskDTO;
+  readonly deadline?: string;
+  readonly escalationTarget?: string;
+  readonly secondsRemaining?: number;
 }
 
 export interface HitlVm {
-  readonly items: readonly { title: string; description: string }[];
-  readonly selectedAction: HitlAction | null;
-  readonly context: HitlContext;
+  readonly items: readonly HitlItem[];
+  readonly isLoading: boolean;
   readonly pendingOperations: number;
-  selectAction(action: HitlAction): void;
-  executeAction(actionType: "takeover" | "resume" | "abort", taskId: string): Promise<void>;
-  inspectContext(taskId: string): Promise<void>;
+  approve(approvalId: string): Promise<void>;
+  reject(approvalId: string): Promise<void>;
+  patch(approvalId: string, patch: Record<string, unknown>): Promise<void>;
+  override(approvalId: string, override: Record<string, unknown>): Promise<void>;
+  edit(approvalId: string, patch: Record<string, unknown>): Promise<void>;
+  escalate(approvalId: string, reason: string): Promise<void>;
+  defer(approvalId: string, until: string): Promise<void>;
+  resume(workflowId: string, mode: "normal" | "replan" | "supervised" | "abort"): Promise<void>;
+  bulkApprove(approvalIds: readonly string[]): Promise<void>;
+  bulkReject(approvalIds: readonly string[]): Promise<void>;
+}
+
+function toHitlItems(approvals: readonly ApprovalDTO[]): readonly HitlItem[] {
+  return approvals.map((approval) => {
+    const secondsRemaining = approval.deadline == null
+      ? undefined
+      : Math.max(0, Math.floor((new Date(approval.deadline).getTime() - Date.now()) / 1000));
+    return {
+      id: approval.approvalId,
+      type: "approval",
+      title: approval.taskId,
+      description: `${approval.riskLevel} · ${approval.reasonSummary}`,
+      deadline: approval.deadline,
+      escalationTarget: approval.escalationTarget,
+      secondsRemaining,
+    };
+  });
 }
 
 export function useHitlVm(): HitlVm {
-  const [items, setItems] = useState<readonly { title: string; description: string }[]>([
-    { title: "Inspect", description: "查看当前 PlanBundle、Context 和执行状态。" },
-    { title: "Takeover", description: "接管执行并写入人工操作记录。" },
-    { title: "Resume", description: "支持 normal、replan、supervised、abort 四种恢复模式。" },
-  ]);
-  const [selectedAction, setSelectedAction] = useState<HitlAction | null>(null);
-  const [context, setContext] = useState<HitlContext>({});
+  const client = useRestClient();
+  const wsClient = useWsClient();
+  const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [pendingOperations, setPendingOperations] = useState(0);
 
-  const { mutate: updateTaskMutate, status: updateStatus } = useMutation({
-    client: restClient,
-    method: "PUT",
-    path: (variables: { taskId: string; body: Partial<TaskDTO> }) => `/tasks/${variables.taskId}`,
-  });
-
   useEffect(() => {
-    setPendingOperations(updateStatus === "pending" ? 1 : 0);
-  }, [updateStatus]);
-
-  const inspectContext = useCallback(async (taskId: string) => {
-    try {
-      const [task, steps] = await Promise.all([
-        restClient.get<TaskDTO>(`/tasks/${taskId}`),
-        restClient.get<readonly WorkflowRunStepDTO[]>(`/workflow-runs/${taskId}/steps`).catch(() => [] as readonly WorkflowRunStepDTO[]),
-      ]);
-
-      setContext({
-        taskContext: task,
-        currentStep: steps[0],
-        executionState: task.status,
+    let mounted = true;
+    void fetchApprovals(client)
+      .then((items) => {
+        if (mounted) {
+          setApprovals(items);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setApprovals([]);
+          setIsLoading(false);
+        }
       });
-    } catch {
-      setContext({});
+
+    const unsubscribe = wsClient.subscribe("approvals", () => undefined);
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [client, wsClient]);
+
+  const items = useMemo(() => toHitlItems(approvals), [approvals]);
+
+  const withPending = useCallback(async (operation: () => Promise<void>) => {
+    setPendingOperations((current) => current + 1);
+    try {
+      await operation();
+    } finally {
+      setPendingOperations((current) => Math.max(0, current - 1));
     }
   }, []);
 
-  const executeAction = useCallback(async (actionType: "takeover" | "resume" | "abort", taskId: string) => {
-    const action: HitlAction = {
-      id: crypto.randomUUID(),
-      type: actionType === "takeover" ? "takeover" : actionType === "resume" ? "resume" : "abort",
-      title: actionType.charAt(0).toUpperCase() + actionType.slice(1),
-      description: `HITL action: ${actionType} executed on task ${taskId}`,
-      timestamp: new Date().toISOString(),
-      operator: "current-user",
-    };
+  const removeApproval = useCallback((approvalId: string) => {
+    setApprovals((current) => current.filter((approval) => approval.approvalId !== approvalId));
+  }, []);
 
-    setSelectedAction(action);
-    setItems((current) => [action, ...current].map((a) => ({
-      title: a.title,
-      description: "timestamp" in a ? `${a.description} (${new Date(a.timestamp).toLocaleTimeString()})` : a.description,
-    })) as typeof items);
-
-    const bodyUpdates: Partial<TaskDTO> = {};
-    switch (actionType) {
-      case "takeover":
-        bodyUpdates.owner = "current-user";
-        bodyUpdates.status = "running";
-        break;
-      case "resume":
-        bodyUpdates.status = "running";
-        bodyUpdates.currentStep = "resume";
-        break;
-      case "abort":
-        bodyUpdates.status = "completed";
-        bodyUpdates.currentStep = "aborted";
-        break;
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      updateTaskMutate(
-        { taskId, body: bodyUpdates },
-        {
-          onSuccess: () => resolve(),
-          onError: (err) => reject(err),
-        },
-      );
+  const approve = useCallback(async (approvalId: string) => {
+    await withPending(async () => {
+      await approveApproval(client, approvalId);
+      removeApproval(approvalId);
     });
-  }, [updateTaskMutate]);
+  }, [client, removeApproval, withPending]);
+
+  const reject = useCallback(async (approvalId: string) => {
+    await withPending(async () => {
+      await rejectApproval(client, approvalId);
+      removeApproval(approvalId);
+    });
+  }, [client, removeApproval, withPending]);
+
+  const patch = useCallback(async (approvalId: string, patchPayload: Record<string, unknown>) => {
+    await withPending(async () => {
+      await submitApprovalTextInput(client, approvalId, JSON.stringify({ action: "patch", patch: patchPayload }));
+      removeApproval(approvalId);
+    });
+  }, [client, removeApproval, withPending]);
+
+  const override = useCallback(async (approvalId: string, overridePayload: Record<string, unknown>) => {
+    await withPending(async () => {
+      await submitApprovalTextInput(client, approvalId, JSON.stringify({ action: "override", override: overridePayload }));
+      removeApproval(approvalId);
+    });
+  }, [client, removeApproval, withPending]);
+
+  const edit = useCallback(async (approvalId: string, patchPayload: Record<string, unknown>) => {
+    await withPending(async () => {
+      await editApproval(client, approvalId, patchPayload);
+    });
+  }, [client, withPending]);
+
+  const escalate = useCallback(async (approvalId: string, reason: string) => {
+    await withPending(async () => {
+      await escalateApproval(client, approvalId, reason);
+    });
+  }, [client, withPending]);
+
+  const defer = useCallback(async (approvalId: string, until: string) => {
+    await withPending(async () => {
+      await deferApproval(client, approvalId, until);
+    });
+  }, [client, withPending]);
+
+  const resume = useCallback(async (workflowId: string, mode: "normal" | "replan" | "supervised" | "abort") => {
+    await withPending(async () => {
+      await resumeWorkflow(client, workflowId, mode);
+    });
+  }, [client, withPending]);
+
+  const bulkApprove = useCallback(async (approvalIds: readonly string[]) => {
+    await withPending(async () => {
+      await Promise.all(approvalIds.map((approvalId) => approveApproval(client, approvalId)));
+      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+    });
+  }, [client, withPending]);
+
+  const bulkReject = useCallback(async (approvalIds: readonly string[]) => {
+    await withPending(async () => {
+      await Promise.all(approvalIds.map((approvalId) => rejectApproval(client, approvalId)));
+      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+    });
+  }, [client, withPending]);
 
   return {
     items,
-    selectedAction,
-    context,
+    isLoading,
     pendingOperations,
-    selectAction(action: HitlAction) {
-      setSelectedAction(action);
-    },
-    executeAction,
-    inspectContext,
+    approve,
+    reject,
+    patch,
+    override,
+    edit,
+    escalate,
+    defer,
+    resume,
+    bulkApprove,
+    bulkReject,
   };
 }

@@ -1,10 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useWorkflowsQuery } from "@aa/shared-state";
-import { useMutation } from "@aa/shared-state/mutations";
+import { useRestClient, useWorkflowsQuery } from "@aa/shared-state";
 import type { WorkflowDTO } from "@aa/shared-types";
-import { createRESTClient, pauseWorkflow as pauseWorkflowApi, resumeWorkflow as resumeWorkflowApi, deleteWorkflow as deleteWorkflowApi } from "@aa/shared-api-client";
-
-const restClient = createRESTClient();
+import {
+  cancelWorkflow,
+  pauseWorkflow as pauseWorkflowApi,
+  recoverWorkflow as recoverWorkflowApi,
+  releaseWorkflow as releaseWorkflowApi,
+  resumeWorkflow as resumeWorkflowApi,
+} from "@aa/shared-api-client";
 
 export interface WorkflowCockpitVm {
   readonly workflows: readonly WorkflowDTO[];
@@ -14,11 +18,11 @@ export interface WorkflowCockpitVm {
   readonly activityItems: readonly { title: string; description: string }[];
   readonly pendingOperations: number;
   selectWorkflow(id: string): void;
+  cancelWorkflow(): Promise<void>;
   pauseWorkflow(): Promise<void>;
   resumeWorkflow(): Promise<void>;
   recoverWorkflow(): Promise<void>;
   releaseWorkflow(): Promise<void>;
-  deleteWorkflow(): Promise<void>;
 }
 
 export function mapWorkflowsToVm(workflows: readonly WorkflowDTO[]): Pick<WorkflowCockpitVm, "workflows" | "listItems"> {
@@ -33,129 +37,94 @@ export function mapWorkflowsToVm(workflows: readonly WorkflowDTO[]): Pick<Workfl
 }
 
 export function useWorkflowCockpitVm(): WorkflowCockpitVm {
-  const queryWorkflows = useWorkflowsQuery().data ?? [];
-  const [workflows, setWorkflows] = useState<readonly WorkflowDTO[]>(queryWorkflows);
-  const [selectedId, setSelectedId] = useState<string | null>(queryWorkflows[0]?.id ?? null);
+  const client = useRestClient();
+  const queryClient = useQueryClient();
+  const workflows = useWorkflowsQuery().data ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(workflows[0]?.id ?? null);
   const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
   const [pendingOperations, setPendingOperations] = useState(0);
 
-  const { mutate: pauseMutate, status: pauseStatus } = useMutation({
-    client: restClient,
-    method: "POST",
-    path: (variables: { workflowId: string }) => `/workflows/${variables.workflowId}/pause`,
-  });
-
-  const { mutate: resumeMutate, status: resumeStatus } = useMutation({
-    client: restClient,
-    method: "POST",
-    path: (variables: { workflowId: string }) => `/workflows/${variables.workflowId}/resume`,
-  });
-
-  const { mutate: deleteMutate, status: deleteStatus } = useMutation({
-    client: restClient,
-    method: "DELETE",
-    path: (variables: { workflowId: string }) => `/workflows/${variables.workflowId}`,
-  });
-
   useEffect(() => {
-    setWorkflows(queryWorkflows);
-    setSelectedId((current) => current ?? queryWorkflows[0]?.id ?? null);
-  }, [queryWorkflows]);
-
-  useEffect(() => {
-    const pending = [pauseStatus, resumeStatus, deleteStatus].filter((s) => s === "pending").length;
-    setPendingOperations(pending);
-  }, [pauseStatus, resumeStatus, deleteStatus]);
+    setSelectedId((current) => {
+      if (current != null && workflows.some((workflow) => workflow.id === current)) {
+        return current;
+      }
+      return workflows[0]?.id ?? null;
+    });
+  }, [workflows]);
 
   const baseVm = useMemo(() => mapWorkflowsToVm(workflows), [workflows]);
   const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? workflows[0] ?? null;
 
-  function updateSelected(transform: (workflow: WorkflowDTO) => WorkflowDTO, title: string, description: string): void {
+  const runAction = useCallback(async (
+    action: () => Promise<unknown>,
+    title: string,
+    description: string,
+  ) => {
+    setPendingOperations((current) => current + 1);
+    try {
+      await action();
+      setActivityItems((current) => [{ title, description }, ...current]);
+      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    } finally {
+      setPendingOperations((current) => Math.max(0, current - 1));
+    }
+  }, [queryClient]);
+
+  const cancelSelectedWorkflow = useCallback(async () => {
     if (selectedWorkflow == null) {
       return;
     }
-    setWorkflows((current) => current.map((workflow) => workflow.id === selectedWorkflow.id ? transform(workflow) : workflow));
-    setActivityItems((current) => [{ title, description }, ...current]);
-  }
+    await runAction(
+      () => cancelWorkflow(client, selectedWorkflow.id),
+      `Canceled · ${selectedWorkflow.title}`,
+      "Workflow was canceled from the cockpit.",
+    );
+  }, [client, runAction, selectedWorkflow]);
 
-  const pauseWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) return;
-    updateSelected(
-      (workflow) => ({ ...workflow, status: "paused", currentStage: "waiting_hitl" }),
+  const pauseSelectedWorkflow = useCallback(async () => {
+    if (selectedWorkflow == null) {
+      return;
+    }
+    await runAction(
+      () => pauseWorkflowApi(client, selectedWorkflow.id),
       `Paused · ${selectedWorkflow.title}`,
       "Workflow entered HITL waiting state.",
     );
-    return new Promise<void>((resolve, reject) => {
-      pauseMutate(
-        { workflowId: selectedWorkflow.id },
-        {
-          onSuccess: () => resolve(),
-          onError: (err) => reject(err),
-        },
-      );
-    });
-  }, [selectedWorkflow, pauseMutate]);
+  }, [client, runAction, selectedWorkflow]);
 
-  const resumeWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) return;
-    updateSelected(
-      (workflow) => ({ ...workflow, status: "running", currentStage: "execute" }),
+  const resumeSelectedWorkflow = useCallback(async () => {
+    if (selectedWorkflow == null) {
+      return;
+    }
+    await runAction(
+      () => resumeWorkflowApi(client, selectedWorkflow.id),
       `Resumed · ${selectedWorkflow.title}`,
       "Workflow resumed execution from the selected checkpoint.",
     );
-    return new Promise<void>((resolve, reject) => {
-      resumeMutate(
-        { workflowId: selectedWorkflow.id },
-        {
-          onSuccess: () => resolve(),
-          onError: (err) => reject(err),
-        },
-      );
-    });
-  }, [selectedWorkflow, resumeMutate]);
+  }, [client, runAction, selectedWorkflow]);
 
-  const recoverWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) return;
-    updateSelected(
-      (workflow) => ({ ...workflow, status: "running", currentStage: "recovering" }),
+  const recoverSelectedWorkflow = useCallback(async () => {
+    if (selectedWorkflow == null) {
+      return;
+    }
+    await runAction(
+      () => recoverWorkflowApi(client, selectedWorkflow.id),
       `Recovered · ${selectedWorkflow.title}`,
       "Recovery controller rebuilt state and replayed the workflow.",
     );
-    return new Promise<void>((resolve, reject) => {
-      resumeMutate(
-        { workflowId: selectedWorkflow.id },
-        {
-          onSuccess: () => resolve(),
-          onError: (err) => reject(err),
-        },
-      );
-    });
-  }, [selectedWorkflow, resumeMutate]);
+  }, [client, runAction, selectedWorkflow]);
 
-  const releaseWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) return;
-    updateSelected(
-      (workflow) => ({ ...workflow, status: "completed", currentStage: "release" }),
+  const releaseSelectedWorkflow = useCallback(async () => {
+    if (selectedWorkflow == null) {
+      return;
+    }
+    await runAction(
+      () => releaseWorkflowApi(client, selectedWorkflow.id),
       `Released · ${selectedWorkflow.title}`,
       "Workflow completed release checks and closed successfully.",
     );
-  }, [selectedWorkflow]);
-
-  const deleteWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) return;
-    const title = selectedWorkflow.title;
-    setWorkflows((current) => current.filter((workflow) => workflow.id !== selectedWorkflow.id));
-    setActivityItems((current) => [{ title: `Deleted · ${title}`, description: "Workflow was deleted." }, ...current]);
-    return new Promise<void>((resolve, reject) => {
-      deleteMutate(
-        { workflowId: selectedWorkflow.id },
-        {
-          onSuccess: () => resolve(),
-          onError: (err) => reject(err),
-        },
-      );
-    });
-  }, [selectedWorkflow, deleteMutate]);
+  }, [client, runAction, selectedWorkflow]);
 
   return {
     ...baseVm,
@@ -163,13 +132,11 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     selectedWorkflow,
     activityItems,
     pendingOperations,
-    selectWorkflow(id: string) {
-      setSelectedId(id);
-    },
-    pauseWorkflow,
-    resumeWorkflow,
-    recoverWorkflow,
-    releaseWorkflow,
-    deleteWorkflow,
+    selectWorkflow: setSelectedId,
+    cancelWorkflow: cancelSelectedWorkflow,
+    pauseWorkflow: pauseSelectedWorkflow,
+    resumeWorkflow: resumeSelectedWorkflow,
+    recoverWorkflow: recoverSelectedWorkflow,
+    releaseWorkflow: releaseSelectedWorkflow,
   };
 }

@@ -139,11 +139,13 @@ test("model routing enforces data residency, pii safety, training opt-out, and j
   registry.profiles.balanced.provider = "anthropic";
   registry.profiles.balanced.region = "us-east";
   registry.profiles.balanced.piiSafe = false;
+  registry.profiles.balanced.piiOutputPossible = true;
   registry.profiles.balanced.trainingOptOutSupported = false;
   registry.profiles.balanced.judgeIndependent = false;
   registry.profiles["reasoning-medium"].provider = "openai";
   registry.profiles["reasoning-medium"].region = "eu-west";
   registry.profiles["reasoning-medium"].piiSafe = true;
+  registry.profiles["reasoning-medium"].piiOutputPossible = true;
   registry.profiles["reasoning-medium"].trainingOptOutSupported = true;
   registry.profiles["reasoning-medium"].judgeIndependent = true;
 
@@ -153,12 +155,31 @@ test("model routing enforces data residency, pii safety, training opt-out, and j
     riskLevel: "critical",
     data_residency: "eu-west",
     pii_input_detected: true,
+    pii_output_possible: true,
     model_training_opt_out: true,
     judge_independence: true,
   });
 
   assert.equal(result.profileName, "reasoning-medium");
   assert.ok(result.trace.filteredOut.includes("balanced:data_residency_mismatch"));
+});
+
+test("model routing filters out profiles that cannot safely govern PII-bearing outputs", () => {
+  const registry = buildRegistry();
+  registry.profiles.balanced.piiSafe = false;
+  registry.profiles.balanced.piiOutputPossible = true;
+  registry.profiles["reasoning-medium"].piiSafe = true;
+  registry.profiles["reasoning-medium"].piiOutputPossible = true;
+
+  const service = new ModelRoutingService({ registry });
+  const result = service.route({
+    routeClass: "reasoning",
+    riskLevel: "high",
+    pii_output_possible: true,
+  });
+
+  assert.equal(result.profileName, "reasoning-medium");
+  assert.ok(result.trace.filteredOut.includes("balanced:pii_output_governance_missing"));
 });
 
 test("model routing issues a turn-scoped fallback lease when preferred profile is unavailable for the current turn", () => {

@@ -74,6 +74,8 @@ export interface ModelRouteRequest {
   data_residency?: string | null;
   /** Whether PII was detected in the request payload. */
   pii_input_detected?: boolean;
+  /** Whether the response path is expected to handle PII-bearing output. */
+  pii_output_possible?: boolean;
   /** Whether the caller requires model-training opt-out. */
   model_training_opt_out?: boolean;
   /** Whether judge-model independence is required. */
@@ -172,6 +174,7 @@ export interface ModelRoutingServiceOptions {
       latencySloTargetMs: number;
       latencyP99Ms: number | null;
       piiSafe: boolean;
+      piiOutputGoverned: boolean;
       trainingOptOutSupported: boolean;
       judgeIndependent: boolean;
       occurredAt: string;
@@ -427,6 +430,7 @@ export class ModelRoutingService {
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
     const dataResidency = normalizeOptionalName(request.data_residency);
     const piiInputDetected = request.pii_input_detected === true;
+    const piiOutputPossible = request.pii_output_possible === true;
     const modelTrainingOptOut = request.model_training_opt_out === true;
     const judgeIndependence = request.judge_independence === true;
     const latencySloTargetMs = resolveLatencySloTargetMs(routeClass, riskLevel, request.latency_slo_target_ms);
@@ -464,6 +468,10 @@ export class ModelRoutingService {
         }
         if (piiInputDetected && profile.piiSafe !== true) {
           filteredOut.push(`${profileName}:pii_unsafe`);
+          return false;
+        }
+        if (piiOutputPossible && profile.piiSafe !== true) {
+          filteredOut.push(`${profileName}:pii_output_governance_missing`);
           return false;
         }
         if (modelTrainingOptOut && profile.trainingOptOutSupported !== true) {
@@ -566,6 +574,7 @@ export class ModelRoutingService {
         latencySloTargetMs,
         latencyP99Ms: candidate.profile.latencyP99Ms ?? this.registry.providers[candidate.profile.provider]?.latencyP99Ms ?? null,
         piiSafe: candidate.profile.piiSafe === true,
+        piiOutputGoverned: !piiOutputPossible || candidate.profile.piiSafe === true,
         trainingOptOutSupported: candidate.profile.trainingOptOutSupported === true,
         judgeIndependent: candidate.profile.judgeIndependent === true,
         occurredAt: new Date().toISOString(),

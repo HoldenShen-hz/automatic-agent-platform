@@ -33,6 +33,7 @@ export interface ModelProfileMetadata {
   region?: string;
   latencyP99Ms?: number;
   piiSafe?: boolean;
+  piiOutputPossible?: boolean;
   trainingOptOutSupported?: boolean;
   judgeIndependent?: boolean;
 }

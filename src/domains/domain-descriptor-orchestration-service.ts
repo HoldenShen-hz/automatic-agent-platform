@@ -13,7 +13,7 @@ export interface DomainDescriptorInput {
   readonly displayName: string;
   readonly description: string;
   readonly ownerOrgNodeId: string;
-  readonly lifecycleState: DomainLifecycleState | "validating" | "certified" | "canary" | "retired";
+  readonly lifecycleState: DomainLifecycleState | "draft" | "validated" | "registered" | "updating" | "archived";
   readonly version: number;
   readonly riskProfile: DomainRiskProfile;
   readonly knowledgeSchema: DomainKnowledgeSchema;
@@ -134,11 +134,5 @@ export class DomainDescriptorOrchestrationService {
 }
 
 function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainLifecycleState {
-  const aliasMap: Record<string, DomainLifecycleState> = {
-    validating: "validated",
-    certified: "registered",
-    canary: "registered",
-    retired: "archived",
-  };
-  return DomainLifecycleStateSchema.parse(aliasMap[value] ?? value);
+  return DomainLifecycleStateSchema.parse(value);
 }

@@ -10,7 +10,7 @@ triggers:
   - coding
   - implement
   - fix
-  - bug
+  - bugfix
   - refactor
 roles:
   - id: engineer

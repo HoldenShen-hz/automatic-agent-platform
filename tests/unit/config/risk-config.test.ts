@@ -12,12 +12,14 @@ const rawRiskConfig = JSON.parse(
 
 test("risk-config exposes the canonical weighted factor model", () => {
   assert.deepEqual(Object.keys(riskConfig.factorWeights), [
-    "stepTypeRisk",
-    "targetSystemRisk",
-    "dataClassRisk",
+    "impact",
+    "irreversibility",
+    "dataSensitivity",
+    "autonomyModeRisk",
+    "tenantImpact",
     "blastRadius",
-    "priorFailureRate",
-    "confidence",
+    "historicalFailureRate",
+    "evidenceConfidence",
   ]);
 });
 
@@ -31,8 +33,8 @@ test("risk-config enforces approval for high and critical", () => {
   assert.equal(riskConfig.riskLevelActions.low.autoExecute, true);
   assert.equal(riskConfig.riskLevelActions.low.requiresApproval, false);
 
-  assert.equal(riskConfig.riskLevelActions.medium.autoExecute, true);
-  assert.equal(riskConfig.riskLevelActions.medium.requiresApproval, false);
+  assert.equal(riskConfig.riskLevelActions.medium.autoExecute, false);
+  assert.equal(riskConfig.riskLevelActions.medium.requiresApproval, true);
 
   assert.equal(riskConfig.riskLevelActions.high.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.high.requiresApproval, true);
@@ -50,9 +52,9 @@ test("risk-config threshold ordering is consistent", () => {
 });
 
 test("risk-config value maps and thresholds stay wired", () => {
-  assert.equal(riskConfig.impactValues.external_call, 4);
-  assert.equal(riskConfig.tenantImpactValues.production, 5);
-  assert.equal(riskConfig.dataSensitivityValues.restricted, 5);
+  assert.equal(riskConfig.impactValues.high, 4);
+  assert.equal(riskConfig.tenantImpactValues.platform, 5);
+  assert.equal(riskConfig.dataSensitivityValues.restricted, 4);
   assert.equal(riskConfig.blastRadiusValues.platform, 5);
   assert.equal(riskConfig.historicalFailureRateThresholds.high.value, 3);
   assert.equal(riskConfig.evidenceConfidenceValues.low, 5);

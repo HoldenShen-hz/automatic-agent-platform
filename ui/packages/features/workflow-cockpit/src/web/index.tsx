@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout } from "@aa/ui-core";
+import { FeatureScaffold, KeyValueTable, ListCard } from "@aa/ui-core";
 import { useWorkflowCockpitVm } from "../hooks";
+import { DAGViewer } from "./dag-viewer";
 
 export function WorkflowCockpitWebView(): ReactElement {
   const vm = useWorkflowCockpitVm();
@@ -8,28 +9,26 @@ export function WorkflowCockpitWebView(): ReactElement {
 
   return (
     <FeatureScaffold title="Workflow Cockpit" summary="工作流 DAG、步骤和恢复基线视图" status="Implemented/Internal">
-      <ThreePaneLayout
-        left={(
-          <div>
-            <h3>Workflow List</h3>
-            <div style={{ display: "grid", gap: 10 }}>
-              {vm.listItems.map((workflow) => (
-                <button
-                  key={workflow.id}
-                  onClick={() => {
-                    vm.selectWorkflow(workflow.id);
-                  }}
-                  style={{ textAlign: "left", background: workflow.id === selectedWorkflow?.id ? "#12201a" : "transparent", color: "inherit", border: "1px solid #334155", borderRadius: 12, padding: 12 }}
-                  type="button"
-                >
-                  <strong>{workflow.title}</strong>
-                  <div>{workflow.subtitle}</div>
-                </button>
-              ))}
-            </div>
+      <div style={{ display: "grid", gap: 24 }}>
+        <div>
+          <h3>Workflow List</h3>
+          <div style={{ display: "grid", gap: 10 }}>
+            {vm.listItems.map((workflow) => (
+              <button
+                key={workflow.id}
+                onClick={() => {
+                  vm.selectWorkflow(workflow.id);
+                }}
+                style={{ textAlign: "left", background: workflow.id === selectedWorkflow?.id ? "#12201a" : "transparent", color: "inherit", border: "1px solid #334155", borderRadius: 12, padding: 12 }}
+                type="button"
+              >
+                <strong>{workflow.title}</strong>
+                <div>{workflow.subtitle}</div>
+              </button>
+            ))}
           </div>
-        )}
-        center={selectedWorkflow == null ? <p>No workflow selected</p> : (
+        </div>
+        {selectedWorkflow == null ? <p>No workflow selected</p> : (
           <div style={{ display: "grid", gap: 16 }}>
             <h3>DAG / Stage Detail</h3>
             <KeyValueTable
@@ -39,9 +38,29 @@ export function WorkflowCockpitWebView(): ReactElement {
                 { key: "Status", value: selectedWorkflow.status },
                 { key: "Stage", value: selectedWorkflow.currentStage },
                 { key: "Steps", value: String(selectedWorkflow.steps.length) },
+                { key: "Approval Count", value: String(selectedWorkflow.approvalNodes?.length ?? 0) },
+                { key: "Evidence Count", value: String(selectedWorkflow.evidenceRefs?.length ?? 0) },
               ]}
             />
+            <DAGViewer currentStage={selectedWorkflow.currentStage} steps={selectedWorkflow.steps} />
+            {(selectedWorkflow.approvalNodes?.length ?? 0) > 0 && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong>{`Approval Nodes: ${selectedWorkflow.approvalNodes?.length ?? 0}`}</strong>
+                {selectedWorkflow.approvalNodes?.map((node) => (
+                  <div key={node.nodeId}>{`${node.title} ${node.status}${node.assignee != null ? ` · ${node.assignee}` : ""}`}</div>
+                ))}
+              </div>
+            )}
+            {(selectedWorkflow.evidenceRefs?.length ?? 0) > 0 && (
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong>{`Evidence Refs: ${selectedWorkflow.evidenceRefs?.length ?? 0}`}</strong>
+                {selectedWorkflow.evidenceRefs?.map((reference) => (
+                  <div key={reference.refId}>{`${reference.type} ${reference.description ?? reference.uri}`}</div>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={vm.cancelWorkflow} type="button">Cancel</button>
               <button onClick={vm.pauseWorkflow} type="button">Pause</button>
               <button onClick={vm.resumeWorkflow} type="button">Resume</button>
               <button onClick={vm.recoverWorkflow} type="button">Recover</button>
@@ -49,18 +68,18 @@ export function WorkflowCockpitWebView(): ReactElement {
             </div>
           </div>
         )}
-        right={selectedWorkflow == null ? <p>No steps</p> : (
+        {selectedWorkflow == null ? <p>No steps</p> : (
           <div>
             <h3>OAPEFLIR Step Rail</h3>
             <ListCard
-              items={vm.activityItems.length > 0 ? vm.activityItems : selectedWorkflow.steps.map((step) => ({
+              items={(vm.activityItems?.length ?? 0) > 0 ? vm.activityItems : selectedWorkflow.steps.map((step) => ({
                 title: `${step.phase} · ${step.title}`,
                 description: step.status,
               }))}
             />
           </div>
         )}
-      />
+      </div>
     </FeatureScaffold>
   );
 }
