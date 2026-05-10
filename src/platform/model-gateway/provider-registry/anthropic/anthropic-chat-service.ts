@@ -267,7 +267,7 @@ export class AnthropicChatService {
       );
 
       if (
-        shouldRetryWithinPool(response.status, [429, 500, 502, 503, 529])
+        shouldRetryWithinPool(response.status, [402, 429, 500, 502, 503, 529])
         && await this.credentialPool.canFailoverAfter({
           statusCode: response.status,
           retryAfterMs,

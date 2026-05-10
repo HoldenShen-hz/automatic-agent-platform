@@ -95,14 +95,14 @@ export class CostReportService {
         continue;
       }
       const latestSubmittedAt = report.submittedAt.localeCompare(current.latestSubmittedAt) > 0 ? report.submittedAt : current.latestSubmittedAt;
-      const latestPeriodStart = report.submittedAt.localeCompare(current.latestSubmittedAt) > 0 ? report.periodStart : current.periodStart;
-      const latestPeriodEnd = report.submittedAt.localeCompare(current.latestSubmittedAt) > 0 ? report.periodEnd : current.periodEnd;
+      const earliestPeriodStart = report.periodStart.localeCompare(current.periodStart) < 0 ? report.periodStart : current.periodStart;
+      const latestPeriodEnd = report.periodEnd.localeCompare(current.periodEnd) > 0 ? report.periodEnd : current.periodEnd;
       summaries.set(key, {
         ...current,
         totalCostUsd: current.totalCostUsd + report.totalCostUsd,
         reportCount: current.reportCount + 1,
         latestSubmittedAt,
-        periodStart: latestPeriodStart,
+        periodStart: earliestPeriodStart,
         periodEnd: latestPeriodEnd,
       });
     }

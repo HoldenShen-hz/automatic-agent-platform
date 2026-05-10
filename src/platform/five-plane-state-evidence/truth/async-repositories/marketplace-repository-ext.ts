@@ -342,6 +342,7 @@ export class AsyncMarketplaceListingRepository {
   }
 
   public async listDownloadsByListing(listingId: string, limit = 100): Promise<PackDownloadRecord[]> {
+    const sanitizedLimit = Math.max(1, Math.trunc(limit) || 100);
     return asyncQueryAll<PackDownloadRecord>(
       this.conn,
       `SELECT

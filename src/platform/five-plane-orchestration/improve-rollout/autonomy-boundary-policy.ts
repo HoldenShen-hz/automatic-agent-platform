@@ -28,6 +28,12 @@ export class AutonomyBoundaryPolicy {
         reasonCode: "improvement.manual_approval_required",
       };
     }
+    if (learningObjects.length === 0) {
+      return {
+        allowed: false,
+        reasonCode: "improvement.learning_object_not_validated",
+      };
+    }
     const allEvidenceBacked = learningObjects.every(
       (item) => item.evidenceRefs.length > 0 && (item.promotionStatus === "validated" || item.promotionStatus === "promoted"),
     );
