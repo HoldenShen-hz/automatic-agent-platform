@@ -44,6 +44,7 @@ export class ConnectorFrameworkService {
   private readonly manifests = new Map<string, RegisteredConnectorManifest>();
   private readonly bindings = new Map<string, ConnectorBinding[]>();
   private readonly health = new Map<string, ConnectorHealthReport[]>();
+  private readonly connectorInstances = new Map<string, { execute(request: ConnectorExecutionRequest): ConnectorExecutionResult }>();
   private readonly storageDir: string | null;
 
   public constructor(storageDir: string | null = null) {
@@ -82,6 +83,10 @@ export class ConnectorFrameworkService {
     this.health.set(report.connectorId, [...(this.health.get(report.connectorId) ?? []), report]);
     this.persist();
     return report;
+  }
+
+  public registerConnectorInstance(connectorId: string, instance: { execute(request: ConnectorExecutionRequest): ConnectorExecutionResult }): void {
+    this.connectorInstances.set(connectorId, instance);
   }
 
   /**
@@ -136,6 +141,12 @@ export class ConnectorFrameworkService {
         executionKey,
         executedAt: options.executedAt ?? nowIso(),
       };
+    }
+
+    const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
+    if (connectorInstance != null) {
+      const result = connectorInstance.execute(normalizedRequest);
+      return { ...result, executionKey, executedAt: options.executedAt ?? nowIso() };
     }
 
     return {
