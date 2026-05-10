@@ -98,7 +98,9 @@ export class WorkerSnapshotRepository {
   }
 
   public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): void {
-    execute(
+    const expectedVersion = snapshot.version;
+    const insertedVersion = expectedVersion > 0 ? expectedVersion : 1;
+    const changes = execute(
       this.conn,
       `INSERT INTO worker_snapshots (
         worker_id, status, placement, isolation_level, repo_version, remote_session_status,
@@ -144,7 +146,8 @@ export class WorkerSnapshotRepository {
         last_progress_at = excluded.last_progress_at,
         last_heartbeat_at = excluded.last_heartbeat_at,
         updated_at = excluded.updated_at,
-        version = excluded.version + 1`,
+        version = worker_snapshots.version + 1
+      WHERE worker_snapshots.version = ?`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -179,8 +182,12 @@ export class WorkerSnapshotRepository {
       snapshot.lastProgressAt,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
-      snapshot.version,
+      insertedVersion,
+      expectedVersion,
     );
+    if (changes === 0) {
+      throw new Error(`worker_snapshot.version_conflict:${snapshot.workerId}:${expectedVersion}`);
+    }
   }
 
   public upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): void {

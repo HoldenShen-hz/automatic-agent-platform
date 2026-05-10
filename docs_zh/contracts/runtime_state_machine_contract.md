@@ -78,11 +78,11 @@ queued -> pending -> in_progress -> done
 - `awaiting_decision` 只用于等待外部审批/人工输入，不替代普通 pause。
 - `done`、`failed`、`cancelled` 为终态，终态后只能通过新建恢复任务进入新生命周期。
 
-## 3. HarnessRunStatus（v4.3 canonical run status, 13态）
+## 3. HarnessRunStatus（v4.3 canonical run status, 14态）
 
-> 注意：本文档原用 `WorkflowStatus` 作为 run 状态枚举。v4.3 canonical run 状态以 `HarnessRun.status`（13态）为准。`WorkflowStatus` 仅保留为旧 workflow 投影视图，不应再作为 authoritative run 状态。
+> 注意：本文档原用 `WorkflowStatus` 作为 run 状态枚举。v4.3 canonical run 状态以 `HarnessRun.status`（14态）为准。`WorkflowStatus` 仅保留为旧 workflow 投影视图，不应再作为 authoritative run 状态。
 
-`HarnessRunStatus` 枚举（13态）：
+`HarnessRunStatus` 枚举（14态）：
 
 - `created`
 - `admitted`
@@ -96,28 +96,62 @@ queued -> pending -> in_progress -> done
 - `compensating`
 - `completed`
 - `failed`
+- `cancelled`
 - `aborted`
 
-终态：`completed`、`failed`、`aborted`。终态不可迁出。
+终态：`completed`、`failed`、`cancelled`、`aborted`。终态不可迁出。
 
 允许跃迁：
 
 - `created -> admitted`
+- `created -> failed`
+- `created -> cancelled`
+- `created -> aborted`
 - `admitted -> planning`
+- `admitted -> ready`
+- `admitted -> failed`
+- `admitted -> cancelled`
+- `admitted -> aborted`
 - `planning -> ready`
+- `planning -> replanning`
+- `planning -> failed`
+- `planning -> cancelled`
+- `planning -> aborted`
 - `ready -> running`
+- `ready -> paused`
+- `ready -> failed`
+- `ready -> cancelled`
+- `ready -> aborted`
 - `running -> pausing`
+- `running -> paused`
 - `running -> replanning`
 - `running -> compensating`
 - `running -> completed`
 - `running -> failed`
+- `running -> cancelled`
 - `running -> aborted`
 - `pausing -> paused`
+- `pausing -> failed`
+- `pausing -> cancelled`
+- `pausing -> aborted`
 - `paused -> resuming`
-- `resuming -> running`
-- `replanning -> running`
-- `compensating -> running`
+- `paused -> replanning`
+- `paused -> failed`
+- `paused -> cancelled`
 - `paused -> aborted`
+- `resuming -> running`
+- `resuming -> failed`
+- `resuming -> cancelled`
+- `resuming -> aborted`
+- `replanning -> ready`
+- `replanning -> running`
+- `replanning -> failed`
+- `replanning -> cancelled`
+- `replanning -> aborted`
+- `compensating -> completed`
+- `compensating -> failed`
+- `compensating -> cancelled`
+- `compensating -> aborted`
 
 约束：
 

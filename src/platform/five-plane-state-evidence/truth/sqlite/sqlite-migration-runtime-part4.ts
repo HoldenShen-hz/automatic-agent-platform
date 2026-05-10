@@ -47,6 +47,59 @@ CREATE INDEX IF NOT EXISTS idx_fence_records_expires_at ON fence_records(expires
 `;
 
 /**
+ * Migration 46: Adds config versioning and rollout persistence tables.
+ * R15-78/R15-79: Makes config snapshots, rollback points, and canary rollout state durable across restart.
+ */
+export const CONFIG_ROLLOUT_PERSISTENCE_SQL = `
+CREATE TABLE IF NOT EXISTS config_version_snapshots (
+  version_id TEXT PRIMARY KEY,
+  config_path TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  source_id TEXT NULL,
+  content_json TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NULL,
+  reason TEXT NULL,
+  parent_version_id TEXT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_config_version_snapshots_path
+  ON config_version_snapshots(config_path, layer, source_id, created_at);
+
+CREATE TABLE IF NOT EXISTS config_rollback_points (
+  rollback_id TEXT PRIMARY KEY,
+  version_id TEXT NOT NULL,
+  config_path TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_config_rollback_points_path
+  ON config_rollback_points(config_path, layer, created_at);
+
+CREATE TABLE IF NOT EXISTS config_rollouts (
+  rollout_id TEXT PRIMARY KEY,
+  config_path TEXT NOT NULL,
+  layer TEXT NOT NULL,
+  source_id TEXT NULL,
+  stage_phase TEXT NOT NULL,
+  stage_percentage INTEGER NOT NULL,
+  stage_min_duration_ms INTEGER NOT NULL,
+  stage_auto_progress INTEGER NOT NULL,
+  started_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  target_percentage INTEGER NOT NULL,
+  current_percentage INTEGER NOT NULL,
+  metadata_json TEXT NULL,
+  health_gates_json TEXT NOT NULL,
+  last_health_check_at TEXT NULL,
+  last_health_check_passed INTEGER NULL
+);
+CREATE INDEX IF NOT EXISTS idx_config_rollouts_lookup
+  ON config_rollouts(config_path, layer, source_id, updated_at);
+`;
+
+/**
  * Migration 55: Add canonical node_run_id to legacy artifacts for R6-19 migration.
  */
 export const ARTIFACT_NODE_RUN_ID_SQL = `

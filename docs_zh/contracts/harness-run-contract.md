@@ -42,9 +42,10 @@
 - `compensating`
 - `completed`
 - `failed`
+- `cancelled`
 - `aborted`
 
-终态：`completed`、`failed`、`aborted`。终态不可迁出。
+终态：`completed`、`failed`、`cancelled`、`aborted`。终态不可迁出。
 
 ## 4. 状态推进规则
 

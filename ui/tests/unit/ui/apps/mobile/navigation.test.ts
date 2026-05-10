@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { mobileNavigation, settingsSubRoutes, type MobileScreenDefinition } from "../../../../../apps/mobile/src/navigation";
+import {
+  mobileNavigation,
+  modalNavigator,
+  resolveMobileScreen,
+  rootTabNavigator,
+  settingsStack,
+  settingsSubRoutes,
+  type MobileScreenDefinition,
+} from "../../../../../apps/mobile/src/navigation";
 
 describe("mobileNavigation", () => {
+  it("defines a real root tab navigator", () => {
+    expect(rootTabNavigator.kind).toBe("tab");
+    expect(rootTabNavigator.navigatorId).toBe("root-tabs");
+    expect(rootTabNavigator.routes).toEqual(mobileNavigation.tabs);
+    expect(rootTabNavigator.initialRouteId).toBe("dashboard");
+  });
+
+  it("defines stack navigators for settings and modal overlays", () => {
+    expect(settingsStack.kind).toBe("stack");
+    expect(settingsStack.navigatorId).toBe("settings-stack");
+    expect(settingsStack.presentation).toBe("card");
+    expect(modalNavigator.kind).toBe("stack");
+    expect(modalNavigator.navigatorId).toBe("modal-stack");
+    expect(modalNavigator.presentation).toBe("modal");
+  });
+
   it("defines tabs array", () => {
     expect(Array.isArray(mobileNavigation.tabs)).toBe(true);
     expect(mobileNavigation.tabs.length).toBeGreaterThan(0);
@@ -182,5 +206,12 @@ describe("navigation completeness", () => {
     const flowIds = mobileNavigation.modalFlows.map((m) => m.id);
     expect(flowIds).toContain("hitl");
     expect(flowIds).toContain("approval-detail");
+  });
+
+  it("resolves screens from the navigator graph", () => {
+    expect(resolveMobileScreen("dashboard")?.path).toBe("/mission-control/dashboard");
+    expect(resolveMobileScreen("profile")?.path).toBe("/shared/settings/profile");
+    expect(resolveMobileScreen("approval-detail")?.path).toBe("/mission-control/approvals/:id");
+    expect(resolveMobileScreen("missing")).toBeNull();
   });
 });

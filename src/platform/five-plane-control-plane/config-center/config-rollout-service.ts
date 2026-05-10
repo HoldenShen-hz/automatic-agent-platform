@@ -88,6 +88,7 @@ export interface RolloutDecision {
  */
 export interface ConfigRolloutServiceOptions {
   eventBus?: DurableEventBus | null;
+  store?: ConfigRolloutStore | null;
   stages?: RolloutStage[];
   defaultMinDurationMs?: number;
   healthThresholds?: {
@@ -101,6 +102,12 @@ export interface RolloutHealthSnapshot {
   errorRate: number;
   latencyRegression: number;
   incidentRate: number;
+}
+
+export interface ConfigRolloutStore {
+  save(rollout: ConfigRollout): void;
+  loadAll(): ConfigRollout[];
+  delete(rolloutId: string): void;
 }
 
 /**
@@ -118,6 +125,7 @@ export interface RolloutHealthSnapshot {
  */
 export class ConfigRolloutService {
   private readonly eventBus: DurableEventBus | null;
+  private readonly store: ConfigRolloutStore | null;
   private readonly stages: RolloutStage[];
   private readonly defaultMinDurationMs: number;
   private readonly healthThresholds: {
@@ -129,6 +137,7 @@ export class ConfigRolloutService {
 
   public constructor(options: ConfigRolloutServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
+    this.store = options.store ?? null;
     this.stages = options.stages ?? DEFAULT_ROLLOUT_STAGES;
     this.defaultMinDurationMs = options.defaultMinDurationMs ?? 300000;
     this.healthThresholds = options.healthThresholds ?? {
@@ -136,6 +145,9 @@ export class ConfigRolloutService {
       maxLatencyRegression: 0.2,
       maxIncidentRate: 0.02,
     };
+    for (const rollout of this.store?.loadAll() ?? []) {
+      this.activeRollouts.set(rollout.rolloutId, rollout);
+    }
   }
 
   /**
@@ -174,6 +186,7 @@ export class ConfigRolloutService {
     };
 
     this.activeRollouts.set(rolloutId, rollout);
+    this.persistRollout(rollout);
     this.emitRolloutEvent("config.rollout.started", rollout);
 
     return rollout;
@@ -294,6 +307,7 @@ export class ConfigRolloutService {
     rollout.currentPercentage = nextStage.percentage;
     rollout.updatedAt = nowIso();
 
+    this.persistRollout(rollout);
     this.emitRolloutEvent("config.rollout.promoted", rollout);
 
     return rollout;
@@ -319,6 +333,7 @@ export class ConfigRolloutService {
     };
     rollout.updatedAt = nowIso();
 
+    this.persistRollout(rollout);
     this.emitRolloutEvent("config.rollout.cancelled", rollout);
 
     return rollout;
@@ -355,6 +370,7 @@ export class ConfigRolloutService {
         rollout.stage = nextStage;
         rollout.currentPercentage = nextStage.percentage;
         rollout.updatedAt = nowIso();
+        this.persistRollout(rollout);
         this.emitRolloutEvent("config.rollout.auto_progressed", rollout);
         progressCount++;
       }
@@ -384,6 +400,7 @@ export class ConfigRolloutService {
       const ageMs = Date.now() - new Date(rollout.updatedAt).getTime();
       if (ageMs > maxAgeMs && (rollout.stage.phase === RolloutPhase.FULL || rollout.stage.phase === RolloutPhase.CANCELLED)) {
         this.activeRollouts.delete(rolloutId);
+        this.store?.delete(rolloutId);
         cleaned++;
       }
     }
@@ -461,5 +478,9 @@ export class ConfigRolloutService {
       snapshot.latencyRegression <= this.healthThresholds.maxLatencyRegression &&
       snapshot.incidentRate <= this.healthThresholds.maxIncidentRate
     );
+  }
+
+  private persistRollout(rollout: ConfigRollout): void {
+    this.store?.save(rollout);
   }
 }

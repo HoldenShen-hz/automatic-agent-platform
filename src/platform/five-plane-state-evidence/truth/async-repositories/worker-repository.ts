@@ -115,7 +115,9 @@ export class AsyncWorkerRepository {
   }
 
   public async upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): Promise<void> {
-    await asyncExecute(
+    const expectedVersion = snapshot.version;
+    const insertedVersion = expectedVersion > 0 ? expectedVersion : 1;
+    const changes = await asyncExecute(
       this.conn,
       `INSERT INTO worker_snapshots (
         worker_id, status, placement, isolation_level, repo_version, remote_session_status,
@@ -125,8 +127,8 @@ export class AsyncWorkerRepository {
         sandbox_success_rate, repo_cache_hit_rate, registration_verified_at, registration_challenge_id,
         capabilities_json, running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
         restarted_from_runtime_instance_id, restart_generation, cpu_pct, memory_mb, tool_backlog_count,
-        current_step_id, last_progress_at, last_heartbeat_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
+        current_step_id, last_progress_at, last_heartbeat_at, updated_at, version
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
       ON CONFLICT(worker_id) DO UPDATE SET
         status = excluded.status,
         placement = excluded.placement,
@@ -160,7 +162,9 @@ export class AsyncWorkerRepository {
         current_step_id = excluded.current_step_id,
         last_progress_at = excluded.last_progress_at,
         last_heartbeat_at = excluded.last_heartbeat_at,
-        updated_at = excluded.updated_at`,
+        updated_at = excluded.updated_at,
+        version = worker_snapshots.version + 1
+      WHERE worker_snapshots.version = $36`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -195,7 +199,12 @@ export class AsyncWorkerRepository {
       snapshot.lastProgressAt,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
+      insertedVersion,
+      expectedVersion,
     );
+    if (changes === 0) {
+      throw new Error(`worker_snapshot.version_conflict:${snapshot.workerId}:${expectedVersion}`);
+    }
   }
 
   public async upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): Promise<void> {
@@ -274,7 +283,8 @@ export class AsyncWorkerRepository {
         current_step_id AS "currentStepId",
         last_progress_at AS "lastProgressAt",
         last_heartbeat_at AS "lastHeartbeatAt",
-        updated_at AS "updatedAt"
+        updated_at AS "updatedAt",
+        version
        FROM worker_snapshots
        WHERE worker_id = $1`,
       workerId,
@@ -462,7 +472,8 @@ export class AsyncWorkerRepository {
        current_step_id AS "currentStepId",
        last_progress_at AS "lastProgressAt",
        last_heartbeat_at AS "lastHeartbeatAt",
-       updated_at AS "updatedAt"
+       updated_at AS "updatedAt",
+       version
        FROM worker_snapshots`;
     if (status != null) {
       sql += ` WHERE status = $${params.length + 1}`;
@@ -513,7 +524,8 @@ export class AsyncWorkerRepository {
        current_step_id AS "currentStepId",
        last_progress_at AS "lastProgressAt",
        last_heartbeat_at AS "lastHeartbeatAt",
-       updated_at AS "updatedAt"
+       updated_at AS "updatedAt",
+       version
        FROM worker_snapshots
        WHERE last_heartbeat_at < $1
        ORDER BY last_heartbeat_at ASC`,

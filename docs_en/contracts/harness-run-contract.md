@@ -42,9 +42,10 @@
 - `compensating`
 - `completed`
 - `failed`
+- `cancelled`
 - `aborted`
 
-Terminal states: `completed`, `failed`, `aborted`. Terminal states cannot transition out.
+Terminal states: `completed`, `failed`, `cancelled`, `aborted`. Terminal states cannot transition out.
 
 ## 4. State Transition Rules
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 import type { ReactElement } from "react";
 import React from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
@@ -8,6 +8,15 @@ import { MobileApp } from "../../../../../apps/mobile/src/App";
 vi.mock("react-native", () => ({
   View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
   Text: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("span", { style }, children),
+  TouchableOpacity: ({
+    children,
+    onPress,
+    style,
+  }: {
+    children?: React.ReactNode;
+    onPress?: () => void;
+    style?: unknown;
+  }) => React.createElement("button", { onClick: onPress, style, type: "button" }, children),
   StyleSheet: {
     create: <T,>(styles: T) => styles,
   },
@@ -59,7 +68,7 @@ describe("MobileApp component", () => {
 
   it("renders without crashing", () => {
     render(<MobileApp />);
-    expect(screen.getByText("Automatic Agent Platform Mobile Baseline")).toBeInTheDocument();
+    expect(screen.getByText("Mobile Mission Control")).toBeInTheDocument();
   });
 
   it("renders platform adapter info", () => {
@@ -69,13 +78,25 @@ describe("MobileApp component", () => {
 
   it("shows native bridge ready status when global is defined", () => {
     render(<MobileApp />);
-    expect(screen.getByText("Native bridge ready: true")).toBeInTheDocument();
+    expect(screen.getByText(/Native bridge ready: true/)).toBeInTheDocument();
   });
 
   it("shows native bridge not ready when global is undefined", () => {
     delete globalThis.__AA_MOBILE__;
     render(<MobileApp />);
-    expect(screen.getByText("Native bridge ready: false")).toBeInTheDocument();
+    expect(screen.getByText(/Native bridge ready: false/)).toBeInTheDocument();
+  });
+
+  it("switches tabs through the root tab navigator", () => {
+    render(<MobileApp />);
+    fireEvent.click(screen.getByRole("button", { name: "Tasks" }));
+    expect(screen.getByText("/mission-control/tasks")).toBeInTheDocument();
+  });
+
+  it("opens modal flows through the modal stack runtime", () => {
+    render(<MobileApp />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Approval Modal" }));
+    expect(screen.getByText("Modal: Approval Detail")).toBeInTheDocument();
   });
 });
 

@@ -55,7 +55,10 @@ import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-contr
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
-import { WORKER_SNAPSHOT_VERSION_SQL } from "./sqlite-migration-runtime-part4.js";
+import {
+  CONFIG_ROLLOUT_PERSISTENCE_SQL,
+  WORKER_SNAPSHOT_VERSION_SQL,
+} from "./sqlite-migration-runtime-part4.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -367,6 +370,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(43, "0043_harness_runs", HARNESS_RUNS_SQL),
   defineMigration(44, "0044_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_FOUNDATION_SQL),
   defineMigration(45, "0045_worker_snapshot_version", WORKER_SNAPSHOT_VERSION_SQL),
+  defineMigration(46, "0046_config_rollout_persistence", CONFIG_ROLLOUT_PERSISTENCE_SQL),
 ] as const;
 
 /**

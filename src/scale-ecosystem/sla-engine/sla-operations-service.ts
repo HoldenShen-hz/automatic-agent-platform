@@ -119,6 +119,7 @@ function calculateCreditAmount(tier: SlaTierProfile | null, breachCodes: readonl
 
 export class SlaOperationsService {
   public evaluate(request: SlaOperationsRequest): SlaOperationsDecision {
+    const workflowClass = request.workflowClass ?? "llm_assisted";
     const selectedTier = request.selectedTierId == null
       ? resolveHighestPriorityTier(request.tiers)
       : request.tiers.find((tier) => tier.tierId === request.selectedTierId) ?? null;
@@ -140,13 +141,16 @@ export class SlaOperationsService {
         penaltyDecisions: [],
         starvationProtected: true,
         preemptionCapApplied: false,
-        workflowClass: request.workflowClass,
+        workflowClass,
       };
     }
 
     const workflowClassSlaMap = request.workflowClassSlaMap ?? DEFAULT_WORKFLOW_CLASS_SLA_MAP;
-    const workflowClassSla = workflowClassSlaMap[request.workflowClass];
-    const adjustedMaxLatency = workflowClassSla?.targetLatencyMs ?? (selectedTier.targetLatencyMs ?? 1000) * WORKFLOW_CLASS_LATENCY_MULTIPLIER[request.workflowClass];
+    const workflowClassSla = request.workflowClass == null ? undefined : workflowClassSlaMap[workflowClass];
+    const adjustedMaxLatency = workflowClassSla?.targetLatencyMs
+      ?? (request.workflowClass == null
+        ? selectedTier.targetLatencyMs ?? 1000
+        : (selectedTier.targetLatencyMs ?? 1000) * WORKFLOW_CLASS_LATENCY_MULTIPLIER[workflowClass]);
     const adjustedMinSuccessRate = workflowClassSla?.targetSuccessRate ?? selectedTier.targetSuccessRate ?? 0.99;
     const adjustedMaxQueueWaitMs = workflowClassSla?.maxQueueWaitMs ?? selectedTier.maxQueueWaitMs ?? 3000;
     const commitment: SlaCommitment = {
@@ -200,7 +204,7 @@ export class SlaOperationsService {
       })),
       starvationProtected,
       preemptionCapApplied,
-      workflowClass: request.workflowClass,
+      workflowClass,
     };
   }
 }

@@ -15,6 +15,7 @@ import { execute, queryAll, queryOne } from "../query-helper.js";
 import { stableStringify } from "../../../../control-plane/config-center/config-governance-support.js";
 import type {
   ConfigRollout,
+  ConfigRolloutStore,
   RolloutStage,
 } from "../../../../control-plane/config-center/config-rollout-service.js";
 
@@ -281,7 +282,7 @@ export class ConfigRolloutRepository {
     return queryOne<ConfigRolloutRecord>(
       this.conn,
       `SELECT
-        rollout_id AS rolloutId, config_path AS configPath, layer, source_id,
+        rollout_id AS rolloutId, config_path AS configPath, layer, source_id AS sourceId,
         stage_phase AS stagePhase, stage_percentage AS stagePercentage,
         stage_min_duration_ms AS stageMinDurationMs,
         stage_auto_progress AS stageAutoProgress,
@@ -301,7 +302,7 @@ export class ConfigRolloutRepository {
     return queryAll<ConfigRolloutRecord>(
       this.conn,
       `SELECT
-        rollout_id AS rolloutId, config_path AS configPath, layer, source_id,
+        rollout_id AS rolloutId, config_path AS configPath, layer, source_id AS sourceId,
         stage_phase AS stagePhase, stage_percentage AS stagePercentage,
         stage_min_duration_ms AS stageMinDurationMs,
         stage_auto_progress AS stageAutoProgress,
@@ -321,7 +322,7 @@ export class ConfigRolloutRepository {
     return queryAll<ConfigRolloutRecord>(
       this.conn,
       `SELECT
-        rollout_id AS rolloutId, config_path AS configPath, layer, source_id,
+        rollout_id AS rolloutId, config_path AS configPath, layer, source_id AS sourceId,
         stage_phase AS stagePhase, stage_percentage AS stagePercentage,
         stage_min_duration_ms AS stageMinDurationMs,
         stage_auto_progress AS stageAutoProgress,
@@ -349,10 +350,10 @@ export class ConfigRolloutRepository {
  * Implements ConfigRolloutStore interface using SQLite.
  * R15-79: Provides durable storage for ConfigRolloutService.
  */
-export class SqliteConfigRolloutStore {
+export class SqliteConfigRolloutStore implements ConfigRolloutStore {
   public constructor(private readonly conn: SqliteConnection) {}
 
-  public async save(rollout: ConfigRollout): Promise<void> {
+  public save(rollout: ConfigRollout): void {
     const record: ConfigRolloutRecord = {
       rolloutId: rollout.rolloutId,
       configPath: rollout.configPath,
@@ -374,7 +375,7 @@ export class SqliteConfigRolloutStore {
     new ConfigRolloutRepository(this.conn).save(record);
   }
 
-  public async load(rolloutId: string): Promise<ConfigRollout | null> {
+  public load(rolloutId: string): ConfigRollout | null {
     const record = new ConfigRolloutRepository(this.conn).load(rolloutId);
     if (!record) {
       return null;
@@ -382,12 +383,12 @@ export class SqliteConfigRolloutStore {
     return this.recordToRollout(record);
   }
 
-  public async loadAll(): Promise<ConfigRollout[]> {
+  public loadAll(): ConfigRollout[] {
     const records = new ConfigRolloutRepository(this.conn).loadAll();
     return records.map((r) => this.recordToRollout(r));
   }
 
-  public async delete(rolloutId: string): Promise<void> {
+  public delete(rolloutId: string): void {
     new ConfigRolloutRepository(this.conn).delete(rolloutId);
   }
 
