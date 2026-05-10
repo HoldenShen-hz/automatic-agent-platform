@@ -242,12 +242,3 @@ export class PromptVersionManager {
     });
   }
 }
-
-/**
- * R2-8: Prompt lifecycle now includes deprecated phase
- */
-export interface VersionLineage {
-  current: string;
-  previous?: string;
-  next?: string;
-}

@@ -67,7 +67,8 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
         retentionDays: validated.evidence.retentionDays,
       },
     };
-  } catch {
+  } catch (err) {
+    console.error("Failed to load quality config, using defaults:", err);
     // Return default config if file doesn't exist or validation fails
     return {
       qualityGate: {

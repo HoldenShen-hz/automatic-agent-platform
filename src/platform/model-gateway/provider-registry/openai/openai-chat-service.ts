@@ -459,9 +459,6 @@ export class OpenAIChatService {
 
               if (parsed.choices && parsed.choices.length > 0) {
                 const choice = parsed.choices[0]!;
-                if (choice.finish_reason != null) {
-                  finalFinishReason = choice.finish_reason;
-                }
 
                 if (choice.delta !== undefined) {
                   if (choice.delta.content) {
@@ -497,6 +494,9 @@ export class OpenAIChatService {
                   }
                 } else {
                   // Final chunk
+                  if (choice.finish_reason != null) {
+                    finalFinishReason = choice.finish_reason;
+                  }
                   if (choice.message?.content) {
                     accumulatedContent = choice.message.content;
                   }

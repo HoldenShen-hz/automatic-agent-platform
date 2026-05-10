@@ -51,6 +51,10 @@ export class KnowledgeArchive {
     if (existingByDocId && existingByDocId.source.checksum !== record.source.checksum) {
       this.appendHistory(existingByDocId.document.documentId, existingByDocId);
       this.documentsByChecksum.delete(existingByDocId.source.checksum);
+      // Delete old chunk records to prevent stale entries
+      for (const oldChunk of existingByDocId.chunks) {
+        this.recordsByChunkId.delete(oldChunk.chunkId);
+      }
     }
 
     this.documentsByChecksum.set(record.source.checksum, record);

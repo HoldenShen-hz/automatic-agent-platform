@@ -466,6 +466,7 @@ export class AnthropicChatService {
                   type: string;
                   text?: string;
                   partial_json?: string;
+                  stop_reason?: string | null;
                 };
               };
 
@@ -479,6 +480,9 @@ export class AnthropicChatService {
                 }
                 if (parsed.delta?.type === "text_delta") {
                   // already accumulated above
+                }
+                if (parsed.delta?.stop_reason) {
+                  finalStopReason = parsed.delta.stop_reason;
                 }
               } else if (parsed.type === "message") {
                 // Final message

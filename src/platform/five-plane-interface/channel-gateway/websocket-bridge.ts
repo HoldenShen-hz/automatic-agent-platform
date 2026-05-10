@@ -115,12 +115,9 @@ export class WebSocketBridge {
   }
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-    const token = this.extractBearerToken(req.headers["sec-websocket-protocol"]);
-    const initialTaskId = url.searchParams.get("taskId");
-    const initialLastEventId = url.searchParams.get("last_event_id");
+    const params = this.extractConnectionParams(req.headers["sec-websocket-protocol"]);
 
-    if (!token) {
+    if (!params.token) {
       ws.close(4001, "Missing token");
       logger.warn("WebSocket connection rejected: missing subprotocol token");
       return;
@@ -128,13 +125,15 @@ export class WebSocketBridge {
 
     let principal: { actorId: string; tenantId: string | null; scopes: readonly string[] };
     try {
-      const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${token}` });
+      const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${params.token}` });
       principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
     } catch {
       ws.close(4003, "Invalid token");
       logger.warn("WebSocket connection rejected: invalid subprotocol token");
       return;
     }
+
+    const { taskId: initialTaskId, lastEventId: initialLastEventId } = params;
 
     const client: ClientConnection = {
       webSocket: ws,
@@ -368,10 +367,24 @@ export class WebSocketBridge {
     }
   }
 
-  private extractBearerToken(protocolHeader: string | string[] | undefined): string | null {
+  private extractConnectionParams(protocolHeader: string | string[] | undefined): { token: string | null; taskId: string | null; lastEventId: string | null } {
     const header = Array.isArray(protocolHeader) ? protocolHeader.join(",") : protocolHeader ?? "";
-    const token = header.split(",")[0]?.trim() ?? "";
-    return token.length > 0 ? token : null;
+    const parts = header.split(",").map((p) => p.trim());
+    const token = parts[0] ?? "";
+
+    // Subprotocol format: "Bearer <token>[,taskId=<taskId>[,lastEventId=<lastEventId>]]"
+    const result: { token: string | null; taskId: string | null; lastEventId: string | null } = { token: token.length > 0 ? token : null, taskId: null, lastEventId: null };
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i];
+      if (!part) continue;
+      const eqIndex = part.indexOf("=");
+      if (eqIndex < 0) continue;
+      const key = part.slice(0, eqIndex);
+      const value = part.slice(eqIndex + 1);
+      if (key === "taskId") result.taskId = value;
+      if (key === "lastEventId") result.lastEventId = value;
+    }
+    return result;
   }
 
   private replayMissedEvents(

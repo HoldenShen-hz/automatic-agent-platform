@@ -44,7 +44,7 @@ export interface ToolContractViolation {
  */
 export function validateToolExecutionMetadata(metadata: ToolExecutionMetadata): ToolContractViolation[] {
   const violations: ToolContractViolation[] = [];
-  const toolName = metadata.toolName.trim();
+  const toolName = (metadata.toolName ?? "").trim();
 
   // Tool name must be non-empty
   if (toolName.length === 0) {

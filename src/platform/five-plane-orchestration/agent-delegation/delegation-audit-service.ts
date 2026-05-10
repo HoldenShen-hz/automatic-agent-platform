@@ -9,7 +9,27 @@
  * Architecture: §51 Delegation Governance
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
+
+/** Default directory for delegation audit events */
+const DEFAULT_AUDIT_DIR = join(process.cwd(), ".audit", "delegation");
+
+/** Writes a value as formatted JSON to a file */
+function writeJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(value, null, 2));
+}
+
+/** Safely reads and parses a JSON file, returning null if not found */
+function safeReadJson<T>(path: string): T | null {
+  if (!existsSync(path)) {
+    return null;
+  }
+  return JSON.parse(readFileSync(path, "utf8")) as T;
+}
 
 export type DelegationAuditEventType =
   | "delegation.governance.evaluated"
@@ -45,6 +65,27 @@ export interface DelegationAuditSummary {
 
 export class DelegationAuditService {
   private readonly events: DelegationAuditEvent[] = [];
+  private readonly auditDir: string;
+  private eventFilePath: string;
+
+  public constructor(auditDir: string = DEFAULT_AUDIT_DIR) {
+    this.auditDir = auditDir;
+    this.eventFilePath = join(this.auditDir, "delegation-audit-events.json");
+    this.loadEvents();
+  }
+
+  /** Loads events from persistent storage */
+  private loadEvents(): void {
+    const loaded = safeReadJson<DelegationAuditEvent[]>(this.eventFilePath);
+    if (loaded && Array.isArray(loaded)) {
+      this.events.push(...loaded);
+    }
+  }
+
+  /** Persists all events to disk */
+  private persistEvents(): void {
+    writeJson(this.eventFilePath, this.events);
+  }
 
   public record(event: Omit<DelegationAuditEvent, "id" | "createdAt">): DelegationAuditEvent {
     const record: DelegationAuditEvent = {
@@ -53,6 +94,7 @@ export class DelegationAuditService {
       createdAt: nowIso(),
     };
     this.events.push(record);
+    this.persistEvents();
     return record;
   }
 

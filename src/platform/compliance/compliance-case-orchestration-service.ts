@@ -288,13 +288,17 @@ export class ComplianceCaseOrchestrationService {
     if (this.governance == null) {
       return null;
     }
-    return this.governance.evaluate({
-      actorId: input.actorId,
-      orgNodeId: input.orgNodeId,
-      action: input.action,
-      occurredAt: input.occurredAt,
-      ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
-    }) ?? null;
+    try {
+      return this.governance.evaluate({
+        actorId: input.actorId,
+        orgNodeId: input.orgNodeId,
+        action: input.action,
+        occurredAt: input.occurredAt,
+        ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
+      }) ?? null;
+    } catch {
+      return null;
+    }
   }
 
   private resolveTransferStatus(input: {

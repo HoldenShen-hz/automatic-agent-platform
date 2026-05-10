@@ -32,6 +32,30 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     allowedDomains: ["api.hubspot.com", "api.salesforce.com"],
   });
   let credentialFingerprint: string | null = null;
+  let authToken: string | null = null;
+
+  async function crmRequest(endpoint: string, method: string = "GET", body?: Record<string, unknown>): Promise<unknown> {
+    if (!authToken) {
+      throw new Error("crm_adapter.not_authenticated");
+    }
+    const url = `${apiBaseUrl}/crm/v3/objects/${endpoint}`;
+    const requestInit: RequestInit = {
+      method,
+      headers: {
+        "Authorization": `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+    };
+    if (body !== undefined) {
+      requestInit.body = JSON.stringify(body);
+    }
+    const response = await fetch(url, requestInit);
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "unknown");
+      throw new Error(`crm_adapter.api_error:${response.status}:${errorBody}`);
+    }
+    return response.json();
+  }
 
   return {
     pluginId: "plugin.growth.crm_adapter",
@@ -46,11 +70,12 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     },
     async shutdown() {
       credentialFingerprint = null;
+      authToken = null;
     },
     async authenticate(credentials): Promise<void> {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
       credentialFingerprint = `crm_${crmType}_${token.slice(0, 8)}`;
-      // Return void — fingerprint is stored in credentialFingerprint for later retrieval
+      authToken = token;
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
       if (!/^[a-zA-Z0-9_]+$/.test(action)) {
@@ -61,18 +86,50 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
         throw new PolicyDeniedError("egress.denied" as ErrorCode, `CRM adapter: action "${action}" denied by egress policy`);
       }
 
-      // Stub: in production this would call the CRM REST API.
-      // Return a structured response matching the expected adapter output schema.
-      return {
-        ok: true,
-        data: {
-          action,
-          params,
-          crmType,
-          result: `CRM ${action} stub — implement ${crmType} API integration`,
-        },
-        latencyMs: 0,
-      };
+      const startTime = Date.now();
+      try {
+        let result: unknown;
+        switch (action) {
+          case "contacts":
+          case "companies":
+          case "deals": {
+            const limit = typeof params.limit === "number" ? params.limit : 100;
+            const after = typeof params.after === "string" ? params.after : undefined;
+            const properties = typeof params.properties === "string" ? params.properties : undefined;
+            const query = new URLSearchParams();
+            query.set("limit", String(limit));
+            if (after) query.set("after", after);
+            if (properties) query.set("properties", properties);
+            result = await crmRequest(`${action}?${query.toString()}`);
+            break;
+          }
+          case "contact":
+          case "company":
+          case "deal": {
+            const id = requireString(params.id, "id");
+            result = await crmRequest(`${action}/${id}`);
+            break;
+          }
+          case "campaigns": {
+            result = await crmRequest("campaigns", "GET");
+            break;
+          }
+          default: {
+            result = await crmRequest(action, "POST", params);
+          }
+        }
+        return {
+          ok: true,
+          data: { action, params, crmType, result },
+          latencyMs: Date.now() - startTime,
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          data: { action, params, crmType, error: err instanceof Error ? err.message : String(err) },
+          latencyMs: Date.now() - startTime,
+        };
+      }
     },
   };
 }

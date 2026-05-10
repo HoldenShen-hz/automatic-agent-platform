@@ -399,7 +399,7 @@ function handleDecisionRejected(
   timestamp: string,
 ): void {
   state.status = "rejected";
-  state.rejectionsReceived = state.approvalsRequired;
+  state.rejectionsReceived = (state.rejectionsReceived || 0) + 1;
   if (state.respondedAt === null) {
     state.respondedAt = timestamp;
   }

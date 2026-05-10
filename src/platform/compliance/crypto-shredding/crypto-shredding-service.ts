@@ -233,6 +233,14 @@ export class CryptoShreddingService {
     subjectId: string,
     record: Record<string, unknown>,
   ): Promise<EncryptRecordResult> {
+    if (this.piiFields.length === 0) {
+      throw new AppError(
+        "encrypt.no_pii_fields_configured",
+        "No PII fields configured for encryption. Please register PII fields before calling encryptRecordForSubject.",
+        { statusCode: 400, category: "validation", source: "internal" },
+      );
+    }
+
     const encryptions: EncryptRecordResult["encryptions"] = [];
     const encryptedRecord = structuredClone(record) as Record<string, unknown>;
 

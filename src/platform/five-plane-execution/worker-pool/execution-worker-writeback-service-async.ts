@@ -12,14 +12,11 @@
  * @see ExecutionWorkerWritebackService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { WorkerWritebackInput, WorkerWritebackDecision } from "./execution-worker-writeback-service.js";
-
-const require = createRequire(import.meta.url);
+import { ExecutionWorkerWritebackService } from "./execution-worker-writeback-service.js";
 
 /**
  * Async Execution Worker Writeback Service
@@ -41,11 +38,7 @@ export class ExecutionWorkerWritebackServiceAsync extends SyncBackedAsyncService
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      // Import dynamically to avoid circular dependency
-      const { ExecutionWorkerWritebackService } = require("./execution-worker-writeback-service.js");
-      return new ExecutionWorkerWritebackService(db, store);
-    });
+    super(() => new ExecutionWorkerWritebackService(db, store));
   }
 
   /**

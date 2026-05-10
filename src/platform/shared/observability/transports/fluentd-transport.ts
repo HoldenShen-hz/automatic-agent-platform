@@ -63,7 +63,12 @@ export class FluentdTransport implements LogTransport {
     }
     this.reconnectAttempts = 0;
     for (const buffered of this.buffer) {
-      this.socket?.write(buffered);
+      try {
+        this.socket?.write(buffered);
+      } catch (err) {
+        this.logger.error("fluentd.drain_write_failed", { error: String(err) });
+        break;
+      }
     }
     this.buffer = [];
   }

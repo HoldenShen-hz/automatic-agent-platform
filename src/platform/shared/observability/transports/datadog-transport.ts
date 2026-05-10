@@ -64,7 +64,30 @@ export class DatadogTransport implements LogTransport {
       ddtags: `env:${process.env.NODE_ENV ?? "dev"}`,
     })));
 
-    return new Promise((resolve) => {
+    const maxRetries = 3;
+    const baseDelayMs = 100;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.doRequest(body);
+        return;
+      } catch (err) {
+        const isLastAttempt = attempt === maxRetries;
+        if (isLastAttempt) {
+          // Re-add entries to front of batch for backpressure when all retries exhausted
+          this.batch.unshift(...entries);
+          console.error(`[DatadogTransport] failed to send ${entries.length} logs after ${maxRetries} attempts:`, err);
+          return;
+        }
+        // Exponential backoff: 100ms, 200ms, 400ms
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+
+  private doRequest(body: string): Promise<void> {
+    return new Promise((resolve, reject) => {
       const req = this.requestFactory({
         hostname: `http-intake.logs.${this.site}`,
         path: "/api/v2/logs",
@@ -73,8 +96,14 @@ export class DatadogTransport implements LogTransport {
           "Content-Type": "application/json",
           "DD-API-KEY": this.config.apiKey,
         },
-      }, () => resolve());
-      req.on("error", () => resolve());
+      }, (res) => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+      req.on("error", reject);
       req.end(body);
     });
   }

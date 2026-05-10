@@ -78,10 +78,11 @@ export class AgentVersionManager {
     const versions = this.versions.get(agentId);
     if (!versions) return;
 
-    const version = versions.find((v) => v.versionId === versionId);
-    if (!version) return;
+    const index = versions.findIndex((v) => v.versionId === versionId);
+    if (index === -1) return;
 
-    version.deploymentSlot = slot;
+    const updated = { ...versions[index], deploymentSlot: slot } as AgentVersionDetail;
+    versions[index] = updated;
 
     // If assigning to blue, revoke green (and vice versa)
     if (slot === "blue") {
