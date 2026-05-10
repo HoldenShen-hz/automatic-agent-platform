@@ -52,11 +52,11 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
         },
       ],
       regions: [
-        { regionId: "cn-shanghai", countryCode: "CN", jurisdiction: "cn", residencyAllowed: true, latencyScore: 25 },
-        { regionId: "us-west", countryCode: "US", jurisdiction: "us", residencyAllowed: true, latencyScore: 80 },
+        { regionId: "cn-shanghai", provider: "aws", jurisdiction: "cn", residencyAllowed: true, latencyScore: 25, endpoints: { api: "https://cn-shanghai.api.example.com" }, dataResidencyPolicy: "local_only" as const },
+        { regionId: "us-west", provider: "aws", jurisdiction: "us", residencyAllowed: true, latencyScore: 80, endpoints: { api: "https://us-west.api.example.com" }, dataResidencyPolicy: "regional" as const },
       ],
       primaryRegionHealthy: false,
-      quotaPolicy: { scopeId: "tenant_finance", resourceType: "runtime_units", hardLimit: 10, burstLimit: 12, currentUsage: 3 },
+      quotaPolicy: { scope: "tenant" as const, scopeId: "tenant_finance", workerUnits: { hardLimit: 10, currentUsage: 3 } },
       requestedUnits: 4,
       queueItems: [
         { itemId: "job_a", tenantId: "tenant_finance", priority: 10, ageMs: 300_000 },
@@ -131,6 +131,8 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
           payload: { summary: "slack alert delayed", reasonCode: "connector.timeout" },
           stepOutputRefs: ["connector_dispatch"],
           timestamp: Date.parse("2026-04-22T08:06:00.000Z"),
+          feedbackTrustScore: 0.85,
+          trustFactors: { authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
         },
         {
           signalId: "sig_user_fix",
@@ -141,6 +143,8 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
           payload: { summary: "route via verified slack workspace", reasonCode: "policy.routing_adjustment" },
           stepOutputRefs: ["connector_dispatch"],
           timestamp: Date.parse("2026-04-22T08:07:00.000Z"),
+          feedbackTrustScore: 0.9,
+          trustFactors: { authenticatedSource: true, attackSurfaceExposure: 0.1, holdoutOverlap: 0 },
         },
       ],
     });
@@ -197,6 +201,12 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       subjectId: "workflow_scale_ops_mainline",
       costType: "runtime",
       amountUsd: 12.4,
+      llmCostUsd: 0,
+      toolCostUsd: 12.4,
+      computeCostUsd: 0,
+      storageCostUsd: 0,
+      egressCostUsd: 0,
+      humanReviewCostUsd: 0,
       decisionRef: connectorExecution.executionKey,
       capturedAt: "2026-04-22T08:11:00.000Z",
     });
@@ -205,6 +215,12 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       subjectId: "vision_audit",
       costType: "model",
       amountUsd: 3.6,
+      llmCostUsd: 3.6,
+      toolCostUsd: 0,
+      computeCostUsd: 0,
+      storageCostUsd: 0,
+      egressCostUsd: 0,
+      humanReviewCostUsd: 0,
       decisionRef: releasedCandidate.candidateId,
       modelRef: "gpt-5.4-mini",
       capturedAt: "2026-04-22T08:11:30.000Z",
@@ -395,13 +411,19 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       mode: "automation",
     });
     const resumed = panicService.resume("tenant/tenant_finance/scale-ops", {
+      planId: "resume_plan_001",
       scope: "tenant/tenant_finance/scale-ops",
+      scopeRef: "scope_ref_001",
       approvedBy: ["security_lead", "ops_lead"],
+      approvalCount: 2,
       approvedRoles: ["platform_admin", "platform_admin"],
+      compatibilityCheckRef: "compat_check_001",
+      mode: "standard",
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,
       validationRunPassed: true,
+      createdAt: "2026-04-22T08:20:00.000Z",
     }, "2026-04-22T08:20:00.000Z");
     assert.equal(activation.propagationRecords.length, 2);
     assert.equal(panicDecision.blocked, true);

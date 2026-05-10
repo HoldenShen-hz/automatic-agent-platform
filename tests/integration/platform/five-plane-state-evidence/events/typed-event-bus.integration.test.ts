@@ -54,7 +54,7 @@ test("integration: TypedEventBus.subscribe() receives published events", async (
     const receivedEvents: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
 
     typedBus.subscribe("test-consumer-1", ["task:status_changed"], (envelope) => {
-      receivedEvents.push({ eventType: envelope.event.eventType, payload: envelope.payload as Record<string, unknown> });
+      receivedEvents.push({ eventType: envelope.event.eventType, payload: envelope.payload as unknown as Record<string, unknown> });
     });
 
     typedBus.publish({
@@ -84,8 +84,8 @@ test("integration: TypedEventBus.subscribe() receives published events", async (
     assert.ok(delivered >= 1, "At least one event should be delivered");
 
     assert.equal(receivedEvents.length, 1, "Should receive exactly one event");
-    assert.equal(receivedEvents[0].eventType, "task:status_changed");
-    assert.equal((receivedEvents[0].payload as Record<string, unknown>).entityId, "task-sub-001");
+    assert.equal(receivedEvents[0]!.eventType, "task:status_changed");
+    assert.equal((receivedEvents[0]!.payload as Record<string, unknown>).entityId, "task-sub-001");
   } finally {
     typedBus.unsubscribe("test-consumer-1");
     ctx.cleanup();
@@ -193,7 +193,7 @@ test("integration: TypedEventBus delivers multiple events in order", async () =>
     const received: string[] = [];
 
     typedBus.subscribe("multi-consumer", ["task:status_changed"], (envelope) => {
-      const payload = envelope.payload as Record<string, unknown>;
+      const payload = envelope.payload as unknown as Record<string, unknown>;
       received.push(`${payload.entityId}:${payload.toStatus}`);
     });
 

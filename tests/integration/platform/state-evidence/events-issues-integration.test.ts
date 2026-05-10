@@ -38,6 +38,7 @@ test("integration: DLQ service scheduleRetry enforces maxRetries limit - Issue #
 
     const record = dlq.enqueue({
       sourceEventId: "evt-dlq-limit-001",
+      eventType: "task:status_changed",
       consumerId: "consumer-limit",
       errorCode: "permanent_error",
       payloadJson: '{"taskId":"t-limit"}',
@@ -68,6 +69,7 @@ test("integration: DLQ service retry count increments correctly up to limit - Is
 
     const record = dlq.enqueue({
       sourceEventId: "evt-dlq-count-001",
+      eventType: "task:status_changed",
       consumerId: "consumer-count",
       errorCode: "error",
       payloadJson: '{"taskId":"t-count"}',
@@ -99,6 +101,7 @@ test("integration: DLQ service markRetryExhausted sets terminal state - Issue #2
 
     const record = dlq.enqueue({
       sourceEventId: "evt-dlq-exhaust-001",
+      eventType: "task:status_changed",
       consumerId: "consumer-exhaust",
       errorCode: "error",
       payloadJson: '{"taskId":"t-exhaust"}',
@@ -170,8 +173,8 @@ test("integration: LayeredEventInbox records array grows without compression - I
     version: null,
   };
 
-  inbox.append(event1, "2026-04-20T10:00:00.000Z");
-  inbox.append(event2, "2026-04-20T10:01:00.000Z");
+  inbox.append(event1 as unknown as EventEnvelope, "2026-04-20T10:00:00.000Z");
+  inbox.append(event2 as unknown as EventEnvelope, "2026-04-20T10:01:00.000Z");
 
   assert.equal(inbox.size(), 2, "Inbox should have 2 records");
 
@@ -230,7 +233,7 @@ test("integration: LayeredEventInbox memory grows with repeated append/drain cyc
 
   // Simulate many append/drain cycles
   for (let i = 0; i < 100; i++) {
-    const event = { ...largeEvent, id: `evt-cycle-${i}` };
+    const event = { ...largeEvent, id: `evt-cycle-${i}` } as unknown as EventEnvelope;
     inbox.append(event, `2026-04-20T10:${String(i % 60).padStart(2, "0")}:00.000Z`);
     inbox.drain("mem-consumer", 1);
   }

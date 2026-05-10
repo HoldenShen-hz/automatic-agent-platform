@@ -51,7 +51,7 @@ test("plugin SDK: definePlugin creates a valid plugin definition with all requir
   assert.equal(plugin.version, "1.0.0");
   assert.equal(plugin.type, "tool");
   assert.equal(plugin.capabilities.length, 1);
-  assert.equal(plugin.capabilities[0].name, "execute");
+  assert.equal(plugin.capabilities[0]!.name, "execute");
   assert.equal(plugin.resourceLimits.maxMemoryMb, 512);
   assert.equal(plugin.resourceLimits.maxCpuMs, 5000);
   assert.deepEqual(plugin.security.egressDomains, []);

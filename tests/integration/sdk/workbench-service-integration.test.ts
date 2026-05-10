@@ -137,6 +137,7 @@ test("integration: workbench creates install plan with plugin assignments", () =
     pack: {
       packId: "billing-pack",
       version: "1.0.0",
+      domainId: "billing",
       domain: "billing",
       owner: "finance@example.com",
       capabilities: [

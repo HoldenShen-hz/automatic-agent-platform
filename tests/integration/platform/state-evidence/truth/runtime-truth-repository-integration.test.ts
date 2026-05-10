@@ -19,6 +19,7 @@ import {
   type HarnessRun,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------
 // Helper functions
@@ -30,10 +31,14 @@ function makeHarnessRunTransitionCommand(
   toStatus: string,
 ) {
   return {
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: aggregate.harnessRunId,
     aggregateType: "HarnessRun" as const,
     aggregate,
     fromStatus,
     toStatus: toStatus as "admitted" | "planning" | "ready" | "running",
+    principal: "test-suite",
     tenantId: "test-tenant",
     traceId: "test-trace",
     reasonCode: "test",
@@ -73,10 +78,14 @@ test("RuntimeTruthRepository validates HarnessRun lease expiry", () => {
   assert.throws(
     () =>
       repository.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun" as const,
+        entityId: harnessRun.harnessRunId,
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
         fromStatus: "created",
         toStatus: "admitted",
+        principal: "test",
         tenantId: "tenant-1",
         traceId: "trace-1",
         reasonCode: "admission_ok",
@@ -113,10 +122,14 @@ test("RuntimeTruthRepository validates HarnessRun lease owner mismatch", () => {
   assert.throws(
     () =>
       repository.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun" as const,
+        entityId: harnessRun.harnessRunId,
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
         fromStatus: "created",
         toStatus: "admitted",
+        principal: "test",
         tenantId: "tenant-1",
         traceId: "trace-1",
         reasonCode: "admission_ok",
@@ -146,10 +159,14 @@ test("RuntimeTruthRepository allows transition without lease", () => {
 
   // This should succeed without lease validation
   const result = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: harnessRun.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
     toStatus: "admitted",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "admission_ok",
@@ -185,10 +202,14 @@ test("RuntimeTruthRepository allows valid lease holder transition", () => {
 
   // This should succeed
   const result = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: harnessRun.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
     toStatus: "admitted",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "admission_ok",
@@ -226,10 +247,14 @@ test("RuntimeTruthRepository handles concurrent transitions on same aggregate", 
   // Each transition should succeed independently
   const results = runs.map((run, i) =>
     repository.transition({
+      commandId: newId("cmd"),
+      entityType: "HarnessRun" as const,
+      entityId: run.harnessRunId,
       aggregateType: "HarnessRun",
       aggregate: run,
       fromStatus: "created",
       toStatus: "admitted",
+      principal: "test",
       tenantId: "tenant-1",
       traceId: `trace-${i}`,
       reasonCode: "admission_ok",
@@ -302,10 +327,14 @@ test("RuntimeTruthRepository rolls back on transition error", () => {
   assert.throws(
     () =>
       repository.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun" as const,
+        entityId: harnessRun.harnessRunId,
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
         fromStatus: "completed",
         toStatus: "running",
+        principal: "test",
         tenantId: "tenant-1",
         traceId: "trace-1",
         reasonCode: "illegal_resume",
@@ -460,10 +489,14 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
 
   // Second transition
   const t2 = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: t1.aggregate.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: t1.aggregate,
     fromStatus: "admitted",
     toStatus: "planning",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-2",
     reasonCode: "start_planning",
@@ -473,10 +506,14 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
 
   // Third transition
   const t3 = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: t2.aggregate.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: t2.aggregate,
     fromStatus: "planning",
     toStatus: "ready",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-3",
     reasonCode: "plan_complete",
@@ -529,6 +566,9 @@ test("snapshot version is unique per snapshot and increments sequentially", () =
 
   const snap1 = repository.snapshot();
   repository.transition({
+    commandId: newId("cmd"),
+    entityType: "NodeRun" as const,
+    entityId: "nrun-1",
     aggregateType: "NodeRun",
     aggregate: createNodeRun({
       nodeRunId: "nrun-1",
@@ -539,6 +579,7 @@ test("snapshot version is unique per snapshot and increments sequentially", () =
     }),
     fromStatus: "created",
     toStatus: "ready",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "test",

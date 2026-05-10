@@ -9,15 +9,42 @@ test("integration: runtime orchestration combines region routing, fair schedulin
   const routing = new CrossRegionRoutingService();
   const route = routing.route({
     regions: [
-      { regionId: "cn-sh", jurisdiction: "CN", latencyScore: 30, residencyAllowed: true, capabilities: ["llm", "storage"] },
-      { regionId: "cn-bj", jurisdiction: "CN", latencyScore: 40, residencyAllowed: true, capabilities: ["llm", "storage"] },
-      { regionId: "us-west-2", jurisdiction: "US", latencyScore: 20, residencyAllowed: true, capabilities: ["llm", "storage"] },
+      {
+        regionId: "cn-sh",
+        provider: "aws",
+        jurisdiction: "CN",
+        latencyScore: 30,
+        residencyAllowed: true,
+        capabilities: ["llm", "storage"],
+        endpoints: { api: "https://cn-sh.api.example.com" },
+        dataResidencyPolicy: "local_only",
+      },
+      {
+        regionId: "cn-bj",
+        provider: "aws",
+        jurisdiction: "CN",
+        latencyScore: 40,
+        residencyAllowed: true,
+        capabilities: ["llm", "storage"],
+        endpoints: { api: "https://cn-bj.api.example.com" },
+        dataResidencyPolicy: "local_only",
+      },
+      {
+        regionId: "us-west-2",
+        provider: "aws",
+        jurisdiction: "US",
+        latencyScore: 20,
+        residencyAllowed: true,
+        capabilities: ["llm", "storage"],
+        endpoints: { api: "https://us-west-2.api.example.com" },
+        dataResidencyPolicy: "regional",
+      },
     ],
     policy: {
       policyId: "cn_resident",
       allowedJurisdictions: ["CN"],
       requiredCapabilities: ["llm", "storage"],
-      allowCrossBorder: false,
+      crossBorderTransferClass: "local_only",
     },
     primaryRegionId: "cn-sh",
     primaryRegionHealthy: false,
@@ -26,9 +53,9 @@ test("integration: runtime orchestration combines region routing, fair schedulin
   const scheduling = new FairSchedulingService();
   const queue = scheduling.schedule({
     quotaPolicy: {
+      scope: "tenant",
       scopeId: "tenant_enterprise",
-      hardLimit: 20,
-      currentUsage: 19,
+      workerUnits: { hardLimit: 20, currentUsage: 19 },
     },
     claim: {
       claimId: "claim_enterprise",
@@ -76,6 +103,7 @@ test("integration: runtime orchestration combines region routing, fair schedulin
       },
     ],
     selectedTierId: "enterprise",
+    workflowClass: "llm_assisted",
     observation: {
       latencyMs: 280,
       successRate: 0.997,

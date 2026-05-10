@@ -116,21 +116,21 @@ test("runStableCrossDivisionRecoveryDrill cross_division_replay_matrix scenario 
     assert.ok(generalReport);
     assert.equal(generalReport.outcome, "repair_pending");
     assert.ok(generalReport.executionOutcomes.length > 0);
-    assert.equal(generalReport.executionOutcomes[0].suggestedAction, "resume_same_worker");
+    assert.equal(generalReport.executionOutcomes[0]?.suggestedAction, "resume_same_worker");
 
     // Engineering blocked drill: manual_handoff with escalate_takeover
     const blockedReport = details.reports.find((r) => r.taskId === "task-engineering-blocked-drill");
     assert.ok(blockedReport);
     assert.equal(blockedReport.outcome, "manual_handoff");
     assert.ok(blockedReport.executionOutcomes.length > 0);
-    assert.equal(blockedReport.executionOutcomes[0].suggestedAction, "escalate_takeover");
+    assert.equal(blockedReport.executionOutcomes[0]?.suggestedAction, "escalate_takeover");
 
     // Engineering dead letter drill: dead_lettered
     const deadLetterReport = details.reports.find((r) => r.taskId === "task-engineering-dead-letter-drill");
     assert.ok(deadLetterReport);
     assert.equal(deadLetterReport.outcome, "dead_lettered");
     assert.ok(deadLetterReport.executionOutcomes.length > 0);
-    assert.equal(deadLetterReport.executionOutcomes[0].finalOutcome, "dead_lettered");
+    assert.equal(deadLetterReport.executionOutcomes[0]?.finalOutcome, "dead_lettered");
   } finally {
     cleanupPath(workspace);
   }

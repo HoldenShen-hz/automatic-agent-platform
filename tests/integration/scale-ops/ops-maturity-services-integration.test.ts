@@ -1,29 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-registry.js";
+import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 import {
   SCALE_OPS_RUNTIME_CATALOG_SERVICE_ID,
   buildScaleOpsRuntimeCatalog,
   registerScaleOpsRuntimeCatalog,
   type ScaleOpsRuntimeCatalog,
-} from "../../src/scale-ops-runtime-catalog.js";
+} from "../../../src/scale-ops-runtime-catalog.js";
 import {
   OpsMaturityScoreService,
   type OpsMaturityAssessmentInput,
-} from "../../src/ops-maturity/ops-maturity-score.js";
+} from "../../../src/ops-maturity/ops-maturity-score.js";
 import {
   CostOptimizationService,
   type CostAttributionRecord,
-} from "../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
+} from "../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
 import {
   ExplanationPipelineService,
   type ExplanationRequest,
-} from "../../src/ops-maturity/explainability/explanation-pipeline-service.js";
+} from "../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
 import {
   AgentLifecycleService,
   type ManagedAgentDefinition,
-} from "../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
+} from "../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 
 test("ScaleOpsRuntimeCatalog build returns catalog with scale ecosystem and ops maturity", () => {
   const catalog = buildScaleOpsRuntimeCatalog();
@@ -222,7 +222,7 @@ test("CostOptimizationService and ExplanationPipelineService integrate for cost 
 
   // Generate explanation for cost decision
   const recommendations = costService.buildRecommendations("task");
-  const expensiveTaskRec = recommendations.find((r) => r.subjectId === "task-expensive-001");
+  const expensiveTaskRec = recommendations.find((r: { subjectId: string }) => r.subjectId === "task-expensive-001");
 
   const request: ExplanationRequest = {
     taskId: "task-expensive-001",

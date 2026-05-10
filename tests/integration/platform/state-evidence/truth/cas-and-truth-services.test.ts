@@ -29,7 +29,7 @@ import {
   createNodeAttemptReceipt,
   createRunVersionLock,
 } from "../../../../../src/platform/contracts/executable-contracts/index.js";
-import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------
 // In-memory SQLite test context
@@ -908,10 +908,14 @@ test("RuntimeTruthRepository: transition records events in append-only fashion",
 
   // First transition
   const t1 = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: harnessRun.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
     toStatus: "admitted",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "admission_ok",
@@ -923,10 +927,14 @@ test("RuntimeTruthRepository: transition records events in append-only fashion",
 
   // Second transition
   const t2 = repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: t1.aggregate.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: t1.aggregate,
     fromStatus: "admitted",
     toStatus: "planning",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-2",
     reasonCode: "start_planning",
@@ -965,10 +973,14 @@ test("RuntimeTruthRepository: snapshot provides consistent isolated view", () =>
 
   // Transition changes state
   repository.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun" as const,
+    entityId: harnessRun.harnessRunId,
     aggregateType: "HarnessRun",
     aggregate: harnessRun,
     fromStatus: "created",
     toStatus: "admitted",
+    principal: "test",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "admission_ok",
@@ -1005,10 +1017,14 @@ test("RuntimeTruthRepository: transaction rollback restores state", () => {
   assert.throws(
     () =>
       repository.transition({
+        commandId: newId("cmd"),
+        entityType: "HarnessRun" as const,
+        entityId: harnessRun.harnessRunId,
         aggregateType: "HarnessRun",
         aggregate: harnessRun,
         fromStatus: "completed",
         toStatus: "running",
+        principal: "test",
         tenantId: "tenant-1",
         traceId: "trace-1",
         reasonCode: "illegal_resume",

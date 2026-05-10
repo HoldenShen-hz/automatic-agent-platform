@@ -117,8 +117,8 @@ test("ScaleOpsRuntimeOrchestrator snapshotReadiness capabilityReadiness entries 
     assert.equal(startupResult.steps.length, snapshot.capabilityReadiness.length);
 
     for (let i = 0; i < startupResult.steps.length; i++) {
-      const step = startupResult.steps[i];
-      const readiness = snapshot.capabilityReadiness[i];
+      const step = startupResult.steps[i]!;
+      const readiness = snapshot.capabilityReadiness[i]!;
       assert.equal(step.stepId, readiness.stepId);
       assert.equal(step.bootstrapServiceId, readiness.bootstrapServiceId);
       assert.equal(step.initialized, readiness.initialized);

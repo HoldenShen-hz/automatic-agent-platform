@@ -55,7 +55,7 @@ test("2007: defineTool creates a valid tool plugin", () => {
   assert.equal(plugin.version, "1.0.0");
   assert.equal(plugin.type, "tool");
   assert.equal(plugin.capabilities.length, 1);
-  assert.equal(plugin.capabilities[0].name, "execute");
+  assert.equal(plugin.capabilities[0]!.name, "execute");
 });
 
 test("2007: defineAdapter creates a valid adapter plugin", () => {
@@ -148,7 +148,7 @@ test("2007: definePlugin creates a valid plugin definition with all required fie
   assert.equal(plugin.version, "1.0.0");
   assert.equal(plugin.type, "tool");
   assert.equal(plugin.capabilities.length, 1);
-  assert.equal(plugin.capabilities[0].name, "execute");
+  assert.equal(plugin.capabilities[0]!.name, "execute");
   assert.equal(plugin.resourceLimits.maxMemoryMb, 512);
   assert.equal(plugin.resourceLimits.maxCpuMs, 5000);
   assert.deepEqual(plugin.security.egressDomains, []);

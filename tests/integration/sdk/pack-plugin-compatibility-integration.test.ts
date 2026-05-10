@@ -8,6 +8,7 @@ test("integration: pack compatibility evaluates builtin plugin coverage and lice
   const manifest = validateBusinessPackManifest({
     packId: "operations-market-pack",
     version: "2.7.0",
+    domainId: "operations",
     domain: "operations",
     owner: "ops@example.com",
     capabilities: [

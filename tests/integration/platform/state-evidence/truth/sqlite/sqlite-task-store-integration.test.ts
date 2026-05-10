@@ -17,8 +17,9 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TaskRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/task-repository.js";
 import { ExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
-import type { TaskStatus, TaskSource, TaskPriority } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { RunKind, ExecutionStatus } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { TaskStatus, TaskSource, TaskPriority } from "../../../../../../src/platform/contracts/types/status.js";
+import type { RunKind, ExecutionStatus } from "../../../../../../src/platform/contracts/types/status.js";
+import type { ExecutionRecord } from "../../../../../../src/platform/contracts/types/domain/execution-types.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures and helpers
@@ -101,14 +102,22 @@ function createExecutionRecord(
     finishedAt: string | null;
     createdAt: string;
     updatedAt: string;
+    harnessRunId?: string | null;
+    budgetReservationId?: string | null;
+    budgetLedgerId?: string | null;
   }> = {},
-): Parameters<ExecutionRepository["insertExecution"]>[0] {
+): ExecutionRecord {
   const execId = overrides.id ?? `exec-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return {
     id: execId,
     taskId,
     workflowId: overrides.workflowId ?? "single_agent_minimal",
     parentExecutionId: overrides.parentExecutionId ?? null,
+    harnessRunId: overrides.harnessRunId ?? null,
+    nodeRunId: null,
+    planGraphId: null,
+    planGraphBundleId: null,
+    nodeAttemptId: null,
     agentId: overrides.agentId ?? "agent-test",
     roleId: overrides.roleId ?? "general_executor",
     runKind: overrides.runKind ?? "task_run",
@@ -118,6 +127,8 @@ function createExecutionRecord(
     attempt: overrides.attempt ?? 1,
     timeoutMs: overrides.timeoutMs ?? 60000,
     budgetUsdLimit: overrides.budgetUsdLimit ?? 1.0,
+    budgetReservationId: overrides.budgetReservationId ?? null,
+    budgetLedgerId: overrides.budgetLedgerId ?? null,
     requiresApproval: overrides.requiresApproval ?? 0,
     sandboxMode: overrides.sandboxMode ?? "workspace_write",
     allowedToolsJson: overrides.allowedToolsJson ?? "[]",

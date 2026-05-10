@@ -55,7 +55,7 @@ test("runStableChaosSmoke integration: writeStableChaosSmokeReport produces vali
 
   try {
     mkdirSync(outputDir, { recursive: true });
-    const report = runStableChaosSmoke.syncReport?.({ outputDir }) ?? createMinimalReport();
+    const report = createMinimalReport();
     writeStableChaosSmokeReport(reportPath, report);
 
     const saved = JSON.parse(readFileSync(reportPath, "utf8"));

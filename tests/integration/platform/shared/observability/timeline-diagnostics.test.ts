@@ -198,6 +198,7 @@ test("incident timeline report assembles messages, logs, compactions, and export
       nodeRunId: null,
       stage: "summarize",
       sourceMessageIdsJson: JSON.stringify(["msg-incident-tool-result"]),
+      coveredMessageRange: null,
       summaryText: "Summarized prior tool retries and remote lease mismatch evidence.",
       summaryRef: null,
       compactionReason: "incident.timeline_test",

@@ -57,6 +57,9 @@ test("unpackCheckpointEnvelope verifies checksum integrity", async () => {
 
 test("wrapWorkflowStepCheckpoint creates envelope from workflow checkpoint", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_1",
+    nodeRunId: "node_1",
+    planGraphId: "pg_1",
     taskId: "task_integration_1",
     executionId: "exec_integration_1",
     workflowId: "wf_integration_1",
@@ -93,6 +96,9 @@ test("wrapWorkflowStepCheckpoint creates envelope from workflow checkpoint", asy
 
 test("unwrapWorkflowStepCheckpoint restores checkpoint data", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_2",
+    nodeRunId: "node_2",
+    planGraphId: "pg_2",
     taskId: "task_integration_2",
     executionId: "exec_integration_2",
     workflowId: "wf_integration_2",
@@ -192,8 +198,8 @@ test("getEnvelopeCompressionRatio handles zero original size", async () => {
 });
 
 test("unpackCheckpointEnvelope rejects invalid envelope structure", async () => {
-  const invalidEnvelope = {
-    version: "invalid_version",
+  const invalidEnvelope: CheckpointEnvelope = {
+    version: "invalid_version" as CheckpointEnvelope["version"],
     schema: "test.v1",
     payload: "abc123",
     metadata: {
@@ -201,7 +207,7 @@ test("unpackCheckpointEnvelope rejects invalid envelope structure", async () => 
       compressedSizeBytes: 100,
       checksum: "abc123",
       createdAt: "2026-04-27T00:00:00.000Z",
-      algorithm: "gzip",
+      algorithm: "gzip" as const,
       payloadSchemaVersion: "test.v1",
     },
   };
@@ -277,6 +283,9 @@ test("envelope handles unicode content", async () => {
 
 test("multiple wrap/unwrap cycles produce same result", async () => {
   const checkpoint = createWorkflowStepCheckpoint({
+    harnessRunId: "harness_cycle",
+    nodeRunId: "node_cycle",
+    planGraphId: "pg_cycle",
     taskId: "task_cycle_test",
     executionId: "exec_cycle_test",
     workflowId: "wf_cycle_test",

@@ -526,7 +526,9 @@ test("contract: WorkflowBuilderService must block wizard advance when current st
       title: "Release Template",
       steps: ["select trigger", "deploy"],
       requiredCapabilities: [],
-      parameters: {},
+      parameters: [
+        { name: "param1", label: "Param 1", type: "string" as const, required: false, options: [] },
+      ],
       catalogTags: [],
     },
     onboardingWizard: {
@@ -628,13 +630,19 @@ test("contract: PlatformPanicService blocks execution until explicit resume", ()
   }).blocked, true);
 
   const receipt = service.resume("platform/runtime", {
+    planId: "resume_plan_1",
     scope: "platform/runtime",
+    scopeRef: "platform/runtime/ref",
     approvedBy: ["sre_manager", "security_lead"],
+    approvalCount: 2,
     approvedRoles: ["platform_admin", "security_team"],
+    compatibilityCheckRef: "compat_check_1",
+    mode: "standard",
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
+    createdAt: "2026-04-20T00:05:00.000Z",
   }, "2026-04-20T00:05:00.000Z");
   assert.equal(receipt.resumed, true);
   assert.equal(service.evaluateExecution({
@@ -744,7 +752,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       allowRestrictedDataUpload: false,
       requireOrdering: true,
     },
-    deviceAttestation: { status: "valid" as const },
+    deviceAttestation: { status: "valid" as const, attestedAt: "2026-04-20T00:00:00.000Z" },
     certificateStatus: "active" as const,
     riskLevel: "low" as const,
   };
@@ -777,7 +785,7 @@ test("contract: WorkflowDebuggerService forbids unauthorized production breakpoi
     service.registerBreakpoint(
       {
         actorId: "viewer_1",
-        canDebugProduction: false,
+        allowedRuntime: "non_prod" as const,
       },
       "prod",
       {
@@ -804,7 +812,7 @@ test("contract: retired agents cannot be bound to new tasks", () => {
       modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
       trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
       triggerSet: [],
-      autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+      autonomyConfig: { maxAutomationLevel: "supervised_auto", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },
     lifecycleState: "testing",
     currentVersionId: "v1",

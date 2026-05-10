@@ -50,12 +50,13 @@ function openTestStorage(prefix: string) {
       reprocess_result TEXT
     );
   `);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const storage = {
     sql,
     close() {
       sql.close();
     },
-  } as ReturnType<typeof openCliAuthoritativeStorageContext>;
+  } as any;
   return {
     storage,
     cleanup() {
