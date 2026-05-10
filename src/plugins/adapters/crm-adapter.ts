@@ -78,6 +78,9 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       authToken = token;
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
+      if (!credentialFingerprint) {
+        throw new Error("crm_adapter.not_authenticated");
+      }
       if (!/^[a-zA-Z0-9_]+$/.test(action)) {
         throw new Error("crm_adapter.invalid_action");
       }

@@ -324,84 +324,85 @@ export async function executeToolsInParallel<T>(
   const results: (T | undefined)[] = new Array(toolFunctions.length);
   const errors: ParallelToolExecutionError[] = [];
 
-  const parallelMetadatas = partition.parallelIndices
-    .map(i => toolMetadatas[i])
-    .filter((m): m is ToolExecutionMetadata => m != null);
+  // Iterate in original order to preserve execution order.
+  // Group consecutive parallel tools together, but execute exclusive tools
+  // immediately when encountered (interleaving order is preserved).
+  let parallelBatch: number[] = [];
 
-  if (partition.parallelIndices.length > 0 && canExecuteInParallel(parallelMetadatas)) {
-    const parallelFns = partition.parallelIndices
+  const executeBatch = async (indices: number[]): Promise<void> => {
+    if (indices.length === 0) return;
+    const batchFns = indices
       .map(i => toolFunctions[i])
       .filter((fn): fn is () => Promise<T> => fn != null);
-    const parallelism = Math.min(parallelFns.length, maxParallelism);
-
-    logger?.("executing_parallel", {
-      count: parallelFns.length,
-      parallelism,
-      indices: partition.parallelIndices,
-    });
-
-    const chunks: (() => Promise<T>)[][] = [];
-    for (let i = 0; i < parallelFns.length; i += parallelism) {
-      chunks.push(parallelFns.slice(i, i + parallelism));
-    }
-
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-      const chunk = chunks[chunkIndex]!;
-      if (failFast && errors.length > 0) {
-        break;
+    const batchResults = await Promise.allSettled(batchFns.map(fn => fn()));
+    for (let i = 0; i < batchResults.length; i++) {
+      const settledResult = batchResults[i];
+      if (settledResult == null) continue;
+      const originalIndex = indices[i];
+      if (originalIndex == null) continue;
+      if (settledResult.status === "fulfilled") {
+        results[originalIndex] = settledResult.value;
+      } else {
+        errors.push({
+          index: originalIndex,
+          toolName: toolMetadatas[originalIndex]?.toolName ?? "unknown",
+          error: settledResult.reason,
+        });
       }
+    }
+  };
 
-      const chunkResults = await Promise.allSettled(chunk.map(fn => fn()));
+  for (let i = 0; i < toolMetadatas.length; i++) {
+    if (failFast && errors.length > 0) break;
 
-      for (let i = 0; i < chunkResults.length; i++) {
-        const settledResult = chunkResults[i];
-        if (settledResult == null) {
-          continue;
-        }
-        const idx = chunkIndex * parallelism + i;
-        const originalIndex = partition.parallelIndices[idx];
-        if (originalIndex == null) {
-          continue;
-        }
+    const metadata = toolMetadatas[i];
+    if (metadata == null) continue;
 
-        if (settledResult.status === "fulfilled") {
-          results[originalIndex] = settledResult.value;
-        } else {
+    if (requiresExclusiveExecution(metadata)) {
+      // Execute any pending parallel batch first to preserve order
+      await executeBatch(parallelBatch);
+      parallelBatch = [];
+
+      // Execute exclusive tool immediately
+      logger?.("executing_exclusive", {
+        index: i,
+        toolName: metadata.toolName,
+      });
+      const exclusiveFn = toolFunctions[i];
+      if (exclusiveFn != null) {
+        try {
+          results[i] = await exclusiveFn();
+        } catch (error) {
           errors.push({
-            index: originalIndex,
-            toolName: toolMetadatas[originalIndex]?.toolName ?? "unknown",
-            error: settledResult.reason,
+            index: i,
+            toolName: metadata.toolName ?? "unknown",
+            error,
+          });
+        }
+      }
+    } else if (isConcurrentSafe(metadata)) {
+      parallelBatch.push(i);
+    } else {
+      // Non-concurrent-safe non-exclusive tool - execute any pending batch and itself
+      await executeBatch(parallelBatch);
+      parallelBatch = [];
+      const fn = toolFunctions[i];
+      if (fn != null) {
+        try {
+          results[i] = await fn();
+        } catch (error) {
+          errors.push({
+            index: i,
+            toolName: metadata.toolName ?? "unknown",
+            error,
           });
         }
       }
     }
   }
 
-  for (const exclusiveIndex of partition.exclusiveIndices) {
-    if (failFast && errors.length > 0) {
-      break;
-    }
-
-    const exclusiveFn = toolFunctions[exclusiveIndex];
-    if (exclusiveFn == null) {
-      continue;
-    }
-
-    logger?.("executing_exclusive", {
-      index: exclusiveIndex,
-      toolName: toolMetadatas[exclusiveIndex]?.toolName,
-    });
-
-    try {
-      results[exclusiveIndex] = await exclusiveFn();
-    } catch (error) {
-      errors.push({
-        index: exclusiveIndex,
-        toolName: toolMetadatas[exclusiveIndex]?.toolName ?? "unknown",
-        error,
-      });
-    }
-  }
+  // Execute any remaining parallel batch
+  await executeBatch(parallelBatch);
 
   return {
     results: results.filter((value): value is T => value !== undefined),

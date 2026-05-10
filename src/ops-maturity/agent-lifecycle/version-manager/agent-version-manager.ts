@@ -84,19 +84,6 @@ export class AgentVersionManager {
     const updated = { ...versions[index], deploymentSlot: slot } as AgentVersionDetail;
     versions[index] = updated;
 
-    // If assigning to blue, revoke green (and vice versa)
-    if (slot === "blue") {
-      versions.forEach((v) => {
-        if (v.deploymentSlot === "green") v.deploymentSlot = null;
-      });
-      this.slotAssignments.delete(`${agentId}:green` as const);
-    } else {
-      versions.forEach((v) => {
-        if (v.deploymentSlot === "blue") v.deploymentSlot = null;
-      });
-      this.slotAssignments.delete(`${agentId}:blue` as const);
-    }
-
     this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
   }
 

@@ -147,6 +147,27 @@ export class AssessmentService {
       riskFactors.push("approval_pending");
     }
 
+    // R31-10 fix: Compute initial complexity for risk factor determination
+    // (budget feasibility check may add more risk factors below)
+    const initialComplexityAssessment = this.scoreComplexity(situation, "medium", riskFactors);
+
+    // R31-10 fix: Check budget feasibility — spec §11 requires worst-path budget analysis
+    // If estimated worst-path cost exceeds budgetEnvelope, task is not feasible
+    const budgetEnvelope = constraintPack?.budgetEnvelope ?? constraintPack?.budget;
+    if (budgetEnvelope) {
+      const estimatedCost = this.estimateWorstPathCost(situation, initialComplexityAssessment.score);
+      if (estimatedCost > budgetEnvelope.maxCost) {
+        riskFactors.push("budget_exceeds_feasibility_threshold");
+      }
+      const estimatedSteps = this.estimateWorstPathSteps(situation);
+      if (estimatedSteps > budgetEnvelope.maxSteps) {
+        riskFactors.push("steps_exceed_feasibility_threshold");
+      }
+      if ((situation.metrics.estimatedDurationMs ?? 0) > budgetEnvelope.maxDurationMs) {
+        riskFactors.push("duration_exceeds_feasibility_threshold");
+      }
+    }
+
     const risk =
       riskFactors.includes("critical_blocker")
         ? "critical"
@@ -290,6 +311,46 @@ export class AssessmentService {
       return { level: "simple", score };
     }
     return { level: "trivial", score };
+  }
+
+  /**
+   * R31-10 fix: Estimates worst-path cost for budget feasibility analysis.
+   * Uses complexity score, file count, and blocker severity to estimate worst-case cost.
+   * This implements spec §11's worst-path budget analysis requirement.
+   */
+  private estimateWorstPathCost(situation: TaskSituation, complexityScore: number): number {
+    const fileCount = Math.max(situation.fileRefs.length, situation.codebaseSnapshot.fileCount);
+    const blockerCost = situation.blockers.reduce((sum, blocker) => {
+      switch (blocker.severity) {
+        case "critical": return sum + 500;
+        case "high": return sum + 300;
+        case "medium": return sum + 150;
+        default: return sum + 50;
+      }
+    }, 0);
+    // Base cost from complexity score (0-12 scale -> 0-1200 cost range)
+    const baseCost = complexityScore * 100;
+    // File handling overhead
+    const fileCost = fileCount * 10;
+    // Estimated max cost: base + blockers + file overhead, with a multiplier for worst-case
+    return baseCost + blockerCost + fileCost + 200; // +200 buffer for execution variance
+  }
+
+  /**
+   * R31-10 fix: Estimates worst-path step count for budget feasibility analysis.
+   * Uses complexity level and blocker count to estimate maximum steps needed.
+   * This implements spec §11's worst-path budget analysis requirement.
+   */
+  private estimateWorstPathSteps(situation: TaskSituation): number {
+    const blockerCount = situation.blockers.length;
+    const fileCount = Math.max(situation.fileRefs.length, situation.codebaseSnapshot.fileCount);
+    // Base steps from blocker count (each blocker may require multiple recovery steps)
+    const baseSteps = blockerCount * 3;
+    // File operations estimate: ~2 steps per file on average
+    const fileSteps = fileCount * 2;
+    // Baseline for orchestration overhead
+    const orchestrationSteps = 4;
+    return baseSteps + fileSteps + orchestrationSteps;
   }
 
   /**

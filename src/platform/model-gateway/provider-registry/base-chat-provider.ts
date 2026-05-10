@@ -255,7 +255,10 @@ export abstract class BaseChatProvider {
       triedCredentialIds.push(selection.credentialId);
 
       const headers = this.buildHeaders(selection.apiKey);
-      const body = this.transformRequest({ ...request, ...(stream ? { stream: true } : {}) }, stream);
+      const body = this.transformRequest({
+        ...request,
+        ...(stream && !("stream" in request) ? { stream: true } : {}),
+      }, stream);
 
       const response = await this.fetchImpl(url, {
         method: "POST",

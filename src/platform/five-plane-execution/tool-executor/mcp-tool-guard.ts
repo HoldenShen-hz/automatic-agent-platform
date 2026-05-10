@@ -128,10 +128,10 @@ export function validateMcpToolDefinition(toolName: string): McpToolValidationIs
   }
 
   // Check for collision with builtin tools
-  if (BUILTIN_TOOL_NAMES.has(parsed.remoteToolName)) {
+  if (BUILTIN_TOOL_NAMES.has(toolName)) {
     return {
       code: "builtin_collision",
-      detail: `MCP tool ${toolName} collides with builtin tool ${parsed.remoteToolName}.`,
+      detail: `MCP tool ${toolName} collides with builtin tool.`,
     };
   }
 
