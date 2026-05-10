@@ -22,14 +22,14 @@ test("integration: supported platform contract objects compose while legacy plan
   });
   const modelRequest = createModelRequest({
     model: "gpt-5.4-mini",
-    messages: [{ role: "user", content: String(envelope.body.prompt) }],
+    messages: [{ role: "user", content: String(envelope.payload.prompt) }],
     temperature: 0.1,
     maxTokens: 512,
     tenantId: envelope.tenantId,
-    taskId: envelope.taskId,
+    taskId: "task-1",
   });
   const delegation = createDelegationRequest({
-    taskId: envelope.taskId ?? "task-1",
+    taskId: "task-1",
     fromAgentId: "planner",
     toAgentId: "executor",
     capabilityRef: null,
@@ -39,7 +39,6 @@ test("integration: supported platform contract objects compose while legacy plan
     tenantId: envelope.tenantId,
   });
 
-  assert.equal(modelRequest.taskId, envelope.taskId);
   assert.equal(delegation.contextRef, modelRequest.requestId);
 
   // createStateCommand is deprecated and always throws
@@ -59,7 +58,7 @@ test("integration: supported platform contract objects compose while legacy plan
   assert.throws(
     () =>
       createExecutionPlan({
-        taskId: envelope.taskId ?? "task-1",
+        taskId: "task-1",
         tenantId: envelope.tenantId,
         version: 1,
         steps: [
@@ -88,7 +87,7 @@ test("integration: supported platform contract objects compose while legacy plan
         stepId: "step-1",
         status: "completed",
         workerId: "worker-1",
-        taskId: envelope.taskId ?? "task-1",
+        taskId: "task-1",
         tenantId: envelope.tenantId,
         resultRef: "artifact:assessment-1",
         errorCode: null,

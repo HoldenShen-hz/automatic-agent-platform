@@ -17,51 +17,94 @@ export interface EventInboxRecord {
   readonly appendedAt: string;
 }
 
-export class LayeredEventInbox {
-  /** Maximum records to retain before compaction kicks in */
-  private static readonly MAX_RECORDS = 10_000;
-  /** Ratio of records to retain after compaction (50%) */
-  private static readonly COMPACTION_RETENTION_RATIO = 0.5;
+export interface LayeredEventInboxRepository {
+  registerConsumer(consumer: EventInboxConsumer): void;
+  getConsumer(consumerId: string): EventInboxConsumer | null;
+  getCursor(consumerId: string): number;
+  setCursor(consumerId: string, cursor: number): void;
+  append(record: EventInboxRecord): void;
+  listRecords(): readonly EventInboxRecord[];
+  size(): number;
+  compact(maxRecords: number, retentionRatio: number): void;
+}
 
+export class InMemoryLayeredEventInboxRepository implements LayeredEventInboxRepository {
   private readonly records: EventInboxRecord[] = [];
   private readonly consumers = new Map<string, EventInboxConsumer>();
   private readonly cursors = new Map<string, number>();
 
   public registerConsumer(consumer: EventInboxConsumer): void {
-    if (consumer.consumerId.trim().length === 0) {
-      throw new ValidationError("event_inbox.consumer_id_required", "EventInbox consumerId is required.");
-    }
     this.consumers.set(consumer.consumerId, consumer);
     if (!this.cursors.has(consumer.consumerId)) {
       this.cursors.set(consumer.consumerId, 0);
     }
   }
 
-  private compact(): void {
-    if (this.records.length <= LayeredEventInbox.MAX_RECORDS) {
+  public getConsumer(consumerId: string): EventInboxConsumer | null {
+    return this.consumers.get(consumerId) ?? null;
+  }
+
+  public getCursor(consumerId: string): number {
+    return this.cursors.get(consumerId) ?? 0;
+  }
+
+  public setCursor(consumerId: string, cursor: number): void {
+    this.cursors.set(consumerId, cursor);
+  }
+
+  public append(record: EventInboxRecord): void {
+    this.records.push(record);
+  }
+
+  public listRecords(): readonly EventInboxRecord[] {
+    return this.records;
+  }
+
+  public size(): number {
+    return this.records.length;
+  }
+
+  public compact(maxRecords: number, retentionRatio: number): void {
+    if (this.records.length <= maxRecords) {
       return;
     }
-    // Find the minimum cursor across all consumers
     let minCursor = this.records.length;
     for (const cursor of this.cursors.values()) {
       if (cursor < minCursor) {
         minCursor = cursor;
       }
     }
-    // Retain records from minCursor onwards plus a margin, remove older ones
-    const retainCount = Math.ceil(LayeredEventInbox.MAX_RECORDS * LayeredEventInbox.COMPACTION_RETENTION_RATIO);
+    const retainCount = Math.ceil(maxRecords * retentionRatio);
     const cutoffIndex = Math.max(minCursor, this.records.length - retainCount);
-    if (cutoffIndex > 0 && cutoffIndex < this.records.length) {
-      this.records.splice(0, cutoffIndex);
-      // Adjust cursors that were pointing beyond the new start
-      for (const [consumerId, cursor] of this.cursors.entries()) {
-        if (cursor >= cutoffIndex) {
-          this.cursors.set(consumerId, cursor - cutoffIndex);
-        } else {
-          this.cursors.set(consumerId, 0);
-        }
+    if (cutoffIndex <= 0 || cutoffIndex >= this.records.length) {
+      return;
+    }
+    this.records.splice(0, cutoffIndex);
+    for (const [consumerId, cursor] of this.cursors.entries()) {
+      if (cursor >= cutoffIndex) {
+        this.cursors.set(consumerId, cursor - cutoffIndex);
+      } else {
+        this.cursors.set(consumerId, 0);
       }
     }
+  }
+}
+
+export class LayeredEventInbox {
+  /** Maximum records to retain before compaction kicks in */
+  private static readonly MAX_RECORDS = 10_000;
+  /** Ratio of records to retain after compaction (50%) */
+  private static readonly COMPACTION_RETENTION_RATIO = 0.5;
+
+  public constructor(
+    private readonly repository: LayeredEventInboxRepository = new InMemoryLayeredEventInboxRepository(),
+  ) {}
+
+  public registerConsumer(consumer: EventInboxConsumer): void {
+    if (consumer.consumerId.trim().length === 0) {
+      throw new ValidationError("event_inbox.consumer_id_required", "EventInbox consumerId is required.");
+    }
+    this.repository.registerConsumer(consumer);
   }
 
   public append(event: EventEnvelope, appendedAt = new Date(Date.now()).toISOString()): void {
@@ -71,15 +114,21 @@ export class LayeredEventInbox {
         "EventInbox only accepts v4.3 platform facts or OAPEFLIR view events.",
       );
     }
-    this.records.push({ event, appendedAt });
-    // R30-11 fix: compact records when limit exceeded to prevent unbounded memory growth
-    this.compact();
+    this.repository.append({ event, appendedAt });
+    this.repository.compact(
+      LayeredEventInbox.MAX_RECORDS,
+      LayeredEventInbox.COMPACTION_RETENTION_RATIO,
+    );
   }
 
   public peek(consumerId: string): readonly EventEnvelope[] {
     const consumer = this.requireConsumer(consumerId);
-    const cursor = this.cursors.get(consumerId) ?? 0;
-    return this.records.slice(cursor).map((record) => record.event).filter((event) => canConsumerReceive(consumer, event));
+    const cursor = this.repository.getCursor(consumerId);
+    return this.repository
+      .listRecords()
+      .slice(cursor)
+      .map((record) => record.event)
+      .filter((event) => canConsumerReceive(consumer, event));
   }
 
   public drain(consumerId: string, limit = Number.POSITIVE_INFINITY): readonly EventEnvelope[] {
@@ -87,12 +136,13 @@ export class LayeredEventInbox {
       return [];
     }
     const consumer = this.requireConsumer(consumerId);
-    const cursor = this.cursors.get(consumerId) ?? 0;
+    const cursor = this.repository.getCursor(consumerId);
+    const records = this.repository.listRecords();
     const delivered: EventEnvelope[] = [];
     let nextCursor = cursor;
 
-    for (let index = cursor; index < this.records.length; index += 1) {
-      const record = this.records[index];
+    for (let index = cursor; index < records.length; index += 1) {
+      const record = records[index];
       if (record == null) {
         continue;
       }
@@ -105,16 +155,16 @@ export class LayeredEventInbox {
       }
     }
 
-    this.cursors.set(consumerId, nextCursor);
+    this.repository.setCursor(consumerId, nextCursor);
     return delivered;
   }
 
   public size(): number {
-    return this.records.length;
+    return this.repository.size();
   }
 
   private requireConsumer(consumerId: string): EventInboxConsumer {
-    const consumer = this.consumers.get(consumerId);
+    const consumer = this.repository.getConsumer(consumerId);
     if (consumer == null) {
       throw new ValidationError("event_inbox.consumer_not_registered", "EventInbox consumer is not registered.");
     }

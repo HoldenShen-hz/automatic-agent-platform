@@ -70,19 +70,15 @@ test("platform-contracts: createRequestEnvelope generates valid envelope", () =>
 });
 
 test("platform-contracts: createControlDirective generates valid directive", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "operator_1",
-    tenantId: "tenant_abc",
-  });
-
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        targetScope: { workflowId: "wf_123" },
-        issuedBy: principal,
-        reason: "maintenance",
-        params: { duration: "1h" },
+        kind: "pause",
+        targetRef: "workflow:wf_123",
+        reasonCode: "maintenance",
+        issuedBy: "operator_1",
+        tenantId: null,
+        executionId: null,
       }),
     (error: unknown) =>
       error instanceof Error
@@ -92,18 +88,16 @@ test("platform-contracts: createControlDirective generates valid directive", () 
 });
 
 test("platform-contracts: createControlDirective handles optional expiresAt", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "operator_1",
-    tenantId: null,
-  });
-
   assert.throws(
     () =>
       createControlDirective({
-        type: "resume",
-        issuedBy: principal,
-        reason: "resume after maintenance",
-        expiresAt: "2026-12-31T23:59:59.000Z",
+        kind: "resume",
+        targetRef: "workflow:wf_123",
+        reasonCode: "maintenance",
+        issuedBy: "operator_1",
+        tenantId: null,
+        executionId: null,
+        metadata: { expiresAt: "2026-12-31T23:59:59.000Z" },
       }),
     (error: unknown) =>
       error instanceof Error
@@ -113,19 +107,13 @@ test("platform-contracts: createControlDirective handles optional expiresAt", ()
 });
 
 test("platform-contracts: createExecutionPlan generates valid plan", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "system",
-    tenantId: null,
-  });
-
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace_abc",
-        principal,
-        workflowRunId: "wf_run_123",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        version: 1,
         steps: [],
-        budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 10 },
       }),
     (error: unknown) =>
       error instanceof Error
@@ -140,10 +128,12 @@ test("platform-contracts: createExecutionReceipt generates valid receipt", () =>
       createExecutionReceipt({
         planId: "plan_123",
         stepId: "step_1",
-        status: "succeeded",
-        durationMs: 5000,
-        sideEffects: [],
-        evidenceRefs: ["ref_1", "ref_2"],
+        status: "completed",
+        workerId: "worker_1",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        resultRef: "artifact_1",
+        errorCode: null,
       }),
     (error: unknown) =>
       error instanceof Error
@@ -159,12 +149,11 @@ test("platform-contracts: createExecutionReceipt handles error detail", () => {
         planId: "plan_123",
         stepId: "step_1",
         status: "failed",
-        durationMs: 1000,
-        errorDetail: {
-          code: "ERR_FAILED",
-          message: "Step failed",
-          retryable: true,
-        },
+        workerId: "worker_1",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        resultRef: null,
+        errorCode: "ERR_FAILED",
       }),
     (error: unknown) =>
       error instanceof Error
