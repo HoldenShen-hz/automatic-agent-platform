@@ -13,7 +13,7 @@ import test from "node:test";
 
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
 import { ArtifactRepository } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/artifact-repository.js";
-import type { ArtifactRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type { ArtifactRecord } from "../../../../src/platform/contracts/types/domain.js";
 
 test("storeArtifact saves artifact with metadata", () => {
   const ctx = createSeededIntegrationContext("aa-artifact-store-");

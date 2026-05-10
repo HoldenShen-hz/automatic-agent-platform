@@ -36,17 +36,18 @@ test("SloAlertingService records SLI sample and queries it back", () => {
       targetValue: 0.99,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     // Record SLI sample
     service.collectSli(slo.id, 0.995, "ratio");
 
     // Query samples
-    const samples = service.listSliSamples(slo.id, { limit: 10 });
+    const samples = service.listSliSamples(slo.id, 10);
 
     assert.ok(samples.length >= 1, "Should have at least one sample");
-    assert.equal(samples[0].sloId, slo.id);
-    assert.equal(samples[0].value, 0.995);
+    assert.equal(samples[0]!.sloId, slo.id);
+    assert.equal(samples[0]!.value, 0.995);
   } finally {
     ctx.cleanup();
   }
@@ -66,6 +67,7 @@ test("SloAlertingService defineSlo creates and stores SLO", () => {
       targetValue: 500,
       operator: "lte",
       windowMinutes: 30,
+      domain: null,
     });
 
     assert.ok(slo.id != null, "SLO should have an ID");
@@ -79,7 +81,7 @@ test("SloAlertingService defineSlo creates and stores SLO", () => {
     // Verify persisted
     const retrieved = service.getSlo(slo.id);
     assert.ok(retrieved != null, "SLO should be retrievable");
-    assert.equal(retrieved.name, "Latency SLO");
+    assert.equal(retrieved!.name, "Latency SLO");
   } finally {
     ctx.cleanup();
   }
@@ -100,6 +102,7 @@ test("SloAlertingService defineAlertRule creates and retrieves rule", () => {
       targetValue: 0.01,
       operator: "lte",
       windowMinutes: 60,
+      domain: null,
     });
 
     // Create alert rule
@@ -111,6 +114,7 @@ test("SloAlertingService defineAlertRule creates and retrieves rule", () => {
       channelKind: "log",
       cooldownMinutes: 15,
       enabled: true,
+      channelConfig: "",
     });
 
     assert.ok(rule.id != null, "Rule should have an ID");
@@ -144,6 +148,7 @@ test("SloAlertingService evaluateSlo returns correct status", () => {
       targetValue: 0.95,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     // Add good samples (meets SLO)
@@ -184,6 +189,7 @@ test("SloAlertingService fireAlert creates alert event", () => {
       targetValue: 0.01,
       operator: "lte",
       windowMinutes: 30,
+      domain: null,
     });
 
     const rule = service.defineAlertRule({
@@ -194,6 +200,7 @@ test("SloAlertingService fireAlert creates alert event", () => {
       channelKind: "log",
       cooldownMinutes: 5,
       enabled: true,
+      channelConfig: "",
     });
 
     // Fire alert
@@ -227,6 +234,7 @@ test("SloAlertingService listAlertEvents returns firing alerts", () => {
       targetValue: 500,
       operator: "lte",
       windowMinutes: 60,
+      domain: null,
     });
 
     const rule = service.defineAlertRule({
@@ -237,6 +245,7 @@ test("SloAlertingService listAlertEvents returns firing alerts", () => {
       channelKind: "log",
       cooldownMinutes: 10,
       enabled: true,
+      channelConfig: "",
     });
 
     // Fire multiple alerts
@@ -265,6 +274,7 @@ test("SloAlertingService resolveAlert updates alert status", () => {
       targetValue: 0.99,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     const rule = service.defineAlertRule({
@@ -275,6 +285,7 @@ test("SloAlertingService resolveAlert updates alert status", () => {
       channelKind: "log",
       cooldownMinutes: 5,
       enabled: true,
+      channelConfig: "",
     });
 
     const alertEvent = service.fireAlert(rule.id, "Availability Low", "Availability dropped to 95%");
@@ -305,6 +316,7 @@ test("SloAlertingService listSlos returns all SLOs", () => {
       targetValue: 0.99,
       operator: "gte",
       windowMinutes: 60,
+      domain: null,
     });
 
     service.defineSlo({
@@ -314,6 +326,7 @@ test("SloAlertingService listSlos returns all SLOs", () => {
       targetValue: 500,
       operator: "lte",
       windowMinutes: 30,
+      domain: null,
     });
 
     const slos = service.listSlos();
@@ -338,6 +351,7 @@ test("SloAlertingService listAlertRules returns all rules", () => {
       targetValue: 0.01,
       operator: "lte",
       windowMinutes: 60,
+      domain: null,
     });
 
     service.defineAlertRule({
@@ -348,6 +362,7 @@ test("SloAlertingService listAlertRules returns all rules", () => {
       channelKind: "log",
       cooldownMinutes: 5,
       enabled: true,
+      channelConfig: "",
     });
 
     service.defineAlertRule({
@@ -358,6 +373,7 @@ test("SloAlertingService listAlertRules returns all rules", () => {
       channelKind: "webhook",
       cooldownMinutes: 10,
       enabled: true,
+      channelConfig: "",
     });
 
     const rules = service.listAlertRules();
@@ -383,6 +399,7 @@ test("SloAlertingService evaluates multiple SLI kinds correctly", () => {
       targetValue: 500,
       operator: "lte",
       windowMinutes: 15,
+      domain: null,
     });
 
     service.collectSli(latencySlo.id, 450, "ms");
@@ -398,6 +415,7 @@ test("SloAlertingService evaluates multiple SLI kinds correctly", () => {
       targetValue: 0.05,
       operator: "lte",
       windowMinutes: 60,
+      domain: null,
     });
 
     service.collectSli(errorSlo.id, 0.03, "ratio");

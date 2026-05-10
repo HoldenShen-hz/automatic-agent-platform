@@ -18,12 +18,19 @@ test("Integration: HierarchicalPromptRegistryService and PromptVersionManager sh
   const bundle = registry.registerBundle(
     {
       name: "integration-bundle",
-      version: "v1.0.0",
+      version: 1,
+      displayVersion: "v1.0.0",
       domain: "test-domain",
       taskType: "test-task",
       systemPrompt: { content: "You are a helpful assistant", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "global",
   );
@@ -44,12 +51,19 @@ test("Integration: HierarchicalPromptRegistryService and PromptVersionManager sh
   const newBundle = registry.registerBundle(
     {
       name: "integration-bundle",
-      version: "v2.0.0",
+      version: 2,
+      displayVersion: "v2.0.0",
       domain: "test-domain",
       taskType: "test-task",
       systemPrompt: { content: "You are a very helpful assistant", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "global",
   );
@@ -94,12 +108,19 @@ test("Integration: HierarchicalPromptRegistryService with domain hierarchy", () 
   const globalBundle = registry.registerBundle(
     {
       name: "company-prompt",
-      version: "v1.0.0",
+      version: 1,
+      displayVersion: "v1.0.0",
       domain: "shared",
       taskType: "general",
       systemPrompt: { content: "Company default prompt", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "global",
   );
@@ -108,12 +129,19 @@ test("Integration: HierarchicalPromptRegistryService with domain hierarchy", () 
   const domainBundle = registry.registerBundle(
     {
       name: "company-prompt",
-      version: "v1.0.0",
+      version: 2,
+      displayVersion: "v1.0.0",
       domain: "finance",
       taskType: "general",
       systemPrompt: { content: "Finance-specific prompt", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "domain",
     "finance",
@@ -143,14 +171,18 @@ test("Integration: HierarchicalPromptRegistryService traffic resolution", () => 
   registry.registerBundle(
     {
       name: "ab-test-bundle",
-      version: "v1.0.0",
+      version: 1,
+      displayVersion: "v1.0.0",
       domain: "test",
       taskType: "test-task",
       systemPrompt: { content: "Control version", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
-      metadata: {
-        trafficAllocation: { weight: 50, startTime: undefined, endTime: undefined, targeting: undefined },
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
       },
     },
     "global",
@@ -159,14 +191,18 @@ test("Integration: HierarchicalPromptRegistryService traffic resolution", () => 
   registry.registerBundle(
     {
       name: "ab-test-bundle",
-      version: "v2.0.0",
+      version: 2,
+      displayVersion: "v2.0.0",
       domain: "test",
       taskType: "test-task",
       systemPrompt: { content: "Treatment version", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
-      metadata: {
-        trafficAllocation: { weight: 50, startTime: undefined, endTime: undefined, targeting: undefined },
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
       },
     },
     "global",
@@ -260,12 +296,19 @@ test("Integration: Deprecation across registry and version manager", () => {
   const bundle = registry.registerBundle(
     {
       name: "deprecating-bundle",
-      version: "v1.0.0",
+      version: 1,
+      displayVersion: "v1.0.0",
       domain: "test",
       taskType: "test",
       systemPrompt: { content: "Old content", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "global",
   );
@@ -273,7 +316,7 @@ test("Integration: Deprecation across registry and version manager", () => {
   versionManager.registerBundleVersion(bundle);
 
   // Deprecate in registry
-  registry.deprecateBundle("deprecating-bundle", "v1.0.0", "global");
+  registry.deprecateBundle("deprecating-bundle", "1", "global");
 
   // Verify deprecated bundle is not returned
   const retrieved = registry.getBundle("deprecating-bundle", "test");
@@ -320,12 +363,19 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
   registry.registerBundle(
     {
       name: "global-prompt",
-      version: "v1.0.0",
+      version: 1,
+      displayVersion: "v1.0.0",
       domain: "common",
       taskType: "general",
       systemPrompt: { content: "Global", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "global",
   );
@@ -333,12 +383,19 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
   registry.registerBundle(
     {
       name: "domain-prompt",
-      version: "v1.0.0",
+      version: 2,
+      displayVersion: "v1.0.0",
       domain: "special",
       taskType: "general",
       systemPrompt: { content: "Domain level", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
     "domain",
     "special",
@@ -347,14 +404,21 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
   registry.registerBundle(
     {
       name: "pack-prompt",
-      version: "v1.0.0",
+      version: 3,
+      displayVersion: "v1.0.0",
       domain: "special",
       taskType: "general",
       systemPrompt: { content: "Pack level", templateVariables: [], channel: "system" },
       userPrompt: undefined,
       fewShotExamples: [],
+      compatibilityMatrix: {
+        toolSchemaVersions: [],
+        evaluatorSchemaVersions: [],
+        domainDescriptorVersions: [],
+        modelRoutingProfiles: [],
+      },
     },
-    "pack",
+    "domain",
     "special",
     "premium-pack",
   );
@@ -369,8 +433,8 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
   assert.equal(domainBundles.length, 1);
   assert.equal(domainBundles[0]!.bundle.name, "domain-prompt");
 
-  // List pack bundles for specific pack
-  const packBundles = registry.listBundles("pack", undefined, "premium-pack");
+  // List pack bundles for specific pack - use domain level with packId as domain
+  const packBundles = registry.listBundles("domain", undefined, "premium-pack");
   assert.equal(packBundles.length, 1);
   assert.equal(packBundles[0]!.bundle.name, "pack-prompt");
 });
@@ -378,7 +442,8 @@ test("Integration: HierarchicalPromptRegistryService listBundles with multiple l
 function makeBundle(name: string, version: string) {
   return {
     name,
-    version,
+    version: Number(version),
+    displayVersion: version,
     domain: "test-domain",
     taskType: "test-task",
     packId: undefined,
@@ -386,9 +451,16 @@ function makeBundle(name: string, version: string) {
     userPrompt: undefined,
     fewShotExamples: [],
     constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: {
       owner: "test",
       deprecated: false,
+      lifecycleStatus: "active" as const,
       tags: [],
       compatibilityTags: [],
       trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },

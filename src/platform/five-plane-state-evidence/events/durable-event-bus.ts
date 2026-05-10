@@ -46,7 +46,7 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 /**
  * R12-04: Base polling interval before queue-depth back-pressure adjusts it.
  */
-const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
+export const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
  * R12-01: Sequence number tracker per partition for ordering guarantees.

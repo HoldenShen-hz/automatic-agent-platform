@@ -218,7 +218,7 @@ test("JudgeProviderRegistryService integration: sync with EvalDatasetJudgeServic
     capabilities: ["llm_judge", "policy_audit"],
     supportedRiskLevels: ["critical", "high", "medium", "low"] as const,
     maxCostUsd: 0.12,
-    status: "ready",
+    status: "ready" as const,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
   };
@@ -239,7 +239,7 @@ test("JudgeProviderRegistryService integration: sync with EvalDatasetJudgeServic
   });
 
   assert.ok(selected);
-  assert.equal(selected?.providerId, "sync.int.judge");
+  assert.equal(selected!.providerId, "sync.int.judge");
 });
 
 test("CrossProviderJudgeService integration: evaluateWithPipeline with no ready judges returns hold", () => {

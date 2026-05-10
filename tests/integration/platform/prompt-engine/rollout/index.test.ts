@@ -18,7 +18,7 @@ test("PromptRolloutService integration with PromptTemplateRegistryService create
 
   const record = rolloutService.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "integration@example.com",
     regressionSuiteId: "integration_suite",
     regressionPassed: true,
@@ -28,7 +28,7 @@ test("PromptRolloutService integration with PromptTemplateRegistryService create
   assert.equal(record.templateKey, "integration_template");
   assert.equal(record.version, "v1");
   assert.equal(record.status, "ready");
-  assert.equal(record.mode, "suggest");
+  assert.equal(record.mode, "L1_suggest");
   assert.equal(record.guardrailSummary, "rollout_guardrail_passed");
 });
 
@@ -46,7 +46,7 @@ test("PromptRolloutService integration - full lifecycle: create, activate, rollb
 
   const created = rolloutService.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "owner@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -76,7 +76,7 @@ test("PromptRolloutService integration - blocked rollout cannot be activated", (
 
   const blocked = rolloutService.createRollout({
     template,
-    mode: "shadow",
+    mode: "L2_shadow",
     owner: "owner@example.com",
     regressionSuiteId: "suite_blocked",
     regressionPassed: false,
@@ -113,7 +113,7 @@ test("PromptRolloutService integration - multiple rollouts can be listed", () =>
 
   rolloutService.createRollout({
     template: template1,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "owner@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -122,7 +122,7 @@ test("PromptRolloutService integration - multiple rollouts can be listed", () =>
 
   rolloutService.createRollout({
     template: template2,
-    mode: "shadow",
+    mode: "L2_shadow",
     owner: "owner@example.com",
     regressionSuiteId: "suite_2",
     regressionPassed: true,
@@ -131,7 +131,7 @@ test("PromptRolloutService integration - multiple rollouts can be listed", () =>
 
   rolloutService.createRollout({
     template: template1,
-    mode: "off",
+    mode: "L0_off",
     owner: "owner@example.com",
     regressionSuiteId: "suite_3",
     regressionPassed: true,
@@ -152,14 +152,14 @@ test("PromptRolloutService integration - guardrail evaluation blocks when regres
   const rolloutService = new PromptRolloutService();
 
   const decisionPass = rolloutService.evaluateGuardrail({
-    mode: "suggest",
+    mode: "L1_suggest",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
   assert.equal(decisionPass.allowed, true);
 
   const decisionFail = rolloutService.evaluateGuardrail({
-    mode: "suggest",
+    mode: "L1_suggest",
     regressionPassed: false,
     domainBlockCompatible: true,
   });
@@ -171,7 +171,7 @@ test("PromptRolloutService integration - guardrail evaluation blocks when domain
   const rolloutService = new PromptRolloutService();
 
   const decision = rolloutService.evaluateGuardrail({
-    mode: "suggest",
+    mode: "L1_suggest",
     regressionPassed: true,
     domainBlockCompatible: false,
   });
@@ -184,7 +184,7 @@ test("PromptRolloutService integration - guardrail evaluation allows shadow mode
   const rolloutService = new PromptRolloutService();
 
   const decision = rolloutService.evaluateGuardrail({
-    mode: "shadow",
+    mode: "L2_shadow",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
@@ -221,7 +221,7 @@ test("PromptRolloutService integration - trim whitespace from owner and regressi
 
   const record = rolloutService.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "  trimmed_owner@example.com  ",
     regressionSuiteId: "  trimmed_suite_id  ",
     regressionPassed: true,

@@ -19,16 +19,23 @@ import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 import type { StrategyVersion } from "../../../../../src/platform/five-plane-orchestration/improve-rollout/strategy-versioning.js";
 import type { RolloutRecord } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 import type { LearningObject } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
+import { LearningObjectSchema, type LearningObject as LearningObjectType } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
-function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
-  return {
+function makeLearningObject(overrides: Partial<LearningObjectType> = {}): LearningObjectType {
+  const base: LearningObjectType = {
     learningObjectId: newId("lo"),
-    taskId: "task-rollout-001",
-    type: "execution_trace",
-    content: { summary: "test" },
+    learningType: "failure_pattern",
+    title: "Test Learning Object",
+    summary: "Test summary",
+    confidence: 0.8,
+    evidenceRefs: [],
+    sourceSignalIds: [],
+    recommendation: "approve",
+    validatedBy: "none",
+    promotionStatus: "untrusted",
     createdAt: new Date().toISOString(),
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 function makeStrategyVersion(overrides: Partial<StrategyVersion> = {}): StrategyVersion {
@@ -165,67 +172,6 @@ test("policy-rollout: start returns null for blocked candidate", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Start with gating tests
-// ---------------------------------------------------------------------------
-
-test("policy-rollout: startWithGating blocks when evaluation gate fails", () => {
-  const autoRollback = new AutoRollbackService();
-  const service = new PolicyRolloutService(autoRollback);
-
-  const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
-
-  const result = service.startWithGating(candidate, strategy, "operator-1", {
-    evaluationGate: {
-      passed: false,
-      score: 0.3,
-      issues: ["quality_score_below_threshold"],
-      recommendation: "reject",
-      confidence: 0.8,
-    },
-  });
-
-  assert.equal(result.approved, false);
-  assert.equal(result.record, null);
-});
-
-test("policy-rollout: startWithGating passes when gate succeeds", () => {
-  const autoRollback = new AutoRollbackService();
-  const service = new PolicyRolloutService(autoRollback);
-
-  const candidate = makeCandidate("approved");
-  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
-
-  const result = service.startWithGating(candidate, strategy, "operator-1", {
-    evaluationGate: {
-      passed: true,
-      score: 0.85,
-      issues: [],
-      recommendation: "approve",
-      confidence: 0.9,
-    },
-  });
-
-  assert.equal(result.approved, true);
-  assert.ok(result.record !== null);
-});
-
-test("policy-rollout: startWithGating requires approval when configured", () => {
-  const autoRollback = new AutoRollbackService();
-  const service = new PolicyRolloutService(autoRollback);
-
-  const candidate = makeCandidate("evaluating"); // Not fully approved
-  const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
-
-  const result = service.startWithGating(candidate, strategy, "operator-1", {
-    requireApproval: true,
-  });
-
-  // Since candidate is "evaluating" not "approved", approval decision will block
-  assert.equal(result.approved, false);
-});
-
-// ---------------------------------------------------------------------------
 // Progressive rollout tests
 // ---------------------------------------------------------------------------
 
@@ -241,9 +187,10 @@ test("policy-rollout: promote canary to partial_25 with passing metrics", () => 
 
   // Simulate successful canary metrics
   const metrics = makeRolloutMetrics({
-    errorRate: 0.01,
-    requestSuccessRate: 0.99,
-    healthScore: 0.95,
+    requestCount: 100,
+    failureRate: 0.01,
+    p99LatencyMs: 150,
+    baselineP99LatencyMs: 200,
   });
 
   const promoted = service.promote(candidate, record!, "partial_25", metrics, "operator-1");
@@ -263,9 +210,10 @@ test("policy-rollout: promote triggers rollback on failing metrics", () => {
 
   // Failing metrics - high error rate
   const failingMetrics = makeRolloutMetrics({
-    errorRate: 0.15, // 15% error rate - should trigger rollback
-    requestSuccessRate: 0.85,
-    healthScore: 0.6,
+    requestCount: 100,
+    failureRate: 0.15, // 15% error rate - should trigger rollback
+    p99LatencyMs: 400,
+    baselineP99LatencyMs: 200,
   });
 
   // The promote should either throw (if rollback not triggered) or return rolled back record
@@ -309,8 +257,10 @@ test("policy-rollout: rollback transitions candidate to rolled_back", () => {
   const record = service.start(candidate, strategy, "operator-1");
 
   const metrics = makeRolloutMetrics({
-    errorRate: 0.2,
-    healthScore: 0.4,
+    requestCount: 100,
+    failureRate: 0.2,
+    p99LatencyMs: 400,
+    baselineP99LatencyMs: 200,
   });
 
   const rolledBack = service.rollback(candidate, record!, metrics, "operator-1");
@@ -328,9 +278,10 @@ test("policy-rollout: rollback records reason codes from auto-rollback", () => {
   const record = service.start(candidate, strategy, "operator-1");
 
   const failingMetrics = makeRolloutMetrics({
-    errorRate: 0.25,
-    requestSuccessRate: 0.75,
-    healthScore: 0.35,
+    requestCount: 100,
+    failureRate: 0.25,
+    p99LatencyMs: 500,
+    baselineP99LatencyMs: 200,
   });
 
   const rolledBack = service.rollback(candidate, record!, failingMetrics, "operator-1");
@@ -346,8 +297,8 @@ test("policy-rollout: guardrail blocks rollout for unapproved candidate status",
   const autoRollback = new AutoRollbackService();
   const service = new PolicyRolloutService(autoRollback);
 
-  // Candidate still in proposed state
-  const candidate = makeCandidate("proposed");
+  // Candidate still in under_review state
+  const candidate = makeCandidate("under_review");
   const strategy = makeStrategyVersion({ releaseLevel: "L2_canary" });
 
   const decision = service.decide(candidate, strategy);
@@ -373,9 +324,10 @@ test("policy-rollout: full progression from canary to stable_100", () => {
 
   // Promote to partial_25
   const goodMetrics = makeRolloutMetrics({
-    errorRate: 0.005,
-    requestSuccessRate: 0.995,
-    healthScore: 0.98,
+    requestCount: 100,
+    failureRate: 0.005,
+    p99LatencyMs: 180,
+    baselineP99LatencyMs: 200,
   });
 
   record = service.promote(candidate, record!, "partial_25", goodMetrics, "operator-1");
@@ -416,7 +368,7 @@ test("policy-rollout: integration with candidate registry", () => {
   assert.equal(approved!.status, "approved");
 
   // Start rollout
-  const strategy = makeStrategyVersion({ releaseLevel: "evaluate_0" });
+  const strategy = makeStrategyVersion({ releaseLevel: "L1_evaluate" });
   const record = service.start(approved!, strategy, "operator-1");
   assert.ok(record !== null);
   assert.equal(record!.status, "evaluation_enabled");

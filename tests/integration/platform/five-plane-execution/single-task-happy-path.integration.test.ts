@@ -93,10 +93,10 @@ test("integration: runSingleTaskExecution handles admission queue decision", asy
       title: "Admission Test",
       request: "Test admission",
       admissionPolicy: {
-        maxConcurrentExecutions: 0,
         maxQueuedTasks: 1,
-        memoryHighWatermarkMb: 0,
-        eventLoopLagThresholdMs: 0,
+        maxActiveExecutions: 0,
+        maxTier1AckBacklog: 0,
+        urgentQueueHeadroom: 0,
       },
       stepOutputOverride: { result: "queued" },
     });
@@ -131,7 +131,8 @@ test("integration: runSingleTaskExecution persists step output", async () => {
     });
 
     assert.ok(snapshot.task);
-    const output = JSON.parse(snapshot.task.outputJson);
+    const outputJson = snapshot.task.outputJson ?? "{}";
+    const output = JSON.parse(outputJson);
     assert.equal(output.summary, "Step summary");
     assert.equal(output.result, "value");
   } finally {

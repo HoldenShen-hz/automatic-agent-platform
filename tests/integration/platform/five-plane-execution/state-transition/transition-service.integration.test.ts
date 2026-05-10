@@ -52,6 +52,9 @@ test("state-transition: TransitionService updates task status with real store", 
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         agentId: "agent-ts",
         roleId: "general_executor",
         runKind: "task_run",
@@ -108,8 +111,8 @@ test("state-transition: TransitionService updates task status with real store", 
     assert.equal(execAfterFirst?.status, "prechecking", "Execution should be in prechecking");
 
     // Verify events were created
-    const eventsResult = ctx.store.listEventsForTask(taskId);
-    const statusEvents = eventsResult.events.filter((e) => e.eventType === "task:status_changed");
+    const events = ctx.store.listEventsForTask(taskId);
+    const statusEvents = events.filter((e) => e.eventType === "task:status_changed");
     assert.ok(statusEvents.length >= 1, "Should have at least one task status changed event");
   } finally {
     ctx.cleanup();
@@ -176,6 +179,9 @@ test("state-transition: TransitionService cascades terminal state to all entitie
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         agentId: "agent-cascade",
         roleId: "general_executor",
         runKind: "task_run",
@@ -299,6 +305,9 @@ test("state-transition: TransitionService handles failed terminal state", () => 
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         agentId: "agent-failed",
         roleId: "general_executor",
         runKind: "task_run",
@@ -491,6 +500,9 @@ test("state-transition: TransitionService execution lifecycle precheck -> execut
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         agentId: "agent-exec",
         roleId: "general_executor",
         runKind: "task_run",
@@ -693,6 +705,9 @@ test("state-transition: TransitionService creates events during state changes", 
         taskId,
         workflowId: "single_agent_minimal",
         parentExecutionId: null,
+        harnessRunId: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         agentId: "agent-events",
         roleId: "general_executor",
         runKind: "task_run",
@@ -742,10 +757,10 @@ test("state-transition: TransitionService creates events during state changes", 
     });
 
     // Verify events were created
-    const eventsResult = ctx.store.listEventsForTask(taskId);
-    assert.ok(eventsResult.events.length >= 2, "Should have at least 2 events (task + execution status changes)");
+    const events = ctx.store.listEventsForTask(taskId);
+    assert.ok(events.length >= 2, "Should have at least 2 events (task + execution status changes)");
 
-    const eventTypes = eventsResult.events.map((e) => e.eventType);
+    const eventTypes = events.map((e) => e.eventType);
     assert.ok(eventTypes.includes("task:status_changed"), "Should have task status changed event");
   } finally {
     ctx.cleanup();

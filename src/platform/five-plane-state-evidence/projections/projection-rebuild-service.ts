@@ -377,7 +377,15 @@ export class ProjectionRebuildService {
     const projectionNames = this.registry.listProjectionNames();
 
     for (const name of projectionNames) {
-      results.set(name, this.rebuildProjection(name, options));
+      const hadActiveSnapshot = this.activeSnapshots.has(name);
+      const rebuildResult = this.shadowBuildProjection(name, options);
+
+      if (hadActiveSnapshot) {
+        this.compareShadowProjection(name);
+      }
+
+      this.cutoverShadowProjection(name);
+      results.set(name, rebuildResult);
     }
 
     return results;

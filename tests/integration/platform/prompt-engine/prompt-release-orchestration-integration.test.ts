@@ -69,7 +69,7 @@ test("integration: platform prompt release uses dataset gate, judge assignment, 
     candidateProviderFamily: "openai",
     candidateModel: "gpt-release",
     owner: "release@example.com",
-    mode: "shadow",
+    mode: "L2_shadow",
     domainBlockCompatible: true,
     autoActivate: true,
     results: [

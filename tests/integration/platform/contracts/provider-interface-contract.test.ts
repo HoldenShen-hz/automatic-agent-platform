@@ -31,6 +31,9 @@ function createTestRequest(model: string): ChatCompletionRequest {
     ],
     maxTokens: 50,
     temperature: 0.7,
+    traceId: "test-trace-1",
+    tenantId: "test-tenant",
+    costTag: "test-cost",
   };
 }
 
@@ -98,6 +101,9 @@ test("contract: ChatCompletionRequest has all required fields", () => {
     model: "test-model",
     messages: [{ role: "user", content: "test" }],
     maxTokens: 100,
+    traceId: "test-trace",
+    tenantId: "test-tenant",
+    costTag: "test-cost",
   };
 
   assert.equal(typeof request.model, "string", "model should be a string");
@@ -167,6 +173,9 @@ test("contract: request with tools has correct structure", () => {
     model: "test-model",
     messages: [{ role: "user", content: "Use a tool" }],
     maxTokens: 100,
+    traceId: "test-trace-tools",
+    tenantId: "test-tenant",
+    costTag: "test-cost",
     tools: [
       {
         type: "function",
@@ -198,6 +207,9 @@ test("contract: streaming request has correct structure", () => {
     messages: [{ role: "user", content: "Stream response" }],
     maxTokens: 100,
     stream: true,
+    traceId: "test-trace-stream",
+    tenantId: "test-tenant",
+    costTag: "test-cost",
   };
 
   assert.equal(streamingRequest.stream, true, "stream should be true");
@@ -216,6 +228,9 @@ test("contract: request with optional fields is valid", () => {
     system: "You are helpful.",
     tools: [],
     toolChoice: "none",
+    traceId: "test-trace-full",
+    tenantId: "test-tenant",
+    costTag: "test-cost",
   };
 
   assert.equal(fullRequest.temperature, 0.5);

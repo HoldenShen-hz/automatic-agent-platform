@@ -26,10 +26,8 @@ test("platform index exports all five planes as namespace objects", () => {
   assert.ok(platform.compliance, "compliance namespace exported");
 });
 
-test("platform contracts namespace contains expected submodules", () => {
-  assert.ok(contracts.TaskContract, "TaskContract exported");
-  assert.ok(contracts.WorkflowContract, "WorkflowContract exported");
-  assert.ok(contracts.ExecutionContract, "ExecutionContract exported");
+test("platform contracts namespace exports executable contracts", () => {
+  assert.ok(contracts.executableContracts, "executableContracts exported");
 });
 
 test("platform control-plane namespace is accessible", () => {
@@ -90,14 +88,13 @@ test("platform index exports runtime catalog builders", () => {
 
 test("platform index exports runtime orchestrator registration functions", () => {
   assert.equal(typeof platform.registerAiOperationsRuntimeCatalog, "function");
-  assert.equal(typeof platform.registerFivePlaneRuntimeOrchestrator, "function");
+  assert.equal(typeof platform.registerFivePlaneRuntimeCatalog, "function");
 });
 
 test("platform index exports bootstrap builders", () => {
   assert.equal(typeof platform.buildModelGatewayBootstrap, "function");
   assert.equal(typeof platform.buildInterfacePlaneBootstrap, "function");
-  assert.equal(typeof platform.buildFivePlaneRuntimeBootstrap, "function");
-  assert.equal(typeof platform.platformMainlineBootstrap, "function");
+  assert.equal(typeof platform.buildX1FabricBootstrap, "function");
 });
 
 test("platform index exports harness and registry services", () => {
@@ -124,10 +121,6 @@ test("platform index exports orchestration services", () => {
   assert.equal(typeof platform.TaskDecompositionService, "function");
 });
 
-test("platform module catalog is exported", () => {
-  assert.ok(platform.platformModuleCatalog, "platformModuleCatalog exported");
-});
-
-test("platform architecture types are exported", () => {
-  assert.ok(platform.architecture, "architecture namespace exported");
+test("platform index exports registration functions", () => {
+  assert.equal(typeof platform.registerPlatformSurfaceCatalog, "function");
 });

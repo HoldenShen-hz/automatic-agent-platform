@@ -28,39 +28,44 @@ export interface CasResult {
 /**
  * Record stored for CAS operations.
  */
-interface CasRecord {
+export interface CasRecord {
   value: string;
   version: number;
   updatedAt: Date;
 }
 
-/**
- * CAS Service providing optimistic concurrency control via compare-and-swap operations.
- *
- * Implements:
- * - Value-based CAS: compareAndSwap(key, expectedValue, newValue)
- * - Version-based CAS: compareAndSet(key, expectedVersion, newValue)
- * - Read operations: getValue(key), getVersion(key)
- */
-export class CasService {
-  // In-memory store for CAS records (key -> { value, version, updatedAt })
+export interface CasRepository {
+  get(key: string): CasRecord | undefined;
+  set(key: string, record: CasRecord): void;
+  delete(key: string): boolean;
+  has(key: string): boolean;
+  compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult;
+  compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult;
+}
+
+class InMemoryCasRepository implements CasRepository {
   private readonly store = new Map<string, CasRecord>();
 
-  /**
-   * Performs an atomic compare-and-swap operation.
-   *
-   * Updates the value only if the current value matches the expected value.
-   *
-   * @param key - The key to update
-   * @param expectedValue - The value expected to be current
-   * @param newValue - The new value to set if expectedValue matches
-   * @returns CasResult indicating success and current state
-   */
+  public get(key: string): CasRecord | undefined {
+    return this.store.get(key);
+  }
+
+  public set(key: string, record: CasRecord): void {
+    this.store.set(key, record);
+  }
+
+  public delete(key: string): boolean {
+    return this.store.delete(key);
+  }
+
+  public has(key: string): boolean {
+    return this.store.has(key);
+  }
+
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
     const current = this.store.get(key);
 
     if (current === undefined) {
-      // Key doesn't exist - if expected value is empty/null, we can set it
       if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
         this.store.set(key, {
           value: newValue,
@@ -73,14 +78,12 @@ export class CasService {
           currentVersion: 1,
         };
       }
-      // Key doesn't exist and expected value doesn't match
       return {
         success: false,
       };
     }
 
     if (current.value !== expectedValue) {
-      // Value doesn't match - CAS fails
       return {
         success: false,
         currentValue: current.value,
@@ -88,7 +91,6 @@ export class CasService {
       };
     }
 
-    // Value matches - perform swap
     const newVersion = current.version + 1;
     this.store.set(key, {
       value: newValue,
@@ -101,6 +103,69 @@ export class CasService {
       currentValue: newValue,
       currentVersion: newVersion,
     };
+  }
+
+  public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
+    const current = this.store.get(key);
+
+    if (current === undefined) {
+      if (expectedVersion === 0) {
+        this.store.set(key, {
+          value: newValue,
+          version: 1,
+          updatedAt: new Date(),
+        });
+        return { success: true, currentValue: newValue, currentVersion: 1 };
+      }
+      return { success: false };
+    }
+
+    if (current.version !== expectedVersion) {
+      return {
+        success: false,
+        currentValue: current.value,
+        currentVersion: current.version,
+      };
+    }
+
+    const newVersion = current.version + 1;
+    this.store.set(key, {
+      value: newValue,
+      version: newVersion,
+      updatedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      currentValue: newValue,
+      currentVersion: newVersion,
+    };
+  }
+}
+
+/**
+ * CAS Service providing optimistic concurrency control via compare-and-swap operations.
+ *
+ * Implements:
+ * - Value-based CAS: compareAndSwap(key, expectedValue, newValue)
+ * - Version-based CAS: compareAndSet(key, expectedVersion, newValue)
+ * - Read operations: getValue(key), getVersion(key)
+ */
+export class CasService {
+  public constructor(private readonly repository: CasRepository = new InMemoryCasRepository()) {}
+
+  /**
+   * Performs an atomic compare-and-swap operation.
+   *
+   * Updates the value only if the current value matches the expected value.
+   *
+   * @param key - The key to update
+   * @param expectedValue - The value expected to be current
+   * @param newValue - The new value to set if expectedValue matches
+   * @returns CasResult indicating success and current state
+   */
+  public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
+    return this.repository.compareAndSwap(key, expectedValue, newValue);
   }
 
   /**
@@ -114,43 +179,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    const current = this.store.get(key);
-
-    if (current === undefined) {
-      // Key doesn't exist - only succeeds if expected version is 0
-      if (expectedVersion === 0) {
-        this.store.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return { success: true, currentValue: newValue, currentVersion: 1 };
-      }
-      return { success: false };
-    }
-
-    if (current.version !== expectedVersion) {
-      // Version doesn't match - CAS fails
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    // Version matches - perform update
-    const newVersion = current.version + 1;
-    this.store.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
-    };
+    return this.repository.compareAndSet(key, expectedVersion, newValue);
   }
 
   /**
@@ -160,7 +189,7 @@ export class CasService {
    * @returns The current value or undefined if not found
    */
   public getValue(key: string): string | undefined {
-    return this.store.get(key)?.value;
+    return this.repository.get(key)?.value;
   }
 
   /**
@@ -170,7 +199,7 @@ export class CasService {
    * @returns The current version or undefined if not found
    */
   public getVersion(key: string): number | undefined {
-    return this.store.get(key)?.version;
+    return this.repository.get(key)?.version;
   }
 
   /**
@@ -180,9 +209,9 @@ export class CasService {
    * @param value - The value to set
    */
   public setValue(key: string, value: string): void {
-    const existing = this.store.get(key);
+    const existing = this.repository.get(key);
     const currentVersion = existing?.version ?? 0;
-    this.store.set(key, {
+    this.repository.set(key, {
       value,
       version: currentVersion + 1,
       updatedAt: new Date(),
@@ -196,7 +225,7 @@ export class CasService {
    * @returns true if the key was deleted, false if it didn't exist
    */
   public delete(key: string): boolean {
-    return this.store.delete(key);
+    return this.repository.delete(key);
   }
 
   /**
@@ -206,6 +235,10 @@ export class CasService {
    * @returns true if the key exists
    */
   public has(key: string): boolean {
-    return this.store.has(key);
+    return this.repository.has(key);
   }
+}
+
+export function createInMemoryCasService(): CasService {
+  return new CasService(new InMemoryCasRepository());
 }

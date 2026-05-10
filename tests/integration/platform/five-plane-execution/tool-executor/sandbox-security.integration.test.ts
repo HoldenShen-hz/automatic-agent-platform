@@ -14,7 +14,7 @@ import {
   createDefaultCommandPolicies,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 
-import { createWorkspaceWritePolicy, checkSandboxPath } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy, checkSandboxPath, type SandboxPolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Traversal Tests
@@ -79,8 +79,10 @@ test("security: sandbox policy blocks paths outside allowed roots", () => {
 });
 
 test("security: sandbox policy enforces denied roots", () => {
-  const policy = createWorkspaceWritePolicy("/workspace");
-  policy.deniedRoots.push("/workspace/secret");
+  const policy: SandboxPolicy = {
+    ...createWorkspaceWritePolicy("/workspace"),
+    deniedRoots: ["/workspace/secret"],
+  };
 
   const result = checkSandboxPath(policy, "/workspace/secret/api-keys.json");
 

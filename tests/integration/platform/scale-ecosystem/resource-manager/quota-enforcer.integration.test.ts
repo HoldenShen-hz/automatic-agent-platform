@@ -84,7 +84,6 @@ test("evaluateMultiDimensionalQuota passes when all dimensions within limits", (
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);
@@ -231,7 +230,6 @@ test("evaluateMultiDimensionalQuota across all dimensions simultaneously", () =>
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
-    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);

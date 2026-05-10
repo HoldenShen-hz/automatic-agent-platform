@@ -7,7 +7,13 @@
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
  */
 
-export { CasService, type CasResult } from "./cas-service.js";
+export {
+  CasService,
+  createInMemoryCasService,
+  type CasRecord,
+  type CasRepository,
+  type CasResult,
+} from "./cas-service.js";
 export {
   FencingTokenService,
   type FenceMode,

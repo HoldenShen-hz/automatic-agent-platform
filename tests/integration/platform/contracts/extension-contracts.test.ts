@@ -406,6 +406,7 @@ test("contract: KnowledgeBoundaryService logs and redacts denied access", () => 
       namespaceIds: ["finance_docs"],
       defaultVisibility: "private",
       allowedOrgNodeIds: [],
+      auditOnAccess: false,
     },
     "user_1",
     "dept_hr",
@@ -463,11 +464,11 @@ test("contract: RuntimeGovernanceService surfaces quota, SLA, and failover state
       { connectorId: "crm_sync", status: "healthy", latencyMs: 100, checkedAt: "2026-04-20T00:00:00.000Z" },
     ],
     regions: [
-      { regionId: "eu-central-1", jurisdiction: "EU", latencyScore: 20, residencyAllowed: true },
-      { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 40, residencyAllowed: true },
+      { regionId: "eu-central-1", jurisdiction: "EU", latencyScore: 20, residencyAllowed: true, provider: "aws", endpoints: { api: "https://eu-central-1.api.example.com" }, dataResidencyPolicy: "regional" as const },
+      { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 40, residencyAllowed: true, provider: "aws", endpoints: { api: "https://eu-west-1.api.example.com" }, dataResidencyPolicy: "regional" as const },
     ],
     primaryRegionHealthy: false,
-    quotaPolicy: { scopeId: "tenant_x", hardLimit: 5, currentUsage: 5 },
+    quotaPolicy: { scope: "tenant", scopeId: "tenant_x" },
     requestedUnits: 1,
     queueItems: [{ itemId: "job_sync", tenantId: "tenant_x", priority: 1, ageMs: 1000 }],
     preemptionCandidates: [{ executionId: "exec_sync", priority: 1, progressPercent: 10 }],
@@ -508,8 +509,8 @@ test("contract: WorkflowBuilderService must block wizard advance when current st
       sessionId: "wizard_1",
       currentStepId: "capability_setup",
       steps: [
-        { stepId: "business_type", title: "Business", completed: true },
-        { stepId: "capability_setup", title: "Capability", completed: false },
+        { stepId: "business_type", title: "Business", completed: true, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
+        { stepId: "capability_setup", title: "Capability", completed: false, riskLevel: "low" as const, requiredAnswerKeys: [], riskHints: [] },
       ],
     },
     template: {
@@ -525,6 +526,11 @@ test("contract: WorkflowBuilderService must block wizard advance when current st
         { stepId: "activation", title: "Activation", description: "desc" },
       ],
       recommendedDomains: ["coding"],
+      progressiveDisclosure: {
+        level: "minimal" as const,
+        visibleSections: ["business_type", "capability_setup"],
+        hiddenSections: ["risk_setup", "activation"],
+      },
       defaultMode: {
         mode: "team",
         autoDetected: true,

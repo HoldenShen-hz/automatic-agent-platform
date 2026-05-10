@@ -28,7 +28,7 @@ test("integration: prompt registry, renderer, rollout, and governance form a con
     const rendered = renderer.render({ template, variables: { question: "CPU high" } });
     const rolloutRecord = rollout.createRollout({
       template,
-      mode: "shadow",
+      mode: "L2_shadow",
       owner: "ops@example.com",
       regressionSuiteId: "suite_ops",
       regressionPassed: true,

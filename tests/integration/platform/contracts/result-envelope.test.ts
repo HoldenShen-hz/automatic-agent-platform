@@ -163,7 +163,7 @@ function createMockTaskRecord(status: TaskRecord["status"], outputJson: string |
     parentId: null,
     title: "Test Task",
     status,
-    source: "test",
+    source: "user" as TaskSource,
     priority: "normal",
     inputJson: '{"input": "test"}',
     normalizedInputJson: '{"input": "test"}',

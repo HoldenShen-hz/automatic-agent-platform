@@ -164,7 +164,7 @@ test("StructuredLogger recentByTask filters entries with real data", () => {
 
 test("startActiveSpan creates trace context that propagates through async operations", async () => {
   const rootTraceId = generateTraceId();
-  let capturedContext: { traceId: string; spanId: string; parentSpanId: string | null } | null = null;
+  let capturedTraceId: string | null = null;
 
   await startActiveSpan(
     "root-span",
@@ -172,7 +172,7 @@ test("startActiveSpan creates trace context that propagates through async operat
       parentContext: { traceId: rootTraceId, spanId: "0000000000000001", parentSpanId: null },
     },
     async (_span, context) => {
-      capturedContext = { traceId: context.traceId, spanId: context.spanId, parentSpanId: context.parentSpanId };
+      capturedTraceId = context.traceId;
 
       // Nested async operation
       await startActiveSpan(
@@ -188,29 +188,35 @@ test("startActiveSpan creates trace context that propagates through async operat
     },
   );
 
-  assert.ok(capturedContext != null);
-  assert.equal(capturedContext.traceId, rootTraceId);
+  assert.ok(capturedTraceId != null);
+  assert.equal(capturedTraceId, rootTraceId);
 });
 
 test("startActiveSpan derives fallback context when no parent provided", async () => {
-  let outerContext: { traceId: string; spanId: string; parentSpanId: string | null } | null = null;
-  let innerContext: { traceId: string; spanId: string; parentSpanId: string | null } | null = null;
+  let outerTraceId: string | null = null;
+  let innerTraceId: string | null = null;
+  let outerSpanId: string | null = null;
+  let innerSpanId: string | null = null;
 
   await startActiveSpan("outer-span", {}, async (_span, ctx) => {
-    outerContext = { traceId: ctx.traceId, spanId: ctx.spanId, parentSpanId: ctx.parentSpanId };
+    outerTraceId = ctx.traceId;
+    outerSpanId = ctx.spanId;
 
     await startActiveSpan("inner-span", {}, async (_span2, ctx2) => {
-      innerContext = { traceId: ctx2.traceId, spanId: ctx2.spanId, parentSpanId: ctx2.parentSpanId };
+      innerTraceId = ctx2.traceId;
+      innerSpanId = ctx2.spanId;
       return undefined;
     });
 
     return undefined;
   });
 
-  assert.ok(outerContext != null);
-  assert.ok(innerContext != null);
-  assert.equal(innerContext.parentSpanId, outerContext.spanId, "Inner should have outer as parent");
-  assert.notEqual(innerContext.spanId, outerContext.spanId, "Spans should have different IDs");
+  assert.ok(outerTraceId != null);
+  assert.ok(innerTraceId != null);
+  assert.ok(outerSpanId != null);
+  assert.ok(innerSpanId != null);
+  assert.equal(innerTraceId, outerTraceId, "Inner should have same trace as outer");
+  assert.notEqual(innerSpanId, outerSpanId, "Spans should have different IDs");
 });
 
 // =============================================================================

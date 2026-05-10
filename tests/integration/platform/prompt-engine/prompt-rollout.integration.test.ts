@@ -35,7 +35,7 @@ test("PromptRolloutService createRollout follows canonical stage order", () => {
 
   const record = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -56,7 +56,7 @@ test("PromptRolloutService activateRollout advances through stage order", () => 
 
   const created = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -80,7 +80,7 @@ test("PromptRolloutService rollbackRollout transitions to rolled_back state", ()
 
   const record = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -100,7 +100,7 @@ test("PromptRolloutService evaluateGuardrail returns correct nextStatus for vali
 
   // Issue #1957: Check that shadow mode is handled correctly
   const shadowDecision = rollout.evaluateGuardrail({
-    mode: "shadow",
+    mode: "L2_shadow",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
@@ -119,7 +119,7 @@ test("PromptRolloutService blocked rollout cannot be activated", () => {
 
   const blocked = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: false, // Fails guardrail
@@ -163,7 +163,7 @@ test("PromptRolloutService rejects invalid status transitions", () => {
 
   const record = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -189,7 +189,7 @@ test("PromptRolloutService full lifecycle integration", () => {
   // Create rollout
   const created = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -215,7 +215,7 @@ test("PromptRolloutService mode types work correctly", () => {
   const registry = new PromptTemplateRegistryService();
   const rollout = new PromptRolloutService();
 
-  const modes: Array<"off" | "suggest" | "shadow"> = ["off", "suggest", "shadow"];
+  const modes: Array<"L0_off" | "L1_suggest" | "L2_shadow"> = ["L0_off", "L1_suggest", "L2_shadow"];
 
   for (const mode of modes) {
     const template = createTemplate(registry, `mode_${mode}_integration`);
@@ -240,8 +240,8 @@ test("PromptRolloutService listRollouts filter works", () => {
   createTemplate(registry, "filter_template_b");
 
   rollout.createRollout({
-    template: registry.getTemplate("filter_template_a")!,
-    mode: "suggest",
+    template: registry.getTemplate("filter_template_a", "v1.0")!,
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -249,8 +249,8 @@ test("PromptRolloutService listRollouts filter works", () => {
   });
 
   rollout.createRollout({
-    template: registry.getTemplate("filter_template_b")!,
-    mode: "shadow",
+    template: registry.getTemplate("filter_template_b", "v1.0")!,
+    mode: "L2_shadow",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,
@@ -272,7 +272,7 @@ test("PromptRolloutService rollback reason is preserved", () => {
 
   const record = rollout.createRollout({
     template,
-    mode: "suggest",
+    mode: "L1_suggest",
     owner: "test@example.com",
     regressionSuiteId: "suite_1",
     regressionPassed: true,

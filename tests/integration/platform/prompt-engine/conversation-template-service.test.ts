@@ -332,7 +332,7 @@ test("integration: config with all intent types loads correctly", () => {
       const templates = registry.listByIntent(intent as any);
       assert.equal(templates.length, 1, `Expected 1 template for ${intent}`);
       assert.equal(
-        templates[0].intent,
+        templates[0]!.intent,
         intent,
         `Expected intent ${intent}`,
       );

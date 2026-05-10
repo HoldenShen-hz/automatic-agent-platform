@@ -69,7 +69,8 @@ test("resolveExecutionCapabilityBaseline returns correct baseline for valid id",
 
 test("resolveExecutionCapabilityBaseline throws for invalid id", async () => {
   assert.throws(
-    () => resolveExecutionCapabilityBaseline("invalid-capability"),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    () => resolveExecutionCapabilityBaseline("invalid-capability" as any),
     /execution_capability.not_found/,
   );
 });

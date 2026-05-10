@@ -24,15 +24,30 @@ function createMockWebhookIngressService(): WebhookIngressService & {
     rollbackCalls: [],
     receive(input) {
       this.receiveCalls.push(input);
+      // Parse body to get eventType (InboundWebhookRequest only has body, headers, endpointId, receivedAt)
+      let eventType = "webhook.event";
+      let idempotencyKey = "idem-default";
+      try {
+        const parsed = JSON.parse(input.body);
+        eventType = (parsed.eventType as string) ?? (parsed.event_type as string) ?? eventType;
+        idempotencyKey = (parsed.eventId as string) ?? (parsed.event_id as string) ?? (parsed.id as string) ?? idempotencyKey;
+      } catch {
+        // Use defaults if body is not JSON
+      }
       const envelope: WebhookDispatchEnvelope = {
         envelopeId: `env-${Date.now()}`,
-        endpointId: input.endpointId ?? "default-endpoint",
-        eventType: input.event as string ?? "webhook.event",
-        payload: input.payload as Record<string, unknown> ?? {},
-        dispatchState: "accepted",
+        endpointId: input.endpointId,
+        source: "test-source",
+        tenantId: null,
+        workspaceId: null,
+        eventType,
+        idempotencyKey,
+        payload: {},
+        dispatchTargetRef: null,
+        receivedAt: input.receivedAt ?? new Date().toISOString(),
         acceptedAt: new Date().toISOString(),
-        idempotencyKey: input.idempotencyKey ?? `idem-${Date.now()}`,
-        traceId: input.traceId ?? null,
+        signatureVerified: false,
+        dispatchState: "accepted",
       };
       return envelope;
     },
@@ -103,15 +118,14 @@ function createMockOutboxRepository(): OutboxRepository & {
 }
 
 test("[ARCH-P2-1] WebhookService writes to outbox table before returning", () => {
-  const mockIngress = createMockWebhookIngressService();
-  const mockRepo = createMockOutboxRepository();
+  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
+  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
-  const request: InboundWebhookRequest = {
+  const request: InboundWebhookRequest & { traceId?: string | null } = {
     endpointId: "test-endpoint",
-    event: "task.completed",
-    payload: { taskId: "t-123", status: "completed" },
-    idempotencyKey: "idem-001",
+    headers: {},
+    body: JSON.stringify({ eventType: "task.completed", eventId: "idem-001", taskId: "t-123", status: "completed" }),
     receivedAt: new Date().toISOString(),
   };
 
@@ -130,15 +144,14 @@ test("[ARCH-P2-1] WebhookService writes to outbox table before returning", () =>
 });
 
 test("[ARCH-P2-1] WebhookService marks duplicate when idempotency key is reused", () => {
-  const mockIngress = createMockWebhookIngressService();
-  const mockRepo = createMockOutboxRepository();
+  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
+  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
-  const request: InboundWebhookRequest = {
+  const request: InboundWebhookRequest & { traceId?: string | null } = {
     endpointId: "test-endpoint",
-    event: "task.completed",
-    payload: { taskId: "t-123" },
-    idempotencyKey: "idem-duplicate",
+    headers: {},
+    body: JSON.stringify({ eventType: "task.completed", eventId: "idem-duplicate", taskId: "t-123" }),
     receivedAt: new Date().toISOString(),
   };
 
@@ -151,12 +164,17 @@ test("[ARCH-P2-1] WebhookService marks duplicate when idempotency key is reused"
   const duplicateEnvelope: WebhookDispatchEnvelope = {
     envelopeId: "env-dup",
     endpointId: "test-endpoint",
+    source: "test-source",
+    tenantId: null,
+    workspaceId: null,
     eventType: "task.completed",
     payload: { taskId: "t-123" },
-    dispatchState: "duplicate",
+    dispatchTargetRef: null,
+    receivedAt: new Date().toISOString(),
     acceptedAt: new Date().toISOString(),
+    signatureVerified: false,
     idempotencyKey: "idem-duplicate",
-    traceId: null,
+    dispatchState: "duplicate",
   };
 
   // Override the ingress to return a duplicate dispatch state
@@ -169,8 +187,8 @@ test("[ARCH-P2-1] WebhookService marks duplicate when idempotency key is reused"
 });
 
 test("[ARCH-P2-1] WebhookService rolls back envelope when outbox insert fails", () => {
-  const mockIngress = createMockWebhookIngressService();
-  const mockRepo = createMockOutboxRepository();
+  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
+  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
   // Make insertOutboxEntry throw
@@ -178,11 +196,10 @@ test("[ARCH-P2-1] WebhookService rolls back envelope when outbox insert fails", 
     throw new Error("Database constraint violation");
   };
 
-  const request: InboundWebhookRequest = {
+  const request: InboundWebhookRequest & { traceId?: string | null } = {
     endpointId: "test-endpoint",
-    event: "task.completed",
-    payload: { taskId: "t-123" },
-    idempotencyKey: "idem-002",
+    headers: {},
+    body: JSON.stringify({ eventType: "task.completed", eventId: "idem-002", taskId: "t-123" }),
     receivedAt: new Date().toISOString(),
   };
 
@@ -199,15 +216,14 @@ test("[ARCH-P2-1] WebhookService rolls back envelope when outbox insert fails", 
 });
 
 test("[ARCH-P2-1] Outbox entry contains correct payload structure", () => {
-  const mockIngress = createMockWebhookIngressService();
-  const mockRepo = createMockOutboxRepository();
+  const mockIngress = createMockWebhookIngressService() as unknown as WebhookIngressService;
+  const mockRepo = createMockOutboxRepository() as unknown as OutboxRepository;
   const service = new WebhookOutboxDispatchService(mockIngress, mockRepo);
 
-  const request: InboundWebhookRequest = {
+  const request: InboundWebhookRequest & { traceId?: string | null } = {
     endpointId: "webhook-abc",
-    event: "execution.finished",
-    payload: { executionId: "exec-456", outcome: "success" },
-    idempotencyKey: "idem-003",
+    headers: {},
+    body: JSON.stringify({ eventType: "execution.finished", eventId: "idem-003", executionId: "exec-456", outcome: "success" }),
     receivedAt: new Date().toISOString(),
     traceId: "trace-xyz",
   };
