@@ -8,7 +8,7 @@ import test from "node:test";
 import {
   TenantBoundaryRegistryService,
   type TenantRecord,
-} from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
+} from "../../../../src/platform/five-plane-control-plane/tenant/index.js";
 
 // ============================================================================
 // Tenant End-to-End Integration Tests

@@ -11,9 +11,6 @@ import {
 } from "../../../../src/platform/control-plane/risk-control/risk-evaluation-engine.js";
 import {
   RiskLevelSchema,
-  StepTypeRiskSchema,
-  TargetSystemRiskSchema,
-  DataClassRiskSchema,
   BlastRadiusSchema,
   ConfidenceLevelSchema,
   RiskFactorsSchema,
@@ -22,30 +19,33 @@ import type {
   RiskEvaluationRequest,
   RiskConfig,
   RiskLevel,
-  RiskLevelActionConfig,
 } from "../../../../src/platform/control-plane/risk-control/types.js";
 
 function createTestConfig(): RiskConfig {
   return {
     factorWeights: {
-      stepTypeRisk: 3,
-      targetSystemRisk: 4,
-      dataClassRisk: 3,
+      impact: 4,
+      irreversibility: 4,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
       blastRadius: 2,
-      priorFailureRate: 2,
-      confidence: 1,
+      historicalFailureRate: 2,
+      evidenceConfidence: 1,
     },
-    stepTypeRiskValues: { read: 1, write: 3, delete: 5, external_call: 4 },
-    targetSystemRiskValues: { internal: 1, staging: 2, production: 5 },
-    dataClassRiskValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    impactValues: { minimal: 1, low: 2, medium: 3, high: 4, severe: 5 },
+    irreversibilityValues: { fully_reversible: 1, mostly_reversible: 2, partially_reversible: 3, mostly_irreversible: 4, fully_irreversible: 5 },
+    dataSensitivityValues: { public: 1, internal: 2, confidential: 3, restricted: 4, critical: 5 },
+    autonomyModeRiskValues: { manual_only: 1, human_in_loop: 2, assisted: 3, autonomous: 4, full_auto: 5 },
+    tenantImpactValues: { personal: 1, team: 2, org: 3, multi_org: 4, platform: 5 },
     blastRadiusValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
-    priorFailureRateThresholds: {
+    historicalFailureRateThresholds: {
       low: { maxPercent: 10, value: 1 },
       medium: { maxPercent: 30, value: 2 },
       high: { maxPercent: 50, value: 3 },
       critical: { maxPercent: 100, value: 5 },
     },
-    confidenceValues: { high: 1, medium: 3, low: 5 },
+    evidenceConfidenceValues: { high: 1, medium: 3, low: 5 },
     riskLevelThresholds: { low: 0.25, medium: 0.5, high: 0.75, critical: 1.0 },
     riskLevelActions: {
       low: { autoExecute: true, logLevel: "info", requiresApproval: false, sideEffect: "normal", evidenceLevel: "basic" },
@@ -82,17 +82,18 @@ test("RiskEvaluationError accepts optional details parameter", () => {
 // RiskEvaluationEngine boundary condition tests
 test("RiskEvaluationEngine handles score exactly at LOW/MEDIUM boundary (0.25)", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  // Score 0.25 should map to medium (since mapScoreToLevel uses >= for thresholds)
-  // A very low score should be low
+  // Very minimal risk factors should result in low risk
   const request: RiskEvaluationRequest = {
     taskId: "task-boundary-1",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -107,12 +108,14 @@ test("RiskEvaluationEngine handles score exactly at MEDIUM/HIGH boundary (0.50)"
   const request: RiskEvaluationRequest = {
     taskId: "task-boundary-2",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "staging",
-      dataClassRisk: "internal",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 15,
-      confidence: "high",
+      impact: 3,
+      irreversibility: 3,
+      dataSensitivity: 2,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
+      blastRadius: 2,
+      historicalFailureRate: 15,
+      evidenceConfidence: "medium",
     },
   };
 
@@ -126,12 +129,14 @@ test("RiskEvaluationEngine handles score exactly at HIGH/CRITICAL boundary (0.75
   const request: RiskEvaluationRequest = {
     taskId: "task-boundary-3",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "confidential",
-      blastRadius: "tenant",
-      priorFailureRatePercent: 45,
-      confidence: "medium",
+      impact: 5,
+      irreversibility: 5,
+      dataSensitivity: 4,
+      autonomyModeRisk: 3,
+      tenantImpact: 4,
+      blastRadius: 4,
+      historicalFailureRate: 45,
+      evidenceConfidence: "medium",
     },
   };
 
@@ -139,17 +144,19 @@ test("RiskEvaluationEngine handles score exactly at HIGH/CRITICAL boundary (0.75
   assert.ok(result.riskScore >= 0.5);
 });
 
-test("RiskEvaluationEngine priorFailureRate at low threshold boundary (10%)", () => {
+test("RiskEvaluationEngine historicalFailureRate at low threshold boundary (10%)", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {
     taskId: "task-pfr-1",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 10,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 10,
+      evidenceConfidence: "high",
     },
   };
 
@@ -159,17 +166,19 @@ test("RiskEvaluationEngine priorFailureRate at low threshold boundary (10%)", ()
   assert.ok(result.riskScore < 0.25);
 });
 
-test("RiskEvaluationEngine priorFailureRate at medium threshold boundary (30%)", () => {
+test("RiskEvaluationEngine historicalFailureRate at medium threshold boundary (30%)", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {
     taskId: "task-pfr-2",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 30,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 30,
+      evidenceConfidence: "high",
     },
   };
 
@@ -177,17 +186,19 @@ test("RiskEvaluationEngine priorFailureRate at medium threshold boundary (30%)",
   assert.ok(result.riskScore < 0.5);
 });
 
-test("RiskEvaluationEngine priorFailureRate at high threshold boundary (50%)", () => {
+test("RiskEvaluationEngine historicalFailureRate at high threshold boundary (50%)", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {
     taskId: "task-pfr-3",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 50,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 50,
+      evidenceConfidence: "high",
     },
   };
 
@@ -195,43 +206,49 @@ test("RiskEvaluationEngine priorFailureRate at high threshold boundary (50%)", (
   assert.ok(result.riskScore < 0.75);
 });
 
-test("RiskEvaluationEngine priorFailureRate at critical threshold (>50%)", () => {
+test("RiskEvaluationEngine historicalFailureRate at critical threshold (>50%)", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {
     taskId: "task-pfr-4",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 75,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 75,
+      evidenceConfidence: "high",
     },
   };
 
   const result = engine.evaluate(request);
+  // Historical failure rate 75% maps to value 5 (critical), but other factors are min
+  // So overall score still low
   assert.equal(result.riskLevel, "low");
 });
 
-test("RiskEvaluationEngine zero priorFailureRate", () => {
+test("RiskEvaluationEngine zero historicalFailureRate", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {
     taskId: "task-pfr-zero",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
   const result = engine.evaluate(request);
   assert.equal(result.riskLevel, "low");
-  // Verify prior failure factor is at minimum value
-  const pfrFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "priorFailureRate");
-  assert.equal(pfrFactor?.value, 1);
+  // Verify historical failure factor is at minimum value
+  const hfrFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "historicalFailureRate");
+  assert.equal(hfrFactor?.value, 1);
 });
 
 // Risk score rounding tests
@@ -240,12 +257,14 @@ test("RiskEvaluationEngine rounds riskScore to 3 decimal places", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-round",
     factors: {
-      stepTypeRisk: "write",
-      targetSystemRisk: "staging",
-      dataClassRisk: "internal",
-      blastRadius: "workflow",
-      priorFailureRatePercent: 15,
-      confidence: "medium",
+      impact: 3,
+      irreversibility: 2,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
+      blastRadius: 3,
+      historicalFailureRate: 15,
+      evidenceConfidence: "medium",
     },
   };
 
@@ -261,12 +280,14 @@ test("RiskEvaluationEngine factor breakdown has correct structure", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-breakdown",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -286,26 +307,28 @@ test("RiskEvaluationEngine factor breakdown weightedValue is value times weight"
   const request: RiskEvaluationRequest = {
     taskId: "task-weights",
     factors: {
-      stepTypeRisk: "write", // value=3, weight=3, weightedValue=9
-      targetSystemRisk: "production", // value=5, weight=4, weightedValue=20
-      dataClassRisk: "confidential", // value=4, weight=3, weightedValue=12
-      blastRadius: "tenant", // value=3, weight=2, weightedValue=6
-      priorFailureRatePercent: 5, // value=1, weight=2, weightedValue=2
-      confidence: "low", // value=5, weight=1, weightedValue=5
+      impact: 5, // value=5, weight=4, weightedValue=20
+      irreversibility: 5, // value=5, weight=4, weightedValue=20
+      dataSensitivity: 4, // value=4, weight=3, weightedValue=12
+      autonomyModeRisk: 3, // value=3, weight=2, weightedValue=6
+      tenantImpact: 4, // value=4, weight=2, weightedValue=8
+      blastRadius: 3, // value=3, weight=2, weightedValue=6
+      historicalFailureRate: 5, // value=1, weight=2, weightedValue=2
+      evidenceConfidence: "low", // value=5, weight=1, weightedValue=5
     },
   };
 
   const result = engine.evaluate(request);
 
-  const stepTypeFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "stepTypeRisk");
-  assert.equal(stepTypeFactor?.value, 3);
-  assert.equal(stepTypeFactor?.weight, 3);
-  assert.equal(stepTypeFactor?.weightedValue, 9);
+  const impactFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "impact");
+  assert.equal(impactFactor?.value, 5);
+  assert.equal(impactFactor?.weight, 4);
+  assert.equal(impactFactor?.weightedValue, 20);
 
-  const targetFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "targetSystemRisk");
-  assert.equal(targetFactor?.value, 5);
-  assert.equal(targetFactor?.weight, 4);
-  assert.equal(targetFactor?.weightedValue, 20);
+  const irreversibilityFactor = result.factorBreakdown.find((f: { factor: string; value: number; weight: number; weightedValue: number }) => f.factor === "irreversibility");
+  assert.equal(irreversibilityFactor?.value, 5);
+  assert.equal(irreversibilityFactor?.weight, 4);
+  assert.equal(irreversibilityFactor?.weightedValue, 20);
 });
 
 // Domain override tests
@@ -324,12 +347,14 @@ test("RiskEvaluationEngine domain override only raises risk, never lowers", () =
     taskId: "task-domain-1",
     domainId: "low-domain",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "restricted",
-      blastRadius: "platform",
-      priorFailureRatePercent: 75,
-      confidence: "low",
+      impact: 5,
+      irreversibility: 5,
+      dataSensitivity: 5,
+      autonomyModeRisk: 5,
+      tenantImpact: 5,
+      blastRadius: 5,
+      historicalFailureRate: 75,
+      evidenceConfidence: "low",
     },
   };
   const criticalResult = engine.evaluate(criticalRequest);
@@ -340,12 +365,14 @@ test("RiskEvaluationEngine domain override only raises risk, never lowers", () =
     taskId: "task-domain-2",
     domainId: "medium-domain",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "confidential",
-      blastRadius: "tenant",
-      priorFailureRatePercent: 45,
-      confidence: "low",
+      impact: 4,
+      irreversibility: 4,
+      dataSensitivity: 4,
+      autonomyModeRisk: 3,
+      tenantImpact: 4,
+      blastRadius: 4,
+      historicalFailureRate: 45,
+      evidenceConfidence: "low",
     },
   };
   const highResult = engine.evaluate(highRequest);
@@ -365,12 +392,14 @@ test("RiskEvaluationEngine domain override does not affect unknown domain", () =
     taskId: "task-unknown-domain",
     domainId: "unknown-domain",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -391,12 +420,14 @@ test("RiskEvaluationEngine domain override raises medium to high", () => {
     taskId: "task-raise",
     domainId: "raise-domain",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -418,12 +449,14 @@ test("RiskEvaluationEngine returns standard approvalType for HIGH risk", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-approval-high",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "confidential",
-      blastRadius: "tenant",
-      priorFailureRatePercent: 45,
-      confidence: "low",
+      impact: 4,
+      irreversibility: 4,
+      dataSensitivity: 4,
+      autonomyModeRisk: 3,
+      tenantImpact: 4,
+      blastRadius: 4,
+      historicalFailureRate: 45,
+      evidenceConfidence: "low",
     },
   };
 
@@ -437,12 +470,14 @@ test("RiskEvaluationEngine returns break_glass approvalType for CRITICAL risk", 
   const request: RiskEvaluationRequest = {
     taskId: "task-approval-critical",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "restricted",
-      blastRadius: "platform",
-      priorFailureRatePercent: 75,
-      confidence: "low",
+      impact: 5,
+      irreversibility: 5,
+      dataSensitivity: 5,
+      autonomyModeRisk: 5,
+      tenantImpact: 5,
+      blastRadius: 5,
+      historicalFailureRate: 75,
+      evidenceConfidence: "low",
     },
   };
 
@@ -456,12 +491,14 @@ test("RiskEvaluationEngine does not return approvalType when requiresApproval is
   const request: RiskEvaluationRequest = {
     taskId: "task-no-approval",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -470,87 +507,23 @@ test("RiskEvaluationEngine does not return approvalType when requiresApproval is
   assert.equal(result.approvalType, undefined);
 });
 
-// Step type risk values tests
-test("RiskEvaluationEngine handles all step type risk values", () => {
-  const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const stepTypes: Array<RiskEvaluationRequest["factors"]["stepTypeRisk"]> = ["read", "write", "delete", "external_call"];
-
-  for (const stepType of stepTypes) {
-    const request: RiskEvaluationRequest = {
-      taskId: `task-step-${stepType}`,
-      factors: {
-        stepTypeRisk: stepType,
-        targetSystemRisk: "internal",
-        dataClassRisk: "public",
-        blastRadius: "single_task",
-        priorFailureRatePercent: 0,
-        confidence: "high",
-      },
-    };
-
-    const result = engine.evaluate(request);
-    assert.ok(result.riskLevel, `Failed for stepType: ${stepType}`);
-  }
-});
-
-test("RiskEvaluationEngine handles all target system risk values", () => {
-  const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const systems: Array<RiskEvaluationRequest["factors"]["targetSystemRisk"]> = ["internal", "staging", "production"];
-
-  for (const system of systems) {
-    const request: RiskEvaluationRequest = {
-      taskId: `task-system-${system}`,
-      factors: {
-        stepTypeRisk: "read",
-        targetSystemRisk: system,
-        dataClassRisk: "public",
-        blastRadius: "single_task",
-        priorFailureRatePercent: 0,
-        confidence: "high",
-      },
-    };
-
-    const result = engine.evaluate(request);
-    assert.ok(result.riskLevel, `Failed for targetSystem: ${system}`);
-  }
-});
-
-test("RiskEvaluationEngine handles all data class risk values", () => {
-  const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const dataClasses: Array<RiskEvaluationRequest["factors"]["dataClassRisk"]> = ["public", "internal", "confidential", "restricted"];
-
-  for (const dataClass of dataClasses) {
-    const request: RiskEvaluationRequest = {
-      taskId: `task-data-${dataClass}`,
-      factors: {
-        stepTypeRisk: "read",
-        targetSystemRisk: "internal",
-        dataClassRisk: dataClass,
-        blastRadius: "single_task",
-        priorFailureRatePercent: 0,
-        confidence: "high",
-      },
-    };
-
-    const result = engine.evaluate(request);
-    assert.ok(result.riskLevel, `Failed for dataClass: ${dataClass}`);
-  }
-});
-
+// Blast radius value tests
 test("RiskEvaluationEngine handles all blast radius values", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const blastRadii: Array<RiskEvaluationRequest["factors"]["blastRadius"]> = ["single_task", "workflow", "tenant", "platform"];
+  const blastRadiusValues = [1, 2, 3, 4, 5];
 
-  for (const blastRadius of blastRadii) {
+  for (const blastRadius of blastRadiusValues) {
     const request: RiskEvaluationRequest = {
       taskId: `task-blast-${blastRadius}`,
       factors: {
-        stepTypeRisk: "read",
-        targetSystemRisk: "internal",
-        dataClassRisk: "public",
+        impact: 1,
+        irreversibility: 1,
+        dataSensitivity: 1,
+        autonomyModeRisk: 1,
+        tenantImpact: 1,
         blastRadius,
-        priorFailureRatePercent: 0,
-        confidence: "high",
+        historicalFailureRate: 0,
+        evidenceConfidence: "high",
       },
     };
 
@@ -559,20 +532,22 @@ test("RiskEvaluationEngine handles all blast radius values", () => {
   }
 });
 
-test("RiskEvaluationEngine handles all confidence levels", () => {
+test("RiskEvaluationEngine handles all evidence confidence levels", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const confidenceLevels: Array<RiskEvaluationRequest["factors"]["confidence"]> = ["high", "medium", "low"];
+  const confidenceLevels: Array<"high" | "medium" | "low"> = ["high", "medium", "low"];
 
   for (const confidence of confidenceLevels) {
     const request: RiskEvaluationRequest = {
       taskId: `task-confidence-${confidence}`,
       factors: {
-        stepTypeRisk: "read",
-        targetSystemRisk: "internal",
-        dataClassRisk: "public",
-        blastRadius: "single_task",
-        priorFailureRatePercent: 0,
-        confidence,
+        impact: 1,
+        irreversibility: 1,
+        dataSensitivity: 1,
+        autonomyModeRisk: 1,
+        tenantImpact: 1,
+        blastRadius: 1,
+        historicalFailureRate: 0,
+        evidenceConfidence: confidence,
       },
     };
 
@@ -587,12 +562,14 @@ test("RiskEvaluationEngine LOW risk actions include log and proceed", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-actions-low",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -605,12 +582,14 @@ test("RiskEvaluationEngine MEDIUM risk actions include validation and monitoring
   const request: RiskEvaluationRequest = {
     taskId: "task-actions-medium",
     factors: {
-      stepTypeRisk: "write",
-      targetSystemRisk: "staging",
-      dataClassRisk: "confidential",
-      blastRadius: "workflow",
-      priorFailureRatePercent: 20,
-      confidence: "medium",
+      impact: 3,
+      irreversibility: 2,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 3,
+      blastRadius: 3,
+      historicalFailureRate: 20,
+      evidenceConfidence: "medium",
     },
   };
 
@@ -625,12 +604,14 @@ test("RiskEvaluationEngine HIGH risk actions include block and approval", () => 
   const request: RiskEvaluationRequest = {
     taskId: "task-actions-high",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "confidential",
-      blastRadius: "tenant",
-      priorFailureRatePercent: 40,
-      confidence: "low",
+      impact: 4,
+      irreversibility: 4,
+      dataSensitivity: 4,
+      autonomyModeRisk: 3,
+      tenantImpact: 4,
+      blastRadius: 4,
+      historicalFailureRate: 40,
+      evidenceConfidence: "low",
     },
   };
 
@@ -646,12 +627,14 @@ test("RiskEvaluationEngine CRITICAL risk actions include break_glass and legal",
   const request: RiskEvaluationRequest = {
     taskId: "task-actions-critical",
     factors: {
-      stepTypeRisk: "delete",
-      targetSystemRisk: "production",
-      dataClassRisk: "restricted",
-      blastRadius: "platform",
-      priorFailureRatePercent: 75,
-      confidence: "low",
+      impact: 5,
+      irreversibility: 5,
+      dataSensitivity: 5,
+      autonomyModeRisk: 5,
+      tenantImpact: 5,
+      blastRadius: 5,
+      historicalFailureRate: 75,
+      evidenceConfidence: "low",
     },
   };
 
@@ -671,28 +654,28 @@ test("RiskEvaluationEngine assigns correct log levels per risk level", () => {
   // LOW -> info
   let request: RiskEvaluationRequest = {
     taskId: "task-log-low",
-    factors: { stepTypeRisk: "read", targetSystemRisk: "internal", dataClassRisk: "public", blastRadius: "single_task", priorFailureRatePercent: 0, confidence: "high" },
+    factors: { impact: 1, irreversibility: 1, dataSensitivity: 1, autonomyModeRisk: 1, tenantImpact: 1, blastRadius: 1, historicalFailureRate: 0, evidenceConfidence: "high" },
   };
   assert.equal(engine.evaluate(request).logLevel, "info");
 
   // MEDIUM -> warn
   request = {
     taskId: "task-log-medium",
-    factors: { stepTypeRisk: "write", targetSystemRisk: "staging", dataClassRisk: "confidential", blastRadius: "workflow", priorFailureRatePercent: 20, confidence: "medium" },
+    factors: { impact: 3, irreversibility: 2, dataSensitivity: 3, autonomyModeRisk: 2, tenantImpact: 3, blastRadius: 3, historicalFailureRate: 20, evidenceConfidence: "medium" },
   };
   assert.equal(engine.evaluate(request).logLevel, "warn");
 
   // HIGH -> error
   request = {
     taskId: "task-log-high",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "confidential", blastRadius: "tenant", priorFailureRatePercent: 40, confidence: "low" },
+    factors: { impact: 4, irreversibility: 4, dataSensitivity: 4, autonomyModeRisk: 3, tenantImpact: 4, blastRadius: 4, historicalFailureRate: 40, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).logLevel, "error");
 
   // CRITICAL -> critical
   request = {
     taskId: "task-log-critical",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "restricted", blastRadius: "platform", priorFailureRatePercent: 75, confidence: "low" },
+    factors: { impact: 5, irreversibility: 5, dataSensitivity: 5, autonomyModeRisk: 5, tenantImpact: 5, blastRadius: 5, historicalFailureRate: 75, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).logLevel, "critical");
 });
@@ -705,28 +688,28 @@ test("RiskEvaluationEngine assigns correct evidence levels per risk level", () =
   // LOW -> basic
   let request: RiskEvaluationRequest = {
     taskId: "task-evidence-low",
-    factors: { stepTypeRisk: "read", targetSystemRisk: "internal", dataClassRisk: "public", blastRadius: "single_task", priorFailureRatePercent: 0, confidence: "high" },
+    factors: { impact: 1, irreversibility: 1, dataSensitivity: 1, autonomyModeRisk: 1, tenantImpact: 1, blastRadius: 1, historicalFailureRate: 0, evidenceConfidence: "high" },
   };
   assert.equal(engine.evaluate(request).evidenceLevel, "basic");
 
   // MEDIUM -> enhanced
   request = {
     taskId: "task-evidence-medium",
-    factors: { stepTypeRisk: "write", targetSystemRisk: "staging", dataClassRisk: "confidential", blastRadius: "workflow", priorFailureRatePercent: 20, confidence: "medium" },
+    factors: { impact: 3, irreversibility: 2, dataSensitivity: 3, autonomyModeRisk: 2, tenantImpact: 3, blastRadius: 3, historicalFailureRate: 20, evidenceConfidence: "medium" },
   };
   assert.equal(engine.evaluate(request).evidenceLevel, "enhanced");
 
   // HIGH -> full
   request = {
     taskId: "task-evidence-high",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "confidential", blastRadius: "tenant", priorFailureRatePercent: 40, confidence: "low" },
+    factors: { impact: 4, irreversibility: 4, dataSensitivity: 4, autonomyModeRisk: 3, tenantImpact: 4, blastRadius: 4, historicalFailureRate: 40, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).evidenceLevel, "full");
 
   // CRITICAL -> legal
   request = {
     taskId: "task-evidence-critical",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "restricted", blastRadius: "platform", priorFailureRatePercent: 75, confidence: "low" },
+    factors: { impact: 5, irreversibility: 5, dataSensitivity: 5, autonomyModeRisk: 5, tenantImpact: 5, blastRadius: 5, historicalFailureRate: 75, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).evidenceLevel, "legal");
 });
@@ -739,28 +722,28 @@ test("RiskEvaluationEngine assigns correct side effects per risk level", () => {
   // LOW -> normal
   let request: RiskEvaluationRequest = {
     taskId: "task-side-low",
-    factors: { stepTypeRisk: "read", targetSystemRisk: "internal", dataClassRisk: "public", blastRadius: "single_task", priorFailureRatePercent: 0, confidence: "high" },
+    factors: { impact: 1, irreversibility: 1, dataSensitivity: 1, autonomyModeRisk: 1, tenantImpact: 1, blastRadius: 1, historicalFailureRate: 0, evidenceConfidence: "high" },
   };
   assert.equal(engine.evaluate(request).sideEffect, "normal");
 
   // MEDIUM -> normal_with_validation
   request = {
     taskId: "task-side-medium",
-    factors: { stepTypeRisk: "write", targetSystemRisk: "staging", dataClassRisk: "confidential", blastRadius: "workflow", priorFailureRatePercent: 20, confidence: "medium" },
+    factors: { impact: 3, irreversibility: 2, dataSensitivity: 3, autonomyModeRisk: 2, tenantImpact: 3, blastRadius: 3, historicalFailureRate: 20, evidenceConfidence: "medium" },
   };
   assert.equal(engine.evaluate(request).sideEffect, "normal_with_validation");
 
   // HIGH -> restricted
   request = {
     taskId: "task-side-high",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "confidential", blastRadius: "tenant", priorFailureRatePercent: 40, confidence: "low" },
+    factors: { impact: 4, irreversibility: 4, dataSensitivity: 4, autonomyModeRisk: 3, tenantImpact: 4, blastRadius: 4, historicalFailureRate: 40, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).sideEffect, "restricted");
 
   // CRITICAL -> prohibited
   request = {
     taskId: "task-side-critical",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "restricted", blastRadius: "platform", priorFailureRatePercent: 75, confidence: "low" },
+    factors: { impact: 5, irreversibility: 5, dataSensitivity: 5, autonomyModeRisk: 5, tenantImpact: 5, blastRadius: 5, historicalFailureRate: 75, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).sideEffect, "prohibited");
 });
@@ -773,14 +756,14 @@ test("RiskEvaluationEngine autoExecute is true for LOW and MEDIUM risk", () => {
   // LOW
   let request: RiskEvaluationRequest = {
     taskId: "task-auto-low",
-    factors: { stepTypeRisk: "read", targetSystemRisk: "internal", dataClassRisk: "public", blastRadius: "single_task", priorFailureRatePercent: 0, confidence: "high" },
+    factors: { impact: 1, irreversibility: 1, dataSensitivity: 1, autonomyModeRisk: 1, tenantImpact: 1, blastRadius: 1, historicalFailureRate: 0, evidenceConfidence: "high" },
   };
   assert.equal(engine.evaluate(request).autoExecute, true);
 
   // MEDIUM
   request = {
     taskId: "task-auto-medium",
-    factors: { stepTypeRisk: "write", targetSystemRisk: "staging", dataClassRisk: "confidential", blastRadius: "workflow", priorFailureRatePercent: 20, confidence: "medium" },
+    factors: { impact: 3, irreversibility: 2, dataSensitivity: 3, autonomyModeRisk: 2, tenantImpact: 3, blastRadius: 3, historicalFailureRate: 20, evidenceConfidence: "medium" },
   };
   assert.equal(engine.evaluate(request).autoExecute, true);
 });
@@ -792,14 +775,14 @@ test("RiskEvaluationEngine autoExecute is false for HIGH and CRITICAL risk", () 
   // HIGH
   let request: RiskEvaluationRequest = {
     taskId: "task-auto-high",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "confidential", blastRadius: "tenant", priorFailureRatePercent: 40, confidence: "low" },
+    factors: { impact: 4, irreversibility: 4, dataSensitivity: 4, autonomyModeRisk: 3, tenantImpact: 4, blastRadius: 4, historicalFailureRate: 40, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).autoExecute, false);
 
   // CRITICAL
   request = {
     taskId: "task-auto-critical",
-    factors: { stepTypeRisk: "delete", targetSystemRisk: "production", dataClassRisk: "restricted", blastRadius: "platform", priorFailureRatePercent: 75, confidence: "low" },
+    factors: { impact: 5, irreversibility: 5, dataSensitivity: 5, autonomyModeRisk: 5, tenantImpact: 5, blastRadius: 5, historicalFailureRate: 75, evidenceConfidence: "low" },
   };
   assert.equal(engine.evaluate(request).autoExecute, false);
 });
@@ -811,12 +794,14 @@ test("RiskEvaluationEngine handles request with optional tenantId", () => {
     taskId: "task-optional-tenant",
     tenantId: "tenant-123",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -831,12 +816,14 @@ test("RiskEvaluationEngine handles request with optional metadata", () => {
     taskId: "task-optional-meta",
     metadata: { source: "test", timestamp: "2026-04-23" },
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -848,12 +835,14 @@ test("RiskEvaluationEngine handles request with optional metadata", () => {
 test("RiskConfig has all required factor weights", () => {
   const config = createTestConfig();
 
-  assert.equal(typeof config.factorWeights.stepTypeRisk, "number");
-  assert.equal(typeof config.factorWeights.targetSystemRisk, "number");
-  assert.equal(typeof config.factorWeights.dataClassRisk, "number");
+  assert.equal(typeof config.factorWeights.impact, "number");
+  assert.equal(typeof config.factorWeights.irreversibility, "number");
+  assert.equal(typeof config.factorWeights.dataSensitivity, "number");
+  assert.equal(typeof config.factorWeights.autonomyModeRisk, "number");
+  assert.equal(typeof config.factorWeights.tenantImpact, "number");
   assert.equal(typeof config.factorWeights.blastRadius, "number");
-  assert.equal(typeof config.factorWeights.priorFailureRate, "number");
-  assert.equal(typeof config.factorWeights.confidence, "number");
+  assert.equal(typeof config.factorWeights.historicalFailureRate, "number");
+  assert.equal(typeof config.factorWeights.evidenceConfidence, "number");
 });
 
 test("RiskConfig has all required risk level thresholds", () => {
@@ -865,17 +854,17 @@ test("RiskConfig has all required risk level thresholds", () => {
   assert.equal(typeof config.riskLevelThresholds.critical, "number");
 });
 
-test("RiskConfig has all required prior failure rate thresholds", () => {
+test("RiskConfig has all required historical failure rate thresholds", () => {
   const config = createTestConfig();
 
-  assert.equal(typeof config.priorFailureRateThresholds.low.maxPercent, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.low.value, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.medium.maxPercent, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.medium.value, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.high.maxPercent, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.high.value, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.critical.maxPercent, "number");
-  assert.equal(typeof config.priorFailureRateThresholds.critical.value, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.low.maxPercent, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.low.value, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.medium.maxPercent, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.medium.value, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.high.maxPercent, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.high.value, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.critical.maxPercent, "number");
+  assert.equal(typeof config.historicalFailureRateThresholds.critical.value, "number");
 });
 
 // Zod schema validation tests
@@ -892,55 +881,18 @@ test("RiskLevelSchema rejects invalid values", () => {
   assert.throws(() => RiskLevelSchema.parse(""));
 });
 
-test("StepTypeRiskSchema accepts valid values", () => {
-  assert.equal(StepTypeRiskSchema.parse("read"), "read");
-  assert.equal(StepTypeRiskSchema.parse("write"), "write");
-  assert.equal(StepTypeRiskSchema.parse("delete"), "delete");
-  assert.equal(StepTypeRiskSchema.parse("external_call"), "external_call");
-});
-
-test("StepTypeRiskSchema rejects invalid values", () => {
-  assert.throws(() => StepTypeRiskSchema.parse("READ"));
-  assert.throws(() => StepTypeRiskSchema.parse("create"));
-  assert.throws(() => StepTypeRiskSchema.parse(""));
-});
-
-test("TargetSystemRiskSchema accepts valid values", () => {
-  assert.equal(TargetSystemRiskSchema.parse("internal"), "internal");
-  assert.equal(TargetSystemRiskSchema.parse("staging"), "staging");
-  assert.equal(TargetSystemRiskSchema.parse("production"), "production");
-});
-
-test("TargetSystemRiskSchema rejects invalid values", () => {
-  assert.throws(() => TargetSystemRiskSchema.parse("INTERNAL"));
-  assert.throws(() => TargetSystemRiskSchema.parse("dev"));
-  assert.throws(() => TargetSystemRiskSchema.parse(""));
-});
-
-test("DataClassRiskSchema accepts valid values", () => {
-  assert.equal(DataClassRiskSchema.parse("public"), "public");
-  assert.equal(DataClassRiskSchema.parse("internal"), "internal");
-  assert.equal(DataClassRiskSchema.parse("confidential"), "confidential");
-  assert.equal(DataClassRiskSchema.parse("restricted"), "restricted");
-});
-
-test("DataClassRiskSchema rejects invalid values", () => {
-  assert.throws(() => DataClassRiskSchema.parse("PUBLIC"));
-  assert.throws(() => DataClassRiskSchema.parse("secret"));
-  assert.throws(() => DataClassRiskSchema.parse(""));
-});
-
 test("BlastRadiusSchema accepts valid values", () => {
-  assert.equal(BlastRadiusSchema.parse("single_task"), "single_task");
-  assert.equal(BlastRadiusSchema.parse("workflow"), "workflow");
-  assert.equal(BlastRadiusSchema.parse("tenant"), "tenant");
-  assert.equal(BlastRadiusSchema.parse("platform"), "platform");
+  assert.equal(BlastRadiusSchema.parse(1), 1);
+  assert.equal(BlastRadiusSchema.parse(2), 2);
+  assert.equal(BlastRadiusSchema.parse(3), 3);
+  assert.equal(BlastRadiusSchema.parse(4), 4);
+  assert.equal(BlastRadiusSchema.parse(5), 5);
 });
 
 test("BlastRadiusSchema rejects invalid values", () => {
-  assert.throws(() => BlastRadiusSchema.parse("single"));
-  assert.throws(() => BlastRadiusSchema.parse("SINGLE_TASK"));
-  assert.throws(() => BlastRadiusSchema.parse(""));
+  assert.throws(() => BlastRadiusSchema.parse(0));
+  assert.throws(() => BlastRadiusSchema.parse(6));
+  assert.throws(() => BlastRadiusSchema.parse("single_task"));
 });
 
 test("ConfidenceLevelSchema accepts valid values", () => {
@@ -957,43 +909,53 @@ test("ConfidenceLevelSchema rejects invalid values", () => {
 
 test("RiskFactorsSchema accepts valid complete object", () => {
   const result = RiskFactorsSchema.parse({
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: 10,
-    confidence: "high",
+    impact: 3,
+    irreversibility: 2,
+    dataSensitivity: 3,
+    autonomyModeRisk: 2,
+    tenantImpact: 2,
+    blastRadius: 3,
+    historicalFailureRate: 10,
+    evidenceConfidence: "high",
   });
 
-  assert.equal(result.stepTypeRisk, "read");
-  assert.equal(result.priorFailureRatePercent, 10);
+  assert.equal(result.impact, 3);
+  assert.equal(result.historicalFailureRate, 10);
 });
 
-test("RiskFactorsSchema rejects priorFailureRatePercent outside 0-100", () => {
+test("RiskFactorsSchema rejects historicalFailureRatePercent outside 0-100", () => {
   assert.throws(() => RiskFactorsSchema.parse({
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: -1,
-    confidence: "high",
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: -1,
+    evidenceConfidence: "high",
   }));
 
   assert.throws(() => RiskFactorsSchema.parse({
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: 101,
-    confidence: "high",
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 101,
+    evidenceConfidence: "high",
   }));
 });
 
 test("RiskFactorsSchema rejects missing required fields", () => {
   assert.throws(() => RiskFactorsSchema.parse({
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    // missing dataClassRisk, blastRadius, priorFailureRatePercent, confidence
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    // missing historicalFailureRatePercent and evidenceConfidence
   }));
 });
 
@@ -1005,12 +967,14 @@ test("RiskEvaluationEngine works without domainRiskProfiles", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-no-domain",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 
@@ -1027,12 +991,14 @@ test("RiskEvaluationEngine works with empty domainRiskProfiles Map", () => {
   const request: RiskEvaluationRequest = {
     taskId: "task-empty-domain",
     factors: {
-      stepTypeRisk: "read",
-      targetSystemRisk: "internal",
-      dataClassRisk: "public",
-      blastRadius: "single_task",
-      priorFailureRatePercent: 0,
-      confidence: "high",
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
     },
   };
 

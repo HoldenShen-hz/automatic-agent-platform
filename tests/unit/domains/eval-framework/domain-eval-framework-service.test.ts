@@ -8,7 +8,6 @@ function createTestFramework(domainId: string): DomainEvalFramework {
   return {
     frameworkId: `framework_${domainId}`,
     domainId,
-    version: "1.0.0",
     evaluators: [
       { evaluatorId: "eval_accuracy", metric: "accuracy", threshold: 0.8, blocking: true },
       { evaluatorId: "eval_latency", metric: "latency_ms", threshold: 200, blocking: false },
@@ -20,7 +19,7 @@ function createTestFramework(domainId: string): DomainEvalFramework {
       requirePromptInjectionCoverage: true,
     },
     fewShotExamples: [
-      { id: "ex1", input: "test", expectedOutput: "result", category: "basic" },
+      "example: test input produces result",
     ],
     onlineMetrics: ["error_rate", "throughput"],
   };
@@ -30,7 +29,6 @@ function createMinimalFramework(domainId: string): DomainEvalFramework {
   return {
     frameworkId: `minimal_${domainId}`,
     domainId,
-    version: "1.0.0",
     evaluators: [],
     releaseGates: {
       minFewShotCount: 0,

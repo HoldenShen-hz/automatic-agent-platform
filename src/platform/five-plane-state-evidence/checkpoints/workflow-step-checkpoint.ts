@@ -18,6 +18,7 @@
  * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
  */
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
@@ -240,6 +241,17 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
   try {
     // Use synchronous file read - checkpoint loading is not performance critical
     const fileContent = readFileSync(record.storagePath, "utf8");
+    if (record.checksum.length > 0) {
+      const actualChecksum = createHash("sha256").update(fileContent).digest("hex");
+      if (actualChecksum !== record.checksum) {
+        logger.log({
+          level: "warn",
+          message: "Workflow step checkpoint checksum mismatch",
+          data: { storagePath: record.storagePath, expectedChecksum: record.checksum, actualChecksum },
+        });
+        return null;
+      }
+    }
     const parsed = JSON.parse(fileContent) as unknown;
     return isWorkflowStepCheckpoint(parsed) ? parsed : null;
   } catch (err) {

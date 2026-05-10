@@ -39,6 +39,11 @@ import {
 
 import type { ComplianceStore } from "../../../../src/platform/five-plane-control-plane/compliance/types.js";
 
+// Mock event emitter interface
+interface MockEventEmitter {
+  insertEvent(event: { id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string; taskId?: string | null; executionId?: string | null; eventTier?: string }): void;
+}
+
 // ============================================================================
 // Mock Store Factory
 // ============================================================================
@@ -66,25 +71,41 @@ function createMockStore(): ComplianceStore {
         .filter((r) => r.tenantId === tenantId)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     },
+    listErasureRequestsByTraceId: (traceId: string): ErasureRequest[] => {
+      return Array.from(erasureRequests.values())
+        .filter((r) => r.traceId === traceId);
+    },
     insertErasureReport: (report: ErasureReport) => {
       erasureReports.set(report.reportId, report);
     },
     getErasureReport: (reportId: string): ErasureReport | null => {
       return erasureReports.get(reportId) ?? null;
     },
+    updateErasureReport: (report: ErasureReport) => {
+      erasureReports.set(report.reportId, report);
+    },
     listErasureReportsByTenant: (tenantId: string): ErasureReport[] => {
       return Array.from(erasureReports.values())
         .filter((r) => r.tenantId === tenantId)
         .sort((a, b) => Date.parse(b.generatedAt) - Date.parse(a.generatedAt));
     },
-    insertDataEncryptionKey: (dek: DataEncryptionKey) => {
-      dataEncryptionKeys.set(dek.dekId, dek);
+    listErasureReportsByErasureId: (erasureId: string): ErasureReport[] => {
+      return Array.from(erasureReports.values())
+        .filter((r) => r.erasureId === erasureId);
     },
-    getDataEncryptionKey: (dekId: string): DataEncryptionKey | null => {
-      return dataEncryptionKeys.get(dekId) ?? null;
+    insertDataEncryptionKey: (dek: DataEncryptionKey) => {
+      dataEncryptionKeys.set(dek.keyId, dek);
+    },
+    getDataEncryptionKey: (keyId: string): DataEncryptionKey | null => {
+      return dataEncryptionKeys.get(keyId) ?? null;
     },
     updateDataEncryptionKey: (dek: DataEncryptionKey) => {
-      dataEncryptionKeys.set(dek.dekId, dek);
+      dataEncryptionKeys.set(dek.keyId, dek);
+    },
+    getActiveDataEncryptionKey: (tenantId: string): DataEncryptionKey | null => {
+      return Array.from(dataEncryptionKeys.values())
+        .filter((k) => k.tenantId === tenantId && k.status === "active")
+        .sort((a, b) => b.version - a.version)[0] ?? null;
     },
     listDataEncryptionKeysByTenant: (tenantId: string): DataEncryptionKey[] => {
       return Array.from(dataEncryptionKeys.values())
@@ -94,12 +115,6 @@ function createMockStore(): ComplianceStore {
     insertDataPlacement: (placement: DataPlacement) => {
       dataPlacements.set(placement.placementId, placement);
     },
-    getDataPlacement: (placementId: string): DataPlacement | null => {
-      return dataPlacements.get(placementId) ?? null;
-    },
-    updateDataPlacement: (placement: DataPlacement) => {
-      dataPlacements.set(placement.placementId, placement);
-    },
     listDataPlacementsByTenant: (tenantId: string): DataPlacement[] => {
       return Array.from(dataPlacements.values())
         .filter((p) => p.tenantId === tenantId);
@@ -107,16 +122,22 @@ function createMockStore(): ComplianceStore {
     insertResidencyViolation: (violation: ResidencyViolation) => {
       residencyViolations.set(violation.violationId, violation);
     },
+    updateResidencyViolation: (violation: ResidencyViolation) => {
+      residencyViolations.set(violation.violationId, violation);
+    },
     listResidencyViolationsByTenant: (tenantId: string): ResidencyViolation[] => {
       return Array.from(residencyViolations.values())
         .filter((v) => v.tenantId === tenantId);
     },
+    listAllResidencyViolations: (): ResidencyViolation[] => {
+      return Array.from(residencyViolations.values());
+    },
   };
 }
 
-function createMockEventEmitter() {
+function createMockEventEmitter(): MockEventEmitter {
   return {
-    insertEvent: (event: { id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }) => {
+    insertEvent: (event) => {
       events.push(event);
     },
   };
@@ -139,7 +160,7 @@ test("ErasureRequestService creates erasure request", () => {
     reason: "User requested data deletion",
   };
 
-  const request = service.createErasureRequest(input);
+  const request = service.createRequest(input);
 
   assert.equal(request.tenantId, "tenant_123");
   assert.equal(request.subjectType, "user");
@@ -163,7 +184,7 @@ test("ErasureRequestService rejects invalid subject type", () => {
   };
 
   assert.throws(
-    () => service.createErasureRequest(input),
+    () => service.createRequest(input),
     /subjectType/,
   );
 });
@@ -175,21 +196,30 @@ test("ErasureRequestService rejects invalid subject type", () => {
 test("ErasureReportService generates erasure report", () => {
   const store = createMockStore();
   const eventEmitter = createMockEventEmitter();
-  const service = new ErasureReportService(store as any, eventEmitter as any);
+  const service = new ErasureRequestService(store as any, eventEmitter as any);
 
-  const input: GenerateErasureReportInput = {
+  // First create an erasure request
+  const erasureInput: ErasureRequestInput = {
     tenantId: "tenant_123",
-    erasureId: "erasure_789",
     subjectType: "user",
     subjectId: "user_456",
-    generatedBy: "system",
+    requestedBy: "admin",
+    reason: "User requested data deletion",
+  };
+  const erasureRequest = service.createRequest(erasureInput);
+
+  const reportService = new ErasureReportService(store as any, eventEmitter as any);
+  const input: GenerateErasureReportInput = {
+    erasureId: erasureRequest.erasureId,
+    subjects: [{ subjectType: "user", subjectId: "user_456", dataCategories: ["profile"], erased: true }],
+    evidenceRefs: [{ evidenceType: "dek_destruction", referenceId: "key_001", description: "DEK destroyed", timestamp: new Date().toISOString() }],
+    traceId: "trace_123",
   };
 
-  const report = service.generateErasureReport(input);
+  const report = reportService.generateReport(input);
 
   assert.equal(report.tenantId, "tenant_123");
-  assert.equal(report.erasureId, "erasure_789");
-  assert.equal(report.subjectType, "user");
+  assert.equal(report.erasureId, erasureRequest.erasureId);
   assert.ok(report.reportId.length > 0);
   assert.ok(report.generatedAt.length > 0);
 });
@@ -197,13 +227,52 @@ test("ErasureReportService generates erasure report", () => {
 test("ErasureReportService calculates crypto shredding verification", () => {
   const store = createMockStore();
   const eventEmitter = createMockEventEmitter();
-  const service = new ErasureReportService(store as any, eventEmitter as any);
 
-  const summary = service.verifyCryptoShredding("dek_123", 5);
+  // Create and store a DEK
+  const dek: DataEncryptionKey = {
+    keyId: "key_123",
+    tenantId: "tenant_123",
+    version: 1,
+    status: "destroyed",
+    encryptedKeyMaterial: null,
+    algorithm: "AES-256-GCM",
+    externalKeyId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    destroyedAt: new Date().toISOString(),
+    createdBy: "admin",
+    destroyedBy: "system",
+    destructionReason: "erasure",
+    traceId: null,
+    metadataJson: null,
+  };
+  store.insertDataEncryptionKey(dek);
 
-  assert.equal(summary.dekId, "dek_123");
-  assert.equal(summary.keyVersionsDestroyed, 5);
-  assert.equal(summary.allVersionsDestroyed, true);
+  // Create erasure request and report
+  const erasureService = new ErasureRequestService(store as any, eventEmitter as any);
+  const erasureInput: ErasureRequestInput = {
+    tenantId: "tenant_123",
+    subjectType: "user",
+    subjectId: "user_456",
+    requestedBy: "admin",
+    reason: "User requested data deletion",
+  };
+  const erasureRequest = erasureService.createRequest(erasureInput);
+
+  const reportService = new ErasureReportService(store as any, eventEmitter as any);
+  const reportInput: GenerateErasureReportInput = {
+    erasureId: erasureRequest.erasureId,
+    subjects: [{ subjectType: "user", subjectId: "user_456", dataCategories: ["profile"], erased: true }],
+    evidenceRefs: [{ evidenceType: "dek_destruction", referenceId: "key_123", description: "DEK destroyed", timestamp: new Date().toISOString() }],
+    traceId: "trace_123",
+  };
+  const report = reportService.generateReport(reportInput);
+
+  const summary = reportService.verifyCryptoShredding(report.reportId);
+
+  assert.equal(summary.totalDekDestroyed, 1);
+  assert.equal(summary.verifiedDekDestroyed, 1);
+  assert.equal(summary.status, "verified");
 });
 
 // ============================================================================
@@ -212,10 +281,11 @@ test("ErasureReportService calculates crypto shredding verification", () => {
 
 test("DataEncryptionKeyService creates DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store);
+  const service = new DataEncryptionKeyService(store as any, store);
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
+    encryptedKeyMaterial: "enc_key_material_abc123",
     createdBy: "admin",
     algorithm: "AES-256-GCM",
   };
@@ -225,42 +295,40 @@ test("DataEncryptionKeyService creates DEK", () => {
   assert.equal(dek.tenantId, "tenant_123");
   assert.equal(dek.algorithm, "AES-256-GCM");
   assert.equal(dek.status, "active");
-  assert.ok(dek.dekId.length > 0);
   assert.ok(dek.keyId.length > 0);
 });
 
 test("DataEncryptionKeyService rotates DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store);
+  const service = new DataEncryptionKeyService(store as any, store);
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
+    encryptedKeyMaterial: "enc_key_material_abc123",
     createdBy: "admin",
-    algorithm: "AES-256-GCM",
   };
 
   const dek = service.createDek(input);
-  const rotated = service.rotateDek({ dekId: dek.dekId, rotatedBy: "admin" });
+  const rotated = service.rotateDek({ tenantId: "tenant_123", newEncryptedKeyMaterial: "new_enc_key_material_xyz", rotatedBy: "admin" });
 
-  assert.equal(rotated.dekId, dek.dekId);
-  assert.ok(rotated.rotatedAt.length > 0);
-  assert.notEqual(rotated.keyId, dek.keyId);
+  assert.ok(rotated.keyId !== dek.keyId);
+  assert.equal(rotated.status, "active");
 });
 
 test("DataEncryptionKeyService destroys DEK", () => {
   const store = createMockStore();
-  const service = new DataEncryptionKeyService(store);
+  const service = new DataEncryptionKeyService(store as any, store);
 
   const input: CreateDekInput = {
     tenantId: "tenant_123",
+    encryptedKeyMaterial: "enc_key_material_abc123",
     createdBy: "admin",
-    algorithm: "AES-256-GCM",
   };
 
   const dek = service.createDek(input);
-  const destroyed = service.destroyDek({ dekId: dek.dekId, destroyedBy: "admin" });
+  const destroyed = service.destroyDek({ keyId: dek.keyId, destroyedBy: "admin", reason: "erasure_request" });
 
-  assert.equal(destroyed.dekId, dek.dekId);
+  assert.equal(destroyed.keyId, dek.keyId);
   assert.equal(destroyed.status, "destroyed");
 });
 
@@ -268,69 +336,34 @@ test("DataEncryptionKeyService destroys DEK", () => {
 // Data Residency Service Tests
 // ============================================================================
 
-test("DataResidencyService creates residency rule", () => {
-  const store = createMockStore();
-  const service = new DataResidencyService(store);
-
-  const rule: DataResidencyRule = {
-    ruleId: "rule_001",
-    tenantId: "tenant_123",
-    jurisdiction: "EU" as Jurisdiction,
-    allowedRegions: ["EU-WEST-1", "EU-CENTRAL-1"] as DataRegion[],
-    dataCategories: ["PII", "FINANCIAL"],
-    enforcementLevel: "strict",
-    createdAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  const created = service.createResidencyRule(rule);
-
-  assert.equal(created.ruleId, "rule_001");
-  assert.equal(created.jurisdiction, "EU");
-  assert.deepStrictEqual(created.allowedRegions, ["EU-WEST-1", "EU-CENTRAL-1"]);
-});
-
 test("DataResidencyService checks residency compliance", () => {
   const store = createMockStore();
-  const service = new DataResidencyService(store);
+  const service = new DataResidencyService(store as any, store);
 
   const input: CheckResidencyInput = {
     tenantId: "tenant_123",
-    dataId: "data_001",
-    currentRegion: "EU-WEST-1" as DataRegion,
-    dataCategory: "PII",
+    category: "personal",
+    currentRegion: "eu-west-1",
   };
 
   const result = service.checkResidency(input);
 
-  assert.equal(result.compliant, true);
-  assert.equal(result.dataId, "data_001");
+  assert.equal(result.isCompliant, true);
 });
 
 test("DataResidencyService detects residency violation", () => {
   const store = createMockStore();
-  const service = new DataResidencyService(store);
+  const service = new DataResidencyService(store as any, store);
 
-  const rule: DataResidencyRule = {
-    ruleId: "rule_002",
-    tenantId: "tenant_123",
-    jurisdiction: "EU" as Jurisdiction,
-    allowedRegions: ["EU-WEST-1"] as DataRegion[],
-    dataCategories: ["PII"],
-    enforcementLevel: "strict",
-    createdAt: "2026-04-01T00:00:00.000Z",
-  };
-
-  service.createResidencyRule(rule);
-
+  // EU requires personal data to stay in EU
   const input: CheckResidencyInput = {
     tenantId: "tenant_123",
-    dataId: "data_002",
-    currentRegion: "US-EAST-1" as DataRegion,
-    dataCategory: "PII",
+    category: "personal",
+    currentRegion: "us-east-1",
   };
 
   const result = service.checkResidency(input);
 
-  assert.equal(result.compliant, false);
-  assert.ok(result.violation !== null);
+  assert.equal(result.isCompliant, false);
+  assert.ok(result.violations.length > 0);
 });

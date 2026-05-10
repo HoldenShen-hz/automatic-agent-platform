@@ -11,7 +11,7 @@ import {
   type GoldenTaskApprovalExpectation,
   type GoldenTaskRecoveryExpectation,
   type GoldenTaskCase,
-} from "../../../../../src/platform/shared/stability/index.js";
+} from "../../../../../src/platform/stability/index.js";
 
 test("REQUIRED_GOLDEN_TASK_CLASSES is an array of task classes", () => {
   assert.ok(Array.isArray(REQUIRED_GOLDEN_TASK_CLASSES));

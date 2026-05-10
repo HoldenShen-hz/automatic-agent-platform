@@ -19,13 +19,9 @@ function createRecipe(
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description ?? "Test recipe",
     triggerPhrases: overrides.triggerPhrases ?? [`trigger ${overrides.recipeId}`],
-    risk_profile_ref: overrides.risk_profile_ref ?? `${overrides.domainId}.risk`,
-    guardrail_overlay: overrides.guardrail_overlay ?? `${overrides.domainId}.guardrails`,
-    default_prompt_bundle_ref: overrides.default_prompt_bundle_ref ?? `${overrides.domainId}.prompts`,
-    acceptance_checklist_ref: overrides.acceptance_checklist_ref ?? `${overrides.domainId}.acceptance`,
+    archetype: overrides.archetype ?? "crud_heavy",
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
-    recommended_workflow_ids: overrides.recommended_workflow_ids ?? [overrides.defaultWorkflowId],
   });
 }
 

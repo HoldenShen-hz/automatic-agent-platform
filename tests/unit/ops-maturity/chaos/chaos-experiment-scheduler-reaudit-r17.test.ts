@@ -5,6 +5,7 @@ import {
   ChaosExperimentScheduler,
   SteadyStateHypothesis,
   BoundaryControl,
+  InMemoryChaosExperimentSchedulerRepository,
 } from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 
 /**
@@ -257,11 +258,39 @@ test("ChaosExperimentScheduler: autoTerminateIfNeeded does not cancel running ex
   assert.equal(finalExp!.status, "running");
 });
 
+test("ChaosExperimentScheduler: autoTerminateIfNeeded initiates rollback when an applied fault overruns its max duration", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Rollback On Timeout",
+    description: "Testing rollback on timeout",
+    target: { targetKind: "service", targetId: "svc-1", labels: {} },
+    fault: { faultType: "latency", intensity: 50, durationMs: 10_000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 1,
+  });
+
+  scheduler.startExperiment(experiment.experimentId);
+  scheduler.injectFault(experiment.experimentId);
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  retrieved!.startedAt = new Date(Date.now() - 10).toISOString();
+
+  const terminated = scheduler.autoTerminateIfNeeded(experiment.experimentId);
+  assert.equal(terminated, true);
+  assert.equal(scheduler.getExperiment(experiment.experimentId)?.status, "rollback");
+});
+
 /**
  * R17-65: Tests for injectFault behavior
  */
 test("ChaosExperimentScheduler: injectFault returns fault config for running experiment", () => {
-  const scheduler = new ChaosExperimentScheduler();
+  let injected = false;
+  const scheduler = new ChaosExperimentScheduler({
+    faultExecutor: () => {
+      injected = true;
+      return { applied: true, message: "fault applied" };
+    },
+  });
   const experiment = scheduler.scheduleExperiment({
     name: "Inject Fault Test",
     description: "Testing injectFault returns config",
@@ -277,9 +306,13 @@ test("ChaosExperimentScheduler: injectFault returns fault config for running exp
   const fault = scheduler.injectFault(experiment.experimentId);
 
   assert.ok(fault !== null);
+  assert.equal(injected, true);
   assert.equal(fault!.faultType, "latency");
   assert.equal(fault!.intensity, 100);
   assert.deepEqual(fault!.parameters, { delay: 200 });
+  const persisted = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(persisted?.faultExecutionStatus, "applied");
+  assert.equal(persisted?.faultExecutionMessage, "fault applied");
 });
 
 test("ChaosExperimentScheduler: injectFault returns null for non-running experiment", () => {
@@ -339,6 +372,46 @@ test("ChaosExperimentScheduler: cacheSteadyStateMetric stores metric with timest
   assert.ok(cached !== null);
   assert.equal(cached!.value, 42.5);
   assert.ok(cached!.timestamp > 0);
+});
+
+test("ChaosExperimentScheduler: repository-backed scheduler reloads experiments after restart", () => {
+  const repository = new InMemoryChaosExperimentSchedulerRepository();
+  const scheduler = new ChaosExperimentScheduler({ repository });
+  const experiment = scheduler.scheduleExperiment({
+    name: "Persisted",
+    description: "Testing snapshot persistence",
+    target: { targetKind: "service", targetId: "svc-1", labels: { affected_instances: "1" } },
+    fault: { faultType: "latency", intensity: 10, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 30_000,
+  });
+
+  scheduler.startExperiment(experiment.experimentId);
+
+  const reloaded = new ChaosExperimentScheduler({ repository });
+  assert.equal(reloaded.getExperiment(experiment.experimentId)?.status, "running");
+});
+
+test("ChaosExperimentScheduler: validateBoundaryControl enforces label-derived blast radius caps", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Blast Radius Cap",
+    description: "Testing affected instance cap",
+    target: {
+      targetKind: "service",
+      targetId: "staging-api-1",
+      labels: { affected_instances: "3", affected_percent: "15", environment: "staging" },
+    },
+    fault: { faultType: "latency", intensity: 10, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 30_000,
+    boundaryControl: { maxAffectedInstances: 1, maxAffectedPercent: 5 },
+  });
+
+  assert.equal(scheduler.startExperiment(experiment.experimentId), false);
+  assert.equal(scheduler.getExperiment(experiment.experimentId)?.status, "cancelled");
 });
 
 test("ChaosExperimentScheduler: getSteadyStateMetric returns null for non-existent metric", () => {

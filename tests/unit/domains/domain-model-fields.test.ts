@@ -45,6 +45,7 @@ test("TenantRecord accepts minimal fields (backward compatible)", () => {
     artifactScope: "tenant",
     isolationMode: "shared_logical",
     deploymentMode: "cloud_shared",
+    quotas: {},
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
   };

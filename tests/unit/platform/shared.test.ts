@@ -332,22 +332,6 @@ test("createChildTraceContext inherits from parent from shared barrel", () => {
 });
 
 // ============================================================================
-// Stability Module Re-exports
-// ============================================================================
-import { REQUIRED_GOLDEN_TASK_CLASSES, SINGLE_TASK_GOLDEN_TASKS } from "../../../src/platform/shared/index.js";
-
-test("REQUIRED_GOLDEN_TASK_CLASSES is an array from shared barrel", () => {
-  assert.ok(Array.isArray(REQUIRED_GOLDEN_TASK_CLASSES));
-  assert.equal(REQUIRED_GOLDEN_TASK_CLASSES.length, 7);
-  assert.equal(REQUIRED_GOLDEN_TASK_CLASSES[0], "coding");
-});
-
-test("SINGLE_TASK_GOLDEN_TASKS is a non-empty array from shared barrel", () => {
-  assert.ok(Array.isArray(SINGLE_TASK_GOLDEN_TASKS));
-  assert.ok(SINGLE_TASK_GOLDEN_TASKS.length > 0);
-});
-
-// ============================================================================
 // Context Module Re-exports
 // ============================================================================
 import {

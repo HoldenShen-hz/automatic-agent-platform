@@ -34,6 +34,12 @@ test("DomainGovernancePolicySchema infers correct TypeScript types", () => {
     operatorRoles: ["operator_a"],
     approvalRoles: ["approver_a"],
     restrictedDataClasses: ["pii"],
+    sloProfile: {},
+    budgetConstraints: {},
+    maxHibernationRenewals: 0,
+    complianceRules: [],
+    recertification: { cadence: "annual", requiredEvidence: [] },
+    waiver: { allowed: false, approvalRoles: [], maxDurationDays: 30 },
     rollout: {
       strategy: "canary",
       approvalRequired: true,

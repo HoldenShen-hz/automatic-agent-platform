@@ -372,8 +372,7 @@ test("ExecutionOutcomeEvaluator constraint compliance returns correct structure"
     outcome: "completed",
     signals: [],
     emittedAt: Date.now(),
-    constraints: ["no_denied_access", "allowed_operation"],
-  });
+  }, undefined, undefined, undefined);
 
   // Should have constraint compliance result
   assert.ok(result.constraintCompliance !== undefined);
@@ -391,8 +390,7 @@ test("ExecutionOutcomeEvaluator budget adherence with actual cost", () => {
     outcome: "completed",
     signals: [],
     emittedAt: Date.now(),
-    actualCost: 0.05,
-  });
+  }, undefined, 0.05);
 
   // Should have budget adherence result
   assert.ok(result.budgetAdherence !== undefined);
@@ -410,8 +408,7 @@ test("ExecutionOutcomeEvaluator timing SLO with actual duration", () => {
     outcome: "completed",
     signals: [],
     emittedAt: Date.now(),
-    actualDurationMs: 60000, // 1 minute
-  });
+  }, 60000); // 1 minute
 
   // Should have timing SLO result
   assert.ok(result.timingSlo !== undefined);

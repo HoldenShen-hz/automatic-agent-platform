@@ -121,7 +121,9 @@ describe("integration-context", () => {
       try {
         const executions = ctx.store.listExecutionsByTask("task-seeded-001");
         assert.strictEqual(executions.length, 1);
-        assert.strictEqual(executions[0].id, "exec-seeded-001");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.id, "exec-seeded-001");
       } finally {
         ctx.cleanup();
       }
@@ -137,7 +139,9 @@ describe("integration-context", () => {
         assert.ok(task, "custom task should exist");
         const executions = ctx.store.listExecutionsByTask("custom-task-id");
         assert.strictEqual(executions.length, 1);
-        assert.strictEqual(executions[0].id, "custom-exec-id");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.id, "custom-exec-id");
       } finally {
         ctx.cleanup();
       }
@@ -147,6 +151,7 @@ describe("integration-context", () => {
       const ctx = createSeededIntegrationContext("seeded-status-");
       try {
         const task = findTaskById(ctx.store, "task-seeded-001");
+        assert.ok(task, "task should exist");
         assert.strictEqual(task.status, "in_progress");
       } finally {
         ctx.cleanup();
@@ -157,7 +162,9 @@ describe("integration-context", () => {
       const ctx = createSeededIntegrationContext("seeded-exec-status-");
       try {
         const executions = ctx.store.listExecutionsByTask("task-seeded-001");
-        assert.strictEqual(executions[0].status, "executing");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.status, "executing");
       } finally {
         ctx.cleanup();
       }
@@ -167,7 +174,9 @@ describe("integration-context", () => {
       const ctx = createSeededIntegrationContext("seeded-link-");
       try {
         const executions = ctx.store.listExecutionsByTask("task-seeded-001");
-        assert.strictEqual(executions[0].taskId, "task-seeded-001");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.taskId, "task-seeded-001");
       } finally {
         ctx.cleanup();
       }
@@ -177,7 +186,9 @@ describe("integration-context", () => {
       const ctx = createSeededIntegrationContext("seeded-trace-");
       try {
         const executions = ctx.store.listExecutionsByTask("task-seeded-001");
-        assert.ok(executions[0].traceId.startsWith("trace-"), "traceId should start with trace-");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.ok(exec.traceId.startsWith("trace-"), "traceId should start with trace-");
       } finally {
         ctx.cleanup();
       }

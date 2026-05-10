@@ -64,9 +64,11 @@ describe("seed helpers", () => {
 
       const executions = store.listExecutionsByTask("task-seed-002");
       assert.strictEqual(executions.length, 1);
-      assert.strictEqual(executions[0].id, "exec-seed-002");
-      assert.strictEqual(executions[0].taskId, "task-seed-002");
-      assert.strictEqual(executions[0].traceId, "custom-trace-002");
+      const exec = executions[0];
+      assert.ok(exec, "execution should exist");
+      assert.strictEqual(exec.id, "exec-seed-002");
+      assert.strictEqual(exec.taskId, "task-seed-002");
+      assert.strictEqual(exec.traceId, "custom-trace-002");
     });
 
     it("should use default traceId when not provided", () => {
@@ -76,7 +78,9 @@ describe("seed helpers", () => {
       });
 
       const executions = store.listExecutionsByTask("task-seed-003");
-      assert.strictEqual(executions[0].traceId, "trace-seed");
+      const exec = executions[0];
+      assert.ok(exec, "execution should exist");
+      assert.strictEqual(exec.traceId, "trace-seed");
     });
 
     it("should set execution to executing status", () => {
@@ -86,7 +90,9 @@ describe("seed helpers", () => {
       });
 
       const executions = store.listExecutionsByTask("task-seed-004");
-      assert.strictEqual(executions[0].status, "executing");
+      const exec = executions[0];
+      assert.ok(exec, "execution should exist");
+      assert.strictEqual(exec.status, "executing");
     });
 
     it("should set task divisionId to general_ops", () => {
@@ -96,6 +102,7 @@ describe("seed helpers", () => {
       });
 
       const task = findTaskById(store, "task-seed-005");
+      assert.ok(task, "task should exist");
       assert.strictEqual(task.divisionId, "general_ops");
     });
 
@@ -146,9 +153,10 @@ describe("seed helpers", () => {
 
       const tasks = store.listTasks(10);
       const seqTasks = tasks.filter((t) => t.id.startsWith("seq-test-")).sort((a, b) => a.id.localeCompare(b.id));
-      assert.strictEqual(seqTasks[0].id, "seq-test-1");
-      assert.strictEqual(seqTasks[1].id, "seq-test-2");
-      assert.strictEqual(seqTasks[2].id, "seq-test-3");
+      assert.strictEqual(seqTasks.length, 3);
+      assert.strictEqual(seqTasks[0]?.id, "seq-test-1");
+      assert.strictEqual(seqTasks[1]?.id, "seq-test-2");
+      assert.strictEqual(seqTasks[2]?.id, "seq-test-3");
     });
 
     it("should handle count of 1", () => {

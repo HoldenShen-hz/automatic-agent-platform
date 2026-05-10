@@ -63,6 +63,7 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["write code", "implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
@@ -70,6 +71,7 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
     {
       recipeId: "recipe_2",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["deploy", "release"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
@@ -86,6 +88,7 @@ test("matchDomainRecipe is case insensitive", () => {
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["Write Code", "Implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
@@ -102,6 +105,7 @@ test("matchDomainRecipe returns first matching recipe", () => {
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
@@ -109,6 +113,7 @@ test("matchDomainRecipe returns first matching recipe", () => {
     {
       recipeId: "recipe_2",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
@@ -125,6 +130,7 @@ test("matchDomainRecipe returns null when no recipe matches", () => {
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["write code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
@@ -145,6 +151,7 @@ test("matchDomainRecipe matches partial phrase (substring)", () => {
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: ["implement feature"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
@@ -161,6 +168,7 @@ test("matchDomainRecipe handles empty trigger phrases array", () => {
     {
       recipeId: "recipe_1",
       domainId: "coding",
+      archetype: "crud_heavy" as const,
       triggerPhrases: [],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],

@@ -90,7 +90,7 @@ export class TestPlannerWrapper {
       domainId: input.domainId,
       constraintPack: input.constraintPack,
       iteration: input.iteration ?? 1,
-      previousOutputs: input.previousOutputs,
+      ...(input.previousOutputs !== undefined ? { previousOutputs: input.previousOutputs } : {}),
     };
     this.capturedInputs.push(captured);
 
@@ -303,8 +303,8 @@ export class TestHarnessOrchestrator {
     // Configure evaluator with override if provided
     if (evaluatorScoreOverride !== undefined || evaluatorVerdictOverride !== undefined) {
       this.evaluator.configure({
-        score: evaluatorScoreOverride,
-        verdict: evaluatorVerdictOverride,
+        ...(evaluatorScoreOverride !== undefined ? { score: evaluatorScoreOverride } : {}),
+        ...(evaluatorVerdictOverride !== undefined ? { verdict: evaluatorVerdictOverride } : {}),
       });
     }
 
@@ -314,7 +314,7 @@ export class TestHarnessOrchestrator {
       domainId: input.domainId,
       constraintPack: input.constraintPack,
       iteration,
-      previousOutputs: input.previousPlannerOutput,
+      ...(input.previousPlannerOutput !== undefined ? { previousOutputs: input.previousPlannerOutput } : {}),
     });
 
     // Step 2: Generator
@@ -362,11 +362,13 @@ export function createTestConstraintPack(overrides: Partial<ConstraintPack> = {}
   return {
     policyIds: [`policy.${taskId}`],
     approvalMode: "none",
-    autonomyMode: "auto",
+    autonomyMode: "full_auto",
     tool_policy: { allowedTools: ["read", "write", "execute"] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
-    budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
+    budgetEnvelope: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
+    sandboxRequirement: { sandboxMode: "none", timeoutMs: 30000 },
+    approvalRequirement: { requiredForRiskClass: ["low", "medium"], approverRoles: [], escalationTimeoutMs: 30000 },
     ...overrides,
   };
 }

@@ -158,8 +158,8 @@ test("toObjectArray filters to plain objects", () => {
 
   assert.equal(result.length, 3);
   assert.deepEqual(result[0], {});
-  assert.equal(result[1].a, 1);
-  assert.equal(result[2].b, 2);
+  assert.equal((result[1] as Record<string, unknown>).a, 1);
+  assert.equal((result[2] as Record<string, unknown>).b, 2);
 });
 
 test("toObjectArray returns empty for non-array", () => {
@@ -260,5 +260,6 @@ items:
   const [result] = parseArray(lines, 1, 2, "test.yaml");
 
   assert.ok(Array.isArray(result));
-  assert.equal((result as Array<Record<string, unknown>>)[0].name, "first");
+  const firstItem = (result as Array<Record<string, unknown>>)[0];
+  assert.equal(firstItem?.name, "first");
 });

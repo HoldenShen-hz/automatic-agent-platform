@@ -29,15 +29,20 @@ class TestAsyncService extends SyncBackedAsyncService<TestSyncService> {
   }
 }
 
+// Use casting to bypass protected constructor restriction
+const createTestService = (factory: () => TestSyncService): TestAsyncService => {
+  return new (TestAsyncService as any)(factory);
+};
+
 test("SyncBackedAsyncService - asPromise wraps sync operation", async () => {
-  const service = new TestAsyncService(() => new TestSyncService());
+  const service = createTestService(() => new TestSyncService());
 
   const result = await service.getValueAsync();
   assert.equal(result, 42);
 });
 
 test("SyncBackedAsyncService - getSyncService returns the sync instance", () => {
-  const service = new TestAsyncService(() => new TestSyncService());
+  const service = createTestService(() => new TestSyncService());
   const sync = service.getSyncService();
 
   assert.equal(sync.value, 42);
@@ -45,7 +50,7 @@ test("SyncBackedAsyncService - getSyncService returns the sync instance", () => 
 });
 
 test("SyncBackedAsyncService - asPromise with operation taking parameter", async () => {
-  const service = new TestAsyncService(() => new TestSyncService());
+  const service = createTestService(() => new TestSyncService());
 
   const result = await service.multiplyAsync(3);
   assert.equal(result, 126);
@@ -58,12 +63,12 @@ test("SyncBackedAsyncService - factory is called once on construction", () => {
     return new TestSyncService();
   };
 
-  new TestAsyncService(factory);
+  createTestService(factory);
   assert.equal(factoryCalls, 1);
 });
 
 test("SyncBackedAsyncService - sync instance is shared", () => {
-  const service = new TestAsyncService(() => new TestSyncService());
+  const service = createTestService(() => new TestSyncService());
 
   const sync1 = service.getSyncService();
   const sync2 = service.getSyncService();
@@ -81,7 +86,11 @@ test("SyncBackedAsyncService - asPromise preserves this context", async () => {
     }
   }
 
-  const service = new MutableAsyncService(() => new TestSyncService());
+  const createMutableService = (factory: () => TestSyncService): MutableAsyncService => {
+    return new (MutableAsyncService as any)(factory);
+  };
+
+  const service = createMutableService(() => new TestSyncService());
   const result = await service.mutateAndGet();
 
   assert.equal(result, 100);

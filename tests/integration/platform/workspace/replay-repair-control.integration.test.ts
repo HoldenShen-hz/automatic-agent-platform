@@ -1,5 +1,7 @@
 /**
  * Integration Tests: Replay Repair Control
+ *
+ * Tests the ReplayRepairControlService startup consistency checking.
  */
 
 import assert from "node:assert/strict";
@@ -10,8 +12,7 @@ import {
   type StartupConsistencyFinding,
   type RecoveryCandidate,
   type RepairAction,
-  type RecoveryDrillResult,
-} from "../../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
+} from "../../../../src/platform/five-plane-control-plane/replay-repair-control/index.js";
 
 // ============================================================================
 // Replay Repair Control End-to-End Integration Tests
@@ -64,8 +65,8 @@ test("integration: recovery candidates have correct dispositions", () => {
   const findings: StartupConsistencyFinding[] = [
     { checkId: "stale_execution", severity: "p2", entityRef: "exec_retry", summary: "Retryable", recoverable: true, suggestedRepairAction: "requeue_execution" },
     { checkId: "orphan_session", severity: "p1", entityRef: "session_close", summary: "Closable", recoverable: true, suggestedRepairAction: "close_orphan_session" },
-    { checkId: "lock_held", severity: "p1", entityRef: "lock_001", summary: "Lock timeout", recoverable: true, suggestedRepairAction: "release_stale_lock" },
-    { checkId: "unknown", severity: "p0", entityRef: "unknown_entity", summary: "Unknown issue", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
+    { checkId: "stale_file_lock", severity: "p1", entityRef: "lock_001", summary: "Lock timeout", recoverable: true, suggestedRepairAction: "release_stale_lock" },
+    { checkId: "migration_version", severity: "p0", entityRef: "unknown_entity", summary: "Unknown issue", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
   ];
 
   const report = service.buildStartupConsistencyReport({ findings });
@@ -103,17 +104,16 @@ test("integration: multiple severity levels counted correctly", () => {
   const service = new ReplayRepairControlService();
 
   const findings: StartupConsistencyFinding[] = [
-    { checkId: "info_1", severity: "info", entityRef: "e1", summary: "Info", recoverable: true, suggestedRepairAction: "requeue_execution" },
-    { checkId: "info_2", severity: "info", entityRef: "e2", summary: "Info", recoverable: true, suggestedRepairAction: "requeue_execution" },
-    { checkId: "p2_1", severity: "p2", entityRef: "e3", summary: "P2", recoverable: true, suggestedRepairAction: "requeue_execution" },
-    { checkId: "p1_1", severity: "p1", entityRef: "e4", summary: "P1", recoverable: true, suggestedRepairAction: "requeue_execution" },
-    { checkId: "p0_1", severity: "p0", entityRef: "e5", summary: "P0", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
+    { checkId: "tier1_ack_backlog", severity: "info", entityRef: "e1", summary: "Info", recoverable: true, suggestedRepairAction: "rebuild_ack" },
+    { checkId: "stale_execution", severity: "p2", entityRef: "e3", summary: "P2", recoverable: true, suggestedRepairAction: "requeue_execution" },
+    { checkId: "orphan_session", severity: "p1", entityRef: "e4", summary: "P1", recoverable: true, suggestedRepairAction: "close_orphan_session" },
+    { checkId: "migration_version", severity: "p0", entityRef: "e5", summary: "P0", recoverable: false, suggestedRepairAction: "manual_intervention_required" },
   ];
 
   const report = service.buildStartupConsistencyReport({ findings });
 
-  assert.deepStrictEqual(report.counts, { info: 2, p2: 1, p1: 1, p0: 1 });
-  assert.equal(report.findings.length, 5);
+  assert.deepStrictEqual(report.counts, { info: 1, p2: 1, p1: 1, p0: 1 });
+  assert.equal(report.findings.length, 4);
 });
 
 test("integration: empty findings allows open_for_traffic", () => {
@@ -126,4 +126,17 @@ test("integration: empty findings allows open_for_traffic", () => {
 
   assert.equal(report.status, "open_for_traffic");
   assert.doesNotThrow(() => service.assertCanOpenForTraffic(report));
+});
+
+test("integration: repair_required status when recoverable findings exist", () => {
+  const service = new ReplayRepairControlService();
+
+  const findings: StartupConsistencyFinding[] = [
+    { checkId: "stale_execution", severity: "p2", entityRef: "exec_001", summary: "Stale execution", recoverable: true, suggestedRepairAction: "requeue_execution" },
+  ];
+
+  const report = service.buildStartupConsistencyReport({ findings });
+
+  assert.equal(report.status, "repair_required");
+  assert.equal(report.findings.length, 1);
 });

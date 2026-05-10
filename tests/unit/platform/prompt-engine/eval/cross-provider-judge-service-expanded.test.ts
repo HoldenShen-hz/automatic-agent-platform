@@ -212,8 +212,8 @@ test("CrossProviderJudgeService suggestMultipleJudges defaults to 3", () => {
 test("CrossProviderJudgeService getProviderDiversityScore calculates correct score", () => {
   const service = createHarness();
   const score = service.getProviderDiversityScore([
-    { judgeId: "j1", provider: "openai", providerFamily: "openai", modelId: "m1", capabilities: [], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
-    { judgeId: "j2", provider: "anthropic", providerFamily: "anthropic", modelId: "m2", capabilities: [], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
+    { judgeId: "j1", provider: "openai", providerFamily: "openai", modelId: "m1", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
+    { judgeId: "j2", provider: "anthropic", providerFamily: "anthropic", modelId: "m2", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
   ]);
 
   assert.equal(score, 1.0);
@@ -222,8 +222,8 @@ test("CrossProviderJudgeService getProviderDiversityScore calculates correct sco
 test("CrossProviderJudgeService getProviderDiversityScore with same family returns lower score", () => {
   const service = createHarness();
   const score = service.getProviderDiversityScore([
-    { judgeId: "j1", provider: "openai", providerFamily: "openai", modelId: "m1", capabilities: [], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
-    { judgeId: "j2", provider: "openai", providerFamily: "openai", modelId: "m2", capabilities: [], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
+    { judgeId: "j1", provider: "openai", providerFamily: "openai", modelId: "m1", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
+    { judgeId: "j2", provider: "openai", providerFamily: "openai", modelId: "m2", capabilities: [], supportedRiskLevels: ["critical", "high", "medium", "low"], maxCostUsd: 0.01, status: "ready", createdAt: "", updatedAt: "" },
   ]);
 
   assert.equal(score, 0.5);

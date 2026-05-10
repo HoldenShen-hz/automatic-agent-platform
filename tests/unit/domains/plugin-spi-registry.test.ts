@@ -5,7 +5,17 @@ import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-regi
 import { PluginManifestSchema } from "../../../src/domains/registry/plugin-spi.js";
 
 function makeMinimalPlugin(pluginId: string, spiType: "adapter" | "retriever" | "planner" | "presenter" | "validator" = "planner") {
-  return {
+  const plugin: {
+    pluginId: string;
+    spiType: string;
+    onLoad: () => Promise<void>;
+    onActivate: () => Promise<void>;
+    onDeactivate: () => Promise<void>;
+    onUnload: () => Promise<void>;
+    healthCheck: () => Promise<boolean>;
+    capabilityIds: string[];
+    domainId?: string;
+  } = {
     pluginId,
     spiType,
     onLoad: async () => {},
@@ -15,6 +25,10 @@ function makeMinimalPlugin(pluginId: string, spiType: "adapter" | "retriever" | 
     healthCheck: async () => true,
     capabilityIds: [],
   };
+  if (spiType === "retriever" || spiType === "validator") {
+    plugin.domainId = "test-domain";
+  }
+  return plugin;
 }
 
 test("PluginSpiRegistry.register stores plugin record", () => {

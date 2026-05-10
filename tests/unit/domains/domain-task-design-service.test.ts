@@ -10,6 +10,7 @@ function createDefaultOptions(): DomainTaskDesignServiceOptions {
       {
         recipeId: "recipe_release",
         domainId: "coding",
+        archetype: "crud_heavy" as const,
         triggerPhrases: ["release"],
         defaultWorkflowId: "wf_release",
         defaultToolBundleIds: ["repo_tools"],

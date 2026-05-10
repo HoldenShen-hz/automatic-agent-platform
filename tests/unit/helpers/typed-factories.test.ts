@@ -98,7 +98,15 @@ describe("typed-factories", () => {
 
     it("set should return void", async () => {
       const store = createMockCacheStore();
-      await store.set("namespace", "key", "value", {});
+      await store.set("namespace", "key", "value", {
+        scope: "memory",
+        tags: [],
+        version: "1.0",
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
+        hitCount: 0,
+        sizeBytes: 0,
+      });
       // No error means success
     });
 
@@ -201,7 +209,7 @@ describe("typed-factories", () => {
 
     it("record should not throw", () => {
       const metrics = createMockCacheMetrics();
-      metrics.record();
+      metrics.record({ hit: false });
       // No error means success
     });
 

@@ -14,18 +14,18 @@ import { GracefulShutdown, createGracefulShutdown, type ShutdownHandler } from "
  * Creates a mock signal bus for testing signal handling.
  */
 class MockSignalBus {
-  public listeners: Map<string, Function[]> = new Map();
+  public listenersMap: Map<string, Function[]> = new Map();
   public removedListeners: Map<string, Function[]> = new Map();
 
   on(event: "SIGTERM" | "SIGINT", listener: () => void): void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, []);
+    if (!this.listenersMap.has(event)) {
+      this.listenersMap.set(event, []);
     }
-    this.listeners.get(event)!.push(listener);
+    this.listenersMap.get(event)!.push(listener);
   }
 
   removeListener(event: "SIGTERM" | "SIGINT", listener: () => void): void {
-    const eventListeners = this.listeners.get(event) || [];
+    const eventListeners = this.listenersMap.get(event) || [];
     const idx = eventListeners.indexOf(listener);
     if (idx >= 0) {
       eventListeners.splice(idx, 1);
@@ -34,6 +34,11 @@ class MockSignalBus {
       this.removedListeners.set(event, []);
     }
     this.removedListeners.get(event)!.push(listener);
+  }
+
+  // Method-style accessor for listeners (used in test assertions)
+  listeners(event: "SIGTERM" | "SIGINT"): Function[] {
+    return this.listenersMap.get(event) || [];
   }
 }
 
@@ -94,7 +99,7 @@ test("GracefulShutdown - shutdown handles handler timeout", async () => {
   assert.equal(result.handlersFailed, 1);
   assert.equal(result.handlersRun, 0);
   assert.ok(result.errors.length > 0);
-  assert.ok(result.errors[0].includes("timed out"));
+  assert.ok(result.errors[0]?.includes("timed out"));
 });
 
 test("GracefulShutdown - Issue #2138: timeout handler should not continue after Promise.race resolves", async () => {

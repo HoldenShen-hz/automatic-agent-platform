@@ -40,6 +40,17 @@ function createMultiDimensionalPolicy(overrides: Partial<QuotaPolicy> = {}): Quo
   };
 }
 
+// Type alias for the legacy quota vector requested units
+type LegacyQuotaRequested = {
+  worker_concurrency?: number;
+  tool_qps?: number;
+  model_tpm?: number;
+  model_rpm?: number;
+  budget_amount?: number;
+  approval_capacity?: number;
+  storage_io?: number;
+};
+
 function createSingleDimensionalPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   return {
     scope: overrides.scope ?? "tenant",
@@ -60,7 +71,7 @@ function createSingleDimensionalPolicy(overrides: Partial<QuotaPolicy> = {}): Qu
 test("evaluateMultiDimensionalQuota validates all 7 dimensions and passes when all under limits", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -82,7 +93,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions and passes when a
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - worker_concurrency overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 15,
     tool_qps: 25,
     model_tpm: 50000,
@@ -103,7 +114,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - worker_concurre
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - tool_qps overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 60,
     model_tpm: 50000,
@@ -123,7 +134,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - tool_qps overag
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_tpm overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 150000,
@@ -142,7 +153,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_tpm overa
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_rpm overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -161,7 +172,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_rpm overa
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - budget_amount overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -180,7 +191,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - budget_amount o
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - approval_capacity overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -199,7 +210,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - approval_capaci
 test("evaluateMultiDimensionalQuota validates all 7 dimensions - storage_io overage", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -222,7 +233,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - storage_io over
 test("evaluateMultiDimensionalQuota fails on multiple dimension overage simultaneously", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 15,
     tool_qps: 60,
     model_tpm: 150000,
@@ -246,7 +257,7 @@ test("evaluateMultiDimensionalQuota fails on multiple dimension overage simultan
 test("evaluateMultiDimensionalQuota fails when all 7 dimensions exceed limits", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 15,
     tool_qps: 60,
     model_tpm: 150000,
@@ -270,7 +281,7 @@ test("evaluateMultiDimensionalQuota fails when all 7 dimensions exceed limits", 
 test("evaluateMultiDimensionalQuota warns when dimension exceeds soft limit (80% of hard limit)", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 9,
     tool_qps: 25,
     model_tpm: 50000,
@@ -293,7 +304,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft limit (80%
 test("evaluateMultiDimensionalQuota warns on multiple dimensions simultaneously", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 9,
     tool_qps: 45,
     model_tpm: 90000,
@@ -318,7 +329,7 @@ test("evaluateMultiDimensionalQuota warns on multiple dimensions simultaneously"
 test("evaluateMultiDimensionalQuota all 7 dimensions can warn simultaneously", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 9,
     tool_qps: 45,
     model_tpm: 90000,
@@ -339,7 +350,7 @@ test("evaluateMultiDimensionalQuota all 7 dimensions can warn simultaneously", (
 test("evaluateMultiDimensionalQuota failed dimensions take precedence over warnings", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 15,
     tool_qps: 45,
     model_tpm: 90000,
@@ -367,7 +378,7 @@ test("evaluateMultiDimensionalQuota tracks quota independently per dimension", (
   const policy1 = createMultiDimensionalPolicy({ scopeId: "tenant-1" });
   const policy2 = createMultiDimensionalPolicy({ scopeId: "tenant-2" });
 
-  const request1: MultiResourceQuotaVector = {
+  const request1: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -377,7 +388,7 @@ test("evaluateMultiDimensionalQuota tracks quota independently per dimension", (
     storage_io: 500,
   };
 
-  const request2: MultiResourceQuotaVector = {
+  const request2: LegacyQuotaRequested = {
     worker_concurrency: 9,
     tool_qps: 45,
     model_tpm: 90000,
@@ -423,7 +434,7 @@ test("evaluateMultiDimensionalQuota same request fails for one tenant but passes
     },
   });
 
-  const request: MultiResourceQuotaVector = {
+  const request: LegacyQuotaRequested = {
     worker_concurrency: 6,
     tool_qps: 30,
     model_tpm: 60000,
@@ -443,7 +454,7 @@ test("evaluateMultiDimensionalQuota same request fails for one tenant but passes
 test("evaluateMultiDimensionalQuota dimension failures are isolated per dimension", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requestAllFail: MultiResourceQuotaVector = {
+  const requestAllFail: LegacyQuotaRequested = {
     worker_concurrency: 15,
     tool_qps: 60,
     model_tpm: 150000,
@@ -453,7 +464,7 @@ test("evaluateMultiDimensionalQuota dimension failures are isolated per dimensio
     storage_io: 1500,
   };
 
-  const requestOnlyOneFail: MultiResourceQuotaVector = {
+  const requestOnlyOneFail: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -478,7 +489,7 @@ test("evaluateMultiDimensionalQuota dimension failures are isolated per dimensio
 test("evaluateMultiDimensionalQuota rejects overage when single dimension exceeds hard limit", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 5,
     tool_qps: 25,
     model_tpm: 50000,
@@ -488,7 +499,7 @@ test("evaluateMultiDimensionalQuota rejects overage when single dimension exceed
     storage_io: 500,
   };
 
-  const overLimitRequest: MultiResourceQuotaVector = {
+  const overLimitRequest: LegacyQuotaRequested = {
     ...requested,
     budget_amount: 1001,
   };
@@ -503,7 +514,7 @@ test("evaluateMultiDimensionalQuota rejects overage when single dimension exceed
 test("evaluateMultiDimensionalQuota rejects when at exactly hard limit", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 11,
     tool_qps: 51,
     model_tpm: 100001,
@@ -522,7 +533,7 @@ test("evaluateMultiDimensionalQuota rejects when at exactly hard limit", () => {
 test("evaluateMultiDimensionalQuota accepts when all dimensions at zero", () => {
   const policy = createMultiDimensionalPolicy();
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 0,
     tool_qps: 0,
     model_tpm: 0,
@@ -552,7 +563,7 @@ test("evaluateMultiDimensionalQuota rejects when zero limit dimension is exceede
     },
   });
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 1,
     tool_qps: 0,
     model_tpm: 0,
@@ -575,7 +586,7 @@ test("evaluateMultiDimensionalQuota rejects when zero limit dimension is exceede
 test("evaluateMultiDimensionalQuota falls back to single dimension when no multiResourceHardLimits", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 50 });
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 60,
     tool_qps: 0,
     model_tpm: 0,
@@ -595,7 +606,7 @@ test("evaluateMultiDimensionalQuota falls back to single dimension when no multi
 test("evaluateMultiDimensionalQuota falls back correctly when multiResourceHardLimits is undefined", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 0 });
 
-  const requested: MultiResourceQuotaVector = {
+  const requested: LegacyQuotaRequested = {
     worker_concurrency: 50,
     tool_qps: 0,
     model_tpm: 0,

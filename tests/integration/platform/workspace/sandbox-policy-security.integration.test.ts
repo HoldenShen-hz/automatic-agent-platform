@@ -22,11 +22,11 @@ import {
   normalizeSandboxMode,
   type SandboxPolicy,
   type SandboxPathCheckResult,
-} from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
 import {
   DataClassificationService,
-} from "../../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
+} from "../../../../src/platform/five-plane-control-plane/iam/data-classification-service.js";
 
 // ============================================================================
 // Integration: Sandbox Policy with Data Classification

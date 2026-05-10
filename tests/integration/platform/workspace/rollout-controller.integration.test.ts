@@ -1,191 +1,188 @@
 /**
  * Integration Tests: Rollout Controller
+ *
+ * Tests the TrafficRoutingService slot management and traffic shifting.
+ * Note: These tests use in-memory database operations via SQLite.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  TrafficRoutingService,
-} from "../../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
+import { TrafficRoutingService } from "../../../../src/platform/five-plane-control-plane/rollout-controller/index.js";
+
+// ============================================================================
+// Test Fixtures
+// ============================================================================
+
+function createInMemoryDb() {
+  // Simple in-memory SQLite for testing
+  const Database = require("better-sqlite3");
+  return new Database(":memory:");
+}
 
 // ============================================================================
 // Rollout Controller End-to-End Integration Tests
 // ============================================================================
 
-test("integration: canary rollout progression", () => {
-  const service = new TrafficRoutingService();
+test("integration: can register and retrieve deployment slots", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_canary_001",
-    name: "canary_release",
-    targets: [
-      { targetId: "stable", weight: 100, metadata: { version: "v1.0" } },
-      { targetId: "canary", weight: 0, metadata: { version: "v2.0" } },
-    ],
-    rules: [],
-    strategy: "canary",
-  });
+  const slot = service.registerSlot("canary", "v2.0.0", 3, { version: "2.0.0" });
 
-  const initial = service.getCanaryPercentage(route.routeId);
-  assert.equal(initial, 0);
+  assert.equal(slot.slot, "canary");
+  assert.equal(slot.version, "v2.0.0");
+  assert.equal(slot.status, "standby");
+  assert.equal(slot.trafficWeight, 0);
 
-  service.updateTargetWeight(route.routeId, "stable", 90);
-  service.updateTargetWeight(route.routeId, "canary", 10);
-  const tenPercent = service.getCanaryPercentage(route.routeId);
-  assert.equal(tenPercent, 10);
-
-  service.updateTargetWeight(route.routeId, "stable", 50);
-  service.updateTargetWeight(route.routeId, "canary", 50);
-  const fiftyPercent = service.getCanaryPercentage(route.routeId);
-  assert.equal(fiftyPercent, 50);
-
-  const promoted = service.promoteCanary(route.routeId);
-  const promotedCanary = promoted.targets.find((t: { targetId: string }) => t.targetId === "canary");
-  assert.equal(promotedCanary?.weight, 100);
+  db.close();
 });
 
-test("integration: weighted routing with failover", () => {
-  const service = new TrafficRoutingService();
+test("integration: can update slot health", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_weighted_001",
-    name: "weighted_with_failover",
-    targets: [
-      { targetId: "primary", weight: 80, metadata: { priority: "primary" } },
-      { targetId: "secondary", weight: 20, metadata: { priority: "secondary" } },
-    ],
-    rules: [],
-    strategy: "weighted",
-  });
+  const slot = service.registerSlot("canary", "v2.0.0", 2);
 
-  const results = Array.from({ length: 10 }, () =>
-    service.evaluateRoute(route.routeId, {}).targetId,
-  );
+  service.updateHealth(slot.id, 0.98);
 
-  const primaryCount = results.filter((id) => id === "primary").length;
-  const secondaryCount = results.filter((id) => id === "secondary").length;
+  const retrieved = service.getActiveSlot("canary");
+  assert.ok(retrieved !== null);
+  assert.equal(retrieved.healthScore, 0.98);
 
-  assert.ok(primaryCount > secondaryCount);
-
-  const failover = service.initiateFailover(route.routeId, "primary");
-  assert.equal(failover.activeTarget, "secondary");
-  assert.equal(failover.previousTarget, "primary");
+  db.close();
 });
 
-test("integration: rule-based routing with header matching", () => {
-  const service = new TrafficRoutingService();
+test("integration: can start canary shift", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_rule_001",
-    name: "header_based_routing",
-    targets: [
-      { targetId: "regular", weight: 100 },
-      { targetId: "premium", weight: 100 },
-      { targetId: "enterprise", weight: 100 },
-    ],
-    rules: [
-      {
-        ruleId: "rule_premium",
-        matchCriteria: { header: { "x-user-tier": "premium" } },
-        targetId: "premium",
-        weight: 100,
-      },
-      {
-        ruleId: "rule_enterprise",
-        matchCriteria: { header: { "x-user-tier": "enterprise" } },
-        targetId: "enterprise",
-        weight: 100,
-      },
-    ],
-    strategy: "rule_based",
+  // Register blue and canary slots
+  service.registerSlot("blue", "v1.0.0", 5);
+  service.registerSlot("canary", "v2.0.0", 2);
+
+  // Start a canary shift
+  const shift = service.startCanaryShift("blue", "canary", {
+    initialWeightPct: 10,
+    stepIncrementPct: 20,
+    stepIntervalMinutes: 5,
+    healthThreshold: 0.95,
+    errorRateThreshold: 0.02,
+    autoPromoteOnSuccess: true,
   });
 
-  const regularResult = service.evaluateRoute(route.routeId, { headers: { "x-user-tier": "free" } });
-  const premiumResult = service.evaluateRoute(route.routeId, { headers: { "x-user-tier": "premium" } });
-  const enterpriseResult = service.evaluateRoute(route.routeId, { headers: { "x-user-tier": "enterprise" } });
+  assert.equal(shift.fromSlot, "blue");
+  assert.equal(shift.toSlot, "canary");
+  assert.equal(shift.status, "in_progress");
+  assert.ok(shift.totalSteps > 1);
 
-  assert.equal(regularResult.targetId, "regular");
-  assert.equal(premiumResult.targetId, "premium");
-  assert.equal(enterpriseResult.targetId, "enterprise");
+  db.close();
 });
 
-test("integration: gradual rollout with percentage updates", () => {
-  const service = new TrafficRoutingService();
+test("integration: can list deployment slots", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_gradual_001",
-    name: "gradual_rollout",
-    targets: [
-      { targetId: "old_version", weight: 100 },
-      { targetId: "new_version", weight: 0 },
-    ],
-    rules: [],
-    strategy: "gradual",
-  });
+  service.registerSlot("blue", "v1.0.0", 3);
+  service.registerSlot("green", "v1.0.0", 3);
+  service.registerSlot("canary", "v2.0.0", 1);
 
-  const percentages = [5, 10, 25, 50, 75, 100];
+  const slots = service.listSlots();
 
-  for (const pct of percentages) {
-    service.updateTargetWeight(route.routeId, "old_version", 100 - pct);
-    service.updateTargetWeight(route.routeId, "new_version", pct);
+  assert.equal(slots.length, 3);
+  assert.ok(slots.some(s => s.slot === "blue"));
+  assert.ok(slots.some(s => s.slot === "canary"));
 
-    const current = service.getCanaryPercentage(route.routeId);
-    assert.equal(current, pct);
-  }
+  db.close();
 });
 
-test("integration: route deactivation and reactivation", () => {
-  const service = new TrafficRoutingService();
+test("integration: can get shift by id", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_toggle_001",
-    name: "toggle_route",
-    targets: [{ targetId: "target_1", weight: 100 }],
-    rules: [],
-    strategy: "weighted",
-  });
+  service.registerSlot("blue", "v1.0.0", 5);
+  service.registerSlot("canary", "v2.0.0", 2);
 
-  const deactivated = service.deactivateRoute(route.routeId);
-  assert.equal(deactivated.status, "inactive");
+  const shift = service.startCanaryShift("blue", "canary");
+  const retrieved = service.getShift(shift.id);
 
-  const reactivated = service.reactivateRoute(route.routeId);
-  assert.equal(reactivated.status, "active");
+  assert.ok(retrieved !== null);
+  assert.equal(retrieved.id, shift.id);
+  assert.equal(retrieved.status, "in_progress");
+
+  db.close();
 });
 
-test("integration: multiple rules with priority", () => {
-  const service = new TrafficRoutingService();
+test("integration: can list shifts", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
 
-  const route = service.createRoute({
-    routeId: "route_multi_001",
-    name: "multi_rule_route",
-    targets: [
-      { targetId: "default", weight: 100 },
-      { targetId: "feature_a", weight: 100 },
-      { targetId: "feature_b", weight: 100 },
-    ],
-    rules: [
-      {
-        ruleId: "rule_a",
-        matchCriteria: { header: { "x-feature": "A" } },
-        targetId: "feature_a",
-        weight: 100,
-      },
-      {
-        ruleId: "rule_b",
-        matchCriteria: { header: { "x-feature": "B" } },
-        targetId: "feature_b",
-        weight: 100,
-      },
-    ],
-    strategy: "rule_based",
-  });
+  service.registerSlot("blue", "v1.0.0", 5);
+  service.registerSlot("canary", "v2.0.0", 2);
 
-  const ruleA = service.evaluateRoute(route.routeId, { headers: { "x-feature": "A" } });
-  const ruleB = service.evaluateRoute(route.routeId, { headers: { "x-feature": "B" } });
-  const noRule = service.evaluateRoute(route.routeId, {});
+  service.startCanaryShift("blue", "canary");
+  service.startCanaryShift("blue", "canary");
 
-  assert.equal(ruleA.targetId, "feature_a");
-  assert.equal(ruleB.targetId, "feature_b");
-  assert.equal(noRule.targetId, "default");
+  const shifts = service.listShifts(10);
+
+  assert.ok(shifts.length >= 2);
+  assert.ok(shifts.every(s => s.fromSlot === "blue" && s.toSlot === "canary"));
+
+  db.close();
+});
+
+test("integration: can rollback shift", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 5);
+  service.registerSlot("canary", "v2.0.0", 2);
+
+  const shift = service.startCanaryShift("blue", "canary");
+
+  const rollback = service.rollbackShift(shift.id, "manual", "Health check failed");
+
+  assert.equal(rollback.shiftId, shift.id);
+  assert.equal(rollback.trigger, "manual");
+  assert.ok(rollback.success);
+
+  db.close();
+});
+
+test("integration: can check canary health", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 5);
+  const canary = service.registerSlot("canary", "v2.0.0", 2);
+
+  const shift = service.startCanaryShift("blue", "canary");
+
+  // Update canary to healthy
+  service.updateHealth(canary.id, 0.98);
+
+  const health = service.checkCanaryHealth(shift.id);
+
+  assert.equal(health.healthy, true);
+  assert.equal(health.reason, "canary_healthy");
+
+  db.close();
+});
+
+test("integration: can list rollbacks", () => {
+  const db = createInMemoryDb();
+  const service = new TrafficRoutingService(db);
+
+  service.registerSlot("blue", "v1.0.0", 5);
+  service.registerSlot("canary", "v2.0.0", 2);
+
+  const shift = service.startCanaryShift("blue", "canary");
+  service.rollbackShift(shift.id, "health_check_failed", "Error rate exceeded");
+
+  const rollbacks = service.listRollbacks(10);
+
+  assert.ok(rollbacks.length >= 1);
+  assert.equal(rollbacks[0].trigger, "health_check_failed");
+
+  db.close();
 });

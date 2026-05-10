@@ -53,8 +53,8 @@ function generateCasesByPriority(
 function createMinimalDataset(service: EvalDatasetJudgeService): void {
   const cases: EvalDatasetCase[] = [
     ...generateCasesByPriority("critical", 200, "ds1-", "exact_match"),
-    ...generateCasesByPriority("high", 100, "ds1-", "contains"),
-    ...generateCasesByPriority("medium", 50, "ds1-", "json_schema"),
+    ...generateCasesByPriority("critical", 100, "ds1-", "contains"),
+    ...generateCasesByPriority("standard", 50, "ds1-", "json_schema"),
     ...generateCasesByPriority("standard", 20, "ds1-", "llm_judge"),
   ];
 

@@ -30,13 +30,13 @@ import type { SandboxPolicy } from "../../../../src/platform/control-plane/iam/s
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("parseLimitedYaml parses valid YAML", () => {
-  const result = parseLimitedYaml("key: value", "test.yaml");
+  const result = parseLimitedYaml("key: value", "test.yaml") as Record<string, unknown>;
   assert.equal(result.key, "value");
 });
 
 test("parseLimitedYaml parses nested YAML", () => {
-  const result = parseLimitedYaml("outer:\n  inner: value", "test.yaml");
-  assert.equal(result.outer.inner, "value");
+  const result = parseLimitedYaml("outer:\n  inner: value", "test.yaml") as Record<string, Record<string, unknown>>;
+  assert.equal(result.outer?.inner, "value");
 });
 
 test("parseLimitedYaml returns plain object", () => {
@@ -237,6 +237,9 @@ test("SandboxPolicy is properly structured", () => {
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
+    timeLimitMs: 60000,
+    memoryLimitBytes: 256 * 1024 * 1024,
+    cpuLimitFraction: 0.25,
   };
   assert.equal(policy.policyId, "policy-1");
   assert.equal(policy.mode, "read_only");

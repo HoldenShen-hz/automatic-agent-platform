@@ -73,10 +73,13 @@ test("DomainSmokeTestRunner.run passes for valid domain", () => {
     status: "draft",
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
     externalAdapters: [],
     pluginBindings: [],
@@ -195,10 +198,13 @@ test("DomainSmokeTestRunner.run records dependency, sandbox, and quota checks fo
     ],
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   };
 
@@ -252,10 +258,13 @@ test("DomainSmokeTestRunner.run validates dependency graph", () => {
     ],
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   };
 
@@ -297,10 +306,13 @@ test("DomainSmokeTestRunner.run validates resource quotas", () => {
     },
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   };
 
@@ -343,10 +355,13 @@ test("DomainSmokeTestRunner.run validates sandbox compatibility for restricted t
     },
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   };
 
@@ -389,10 +404,13 @@ test("DomainSmokeTestRunner.run passes sandbox compatibility for restricted tool
     },
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "llm_allowed",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "llm_allowed" as const,
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   };
 

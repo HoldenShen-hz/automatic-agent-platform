@@ -69,7 +69,7 @@ test("DomainDescriptorOrchestrationService.review returns ready when all require
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -256,7 +256,7 @@ test("DomainDescriptorOrchestrationService.review determines onboardingReadiness
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -327,8 +327,8 @@ test("DomainDescriptorOrchestrationService.review lists recipe IDs from recipes"
   const service = new DomainDescriptorOrchestrationService();
   const input = createMinimalInput({
     recipes: [
-      { recipeId: "recipe-1", name: "recipe-1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false },
-      { recipeId: "recipe-2", name: "recipe-2", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false },
+      { recipeId: "recipe-1", name: "recipe-1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [] },
+      { recipeId: "recipe-2", name: "recipe-2", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [] },
     ],
   });
 
@@ -452,7 +452,7 @@ test("DomainDescriptorOrchestrationService.review normalizes validating lifecycl
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -490,7 +490,7 @@ test("DomainDescriptorOrchestrationService.review normalizes canary lifecycle st
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -533,7 +533,7 @@ test("DomainDescriptorOrchestrationService.review includes reviewRequiredTaskTyp
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",

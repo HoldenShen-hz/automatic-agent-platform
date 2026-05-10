@@ -9,6 +9,7 @@ describe("ui-mobile native modules", () => {
     const modules = describeNativeModules();
     const secureStorage = modules.find((item) => item.name === "secureStorage");
     const biometric = modules.find((item) => item.name === "biometric");
+    const offlineSqlite = modules.find((item) => item.name === "offlineSqlite");
 
     expect(secureStorage).toMatchObject({
       enabled: false,
@@ -17,9 +18,14 @@ describe("ui-mobile native modules", () => {
       source: "bridge",
     });
     expect(biometric).toMatchObject({
-      enabled: true,
-      requiresBridge: false,
-      source: "adapter",
+      enabled: false,
+      requiresBridge: true,
+      source: "bridge",
+    });
+    expect(offlineSqlite).toMatchObject({
+      enabled: false,
+      requiresBridge: true,
+      permission: "unavailable",
     });
   });
 
@@ -31,12 +37,22 @@ describe("ui-mobile native modules", () => {
       openDeepLink: async () => undefined,
       vibrate: async () => undefined,
       enableScreenSecurity: async () => undefined,
+      registerPushToken: async () => "token",
+      authenticateBiometric: async () => true,
+      openOfflineDatabase: async () => undefined,
+      performGestureFeedback: async () => undefined,
+      refreshWidget: async () => undefined,
     };
 
     const modules = describeNativeModules();
     expect(modules.find((item) => item.name === "secureStorage")?.enabled).toBe(true);
     expect(modules.find((item) => item.name === "deepLink")?.enabled).toBe(true);
     expect(modules.find((item) => item.name === "haptics")?.enabled).toBe(true);
+    expect(modules.find((item) => item.name === "push")?.enabled).toBe(true);
+    expect(modules.find((item) => item.name === "biometric")?.enabled).toBe(true);
+    expect(modules.find((item) => item.name === "offlineSqlite")?.enabled).toBe(true);
+    expect(modules.find((item) => item.name === "gestures")?.enabled).toBe(true);
+    expect(modules.find((item) => item.name === "widgets")?.enabled).toBe(true);
 
     delete globalThis.__AA_MOBILE__;
   });

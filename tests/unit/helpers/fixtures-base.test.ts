@@ -37,11 +37,11 @@ describe("fixtures/base", () => {
       const task = createMinimalTask({
         id: "custom-id",
         title: "Custom title",
-        status: "running",
+        status: "in_progress",
       });
       assert.strictEqual(task.id, "custom-id");
       assert.strictEqual(task.title, "Custom title");
-      assert.strictEqual(task.status, "running");
+      assert.strictEqual(task.status, "in_progress");
       // Other defaults should still be set
       assert.strictEqual(task.divisionId, "general_ops");
     });
@@ -130,11 +130,11 @@ describe("fixtures/base", () => {
 
     it("should use provided overrides", () => {
       const node = createMinimalPlanNode("node-2", {
-        nodeType: "agent",
+        nodeType: "llm",
         timeoutMs: 60000,
       });
       assert.strictEqual(node.nodeId, "node-2");
-      assert.strictEqual(node.nodeType, "agent");
+      assert.strictEqual(node.nodeType, "llm");
       assert.strictEqual(node.timeoutMs, 60000);
     });
   });

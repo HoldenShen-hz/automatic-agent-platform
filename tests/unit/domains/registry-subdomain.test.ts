@@ -88,8 +88,8 @@ test("ContractRegistry stores and retrieves output contracts", () => {
   const contract = {
     contractId: "output_contract_a",
     name: "Contract A",
-    schema: { type: "object", properties: { result: { type: "string" } } },
-    validationLevel: "strict",
+    schema: { type: "object", properties: { result: { type: "string" } } } as Record<string, unknown>,
+    validationLevel: "strict" as const,
   };
   registry.registerAll([contract]);
 
@@ -107,8 +107,8 @@ test("ContractRegistry.get returns null for unknown contract", () => {
 test("ContractRegistry.list returns all registered contracts", () => {
   const registry = new ContractRegistry();
   registry.registerAll([
-    { contractId: "contract_x", name: "X", schema: {}, validationLevel: "lenient" },
-    { contractId: "contract_y", name: "Y", schema: {}, validationLevel: "strict" },
+    { contractId: "contract_x", name: "X", schema: {} as Record<string, unknown>, validationLevel: "lenient" as const },
+    { contractId: "contract_y", name: "Y", schema: {} as Record<string, unknown>, validationLevel: "strict" as const },
   ]);
 
   const listed = registry.list();
@@ -167,7 +167,7 @@ test("WorkflowRegistry supports multiple steps with dependencies", () => {
 test("ContractRegistry handles empty schema", () => {
   const registry = new ContractRegistry();
   registry.registerAll([
-    { contractId: "empty_schema", name: "Empty", schema: {}, validationLevel: "none" },
+    { contractId: "empty_schema", name: "Empty", schema: {} as Record<string, unknown>, validationLevel: "none" as const },
   ]);
 
   const retrieved = registry.get("empty_schema");

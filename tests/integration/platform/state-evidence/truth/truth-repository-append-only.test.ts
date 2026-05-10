@@ -93,7 +93,7 @@ test("truth-repository: Multiple tasks maintain independent append-only historie
 
     // Update one task - others should not be affected
     ctx.db.transaction(() => {
-      ctx.store.updateTaskStatus(taskIds[0], "in_progress", now);
+      ctx.store.updateTaskStatus(taskIds[0], "in_progress", now, null, null);
     });
 
     const task0 = ctx.store.getTask(taskIds[0]);
@@ -118,14 +118,15 @@ test("truth-repository: Workflow state append-only update cycle", () => {
     // Insert workflow state
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
-        id: "wf-append-001",
         taskId,
+        divisionId: "general_ops",
+        workflowId: "wf-append-001",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 5,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
       });
@@ -144,6 +145,7 @@ test("truth-repository: Workflow state append-only update cycle", () => {
         1,
         JSON.stringify({ completedSteps: 1 }),
         now,
+        null,
       );
     });
 
@@ -158,6 +160,7 @@ test("truth-repository: Workflow state append-only update cycle", () => {
         4,
         JSON.stringify({ completedSteps: 5, result: "success" }),
         now,
+        null,
       );
     });
 
@@ -168,6 +171,7 @@ test("truth-repository: Workflow state append-only update cycle", () => {
         4,
         JSON.stringify({ completedSteps: 5, result: "success" }),
         now,
+        null,
       );
     });
 
@@ -306,7 +310,7 @@ test("truth-repository: append-only events table maintains event sourcing", () =
     });
 
     // Verify events can be listed
-    const events = ctx.store.event.listEventsByTask(taskId);
+    const events = ctx.store.event.listEventsForTask(taskId);
     assert.equal(events.length, eventTypes.length, "Should have all events");
 
     // Events should be ordered by creation time
@@ -335,14 +339,15 @@ test("truth-repository: Task with workflow maintains referential integrity", () 
     // Insert workflow state
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
-        id: "wf-ref-001",
         taskId,
+        divisionId: "general_ops",
+        workflowId: "wf-ref-001",
         status: "running",
         currentStepIndex: 0,
         outputsJson: "{}",
-        stepCount: 3,
-        version: 1,
-        createdAt: now,
+        lastErrorCode: null,
+        retryCount: 0,
+        startedAt: now,
         updatedAt: now,
         resumableFromStep: null,
       });

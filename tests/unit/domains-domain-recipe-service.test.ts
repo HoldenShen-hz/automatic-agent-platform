@@ -14,13 +14,6 @@ function createTestRecipe(overrides?: Partial<DomainRecipe>): DomainRecipe {
     triggerPhrases: ["test", "example"],
     defaultWorkflowId: "test_workflow",
     defaultToolBundleIds: ["test_tools"],
-    riskLevel: "medium",
-    risk_profile_ref: "test-domain.risk",
-    guardrail_overlay: "test-domain.guardrails",
-    recommended_workflow_ids: ["test_workflow"],
-    default_prompt_bundle_ref: "test-domain.prompts",
-    acceptance_checklist_ref: "test-domain.acceptance",
-    requiredApproval: false,
     ...overrides,
   };
 }

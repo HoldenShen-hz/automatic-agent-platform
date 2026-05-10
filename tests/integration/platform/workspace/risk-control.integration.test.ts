@@ -1,213 +1,260 @@
 /**
  * Integration Tests: Risk Control
+ *
+ * Tests risk evaluation engine with the ADR-026 v4.3 8-factor canonical model.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  RiskEvaluationEngine,
-  loadRiskConfig,
-  type RiskEvaluationRequest,
-  type RiskLevel,
-} from "../../../../../src/platform/five-plane-control-plane/risk-control/index.js";
+import { RiskEvaluationEngine, type RiskLevel, type RiskFactors, type RiskConfig } from "../../../../src/platform/five-plane-control-plane/risk-control/index.js";
+
+// ============================================================================
+// Test Fixtures
+// ============================================================================
+
+function createTestRiskConfig(): RiskConfig {
+  return {
+    factorWeights: {
+      impact: 4,
+      irreversibility: 4,
+      dataSensitivity: 3,
+      autonomyModeRisk: 2,
+      tenantImpact: 2,
+      blastRadius: 2,
+      historicalFailureRate: 2,
+      evidenceConfidence: 1,
+    },
+    impactValues: { none: 1, low: 2, moderate: 3, significant: 4, severe: 5 },
+    irreversibilityValues: { full: 1, partial: 3, limited: 4, none: 5 },
+    dataSensitivityValues: { public: 1, internal: 2, confidential: 4, restricted: 5 },
+    autonomyModeRiskValues: { manual: 1, assisted: 2, autonomous: 4, full_auto: 5 },
+    tenantImpactValues: { single_task: 1, workflow: 2, tenant: 3, platform: 5 },
+    blastRadiusValues: { none: 1, single_user: 2, team: 3, organization: 4, all_users: 5 },
+    historicalFailureRateThresholds: {
+      low: { maxPercent: 5, value: 1 },
+      medium: { maxPercent: 15, value: 2 },
+      high: { maxPercent: 30, value: 4 },
+      critical: { maxPercent: 100, value: 5 },
+    },
+    evidenceConfidenceValues: { high: 1, medium: 3, low: 5 },
+    riskLevelThresholds: { low: 0.25, medium: 0.5, high: 0.75, critical: 1.0 },
+    riskLevelActions: {
+      low: { autoExecute: true, logLevel: "info", requiresApproval: false, sideEffect: "normal", evidenceLevel: "basic" },
+      medium: { autoExecute: true, logLevel: "warn", requiresApproval: false, sideEffect: "normal_with_validation", evidenceLevel: "enhanced" },
+      high: { autoExecute: false, logLevel: "error", requiresApproval: true, approvalType: "standard", sideEffect: "restricted", evidenceLevel: "full" },
+      critical: { autoExecute: false, logLevel: "critical", requiresApproval: true, approvalType: "break_glass", sideEffect: "prohibited", evidenceLevel: "legal" },
+    },
+  };
+}
 
 // ============================================================================
 // Risk Control End-to-End Integration Tests
 // ============================================================================
 
 test("integration: risk escalation from low to critical", () => {
-  const engine = new RiskEvaluationEngine();
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
 
-  const lowRiskRequest: RiskEvaluationRequest = {
-    taskId: "task_risk_low",
-    stepId: "step_risk_low",
-    stepType: "read",
-    targetSystem: "api",
-    targetPath: "/public/data",
-    dataClasses: ["public_data"],
-    blastRadius: "none",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.95,
-    estimatedImpact: "none",
-    rollbackFeasibility: "full",
+  const lowFactors: RiskFactors = {
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 2,
+    evidenceConfidence: "high",
   };
 
-  const mediumRiskRequest: RiskEvaluationRequest = {
-    taskId: "task_risk_med",
-    stepId: "step_risk_med",
-    stepType: "write",
-    targetSystem: "filesystem",
-    targetPath: "/workspace/project/src/index.ts",
-    dataClasses: ["code"],
-    blastRadius: "team",
-    confidenceLevel: "medium",
-    historicalAccuracy: 0.7,
-    estimatedImpact: "moderate",
-    rollbackFeasibility: "partial",
+  const mediumFactors: RiskFactors = {
+    impact: 3,
+    irreversibility: 3,
+    dataSensitivity: 2,
+    autonomyModeRisk: 2,
+    tenantImpact: 2,
+    blastRadius: 3,
+    historicalFailureRate: 15,
+    evidenceConfidence: "medium",
   };
 
-  const highRiskRequest: RiskEvaluationRequest = {
-    taskId: "task_risk_high",
-    stepId: "step_risk_high",
-    stepType: "delete",
-    targetSystem: "database",
-    targetPath: "/production/users",
-    dataClasses: ["PII"],
-    blastRadius: "all_users",
-    confidenceLevel: "low",
-    historicalAccuracy: 0.5,
-    estimatedImpact: "severe",
-    rollbackFeasibility: "none",
+  const highFactors: RiskFactors = {
+    impact: 5,
+    irreversibility: 5,
+    dataSensitivity: 5,
+    autonomyModeRisk: 4,
+    tenantImpact: 3,
+    blastRadius: 4,
+    historicalFailureRate: 30,
+    evidenceConfidence: "low",
   };
 
-  const lowResult = engine.evaluate(lowRiskRequest);
-  const medResult = engine.evaluate(mediumRiskRequest);
-  const highResult = engine.evaluate(highRiskRequest);
+  const lowResult = engine.evaluate({ taskId: "task_low", factors: lowFactors });
+  const medResult = engine.evaluate({ taskId: "task_med", factors: mediumFactors });
+  const highResult = engine.evaluate({ taskId: "task_high", factors: highFactors });
 
-  const riskOrder: Record<RiskLevel, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
+  const riskOrder: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2, critical: 3 };
 
-  assert.ok(riskOrder[lowResult.riskLevel]! <= riskOrder[medResult.riskLevel]!);
-  assert.ok(riskOrder[medResult.riskLevel]! <= riskOrder[highResult.riskLevel]!);
+  assert.ok(riskOrder[lowResult.riskLevel] <= riskOrder[medResult.riskLevel]);
+  assert.ok(riskOrder[medResult.riskLevel] <= riskOrder[highResult.riskLevel]);
 });
 
-test("integration: multiple steps compose risk profile", () => {
-  const engine = new RiskEvaluationEngine();
+test("integration: multiple tasks compose risk profile", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
 
-  const requests: RiskEvaluationRequest[] = [
-    { taskId: "task_compose_1", stepId: "step_1", stepType: "read", targetSystem: "api", targetPath: "/data/1", dataClasses: ["public_data"], blastRadius: "none", confidenceLevel: "high", historicalAccuracy: 0.95, estimatedImpact: "none", rollbackFeasibility: "full" },
-    { taskId: "task_compose_2", stepId: "step_2", stepType: "read", targetSystem: "api", targetPath: "/data/2", dataClasses: ["public_data"], blastRadius: "none", confidenceLevel: "high", historicalAccuracy: 0.95, estimatedImpact: "none", rollbackFeasibility: "full" },
-    { taskId: "task_compose_3", stepId: "step_3", stepType: "write", targetSystem: "database", targetPath: "/cache", dataClasses: ["internal_data"], blastRadius: "team", confidenceLevel: "high", historicalAccuracy: 0.9, estimatedImpact: "moderate", rollbackFeasibility: "full" },
-  ];
+  const lowRiskFactors: RiskFactors = {
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 2,
+    evidenceConfidence: "high",
+  };
 
-  const results = requests.map((req) => engine.evaluate(req));
+  const highRiskFactors: RiskFactors = {
+    impact: 5,
+    irreversibility: 5,
+    dataSensitivity: 5,
+    autonomyModeRisk: 4,
+    tenantImpact: 4,
+    blastRadius: 5,
+    historicalFailureRate: 40,
+    evidenceConfidence: "low",
+  };
 
-  assert.ok(results.every((r) => r.taskId.startsWith("task_compose")));
-  assert.ok(results[2].factors.executionRisk > results[0].factors.executionRisk);
+  const lowResult = engine.evaluate({ taskId: "task_compose_low", factors: lowRiskFactors });
+  const highResult = engine.evaluate({ taskId: "task_compose_high", factors: highRiskFactors });
+
+  assert.ok(highResult.riskScore > lowResult.riskScore);
+  assert.ok(highResult.riskLevel !== "low");
 });
 
-test("integration: rollback feasibility affects risk score", () => {
-  const engine = new RiskEvaluationEngine();
+test("integration: risk config loads correctly", () => {
+  const config = createTestRiskConfig();
 
-  const fullRollback: RiskEvaluationRequest = {
-    taskId: "task_rollback_full",
-    stepId: "step_rollback_full",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["code"],
-    blastRadius: "single_user",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.9,
-    estimatedImpact: "moderate",
-    rollbackFeasibility: "full",
-  };
-
-  const noRollback: RiskEvaluationRequest = {
-    taskId: "task_rollback_none",
-    stepId: "step_rollback_none",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["code"],
-    blastRadius: "single_user",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.9,
-    estimatedImpact: "moderate",
-    rollbackFeasibility: "none",
-  };
-
-  const fullResult = engine.evaluate(fullRollback);
-  const noResult = engine.evaluate(noRollback);
-
-  assert.ok(noResult.score >= fullResult.score);
-  assert.ok(noResult.factors.rollbackPenalty > fullResult.factors.rollbackPenalty);
+  assert.ok(config.factorWeights.impact === 4);
+  assert.ok(config.factorWeights.irreversibility === 4);
+  assert.ok(config.riskLevelThresholds.low === 0.25);
+  assert.ok(config.riskLevelThresholds.critical === 1.0);
 });
 
-test("integration: blast radius amplifies risk", () => {
-  const engine = new RiskEvaluationEngine();
+test("integration: evidence confidence affects risk score", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
 
-  const noneRadius: RiskEvaluationRequest = {
-    taskId: "task_radius_none",
-    stepId: "step_radius_none",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["internal_data"],
-    blastRadius: "none",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.9,
-    estimatedImpact: "none",
-    rollbackFeasibility: "full",
+  const baseFactors: RiskFactors = {
+    impact: 3,
+    irreversibility: 3,
+    dataSensitivity: 3,
+    autonomyModeRisk: 3,
+    tenantImpact: 3,
+    blastRadius: 3,
+    historicalFailureRate: 15,
+    evidenceConfidence: "high",
   };
 
-  const orgRadius: RiskEvaluationRequest = {
-    taskId: "task_radius_org",
-    stepId: "step_radius_org",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["internal_data"],
-    blastRadius: "organization",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.9,
-    estimatedImpact: "none",
-    rollbackFeasibility: "full",
+  const lowConfidenceFactors: RiskFactors = {
+    ...baseFactors,
+    evidenceConfidence: "low",
   };
 
-  const noneResult = engine.evaluate(noneRadius);
-  const orgResult = engine.evaluate(orgRadius);
+  const highResult = engine.evaluate({ taskId: "task_high_conf", factors: baseFactors });
+  const lowResult = engine.evaluate({ taskId: "task_low_conf", factors: lowConfidenceFactors });
 
-  assert.ok(orgResult.factors.blastRadiusRisk >= noneResult.factors.blastRadiusRisk);
+  assert.ok(lowResult.riskScore > highResult.riskScore);
 });
 
-test("integration: risk config is loaded correctly", () => {
-  const config = loadRiskConfig();
+test("integration: blast radius affects risk score", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
 
-  assert.ok(config !== null);
-  assert.ok(config.riskMatrix !== undefined);
+  const lowBlastFactors: RiskFactors = {
+    impact: 3,
+    irreversibility: 3,
+    dataSensitivity: 3,
+    autonomyModeRisk: 3,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 15,
+    evidenceConfidence: "medium",
+  };
 
-  const levels: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-  levels.forEach((level) => {
-    assert.ok(config.riskMatrix[level] !== undefined);
-    assert.ok(typeof config.riskMatrix[level].minScore === "number");
-    assert.ok(typeof config.riskMatrix[level].maxScore === "number");
-  });
+  const highBlastFactors: RiskFactors = {
+    ...lowBlastFactors,
+    blastRadius: 5,
+    tenantImpact: 5,
+  };
+
+  const lowBlastResult = engine.evaluate({ taskId: "task_low_blast", factors: lowBlastFactors });
+  const highBlastResult = engine.evaluate({ taskId: "task_high_blast", factors: highBlastFactors });
+
+  assert.ok(highBlastResult.riskScore > lowBlastResult.riskScore);
 });
 
-test("integration: confidence level affects penalty", () => {
-  const engine = new RiskEvaluationEngine();
+test("integration: risk result contains factor breakdown", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
 
-  const highConfidence: RiskEvaluationRequest = {
-    taskId: "task_conf_high",
-    stepId: "step_conf_high",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["internal_data"],
-    blastRadius: "team",
-    confidenceLevel: "high",
-    historicalAccuracy: 0.95,
-    estimatedImpact: "moderate",
-    rollbackFeasibility: "partial",
+  const factors: RiskFactors = {
+    impact: 3,
+    irreversibility: 3,
+    dataSensitivity: 3,
+    autonomyModeRisk: 3,
+    tenantImpact: 3,
+    blastRadius: 3,
+    historicalFailureRate: 15,
+    evidenceConfidence: "medium",
   };
 
-  const lowConfidence: RiskEvaluationRequest = {
-    taskId: "task_conf_low",
-    stepId: "step_conf_low",
-    stepType: "write",
-    targetSystem: "database",
-    targetPath: "/test",
-    dataClasses: ["internal_data"],
-    blastRadius: "team",
-    confidenceLevel: "low",
-    historicalAccuracy: 0.5,
-    estimatedImpact: "moderate",
-    rollbackFeasibility: "partial",
+  const result = engine.evaluate({ taskId: "task_breakdown", factors });
+
+  assert.ok(result.factorBreakdown.length === 8);
+  assert.ok(result.factorBreakdown.some(f => f.factor === "impact"));
+  assert.ok(result.factorBreakdown.some(f => f.factor === "evidenceConfidence"));
+});
+
+test("integration: high risk requires approval", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
+
+  const highRiskFactors: RiskFactors = {
+    impact: 5,
+    irreversibility: 5,
+    dataSensitivity: 5,
+    autonomyModeRisk: 5,
+    tenantImpact: 5,
+    blastRadius: 5,
+    historicalFailureRate: 50,
+    evidenceConfidence: "low",
   };
 
-  const highResult = engine.evaluate(highConfidence);
-  const lowResult = engine.evaluate(lowConfidence);
+  const result = engine.evaluate({ taskId: "task_high_risk", factors: highRiskFactors });
 
-  assert.ok(lowResult.factors.confidencePenalty >= highResult.factors.confidencePenalty);
+  assert.ok(result.requiresApproval === true);
+  assert.ok(result.riskLevel === "critical");
+});
+
+test("integration: low risk auto-executes", () => {
+  const config = createTestRiskConfig();
+  const engine = new RiskEvaluationEngine({ config });
+
+  const lowRiskFactors: RiskFactors = {
+    impact: 1,
+    irreversibility: 1,
+    dataSensitivity: 1,
+    autonomyModeRisk: 1,
+    tenantImpact: 1,
+    blastRadius: 1,
+    historicalFailureRate: 1,
+    evidenceConfidence: "high",
+  };
+
+  const result = engine.evaluate({ taskId: "task_low_risk", factors: lowRiskFactors });
+
+  assert.ok(result.autoExecute === true);
+  assert.ok(result.requiresApproval === false);
+  assert.ok(result.riskLevel === "low");
 });

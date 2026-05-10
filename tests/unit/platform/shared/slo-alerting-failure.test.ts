@@ -104,6 +104,7 @@ test("[SYS-REL-2.5] SloAlertingService fires alert and records in database", () 
     targetValue: 99,
     operator: "gte",
     windowMinutes: 60,
+    domain: "test",
   });
 
   // Define an alert rule

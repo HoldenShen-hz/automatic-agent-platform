@@ -208,29 +208,29 @@ test("BasicPlanner returns plan-execute-review for moderate complexity with appr
   assert.equal(result.overrides[2].requiresReview, true);
 });
 
-test("BasicPlanner returns full workflow for high complexity", async () => {
+test("BasicPlanner returns full workflow for complex complexity", async () => {
   const plugin = createBasicPlannerPlugin();
-  const result = await plugin.suggestWorkflow(createMockAssessment("high", "high", true));
+  const result = await plugin.suggestWorkflow(createMockAssessment("complex", "high", true));
 
   assert.ok(result != null);
-  assert.equal(result.workflowId, "workflow.core.high");
+  assert.equal(result.workflowId, "workflow.core.complex");
   assert.ok(result.overrides.length >= 4);
   assert.equal(result.overrides[0].stepName, "plan");
   assert.equal(result.overrides[1].stepName, "approve");
   assert.equal(result.overrides[1].requiresReview, true);
 });
 
-test("BasicPlanner includes retry policy for moderate complexity", async () => {
+test("BasicPlanner includes retry policy for complex complexity", async () => {
   const plugin = createBasicPlannerPlugin();
-  const result = await plugin.suggestWorkflow(createMockAssessment("moderate", "medium"));
+  const result = await plugin.suggestWorkflow(createMockAssessment("complex", "high"));
 
   assert.ok(result != null);
   assert.deepEqual(result.overrides[1].retryPolicy, { maxRetries: 1, backoffMs: 500 });
 });
 
-test("BasicPlanner includes retry policy for high complexity", async () => {
+test("BasicPlanner includes retry policy for complex complexity", async () => {
   const plugin = createBasicPlannerPlugin();
-  const result = await plugin.suggestWorkflow(createMockAssessment("high", "high"));
+  const result = await plugin.suggestWorkflow(createMockAssessment("complex", "high"));
 
   assert.ok(result != null);
   assert.deepEqual(result.overrides[2].retryPolicy, { maxRetries: 2, backoffMs: 1000 });

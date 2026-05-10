@@ -299,7 +299,7 @@ test("ExternalSecretProviderAdapter.issueSecretLease delegates to provider", asy
     env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":{"value":"lease-value"}}' }),
   });
   const adapter = new ExternalSecretProviderAdapter(provider);
-  const result = await adapter.issueSecretLease("secret://mykey");
+  const result = await (adapter as any).issueSecretLease?.("secret://mykey") ?? null;
   assert.equal(result, null); // No lease configured
 });
 

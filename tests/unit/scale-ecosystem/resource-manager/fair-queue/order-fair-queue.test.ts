@@ -22,13 +22,19 @@ import {
 // Factory Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makeItem(overrides: Partial<FairQueueItem> = {}): FairQueueItem {
+function makeItem(overrides: Partial<FairQueueItem> & { weight?: number; borrowedQuota?: number; guaranteedQuota?: number } = {}): FairQueueItem {
+  const { weight, borrowedQuota, guaranteedQuota, slaTier, orgId, domainId, reclaimedCredits, ...rest } = overrides;
   return {
-    itemId: overrides.itemId ?? "default",
-    tenantId: overrides.tenantId ?? "tenant-1",
-    priority: overrides.priority ?? 5,
-    ageMs: overrides.ageMs ?? 0,
-    ...overrides,
+    itemId: rest.itemId ?? "default",
+    tenantId: rest.tenantId ?? "tenant-1",
+    priority: rest.priority ?? 5,
+    ageMs: rest.ageMs ?? 0,
+    ...(slaTier !== undefined ? { slaTier } : {}),
+    ...(guaranteedQuota !== undefined ? { guaranteedQuotaShare: guaranteedQuota } : {}),
+    ...(borrowedQuota !== undefined ? { borrowedCredits: borrowedQuota } : {}),
+    ...(orgId !== undefined ? { orgId } : {}),
+    ...(domainId !== undefined ? { domainId } : {}),
+    ...(reclaimedCredits !== undefined ? { reclaimedCredits } : {}),
   };
 }
 

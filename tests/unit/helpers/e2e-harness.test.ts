@@ -130,7 +130,9 @@ describe("e2e-harness", () => {
       try {
         const executions = harness.store.listExecutionsByTask("task-e2e-001");
         assert.strictEqual(executions.length, 1);
-        assert.strictEqual(executions[0].id, "exec-e2e-001");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.id, "exec-e2e-001");
       } finally {
         harness.cleanup();
       }
@@ -146,7 +148,9 @@ describe("e2e-harness", () => {
         assert.ok(task, "custom task should exist");
         const executions = harness.store.listExecutionsByTask("custom-e2e-task");
         assert.strictEqual(executions.length, 1);
-        assert.strictEqual(executions[0].id, "custom-e2e-exec");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.id, "custom-e2e-exec");
       } finally {
         harness.cleanup();
       }
@@ -156,6 +160,7 @@ describe("e2e-harness", () => {
       const harness = createSeededE2EHarness("e2e-seeded-status-");
       try {
         const task = findTaskById(harness.store, "task-e2e-001");
+        assert.ok(task, "task should exist");
         assert.strictEqual(task.status, "in_progress");
       } finally {
         harness.cleanup();
@@ -166,7 +171,9 @@ describe("e2e-harness", () => {
       const harness = createSeededE2EHarness("e2e-seeded-exec-status-");
       try {
         const executions = harness.store.listExecutionsByTask("task-e2e-001");
-        assert.strictEqual(executions[0].status, "executing");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.status, "executing");
       } finally {
         harness.cleanup();
       }
@@ -176,7 +183,9 @@ describe("e2e-harness", () => {
       const harness = createSeededE2EHarness("e2e-seeded-link-");
       try {
         const executions = harness.store.listExecutionsByTask("task-e2e-001");
-        assert.strictEqual(executions[0].taskId, "task-e2e-001");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.strictEqual(exec.taskId, "task-e2e-001");
       } finally {
         harness.cleanup();
       }
@@ -186,7 +195,9 @@ describe("e2e-harness", () => {
       const harness = createSeededE2EHarness("e2e-seeded-trace-");
       try {
         const executions = harness.store.listExecutionsByTask("task-e2e-001");
-        assert.ok(executions[0].traceId.startsWith("trace-"), "traceId should start with trace-");
+        const exec = executions[0];
+        assert.ok(exec, "execution should exist");
+        assert.ok(exec.traceId.startsWith("trace-"), "traceId should start with trace-");
       } finally {
         harness.cleanup();
       }
@@ -196,6 +207,7 @@ describe("e2e-harness", () => {
       const harness = createSeededE2EHarness("e2e-seeded-div-");
       try {
         const task = findTaskById(harness.store, "task-e2e-001");
+        assert.ok(task, "task should exist");
         assert.strictEqual(task.divisionId, "general_ops");
       } finally {
         harness.cleanup();

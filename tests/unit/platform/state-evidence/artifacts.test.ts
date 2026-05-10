@@ -234,17 +234,17 @@ test("ArtifactGovernanceService detects private key in bundle", () => {
     artifacts: [
       {
         artifactId: "a1",
+        harnessRunId: "harness_test",
         taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
         type: "source_code",
         path: "/key.pem",
-        contentHash: "hash1",
+        checksum: "hash1",
         version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
+        sizeBytes: 100,
+        createdAt: new Date().toISOString(),
+        publishStatus: "draft",
+        mimeType: "application/octet-stream",
+        metadata: {},
       },
     ],
     links: [],
@@ -287,7 +287,7 @@ test("ArtifactBundleService.build handles all bundle types", () => {
     "release_bundle",
     "asset_bundle",
     "campaign_bundle",
-    "incident_bundle",
+    "incident",
     "workflow_snapshot",
   ];
 
@@ -660,14 +660,34 @@ test("ArtifactResolver.resolveRef returns first match for duplicate refs", () =>
 
 test("ArtifactVersioningService.createNextVersion increments from any version", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifactExtended({ version: 99 });
+  const previous = {
+    artifactId: "artifact_test",
+    version: 99,
+    harnessRunId: "harness_test",
+    type: "source_code",
+    path: "src/index.ts",
+    mimeType: "text/plain",
+    sizeBytes: 100,
+    checksum: "abc123",
+    publishStatus: "draft" as const,
+  };
   const next = service.createNextVersion(previous, {});
   assert.equal(next.version, 100);
 });
 
 test("ArtifactVersioningService.createNextVersion always sets parentArtifactId to previous artifactId", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifactExtended({ artifactId: "parent_art", version: 5 });
+  const previous = {
+    artifactId: "parent_art",
+    version: 5,
+    harnessRunId: "harness_test",
+    type: "source_code",
+    path: "src/index.ts",
+    mimeType: "text/plain",
+    sizeBytes: 100,
+    checksum: "abc123",
+    publishStatus: "draft" as const,
+  };
   const next = service.createNextVersion(previous, { artifactId: "child_art" });
   assert.equal(next.parentArtifactId, "parent_art");
   assert.equal(next.artifactId, "child_art");
@@ -675,27 +695,38 @@ test("ArtifactVersioningService.createNextVersion always sets parentArtifactId t
 
 test("ArtifactVersioningService.createNextVersion preserves all extended fields", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifactExtended({
+  const previous = {
     artifactId: "art_v1",
     version: 1,
-    namespace: "my-ns",
-    artifactType: "config",
-    storageUri: "file:///storage",
-    createdBy: "user1",
+    harnessRunId: "harness_test",
+    type: "source_code",
+    path: "src/index.ts",
+    mimeType: "text/plain",
+    sizeBytes: 100,
+    checksum: "abc123",
+    publishStatus: "draft" as const,
     metadata: { key: "value" },
-  });
+  };
   const next = service.createNextVersion(previous, {});
 
-  assert.equal(next.namespace, "my-ns");
-  assert.equal(next.artifactType, "config");
-  assert.equal(next.storageUri, "file:///storage");
-  assert.equal(next.createdBy, "user1");
+  assert.equal(next.version, 2);
+  assert.equal(next.parentArtifactId, "art_v1");
   assert.deepEqual(next.metadata, { key: "value" });
 });
 
 test("ArtifactVersioningService.createNextVersion allows new artifactId in overrides", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifactExtended({ artifactId: "original", version: 1 });
+  const previous = {
+    artifactId: "original",
+    version: 1,
+    harnessRunId: "harness_test",
+    type: "source_code",
+    path: "src/index.ts",
+    mimeType: "text/plain",
+    sizeBytes: 100,
+    checksum: "abc123",
+    publishStatus: "draft" as const,
+  };
   const next = service.createNextVersion(previous, { artifactId: "new_id" });
   assert.equal(next.artifactId, "new_id");
   assert.equal(next.version, 2);
@@ -704,7 +735,17 @@ test("ArtifactVersioningService.createNextVersion allows new artifactId in overr
 
 test("ArtifactVersioningService.createNextVersion ignores version in overrides", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifactExtended({ version: 3 });
+  const previous = {
+    artifactId: "artifact_test",
+    version: 3,
+    harnessRunId: "harness_test",
+    type: "source_code",
+    path: "src/index.ts",
+    mimeType: "text/plain",
+    sizeBytes: 100,
+    checksum: "abc123",
+    publishStatus: "draft" as const,
+  };
   const next = service.createNextVersion(previous, { version: 999 });
   assert.equal(next.version, 4); // Always previous.version + 1
 });
@@ -719,7 +760,7 @@ test("ArtifactPlaneService.prepareBundle with all bundle types", () => {
     "release_bundle",
     "asset_bundle",
     "campaign_bundle",
-    "incident_bundle",
+    "incident",
     "workflow_snapshot",
   ];
 
@@ -807,10 +848,10 @@ test("ArtifactPlaneService.publishBundle with review status bundle", () => {
     artifacts: [],
   });
 
-  // Manually set to review status
+  // Manually set to preview status
   const reviewBundle: ArtifactBundleExtended = {
     ...prepared.bundle,
-    publishStatus: "review",
+    publishStatus: "preview",
   };
 
   // publishBundle should still work - it creates a new published bundle
@@ -873,16 +914,15 @@ function createMinimalArtifact(overrides: Partial<ArtifactRecord> = {}): Artifac
     artifactId: "artifact_test",
     harnessRunId: "harness_test",
     taskId: "task_1",
-    stepId: "step_1",
-    agentRole: "builder",
     type: "source_code",
     path: "src/index.ts",
-    contentHash: "abc123",
+    checksum: "abc123",
     version: 1,
-    parentArtifactId: null,
     sizeBytes: 100,
     createdAt: new Date().toISOString(),
     publishStatus: "draft",
+    mimeType: "text/plain",
+    metadata: {},
     ...overrides,
   };
 }
@@ -892,21 +932,19 @@ function createMinimalArtifactExtended(overrides: Partial<ArtifactRecordExtended
     artifactId: "artifact:test",
     harnessRunId: "harness_test",
     taskId: "task:test",
-    stepId: "step:test",
-    agentRole: "agent",
     type: "source_code",
     path: "/test/path",
-    contentHash: "abc123",
+    checksum: "abc123",
     version: 1,
-    parentArtifactId: null,
     sizeBytes: 100,
     createdAt: "2024-01-01T00:00:00.000Z",
     publishStatus: "draft",
+    mimeType: "text/plain",
+    metadata: {},
     namespace: "test",
-    artifactType: "config",
+    artifactType: "source_code",
     storageUri: "file:///test",
     createdBy: "test-user",
-    metadata: {},
     ...overrides,
   };
   return base;

@@ -37,6 +37,7 @@ function createResourceClaim(overrides: Partial<ResourceClaim> = {}): ResourceCl
 
 function createQuotaPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   return {
+    scope: overrides.scope ?? "tenant",
     scopeId: overrides.scopeId ?? "tenant-1",
     resourceType: overrides.resourceType ?? "runtime_units",
     hardLimit: overrides.hardLimit ?? 100,

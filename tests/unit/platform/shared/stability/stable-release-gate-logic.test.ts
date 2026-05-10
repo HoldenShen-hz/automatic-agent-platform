@@ -8,9 +8,9 @@ import {
   buildStableReleaseGateReport,
   writeStableReleaseGateReport,
   type StableGateTargetStatus,
-} from "../../../../../src/platform/shared/stability/stable-release-gate.js";
-import type { StableEvidenceBundleReport } from "../../../../../src/platform/shared/stability/stable-evidence-bundle-support.js";
-import type { StableAcceptanceLineReport } from "../../../../../src/platform/shared/stability/stable-acceptance-line.js";
+} from "../../../../../src/platform/stability/stable-release-gate.js";
+import type { StableEvidenceBundleReport } from "../../../../../src/platform/stability/stable-evidence-bundle-support.js";
+import type { StableAcceptanceLineReport } from "../../../../../src/platform/stability/stable-acceptance-line.js";
 
 // Helper to create minimal evidence bundle report
 function createMockEvidenceReport(overrides: Partial<StableEvidenceBundleReport["summary"]> = {}): StableEvidenceBundleReport {

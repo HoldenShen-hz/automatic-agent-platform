@@ -4,9 +4,11 @@ import { evaluateQuota, isQuotaExceeded, QuotaPolicySchema, type QuotaPolicy } f
 
 test("evaluateQuota returns not exceeded when under hard limit", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
+    resetWindow: "1h",
     currentUsage: 50,
   };
 
@@ -20,10 +22,12 @@ test("evaluateQuota returns not exceeded when under hard limit", () => {
 
 test("evaluateQuota triggers warning when over soft limit", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
     softLimit: 60,
+    resetWindow: "1h",
     currentUsage: 50,
   };
 
@@ -35,10 +39,12 @@ test("evaluateQuota triggers warning when over soft limit", () => {
 
 test("evaluateQuota marks burst usage when over hard but under burst limit", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
     burstLimit: 150,
+    resetWindow: "1h",
     currentUsage: 80,
   };
 
@@ -51,10 +57,12 @@ test("evaluateQuota marks burst usage when over hard but under burst limit", () 
 
 test("evaluateQuota marks exceeded when over burst limit", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
     burstLimit: 150,
+    resetWindow: "1h",
     currentUsage: 100,
   };
 
@@ -66,9 +74,11 @@ test("evaluateQuota marks exceeded when over burst limit", () => {
 
 test("evaluateQuota uses hardLimit as softLimit when softLimit not provided", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
+    resetWindow: "1h",
     currentUsage: 90,
   };
 
@@ -79,10 +89,12 @@ test("evaluateQuota uses hardLimit as softLimit when softLimit not provided", ()
 
 test("isQuotaExceeded returns true when exceeded", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
     burstLimit: 100,
+    resetWindow: "1h",
     currentUsage: 95,
   };
 
@@ -93,9 +105,11 @@ test("isQuotaExceeded returns true when exceeded", () => {
 
 test("isQuotaExceeded returns false when not exceeded", () => {
   const policy: QuotaPolicy = {
+    scope: "tenant",
     scopeId: "tenant-1",
     resourceType: "runtime_units",
     hardLimit: 100,
+    resetWindow: "1h",
     currentUsage: 50,
   };
 

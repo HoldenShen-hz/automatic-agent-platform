@@ -50,10 +50,13 @@ function registerTestDomain(service: DomainRegistryService, domainId = "coding")
     pluginBindings: [],
     executionProfile: {
       executionMode: {
-        planningMode: "llm_assisted",
-        hotPathMode: "deterministic_only",
+        planningMode: "llm_assisted" as const,
+        hotPathMode: "deterministic_only" as const,
+        llmInHotPathAllowed: false,
+        maxHotPathLatencyMs: 1000,
       },
-      latencyTier: "interactive",
+      latencyTier: "interactive" as const,
+      compiledArtifactRef: null as string | null,
     },
   });
 }

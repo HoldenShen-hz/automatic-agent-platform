@@ -8,12 +8,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { TypedEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+
+function createTypedEventBusContext(prefix: string) {
+  const workspace = require("path").join(require("os").tmpdir(), `${prefix}${Date.now()}`);
+  require("fs").mkdirSync(workspace, { recursive: true });
+  const dbPath = require("path").join(workspace, "integration-test.db");
+  const db = new SqliteDatabase(dbPath);
+  db.migrate();
+  const store = new AuthoritativeTaskStore(db);
+  return {
+    db,
+    store,
+    cleanup() {
+      try { db.close(); } finally { require("fs").rmSync(workspace, { recursive: true, force: true }); }
+    },
+  };
+}
 
 test("integration: TypedEventBus.publish() stores event in SQLite via DurableEventBus", () => {
-  const ctx = createIntegrationContext("aa-typed-event-");
+  const ctx = createTypedEventBusContext("aa-typed-event-");
   try {
     const typedBus = new TypedEventBus(ctx.db, ctx.store);
 
@@ -48,7 +65,7 @@ test("integration: TypedEventBus.publish() stores event in SQLite via DurableEve
 });
 
 test("integration: TypedEventBus.subscribe() receives published events", async () => {
-  const ctx = createIntegrationContext("aa-typed-sub-");
+  const ctx = createTypedEventBusContext("aa-typed-sub-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     const receivedEvents: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
@@ -93,7 +110,7 @@ test("integration: TypedEventBus.subscribe() receives published events", async (
 });
 
 test("integration: TypedEventBus.unsubscribe() stops event delivery", async () => {
-  const ctx = createIntegrationContext("aa-typed-unsub-");
+  const ctx = createTypedEventBusContext("aa-typed-unsub-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     let callCount = 0;
@@ -135,7 +152,7 @@ test("integration: TypedEventBus.unsubscribe() stops event delivery", async () =
 });
 
 test("integration: TypedEventBus.pendingForConsumer() returns undelivered events", () => {
-  const ctx = createIntegrationContext("aa-typed-pending-");
+  const ctx = createTypedEventBusContext("aa-typed-pending-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     typedBus.subscribe("pending-consumer", ["task:status_changed", "workflow:step_completed"], () => {});
@@ -187,7 +204,7 @@ test("integration: TypedEventBus.pendingForConsumer() returns undelivered events
 });
 
 test("integration: TypedEventBus delivers multiple events in order", async () => {
-  const ctx = createIntegrationContext("aa-typed-multi-");
+  const ctx = createTypedEventBusContext("aa-typed-multi-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     const received: string[] = [];
@@ -234,7 +251,7 @@ test("integration: TypedEventBus delivers multiple events in order", async () =>
 });
 
 test("integration: TypedEventBus filters events by subscribed type", async () => {
-  const ctx = createIntegrationContext("aa-typed-filter-");
+  const ctx = createTypedEventBusContext("aa-typed-filter-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     const received: string[] = [];
@@ -291,7 +308,7 @@ test("integration: TypedEventBus filters events by subscribed type", async () =>
 });
 
 test("integration: TypedEventBus handles high-risk command events", async () => {
-  const ctx = createIntegrationContext("aa-typed-risk-");
+  const ctx = createTypedEventBusContext("aa-typed-risk-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     const received: string[] = [];
@@ -325,7 +342,7 @@ test("integration: TypedEventBus handles high-risk command events", async () => 
 });
 
 test("integration: TypedEventBus multiple consumers receive same events independently", async () => {
-  const ctx = createIntegrationContext("aa-typed-indep-");
+  const ctx = createTypedEventBusContext("aa-typed-indep-");
   const typedBus = new TypedEventBus(ctx.db, ctx.store);
   try {
     const consumer1Events: string[] = [];

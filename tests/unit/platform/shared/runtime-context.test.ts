@@ -30,7 +30,7 @@ test("RuntimeContext - provideContext and getContext", () => {
     return ctx;
   });
 
-  assert.equal(result.traceId, "trace-123");
+  assert.equal((result as RuntimeContextSnapshot).traceId, "trace-123");
 });
 
 test("RuntimeContext - getContext throws when outside provideContext", () => {
@@ -136,7 +136,7 @@ test("RuntimeContext - getTenantId returns null when not set", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace-123",
     taskId: "task-456",
-    tenantId: undefined,
+    tenantId: null,
   };
 
   provideContext(snapshot, () => {
@@ -172,7 +172,7 @@ test("RuntimeContext - getWorkspaceId returns null when not set", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace-123",
     taskId: "task-456",
-    workspaceId: undefined,
+    workspaceId: null,
   };
 
   provideContext(snapshot, () => {

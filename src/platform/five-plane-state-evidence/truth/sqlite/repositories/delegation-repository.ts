@@ -71,7 +71,7 @@ export class InMemoryDelegationRepository implements DelegationRepository {
   private readonly delegations = new Map<string, DelegationRecord>();
 
   public async create(input: CreateDelegationInput): Promise<DelegationRecord> {
-    const delegationId = newId("delegation");
+    const delegationId = input.delegationId ?? newId("delegation");
     const now = nowIso();
 
     const delegation: DelegationRecord = {
@@ -79,7 +79,7 @@ export class InMemoryDelegationRepository implements DelegationRepository {
       parentAgentId: input.parentAgentId,
       childAgentId: input.childAgentId,
       delegationChain: input.delegationChain,
-      status: "pending",
+      status: input.status ?? "pending",
       depth: input.depth,
       expiresAt: input.expiresAt ?? null,
       resultRef: null,

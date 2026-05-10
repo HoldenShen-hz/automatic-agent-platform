@@ -8,6 +8,7 @@ function createTestRecipe(overrides?: Partial<DomainRecipe>): DomainRecipe {
   return {
     recipeId: "recipe_test",
     domainId: "coding",
+    archetype: "crud_heavy",
     name: "Test Recipe",
     description: "Test recipe description",
     triggerPhrases: ["test", "debug"],
