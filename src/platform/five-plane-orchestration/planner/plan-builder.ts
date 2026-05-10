@@ -157,6 +157,7 @@ export class PlanBuilder {
     return createPlanGraphBundle({
       planGraphBundleId,
       harnessRunId,
+      graphVersion: 1,
       graph,
       schedulerPolicy: {
         policyId: newId("sp"),

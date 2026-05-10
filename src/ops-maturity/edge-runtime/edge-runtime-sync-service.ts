@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { buildOfflineExecutionRecord, type OfflineExecutionRecord } from "./edge-executor/index.js";
 import { buildEdgeExecutionPlan } from "./edge-orchestrator/index.js";
+import { EdgeRiskGate } from "./edge-risk-gate.js";
 import { selectEdgeLocalModel, type LocalModelProfile } from "./local-model/index.js";
 import { orderEdgeSyncQueue } from "./sync-queue/index.js";
 
@@ -123,14 +124,13 @@ export class EdgeRuntimeSyncService {
     if (profile.riskLevel == null || (profile.riskLevel !== "low" && profile.riskLevel !== "medium")) {
       throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_or_medium_risk");
     }
-    // R21-15 FIX: Gate execution requests by their own risk, not just profile classification.
-    // Offline execution only allowed when request riskScore <= 0.5 (medium threshold) and no high-risk taskType.
-    const HIGH_RISK_TASK_TYPES = new Set(["code_execution", "system_config", "data_delete", "security_ops", "credential_modify"]);
-    if (request.riskScore != null && request.riskScore > 0.5) {
-      throw new Error(`edge_runtime.risk_score_exceeds_limit:offline_requires_riskScore_lte_0.5_got_${request.riskScore}`);
-    }
-    if (request.taskType != null && HIGH_RISK_TASK_TYPES.has(request.taskType)) {
-      throw new Error(`edge_runtime.high_risk_task_type_blocked:offline_execution_denied_for_${request.taskType}`);
+    // R21-13: Use EdgeRiskGate to enforce risk gate before edge execution.
+    // Blocks high-risk taskTypes (delete, destroy, terminate, force_push, sudo)
+    // and only allows execution when riskScore <= 0.5.
+    const riskGate = new EdgeRiskGate();
+    const riskResult = riskGate.check(request);
+    if (!riskResult.allowed) {
+      throw new Error(riskResult.reason!);
     }
     const createdAt = request.createdAt ?? nowIso();
     const createdAtMillis = Date.parse(createdAt);

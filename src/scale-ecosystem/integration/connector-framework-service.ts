@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { CircuitBreaker } from "../../platform/stability/circuit-breaker.js";
 import {
   ConnectorManifestSchema,
   listEnabledConnectors,
@@ -44,8 +45,16 @@ export class ConnectorFrameworkService {
   private readonly manifests = new Map<string, RegisteredConnectorManifest>();
   private readonly bindings = new Map<string, ConnectorBinding[]>();
   private readonly health = new Map<string, ConnectorHealthReport[]>();
-  private readonly connectorInstances = new Map<string, { execute(request: ConnectorExecutionRequest): ConnectorExecutionResult }>();
+  private readonly connectorInstances = new Map<string, { execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> }>();
+  private readonly circuitBreakers = new Map<string, CircuitBreaker>();
   private readonly storageDir: string | null;
+
+  private static readonly DEFAULT_CIRCUIT_BREAKER_OPTIONS = {
+    failureThreshold: 5,
+    successThreshold: 2,
+    timeout: 30000,
+    resetTimeout: 60000,
+  };
 
   public constructor(storageDir: string | null = null) {
     this.storageDir = storageDir;
@@ -85,8 +94,11 @@ export class ConnectorFrameworkService {
     return report;
   }
 
-  public registerConnectorInstance(connectorId: string, instance: { execute(request: ConnectorExecutionRequest): ConnectorExecutionResult }): void {
+  public registerConnectorInstance(connectorId: string, instance: { execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> }): void {
     this.connectorInstances.set(connectorId, instance);
+    if (!this.circuitBreakers.has(connectorId)) {
+      this.circuitBreakers.set(connectorId, new CircuitBreaker(ConnectorFrameworkService.DEFAULT_CIRCUIT_BREAKER_OPTIONS));
+    }
   }
 
   /**
@@ -97,15 +109,18 @@ export class ConnectorFrameworkService {
    *
    * Current stub behavior: returns {success: true, status: "succeeded"|"deferred"}
    * based solely on health, secretBindings, policyRef, and supportedEvents checks.
+   *
+   * R21-03 FIX: execute() is now async and uses CircuitBreaker to handle connector
+   * failures gracefully. If a connector's circuit is open, calls are rejected fast.
    */
-  public execute(
+  public async execute(
     request: ConnectorExecutionRequest,
     options: {
       readonly environment: "dev" | "staging" | "prod";
       readonly eventType?: string;
       readonly executedAt?: string;
     },
-  ): ConnectorExecutionResult & { readonly executionKey: string; readonly executedAt: string } {
+  ): Promise<ConnectorExecutionResult & { readonly executionKey: string; readonly executedAt: string }> {
     const normalizedRequest = ConnectorExecutionRequestSchema.parse(request);
     const manifest = this.requireManifest(normalizedRequest.connectorId);
     const executionKey = buildConnectorExecutionKey(normalizedRequest);
@@ -143,9 +158,10 @@ export class ConnectorFrameworkService {
       };
     }
 
+    const circuitBreaker = this.circuitBreakers.get(normalizedRequest.connectorId);
     const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
-    if (connectorInstance != null) {
-      const result = connectorInstance.execute(normalizedRequest);
+    if (connectorInstance != null && circuitBreaker != null) {
+      const result = await circuitBreaker.execute(() => connectorInstance.execute(normalizedRequest));
       return { ...result, executionKey, executedAt: options.executedAt ?? nowIso() };
     }
 
