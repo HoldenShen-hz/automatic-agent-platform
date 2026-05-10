@@ -4,12 +4,16 @@ import test from "node:test";
 import {
   WorkflowValidator,
   assertWorkflowValid,
+  validateIssues,
+  validateWorkflowCompatibility,
+  type StaticCompatibilityIssue,
   type WorkflowLintIssue,
   type WorkflowLintSeverity,
 } from "../../../../../../src/platform/orchestration/oapeflir/workflow/workflow-validator.js";
 import type {
   MinimalWorkflowDefinition,
   MinimalWorkflowStep,
+  WorkflowTemplate,
 } from "../../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
 
 function createValidStep(overrides: Partial<MinimalWorkflowStep> = {}): MinimalWorkflowStep {
@@ -253,6 +257,31 @@ test("WorkflowValidator reports correct error and warning counts", () => {
   
   assert.equal(report.errorCount, 1);
   assert.equal(report.warningCount, 0);
+});
+
+test("validateIssues exports canonical StaticCompatibilityIssue array", () => {
+  const workflow = createValidWorkflow([createValidStep({ outputSchemaPath: "" })]);
+
+  const issues = validateIssues(workflow);
+  const firstIssue: StaticCompatibilityIssue | undefined = issues[0];
+
+  assert.ok(Array.isArray(issues));
+  assert.equal(firstIssue?.code, "step.missing_output_schema");
+});
+
+test("validateWorkflowCompatibility preserves compatibility alias", () => {
+  const workflow = createValidWorkflow([createValidStep({ timeoutMs: 0 })]);
+
+  const issues = validateWorkflowCompatibility(workflow);
+
+  assert.equal(issues[0]?.code, "step.invalid_timeout");
+});
+
+test("WorkflowTemplate aliases MinimalWorkflowDefinition", () => {
+  const workflowTemplate: WorkflowTemplate = createValidWorkflow([createValidStep()]);
+
+  assert.equal(workflowTemplate.workflowId, "test_workflow");
+  assert.equal(workflowTemplate.steps.length, 1);
 });
 
 test("WorkflowValidator handles whitespace step ID normalization", () => {

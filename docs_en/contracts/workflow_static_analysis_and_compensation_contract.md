@@ -44,6 +44,11 @@ Before execution, must check at least:
 - `CheckpointPlan`
 - `WorkflowTemplate`
 
+v4.3 Alignment Notes:
+
+- Code-side `StaticCompatibilityIssue` is exported as the canonical compatibility alias for `WorkflowLintIssue`, providing direct contract-level consumption of the issue array.
+- Code-side `WorkflowTemplate` is exported as a compatibility alias for `MinimalWorkflowDefinition`, pointing to the authoritative workflow definition structure in the codebase rather than maintaining a separate template entity.
+
 ## 5. Compensation Model
 
 Each step with side effects must declare one of:

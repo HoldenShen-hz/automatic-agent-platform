@@ -1,4 +1,4 @@
-import type { SystemSituation } from "../../../platform/shared/observability/system-situation-model.js";
+import type { DashboardSystemSituation } from "../index.js";
 
 export interface StructuredHealthScore {
   readonly overall: number;
@@ -12,7 +12,7 @@ export interface StructuredHealthScore {
   readonly findings: number;
 }
 
-export function buildStructuredHealthScore(system: SystemSituation): StructuredHealthScore {
+export function buildStructuredHealthScore(system: DashboardSystemSituation): StructuredHealthScore {
   const base = system.healthStatus === "ok" ? 100 : system.healthStatus === "degraded" ? 80 : system.healthStatus === "overloaded" ? 60 : 30;
   const backlogPenalty = Math.min(30, system.queueBacklog.size);
   const findingPenalty = Math.min(20, system.findings.length * 5);
@@ -30,6 +30,6 @@ export function buildStructuredHealthScore(system: SystemSituation): StructuredH
   };
 }
 
-export function scoreSystemHealth(system: SystemSituation): number {
+export function scoreSystemHealth(system: DashboardSystemSituation): number {
   return buildStructuredHealthScore(system).overall;
 }

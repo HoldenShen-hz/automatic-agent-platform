@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { WorkflowBuilderWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("workflow-builder");
 
 const workflowBuilderFeature = createFeatureModule({
   id: "workflow-builder",
-  title: "Workflow Builder",
+  title: featureCopy.title,
   group: "Extended",
   path: "/extended/workflow-builder",
   permission: "pack_developer+",
   status: "Planned",
   kind: "planned",
-  summary: "可视化工作流构建器，先通过 contract seam 与 feature gate 落位。",
+  summary: featureCopy.summary,
   render: WorkflowBuilderWebView,
 });
 

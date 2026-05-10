@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { ConversationWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("conversation");
 
 const conversationFeature = createFeatureModule({
   id: "conversation",
-  title: "NL Conversation",
+  title: featureCopy.title,
   group: "Extended",
   path: "/extended/conversation",
   permission: "authenticated",
   status: "Implemented/Internal",
-  summary: "NL 对话、追问、计划确认与执行闭环。",
+  summary: featureCopy.summary,
   render: ConversationWebView,
 });
 

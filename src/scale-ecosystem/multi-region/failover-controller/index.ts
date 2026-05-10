@@ -1,3 +1,9 @@
+import {
+  FailoverReconciliationJob,
+  type ReconciliationJobInput,
+  type ReconciliationScanResult,
+} from "../failover-reconciliation-job.js";
+
 /**
  * Region failover input with consensus support
  */
@@ -60,6 +66,8 @@ export interface RegionFailoverDecision {
   readonly leaderState: "stable" | "promoted" | "demoted_previous_leader";
   /** Consensus information for the decision */
   readonly consensus?: ConsensusDecision;
+  /** Reconciliation result after failover - present when shouldFailover is true and reconciliation was run */
+  readonly reconciliationResult?: ReconciliationScanResult;
 }
 
 export interface FencingEpochState {
@@ -169,9 +177,11 @@ export class RegionFailoverController {
   private readonly stateByPartition = new Map<string, FencingEpochState>();
   private readonly quorumVotes = new Map<string, QuorumVote[]>();
   private readonly epochManager: EpochManager;
+  private readonly reconciliationJob: FailoverReconciliationJob;
 
-  public constructor(epochManager?: EpochManager) {
+  public constructor(epochManager?: EpochManager, reconciliationJob?: FailoverReconciliationJob) {
     this.epochManager = epochManager ?? defaultEpochManager;
+    this.reconciliationJob = reconciliationJob ?? new FailoverReconciliationJob();
   }
 
   /**
@@ -344,6 +354,24 @@ export class RegionFailoverController {
       demotedLeaderRegionId: demotedRegionId,
     };
     this.stateByPartition.set(partitionKey, nextState);
+
+    // R21-03: Run reconciliation after failover to detect gaps (unreplicated writes,
+    // open budgets, pending approvals, outbox gaps, restricted writes).
+    // The new leader cannot safely accept writes until critical issues are resolved.
+    const sourceRegion = previous.leaderRegionId ?? demotedRegionId ?? targetRegionId;
+    const reconciliationInput: ReconciliationJobInput = {
+      sourceRegionId: sourceRegion as string,
+      targetRegionId: targetRegionId as string,
+      promoteEpoch: effectivePromoteEpoch,
+      lastCheckpointSequence: 0,
+      pendingWriteCount: 0,
+      pendingApprovals: [],
+      openBudgets: [],
+      outboxMessages: [],
+      restrictedWrites: [],
+    };
+    const reconciliationResult = this.reconciliationJob.runReconciliation(reconciliationInput);
+
     const result: RegionFailoverDecision = {
       shouldFailover: true,
       targetRegionId,
@@ -352,6 +380,7 @@ export class RegionFailoverController {
       demotedRegionId,
       leaderState: demotedRegionId == null ? "promoted" : "demoted_previous_leader",
       ...(consensus !== undefined ? { consensus } : {}),
+      reconciliationResult,
     };
     return result;
   }

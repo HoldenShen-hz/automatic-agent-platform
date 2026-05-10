@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { ApprovalWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("approval");
 
 const approvalFeature = createFeatureModule({
   id: "approval",
-  title: "Approval Center",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/approvals",
   permission: "authenticated",
   status: "Implemented/Contracted",
-  summary: "审批中心，支持风险摘要和人工决策入口。",
+  summary: featureCopy.summary,
   render: ApprovalWebView,
 });
 

@@ -12,8 +12,9 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { HealthService } from "../../shared/observability/health-service.js";
-import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { HealthReportProvider } from "../../contracts/types/health.js";
+import { createNoOpHealthReportProvider } from "../../contracts/types/health.js";
+import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
 import { ExecutionLeaseService } from "../lease/execution-lease-service.js";
@@ -69,7 +70,8 @@ export class ExecutionDispatchService {
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
   // R9-10 fix: Reuse single HealthService instance instead of creating per-ticket O(n) scan
-  private readonly healthService: HealthService;
+  // R19-45 fix: Use HealthReportProvider interface instead of direct HealthService to avoid P5 Evidence coupling
+  private readonly healthService: HealthReportProvider;
   // R6-6: DLQ service for dead-letter queue integration
   private readonly dlqService: DlqService;
   public constructor(
@@ -77,14 +79,15 @@ export class ExecutionDispatchService {
     private readonly store: AuthoritativeTaskStore,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
+    // R19-45: Optional health provider - if not provided, uses no-op provider
+    healthProvider: HealthReportProvider | null = null,
   ) {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
     // R9-10 fix: Initialize HealthService once instead of per-ticket
-    this.healthService = new HealthService(this.db, this.store, {
-      ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
-    });
+    // R19-45 fix: Use injected provider or create no-op if not available
+    this.healthService = healthProvider ?? createNoOpHealthReportProvider();
     // R6-6: Initialize DLQ service for backpressure rejection handling
     this.dlqService = new DlqService();
   }

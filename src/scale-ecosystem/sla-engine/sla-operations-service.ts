@@ -28,6 +28,7 @@ export interface SlaBreachRecord {
 export interface SlaOperationsRequest {
   readonly tiers: readonly SlaTierProfile[];
   readonly selectedTierId?: string | null;
+  readonly tenantId?: string | null;
   readonly workflowClass: WorkflowClass;
   readonly observation: SlaObservation;
   readonly reservedCapacityPlan?: readonly ReservedCapacityAllocation[];
@@ -38,6 +39,7 @@ export interface SlaOperationsRequest {
 
 export interface SlaOperationsDecision {
   readonly selectedTierId: string | null;
+  readonly tenantId: string | null;
   readonly routingHint: SlaRoutingHint | null;
   readonly reservedCapacity: Readonly<Record<string, number>>;
   readonly breachRecords: readonly SlaBreachRecord[];
@@ -121,7 +123,7 @@ export class SlaOperationsService {
   public evaluate(request: SlaOperationsRequest): SlaOperationsDecision {
     const workflowClass = request.workflowClass ?? "llm_assisted";
     const selectedTier = request.selectedTierId == null
-      ? resolveHighestPriorityTier(request.tiers)
+      ? resolveHighestPriorityTier(request.tiers, request.tenantId)
       : request.tiers.find((tier) => tier.tierId === request.selectedTierId) ?? null;
     const reservedCapacity = allocateReservedCapacity(
       request.totalCapacityUnits,
@@ -134,6 +136,7 @@ export class SlaOperationsService {
     if (selectedTier == null) {
       return {
         selectedTierId: null,
+        tenantId: request.tenantId ?? null,
         routingHint: null,
         reservedCapacity,
         breachRecords: [],
@@ -189,6 +192,7 @@ export class SlaOperationsService {
     const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) === maxPriority;
     return {
       selectedTierId: selectedTier.tierId,
+      tenantId: request.tenantId ?? null,
       routingHint: {
         tierId: selectedTier.tierId,
         preemptionPriority: selectedTier.preemptionPriority ?? 0,

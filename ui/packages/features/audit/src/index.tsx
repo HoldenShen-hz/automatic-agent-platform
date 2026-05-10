@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { AuditWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("audit");
 
 const auditFeature = createFeatureModule({
   id: "audit",
-  title: "Audit",
+  title: featureCopy.title,
   group: "Governance",
   path: "/governance/audit",
   permission: "org_admin+",
   status: "Implemented/Contracted",
-  summary: "审计日志、变更追踪与合规导出入口。",
+  summary: featureCopy.summary,
   render: AuditWebView,
 });
 

@@ -106,6 +106,8 @@ export interface MinimalWorkflowDefinition {
   steps: readonly MinimalWorkflowStep[];
 }
 
+export type WorkflowTemplate = MinimalWorkflowDefinition;
+
 /**
  * Pre-defined workflow for simple single-agent operations.
  *

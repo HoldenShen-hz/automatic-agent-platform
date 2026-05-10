@@ -24,6 +24,13 @@ describe("tauriLinuxManifest", () => {
   it("declares update channel for desktop updater consistency", () => {
     expect(tauriLinuxManifest.updateChannel).toBe("stable");
   });
+
+  it("declares tray, notifications, Wayland/XDG, and theme support", () => {
+    expect(tauriLinuxManifest.supportsSystemTray).toBe(true);
+    expect(tauriLinuxManifest.supportsNotifications).toBe(true);
+    expect(tauriLinuxManifest.supportsWaylandXdg).toBe(true);
+    expect(tauriLinuxManifest.supportsThemeDetection).toBe(true);
+  });
 });
 
 describe("DesktopShellManifest interface structure for Linux", () => {
@@ -32,6 +39,10 @@ describe("DesktopShellManifest interface structure for Linux", () => {
       platform: "linux",
       runtime: "tauri",
       supportsBackgroundAgent: false,
+      supportsNotifications: true,
+      supportsSystemTray: true,
+      supportsWaylandXdg: true,
+      supportsThemeDetection: true,
       updateChannel: "stable",
     };
 

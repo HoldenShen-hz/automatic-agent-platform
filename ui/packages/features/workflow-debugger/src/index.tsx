@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { WorkflowDebuggerWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("workflow-debugger");
 
 const workflowDebuggerFeature = createFeatureModule({
   id: "workflow-debugger",
-  title: "Workflow Debugger",
+  title: featureCopy.title,
   group: "Extended",
   path: "/extended/debugger",
   permission: "pack_developer+",
   status: "Planned",
   kind: "planned",
-  summary: "调试器、时间线和数据流回放。",
+  summary: featureCopy.summary,
   render: WorkflowDebuggerWebView,
 });
 

@@ -22,11 +22,13 @@ export interface PlanBuilderInput {
   workflow: PlannedWorkflow;
   version?: number;
   parentVersion?: number;
+  graphPatch?: import("../../contracts/executable-contracts/index.js").GraphPatch;
 }
 
 export interface BuildPlanOptions {
   normalizeGraph?: boolean;
   propagateRisk?: boolean;
+  graphPatch?: import("../../contracts/executable-contracts/index.js").GraphPatch | null;
 }
 
 export class PlanBuilder {
@@ -68,6 +70,11 @@ export class PlanBuilder {
       if (normalizationResult.valid) {
         normalizedSteps = normalizationResult.normalizedSteps;
       }
+    }
+
+    // R5-12: Apply graph patch if provided for replanning scenarios
+    if (options.graphPatch) {
+      normalizedSteps = this.applyGraphPatch(normalizedSteps, options.graphPatch);
     }
 
     // Convert steps to PlanNodes
@@ -174,6 +181,94 @@ export class PlanBuilder {
       version: previousPlan.graphVersion + 1,
       parentVersion: previousPlan.graphVersion,
     }, options);
+  }
+
+  /**
+   * R5-12: Applies a GraphPatch to the steps for replanning scenarios per §13.13.
+   * This integrates the patch operations (add/remove/modify nodes) into the plan.
+   */
+  private applyGraphPatch(steps: PlanStep[], graphPatch: import("../../contracts/executable-contracts/index.js").GraphPatch): PlanStep[] {
+    // R5-12: Create a map of step IDs to steps for efficient lookup
+    const stepMap = new Map(steps.map((s) => [s.stepId, s]));
+
+    // R5-12: Apply each operation in the patch
+    const patchedSteps = [...steps];
+    for (const op of graphPatch.operations) {
+      switch (op.operationType) {
+        case "add_node": {
+          // R5-12: Add a new node from the patch payload
+          const payload = op.payload as Record<string, unknown>;
+          const newStep: PlanStep = {
+            stepId: payload.stepId as string,
+            action: payload.action as string,
+            title: (payload.title as string) ?? `Step ${payload.stepId}`,
+            inputs: (payload.inputs as Record<string, unknown>) ?? {},
+            outputs: (payload.outputs as string[]) ?? [],
+            dependencies: (payload.dependencies as string[]) ?? [],
+            status: "pending",
+            timeout: (payload.timeout as number) ?? 60000,
+            retryPolicy: { maxRetries: 0, backoffMs: 250 },
+          };
+          // R5-12: Insert after the target ref or at the end
+          const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);
+          if (targetIdx >= 0) {
+            patchedSteps.splice(targetIdx + 1, 0, newStep);
+          } else {
+            patchedSteps.push(newStep);
+          }
+          break;
+        }
+        case "add_edge": {
+          // R5-12: Add an edge between existing nodes
+          const payload = op.payload as Record<string, unknown>;
+          const fromNode = payload.fromNodeId as string;
+          const toNode = payload.toNodeId as string;
+          // R5-12: Update dependencies of target node to include the new predecessor
+          const targetStep = patchedSteps.find((s) => s.stepId === op.targetRef);
+          if (targetStep && !targetStep.dependencies.includes(fromNode)) {
+            targetStep.dependencies = [...targetStep.dependencies, fromNode];
+          }
+          // R5-12: Also add the new step as a dependency for the toNode if it exists
+          const toStep = patchedSteps.find((s) => s.stepId === toNode);
+          if (toStep && !toStep.dependencies.includes(fromNode)) {
+            toStep.dependencies = [...toStep.dependencies, fromNode];
+          }
+          break;
+        }
+        case "append_subgraph": {
+          // R5-12: Append a subgraph of steps from the patch payload
+          const payload = op.payload as { steps?: PlanStep[] };
+          if (Array.isArray(payload.steps)) {
+            patchedSteps.push(...payload.steps);
+          }
+          break;
+        }
+        case "mark_skipped": {
+          // R5-12: Mark a step as skipped
+          const skippedStep = patchedSteps.find((s) => s.stepId === op.targetRef);
+          if (skippedStep) {
+            (skippedStep as Record<string, unknown>).status = "skipped";
+          }
+          break;
+        }
+        case "disable_edge": {
+          // R5-12: Remove an edge between nodes
+          const payload = op.payload as Record<string, unknown>;
+          const fromNode = payload.fromNodeId as string;
+          const toNode = payload.toNodeId as string;
+          // R5-12: Remove the dependency from the target node
+          const targetStep = patchedSteps.find((s) => s.stepId === op.targetRef);
+          if (targetStep) {
+            targetStep.dependencies = targetStep.dependencies.filter((d) => d !== fromNode);
+          }
+          break;
+        }
+        default:
+          // R5-12: Unknown operation types are ignored (prevents compilation errors for unused cases)
+          break;
+      }
+    }
+    return patchedSteps;
   }
 
   private inferNodeType(action: string): PlanNode["nodeType"] {

@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { FeatureFlagsWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("feature-flags");
 
 const featureFlagsFeature = createFeatureModule({
   id: "feature-flags",
-  title: "Feature Flags",
+  title: featureCopy.title,
   group: "Admin",
   path: "/admin/feature-flags",
   permission: "admin+",
   status: "Implemented/Internal",
-  summary: "Feature flag management for progressive rollout and A/B testing.",
+  summary: featureCopy.summary,
   render: FeatureFlagsWebView,
 });
 

@@ -208,6 +208,8 @@ export class ChaosExperimentScheduler {
   private readonly gameDays = new Map<string, ChaosGameDay>();
   private readonly rollbackQueue = new Map<string, RollbackAction[]>();
   private readonly monitoringIntervals = new Map<string, ReturnType<typeof setInterval>>();
+  // R21-18 fix: Track evaluated hypotheses to prevent duplicate accumulation
+  private readonly evaluatedHypotheses = new Set<string>();
 
   public constructor(options: ChaosExperimentSchedulerOptions = {}) {
     this.repository = options.repository ?? null;
@@ -395,6 +397,15 @@ export class ChaosExperimentScheduler {
 
     experiment.results = [...experiment.results, result];
 
+    // R21-18 fix: Track evaluated hypotheses to prevent duplicate evaluations
+    const evaluatedKey = `${experimentId}:${hypothesisName}`;
+    const alreadyEvaluated = this.evaluatedHypotheses.has(evaluatedKey);
+    if (alreadyEvaluated) {
+      this.persistSnapshot();
+      return;
+    }
+    this.evaluatedHypotheses.add(evaluatedKey);
+
     // Check if all hypotheses have been evaluated
     if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
       const allPassed = experiment.results.every((r) => r.passed);
@@ -573,7 +584,7 @@ export class ChaosExperimentScheduler {
     return experiment?.rollbackActions ?? [];
   }
 
-  public injectFault(experimentId: string): FaultInjection | null {
+  public injectFault(experimentId: string): ChaosFaultInjectionResult | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "running") return null;
     const execution = this.faultExecutor({ experiment, fault: experiment.fault });
@@ -581,7 +592,8 @@ export class ChaosExperimentScheduler {
     experiment.faultExecutionStatus = execution.applied ? "applied" : "failed";
     experiment.faultExecutionMessage = execution.message;
     this.persistSnapshot();
-    return experiment.fault;
+    // R21-17 fix: Return actual execution result instead of fault config
+    return execution;
   }
 
   public autoTerminateIfNeeded(experimentId: string): boolean {

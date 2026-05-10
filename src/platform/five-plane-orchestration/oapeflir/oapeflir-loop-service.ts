@@ -13,7 +13,7 @@ import type {
 import { ObservationAggregator, type UnifiedObservation } from "../../shared/observability/observation-aggregator.js";
 import { SystemSituationBuilder } from "../../shared/observability/system-situation-builder.js";
 import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } from "./assessment-service.js";
-import { PlanBuilder } from "../planner/plan-builder.js";
+import { PlanBuilder, type BuildPlanOptions } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
 import type { FeedbackBatch, LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import {
@@ -408,12 +408,18 @@ export class OapeflirLoopService {
 
         // R5-1: Build fresh PlanGraphBundle directly (no toLegacyPlan round-trip)
         // R5-9: Enable graph normalization and risk propagation per §13.9
+        // R5-12: Apply graph patch from prior replan decision if available
+        const planBuildOptions: BuildPlanOptions = { normalizeGraph: true, propagateRisk: true };
+        if (loopGraphPatch) {
+          planBuildOptions.graphPatch = loopGraphPatch;
+        }
         loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.build({
           observation: observedTask,
           assessment: validatedAssessment,
           workflow: input.workflow,
-        }, { normalizeGraph: true, propagateRisk: true }), {
+        }, planBuildOptions), {
           taskId: input.taskId,
+          hasGraphPatch: loopGraphPatch != null,
         });
         // R5-1: Refresh legacy Plan from the authoritative PlanGraphBundle
         loopPlan = this.toLegacyPlan(loopPlanGraphBundle, input.taskId);
@@ -500,8 +506,10 @@ export class OapeflirLoopService {
           // R5-3: Record improve and release as skipped in FSM
           fsm.recordStageEntry("improve");
           fsm.recordStageSkipped("improve", "improvement.validation_failed");
+          this.emitStageEvent("improve", input.taskId, { status: "skipped", reason: "improvement.validation_failed" });
           fsm.recordStageEntry("release");
           fsm.recordStageSkipped("release", "release.improve_skipped");
+          this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.improve_skipped" });
         } else {
           // R5-3: Improve stage transition check
           const improveTransition = fsm.canTransitionTo("improve");
@@ -585,6 +593,7 @@ export class OapeflirLoopService {
             });
             timeline.record("release", "skipped", null, "release.evaluation_gate_blocked", `Release blocked by EvaluationGate with verdict: ${loopEvaluationReport.verdict}`);
             fsm.recordStageSkipped("release", "release.evaluation_gate_blocked");
+            this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.evaluation_gate_blocked" });
             rolloutRecord = null;
           } else {
             // Approval check: if assessment requires approval, block release
@@ -595,6 +604,7 @@ export class OapeflirLoopService {
               });
               timeline.record("release", "skipped", null, "release.approval_required", `Release blocked by approval requirement: ${validatedAssessment.approvalPolicy.level}`);
               fsm.recordStageSkipped("release", "release.approval_required");
+              this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.approval_required" });
               rolloutRecord = null;
             } else {
               // Canary check: only proceed if not in blocked canary state
@@ -605,6 +615,7 @@ export class OapeflirLoopService {
                 });
                 timeline.record("release", "skipped", null, "release.canary_blocked", "Release blocked due to canary routing failure");
                 fsm.recordStageSkipped("release", "release.canary_blocked");
+                this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.canary_blocked" });
                 rolloutRecord = null;
               } else {
                 const strategyVersion = createStrategyVersion("Evaluation planning guidance", validatedLearningObjects, "L1_evaluate");
@@ -633,8 +644,10 @@ export class OapeflirLoopService {
                 // R5-3: Record release completion or skip
                 if (rolloutRecord) {
                   fsm.recordStageCompletion("release");
+                  this.emitStageEvent("release", input.taskId, { status: "completed", recordId: rolloutRecord.recordId });
                 } else {
                   fsm.recordStageSkipped("release", "release.validation_failed");
+                  this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.validation_failed" });
                 }
               }
             }
@@ -648,7 +661,9 @@ export class OapeflirLoopService {
           timeline.record("release", "skipped", null, "release.improve_blocked", "Release was blocked because the improvement candidate did not clear the autonomy boundary.");
           // R5-3: Record improve and release as skipped in FSM
           fsm.recordStageSkipped("improve", boundary.reasonCode);
+          this.emitStageEvent("improve", input.taskId, { status: "skipped", reason: boundary.reasonCode });
           fsm.recordStageSkipped("release", "release.improve_blocked");
+          this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.improve_blocked" });
         }
         }
       } else {
@@ -659,8 +674,10 @@ export class OapeflirLoopService {
         // R5-3: Record improve and release as skipped in FSM
         fsm.recordStageEntry("improve");
         fsm.recordStageSkipped("improve", "improvement.no_learning_objects");
+        this.emitStageEvent("improve", input.taskId, { status: "skipped", reason: "improvement.no_learning_objects" });
         fsm.recordStageEntry("release");
         fsm.recordStageSkipped("release", "release.no_candidate");
+        this.emitStageEvent("release", input.taskId, { status: "skipped", reason: "release.no_candidate" });
       }
 
       // R5-4: Integrate HarnessLoopController for loop control decisions

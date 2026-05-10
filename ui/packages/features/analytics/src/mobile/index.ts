@@ -4,7 +4,7 @@ import type { AnalyticsMetricDTO } from "@aa/shared-types";
 export function createAnalyticsMobileCards(metrics: readonly AnalyticsMetricDTO[]) {
   return metrics.slice(0, 3).map((metric) => createMobileFeatureCard(
     metric.label,
-    metric.value,
+    String(metric.value),
     metric.trend,
   ));
 }

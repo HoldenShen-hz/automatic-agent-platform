@@ -23,6 +23,10 @@ import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/tru
 import { NoisyNeighborProtectionService, getNoisyNeighborProtectionService, type ResourceType } from "../multi-region/noisy-neighbor-protection.js";
 import { PerTenantEncryptionService, getPerTenantEncryptionService, type EncryptionAlgorithm, type EncryptedRecord } from "../multi-region/per-tenant-encryption.js";
 import { ResourcePoolService, type ResourcePool } from "../resource-manager/resource-pool-service.js";
+import { FairSchedulingService, type FairSchedulingRequest } from "../resource-manager/fair-scheduling-service.js";
+import { type PreemptionCandidate } from "../resource-manager/preemption/index.js";
+import { type SchedulingClass } from "../resource-manager/fair-scheduling-service.js";
+import { type MultiResourceQuotaVector } from "../resource-manager/quota-enforcer/index.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type {
   DataNamespacePlane,
@@ -301,6 +305,7 @@ export class TenantPlatformService {
   private readonly quotaService: NoisyNeighborProtectionService;
   private readonly encryptionService: PerTenantEncryptionService;
   private readonly resourcePoolService: ResourcePoolService;
+  private readonly fairSchedulingService: FairSchedulingService;
   private readonly logger = new StructuredLogger({});
   private readonly dedicatedPoolIsolations = new Map<string, DedicatedPoolIsolationRecord>();
 
@@ -310,10 +315,12 @@ export class TenantPlatformService {
     quotaService?: NoisyNeighborProtectionService,
     encryptionService?: PerTenantEncryptionService,
     resourcePoolService?: ResourcePoolService,
+    fairSchedulingService?: FairSchedulingService,
   ) {
     this.quotaService = quotaService ?? getNoisyNeighborProtectionService();
     this.encryptionService = encryptionService ?? getPerTenantEncryptionService();
     this.resourcePoolService = resourcePoolService ?? new ResourcePoolService();
+    this.fairSchedulingService = fairSchedulingService ?? new FairSchedulingService();
   }
 
   public getResourcePoolService(): ResourcePoolService {
@@ -356,6 +363,68 @@ export class TenantPlatformService {
     }
     // Record the usage
     this.quotaService.recordUsage(tenantId, resourceType, cost);
+  }
+
+  /**
+   * R21-08: Enforce quota with preemption support for over-limit scenarios.
+   *
+   * When a tenant exceeds quota, this method uses FairSchedulingService to determine
+   * if a lower-priority tenant workload can be preempted to make room. This integrates
+   * quota enforcement with the preemption mechanism to ensure resource contention
+   * is resolved by evicting low-priority loads rather than blocking high-priority ones.
+   *
+   * @param tenantId - Tenant to check quotas for
+   * @param resourceType - Type of resource being consumed
+   * @param requestedUnits - Number of units being requested
+   * @param schedulingClass - Scheduling class for the tenant (determines priority)
+   * @param preemptionCandidates - Candidates for preemption (other tenant workloads)
+   * @returns PreemptionDecision indicating if preemption is needed and which victim to evict
+   */
+  public enforceQuotaWithPreemption(
+    tenantId: string,
+    resourceType: ResourceType,
+    requestedUnits: number,
+    schedulingClass: SchedulingClass,
+    preemptionCandidates: readonly PreemptionCandidate[],
+  ): { shouldPreempt: boolean; victimExecutionId: string | null; reason: string | null } {
+    // First check if quota allows the request directly
+    const quotaCheck = this.quotaService.checkRateLimit(tenantId, resourceType, requestedUnits);
+    if (quotaCheck.allowed) {
+      this.quotaService.recordUsage(tenantId, resourceType, requestedUnits);
+      return {
+        shouldPreempt: false,
+        victimExecutionId: null,
+        reason: null,
+      };
+    }
+
+    // Quota exceeded - use FairSchedulingService to determine preemption
+    const quotaVector: MultiResourceQuotaVector = {
+      scope: "tenant",
+      scopeId: tenantId,
+      workerUnits: {
+        hardLimit: quotaCheck.limit,
+        currentUsage: quotaCheck.currentUsage,
+      },
+    };
+
+    const request: FairSchedulingRequest = {
+      quotaPolicy: quotaVector,
+      claim: {
+        claimId: `claim_${tenantId}_${resourceType}`,
+        schedulingClass,
+        requestedUnits,
+      },
+      queueItems: [],
+      preemptionCandidates,
+    };
+
+    const decision = this.fairSchedulingService.schedule(request);
+    if (decision.preemption.shouldPreempt && decision.preemption.victimExecutionId) {
+      // Record usage for the preempted resource
+      this.quotaService.recordUsage(tenantId, resourceType, requestedUnits);
+    }
+    return decision.preemption;
   }
 
   /**

@@ -6,8 +6,31 @@
       {
         "title": "Automatic Agent Platform UI",
         "width": 1440,
-        "height": 960
+        "height": 960,
+        "minWidth": 1180,
+        "minHeight": 760
       }
     ]
+  },
+  "security": {
+    "csp": "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https://updates.automatic-agent.example; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+    "dangerousDisableAssetCspModification": false
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://updates.automatic-agent.example/linux/{{target}}/{{current_version}}"
+      ]
+    },
+    "shell": {
+      "open": true
+    },
+    "notification": {
+      "all": true
+    },
+    "os": {
+      "all": true
+    }
   }
 }

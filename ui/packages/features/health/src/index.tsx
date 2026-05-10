@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { HealthWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("health");
 
 const healthFeature = createFeatureModule({
   id: "health",
-  title: "Health",
+  title: featureCopy.title,
   group: "Operations",
   path: "/operations/health",
   permission: "platform_sre",
   status: "Implemented/Contracted",
-  summary: "健康状态与基础指标。",
+  summary: featureCopy.summary,
   render: HealthWebView,
 });
 

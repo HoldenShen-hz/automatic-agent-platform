@@ -28,19 +28,25 @@ describe("desktop shell security configs", () => {
   it("tauri macos config enables the security section and CSP", () => {
     const config = readJson(tauriMacosConfigPath);
     const security = config.security as Record<string, unknown>;
+    const plugins = config.plugins as Record<string, unknown>;
     const firstWindow = ((config.app as { windows?: Array<Record<string, unknown>> }).windows ?? [])[0] ?? {};
 
     expect(security.csp).toContain("default-src 'self'");
     expect(security.dangerousDisableAssetCspModification).toBe(false);
     expect(firstWindow.minWidth).toBe(1180);
     expect(firstWindow.minHeight).toBe(760);
+    expect(((plugins.updater as Record<string, unknown>).endpoints as string[])[0]).toContain("updates.automatic-agent.example");
+    expect((plugins.shell as Record<string, unknown>).open).toBe(true);
   });
 
   it("tauri linux config enables the security section and CSP", () => {
     const config = readJson(tauriLinuxConfigPath);
     const security = config.security as Record<string, unknown>;
+    const plugins = config.plugins as Record<string, unknown>;
 
     expect(security.csp).toContain("default-src 'self'");
     expect(security.dangerousDisableAssetCspModification).toBe(false);
+    expect(((plugins.updater as Record<string, unknown>).endpoints as string[])[0]).toContain("updates.automatic-agent.example");
+    expect((plugins.notification as Record<string, unknown>).all).toBe(true);
   });
 });

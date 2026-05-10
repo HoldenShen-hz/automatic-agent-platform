@@ -81,6 +81,8 @@ export interface WorkflowLintReport {
   warningCount: number;
 }
 
+export type StaticCompatibilityIssue = WorkflowLintIssue;
+
 /**
  * Normalizes a step ID by trimming whitespace.
  */
@@ -403,4 +405,12 @@ export function assertWorkflowValid(definition: MinimalWorkflowDefinition): Work
     );
   }
   return report;
+}
+
+export function validateIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
+  return new WorkflowValidator().validate(definition).issues;
+}
+
+export function validateWorkflowCompatibility(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
+  return validateIssues(definition);
 }

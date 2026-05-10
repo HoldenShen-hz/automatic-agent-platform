@@ -44,6 +44,11 @@
 - `CheckpointPlan`
 - `WorkflowTemplate`
 
+v4.3 对齐说明：
+
+- 代码侧 `StaticCompatibilityIssue` 现作为 `WorkflowLintIssue` 的 canonical compatibility alias 导出，供 contract 调用面直接消费 issue array。
+- 代码侧 `WorkflowTemplate` 现作为 `MinimalWorkflowDefinition` 的 compatibility alias 导出，统一指向仓内 authoritative workflow definition 结构，而不是额外维护第二份模板实体。
+
 ## 5. 补偿模型
 
 每个有副作用的 node 必须声明下列之一：

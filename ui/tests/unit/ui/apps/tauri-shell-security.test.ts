@@ -19,6 +19,9 @@ describe("tauri shell command hardening", () => {
     expect(source).toContain('const ALLOWED_COMMANDS: &[&str] = &["status", "health", "version"];');
     expect(source).toContain("if !is_command_allowed(&command) {");
     expect(source).toContain('return Err(format!("Command not allowed: {}", command));');
+    expect(source).toContain("const ALLOWED_DEEP_LINK_SCHEMES: &[&str] = &[\"aa://\", \"https://\", \"http://\"];");
+    expect(source).toContain("fn keychain_store(key: String, value: String) -> Result<String, String> {");
+    expect(source).toContain("fn spotlight_export(query: String) -> Result<String, String> {");
   });
 
   it("linux run_shell enforces the same explicit command allowlist", () => {
@@ -27,5 +30,8 @@ describe("tauri shell command hardening", () => {
     expect(source).toContain('const ALLOWED_COMMANDS: &[&str] = &["status", "health", "version"];');
     expect(source).toContain("if !is_command_allowed(&command) {");
     expect(source).toContain('return Err(format!("Command not allowed: {}", command));');
+    expect(source).toContain("fn dbus_notify(summary: String, body: String) -> Result<String, String> {");
+    expect(source).toContain("fn detect_display_server() -> &'static str {");
+    expect(source).toContain("fn register_system_tray() -> &'static str {");
   });
 });

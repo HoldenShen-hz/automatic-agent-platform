@@ -9,6 +9,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { nowIso } from "../../../platform/contracts/types/ids.js";
 import { CrossBorderTransferComplianceService } from "../cross-border-transfer-compliance-service.js";
+import { getRpoRtoTrackingService } from "../rpo-rto-tracking.js";
 
 export const ReplicationPolicySchema = z.object({
   sourceRegionId: z.string().min(1),
@@ -428,6 +429,11 @@ export class DataReplicatorService {
     };
 
     this.lagMeasurements.set(key, measurement);
+
+    // R21-06: Record replication lag for RPO SLA monitoring
+    const rpoRtoService = getRpoRtoTrackingService();
+    rpoRtoService.recordReplicationLag(this.config.sourceRegionId, targetRegionId, lagMs);
+
     return measurement;
   }
 

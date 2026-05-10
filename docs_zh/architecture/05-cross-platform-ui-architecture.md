@@ -2,9 +2,9 @@
 
 automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-platform-ui-architecture-v2.md
 
-> **文档版本**：v3.0
+> **文档版本**：v4.3
 > **文档状态**：Accepted
-> **基线文档**：`00-platform-architecture.md` v3.2 五平面架构 · `contracts/ui_console_and_cockpit_contract.md`
+> **基线文档**：`00-platform-architecture.md` v4.3 五平面架构 · `contracts/ui_console_and_cockpit_contract.md`
 > **前序文档**：`10-cross-platform-ui-architecture.md`（v1 概览，已 Superseded）· `11-cross-platform-ui-implementation-design.md`（v1 实施，已 Superseded）
 > **适用对象**：前端架构师、UI/UX 工程师、移动端/桌面端开发、QA、DevOps、平台 SRE
 > **设计定位**：单一权威 UI 架构规格。完全合并 Doc-10 和 Doc-11 的全部内容，消除版本不一致，对齐后端实现
@@ -22,6 +22,7 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 | v3.0 | 2026-04-23 | —    | 详见下方 v3.0 变更明细                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | v3.1 | 2026-04-23 | —    | 仓内 `ui/` Monorepo 基线已落地：补齐 shared core、PlatformAdapter、design tokens、implemented-first feature registry、planned feature seam、Web 可构建 app shell、桌面/移动端 smoke-ready shell、UI 子工程测试基线与 `current_todo_list` 的 `UI0-UI7` 波次。 |
 | v3.2 | 2026-04-23 | —    | 仓内 `Phase 1-4` 代码基线对齐：补齐 `policy / audit / workers / queues` 四个一级 feature，增强 Web 分组导航、桌面/移动平台能力测试与 `current_todo_list` 的 `Phase 1-4` 阶段计划；正文新增仓内对齐快照。 |
+| v4.3 | 2026-05-10 | —    | 现行架构口径升级：正文与测试基线统一回写到五平面 v4.3，补充 `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` 的 canonical handoff，并把 UI 对运行链的说明从 legacy task/workflow 叙事收敛到 HarnessRun/runtime truth。 |
 
 #### v3.0 变更明细
 
@@ -90,10 +91,10 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 
 | Phase | 仓内对齐状态 | 当前仓内实现 |
 | --- | --- | --- |
-| Phase 1 — Web MVP | 基线已落地 | `apps/web` 可构建运行；`dashboard / task-cockpit / workflow-cockpit / approval / stability / alerts / dispatch / inspect / health / incidents / policy / audit / takeover / workers / queues / conversation / hitl / domain-wizard / settings` 已纳入 Web route registry 与 route guard |
+| Phase 1 — Web MVP | 基线已落地 | `apps/web` 可构建运行；`dashboard / task-cockpit / workflow-cockpit / approval / stability / alerts / dispatch / inspect / health / incidents / policy / audit / takeover / workers / queues / conversation / hitl / domain-wizard / settings` 已纳入 Web route registry 与 route guard，并对齐 `HarnessRun / PlanGraphBundle / NodeAttemptReceipt` 的只读 presentation surface |
 | Phase 2 — 桌面端 | 基线已落地 | `apps/electron-win / apps/tauri-macos / apps/tauri-linux` 已提供 shell manifest、默认 adapter、shared runtime 复用与 smoke test；`windowing / shell / process / analyticsConsent` 已有 PlatformAdapter baseline / test double |
 | Phase 3 — 移动端 | 基线已落地 | `apps/mobile` 已提供 Android/iOS shell manifest、默认 adapter、deepLink / haptics / secure storage / screen security baseline 与 smoke test |
-| Phase 4 — 增强功能 | 基线已落地 | `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 已通过 typed seam + feature gate 进入仓内实现；增强模块仍按正文状态标签继续演进 |
+| Phase 4 — 增强功能 | 基线已落地 | `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 已通过 typed seam + feature gate 进入仓内实现；增强模块仍按正文状态标签继续演进，并约束执行 handoff 必须使用 `PlanGraphBundle`、执行回执必须回链到 `NodeAttemptReceipt` |
 
 补充说明：
 

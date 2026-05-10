@@ -29,6 +29,12 @@ This contract defines streaming output, event dispatch, frame format, and progre
 - `FinalChunk`
 - `ErrorChunk`
 
+v4.3 Alignment Notes:
+
+- Code-side authoritative streaming frame object is `StreamEventFrame`; `StreamEvent` is exported as its alias.
+- For contract naming compatibility, code-side also exports type aliases `StreamChannel`, `ProgressChunk`, `FinalChunk`, and `ErrorChunk`; all of these converge to the same `StreamEventFrame` primary chain rather than maintaining parallel DTOs.
+- `stream_gap` as a client-facing gap frame when the replay window has been evicted belongs to the `ErrorChunk` semantic domain as a recoverable streaming error.
+
 ## 3. StreamEvent Minimum Fields
 
 - `stream_id`

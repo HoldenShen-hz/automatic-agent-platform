@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { WorkersWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("workers");
 
 const workersFeature = createFeatureModule({
   id: "workers",
-  title: "Workers",
+  title: featureCopy.title,
   group: "Admin",
   path: "/admin/workers",
   permission: "platform_sre",
   status: "Implemented/Internal",
-  summary: "Worker 池容量、分区健康与调度状态。",
+  summary: featureCopy.summary,
   render: WorkersWebView,
 });
 

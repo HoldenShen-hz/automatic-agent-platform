@@ -1,7 +1,6 @@
 export * from "./dashboard-projection-service.js";
 
 import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { SystemSituation } from "../../platform/shared/observability/system-situation-model.js";
 
 export interface DashboardSnapshot {
   readonly generatedAt: string;
@@ -102,8 +101,14 @@ export interface DashboardTaskSource {
   list(limit?: number, tenantId?: string | null): TaskBoardItem[];
 }
 
+export interface DashboardSystemSituation {
+  readonly healthStatus: "ok" | "degraded" | "overloaded" | "unhealthy";
+  readonly queueBacklog: ReadonlySet<string>;
+  readonly findings: readonly unknown[];
+}
+
 export interface DashboardSystemSource {
-  build(): SystemSituation;
+  build(): DashboardSystemSituation;
 }
 
 export interface DashboardAggregationServiceOptions {

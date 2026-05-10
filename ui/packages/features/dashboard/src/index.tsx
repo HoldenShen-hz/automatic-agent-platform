@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { DashboardWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("dashboard");
 
 const dashboardFeature = createFeatureModule({
   id: "dashboard",
-  title: "Dashboard",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/dashboard",
   permission: "authenticated",
   status: "Implemented/Internal",
-  summary: "Mission Control 首页，回答系统是否健康、当前在做什么、卡在哪里。",
+  summary: featureCopy.summary,
   render: DashboardWebView,
 });
 

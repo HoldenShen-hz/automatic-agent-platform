@@ -10,7 +10,6 @@
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
-import type { SystemSituation } from "../../platform/shared/observability/system-situation-model.js";
 import type { ProjectionRecord } from "../../platform/state-evidence/projections/index.js";
 import type { TypedEventType } from "../../platform/state-evidence/events/typed-event-bus.js";
 

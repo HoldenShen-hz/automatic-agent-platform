@@ -13,7 +13,7 @@
 
 import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
-import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import type { FeedbackBatch } from "../../contracts/types/feedback.js";
 import type { QualityGateConfig } from "./types.js";
 
 /**

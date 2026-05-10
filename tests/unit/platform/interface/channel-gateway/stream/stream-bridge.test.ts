@@ -2,11 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type {
+  StreamChannel,
+  StreamEvent,
   StreamEventFrame,
   StreamBridgeOptions,
   StreamReplayWindow,
   StreamReplayResult,
   SseFrame,
+  ProgressChunk,
+  FinalChunk,
+  ErrorChunk,
 } from "../../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
 import { StreamBridge } from "../../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
 
@@ -38,6 +43,7 @@ test("StreamEventFrame eventType includes all variants", () => {
     "approval_requested",
     "completed",
     "failed",
+    "stream_gap",
   ];
 
   for (const eventType of eventTypes) {
@@ -52,6 +58,26 @@ test("StreamEventFrame eventType includes all variants", () => {
     };
     assert.ok(frame.eventType === eventType);
   }
+});
+
+test("gateway streaming compatibility aliases remain available", () => {
+  const channel: StreamChannel = "updates";
+  const event: StreamEvent = {
+    streamId: "stream_compat",
+    taskId: "task_compat",
+    channel,
+    eventType: "progress",
+    sequence: 1,
+    payload: {},
+    createdAt: "2026-04-14T00:00:00.000Z",
+  };
+  const progress: ProgressChunk = { ...event, eventType: "progress" };
+  const finalChunk: FinalChunk = { ...event, eventType: "completed" };
+  const errorChunk: ErrorChunk = { ...event, eventType: "failed" };
+
+  assert.equal(progress.channel, "updates");
+  assert.equal(finalChunk.eventType, "completed");
+  assert.equal(errorChunk.eventType, "failed");
 });
 
 test("StreamBridgeOptions structure with optional maxReplayFrames", () => {

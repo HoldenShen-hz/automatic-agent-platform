@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { SettingsWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("settings");
 
 const settingsFeature = createFeatureModule({
   id: "settings",
-  title: "Settings",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/settings",
   permission: "authenticated",
   status: "Implemented/Internal",
-  summary: "配置中心、偏好保存、域设置与模型配置闭环。",
+  summary: featureCopy.summary,
   render: SettingsWebView,
 });
 

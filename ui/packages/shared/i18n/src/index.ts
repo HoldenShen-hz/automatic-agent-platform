@@ -22,6 +22,11 @@ export interface SupportedLocale {
   readonly nativeLabel?: string;
 }
 
+export interface FeatureTranslationCopy {
+  readonly title: string;
+  readonly summary: string;
+}
+
 type CatalogLoader = () => Promise<TranslationCatalog>;
 type LocaleChangeListener = (locale: string, direction: TextDirection) => void;
 
@@ -179,4 +184,28 @@ export function createDefaultTranslationService(): TranslationService {
   });
   service.setLocale("zh-CN");
   return service;
+}
+
+let sharedTranslationService: TranslationService | null = null;
+
+export function getSharedTranslationService(): TranslationService {
+  if (sharedTranslationService == null) {
+    sharedTranslationService = createDefaultTranslationService();
+  }
+  return sharedTranslationService;
+}
+
+export function translateMessage(
+  key: string,
+  values?: Readonly<Record<string, unknown>>,
+): string {
+  const service = getSharedTranslationService();
+  return service.translate(key, service.getLocale(), "en-US", values);
+}
+
+export function translateFeatureCopy(featureId: string): FeatureTranslationCopy {
+  return {
+    title: translateMessage(`ui.feature.${featureId}.title`),
+    summary: translateMessage(`ui.feature.${featureId}.summary`),
+  };
 }

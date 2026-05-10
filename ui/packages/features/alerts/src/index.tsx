@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { AlertsWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("alerts");
 
 const alertsFeature = createFeatureModule({
   id: "alerts",
-  title: "Alerts",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/alerts",
   permission: "authenticated",
   status: "Implemented/Internal",
-  summary: "Incident 和高优先级告警流。",
+  summary: featureCopy.summary,
   render: AlertsWebView,
 });
 

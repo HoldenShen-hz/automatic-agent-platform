@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sortAttentionQueue } from "../../../../../src/interaction/dashboard/alert-router/index.js";
+import { AlertRouter, sortAttentionQueue } from "../../../../../src/interaction/dashboard/alert-router/index.js";
 
 interface AttentionItem {
   readonly id: string;
@@ -133,4 +133,42 @@ test("sortAttentionQueue preserves readonly input", () => {
   const result = sortAttentionQueue(items);
 
   assert.equal(result[0]?.id, "b");
+});
+
+test("AlertRouter routes overlay, push, and haptic notifications", () => {
+  const router = new AlertRouter({ now: () => 1 });
+  const items = [
+    makeItem({ id: "critical-approval", priority: "critical", message: "Approval needed" }),
+  ];
+
+  const routes = router.routeNotifications(items as any);
+
+  assert.deepEqual(
+    routes.map((route) => route.delivery),
+    ["overlay", "push", "haptic"],
+  );
+});
+
+test("AlertRouter applies cooldown per item and delivery", () => {
+  let now = 1000;
+  const router = new AlertRouter({ now: () => now, cooldownMs: 5000 });
+  const items = [makeItem({ id: "incident-1", priority: "high" })];
+
+  assert.equal(router.routeNotifications(items as any).length, 2);
+  assert.equal(router.routeNotifications(items as any).length, 0);
+
+  now = 7000;
+  assert.equal(router.routeNotifications(items as any).length, 2);
+});
+
+test("AlertRouter delivery filters expose routed attention items", () => {
+  const router = new AlertRouter({ now: () => 1 });
+  const items = [
+    makeItem({ id: "critical", priority: "critical" }),
+    makeItem({ id: "normal", priority: "normal" }),
+  ];
+
+  assert.equal(router.getOverlayAlerts(items as any).length, 2);
+  assert.equal(router.getPushNotifications(items as any).length, 1);
+  assert.equal(router.getHapticAlerts(items as any).length, 1);
 });

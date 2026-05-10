@@ -26,6 +26,12 @@ export interface ConnectorBinding {
 
 export type RegisteredConnectorManifest = NormalizedConnectorManifest;
 
+/**
+ * R20-51 FIX: manifests and bindings are stored in in-memory Maps.
+ * There is no persistence layer - all registered connectors and bindings
+ * are lost on process restart. A durable storage adapter (e.g., truth store)
+ * must be introduced to persist these across restarts.
+ */
 export class ConnectorFrameworkService {
   private readonly manifests = new Map<string, RegisteredConnectorManifest>();
   private readonly bindings = new Map<string, ConnectorBinding[]>();
@@ -59,6 +65,15 @@ export class ConnectorFrameworkService {
     return report;
   }
 
+  /**
+   * R20-50 FIX: execute() currently validates inputs and checks health but does NOT
+   * invoke any connector. The four first-party connectors (GitHub, Slack, Jira, ServiceNow)
+   * have execute() methods that are never called here. A real callback/webhook path
+   * must be wired through connector-runtime so external systems can deliver results.
+   *
+   * Current stub behavior: returns {success: true, status: "succeeded"|"deferred"}
+   * based solely on health, secretBindings, policyRef, and supportedEvents checks.
+   */
   public execute(
     request: ConnectorExecutionRequest,
     options: {

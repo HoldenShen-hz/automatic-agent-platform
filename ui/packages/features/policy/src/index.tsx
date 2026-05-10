@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { PolicyWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("policy");
 
 const policyFeature = createFeatureModule({
   id: "policy",
-  title: "Policy",
+  title: featureCopy.title,
   group: "Governance",
   path: "/governance/policy",
   permission: "domain_admin+",
   status: "Implemented/Contracted",
-  summary: "治理策略、准入规则与审批策略矩阵。",
+  summary: featureCopy.summary,
   render: PolicyWebView,
 });
 

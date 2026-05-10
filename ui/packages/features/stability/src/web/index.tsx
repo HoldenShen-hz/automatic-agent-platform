@@ -1,13 +1,16 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useStabilityVm } from "../hooks";
 
 export function StabilityWebView(): ReactElement {
   const vm = useStabilityVm();
+  const featureCopy = translateFeatureCopy("stability");
   return (
-    <FeatureScaffold title="Stability Panel" summary="稳定性、恢复和 backlog 视图" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         metrics={vm.metrics}
+        rows={vm.rows}
         items={vm.items}
         actions={[
           { id: "stability-runbook", label: "生成修复 Runbook", tone: "accent" },

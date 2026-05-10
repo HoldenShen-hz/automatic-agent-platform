@@ -383,7 +383,8 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
 
     case "workflow:step_completed":
       if (nodeId) {
-        newState.completedSteps[nodeId] = event.createdAt;
+        // R20-08: Spread before mutation to avoid corrupting previous state
+        newState.completedSteps = { ...newState.completedSteps, [nodeId]: event.createdAt };
       }
       if (newState.status === "pending") {
         newState.status = "running";
@@ -396,10 +397,12 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
     case "platform.node_run.status_changed": {
       const toStatus = (payload.toStatus as string | null | undefined) ?? (payload.status as string | null | undefined);
       if (nodeId && (toStatus === "succeeded" || toStatus === "completed")) {
-        newState.completedSteps[nodeId] = event.createdAt;
+        // R20-08: Spread before mutation to avoid corrupting previous state
+        newState.completedSteps = { ...newState.completedSteps, [nodeId]: event.createdAt };
       }
       if (nodeId && (toStatus === "failed" || toStatus === "aborted" || toStatus === "policy_blocked")) {
-        newState.failedSteps[nodeId] = event.createdAt;
+        // R20-08: Spread before mutation to avoid corrupting previous state
+        newState.failedSteps = { ...newState.failedSteps, [nodeId]: event.createdAt };
       }
       if (newState.status === "pending" && toStatus != null) {
         newState.status = "running";
@@ -412,7 +415,8 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
 
     case "workflow:step_failed":
       if (nodeId) {
-        newState.failedSteps[nodeId] = event.createdAt;
+        // R20-08: Spread before mutation to avoid corrupting previous state
+        newState.failedSteps = { ...newState.failedSteps, [nodeId]: event.createdAt };
       }
       newState.status = "failed";
       newState.failedAt = event.createdAt;
@@ -441,11 +445,15 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
     case "division:failed": {
       const divisionId = payload.divisionId as string | undefined;
       if (divisionId) {
-        newState.divisionOutcomes[divisionId] = {
-          divisionId,
-          status: event.eventType === "division:completed" ? "completed" : "failed",
-          timestamp: event.createdAt,
-          reasonCode: (payload.reasonCode as string | null | undefined) ?? null,
+        // R20-08: Spread before mutation to avoid corrupting previous state
+        newState.divisionOutcomes = {
+          ...newState.divisionOutcomes,
+          [divisionId]: {
+            divisionId,
+            status: event.eventType === "division:completed" ? "completed" : "failed",
+            timestamp: event.createdAt,
+            reasonCode: (payload.reasonCode as string | null | undefined) ?? null,
+          },
         };
       }
       break;

@@ -11,10 +11,10 @@ import {
 import { useMutation } from "@aa/shared-state/mutations";
 import type { UserPreferenceDTO } from "@aa/shared-types";
 import { createRESTClient } from "@aa/shared-api-client";
-import { createDefaultTranslationService } from "@aa/shared-i18n";
+import { getSharedTranslationService, translateMessage } from "@aa/shared-i18n";
 
 const restClient = createRESTClient();
-const translationService = createDefaultTranslationService();
+const translationService = getSharedTranslationService();
 
 export interface SettingsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
@@ -63,8 +63,8 @@ export function useSettingsVm(): SettingsVm {
   }, [preferenceLocale, preferenceTheme]);
 
   const centerRows = useMemo(() => preferences == null ? [] : [
-    { key: "Locale", value: draftLocale },
-    { key: "Theme", value: draftTheme },
+    { key: translateMessage("ui.settings.locale.label"), value: draftLocale },
+    { key: translateMessage("ui.settings.theme.label"), value: draftTheme },
     { key: "Dashboard Panels", value: String(preferences.defaultDashboardLayout.length) },
     { key: "Roles", value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
     { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
@@ -105,13 +105,13 @@ export function useSettingsVm(): SettingsVm {
       { label: "Tenants", value: tenants.length },
     ],
     leftItems: [
-      { title: "User Preferences", description: "locale / theme / dashboard layout" },
-      { title: "Permission Manager", description: "roles, scopes, assignments" },
-      { title: "Feature Flags", description: "rollout, targeting, enablement" },
-      { title: "Model Config", description: "provider, domain binding, budget" },
-      { title: "Domain Settings", description: "drill depth, visibility, owner" },
-      { title: "Tenant Manager", description: "tenant lifecycle and domain mapping" },
-      { title: "Webhook Manager", description: "event sinks and delivery hooks" },
+      { title: translateMessage("ui.settings.preferences.title"), description: translateMessage("ui.settings.preferences.description") },
+      { title: translateMessage("ui.settings.permissions.title"), description: translateMessage("ui.settings.permissions.description") },
+      { title: translateMessage("ui.settings.flags.title"), description: translateMessage("ui.settings.flags.description") },
+      { title: translateMessage("ui.settings.models.title"), description: translateMessage("ui.settings.models.description") },
+      { title: translateMessage("ui.settings.domains.title"), description: translateMessage("ui.settings.domains.description") },
+      { title: translateMessage("ui.settings.tenants.title"), description: translateMessage("ui.settings.tenants.description") },
+      { title: translateMessage("ui.settings.webhooks.title"), description: translateMessage("ui.settings.webhooks.description") },
     ],
     centerRows,
     rightItems: [
@@ -142,9 +142,21 @@ export function useSettingsVm(): SettingsVm {
       label: item.nativeLabel ?? item.locale,
     })),
     sectionItems: [
-      { id: "general", title: "General", description: "Profile, locale, theme, dashboard layout" },
-      { id: "api-keys", title: "API Keys", description: "Manage access tokens and rotation windows" },
-      { id: "notifications", title: "Notifications", description: "Email, push, and in-app delivery policies" },
+      {
+        id: "general",
+        title: translateMessage("ui.settings.section.general"),
+        description: translateMessage("ui.settings.section.general.description"),
+      },
+      {
+        id: "api-keys",
+        title: translateMessage("ui.settings.section.apiKeys"),
+        description: translateMessage("ui.settings.section.apiKeys.description"),
+      },
+      {
+        id: "notifications",
+        title: translateMessage("ui.settings.section.notifications"),
+        description: translateMessage("ui.settings.section.notifications.description"),
+      },
     ],
     setDraftTheme(theme: "light" | "dark" | "high-contrast") {
       setDraftTheme(theme);

@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { AnalyticsWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("analytics");
 
 const analyticsFeature = createFeatureModule({
   id: "analytics",
-  title: "Analytics",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/analytics",
   permission: "authenticated",
   status: "Planned",
   kind: "planned",
-  summary: "多层级 KPI 看板与图表渲染架构。",
+  summary: featureCopy.summary,
   render: AnalyticsWebView,
 });
 

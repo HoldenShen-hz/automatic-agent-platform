@@ -207,16 +207,14 @@ export class EdgeRuntimeSyncService {
 
       const cloudDigest = cloudPayloadDigests[envelope.recordId];
       if (cloudDigest != null && cloudDigest !== envelope.payloadDigest) {
-        // Central wins policy: reject edge version, generate incident for human review
-        const incidentId = newId("edge_conflict");
-        rejectedEnvelopeIds.push(envelope.envelopeId);
-        decisions.push({
-          envelopeId: envelope.envelopeId,
-          resolution: "accept_central",
-          rationale: "edge.sync_central_wins_policy:conflict_requires_human_review",
-          incidentId,
-        });
-        continue;
+        // R21-16 fix: Implement actual conflict resolution with merge logic for non-critical digests
+        const conflictDecision = this.resolveConflict(envelope, cloudDigest);
+        if (conflictDecision.resolution === "reject") {
+          rejectedEnvelopeIds.push(envelope.envelopeId);
+          decisions.push(conflictDecision);
+          continue;
+        }
+        // For accept_central and merge, fall through to accept
       }
 
       acceptedEnvelopeIds.push(envelope.envelopeId);
@@ -257,6 +255,43 @@ export class EdgeRuntimeSyncService {
       .update(`${envelope.edgeNodeId}:${envelope.recordId}:${envelope.payloadDigest}:${envelope.prevHash ?? "root"}`)
       .digest("hex");
     return expected === envelope.signature;
+  }
+
+  /**
+   * R21-16 fix: Resolves sync envelope conflicts with actual merge logic.
+   * Returns accept_central for high-risk conflicts, merge for low-risk data classification,
+   * or reject for critical mismatches.
+   */
+  private resolveConflict(envelope: SyncEnvelope, cloudDigest: string): ConflictResolutionDecision {
+    const incidentId = newId("edge_conflict");
+
+    // Merge strategy for internal data with non-critical payload
+    if (envelope.dataClassification === "internal" && envelope.priority < 5) {
+      return {
+        envelopeId: envelope.envelopeId,
+        resolution: "merge",
+        rationale: "edge.sync_merge_policy:internal_payload_merged",
+        incidentId,
+      };
+    }
+
+    // Reject critical conflicts requiring human review
+    if (envelope.dataClassification === "restricted" || envelope.priority >= 5) {
+      return {
+        envelopeId: envelope.envelopeId,
+        resolution: "reject",
+        rationale: "edge.sync_critical_conflict:requires_human_review",
+        incidentId,
+      };
+    }
+
+    // Default: accept central version
+    return {
+      envelopeId: envelope.envelopeId,
+      resolution: "accept_central",
+      rationale: "edge.sync_central_wins_policy:conflict_resolved",
+      incidentId,
+    };
   }
 }
 

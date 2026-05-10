@@ -22,6 +22,12 @@ export interface AnalyticsChartConfig {
 export interface AnalyticsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly trendSummary: readonly number[];
+  readonly layerSummaries: readonly {
+    layer: KpiLayer;
+    label: string;
+    metricCount: number;
+    netChangePercent: number;
+  }[];
   readonly kpiBreakdowns: readonly KpiBreakdown[];
   readonly selectedLayer: KpiLayer;
   readonly chartConfig: AnalyticsChartConfig;
@@ -41,34 +47,58 @@ const LAYER_LABELS: Record<KpiLayer, string> = {
   agents: "代理",
 };
 
-export function mapAnalyticsToVm(metrics: readonly AnalyticsMetricDTO[]): Pick<AnalyticsVm, "metrics" | "trendSummary"> {
+function getMetricLayer(metric: AnalyticsMetricDTO): KpiLayer {
+  if (metric.layer != null) {
+    return metric.layer;
+  }
+  const label = metric.label.toLowerCase();
+  if (label.includes("task") || label.includes("任务")) {
+    return "tasks";
+  }
+  if (label.includes("workflow") || label.includes("工作流")) {
+    return "workflows";
+  }
+  if (label.includes("approval") || label.includes("审批")) {
+    return "approvals";
+  }
+  if (label.includes("cost") || label.includes("成本") || label.includes("预算")) {
+    return "cost";
+  }
+  if (label.includes("agent") || label.includes("代理")) {
+    return "agents";
+  }
+  return "overview";
+}
+
+export function mapAnalyticsToVm(
+  metrics: readonly AnalyticsMetricDTO[],
+): Pick<AnalyticsVm, "metrics" | "trendSummary" | "layerSummaries"> {
+  const layerSummaries = (["overview", "tasks", "workflows", "approvals", "cost", "agents"] as const).map((layer) => {
+    const layerMetrics = layer === "overview"
+      ? metrics
+      : metrics.filter((metric) => getMetricLayer(metric) === layer);
+    return {
+      layer,
+      label: LAYER_LABELS[layer],
+      metricCount: layerMetrics.length,
+      netChangePercent: layerMetrics.reduce((total, metric) => total + (metric.changePercent ?? 0), 0),
+    };
+  });
+
   return {
     metrics: metrics.map((metric) => ({ label: metric.label, value: metric.value })),
     trendSummary: metrics.map((metric) => metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1),
+    layerSummaries,
   };
 }
 
 function computeBreakdowns(metrics: readonly AnalyticsMetricDTO[], layer: KpiLayer): KpiBreakdown[] {
-  const layerMetrics = metrics.filter((m) => {
-    const label = m.label.toLowerCase();
-    switch (layer) {
-      case "tasks":
-        return label.includes("task") || label.includes("任务");
-      case "workflows":
-        return label.includes("workflow") || label.includes("工作流");
-      case "approvals":
-        return label.includes("approval") || label.includes("审批");
-      case "cost":
-        return label.includes("cost") || label.includes("成本") || label.includes("费用");
-      case "agents":
-        return label.includes("agent") || label.includes("代理");
-      default:
-        return true;
-    }
-  });
+  const layerMetrics = layer === "overview"
+    ? metrics
+    : metrics.filter((metric) => getMetricLayer(metric) === layer);
 
   return layerMetrics.map((metric) => ({
-    layer,
+    layer: getMetricLayer(metric),
     label: metric.label,
     value: typeof metric.value === "string" ? parseFloat(String(metric.value)) : (metric.value as number),
     trend: metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1,
@@ -118,23 +148,7 @@ export function useAnalyticsVm(): AnalyticsVm {
     if (selectedLayer === "overview") {
       return metrics;
     }
-    return metrics.filter((m) => {
-      const label = m.label.toLowerCase();
-      switch (selectedLayer) {
-        case "tasks":
-          return label.includes("task") || label.includes("任务");
-        case "workflows":
-          return label.includes("workflow") || label.includes("工作流");
-        case "approvals":
-          return label.includes("approval") || label.includes("审批");
-        case "cost":
-          return label.includes("cost") || label.includes("成本") || label.includes("费用");
-        case "agents":
-          return label.includes("agent") || label.includes("代理");
-        default:
-          return true;
-      }
-    });
+    return metrics.filter((metric) => getMetricLayer(metric) === selectedLayer);
   }, [metrics, selectedLayer]);
 
   return {

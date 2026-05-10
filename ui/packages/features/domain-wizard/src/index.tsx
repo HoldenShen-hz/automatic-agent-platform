@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { DomainWizardWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("domain-wizard");
 
 const domainWizardFeature = createFeatureModule({
   id: "domain-wizard",
-  title: "Domain Wizard",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/domain-wizard",
   permission: "domain_admin+",
   status: "Implemented/Internal",
-  summary: "领域接入向导和 DomainUIConfig 驱动页面。",
+  summary: featureCopy.summary,
   render: DomainWizardWebView,
 });
 

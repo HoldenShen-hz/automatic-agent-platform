@@ -45,9 +45,11 @@ test("§35: All documented directories have index.ts", () => {
   }
 });
 
-test("§35: cost-management exports from scale-ecosystem", async () => {
+test("§35: cost-management exports contract types", async () => {
   const mod = await import("../../../../src/platform/cost-management/index.js");
-  assert.ok(mod.CostEstimationService != null);
+  assert.ok(mod.CostEstimate != null);
+  assert.ok(mod.CostEstimationConfig != null);
+  assert.ok(mod.CostEstimationServicePort != null);
 });
 
 test("§35: agent-delegation exports delegation types", async () => {

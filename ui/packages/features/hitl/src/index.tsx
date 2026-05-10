@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { HitlWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("hitl");
 
 const hitlFeature = createFeatureModule({
   id: "hitl",
-  title: "HITL",
+  title: featureCopy.title,
   group: "Extended",
   path: "/extended/hitl",
   permission: "authenticated",
   status: "Implemented/Partial",
-  summary: "人工介入、Inspect、Takeover、Resume 的统一入口。",
+  summary: featureCopy.summary,
   render: HitlWebView,
 });
 

@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { ExplainabilityWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("explainability");
 
 const explainabilityFeature = createFeatureModule({
   id: "explainability",
-  title: "Explainability",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/explainability",
   permission: "authenticated",
   status: "Planned",
   kind: "planned",
-  summary: "Explainability viewer 与因果链路展示。",
+  summary: featureCopy.summary,
   render: ExplainabilityWebView,
 });
 

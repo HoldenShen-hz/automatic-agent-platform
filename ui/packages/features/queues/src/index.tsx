@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { QueuesWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("queues");
 
 const queuesFeature = createFeatureModule({
   id: "queues",
-  title: "Queues",
+  title: featureCopy.title,
   group: "Admin",
   path: "/admin/queues",
   permission: "platform_sre",
   status: "Implemented/Internal",
-  summary: "队列深度、重试、DLQ 与分区负载。",
+  summary: featureCopy.summary,
   render: QueuesWebView,
 });
 

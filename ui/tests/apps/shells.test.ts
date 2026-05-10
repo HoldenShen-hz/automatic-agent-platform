@@ -14,7 +14,7 @@ describe("platform shells", () => {
     expect(tauriMacosManifest.platform).toBe("macos");
     expect(tauriMacosManifest.supportsDeepLink).toBe(true);
     expect(tauriLinuxManifest.platform).toBe("linux");
-    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(true);
+    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(false);
     expect(mobileShellManifest.platforms).toEqual(["android", "ios"]);
     expect(mobileShellManifest.supportsScreenSecurity).toBe(true);
   });
@@ -33,6 +33,7 @@ describe("platform shells", () => {
     expect(mobileNavigation.tabs.map((screen) => screen.id)).toEqual([
       "dashboard",
       "tasks",
+      "workflow-cockpit",
       "approvals",
       "conversation",
       "settings",
@@ -42,11 +43,11 @@ describe("platform shells", () => {
 
   it("ships real project baseline files for desktop and mobile shells", () => {
     const root = process.cwd();
-    expect(existsSync(join(root, "apps/electron-win/src/main.ts"))).toBe(true);
-    expect(existsSync(join(root, "apps/electron-win/src/preload.ts"))).toBe(true);
-    expect(existsSync(join(root, "apps/tauri-macos/src-tauri/Cargo.toml"))).toBe(true);
-    expect(existsSync(join(root, "apps/tauri-linux/src-tauri/Cargo.toml"))).toBe(true);
-    expect(existsSync(join(root, "apps/mobile/app.json"))).toBe(true);
-    expect(existsSync(join(root, "apps/mobile/metro.config.js"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/electron-win/src/main.ts"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/electron-win/src/preload.ts"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/tauri-macos/src-tauri/Cargo.toml"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/tauri-linux/src-tauri/Cargo.toml"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/mobile/app.json"))).toBe(true);
+    expect(existsSync(join(root, "ui/apps/mobile/metro.config.js"))).toBe(true);
   });
 });

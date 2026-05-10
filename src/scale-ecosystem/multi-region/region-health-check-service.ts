@@ -9,6 +9,8 @@
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { CircuitBreaker, CircuitState } from "../../platform/stability/circuit-breaker.js";
+import { getRpoRtoTrackingService } from "./rpo-rto-tracking.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -113,6 +115,7 @@ export class RegionHealthCheckService {
   private readonly healthResults = new Map<string, RegionHealthCheckResult>();
   private readonly consecutiveFailures = new Map<string, number>();
   private readonly lastCheckTime = new Map<string, string>();
+  private readonly circuitBreakers = new Map<string, CircuitBreaker>();
 
   /**
    * Register a region for health monitoring
@@ -120,6 +123,14 @@ export class RegionHealthCheckService {
   public registerRegion(config: RegionHealthCheckConfig): void {
     this.configs.set(config.regionId, config);
     this.consecutiveFailures.set(config.regionId, 0);
+    // R21-04: Per-region circuit breaker with closed/open/half-open states
+    this.circuitBreakers.set(
+      config.regionId,
+      new CircuitBreaker({
+        failureThreshold: config.retryCount,
+        resetTimeout: config.checkIntervalMs * 2,
+      }),
+    );
   }
 
   /**
@@ -130,6 +141,7 @@ export class RegionHealthCheckService {
     this.healthResults.delete(regionId);
     this.consecutiveFailures.delete(regionId);
     this.lastCheckTime.delete(regionId);
+    this.circuitBreakers.delete(regionId);
   }
 
   /**
@@ -137,6 +149,7 @@ export class RegionHealthCheckService {
    */
   public async checkRegion(regionId: string): Promise<RegionHealthCheckResult> {
     const config = this.configs.get(regionId);
+    const circuitBreaker = this.circuitBreakers.get(regionId);
 
     if (!config) {
       return {
@@ -149,10 +162,24 @@ export class RegionHealthCheckService {
       };
     }
 
+    // R21-04: Check circuit breaker state before performing health check
+    if (circuitBreaker && circuitBreaker.getState() === CircuitState.OPEN) {
+      return {
+        regionId,
+        status: "unhealthy",
+        checkedAt: nowIso(),
+        latencyMs: 0,
+        metrics: [],
+        errorMessage: "Circuit breaker is OPEN - skipping health check",
+      };
+    }
+
     const startTime = Date.now();
 
     try {
-      const result = await this.performHealthCheck(config);
+      const result = await (circuitBreaker
+        ? circuitBreaker.execute(() => this.performHealthCheck(config))
+        : this.performHealthCheck(config));
       const latencyMs = Date.now() - startTime;
 
       const healthResult: RegionHealthCheckResult = {
@@ -286,6 +313,8 @@ export class RegionHealthCheckService {
   public resetHealthState(regionId: string): void {
     this.consecutiveFailures.set(regionId, 0);
     this.healthResults.delete(regionId);
+    // R21-04: Also reset circuit breaker when health state is reset
+    this.resetCircuitBreaker(regionId);
   }
 
   /**
@@ -294,6 +323,32 @@ export class RegionHealthCheckService {
   public getThresholds(regionId: string) {
     const config = this.configs.get(regionId);
     return config?.thresholds;
+  }
+
+  /**
+   * Get circuit breaker state for a region (R21-04)
+   */
+  public getCircuitBreakerState(regionId: string): CircuitState | null {
+    const cb = this.circuitBreakers.get(regionId);
+    return cb?.getState() ?? null;
+  }
+
+  /**
+   * Get circuit breaker stats for a region (R21-04)
+   */
+  public getCircuitBreakerStats(regionId: string) {
+    const cb = this.circuitBreakers.get(regionId);
+    return cb?.getStats() ?? null;
+  }
+
+  /**
+   * Reset circuit breaker for a region (R21-04)
+   */
+  public resetCircuitBreaker(regionId: string): void {
+    const cb = this.circuitBreakers.get(regionId);
+    if (cb) {
+      cb.reset();
+    }
   }
 
   /**
@@ -507,6 +562,12 @@ export class RegionFailoverOrchestrator {
     const recordedAt = nowIso();
     const fencingEpoch = (this.fencingEpochByRegion.get(sourceRegionId) ?? 0) + 1;
     this.fencingEpochByRegion.set(sourceRegionId, fencingEpoch);
+
+    // R21-06: Track failover for RTO SLA compliance
+    const rpoRtoService = getRpoRtoTrackingService();
+    const regionPairId = `${sourceRegionId}->${targetRegionId}`;
+    rpoRtoService.startFailover(sourceRegionId, targetRegionId);
+
     const record: FailoverRecord = {
       failoverId: newId("failover"),
       sourceRegionId,
@@ -541,6 +602,14 @@ export class RegionFailoverOrchestrator {
       } catch (error) {
         logger.error(`Failover listener error`, { error: String(error) });
       }
+    }
+
+    // R21-06: Complete failover tracking and assert RTO SLA compliance
+    rpoRtoService.completeFailover(sourceRegionId, targetRegionId, true, null);
+    try {
+      rpoRtoService.assertSlaCompliance(regionPairId);
+    } catch (slaError) {
+      logger.error(`RTO SLA breach detected for ${regionPairId}`, { error: String(slaError) });
     }
 
     return {

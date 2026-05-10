@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { GovernanceComplianceWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("governance-compliance");
 
 const governanceComplianceFeature = createFeatureModule({
   id: "governance-compliance",
-  title: "Governance Compliance",
+  title: featureCopy.title,
   group: "Governance",
   path: "/governance/governance-overview",
   permission: "domain_admin+",
   status: "Planned",
   kind: "planned",
-  summary: "治理与合规视图，通过 planned seam 对齐后端增强端点。",
+  summary: featureCopy.summary,
   render: GovernanceComplianceWebView,
 });
 

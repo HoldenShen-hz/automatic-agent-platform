@@ -5,10 +5,18 @@
  * Split-brain occurs when two or more regions simultaneously believe they
  * are the primary/leader, which can lead to data corruption.
  *
+ * Key behaviors:
+ * - Monitors heartbeat between regions for split-brain detection
+ * - Tracks fencing epoch conflicts via EpochManager
+ * - Validates fencing tokens via FencingTokenService during failover
+ * - Resolves conflicts through quorum or fencing token invalidation
+ *
  * @see docs_zh/architecture/00-platform-architecture.md §52.3
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { getFencingTokenService, type FencingToken } from "./fencing-token-service.js";
+import { getGlobalEpochManager } from "./failover-controller/index.js";
 
 /**
  * Split-brain detection status
@@ -276,6 +284,61 @@ export class SplitBrainProtectionService {
     if (existing) {
       this.quorumStates.set(regionId, { ...existing, weight });
     }
+  }
+
+  /**
+   * R21-02: Validate fencing token during split-brain or failover.
+   * Uses FencingTokenService to validate tokens before allowing writes.
+   * This ensures failover has proper isolation tokens.
+   */
+  public validateFencingTokenForRegion(regionId: string, token: FencingToken): boolean {
+    const fencingService = getFencingTokenService();
+    const validation = fencingService.validateFencingToken(regionId, token);
+    return validation.valid;
+  }
+
+  /**
+   * R21-02: Acquire leadership with fencing token for a region.
+   * Used during failover when a region needs to acquire leadership.
+   */
+  public acquireLeadershipWithFencing(regionId: string, entityId: string | null = null): FencingToken | null {
+    const fencingService = getFencingTokenService();
+    return fencingService.acquireLeadership(regionId, entityId);
+  }
+
+  /**
+   * R21-02: Release leadership and invalidate fencing token.
+   * Used when a region loses leadership during split-brain resolution.
+   */
+  public releaseLeadership(regionId: string, entityId: string | null = null): boolean {
+    const fencingService = getFencingTokenService();
+    return fencingService.releaseLeadership(regionId, entityId);
+  }
+
+  /**
+   * R21-02: Check if a region was demoted and is trying to rejoin with stale epoch.
+   * Uses EpochManager to detect stale demoted leaders during split-brain.
+   */
+  public isStaleDemotedLeader(partitionKey: string, regionId: string, offeredEpoch: number): boolean {
+    const epochManager = getGlobalEpochManager();
+    return epochManager.isStaleDemotedLeader(partitionKey, regionId, offeredEpoch);
+  }
+
+  /**
+   * R21-02: Get current fencing epoch for a partition.
+   * Used to validate that rejoin attempts have current epoch.
+   */
+  public getCurrentFencingEpoch(partitionKey: string): number {
+    const epochManager = getGlobalEpochManager();
+    return epochManager.getCurrentEpoch(partitionKey);
+  }
+
+  /**
+   * R21-02: Record fencing epoch from EpochManager for cross-region tracking.
+   * Syncs epoch state for split-brain detection.
+   */
+  public syncFencingEpochFromFailover(partitionKey: string, epoch: number, leaderRegionId: string): void {
+    this.fencingEpochByRegion.set(leaderRegionId, epoch);
   }
 }
 

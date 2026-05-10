@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { TakeoverWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("takeover");
 
 const takeoverFeature = createFeatureModule({
   id: "takeover",
-  title: "Admin Takeover Console",
+  title: featureCopy.title,
   group: "Admin",
   path: "/admin/takeover",
   permission: "platform_sre",
   status: "Implemented/Internal",
-  summary: "管理员接管、重试和人工覆盖入口。",
+  summary: featureCopy.summary,
   render: TakeoverWebView,
 });
 

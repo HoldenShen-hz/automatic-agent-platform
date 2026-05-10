@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { CostCenterWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("cost-center");
 
 const costCenterFeature = createFeatureModule({
   id: "cost-center",
-  title: "Cost Center",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/costs",
   permission: "domain_admin+",
   status: "Planned",
   kind: "planned",
-  summary: "成本中心与预算视图。",
+  summary: featureCopy.summary,
   render: CostCenterWebView,
 });
 

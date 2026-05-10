@@ -149,6 +149,14 @@ export interface DashboardSnapshotDTO {
   readonly activeExecutions: number;
   readonly approvalBacklog: number;
   readonly alertSummary: string;
+  readonly successRate?: number;
+  readonly avgDurationMs?: number;
+  readonly activeAgents?: number;
+  readonly errorRate?: number;
+  readonly p50LatencyMs?: number | null;
+  readonly p99LatencyMs?: number | null;
+  readonly budgetUtilizationPercent?: number | null;
+  readonly uptimePercent?: number | null;
 }
 
 export interface WorkflowStepDTO {
@@ -229,8 +237,11 @@ export interface AgentDTO {
 export interface AnalyticsMetricDTO {
   readonly id: string;
   readonly label: string;
-  readonly value: string;
+  readonly value: string | number;
   readonly trend: "up" | "flat" | "down";
+  readonly changePercent?: number;
+  readonly layer?: "overview" | "tasks" | "workflows" | "approvals" | "cost" | "agents";
+  readonly description?: string;
 }
 
 export interface CostReportDTO {

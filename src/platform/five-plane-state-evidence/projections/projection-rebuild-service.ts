@@ -34,6 +34,7 @@ import { workerStatusProjectionHandler } from "../events/projections/worker-stat
 import { artifactCatalogProjectionHandler } from "../events/projections/artifact-catalog-projection.js";
 import { riskActionProjectionHandler } from "../events/projections/risk-action-projection.js";
 import { governanceProjectionHandler } from "../events/projections/governance-projection.js";
+import { dispatchProjectionHandler } from "../events/projections/dispatch-projection.js";
 import { workflowTimelineProjectionHandler } from "../events/projections/workflow-timeline-projection.js";
 
 /**
@@ -190,6 +191,8 @@ export class ProjectionRebuildService {
     this.registry.register("risk_action_projection", riskActionProjectionHandler);
     // §28: Governance projection (from events/projections/)
     this.registry.register("governance_projection", governanceProjectionHandler);
+    // §28: Dispatch projection (from events/projections/)
+    this.registry.register("dispatch_projection", dispatchProjectionHandler);
   }
 
   /**

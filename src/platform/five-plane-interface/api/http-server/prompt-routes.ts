@@ -2,7 +2,7 @@ import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/r
 import type { ApiAuthService } from "../api-auth-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
+import { buildJsonResponse, decodeOpaqueCursor, encodeOpaqueCursor, readCursor, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
 import { z } from "zod";
 import type { PromptBundleRegistrationInput } from "../../../contracts/prompt-bundle/index.js";
 
@@ -23,6 +23,11 @@ const promptBundleRequestSchema = z.object({
 
 type PromptBundleRequestPayload = z.infer<typeof promptBundleRequestSchema>;
 
+interface PromptCursor {
+  readonly createdAt: string;
+  readonly bundleId: string;
+}
+
 export interface PromptRouteDeps {
   authService: ApiAuthService | null;
   promptRegistryService: HierarchicalPromptRegistryService;
@@ -39,11 +44,34 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const level = readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "task-type" | undefined;
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
-        const prompts = deps.promptRegistryService.listBundles(level, domain, packId);
-        return buildJsonResponse(ctx.requestId, 200, {
-          prompts: prompts.slice(0, limit),
-          total: prompts.length,
-        });
+        const allPrompts = deps.promptRegistryService.listBundles(level, domain, packId);
+        const sorted = [...allPrompts].sort((left, right) =>
+          right.bundle.createdAt.localeCompare(left.bundle.createdAt) ||
+          left.bundle.bundleId.localeCompare(right.bundle.bundleId)
+        );
+        const cursorStr = readCursor(ctx.request);
+        const decodedCursor = cursorStr == null ? null : decodeOpaqueCursor<PromptCursor>(cursorStr);
+        const startIndex = cursorStr == null
+          ? 0
+          : sorted.findIndex((item) =>
+              decodedCursor != null &&
+              (item.bundle.createdAt < decodedCursor.createdAt ||
+                (item.bundle.createdAt === decodedCursor.createdAt && item.bundle.bundleId > decodedCursor.bundleId))
+            );
+        const normalizedStart = startIndex < 0 ? sorted.length : startIndex;
+        const pageItems = sorted.slice(normalizedStart, normalizedStart + limit);
+        const hasMore = normalizedStart + limit < sorted.length;
+        const nextCursor = hasMore && pageItems.length > 0
+          ? encodeOpaqueCursor({
+              createdAt: pageItems.at(-1)?.bundle.createdAt ?? "",
+              bundleId: pageItems.at(-1)?.bundle.bundleId ?? "",
+            })
+          : null;
+        const response: Record<string, unknown> = { prompts: pageItems };
+        if (nextCursor != null) {
+          response.nextCursor = nextCursor;
+        }
+        return buildJsonResponse(ctx.requestId, 200, response);
       },
     },
     {

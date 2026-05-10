@@ -1,15 +1,18 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { MarketplaceWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("marketplace");
 
 const marketplaceFeature = createFeatureModule({
   id: "marketplace",
-  title: "Marketplace",
+  title: featureCopy.title,
   group: "Shared",
   path: "/shared/marketplace",
   permission: "authenticated",
   status: "Planned",
   kind: "planned",
-  summary: "Marketplace 列表、详情和安装流程。",
+  summary: featureCopy.summary,
   render: MarketplaceWebView,
 });
 

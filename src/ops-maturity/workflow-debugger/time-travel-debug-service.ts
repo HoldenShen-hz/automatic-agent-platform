@@ -256,14 +256,15 @@ export class TimeTravelDebugService {
     if (!session) return [];
 
     const events = this.eventStore.get(session.executionId) ?? [];
-    const variables: VariableState[] = [];
+    // R21-19 fix: Use map to deduplicate, keeping only the latest value per variable name
+    const variableMap = new Map<string, VariableState>();
 
     for (let i = 0; i <= atEventIndex && i < events.length; i++) {
       const event = events[i]!;
       const vars = readVariables(event);
       if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
-          variables.push({
+          variableMap.set(name, {
             name,
             value: readVariableValue(value),
             type: String(typeof value),
@@ -273,7 +274,7 @@ export class TimeTravelDebugService {
       }
     }
 
-    return variables;
+    return Array.from(variableMap.values());
   }
 
   public endSession(sessionId: string): void {

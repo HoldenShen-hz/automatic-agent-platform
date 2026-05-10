@@ -30,6 +30,12 @@ export * from "./types/unified-runtime-mode.js";
 export * from "./types/unified-severity.js";
 // R13-33: Export ResponsibilityBoundary types per §3.2 ResponsibilityBoundary spec
 export * from "./types/responsibility-boundary.js";
+// R19-44: Export health contract types for inter-plane health reporting
+export * from "./types/health.js";
+// R19-44: Export feedback contract types for cross-plane feedback coupling
+export * from "./types/feedback.js";
+// R19-46: Export governance contract types for cross-plane governance coupling
+export * from "./types/governance.js";
 
 // -----------------------------------------------------------------------------
 // Platform-Level Aggregated Contracts (re-exports canonical + platform types)

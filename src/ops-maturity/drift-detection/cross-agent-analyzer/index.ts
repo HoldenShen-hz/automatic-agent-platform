@@ -113,10 +113,10 @@ export class CrossAgentAnalyzerService {
     readonly ranked: CrossAgentMetric[];
     readonly alerts: readonly CrossAgentDriftAlert[];
   } {
-    const ranked = [...metrics].sort((left, right) => scoreMetric(right) - scoreMetric(left));
+    const ranked = [...metrics].sort((left, right) => scoreMetric(right, metrics) - scoreMetric(left, metrics));
     const best = ranked[0]!;
     const worst = ranked.at(-1)!;
-    const divergenceScore = Math.max(0, scoreMetric(best) - scoreMetric(worst));
+    const divergenceScore = Math.max(0, scoreMetric(best, metrics) - scoreMetric(worst, metrics));
     const antiGamingDetected = this.detectAntiGaming(metrics);
     const recommendation = this.buildStructuredRecommendation(ranked, divergenceScore, antiGamingDetected);
     const alert = this.buildDriftAlert(peerGroupId, ranked, divergenceScore, antiGamingDetected);
@@ -260,6 +260,25 @@ export class CrossAgentAnalyzerService {
   }
 }
 
-function scoreMetric(metric: CrossAgentMetric): number {
-  return metric.successRate - metric.averageCostUsd * 0.1 - metric.averageLatencyMs / 10_000;
+function computeMeanStdDev(values: number[]): { mean: number; stdDev: number } {
+  if (values.length === 0) return { mean: 0, stdDev: 0 };
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+  return { mean, stdDev: Math.sqrt(variance) };
+}
+
+function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): number {
+  // Statistical composite scoring using z-score normalization
+  // to avoid hardcoded linear formula that doesn't account for
+  // cross-agent variance or statistical significance.
+  const { mean: costMean, stdDev: costStdDev } = computeMeanStdDev(
+    metrics.map((m) => m.averageCostUsd),
+  );
+  const { mean: latencyMean, stdDev: latencyStdDev } = computeMeanStdDev(
+    metrics.map((m) => m.averageLatencyMs),
+  );
+  const costZScore = costStdDev > 0 ? (metric.averageCostUsd - costMean) / costStdDev : 0;
+  const latencyZScore = latencyStdDev > 0 ? (metric.averageLatencyMs - latencyMean) / latencyStdDev : 0;
+  // Penalize high cost/latency relative to peer distribution (z-score based)
+  return metric.successRate - costZScore * 0.1 - latencyZScore / 1000;
 }

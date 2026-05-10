@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { WorkflowCockpitWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("workflow-cockpit");
 
 const workflowCockpitFeature = createFeatureModule({
   id: "workflow-cockpit",
-  title: "Workflow Cockpit",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/workflows",
   permission: "pack_developer+",
   status: "Implemented/Internal",
-  summary: "工作流 DAG、步骤和恢复基线视图。",
+  summary: featureCopy.summary,
   render: WorkflowCockpitWebView,
 });
 

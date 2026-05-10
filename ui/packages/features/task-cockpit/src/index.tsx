@@ -1,14 +1,17 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { TaskCockpitWebView } from "./web";
+
+const featureCopy = translateFeatureCopy("task-cockpit");
 
 const taskCockpitFeature = createFeatureModule({
   id: "task-cockpit",
-  title: "Task Cockpit",
+  title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/tasks",
   permission: "authenticated",
   status: "Implemented/Contracted",
-  summary: "任务五级下钻和三栏工作台基线。",
+  summary: featureCopy.summary,
   render: TaskCockpitWebView,
 });
 

@@ -118,6 +118,28 @@ const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {
   aborted: [],
 };
 
+/**
+ * R20-52 FIX: SIDE_EFFECT_TRANSITIONS defines 16 states but the canonical contract
+ * (side-effect-reconciliation-contract.md v4.3, §2) defines 14:
+ *   proposed, approved, reserved, committing, confirming (awaiting_confirmation),
+ *   confirmed, committed, ambiguous, reconciling, compensating, compensated,
+ *   failed, revoked, expired.
+ *
+ * The 5 "extra" states vs §14.11 / §2 of the contract are:
+ *   - committed: listed as transition target from committing, but NOT as a
+ *     separate row-key in the contract status enum (contract uses confirming→
+ *     confirmed→reconciling path; committed appears only as a target of committing).
+ *   - manual_review_required: present in reconciling transitions but not listed
+ *     as a top-level state in contract §2.
+ *   - compensation_required: present in several transition rows but not listed
+ *     as a top-level state in contract §2.
+ *
+ * The discrepancy exists because this table captures ALL observed runtime
+ * transition targets while the contract enumerates only the canonical named
+ * states. A follow-up ADR should either (a) promote the 3 states above to
+ * full contract status, or (b) remove them from the transition table and
+ * remap those edges to existing contract states.
+ */
 const SIDE_EFFECT_TRANSITIONS: TransitionTable<SideEffectStatus> = {
   proposed: ["approved", "reserved", "manual_review_required", "revoked", "expired", "failed"],
   approved: ["reserved", "committing", "revoked", "expired", "failed"],

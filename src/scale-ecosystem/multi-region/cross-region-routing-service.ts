@@ -1,6 +1,25 @@
 import { shouldReplicateToRegion, type ReplicationPolicy } from "./data-replicator/index.js";
 import { resolveRegionFailover } from "./failover-controller/index.js";
 import { selectPreferredRegion, type RegionDescriptor } from "./region-router/index.js";
+import {
+  ReadReplicaService,
+  ReadConsistencyLevel,
+  ReadRoutingMode,
+} from "./read-replica-service.js";
+
+/**
+ * Consistency level for cross-region reads
+ */
+type CrossRegionConsistencyLevel = "eventual" | "session" | "strong";
+
+/**
+ * Request options for read routing within cross-region decisions
+ */
+export interface ReadReplicaRoutingOptions {
+  readonly consistencyLevel: CrossRegionConsistencyLevel;
+  readonly routingMode: ReadRoutingMode;
+  readonly bypassCache?: boolean;
+}
 
 export interface ResidencyPolicy {
   readonly policyId: string;
@@ -35,6 +54,13 @@ export interface CrossRegionRouteDecision {
     readonly replicationTargets: readonly string[];
   };
   readonly blockedRegions: readonly string[];
+  /** Read replica routing decision when read replica service is integrated */
+  readonly readReplicaDecision?: {
+    readonly replicaId: string | null;
+    readonly isPrimaryRoute: boolean;
+    readonly waitForReplication: boolean;
+    readonly consistencyLevel: CrossRegionConsistencyLevel;
+  };
 }
 
 function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities: readonly string[]): boolean {
@@ -43,6 +69,49 @@ function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities:
 }
 
 export class CrossRegionRoutingService {
+  private readonly readReplicaService: ReadReplicaService | null;
+
+  public constructor(readReplicaService?: ReadReplicaService | null) {
+    this.readReplicaService = readReplicaService ?? null;
+  }
+
+  /**
+   * Route with read replica integration
+   */
+  public routeWithReadReplica(
+    request: CrossRegionRouteRequest,
+    readReplicaOptions: ReadReplicaRoutingOptions,
+  ): CrossRegionRouteDecision {
+    const decision = this.route(request);
+
+    // If read replica service is available and this is a read operation, enhance with replica routing
+    if (this.readReplicaService && request.operationType !== "write") {
+      const readDecision = this.readReplicaService.routeRead({
+        operationId: decision.decisionId,
+        aggregateType: "cross_region",
+        aggregateId: request.policy.policyId,
+        consistencyLevel: readReplicaOptions.consistencyLevel as ReadConsistencyLevel,
+        routingMode: readReplicaOptions.routingMode as ReadRoutingMode,
+        preferredRegionId: request.preferredRegionId === undefined ? null : request.preferredRegionId,
+        bypassCache: readReplicaOptions.bypassCache ?? undefined,
+      } as import("./read-replica-service.js").ReadRoutingRequest);
+
+      return {
+        ...decision,
+        selectedRegionId: readDecision.selectedRegionId,
+        latencyScore: readDecision.estimatedLatencyMs ?? decision.latencyScore,
+        readReplicaDecision: {
+          replicaId: readDecision.selectedReplicaId,
+          isPrimaryRoute: readDecision.isPrimaryRoute,
+          waitForReplication: readDecision.waitForReplication,
+          consistencyLevel: readReplicaOptions.consistencyLevel,
+        },
+      };
+    }
+
+    return decision;
+  }
+
   public route(request: CrossRegionRouteRequest): CrossRegionRouteDecision {
     const operationType = request.operationType ?? "read";
     const blockedRegionIds = new Set(request.policy.blockedRegionIds ?? []);

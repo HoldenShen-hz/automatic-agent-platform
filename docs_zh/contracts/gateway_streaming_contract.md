@@ -29,6 +29,12 @@
 - `FinalChunk`
 - `ErrorChunk`
 
+v4.3 对齐说明：
+
+- 代码侧 authoritative 流式帧对象为 `StreamEventFrame`；`StreamEvent` 作为其别名导出。
+- 为兼容 contract 命名，代码侧同时导出 `StreamChannel`、`ProgressChunk`、`FinalChunk`、`ErrorChunk` 类型别名；这些别名都收敛到同一条 `StreamEventFrame` 主链，而不是再维护平行 DTO。
+- `stream_gap` 作为 replay window 已驱逐时的 client-facing gap frame，属于 `ErrorChunk` 语义域内的可恢复流错误。
+
 ## 3. StreamEvent 最小字段
 
 - `stream_id`
