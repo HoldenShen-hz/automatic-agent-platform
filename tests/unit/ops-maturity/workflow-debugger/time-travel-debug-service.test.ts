@@ -365,3 +365,64 @@ test("TimeTravelDebugService replayStep boundary cursor uses events.length+1 as 
   assert.equal(state.cursor.toEventIndex, 4);
   assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
 });
+
+test("TimeTravelDebugService replayToCursor sets fromEventIndex < toEventIndex when toEventIndex equals currentIndex", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  // currentEventIndex is 0
+  // When toEventIndex == currentIndex (0 == 0), should still set fromEventIndex < toEventIndex
+  const state = service.replayToCursor(session.sessionId, 0);
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 0);
+  assert.ok(state.cursor.toEventIndex > state.cursor.fromEventIndex);
+});
+
+test("TimeTravelDebugService replayToCursor preserves fromEventIndex < toEventIndex at breakpoint", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  service.setBreakpoints(session.sessionId, ["step-2"]);
+
+  // Advance to step-1 first
+  service.replayStep(session.sessionId); // currentEventIndex = 1
+  // Now toEventIndex (2) > currentIndex (1), hit breakpoint at step-2
+  const state = service.replayToCursor(session.sessionId, 2);
+
+  assert.ok(state !== null);
+  assert.equal(state.reachedBreakpoint, true);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+  assert.equal(state.cursor.fromEventIndex, 1);
+  assert.equal(state.cursor.toEventIndex, 2);
+});
+
+test("TimeTravelDebugService replayToCursor cursor reflects actual range advanced", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  // No breakpoints, should advance from 0 to 2
+  const state = service.replayToCursor(session.sessionId, 2);
+
+  assert.ok(state !== null);
+  assert.equal(state.reachedBreakpoint, false);
+  // fromEventIndex should be the position BEFORE advancement (0)
+  // toEventIndex should be the position AFTER advancement (2)
+  assert.equal(state.cursor.fromEventIndex, 0);
+  assert.equal(state.cursor.toEventIndex, 2);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});

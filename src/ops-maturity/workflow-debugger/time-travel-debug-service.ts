@@ -195,6 +195,15 @@ export class TimeTravelDebugService {
 
     const events = this.eventStore.get(session.executionId) ?? [];
     const currentIndex = session.currentEventIndex;
+
+    // Handle edge case where toEventIndex == currentIndex (no advancement)
+    // Use events.length + 1 as toEventIndex so fromEventIndex < toEventIndex is preserved
+    if (toEventIndex === currentIndex) {
+      const fromIdx = currentIndex;
+      const toIdx = events.length + 1;
+      return this.buildReplayState(session, fromIdx, toIdx, false);
+    }
+
     const prevIndex = currentIndex; // capture before loop to preserve correct fromEventIndex
 
     for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
@@ -204,11 +213,10 @@ export class TimeTravelDebugService {
       if (session.breakpoints.includes(stepId)) {
         this.captureSnapshot(session, event, i);
         session.currentEventIndex = i + 1;
-        return this.buildReplayState(session, currentIndex, session.currentEventIndex, true);
+        return this.buildReplayState(session, prevIndex, session.currentEventIndex, true);
       }
     }
 
-    const prevIndex = session.currentEventIndex;
     session.currentEventIndex = Math.min(toEventIndex, events.length);
     return this.buildReplayState(session, prevIndex, session.currentEventIndex, false);
   }

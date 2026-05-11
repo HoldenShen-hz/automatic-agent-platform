@@ -427,3 +427,39 @@ test("WorkflowDebuggerHealthMonitor concurrent component tracking", () => {
   assert.equal(snapshotA.status, "failed");
   assert.equal(snapshotB.status, "healthy"); // 2 healthy, 0 failed
 });
+
+/**
+ * Issue 1927: Check interval should be configurable, not hardcoded.
+ */
+test("WorkflowDebuggerHealthMonitor issue 1927 - default check interval is 30 seconds", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({});
+  assert.equal(monitor.getCheckIntervalMs(), 30_000, "Default check interval should be 30 seconds (30000ms)");
+});
+
+test("WorkflowDebuggerHealthMonitor issue 1927 - custom check interval is respected", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({ checkIntervalMs: 60_000 });
+  assert.equal(monitor.getCheckIntervalMs(), 60_000, "Custom check interval of 60 seconds should be respected");
+});
+
+test("WorkflowDebuggerHealthMonitor issue 1927 - check interval can be set to 1 second", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({ checkIntervalMs: 1_000 });
+  assert.equal(monitor.getCheckIntervalMs(), 1_000, "Check interval should be configurable to 1 second");
+});
+
+test("WorkflowDebuggerHealthMonitor issue 1927 - check interval can be set to 5 minutes", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({ checkIntervalMs: 5 * 60_000 });
+  assert.equal(monitor.getCheckIntervalMs(), 5 * 60_000, "Check interval should be configurable to 5 minutes");
+});
+
+test("WorkflowDebuggerHealthMonitor issue 1927 - check interval with other options", () => {
+  const monitor = new WorkflowDebuggerHealthMonitor({
+    windowMs: 60_000,
+    minSampleSize: 5,
+    checkIntervalMs: 45_000,
+  });
+
+  assert.equal(monitor.getCheckIntervalMs(), 45_000);
+  // Verify other options are also set correctly
+  const snapshot = monitor.getSnapshot("test", new Date(Date.now() - 10_000).toISOString());
+  assert.equal(snapshot?.status, "healthy");
+});
