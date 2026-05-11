@@ -745,3 +745,117 @@ test("TenantPlatformService rejects resource creation when tenant quota is excee
     });
   }, /Quota exceeded for storage: 10\/10/);
 });
+
+test("TenantPlatformService.createOrganization throws when defaultTenantId belongs to a different organization", () => {
+  const store = createMockStore();
+  // Create the organization that will own the tenant
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_tenant_owner",
+    displayName: "Tenant Owner Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  // Create a tenant in org_tenant_owner
+  store.organization.upsertTenantRecord({
+    tenantId: "tenant_owned",
+    organizationId: "org_tenant_owner",
+    displayName: "Owned Tenant",
+    storageScope: "storage",
+    identityScope: "identity",
+    policyScope: "policy",
+    artifactScope: "artifact",
+    isolationMode: "shared_hard_scoped",
+    deploymentMode: "cloud_shared",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  // Create a different organization
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_other",
+    displayName: "Other Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+
+  // Trying to set tenant_owned as default for org_other should throw
+  assert.throws(() => {
+    service.createOrganization({
+      organizationId: "org_other",
+      displayName: "Org Trying to Claim Others Tenant",
+      defaultTenantId: "tenant_owned",
+    });
+  }, /tenant.default_tenant_mismatch/);
+});
+
+test("TenantPlatformService.createOrganization accepts defaultTenantId that belongs to same organization", () => {
+  const store = createMockStore();
+  // Create the organization
+  store.organization.upsertOrganizationRecord({
+    organizationId: "org_same",
+    displayName: "Same Org",
+    billingAccountId: null,
+    defaultTenantId: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  // Create a tenant in that same organization
+  store.organization.upsertTenantRecord({
+    tenantId: "tenant_same_org",
+    organizationId: "org_same",
+    displayName: "Same Org Tenant",
+    storageScope: "storage",
+    identityScope: "identity",
+    policyScope: "policy",
+    artifactScope: "artifact",
+    isolationMode: "shared_hard_scoped",
+    deploymentMode: "cloud_shared",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+
+  // Setting tenant_same_org as default for org_same should succeed
+  const org = service.createOrganization({
+    organizationId: "org_same",
+    displayName: "Org Claiming Its Own Tenant",
+    defaultTenantId: "tenant_same_org",
+  });
+
+  assert.equal(org.defaultTenantId, "tenant_same_org");
+});
+
+test("TenantPlatformService.createOrganization accepts defaultTenantId even when tenant has null organizationId", () => {
+  const store = createMockStore();
+  // Create tenant with null organizationId (legacy/migration scenario)
+  store.organization.upsertTenantRecord({
+    tenantId: "tenant_no_org",
+    organizationId: null,
+    displayName: "Tenant Without Org",
+    storageScope: "storage",
+    identityScope: "identity",
+    policyScope: "policy",
+    artifactScope: "artifact",
+    isolationMode: "shared_hard_scoped",
+    deploymentMode: "cloud_shared",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  });
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+
+  // Should succeed because tenant.organizationId is null (unassigned)
+  const org = service.createOrganization({
+    organizationId: "org_new",
+    displayName: "New Org Claiming Unassigned Tenant",
+    defaultTenantId: "tenant_no_org",
+  });
+
+  assert.equal(org.defaultTenantId, "tenant_no_org");
+});

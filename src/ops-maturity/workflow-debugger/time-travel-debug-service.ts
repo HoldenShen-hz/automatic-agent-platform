@@ -218,11 +218,10 @@ export class TimeTravelDebugService {
 
     const events = this.eventStore.get(session.executionId) ?? [];
     if (session.currentEventIndex >= events.length) {
-      // Boundary case: already past last event. Use events.length as toEventIndex
-      // so that fromEventIndex < toEventIndex is preserved (e.g. from=2, to=2 is
-      // invalid when there are only 2 events; we use from=2, to=2+1=3 instead).
+      // Boundary case: already past last event. Use events.length+1 as toEventIndex
+      // so that fromEventIndex < toEventIndex is preserved (e.g. from=2, to=3).
       const fromIdx = session.currentEventIndex;
-      const toIdx = events.length;
+      const toIdx = events.length + 1;
       return this.buildReplayState(session, fromIdx, toIdx, false);
     }
 
@@ -272,10 +271,11 @@ export class TimeTravelDebugService {
       const vars = readVariables(event);
       if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
+          const unwrapped = readVariableValue(value);
           variableMap.set(name, {
             name,
-            value: readVariableValue(value),
-            type: String(typeof value),
+            value: unwrapped,
+            type: String(typeof unwrapped),
             scope: isVariableScope(event.scope) ? event.scope : "step",
           });
         }
@@ -348,8 +348,16 @@ export class TimeTravelDebugService {
     if (!oldest) {
       return;
     }
+    const executionIdToEvict = oldest.executionId;
     this.sessions.delete(oldest.sessionId);
     this.snapshots.delete(oldest.sessionId);
+    // Clean up eventStore only if no other session references this executionId
+    const stillUsed = [...this.sessions.values()].some(
+      (s) => s.executionId === executionIdToEvict,
+    );
+    if (!stillUsed) {
+      this.eventStore.delete(executionIdToEvict);
+    }
   }
 
   private assertReplayAccess(accessContext: ReplayAccessContext): void {

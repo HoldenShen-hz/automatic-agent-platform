@@ -910,3 +910,62 @@ test("TimeTravelDebugService respects maxSnapshotsPerSession limit", () => {
   assert.ok(service.getSnapshot(session.sessionId, "node_3"));
   assert.ok(service.getSnapshot(session.sessionId, "node_4"));
 });
+
+test("TimeTravelDebugService evicts eventStore when last session referencing executionId is removed", () => {
+  const service = new TimeTravelDebugService({ maxSessions: 2 });
+
+  // Session 1 and 2 both use harness_1
+  const session1 = service.createSession("task_1", "harness_1");
+  service.createSession("task_2", "harness_1");
+
+  // Load event store for harness_1
+  const events: TimeTravelDebugEvent[] = [
+    { nodeRunId: "node_1", timestamp: "2026-04-29T00:00:00.000Z" },
+    { nodeRunId: "node_2", timestamp: "2026-04-29T00:01:00.000Z" },
+  ];
+  service.loadEventStore("harness_1", events);
+
+  // Session 3 evicts session1 (oldest), but harness_1 eventStore should remain
+  // since session2 still references it
+  const session3 = service.createSession("task_3", "harness_2");
+
+  // session1 is evicted but harness_1 eventStore is still accessible via session2
+  const eventStoreViaSession2 = (service as any).eventStore.get("harness_1");
+  assert.ok(eventStoreViaSession2, "eventStore for harness_1 should still exist since session2 uses it");
+
+  // Session 4 evicts session2 - now harness_1 eventStore should be cleaned up
+  const session4 = service.createSession("task_4", "harness_3");
+
+  const eventStoreAfterEviction = (service as any).eventStore.get("harness_1");
+  assert.equal(eventStoreAfterEviction, undefined, "eventStore for harness_1 should be evicted when no sessions reference it");
+});
+
+test("TimeTravelDebugService does not leak eventStore references after maxSessions eviction", () => {
+  const service = new TimeTravelDebugService({ maxSessions: 3 });
+
+  // Create sessions with unique executionIds
+  service.createSession("task_1", "exec_1");
+  service.createSession("task_2", "exec_2");
+  service.createSession("task_3", "exec_3");
+
+  // Load event stores for all executionIds
+  const events: TimeTravelDebugEvent[] = [
+    { nodeRunId: "node_1", timestamp: "2026-04-29T00:00:00.000Z" },
+  ];
+  service.loadEventStore("exec_1", events);
+  service.loadEventStore("exec_2", events);
+  service.loadEventStore("exec_3", events);
+
+  const eventStoreRef = (service as any).eventStore as Map<string, unknown>;
+  assert.equal(eventStoreRef.size, 3, "All three eventStores should exist before eviction");
+
+  // Trigger eviction by creating a 4th session
+  service.createSession("task_4", "exec_4");
+
+  // Oldest session (task_1, exec_1) is evicted, its eventStore should be cleaned
+  assert.equal(eventStoreRef.size, 3, "Evicted eventStore should be removed");
+  assert.equal(eventStoreRef.has("exec_1"), false, "exec_1 eventStore should be evicted");
+  assert.ok(eventStoreRef.has("exec_2"), "exec_2 eventStore should remain");
+  assert.ok(eventStoreRef.has("exec_3"), "exec_3 eventStore should remain");
+  assert.ok(eventStoreRef.has("exec_4"), "exec_4 eventStore should exist");
+});

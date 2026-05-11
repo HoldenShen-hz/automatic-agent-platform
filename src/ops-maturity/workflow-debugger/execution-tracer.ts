@@ -196,9 +196,17 @@ export class ExecutionTracer {
       return null;
     }
 
+    const events = [...(this.activeEvents.get(traceId) ?? [])];
+
+    // Calculate totalDurationMs dynamically for active trace
+    const totalDurationMs = trace.endedAt
+      ? new Date(trace.endedAt).getTime() - new Date(trace.startedAt).getTime()
+      : null;
+
     return {
       ...trace,
-      events: [...(this.activeEvents.get(traceId) ?? [])],
+      events,
+      totalDurationMs,
     };
   }
 

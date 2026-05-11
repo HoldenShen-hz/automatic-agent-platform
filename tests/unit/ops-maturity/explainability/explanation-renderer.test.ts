@@ -557,18 +557,55 @@ test("buildDecisionTree maxDepth is 0 for root-only tree", () => {
   assert.equal(tree.maxDepth, 0);
 });
 
-test("buildDecisionTree maxDepth reflects actual tree depth", () => {
-  // The tree structure with causal links creates nodes but root has no children set,
-  // so maxDepth remains 0 in current implementation
+test("buildDecisionTree maxDepth reflects actual tree depth with causal links", () => {
+  // With causal link A -> B, root has source-A as child, and source-A has target-B as child
+  // So maxDepth should be 2: root (depth 0) -> source-A (depth 1) -> target-B (depth 2)
   const links: CausalLink[] = [
     { source: "A", target: "B", rationale: "A leads to B" },
   ];
   const tree = buildDecisionTree("Root", links, [], []);
-  assert.equal(tree.maxDepth, 0);
+  assert.equal(tree.maxDepth, 2);
 });
 
 test("buildDecisionTree maxDepth is computed via recursion", () => {
   const tree = buildDecisionTree("Test", [], [], []);
   assert.equal(typeof tree.maxDepth, "number");
   assert.ok(tree.maxDepth >= 0);
+});
+
+test("buildDecisionTree maxDepth is 1 for single causal chain node", () => {
+  // Root -> source-A (depth 1)
+  const links: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A leads to B" },
+  ];
+  const tree = buildDecisionTree("Root", links, [], []);
+  // root depth 0 + one child at depth 1 = maxDepth 1
+  assert.equal(tree.maxDepth, 1);
+});
+
+test("buildDecisionTree maxDepth accounts for evidence and factor children", () => {
+  // Root has no causal links but has evidence and factor children
+  const tree = buildDecisionTree("Root", [], ["Evidence"], ["Factor"]);
+  // root -> evidence-0 and root -> factor-0, both at depth 1
+  assert.equal(tree.maxDepth, 1);
+});
+
+test("buildDecisionTree maxDepth with multiple causal links", () => {
+  // A -> B -> C creates a chain: root -> source-A (depth 1) -> target-B (depth 2) -> source-B (depth 3) -> target-C (depth 4)
+  const links: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A to B" },
+    { source: "B", target: "C", rationale: "B to C" },
+  ];
+  const tree = buildDecisionTree("Root", links, [], []);
+  assert.equal(tree.maxDepth, 4);
+});
+
+test("buildDecisionTree maxDepth with multiple branches", () => {
+  // A -> X and A -> Y: root -> source-A (depth 1) -> target-X (depth 2) and root -> source-A -> target-Y (depth 2)
+  const links: CausalLink[] = [
+    { source: "A", target: "X", rationale: "A to X" },
+    { source: "A", target: "Y", rationale: "A to Y" },
+  ];
+  const tree = buildDecisionTree("Root", links, [], []);
+  assert.equal(tree.maxDepth, 2);
 });

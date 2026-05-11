@@ -676,20 +676,7 @@ export class TenantPlatformService {
         }
       }
 
-      // Validate default tenant belongs to this organization
-      if (input.defaultTenantId) {
-        const tenant = this.requireTenant(input.defaultTenantId);
-        if (tenant.organizationId !== (input.organizationId ?? tenant.organizationId)) {
-          throw new TenantBoundaryError("tenant.default_tenant_mismatch", "tenant.default_tenant_mismatch", {
-            details: {
-              defaultTenantId: input.defaultTenantId,
-              organizationId: input.organizationId ?? null,
-              tenantOrganizationId: tenant.organizationId,
-            },
-          });
-        }
-      }
-
+      // Create organization record first so we can validate default tenant against it
       const organization: OrganizationRecord = {
         organizationId: assertIdentifier(input.organizationId ?? newId("org"), "tenant.invalid_organization_id"),
         displayName: assertNonEmpty(input.displayName, "tenant.invalid_organization_display_name"),
@@ -698,6 +685,22 @@ export class TenantPlatformService {
         createdAt,
         updatedAt: createdAt,
       };
+
+      // Validate default tenant belongs to this organization
+      // Must be checked AFTER creating organization record so we have the actual org ID
+      if (input.defaultTenantId) {
+        const tenant = this.requireTenant(input.defaultTenantId);
+        if (tenant.organizationId != null && tenant.organizationId !== organization.organizationId) {
+          throw new TenantBoundaryError("tenant.default_tenant_mismatch", "tenant.default_tenant_mismatch", {
+            details: {
+              defaultTenantId: input.defaultTenantId,
+              organizationId: organization.organizationId,
+              tenantOrganizationId: tenant.organizationId,
+            },
+          });
+        }
+      }
+
       this.store.organization.upsertOrganizationRecord(organization);
       return organization;
     });

@@ -56,7 +56,7 @@ test("compareWorkflowRuns reports step missing on right as 'missing'", () => {
   assert.deepEqual(result, ["step:deploy:done->missing"]);
 });
 
-test("compareWorkflowRuns ignores steps only in right", () => {
+test("compareWorkflowRuns detects steps only in right (issue #1922)", () => {
   const left: readonly RunSnapshot[] = [
     { stepId: "build", status: "done" },
   ];
@@ -67,10 +67,43 @@ test("compareWorkflowRuns ignores steps only in right", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, []);
+  // Should now detect deploy is missing from left (exists only in right)
+  assert.deepEqual(result, ["step:deploy:missing->skipped"]);
 });
 
-test("compareWorkflowRuns handles empty left array", () => {
+test("compareWorkflowRuns detects both left-only and right-only steps", () => {
+  const left: readonly RunSnapshot[] = [
+    { stepId: "build", status: "done" },
+    { stepId: "test", status: "passed" },
+  ];
+  const right: readonly RunSnapshot[] = [
+    { stepId: "build", status: "done" },
+    { stepId: "deploy", status: "skipped" },
+  ];
+
+  const result = compareWorkflowRuns(left, right);
+
+  // test only exists in left, deploy only exists in right
+  assert.equal(result.length, 2);
+  assert.ok(result.includes("step:test:passed->missing"));
+  assert.ok(result.includes("step:deploy:missing->skipped"));
+});
+
+test("compareWorkflowRuns detects right-only steps with nodeRunId", () => {
+  const left: readonly RunSnapshot[] = [
+    { nodeRunId: "step-1", status: "success" },
+  ];
+  const right: readonly RunSnapshot[] = [
+    { nodeRunId: "step-1", status: "success" },
+    { nodeRunId: "step-2", status: "failed" },
+  ];
+
+  const result = compareWorkflowRuns(left, right);
+
+  assert.deepEqual(result, ["step:step-2:missing_in_left"]);
+});
+
+test("compareWorkflowRuns detects right-only steps when left is empty", () => {
   const left: readonly RunSnapshot[] = [];
   const right: readonly RunSnapshot[] = [
     { stepId: "deploy", status: "failed" },
@@ -78,7 +111,8 @@ test("compareWorkflowRuns handles empty left array", () => {
 
   const result = compareWorkflowRuns(left, right);
 
-  assert.deepEqual(result, []);
+  // Right-only steps should be detected (issue #1922 fix)
+  assert.deepEqual(result, ["step:deploy:missing->failed"]);
 });
 
 test("compareWorkflowRuns handles empty right array", () => {

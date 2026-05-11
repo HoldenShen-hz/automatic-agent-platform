@@ -303,3 +303,65 @@ test("TimeTravelDebugService jumpToStep sets cursor with from < to", () => {
   assert.equal(state.cursor.toEventIndex, 2);
   assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
 });
+
+test("TimeTravelDebugService replayStep handles boundary case where currentEventIndex >= events.length", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  // Advance to end of events
+  service.replayStep(session.sessionId); // currentEventIndex = 1
+  service.replayStep(session.sessionId); // currentEventIndex = 2 (== events.length)
+
+  // Now replayStep should return state with fromEventIndex < toEventIndex
+  const state = service.replayStep(session.sessionId);
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 2);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});
+
+test("TimeTravelDebugService replayStep preserves fromEventIndex < toEventIndex invariant at boundary", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  // Advance past the only event
+  service.replayStep(session.sessionId); // currentEventIndex = 1 (== events.length)
+
+  const state = service.replayStep(session.sessionId);
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 1);
+  assert.equal(state.cursor.toEventIndex, 2);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});
+
+test("TimeTravelDebugService replayStep boundary cursor uses events.length+1 as toEventIndex", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  // Exhaust all events
+  service.replayStep(session.sessionId); // to=1
+  service.replayStep(session.sessionId); // to=2
+  service.replayStep(session.sessionId); // to=3 (events.length)
+
+  const state = service.replayStep(session.sessionId);
+
+  assert.ok(state !== null);
+  // After exhausting 3 events (indices 0,1,2), currentEventIndex=3
+  // At boundary, from=3, to=3+1=4
+  assert.equal(state.cursor.fromEventIndex, 3);
+  assert.equal(state.cursor.toEventIndex, 4);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});

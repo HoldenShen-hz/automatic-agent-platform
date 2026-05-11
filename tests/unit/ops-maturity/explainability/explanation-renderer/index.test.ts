@@ -9,8 +9,8 @@ import {
   renderStructuredExplanation,
   renderPlainTextExplanation,
   renderForAudience,
-  type CausalLink,
 } from "../../../../../src/ops-maturity/explainability/explanation-renderer/index.js";
+import type { CausalLink } from "../../../../../src/ops-maturity/explainability/causal-chain-builder/index.js";
 
 test("renderStageExplanation formats stage and summary", () => {
   const result = renderStageExplanation("plan", "Task completed successfully", []);

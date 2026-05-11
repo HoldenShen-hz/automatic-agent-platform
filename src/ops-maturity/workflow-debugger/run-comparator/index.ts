@@ -15,22 +15,38 @@ export interface RunComparisonDiff {
 }
 
 export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): string[] {
+  const diffs: string[] = [];
+
+  // Build lookup for right side
   const rightByStep = new Map(right.map((item) => [item.nodeRunId ?? item.stepId ?? "", item.status]));
-  return left
-    .filter((item) => rightByStep.get(item.nodeRunId ?? item.stepId ?? "") !== item.status)
-    .map((item) => {
-      const stepId = item.nodeRunId ?? item.stepId ?? "";
-      const rightStatus = rightByStep.get(stepId);
-      if (rightStatus == null) {
-        return item.nodeRunId != null
-          ? `step:${stepId}:missing_in_right`
-          : `step:${stepId}:${item.status}->missing`;
-      }
-      if (item.nodeRunId != null) {
-        return `step:${stepId}:status:${item.status}->${rightStatus}`;
-      }
-      return `step:${stepId}:${item.status}->${rightStatus}`;
-    });
+
+  // Left → Right: detect steps that differ or are missing from right
+  for (const item of left) {
+    const stepId = item.nodeRunId ?? item.stepId ?? "";
+    const rightStatus = rightByStep.get(stepId);
+    if (rightStatus == null) {
+      diffs.push(item.nodeRunId != null
+        ? `step:${stepId}:missing_in_right`
+        : `step:${stepId}:${item.status}->missing`);
+    } else if (rightStatus !== item.status) {
+      diffs.push(item.nodeRunId != null
+        ? `step:${stepId}:status:${item.status}->${rightStatus}`
+        : `step:${stepId}:${item.status}->${rightStatus}`);
+    }
+  }
+
+  // Right → Left: detect steps that exist only in right (missing from left)
+  const leftByStep = new Map(left.map((item) => [item.nodeRunId ?? item.stepId ?? "", true]));
+  for (const item of right) {
+    const stepId = item.nodeRunId ?? item.stepId ?? "";
+    if (!leftByStep.has(stepId)) {
+      diffs.push(item.nodeRunId != null
+        ? `step:${stepId}:missing_in_left`
+        : `step:${stepId}:missing->${item.status}`);
+    }
+  }
+
+  return diffs;
 }
 
 export function buildRunComparison(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): RunComparisonDiff[] {

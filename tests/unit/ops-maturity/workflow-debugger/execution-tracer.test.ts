@@ -267,6 +267,33 @@ test.describe("ExecutionTracer", () => {
       assert.equal(result.status, "active");
     });
 
+    test("active trace returns null for totalDurationMs (not NaN)", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      tracer.recordEvent(trace.traceId, "step-1", "enter");
+
+      const result = tracer.getTrace(trace.traceId);
+
+      assert.ok(result !== null);
+      assert.equal(result.status, "active");
+      // totalDurationMs must be null for active trace, not NaN
+      assert.equal(result.totalDurationMs, null);
+      // Ensure it's not NaN (Number.isNaN check)
+      assert.equal(Number.isNaN(result.totalDurationMs), false);
+    });
+
+    test("stopped trace returns valid totalDurationMs", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      tracer.recordEvent(trace.traceId, "step-1", "enter");
+      tracer.stopTrace(trace.traceId);
+
+      const result = tracer.getTrace(trace.traceId);
+
+      // Stopped trace is removed from activeTraces, so getTrace returns null
+      assert.equal(result, null);
+    });
+
     test("returns null for unknown trace", () => {
       const tracer = new ExecutionTracer();
       const result = tracer.getTrace("unknown");
