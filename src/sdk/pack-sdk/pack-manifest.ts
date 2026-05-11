@@ -1,4 +1,4 @@
-import { createHash, createSign, createVerify } from "node:crypto";
+import { createHash, createSign, createVerify, generateKeyPairSync } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 
 export interface PackCapabilityProfile {
@@ -87,8 +87,8 @@ export interface SecurityIssue {
  * These are heuristic checks - not a substitute for a full security analysis tool.
  */
 const MALICIOUS_CODE_PATTERNS: Array<{ pattern: RegExp; code: string; message: string }> = [
-  { pattern: /eval\s*\(\s*(?:req|request|input|body|params|headers)\s*\)/gi, code: "PACK_SCAN_DYNAMIC_CODE_EXEC", message: "Potentially dangerous dynamic code execution using user input" },
-  { pattern: /Function\s*\(\s*(?:req|request|input|body|params)\s*\)/gi, code: "PACK_SCAN_DYNAMIC_FUNCTION", message: "Potentially dangerous Function constructor with user input" },
+  { pattern: /eval\s*\(\s*(?:req|request|input|body|params|headers)(?:\s*\.\s*\w+)*\s*\)/gi, code: "PACK_SCAN_DYNAMIC_CODE_EXEC", message: "Potentially dangerous dynamic code execution using user input" },
+  { pattern: /Function\s*\(\s*(?:req|request|input|body|params)(?:\s*\.\s*\w+)*\s*\)/gi, code: "PACK_SCAN_DYNAMIC_FUNCTION", message: "Potentially dangerous Function constructor with user input" },
   { pattern: /child_process|exec\s*\(|spawn\s*\(|fork\s*\(/gi, code: "PACK_SCAN_SHELL_EXEC", message: "Potential shell command execution detected" },
   { pattern: /process\.env\.(?:HOME|USER|PATH|SHELL)/gi, code: "PACK_SCAN_ENV_ACCESS", message: "Access to sensitive environment variables detected" },
   { pattern: /__dirname|__filename/gi, code: "PACK_SCAN_FILESYSTEM_BOUNDARY", message: "Filesystem path introspection detected" },
@@ -116,7 +116,7 @@ export function scanPackSecurity(
         : `Found ${matches.length} occurrence(s): ${matches.join(", ")}`;
 
       issues.push({
-        severity: code === "PACK_SCAN_SHELL_EXEC" ? "critical" : "warning",
+        severity: (code === "PACK_SCAN_SHELL_EXEC" || code === "PACK_SCAN_DYNAMIC_CODE_EXEC") ? "critical" : "warning",
         code,
         message,
         evidence,
@@ -229,7 +229,7 @@ export function generateArtifactHash(content: string): string {
  * @returns Object containing base64-encoded private and public keys
  */
 export function generateSigningKeyPair(): { privateKey: string; publicKey: string } {
-  const { privateKey, publicKey } = require("node:crypto").generateKeyPairSync("rsa", {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
     privateKeyEncoding: { type: "pkcs8", format: "pem" },

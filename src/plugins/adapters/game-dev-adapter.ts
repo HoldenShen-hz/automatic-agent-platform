@@ -11,13 +11,14 @@ import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/erro
 import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
 
 // R28-13 fix: add auth check and egress policy to game-dev-adapter
-let credentialFingerprint: string | null = null;
 const gameDevPolicy = new NetworkEgressPolicyService({
   mode: "enforce",
   allowedDomains: ["build-api.unity.com"],
 });
 
 export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
+  // Instance-scoped credential fingerprint - each adapter has its own auth state
+  let credentialFingerprint: string | null = null;
   return {
     pluginId: "plugin.gamedev.unity_adapter",
     spiType: "adapter",

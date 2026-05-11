@@ -300,6 +300,9 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
   if (options.description?.trim()) {
     result.description = options.description.trim();
   }
+  if (result.signing) {
+    enforcePluginSignature(result);
+  }
   return result;
 }
 
@@ -336,7 +339,7 @@ export function defineEvaluator(options: Omit<DefinePluginOptions, "type"> & { p
  */
 export function validatePluginDefinition(definition: PluginDefinition): PluginDefinition {
   const validTypes: PluginType[] = ["tool", "adapter", "retriever", "evaluator", "validator", "planner", "presenter"];
-  return definePlugin({
+  const validated = definePlugin({
     pluginId: definition.pluginId,
     name: definition.name,
     version: definition.version,
@@ -354,4 +357,8 @@ export function validatePluginDefinition(definition: PluginDefinition): PluginDe
     sbomRef: definition.sbomRef,
     signing: definition.signing,
   });
+  if (validated.signing) {
+    enforcePluginSignature(validated);
+  }
+  return validated;
 }

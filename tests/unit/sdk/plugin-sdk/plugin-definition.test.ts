@@ -372,23 +372,29 @@ test("verifyPluginSignature returns false for unsigned plugin", () => {
 });
 
 test("verifyPluginSignature returns false when keyId is not registered", () => {
-  const plugin = definePlugin({
+  // Create PluginDefinition directly to bypass signature enforcement
+  const plugin = {
     pluginId: "test-pack.signed-tool",
     name: "Signed Tool",
     version: "1.0.0",
-    type: "tool",
+    type: "tool" as const,
     capabilities: [{
       name: "execute",
       description: "Execute",
       inputSchema: {},
       outputSchema: {},
     }],
+    resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
+    dependencies: [],
+    security: { sandboxTier: "read_only" as const, egressDomains: [] },
+    spiTypes: ["tool"] as const,
+    domainIds: [],
     signing: {
       keyId: "unknown-key",
       signature: "invalid",
       algorithm: "RSA-SHA256",
     },
-  });
+  };
 
   assert.equal(verifyPluginSignature(plugin), false);
 });
@@ -427,23 +433,29 @@ test("enforcePluginSignature throws when signing keyId is not registered", () =>
     algorithm: "RSA-SHA256",
   });
 
-  const plugin = definePlugin({
+  // Create PluginDefinition directly to bypass signature enforcement
+  const plugin = {
     pluginId: "test-pack.wrong-key",
     name: "Wrong Key",
     version: "1.0.0",
-    type: "tool",
+    type: "tool" as const,
     capabilities: [{
       name: "execute",
       description: "Execute",
       inputSchema: {},
       outputSchema: {},
     }],
+    resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
+    dependencies: [],
+    security: { sandboxTier: "read_only" as const, egressDomains: [] },
+    spiTypes: ["tool"] as const,
+    domainIds: [],
     signing: {
       keyId: "other-key",
       signature: "fake",
       algorithm: "RSA-SHA256",
     },
-  });
+  };
 
   assert.throws(
     () => enforcePluginSignature(plugin),
@@ -464,9 +476,80 @@ test("enforcePluginSignature throws for invalid signature", () => {
     algorithm: "RSA-SHA256",
   });
 
-  const plugin = definePlugin({
+  // Create PluginDefinition directly to bypass signature enforcement
+  const plugin = {
     pluginId: "test-pack.tampered",
     name: "Tampered",
+    version: "1.0.0",
+    type: "tool" as const,
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+    resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
+    dependencies: [],
+    security: { sandboxTier: "read_only" as const, egressDomains: [] },
+    spiTypes: ["tool"] as const,
+    domainIds: [],
+    signing: {
+      keyId: "my-key",
+      signature: "tampered-signature",
+      algorithm: "RSA-SHA256",
+    },
+  };
+
+  assert.throws(
+    () => enforcePluginSignature(plugin),
+    /signature verification failed/i,
+  );
+});
+
+test("definePlugin enforces signature at load time for signed plugins", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  registerPluginSigningVerificationKey({
+    keyId: "load-test-key",
+    publicKeyPem: publicKey,
+    algorithm: "RSA-SHA256",
+  });
+
+  // Should throw because signature is invalid
+  assert.throws(
+    () =>
+      definePlugin({
+        pluginId: "test-pack.signed-load-test",
+        name: "Signed Load Test",
+        version: "1.0.0",
+        type: "tool",
+        capabilities: [
+          {
+            name: "execute",
+            description: "Execute",
+            inputSchema: {},
+            outputSchema: {},
+          },
+        ],
+        signing: {
+          keyId: "load-test-key",
+          signature: "invalid-signature",
+          algorithm: "RSA-SHA256",
+        },
+      }),
+    /signature verification failed/i,
+  );
+});
+
+test("definePlugin allows unsigned plugins without signature enforcement", () => {
+  // This should NOT throw because the plugin is unsigned
+  const result = definePlugin({
+    pluginId: "test-pack.unsigned-allow",
+    name: "Unsigned Allow",
     version: "1.0.0",
     type: "tool",
     capabilities: [{
@@ -475,15 +558,65 @@ test("enforcePluginSignature throws for invalid signature", () => {
       inputSchema: {},
       outputSchema: {},
     }],
+  });
+
+  assert.equal(result.pluginId, "test-pack.unsigned-allow");
+});
+
+test("definePlugin accepts valid signed plugin", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  registerPluginSigningVerificationKey({
+    keyId: "valid-sig-key",
+    publicKeyPem: publicKey,
+    algorithm: "RSA-SHA256",
+  });
+
+  // Create a proper signed plugin
+  const pluginDef = {
+    pluginId: "test-pack.valid-signed",
+    name: "Valid Signed",
+    version: "1.0.0",
+    type: "tool" as const,
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+  };
+
+  // Generate the correct signature by signing the payload
+  const payload = JSON.stringify({
+    pluginId: pluginDef.pluginId,
+    name: pluginDef.name,
+    version: pluginDef.version,
+    type: pluginDef.type,
+    capabilities: pluginDef.capabilities,
+    resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
+    dependencies: [],
+    spiTypes: ["tool"],
+    domainIds: [],
+  });
+
+  const sign = createSign("RSA-SHA256");
+  sign.update(payload);
+  const signature = sign.sign(privateKey, "base64");
+
+  // This should NOT throw because the signature is valid
+  const result = definePlugin({
+    ...pluginDef,
     signing: {
-      keyId: "my-key",
-      signature: "tampered-signature",
+      keyId: "valid-sig-key",
+      signature,
       algorithm: "RSA-SHA256",
     },
   });
 
-  assert.throws(
-    () => enforcePluginSignature(plugin),
-    /signature verification failed/i,
-  );
+  assert.equal(result.pluginId, "test-pack.valid-signed");
+  assert.equal(result.signing?.keyId, "valid-sig-key");
 });

@@ -13,6 +13,15 @@
  * - **Version**: Monotonically increasing version number for each key
  * - **Fencing Token**: Unique token generated per execution to prevent split-brain
  *
+ * ## Concurrency Control
+ *
+ * - **Distributed**: When a DistributedLockAdapter is provided, uses it to acquire a
+ *   named lock ("cas:{key}") before read-check-write, ensuring atomicity across
+ *   multiple processes/nodes.
+ * - **In-process**: When only a repository is provided, uses the repository's own
+ *   locking (e.g., SQLite BEGIN IMMEDIATE transaction). Falls back to in-memory
+ *   Map with a simple counter-based lock for single-process atomicity only.
+ *
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
  */
 
@@ -51,6 +60,7 @@ class InMemoryCasRepository implements CasRepository {
   /**
    * Acquires a lock for a specific key using a simple in-memory locking mechanism.
    * Uses a counter-based lock acquisition that's suitable for single-process concurrency.
+   * NOTE: This does NOT provide distributed concurrency control.
    * @returns A function to release the lock
    */
   private acquireLock(key: string): () => void {
@@ -176,20 +186,106 @@ class InMemoryCasRepository implements CasRepository {
 }
 
 /**
+ * Repository wrapper that adds distributed locking around an existing repository.
+ * Acquires a named lock before read-check-write to ensure atomicity across
+ * multiple processes/nodes.
+ */
+class DistributedLockCasRepository implements CasRepository {
+  public constructor(
+    private readonly inner: CasRepository,
+    private readonly lockAdapter: DistributedLockAdapter,
+  ) {}
+
+  public get(key: string): CasRecord | undefined {
+    return this.inner.get(key);
+  }
+
+  public set(key: string, record: CasRecord): void {
+    return this.inner.set(key, record);
+  }
+
+  public delete(key: string): boolean {
+    return this.inner.delete(key);
+  }
+
+  public has(key: string): boolean {
+    return this.inner.has(key);
+  }
+
+  public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
+    const lockKey = `cas:${key}`;
+    const owner = `cas-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    // Acquire distributed lock before read-check-write
+    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: 10_000 });
+    if (!result.acquired) {
+      // Could not acquire lock - treat as CAS failure
+      const current = this.inner.get(key);
+      const ret: CasResult = { success: false };
+      if (current) {
+        ret.currentValue = current.value;
+        ret.currentVersion = current.version;
+      }
+      return ret;
+    }
+
+    try {
+      // Perform CAS on inner repository while holding the lock
+      return this.inner.compareAndSwap(key, expectedValue, newValue);
+    } finally {
+      this.lockAdapter.release(lockKey, owner);
+    }
+  }
+
+  public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
+    const lockKey = `cas:${key}`;
+    const owner = `cas-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    // Acquire distributed lock before read-check-write
+    const result = this.lockAdapter.acquire({ lockKey, owner, ttlMs: 10_000 });
+    if (!result.acquired) {
+      // Could not acquire lock - treat as CAS failure
+      const current = this.inner.get(key);
+      const ret: CasResult = { success: false };
+      if (current) {
+        ret.currentValue = current.value;
+        ret.currentVersion = current.version;
+      }
+      return ret;
+    }
+
+    try {
+      // Perform CAS on inner repository while holding the lock
+      return this.inner.compareAndSet(key, expectedVersion, newValue);
+    } finally {
+      this.lockAdapter.release(lockKey, owner);
+    }
+  }
+}
+
+/**
  * CAS Service providing optimistic concurrency control via compare-and-swap operations.
  *
  * Implements:
  * - Value-based CAS: compareAndSwap(key, expectedValue, newValue)
  * - Version-based CAS: compareAndSet(key, expectedVersion, newValue)
  * - Read operations: getValue(key), getVersion(key)
+ *
+ * When a DistributedLockAdapter is provided, all CAS operations are protected
+ * by a distributed lock to ensure atomicity across multiple processes/nodes.
  */
 export class CasService {
-  public constructor(private readonly repository: CasRepository = new InMemoryCasRepository()) {}
+  public constructor(
+    private readonly repository: CasRepository = new InMemoryCasRepository(),
+    private readonly lockAdapter?: DistributedLockAdapter,
+  ) {}
 
   /**
    * Performs an atomic compare-and-swap operation.
    *
    * Updates the value only if the current value matches the expected value.
+   * When a DistributedLockAdapter is configured, acquires a distributed lock
+   * before performing the read-check-write to ensure atomicity across processes.
    *
    * @param key - The key to update
    * @param expectedValue - The value expected to be current
@@ -197,13 +293,15 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
-    return this.repository.compareAndSwap(key, expectedValue, newValue);
+    return this.getEffectiveRepository().compareAndSwap(key, expectedValue, newValue);
   }
 
   /**
    * Performs a version-based compare-and-set operation.
    *
    * Updates the value only if the current version matches the expected version.
+   * When a DistributedLockAdapter is configured, acquires a distributed lock
+   * before performing the read-check-write to ensure atomicity across processes.
    *
    * @param key - The key to update
    * @param expectedVersion - The version expected to be current
@@ -211,7 +309,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    return this.repository.compareAndSet(key, expectedVersion, newValue);
+    return this.getEffectiveRepository().compareAndSet(key, expectedVersion, newValue);
   }
 
   /**
@@ -269,8 +367,34 @@ export class CasService {
   public has(key: string): boolean {
     return this.repository.has(key);
   }
+
+  /**
+   * Returns the repository wrapped with distributed locking if configured.
+   */
+  private getEffectiveRepository(): CasRepository {
+    if (this.lockAdapter) {
+      return new DistributedLockCasRepository(this.repository, this.lockAdapter);
+    }
+    return this.repository;
+  }
 }
 
 export function createInMemoryCasService(): CasService {
   return new CasService(new InMemoryCasRepository());
 }
+
+/**
+ * Creates a CAS service with distributed locking for multi-process concurrency.
+ *
+ * @param repository - The underlying repository (e.g., SqliteCasRepository)
+ * @param lockAdapter - The distributed lock adapter (e.g., Redis, SQLite, PostgreSQL)
+ */
+export function createDistributedCasService(
+  repository: CasRepository,
+  lockAdapter: DistributedLockAdapter,
+): CasService {
+  return new CasService(repository, lockAdapter);
+}
+
+// Type for distributed lock adapter - imported from execution layer
+import type { DistributedLockAdapter } from "../../../execution/distributed-lock/distributed-lock-types.js";

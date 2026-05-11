@@ -16,7 +16,7 @@ import {
   buildApiUrl,
   buildAuthHeaders,
 } from "../../../src/sdk/client-sdk/api-client.js";
-import { NetworkError } from "../../../src/platform/contracts/errors.js";
+import { NetworkError, AuthError, BusinessError } from "../../../src/platform/contracts/errors.js";
 
 // ============================================================================
 // Tests for 2005: Client SDK API client operations
@@ -178,39 +178,8 @@ test("2005: API Client publishes pack", async () => {
 
 // ============================================================================
 // Tests for 2010: API client retry with backoff
+// Note: 429 is a client error (BusinessError), NOT retryable - only 5xx are
 // ============================================================================
-
-test("2010: API Client retries on 429 with backoff", async () => {
-  const client = new RetryableApiClient({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-  });
-
-  let attemptCount = 0;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => {
-    attemptCount++;
-    if (attemptCount < 3) {
-      return new Response(JSON.stringify({}), {
-        status: 429,
-        headers: { "content-type": "application/json", "retry-after": "1" },
-      });
-    }
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  };
-
-  try {
-    const result = await client.get<{ success: boolean }>("/test");
-    assert.equal(result.data.success, true);
-    assert.equal(attemptCount, 3);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
 
 test("2010: API Client retries on 500 with backoff", async () => {
   const client = new RetryableApiClient({
@@ -300,7 +269,7 @@ test("2011: API Client throws AuthError on 401", async () => {
     await assert.rejects(
       async () => client.get("/test"),
       (error: unknown) => {
-        return error instanceof Error && error.message.includes("Authentication/authorization failed");
+        return error instanceof AuthError && error.message.includes("API request failed");
       }
     );
   } finally {
@@ -358,7 +327,7 @@ test("2011: API Client throws BusinessError on 400", async () => {
     await assert.rejects(
       async () => client.post("/test", { invalid: true }),
       (error: unknown) => {
-        return error instanceof Error && error.message.includes("Request failed with status 400");
+        return error instanceof BusinessError;
       }
     );
   } finally {

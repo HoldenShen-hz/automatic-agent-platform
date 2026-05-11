@@ -434,11 +434,11 @@ export class RetryableApiClient {
   }
 
   /**
-   * Map of non-idempotent HTTP methods that should NOT be retried automatically.
-   * Per HTTP semantics, POST and DELETE are not idempotent (may cause duplicate side effects).
-   * GET, PUT, PATCH, and HEAD are idempotent and can be safely retried on 5xx errors.
+   * Map of HTTP methods that should NOT be retried automatically.
+   * Only GET requests are retried on 5xx errors.
+   * POST/DELETE/PUT/PATCH are not retried to prevent duplicate side effects.
    */
-  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE"]);
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE", "PUT", "PATCH"]);
 
   /**
    * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.

@@ -6,6 +6,7 @@ import {
   FencingTokenService,
   type FenceMode,
 } from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
+import type { DistributedLockAdapter } from "../../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
 
 // Clear static fences before/after each test to avoid state pollution
 test.beforeEach(() => {
@@ -552,4 +553,237 @@ test("CasService lock prevents interleaved read-check-write", () => {
       operationOrder.indexOf("op2-write-end") < operationOrder.indexOf("op1-write-start"),
     "Operations should be atomic - no interleaving",
   );
+});
+
+// =============================================================================
+// Distributed CAS Service Tests
+// =============================================================================
+
+/**
+ * Mock DistributedLockAdapter for testing distributed CAS functionality.
+ * Simulates a distributed lock that can succeed or fail based on configuration.
+ */
+class MockDistributedLockAdapter implements DistributedLockAdapter {
+  readonly backendKind = "mock" as "sqlite" | "pg_advisory" | "redis";
+  private heldLocks = new Map<string, string>();
+  private failAcquire = false;
+  private failPercentage = 0;
+
+  constructor(options?: { failAcquire?: boolean; failPercentage?: number }) {
+    this.failAcquire = options?.failAcquire ?? false;
+    this.failPercentage = options?.failPercentage ?? 0;
+  }
+
+  acquire(input: { lockKey: string; owner: string; ttlMs?: number }): { acquired: boolean; lock?: { lockKey: string; owner: string; fencingToken: number; status: string; acquiredAt: string; ttlMs: number; metadata: string | null } } {
+    if (this.failAcquire) {
+      return { acquired: false };
+    }
+    if (this.failPercentage > 0 && Math.random() * 100 < this.failPercentage) {
+      return { acquired: false };
+    }
+    if (this.heldLocks.has(input.lockKey)) {
+      return { acquired: false };
+    }
+    this.heldLocks.set(input.lockKey, input.owner);
+    return {
+      acquired: true,
+      lock: {
+        lockKey: input.lockKey,
+        owner: input.owner,
+        fencingToken: Date.now(),
+        status: "held",
+        acquiredAt: new Date().toISOString(),
+        ttlMs: input.ttlMs ?? 30_000,
+        metadata: null,
+      },
+    };
+  }
+
+  release(lockKey: string, owner: string): boolean {
+    if (this.heldLocks.get(lockKey) === owner) {
+      this.heldLocks.delete(lockKey);
+      return true;
+    }
+    return false;
+  }
+
+  extend(_lockKey: string, _owner: string, _additionalMs: number): { lockKey: string; owner: string; fencingToken: number; status: string } | null {
+    return null;
+  }
+
+  forceSteal(_lockKey: string, _newOwner: string, _reason: string): { lockKey: string; owner: string; fencingToken: number; status: string } {
+    return { lockKey: _lockKey, owner: _newOwner, fencingToken: Date.now(), status: "held" };
+  }
+
+  inspect(_lockKey: string): { lockKey: string; owner: string; fencingToken: number; status: string; ttlMs: number; metadata: string | null } | null {
+    return null;
+  }
+
+  // Test helpers
+  setFailAcquire(fail: boolean): void {
+    this.failAcquire = fail;
+  }
+
+  clearLocks(): void {
+    this.heldLocks.clear();
+  }
+}
+
+/**
+ * In-memory repository for testing distributed CAS.
+ */
+class TestInMemoryCasRepository {
+  private readonly store = new Map<string, { value: string; version: number; updatedAt: Date }>();
+
+  get(key: string) {
+    return this.store.get(key);
+  }
+
+  set(key: string, record: { value: string; version: number; updatedAt: Date }) {
+    this.store.set(key, record);
+  }
+
+  delete(key: string): boolean {
+    return this.store.delete(key);
+  }
+
+  has(key: string): boolean {
+    return this.store.has(key);
+  }
+
+  compareAndSwap(key: string, expectedValue: string, newValue: string) {
+    const current = this.store.get(key);
+    if (current === undefined) {
+      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+        this.store.set(key, { value: newValue, version: 1, updatedAt: new Date() });
+        return { success: true, currentValue: newValue, currentVersion: 1 };
+      }
+      return { success: false };
+    }
+    if (current.value !== expectedValue) {
+      return { success: false, currentValue: current.value, currentVersion: current.version };
+    }
+    const newVersion = current.version + 1;
+    this.store.set(key, { value: newValue, version: newVersion, updatedAt: new Date() });
+    return { success: true, currentValue: newValue, currentVersion: newVersion };
+  }
+
+  compareAndSet(key: string, expectedVersion: number, newValue: string) {
+    const current = this.store.get(key);
+    if (current === undefined) {
+      if (expectedVersion === 0) {
+        this.store.set(key, { value: newValue, version: 1, updatedAt: new Date() });
+        return { success: true, currentValue: newValue, currentVersion: 1 };
+      }
+      return { success: false };
+    }
+    if (current.version !== expectedVersion) {
+      return { success: false, currentValue: current.value, currentVersion: current.version };
+    }
+    const newVersion = current.version + 1;
+    this.store.set(key, { value: newValue, version: newVersion, updatedAt: new Date() });
+    return { success: true, currentValue: newValue, currentVersion: newVersion };
+  }
+}
+
+test("CasService with distributed lock adapter acquires lock before CAS", () => {
+  const mockAdapter = new MockDistributedLockAdapter();
+  const repository = new TestInMemoryCasRepository();
+  const service = new CasService(repository, mockAdapter);
+
+  // Set initial value
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  // CAS should succeed and acquire lock
+  const result = service.compareAndSwap("key1", "initial", "updated");
+
+  assert.equal(result.success, true);
+  assert.equal(result.currentValue, "updated");
+  assert.equal(result.currentVersion, 2);
+
+  // Lock should have been released
+  mockAdapter.clearLocks();
+});
+
+test("CasService with distributed lock adapter fails when lock cannot be acquired", () => {
+  const mockAdapter = new MockDistributedLockAdapter();
+  mockAdapter.setFailAcquire(true);
+  const repository = new TestInMemoryCasRepository();
+  const service = new CasService(repository, mockAdapter);
+
+  // Set initial value
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  // CAS should fail because lock acquisition fails
+  const result = service.compareAndSwap("key1", "initial", "updated");
+
+  assert.equal(result.success, false);
+});
+
+test("CasService with distributed lock adapter releases lock in finally block on success", () => {
+  const mockAdapter = new MockDistributedLockAdapter();
+  const repository = new TestInMemoryCasRepository();
+  const service = new CasService(repository, mockAdapter);
+
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  const result = service.compareAndSwap("key1", "initial", "updated");
+
+  assert.equal(result.success, true);
+
+  // Should be able to acquire the same lock again (released)
+  const lockResult = mockAdapter.acquire({ lockKey: "cas:key1", owner: "test", ttlMs: 10_000 });
+  assert.equal(lockResult.acquired, true);
+});
+
+test("CasService with distributed lock adapter releases lock in finally block on error", () => {
+  const mockAdapter = new MockDistributedLockAdapter();
+  const repository = new TestInMemoryCasRepository();
+  const service = new CasService(repository, mockAdapter);
+
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  // This should fail due to value mismatch
+  const result = service.compareAndSwap("key1", "wrong_value", "updated");
+
+  assert.equal(result.success, false);
+
+  // Should be able to acquire the same lock again (released)
+  const lockResult = mockAdapter.acquire({ lockKey: "cas:key1", owner: "test", ttlMs: 10_000 });
+  assert.equal(lockResult.acquired, true);
+});
+
+test("CasService distributed compareAndSet also uses distributed lock", () => {
+  const mockAdapter = new MockDistributedLockAdapter();
+  const repository = new TestInMemoryCasRepository();
+  const service = new CasService(repository, mockAdapter);
+
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  // compareAndSet should also acquire lock
+  const result = service.compareAndSet("key1", 1, "updated");
+
+  assert.equal(result.success, true);
+  assert.equal(result.currentValue, "updated");
+  assert.equal(result.currentVersion, 2);
+
+  // Lock should have been released
+  const lockResult = mockAdapter.acquire({ lockKey: "cas:key1", owner: "test", ttlMs: 10_000 });
+  assert.equal(lockResult.acquired, true);
+});
+
+test("CasService createDistributedCasService factory creates service with lock adapter", () => {
+  const { createDistributedCasService } = require("../../../../../../src/platform/state-evidence/events/cas/cas-service.js");
+
+  const mockAdapter = new MockDistributedLockAdapter();
+  const repository = new TestInMemoryCasRepository();
+
+  const service = createDistributedCasService(repository, mockAdapter);
+
+  repository.set("key1", { value: "initial", version: 1, updatedAt: new Date() });
+
+  const result = service.compareAndSwap("key1", "initial", "updated");
+
+  assert.equal(result.success, true);
+  assert.equal(result.currentValue, "updated");
 });

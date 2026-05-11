@@ -469,6 +469,275 @@ test("RetryableApiClient applies timeout signal when timeoutMs configured", asyn
   }
 });
 
+test("RetryableApiClient does NOT retry POST on 5xx errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.post("/users", { name: "Alice" }));
+    // POST should not be retried, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry DELETE on 5xx errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.delete("/users/1"));
+    // DELETE should not be retried, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry PUT on 5xx errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.put("/users/1", { name: "Bob" }));
+    // PUT should not be retried, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry PATCH on 5xx errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.patch("/users/1", { name: "Charlie" }));
+    // PATCH should not be retried, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry POST on network errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    throw new Error("Transient network error");
+  };
+
+  try {
+    await assert.rejects(client.post("/users", { name: "Alice" }), (error: unknown) => error instanceof Error && error.message === "Transient network error");
+    // POST should not be retried on network errors, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry DELETE on network errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    throw new Error("Transient network error");
+  };
+
+  try {
+    await assert.rejects(client.delete("/users/1"), (error: unknown) => error instanceof Error && error.message === "Transient network error");
+    // DELETE should not be retried on network errors, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry PUT on network errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    throw new Error("Transient network error");
+  };
+
+  try {
+    await assert.rejects(client.put("/users/1", { name: "Bob" }), (error: unknown) => error instanceof Error && error.message === "Transient network error");
+    // PUT should not be retried on network errors, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry PATCH on network errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    throw new Error("Transient network error");
+  };
+
+  try {
+    await assert.rejects(client.patch("/users/1", { name: "Charlie" }), (error: unknown) => error instanceof Error && error.message === "Transient network error");
+    // PATCH should not be retried on network errors, so only 1 attempt
+    assert.equal(attemptCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient retries GET on 5xx errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount === 1) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ id: 1, name: "test" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ id: number; name: string }>("/users/1");
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.data, { id: 1, name: "test" });
+    assert.equal(attemptCount, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient retries GET on network errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, { maxRetries: 3, backoffMs: 10, backoffMultiplier: 2, maxBackoffMs: 100 });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount === 1) {
+      throw new Error("Transient network error");
+    }
+    return new Response(JSON.stringify({ id: 1 }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ id: number }>("/users/1");
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.data, { id: 1 });
+    assert.equal(attemptCount, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("RetryableApiClient retries on network error and succeeds on subsequent attempt", async () => {
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",
