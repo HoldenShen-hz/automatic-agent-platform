@@ -403,6 +403,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
       "reconciling",
       "succeeded",
       "failed",
+      "cancelled",
+      "aborted",
     ];
     if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(

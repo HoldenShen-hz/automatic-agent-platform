@@ -31,6 +31,7 @@ import { createSideEffectRecord, type SideEffectRecord } from "../../contracts/e
 import { SideEffectManager } from "../side-effect-manager.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const MAX_SPAWN_DEPTH = 8;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -266,6 +267,13 @@ class MultiStepToolRegistry {
   }
 
   private async executeSpawnedAgent(state: SpawnedAgentState): Promise<SpawnedAgentExecutionState> {
+    if (this.spawnDepth >= MAX_SPAWN_DEPTH) {
+      throw new ToolExecutionError(
+        "tool.spawn_depth_exceeded",
+        `Spawned agent depth exceeded maximum ${MAX_SPAWN_DEPTH}.`,
+      );
+    }
+
     const previousExecution = state.execution;
     const delegatedTools = this.buildDelegatedToolDefinitions(state.delegatedToolNames);
     state.execution = {

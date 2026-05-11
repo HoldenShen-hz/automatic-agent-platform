@@ -147,6 +147,10 @@ function resolveCandidatePriority(taskPriority: TaskPriority, latestTicket: Exec
   return latestTicket?.priority ?? taskPriority;
 }
 
+function isPreemptionTriggerTicket(ticket: ExecutionTicketRecord): boolean {
+  return ticket.priority === "urgent" || ticket.priority === "high" || ticket.riskClass === "critical";
+}
+
 function isRemoteSessionReadyForDispatch(worker: RegisteredWorkerView): boolean {
   return (
     worker.placement !== "remote"
@@ -190,7 +194,7 @@ export class ExecutionPriorityPreemptionService {
    * updates workflow state for recovery, and emits preemption events.
    */
   public preemptForUrgentTicket(input: PriorityPreemptionRequest): PriorityPreemptionDecision {
-    if (input.ticket.priority !== "urgent") {
+    if (!isPreemptionTriggerTicket(input.ticket)) {
       return {
         outcome: "not_preempted",
         trace: this.buildTrace(input.ticket.priority, null, null, "ticket_not_urgent"),
@@ -316,7 +320,7 @@ export class ExecutionPriorityPreemptionService {
         if (priorityCompare !== 0) {
           return priorityCompare;
         }
-        const progressCompare = (left.worker.lastProgressAt ?? "").localeCompare(right.worker.lastProgressAt ?? "");
+        const progressCompare = left.activeLease.leasedAt.localeCompare(right.activeLease.leasedAt);
         if (progressCompare !== 0) {
           return progressCompare;
         }

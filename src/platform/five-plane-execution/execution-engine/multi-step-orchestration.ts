@@ -13,7 +13,7 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createHarnessRun, createBudgetReservation } from "../../contracts/executable-contracts/index.js";
+import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
 import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { ContextCompactionService, type ContextCompactionResult } from "./context-compaction-service.js";
 import {
@@ -35,6 +35,8 @@ import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workf
 import { StreamBridge } from "../../interface/channel-gateway/stream-bridge.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import { executeStepLoop } from "./multi-step-supervisor.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
+import { ValidationError } from "../../contracts/errors.js";
 import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
@@ -430,33 +432,82 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           harnessRun.fencingToken,
         );
 
-      // R4-25 (INV-BUDGET-001) fix: Create budget reservation BEFORE execution
-      // NOTE: BudgetAllocator.reserve() uses reserveBudgetHardCap which requires a full BudgetLedger
-      // with state machine transitions and version checks. Here we have only a budgetLedgerId string
-      // from input, not a full BudgetLedger. createBudgetReservation() is the appropriate factory
-      // for this context - it creates the BudgetReservation object which is then persisted via raw SQL.
       if (harnessRun.budgetLedgerId) {
-        const budgetReservation = createBudgetReservation({
-          budgetLedgerId: harnessRun.budgetLedgerId,
-          harnessRunId: harnessRun.harnessRunId,
-          amount: 1, // Default budget limit per execution
-          resourceKind: "token",
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        });
-        // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have billing sub-store
-        db.connection.prepare(
-            `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).run(
-            budgetReservation.budgetReservationId,
-            budgetReservation.budgetLedgerId,
-            budgetReservation.harnessRunId,
-            budgetReservation.amount,
-            budgetReservation.resourceKind,
-            budgetReservation.status,
-            budgetReservation.expiresAt,
-            budgetReservation.createdAt,
-          );
+        const ledgerRow = db.connection.prepare(
+          `SELECT budget_ledger_id, tenant_id, harness_run_id, currency, hard_cap, reserved_amount, settled_amount, released_amount, status, version
+           FROM budget_ledgers WHERE budget_ledger_id = ?`,
+        ).get(harnessRun.budgetLedgerId) as {
+          budget_ledger_id: string;
+          tenant_id: string;
+          harness_run_id: string;
+          currency: string;
+          hard_cap: number;
+          reserved_amount: number;
+          settled_amount: number;
+          released_amount: number;
+          status: string;
+          version: number;
+        } | undefined;
+        if (ledgerRow) {
+          const budgetAllocator = new BudgetAllocator();
+          const allocatorContext: BudgetAllocatorContext = {
+            tenantId: ledgerRow.tenant_id,
+            traceId,
+            emittedBy: "multi-step-orchestration",
+            principal: "multi-step-orchestration",
+          };
+          const reserveResult = budgetAllocator.reserve({
+            ledger: {
+              budgetLedgerId: ledgerRow.budget_ledger_id,
+              tenantId: ledgerRow.tenant_id,
+              harnessRunId: ledgerRow.harness_run_id,
+              currency: ledgerRow.currency,
+              hardCap: ledgerRow.hard_cap,
+              reservedAmount: ledgerRow.reserved_amount,
+              settledAmount: ledgerRow.settled_amount,
+              releasedAmount: ledgerRow.released_amount,
+              status: ledgerRow.status as "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing",
+              version: ledgerRow.version,
+            },
+            amount: 1,
+            resourceKind: "token",
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            expectedVersion: ledgerRow.version,
+            context: allocatorContext,
+          });
+          db.transaction(() => {
+            const updateResult = db.connection.prepare(
+              `UPDATE budget_ledgers
+               SET reserved_amount = ?, status = ?, version = ?
+               WHERE budget_ledger_id = ? AND version = ?`,
+            ).run(
+              reserveResult.ledger.reservedAmount,
+              reserveResult.ledger.status,
+              reserveResult.ledger.version,
+              reserveResult.ledger.budgetLedgerId,
+              ledgerRow.version,
+            );
+            if (updateResult.changes !== 1) {
+              throw new ValidationError(
+                "budget_reservation.sql_cas_failed",
+                "budget_reservation.sql_cas_failed: concurrent reserve detected for budget ledger.",
+              );
+            }
+            db.connection.prepare(
+              `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            ).run(
+              reserveResult.reservation.budgetReservationId,
+              reserveResult.reservation.budgetLedgerId,
+              reserveResult.reservation.harnessRunId,
+              reserveResult.reservation.amount,
+              reserveResult.reservation.resourceKind,
+              reserveResult.reservation.status,
+              reserveResult.reservation.expiresAt,
+              reserveResult.reservation.createdAt,
+            );
+          });
+        }
       }
 
       const stepResult = await executeStepLoop(

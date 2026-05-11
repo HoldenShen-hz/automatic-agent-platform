@@ -116,6 +116,23 @@ export class ExecutionLeaseService {
     const occurredAt = input.occurredAt ?? nowIso();
 
     return this.db.transaction(() => {
+      return this.acquireLeaseWithinTransaction({
+        ...input,
+        occurredAt,
+      });
+    });
+  }
+
+  /**
+   * Acquires a new lease using the caller's existing transaction boundary.
+   *
+   * Dispatch reconciliation and claim paths use this to keep lease grant and
+   * ticket claim in the same database transaction, eliminating TOCTOU windows.
+   */
+  public acquireLeaseWithinTransaction(input: AcquireExecutionLeaseInput): ExecutionLeaseDecision {
+    const occurredAt = input.occurredAt ?? nowIso();
+
+    {
       const execution = this.store.dispatch.getExecution(input.executionId);
       if (!execution) {
         throw new StorageError("storage.execution_not_found", `Execution not found: ${input.executionId}`, {
@@ -180,7 +197,7 @@ export class ExecutionLeaseService {
         reasonCode: null,
         lease,
       };
-    });
+    }
   }
 
   /**

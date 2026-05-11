@@ -460,6 +460,7 @@ test("WorkflowDebuggerHealthMonitor issue 1927 - check interval with other optio
 
   assert.equal(monitor.getCheckIntervalMs(), 45_000);
   // Verify other options are also set correctly
-  const snapshot = monitor.getSnapshot("test", new Date(Date.now() - 10_000).toISOString());
+  monitor.recordProbe(makeProbe("testComp", "healthy", 5_000));
+  const snapshot = monitor.getSnapshot("testComp", new Date(Date.now() - 10_000).toISOString());
   assert.equal(snapshot?.status, "healthy");
 });

@@ -459,7 +459,7 @@ export class ExecutionDispatchService {
       let eligibleWorkers = selection.workers;
       let preemptionTrace: DispatchDecisionTrace["preemption"] = null;
       // R6-5: Emergency lane for critical/urgent NodeRun - allow preemption for both urgent priority AND critical risk class
-      if (eligibleWorkers.length === 0 && (ticket.priority === "urgent" || ticket.riskClass === "critical")) {
+      if (eligibleWorkers.length === 0 && (ticket.priority === "urgent" || ticket.priority === "high" || ticket.riskClass === "critical")) {
         const preemption = this.preemption.preemptForUrgentTicket({
           ticket,
           dispatchTarget,
@@ -594,17 +594,65 @@ export class ExecutionDispatchService {
       }
 
       const selectedWorker = eligibleWorkers[0]!;
-      // Issue 1900 fix: Move lease acquisition inside claim transaction to make it atomic
-      // This prevents TOCTOU vulnerability where two workers could get the same lease
-      const leaseResult = this.leases.acquireLease({
-        executionId: ticket.executionId,
-        workerId: selectedWorker.workerId,
-        ttlMs: options.leaseTtlMs,
-        queueName: ticket.queueName,
-        occurredAt,
+      let leaseResult:
+        | ReturnType<ExecutionLeaseService["acquireLease"]>
+        | null = null;
+      // Issue 1900 fix: Keep lease acquisition and claim in the same transaction boundary.
+      this.db.transaction(() => {
+        leaseResult = this.leases.acquireLeaseWithinTransaction({
+          executionId: ticket.executionId,
+          workerId: selectedWorker.workerId,
+          ttlMs: options.leaseTtlMs,
+          queueName: ticket.queueName,
+          occurredAt,
+        });
+        if (leaseResult.outcome !== "granted" || !leaseResult.lease) {
+          return;
+        }
+
+        this.store.worker.claimExecutionTicket({
+          ticketId: ticket.id,
+          assignedWorkerId: selectedWorker.workerId,
+          leaseId: leaseResult.lease.id,
+          claimedAt: occurredAt,
+        });
+        const workerSnapshot = this.store.worker.getWorkerSnapshot(selectedWorker.workerId);
+        if (workerSnapshot) {
+          const runningExecutionIds = new Set(parseJsonArray(workerSnapshot.runningExecutionsJson));
+          runningExecutionIds.add(ticket.executionId);
+          this.store.worker.upsertWorkerSnapshot({
+            ...workerSnapshot,
+            status: "busy",
+            activeLeaseCount: runningExecutionIds.size,
+            runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
+            updatedAt: occurredAt,
+          });
+        }
+        const execution = this.store.dispatch.getExecution(ticket.executionId);
+        this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: ticket.taskId,
+          executionId: ticket.executionId,
+          eventType: "dispatch:ticket_claimed",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            ticketId: ticket.id,
+            workerId: selectedWorker.workerId,
+            leaseId: leaseResult.lease.id,
+            queueName: ticket.queueName,
+            dispatchTarget,
+            remoteAvailability,
+            requiredIsolationLevel,
+            requiredRepoVersion,
+            fallbackApplied: selection.fallbackApplied,
+            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+          }),
+          traceId: execution?.traceId ?? null,
+          createdAt: occurredAt,
+        });
       });
 
-      if (leaseResult.outcome !== "granted" || !leaseResult.lease) {
+      if (leaseResult?.outcome !== "granted" || !leaseResult.lease) {
         blockedReason = leaseResult.reasonCode;
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
@@ -616,7 +664,7 @@ export class ExecutionDispatchService {
           outcome: "blocked",
           reasonCode: leaseResult.reasonCode,
           selectedWorkerId: selectedWorker.workerId,
-          leaseId: leaseResult.lease?.id ?? null,
+          leaseId: leaseResult?.lease?.id ?? null,
           fallbackApplied: selection.fallbackApplied,
           preemption: preemptionTrace,
           evaluations,
@@ -638,49 +686,6 @@ export class ExecutionDispatchService {
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
-      });
-      // Issue 1900 fix: Atomic lease + claim to prevent double worker allocation
-      this.db.transaction(() => {
-        this.store.worker.claimExecutionTicket({
-          ticketId: ticket.id,
-          assignedWorkerId: selectedWorker.workerId,
-          leaseId: leaseResult.lease?.id ?? "",
-          claimedAt: occurredAt,
-        });
-        const workerSnapshot = this.store.worker.getWorkerSnapshot(selectedWorker.workerId);
-        if (workerSnapshot) {
-          const runningExecutionIds = new Set(parseJsonArray(workerSnapshot.runningExecutionsJson));
-          runningExecutionIds.add(ticket.executionId);
-          this.store.worker.upsertWorkerSnapshot({
-            ...workerSnapshot,
-            status: "busy",
-            activeLeaseCount: Math.max(workerSnapshot.activeLeaseCount ?? 0, runningExecutionIds.size),
-            runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
-            updatedAt: occurredAt,
-          });
-        }
-        const execution = this.store.dispatch.getExecution(ticket.executionId);
-        this.store.event.insertEvent({
-          id: newId("evt"),
-          taskId: ticket.taskId,
-          executionId: ticket.executionId,
-          eventType: "dispatch:ticket_claimed",
-          eventTier: "tier_2",
-          payloadJson: JSON.stringify({
-            ticketId: ticket.id,
-            workerId: selectedWorker.workerId,
-            leaseId: leaseResult.lease?.id ?? null,
-            queueName: ticket.queueName,
-            dispatchTarget,
-            remoteAvailability,
-            requiredIsolationLevel,
-            requiredRepoVersion,
-            fallbackApplied: selection.fallbackApplied,
-            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
-          }),
-          traceId: execution?.traceId ?? null,
-          createdAt: occurredAt,
-        });
       });
 
       return {

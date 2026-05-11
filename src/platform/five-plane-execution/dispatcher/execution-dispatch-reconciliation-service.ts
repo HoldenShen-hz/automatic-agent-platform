@@ -246,28 +246,15 @@ export class ExecutionDispatchReconciliationService {
       };
     }
 
-    this.db.transaction(() => {
+    const replacementTicket = this.db.transaction(() => {
       this.store.worker.invalidateExecutionTicket({
         ticketId: ticket.id,
         status: "expired",
         invalidatedAt: occurredAt,
       });
       this.releaseWorkerExecutionReference(ticket, occurredAt);
-      this.recordReconciledEvent(ticket, issue, occurredAt, null);
-    });
-
-    const replacement = this.dispatch.createTicket({
-      executionId: ticket.executionId,
-      priority: ticket.priority,
-      queueName: ticket.queueName,
-      dispatchTarget: ticket.dispatchTarget ?? "any",
-      requiredIsolationLevel: ticket.requiredIsolationLevel ?? "standard",
-      requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
-      dispatchAfter: ticket.dispatchAfter,
-      occurredAt,
-    });
-
-    this.db.transaction(() => {
+      const replacement = this.createReplacementTicketRecord(ticket, occurredAt);
+      this.recordReconciledEvent(ticket, issue, occurredAt, replacement.id);
       this.store.event.insertEvent({
         id: newId("evt"),
         taskId: ticket.taskId,
@@ -276,12 +263,13 @@ export class ExecutionDispatchReconciliationService {
         eventTier: "tier_2",
         payloadJson: JSON.stringify({
           previousTicketId: ticket.id,
-          replacementTicketId: replacement.ticket.id,
+          replacementTicketId: replacement.id,
           reasonCode: issue.reasonCode,
         }),
         traceId: this.store.dispatch.getExecution(ticket.executionId)?.traceId ?? null,
         createdAt: occurredAt,
       });
+      return replacement;
     });
 
     return {
@@ -291,8 +279,35 @@ export class ExecutionDispatchReconciliationService {
       ticketId: issue.ticketId,
       applied: true,
       resolutionAction: issue.resolutionAction,
-      replacementTicketId: replacement.ticket.id,
+      replacementTicketId: replacementTicket.id,
     };
+  }
+
+  private createReplacementTicketRecord(ticket: ExecutionTicketRecord, occurredAt: string): ExecutionTicketRecord {
+    const replacement: ExecutionTicketRecord = {
+      id: newId("ticket"),
+      executionId: ticket.executionId,
+      taskId: ticket.taskId,
+      tenantId: ticket.tenantId,
+      priority: ticket.priority,
+      queueName: ticket.queueName,
+      dispatchTarget: ticket.dispatchTarget,
+      requiredIsolationLevel: ticket.requiredIsolationLevel,
+      requiredRepoVersion: ticket.requiredRepoVersion,
+      requiredCapabilitiesJson: ticket.requiredCapabilitiesJson,
+      dispatchAfter: ticket.dispatchAfter,
+      attempt: ticket.attempt,
+      status: "pending",
+      assignedWorkerId: null,
+      leaseId: null,
+      claimedAt: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      createdAt: occurredAt,
+      updatedAt: occurredAt,
+    };
+    this.store.worker.insertExecutionTicket(replacement);
+    return replacement;
   }
 
   private releaseWorkerExecutionReference(ticket: ExecutionTicketRecord, occurredAt: string): void {

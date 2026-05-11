@@ -59,6 +59,7 @@ import { newId } from "../../contracts/types/ids.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -843,20 +844,38 @@ export class OapeflirLoopService {
       expectedVersion: ledger.version,
       context: allocatorContext,
     });
-    // Persist the budget reservation via raw SQL insert
-    storage.sql.connection.prepare(
-      `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      result.reservation.budgetReservationId,
-      result.reservation.budgetLedgerId,
-      result.reservation.harnessRunId,
-      result.reservation.amount,
-      result.reservation.resourceKind,
-      result.reservation.status,
-      result.reservation.expiresAt,
-      result.reservation.createdAt,
-    );
+    storage.sql.transaction(() => {
+      const updateResult = storage.sql.connection.prepare(
+        `UPDATE budget_ledgers
+         SET reserved_amount = ?, status = ?, version = ?
+         WHERE budget_ledger_id = ? AND version = ?`,
+      ).run(
+        result.ledger.reservedAmount,
+        result.ledger.status,
+        result.ledger.version,
+        ledger.budgetLedgerId,
+        ledger.version,
+      );
+      if (updateResult.changes !== 1) {
+        throw new ValidationError(
+          "budget_reservation.sql_cas_failed",
+          "budget_reservation.sql_cas_failed: concurrent reserve detected for budget ledger.",
+        );
+      }
+      storage.sql.connection.prepare(
+        `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        result.reservation.budgetReservationId,
+        result.reservation.budgetLedgerId,
+        result.reservation.harnessRunId,
+        result.reservation.amount,
+        result.reservation.resourceKind,
+        result.reservation.status,
+        result.reservation.expiresAt,
+        result.reservation.createdAt,
+      );
+    });
   }
 
   /**
