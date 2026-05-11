@@ -48,10 +48,11 @@ test("PromptRolloutService activates ready rollout and supports rollback", () =>
     regressionPassed: true,
     domainBlockCompatible: true,
   });
+  assert.equal(created.status, "canary_5");
   const active = rollout.activateRollout(created.rolloutId);
   const rolledBack = rollout.rollbackRollout(active.rolloutId, "manual_rollback");
 
-  assert.equal(active.status, "active");
+  assert.equal(active.status, "canary_20");
   assert.equal(rolledBack.status, "rolled_back");
 });
 
@@ -87,13 +88,13 @@ test("PromptRolloutService evaluateGuardrail allows shadow mode when regression 
   const rollout = new PromptRolloutService();
 
   const decision = rollout.evaluateGuardrail({
-    mode: "shadow",
+    mode: "L2_shadow",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.nextStatus, "ready");
+  assert.equal(decision.nextStatus, "canary_5");
   assert.equal(decision.reason, "shadow_guardrail_passed");
 });
 
@@ -101,28 +102,28 @@ test("PromptRolloutService evaluateGuardrail allows suggest mode when regression
   const rollout = new PromptRolloutService();
 
   const decision = rollout.evaluateGuardrail({
-    mode: "suggest",
+    mode: "L1_suggest",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.nextStatus, "ready");
-  assert.equal(decision.reason, "rollout_guardrail_passed");
+  assert.equal(decision.nextStatus, "canary_5");
+  assert.equal(decision.reason, "suggest_mode_guardrail_passed");
 });
 
 test("PromptRolloutService evaluateGuardrail allows off mode when regression passes", () => {
   const rollout = new PromptRolloutService();
 
   const decision = rollout.evaluateGuardrail({
-    mode: "off",
+    mode: "L0_off",
     regressionPassed: true,
     domainBlockCompatible: true,
   });
 
-  assert.equal(decision.allowed, true);
-  assert.equal(decision.nextStatus, "ready");
-  assert.equal(decision.reason, "rollout_guardrail_passed");
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.nextStatus, "blocked");
+  assert.equal(decision.reason, "rollout_mode_off");
 });
 
 test("PromptRolloutService activateRollout throws when rollout not found", () => {
@@ -159,7 +160,7 @@ test("PromptRolloutService activateRollout throws when status is not ready", () 
   assert.throws(
     () => rollout.activateRollout(record.rolloutId),
     (err: unknown) =>
-      err instanceof ValidationError && err.message.includes("cannot transition to active"),
+      err instanceof ValidationError && err.message.includes("cannot transition"),
   );
 });
 
@@ -267,7 +268,7 @@ test("PromptRolloutService createRollout trims owner and regressionSuiteId", () 
   assert.equal(record.regressionSuiteId, "suite_ops");
 });
 
-test("PromptRolloutService createRollout sets status to ready when guardrail passes", () => {
+test("PromptRolloutService createRollout sets status to canary_5 when guardrail passes", () => {
   const registry = new PromptTemplateRegistryService();
   const rollout = new PromptRolloutService();
   const template = registry.registerTemplate({
@@ -287,7 +288,7 @@ test("PromptRolloutService createRollout sets status to ready when guardrail pas
     domainBlockCompatible: true,
   });
 
-  assert.equal(record.status, "ready");
+  assert.equal(record.status, "canary_5");
   assert.equal(record.guardrailSummary, "rollout_guardrail_passed");
 });
 

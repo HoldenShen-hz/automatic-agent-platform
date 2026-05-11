@@ -42,10 +42,15 @@ export interface RecipeExecutorOptions {
   metricsCollector?: RecipeMetricsCollector;
 }
 
+export interface WorkflowQuery {
+  existsWorkflow(workflowId: string, tenantId?: string | null): Promise<boolean> | boolean;
+}
+
 export class RecipeExecutor {
   public constructor(
     private readonly workflowRegistry: WorkflowRegistry | null = null,
     private readonly options: RecipeExecutorOptions = {},
+    private readonly workflowQuery?: WorkflowQuery | null,
   ) {}
 
   public async execute(
@@ -56,7 +61,7 @@ export class RecipeExecutor {
     let metrics: RecipeExecutionMetrics | null = null;
     try {
       const parsed = DomainRecipeSchema.parse(recipe);
-      if (!this.workflowExists(parsed.defaultWorkflowId)) {
+      if (!await this.workflowExists(parsed.defaultWorkflowId)) {
         const result = {
           success: false,
           executionId: context.executionId,
@@ -123,7 +128,13 @@ export class RecipeExecutor {
     }
   }
 
-  private workflowExists(workflowId: string): boolean {
+  private async workflowExists(workflowId: string, tenantId?: string | null): Promise<boolean> {
+    if (this.workflowQuery) {
+      const result = this.workflowQuery.existsWorkflow(workflowId, tenantId);
+      // Unwrap promised boolean or plain boolean
+      return typeof result === "boolean" ? result : await result;
+    }
+    // Fallback: in-memory registry lookup
     return this.workflowRegistry?.get(workflowId) != null;
   }
 }

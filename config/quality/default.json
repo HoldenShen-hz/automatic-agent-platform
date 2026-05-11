@@ -5,9 +5,9 @@
     "enforcement": "blocking"
   },
   "qualityScoreWeights": {
-    "successSignal": 0.35,
-    "completionOutcome": 0.45,
-    "failureSignal": 0.3,
+    "successSignal": 0.3,
+    "completionOutcome": 0.4,
+    "failureSignal": 0.2,
     "partialSignal": 0.1
   },
   "actionThresholds": {

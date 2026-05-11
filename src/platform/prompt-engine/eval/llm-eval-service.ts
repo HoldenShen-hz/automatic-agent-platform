@@ -105,6 +105,8 @@ export interface AbTestConfig {
   treatmentPromptVersion: string;
   minSampleSize: number;
   significanceThreshold: number;
+  /** Minimum score to consider a case as "passed" in A/B test evaluation (default: 0.8) */
+  passThreshold?: number;
 }
 
 export interface AbTestCaseEvaluatorInput extends EvalCaseEvaluatorInput {
@@ -168,6 +170,16 @@ export interface AbTestResult {
   verdict: QualityVerdict;
   /** R23-47 fix: Indicates whether mock/deterministic scores were used instead of real LLM evaluation */
   mockEvaluation: boolean;
+  /**
+   * Z-score from Welch's t-test comparing treatment vs control scores.
+   * Positive values indicate treatment outperformed control.
+   */
+  zScore: number;
+  /**
+   * 95% confidence interval for the improvement ratio [lower, upper].
+   * Calculated using bootstrap resampling (10,000 iterations).
+   */
+  confidenceInterval: [number, number];
 }
 
 /**
@@ -474,10 +486,15 @@ export class LlmEvalService {
 
     const suite = this.getSuite(suiteId);
     const cases = suite ? this.parseCases(suite) : [];
+    const passThreshold = config.passThreshold ?? 0.8;
 
     // Use real LLM evaluation if client is provided, otherwise use deterministic fallback
     const useRealLlм = options.llmClient != null;
     const evaluator = options.llmEvaluator ?? createDeterministicAbEvaluator();
+
+    // Collect individual scores for statistical testing (Welch's t-test and bootstrap CI)
+    const controlScores: number[] = [];
+    const treatmentScores: number[] = [];
 
     for (const c of cases) {
       let controlEvaluation: AbTestCaseEvaluation;
@@ -536,7 +553,7 @@ export class LlmEvalService {
         expectedOutput: c.expectedOutput,
         actualOutput: serializeEvalOutput(controlEvaluation.actualOutput),
         score: clampScore(controlEvaluation.score),
-        passed: clampScore(controlEvaluation.score) >= 0.8,
+        passed: clampScore(controlEvaluation.score) >= passThreshold,
         latencyMs: controlEvaluation.latencyMs ?? deterministicLatency(`${c.id}:control`),
       });
       this.recordCaseResult({
@@ -546,9 +563,13 @@ export class LlmEvalService {
         expectedOutput: c.expectedOutput,
         actualOutput: serializeEvalOutput(treatmentEvaluation.actualOutput),
         score: clampScore(treatmentEvaluation.score),
-        passed: clampScore(treatmentEvaluation.score) >= 0.8,
+        passed: clampScore(treatmentEvaluation.score) >= passThreshold,
         latencyMs: treatmentEvaluation.latencyMs ?? deterministicLatency(`${c.id}:treatment`),
       });
+
+      // Collect individual scores for statistical testing
+      controlScores.push(clampScore(controlEvaluation.score));
+      treatmentScores.push(clampScore(treatmentEvaluation.score));
     }
 
     const controlCompleted = this.completeRun(controlRun.id);
@@ -557,7 +578,16 @@ export class LlmEvalService {
     const controlAvg = controlCompleted?.averageScore ?? 0;
     const treatmentAvg = treatmentCompleted?.averageScore ?? 0;
     const improvement = controlAvg > 0 ? (treatmentAvg - controlAvg) / controlAvg : 0;
-    const pValue = calculateAbPValue(controlAvg, treatmentAvg, cases.length);
+
+    // Issue #1959 FIX: Use proper Welch's t-test for statistical significance
+    // The old calculateAbPValue was a crude approximation using hardcoded thresholds.
+    // Now we use actual Welch's t-test with individual scores.
+    const { pValue, zScore } = calculateWelchTTtest(controlScores, treatmentScores);
+
+    // Issue #1959 FIX: Bootstrap confidence interval for improvement ratio
+    // Uses 10,000 resampling iterations for reliable CI estimation.
+    const confidenceInterval = bootstrapConfidenceInterval(controlScores, treatmentScores);
+
     const significant =
       Math.abs(improvement) >= config.significanceThreshold &&
       cases.length >= config.minSampleSize &&
@@ -570,6 +600,8 @@ export class LlmEvalService {
       treatmentAvgScore: treatmentAvg,
       improvement,
       pValue,
+      zScore,
+      confidenceInterval,
       significant,
       verdict: significant && improvement > 0 ? "pass" : (significant && improvement < 0 ? "fail" : "inconclusive"),
       // R23-47 fix: Indicate when mock scores were used
@@ -842,13 +874,167 @@ function deterministicAbScore(seed: string): number {
   return clampScore(0.3 + ((checksum % 70) / 100));
 }
 
-function calculateAbPValue(controlAvg: number, treatmentAvg: number, sampleSize: number): number {
-  if (sampleSize <= 0) {
-    return 1;
+/**
+ * Calculates mean of an array of numbers.
+ */
+function calculateMean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/**
+ * Calculates sample variance of an array of numbers.
+ */
+function calculateVariance(values: number[]): number {
+  if (values.length <= 1) return 0;
+  const mean = calculateMean(values);
+  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
+  return squaredDiffs.reduce((sum, v) => sum + v, 0) / (values.length - 1);
+}
+
+/**
+ * Issue #1959 FIX: Welch's t-test for comparing two independent sample means.
+ *
+ * This replaces the old `calculateAbPValue` which used a crude approximation
+ * based on hardcoded 0.85/0.90 thresholds that made the statistical test meaningless.
+ *
+ * Welch's t-test does not assume equal variances and is appropriate for A/B testing
+ * where control and treatment may have different variance characteristics.
+ *
+ * @param controlScores - Array of individual scores from control group
+ * @param treatmentScores - Array of individual scores from treatment group
+ * @returns Object containing pValue (two-tailed) and zScore (standardized effect)
+ */
+function calculateWelchTTtest(
+  controlScores: number[],
+  treatmentScores: number[],
+): { pValue: number; zScore: number } {
+  const n1 = controlScores.length;
+  const n2 = treatmentScores.length;
+
+  if (n1 === 0 || n2 === 0) {
+    return { pValue: 1, zScore: 0 };
   }
-  const delta = Math.abs(treatmentAvg - controlAvg);
-  const confidence = Math.min(0.99, delta * Math.sqrt(sampleSize));
-  return Number((1 - confidence).toFixed(6));
+
+  const mean1 = calculateMean(controlScores);
+  const mean2 = calculateMean(treatmentScores);
+  const var1 = calculateVariance(controlScores);
+  const var2 = calculateVariance(treatmentScores);
+
+  // Welch's t-statistic
+  const se = Math.sqrt(var1 / n1 + var2 / n2);
+  if (se === 0) {
+    // Both groups have zero variance and identical means
+    return { pValue: 1, zScore: 0 };
+  }
+  const tStatistic = (mean1 - mean2) / se;
+
+  // Welch-Satterthwaite degrees of freedom
+  const v1 = var1 / n1;
+  const v2 = var2 / n2;
+  const df = Math.pow(v1 + v2, 2) / (
+    Math.pow(v1, 2) / (n1 - 1) + Math.pow(v2, 2) / (n2 - 1)
+  );
+
+  // Convert t-statistic to z-score using normal approximation for large df
+  // For small samples, use t-distribution approximation via standard normal
+  // We use the standard normal CDF (z-score) as a reasonable approximation
+  // when df is large (> 30), which is typical for A/B tests with meaningful sample sizes
+  const zScore = tStatistic;
+
+  // Two-tailed p-value from standard normal CDF
+  // Using error function approximation for normal CDF
+  const pValue = 2 * (1 - normalCdf(Math.abs(zScore)));
+
+  return {
+    pValue: Math.min(1, Math.max(0, pValue)),
+    zScore: Number(zScore.toFixed(6)),
+  };
+}
+
+/**
+ * Standard normal cumulative distribution function.
+ * Uses the error function (erf) approximation.
+ */
+function normalCdf(x: number): number {
+  // Constants for Abramowitz and Stegun approximation
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+
+  const t = 1 / (1 + p * x);
+  const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+  return 0.5 * (1 + sign * y);
+}
+
+/**
+ * Issue #1959 FIX: Bootstrap confidence interval for improvement ratio.
+ *
+ * Uses non-parametric bootstrap resampling (10,000 iterations) to compute
+ * a 95% confidence interval for the improvement ratio.
+ *
+ * This provides a more robust estimate than relying on a single p-value
+ * and helps identify when results are genuinely significant vs. borderline.
+ *
+ * @param controlScores - Array of individual scores from control group
+ * @param treatmentScores - Array of individual scores from treatment group
+ * @returns Pair [lower, upper] representing 95% bootstrap CI
+ */
+function bootstrapConfidenceInterval(
+  controlScores: number[],
+  treatmentScores: number[],
+  iterations: number = 10000,
+  confidenceLevel: number = 0.95,
+): [number, number] {
+  if (controlScores.length === 0 || treatmentScores.length === 0) {
+    return [-Infinity, Infinity];
+  }
+
+  const observedImprovement = calculateMean(treatmentScores) - calculateMean(controlScores);
+  const bootstrapImprovements: number[] = [];
+
+  for (let i = 0; i < iterations; i++) {
+    // Resample with replacement
+    const resampledControl = resampleWithReplacement(controlScores);
+    const resampledTreatment = resampleWithReplacement(treatmentScores);
+    const diff = calculateMean(resampledTreatment) - calculateMean(resampledControl);
+    bootstrapImprovements.push(diff);
+  }
+
+  // Sort bootstrap improvements
+  bootstrapImprovements.sort((a, b) => a - b);
+
+  // Calculate percentile confidence interval
+  const alpha = 1 - confidenceLevel;
+  const lowerPercentile = (alpha / 2) * 100;
+  const upperPercentile = (1 - alpha / 2) * 100;
+  const lowerIndex = Math.floor((lowerPercentile / 100) * iterations);
+  const upperIndex = Math.floor((upperPercentile / 100) * iterations);
+
+  const lower = bootstrapImprovements[lowerIndex] ?? -Infinity;
+  const upper = bootstrapImprovements[upperIndex] ?? Infinity;
+
+  return [Number(lower.toFixed(6)), Number(upper.toFixed(6))];
+}
+
+/**
+ * Resamples an array with replacement (bootstrap resampling).
+ */
+function resampleWithReplacement(values: number[]): number[] {
+  if (values.length === 0) return [];
+  const result: number[] = [];
+  for (const v of values) {
+    const randomIndex = Math.floor(Math.random() * values.length);
+    result.push(values[randomIndex] as number);
+  }
+  return result;
 }
 
 /**

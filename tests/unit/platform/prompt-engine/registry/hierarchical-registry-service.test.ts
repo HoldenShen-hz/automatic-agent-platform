@@ -341,3 +341,79 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles non-100 
   assert.ok(counts.v1_0 >= 70 && counts.v1_0 <= 130, `v1.0 count ${counts.v1_0} not in expected range [70, 130]`);
   assert.ok(counts.v2_0 >= 170 && counts.v2_0 <= 230, `v2.0 count ${counts.v2_0} not in expected range [170, 230]`);
 });
+
+// Issue 1962 fix: Verify findBundle respects version parameter
+test("HierarchicalPromptRegistryService.deprecateBundle deprecates specific version with displayVersion format", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  // Register two versions: v1.0 and v2.0
+  registry.registerBundle(createTestBundle("multi-version", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("multi-version", "v2.0"), "global");
+
+  // Deprecate using displayVersion format (with "v" prefix)
+  registry.deprecateBundle("multi-version", "v1.0", "global");
+
+  // v1.0 should be deprecated but v2.0 should still be available via getBundle
+  const versions = registry.listBundleVersions("multi-version");
+  assert.equal(versions.length, 2);
+  const v1Entry = versions.find((v) => v.displayVersion === "v1.0");
+  const v2Entry = versions.find((v) => v.displayVersion === "v2.0");
+  assert.equal(v1Entry?.deprecated, true);
+  assert.equal(v2Entry?.deprecated, false);
+});
+
+// Issue 1962 fix: Verify removeBundle removes specific version
+test("HierarchicalPromptRegistryService.removeBundle removes specific version", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  registry.registerBundle(createTestBundle("remove-test", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("remove-test", "v2.0"), "global");
+
+  // Remove v1.0 using displayVersion format
+  const removed = registry.removeBundle("remove-test", "v1.0", "global");
+  assert.equal(removed, true);
+
+  // v1.0 should be gone, v2.0 should remain
+  const versions = registry.listBundleVersions("remove-test");
+  assert.equal(versions.length, 1);
+  assert.equal(versions[0]?.displayVersion, "v2.0");
+});
+
+// Issue 1962 fix: Verify findBundle with version="" falls back to default bundle
+test("HierarchicalPromptRegistryService.getBundle returns default bundle when no version specified", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  // Register v1.0 with lower weight and v2.0 with higher weight
+  registry.registerBundle({
+    ...createTestBundle("default-test", "v1.0"),
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 20,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+  registry.registerBundle({
+    ...createTestBundle("default-test", "v2.0"),
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 80,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+
+  // getBundle without version should return default (highest weight)
+  const resolved = registry.resolveBundleForTraffic("default-test", "classification", undefined, undefined, "test-key");
+  assert.ok(resolved !== null);
+  assert.equal(resolved!.version, 200); // v2.0 normalizes to version 200
+});

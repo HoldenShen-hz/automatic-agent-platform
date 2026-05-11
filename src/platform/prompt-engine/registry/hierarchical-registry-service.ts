@@ -382,9 +382,14 @@ export class HierarchicalPromptRegistryService {
 
     // R28-18 fix: if version is specified, find the exact version; otherwise find default bundle
     if (version !== undefined && version !== "") {
-      const versionNum = Number(version);
-      const bundle = bundles.get(String(versionNum));
-      return bundle && bundle.metadata.deprecated !== true ? bundle : null;
+      // Strip 'v' prefix if present (displayVersion format like "v1.0" → "1.0")
+      const normalizedVersion = version.startsWith("v") ? version.slice(1) : version;
+      const versionNum = Number(normalizedVersion);
+      if (!isNaN(versionNum)) {
+        const bundle = bundles.get(String(versionNum));
+        return bundle && bundle.metadata.deprecated !== true ? bundle : null;
+      }
+      return null;
     }
 
     // No version specified — find the default bundle (highest weight, then most recent)

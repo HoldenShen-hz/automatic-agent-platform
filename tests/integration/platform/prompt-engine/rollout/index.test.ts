@@ -27,9 +27,9 @@ test("PromptRolloutService integration with PromptTemplateRegistryService create
 
   assert.equal(record.templateKey, "integration_template");
   assert.equal(record.version, "v1");
-  assert.equal(record.status, "ready");
+  assert.equal(record.status, "canary_5");
   assert.equal(record.mode, "L1_suggest");
-  assert.equal(record.guardrailSummary, "rollout_guardrail_passed");
+  assert.equal(record.guardrailSummary, "suggest_mode_guardrail_passed");
 });
 
 test("PromptRolloutService integration - full lifecycle: create, activate, rollback", () => {
@@ -52,10 +52,10 @@ test("PromptRolloutService integration - full lifecycle: create, activate, rollb
     regressionPassed: true,
     domainBlockCompatible: true,
   });
-  assert.equal(created.status, "ready");
+  assert.equal(created.status, "canary_5");
 
   const activated = rolloutService.activateRollout(created.rolloutId);
-  assert.equal(activated.status, "active");
+  assert.equal(activated.status, "canary_20");
 
   const rolledBack = rolloutService.rollbackRollout(activated.rolloutId, "manual_rollback_reason");
   assert.equal(rolledBack.status, "rolled_back");
@@ -87,7 +87,7 @@ test("PromptRolloutService integration - blocked rollout cannot be activated", (
 
   assert.throws(
     () => rolloutService.activateRollout(blocked.rolloutId),
-    (err: unknown) => err instanceof Error && err.message.includes("cannot transition to active"),
+    (err: unknown) => err instanceof Error && err.message.includes("cannot transition"),
   );
 });
 

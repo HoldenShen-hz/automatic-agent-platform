@@ -212,9 +212,15 @@ test("AbTestResult structure is correct", () => {
     pValue: 0.01,
     significant: true,
     verdict: "pass",
+    mockEvaluation: false,
+    zScore: 2.3,
+    confidenceInterval: [-0.01, 0.05],
   };
   assert.equal(result.improvement, 0.02);
   assert.equal(result.significant, true);
+  assert.equal(result.mockEvaluation, false);
+  assert.equal(typeof result.zScore, "number");
+  assert.equal(Array.isArray(result.confidenceInterval), true);
 });
 
 test("CiGateResult structure is correct", () => {

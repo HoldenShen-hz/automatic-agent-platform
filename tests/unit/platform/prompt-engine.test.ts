@@ -24,7 +24,6 @@ import { JudgeProviderRegistryService } from "../../../src/platform/prompt-engin
 import { CrossProviderJudgeService } from "../../../src/platform/prompt-engine/eval/cross-provider-judge-service.js";
 import { PlatformPromptReleaseOrchestrationService } from "../../../src/platform/prompt-engine/rollout/platform-prompt-release-orchestration-service.js";
 import { ExecutionOutcomeEvaluator } from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
-import type { ExecutionOutcomeEvaluation } from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
 import type { PromptBundleRegistrationInput } from "../../../src/platform/contracts/prompt-bundle/index.js";
 
@@ -1070,3 +1069,97 @@ function createMockEvalDatasetJudgeService() {
 
 // Import the actual EvalDatasetJudgeService
 import { EvalDatasetJudgeService } from "../../../src/platform/prompt-engine/eval/eval-dataset-judge-service.js";
+
+// ── ExecutionOutcomeEvaluator Quality Score Weights Tests ──────────────
+
+test("ExecutionOutcomeEvaluator qualityScoreWeights sum to 1.0 (issue #1961 fix)", () => {
+  // Issue #1961: weights were summing to 1.2 (0.35 + 0.45 + 0.3 + 0.1 = 1.2)
+  // which caused clamping at Math.min(1, ...) to lose resolution
+  const config = loadQualityConfig("/nonexistent/path/quality.json");
+
+  const weights = config.qualityScoreWeights;
+  const sum = weights.successSignal + weights.completionOutcome + weights.failureSignal + weights.partialSignal;
+
+  // Use approximate comparison to avoid floating-point precision issues
+  assert.ok(
+    Math.abs(sum - 1.0) < 0.0001,
+    `qualityScoreWeights must sum to 1.0, got ${sum}`,
+  );
+});
+
+test("ExecutionOutcomeEvaluator quality score calculation preserves resolution", () => {
+  // With weights summing to 1.2, scores like 0.7 would get clamped down.
+  // With correct weights (sum=1.0), intermediate scores have full range.
+  const evaluator = new ExecutionOutcomeEvaluator();
+
+  // Create a minimal plan graph bundle
+  const planGraphBundle = {
+    planGraphBundleId: "test_bundle",
+    riskProfile: { riskClass: "medium" },
+  } as any;
+
+  // Scenario: 1 success signal, completed
+  const feedback1 = {
+    outcome: "completed",
+    signals: [
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+    ],
+  } as any;
+
+  const result1 = evaluator.evaluateWithBreakdown(planGraphBundle, feedback1);
+  // Expected: 1 * 0.3 (successSignal) + 0.4 (completionOutcome) = 0.7
+  assert.equal(result1.qualityScore, 0.7, "1 success + completed should yield 0.7");
+
+  // Scenario: 2 success signals, completed
+  const feedback2 = {
+    outcome: "completed",
+    signals: [
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+    ],
+  } as any;
+
+  const result2 = evaluator.evaluateWithBreakdown(planGraphBundle, feedback2);
+  // Expected: 2 * 0.3 (successSignal) + 0.4 (completionOutcome) = 1.0
+  assert.equal(result2.qualityScore, 1.0, "2 successes + completed should yield 1.0");
+
+  // Scenario: 1 success signal, not completed, 1 failure
+  const feedback3 = {
+    outcome: "repairable",
+    signals: [
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+      { category: "failure", payload: { reasonCode: "ERR_001" }, timestamp: Date.now() },
+    ],
+  } as any;
+
+  const result3 = evaluator.evaluateWithBreakdown(planGraphBundle, feedback3);
+  // Expected: 1 * 0.3 - 1 * 0.2 = 0.1
+  assert.equal(result3.qualityScore, 0.1, "1 success - 1 failure should yield 0.1");
+
+  // Scenario: all weights at boundary - verify no clamping on intermediate scores
+  // With sum=1.2, a score of 0.8 would clamp to 1.0 (losing distinction from 1.0)
+  // With sum=1.0, score of 0.8 stays 0.8 (preserves resolution)
+  const feedback4 = {
+    outcome: "completed",
+    signals: [
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+    ],
+  } as any;
+  // 1 * 0.3 + 0.4 = 0.7
+
+  const feedback5 = {
+    outcome: "completed",
+    signals: [
+      { category: "success", payload: { summary: "ok" }, timestamp: Date.now() },
+      { category: "partial", payload: { summary: "partial" }, timestamp: Date.now() },
+    ],
+  } as any;
+  // 1 * 0.3 + 0.4 - 0.1 = 0.6
+
+  const result4 = evaluator.evaluateWithBreakdown(planGraphBundle, feedback4);
+  const result5 = evaluator.evaluateWithBreakdown(planGraphBundle, feedback5);
+
+  assert.ok(result4.qualityScore !== result5.qualityScore, "Scores should be distinct (0.7 vs 0.6)");
+  assert.equal(result4.qualityScore, 0.7);
+  assert.equal(result5.qualityScore, 0.6);
+});

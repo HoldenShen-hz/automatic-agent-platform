@@ -10,7 +10,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PromptRolloutService } from "../../../../src/platform/prompt-engine/rollout/index.js";
+import {
+  PromptRolloutService,
+  normalizePromptRolloutMode,
+} from "../../../../src/platform/prompt-engine/rollout/index.js";
 import { PromptTemplateRegistryService } from "../../../../src/platform/prompt-engine/registry/index.js";
 import {
   PROMPT_ROLLOUT_STAGES,
@@ -286,4 +289,85 @@ test("PromptRolloutService rollback reason is preserved", () => {
     assert.equal(rolledBack.guardrailSummary, rollbackReason);
     assert.equal(rolledBack.status, "rolled_back");
   }
+});
+
+// Issue #1957: Tests for canary/staged/full modes
+test("PromptRolloutService L3_canary mode works correctly", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+  const template = createTemplate(registry, "canary_mode_test");
+
+  const record = rollout.createRollout({
+    template,
+    mode: "L3_canary",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.mode, "L3_canary");
+  assert.ok(["canary_5", "canary_20", "stable"].includes(record.status), `Unexpected status: ${record.status}`);
+});
+
+test("PromptRolloutService L4_partial mode works correctly", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+  const template = createTemplate(registry, "partial_mode_test");
+
+  const record = rollout.createRollout({
+    template,
+    mode: "L4_partial",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.mode, "L4_partial");
+  assert.ok(["canary_20", "stable"].includes(record.status), `Unexpected status: ${record.status}`);
+});
+
+test("PromptRolloutService L5_stable mode works correctly", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+  const template = createTemplate(registry, "stable_mode_test");
+
+  const record = rollout.createRollout({
+    template,
+    mode: "L5_stable",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.mode, "L5_stable");
+  assert.equal(record.status, "stable", `Expected stable status for L5_stable mode, got: ${record.status}`);
+});
+
+test("PromptRolloutService evaluateGuardrail handles all six modes", () => {
+  const rollout = new PromptRolloutService();
+  const modes = ["L0_off", "L1_suggest", "L2_shadow", "L3_canary", "L4_partial", "L5_stable"] as const;
+
+  for (const mode of modes) {
+    const decision = rollout.evaluateGuardrail({
+      mode,
+      regressionPassed: true,
+      domainBlockCompatible: true,
+    });
+
+    assert.ok(typeof decision.allowed === "boolean", `${mode}: allowed should be boolean`);
+    assert.ok(["canary_5", "canary_20", "stable", "blocked"].includes(decision.nextStatus), `${mode}: unexpected nextStatus ${decision.nextStatus}`);
+    assert.ok(typeof decision.reason === "string", `${mode}: reason should be string`);
+  }
+});
+
+test("normalizePromptRolloutMode handles canary/staged/full aliases", () => {
+  // Issue #1957: Test that canary/staged/full aliases map correctly
+  assert.equal(normalizePromptRolloutMode("canary"), "L3_canary", "canary should map to L3_canary");
+  assert.equal(normalizePromptRolloutMode("staged"), "L4_partial", "staged should map to L4_partial");
+  assert.equal(normalizePromptRolloutMode("full"), "L5_stable", "full should map to L5_stable");
+  assert.equal(normalizePromptRolloutMode("partial"), "L4_partial", "partial should map to L4_partial");
+  assert.equal(normalizePromptRolloutMode("stable"), "L5_stable", "stable should map to L5_stable");
 });

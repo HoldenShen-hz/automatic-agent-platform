@@ -29,5 +29,86 @@
     "intervalMs": 5000,
     "timeoutMs": 3000,
     "failureThreshold": 3
+  },
+  "hotReload": {
+    "enabled": true,
+    "watchPaths": [
+      "config/",
+      "src/",
+      "domains/"
+    ],
+    "debounceMs": 500,
+    "excludePatterns": [
+      "node_modules/**",
+      "dist/**",
+      "*.test.*"
+    ],
+    "reloadStrategies": {
+      "config": "incremental",
+      "domain": "cascade",
+      "plugin": "isolated"
+    }
+  },
+  "impactAnalysis": {
+    "enabled": true,
+    "analysisDepth": "comprehensive",
+    "scopeLimits": {
+      "maxModules": 500,
+      "maxDepth": 10
+    },
+    "changeDetection": {
+      "fileHashAlgorithm": "sha256",
+      "watchExtensions": [
+        ".ts",
+        ".js",
+        ".json",
+        ".yaml"
+      ]
+    },
+    "reporting": {
+      "format": "detailed",
+      "includeCallGraph": true,
+      "includeDependencyChain": true
+    },
+    "thresholds": {
+      "maxImpactScore": 80,
+      "maxAffectedServices": 20,
+      "maxCriticalPathLength": 15
+    }
+  },
+  "canaryDeployment": {
+    "enabled": true,
+    "strategy": "gradual_rollout",
+    "initialPercentage": 10,
+    "maxPercentage": 50,
+    "stepPercentage": 10,
+    "evaluationPeriodMs": 300000,
+    "autoPromote": false,
+    "autoRollback": true,
+    "metrics": {
+      "errorRateThreshold": 0.05,
+      "latencyP99ThresholdMs": 2000,
+      "successRateThreshold": 0.95
+    },
+    "targets": {
+      "rings": ["ring_1", "ring_2", "ring_3"],
+      "excludedRegions": []
+    }
+  },
+  "gateHierarchy": {
+    "bootstrap": {
+      "l0": ["bootstrap"],
+      "l1": ["platform"],
+      "l2": ["domains", "interaction"],
+      "l3": ["org-governance", "scale-ecosystem", "ops-maturity"],
+      "l4": ["apps", "plugins", "sdk"]
+    }
+  },
+  "healthCheckGates": {
+    "bootstrap_l0": ["config_loaded"],
+    "platform_l1": ["service_registry_ready"],
+    "domains_l2": ["startup_targets_registered"],
+    "l3_services": ["health", "readiness"],
+    "l4_services": ["worker_ready"]
   }
 }

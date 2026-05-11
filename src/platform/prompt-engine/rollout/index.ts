@@ -20,6 +20,8 @@ export const DEPRECATED_PROMPT_ROLLOUT_MODE_ALIASES: Record<string, PromptRollou
   "suggest": "L1_suggest",
   "shadow": "L2_shadow",
   "canary": "L3_canary",
+  "staged": "L4_partial",
+  "full": "L5_stable",
   "partial": "L4_partial",
   "stable": "L5_stable",
 };
@@ -67,10 +69,38 @@ export interface PromptRolloutMetrics {
   latencyP99Ms: number;
   previousQualityScore?: number | null;
   previousLatencyP99Ms?: number | null;
+  /** Optional sample count for auto-rollback validation */
+  sampleCount?: number;
+}
+
+/**
+ * R23-46 fix: Auto-rollback configuration for metric regression detection.
+ * When autoRollbackConfig is set on the service, evaluateRolloutMetrics will
+ * automatically trigger rollback when regression thresholds are exceeded.
+ */
+export interface PromptRolloutAutoRollbackConfig {
+  /** Maximum allowed quality score drop (absolute, e.g. 0.05 = 5 points) */
+  maxQualityDrop: number;
+  /** Maximum allowed latency increase multiplier (e.g. 1.2 = 20% increase) */
+  maxLatencyMultiplier: number;
+  /** Minimum sample count before auto-rollback can trigger */
+  minimumSampleCount: number;
+}
+
+export interface AutoRollbackTriggerResult {
+  triggered: boolean;
+  reason: string;
+  rollbackRecord?: PromptRolloutRecord;
 }
 
 export class PromptRolloutService {
   private readonly rollouts = new Map<string, PromptRolloutRecord>();
+  /** R23-46 fix: Optional auto-rollback configuration for metric regression detection */
+  private readonly autoRollbackConfig: PromptRolloutAutoRollbackConfig | null;
+
+  public constructor(autoRollbackConfig?: PromptRolloutAutoRollbackConfig | null) {
+    this.autoRollbackConfig = autoRollbackConfig ?? null;
+  }
 
   public createRollout(input: {
     template: PromptTemplateRecord;
@@ -192,6 +222,38 @@ export class PromptRolloutService {
     if (record.status !== "canary_5" && record.status !== "canary_20" && record.status !== "stable") {
       return record;
     }
+    // R23-46 fix: When autoRollbackConfig is set, only use that evaluation
+    // (requires minimumSampleCount to be met before triggering rollback)
+    if (this.autoRollbackConfig != null) {
+      const sampleCount = metrics.sampleCount ?? 0;
+      if (sampleCount >= this.autoRollbackConfig.minimumSampleCount) {
+        const hasQualityRegression =
+          metrics.previousQualityScore != null &&
+          metrics.qualityScore < metrics.previousQualityScore - this.autoRollbackConfig.maxQualityDrop;
+        const hasLatencyRegression =
+          metrics.previousLatencyP99Ms != null &&
+          metrics.latencyP99Ms > metrics.previousLatencyP99Ms * this.autoRollbackConfig.maxLatencyMultiplier;
+        const threshold =
+          record.status === "canary_5"
+            ? 0.05
+            : record.status === "canary_20"
+              ? 0.03
+              : 0.01;
+        const hasErrorRegression = metrics.errorRate > threshold;
+        if (hasQualityRegression || hasLatencyRegression || hasErrorRegression) {
+          const reason = hasQualityRegression
+            ? `auto_rollback:quality_regression:${metrics.previousQualityScore?.toFixed(2)}→${metrics.qualityScore.toFixed(2)}`
+            : hasLatencyRegression
+              ? `auto_rollback:latency_regression:${metrics.previousLatencyP99Ms}ms→${metrics.latencyP99Ms}ms`
+              : `auto_rollback:error_rate_exceeded:${metrics.errorRate.toFixed(3)} > ${threshold}`;
+          return this.rollbackRollout(rolloutId, reason);
+        }
+      }
+      // When autoRollbackConfig is set but sampleCount < minimumSampleCount,
+      // skip evaluation entirely to avoid premature rollback
+      return record;
+    }
+    // Original metric evaluation (backward compatible when no autoRollbackConfig is set)
     const hasQualityRegression =
       metrics.previousQualityScore != null &&
       metrics.qualityScore < metrics.previousQualityScore - 0.05;

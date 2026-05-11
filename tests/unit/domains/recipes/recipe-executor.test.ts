@@ -417,3 +417,84 @@ test("RecipeExecutor returns ExecutionResult type with correct structure", async
   assert.ok("workflowId" in result);
   assert.ok("toolBundleIds" in result);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WorkflowQuery Integration Tests (Issue 1983)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("RecipeExecutor.execute uses real workflow query when injected", async () => {
+  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+  const mockQuery = {
+    existsWorkflow: (workflowId: string) => workflowId === "wf_real_db",
+  };
+  const executor = new RecipeExecutor(new WorkflowRegistry(), {}, mockQuery);
+
+  const recipe = makeRecipe({
+    recipeId: "recipe_db_lookup",
+    domainId: "coding",
+    defaultWorkflowId: "wf_real_db",
+  });
+  const context: ExecutionContext = {
+    executionId: "exec_db",
+    taskId: "task_db",
+    tenantId: "tenant",
+    correlationId: "corr_db",
+    input: "db lookup test",
+  };
+
+  const result = await executor.execute(recipe, context);
+
+  assert.equal(result.success, true);
+  assert.equal(result.workflowId, "wf_real_db");
+});
+
+test("RecipeExecutor.execute fails for workflow not in DB query", async () => {
+  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+  const mockQuery = {
+    existsWorkflow: (workflowId: string) => false,
+  };
+  const executor = new RecipeExecutor(new WorkflowRegistry(), {}, mockQuery);
+
+  const recipe = makeRecipe({
+    recipeId: "recipe_no_db",
+    domainId: "coding",
+    defaultWorkflowId: "wf_missing",
+  });
+  const context: ExecutionContext = {
+    executionId: "exec_no",
+    taskId: "task_no",
+    tenantId: "tenant",
+    correlationId: "corr_no",
+    input: "no workflow",
+  };
+
+  const result = await executor.execute(recipe, context);
+
+  assert.equal(result.success, false);
+  assert.ok(result.error!.includes("not available"));
+});
+
+test("RecipeExecutor.execute falls back to registry when query is absent", async () => {
+  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+  const registry = new WorkflowRegistry();
+  registry.registerAll([{ workflowId: "wf_registry", name: "Test", triggerConditions: {}, steps: [] }]);
+  const executor = new RecipeExecutor(registry, {}, null);
+
+  const recipe = makeRecipe({
+    recipeId: "recipe_reg",
+    domainId: "coding",
+    defaultWorkflowId: "wf_registry",
+  });
+  const context: ExecutionContext = {
+    executionId: "exec_reg",
+    taskId: "task_reg",
+    tenantId: "tenant",
+    correlationId: "corr_reg",
+    input: "registry test",
+  };
+
+  const result = await executor.execute(recipe, context);
+
+  assert.equal(result.success, true);
+  assert.equal(result.workflowId, "wf_registry");
+});

@@ -86,7 +86,7 @@ test("PlatformPromptReleaseOrchestrationService activates rollout after dataset 
   });
 
   assert.equal(result.evaluationReport.gateDecision, "promote");
-  assert.equal(result.rollout.status, "active");
+  assert.equal(result.rollout.status, "canary_5");
   assert.equal(result.rollout.regressionSuiteId, result.evaluationReport.runId);
   assert.equal(result.judge?.judgeId, "judge_vertex_ops");
 });

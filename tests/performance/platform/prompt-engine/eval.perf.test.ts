@@ -135,11 +135,11 @@ test("LlmEvalService runAbTest returns meaningful significance values", async ()
     significanceThreshold: 0.1,
   });
 
-  // Issue #1959/#1960: zScore and pValue should be real statistical values, not hardcoded
-  assert.ok(typeof result.zScore === "number");
-  assert.ok(typeof result.pValue === "number");
-  assert.ok(result.zScore !== 0 || result.pValue !== 1 || result.significant === false,
-    "zScore and pValue should reflect actual computation");
+  // Issue #1959: zScore and pValue should be real statistical values from Welch's t-test
+  assert.equal(typeof result.zScore === "number" && !isNaN(result.zScore), true, "zScore should be a real number");
+  assert.equal(typeof result.pValue === "number" && !isNaN(result.pValue), true, "pValue should be a real number");
+  assert.equal(typeof result.confidenceInterval === "object" && Array.isArray(result.confidenceInterval), true, "confidenceInterval should be an array");
+  assert.equal(result.confidenceInterval!.length, 2, "confidenceInterval should have 2 elements");
 });
 
 test("LlmEvalService runAbTest computes improvement correctly", async () => {
