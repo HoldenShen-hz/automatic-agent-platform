@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Platform default risk matrix and domain-specific risk input
+- **Observe**: Platform default risk matrix and domain-specific risk inputs
 - **Assess**: Determine whether domain override is allowed
-- **Plan**: Form domain risk profile
+- **Plan**: Formulate domain risk profile
 - **Execute**: Apply domain risk priority before task execution
-- **Feedback**: Record override justification and audit evidence
+- **Feedback**: Record override rationale and audit evidence
 - **Learn**: Identify high-risk domain commonalities
 - **Improve**: Optimize domain risk baseline
-- **Release**: High-risk domains must complete override review before going live
+- **Release**: High-risk domain must complete override review before go-live
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-The platform default risk matrix is insufficient to cover high-sensitivity domains such as finance, legal, and healthcare.
+The platform default risk matrix is insufficient to cover highly sensitive domains such as finance, legal, and healthcare.
 
 ## Decision
 
-- Domain risk profile takes priority over platform default risk matrix
-- Any override must leave an audit justification
-- Without an explicit domain risk profile, high-risk automation is prohibited
+- Domain risk profile takes precedence over platform default risk matrix
+- Any override must include a documented audit rationale
+- High-risk automation is prohibited when no explicit domain risk profile exists
 
 ## Consequences
 

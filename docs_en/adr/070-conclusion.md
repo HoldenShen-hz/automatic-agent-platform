@@ -3,7 +3,7 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 This ADR summarizes the key decisions and design principles of the platform's overall architecture.
 
@@ -12,7 +12,7 @@ This ADR summarizes the key decisions and design principles of the platform's ov
 ### Five Planes + One Cross-Cutting
 
 ```
-P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 State and Evidence Plane
+P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 State & Evidence Plane
                         ↑
                    X1 Cross-Cutting Control Mesh
 ```
@@ -21,12 +21,12 @@ P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execut
 
 | Principle | Description |
 |-----------|-------------|
-| Default distrust | Models, plugins, external dependencies are all untrusted |
-| Default failure | Remote calls, Workers, releases can all fail |
-| Default convergence | Configuration changes, behavior drift require governance |
-| Recoverability first, then automation | Recovery mechanisms precede automated deployment |
+| Default Untrusted | Models, plugins, and external dependencies are all untrusted |
+| Default Failure | Remote calls, workers, and releases may all fail |
+| Default Convergence | Configuration changes and behavior drift require governance |
+| Recoverability First, Automation Second | Recovery mechanisms take precedence over automated deployment |
 
-### OAPEFLIR Cognition Loop
+### OAPEFLIR Cognitive Loop
 
 ```
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
@@ -36,12 +36,9 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 
 | Phase | Focus |
 |-------|-------|
-| Phase 1-2 | Core execution plane + stability |
-| Phase 3 | AI operations layer |
-| Phase 4 | Business domain onboarding |
-| Phase 5 | Intelligent interaction |
-| Phase 6 | Organization governance |
-| Phase 7 | Scaled ecosystem |
+| Ring 1 | Core execution plane + stability baseline |
+| Ring 2 | Governance, recovery, durability, and high-trust operations |
+| Ring 3 | Business domains, ecosystem, and advanced intelligence capabilities |
 
 ## ADR Coverage
 
@@ -49,16 +46,21 @@ This ADR series covers the complete architecture from infrastructure to operatio
 
 ## Key Invariants
 
-- Five-plane isolation invariant
-- OAPEFLIR loop invariant
-- Constitutional principles invariant
+- Five-plane isolation is invariant
+- `HarnessRuntime + RuntimeStateMachine` truth authority is invariant
+- OAPEFLIR as a cognitive projection only is invariant
+- Constitutional principles are invariant
+
+## v4.3 ADR Remediation
+
+- A-63: This ADR originally wrote "Phase 1-7" together with "OAPEFLIR loop invariance" as a primary architectural invariant. The root cause was that the summary ADR consolidated historical roadmap and cognitive model, without distinguishing between roadmap and runtime authority. Fix: The main text now uses the ring perspective, and runtime invariants are explicitly scoped to `HarnessRuntime + RuntimeStateMachine`.
 
 ## Follow-up Work
 
-- Continuously improve ADR index
+- Continuously improve the ADR index
 - Supplement missing scenarios
 - Optimize decisions based on implementation experience
 
-## Source Sections
+## Source Section
 
 - `§70` Conclusion

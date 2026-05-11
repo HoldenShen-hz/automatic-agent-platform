@@ -2,17 +2,17 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Correlation
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
 - **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post execution assessment and risk judgment
+- **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and dual-channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing, and 7 types of feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and rollout state machine (ADR-075)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
 
 ---
@@ -22,73 +22,73 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 
 ## Context
 
-The platform's overall goal includes "profitable," but if commercial path is not defined upfront, billing, permissions, marketplace, and tenant capabilities will be hard to add later.
+The platform's overarching goal includes "profitable operations," but if we only design the technical architecture without defining the commercialization path in advance, subsequent billing, permissions, marketplace, and tenant capabilities will be difficult to integrate.
 
 ## Decision
 
-Incorporate commercial design into target architecture but clarify implementation rhythm:
+Incorporate commercial design into the target architecture, but with a clear implementation cadence:
 
-- Phase 1-2: No charging; infrastructure maturity and user feedback are the first goal.
-- Phase 3: Validate PMF; start Pro commercialization.
-- Phase 4: Enter Enterprise, Marketplace, ecosystem, and industry solution stages.
+- Phase 1-2: No charging. Infrastructure maturity and user feedback are the primary goals.
+- Phase 3: Validate PMF and launch Pro commercialization.
+- Phase 4: Enter Enterprise, Marketplace, ecosystem, and industry solutions stages.
 
 ## Commercial Positioning
 
-Core positioning is not "AI programming tool" but:
+The core positioning is not an "AI programming tool," but rather:
 
-- AI-driven general automation company runtime.
-- Programming is just one division.
-- Any business that can be workflow-ized should have opportunity to connect to this platform.
+- An AI-driven general-purpose automation company runtime.
+- Programming is only one business unit.
+- Any business that can be workflow-ized should have the opportunity to connect to this platform.
 
 ## Commercial Units
 
-Commercialization revolves around several unit types:
+Commercialization revolves around several types of units:
 
-- Division: Revenue unit.
-- Usage: Metered billing unit.
-- Skill/Plugin: Ecosystem distribution unit.
-- Deployment mode: Community, Pro, Enterprise differentiated units.
+- Business Unit: Revenue unit.
+- Usage: Billing metering unit.
+- Skill / Plugin: Ecosystem distribution unit.
+- Deployment Mode: Community, Professional, and Enterprise editions as differentiated units.
 
-## Pricing and Rhythm
+## Pricing and Cadence
 
-Principle adopts a three-layer structure:
+The principle is to adopt a three-tier structure:
 
-- Community: Low barrier trial or BYOK.
+- Community: Low-barrier trial or BYOK.
 - Pro: Small/medium teams and individual entrepreneurs.
 - Enterprise: Private deployment, compliance, SSO, audit, and stronger quota control.
 
 But constraints are important:
 
-- Should not charge prematurely when infrastructure is immature.
-- Pricing numbers should not be locked before market validation.
-- Commercialization capabilities must land synchronously with cost model, tenant isolation, security, and usage tracking.
+- Charging should not be introduced prematurely before infrastructure is mature.
+- Pricing figures should not be locked in before market validation.
+- Commercialization capabilities must be implemented in tandem with cost models, tenant isolation, security, and usage tracking.
 
-## Commercialization Prerequisites
+## Pre-commercialization Capabilities
 
-At minimum these technical prerequisites are needed:
+At minimum, these technical prerequisites are required:
 
 - UsageMeter.
 - QuotaManager.
 - BillingEngine or equivalent billing infrastructure.
 - Multi-tenant isolation.
-- User-experience observability and user-friendly errors.
-- Compliance roadmap and enterprise security enhancement reservation.
+- User experience observability and error friendliness.
+- Compliance roadmap and enterprise security enhancement provisions.
 
-## Consequences
+## Results
 
-Advantages:
+Pros:
 
-- Commercialization is not an additional layer but planned synchronously with cost, tenant, security, and channel.
-- Can earlier identify which technical capabilities are commercialization prerequisites.
-- Architecture space reserved for Marketplace, industry solutions, and Enterprise capabilities.
+- Commercialization is not an add-on layer, but is planned in sync with cost, tenant, security, and channels.
+- Ability to identify earlier which technical capabilities are prerequisites for commercialization.
+- Architecture space is reserved for Marketplace, industry solutions, and Enterprise capabilities.
 
 Constraints:
 
-- Phase 1-2 cannot be kidnapped by commercialization requirements.
-- Pricing, compliance, and market strategy must all retain adjustment room before real market validation.
-- Any billing design must close the loop with real cost model.
+- Phase 1-2 must not be held hostage by commercialization requirements.
+- Pricing, compliance, and market strategy must all retain flexibility for adjustment before real market validation.
+- Any charging design must be closed-loop with a real cost model.
 
-## Cross-References
+## Cross References
 
 - [ADR-008 Cost Model](./008-cost-model.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)

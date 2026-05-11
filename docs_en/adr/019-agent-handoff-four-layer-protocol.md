@@ -5,7 +5,7 @@
 
 ## Context
 
-In multi-agent scenarios, agents need to pass execution context (state, plan, summary). Current implementation uses natural language `priorSummaries` for transmission, lacking structured serialization and token budget control.
+In multi-agent scenarios, agents need to pass execution context (state, plan, summary) between each other. Current implementation uses natural language `priorSummaries` for transmission, lacking structured serialization and token budget control.
 
 §12 defines a four-layer Handoff model; this ADR formally adopts that model.
 
@@ -26,8 +26,8 @@ In multi-agent scenarios, agents need to pass execution context (state, plan, su
 interface HandoffSerializer {
   // Serialize by layer
   serialize(context: HandoffContext, level: HandoffLevel): string;
-  // Extract facts / state / plan delta from step result
-  buildFromStepResult(result: StepResult): HandoffContext;
+  // Extract facts / state / plan delta from node attempt receipt
+  buildFromNodeAttemptReceipt(receipt: NodeAttemptReceipt): HandoffContext;
   // Trim by token budget
   truncate(content: string, budgetTokens: number): string;
 }
@@ -68,5 +68,5 @@ Total budget: 10000 tokens
 
 ## Source Sections
 
-- `§12 Agent Handoff`
-- `§13 OAPEFLIR Loop`
+- `§13` OAPEFLIR Agent Handoff Model (v4.3 architecture)
+- `§41-§42` Progressive Autonomy and Agent Collaboration Protocol

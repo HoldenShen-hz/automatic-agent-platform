@@ -4,25 +4,25 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect constraint, context, tool capability, and feedback signals
-- **Assess**: Evaluate risk, guardrails, HITL trigger, and recoverability
-- **Plan**: Define Harness pillar boundaries and acceptance gates
-- **Execute**: Assemble eight pillars with unified Runtime
-- **Feedback**: Feed back failure, human feedback, and evaluation conclusions
-- **Learn**: Form failure-to-learning and prompt/memory improvement candidates
-- **Improve**: Advance pillar-level governance and replay capability enhancement
-- **Release**: Incorporate eight pillars into Ring 2 release-readiness acceptance gate
+- **Observe**: Collect constraints, context, tool capabilities, and feedback signals
+- **Assess**: Evaluate risk, guardrails, HITL triggers, and recoverability
+- **Plan**: Define pillar boundaries and acceptance gates for Harness
+- **Execute**: Assemble the eight pillars via a unified Runtime
+- **Feedback**: Loop back failures, human feedback, and evaluation conclusions
+- **Learn**: Generate failure-to-learning and prompt/memory improvement candidates
+- **Improve**: Advance pillar-level governance and replay capability enhancements
+- **Release**: Integrate the eight pillars into Ring 2 release-readiness acceptance gates
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
-`§45` requires that Harness no longer be just a thin loop of planner/generator/evaluator, but must become a formal runtime object carrying constraints, tools, memory, feedback, durability, evaluation, HITL, and observability.
+`§45` requires that Harness is no longer just a thin loop of planner/generator/evaluator, but must become a formal runtime object carrying constraints, tools, memory, feedback, persistence, evaluation, HITL, and observability.
 
-## Decisions
+## Decision
 
 Harness adopts a fixed eight-pillar model:
 
@@ -37,18 +37,18 @@ Harness adopts a fixed eight-pillar model:
 
 Supplementary constraints:
 
-- The release semantics of pillar eight are uniformly connected to `ReleaseChannel` and `ReleaseDecisionView`; the old `DeploymentSlot` is no longer used as the harness canonical release subject.
-- Improvement promotion semantics among the eight pillars uniformly use `Release`, and will not regress to the old `Rollout` as the top-level stage name.
+- The release semantics of the eighth pillar are uniformly aligned with `ReleaseChannel` and `ReleaseDecisionView`, and the old `DeploymentSlot` is no longer used as the canonical release subject for harness.
+- Improvement promotion semantics within the eight pillars uniformly use `Release`, and will no longer fall back to the old `Rollout` as the top-level phase name.
 
-Each pillar must have an independent code entry, tests, and acceptance evidence; documentation-only descriptions are not allowed.
+Each pillar must have independent code entry points, tests, and acceptance evidence; documentation-only descriptions are not permitted.
 
 ## Consequences
 
-- `src/platform/orchestration/harness` must organize directories and export surface around the eight pillars
+- `src/platform/orchestration/harness` must organize directories and export surfaces around the eight pillars
 - `Ring 2` acceptance must be broken down by pillar
-- Gaps in Harness identified during review use pillar as the minimum remediation unit
+- Gaps in Harness during review use pillar as the minimum remediation unit
 
 ## v4.3 ADR Remediation
 
-- A-5: This ADR historically followed the `Rollout` terminology in the Improve/Release chain, because the harness acceptance gate and release control plane naming were not synchronized to the main architecture's `Release` terminology in time. Fix: The main text now explicitly requires unified use of `Release` for improvement promotion semantics among the eight pillars.
-- A-12: This ADR originally followed the historical context of old stage acceptance and deployment expressions, because when the harness eight-pillar ADR was formed, it still carried old release implementation terminology. Fix: The main text now explicitly aligns the release subject to `ReleaseChannel` / `ReleaseDecisionView`, and no longer uses `DeploymentSlot` as harness canonical release semantics.
+- A-5: This ADR historically followed the `Rollout` terminology in the Improve/Release chain. The root cause was that the harness acceptance gate and release control plane naming were not synchronized with the main architecture's `Release` terminology in time. Fix: The body now explicitly requires that improvement promotion semantics within the eight pillars uniformly use `Release`.
+- A-12: This ADR originally followed historical terminology for stage acceptance and deployment expressions. The root cause was that when the harness eight-pillar ADR was formed, old release implementation terminology was still mixed in. Fix: The body now explicitly aligns the release subject with `ReleaseChannel` / `ReleaseDecisionView`, and no longer uses `DeploymentSlot` as the harness canonical release semantics.

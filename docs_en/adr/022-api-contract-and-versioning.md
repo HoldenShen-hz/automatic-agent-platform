@@ -5,17 +5,19 @@
 
 ## Context
 
-The platform exposes REST/WebSocket APIs externally and requires a unified versioning strategy, error format, pagination standard, and idempotency guarantees to avoid API fragmentation.
+The platform exposes REST/WebSocket APIs externally and requires a unified versioning strategy, error format, pagination standards, and idempotency guarantees to avoid API fragmentation.
 
 ## Decision
 
-### API Endpoint Specification
+### API Endpoint Standards
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST/GET | /api/v1/tasks | Task CRUD |
 | GET/DELETE | /api/v1/tasks/{id} | Single task operations |
-| GET | /api/v1/workflow-runs | Workflow run list |
+| GET | /api/v1/harness-runs | Harness run list (canonical) |
+| GET | /api/v1/node-runs | Node run list (canonical) |
+| GET | /api/v1/workflow-runs | **Deprecated**, only for migration compatibility; canonical model is harness-runs + node-runs |
 | GET/POST | /api/v1/approvals | Approval management |
 | GET | /api/v1/incidents | Incident viewing |
 | GET/POST | /api/v1/knowledge | Knowledge management |
@@ -28,42 +30,42 @@ The platform exposes REST/WebSocket APIs externally and requires a unified versi
 | GET/PUT | /api/v1/admin/config | Configuration management |
 | GET/POST/PUT | /api/v1/admin/tenants | Tenant management |
 | GET/PUT | /api/v1/admin/budgets | Budget management |
-| GET/POST | /api/v1/admin/rollouts | Release management |
+| GET/POST | /api/v1/admin/rollouts | Rollout management |
 | WebSocket | /ws/v1/stream | Real-time streaming |
 
 ### ApiError Format
 
 ```typescript
 interface ApiError {
-  code: string;           // Error code
-  message: string;        // Error message
-  trace_id: string;       // Trace ID
-  retry_after_ms?: number; // Retry suggestion
+  code: string;              // Error code
+  message: string;           // Error message
+  trace_id: string;          // Trace ID
+  retry_after_ms?: number;   // Retry suggestion
 }
 ```
 
-### Idempotency Guarantee
+### Idempotency Guarantees
 
 - Supports Idempotency-Key header
-- Repeated requests with the same key return the original response
+- Duplicate requests with the same key return the original response
 
-### Pagination Standard
+### Pagination Standards
 
-- Cursor-based pagination, max 100 items per page
+- Cursor-based pagination (cursor), max 100 records per page
 
-### Webhook Delivery Guarantee
+### Webhook Delivery Guarantees
 
-- Retry mechanism: up to 50 times
-- Automatically disables webhook after 50 consecutive failures
-- Failure count can be reset
+- Retry mechanism: up to 50 attempts
+- Automatic webhook disable after 50 consecutive failures
+- Failure counter can be reset
 
 ## Consequences
 
 Benefits:
 
 - Unified API contracts improve developer experience
-- Idempotency guarantee makes retries safe
-- Automatic webhook disabling prevents invalid deliveries
+- Idempotency guarantees make retries safe
+- Automatic webhook disable prevents invalid deliveries
 
 Costs:
 
@@ -77,4 +79,4 @@ Costs:
 
 ## Source Section
 
-- `§6` API Contract and Versioning Architecture
+- `6` API Contract and Versioning Architecture

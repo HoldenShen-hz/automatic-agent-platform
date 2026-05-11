@@ -399,7 +399,7 @@ export class RegionFailoverController {
    */
   public validateFencingTokenForFailover(regionId: string, token: FencingToken, partitionKey = "global"): boolean {
     const fencingService = getFencingTokenService();
-    const validation = fencingService.validateFencingToken(regionId, token);
+    const validation = fencingService.validateFencingToken(partitionKey, token);
 
     // Also check split-brain detection to ensure no conflicting leader
     const splitBrainService = getSplitBrainProtectionService();
