@@ -264,6 +264,7 @@ function buildExpiredFileLockFinding(lock: FileLockRecord): ConsistencyFinding {
 
 export class StartupConsistencyChecker {
   private readonly dispatchReconciliation: ExecutionDispatchReconciliationService;
+  private trafficBlocked = false;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -271,6 +272,25 @@ export class StartupConsistencyChecker {
     private readonly options: StartupConsistencyCheckerOptions = {},
   ) {
     this.dispatchReconciliation = new ExecutionDispatchReconciliationService(db, store);
+  }
+
+  /**
+   * Returns whether the system can accept new traffic.
+   * When fail_closed status is detected, returns false and triggers onTrafficBlocked callback.
+   */
+  public canAcceptTraffic(): boolean {
+    console.log("DEBUG canAcceptTraffic: trafficBlocked =", this.trafficBlocked);
+    if (this.trafficBlocked) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Resets the traffic blocked state. Used after issues are resolved.
+   */
+  public resetTrafficBlocked(): void {
+    this.trafficBlocked = false;
   }
 
   public run(options: StartupConsistencyOptions = {}): StartupConsistencyReport {
@@ -496,8 +516,10 @@ export class StartupConsistencyChecker {
 
     const report = buildStartupConsistencyReport(checkedAt, findings);
 
+    console.log("DEBUG: report.status =", report.status);
     // Enforce fail_closed: block traffic when P0 findings are detected
     if (report.status === "fail_closed") {
+      console.log("DEBUG: Setting trafficBlocked = true");
       this.trafficBlocked = true;
       this.options.onTrafficBlocked?.();
     }

@@ -5,7 +5,7 @@
  * R8-19 FIX: ContractEnvelope wrapper for inter-plane messages.
  */
 
-import { ValidationError } from "../../platform/contracts/errors.js";
+import { ValidationError, NetworkError, AuthError, BusinessError } from "../../platform/contracts/errors.js";
 import {
   type ContractEnvelope,
   createContractEnvelope,
@@ -25,6 +25,12 @@ export interface ApiClientConfig {
   platformVersion?: string;
   sdkVersion?: string;
   contractVersion?: string;
+  /** Principal for request envelope (carried in metadata) */
+  principal?: { subject?: string; tenantId?: string; roles?: readonly string[] };
+  /** Default idempotency key prepended to all request idempotency keys */
+  idempotencyKey?: string;
+  /** Whether to perform version handshake on init (default: false) */
+  performVersionHandshakeOnInit?: boolean;
 }
 
 export interface ApiRequestSpec {
@@ -102,6 +108,22 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
 }
 
 /**
+ * Result of a version handshake negotiation with the server.
+ */
+export interface VersionHandshakeResult {
+  /** Whether the server accepted the version */
+  readonly accepted: boolean;
+  /** HTTP status code from server */
+  readonly statusCode: number;
+  /** Reason code from server */
+  readonly reasonCode: string;
+  /** Server response headers */
+  readonly headers: Record<string, string>;
+  /** Compatibility warnings from server */
+  readonly warnings: readonly string[];
+}
+
+/**
  * Retry client with exponential backoff for resilient API calls.
  */
 export class RetryableApiClient {
@@ -111,6 +133,76 @@ export class RetryableApiClient {
   constructor(config: ApiClientConfig, retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG) {
     this.config = config;
     this.retryConfig = retryConfig;
+  }
+
+  /**
+   * Initialize the API client with optional version handshake.
+   * If performVersionHandshakeOnInit is true, performs version negotiation with server.
+   */
+  async initialize(): Promise<void> {
+    if (this.config.performVersionHandshakeOnInit) {
+      await this.performVersionHandshake();
+    }
+  }
+
+  /**
+   * Perform version handshake with the server to validate compatibility.
+   * Sends version headers and checks server response for acceptance or rejection.
+   * Throws ApiError with CONTRACT category if versions are incompatible (426 status).
+   */
+  async performVersionHandshake(): Promise<VersionHandshakeResult> {
+    const url = buildApiUrl(this.config, { path: "/handshake", method: "GET" });
+    const headers = buildAuthHeaders(this.config);
+    headers["accept"] = "application/json";
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      signal: AbortSignal.timeout(this.config.timeoutMs ?? 10000),
+    });
+
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+
+    // Parse server response for handshake result
+    let accepted = response.ok;
+    let reasonCode = "unknown";
+    const warnings: string[] = [];
+
+    if (response.status === 426) {
+      accepted = false;
+      reasonCode = "sdk.upgrade_required";
+    } else if (response.status === 200) {
+      accepted = true;
+      reasonCode = "sdk.accepted";
+    }
+
+    // Check for compatibility warnings in response headers
+    const compatibilityStatus = responseHeaders["x-sdk-compatibility"];
+    if (compatibilityStatus?.includes("warning")) {
+      const warningHeader = responseHeaders["x-sdk-warnings"] ?? "";
+      warnings.push(...warningHeader.split(",").filter((w) => w.trim().length > 0));
+    }
+
+    // If handshake was rejected, throw an error with details
+    if (!accepted) {
+      throw new ApiError(
+        `Version handshake rejected: ${reasonCode}. Server requires upgrade.`,
+        ApiErrorCategory.CONTRACT,
+        response.status,
+        false,
+      );
+    }
+
+    return {
+      accepted,
+      statusCode: response.status,
+      reasonCode,
+      headers: responseHeaders,
+      warnings,
+    };
   }
 
   /**
@@ -343,10 +435,32 @@ export class RetryableApiClient {
 
   /**
    * Map of non-idempotent HTTP methods that should NOT be retried automatically.
-   * Per §22, POST/PUT/PATCH/DELETE are not idempotent and retrying them may cause
-   * duplicate side effects. Only GET and HEAD requests are safely retried.
+   * Per HTTP semantics, POST and DELETE are not idempotent (may cause duplicate side effects).
+   * GET, PUT, PATCH, and HEAD are idempotent and can be safely retried on 5xx errors.
    */
-  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  private static readonly NON_IDEMPOTENT_METHODS = new Set(["POST", "DELETE"]);
+
+  /**
+   * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.
+   * Envelope carries schemaVersion/commandId/correlationId/signature for inter-plane messages.
+   */
+  private wrapRequestBody<TPayload>(payload: TPayload): ContractEnvelope<TPayload> {
+    const metadata: Record<string, string> = {};
+    if (this.config.principal != null) {
+      const p = this.config.principal as { subject?: string; tenantId?: string; roles?: readonly string[] };
+      if (p.subject) metadata.principalSubject = p.subject;
+      if (p.tenantId) metadata.principalTenantId = p.tenantId;
+      if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
+    }
+    if (this.config.idempotencyKey) metadata.clientIdempotencyKey = this.config.idempotencyKey;
+
+    return createContractEnvelope({
+      payload,
+      schemaVersion: "v4.3",
+      ttl: 30000,
+      metadata,
+    });
+  }
 
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {
     const url = buildApiUrl(this.config, request);
@@ -360,13 +474,19 @@ export class RetryableApiClient {
     // POST/PUT/PATCH/DELETE should not be retried as they may cause duplicate side effects
     const isIdempotent = !RetryableApiClient.NON_IDEMPOTENT_METHODS.has(request.method ?? "GET");
 
+    // R8-19 FIX: Wrap request body in ContractEnvelope for inter-plane contract compliance
+    let envelopeBody: unknown;
+    if (request.body !== undefined) {
+      envelopeBody = this.wrapRequestBody(request.body);
+    }
+
     try {
       const fetchOptions: RequestInit = {
         method: request.method ?? "GET",
         headers,
       };
-      if (request.body !== undefined) {
-        fetchOptions.body = JSON.stringify(request.body);
+      if (envelopeBody !== undefined) {
+        fetchOptions.body = JSON.stringify(envelopeBody);
       }
       if (this.config.timeoutMs !== undefined) {
         fetchOptions.signal = AbortSignal.timeout(this.config.timeoutMs);
@@ -482,6 +602,56 @@ export function classifyApiError(statusCode: number | null, message: string): Ap
 export interface EventSubscription<TEvent> {
   unsubscribe(): void;
   closed: boolean;
+}
+
+// R8-20 FIX: Event subscriber interface for run lifecycle events
+export interface EventSubscriberBackend {
+  publish(event: unknown): void;
+  subscribe(consumerId: string, handler: (event: unknown) => void): void;
+  unsubscribe(consumerId: string): void;
+  pendingForConsumer(consumerId: string): Array<{ eventType: string; payloadJson: string }>;
+  deliverPending(consumerId: string): Promise<number>;
+}
+
+export interface EventSubscriptionHandle {
+  consumerId: string;
+  active: boolean;
+  unsubscribe(): void;
+}
+
+/**
+ * Creates an event subscriber for run lifecycle events.
+ */
+export function createEventSubscriber(backend: EventSubscriberBackend) {
+  return {
+    subscribeToRunLifecycle(
+      consumerId: string,
+      runId: string,
+      handler: (event: { eventType: string; payloadJson: string }) => void,
+    ): EventSubscriptionHandle {
+      const wrappedHandler = (event: unknown) => {
+        if (event && typeof event === "object" && "payloadJson" in event) {
+          const e = event as { payloadJson: string };
+          try {
+            const parsed = JSON.parse(e.payloadJson) as { runId?: string };
+            if (parsed.runId === runId) {
+              handler(e as unknown as { eventType: string; payloadJson: string });
+            }
+          } catch {
+            // Skip malformed payload
+          }
+        }
+      };
+      backend.subscribe(consumerId, wrappedHandler);
+      return {
+        consumerId,
+        active: true,
+        unsubscribe() {
+          backend.unsubscribe(consumerId);
+        },
+      };
+    },
+  };
 }
 
 /**

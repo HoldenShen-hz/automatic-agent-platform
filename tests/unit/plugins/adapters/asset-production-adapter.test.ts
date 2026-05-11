@@ -43,13 +43,38 @@ test("AssetProductionAdapter.shutdown returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("AssetProductionAdapter.authenticate does not throw", async () => {
+test("AssetProductionAdapter.authenticate throws on missing credentials", async () => {
   const adapter = createAssetProductionAdapterPlugin();
-  await adapter.authenticate({});
+  await assert.rejects(
+    async () => adapter.authenticate({}),
+    /asset_production_adapter.missing_credentials/
+  );
+});
+
+test("AssetProductionAdapter.authenticate throws on invalid credentials type", async () => {
+  const adapter = createAssetProductionAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.authenticate({ token: 123 }),
+    /asset_production_adapter.missing_credentials/
+  );
+});
+
+test("AssetProductionAdapter.authenticate accepts valid token", async () => {
+  const adapter = createAssetProductionAdapterPlugin();
+  await adapter.authenticate({ token: "valid_figma_token_12345" });
+});
+
+test("AssetProductionAdapter.execute throws when not authenticated", async () => {
+  const adapter = createAssetProductionAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.execute("get_file", { fileKey: "abc123" }),
+    /asset_production_adapter.not_authenticated/
+  );
 });
 
 test("AssetProductionAdapter.execute returns success with action", async () => {
   const adapter = createAssetProductionAdapterPlugin();
+  await adapter.authenticate({ token: "valid_figma_token_12345" });
 
   const result = await adapter.execute("get_file", {
     fileKey: "abc123",
@@ -65,6 +90,7 @@ test("AssetProductionAdapter.execute returns success with action", async () => {
 
 test("AssetProductionAdapter.execute handles missing optional params", async () => {
   const adapter = createAssetProductionAdapterPlugin();
+  await adapter.authenticate({ token: "valid_figma_token_12345" });
 
   const result = await adapter.execute("get_file", {});
 

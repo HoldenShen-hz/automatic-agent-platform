@@ -86,6 +86,38 @@ export interface BudgetReservationResult {
   readonly error?: string;
 }
 
+/**
+ * Lifecycle hooks for HarnessSdk execution events.
+ * These hooks allow external code to observe and react to harness run lifecycle events.
+ */
+export interface HarnessSdkLifecycleHooks {
+  /**
+   * Called before a run is created.
+   * @param input - The run creation input
+   */
+  readonly beforeRun?: (input: HarnessSdkCreateRunInput) => void;
+
+  /**
+   * Called after a run completes successfully.
+   * @param run - The completed run
+   */
+  readonly afterRun?: (run: HarnessRun) => void;
+
+  /**
+   * Called when an error occurs during harness execution.
+   * @param error - The error that occurred
+   * @param run - The run context if available
+   */
+  readonly onError?: (error: Error, run?: HarnessRun) => void;
+
+  /**
+   * Called when a timeout occurs during harness execution.
+   * @param timeoutMs - The timeout duration in milliseconds
+   * @param run - The run context if available
+   */
+  readonly onTimeout?: (timeoutMs: number, run?: HarnessRun) => void;
+}
+
 export interface PlanGraphBuildInput {
   readonly harnessRunId: string;
   readonly nodes: readonly PlanNode[];
@@ -324,6 +356,7 @@ export class HarnessSdk {
     private readonly budgetChecker?: (budgetRef: string, amount: number) => BudgetReservationResult,
     private readonly interPlaneTransport?: InterPlaneTransport,
     private readonly interPlaneSecurity?: HarnessSdkInterPlaneSecurityConfig,
+    private readonly lifecycleHooks?: HarnessSdkLifecycleHooks,
   ) {}
 
   // R8-22 FIX: PlanGraphBundle build/validate API
@@ -363,12 +396,27 @@ export class HarnessSdk {
         );
       }
     }
-    return this.runtime.createRun({
-      taskId: input.taskId,
-      domainId: input.domainId,
-      constraintPack: input.constraintPack,
-      ...(input.planGraphBundle != null ? { planGraphBundle: input.planGraphBundle } : {}),
-    }) as unknown as HarnessRun;
+
+    // Issue 2009: Call beforeRun lifecycle hook
+    this.lifecycleHooks?.beforeRun?.(input);
+
+    try {
+      const run = this.runtime.createRun({
+        taskId: input.taskId,
+        domainId: input.domainId,
+        constraintPack: input.constraintPack,
+        ...(input.planGraphBundle != null ? { planGraphBundle: input.planGraphBundle } : {}),
+      }) as unknown as HarnessRun;
+
+      // Issue 2009: Call afterRun lifecycle hook on success
+      this.lifecycleHooks?.afterRun?.(run);
+
+      return run;
+    } catch (error) {
+      // Issue 2009: Call onError lifecycle hook on failure
+      this.lifecycleHooks?.onError?.(error as Error);
+      throw error;
+    }
   }
 
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
@@ -611,6 +659,66 @@ export class HarnessSdk {
     const run = this.requireRun(runOrId);
     this.runtime.persistRun(run);
     return run as unknown as HarnessRun;
+  }
+
+  /**
+   * Issue 2009: Execute a harness run with lifecycle hooks support.
+   * @param input - The run creation input
+   * @param options - Execution options including timeout
+   * @returns The completed run
+   */
+  public execute(
+    input: HarnessSdkCreateRunInput,
+    options: { readonly timeoutMs?: number } = {},
+  ): HarnessRun {
+    const { timeoutMs } = options;
+
+    // Call beforeRun hook
+    this.lifecycleHooks?.beforeRun?.(input);
+
+    // Set up timeout tracking if specified
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let timedOut = false;
+
+    if (timeoutMs != null && timeoutMs > 0) {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        // Call onTimeout hook
+        try {
+          const run = this.runtime.restoreRun(input.taskId);
+          this.lifecycleHooks?.onTimeout?.(timeoutMs, run as unknown as HarnessRun | undefined);
+        } catch {
+          this.lifecycleHooks?.onTimeout?.(timeoutMs);
+        }
+      }, timeoutMs);
+    }
+
+    try {
+      // Execute the run
+      const run = this.createRun(input);
+
+      // Clear timeout if it hasn't fired
+      if (timeoutHandle != null) {
+        clearTimeout(timeoutHandle);
+      }
+
+      return run;
+    } catch (error) {
+      // Clear timeout if it hasn't fired
+      if (timeoutHandle != null) {
+        clearTimeout(timeoutHandle);
+      }
+
+      // Call onError hook
+      this.lifecycleHooks?.onError?.(error as Error);
+
+      // If we timed out, call onTimeout as well
+      if (timedOut) {
+        this.lifecycleHooks?.onTimeout?.(timeoutMs!);
+      }
+
+      throw error;
+    }
   }
 
   public async sendInterPlaneMessage<TResponse>(

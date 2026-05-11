@@ -9,11 +9,22 @@ import {
   createNodeRun,
   createSideEffectRecord,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine, type PlatformFactEvent } from "../../../../src/platform/execution/runtime-state-machine.js";
+
+// Track persisted events for testing
+const persistedEvents: PlatformFactEvent[] = [];
 
 // Test subject
 function createMachine(): RuntimeStateMachine {
-  return new RuntimeStateMachine();
+  return new RuntimeStateMachine({
+    persistEvent: (event) => {
+      persistedEvents.push(event);
+    },
+  });
+}
+
+function clearPersistedEvents(): void {
+  persistedEvents.length = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -21,6 +32,7 @@ function createMachine(): RuntimeStateMachine {
 // ---------------------------------------------------------------------------
 
 test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
+  clearPersistedEvents();
   const machine = createMachine();
 
   const validTransitions: Array<[HarnessRunStatus, HarnessRunStatus]> = [

@@ -13,7 +13,13 @@ import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-e
 // Mock database factory
 function createMockDb(): AuthoritativeSqlDatabase {
   return {
-    transaction: (fn: () => void) => fn(),
+    transaction: (fn: () => void | Promise<void>) => {
+      const result = fn();
+      if (result instanceof Promise) {
+        return result;
+      }
+      return undefined;
+    },
   } as unknown as AuthoritativeSqlDatabase;
 }
 
@@ -143,7 +149,7 @@ test("RuntimeRecoveryDecisionService can be instantiated", () => {
   assert.ok(service != null);
 });
 
-test("RuntimeRecoveryDecisionService.decide throws when execution not found", () => {
+test("RuntimeRecoveryDecisionService.decide throws when execution not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [],
@@ -151,13 +157,13 @@ test("RuntimeRecoveryDecisionService.decide throws when execution not found", ()
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.decide("nonexistent-exec"),
+  await assert.rejects(
+    async () => service.decide("nonexistent-exec"),
     (err: unknown) => (err as Error).message.includes("Execution not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.apply throws when execution not found", () => {
+test("RuntimeRecoveryDecisionService.apply throws when execution not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [],
@@ -165,13 +171,13 @@ test("RuntimeRecoveryDecisionService.apply throws when execution not found", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.apply("nonexistent-exec"),
+  await assert.rejects(
+    async () => service.apply("nonexistent-exec"),
     (err: unknown) => (err as Error).message.includes("Execution not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.decide throws when candidate not found", () => {
+test("RuntimeRecoveryDecisionService.decide throws when candidate not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -183,13 +189,13 @@ test("RuntimeRecoveryDecisionService.decide throws when candidate not found", ()
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.decide("exec-1"),
+  await assert.rejects(
+    async () => service.decide("exec-1"),
     (err: unknown) => (err as Error).message.includes("Recovery candidate not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
+test("RuntimeRecoveryDecisionService.decide returns decision record", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -214,7 +220,7 @@ test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await await service.decide("exec-1");
 
   assert.ok(decision.decisionId.length > 0);
   assert.equal(decision.executionId, "exec-1");
@@ -292,7 +298,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter, null);
@@ -337,7 +343,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_d
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "cancel");
@@ -373,7 +379,7 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.ok(result.deadLetter != null);
@@ -455,7 +461,7 @@ test("RuntimeRecoveryDecisionService.decide records decision event", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.decide("exec-1");
+  await service.decide("exec-1");
 
   assert.equal(eventInserted, true);
 });
@@ -495,7 +501,7 @@ test("RuntimeRecoveryDecisionService.apply records decision and action events", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.apply("exec-1");
+  await service.apply("exec-1");
 
   // Should have at least 2 events: decision_recorded and recovery:cancelled
   assert.ok(events.length >= 2);
@@ -540,7 +546,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter, null);
@@ -575,14 +581,14 @@ test("RuntimeRecoveryDecisionService leaves active execution unapplied when no t
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, false);
   assert.equal(result.deadLetter, null);
   assert.equal(result.decision.action, "resume_same_worker");
 });
 
-test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () => {
+test("RuntimeRecoveryDecisionService.apply throws when candidate not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -593,8 +599,8 @@ test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.apply("exec-1"),
+  await assert.rejects(
+    async () => service.apply("exec-1"),
     (err: unknown) => (err as Error).message.includes("Recovery candidate not found"),
   );
 });
@@ -632,7 +638,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(failureUpdated, true);
@@ -669,7 +675,7 @@ test("RuntimeRecoveryDecisionService deadLetter contains retry count from execut
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.equal(result.deadLetter!.retryCount, 5);
@@ -717,7 +723,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "cancel");
@@ -758,7 +764,7 @@ test("RuntimeRecoveryDecisionService preserves null execution error message when
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "move_dead_letter");
@@ -783,7 +789,7 @@ test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not spec
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await await service.decide("exec-1");
 
   assert.equal(decision.decidedBy, "runtime_recovery_decision_service");
 });
@@ -822,7 +828,7 @@ test("RuntimeRecoveryDecisionService.apply uses default decidedBy when not speci
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.decision.decidedBy, "runtime_recovery_decision_service");
 });
@@ -858,7 +864,7 @@ test("RuntimeRecoveryDecisionService.apply records dead letter event with correc
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.ok(eventPayload != null);
@@ -906,7 +912,7 @@ test("RuntimeRecoveryDecisionService.apply records cancellation event with corre
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.apply("exec-1");
+  await service.apply("exec-1");
 
   assert.ok(eventPayload != null);
   assert.equal(eventPayload!["action"], "cancel");
@@ -950,7 +956,7 @@ test("RuntimeRecoveryDecisionService handles cancel action with existing lastErr
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   // Precheck denial reasonCode takes precedence over existing lastErrorCode
@@ -977,7 +983,7 @@ test("RuntimeRecoveryDecisionService.decide records decision event before return
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.decide("exec-1");
+  await service.decide("exec-1");
 
   assert.ok(eventTypes.includes("recovery:decision_recorded"));
 });
@@ -1017,7 +1023,7 @@ test("RuntimeRecoveryDecisionService handles execution with traceId null in even
   const service = new RuntimeRecoveryDecisionService(db, store);
 
   // Should not throw even with undefined traceId
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
 });
@@ -1052,7 +1058,7 @@ test("RuntimeRecoveryDecisionService handles decision for move_dead_letter prese
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await await service.decide("exec-1");
 
   assert.equal(decision.reason, "execution_error:E_DEADLINE_EXCEEDED");
   assert.equal(decision.action, "move_dead_letter");
@@ -1086,7 +1092,7 @@ test("RuntimeRecoveryDecisionService handles apply when execution traceId differ
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   // Should still apply successfully
   assert.equal(result.applied, true);
@@ -1124,7 +1130,7 @@ test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMess
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.equal(deadLetterRecord!.finalReasonCode, "E_NULL_MSG");
@@ -1161,7 +1167,7 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.ok(insertedMemory != null);
@@ -1197,7 +1203,7 @@ test("RuntimeRecoveryDecisionService handles decision for resume_same_worker act
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await await service.decide("exec-1");
 
   assert.equal(decision.action, "resume_same_worker");
   assert.equal(decision.reason, "active_execution");
@@ -1231,11 +1237,105 @@ test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op act
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   // resume_same_worker is not handled, so applied stays false
   assert.equal(result.applied, false);
   assert.equal(result.deadLetter, null);
   assert.equal(updateFailureCalled, false);
   assert.equal(insertDeadLetterCalled, false);
+});
+
+test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to avoid TOCTOU", async () => {
+  // This test verifies that execution is read inside the transaction,
+  // preventing Time-of-Check-Time-of-Use bugs where data could change between read and write
+  const executionOutsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU", lastErrorMessage: "TOCTOU error", attempt: 1, agentId: "agent-1" };
+  const executionInsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU_UPDATED", lastErrorMessage: "Updated error", attempt: 2, agentId: "agent-1" };
+
+  const db = createMockDb();
+  const store = createMockStore({
+    executions: [executionOutsideTx],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [createMockCandidate({
+        executionId: "exec-toctou",
+        latestErrorCode: "E_TOCTOU_UPDATED",
+        attempt: 2,
+      })],
+    },
+    execution: {
+      updateExecutionFailure: () => {},
+      insertDeadLetter: () => {},
+      getExecutionPrecheck: () => null,
+    },
+    event: {
+      insertEvent: () => {},
+      listEventsForTask: () => [],
+    },
+    memory: {
+      recordFailureMemory: () => {},
+    },
+  });
+
+  // Override getExecution to return different values based on call order
+  // First call returns old data (simulating stale read before transaction)
+  // Second call (inside transaction) returns new data
+  let getExecutionCallCount = 0;
+  store.dispatch.getExecution = (id: string) => {
+    getExecutionCallCount++;
+    // Second call returns the updated execution
+    if (getExecutionCallCount > 1) {
+      return executionInsideTx;
+    }
+    return executionOutsideTx;
+  };
+
+  const service = new RuntimeRecoveryDecisionService(db, store);
+  const result = await service.apply("exec-toctou");
+
+  // The decision should use the execution data read inside transaction
+  assert.equal(result.applied, true);
+  assert.equal(result.deadLetter?.retryCount, 2); // Should use executionInsideTx.attempt
+});
+
+test("RuntimeRecoveryDecisionService.apply uses in-transaction execution data for decision", async () => {
+  // Test that the recovery view is built inside the transaction
+  // so decisions are based on consistent, non-stale data
+  let transactionReads = 0;
+  const candidate = createMockCandidate({
+    executionId: "exec-consistent",
+    latestErrorCode: "E_CONSISTENT",
+    attempt: 3,
+  });
+
+  const db = createMockDb();
+  const store = createMockStore({
+    executions: [{ id: "exec-consistent", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_CONSISTENT", lastErrorMessage: "Consistent error", attempt: 3, agentId: "agent-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    operations: {
+      buildRuntimeRecoveryView: () => {
+        transactionReads++;
+        return [candidate];
+      },
+    },
+    execution: {
+      updateExecutionFailure: () => {},
+      insertDeadLetter: () => {},
+      getExecutionPrecheck: () => null,
+    },
+    event: {
+      insertEvent: () => {},
+      listEventsForTask: () => [],
+    },
+    memory: {
+      recordFailureMemory: () => {},
+    },
+  });
+
+  const service = new RuntimeRecoveryDecisionService(db, store);
+  const result = await service.apply("exec-consistent");
+
+  // buildRuntimeRecoveryView should be called inside the transaction (once)
+  assert.equal(result.applied, true);
+  assert.equal(result.deadLetter?.retryCount, 3);
 });

@@ -85,23 +85,68 @@ export class AgentVersionManager {
     const current = versions.find((version) => version.versionId === versionId);
     if (!current) return;
 
-    const previousSlot = current.deploymentSlot;
+    // Check if this version is already in the target slot - no-op if already assigned
+    if (current.deploymentSlot === slot) return;
+
+    // For blue-green zero-downtime: allow both slots to be active during transition.
+    // Do NOT evict the existing occupant - both slots can be active simultaneously.
     const updatedVersions = versions.map((version) => {
       if (version.versionId === versionId) {
         return { ...version, deploymentSlot: slot };
-      }
-      if (version.deploymentSlot === slot) {
-        return { ...version, deploymentSlot: null };
       }
       return version;
     });
 
     this.setVersions(agentId, updatedVersions);
-
-    if (previousSlot != null && previousSlot !== slot) {
-      this.slotAssignments.delete(`${agentId}:${previousSlot}` as const);
-    }
     this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
+  }
+
+  /**
+   * Revokes a version from its slot, allowing the slot to be reclaimed by the next assignDeploymentSlot.
+   * Supports zero-downtime blue-green: only evicts if the version is currently slotted.
+   */
+  public revokeSlot(agentId: string, versionId: string): void {
+    const versions = this.versions.get(agentId);
+    if (!versions) return;
+
+    const version = versions.find((v) => v.versionId === versionId);
+    if (!version || !version.deploymentSlot) return;
+
+    const slot = version.deploymentSlot;
+    const updatedVersions = versions.map((v) =>
+      v.versionId === versionId ? { ...v, deploymentSlot: null } : v,
+    );
+
+    this.setVersions(agentId, updatedVersions);
+    this.slotAssignments.delete(`${agentId}:${slot}` as const);
+  }
+
+  /**
+   * Performs a blue-green switch: promotes the latest eligible version to the target slot.
+   * Both slots remain active during the transition window for zero-downtime.
+   * Use revokeSlot on the old version to complete the transition.
+   *
+   * Eligible candidates are versions that are:
+   * - Currently in the opposite slot (being phased out), OR
+   * - Unslotted (new versions available for deployment)
+   * Always skips alpha-stage versions.
+   */
+  public blueGreenSwitch(agentId: string, targetSlot: DeploymentSlot): AgentVersionDetail | null {
+    const currentSlot = targetSlot === "blue" ? "green" : "blue";
+    const currentVersion = this.getActiveSlot(agentId, currentSlot);
+
+    const allVersions = this.versions.get(agentId) ?? [];
+    // Find eligible candidate: in opposite slot or unslotted, never alpha stage
+    const candidate = newestFirst(allVersions).find(
+      (v) => v.stage !== "alpha" && (v.deploymentSlot === currentSlot || v.deploymentSlot === null),
+    );
+
+    if (candidate) {
+      this.assignDeploymentSlot(agentId, candidate.versionId, targetSlot);
+      return this.getActiveSlot(agentId, targetSlot);
+    }
+
+    return this.getActiveSlot(agentId, targetSlot) ?? currentVersion;
   }
 
   public getActiveSlot(agentId: string, slot: DeploymentSlot): AgentVersionDetail | null {

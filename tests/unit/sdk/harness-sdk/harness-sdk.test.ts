@@ -11,6 +11,7 @@ import {
   validatePlanGraph,
   validatePlanGraphBundle,
   type HarnessSdkCreateRunInput,
+  type HarnessSdkLifecycleHooks,
   type PlanGraphBuildInput,
   type PlanNode,
   type PlanEdge,
@@ -811,4 +812,148 @@ test("HarnessSdk.assertInvariants does not throw for valid run", () => {
   };
 
   assert.doesNotThrow(() => sdk.assertInvariants(run));
+});
+
+// ============================================================================
+// HarnessSdk Lifecycle Hook Tests (Issue 2009)
+// ============================================================================
+
+test("HarnessSdk calls beforeRun hook when creating run", () => {
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {
+      beforeRun: (input) => {
+        assert.equal(input.taskId, "task_123");
+        assert.equal(input.tenantId, "tenant_abc");
+      },
+    },
+  );
+
+  const input: HarnessSdkCreateRunInput = {
+    taskId: "task_123",
+    domainId: "core",
+    tenantId: "tenant_abc",
+    constraintPack: {
+      constraints: [],
+      maxConcurrentNodes: 1,
+      strategy: { type: "fifo" },
+    },
+  };
+
+  sdk.createRun(input);
+});
+
+test("HarnessSdk calls afterRun hook when run succeeds", () => {
+  let afterRunCalled = false;
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {
+      afterRun: (run) => {
+        afterRunCalled = true;
+        assert.ok(run.harnessRunId, "Run should have harnessRunId");
+      },
+    },
+  );
+
+  const input: HarnessSdkCreateRunInput = {
+    taskId: "task_123",
+    domainId: "core",
+    tenantId: "tenant_abc",
+    constraintPack: {
+      constraints: [],
+      maxConcurrentNodes: 1,
+      strategy: { type: "fifo" },
+    },
+  };
+
+  sdk.createRun(input);
+  assert.equal(afterRunCalled, true, "afterRun hook should be called on success");
+});
+
+test("HarnessSdk calls onError hook when run creation fails", () => {
+  let errorCalled = false;
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {
+      onError: (error) => {
+        errorCalled = true;
+        assert.ok(error instanceof Error, "Should receive an Error");
+      },
+    },
+  );
+
+  const input: HarnessSdkCreateRunInput = {
+    taskId: "task_123",
+    domainId: "core",
+    // Missing tenantId - should cause error
+    constraintPack: {
+      constraints: [],
+      maxConcurrentNodes: 1,
+      strategy: { type: "fifo" },
+    },
+  };
+
+  assert.throws(() => sdk.createRun(input), /missing_tenant/i);
+  assert.equal(errorCalled, true, "onError hook should be called on error");
+});
+
+test("HarnessSdk calls beforeRun, afterRun, and onError hooks via execute", () => {
+  let beforeRunCalled = false;
+  let afterRunCalled = false;
+  let errorCalled = false;
+
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {
+      beforeRun: () => { beforeRunCalled = true; },
+      afterRun: () => { afterRunCalled = true; },
+      onError: () => { errorCalled = true; },
+    },
+  );
+
+  const input: HarnessSdkCreateRunInput = {
+    taskId: "task_123",
+    domainId: "core",
+    tenantId: "tenant_abc",
+    constraintPack: {
+      constraints: [],
+      maxConcurrentNodes: 1,
+      strategy: { type: "fifo" },
+    },
+  };
+
+  sdk.execute(input);
+  assert.equal(beforeRunCalled, true, "beforeRun should be called");
+  assert.equal(afterRunCalled, true, "afterRun should be called");
+  assert.equal(errorCalled, false, "onError should not be called on success");
+});
+
+test("HarnessSdk.lifecycleHooks is optional and SDK works without it", () => {
+  const sdk = new HarnessSdk(); // No lifecycleHooks
+
+  const input: HarnessSdkCreateRunInput = {
+    taskId: "task_123",
+    domainId: "core",
+    tenantId: "tenant_abc",
+    constraintPack: {
+      constraints: [],
+      maxConcurrentNodes: 1,
+      strategy: { type: "fifo" },
+    },
+  };
+
+  const run = sdk.createRun(input);
+  assert.ok(run, "SDK should work without lifecycle hooks");
 });

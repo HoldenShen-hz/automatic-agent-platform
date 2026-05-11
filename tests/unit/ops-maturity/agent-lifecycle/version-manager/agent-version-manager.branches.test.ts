@@ -21,7 +21,8 @@ function createEmptyMetrics(): AgentVersionDetail["metrics"] {
 // ---------------------------------------------------------------------------
 
 // Branch coverage: slot === "blue" branch in assignDeploymentSlot
-test("AgentVersionManager.assignDeploymentSlot evicts green slot when assigning blue", () => {
+// Zero-downtime: both slots can be active simultaneously - no eviction on assign
+test("AgentVersionManager.assignDeploymentSlot does NOT evict green when assigning blue - both slots stay active", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({
     agentId: "agent-evict",
@@ -50,12 +51,13 @@ test("AgentVersionManager.assignDeploymentSlot evicts green slot when assigning 
   const greenVersion = versions.find((v) => v.versionId === v1.versionId);
   const blueVersion = versions.find((v) => v.versionId === v2.versionId);
 
-  assert.equal(greenVersion?.deploymentSlot, null); // green evicted
+  assert.equal(greenVersion?.deploymentSlot, "green"); // green still active - no eviction
   assert.equal(blueVersion?.deploymentSlot, "blue");
 });
 
 // Branch coverage: slot !== "blue" branch (else branch) in assignDeploymentSlot
-test("AgentVersionManager.assignDeploymentSlot evicts blue slot when assigning green", () => {
+// Zero-downtime: both slots can be active simultaneously - no eviction on assign
+test("AgentVersionManager.assignDeploymentSlot does NOT evict blue when assigning green - both slots stay active", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({
     agentId: "agent-evict-green",
@@ -84,7 +86,7 @@ test("AgentVersionManager.assignDeploymentSlot evicts blue slot when assigning g
   const blueVersion = versions.find((v) => v.versionId === v1.versionId);
   const greenVersion = versions.find((v) => v.versionId === v2.versionId);
 
-  assert.equal(blueVersion?.deploymentSlot, null); // blue evicted
+  assert.equal(blueVersion?.deploymentSlot, "blue"); // blue still active - no eviction
   assert.equal(greenVersion?.deploymentSlot, "green");
 });
 

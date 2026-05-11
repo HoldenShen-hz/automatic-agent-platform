@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { RuntimeStateMachine, type PlatformFactEvent } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import type {
@@ -22,6 +22,17 @@ import type {
   SideEffectStatus,
   ArtifactRef,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
+
+// Track persisted events for testing
+const persistedEvents: PlatformFactEvent[] = [];
+
+function createMachine(): RuntimeStateMachine {
+  return new RuntimeStateMachine({
+    persistEvent: (event) => {
+      persistedEvents.push(event);
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Test Fixtures
@@ -120,7 +131,7 @@ function createTestBudgetReservation(overrides: Partial<BudgetReservation> = {})
 // ---------------------------------------------------------------------------
 
 test("HarnessRun valid transition: created -> admitted", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const run = createTestHarnessRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -151,7 +162,7 @@ test("HarnessRun valid transition: created -> admitted", () => {
 });
 
 test("HarnessRun invalid transition: created -> completed (no path)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const run = createTestHarnessRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -180,7 +191,7 @@ test("HarnessRun invalid transition: created -> completed (no path)", () => {
 });
 
 test("HarnessRun valid transition: running -> completed (terminal)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const run = createTestHarnessRun({ status: "running" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -209,7 +220,7 @@ test("HarnessRun valid transition: running -> completed (terminal)", () => {
 });
 
 test("HarnessRun admission requires runVersionLockId", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const run = createTestHarnessRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -243,7 +254,7 @@ test("HarnessRun admission requires runVersionLockId", () => {
 // ---------------------------------------------------------------------------
 
 test("NodeRun valid transition: created -> ready", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -271,7 +282,7 @@ test("NodeRun valid transition: created -> ready", () => {
 });
 
 test("NodeRun valid transition: ready -> leased", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "ready" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -300,7 +311,7 @@ test("NodeRun valid transition: ready -> leased", () => {
 });
 
 test("NodeRun valid transition: leased -> running", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
   const nodeRun = createTestNodeRun({ status: "leased", leaseId, fencingToken });
@@ -327,7 +338,7 @@ test("NodeRun valid transition: leased -> running", () => {
 });
 
 test("NodeRun invalid transition: created -> running (skip intermediate)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -356,7 +367,7 @@ test("NodeRun invalid transition: created -> running (skip intermediate)", () =>
 });
 
 test("NodeRun execution transition requires lease and fencing", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "ready" });
 
   assert.throws(
@@ -382,7 +393,7 @@ test("NodeRun execution transition requires lease and fencing", () => {
 });
 
 test("NodeRun lease mismatch", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const oldLeaseId = createTestLeaseId();
   const nodeRun = createTestNodeRun({ status: "running", leaseId: oldLeaseId, fencingToken: createTestFencingToken() });
   const newLeaseId = createTestLeaseId();
@@ -416,7 +427,7 @@ test("NodeRun lease mismatch", () => {
 // ---------------------------------------------------------------------------
 
 test("SideEffectRecord valid transition: proposed -> approved", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "proposed" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -447,7 +458,7 @@ test("SideEffectRecord valid transition: proposed -> approved", () => {
 });
 
 test("SideEffectRecord commit path requires preCommitPolicyProofRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "proposed" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -480,7 +491,7 @@ test("SideEffectRecord commit path requires preCommitPolicyProofRef", () => {
 });
 
 test("SideEffectRecord high risk requires human approval for commit", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "proposed", riskClass: "high" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -514,7 +525,7 @@ test("SideEffectRecord high risk requires human approval for commit", () => {
 });
 
 test("SideEffectRecord commit path with human approval succeeds", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "proposed", riskClass: "high" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -546,7 +557,7 @@ test("SideEffectRecord commit path with human approval succeeds", () => {
 });
 
 test("SideEffectRecord valid transition: committed -> confirmed", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "committed" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -581,7 +592,7 @@ test("SideEffectRecord valid transition: committed -> confirmed", () => {
 // ---------------------------------------------------------------------------
 
 test("BudgetLedger valid transition: open -> soft_cap_reached", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const ledger = createTestBudgetLedger({ status: "open" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -609,7 +620,7 @@ test("BudgetLedger valid transition: open -> soft_cap_reached", () => {
 });
 
 test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const ledger = createTestBudgetLedger({ status: "soft_cap_reached" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -636,7 +647,7 @@ test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () =
 });
 
 test("BudgetLedger valid transition: open -> hard_cap_reached", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const ledger = createTestBudgetLedger({ status: "open" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -663,7 +674,7 @@ test("BudgetLedger valid transition: open -> hard_cap_reached", () => {
 });
 
 test("BudgetLedger budget-modifying transition requires lease and fencing", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const ledger = createTestBudgetLedger({ status: "open" });
 
   assert.throws(
@@ -693,7 +704,7 @@ test("BudgetLedger budget-modifying transition requires lease and fencing", () =
 // ---------------------------------------------------------------------------
 
 test("BudgetReservation valid transition: reserved -> settled", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const reservation = createTestBudgetReservation({ status: "reserved" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -724,7 +735,7 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
 });
 
 test("BudgetReservation valid transition: reserved -> released", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const reservation = createTestBudgetReservation({ status: "reserved" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -751,7 +762,7 @@ test("BudgetReservation valid transition: reserved -> released", () => {
 });
 
 test("BudgetReservation invalid transition: reserved -> completed (no path)", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const reservation = createTestBudgetReservation({ status: "reserved" });
 
   assert.throws(
@@ -785,7 +796,7 @@ test("BudgetReservation invalid transition: reserved -> completed (no path)", ()
 // ---------------------------------------------------------------------------
 
 test("transition fails when policyGuard.allowed is false", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -818,7 +829,7 @@ test("transition fails when policyGuard.allowed is false", () => {
 });
 
 test("transition fails when policyGuard.policyProofRef is empty", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -855,7 +866,7 @@ test("transition fails when policyGuard.policyProofRef is empty", () => {
 // ---------------------------------------------------------------------------
 
 test("transition fails when expectedSeq does not match", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created", currentSeq: 5 });
 
   assert.throws(
@@ -881,7 +892,7 @@ test("transition fails when expectedSeq does not match", () => {
 });
 
 test("transition fails when expectedVersion does not match", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const ledger = createTestBudgetLedger({ status: "open", version: 10 });
 
   assert.throws(
@@ -911,7 +922,7 @@ test("transition fails when expectedVersion does not match", () => {
 // ---------------------------------------------------------------------------
 
 test("HarnessRun transition requires auditRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const run = createTestHarnessRun({ status: "created" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -941,7 +952,7 @@ test("HarnessRun transition requires auditRef", () => {
 });
 
 test("SideEffectRecord transition requires auditRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const sideEffect = createTestSideEffectRecord({ status: "proposed" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -974,7 +985,7 @@ test("SideEffectRecord transition requires auditRef", () => {
 });
 
 test("transition to succeeded status requires auditRef", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "running", leaseId: createTestLeaseId(), fencingToken: createTestFencingToken() });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
@@ -1007,7 +1018,7 @@ test("transition to succeeded status requires auditRef", () => {
 // ---------------------------------------------------------------------------
 
 test("no-op transition (same from/to status) is denied", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "created" });
 
   assert.throws(
@@ -1036,7 +1047,7 @@ test("no-op transition (same from/to status) is denied", () => {
 // ---------------------------------------------------------------------------
 
 test("transition fails when aggregate status does not match fromStatus", () => {
-  const sm = new RuntimeStateMachine();
+  const sm = createMachine();
   const nodeRun = createTestNodeRun({ status: "running" }); // actual status is "running"
 
   assert.throws(

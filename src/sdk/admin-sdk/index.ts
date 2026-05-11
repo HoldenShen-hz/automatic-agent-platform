@@ -142,6 +142,180 @@ export class AdminSdk {
     return this.client.post<T>("/secrets/rotate", body);
   }
 
+  // =============================================================================
+  // Tenant Management Operations
+  // =============================================================================
+
+  /**
+   * Create a new tenant.
+   */
+  public createTenant<T>(body: unknown) {
+    assertAdminAccess(this.config, "createTenant", ["admin:tenants:create"]);
+    return this.client.post<T>("/tenants", body);
+  }
+
+  /**
+   * Get tenant details by ID.
+   */
+  public getTenant<T>(tenantId: string) {
+    assertAdminAccess(this.config, "getTenant", ["admin:tenants:read"]);
+    return this.client.get<T>(`/tenants/${encodeURIComponent(tenantId)}`);
+  }
+
+  /**
+   * List all tenants with optional filtering.
+   */
+  public listTenants<T>(query?: { cursor?: string; limit?: number; status?: string }) {
+    assertAdminAccess(this.config, "listTenants", ["admin:tenants:read"]);
+    return this.client.getPaginated<T>("/tenants", query);
+  }
+
+  /**
+   * Update tenant configuration.
+   */
+  public updateTenant<T>(tenantId: string, body: unknown) {
+    assertAdminAccess(this.config, "updateTenant", ["admin:tenants:update"]);
+    return this.client.patch<T>(`/tenants/${encodeURIComponent(tenantId)}`, body);
+  }
+
+  /**
+   * Delete a tenant (soft delete).
+   */
+  public deleteTenant<T>(tenantId: string) {
+    assertAdminAccess(this.config, "deleteTenant", ["admin:tenants:delete"]);
+    return this.client.delete<T>(`/tenants/${encodeURIComponent(tenantId)}`);
+  }
+
+  /**
+   * Activate a suspended tenant.
+   */
+  public activateTenant<T>(tenantId: string) {
+    assertAdminAccess(this.config, "activateTenant", ["admin:tenants:activate"]);
+    return this.client.post<T>(`/tenants/${encodeURIComponent(tenantId)}/activate`, {});
+  }
+
+  /**
+   * Suspend an active tenant.
+   */
+  public suspendTenant<T>(tenantId: string, reason?: string) {
+    assertAdminAccess(this.config, "suspendTenant", ["admin:tenants:suspend"]);
+    return this.client.post<T>(`/tenants/${encodeURIComponent(tenantId)}/suspend`, { reason });
+  }
+
+  // =============================================================================
+  // Configuration Management Operations
+  // =============================================================================
+
+  /**
+   * Get configuration value(s) by key pattern.
+   */
+  public getConfig<T>(configKey: string, tenantId?: string) {
+    assertAdminAccess(this.config, "getConfig", ["admin:config:read"]);
+    const path = `/config/${encodeURIComponent(configKey)}`;
+    return this.client.get<T>(tenantId ? `${path}?tenantId=${encodeURIComponent(tenantId)}` : path);
+  }
+
+  /**
+   * List configurations with optional filtering.
+   */
+  public listConfigs<T>(query?: { scope?: string; tenantId?: string; cursor?: string; limit?: number }) {
+    assertAdminAccess(this.config, "listConfigs", ["admin:config:read"]);
+    return this.client.getPaginated<T>("/config", query);
+  }
+
+  /**
+   * Set a configuration value.
+   */
+  public setConfig<T>(configKey: string, body: unknown) {
+    assertAdminAccess(this.config, "setConfig", ["admin:config:write"]);
+    return this.client.put<T>(`/config/${encodeURIComponent(configKey)}`, body);
+  }
+
+  /**
+   * Update a configuration value (partial update).
+   */
+  public updateConfig<T>(configKey: string, body: unknown) {
+    assertAdminAccess(this.config, "updateConfig", ["admin:config:write"]);
+    return this.client.patch<T>(`/config/${encodeURIComponent(configKey)}`, body);
+  }
+
+  /**
+   * Delete a configuration entry.
+   */
+  public deleteConfig<T>(configKey: string) {
+    assertAdminAccess(this.config, "deleteConfig", ["admin:config:delete"]);
+    return this.client.delete<T>(`/config/${encodeURIComponent(configKey)}`);
+  }
+
+  /**
+   * List configuration revisions for a key.
+   */
+  public listConfigRevisions<T>(configKey: string, query?: { cursor?: string; limit?: number }) {
+    assertAdminAccess(this.config, "listConfigRevisions", ["admin:config:read"]);
+    return this.client.getPaginated<T>(`/config/${encodeURIComponent(configKey)}/revisions`, query);
+  }
+
+  /**
+   * Rollback configuration to a specific revision.
+   */
+  public rollbackConfig<T>(configKey: string, revisionId: string) {
+    assertAdminAccess(this.config, "rollbackConfig", ["admin:config:write"]);
+    return this.client.post<T>(`/config/${encodeURIComponent(configKey)}/rollback`, { revisionId });
+  }
+
+  // =============================================================================
+  // Audit Access/Logging Operations
+  // =============================================================================
+
+  /**
+   * Query audit logs with filtering criteria.
+   */
+  public queryAuditLogs<T>(query?: {
+    tenantId?: string;
+    principalId?: string;
+    action?: string;
+    resource?: string;
+    startTime?: string;
+    endTime?: string;
+    cursor?: string;
+    limit?: number;
+  }) {
+    assertAdminAccess(this.config, "queryAuditLogs", ["admin:audit:read"]);
+    return this.client.getPaginated<T>("/audit/logs", query);
+  }
+
+  /**
+   * Get a specific audit log entry by ID.
+   */
+  public getAuditLog<T>(auditId: string) {
+    assertAdminAccess(this.config, "getAuditLog", ["admin:audit:read"]);
+    return this.client.get<T>(`/audit/logs/${encodeURIComponent(auditId)}`);
+  }
+
+  /**
+   * Export audit logs to a specified destination.
+   */
+  public exportAuditLogs<T>(body: unknown) {
+    assertAdminAccess(this.config, "exportAuditLogs", ["admin:audit:export"]);
+    return this.client.post<T>("/audit/export", body);
+  }
+
+  /**
+   * Get audit statistics and metrics.
+   */
+  public getAuditStats<T>(query?: { tenantId?: string; startTime?: string; endTime?: string }) {
+    assertAdminAccess(this.config, "getAuditStats", ["admin:audit:read"]);
+    return this.client.get<T>("/audit/stats", query);
+  }
+
+  /**
+   * Archive audit logs older than a specified retention period.
+   */
+  public archiveAuditLogs<T>(body: unknown) {
+    assertAdminAccess(this.config, "archiveAuditLogs", ["admin:audit:archive"]);
+    return this.client.post<T>("/audit/archive", body);
+  }
+
   // R8-23 FIX: OperationalDirective methods for runtime control
   /**
    * Issue an OperationalDirective for runtime control (pause, resume, quota adjust, kill, etc.)

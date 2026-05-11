@@ -822,17 +822,91 @@ test("durable event bus publish with traceContext injects trace fields into payl
   }
 });
 
-test("durable event bus empty batch returns empty array", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-empty-");
+test("durable event bus publish enforces atomic event append and truth update", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-atomic-");
 
   try {
     const db = new SqliteDatabase(join(workspace, "events.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-atomic", executionId: "exec-atomic", traceId: "trace-atomic" });
 
-    const events = bus.publishBatch([]);
-    assert.deepEqual(events, []);
+    let handlerCalled = false;
+    bus.subscribe("inspect_projection", async (_event) => {
+      handlerCalled = true;
+    });
+
+    // Publishing a tier_2 event (stream:chunk_emitted) should atomically
+    // enqueue the event in the partition queue within the transaction.
+    const event = bus.publish({
+      eventType: "stream:chunk_emitted",
+      taskId: "task-atomic",
+      executionId: "exec-atomic",
+      traceId: "trace-atomic",
+      payload: { sequence: 1, chunk: "test" },
+    });
+
+    // Verify event was persisted
+    const persisted = store.event.getEvent(event.id);
+    assert.ok(persisted, "Event must be persisted before handler can run");
+
+    // Wait for async fan-out
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // Handler should have been called (voluntary delivery is async but event is already in queue)
+    assert.ok(handlerCalled, "Handler should have been called for volatile event");
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch atomic dispatch for multiple tier2 events", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-atomic-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-atomic", executionId: "exec-batch-atomic", traceId: "trace-batch-atomic" });
+
+    const seen: string[] = [];
+    bus.subscribe("inspect_projection", async (event) => {
+      seen.push(event.id);
+    });
+
+    const events = bus.publishBatch([
+      {
+        eventType: "stream:chunk_emitted",
+        taskId: "task-batch-atomic",
+        executionId: "exec-batch-atomic",
+        traceId: "trace-batch-atomic",
+        payload: { sequence: 1, chunk: "chunk1" },
+      },
+      {
+        eventType: "stream:chunk_emitted",
+        taskId: "task-batch-atomic",
+        executionId: "exec-batch-atomic",
+        traceId: "trace-batch-atomic",
+        payload: { sequence: 2, chunk: "chunk2" },
+      },
+    ]);
+
+    // All events must be persisted before any handler runs
+    for (const evt of events) {
+      const persisted = store.event.getEvent(evt.id);
+      assert.ok(persisted, `Event ${evt.id} must be persisted`);
+    }
+
+    // Wait for async fan-out
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.equal(seen.length, 2, "Both events should be delivered");
+    assert.ok(seen.includes(events[0]!.id), "First event should be delivered");
+    assert.ok(seen.includes(events[1]!.id), "Second event should be delivered");
 
     db.close();
   } finally {

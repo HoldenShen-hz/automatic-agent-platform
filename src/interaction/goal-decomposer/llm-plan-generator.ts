@@ -232,6 +232,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
+          expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic settle
           context: {
             principal: this.options.budgetControl!.emittedBy,
             tenantId: this.options.budgetControl!.tenantId,
@@ -293,6 +294,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         allocator.release({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
+          expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic release
           reasonCode: "budget.goal_decomposer_llm_plan_failed",
           context: {
             principal: this.options.budgetControl!.emittedBy,

@@ -852,10 +852,30 @@ test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
 
-  // Generate p0 finding
-  checker.run();
+  // Log the checker instance to see if it's consistent
+  console.log("Checker instance ID:", (checker as any)._id ?? "no-id");
+  console.log("Checker dispatchReconciliation:", (checker as any).dispatchReconciliation !== undefined);
 
-  assert.equal(checker.canAcceptTraffic(), false);
+  // First check traffic is not blocked before run
+  console.log("Before run - canAcceptTraffic:", checker.canAcceptTraffic());
+
+  // Generate p0 finding
+  const report = checker.run();
+  console.log("Report status:", report.status, "Findings:", report.findings.length);
+
+  // Check if the method being called is the one we modified
+  // Let's call canAcceptTraffic right after run to see immediate state
+  const canAccept1 = checker.canAcceptTraffic();
+  console.log("Immediately after run - canAcceptTraffic:", canAccept1);
+
+  // Access private state for debugging - useReflect to get true private field
+  const state = Object.getOwnPropertyDescriptor(checker, 'trafficBlocked')?.value;
+  console.log("Internal trafficBlocked (direct prop):", state);
+  const state2 = (checker as any).trafficBlocked;
+  console.log("Internal trafficBlocked (any):", state2);
+
+  assert.equal(report.status, "fail_closed");
+  assert.equal(canAccept1, false);
 });
 
 test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 findings", () => {

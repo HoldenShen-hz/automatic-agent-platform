@@ -43,13 +43,38 @@ test("GameDevAdapter.shutdown returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("GameDevAdapter.authenticate does not throw", async () => {
+test("GameDevAdapter.authenticate throws on missing credentials", async () => {
   const adapter = createGameDevAdapterPlugin();
-  await adapter.authenticate({});
+  await assert.rejects(
+    async () => adapter.authenticate({}),
+    /game_dev_adapter.missing_credentials/
+  );
+});
+
+test("GameDevAdapter.authenticate throws on invalid credentials type", async () => {
+  const adapter = createGameDevAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.authenticate({ token: 123 }),
+    /game_dev_adapter.missing_credentials/
+  );
+});
+
+test("GameDevAdapter.authenticate accepts valid token", async () => {
+  const adapter = createGameDevAdapterPlugin();
+  await adapter.authenticate({ token: "valid_unity_token_12345" });
+});
+
+test("GameDevAdapter.execute throws when not authenticated", async () => {
+  const adapter = createGameDevAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.execute("get_build_status", { projectSlug: "my-project" }),
+    /game_dev_adapter.not_authenticated/
+  );
 });
 
 test("GameDevAdapter.execute returns success with action", async () => {
   const adapter = createGameDevAdapterPlugin();
+  await adapter.authenticate({ token: "valid_unity_token_12345" });
 
   const result = await adapter.execute("get_build_status", {
     projectSlug: "my-project",
@@ -65,6 +90,7 @@ test("GameDevAdapter.execute returns success with action", async () => {
 
 test("GameDevAdapter.execute handles missing optional params", async () => {
   const adapter = createGameDevAdapterPlugin();
+  await adapter.authenticate({ token: "valid_unity_token_12345" });
 
   const result = await adapter.execute("get_build_status", {});
 

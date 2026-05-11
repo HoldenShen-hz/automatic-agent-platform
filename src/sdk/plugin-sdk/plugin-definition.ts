@@ -4,11 +4,127 @@
  * Implements §22.4 Plugin lifecycle: definePlugin() for plugin definition.
  */
 
+import { createHash, createVerify } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator" | "validator" | "planner" | "presenter";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
+
+/**
+ * Represents a registered verification key for plugin signature verification.
+ */
+export interface PluginSigningVerificationKey {
+  keyId: string;
+  publicKeyPem: string;
+  algorithm: "ed25519" | "RSA-SHA256" | "RSA-SHA384" | "RSA-SHA512";
+}
+
+/**
+ * Global registry of verification keys indexed by keyId.
+ * In production these should be managed by a secure KMS.
+ */
+const pluginSigningVerificationKeys = new Map<string, PluginSigningVerificationKey>();
+
+/**
+ * Registers a public key used to verify plugin signatures.
+ *
+ * @param input - The verification key to register
+ */
+export function registerPluginSigningVerificationKey(input: PluginSigningVerificationKey): void {
+  pluginSigningVerificationKeys.set(input.keyId.trim(), {
+    keyId: input.keyId.trim(),
+    publicKeyPem: input.publicKeyPem.trim(),
+    algorithm: input.algorithm,
+  });
+}
+
+/**
+ * Converts a plugin signing algorithm string to a Node.js crypto algorithm name.
+ */
+function nodeAlgorithm(algorithm: string): string {
+  switch (algorithm) {
+    case "ed25519": return "ed25519";
+    case "RSA-SHA256": return "RSA-SHA256";
+    case "RSA-SHA384": return "RSA-SHA384";
+    case "RSA-SHA512": return "RSA-SHA512";
+    default: return "RSA-SHA256";
+  }
+}
+
+/**
+ * Computes the deterministic content hash for a plugin definition.
+ * Used as the signed payload for signature verification.
+ */
+function pluginDefinitionDigest(definition: PluginDefinition): string {
+  const payload = {
+    pluginId: definition.pluginId,
+    name: definition.name,
+    version: definition.version,
+    type: definition.type,
+    capabilities: definition.capabilities,
+    resourceLimits: definition.resourceLimits,
+    dependencies: definition.dependencies,
+    spiTypes: definition.spiTypes,
+    domainIds: definition.domainIds,
+  };
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+/**
+ * Verifies a plugin definition against its embedded signature.
+ *
+ * @param definition - The plugin definition to verify
+ * @returns true if the signature is valid; false if the signature is missing or verification fails
+ */
+export function verifyPluginSignature(definition: PluginDefinition): boolean {
+  if (!definition.signing) {
+    return false;
+  }
+  const key = pluginSigningVerificationKeys.get(definition.signing.keyId);
+  if (!key) {
+    return false;
+  }
+  try {
+    const digest = pluginDefinitionDigest(definition);
+    const verify = createVerify(nodeAlgorithm(definition.signing.algorithm));
+    verify.update(digest);
+    return verify.verify(key.publicKeyPem, definition.signing.signature, "base64");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Enforces signature verification on a plugin definition.
+ * Throws a ValidationError if the plugin has no signature or the signature is invalid.
+ *
+ * @param definition - The plugin definition to verify
+ * @throws ValidationError if signature is missing or invalid
+ */
+export function enforcePluginSignature(definition: PluginDefinition): void {
+  if (!definition.signing) {
+    throw new ValidationError(
+      "plugin_sdk.missing_signature",
+      "Plugin is not signed; signature is required for activation.",
+      { details: { pluginId: definition.pluginId } },
+    );
+  }
+  if (!pluginSigningVerificationKeys.has(definition.signing.keyId)) {
+    throw new ValidationError(
+      "plugin_sdk.unknown_signing_key",
+      `Plugin signing keyId "${definition.signing.keyId}" is not registered for signature verification.`,
+      { details: { pluginId: definition.pluginId, keyId: definition.signing.keyId } },
+    );
+  }
+  if (!verifyPluginSignature(definition)) {
+    throw new ValidationError(
+      "plugin_sdk.invalid_signature",
+      "Plugin signature verification failed; plugin may be tampered.",
+      { details: { pluginId: definition.pluginId } },
+    );
+  }
+}
 
 export interface PluginCapability {
   name: string;

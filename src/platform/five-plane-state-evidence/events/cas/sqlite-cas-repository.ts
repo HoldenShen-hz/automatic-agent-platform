@@ -124,6 +124,9 @@ export class SqliteCasRepository {
   /**
    * Performs an atomic compare-and-swap operation using SQLite's transaction mechanism.
    *
+   * Uses BEGIN IMMEDIATE to acquire a write lock atomically, ensuring that
+   * read-check-write operations are atomic at the database level.
+   *
    * @param key - The CAS key
    * @param expectedValue - The expected current value (empty string means key should not exist)
    * @param newValue - The new value to set
@@ -136,52 +139,87 @@ export class SqliteCasRepository {
   ): CasResult {
     const updatedAt = new Date().toISOString();
 
-    if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
-      const inserted = execute(
+    // Use BEGIN IMMEDIATE to acquire write lock atomically
+    // This ensures read-check-write is atomic at database level
+    this.conn.exec("BEGIN IMMEDIATE");
+
+    try {
+      let currentValue: string | undefined;
+      let currentVersion: number | undefined;
+
+      const currentRow = queryOne<CasRecordRow>(
         this.conn,
-        `INSERT INTO cas_records (cas_key, value, version, updated_at)
-         SELECT ?, ?, 1, ?
-         WHERE NOT EXISTS (SELECT 1 FROM cas_records WHERE cas_key = ?)`,
-        key,
-        newValue,
-        updatedAt,
+        `SELECT cas_key, value, version, updated_at FROM cas_records WHERE cas_key = ?`,
         key,
       );
-      if (inserted > 0) {
-        return { success: true, currentValue: newValue, currentVersion: 1 };
+
+      if (currentRow) {
+        currentValue = currentRow.value;
+        currentVersion = currentRow.version;
       }
-    }
 
-    const updated = execute(
-      this.conn,
-      `UPDATE cas_records
-       SET value = ?, version = version + 1, updated_at = ?
-       WHERE cas_key = ? AND value = ?`,
-      newValue,
-      updatedAt,
-      key,
-      expectedValue,
-    );
-    if (updated > 0) {
-      const current = this.get(key);
-      return {
-        success: true,
-        currentValue: current?.value ?? newValue,
-        currentVersion: current?.version ?? 1,
-      };
-    }
+      let success = false;
+      let resultNewValue = newValue;
+      let resultVersion = 1;
 
-    const current = this.get(key);
-    const { value, version } = current ?? {};
-    return {
-      success: false,
-      ...(value !== undefined && { currentValue: value }),
-      ...(version !== undefined && { currentVersion: version }),
-    };
+      if (currentValue === undefined) {
+        // Key does not exist
+        if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+          // Insert new record
+          this.conn
+            .prepare(
+              `INSERT INTO cas_records (cas_key, value, version, updated_at)
+             VALUES (?, ?, 1, ?)`,
+            )
+            .run(key, newValue, updatedAt);
+          success = true;
+          resultNewValue = newValue;
+          resultVersion = 1;
+        } else {
+          // Expected value doesn't match - key doesn't exist
+          success = false;
+        }
+      } else if (currentValue !== expectedValue) {
+        // Value mismatch
+        success = false;
+        resultNewValue = currentValue;
+        resultVersion = currentVersion!;
+      } else {
+        // Value matches - perform update with version increment
+        this.conn
+          .prepare(
+            `UPDATE cas_records
+             SET value = ?, version = version + 1, updated_at = ?
+             WHERE cas_key = ? AND value = ?`,
+          )
+          .run(newValue, updatedAt, key, expectedValue);
+        success = true;
+        resultNewValue = newValue;
+        resultVersion = currentVersion! + 1;
+      }
+
+      this.conn.exec("COMMIT");
+
+      if (success) {
+        return { success: true, currentValue: resultNewValue, currentVersion: resultVersion };
+      } else {
+        return {
+          success: false,
+          ...(currentValue !== undefined && { currentValue }),
+          ...(currentVersion !== undefined && { currentVersion }),
+        };
+      }
+    } catch (error) {
+      this.conn.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   /**
-   * Performs a version-based compare-and-set operation.
+   * Performs a version-based compare-and-set operation using atomic transaction.
+   *
+   * Uses BEGIN IMMEDIATE to acquire a write lock atomically, ensuring that
+   * read-check-write operations are atomic at the database level.
    *
    * @param key - The CAS key
    * @param expectedVersion - The expected current version (0 means key should not exist)
@@ -195,47 +233,78 @@ export class SqliteCasRepository {
   ): CasResult {
     const updatedAt = new Date().toISOString();
 
-    if (expectedVersion === 0) {
-      const inserted = execute(
+    // Use BEGIN IMMEDIATE to acquire write lock atomically
+    this.conn.exec("BEGIN IMMEDIATE");
+
+    try {
+      let currentValue: string | undefined;
+      let currentVersion: number | undefined;
+
+      const currentRow = queryOne<CasRecordRow>(
         this.conn,
-        `INSERT INTO cas_records (cas_key, value, version, updated_at)
-         SELECT ?, ?, 1, ?
-         WHERE NOT EXISTS (SELECT 1 FROM cas_records WHERE cas_key = ?)`,
-        key,
-        newValue,
-        updatedAt,
+        `SELECT cas_key, value, version, updated_at FROM cas_records WHERE cas_key = ?`,
         key,
       );
-      if (inserted > 0) {
-        return { success: true, currentValue: newValue, currentVersion: 1 };
+
+      if (currentRow) {
+        currentValue = currentRow.value;
+        currentVersion = currentRow.version;
       }
-    }
 
-    const updated = execute(
-      this.conn,
-      `UPDATE cas_records
-       SET value = ?, version = version + 1, updated_at = ?
-       WHERE cas_key = ? AND version = ?`,
-      newValue,
-      updatedAt,
-      key,
-      expectedVersion,
-    );
-    if (updated > 0) {
-      const current = this.get(key);
-      return {
-        success: true,
-        currentValue: current?.value ?? newValue,
-        currentVersion: current?.version ?? 1,
-      };
-    }
+      let success = false;
+      let resultNewValue = newValue;
+      let resultVersion = 1;
 
-    const current = this.get(key);
-    const { value, version } = current ?? {};
-    return {
-      success: false,
-      ...(value !== undefined && { currentValue: value }),
-      ...(version !== undefined && { currentVersion: version }),
-    };
+      if (currentVersion === undefined) {
+        // Key does not exist
+        if (expectedVersion === 0) {
+          // Insert new record
+          this.conn
+            .prepare(
+              `INSERT INTO cas_records (cas_key, value, version, updated_at)
+             VALUES (?, ?, 1, ?)`,
+            )
+            .run(key, newValue, updatedAt);
+          success = true;
+          resultNewValue = newValue;
+          resultVersion = 1;
+        } else {
+          // Expected version doesn't match - key doesn't exist
+          success = false;
+        }
+      } else if (currentVersion !== expectedVersion) {
+        // Version mismatch
+        success = false;
+        resultNewValue = currentValue!;
+        resultVersion = currentVersion;
+      } else {
+        // Version matches - perform update with version increment
+        this.conn
+          .prepare(
+            `UPDATE cas_records
+             SET value = ?, version = version + 1, updated_at = ?
+             WHERE cas_key = ? AND version = ?`,
+          )
+          .run(newValue, updatedAt, key, expectedVersion);
+        success = true;
+        resultNewValue = newValue;
+        resultVersion = currentVersion + 1;
+      }
+
+      this.conn.exec("COMMIT");
+
+      if (success) {
+        return { success: true, currentValue: resultNewValue, currentVersion: resultVersion };
+      } else {
+        return {
+          success: false,
+          ...(currentValue !== undefined && { currentValue }),
+          ...(currentVersion !== undefined && { currentVersion }),
+        };
+      }
+    } catch (error) {
+      this.conn.exec("ROLLBACK");
+      throw error;
+    }
   }
 }

@@ -187,6 +187,7 @@ test("settle() transitions reservation from reserved to settled", () => {
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
     actualAmount: 95,
+    expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic settle
     context: createTestContext(),
   });
 
@@ -229,6 +230,7 @@ test("settle() with actual amount less than reserved amount releases difference"
       })
       .reservation,
     actualAmount: 50,
+    expectedVersion: ledger.version, // R11-12: CAS atomic settle
     context: createTestContext(),
   });
 
@@ -255,6 +257,7 @@ test("settle() fails when actual amount exceeds reserved amount", () => {
         ledger: reserveResult.ledger,
         reservation: reserveResult.reservation,
         actualAmount: 150,
+        expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic settle
         context: createTestContext(),
       }),
     (err: unknown) => err instanceof WorkflowStateError,
@@ -282,6 +285,7 @@ test("settle() with evidence refs preserves them in settlement", () => {
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
     actualAmount: 95,
+    expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic settle
     evidenceRefs,
     context: createTestContext(),
   });
@@ -306,6 +310,7 @@ test("release() transitions reservation from reserved to released", () => {
   const releaseResult = allocator.release({
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
+    expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic release
     context: createTestContext(),
   });
 
@@ -332,6 +337,7 @@ test("release() with custom reason code", () => {
   const releaseResult = allocator.release({
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
+    expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic release
     reasonCode: "budget.timeout",
     context: createTestContext(),
   });
@@ -570,6 +576,7 @@ test("settle() increments ledger version", () => {
       })
       .reservation,
     actualAmount: 95,
+    expectedVersion: ledger.version, // R11-12: CAS atomic settle
     context: createTestContext(),
   });
 
@@ -592,6 +599,7 @@ test("release() increments ledger version", () => {
   const releaseResult = allocator.release({
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
+    expectedVersion: reserveResult.ledger.version, // R11-12: CAS atomic release
     context: createTestContext(),
   });
 

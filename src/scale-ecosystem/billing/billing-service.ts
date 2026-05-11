@@ -372,6 +372,7 @@ export class BillingService {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: ledgerEntry.amountUsd,
+          expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic settle
           context: {
             principal: input.budgetControl!.emittedBy,
             tenantId: input.budgetControl!.tenantId,
@@ -384,6 +385,7 @@ export class BillingService {
         this.budgetAllocator.release({
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
+          expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic release
           reasonCode: "budget.billing_usage_record_failed",
           context: {
             principal: input.budgetControl!.emittedBy,

@@ -45,6 +45,28 @@ export interface CasRepository {
 
 class InMemoryCasRepository implements CasRepository {
   private readonly store = new Map<string, CasRecord>();
+  private readonly locks = new Map<string, number>();
+  private lockIdCounter = 0;
+
+  /**
+   * Acquires a lock for a specific key using a simple in-memory locking mechanism.
+   * Uses a counter-based lock acquisition that's suitable for single-process concurrency.
+   * @returns A function to release the lock
+   */
+  private acquireLock(key: string): () => void {
+    let lockId: number;
+    do {
+      lockId = ++this.lockIdCounter;
+    } while (this.locks.get(key) !== undefined);
+
+    this.locks.set(key, lockId);
+
+    return () => {
+      if (this.locks.get(key) === lockId) {
+        this.locks.delete(key);
+      }
+    };
+  }
 
   public get(key: string): CasRecord | undefined {
     return this.store.get(key);
@@ -63,83 +85,93 @@ class InMemoryCasRepository implements CasRepository {
   }
 
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
-    const current = this.store.get(key);
+    const releaseLock = this.acquireLock(key);
+    try {
+      const current = this.store.get(key);
 
-    if (current === undefined) {
-      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
-        this.store.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
+      if (current === undefined) {
+        if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+          this.store.set(key, {
+            value: newValue,
+            version: 1,
+            updatedAt: new Date(),
+          });
+          return {
+            success: true,
+            currentValue: newValue,
+            currentVersion: 1,
+          };
+        }
         return {
-          success: true,
-          currentValue: newValue,
-          currentVersion: 1,
+          success: false,
         };
       }
+
+      if (current.value !== expectedValue) {
+        return {
+          success: false,
+          currentValue: current.value,
+          currentVersion: current.version,
+        };
+      }
+
+      const newVersion = current.version + 1;
+      this.store.set(key, {
+        value: newValue,
+        version: newVersion,
+        updatedAt: new Date(),
+      });
+
       return {
-        success: false,
+        success: true,
+        currentValue: newValue,
+        currentVersion: newVersion,
       };
+    } finally {
+      releaseLock();
     }
-
-    if (current.value !== expectedValue) {
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    const newVersion = current.version + 1;
-    this.store.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
-    };
   }
 
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    const current = this.store.get(key);
+    const releaseLock = this.acquireLock(key);
+    try {
+      const current = this.store.get(key);
 
-    if (current === undefined) {
-      if (expectedVersion === 0) {
-        this.store.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return { success: true, currentValue: newValue, currentVersion: 1 };
+      if (current === undefined) {
+        if (expectedVersion === 0) {
+          this.store.set(key, {
+            value: newValue,
+            version: 1,
+            updatedAt: new Date(),
+          });
+          return { success: true, currentValue: newValue, currentVersion: 1 };
+        }
+        return { success: false };
       }
-      return { success: false };
-    }
 
-    if (current.version !== expectedVersion) {
+      if (current.version !== expectedVersion) {
+        return {
+          success: false,
+          currentValue: current.value,
+          currentVersion: current.version,
+        };
+      }
+
+      const newVersion = current.version + 1;
+      this.store.set(key, {
+        value: newValue,
+        version: newVersion,
+        updatedAt: new Date(),
+      });
+
       return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
+        success: true,
+        currentValue: newValue,
+        currentVersion: newVersion,
       };
+    } finally {
+      releaseLock();
     }
-
-    const newVersion = current.version + 1;
-    this.store.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
-    };
   }
 }
 

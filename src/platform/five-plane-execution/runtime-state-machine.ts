@@ -224,7 +224,7 @@ export class RuntimeStateMachine {
     // If no callback was provided, the machine was constructed without persistence
     // capability, which is a programming error. We throw to enforce the contract.
     if (this.persistEvent == null) {
-      throw new ValidationError(
+      throw new WorkflowStateError(
         "runtime_state_machine.persistence_required",
         "RuntimeStateMachine requires an event persistence callback. Construct with { persistEvent: callback }.",
       );

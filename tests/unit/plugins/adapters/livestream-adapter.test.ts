@@ -43,13 +43,38 @@ test("LivestreamAdapter.shutdown returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("LivestreamAdapter.authenticate does not throw", async () => {
+test("LivestreamAdapter.authenticate throws on missing OBS token", async () => {
   const adapter = createLivestreamAdapterPlugin();
-  await adapter.authenticate({});
+  await assert.rejects(
+    async () => adapter.authenticate({}),
+    /OBS authentication token is required/
+  );
+});
+
+test("LivestreamAdapter.authenticate throws on invalid OBS token format", async () => {
+  const adapter = createLivestreamAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.authenticate({ obsToken: "short" }),
+    /OBS authentication token format is invalid/
+  );
+});
+
+test("LivestreamAdapter.authenticate accepts valid OBS token", async () => {
+  const adapter = createLivestreamAdapterPlugin();
+  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
+});
+
+test("LivestreamAdapter.execute throws when not authenticated", async () => {
+  const adapter = createLivestreamAdapterPlugin();
+  await assert.rejects(
+    async () => adapter.execute("get_stream_config", { streamId: "stream_123" }),
+    /livestream_adapter.not_authenticated/
+  );
 });
 
 test("LivestreamAdapter.execute returns success with action", async () => {
   const adapter = createLivestreamAdapterPlugin();
+  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
 
   const result = await adapter.execute("get_stream_config", {
     streamId: "stream_123",
@@ -63,6 +88,7 @@ test("LivestreamAdapter.execute returns success with action", async () => {
 
 test("LivestreamAdapter.execute handles missing streamId", async () => {
   const adapter = createLivestreamAdapterPlugin();
+  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
 
   const result = await adapter.execute("get_stream_config", {});
 

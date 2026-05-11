@@ -6,7 +6,9 @@ import { createHarnessRun } from "../../../../src/platform/contracts/executable-
 import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
 
 test("RuntimeStateMachine rejects null auditRef for requires-audit HarnessRun transitions", () => {
-  const machine = new RuntimeStateMachine();
+  const machine = new RuntimeStateMachine({
+    persistEvent: () => {},
+  });
   const run = createHarnessRun({
     harnessRunId: "run-audit-null",
     tenantId: "tenant-1",

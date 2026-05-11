@@ -340,3 +340,157 @@ test("validatePluginDefinition preserves extended spiTypes such as planner/prese
   assert.ok(validated.spiTypes.includes("planner"));
   assert.ok(validated.spiTypes.includes("validator"));
 });
+
+test("verifyPluginSignature returns false for unsigned plugin", () => {
+  const plugin = definePlugin({
+    pluginId: "test-pack.unsigned-tool",
+    name: "Unsigned Tool",
+    version: "1.0.0",
+    type: "tool",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+  });
+
+  // verifyPluginSignature is not called at definePlugin time (enforcement is at load)
+  // so we can create unsigned plugins; verification just returns false
+  const { verifyPluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+  assert.equal(verifyPluginSignature(plugin), false);
+});
+
+test("verifyPluginSignature returns false when keyId is not registered", () => {
+  const { createHash, createSign } = require("node:crypto");
+  const { generateKeyPairSync } = require("node:crypto");
+  const { registerPluginSigningVerificationKey, verifyPluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  const plugin = definePlugin({
+    pluginId: "test-pack.signed-tool",
+    name: "Signed Tool",
+    version: "1.0.0",
+    type: "tool",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+    signing: {
+      keyId: "unknown-key",
+      signature: "invalid",
+      algorithm: "RSA-SHA256",
+    },
+  });
+
+  assert.equal(verifyPluginSignature(plugin), false);
+});
+
+test("enforcePluginSignature throws for unsigned plugin", () => {
+  const { enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+  const plugin = definePlugin({
+    pluginId: "test-pack.unsigned",
+    name: "Unsigned",
+    version: "1.0.0",
+    type: "tool",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+  });
+
+  assert.throws(
+    () => enforcePluginSignature(plugin),
+    /signature is required/,
+  );
+});
+
+test("enforcePluginSignature throws when signing keyId is not registered", () => {
+  const { registerPluginSigningVerificationKey, enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+  const { generateKeyPairSync } = require("node:crypto");
+
+  const { publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  // Register a different keyId than what the plugin uses
+  registerPluginSigningVerificationKey({
+    keyId: "my-key",
+    publicKeyPem: publicKey,
+    algorithm: "RSA-SHA256",
+  });
+
+  const plugin = definePlugin({
+    pluginId: "test-pack.wrong-key",
+    name: "Wrong Key",
+    version: "1.0.0",
+    type: "tool",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+    signing: {
+      keyId: "other-key",
+      signature: "fake",
+      algorithm: "RSA-SHA256",
+    },
+  });
+
+  assert.throws(
+    () => enforcePluginSignature(plugin),
+    /not registered/,
+  );
+});
+
+test("enforcePluginSignature throws for invalid signature", () => {
+  const { registerPluginSigningVerificationKey, enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+  const { generateKeyPairSync } = require("node:crypto");
+
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+
+  registerPluginSigningVerificationKey({
+    keyId: "my-key",
+    publicKeyPem: publicKey,
+    algorithm: "RSA-SHA256",
+  });
+
+  const plugin = definePlugin({
+    pluginId: "test-pack.tampered",
+    name: "Tampered",
+    version: "1.0.0",
+    type: "tool",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: {},
+      outputSchema: {},
+    }],
+    signing: {
+      keyId: "my-key",
+      signature: "tampered-signature",
+      algorithm: "RSA-SHA256",
+    },
+  });
+
+  assert.throws(
+    () => enforcePluginSignature(plugin),
+    /invalid signature/,
+  );
+});

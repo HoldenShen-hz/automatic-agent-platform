@@ -652,6 +652,554 @@ test("AdminSdk.rotateSecrets sends POST to secrets endpoint", async () => {
   }
 });
 
+// =============================================================================
+// Tenant Management Operations
+// =============================================================================
+
+test("AdminSdk.createTenant sends POST to /tenants", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ tenantId: "t_new", name: "New Tenant" }), {
+      status: 201,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.createTenant<{ tenantId: string; name: string }>({
+      name: "New Tenant",
+    });
+    assert.equal(result.data.tenantId, "t_new");
+    assert.equal(result.status, 201);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.getTenant sends GET to /tenants/:id", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ tenantId: "t_1", name: "Tenant 1", status: "active" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.getTenant<{ tenantId: string; name: string; status: string }>("t_1");
+    assert.equal(result.data.tenantId, "t_1");
+    assert.equal(result.data.status, "active");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.listTenants returns paginated response", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ tenantId: "t_1" }, { tenantId: "t_2" }]), {
+      status: 200,
+      headers: { "content-type": "application/json", "x-next-cursor": "cursor_2", "x-total-count": "10" },
+    });
+
+  try {
+    const result = await sdk.listTenants<{ tenantId: string }>({ limit: 2 });
+    assert.deepEqual(result.data, [{ tenantId: "t_1" }, { tenantId: "t_2" }]);
+    assert.equal(result.nextCursor, "cursor_2");
+    assert.equal(result.totalCount, 10);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.updateTenant sends PATCH to /tenants/:id", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ tenantId: "t_1", name: "Updated Tenant" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.updateTenant<{ tenantId: string; name: string }>("t_1", { name: "Updated Tenant" });
+    assert.equal(result.data.name, "Updated Tenant");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.deleteTenant sends DELETE to /tenants/:id", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ deleted: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.deleteTenant<{ deleted: boolean }>("t_1");
+    assert.equal(result.data.deleted, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.activateTenant sends POST to /tenants/:id/activate", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ tenantId: "t_1", status: "active" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.activateTenant<{ tenantId: string; status: string }>("t_1");
+    assert.equal(result.data.status, "active");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.suspendTenant sends POST to /tenants/:id/suspend", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ tenantId: "t_1", status: "suspended" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.suspendTenant<{ tenantId: string; status: string }>("t_1", "Policy violation");
+    assert.equal(result.data.status, "suspended");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+// =============================================================================
+// Configuration Management Operations
+// =============================================================================
+
+test("AdminSdk.getConfig sends GET to /config/:key", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ key: "runtime/default", value: { maxWorkers: 10 } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.getConfig<{ key: string; value: unknown }>("runtime/default");
+    assert.equal(result.data.key, "runtime/default");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.listConfigs returns paginated response", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ key: "config_1" }, { key: "config_2" }]), {
+      status: 200,
+      headers: { "content-type": "application/json", "x-next-cursor": "cursor_2" },
+    });
+
+  try {
+    const result = await sdk.listConfigs<{ key: string }>({ scope: "runtime", limit: 10 });
+    assert.deepEqual(result.data, [{ key: "config_1" }, { key: "config_2" }]);
+    assert.equal(result.nextCursor, "cursor_2");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.setConfig sends PUT to /config/:key", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ key: "new_config", value: { enabled: true } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.setConfig<{ key: string; value: unknown }>("new_config", { value: { enabled: true } });
+    assert.equal(result.data.key, "new_config");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.updateConfig sends PATCH to /config/:key", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ key: "config_1", value: { maxWorkers: 20 } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.updateConfig<{ key: string; value: { maxWorkers: number } }>("config_1", { maxWorkers: 20 });
+    assert.equal(result.data.value.maxWorkers, 20);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.deleteConfig sends DELETE to /config/:key", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ deleted: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.deleteConfig<{ deleted: boolean }>("old_config");
+    assert.equal(result.data.deleted, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.listConfigRevisions returns paginated revisions", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ revisionId: "rev_1" }, { revisionId: "rev_2" }]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.listConfigRevisions<{ revisionId: string }>("config_1");
+    assert.deepEqual(result.data, [{ revisionId: "rev_1" }, { revisionId: "rev_2" }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.rollbackConfig sends POST to /config/:key/rollback", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ key: "config_1", currentRevision: "rev_1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.rollbackConfig<{ key: string; currentRevision: string }>("config_1", "rev_1");
+    assert.equal(result.data.currentRevision, "rev_1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+// =============================================================================
+// Audit Access/Logging Operations
+// =============================================================================
+
+test("AdminSdk.queryAuditLogs returns paginated audit logs", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ auditId: "audit_1", action: "tenant.create" }]), {
+      status: 200,
+      headers: { "content-type": "application/json", "x-next-cursor": "cursor_2" },
+    });
+
+  try {
+    const result = await sdk.queryAuditLogs<{ auditId: string; action: string }>({
+      tenantId: "t_1",
+      startTime: "2026-01-01T00:00:00Z",
+      limit: 10,
+    });
+    assert.deepEqual(result.data, [{ auditId: "audit_1", action: "tenant.create" }]);
+    assert.equal(result.nextCursor, "cursor_2");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.getAuditLog sends GET to /audit/logs/:id", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ auditId: "audit_123", action: "config.update", timestamp: "2026-05-01T12:00:00Z" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.getAuditLog<{ auditId: string; action: string; timestamp: string }>("audit_123");
+    assert.equal(result.data.auditId, "audit_123");
+    assert.equal(result.data.action, "config.update");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.exportAuditLogs sends POST to /audit/export", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ exportId: "exp_1", status: "completed", downloadUrl: "https://..." }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.exportAuditLogs<{ exportId: string; status: string; downloadUrl: string }>({
+      format: "json",
+      startTime: "2026-01-01T00:00:00Z",
+      endTime: "2026-05-01T00:00:00Z",
+    });
+    assert.equal(result.data.exportId, "exp_1");
+    assert.equal(result.data.status, "completed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.getAuditStats sends GET to /audit/stats", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ totalEvents: 1000, tenantBreakdown: { t_1: 500 } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.getAuditStats<{ totalEvents: number; tenantBreakdown: Record<string, number> }>({
+      startTime: "2026-01-01T00:00:00Z",
+    });
+    assert.equal(result.data.totalEvents, 1000);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.archiveAuditLogs sends POST to /audit/archive", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+    principal: {
+      principalId: "sdk-admin",
+      tenantId: "t_tenant",
+      roles: ["admin"],
+    },
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ archived: true, count: 500 }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await sdk.archiveAuditLogs<{ archived: boolean; count: number }>({
+      olderThan: "2026-01-01T00:00:00Z",
+    });
+    assert.equal(result.data.archived, true);
+    assert.equal(result.data.count, 500);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 // ============================================================================
 // Directive with expiration
 // ============================================================================

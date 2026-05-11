@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { SimpleRolloutManager, type RolloutStage, type RolloutStatus, type RolloutMetrics } from "../../../../src/ops-maturity/drift-detection/rollout-manager.js";
+import {
+  SimpleRolloutManager,
+  PersistentRolloutManager,
+  type RolloutStage,
+  type RolloutStatus,
+  type RolloutMetrics,
+  applyRolloutSchema,
+  type RollbackHandler,
+} from "../../../../src/ops-maturity/drift-detection/rollout-manager.js";
+import { RolloutRepository } from "../../../../src/ops-maturity/drift-detection/rollout-repository.js";
 import type { ImprovementProposal } from "../../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
 function createProposal(id: string): ImprovementProposal {
@@ -32,6 +44,15 @@ function createMetrics(overrides: Partial<RolloutMetrics> = {}): RolloutMetrics 
     ...overrides,
   };
 }
+
+function createTestDb(): { db: DatabaseSync; path: string } {
+  const path = join(tmpdir(), `rollout-test-${Date.now()}.db`);
+  const db = new DatabaseSync(path);
+  db.exec("PRAGMA foreign_keys = ON;");
+  return { db, path };
+}
+
+// === SimpleRolloutManager Tests ===
 
 test("SimpleRolloutManager.start creates rollout record", async () => {
   const manager = new SimpleRolloutManager();
@@ -209,4 +230,342 @@ test("RolloutStatus type accepts all valid values", () => {
   for (const status of statuses) {
     assert.ok(["running", "succeeded", "failed", "rolled_back"].includes(status));
   }
+});
+
+// === RolloutRepository Tests ===
+
+test("RolloutRepository.insert and getByProposalId round-trip", () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+  const record = {
+    proposalId: "prop_1",
+    stage: "canary" as const,
+    percentage: 5,
+    startedAt: new Date().toISOString(),
+    status: "running" as const,
+  };
+
+  repo.insert(record);
+  const retrieved = repo.getByProposalId("prop_1");
+
+  assert.equal(retrieved?.proposalId, "prop_1");
+  assert.equal(retrieved?.stage, "canary");
+  assert.equal(retrieved?.percentage, 5);
+  assert.equal(retrieved?.status, "running");
+
+  db.close();
+});
+
+test("RolloutRepository.update modifies existing record", () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+  const record = {
+    proposalId: "prop_1",
+    stage: "canary" as const,
+    percentage: 5,
+    startedAt: new Date().toISOString(),
+    status: "running" as const,
+  };
+
+  repo.insert(record);
+
+  const updated = { ...record, status: "succeeded" as const, completedAt: new Date().toISOString() };
+  repo.update(updated);
+
+  const retrieved = repo.getByProposalId("prop_1");
+  assert.equal(retrieved?.status, "succeeded");
+  assert.ok(retrieved?.completedAt !== undefined);
+
+  db.close();
+});
+
+test("RolloutRepository.listActive returns only active rollouts", () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  repo.insert({ proposalId: "prop_1", stage: "canary", percentage: 5, startedAt: new Date().toISOString(), status: "running" });
+  repo.insert({ proposalId: "prop_2", stage: "stable", percentage: 100, startedAt: new Date().toISOString(), status: "succeeded" });
+  repo.insert({ proposalId: "prop_3", stage: "partial", percentage: 25, startedAt: new Date().toISOString(), status: "rollback_pending" });
+
+  const active = repo.listActive();
+
+  assert.equal(active.length, 2);
+  assert.ok(active.every(r => r.status === "running" || r.status === "rollback_pending"));
+
+  db.close();
+});
+
+test("RolloutRepository.delete removes record", () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+  repo.insert({ proposalId: "prop_1", stage: "canary", percentage: 5, startedAt: new Date().toISOString(), status: "running" });
+
+  repo.delete("prop_1");
+
+  const retrieved = repo.getByProposalId("prop_1");
+  assert.equal(retrieved, null);
+
+  db.close();
+});
+
+// === PersistentRolloutManager Tests ===
+
+test("PersistentRolloutManager persists rollout state", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_persist_1");
+  await manager.start(proposal, "canary", 5);
+
+  // Verify in-memory
+  const inMemory = await manager.getRollout("prop_persist_1");
+  assert.equal(inMemory?.proposalId, "prop_persist_1");
+
+  // Verify persisted
+  const fromDb = repo.getByProposalId("prop_persist_1");
+  assert.equal(fromDb?.proposalId, "prop_persist_1");
+  assert.equal(fromDb?.stage, "canary");
+
+  db.close();
+});
+
+test("PersistentRolloutManager survives restart via repository reload", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  // Create and start a rollout
+  {
+    const manager = new PersistentRolloutManager(repo);
+    const proposal = createProposal("prop_restart");
+    await manager.start(proposal, "canary", 5);
+    await manager.updateMetrics("prop_restart", createMetrics());
+  }
+
+  // Simulate restart - new manager instance loads from repo
+  {
+    const manager2 = new PersistentRolloutManager(repo);
+    const record = await manager2.getRollout("prop_restart");
+
+    assert.equal(record?.proposalId, "prop_restart");
+    assert.equal(record?.status, "running");
+    assert.ok(record?.metrics !== undefined);
+  }
+
+  db.close();
+});
+
+test("PersistentRolloutManager.updateMetrics persists change", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_metrics");
+  await manager.start(proposal, "canary", 5);
+
+  await manager.updateMetrics("prop_metrics", createMetrics({ successRate: 0.98 }));
+
+  // Verify persisted
+  const fromDb = repo.getByProposalId("prop_metrics");
+  assert.equal(fromDb?.metrics?.successRate, 0.98);
+
+  db.close();
+});
+
+test("PersistentRolloutManager.rollback performs actual rollback action", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const rollbackCalls: Array<{ proposalId: string; reason: string }> = [];
+  manager.setRollbackHandlerFactory(() => async (proposalId: string, reason: string) => {
+    rollbackCalls.push({ proposalId, reason });
+  });
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_rollback");
+  await manager.start(proposal, "canary", 5);
+
+  await manager.rollback("prop_rollback", "Test rollback reason");
+
+  // Verify handler was called with correct arguments
+  assert.equal(rollbackCalls.length, 1);
+  assert.equal(rollbackCalls[0].proposalId, "prop_rollback");
+  assert.equal(rollbackCalls[0].reason, "Test rollback reason");
+
+  // Verify state was updated
+  const record = await manager.getRollout("prop_rollback");
+  assert.equal(record?.status, "rolled_back");
+  assert.equal(record?.failureReason, "Test rollback reason");
+
+  db.close();
+});
+
+test("PersistentRolloutManager.rollback persists state after action", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  manager.setRollbackHandlerFactory(() => async () => { /* no-op handler */ });
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_rollback_persist");
+  await manager.start(proposal, "canary", 5);
+
+  await manager.rollback("prop_rollback_persist", "Testing persistence");
+
+  // Verify persisted to database
+  const fromDb = repo.getByProposalId("prop_rollback_persist");
+  assert.equal(fromDb?.status, "rolled_back");
+  assert.equal(fromDb?.failureReason, "Testing persistence");
+
+  db.close();
+});
+
+test("PersistentRolloutManager.complete persists", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_complete");
+  await manager.start(proposal, "stable", 100);
+
+  await manager.complete("prop_complete");
+
+  const fromDb = repo.getByProposalId("prop_complete");
+  assert.equal(fromDb?.status, "succeeded");
+  assert.ok(fromDb?.completedAt !== undefined);
+
+  db.close();
+});
+
+test("PersistentRolloutManager.fail persists", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_fail");
+  await manager.start(proposal, "canary", 5);
+
+  await manager.fail("prop_fail", "Health check failed");
+
+  const fromDb = repo.getByProposalId("prop_fail");
+  assert.equal(fromDb?.status, "failed");
+  assert.equal(fromDb?.failureReason, "Health check failed");
+
+  db.close();
+});
+
+test("PersistentRolloutManager.getActiveRollouts uses in-memory cache", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  await manager.start(createProposal("prop_active1"), "canary", 5);
+  await manager.start(createProposal("prop_active2"), "partial", 25);
+  await manager.start(createProposal("prop_done"), "stable", 100);
+  await manager.complete("prop_done");
+
+  const active = await manager.getActiveRollouts();
+
+  assert.equal(active.length, 2);
+  assert.ok(active.every(r => r.status === "running"));
+
+  db.close();
+});
+
+test("PersistentRolloutManager survives concurrent updateMetrics", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  const manager = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_concurrent");
+  await manager.start(proposal, "canary", 5);
+
+  // Simulate concurrent metric updates
+  await Promise.all([
+    manager.updateMetrics("prop_concurrent", createMetrics({ successRate: 0.98 })),
+    manager.updateMetrics("prop_concurrent", createMetrics({ errorRate: 0.03 })),
+    manager.updateMetrics("prop_concurrent", createMetrics({ latencyMs: 120 })),
+  ]);
+
+  const record = await manager.getRollout("prop_concurrent");
+  // Last write wins (in-memory is Map-based)
+  assert.ok(record?.metrics !== undefined);
+
+  db.close();
+});
+
+// Type for manager variable used in tests
+declare const manager: PersistentRolloutManager;
+
+// === Rollback Handler Factory Tests ===
+
+test("PersistentRolloutManager uses default handler when no factory set", async () => {
+  const { db, path } = createTestDb();
+  applyRolloutSchema(db);
+  const repo = new RolloutRepository({ connection: db, filePath: path } as never);
+
+  // Create manager without setting factory - should use no-op default
+  const manager2 = new PersistentRolloutManager(repo);
+  const proposal = createProposal("prop_default_handler");
+  await manager2.start(proposal, "canary", 5);
+
+  // Should not throw - default handler is no-op
+  await manager2.rollback("prop_default_handler", "Default handler test");
+
+  const record = await manager2.getRollout("prop_default_handler");
+  assert.equal(record?.status, "rolled_back");
+
+  db.close();
+});
+
+test("applyRolloutSchema creates correct table structure", () => {
+  const { db } = createTestDb();
+
+  applyRolloutSchema(db);
+
+  // Verify table exists and has correct schema
+  const tableInfo = db.prepare("PRAGMA table_info(rollout_records);").all() as Array<{ name: string }>;
+  const columnNames = tableInfo.map(c => c.name);
+
+  assert.ok(columnNames.includes("proposal_id"));
+  assert.ok(columnNames.includes("stage"));
+  assert.ok(columnNames.includes("percentage"));
+  assert.ok(columnNames.includes("started_at"));
+  assert.ok(columnNames.includes("completed_at"));
+  assert.ok(columnNames.includes("status"));
+  assert.ok(columnNames.includes("metrics_json"));
+  assert.ok(columnNames.includes("failure_reason"));
+
+  db.close();
+});
+
+test("applyRolloutSchema creates indexes", () => {
+  const { db } = createTestDb();
+
+  applyRolloutSchema(db);
+
+  // Verify indexes exist
+  const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_rollout_%';").all() as Array<{ name: string }>;
+
+  assert.ok(indexes.some(i => i.name === "idx_rollout_records_status"));
+  assert.ok(indexes.some(i => i.name === "idx_rollout_records_started_at"));
+
+  db.close();
 });

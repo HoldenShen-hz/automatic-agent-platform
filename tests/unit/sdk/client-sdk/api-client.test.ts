@@ -551,3 +551,172 @@ test("RetryableApiClient caps backoff at maxBackoffMs", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("RetryableApiClient PUT is retried on 5xx errors (idempotent)", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount <= 2) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.put<{ success: boolean }>("/users/1", { name: "updated" });
+    assert.equal(result.status, 200);
+    assert.equal(attemptCount, 3); // Initial + 2 retries
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient PATCH is retried on 5xx errors (idempotent)", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount <= 2) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.patch<{ success: boolean }>("/users/1", { name: "updated" });
+    assert.equal(result.status, 200);
+    assert.equal(attemptCount, 3); // Initial + 2 retries
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient POST is NOT retried on 5xx errors (non-idempotent)", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.post<{ success: boolean }>("/users", { name: "test" }));
+    assert.equal(attemptCount, 1); // No retries - should only be called once
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient DELETE is NOT retried on 5xx errors (non-idempotent)", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.delete("/users/1"));
+    assert.equal(attemptCount, 1); // No retries - should only be called once
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient does NOT retry on 4xx client errors", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Bad request" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await assert.rejects(client.get("/test"));
+    assert.equal(attemptCount, 1); // No retries on 4xx
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

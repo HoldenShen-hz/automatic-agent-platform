@@ -13,6 +13,7 @@ import {
 import {
   RuntimeStateMachine,
   isTruthConsumerEvent,
+  type PlatformFactEvent,
 } from "../../../../src/platform/execution/runtime-state-machine.js";
 
 const artifact: ArtifactRef = {
@@ -21,11 +22,23 @@ const artifact: ArtifactRef = {
   hash: "sha256:test",
 };
 
+// Track persisted events for testing
+const persistedEvents: PlatformFactEvent[] = [];
+
 function createMachine(): RuntimeStateMachine {
-  return new RuntimeStateMachine();
+  return new RuntimeStateMachine({
+    persistEvent: (event) => {
+      persistedEvents.push(event);
+    },
+  });
+}
+
+function clearPersistedEvents(): void {
+  persistedEvents.length = 0;
 }
 
 test("RuntimeStateMachine transitions HarnessRun and appends platform fact event", () => {
+  clearPersistedEvents();
   const machine = createMachine();
   const run = createHarnessRun({
     harnessRunId: "run-1",
@@ -456,4 +469,117 @@ test("RuntimeStateMachine transitions budget ledger and reservation with version
   assert.equal(ledgerResult.aggregate.version, 1);
   assert.equal(reservationResult.aggregate.status, "settled");
   assert.equal(reservationResult.event.eventType, "platform.budget_reservation.status_changed");
+});
+
+test("RuntimeStateMachine persists events on every transition", () => {
+  clearPersistedEvents();
+  const machine = createMachine();
+
+  // Transition 1: HarnessRun admission
+  const run = createHarnessRun({
+    harnessRunId: "run-persist-test",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    currentSeq: 0,
+  });
+
+  machine.transition({
+    aggregateType: "HarnessRun",
+    aggregate: run,
+    fromStatus: "created",
+    toStatus: "admitted",
+    expectedSeq: 0,
+    traceId: "trace-persist-1",
+    tenantId: "tenant-1",
+    reasonCode: "admission_ok",
+    emittedBy: "admission-controller",
+    runVersionLockId: "rvlock-1",
+    policyGuard: {
+      allowed: true,
+      policyProofRef: "policy-proof-1",
+    },
+    auditRef: "audit://run-persist-test/admission",
+    occurredAt: "2026-04-27T00:00:00.000Z",
+  });
+
+  // Verify event was persisted
+  assert.equal(persistedEvents.length, 1);
+  assert.equal(persistedEvents[0].eventType, "platform.harness_run.status_changed");
+  assert.equal(persistedEvents[0].aggregateId, "run-persist-test");
+
+  // Transition 2: NodeRun running
+  const nodeRun = createNodeRun({
+    harnessRunId: "run-persist-test",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+    status: "leased",
+    currentSeq: 0,
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
+  });
+
+  machine.transition({
+    aggregateType: "NodeRun",
+    aggregate: nodeRun,
+    fromStatus: "leased",
+    toStatus: "running",
+    expectedSeq: 0,
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
+    traceId: "trace-persist-2",
+    tenantId: "tenant-1",
+    reasonCode: "execution_start",
+    emittedBy: "worker-1",
+  });
+
+  // Verify second event was persisted
+  assert.equal(persistedEvents.length, 2);
+  assert.equal(persistedEvents[1].eventType, "platform.node_run.status_changed");
+  assert.equal(persistedEvents[1].aggregateId, nodeRun.nodeRunId);
+});
+
+test("RuntimeStateMachine throws when constructed without persistEvent callback", () => {
+  const machineWithoutCallback = new RuntimeStateMachine();
+
+  const run = createHarnessRun({
+    harnessRunId: "run-no-callback",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    currentSeq: 0,
+  });
+
+  assert.throws(
+    () =>
+      machineWithoutCallback.transition({
+        aggregateType: "HarnessRun",
+        aggregate: run,
+        fromStatus: "created",
+        toStatus: "admitted",
+        expectedSeq: 0,
+        traceId: "trace-no-callback",
+        tenantId: "tenant-1",
+        reasonCode: "admission_ok",
+        emittedBy: "admission-controller",
+        runVersionLockId: "rvlock-1",
+        policyGuard: {
+          allowed: true,
+          policyProofRef: "policy-proof-1",
+        },
+        auditRef: "audit://run-no-callback/admission",
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.persistence_required",
+  );
 });

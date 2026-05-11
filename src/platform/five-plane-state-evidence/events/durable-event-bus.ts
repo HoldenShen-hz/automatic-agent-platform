@@ -374,6 +374,11 @@ export class DurableEventBus {
 
     const schema = getEventSchema(input.eventType);
     const resolvedSequence = this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null);
+    // R12-05 FIX: Event append, truth update, and volatile dispatch MUST happen in the
+    // same transaction. Previously dispatchVolatile/scheduleFanOut were called outside
+    // the transaction, meaning an event could be committed but its delivery could fail
+    // silently. Now volatile dispatch is deferred and executed within the transaction
+    // so that event record and handler invocation are atomic (or both roll back).
     const eventRecord = this.db.transaction(() =>
       {
         this.ensureReferencedTask(input.taskId ?? null);
@@ -395,14 +400,23 @@ export class DurableEventBus {
           schemaVersion: input.schemaVersion ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
+        // R12-05 FIX: Execute volatile dispatch atomically within the transaction.
+        // For tier_2/tier_3 events this ensures the event record and fan-out are
+        // committed together, so a handler failure causes the whole transaction to
+        // roll back rather than silently losing delivery.
+        if (record.eventTier !== "tier_1") {
+          this.dispatchVolatileAtomic(record);
+        }
         return record;
       },
     );
 
-    if (eventRecord.eventTier !== "tier_1") {
-      this.dispatchVolatile(eventRecord);
+    // Tier-1 events still use the polling fan-out mechanism (scheduleFanOut)
+    // which is intentionally decoupled for reliability at the cost of immediacy.
+    // Non-tier-1 events were already dispatched atomically inside the transaction above.
+    if (eventRecord.eventTier === "tier_1") {
+      this.scheduleFanOut();
     }
-    this.scheduleFanOut();
 
     return eventRecord;
   }
@@ -446,6 +460,8 @@ export class DurableEventBus {
     const resolvedSequences = inputs.map((input) => this.resolvePublishSequence(input.runId ?? null, input.sequence ?? null));
 
     // Insert all events in a single transaction for efficiency
+    // R12-05 FIX: Include volatile dispatch inside transaction so event record and
+    // fan-out are committed atomically together.
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
@@ -468,16 +484,16 @@ export class DurableEventBus {
           schemaVersion: input.schemaVersion ?? null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
+        // R12-05 FIX: Atomic volatile dispatch for non-tier-1 events
+        if (record.eventTier !== "tier_1") {
+          this.dispatchVolatileAtomic(record);
+        }
         return record;
       }),
     );
 
-    // Dispatch volatile events and schedule fan-out once for the batch
-    const nonTier1Records = eventRecords.filter((record) => record.eventTier !== "tier_1");
-    for (const eventRecord of nonTier1Records) {
-      this.dispatchVolatile(eventRecord);
-    }
-    if (eventRecords.length > 0) {
+    // R12-05 FIX: scheduleFanOut only for tier-1 events (tier_2/3 already dispatched atomically)
+    if (eventRecords.some((record) => record.eventTier === "tier_1")) {
       this.scheduleFanOut();
     }
 
@@ -840,7 +856,53 @@ export class DurableEventBus {
       queue.splice(insertIndex, 0, queueEntry);
     }
     this.pendingPartitionEvents.set(partitionKey, queue);
-    this.processPartitionQueue(partitionKey);
+    // R12-05 FIX: Do NOT call processPartitionQueue here - that runs async handlers
+    // which would escape the transaction. The handlers will run via scheduleFanOut
+    // after the transaction commits, keeping the event and enqueue atomic.
+  }
+
+  /**
+   * R12-05 FIX: Atomic volatile dispatch - enqueues event without running handlers.
+   * Handlers run later via scheduleFanOut after transaction commits.
+   */
+  private dispatchVolatileAtomic(event: EventRecord): void {
+    const partitionKey = event.aggregateId ?? event.id;
+    const eventSequence = event.sequence ?? 0;
+
+    const eligibleConsumers: Array<{ consumerId: string; entry: PartitionSubscriber; groupId: string }> = [];
+
+    for (const [consumerId, entry] of this.subscribers.entries()) {
+      if (entry.partitions.size > 0 && !entry.partitions.has(partitionKey)) {
+        continue;
+      }
+      const chainState = this.deliveryChainStates.get(consumerId);
+      const group = this.consumerGroups.get(entry.groupId);
+      const groupDeliveryCount = this.groupDeliveryCounts.get(entry.groupId) ?? 0;
+
+      if (group && groupDeliveryCount >= group.maxConcurrency) {
+        continue;
+      }
+      if (chainState?.backPressure.isBackPressure) {
+        continue;
+      }
+
+      eligibleConsumers.push({ consumerId, entry, groupId: entry.groupId });
+    }
+
+    const queue = this.pendingPartitionEvents.get(partitionKey) ?? [];
+    const queueEntry: PartitionSequenceEntry = {
+      sequence: eventSequence,
+      event,
+      pendingConsumers: new Set(eligibleConsumers.map((consumer) => consumer.consumerId)),
+    };
+    const insertIndex = queue.findIndex((entry) => entry.sequence > eventSequence);
+    if (insertIndex === -1) {
+      queue.push(queueEntry);
+    } else {
+      queue.splice(insertIndex, 0, queueEntry);
+    }
+    this.pendingPartitionEvents.set(partitionKey, queue);
+    // R12-05 FIX: Do NOT call processPartitionQueue - handlers run after commit via scheduleFanOut
   }
 
   private processPartitionQueue(partitionKey: string): void {

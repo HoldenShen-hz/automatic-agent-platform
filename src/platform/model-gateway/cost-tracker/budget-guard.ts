@@ -766,6 +766,7 @@ export class BudgetExecutionSessionManager {
       ledger: session.ledger,
       reservation: session.reservation,
       actualAmount,
+      expectedVersion: session.ledger.version, // R11-12: CAS atomic settle
       context: {
         principal: session.request.emittedBy,
         tenantId: session.request.tenantId,

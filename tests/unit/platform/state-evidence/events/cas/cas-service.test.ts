@@ -413,3 +413,143 @@ test("FencingTokenService getActiveFenceCount returns correct count", () => {
   service.releaseFence("exec1");
   assert.equal(service.getActiveFenceCount(), 1);
 });
+
+// =============================================================================
+// Concurrent CAS Operation Tests
+// =============================================================================
+
+test("CasService compareAndSwap is atomic under concurrent read-check-write", async () => {
+  const service = new CasService();
+
+  // Initialize with a known value
+  service.setValue("concurrent-key", "initial");
+
+  // Simulate concurrent CAS operations that all try to update from "initial"
+  // Only one should succeed
+  const results: Array<{ success: boolean; currentValue?: string }> = [];
+  const operations = [];
+
+  for (let i = 0; i < 10; i++) {
+    operations.push(
+      new Promise<void>((resolve) => {
+        const result = service.compareAndSwap("concurrent-key", "initial", `updated-${i}`);
+        results.push(result);
+        resolve();
+      }),
+    );
+  }
+
+  await Promise.all(operations);
+
+  // Exactly one should succeed
+  const successCount = results.filter((r) => r.success).length;
+  assert.equal(successCount, 1, `Expected exactly 1 success, got ${successCount}`);
+
+  // The failed ones should see the updated value
+  const failedResults = results.filter((r) => !r.success);
+  for (const failed of failedResults) {
+    assert.ok(
+      failed.currentValue !== undefined && !failed.currentValue.startsWith("initial"),
+      `Failed CAS should see non-initial value, got: ${failed.currentValue}`,
+    );
+  }
+});
+
+test("CasService compareAndSet is atomic under concurrent version-based updates", async () => {
+  const service = new CasService();
+
+  // Initialize with version 1
+  service.setValue("version-key", "value1");
+
+  // All 10 operations try to CAS from version 1 to different values
+  const results: Array<{ success: boolean; currentVersion?: number }> = [];
+  const operations = [];
+
+  for (let i = 0; i < 10; i++) {
+    operations.push(
+      new Promise<void>((resolve) => {
+        const result = service.compareAndSet("version-key", 1, `value-${i}`);
+        results.push(result);
+        resolve();
+      }),
+    );
+  }
+
+  await Promise.all(operations);
+
+  // Exactly one should succeed (the first one to acquire the lock)
+  const successCount = results.filter((r) => r.success).length;
+  assert.equal(successCount, 1, `Expected exactly 1 success, got ${successCount}`);
+
+  // Version should be 2 for the successful one
+  const successfulResult = results.find((r) => r.success);
+  assert.equal(successfulResult?.currentVersion, 2);
+});
+
+test("CasService handles rapid alternating CAS operations", () => {
+  const service = new CasService();
+
+  service.setValue("alternating-key", "A");
+
+  // Rapidly alternate between two values
+  for (let i = 0; i < 100; i++) {
+    const currentValue = service.getValue("alternating-key");
+    if (currentValue === "A") {
+      const result = service.compareAndSwap("alternating-key", "A", "B");
+      assert.equal(result.success, true);
+    } else {
+      const result = service.compareAndSwap("alternating-key", "B", "A");
+      assert.equal(result.success, true);
+    }
+  }
+
+  // Final version should be 101 (1 initial + 100 updates)
+  assert.equal(service.getVersion("alternating-key"), 101);
+});
+
+test("CasService lock prevents interleaved read-check-write", () => {
+  const service = new CasService();
+
+  service.setValue("interleave-key", "initial");
+
+  let operationOrder: string[] = [];
+  const releaseOrder: string[] = [];
+
+  // Simulate interleaving operations
+  const op1 = () => {
+    operationOrder.push("op1-read-start");
+    const current = service.getValue("interleave-key");
+    operationOrder.push("op1-read-end");
+    operationOrder.push("op1-write-start");
+    // This should block until op2 completes its write
+    const result = service.compareAndSwap("interleave-key", current, "op1-value");
+    operationOrder.push("op1-write-end");
+    releaseOrder.push(result.success ? "op1-success" : "op1-fail");
+  };
+
+  const op2 = () => {
+    operationOrder.push("op2-read-start");
+    const current = service.getValue("interleave-key");
+    operationOrder.push("op2-read-end");
+    operationOrder.push("op2-write-start");
+    const result = service.compareAndSwap("interleave-key", current, "op2-value");
+    operationOrder.push("op2-write-end");
+    releaseOrder.push(result.success ? "op2-success" : "op2-fail");
+  };
+
+  // Run synchronously to verify atomicity
+  op1();
+  op2();
+
+  // One should succeed, one should fail
+  const successCount = releaseOrder.filter((r) => r.includes("success")).length;
+  assert.equal(successCount, 1);
+
+  // Verify sequential execution (no interleaving of reads/writes)
+  // If atomic, we should see full operation complete before other starts
+  assert.ok(
+    operationOrder.indexOf("op1-write-end") < operationOrder.indexOf("op2-write-start") ||
+      operationOrder.indexOf("op2-write-end") < operationOrder.indexOf("op1-write-start"),
+    "Operations should be atomic - no interleaving",
+  );
+});

@@ -36,6 +36,7 @@ import {
   createScopedExternalAccessSandbox,
   type ScopedExternalAccessConfig,
 } from "./scoped-external-access-sandbox.js";
+import { enforcePluginSignature, type PluginDefinition } from "../../../sdk/plugin-sdk/plugin-definition.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -180,6 +181,9 @@ export class PluginExecutorService {
     }
 
     const context = this.buildContext(pluginId, instance.manifest);
+
+    // Enforce signature verification before loading plugin
+    enforcePluginSignature(instance.manifest as unknown as PluginDefinition);
 
     if (instance.hooks.onLoad) {
       await instance.hooks.onLoad(context);
