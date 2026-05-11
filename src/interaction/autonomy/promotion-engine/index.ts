@@ -1,9 +1,13 @@
 import type { AutonomyLevel, CapabilityTrustScore } from "../index.js";
 
+export type PromotionApprovalRole = "domain_owner" | "platform_team";
+
 export interface PromotionAssessment {
   readonly shouldPromote: boolean;
   readonly currentLevel: AutonomyLevel;
   readonly targetLevel: AutonomyLevel;
+  readonly approvalRequired: boolean;
+  readonly approvalRole: PromotionApprovalRole | null;
   readonly reasonCodes: readonly string[];
 }
 
@@ -41,6 +45,8 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       shouldPromote: false,
       currentLevel: score.currentAutonomy,
       targetLevel: score.currentAutonomy,
+      approvalRequired: false,
+      approvalRole: null,
       reasonCodes: [`autonomy.promotion_blocked_by_override_rate:${overrideRate.toFixed(3)}`],
     };
   }
@@ -50,6 +56,8 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       shouldPromote: false,
       currentLevel: score.currentAutonomy,
       targetLevel: score.currentAutonomy,
+      approvalRequired: false,
+      approvalRole: null,
       reasonCodes: ["autonomy.promotion_blocked_by_incident"],
     };
   }
@@ -60,28 +68,48 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       shouldPromote: false,
       currentLevel: score.currentAutonomy,
       targetLevel: score.currentAutonomy,
+      approvalRequired: false,
+      approvalRole: null,
       reasonCodes: [`autonomy.promotion_blocked_by_time_window:${incidentFreeDays}d < ${requiredIncidentFreeDays}d`],
     };
   }
 
   if (score.currentAutonomy === "suggestion" && score.totalExecutions >= 50 && rate >= 0.95) {
-    return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "supervised", reasonCodes: ["autonomy.meets_supervised_threshold"] };
+    return {
+      shouldPromote: true,
+      currentLevel: score.currentAutonomy,
+      targetLevel: "supervised",
+      approvalRequired: true,
+      approvalRole: "domain_owner",
+      reasonCodes: ["autonomy.meets_supervised_threshold", "autonomy.promotion_requires_domain_owner_approval"],
+    };
   }
   if (score.currentAutonomy === "supervised" && score.totalExecutions >= 200 && rate >= 0.98) {
-    return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "semi_auto", reasonCodes: ["autonomy.meets_semi_auto_threshold"] };
+    return {
+      shouldPromote: true,
+      currentLevel: score.currentAutonomy,
+      targetLevel: "semi_auto",
+      approvalRequired: true,
+      approvalRole: "domain_owner",
+      reasonCodes: ["autonomy.meets_semi_auto_threshold", "autonomy.promotion_requires_domain_owner_approval"],
+    };
   }
   if (score.currentAutonomy === "semi_auto" && score.totalExecutions >= 500 && rate >= 0.99) {
     return {
-      shouldPromote: false,
+      shouldPromote: true,
       currentLevel: score.currentAutonomy,
-      targetLevel: score.currentAutonomy,
-      reasonCodes: ["autonomy.full_auto_requires_governance_override"],
+      targetLevel: "full_auto",
+      approvalRequired: true,
+      approvalRole: "platform_team",
+      reasonCodes: ["autonomy.meets_full_auto_threshold", "autonomy.full_auto_requires_governance_override"],
     };
   }
   return {
     shouldPromote: false,
     currentLevel: score.currentAutonomy,
     targetLevel: score.currentAutonomy,
+    approvalRequired: false,
+    approvalRole: null,
     reasonCodes: ["autonomy.promotion_threshold_not_met"],
   };
 }

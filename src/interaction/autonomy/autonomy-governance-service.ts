@@ -12,6 +12,8 @@ export interface AutonomyGovernanceDecision {
   readonly trustScore: number;
   readonly trustLevel: TrustLevel;
   readonly promoted: boolean;
+  readonly approvalRequired: boolean;
+  readonly approvalRole: "domain_owner" | "platform_team" | null;
   readonly reasonCodes: readonly string[];
 }
 
@@ -81,8 +83,13 @@ export class AutonomyGovernanceService {
       recommendedLevel,
       trustScore,
       trustLevel,
-      promoted: compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
-        || (promotion.shouldPromote && recommendedLevel === nextAutonomyLevel(score.currentAutonomy)),
+      promoted: promotion.shouldPromote && !promotion.approvalRequired
+        && (
+          compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
+          || recommendedLevel === nextAutonomyLevel(score.currentAutonomy)
+        ),
+      approvalRequired: promotion.approvalRequired,
+      approvalRole: promotion.approvalRole,
       reasonCodes: promotion.shouldPromote
         ? promotion.reasonCodes
         : promotion.reasonCodes.includes("autonomy.promotion_blocked_by_incident")

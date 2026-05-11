@@ -2,6 +2,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { buildForensicSnapshot, type ForensicSnapshot } from "./forensic-snapshot/index.js";
 import { shouldEnterPanicMode, type PanicDirectiveInput } from "./panic-controller/index.js";
 import { canResumeFromPanic, type ResumePlan } from "./resume-protocol/index.js";
+import { randomUUID } from "node:crypto";
 
 export type PanicFreezeMode = "deploy" | "approval" | "write" | "automation";
 export type PanicScopeLevel = "platform" | "region" | "tenant" | "domain" | "run" | "node";

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the unified Policy Engine entry point, which aggregates static role permissions, execution policies, approval escalation, budget guards, sensitive operation classification, and kill switch.
+This contract defines the unified Policy Engine entry point, used to aggregate role-based static permissions, execution policies, approval escalation, budget guards, sensitive operation classification, and kill switches.
 
 Related documents:
 
@@ -12,13 +12,13 @@ Related documents:
 - `governance_control_plane_contract.md`
 - `tool_skill_plugin_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-A unified Policy Engine must at least solve:
+The unified Policy Engine must at minimum address:
 
-- Different modules no longer make permission decisions independently.
+- Different modules no longer make permission judgments independently.
 - High-risk actions enter a single decision chain.
-- Conclusions from approval, budget, permissions, and kill switch are composable and auditable.
+- Conclusions from approval, budget, permissions, and kill switches are composable and auditable.
 
 ## 3. Key Objects
 
@@ -28,23 +28,28 @@ A unified Policy Engine must at least solve:
 | --- | --- | --- |
 | `decision_id` | `string` | Decision request ID |
 | `task_id` | `string` | Current task |
-| `execution_id` | `string?` | Current execution |
+| `harness_run_id` | `string?` | Current HarnessRun |
+| `node_run_id` | `string?` | Current NodeRun |
+| `attempt_id` | `string?` | Current NodeAttempt |
 | `session_id` | `string?` | Current session |
 | `subject_type` | `user \| agent \| system` | Request subject |
 | `subject_id` | `string` | Subject ID |
 | `action` | `invoke_model \| invoke_tool \| write_file \| exec_command \| network_access \| install_extension \| org_change \| dispatch_execution \| set_isolation_level \| promote_improvement \| advance_rollout \| modify_knowledge_trust \| promote_memory_layer` | Target action |
 | `resource_ref` | `string?` | Resource reference |
-| `risk_category` | `destructive \| irreversible \| prod_affecting \| cost_sensitive \| org_changing \| sensitive_data \| strategy_affecting \| governance_sensitive` | Risk category |
-| `mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | Current runtime mode |
-| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Current OAPEFLIR stage view reference; must not be used as truth decision primary key |
+| `risk_category` | `destructive \| irreversible \| prod_affecting \| cost_sensitive \| org_changing \| sensitive_data \| strategy_affecting \| governance_sensitive` | Risk classification |
+| `mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | Current execution mode |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Current OAPEFLIR stage view reference; must not be used as the primary key for truth decisions |
 | `estimated_cost_usd` | `number?` | Estimated cost |
 | `metadata_json` | `json?` | Additional context |
 
 Rules:
 
-- `mode` must use the 8 canonical modes defined by the architecture; `supervised / auto / full-auto` are only permitted as legacy input and must be normalized at the entry point.
+- `harness_run_id / node_run_id / attempt_id` are the authoritative association keys.
+- `mode` must use the 8 canonical modes defined in the architecture; `supervised / auto / full-auto` are only allowed as legacy inputs and must be normalized at the entry point.
 - Degraded modes must be explicitly understood by policies, not privately inferred by callers using boolean combinations.
-- `stage_view_ref` only provides explanatory context; runtime mode decisions still rely on `OperationalDirective`, risk category, budget, and policy rules.
+- `stage_view_ref` only provides explanatory context; execution mode decisions still rely on `OperationalDirective`, risk classification, budget, and policy rules.
+
+## v4.3 Contract Remediation
 
 ### 3.2 `PolicyDecisionResult`
 
@@ -108,151 +113,152 @@ flowchart TD
 Rules:
 
 - Any step that explicitly returns `deny` should fail-closed.
-- `allow_with_constraints` must explicitly return tightened path, tools, budget, or timeout constraints.
-- Approval escalation must not override hard-denied items; actions hard-rejected by policy cannot be approved afterward.
-- After kill switch / freeze is triggered, approval cannot re-enable a frozen action.
-- Constraints from `allow_with_constraints` are authoritative; subsequent execution must not relax them on its own.
-- `manual_only` and `incident-mode` are not UI labels but strong constraint runtime modes; execution layer must not demote them to ordinary warnings when triggered.
+- `allow_with_constraints` must explicitly return the tightened path, tools, budget, or timeout constraints.
+- Approval escalation must not override hard denials; actions that are hard-denied cannot be allowed through approval.
+- After a kill switch / freeze is hit, approval cannot re-allow an already frozen action.
+- Constraints in `allow_with_constraints` are authoritative; subsequent execution must not unilaterally relax them.
+- `manual_only` and `incident-mode` are not UI labels, but hard constraint execution modes; when hit, the execution layer must not demote them to ordinary warnings.
 
 ## 5. Sensitive Operation Classification Table
 
-| Category | Examples | Default Action |
+| Classification | Examples | Default Action |
 | --- | --- | --- |
-| `destructive` | Delete files, overwrite critical configuration | Approval or denial |
-| `irreversible` | External commits, releases, sending irrevocable messages | Approval |
-| `prod_affecting` | Commands affecting production environment | Approval or denial |
-| `cost_sensitive` | High-cost long-reasoning LLM calls | Budget check + possible approval |
+| `destructive` | Delete files, overwrite critical configurations | Approval or denial |
+| `irreversible` | External commits, releases, sending non-retractable messages | Approval |
+| `prod_affecting` | Production-affecting commands | Approval or denial |
+| `cost_sensitive` | High-cost LLM long-reasoning | Budget check + possible approval |
 | `org_changing` | Modify organization, role, tenant configuration | Approval |
-| `sensitive_data` | Access keys, credentials, private data | Path/permission constraints + approval |
+| `sensitive_data` | Access keys, credentials, privacy data | Path/permission constraints + approval |
 | `strategy_affecting` | Accept improvement candidate, change strategy version | Guardrail + approval |
 | `governance_sensitive` | Rollout advancement, knowledge trust modification, memory promotion | Gate + approval or denial |
 
 ## 6. Boundary with Approval
 
 - Policy Engine decides "whether approval is needed".
-- Approval system is responsible for "how approval requests are sent and how results are returned".
-- After approval is granted, the request must re-enter Policy Engine for final release to avoid environment changes after approval.
+- Approval system is responsible for "how approval requests are sent and how responses are returned".
+- After approval is granted, the action must re-enter Policy Engine for final release to avoid acting on a changed environment.
 
 ## 7. Boundary with Tools, Skills, and Plugins
 
-- Skills must not bypass role tool whitelists.
-- Plugin / MCP installation units must pass through Policy Engine first and cannot directly bypass ToolRegistry.
-- MCP must not impersonate local trusted tools to gain broader permissions.
-- The same action under different `resource_ref`, `path_scope`, or `tenant scope` must be evaluated independently; old approval conclusions must not be incorrectly reused.
-- The same request under different `mode` must be re-evaluated; old `allow` from `full_auto` cannot be reused for `read_only`, `no-rollout`, or `incident-mode`.
+- Skills must not bypass role-based tool whitelists.
+- Plugin / MCP installation units must first pass Policy Engine and cannot directly bypass ToolRegistry.
+- MCP must not impersonate locally trusted tools to gain broader permissions.
+- The same action under different `resource_ref`, `path_scope`, or `tenant scope` must be evaluated independently; must not incorrectly reuse old allow conclusions.
+- The same request under different `mode` must be re-evaluated; must not reuse an old `full_auto` allow for `read_only`, `no-rollout`, or `incident-mode`.
 
 ## 7B. Boundary with OAPEFLIR Hub
 
-- Observe / Assess / Plan stages produce suggestions and context, not authoritative release conclusions.
-- FeedbackHub may provide negative signals, user corrections, and quality metrics, but must not directly mark candidate improvements as accepted.
+- Observe / Assess / Plan stages produce recommendations and context, not authoritative allow conclusions.
+- FeedbackHub can provide negative signals, user corrections, and quality metrics, but must not directly mark candidate improvements as accepted.
 - LearnHub can only generate draft / validated learning objects and cannot directly modify release or rollout state.
-- ImproveHub proposals must be decided by Policy Engine via `promote_improvement` before entering the guardrail / approval chain.
-- When ReleaseHub advances `advance_rollout`, Policy Engine must re-evaluate current risk, budget, runtime mode, and freeze state.
-- `modify_knowledge_trust` and `promote_memory_layer` are M2 extended actions; when related planes are not enabled, must fail-closed, not silently allow.
+- ImproveHub proposals must be ruled on by Policy Engine via `promote_improvement` before entering the guardrail / approval chain.
+- When ReleaseHub advances `advance_rollout`, Policy Engine must re-evaluate current risk, budget, execution mode, and freeze status.
+- `modify_knowledge_trust` and `promote_memory_layer` are M2 extended actions; when related planes are not enabled, must fail-closed rather than silently allow.
 
 ## 7A. Boundary with Dispatch and Isolation
 
-Execution dispatch involves the following policy evaluation points and must pass through Policy Engine:
+Execution dispatch involves the following policy evaluation points and must go through Policy Engine:
 
 | Evaluation Point | action | Description |
 | --- | --- | --- |
-| Dispatch target selection | `dispatch_execution` | Determines which worker or worker group (local / named / capability-match) an execution is dispatched to; resource_ref is the target worker or capability description |
-| Isolation level elevation | `set_isolation_level` | When an execution requires `containerized` or higher isolation level, policy checks whether that isolation level and associated resource consumption are allowed |
-| Remote worker capability authorization | `dispatch_execution` | Whether remote worker-declared capabilities are in the `allowedCapabilities` whitelist requires policy confirmation |
+| Dispatch target selection | `dispatch_execution` | Determines which worker or worker group (local / named / capability-match) the execution is dispatched to; resource_ref is the target worker or capability description |
+| Isolation level elevation | `set_isolation_level` | When execution requires `containerized` or higher isolation level, policy checks whether that isolation level and associated resource consumption are allowed |
+| Remote worker capability authorization | `dispatch_execution` | Whether remote worker-declared capabilities are in the `allowedCapabilities` whitelist; requires policy confirmation |
 
 Rules:
 
-- Dispatch decisions must go through Policy Engine before ticket creation, not independently determined within the dispatch service.
-- Isolation level elevation may involve additional resource costs (container startup, image pull) and should be linked with `cost_sensitive` risk classification.
+- Dispatch decisions must go through Policy Engine before ticket creation; must not independently determine targets within the dispatch service.
+- Isolation level elevation may involve additional resource costs (container startup, image pull); should be linked with `cost_sensitive` risk classification.
 - Remote worker capability filtering results (rejected capability list) should be written to `PolicyAuditRecord`.
-- `allow_with_constraints` may be used to tighten dispatch target scope (e.g., limit to specific worker group) or lower isolation level.
+- `allow_with_constraints` can be used to tighten dispatch target scope (e.g., restrict to specific worker group) or lower isolation level.
 
-## 8. Caching and Inheritance Rejection
+## 8. Caching and Inherited Denial
 
-- Consecutive similar high-risk requests within the same session may inherit recent rejection conclusions to avoid approval bombardment.
-- Cache keys must not be based solely on command names; they must include action, resource, subject, and risk category.
-- When inheritance rejection is triggered, audit records must still be retained.
+- Consecutive similar high-risk requests within the same session can inherit recent denial conclusions to avoid approval bombardment.
+- Cache keys must not be based solely on command names; must include action, resource, subject, and risk classification.
+- When inherited denial is hit, audit records must still be retained.
 - Cache hits must not be reused across `tenant / workspace / organization / mode`.
 
 ## 9. Rule Lint and Unreachable Rule Detection
 
-Policy / permission rules must at least undergo before activation:
+Policy / permission rules must at minimum do the following before being enabled:
 
 - Duplicate rule detection
 - Shadow rule detection
 - Unreachable allow rule detection
 - Source conflict detection
 
-Must at least identify the following issues:
+Must identify at minimum the following issues:
 
-- tool-wide `deny` makes more specific `allow` forever unreachable
-- tool-wide `ask` makes more specific `allow` never directly hit
-- After shared source rules and local temporary rules obscure each other, final effect inconsistent with author expectations
+- Tool-wide `deny` makes more specific `allow` permanently unreachable
+- Tool-wide `ask` makes more specific `allow` unable to directly hit
+- After shared source rules and local temporary rules mask each other, the final effect is inconsistent with the author's expectation
 
 Rules:
 
 - Policy bundles that fail lint must not enter the authoritative allow path.
-- If allowed to continue with warnings, warnings must be written to explain and audit results.
-- Runtime decision results should try to return the matched rule source and remediation hint, not just an abstract `deny`.
+- If allowed to continue as warnings, warnings must be written to explain and audit results.
+- Runtime decision results should return the hit rule sources and remediation hints as much as possible, not just abstract `deny`.
 
 ## 10. Rule Evaluation Order
 
 - Policy / permission rule matching order must be deterministic and explainable.
 - If the system supports wildcards, partial overrides, local temporary rules, and global rules coexisting, must clarify:
-  - Whether it is by explicit `priority`
+  - Is it by explicit `priority`
   - Or by source order / last-match
   - Or other equivalent stable strategy
-- The same request must not get different conclusions due to traversal order, concurrent loading order, or source aggregation order differences.
-- Explain and audit results should be able to point out "which rule ultimately won and what it overrode".
+- The same request must not get different conclusions due to different traversal order, concurrent loading order, or source aggregation order.
+- Explain and audit results should be able to point out "which rule finally won and what it overrode".
 
 ## 11. Audit Requirements
 
-Each policy decision must retain at least:
+At minimum, each policy decision must retain:
 
 - Who requested what
 - Which policy nodes were triggered
 - Why it was ultimately allowed, denied, or escalated
-- What tightened constraints are
+- What the tightened constraints are
 - Which policy version / config version was used
 - Which input / decision snapshot the audit snapshot references
 
-## 12. Key Decision Boundary
+## 12. Key Decision Boundaries
 
-- Policy Engine is the final decision-making entry point, not a suggestion collector.
-- LLM, workflow planner, and approval packet can only provide context or suggestions and must not directly construct authoritative allow.
-- If Policy Engine conflicts with upstream suggestions, Policy Engine always takes precedence.
+- Policy Engine is the final decision entry point, not a recommendation collector.
+- LLM, workflow planner, and approval packet can only provide context or recommendations and must not directly construct authoritative allow.
+- If Policy Engine conflicts with upstream recommendations, Policy Engine always prevails.
 
 ## 13. Phase Boundaries
 
-Phase 1a / 1b explicitly do:
+Phase 1a / 1b explicitly does:
 
 - Single-process unified entry point
-- Static role permissions
+- Role-based static permissions
 - Sandbox / path / network rules
-- Budget guard
+- Budget guards
 - Approval escalation
-- Kill switch / freeze check
+- Kill switch / freeze checks
 
-Currently not doing:
+Currently does NOT do:
 
 - OPA integration
 - External policy providers
-- Multi-tenant distributed policy execution cluster
+- Multi-tenant distributed policy execution clusters
 
 Supplementary notes:
 
-- OPA is not currently assumed as a given, but the shapes of `PolicyDecisionRequest / Result / Explain / AuditRecord` should remain compatible with external policy engines.
-- If OPA or equivalent policy engines are introduced later, should prioritize reusing this contract's input, explanation, and audit boundaries rather than creating a new parallel model.
+- Currently not committing to OPA as a done deal, but the shapes of `PolicyDecisionRequest / Result / Explain / AuditRecord` should remain as compatible as possible with external policy engines.
+- If OPA or equivalent policy engine is introduced later, should prioritize reuse this contract's input, explanation, and audit boundaries rather than creating another parallel model.
 
-## 14. Consolidation Conclusion
+## 14. Closure Conclusion
 
-The purpose of Policy Engine is not to create another layer of abstraction, but to consolidate previously scattered judgments in permissions, budget, approval, and security into a single unified, auditable, reusable decision chain.
+The significance of Policy Engine is not to create another layer of abstraction, but to consolidate judgments that were previously scattered across permissions, budget, approval, and security into a unified, auditable, reusable decision chain.
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-17: This document previously compressed runtime modes into three values: `supervised / auto / full-auto`. Root cause: early policy contracts only covered "whether to execute automatically" and did not treat architecture degradation protection modes as first-class governance objects. Fix: the main text now converges `mode` to 8 canonical modes: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`, and demotes the old three values to legacy input.
+- T-17: This document originally compressed execution modes into three values: `supervised / auto / full-auto`. The root cause was that early policy contracts only covered "whether to execute automatically" and did not treat degraded protection modes as first-class governance objects. Fix: The main text now converges `mode` to eight canonical modes: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`, with the old three values demoted to legacy inputs.
+- T-19: The original `PolicyDecisionRequest` fields correctly use `harness_run_id / node_run_id / attempt_id` as authoritative association keys and do not use the deprecated `execution_id`. R2-19 is an audit misjudgment; Section 3.1 of this document has been aligned with v4.3 specifications from the beginning and does not require modification.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
