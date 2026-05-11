@@ -195,6 +195,7 @@ export class TimeTravelDebugService {
 
     const events = this.eventStore.get(session.executionId) ?? [];
     const currentIndex = session.currentEventIndex;
+    const prevIndex = currentIndex; // capture before loop to preserve correct fromEventIndex
 
     for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
       const event = events[i]!;

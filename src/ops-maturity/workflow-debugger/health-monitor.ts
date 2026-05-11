@@ -51,6 +51,8 @@ export interface HealthMonitorOptions {
   failedThreshold?: number;
   /** Maximum probes to retain per component (default: 1000) */
   maxProbesPerComponent?: number;
+  /** Check interval in ms for periodic health checks (default: 30 seconds) */
+  checkIntervalMs?: number;
 }
 
 const DEFAULT_WINDOW_MS = 5 * 60_000; // 5 minutes
@@ -58,6 +60,7 @@ const DEFAULT_MIN_SAMPLE_SIZE = 3;
 const DEFAULT_DEGRADED_THRESHOLD = 0.3; // 30% failure rate
 const DEFAULT_FAILED_THRESHOLD = 0.5; // 50% failure rate
 const DEFAULT_MAX_PROBES = 1000;
+const DEFAULT_CHECK_INTERVAL_MS = 30_000; // 30 seconds
 
 export class WorkflowDebuggerHealthMonitor {
   private readonly windowMs: number;
@@ -65,6 +68,7 @@ export class WorkflowDebuggerHealthMonitor {
   private readonly degradedThreshold: number;
   private readonly failedThreshold: number;
   private readonly maxProbesPerComponent: number;
+  private readonly checkIntervalMs: number;
   private readonly probes = new Map<string, HealthProbe[]>();
 
   public constructor(options: HealthMonitorOptions = {}) {
@@ -73,6 +77,14 @@ export class WorkflowDebuggerHealthMonitor {
     this.degradedThreshold = options.degradedThreshold ?? DEFAULT_DEGRADED_THRESHOLD;
     this.failedThreshold = options.failedThreshold ?? DEFAULT_FAILED_THRESHOLD;
     this.maxProbesPerComponent = options.maxProbesPerComponent ?? DEFAULT_MAX_PROBES;
+    this.checkIntervalMs = options.checkIntervalMs ?? DEFAULT_CHECK_INTERVAL_MS;
+  }
+
+  /**
+   * Get the configured check interval in milliseconds.
+   */
+  public getCheckIntervalMs(): number {
+    return this.checkIntervalMs;
   }
 
   /**

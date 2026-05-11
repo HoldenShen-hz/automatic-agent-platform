@@ -224,20 +224,39 @@ function calculateConfidence(factors: readonly string[], causalLinks: readonly C
 }
 
 /**
+ * Pre-compiled regex patterns for jargon replacement.
+ * Cached at module load time for performance - patterns are compiled once and reused.
+ */
+const JARGON_PATTERNS: Map<string, RegExp> = new Map(
+  Object.entries(JARGON_MAP).map(([jargon]) => [jargon, new RegExp(jargon, "gi")]),
+);
+
+/**
+ * Pre-compiled regex for removing technical detail markers like (count=5).
+ */
+const TECHNICAL_DETAIL_PATTERN = /\([^)]*\d+[^)]*\)/g;
+
+/**
+ * Pre-compiled regex for cleaning up multiple spaces.
+ */
+const MULTI_SPACE_PATTERN = /\s+/g;
+
+/**
  * Replaces technical jargon with simple language.
  */
 function simplifyText(text: string): string {
   let simplified = text;
 
   for (const [jargon, simple] of Object.entries(JARGON_MAP)) {
-    simplified = simplified.replace(new RegExp(jargon, "gi"), simple);
+    const pattern = JARGON_PATTERNS.get(jargon)!;
+    simplified = simplified.replace(pattern, simple);
   }
 
   // Remove excessive technical detail markers
-  simplified = simplified.replace(/\([^)]*\d+[^)]*\)/g, ""); // Remove things like (count=5)
+  simplified = simplified.replace(TECHNICAL_DETAIL_PATTERN, "");
 
   // Clean up multiple spaces
-  simplified = simplified.replace(/\s+/g, " ").trim();
+  simplified = simplified.replace(MULTI_SPACE_PATTERN, " ").trim();
 
   return simplified;
 }
