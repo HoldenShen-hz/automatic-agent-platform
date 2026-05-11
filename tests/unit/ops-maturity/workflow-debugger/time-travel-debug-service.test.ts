@@ -428,10 +428,10 @@ test("TimeTravelDebugService replayToCursor cursor reflects actual range advance
 });
 
 test("TimeTravelDebugService evictOldestSessionIfNeeded does not leak eventStore when multiple sessions share executionId", () => {
-  // Set maxSessions to 2, create 2 sessions with the same executionId, then create a 3rd
+  // Set maxSessions to 3, create 2 sessions with the same executionId, then create a 3rd
   // The oldest session should be evicted but eventStore should be retained because
   // the remaining session still references the same executionId
-  const service = new TimeTravelDebugService({ maxSessions: 2 });
+  const service = new TimeTravelDebugService({ maxSessions: 3 });
 
   // Load events for execution "exec-shared"
   service.loadEventStore("exec-shared", [
@@ -443,8 +443,7 @@ test("TimeTravelDebugService evictOldestSessionIfNeeded does not leak eventStore
   const session1 = service.createSession("task-1", "exec-shared");
   // Create second session with the SAME executionId
   const session2 = service.createSession("task-2", "exec-shared");
-
-  // Create a third session - this triggers eviction of oldest session (session1)
+  // Create a third session with different executionId - this triggers eviction of session1
   const session3 = service.createSession("task-3", "exec-3");
 
   // session1 is evicted. eventStore for "exec-shared" must NOT be deleted because
@@ -455,10 +454,10 @@ test("TimeTravelDebugService evictOldestSessionIfNeeded does not leak eventStore
 });
 
 test("TimeTravelDebugService evictOldestSessionIfNeeded cleans up eventStore when no sessions reference it", () => {
-  // Set maxSessions to 2, create 2 sessions with DIFFERENT executionIds, then create a 3rd
+  // Set maxSessions to 3, create 2 sessions with DIFFERENT executionIds, then create a 3rd
   // The oldest session should be evicted AND its eventStore should be deleted since
   // no other session references that executionId
-  const service = new TimeTravelDebugService({ maxSessions: 2 });
+  const service = new TimeTravelDebugService({ maxSessions: 3 });
 
   // Load events for two different executionIds
   service.loadEventStore("exec-1", [

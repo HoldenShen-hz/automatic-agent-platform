@@ -158,6 +158,7 @@ export class TimeTravelDebugService {
     sandboxPolicy: ReplaySandboxPolicy = defaultReplaySandboxPolicy(),
   ): TimeTravelDebugSession {
     this.assertReplayAccess(accessContext);
+    this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
@@ -172,7 +173,6 @@ export class TimeTravelDebugService {
       endedAt: null,
     };
     this.sessions.set(session.sessionId, session);
-    this.evictOldestSessionIfNeeded();
     return session;
   }
 
@@ -358,12 +358,13 @@ export class TimeTravelDebugService {
       return;
     }
     const executionIdToEvict = oldest.executionId;
+    // Check if any OTHER session still references this executionId BEFORE deleting
+    const stillUsed = [...this.sessions.values()].some(
+      (s) => s !== oldest && s.executionId === executionIdToEvict,
+    );
     this.sessions.delete(oldest.sessionId);
     this.snapshots.delete(oldest.sessionId);
     // Clean up eventStore only if no other session references this executionId
-    const stillUsed = [...this.sessions.values()].some(
-      (s) => s.executionId === executionIdToEvict,
-    );
     if (!stillUsed) {
       this.eventStore.delete(executionIdToEvict);
     }
