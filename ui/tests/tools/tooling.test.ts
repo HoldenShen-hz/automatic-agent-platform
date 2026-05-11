@@ -12,9 +12,58 @@ describe("ui tooling baselines", () => {
       { id: "dashboard", path: "/api/v1/dashboard/snapshot" },
     ]);
     const openApiSource = generateBindingsFromOpenApi({
+      components: {
+        schemas: {
+          TaskDto: {
+            type: "object",
+            required: ["id", "title"],
+            properties: {
+              id: { type: "string" },
+              title: { type: "string" },
+              tags: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+          },
+        },
+      },
       paths: {
         "/api/v1/tasks": {
-          get: { operationId: "listTasks" },
+          get: {
+            operationId: "listTasks",
+            responses: {
+              "200": {
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/TaskDto" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          post: {
+            operationId: "createTask",
+            requestBody: {
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/TaskDto" },
+                },
+              },
+            },
+            responses: {
+              "201": {
+                content: {
+                  "application/json": {
+                    schema: { $ref: "#/components/schemas/TaskDto" },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -22,6 +71,10 @@ describe("ui tooling baselines", () => {
 
     expect(source).toContain('export const tasksPath = "/api/v1/tasks";');
     expect(openApiSource).toContain('export const listTasksPath = { method: "GET", path: "/api/v1/tasks" } as const;');
+    expect(openApiSource).toContain("export interface TaskDto");
+    expect(openApiSource).toContain("export type ListTasksResponse = TaskDto[];");
+    expect(openApiSource).toContain("export type CreateTaskRequestBody = TaskDto;");
+    expect(openApiSource).toContain("export type CreateTaskResponse = TaskDto;");
     expect(resolveMockRequest("/api/v1/tasks")).toBeDefined();
     expect(describePlannedEndpoint("analytics").enabled).toBe(false);
     expect(createScenarioChecklist()).toHaveLength(7);
@@ -63,11 +116,14 @@ describe("ui tooling baselines", () => {
 
     expect(packageJson.scripts.lint).toContain("eslint");
     expect(packageJson.scripts["test:coverage"]).toContain("--coverage");
+    expect(packageJson.scripts["test:visual"]).toContain("visual-regression.spec.ts");
     expect(packageJson.scripts["bundle:analyze"]).toContain("bundle-analysis");
     expect(packageJson.scripts["perf:budget"]).toContain("perf-budget");
     expect(existsSync(join(root, "eslint.config.js"))).toBe(true);
+    expect(existsSync(join(root, "scripts/run-task-with-stamp.mjs"))).toBe(true);
     expect(existsSync(join(root, "scripts/bundle-analysis.mjs"))).toBe(true);
     expect(existsSync(join(root, "scripts/perf-budget.mjs"))).toBe(true);
+    expect(existsSync(join(root, "turbo.json"))).toBe(true);
     expect(existsSync(join(root, "../.github/workflows/ui-quality.yml"))).toBe(true);
   });
 });

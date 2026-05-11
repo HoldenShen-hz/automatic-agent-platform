@@ -17,6 +17,14 @@ export interface RestClientInterceptor {
   onResponse?<T>(response: RestClientResponse<T>): Promise<RestClientResponse<T>> | RestClientResponse<T>;
 }
 
+export interface TokenResolver {
+  getAccessToken?(): string | null;
+  getAccessTokenWithRefresh?(): Promise<string | null>;
+  getToken?(): string | null;
+  shouldRefresh?(now?: number): boolean;
+  handleUnauthorized?(): Promise<void> | void;
+}
+
 export class OfflineQueueRequestQueuedError extends Error {
   public constructor() {
     super("rest.offline:Request queued for offline sync");
@@ -32,13 +40,42 @@ export function createTraceInterceptor(): RestClientInterceptor {
   };
 }
 
-export function createAuthInterceptor(token: string | null): RestClientInterceptor {
+function resolveAccessToken(token: TokenResolver): string | null {
+  if (typeof token.getAccessToken === "function") {
+    return token.getAccessToken();
+  }
+  if (typeof token.getToken === "function") {
+    return token.getToken();
+  }
+  return null;
+}
+
+export function createAuthInterceptor(token: string | null | TokenResolver): RestClientInterceptor {
   return {
-    onRequest(request) {
-      if (token != null) {
+    async onRequest(request) {
+      if (token == null) {
+        return request;
+      }
+
+      if (typeof token === "string") {
         request.headers.set("authorization", `Bearer ${token}`);
+        return request;
+      }
+
+      const accessToken = token.shouldRefresh?.() === true && typeof token.getAccessTokenWithRefresh === "function"
+        ? await token.getAccessTokenWithRefresh()
+        : resolveAccessToken(token);
+
+      if (accessToken != null) {
+        request.headers.set("authorization", `Bearer ${accessToken}`);
       }
       return request;
+    },
+    async onResponse(response) {
+      if (response.status === 401 && token != null && typeof token !== "string") {
+        await token.handleUnauthorized?.();
+      }
+      return response;
     },
   };
 }

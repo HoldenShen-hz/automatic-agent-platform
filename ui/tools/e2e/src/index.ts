@@ -72,6 +72,15 @@ export async function runScenario(page: Page, scenario: PlaywrightScenarioDefini
   await expect(page.getByRole("heading", { name: scenario.expectedTitle }).first()).toBeVisible();
 }
 
+export async function runScenarioAssertion(page: Page, id: E2EScenarioId): Promise<void> {
+  const scenario = findScenarioById(id);
+  if (scenario == null) {
+    throw new Error(`Unknown E2E scenario: ${id}`);
+  }
+  await page.goto(scenario.route);
+  await expect(page.getByRole("heading", { name: scenario.expectedTitle }).first()).toBeVisible();
+}
+
 export function registerSmokeSuite(baseUrl: string): void {
   const definitions = createPlaywrightScenarioDefinitions(baseUrl);
   test.describe("ui smoke scenarios", () => {

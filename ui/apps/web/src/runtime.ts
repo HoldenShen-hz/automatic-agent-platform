@@ -13,12 +13,14 @@ import {
   type WSClient,
 } from "@aa/shared-api-client";
 import { createPersistentOfflineQueue } from "@aa/shared-sync";
+import { TokenManager } from "@aa/shared-auth";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
   readonly wsUrl?: string;
   readonly authToken?: string;
   readonly tenantId?: string;
+  readonly tokenManager?: TokenManager;
 }
 
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
@@ -35,8 +37,20 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
   };
 }
 
-export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RESTClient; wsClient: WSClient } {
+export function createWebRuntimeClients(
+  config: WebRuntimeConfig,
+): { client: RESTClient; wsClient: WSClient; offlineQueue: ReturnType<typeof createPersistentOfflineQueue>; tokenManager: TokenManager } {
   const offlineQueue = createPersistentOfflineQueue();
+  const tokenManager = config.tokenManager ?? new TokenManager();
+
+  if (config.authToken != null && tokenManager.getSession() == null) {
+    tokenManager.setSession({
+      accessToken: config.authToken,
+      refreshToken: "",
+      expiresAt: Date.now() + 3600_000,
+    });
+  }
+
   const client = new DefaultRESTClient((request) => new HttpTransport({
     baseUrl: config.apiBaseUrl ?? "http://localhost:3000",
     fallbackToMock: true,
@@ -44,7 +58,7 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
     createTraceInterceptor(),
     createCsrfInterceptor(),
     createIdempotencyKeyInterceptor(),
-    createAuthInterceptor(config.authToken ?? null),
+    createAuthInterceptor(tokenManager),
     createTenantInterceptor(config.tenantId ?? null),
     createOfflineQueueInterceptor(offlineQueue),
   ]);
@@ -53,7 +67,7 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
     ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
     : new BrowserWSClient(WebSocket, new InMemoryWSClient());
 
-  return { client, wsClient };
+  return { client, wsClient, offlineQueue, tokenManager };
 }
 
 export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistration | null> {
