@@ -452,14 +452,35 @@ export class RetryableApiClient {
       if (p.tenantId) metadata.principalTenantId = p.tenantId;
       if (p.roles?.length) metadata.principalRoles = p.roles.join(",");
     }
-    if (this.config.idempotencyKey) metadata.clientIdempotencyKey = this.config.idempotencyKey;
 
+    // R8-19 FIX: Use config-level idempotencyKey as the envelope idempotencyKey per spec
     return createContractEnvelope({
       payload,
       schemaVersion: "v4.3",
       ttl: 30000,
       metadata,
+      idempotencyKey: this.config.idempotencyKey,
     });
+  }
+
+  /**
+   * R8-19 FIX: Unwrap ContractEnvelope response to extract payload per §5.5 spec.
+   * Responses from inter-plane calls carry the actual payload inside a ContractEnvelope.
+   */
+  private unwrapResponseEnvelope<TResponse>(data: unknown): TResponse {
+    if (
+      data != null &&
+      typeof data === "object" &&
+      "envelopeId" in data &&
+      "schemaVersion" in data &&
+      "payload" in data
+    ) {
+      // This is a ContractEnvelope response - extract the payload
+      const envelope = data as ContractEnvelope<unknown>;
+      return envelope.payload as TResponse;
+    }
+    // Not a ContractEnvelope - return as-is
+    return data as TResponse;
   }
 
   /**
@@ -553,11 +574,14 @@ export class RetryableApiClient {
         throw this.wrapApiError(apiError);
       }
 
-      const data = await response.json() as T;
+      const rawData = await response.json() as unknown;
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
       });
+
+      // R8-19 FIX: Unwrap ContractEnvelope response if present per §5.5 spec
+      const data = this.unwrapResponseEnvelope<T>(rawData);
 
       return {
         data,
