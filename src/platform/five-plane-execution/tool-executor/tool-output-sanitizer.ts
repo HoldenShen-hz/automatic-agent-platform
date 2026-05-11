@@ -41,7 +41,7 @@ const ZERO_WIDTH_REGEX = /[\u200B-\u200F\u2028\u2029\uFEFF]/g;
  * Patterns for detecting secrets in output that should be redacted.
  * Each pattern matches a specific type of credential or API key.
  */
-const SECRET_PATTERNS = [
+const SECRET_PATTERN_DEFINITIONS = [
   /sk-[A-Za-z0-9_-]{12,}/g,           // OpenAI API keys
   /sk-ant-[A-Za-z0-9_-]{12,}/g,       // Anthropic API keys
   /sk_(?:live|test)_[A-Za-z0-9]{16,}/g, // Stripe secret keys
@@ -352,9 +352,8 @@ function sanitizeTextValue(
 
   let redactionCount = 0;
   if (options.redactSecrets) {
-    for (const pattern of SECRET_PATTERNS) {
-      // Reset lastIndex to avoid issues with /g-flag regex reuse across calls
-      pattern.lastIndex = 0;
+    for (const definition of SECRET_PATTERN_DEFINITIONS) {
+      const pattern = new RegExp(definition.source, definition.flags);
       sanitized = sanitized.replace(pattern, () => {
         redactionCount += 1;
         return "[REDACTED]";

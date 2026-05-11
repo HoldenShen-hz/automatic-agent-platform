@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import type { BudgetLedger, BudgetResourceKind } from "../../platform/contracts/executable-contracts/index.js";
 import {
@@ -241,8 +243,9 @@ function normalizeGoal(goal: Goal | string): Goal {
   if (typeof goal !== "string") {
     return goal;
   }
+  const goalHash = createHash("sha256").update(goal).digest("hex").slice(0, 16);
   return {
-    goalId: `goal:${goal.slice(0, 16)}`,
+    goalId: `goal:${goalHash}`,
     description: goal,
     owner: "unknown",
     successCriteria: [],
@@ -315,6 +318,17 @@ function parseDurationHours(raw: string): number {
   }
   const value = Number(match[1]);
   return match[2] === "d" ? value * 24 : value;
+}
+
+function aggregateEstimatedDuration(tasks: readonly PlannedTask[]): string {
+  const totalHours = tasks.reduce((sum, task) => sum + parseDurationHours(task.estimatedDuration), 0);
+  if (totalHours <= 0) {
+    return `${Math.max(1, tasks.length)}d`;
+  }
+  if (totalHours % 24 === 0) {
+    return `${totalHours / 24}d`;
+  }
+  return `${totalHours}h`;
 }
 
 export class GoalDecompositionService implements GoalDecompositionPort {
@@ -461,7 +475,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       goalId: goal.goalId,
       tasks,
       dependencyGraph,
-      estimatedDuration: `${Math.max(1, tasks.length)}d`,
+      estimatedDuration: aggregateEstimatedDuration(tasks),
       estimatedCost,
       riskSummary,
       decompositionConfidence,
@@ -502,8 +516,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   }
 
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
-    const normalized = description.toLowerCase();
-
     const matchedRecipe = this.options.domainRecipes == null
       ? null
       : matchDomainRecipe(this.options.domainRecipes, description);

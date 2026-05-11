@@ -47,11 +47,13 @@ import {
   delegationAuditService,
 } from "./delegation-audit-service.js";
 import { ContextIsolator, createContextIsolator } from "./context-isolator.js";
+import { DelegationTracker, createDelegationTracker } from "./delegation-tracker.js";
 
 // Extended options interface that includes service dependencies
 interface DelegationManagerOptions extends DelegationOptions {
   governanceService?: DelegationGovernanceService;
   auditService?: DelegationAuditService;
+  tracker?: DelegationTracker;
 }
 
 export interface DelegationExpirationConfig {
@@ -90,6 +92,7 @@ export class DelegationManagerService {
   private readonly governanceService: DelegationGovernanceService;
   private readonly auditService: DelegationAuditService;
   private readonly contextIsolator: ContextIsolator;
+  private readonly delegationTracker: DelegationTracker;
   private readonly defaultTimeout: number;
   // R9-06: Cache maps populated from repository - repository is the authoritative store
   // These are caches only, populated on init from repository and kept in sync
@@ -119,6 +122,7 @@ export class DelegationManagerService {
     this.governanceService = options.governanceService ?? defaultDelegationGovernanceService;
     this.auditService = options.auditService ?? delegationAuditService;
     this.contextIsolator = createContextIsolator();
+    this.delegationTracker = options.tracker ?? createDelegationTracker();
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
 
     // R9-06: Repository is the authoritative store when provided
@@ -491,6 +495,7 @@ export class DelegationManagerService {
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
     }
+    delegation.error = error;
     this.transitionDelegationStatus(delegation, "failed");
     // R31-55 fix: Record failure in audit trail with error reason
     this.auditService.recordDelegationFailed({
@@ -1085,8 +1090,9 @@ export class DelegationManagerService {
       );
     }
     delegation.status = nextStatus;
+    const transitionedAt = nowIso();
     if (nextStatus === "completed") {
-      delegation.completedAt = nowIso();
+      delegation.completedAt = transitionedAt;
     }
     // R9-06: Update BOTH repository AND in-memory cache to keep them in sync
     // Repository is authoritative for persistence; in-memory cache must reflect current state
@@ -1103,6 +1109,11 @@ export class DelegationManagerService {
     // R9-06: Always update cache with current state - cache is kept in sync with repository
     // for state queries. Delegations remain accessible in cache even after terminal state.
     this.delegationStore.set(delegation.delegationId, delegation);
+    this.delegationTracker.updateStatus(
+      delegation.delegationId,
+      nextStatus,
+      transitionedAt,
+    );
   }
 
   private resolveRootAgentId(parent: AgentContext): string {
@@ -1149,6 +1160,13 @@ export class DelegationManagerService {
     chain.totalDelegations++;
 
     this.chainStore.set(rootAgentId, chain);
+    this.delegationTracker.recordDelegation(delegation, parent.agentId, {
+      rootAgentId,
+      parentDelegationId: parent.activeDelegations.at(-1) ?? null,
+      agentType: spec.targetAgentType,
+      packId: spec.targetPackId,
+      status: delegation.status,
+    });
   }
 
   private createHandle(delegation: DelegationResult, correlationId: string): AwaitableDelegationHandle {

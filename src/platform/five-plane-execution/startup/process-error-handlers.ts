@@ -17,6 +17,49 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import type { GracefulShutdown } from "./graceful-shutdown.js";
 
 const processLogger = new StructuredLogger({ retentionLimit: 200 });
+const RECOVERABLE_ERROR_CODES = new Set(["ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "ECONNRESET"]);
+
+type RecoverableErrorLike = Error & {
+  code?: unknown;
+  cause?: unknown;
+  retryable?: unknown;
+  recoverable?: unknown;
+};
+
+function extractErrorCodes(error: unknown, seen: Set<unknown> = new Set()): string[] {
+  if (error == null || seen.has(error)) {
+    return [];
+  }
+  seen.add(error);
+  if (typeof error === "string") {
+    return [...RECOVERABLE_ERROR_CODES].filter((code) => error.includes(code));
+  }
+  if (!(error instanceof Error)) {
+    return [];
+  }
+  const maybeRecoverable = error as RecoverableErrorLike;
+  const codes: string[] = [];
+  if (typeof maybeRecoverable.code === "string") {
+    codes.push(maybeRecoverable.code);
+  }
+  codes.push(...extractErrorCodes(maybeRecoverable.cause, seen));
+  return codes;
+}
+
+function isRecoverableRejection(reason: unknown): boolean {
+  if (!(reason instanceof Error)) {
+    return false;
+  }
+  const recoverable = reason as RecoverableErrorLike;
+  if (recoverable.retryable === true || recoverable.recoverable === true) {
+    return true;
+  }
+  const codes = extractErrorCodes(reason);
+  if (codes.some((code) => RECOVERABLE_ERROR_CODES.has(code))) {
+    return true;
+  }
+  return [...RECOVERABLE_ERROR_CODES].some((code) => reason.message.includes(code));
+}
 
 /**
  * Creates the uncaughtException handler.
@@ -91,12 +134,7 @@ export function createUnhandledRejectionHandler(
     const reasonStack = reason instanceof Error ? reason.stack : undefined;
 
     // Check if this is a recoverable error type
-    const isRecoverable = reason instanceof Error && (
-      reason.name === "StorageError" ||
-      reason.name === "NetworkError" ||
-      reason.message?.includes("ECONNREFUSED") ||
-      reason.message?.includes("ETIMEDOUT")
-    );
+    const isRecoverable = isRecoverableRejection(reason);
 
     if (isRecoverable) {
       processLogger.warn("UNHANDLED REJECTION (recoverable) — degraded mode", {

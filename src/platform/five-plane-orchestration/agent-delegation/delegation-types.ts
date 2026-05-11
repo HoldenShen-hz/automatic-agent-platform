@@ -126,6 +126,7 @@ export interface DelegationResult {
   policy_outcome?: string;
   data_class?: string;
   summary?: string;
+  error?: string;
 }
 
 export type DelegationStatus =

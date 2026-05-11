@@ -159,9 +159,7 @@ function createChecker(
     db as AuthoritativeSqlDatabase,
     store as AuthoritativeTaskStore,
     {
-      toolMetadataValidator: options?.toolMetadataViolations
-        ? () => options.toolMetadataViolations!
-        : undefined,
+      toolMetadataValidator: () => options?.toolMetadataViolations ?? [],
       configValidator: options?.configValidation
         ? () => ({
             ok: options.configValidation!.ok,

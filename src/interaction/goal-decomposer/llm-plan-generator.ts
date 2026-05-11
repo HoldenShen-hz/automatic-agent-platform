@@ -52,8 +52,17 @@ function assertValidSerializableTask(task: SerializableTask, index: number): voi
   if (!["auto", "supervised", "manual"].includes(task.delegationMode)) {
     throw new Error(`goal_decomposer.invalid_llm_plan_delegation_mode:${index}`);
   }
-  if (!Array.isArray(task.expectedOutputs)) {
+  if (
+    !Array.isArray(task.expectedOutputs)
+    || task.expectedOutputs.some((item) => typeof item !== "string" || item.trim().length === 0)
+  ) {
     throw new Error(`goal_decomposer.invalid_llm_plan_expected_outputs:${index}`);
+  }
+  if (!Number.isFinite(task.estimatedCostUsd) || task.estimatedCostUsd < 0) {
+    throw new Error(`goal_decomposer.invalid_llm_plan_estimated_cost:${index}`);
+  }
+  if (!/^\d+(h|d)$/.test(task.estimatedDuration.trim())) {
+    throw new Error(`goal_decomposer.invalid_llm_plan_estimated_duration:${index}`);
   }
 }
 

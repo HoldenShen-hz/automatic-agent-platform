@@ -6,6 +6,8 @@
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { z } from "zod";
+import { ValidationError } from "../../platform/contracts/errors.js";
 
 /**
  * Conversation window configuration
@@ -54,6 +56,50 @@ export interface NlGatewayConfig {
 
 const DEFAULT_NL_CONFIG_PATH = "config/nl-gateway/default.json";
 
+const FullNlGatewayConfigSchema = z.object({
+  conversationWindow: z.object({
+    defaultSize: z.number().int().positive(),
+    maxSize: z.number().int().positive(),
+    byTaskType: z.record(z.string(), z.number().int().positive()),
+  }),
+  disambiguation: z.object({
+    threshold: z.number().min(0).max(1),
+    lowConfidenceThreshold: z.number().min(0).max(1),
+    maxClarificationQuestions: z.number().int().positive(),
+    enableProactiveClarification: z.boolean(),
+  }),
+  intent: z.object({
+    minConfidenceForAutoConfirm: z.number().min(0).max(1),
+    fallbackIntent: z.string().min(1),
+  }),
+  entityExtraction: z.object({
+    requiredEntityCount: z.number().int().nonnegative(),
+    minMessageLength: z.number().int().nonnegative(),
+  }),
+});
+
+const PartialNlGatewayConfigSchema = z.object({
+  conversationWindow: z.object({
+    defaultSize: z.number().int().positive().optional(),
+    maxSize: z.number().int().positive().optional(),
+    byTaskType: z.record(z.string(), z.number().int().positive()).optional(),
+  }).optional(),
+  disambiguation: z.object({
+    threshold: z.number().min(0).max(1).optional(),
+    lowConfidenceThreshold: z.number().min(0).max(1).optional(),
+    maxClarificationQuestions: z.number().int().positive().optional(),
+    enableProactiveClarification: z.boolean().optional(),
+  }).optional(),
+  intent: z.object({
+    minConfidenceForAutoConfirm: z.number().min(0).max(1).optional(),
+    fallbackIntent: z.string().min(1).optional(),
+  }).optional(),
+  entityExtraction: z.object({
+    requiredEntityCount: z.number().int().nonnegative().optional(),
+    minMessageLength: z.number().int().nonnegative().optional(),
+  }).optional(),
+});
+
 const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
   conversationWindow: {
     defaultSize: 10,
@@ -91,9 +137,32 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
   try {
     const resolvedPath = resolve(configPath ?? DEFAULT_NL_CONFIG_PATH);
     const content = readFileSync(resolvedPath, "utf-8");
-    const parsed = JSON.parse(content) as Partial<NlGatewayConfig>;
+    let rawParsed: unknown;
+    try {
+      rawParsed = JSON.parse(content) as unknown;
+    } catch (error) {
+      throw new ValidationError(
+        "nl_gateway.invalid_config_json",
+        `Invalid NL gateway config JSON at ${resolvedPath}`,
+        { details: error instanceof Error ? error.message : String(error) },
+      );
+    }
+    const parsedResult = PartialNlGatewayConfigSchema.safeParse(rawParsed);
+    if (!parsedResult.success) {
+      throw new ValidationError(
+        "nl_gateway.invalid_config_schema",
+        `Invalid NL gateway config schema at ${resolvedPath}`,
+        {
+          details: parsedResult.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
+      );
+    }
+    const parsed = parsedResult.data;
 
-    return {
+    const merged = {
       conversationWindow: {
         ...DEFAULT_NL_GATEWAY_CONFIG.conversationWindow,
         ...parsed.conversationWindow,
@@ -115,7 +184,11 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
         ...parsed.entityExtraction,
       },
     };
-  } catch {
+    return FullNlGatewayConfigSchema.parse(merged);
+  } catch (error) {
+    if (error instanceof ValidationError || error instanceof z.ZodError) {
+      throw error;
+    }
     return DEFAULT_NL_GATEWAY_CONFIG;
   }
 }

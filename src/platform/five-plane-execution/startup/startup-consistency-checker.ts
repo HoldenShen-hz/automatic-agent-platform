@@ -129,6 +129,92 @@ function uniqueRepairActions(actions: RepairAction[]): RepairAction[] {
   });
 }
 
+function buildStartupConsistencyReport(
+  checkedAt: string,
+  findings: ConsistencyFinding[],
+): StartupConsistencyReport {
+  const repairActions = uniqueRepairActions(
+    findings.map((finding) => {
+      switch (finding.code) {
+        case "config_load_failed":
+        case "config_invalid":
+        case "provider_not_ready":
+        case "stale_execution":
+          return {
+            action: finding.code === "stale_execution" ? "requeue_execution" : "manual_intervention_required",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "orphan_queue_claim":
+        case "terminal_execution_ticket":
+          return {
+            action: "reconcile_dispatch_ticket",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "orphan_session":
+          return {
+            action: "close_orphan_session",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "active_task_terminal_session":
+          return {
+            action: "replace_terminal_session",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "workflow_terminal_state_mismatch":
+          return {
+            action: "reconcile_terminal_state",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "expired_file_lock":
+          return {
+            action: "release_stale_lock",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        case "tier1_ack_backlog":
+        case "event_consumer_mismatch":
+          return {
+            action: "rebuild_ack",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+        default:
+          return {
+            action: "manual_intervention_required",
+            reasonCode: finding.code,
+            targetType: finding.entityType,
+            targetId: finding.entityId,
+          } satisfies RepairAction;
+      }
+    }),
+  );
+
+  const status: StartupReportStatus = findings.some((finding) => finding.severity === "p0")
+    ? "fail_closed"
+    : findings.length > 0
+      ? "repairable"
+      : "pass";
+
+  return {
+    checkedAt,
+    status,
+    findings,
+    repairActions,
+  };
+}
+
 function buildInvalidStepIndexFindings(workflows: WorkflowStateRecord[]): ConsistencyFinding[] {
   return workflows.flatMap((workflow) => {
     const definition = getWorkflowDefinition(workflow.workflowId);
@@ -287,6 +373,10 @@ export class StartupConsistencyChecker {
       });
     }
 
+    if (findings.some((finding) => finding.severity === "p0")) {
+      return buildStartupConsistencyReport(checkedAt, findings);
+    }
+
     findings.push(
       ...this.store.operations.listActiveTasksWithoutWorkflow().map((record) => ({
         code: "active_task_missing_workflow" as const,
@@ -399,86 +489,7 @@ export class StartupConsistencyChecker {
       }
     }
 
-    const repairActions = uniqueRepairActions(
-      findings.map((finding) => {
-        switch (finding.code) {
-          case "config_load_failed":
-          case "config_invalid":
-          case "provider_not_ready":
-          case "stale_execution":
-            return {
-              action: finding.code === "stale_execution" ? "requeue_execution" : "manual_intervention_required",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "orphan_queue_claim":
-          case "terminal_execution_ticket":
-            return {
-              action: "reconcile_dispatch_ticket",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "orphan_session":
-            return {
-              action: "close_orphan_session",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "active_task_terminal_session":
-            return {
-              action: "replace_terminal_session",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "workflow_terminal_state_mismatch":
-            return {
-              action: "reconcile_terminal_state",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "expired_file_lock":
-            return {
-              action: "release_stale_lock",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          case "tier1_ack_backlog":
-          case "event_consumer_mismatch":
-            return {
-              action: "rebuild_ack",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-          default:
-            return {
-              action: "manual_intervention_required",
-              reasonCode: finding.code,
-              targetType: finding.entityType,
-              targetId: finding.entityId,
-            } satisfies RepairAction;
-        }
-      }),
-    );
-
-    const status: StartupReportStatus = findings.some((finding) => finding.severity === "p0")
-      ? "fail_closed"
-      : findings.length > 0
-        ? "repairable"
-        : "pass";
-
-    return {
-      checkedAt,
-      status,
-      findings,
-      repairActions,
-    };
+    return buildStartupConsistencyReport(checkedAt, findings);
   }
 }
 

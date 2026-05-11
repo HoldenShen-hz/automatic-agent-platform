@@ -62,6 +62,8 @@ export interface DelegationGovernanceAuditRecord {
   createdAt: string;
 }
 
+type GovernanceActorClass = NonNullable<GovernanceCondition["subjectType"]>;
+
 const DEFAULT_GOVERNANCE_RULES: GovernanceRule[] = [
   {
     ruleId: "max_depth",
@@ -221,10 +223,10 @@ export class DelegationGovernanceService {
   }
 
   private matchesCondition(request: DelegationGovernanceRequest, condition: GovernanceCondition): boolean {
-    if (condition.subjectType && request.parentContext.agentType !== condition.subjectType) {
+    if (condition.subjectType && this.normalizeActorClass(request.parentContext.agentType) !== condition.subjectType) {
       return false;
     }
-    if (condition.targetAgentType && request.delegationSpec.targetAgentType !== condition.targetAgentType) {
+    if (condition.targetAgentType && !this.matchesTargetAgentType(condition.targetAgentType, request.delegationSpec.targetAgentType)) {
       return false;
     }
     if (condition.delegationDepth !== undefined) {
@@ -243,6 +245,29 @@ export class DelegationGovernanceService {
       return false;
     }
     return true;
+  }
+
+  private matchesTargetAgentType(expected: string, actual: string): boolean {
+    if (expected === actual) {
+      return true;
+    }
+    const normalizedExpected = this.normalizeActorClass(expected);
+    const normalizedActual = this.normalizeActorClass(actual);
+    return normalizedExpected !== null && normalizedExpected === normalizedActual;
+  }
+
+  private normalizeActorClass(value: string | undefined): GovernanceActorClass | null {
+    if (!value) {
+      return null;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "user" || normalized === "human" || normalized === "operator" || normalized === "admin") {
+      return "user";
+    }
+    if (normalized === "system" || normalized === "platform" || normalized === "service" || normalized === "daemon") {
+      return "system";
+    }
+    return "agent";
   }
 }
 

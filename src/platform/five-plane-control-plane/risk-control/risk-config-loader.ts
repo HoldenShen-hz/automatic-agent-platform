@@ -5,11 +5,59 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PolicyDeniedError } from "../../contracts/errors.js";
+import { z } from "zod";
+import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
 import { checkSandboxPath, type SandboxPolicy } from "../iam/sandbox-policy.js";
 import type { RiskConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
+
+const RiskLevelActionSchema = z.object({
+  autoExecute: z.boolean(),
+  logLevel: z.enum(["info", "warn", "error", "critical"]),
+  requiresApproval: z.boolean(),
+  approvalType: z.enum(["standard", "break_glass"]).optional(),
+  sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
+  evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
+});
+
+const RiskConfigSchema = z.object({
+  factorWeights: z.object({
+    impact: z.number(),
+    irreversibility: z.number(),
+    dataSensitivity: z.number(),
+    autonomyModeRisk: z.number(),
+    tenantImpact: z.number(),
+    blastRadius: z.number(),
+    historicalFailureRate: z.number(),
+    evidenceConfidence: z.number(),
+  }),
+  impactValues: z.record(z.string(), z.number()),
+  irreversibilityValues: z.record(z.string(), z.number()),
+  dataSensitivityValues: z.record(z.string(), z.number()),
+  autonomyModeRiskValues: z.record(z.string(), z.number()),
+  tenantImpactValues: z.record(z.string(), z.number()),
+  blastRadiusValues: z.record(z.string(), z.number()),
+  historicalFailureRateThresholds: z.object({
+    low: z.object({ maxPercent: z.number(), value: z.number() }),
+    medium: z.object({ maxPercent: z.number(), value: z.number() }),
+    high: z.object({ maxPercent: z.number(), value: z.number() }),
+    critical: z.object({ maxPercent: z.number(), value: z.number() }),
+  }),
+  evidenceConfidenceValues: z.record(z.string(), z.number()),
+  riskLevelThresholds: z.object({
+    low: z.number(),
+    medium: z.number(),
+    high: z.number(),
+    critical: z.number(),
+  }),
+  riskLevelActions: z.object({
+    low: RiskLevelActionSchema,
+    medium: RiskLevelActionSchema,
+    high: RiskLevelActionSchema,
+    critical: RiskLevelActionSchema,
+  }),
+});
 
 /**
  * Loads the risk configuration from the JSON config file.
@@ -36,44 +84,33 @@ export function loadRiskConfig(
   }
 
   const raw = readFileSync(effectivePath, "utf-8");
-  const parsed = JSON.parse(raw);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new ValidationError(
+      "risk_config.invalid_json",
+      `Invalid risk config JSON at ${effectivePath}`,
+      { details: { path: effectivePath, cause: error instanceof Error ? error.message : String(error) } },
+    );
+  }
 
-  return {
-    factorWeights: {
-      // ADR-026 v4.3: 8-factor canonical weights
-      impact: parsed.factorWeights.impact,
-      irreversibility: parsed.factorWeights.irreversibility,
-      dataSensitivity: parsed.factorWeights.dataSensitivity,
-      autonomyModeRisk: parsed.factorWeights.autonomyModeRisk,
-      tenantImpact: parsed.factorWeights.tenantImpact,
-      blastRadius: parsed.factorWeights.blastRadius,
-      historicalFailureRate: parsed.factorWeights.historicalFailureRate,
-      evidenceConfidence: parsed.factorWeights.evidenceConfidence,
-    },
-    impactValues: parsed.impactValues,
-    irreversibilityValues: parsed.irreversibilityValues,
-    dataSensitivityValues: parsed.dataSensitivityValues,
-    autonomyModeRiskValues: parsed.autonomyModeRiskValues,
-    tenantImpactValues: parsed.tenantImpactValues,
-    blastRadiusValues: parsed.blastRadiusValues,
-    historicalFailureRateThresholds: {
-      low: { maxPercent: parsed.historicalFailureRateThresholds.low.maxPercent, value: parsed.historicalFailureRateThresholds.low.value },
-      medium: { maxPercent: parsed.historicalFailureRateThresholds.medium.maxPercent, value: parsed.historicalFailureRateThresholds.medium.value },
-      high: { maxPercent: parsed.historicalFailureRateThresholds.high.maxPercent, value: parsed.historicalFailureRateThresholds.high.value },
-      critical: { maxPercent: parsed.historicalFailureRateThresholds.critical.maxPercent, value: parsed.historicalFailureRateThresholds.critical.value },
-    },
-    evidenceConfidenceValues: parsed.evidenceConfidenceValues,
-    riskLevelThresholds: {
-      low: parsed.riskLevelThresholds.low,
-      medium: parsed.riskLevelThresholds.medium,
-      high: parsed.riskLevelThresholds.high,
-      critical: parsed.riskLevelThresholds.critical,
-    },
-    riskLevelActions: {
-      low: parsed.riskLevelActions.low,
-      medium: parsed.riskLevelActions.medium,
-      high: parsed.riskLevelActions.high,
-      critical: parsed.riskLevelActions.critical,
-    },
-  };
+  const validated = RiskConfigSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new ValidationError(
+      "risk_config.invalid_schema",
+      `Invalid risk config schema at ${effectivePath}`,
+      {
+        details: {
+          path: effectivePath,
+          issues: validated.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
+      },
+    );
+  }
+
+  return validated.data satisfies RiskConfig;
 }

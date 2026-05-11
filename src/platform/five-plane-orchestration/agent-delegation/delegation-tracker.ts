@@ -40,13 +40,24 @@ export interface DelegationMetrics {
   averageDurationMs: number;
 }
 
+export interface RecordDelegationOptions {
+  rootAgentId?: string;
+  parentDelegationId?: string | null;
+  agentType?: string;
+  packId?: string;
+  status?: DelegationChainNode["status"];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Tracker
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class DelegationTracker {
   private readonly rootToChain: Map<string, DelegationChain> = new Map();
-  private readonly delegationToParent: Map<string, string> = new Map();
+  private readonly delegationToRoot: Map<string, string> = new Map();
+  private readonly delegationToParentDelegation: Map<string, string | null> = new Map();
+  private readonly delegationNodeIndex: Map<string, DelegationChainNode> = new Map();
+  private readonly delegationDurations: Map<string, number> = new Map();
   private readonly delegationEvents: Map<string, DelegationEvent[]> = new Map();
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ENTRIES = 1000;
@@ -78,9 +89,17 @@ export class DelegationTracker {
     }
 
     for (const key of entriesToDelete) {
+      const chain = this.rootToChain.get(key);
+      if (chain) {
+        for (const node of chain.nodes) {
+          this.delegationToRoot.delete(node.delegationId);
+          this.delegationToParentDelegation.delete(node.delegationId);
+          this.delegationNodeIndex.delete(node.delegationId);
+          this.delegationDurations.delete(node.delegationId);
+          this.delegationEvents.delete(node.delegationId);
+        }
+      }
       this.rootToChain.delete(key);
-      this.delegationToParent.delete(key);
-      this.delegationEvents.delete(key);
     }
 
     // If still over capacity, remove oldest entries
@@ -98,9 +117,17 @@ export class DelegationTracker {
       const toRemove = this.rootToChain.size - this.MAX_ENTRIES;
       for (let i = 0; i < toRemove; i++) {
         const key = sortedEntries[i]![0];
+        const chain = this.rootToChain.get(key);
+        if (chain) {
+          for (const node of chain.nodes) {
+            this.delegationToRoot.delete(node.delegationId);
+            this.delegationToParentDelegation.delete(node.delegationId);
+            this.delegationNodeIndex.delete(node.delegationId);
+            this.delegationDurations.delete(node.delegationId);
+            this.delegationEvents.delete(node.delegationId);
+          }
+        }
         this.rootToChain.delete(key);
-        this.delegationToParent.delete(key);
-        this.delegationEvents.delete(key);
       }
     }
   }
@@ -111,38 +138,54 @@ export class DelegationTracker {
    * @param delegation - The delegation result
    * @param parentAgentId - Parent agent ID for chain building
    */
-  public recordDelegation(delegation: DelegationResult, parentAgentId: string): void {
+  public recordDelegation(
+    delegation: DelegationResult,
+    parentAgentId: string,
+    options: RecordDelegationOptions = {},
+  ): void {
     // C-11: Evict expired entries before recording new one
     this.evictExpired();
 
     // Build chain for root agent
-    let chain = this.rootToChain.get(parentAgentId);
+    const rootAgentId = options.rootAgentId ?? parentAgentId;
+    let chain = this.rootToChain.get(rootAgentId);
     if (!chain) {
       chain = {
-        rootAgentId: parentAgentId,
+        rootAgentId,
         nodes: [],
         maxDepthReached: 0,
         totalDelegations: 0,
       };
-      this.rootToChain.set(parentAgentId, chain);
+      this.rootToChain.set(rootAgentId, chain);
     }
 
     // Add node to chain
     const node: DelegationChainNode = {
       delegationId: delegation.delegationId,
       agentId: delegation.childAgentId,
-      agentType: "", // Would be filled from delegation spec
+      packId: options.packId,
+      agentType: options.agentType ?? "agent",
       depth: delegation.depth,
       createdAt: delegation.createdAt,
-      parentDelegationId: this.findParentDelegationId(parentAgentId, delegation.depth),
+      parentDelegationId: options.parentDelegationId ?? this.findParentDelegationId(rootAgentId, delegation.depth),
+      status: options.status ?? delegation.status,
     };
 
-    chain.nodes = [...chain.nodes, node];
+    const existingIndex = chain.nodes.findIndex((existingNode) => existingNode.delegationId === delegation.delegationId);
+    if (existingIndex >= 0) {
+      chain.nodes = chain.nodes.map((existingNode) =>
+        existingNode.delegationId === delegation.delegationId ? node : existingNode
+      );
+    } else {
+      chain.nodes = [...chain.nodes, node];
+      chain.totalDelegations++;
+    }
     chain.maxDepthReached = Math.max(chain.maxDepthReached, delegation.depth);
-    chain.totalDelegations++;
+    this.rootToChain.set(rootAgentId, chain);
 
-    // Record parent relationship
-    this.delegationToParent.set(delegation.delegationId, parentAgentId);
+    this.delegationToRoot.set(delegation.delegationId, rootAgentId);
+    this.delegationToParentDelegation.set(delegation.delegationId, node.parentDelegationId);
+    this.delegationNodeIndex.set(delegation.delegationId, node);
   }
 
   /**
@@ -157,6 +200,16 @@ export class DelegationTracker {
 
     const events = this.delegationEvents.get(delegationId) ?? [];
     this.delegationEvents.set(delegationId, [...events, event]);
+
+    if (event.eventType === "delegation.completed") {
+      this.delegationDurations.set(delegationId, event.durationMs);
+      this.updateStatus(delegationId, "completed", event.timestamp);
+      return;
+    }
+
+    if (event.eventType === "delegation.failed") {
+      this.updateStatus(delegationId, "failed", event.timestamp);
+    }
   }
 
   /**
@@ -188,7 +241,7 @@ export class DelegationTracker {
         agentId: node.agentId,
         agentType: node.agentType,
         depth: node.depth,
-        status: "active", // Would be from delegation status
+        status: node.status ?? "active",
         createdAt: node.createdAt,
         children: [],
         metrics: { totalDelegations: 0, maxDepth: 0, activeCount: 0, completedCount: 0, failedCount: 0, averageDurationMs: 0 },
@@ -230,25 +283,7 @@ export class DelegationTracker {
    * @returns Parent delegation ID or null
    */
   public getParentDelegationId(delegationId: string): string | null {
-    // Walk up the chain
-    let current: string | undefined = delegationId;
-    const visited = new Set<string>();
-
-    while (current && !visited.has(current)) {
-      visited.add(current);
-      const parent = this.delegationToParent.get(current);
-      if (parent) {
-        // Find the delegation that has this as child
-        for (const [dlgId, parentId] of this.delegationToParent.entries()) {
-          if (parentId === parent && dlgId !== delegationId) {
-            return dlgId;
-          }
-        }
-      }
-      current = parent;
-    }
-
-    return null;
+    return this.delegationToParentDelegation.get(delegationId) ?? null;
   }
 
   /**
@@ -276,12 +311,21 @@ export class DelegationTracker {
     let totalDuration = 0;
     let durationCount = 0;
 
-    // This would normally come from delegation store
-    // For now, return derived metrics from chain
     for (const node of chain.nodes) {
-      // Would query delegation store for status
-      // Using placeholder counts
-      activeCount++;
+      const status = node.status ?? "active";
+      if (status === "completed") {
+        completedCount++;
+      } else if (status === "failed" || status === "cancelled" || status === "expired" || status === "timed_out") {
+        failedCount++;
+      } else {
+        activeCount++;
+      }
+
+      const duration = this.delegationDurations.get(node.delegationId);
+      if (typeof duration === "number" && Number.isFinite(duration) && duration >= 0) {
+        totalDuration += duration;
+        durationCount++;
+      }
     }
 
     return {
@@ -301,14 +345,48 @@ export class DelegationTracker {
     const chain = this.rootToChain.get(rootAgentId);
     if (!chain || childDepth <= 1) return null;
 
-    // Find delegation at depth - 1
-    for (const node of chain.nodes) {
-      if (node.depth === childDepth - 1) {
+    for (let i = chain.nodes.length - 1; i >= 0; i -= 1) {
+      const node = chain.nodes[i];
+      if (node && node.depth === childDepth - 1) {
         return node.delegationId;
       }
     }
 
     return null;
+  }
+
+  public updateStatus(
+    delegationId: string,
+    status: NonNullable<DelegationChainNode["status"]>,
+    transitionedAt?: string,
+  ): void {
+    const rootAgentId = this.delegationToRoot.get(delegationId);
+    const chain = rootAgentId ? this.rootToChain.get(rootAgentId) : null;
+    if (!rootAgentId || !chain) {
+      return;
+    }
+
+    chain.nodes = chain.nodes.map((node) => {
+      if (node.delegationId !== delegationId) {
+        return node;
+      }
+
+      const updatedNode: DelegationChainNode = {
+        ...node,
+        status,
+      };
+      this.delegationNodeIndex.set(delegationId, updatedNode);
+
+      if (!this.delegationDurations.has(delegationId) && transitionedAt) {
+        const startedAtMs = Date.parse(node.createdAt);
+        const endedAtMs = Date.parse(transitionedAt);
+        if (Number.isFinite(startedAtMs) && Number.isFinite(endedAtMs) && endedAtMs >= startedAtMs) {
+          this.delegationDurations.set(delegationId, endedAtMs - startedAtMs);
+        }
+      }
+
+      return updatedNode;
+    });
   }
 }
 

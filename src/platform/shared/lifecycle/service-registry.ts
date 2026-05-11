@@ -243,7 +243,6 @@ export class ServiceRegistry {
     // Get services in reverse topological order (dependents first)
     const sorted = this.topologicalSort();
     const reversed = [...sorted].reverse();
-    const pending: Promise<void>[] = [];
 
     for (const name of reversed) {
       const instance = this.instances.get(name);
@@ -253,9 +252,7 @@ export class ServiceRegistry {
           try {
             const result = registration.teardown(instance);
             if (result instanceof Promise) {
-              pending.push(result.catch((err: unknown) => {
-                logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-              }));
+              await result;
             }
           } catch (err) {
             logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
@@ -264,7 +261,6 @@ export class ServiceRegistry {
       }
     }
     this.instances.clear();
-    await Promise.all(pending);
   }
 
   /**

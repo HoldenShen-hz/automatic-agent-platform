@@ -22,6 +22,8 @@ import type { ToolExecutionMetadata } from "./tool-metadata.js";
 export interface ParallelToolExecutionResult<T> {
   /** Successful results, preserved in input order without failed-position holes */
   results: readonly T[];
+  /** Indexed results preserve original positions and make missing slots explicit. */
+  resultsByIndex: readonly (T | null)[];
   /** Errors that occurred during parallel execution */
   errors: readonly ParallelToolExecutionError[];
   /** Whether all executions succeeded */
@@ -406,6 +408,7 @@ export async function executeToolsInParallel<T>(
 
   return {
     results: results.filter((value): value is T => value !== undefined),
+    resultsByIndex: Array.from({ length: results.length }, (_, index) => results[index] ?? null),
     errors,
     allSucceeded: errors.length === 0,
     anyFailed: errors.length > 0,

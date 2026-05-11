@@ -14,6 +14,9 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import { RiskEvaluationEngine } from "../../five-plane-control-plane/risk-control/risk-evaluation-engine.js";
+import { loadRiskConfig } from "../../five-plane-control-plane/risk-control/risk-config-loader.js";
+import type { RiskFactors, RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
 
 export type EvaluatorDecision =
   | "accept"
@@ -81,13 +84,18 @@ const DEFAULT_EVALUATOR_CONFIG: EvaluatorConfig = {
 
 export interface EvaluatorServiceOptions {
   readonly config?: EvaluatorConfig;
+  readonly riskEvaluationEngine?: RiskEvaluationEngine;
 }
 
 export class EvaluatorService {
   private readonly config: EvaluatorConfig;
+  private readonly riskEvaluationEngine: RiskEvaluationEngine;
 
   public constructor(options: EvaluatorServiceOptions = {}) {
     this.config = options.config ?? DEFAULT_EVALUATOR_CONFIG;
+    this.riskEvaluationEngine = options.riskEvaluationEngine ?? new RiskEvaluationEngine({
+      config: loadRiskConfig(),
+    });
   }
 
   /**
@@ -292,33 +300,76 @@ export class EvaluatorService {
     message: string;
     level: "unchanged" | "elevated" | "decreased";
   } {
-    // Compare current risk against baseline riskProfile
     const baselineRisk = planGraphBundle.riskProfile.riskClass;
-    const currentFailures = feedback.signals.filter(
-      (s) => s.category === "failure" || s.category === "timeout"
-    ).length;
-
-    let level: "unchanged" | "elevated" | "decreased" = "unchanged";
-    let severity: EvaluatorFinding["severity"] = "info";
-    let message = `Risk boundary: baseline ${baselineRisk}`;
-
-    if (currentFailures > 0) {
-      if (baselineRisk === "low" && currentFailures >= 2) {
-        level = "elevated";
-        severity = "warning";
-        message = `Risk elevated: ${currentFailures} failures against baseline ${baselineRisk}`;
-      } else if (baselineRisk === "medium" && currentFailures >= 3) {
-        level = "elevated";
-        severity = "warning";
-        message = `Risk elevated: ${currentFailures} failures against baseline ${baselineRisk}`;
-      } else if (baselineRisk === "high" || baselineRisk === "critical") {
-        level = "elevated";
-        severity = currentFailures >= 2 ? "critical" : "error";
-        message = `Risk boundary exceeded: ${currentFailures} failures against baseline ${baselineRisk}`;
-      }
-    }
-
+    const evaluated = this.riskEvaluationEngine.evaluate({
+      taskId: planGraphBundle.planGraphBundleId,
+      factors: this.buildRiskFactors(planGraphBundle, feedback),
+    });
+    const level = this.compareRiskLevel(baselineRisk, evaluated.riskLevel);
+    const severity = this.mapRiskSeverity(level, evaluated.riskLevel);
+    const message = level === "elevated"
+      ? `Risk boundary exceeded: baseline ${baselineRisk} -> ${evaluated.riskLevel} (${evaluated.riskScore})`
+      : `Risk boundary: baseline ${baselineRisk} -> ${evaluated.riskLevel} (${evaluated.riskScore})`;
     return { severity, message, level };
+  }
+
+  private buildRiskFactors(planGraphBundle: PlanGraphBundle, feedback: FeedbackBatch): RiskFactors {
+    const baseline = this.riskClassToWeight(planGraphBundle.riskProfile.riskClass);
+    const failureCount = feedback.signals.filter((signal) => signal.category === "failure").length;
+    const timeoutCount = feedback.signals.filter((signal) => signal.category === "timeout").length;
+    const partialCount = feedback.signals.filter((signal) => signal.category === "partial").length;
+
+    return {
+      impact: Math.min(5, baseline + (failureCount > 0 ? 1 : 0)),
+      irreversibility: Math.min(5, baseline + (feedback.outcome === "failed" ? 1 : 0)),
+      dataSensitivity: baseline,
+      autonomyModeRisk: Math.min(5, Math.max(1, baseline - 1 + failureCount + timeoutCount)),
+      tenantImpact: Math.min(5, baseline + (partialCount > 2 ? 1 : 0)),
+      blastRadius: Math.min(5, baseline + (timeoutCount > 0 ? 1 : 0)),
+      historicalFailureRate: Math.min(100, failureCount * 20 + timeoutCount * 15),
+      evidenceConfidence: failureCount > 0 || timeoutCount > 0 ? "medium" : "high",
+    };
+  }
+
+  private compareRiskLevel(baselineRisk: string, evaluatedRisk: RiskLevel): "unchanged" | "elevated" | "decreased" {
+    const baselineWeight = this.riskClassToWeight(baselineRisk);
+    const evaluatedWeight = this.riskClassToWeight(evaluatedRisk);
+    if (evaluatedWeight > baselineWeight) {
+      return "elevated";
+    }
+    if (evaluatedWeight < baselineWeight) {
+      return "decreased";
+    }
+    return "unchanged";
+  }
+
+  private mapRiskSeverity(
+    level: "unchanged" | "elevated" | "decreased",
+    riskLevel: RiskLevel,
+  ): EvaluatorFinding["severity"] {
+    if (level !== "elevated") {
+      return "info";
+    }
+    if (riskLevel === "critical") {
+      return "critical";
+    }
+    if (riskLevel === "high") {
+      return "error";
+    }
+    return "warning";
+  }
+
+  private riskClassToWeight(riskClass: string): 1 | 2 | 4 | 5 {
+    switch (riskClass) {
+      case "critical":
+        return 5;
+      case "high":
+        return 4;
+      case "medium":
+        return 2;
+      default:
+        return 1;
+    }
   }
 
   private evaluateBudgetAdherence(

@@ -37,7 +37,7 @@ export class ChargebackService {
     readonly tenantId?: string | null;
     readonly limit?: number;
   } = {}): ChargebackReport {
-    const reports = this.source.listReports(input.limit ?? 500, input.tenantId ?? undefined);
+    const reports = this.source.listReports(input.limit ?? 500, input.tenantId);
     const allocations = new Map<string, ChargebackAllocation>();
     let firstCurrency = "USD";
     let hasMultipleCurrencies = false;

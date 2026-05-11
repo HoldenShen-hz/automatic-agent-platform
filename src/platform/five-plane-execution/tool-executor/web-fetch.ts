@@ -247,8 +247,11 @@ export function createWebFetchTool() {
       }
 
       // Check Content-Length header if present
-      const contentLength = response.headers.get("content-length");
-      if (contentLength && /^\\d+$/.test(contentLength) && parseInt(contentLength, 10) > maxSizeBytes) {
+      const contentLength = response.headers.get("content-length")?.trim() ?? null;
+      const parsedContentLength = contentLength != null && /^\d+$/.test(contentLength)
+        ? Number.parseInt(contentLength, 10)
+        : null;
+      if (parsedContentLength != null && parsedContentLength > maxSizeBytes) {
         return {
           success: false,
           status: "failed",

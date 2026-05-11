@@ -15,6 +15,9 @@ import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import type { FeedbackBatch } from "../../contracts/types/feedback.js";
 import type { QualityGateConfig } from "./types.js";
+import { RiskEvaluationEngine } from "../../five-plane-control-plane/risk-control/risk-evaluation-engine.js";
+import { loadRiskConfig } from "../../five-plane-control-plane/risk-control/risk-config-loader.js";
+import type { RiskFactors } from "../../five-plane-control-plane/risk-control/types.js";
 
 /**
  * R5-7: EvaluationReport - the canonical output format for execution outcome evaluation.
@@ -103,6 +106,7 @@ export interface ExecutionOutcomeEvaluation {
 
 export interface ExecutionOutcomeEvaluatorOptions {
   readonly config?: QualityGateConfig;
+  readonly riskEvaluationEngine?: RiskEvaluationEngine;
 }
 
 export type EvaluationOutcome = EvaluationReport & ExecutionOutcomeEvaluation;
@@ -161,10 +165,14 @@ function mapNextActionToVerdict(nextAction: ExecutionOutcomeEvaluation["nextActi
 export class ExecutionOutcomeEvaluator {
   private readonly config: QualityGateConfig;
   private readonly riskThresholds: RiskAdjustedQualityThresholds;
+  private readonly riskEvaluationEngine: RiskEvaluationEngine;
 
   public constructor(options: ExecutionOutcomeEvaluatorOptions = {}) {
     this.config = options.config ?? DEFAULT_QUALITY_GATE_CONFIG;
     this.riskThresholds = DEFAULT_RISK_ADJUSTED_THRESHOLDS;
+    this.riskEvaluationEngine = options.riskEvaluationEngine ?? new RiskEvaluationEngine({
+      config: loadRiskConfig(),
+    });
   }
 
   /**
@@ -294,27 +302,25 @@ export class ExecutionOutcomeEvaluator {
   ): RiskEvaluationResult {
     const baselineRiskClass = planGraphBundle.riskProfile?.riskClass ?? "medium";
     const baselineRiskScore = this.riskClassToScore(baselineRiskClass);
+    const evaluated = this.riskEvaluationEngine.evaluate({
+      taskId: planGraphBundle.planGraphBundleId,
+      factors: this.buildRiskFactors(planGraphBundle, feedback),
+    });
+    const currentRiskScore = evaluated.riskScore;
+    const riskLevel = currentRiskScore > baselineRiskScore
+      ? "elevated"
+      : currentRiskScore < baselineRiskScore
+        ? "decreased"
+        : "unchanged";
+    const severity: RiskEvaluationResult["severity"] = riskLevel !== "elevated"
+      ? "info"
+      : evaluated.riskLevel === "critical"
+        ? "critical"
+        : evaluated.riskLevel === "high"
+          ? "error"
+          : "warning";
 
-    const failureCount = feedback.signals.filter(
-      (s) => s.category === "failure" || s.category === "timeout"
-    ).length;
-
-    // Calculate current risk based on failures
-    let currentRiskScore = baselineRiskScore;
-    let riskLevel: RiskEvaluationResult["riskLevel"] = "unchanged";
-    let severity: RiskEvaluationResult["severity"] = "info";
-
-    if (failureCount > 0) {
-      const failurePenalty = Math.min(failureCount * 0.1, 0.5);
-      currentRiskScore = Math.min(baselineRiskScore + failurePenalty, 1.0);
-
-      if (currentRiskScore > baselineRiskScore * 1.2) {
-        riskLevel = "elevated";
-        severity = failureCount >= 3 ? "critical" : failureCount >= 1 ? "error" : "warning";
-      }
-    }
-
-    const withinRiskBudget = currentRiskScore <= baselineRiskScore * 1.25;
+    const withinRiskBudget = currentRiskScore <= Math.min(1, baselineRiskScore + 0.15);
 
     return {
       withinRiskBudget,
@@ -322,6 +328,24 @@ export class ExecutionOutcomeEvaluator {
       currentRiskScore: Number(currentRiskScore.toFixed(2)),
       baselineRiskScore,
       severity,
+    };
+  }
+
+  private buildRiskFactors(planGraphBundle: PlanGraphBundle, feedback: FeedbackBatch): RiskFactors {
+    const baseline = Math.max(1, Math.round(this.riskClassToScore(planGraphBundle.riskProfile?.riskClass ?? "medium") * 5));
+    const failureCount = feedback.signals.filter((signal) => signal.category === "failure").length;
+    const timeoutCount = feedback.signals.filter((signal) => signal.category === "timeout").length;
+    const partialCount = feedback.signals.filter((signal) => signal.category === "partial").length;
+
+    return {
+      impact: Math.min(5, baseline + (failureCount > 0 ? 1 : 0)),
+      irreversibility: Math.min(5, baseline + (feedback.outcome === "failed" ? 1 : 0)),
+      dataSensitivity: baseline,
+      autonomyModeRisk: Math.min(5, Math.max(1, baseline - 1 + failureCount + timeoutCount)),
+      tenantImpact: Math.min(5, baseline + (partialCount > 2 ? 1 : 0)),
+      blastRadius: Math.min(5, baseline + (timeoutCount > 0 ? 1 : 0)),
+      historicalFailureRate: Math.min(100, failureCount * 20 + timeoutCount * 15),
+      evidenceConfidence: failureCount > 0 || timeoutCount > 0 ? "medium" : "high",
     };
   }
 

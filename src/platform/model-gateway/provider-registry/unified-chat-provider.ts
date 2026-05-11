@@ -165,7 +165,7 @@ function detectProviderFromModel(modelId: string): ChatProviderType | null {
 
   // Default based on known prefixes
   for (const [prefix, provider] of Object.entries(PROVIDER_FROM_MODEL)) {
-    if (modelLower.includes(prefix)) {
+    if (modelLower.includes(prefix.toLowerCase())) {
       return provider;
     }
   }

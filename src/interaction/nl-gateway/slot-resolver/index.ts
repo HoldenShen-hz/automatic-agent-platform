@@ -30,7 +30,7 @@ export function resolveRequiredSlots(
 ): { readonly missing: string[]; readonly resolved: Record<string, unknown> } {
   const resolved: Record<string, unknown> = {};
   for (const entity of entities) {
-    if (!(entity.entityType in resolved)) {
+    if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
@@ -60,12 +60,12 @@ export function buildSlotClarificationState(
 
   // First pass: resolve from provided entities
   for (const entity of entities) {
-    if (!(entity.entityType in resolved)) {
+    if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
 
-  const missing = [...new Set(requiredEntityTypes.filter((item) => !(item in resolved)))];
+  const missing = [...new Set(requiredEntityTypes.filter((item) => !Object.prototype.hasOwnProperty.call(resolved, item)))];
 
   // Generate questions for missing slots
   const questions = missing.map((slot) => {
@@ -135,4 +135,3 @@ function defaultQuestionForSlot(slot: string): string {
   };
   return prompts[slot] ?? `请补充 ${slot} 相关信息。`;
 }
-

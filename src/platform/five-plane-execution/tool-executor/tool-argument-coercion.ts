@@ -523,13 +523,7 @@ export function createToolArgumentCoercionMiddleware(): WrapToolCallHook {
     priority: 5,
     run: async (_ctx, input, next) => {
       const coerced = coerceToolArguments(input.toolName, input.args);
-      // Create a copy before mutating to avoid side effects on input.args
-      const target = { ...input.args };
-      // Replace the arguments in place with coerced values
-      for (const key of Object.keys(target)) {
-        delete target[key];
-      }
-      Object.assign(target, coerced.value);
+      input.args = { ...coerced.value };
       return next();
     },
   };

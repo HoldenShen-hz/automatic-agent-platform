@@ -131,12 +131,14 @@ test("createUnhandledRejectionHandler - calls initiateShutdown for non-recoverab
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for StorageError", () => {
+test("createUnhandledRejectionHandler - does NOT exit for structured recoverable storage/network codes", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
-  const storageError = new Error("storage unavailable");
-  storageError.name = "StorageError";
+  const storageError = Object.assign(new Error("storage unavailable"), {
+    name: "StorageError",
+    code: "ECONNREFUSED",
+  });
 
   handler(storageError, Promise.resolve());
 
@@ -144,12 +146,14 @@ test("createUnhandledRejectionHandler - does NOT exit for StorageError", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for NetworkError", () => {
+test("createUnhandledRejectionHandler - does NOT exit for retryable recoverable errors", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
-  const networkError = new Error("network unavailable");
-  networkError.name = "NetworkError";
+  const networkError = Object.assign(new Error("network unavailable"), {
+    name: "NetworkError",
+    retryable: true,
+  });
 
   handler(networkError, Promise.resolve());
 
@@ -223,8 +227,9 @@ test("createUnhandledRejectionHandler - multiple recoverable calls don't accumul
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
-  const storageError = new Error("storage error");
-  storageError.name = "StorageError";
+  const storageError = Object.assign(new Error("storage error"), {
+    code: "ETIMEDOUT",
+  });
 
   handler(storageError, Promise.resolve());
   handler(storageError, Promise.resolve());
