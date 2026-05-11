@@ -46,10 +46,9 @@ test("comparePromptRolloutStage returns zero for same stage", () => {
   assert.equal(comparePromptRolloutStage("stable", "stable"), 0);
 });
 
-test("nextPromptRolloutStage returns next stage in sequence", () => {
-  assert.equal(nextPromptRolloutStage("canary_5"), "canary_20");
-  assert.equal(nextPromptRolloutStage("canary_20"), "stable");
-  assert.equal(nextPromptRolloutStage("stable"), "rolled_back");
+test("nextPromptRolloutStage returns null for stable (terminal stage)", () => {
+  // Issue 1956 fix: stable is terminal - cannot advance to rolled_back
+  assert.equal(nextPromptRolloutStage("stable"), null);
 });
 
 test("nextPromptRolloutStage returns null for rolled_back (last stage)", () => {

@@ -74,6 +74,21 @@ export interface RedisLockConfig extends RedisConnectionConfig {
   connectTimeoutMs?: number;
 }
 
+/**
+ * Zod schema for validating parsed LockData to prevent malicious payload injection.
+ * All fields are strictly validated with appropriate type checks.
+ */
+export const LockDataSchema = z.object({
+  id: z.string().min(1),
+  owner: z.string(),
+  fencingToken: z.number().int().nonnegative(),
+  ttlMs: z.number().int().positive(),
+  acquiredAt: z.string().refine((v) => !Number.isNaN(Date.parse(v)), {
+    message: "acquiredAt must be a valid ISO timestamp",
+  }),
+  metadata: z.union([z.string(), z.null()]),
+}).strict();
+
 export interface LockData {
   id: string;
   owner: string;

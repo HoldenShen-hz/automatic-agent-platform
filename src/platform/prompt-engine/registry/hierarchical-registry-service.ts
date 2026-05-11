@@ -207,8 +207,21 @@ export class HierarchicalPromptRegistryService {
       );
     }
 
-    bundle.metadata.deprecated = true;
-    bundle.updatedAt = nowIso();
+    // Issue 1934/1955 fix: Create new objects instead of mutating immutable snapshots
+    const timestamp = nowIso();
+    const newMetadata: PromptBundleMetadata = {
+      ...bundle.metadata,
+      deprecated: true,
+      lifecycleStatus: "deprecated",
+    };
+    const newBundle: PromptBundle = {
+      ...bundle,
+      metadata: newMetadata,
+      updatedAt: timestamp,
+    };
+
+    // Update all references to preserve immutability contract
+    this.updateBundleReference(newBundle, level, domain, packId);
   }
 
   public removeBundle(
@@ -375,6 +388,54 @@ export class HierarchicalPromptRegistryService {
 
     // No version specified — find the default bundle (highest weight, then most recent)
     return this.selectDefaultBundle([...bundles.values()]);
+  }
+
+  /**
+   * Updates bundle reference in all storage maps after a deprecation operation.
+   * Preserves immutability by replacing entries rather than mutating.
+   */
+  private updateBundleReference(
+    bundle: PromptBundle,
+    level: RegistryLevel,
+    domain?: string,
+    _packId?: string,
+  ): void {
+    switch (level) {
+      case "global":
+        this.globalBundles.set(bundle.name, bundle);
+        break;
+      case "domain":
+        if (domain) {
+          this.domainBundles.get(domain)?.set(bundle.name, bundle);
+        }
+        break;
+      case "task-type":
+        if (domain) {
+          const taskTypeMap = this.taskTypeBundles.get(domain);
+          if (taskTypeMap) {
+            // Find the taskType that contains this bundle and update it
+            for (const [taskType, bundles] of taskTypeMap.entries()) {
+              if (bundles.get(bundle.name) !== undefined) {
+                bundles.set(bundle.name, bundle);
+                break;
+              }
+            }
+          }
+        }
+        break;
+    }
+
+    // Also update versionsByName and versionsByScope
+    const existingVersions = this.versionsByName.get(bundle.name);
+    if (existingVersions) {
+      existingVersions.set(bundle.bundleId, bundle);
+    }
+
+    const scopeKey = this.buildScopeKey(bundle.name, level, level === "task-type" ? domain : undefined, domain);
+    const scopeVersions = this.versionsByScope.get(scopeKey);
+    if (scopeVersions) {
+      scopeVersions.set(String(bundle.version), bundle);
+    }
   }
 
   private buildListResult(bundle: PromptBundle): PromptBundleListResult {

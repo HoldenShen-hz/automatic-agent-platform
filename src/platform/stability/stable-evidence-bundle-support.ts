@@ -34,8 +34,9 @@
  * @see docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md for chaos testing
  */
 
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { createHmac, randomBytes } from "node:crypto";
 
 import { DiagnosticsService } from "../shared/observability/diagnostics-service.js";
 import { HealthService } from "../shared/observability/health-service.js";
@@ -456,6 +457,224 @@ export const STABLE_EVIDENCE_PROFILES: Record<StableEvidenceProfileName, StableE
 export function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2));
+}
+
+// ---------------------------------------------------------------------------
+// Cryptographic Signing / Tamper-Evident Evidence
+// ---------------------------------------------------------------------------
+
+/**
+ * R12-16: HMAC secret key for stable evidence bundle integrity.
+ * In production, this should come from a secure secrets manager.
+ */
+const STABLE_EVIDENCE_HMAC_KEY =
+  process.env["AA_STABLE_EVIDENCE_HMAC_KEY"] ?? "stable-evidence-integrity-secret-key-32!";
+
+/**
+ * R12-16: Algorithm used for evidence integrity (HMAC-SHA256).
+ */
+export const STABLE_EVIDENCE_ALGORITHM = "HMAC-SHA256";
+
+/**
+ * R12-16: Signed evidence envelope.
+ * Contains the canonical JSON payload and its HMAC signature.
+ */
+export interface StableEvidenceSignedEnvelope {
+  /** Canonical JSON serialized payload */
+  payload: string;
+  /** Hex-encoded HMAC-SHA256 signature over the payload */
+  signature: string;
+  /** Algorithm used for signing */
+  algorithm: string;
+  /** Timestamp when the signature was computed (ISO-8601) */
+  signedAt: string;
+  /** Random nonce used to ensure signature uniqueness */
+  nonce: string;
+}
+
+/**
+ * R12-16: Result of verifying a signed evidence envelope.
+ */
+export interface StableEvidenceVerificationResult {
+  /** Whether the signature is valid and payload is unmodified */
+  valid: boolean;
+  /** Whether the payload was found and verified */
+  checked: boolean;
+  /** Human-readable description of the verification outcome */
+  reason: string;
+}
+
+/**
+ * R12-16: Computes HMAC-SHA256 signature for evidence data.
+ */
+function hmacSha256(value: string): string {
+  return createHmac("sha256", STABLE_EVIDENCE_HMAC_KEY).update(value, "utf8").digest("hex");
+}
+
+/**
+ * R12-16: Creates a signed envelope for tamper-evident evidence storage.
+ * The envelope links the payload to a cryptographic signature for later verification.
+ */
+export function createSignedEnvelope(payload: unknown): StableEvidenceSignedEnvelope {
+  const canonicalJson = JSON.stringify(payload);
+  const nonce = randomBytes(8).toString("hex");
+  const signedAt = nowIso();
+  const signatureInput = `${nonce}:${signedAt}:${canonicalJson}`;
+  const signature = hmacSha256(signatureInput);
+
+  return {
+    payload: canonicalJson,
+    signature,
+    algorithm: STABLE_EVIDENCE_ALGORITHM,
+    signedAt,
+    nonce,
+  };
+}
+
+/**
+ * R12-16: Verifies a signed evidence envelope.
+ * Returns whether the signature is valid and payload is unmodified.
+ */
+export function verifySignedEnvelope(envelope: StableEvidenceSignedEnvelope): StableEvidenceVerificationResult {
+  if (!envelope || typeof envelope !== "object") {
+    return { valid: false, checked: false, reason: "envelope is missing or not an object" };
+  }
+  if (typeof envelope.payload !== "string") {
+    return { valid: false, checked: false, reason: "envelope.payload is not a string" };
+  }
+  if (typeof envelope.signature !== "string") {
+    return { valid: false, checked: false, reason: "envelope.signature is not a string" };
+  }
+
+  const signatureInput = `${envelope.nonce}:${envelope.signedAt}:${envelope.payload}`;
+  const expectedSignature = hmacSha256(signatureInput);
+
+  if (expectedSignature !== envelope.signature) {
+    return { valid: false, checked: true, reason: "signature mismatch - evidence may have been tampered with" };
+  }
+
+  return { valid: true, checked: true, reason: "signature valid, payload intact" };
+}
+
+/**
+ * R12-16: Writes a value as signed JSON to a file for tamper-evident storage.
+ * The file contains a signed envelope that can be verified later.
+ */
+export function writeSignedJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  const envelope = createSignedEnvelope(value);
+  writeFileSync(path, JSON.stringify(envelope, null, 2));
+}
+
+/**
+ * R12-16: Reads and verifies a signed JSON file.
+ * Throws if the file is missing or signature is invalid.
+ */
+export function readSignedJson<T>(path: string): { value: T; verified: boolean } {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const raw = JSON.parse(readFileSync(path, "utf8"));
+  const envelope = raw as StableEvidenceSignedEnvelope;
+  const result = verifySignedEnvelope(envelope);
+
+  if (!result.checked) {
+    throw new Error(`Failed to verify signed evidence at ${path}: ${result.reason}`);
+  }
+
+  if (!result.valid) {
+    throw new Error(`Tamper detected: ${result.reason}`);
+  }
+
+  return {
+    value: JSON.parse(envelope.payload) as T,
+    verified: result.valid,
+  };
+}
+
+/**
+ * R12-16: Stable Evidence Signer for creating and verifying tamper-evident evidence bundles.
+ * The signer maintains a running chain hash that links all artifacts together.
+ */
+export interface StableEvidenceSigner {
+  /** Sign a single artifact and update the chain */
+  signArtifact(name: string, data: unknown): string;
+  /** Finalize the chain and get the bundle signature */
+  finalize(): StableEvidenceBundleSignature;
+  /** List of artifact names that have been signed */
+  readonly artifactNames: readonly string[];
+  /** Chain hash that links all artifacts */
+  readonly chainHash: string;
+}
+
+/**
+ * R12-16: Final signature bundle that proves the entire evidence set integrity.
+ */
+export interface StableEvidenceBundleSignature {
+  /** HMAC-SHA256 signature over the final chain state */
+  signature: string;
+  /** Final chain hash linking all artifacts */
+  chainHash: string;
+  /** Algorithm used */
+  algorithm: string;
+  /** When the bundle was signed */
+  signedAt: string;
+  /** Number of artifacts signed */
+  artifactCount: number;
+  /** Nonce used for this signing operation */
+  nonce: string;
+}
+
+/**
+ * R12-16: Creates a new StableEvidenceSigner instance.
+ * The signer maintains a running chain hash that links all artifacts together,
+ * similar to a blockchain hash chain, providing tamper-evident storage.
+ */
+export function createStableEvidenceSigner(): StableEvidenceSigner {
+  let chainHash = "0"; // Genesis hash
+  const artifactNames: string[] = [];
+
+  return {
+    signArtifact(name: string, data: unknown): string {
+      artifactNames.push(name);
+      const artifactJson = JSON.stringify(data);
+      const chainInput = JSON.stringify({
+        chainHash,
+        artifactName: name,
+        artifactJson,
+        nonce: randomBytes(8).toString("hex"),
+      });
+      chainHash = hmacSha256(chainInput);
+      return chainHash;
+    },
+
+    finalize(): StableEvidenceBundleSignature {
+      const nonce = randomBytes(16).toString("hex");
+      const signedAt = nowIso();
+      const finalInput = JSON.stringify({
+        chainHash,
+        nonce,
+        artifactCount: artifactNames.length,
+        signedAt,
+      });
+      const signature = hmacSha256(finalInput);
+
+      return {
+        signature,
+        chainHash,
+        algorithm: STABLE_EVIDENCE_ALGORITHM,
+        signedAt,
+        artifactCount: artifactNames.length,
+        nonce,
+      };
+    },
+
+    get artifactNames(): readonly string[] {
+      return artifactNames;
+    },
+
+    get chainHash(): string {
+      return chainHash;
+    },
+  };
 }
 
 /**

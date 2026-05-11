@@ -743,3 +743,82 @@ test("HierarchicalPromptRegistryService.listBundles with pack filter", () => {
   assert.equal(bundles.length, 1);
   assert.equal(bundles[0]!.bundle.name, "pack-bundle");
 });
+
+// =============================================================================
+// Issue 1934/1955: Immutability Fix Tests
+// =============================================================================
+
+test("HierarchicalPromptRegistryService.deprecateBundle preserves original bundle immutability", () => {
+  const service = new HierarchicalPromptRegistryService();
+  const bundle = service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
+
+  // Capture original values
+  const originalUpdatedAt = bundle.updatedAt;
+  const originalDeprecated = bundle.metadata.deprecated;
+  const originalLifecycleStatus = bundle.metadata.lifecycleStatus;
+
+  // Deprecate the bundle
+  service.deprecateBundle("bundle", "v1.0.0", "global");
+
+  // Original bundle object should NOT have been mutated
+  assert.equal(bundle.updatedAt, originalUpdatedAt, "updatedAt should not be mutated");
+  assert.equal(bundle.metadata.deprecated, originalDeprecated, "metadata.deprecated should not be mutated");
+  assert.equal(bundle.metadata.lifecycleStatus, originalLifecycleStatus, "metadata.lifecycleStatus should not be mutated");
+});
+
+test("HierarchicalPromptRegistryService.deprecateBundle creates new bundle with updated values", () => {
+  const service = new HierarchicalPromptRegistryService();
+  service.registerBundle(createValidBundleInput({ name: "bundle" }), "global");
+
+  // Deprecate the bundle
+  service.deprecateBundle("bundle", "v1.0.0", "global");
+
+  // The deprecated bundle retrieved via getBundle should have updated values
+  const versions = service.listBundleVersions("bundle");
+  assert.equal(versions[0]!.deprecated, true);
+  assert.equal(versions[0]!.lifecycleStatus, "deprecated");
+
+  // getBundle should not return deprecated bundles
+  const foundBundle = service.getBundle("bundle", "any-task");
+  assert.equal(foundBundle, null, "Deprecated bundle should not be returned by getBundle");
+});
+
+test("HierarchicalPromptRegistryService.deprecateBundle at domain level preserves immutability", () => {
+  const service = new HierarchicalPromptRegistryService();
+  const bundle = service.registerBundle(createValidBundleInput({ name: "bundle", domain: "my-domain" }), "domain", "my-domain");
+
+  const originalUpdatedAt = bundle.updatedAt;
+  const originalDeprecated = bundle.metadata.deprecated;
+
+  service.deprecateBundle("bundle", "v1.0.0", "domain", "my-domain");
+
+  // Original should be unchanged
+  assert.equal(bundle.updatedAt, originalUpdatedAt);
+  assert.equal(bundle.metadata.deprecated, originalDeprecated);
+
+  // Deprecation should be visible
+  const versions = service.listBundleVersions("bundle");
+  assert.equal(versions[0]!.deprecated, true);
+});
+
+test("HierarchicalPromptRegistryService.deprecateBundle at task-type level preserves immutability", () => {
+  const service = new HierarchicalPromptRegistryService();
+  const bundle = service.registerBundle(
+    createValidBundleInput({ name: "bundle" }),
+    "task-type",
+    "my-domain",
+  );
+
+  const originalUpdatedAt = bundle.updatedAt;
+  const originalDeprecated = bundle.metadata.deprecated;
+
+  service.deprecateBundle("bundle", "v1.0.0", "task-type", "my-domain");
+
+  // Original should be unchanged
+  assert.equal(bundle.updatedAt, originalUpdatedAt);
+  assert.equal(bundle.metadata.deprecated, originalDeprecated);
+
+  // Deprecation should be visible
+  const versions = service.listBundleVersions("bundle");
+  assert.equal(versions[0]!.deprecated, true);
+});

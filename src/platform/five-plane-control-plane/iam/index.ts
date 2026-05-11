@@ -33,6 +33,10 @@ export type {
   SecretProviderValue,
 } from "./env-secret-provider.js";
 export { SecretManagementService } from "./secret-management-service.js";
+export type {
+  SecretManagementService,
+  SecretAuthorizationContext,
+} from "./secret-management-service.js";
 export {
   createRestrictedExecPolicy,
   createScopedExternalAccessPolicy,

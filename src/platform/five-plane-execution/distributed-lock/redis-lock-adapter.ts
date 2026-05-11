@@ -13,9 +13,27 @@ import type {
   LockRecord,
   RedisLockConfig,
 } from "./distributed-lock-types.js";
+import { LockDataSchema } from "./distributed-lock-types.js";
 
 export class RedisLockAdapter implements DistributedLockAdapter {
   readonly backendKind: LockBackendKind = "redis";
+
+  /**
+   * Safely parse and validate lock data from Redis JSON payload.
+   * Throws a descriptive error if the payload is malformed or malicious.
+   */
+  private parseLockData(raw: string): LockData {
+    const parsed = JSON.parse(raw);
+    const result = LockDataSchema.safeParse(parsed);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      throw new LockingError(
+        "lock.invalid_payload",
+        `lock.invalid_payload: ${issue?.message ?? "validation failed"} at ${issue?.path.join(".") ?? "root"}`,
+      );
+    }
+    return result.data;
+  }
 
   private readonly redis: {
     status: string;
@@ -150,7 +168,7 @@ return 1`;
     if (!current) {
       return null;
     }
-    const data = JSON.parse(current) as LockData;
+    const data = this.parseLockData(current);
     return {
       lockKey,
       owner: data.owner,
@@ -203,7 +221,7 @@ return 1`;
     if (!current) {
       return null;
     }
-    const data = JSON.parse(current) as LockData;
+    const data = this.parseLockData(current);
     return {
       lockKey,
       owner: data.owner,
@@ -234,7 +252,7 @@ return 1`;
           const value = values[i];
           if (!value) continue;
 
-          const data = JSON.parse(value) as LockData;
+          const data = this.parseLockData(value);
           records.push({
             lockKey: key.slice(prefixLen),
             owner: data.owner,

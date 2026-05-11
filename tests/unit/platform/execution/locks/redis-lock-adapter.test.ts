@@ -232,3 +232,121 @@ test("RedisLockAdapter enqueue method exists (inherited from QueueAdapter interf
   // This is here for completeness of interface coverage
   assert.equal(typeof adapter.backendKind, "string");
 });
+
+// ── Security: JSON.parse payload injection validation ───────────────────────
+
+test("RedisLockAdapter parseLockData rejects missing required fields", () => {
+  // Direct testing of the private parseLockData via LockDataSchema directly
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({});
+  assert.ok(result.success === false, "Empty object should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects wrong types for required fields", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: 123, // should be string
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+  });
+  assert.ok(result.success === false, "id as number should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects prototype pollution attempt", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  // Attempt prototype pollution via __proto__
+  const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"__proto__":{"admin":true}}');
+  const result = LockDataSchema.safeParse(maliciousPayload);
+  assert.ok(result.success === false, "Prototype pollution payload should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects constructor property injection", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  // Attempt constructor property injection
+  const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"constructor":{"admin":true}}');
+  const result = LockDataSchema.safeParse(maliciousPayload);
+  assert.ok(result.success === false, "Constructor property injection should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects negative fencingToken", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: -1,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+  });
+  assert.ok(result.success === false, "Negative fencingToken should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects non-positive ttlMs", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 0,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+  });
+  assert.ok(result.success === false, "Zero ttlMs should be rejected");
+});
+
+test("RedisLockAdapter parseLockData rejects invalid ISO timestamp", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 30000,
+    acquiredAt: "not-a-valid-timestamp",
+    metadata: null,
+  });
+  assert.ok(result.success === false, "Invalid ISO timestamp should be rejected");
+});
+
+test("RedisLockAdapter parseLockData accepts valid minimal payload", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+  });
+  assert.ok(result.success === true, "Valid minimal payload should be accepted");
+  assert.equal(result.data.owner, "owner");
+});
+
+test("RedisLockAdapter parseLockData accepts string metadata", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: "some-metadata-string",
+  });
+  assert.ok(result.success === true, "String metadata should be accepted");
+});
+
+test("RedisLockAdapter parseLockData rejects extra unknown fields due to strict mode", () => {
+  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
+  const result = LockDataSchema.safeParse({
+    id: "lock_1",
+    owner: "owner",
+    fencingToken: 1,
+    ttlMs: 30000,
+    acquiredAt: new Date().toISOString(),
+    metadata: null,
+    extraField: "should-be-rejected",
+  });
+  assert.ok(result.success === false, "Extra unknown fields should be rejected due to strict mode");
+});

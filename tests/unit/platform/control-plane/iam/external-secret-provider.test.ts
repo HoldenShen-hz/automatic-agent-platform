@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
 import { ExternalSecretProvider } from "../../../../../src/platform/control-plane/iam/external-secret-provider.js";
-import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
+import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("external secret provider resolves provider-specific JSON mappings", async () => {
   const provider = new ExternalSecretProvider({
@@ -74,6 +75,121 @@ test("external secret provider fail-closes malformed provider config", async () 
     () => provider.describeSecret("secret://system/registry/ghcr/prod"),
     /secret\.provider_config_invalid:secret_manager:AA_SECRET_MANAGER_SECRETS_JSON/,
   );
+});
+
+test("external secret provider rejects path traversal in file paths", async () => {
+  const provider = new ExternalSecretProvider({
+    providerKind: "vault",
+    env: {
+      AA_VAULT_SECRETS_FILE: "/secrets/../etc/passwd",
+    },
+  });
+
+  await assert.rejects(
+    () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+    /secret\.provider_config_invalid:vault/,
+  );
+});
+
+test("external secret provider rejects path within denied root /etc", async () => {
+  const provider = new ExternalSecretProvider({
+    providerKind: "vault",
+    env: {
+      AA_VAULT_SECRETS_FILE: "/etc/myapp/secrets.json",
+    },
+  });
+
+  await assert.rejects(
+    () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+    /secret\.provider_config_invalid:vault/,
+  );
+});
+
+test("external secret provider rejects path within denied root /proc", async () => {
+  const provider = new ExternalSecretProvider({
+    providerKind: "kms",
+    env: {
+      AA_KMS_SECRETS_FILE: "/proc/self/secrets.json",
+    },
+  });
+
+  await assert.rejects(
+    () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+    /secret\.provider_config_invalid:kms/,
+  );
+});
+
+test("external secret provider rejects path within denied root /sys", async () => {
+  const provider = new ExternalSecretProvider({
+    providerKind: "secret_manager",
+    env: {
+      AA_SECRET_MANAGER_SECRETS_FILE: "/sys/kernel/secrets.json",
+    },
+  });
+
+  await assert.rejects(
+    () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+    /secret\.provider_config_invalid:secret_manager/,
+  );
+});
+
+test("external secret provider rejects file path with symlink traversal", async () => {
+  const workspace = createTempWorkspace("aa-external-secret-provider-symlink-");
+
+  try {
+    // Create a symlink that escapes the workspace
+    const escapeLink = join(workspace, "escape_link");
+    createSymlink("/etc", escapeLink);
+
+    // Point to a file through the symlink
+    const provider = new ExternalSecretProvider({
+      providerKind: "vault",
+      env: {
+        AA_VAULT_SECRETS_FILE: join(escapeLink, "passwd"),
+      },
+    });
+
+    await assert.rejects(
+      () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+      /secret\.provider_config_invalid:vault/,
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("external secret provider rejects nested symlink traversal", async () => {
+  const workspace = createTempWorkspace("aa-external-secret-provider-nested-symlink-");
+
+  try {
+    // Create /workspace/allowed -> /workspace/allowed
+    const allowedDir = join(workspace, "allowed");
+    mkdirSync(allowedDir, { recursive: true });
+
+    // Create a file inside the allowed directory
+    const secretFile = join(allowedDir, "secrets.json");
+    createFile(secretFile, JSON.stringify({ "secret://test": { value: "test" } }));
+
+    // Create a symlink at /workspace/link -> /etc
+    const evilLink = join(workspace, "link");
+    createSymlink("/etc", evilLink);
+
+    // Try to access /workspace/allowed/../link/passwd which resolves to /workspace/link/passwd
+    // But the path traversal check catches it first
+    const provider = new ExternalSecretProvider({
+      providerKind: "vault",
+      env: {
+        AA_VAULT_SECRETS_FILE: join(workspace, "allowed", "..", "link", "passwd"),
+      },
+    });
+
+    await assert.rejects(
+      () => provider.describeSecret("secret://system/registry/ghcr/prod"),
+      /secret\.provider_config_invalid:vault/,
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
 });
 
 test("external secret provider can issue provider-backed short-lived leases", async () => {

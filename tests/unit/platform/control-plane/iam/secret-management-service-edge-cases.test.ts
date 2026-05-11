@@ -857,3 +857,122 @@ test("secret management service requestDueRotations returns empty when no secret
     cleanupPath(harness.workspace);
   }
 });
+
+test("secret management service requireSecret throws PolicyDeniedError without authContext", async () => {
+  const harness = createHarness("aa-secret-require-no-auth-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store, {
+      providers: {
+        environment: {
+          providerKind: "environment",
+          async describeSecret() {
+            return { maskedValue: "****", source: "test", envName: "test" };
+          },
+          async requireSecret() {
+            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          },
+        },
+      },
+    });
+
+    service.registerSecret({
+      secretRef: "secret://system/no-auth/secret",
+      displayName: "No Auth Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system.no-auth",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 60, breakGlass: false },
+    });
+
+    // Calling requireSecret without authContext should throw PolicyDeniedError
+    await assert.rejects(
+      async () => service.requireSecret("secret://system/no-auth/secret"),
+      (err: any) => err.code === "secret.authorization_required:secret://system/no-auth/secret",
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("secret management service requireSecret succeeds with valid authContext", async () => {
+  const harness = createHarness("aa-secret-require-auth-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store, {
+      providers: {
+        environment: {
+          providerKind: "environment",
+          async describeSecret() {
+            return { maskedValue: "****", source: "test", envName: "test" };
+          },
+          async requireSecret() {
+            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          },
+        },
+      },
+    });
+
+    service.registerSecret({
+      secretRef: "secret://system/auth/secret",
+      displayName: "Auth Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system.auth",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 60, breakGlass: false },
+    });
+
+    // Calling requireSecret with valid authContext should succeed
+    const result = await service.requireSecret("secret://system/auth/secret", {
+      callerScopeType: "system",
+      callerScopeRef: "system.auth",
+    });
+    assert.equal(result.value, "secret-value");
+    assert.equal(result.metadata.providerKind, "environment");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("secret management service requireSecret throws PolicyDeniedError for scope mismatch", async () => {
+  const harness = createHarness("aa-secret-require-scope-mismatch-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store, {
+      providers: {
+        environment: {
+          providerKind: "environment",
+          async describeSecret() {
+            return { maskedValue: "****", source: "test", envName: "test" };
+          },
+          async requireSecret() {
+            return { maskedValue: "****", value: "secret-value", source: "test", envName: "test" };
+          },
+        },
+      },
+    });
+
+    service.registerSecret({
+      secretRef: "secret://tenant/private/secret",
+      displayName: "Tenant Private Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant.acme",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 60, breakGlass: false },
+    });
+
+    // Calling requireSecret with wrong scope should throw PolicyDeniedError
+    await assert.rejects(
+      async () => service.requireSecret("secret://tenant/private/secret", {
+        callerScopeType: "tenant",
+        callerScopeRef: "tenant.wrong-tenant",
+      }),
+      (err: any) => err.code.startsWith("secret.unauthorized_scope:"),
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});

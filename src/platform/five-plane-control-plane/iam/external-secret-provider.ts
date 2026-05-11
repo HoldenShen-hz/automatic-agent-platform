@@ -32,7 +32,8 @@
  * @see EnvSecretProvider for the interface this implements
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { resolve, sep } from "node:path";
 
 import { ProviderError, ValidationError } from "../../contracts/errors.js";
 import type { SecretProviderKind } from "../../contracts/types/domain.js";
@@ -109,6 +110,79 @@ function inlineSecretsEnvName(providerKind: ExternalSecretProviderKind): string 
  */
 function fileSecretsEnvName(providerKind: ExternalSecretProviderKind): string {
   return `${providerEnvPrefix(providerKind)}_SECRETS_FILE`;
+}
+
+/**
+ * Validates that a file path does not contain path traversal sequences.
+ *
+ * @param filePath - The file path to validate
+ * @param code - Error code for validation failure
+ * @throws ProviderError if path contains .. traversal
+ */
+function validateFilePath(filePath: string, code: string): void {
+  if (filePath.includes("..")) {
+    throw new ProviderError(code, code, {
+      details: { filePath },
+      retryable: false,
+    });
+  }
+}
+
+/**
+ * Default denied roots that should never be accessed.
+ */
+const DEFAULT_DENIED_ROOTS = ["/etc", "/proc", "/sys"] as const;
+
+/**
+ * Verifies a file path is safe to access using sandbox-style checks:
+ * - No path traversal sequences (..)
+ * - Not within denied roots (/etc, /proc, /sys)
+ * - No symlinks in the path that could escape allowed boundaries
+ *
+ * @param filePath - The file path to verify
+ * @param code - Error code for validation failure
+ * @throws ProviderError if path fails any security check
+ */
+function verifySecurePath(filePath: string, code: string): void {
+  // First do basic path traversal check
+  validateFilePath(filePath, code);
+
+  const resolvedPath = resolve(filePath);
+
+  // Check if path is within any denied root
+  for (const deniedRoot of DEFAULT_DENIED_ROOTS) {
+    const deniedResolved = resolve(deniedRoot);
+    if (resolvedPath === deniedResolved || resolvedPath.startsWith(`${deniedResolved}${sep}`)) {
+      throw new ProviderError(code, code, {
+        details: { filePath, reason: "path_within_denied_root", deniedRoot },
+        retryable: false,
+      });
+    }
+  }
+
+  // Check for symlinks in the path that could escape boundaries
+  // This detects if any parent directory is a symlink
+  const pathSegments = resolvedPath.split(sep).filter(Boolean);
+  let current = "";
+  for (let i = 0; i < pathSegments.length - 1; i++) {
+    current = resolve(current, pathSegments[i]);
+    try {
+      const stat = lstatSync(current);
+      if (stat.isSymbolicLink()) {
+        throw new ProviderError(code, code, {
+          details: { filePath, reason: "symlink_in_path", symlinkPath: current },
+          retryable: false,
+        });
+      }
+    } catch (error) {
+      // lstatSync fails if path doesn't exist yet (for newly created paths)
+      // In this case we can't verify, but we already resolved the path
+      const errorCode = (error as NodeJS.ErrnoException).code;
+      if (errorCode !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
 }
 
 /**
@@ -379,6 +453,7 @@ export class ExternalSecretProvider {
 
     // Check for secrets file first
     if (filePath.length > 0) {
+      verifySecurePath(filePath, `secret.provider_config_invalid:${this.providerKind}:${filePath}`);
       if (!existsSync(filePath)) {
         throw new ProviderError(`secret.provider_config_invalid:${this.providerKind}:${filePath}`, `secret.provider_config_invalid:${this.providerKind}:${filePath}`, {
           details: { providerKind: this.providerKind, filePath },

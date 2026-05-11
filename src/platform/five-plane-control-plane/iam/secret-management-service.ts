@@ -79,6 +79,11 @@ class SecretResolutionRateLimiter {
   }
 }
 
+export interface SecretAuthorizationContext {
+  readonly callerScopeType: string;
+  readonly callerScopeRef: string;
+}
+
 export class SecretManagementService {
   private readonly providers: Record<SecretProviderKind, ManagedSecretProvider>;
   private readonly rateLimiter = new SecretResolutionRateLimiter();
@@ -251,14 +256,6 @@ export class SecretManagementService {
   }
 
   /**
-   * R12-22: Authorization check result containing caller scope information.
-   */
-  export interface SecretAuthorizationContext {
-    readonly callerScopeType: string;
-    readonly callerScopeRef: string;
-  }
-
-  /**
    * Resolves a secret and records the usage.
    *
    * @param input - Resolution request
@@ -340,14 +337,36 @@ export class SecretManagementService {
 
   /**
    * Requires a secret value, throwing if not available.
+   *
+   * @param secretRef - Secret reference
+   * @param authContext - Authorization context with caller's scope (required for R12-22)
+   * @returns The secret value with metadata
+   * @throws PolicyDeniedError if authorization check fails or secret is unavailable
    */
-  public async requireSecret(secretRef: string): Promise<ManagedSecretValue> {
+  public async requireSecret(
+    secretRef: string,
+    authContext?: SecretAuthorizationContext,
+  ): Promise<ManagedSecretValue> {
     const registry = this.requireRegistryRecord(secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
         details: { secretRef: registry.secretRef, status: registry.status },
       });
     }
+
+    // R12-22: Enforce scope-based authorization on secret access
+    // If no authContext is provided, we deny by default to prevent zero-auth access
+    if (authContext == null) {
+      throw new PolicyDeniedError(
+        `secret.authorization_required:${registry.secretRef}`,
+        `secret.authorization_required:${registry.secretRef}`,
+        {
+          details: { secretRef: registry.secretRef, reason: "auth_context_required" },
+        },
+      );
+    }
+    this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
+
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
