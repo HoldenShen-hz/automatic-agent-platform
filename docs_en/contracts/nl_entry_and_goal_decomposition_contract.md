@@ -30,7 +30,7 @@ This contract defines the natural language entry, multi-turn clarification, and 
 
 Rules:
 
-- Low confidence, high risk, and missing entities这三类情况 (these three situations) must allow `requires_clarification=true`.
+- Low confidence, high risk, and missing entities must allow `requires_clarification=true`.
 - `suggested_division_id` is only a suggestion and does not equal final execution authorization.
 
 ## 4. `GoalDecomposition` Minimum Fields
@@ -44,7 +44,7 @@ Rules:
 - `decomposition_confidence`
 - `requires_human_review`
 
-`PlannedTask` minimum fields:
+`PlannedTask` Minimum Fields:
 
 - `task_id`
 - `domain_id`
@@ -76,11 +76,10 @@ Rules:
 
 - NL entry must not directly execute runtime side effects.
 - GoalDecomposer must not bypass approval, budget, and risk gates.
-- The only controlled output from NL to runtime is structured envelope / decomposition.
+- The only controlled output from NL to runtime is a structured envelope / decomposition.
 
 ## 7. Test Requirements
 
 - unit: intent, entity, clarification, decomposition graph
 - integration: NL -> decomposition -> orchestration handoff
-- contract: Ambiguous requests must not directly enter automatic execution
-
+- contract: ambiguous requests must not directly enter auto-execution

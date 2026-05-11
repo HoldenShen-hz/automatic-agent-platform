@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Define execution plane sandbox mode, path/network constraints, and escape rejection semantics.
+Defines the execution plane sandbox mode, path/network constraints, and escape rejection semantics.
 
 ## 2. Core Objects
 
@@ -18,6 +18,6 @@ interface ExecutionSandboxPolicy {
 
 ## 3. Constraints
 
-- Any execution attempt must be bound to an `ExecutionSandboxPolicy`.
-- Writes not listed in `allowedPaths` must be rejected.
-- When `networkAccess=false`, network side writes must not be indirectly opened through provider/tool.
+- Every execution attempt must be bound to an `ExecutionSandboxPolicy`.
+- Writes to paths not listed in `allowedPaths` must be rejected.
+- When `networkAccess=false`, network side-channel writes must not be permitted through providers/tools.

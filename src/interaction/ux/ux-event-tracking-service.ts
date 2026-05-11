@@ -124,29 +124,23 @@ export class UxEventTrackingService {
     }
 
     if (this.eventPublisher) {
-      // R29-36: Only publish events that are registered in TypedEventPayloadMap.
-      // UxEventType values (e.g. "ux:button_click") are NOT in TypedEventPayloadMap,
-      // so skip publishing for those. The event is still logged to eventLog for internal tracking.
-      if (!trackEntry.eventType.startsWith("ux:")) {
-        // Cast through unknown to bypass type checking on the payload shape
-        (this.eventPublisher.publish as (input: unknown) => void)({
-          eventType: trackEntry.eventType,
+      (this.eventPublisher.publish as (input: unknown) => void)({
+        eventType: "ux:interaction_tracked",
+        sessionId: trackEntry.sessionId,
+        taskId: trackEntry.taskId,
+        payload: {
+          eventId,
+          occurredAt,
+          userId: payload.userId,
           sessionId: trackEntry.sessionId,
           taskId: trackEntry.taskId,
-          payload: {
-            eventId,
-            occurredAt,
-            userId: payload.userId,
-            sessionId: (p.sessionId as string | null) ?? null,
-            taskId: (p.taskId as string | null) ?? null,
-            abTestGroup: (p.abTestGroup as string | null) ?? null,
-            elementId: (p.elementId as string | null) ?? null,
-            interactionType: trackEntry.interactionType,
-            eventType: trackEntry.eventType,
-            metadata: (p.metadata as Record<string, string>) ?? {},
-          },
-        });
-      }
+          abTestGroup: trackEntry.abTestGroup,
+          elementId: trackEntry.elementId,
+          interactionType: trackEntry.interactionType,
+          uxEventType: trackEntry.eventType,
+          metadata: trackEntry.metadata,
+        },
+      });
     }
 
     return trackEntry;

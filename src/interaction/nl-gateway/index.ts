@@ -1,5 +1,13 @@
-export { detectAmbiguity as detectAmbiguityFn } from "./disambiguation-handler/index.js";
-export * from "./disambiguation-handler/index.js";
+export {
+  detectAmbiguity,
+  detectAmbiguity as detectAmbiguityFn,
+  DisambiguationHandler,
+} from "./disambiguation-handler/index.js";
+export type {
+  ClarificationQuestion,
+  DisambiguationConfig as HandlerDisambiguationConfig,
+  DisambiguationResult,
+} from "./disambiguation-handler/index.js";
 export { parseIntentTokensWithModel } from "./intent-parser/index.js";
 export { buildSlotClarificationState } from "./slot-resolver/index.js";
 
@@ -17,9 +25,19 @@ export type {
   EntityExtractionConfig,
 } from "./nl-gateway-config-loader.js";
 
+import { createHash } from "node:crypto";
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import { createPlatformPrincipal, type PlatformRequestEnvelope } from "../../platform/contracts/index.js";
+import {
+  createConfirmedTaskSpec,
+  createPrincipalRef,
+  createRequestEnvelopeFromConfirmedTask,
+  createTaskDraft as createCanonicalTaskDraft,
+  type ConfirmedTaskSpec,
+  type RequestEnvelope as CanonicalRequestEnvelope,
+  type TaskDraft as CanonicalTaskDraft,
+} from "../../platform/contracts/executable-contracts/index.js";
 import type { NlGatewayConfig } from "./nl-gateway-config-loader.js";
 import { loadNlGatewayConfig, getConversationWindowSize } from "./nl-gateway-config-loader.js";
 import { parseIntentTokensWithModel } from "./intent-parser/index.js";
@@ -190,6 +208,9 @@ export interface TaskBuildResult {
   readonly confirmationReceipt: UserConfirmationReceipt;
   readonly conversationState: ConversationState;
   readonly clarificationSession: ClarificationSession | null;
+  readonly canonicalTaskDraft: CanonicalTaskDraft;
+  readonly confirmedTaskSpec: ConfirmedTaskSpec | null;
+  readonly canonicalRequestEnvelope: CanonicalRequestEnvelope | null;
   readonly dryRunPreview?: DryRunPreview;
 }
 
@@ -750,6 +771,51 @@ function memoryScopeFor(request: Pick<NlEntryRequest, "tenantId" | "userId">): s
   return `${request.tenantId}:${request.userId}:nl_gateway`;
 }
 
+function clarificationRoundKey(request: Pick<NlEntryRequest, "tenantId" | "userId" | "message">): string {
+  return `${request.tenantId}:${request.userId}:${request.message.trim().toLowerCase()}`;
+}
+
+function buildConfirmationScope(divisionId: string, context: ContextEnrichment): string {
+  const environment = context.targetEnvironments[0]
+    ?? (context.extractedConstraints.includes("production_scope") ? "production" : null);
+  return environment == null ? divisionId : `${divisionId}/${environment}`;
+}
+
+function buildCanonicalDomainId(divisionId: string): string {
+  if (divisionId === "platform_engineering" || divisionId === "engineering_ops") {
+    return "coding";
+  }
+  return divisionId;
+}
+
+function resolveAutonomyMode(
+  confirmationRequired: boolean,
+  riskPreview: RiskPreview,
+): "suggestion" | "full_auto" {
+  return confirmationRequired || riskPreview.approvalNeeded ? "suggestion" : "full_auto";
+}
+
+function resolveRuntimeMode(
+  confirmationRequired: boolean,
+  riskPreview: RiskPreview,
+): "no_write" | "suggestion" | "full_auto" {
+  if (riskPreview.overallRisk === "critical" || riskPreview.approvalNeeded) {
+    return "no_write";
+  }
+  if (confirmationRequired) {
+    return "suggestion";
+  }
+  return "full_auto";
+}
+
+function buildStableIdempotencyKey(request: Pick<NlEntryRequest, "tenantId" | "userId" | "message">): string {
+  const digest = createHash("sha256")
+    .update(`${request.tenantId}:${request.userId}:${request.message}`)
+    .digest("hex")
+    .slice(0, 24);
+  return `nl:${digest}`;
+}
+
 function parseStoredConversationTurn(content: string): ConversationTurn | null {
   try {
     const parsed = JSON.parse(content) as Partial<ConversationTurn>;
@@ -864,6 +930,7 @@ export class NlEntryService implements NlEntryPort {
   private readonly dryRunExecutor: DryRunExecutorPort | null;
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
+  private readonly clarificationRounds = new Map<string, number>();
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
@@ -915,10 +982,10 @@ export class NlEntryService implements NlEntryPort {
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
     const locale = this.resolveLocale(request);
-    const route = this.intakeRouter.route({
+    const route = await Promise.resolve(this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
-    });
+    }));
     const entities = extractEntities(request.message);
     const parsedIntentTokens = await parseIntentTokensWithModel(request.message, {
       locale,
@@ -1069,15 +1136,44 @@ export class NlEntryService implements NlEntryPort {
     );
     const costEstimate = this.costEstimator?.estimate(detailed.suggestedDivisionId) ?? defaultCostEstimate();
     const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical" || detailed.blockedByPolicy;
-    const humanSummary = this.responseFormatter.formatTaskSummary({
+    const clarificationKey = clarificationRoundKey(request);
+    const nextClarificationRound = detailed.requiresClarification
+      ? (this.clarificationRounds.get(clarificationKey) ?? 0) + 1
+      : 0;
+    if (detailed.requiresClarification) {
+      this.clarificationRounds.set(clarificationKey, nextClarificationRound);
+    } else {
+      this.clarificationRounds.delete(clarificationKey);
+    }
+    const clarificationState: ClarificationState = {
+      ...detailed.clarificationState,
+      rounds: nextClarificationRound,
+      state: nextClarificationRound > detailed.clarificationState.maxRounds
+        ? "blocked"
+        : detailed.clarificationState.state,
+      reasonCodes: nextClarificationRound > detailed.clarificationState.maxRounds
+        ? [...detailed.clarificationState.reasonCodes, "nl_gateway.max_clarification_rounds_exceeded"]
+        : detailed.clarificationState.reasonCodes,
+    };
+    const dryRunPreview = buildDryRunPreview({
+      request,
+      divisionId: detailed.suggestedDivisionId,
+      workflowId: detailed.suggestedWorkflowId,
+      riskPreview,
+      context: detailed.context,
+    });
+    const humanSummaryBase = this.responseFormatter.formatTaskSummary({
       divisionId: detailed.suggestedDivisionId,
       workflowId: detailed.suggestedWorkflowId,
       costEstimate,
       riskPreview,
-      clarificationState: detailed.clarificationState,
+      clarificationState,
     });
+    const humanSummary = dryRunPreview == null
+      ? humanSummaryBase
+      : `${humanSummaryBase}，已生成 dry-run 预演摘要`;
     const conversationState = deriveConversationState(
-      detailed.requiresClarification,
+      clarificationState.state !== "none",
       confirmationRequired,
       detailed.blockedByPolicy,
     );
@@ -1090,27 +1186,111 @@ export class NlEntryService implements NlEntryPort {
       riskPreview,
       state: confirmationRequired ? "Confirming" : "Executing",
     };
+    const confirmationScope = buildConfirmationScope(detailed.suggestedDivisionId, detailed.context);
     const confirmationReceipt: UserConfirmationReceipt = {
       confirmationId: `${taskDraft.draftId}:confirmation`,
       required: confirmationRequired,
       state: confirmationRequired ? "pending_user_confirmation" : "not_required",
       reasonCodes: [
-        ...(detailed.requiresClarification ? ["nl_gateway.clarification_required"] : []),
+        ...(clarificationState.state !== "none" ? ["nl_gateway.clarification_required"] : []),
         ...(riskPreview.approvalNeeded ? ["nl_gateway.approval_required"] : []),
         ...(detailed.blockedByPolicy ? ["nl_gateway.security_review_required"] : []),
+        ...(dryRunPreview == null ? [] : ["nl_gateway.dry_run_preview_ready"]),
       ],
       summary: humanSummary,
-      // R5-32: Additional confirmation receipt fields
-      scope: detailed.suggestedDivisionId,
+      scope: confirmationScope,
       time: nowIso(),
-      riskPreviewVersion: `v1:${riskPreview.overallRisk}`,
+      riskPreviewVersion: `risk-preview-v1:${riskPreview.overallRisk}`,
+      riskPreview,
+      actor: request.userId,
+      timestamp: nowIso(),
     };
-
-    // R5-15/R23-01: Only emit RequestEnvelope when confirmationReceipt.state === "confirmed"
-    // This enforces §39.6: only confirmed can dispatch.
-    // When state is "pending_user_confirmation" (awaiting confirmation) or "not_required"
-    // (for any reason including risk), block dispatch by keeping requestEnvelope null.
-    const shouldEmitEnvelope = confirmationReceipt.state === "confirmed";
+    const shouldEmitEnvelope = !confirmationRequired;
+    const autonomyMode = resolveAutonomyMode(confirmationRequired, riskPreview);
+    const runtimeMode = resolveRuntimeMode(confirmationRequired, riskPreview);
+    const canonicalDomainId = buildCanonicalDomainId(detailed.suggestedDivisionId);
+    const principalRef = createPrincipalRef({
+      principalId: request.userId,
+      tenantId: request.tenantId,
+      roles: ["requester"],
+      authorizationLevel: "operator",
+    });
+    const idempotencyKey = buildStableIdempotencyKey(request);
+    const traceId = `trace:${idempotencyKey}`;
+    const canonicalTaskDraft = createCanonicalTaskDraft({
+      tenantId: request.tenantId,
+      principal: principalRef,
+      source: "nl",
+      domainId: canonicalDomainId,
+      taskDraftId: taskDraft.draftId,
+      normalizedIntent: {
+        intentType: primaryIntent.intentType,
+        intent: primaryIntent.intentType,
+        domainId: canonicalDomainId,
+        divisionId: detailed.suggestedDivisionId,
+        workflowId: detailed.suggestedWorkflowId,
+        locale: detailed.locale,
+        continuation: detailed.continuation,
+        entities: primaryIntent.entities,
+        context: {
+          ...detailed.context,
+          autonomyMode,
+          runtimeMode,
+          confirmationScope,
+        },
+        summary: humanSummary,
+      },
+      missingFields: detailed.context.missingSlots ?? [],
+      riskPreview: {
+        riskClass: riskPreview.overallRisk,
+        reasons: riskPreview.riskFactors,
+      },
+      ambiguityPolicy: detailed.blockedByPolicy
+        ? "reject"
+        : confirmationRequired
+          ? "require_confirmation"
+          : "safe_default",
+    });
+    const confirmedTaskSpec = shouldEmitEnvelope
+      ? createConfirmedTaskSpec({
+          taskDraftId: canonicalTaskDraft.taskDraftId,
+          tenantId: request.tenantId,
+          principal: principalRef,
+          domainId: canonicalDomainId,
+          goal: deriveTitle(request.message),
+          inputs: canonicalTaskDraft.normalizedIntent,
+          constraintPackRef: `constraint_pack:nl:${detailed.suggestedDivisionId}:${detailed.suggestedWorkflowId}`,
+          riskClass: riskPreview.overallRisk,
+          idempotencyKey,
+          traceId,
+        })
+      : null;
+    const canonicalRequestEnvelope = confirmedTaskSpec == null
+      ? null
+      : createRequestEnvelopeFromConfirmedTask({
+          confirmedTaskSpec,
+          priority: riskPreview.overallRisk === "critical" ? 100 : riskPreview.overallRisk === "high" ? 75 : 25,
+          requestHash: `request:${idempotencyKey}`,
+          budgetIntent: {
+            amount: costEstimate.estimatedCostUsd,
+            currency: "USD",
+            resourceKinds: ["token"],
+          },
+          policyContext: {
+            autonomyMode,
+            runtimeMode,
+            confirmationScope,
+          },
+          sourcePlane: "interaction",
+          targetPlane: "execution",
+        });
+    const clarificationSession = confirmationRequired
+      ? {
+          sessionId: `${taskDraft.draftId}:clarification`,
+          taskDraftId: taskDraft.draftId,
+          stage: "pending_clarification" as const,
+        }
+      : null;
 
     return {
       // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope
@@ -1134,12 +1314,12 @@ export class NlEntryService implements NlEntryPort {
               intent: primaryIntent.intentType,
               continuation: detailed.continuation,
               entities: primaryIntent.entities,
-              confirmationRequired,
+              confirmationRequired: false,
               generatedSummary: humanSummary,
             },
             metadata: {
               source: "nl_entry",
-              confirmationRequired,
+              confirmationRequired: false,
               divisionId: detailed.suggestedDivisionId,
               workflowId: detailed.suggestedWorkflowId,
               locale: detailed.locale,
@@ -1151,21 +1331,14 @@ export class NlEntryService implements NlEntryPort {
       confirmationRequired,
       humanSummary,
       taskDraft,
-      clarificationState: detailed.clarificationState,
+      clarificationState,
       confirmationReceipt,
       conversationState,
-      clarificationSession: null,
-      // R9-41: Include dry-run preview when available (only add property if dry run is applicable)
-      ...(() => {
-        const dryRunResult = buildDryRunPreview({
-          request,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          riskPreview,
-          context: detailed.context,
-        });
-        return dryRunResult ? { dryRunPreview: dryRunResult } : {};
-      })(),
+      clarificationSession,
+      canonicalTaskDraft,
+      confirmedTaskSpec,
+      canonicalRequestEnvelope,
+      ...(dryRunPreview == null ? {} : { dryRunPreview }),
     };
   }
 

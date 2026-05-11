@@ -162,7 +162,7 @@ export class DashboardWebSocketServer {
 
     // Normalize and authorize subscriptions before creating connection state
     const normalized = this.normalizeSubscriptions(subscriptions, metricSubscriptions);
-    this.assertAuthorized(normalized.channels, authorization);
+    this.assertAuthorized(tenantId!, normalized.channels, authorization);
 
     const connection: ConnectionState = {
       clientId,
@@ -224,7 +224,7 @@ export class DashboardWebSocketServer {
     }
 
     const normalized = this.normalizeSubscriptions(subscriptions, [...connection.subscribedMetrics]);
-    this.assertAuthorized(normalized.channels, connection.authorization);
+    this.assertAuthorized(connection.tenantId, normalized.channels, connection.authorization);
     connection.legacyDashboards = new Set(normalized.legacyDashboards);
     connection.subscribedChannels = [...normalized.channels];
     connection.subscribedMetrics = new Set(normalized.metrics);
@@ -350,10 +350,10 @@ export class DashboardWebSocketServer {
   }
 
   private assertRequiredIdentity(principal?: string, tenantId?: string): void {
-    if (principal !== undefined && principal.trim().length === 0) {
+    if (principal == null || principal.trim().length === 0) {
       throw new Error("Principal is required");
     }
-    if (tenantId !== undefined && tenantId.trim().length === 0) {
+    if (tenantId == null || tenantId.trim().length === 0) {
       throw new Error("Tenant ID is required");
     }
   }
@@ -385,6 +385,7 @@ export class DashboardWebSocketServer {
   }
 
   private assertAuthorized(
+    tenantId: string,
     subscriptions: readonly DashboardChannelSubscription[],
     authorization?: DashboardAuthorizationScope | null,
   ): void {
@@ -394,6 +395,11 @@ export class DashboardWebSocketServer {
 
     const allowedChannels = new Set(authorization.allowedChannels ?? []);
     const allowedTasks = new Set(authorization.allowedTaskIds ?? []);
+    const allowedTenantIds = authorization.allowedTenantIds;
+
+    if (allowedTenantIds != null && allowedTenantIds.length > 0 && !allowedTenantIds.includes(tenantId)) {
+      throw new Error(`Tenant ${tenantId} is outside the authorized scope`);
+    }
 
     for (const subscription of subscriptions) {
       if (!allowedChannels.has(subscription.channel)) {

@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines Agent Supervisor's minimum supervision boundaries for runtime instances, health status, heartbeats, alerts, recovery actions, performance, and OAPEFLIR closed-loop proposals.
+This contract defines the minimum supervisory boundaries for the Agent Supervisor with respect to runtime instances, health status, heartbeats, alerts, recovery actions, performance reviews, and OAPEFLIR closed-loop proposals.
 
-It is not responsible for directly executing tasks, but for observing, judging, escalating, and auditing.
+It is not responsible for directly executing tasks, but rather for observing, judging, escalating, and auditing.
 
 ## 2. Key Objects
 
@@ -34,8 +34,8 @@ It is not responsible for directly executing tasks, but for observing, judging, 
 
 Rules:
 
-- `current_node_view_ref` can only express semantic projection, must not reintroduce `HarnessStep` / `current_step_id` as runtime truth primary key.
-- Any supervisor recovery, alert, or takeover action must be traceable back to `harness_run_id / node_run_id / attempt_id`.
+- `current_node_view_ref` may only express semantic projections; it must not reintroduce `HarnessStep` / `current_step_id` as the runtime truth primary key.
+- Any supervisor recovery, alert, or takeover actions must be traceable back to `harness_run_id / node_run_id / attempt_id`.
 
 ## 4. HealthSnapshot Minimum Fields
 
@@ -53,10 +53,10 @@ Rules:
 - `stale_after_sec`
 - `sample_strategy` (`latest_only | sampled | all_persisted`)
 
-Phase 1a rules:
+Phase 1a Rules:
 
-- Defaults to `latest_only` or `sampled`, avoiding high-frequency heartbeat directly filling database.
-- When heartbeat not seen after exceeding `stale_after_sec`, Supervisor should mark instance as `degraded` or `stalled`, not silently ignore.
+- Default to `latest_only` or `sampled` to avoid high-frequency heartbeats from flooding the database.
+- When no heartbeat is seen for longer than `stale_after_sec`, the Supervisor should mark the instance as `degraded` or `stalled`, not silently ignore it.
 
 ## 6. AlertRecord Minimum Fields
 
@@ -68,14 +68,14 @@ Phase 1a rules:
 - `created_at`
 - `resolved_at?`
 
-Alert severity recommendations:
+Alert Severity Guidelines:
 
-- `SEV4`: Local minor, auto-recoverable, mainly for observation hints.
-- `SEV3`: Single workflow / single worker impact, e.g., stale heartbeat, high retry count, abnormal runtime.
-- `SEV2`: Single business domain / single tenant significantly impacted, e.g., security policy anomaly, batch failure, budget anomaly spread.
+- `SEV4`: Localized minor issue, auto-recoverable, primarily for observability hints.
+- `SEV3`: Single workflow / single worker impact, such as stale heartbeat, high retry count, abnormal runtime.
+- `SEV2`: Single business domain / single tenant significantly affected, such as security policy anomaly, batch failure, budget anomaly spread.
 - `SEV1`: Platform-level impact / security incident / production serious risk.
 
-Recommended alert code baseline:
+Recommended Alert Code Baseline:
 
 - `supervisor.stage_stalled`
 - `supervisor.loop_diverging`
@@ -92,31 +92,31 @@ Recommended alert code baseline:
 
 Rules:
 
-- Supervisor can suggest or trigger controlled recovery actions, but must not silently overwrite business output.
-- Auto recovery, cancel, escalation must all leave audit records.
-- High-risk actions still must obey approval and security contracts.
+- The Supervisor may suggest or trigger controlled recovery actions, but must not silently overwrite business outputs.
+- Auto-recovery, cancellation, and escalation must all leave audit records.
+- High-risk actions must still comply with approval and security contracts.
 
 ## 8. Behavioral Constraints
 
-- Supervisor is responsible for monitoring and escalation, does not directly tamper business results.
-- Any auto recovery or termination action must leave audit record.
-- Evolution-related suggestions can only form proposals, cannot take effect directly.
-- Supervisor's judgment on heartbeat, alert, recovery should be consistent with runtime execution contract.
+- The Supervisor is responsible for monitoring and escalation, not for directly tampering with business results.
+- Any auto-recovery or termination actions must leave audit records.
+- Evolution-related suggestions may only form proposals and cannot take effect directly.
+- The Supervisor's judgments on heartbeats, alerts, and recovery must be consistent with the runtime execution contract.
 
 ## 9. Relationship with Runtime
 
-- `runtime_execution_contract.md` defines how single run prechecks, executes, retries, and terminates.
-- This contract defines who discovers run anomalies, and how to form alerts and recovery actions.
-- `event_bus_contract.md` is responsible for how these signals propagate, not responsible for rewriting supervision semantics.
+- `runtime_execution_contract.md` defines how a single run performs precheck, execution, retry, and termination.
+- This contract defines who detects run anomalies and how alerts and recovery actions are formed.
+- `event_bus_contract.md` is responsible for how these signals propagate, not for rewriting supervisory semantics.
 
 ## 10. Supplementary Rules
 
-- Under Phase 1b multi-worker topology, supervisor should at minimum distinguish node-local monitor from control-plane supervisor.
-- Performance scoring can only form proposals, must not directly drive prompt / role hot updates; formal effect still requires governance chain approval.
+- In Phase 1b multi-worker topology, the supervisor should at least distinguish between node-local monitor and control-plane supervisor.
+- Performance scores may only form proposals and must not directly drive prompt / role hot updates; formal activation still requires governance chain approval.
 
 ## 10A. OAPEFLIR Loop Monitoring
 
-`LoopHealthSnapshot` minimum fields:
+`LoopHealthSnapshot` Minimum Fields:
 
 - `harness_run_id`
 - `task_id?`
@@ -127,7 +127,7 @@ Rules:
 - `negative_feedback_count`
 - `last_transition_at`
 
-`StageStallAlert` minimum fields:
+`StageStallAlert` Minimum Fields:
 
 - `harness_run_id`
 - `task_id?`
@@ -136,7 +136,7 @@ Rules:
 - `stall_reason`
 - `created_at`
 
-`FeedbackAccumulator` minimum fields:
+`FeedbackAccumulator` Minimum Fields:
 
 - `harness_run_id`
 - `task_id?`
@@ -148,15 +148,14 @@ Rules:
 
 Rules:
 
-- Supervisor can only suggest `skip_stage`, `force_loop_exit`, `rollback_improvement`, whether to execute still requires going through control-plane / policy boundary.
-- `feedback.negative_spike` can only serve as governance and recovery signal, cannot be directly equivalent to candidate rejection or rollout rollback.
-- If loop has entered `release`, Supervisor's recovery actions must prioritize protecting rollout audit and evidence integrity.
-
+- The Supervisor may only suggest `skip_stage`, `force_loop_exit`, `rollback_improvement`; execution still requires passing through the control-plane / policy boundary.
+- `feedback.negative_spike` may only serve as governance and recovery signals and cannot be directly equated with candidate rejection or rollout rollback.
+- If the loop has entered `release`, the Supervisor's recovery actions must prioritize protecting rollout audit and evidence integrity.
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-23: This document originally wrote `current_step_id` and `info / warning / critical` three-tier severity into supervisor main objects. Root cause: early single-process agent supervision model used business steps as execution primary key while沿用通用日志级别代替平台事件分级 (adopted general log levels in place of platform event grading). Fix: This version converges instance association keys to `harness_run_id / node_run_id / attempt_id`, and changes alert severity to `SEV1-4`.
+- T-23: This document originally included `current_step_id` and three severity levels (`info / warning / critical`) in the supervisor main object. The root cause was that the early single-process agent supervision model used business steps as the execution primary key while also adopting generic log levels instead of platform event classification. Fix: The main text now converges instance association keys to `harness_run_id / node_run_id / attempt_id` and changes alert severity to `SEV1-4`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

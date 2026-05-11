@@ -174,6 +174,18 @@ export interface TypedEventPayloadMap {
     cacheStatus: string;
     failedStepId?: string;
   };
+  "ux:interaction_tracked": {
+    eventId: string;
+    occurredAt: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    uxEventType: string;
+    metadata: Record<string, string>;
+  };
   // Circuit breaker state change events per §9.4
   "circuit_breaker:state_changed": CircuitBreakerStateChangePayload;
   // Performance test event types - used for benchmarks only

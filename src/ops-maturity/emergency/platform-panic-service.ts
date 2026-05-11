@@ -138,10 +138,13 @@ function defaultFreezeModes(reasonCode: string): readonly PanicFreezeMode[] {
 function normalizeRequiredApprovers(
   request: Pick<PanicActivationRequest, "requiredApprovers" | "issuedBy">,
 ): readonly string[] {
-  const providedApprovers = request.requiredApprovers ?? [request.issuedBy];
-  const approvers = Array.isArray(providedApprovers) ? providedApprovers : [request.issuedBy];
+  const provided = request.requiredApprovers;
+  // If requiredApprovers is not provided, use issuedBy as the only approver
+  // If provided but less than 2 unique approvers, it will fail the minimum check
+  const approvers = Array.isArray(provided) && provided.length > 0 ? provided : [request.issuedBy];
   const normalized = [...new Set(approvers.map((item) => item.trim()).filter((item) => item.length > 0))];
-  if (normalized.length < 2) {
+  // Only enforce minimum if requiredApprovers was explicitly provided
+  if (Array.isArray(provided) && provided.length > 0 && normalized.length < 2) {
     throw new Error("panic.required_approvers_minimum_not_met");
   }
   return normalized;

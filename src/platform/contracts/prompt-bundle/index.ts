@@ -303,7 +303,7 @@ function assertNonEmpty(value: string, code: string, message: string): void {
 
 /**
  * Normalizes version to a positive integer.
- * Accepts semver strings (v1.0, v1.0.0, 1.0, 1.0.0) and converts them to integer representation.
+ * Accepts semver strings (v1, v1.0, v1.0.0, 1, 1.0, 1.0.0) and converts them to integer representation.
  * Also accepts direct integer values.
  */
 function normalizeVersion(version: number | string): number {
@@ -313,14 +313,21 @@ function normalizeVersion(version: number | string): number {
     }
     return version;
   }
-  // Handle string version (semver format)
-  const semverMatch = version.match(/^v?(\d+)\.(\d+)(?:\.(\d+))?$/);
-  if (semverMatch) {
-    const major = parseInt(semverMatch[1]!, 10);
-    const minor = parseInt(semverMatch[2]!, 10);
-    const patch = semverMatch[3] !== undefined ? parseInt(semverMatch[3]!, 10) : 0;
+  // Handle string version (semver format) - v1 or v1.0 or v1.0.0
+  const fullSemverMatch = version.match(/^v?(\d+)\.(\d+)(?:\.(\d+))?$/);
+  if (fullSemverMatch) {
+    const major = parseInt(fullSemverMatch[1]!, 10);
+    const minor = parseInt(fullSemverMatch[2]!, 10);
+    const patch = fullSemverMatch[3] !== undefined ? parseInt(fullSemverMatch[3]!, 10) : 0;
     // Combine major.minor.patch into a single integer (e.g., v1.2.3 -> 123)
     return major * 100 + minor * 10 + patch;
+  }
+  // Handle simple version format: v1 or 1 (major only, minor=0, patch=0)
+  const simpleMatch = version.match(/^v?(\d+)$/);
+  if (simpleMatch) {
+    const major = parseInt(simpleMatch[1]!, 10);
+    // Treat as major.0.0 -> 0*100 + 0*10 + major = major (but for deterministic ordering use 10*majors)
+    return major * 10;  // v1 -> 10, v2 -> 20, etc.
   }
   // Fallback: try direct numeric conversion
   const parsed = parseInt(version, 10);

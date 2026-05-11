@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the upper-layer requirements for the typed event bus, used to further freeze the current event registry and payload schema to strong type boundaries.
+This contract defines the upper-layer requirements for a typed event bus, used to further freeze the current event registry and payload schema into strong type boundaries.
 
 Related documents:
 
@@ -11,9 +11,9 @@ Related documents:
 
 ## 2. Objectives
 
-- Make event type, payload schema, producer, and consumer form one-to-one correspondence.
-- Reduce implementation drift caused by broad unions and manual payload.
-- Provide unified event definition source for code generation, lint, and replay tools.
+- Establish one-to-one correspondence between event type, payload schema, producer, and consumer.
+- Reduce implementation drift caused by broad unions and manual payload handling.
+- Provide a unified event definition source for code generation, linting, and replay tools.
 
 ## 3. Type Model
 
@@ -30,12 +30,12 @@ Each event definition must contain at minimum:
 
 Requirements:
 
-- All OAPEFLIR hub events must have both schema ref and stable TypeScript payload type name.
-- If `stage` exists, must come from canonical OAPEFLIR stage enumeration, not consumer-defined tags.
+- All OAPEFLIR hub events must have both a schema ref and a stable TypeScript payload type name.
+- If `stage` exists, it must come from the canonical OAPEFLIR stage enumeration, not consumer-defined tags.
 
 ## 3A. OAPEFLIR Event Payload Types
 
-Phase 1-4 loop events must provide typed payloads, corresponding to ADR-079 and ADR-080:
+Phase 1-4 loop-closed events must provide typed payloads, corresponding to ADR-079 and ADR-080:
 
 ### 3A.1 Observe Hub Events
 
@@ -186,14 +186,14 @@ Phase 1-4 loop events must provide typed payloads, corresponding to ADR-079 and 
 
 Rules:
 
-- Breaking changes to payload schema must be handled through new type name or explicit version upgrade.
-- Tier 1 improvement / rollout events must not degrade to untyped `json` blob.
-- M2 event types not yet enabled can retain schema reservation, but must not be falsely published in production traffic.
+- Breaking changes to payload schema must be handled via new type name or explicit version upgrade.
+- Tier 1 improvement / rollout events must not degrade to untyped `json` blobs.
+- M2 event types not yet enabled may retain schema reservation, but must not be falsely published in production traffic.
 - OAPEFLIR event types uniformly use `<stage>:<event>` format (e.g., `feedback:collected`, `learning:object_promoted`).
 
 ## 3B. Extension Plane Event Payload Types
 
-If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is enabled, corresponding extension-plane events must also provide typed payloads, covering at least:
+If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is enabled, corresponding extension-plane events must also provide typed payloads, covering at minimum:
 
 `PluginIsolationEventPayload`
 
@@ -217,22 +217,22 @@ If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is
 
 Supplementary rules:
 
-- `plugin:invocation_started` and `plugin:invocation_completed` must share stable payload type, rather than each drifting into ad-hoc field sets.
-- Extension-plane events are allowed to first go through in-process typed bus, but must not therefore disguise as cross-process reliable delivery capability.
-- If `domain:* / plugin:* / knowledge:*` events are consumed by feedback or projection, producer, consumer, and payload schema must be simultaneously traceable in registry.
+- `plugin:invocation_started` and `plugin:invocation_completed` must share a stable payload type, rather than each drifting into ad-hoc field sets.
+- Extension-plane events may initially go through in-process typed bus, but must not therefore disguise as cross-process reliable delivery capability.
+- If `domain:* / plugin:* / knowledge:*` events are consumed by feedback or projection, producer, consumer, and payload schema must be simultaneously traceable in the registry.
 
 ## 4. Compatibility Rules
 
-- Backward-compatible fields can be added, not silently deleted or semantic-changed.
-- Breaking changes should open new `event_type` or explicit version.
+- Backward-compatible fields may be added, not silently deleted or semantically changed.
+- Breaking changes should introduce a new `event_type` or explicit version.
 - Consumers should only subscribe to event types they explicitly declare support for.
 
 ## 5. Relationship with Existing EventBus
 
 - `event_bus_contract.md` still defines bus semantics and acknowledgment boundaries.
 - This contract defines the type-freezing layer on top of it.
-- Transport upgrades must not break typed event contract.
+- Transport upgrades must not break the typed event contract.
 
 ## 6. Closure Conclusion
 
-Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.
+The Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.

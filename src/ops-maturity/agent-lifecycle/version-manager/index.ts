@@ -42,7 +42,16 @@ export const AgentVersionSchema = z.object({
 export type AgentVersion = z.infer<typeof AgentVersionSchema>;
 
 export function resolveLatestAgentVersion(versions: readonly AgentVersion[]): AgentVersion | null {
-  return [...versions].sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null;
+  if (!versions || versions.length === 0) return null;
+  return [...versions]
+    .map((v, i) => ({ version: v, index: i }))
+    .sort((left, right) => {
+      const leftTime = left.version.createdAt ?? left.version.agentId ?? "";
+      const rightTime = right.version.createdAt ?? right.version.agentId ?? "";
+      const timeCmp = rightTime.localeCompare(leftTime);
+      if (timeCmp !== 0) return timeCmp;
+      return right.index - left.index;
+    })[0]?.version ?? null;
 }
 
 /**

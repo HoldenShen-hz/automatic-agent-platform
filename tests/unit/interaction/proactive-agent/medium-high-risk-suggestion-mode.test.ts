@@ -15,8 +15,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProactiveAgentService } from "../../../../../src/interaction/proactive-agent/index.js";
-import type { TriggerEvaluationInput } from "../../../../../src/interaction/proactive-agent/index.js";
+import { ProactiveAgentService } from "../../../../src/interaction/proactive-agent/index.js";
+import type { TriggerEvaluationInput } from "../../../../src/interaction/proactive-agent/index.js";
 
 test("R23-02: medium risk trigger returns suggest mode, not auto_execute", async () => {
   const service = new ProactiveAgentService();

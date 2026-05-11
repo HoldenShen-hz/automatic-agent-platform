@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the trace/span model, business and technical metric stratification, and fault root cause analysis assistance capabilities.
+This contract defines the trace/span model, business and technical indicator layering, and fault root cause analysis assistance capabilities.
 
 Related documents:
 
@@ -138,7 +138,7 @@ Industrial-grade observability cannot stop at "having logs" and "having healthz"
 It must support:
 
 - HarnessRun-level trace chaining
-- Business and technical metric stratification
+- Business and technical indicator layering
 - Automatic aggregation of root cause clues after failures
 
 ## v4.3 Architecture Remediation

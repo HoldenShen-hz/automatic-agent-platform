@@ -2,16 +2,26 @@
 
 ## 1. Scope
 
-This contract defines `§63`'s behavior fingerprints, change point detection, and cross-Agent anomaly detection.
+This contract defines behavioral fingerprints, changepoint detection, and cross-Agent anomaly detection for `§63`.
 
 ## 2. Canonical Objects
 
+- `DriftDetector`
+- `DriftAlert`
+- `DriftMitigationAction`
 - `BehaviorFingerprint`
 - `DriftSignal`
 - `ChangepointDetectionResult`
 - `DriftResponsePlan`
 
-## 3. BehaviorFingerprint Minimum Fields
+`DriftAlert` / `DriftMitigationAction` must cover at least the following drift dimensions:
+
+- `input_drift`
+- `output_drift`
+- `behavioral_drift`
+- `quality_drift`
+
+## 3. `BehaviorFingerprint` Minimum Fields
 
 - `subject_id`
 - `subject_type`
@@ -22,12 +32,14 @@ This contract defines `§63`'s behavior fingerprints, change point detection, an
 
 ## 4. Rules
 
-- Drift detection must distinguish expected changes from anomalous deviations.
+- `DriftDetector` must support baseline fingerprint comparison, statistical drift detection, and cross-Agent peer analysis simultaneously.
+- Drift detection must distinguish between expected changes and anomalous deviations.
 - Drift response must support `observe_only | throttle | downgrade | rollback | freeze`.
 - Response strategies must coordinate with rollout / governance.
+- `DriftMitigationAction` must explicitly label the target object, source alert, and expiration time to avoid decoupling between alerts and mitigation.
 
-## 5. Testing Requirements
+## 5. Test Requirements
 
 - unit: fingerprint build, changepoint detect, response planning
 - integration: drift signal -> rollout / autonomy response
-- contract: objects without baseline must not generate misleading drift verdicts
+- contract: objects without a baseline must not generate misleading drift verdicts

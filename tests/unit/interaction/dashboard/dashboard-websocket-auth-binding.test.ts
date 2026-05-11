@@ -41,4 +41,27 @@ test("DashboardWebSocketServer registerClient rejects missing auth binding input
     () => server.registerClient([{ channel: "global" }], "principal-1", ""),
     /Tenant ID is required/,
   );
+  assert.throws(
+    () => server.registerClient([{ channel: "global" }]),
+    /Principal is required/,
+  );
+});
+
+test("DashboardWebSocketServer registerClient rejects tenant outside authorization scope", () => {
+  const server = new DashboardWebSocketServer();
+
+  assert.throws(
+    () => server.registerClient(
+      [{ channel: "global" }],
+      "principal-1",
+      "tenant-2",
+      null,
+      "1.0",
+      {
+        allowedChannels: ["global"],
+        allowedTenantIds: ["tenant-1"],
+      },
+    ),
+    /outside the authorized scope/,
+  );
 });

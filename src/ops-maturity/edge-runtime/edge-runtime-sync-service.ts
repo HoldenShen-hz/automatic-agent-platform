@@ -237,7 +237,11 @@ export class EdgeRuntimeSyncService {
           decisions.push(conflictDecision);
           continue;
         }
-        // For accept_central, fall through to accept
+        // For accept_central (central wins over edge), reject the edge version
+        // but record the resolution as accept_central to indicate central's version wins
+        rejectedEnvelopeIds.push(envelope.envelopeId);
+        decisions.push(conflictDecision);
+        continue;
       }
 
       acceptedEnvelopeIds.push(envelope.envelopeId);
@@ -294,26 +298,6 @@ export class EdgeRuntimeSyncService {
   ): ConflictResolutionDecision {
     const incidentId = newId("edge_conflict");
 
-    // Merge strategy for internal data with non-critical payload
-    if (envelope.dataClassification === "internal" && envelope.priority < 5) {
-      // R21-16: Actually perform the merge by combining envelope payload with cloud payload
-      // Use recordId-based ordering: later recordId wins for conflicting fields
-      const envelopePayload = envelope.payloadDigest;
-      const mergedPayload = this.performThreeWayMerge(
-        envelope.recordId,
-        envelopePayload,
-        cloudDigest,
-        cloudPayload,
-      );
-      return {
-        envelopeId: envelope.envelopeId,
-        resolution: "merge",
-        rationale: "edge.sync_merge_policy:internal_payload_merged",
-        incidentId,
-        mergedPayload,
-      };
-    }
-
     // Reject critical conflicts requiring human review
     if (envelope.dataClassification === "restricted" || envelope.priority >= 5) {
       return {
@@ -324,7 +308,9 @@ export class EdgeRuntimeSyncService {
       };
     }
 
-    // Default: accept central version
+    // Central wins policy: when cloud has a different digest, reject the edge version
+    // in favor of the central version. The decision resolution is "accept_central"
+    // to indicate that central's version should be used.
     return {
       envelopeId: envelope.envelopeId,
       resolution: "accept_central",

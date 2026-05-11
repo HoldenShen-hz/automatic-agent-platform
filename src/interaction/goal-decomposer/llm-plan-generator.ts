@@ -45,6 +45,58 @@ interface SerializablePlan {
   readonly dependencyGraph: readonly TaskDependency[];
 }
 
+function assertValidSerializableTask(task: SerializableTask, index: number): void {
+  if (task.domainId.trim().length === 0 || task.description.trim().length === 0) {
+    throw new Error(`goal_decomposer.invalid_llm_plan_task:${index}`);
+  }
+  if (!["auto", "supervised", "manual"].includes(task.delegationMode)) {
+    throw new Error(`goal_decomposer.invalid_llm_plan_delegation_mode:${index}`);
+  }
+  if (!Array.isArray(task.expectedOutputs)) {
+    throw new Error(`goal_decomposer.invalid_llm_plan_expected_outputs:${index}`);
+  }
+}
+
+function validateDependencyGraph(taskIds: readonly string[], dependencyGraph: readonly TaskDependency[]): void {
+  const taskIdSet = new Set(taskIds);
+  const adjacency = new Map<string, string[]>();
+  const indegree = new Map<string, number>();
+
+  for (const taskId of taskIds) {
+    adjacency.set(taskId, []);
+    indegree.set(taskId, 0);
+  }
+
+  for (const edge of dependencyGraph) {
+    if (!taskIdSet.has(edge.fromTask) || !taskIdSet.has(edge.toTask)) {
+      throw new Error("goal_decomposer.invalid_llm_plan_dependency_reference");
+    }
+    if (edge.fromTask === edge.toTask) {
+      throw new Error("goal_decomposer.invalid_llm_plan_self_cycle");
+    }
+    adjacency.get(edge.fromTask)!.push(edge.toTask);
+    indegree.set(edge.toTask, (indegree.get(edge.toTask) ?? 0) + 1);
+  }
+
+  const queue = taskIds.filter((taskId) => (indegree.get(taskId) ?? 0) === 0);
+  let visited = 0;
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    visited += 1;
+    for (const next of adjacency.get(current) ?? []) {
+      const nextIndegree = (indegree.get(next) ?? 0) - 1;
+      indegree.set(next, nextIndegree);
+      if (nextIndegree === 0) {
+        queue.push(next);
+      }
+    }
+  }
+
+  if (visited !== taskIds.length) {
+    throw new Error("goal_decomposer.invalid_llm_plan_cycle_detected");
+  }
+}
+
 interface GoalBudgetEnvelope {
   readonly totalBudgetUsd: number | null;
   readonly requiresApproval: boolean;
@@ -206,7 +258,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             confidence: derivePerTaskConfidence(task.description, task.expectedOutputs.length, estimateConfidence),
             sampleCount: estimateSampleCount,
             divisionId: task.domainId,
-            basedOn: "default",
+            basedOn: "llm_estimate",
           },
           constraintEnvelope: {
             budgetLimitUsd: allocateBudgetShare(
@@ -287,6 +339,16 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
       throw new Error("goal_decomposer.invalid_llm_plan_shape");
     }
+    parsed.tasks.forEach((task, index) => assertValidSerializableTask(task, index));
+    const taskIds = parsed.tasks.map((_, index) => this.normalizeTaskReference("plan", String(index + 1)));
+    validateDependencyGraph(
+      taskIds,
+      parsed.dependencyGraph.map((edge) => ({
+        ...edge,
+        fromTask: this.normalizeTaskReference("plan", edge.fromTask),
+        toTask: this.normalizeTaskReference("plan", edge.toTask),
+      })),
+    );
     return parsed;
   }
 

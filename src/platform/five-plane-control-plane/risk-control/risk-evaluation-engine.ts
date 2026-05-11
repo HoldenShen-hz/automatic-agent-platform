@@ -63,10 +63,10 @@ import type {
  * impact: 4×5=20, irreversibility: 4×5=20, dataSensitivity: 3×5=15
  * autonomyModeRisk: 2×5=10, tenantImpact: 2×5=10, blastRadius: 2×5=10
  * historicalFailureRate: 2×5=10, evidenceConfidence: 1×5=5
- * Total max raw = 90 (sum of weights 18 × max factor value 5)
- * Normalized to 0-1 by dividing by 90 -> max normalized = 1.0 (critical threshold)
+ * Total max raw = 100 (evidenceConfidence max=5 when low)
+ * Normalized to 0-1 by dividing by 100 -> max normalized = 1.0 (critical threshold)
  */
-const MAX_POSSIBLE_SCORE = 90;
+const MAX_POSSIBLE_SCORE = 100;
 
 export class RiskEvaluationEngine {
   private readonly config: RiskConfig;

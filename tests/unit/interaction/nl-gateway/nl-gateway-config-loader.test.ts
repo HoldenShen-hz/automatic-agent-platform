@@ -26,7 +26,7 @@ test("loadNlGatewayConfig has correct default values", () => {
   assert.ok(config.conversationWindow.byTaskType !== undefined);
 
   // Disambiguation defaults
-  assert.equal(config.disambiguation.threshold, 0.7);
+  assert.equal(config.disambiguation.threshold, 0.8);
   assert.equal(config.disambiguation.lowConfidenceThreshold, 0.5);
   assert.equal(config.disambiguation.maxClarificationQuestions, 3);
   assert.equal(config.disambiguation.enableProactiveClarification, true);

@@ -285,7 +285,7 @@ Rules:
 Currently not directly adopting:
 
 - Heavy Canvas / A2UI package rendering platform
-- Large-scale business domain workbench rollout
+- Large-scale business domain workbench deployment
 - Business page walls
 - Directly maintaining capability / policy truth in frontend
 
@@ -304,4 +304,4 @@ A more reasonable baseline is:
 - A Console that can view health status
 - A Task / Workflow Cockpit that can drill down into evidence
 - An Approval Center that can handle approvals and explanations
-- An Admin Console that can takeover and mitigate damage
+- An Admin Console that can takeover and limit damage

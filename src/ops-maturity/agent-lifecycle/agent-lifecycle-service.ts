@@ -271,7 +271,7 @@ export class AgentLifecycleService {
       throw new Error(`agent_lifecycle.version_not_found:${agentId}`);
     }
     return {
-      bindingId: newId("agent_binding"),
+      bindingId: newId("agent_binding:"),
       agentId,
       taskId,
       versionId: agent.currentVersionId || latestVersion.versionId,

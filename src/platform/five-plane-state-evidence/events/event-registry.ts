@@ -490,6 +490,13 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     producer: "performance_test",
     consumers: [],
   },
+  "ux:interaction_tracked": {
+    type: "ux:interaction_tracked",
+    tier: "tier_2",
+    producer: "ux_event_tracking_service",
+    consumers: ["analytics_projection"],
+    compatibilityPolicy: "backward_compatible_additive",
+  },
   // R23-72: OAPEFLIR stage events with producer/consumers/compatibility_policy metadata
   // observe stage
   "observe:signals_collected": {

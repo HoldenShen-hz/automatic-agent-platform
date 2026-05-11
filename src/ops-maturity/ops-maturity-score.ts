@@ -5,7 +5,6 @@
  * per §69 requirements.
  */
 
-import { randomUUID } from "node:crypto";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
 
 export type OpsMaturityDimension = "drift" | "compliance" | "cost" | "explainability";
@@ -80,6 +79,12 @@ export class OpsMaturityScoreService {
     const key = input.agentId ?? input.domainId ?? "global";
     const existing = this.assessments.get(key) ?? [];
     this.assessments.set(key, [...existing, score]);
+
+    // Also store under global for cross-cutting queries
+    if (key !== "global") {
+      const globalExisting = this.assessments.get("global") ?? [];
+      this.assessments.set("global", [...globalExisting, score]);
+    }
 
     return score;
   }

@@ -21,7 +21,7 @@ export interface CostEstimate {
   /** Division ID used for the estimate (null if global) */
   readonly divisionId: string | null;
   /** What data source was used for this estimate */
-  readonly basedOn: "division_avg" | "global_avg" | "default";
+  readonly basedOn: "division_avg" | "global_avg" | "default" | "llm_estimate";
 }
 
 /**

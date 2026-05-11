@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the platform self-operations Agent, catalog, and security guardrails for `§69`.
+This contract defines the platform self-operations Agent, directory, and security guardrails for `§69`.
 
 ## 2. Canonical Objects
 
@@ -22,7 +22,7 @@ This contract defines the platform self-operations Agent, catalog, and security 
 
 ## 4. Maturity Levels
 
-`OpsMaturityLevel` is fixed to:
+`OpsMaturityLevel` is fixed as:
 
 - `observe_only`
 - `suggest_only`
@@ -31,7 +31,7 @@ This contract defines the platform self-operations Agent, catalog, and security 
 
 ## 5. Rules
 
-- Self-operations Agents must not bypass panic, budget, policy, or rollout.
+- Self-operations Agent must not bypass panic, budget, policy, or rollout.
 - All operations actions must first form an `OpsActionProposal`.
 - High-impact operations actions require human approval by default.
 

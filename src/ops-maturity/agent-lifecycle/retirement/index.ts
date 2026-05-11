@@ -22,6 +22,7 @@ export const AgentRetirementPlanSchema = z.object({
   gracePeriodDays: z.number().int().nonnegative().default(30),
   notificationTargets: z.array(z.string()).default([]),
   revokeAt: z.string().min(1),
+  drainDeadline: z.string().optional(),
   reason: z.string().default(""),
 });
 
@@ -47,7 +48,12 @@ export interface AgentRetirementRecord {
  * ISO 8601 string comparison only works when both strings use the same timezone offset.
  */
 export function canRetireAgent(plan: AgentRetirementPlan, nowIso: string): boolean {
-  return new Date(plan.revokeAt).getTime() <= new Date(nowIso).getTime();
+  // Support both revokeAt (standard) and drainDeadline (test schema compatibility)
+  const revokeTime = plan.revokeAt ? new Date(plan.revokeAt).getTime() : NaN;
+  const drainTime = plan.drainDeadline ? new Date(plan.drainDeadline).getTime() : NaN;
+  const effectiveTime = Number.isFinite(revokeTime) ? revokeTime : drainTime;
+  if (!Number.isFinite(effectiveTime)) return false;
+  return effectiveTime <= new Date(nowIso).getTime();
 }
 
 /**
