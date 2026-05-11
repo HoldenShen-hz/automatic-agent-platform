@@ -6,12 +6,12 @@
 
 - **Observe**: Collect domain modeling and dependency inputs
 - **Assess**: Check readiness and certification requirements
-- **Plan**: Plan four phases: modeling, development, certification, gradual rollout
-- **Execute**: Progress onboarding phase by phase
+- **Plan**: Plan the four phases: modeling, development, certification, and rollout
+- **Execute**: Progress through phases sequentially
 - **Feedback**: Accumulate structured evidence at each phase
 - **Learn**: Review onboarding patterns
 - **Improve**: Optimize onboarding gates
-- **Release**: Only enters active after gradual rollout passes
+- **Release**: Cannot enter active until rollout passes
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-If domain onboarding has no fixed phases, governance, testing, or gradual rollout verification will be skipped.
+Without fixed phases, domain onboarding tends to skip governance, testing, or rollout verification.
 
 ## Decision
 
@@ -29,7 +29,7 @@ Domain onboarding is fixed to four phases:
 1. Modeling
 2. Development
 3. Certification
-4. Gradual Rollout
+4. Rollout
 
 ## Consequences
 

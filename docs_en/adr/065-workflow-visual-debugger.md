@@ -5,7 +5,7 @@
 
 ## Context
 
-When workflows fail, developers need visual tools to understand execution flow and locate problems.
+Developers need visual tools to understand the execution process and locate issues when Workflows fail.
 
 ## Decision
 
@@ -14,38 +14,45 @@ When workflows fail, developers need visual tools to understand execution flow a
 | Component | Description |
 |-----------|-------------|
 | Visualizer | DAG visualization |
-| StepInspector | Step detail viewer |
+| NodeInspector | Node detail viewer |
 | StateExplorer | State browser |
-| TraceViewer | Trace tracking |
+| TraceViewer | Trace viewer |
 | BreakpointManager | Breakpoint management |
 
 ### DAG Visualization
 
 ```typescript
 interface WorkflowDAGView {
-  workflow_id: string;
+  harness_run_id: string;
+  node_run_ids: string[];
   nodes: DAGNode[];
   edges: DAGEdge[];
-  current_step?: string;
+  current_node?: string;
   breakpoints: string[];
   execution_path: string[];
 }
 ```
 
+## v4.3 ADR Remediation
+
+- A-62: This ADR originally anchored the debugger on `workflow_id / current_step / StepInspector`. The root cause was that the document inherited the old workflow debugger prototype and did not switch to the `HarnessRun / NodeRun` debugging model. Fix: The main text now uses harness/node semantics as the debugging anchor point.
+
 ### Debugging Features
+
+> **Step concept deprecated**: The debugging model is based on `HarnessRun / NodeRun` and does not support linear step-by-step debugging operations such as `step_over/step_into/step_out`.
 
 | Feature | Description |
 |---------|-------------|
-| step_over | Step over |
-| step_into | Step into |
-| step_out | Step out |
+| node_over | Skip node |
+| node_into | Enter node |
+| node_out | Exit node |
 | resume | Resume execution |
 | pause | Pause |
 | stop | Stop |
 
 ### State Viewing
 
-- Complete WorkflowState status
+- WorkflowState complete state
 - Step input/output
 - Intermediate variables
 - Error messages
@@ -54,36 +61,36 @@ interface WorkflowDAGView {
 
 | Type | Description |
 |------|-------------|
-| step_start | Step started |
-| step_complete | Step completed |
+| node_start | Node start |
+| node_complete | Node complete |
 | error | Error occurred |
 | condition | Condition met |
 
 ### Trace Integration
 
-- Full trace
+- Full trace chain
 - Span details
 - Performance profiling
 - Error chain
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Visual debugging improves efficiency
-- Complete state facilitates problem location
-- Breakpoint support for fine-grained debugging
+- Complete state facilitates problem identification
+- Breakpoint support enables fine-grained debugging
 
-Negative:
+Costs:
 
 - Debugger development cost
 - Runtime overhead
 
-## Cross-References
+## Cross References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
-- [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
+- [ADR-090 Runtime, Data Reliability, and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
-## Source Sections
+## Source Section
 
 - `§65` Workflow Visual Debugger Architecture

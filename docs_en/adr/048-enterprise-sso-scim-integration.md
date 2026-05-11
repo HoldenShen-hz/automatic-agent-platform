@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises need to integrate with existing Identity Providers (IdP) to achieve single sign-on and automated user lifecycle management.
+Enterprises need to integrate with existing Identity Providers (IdP) to enable Single Sign-On (SSO) and automated user lifecycle management.
 
 ## Decision
 
@@ -13,7 +13,7 @@ Enterprises need to integrate with existing Identity Providers (IdP) to achieve 
 
 | Protocol | Description |
 |----------|-------------|
-| SAML 2.0 | Common for enterprise IdP |
+| SAML 2.0 | Common for enterprise IdPs |
 | OIDC | Recommended for modern applications |
 | OAuth 2.0 | Third-party authorization |
 
@@ -35,13 +35,17 @@ interface SCIMGroup {
 }
 ```
 
-### User Lifecycle
+### User Lifecycle (Saga Pattern)
 
-| Event | Automatic Action |
-|-------|------------------|
-| Onboarding | Create account + join default group |
-| Transfer | Update organization information |
-| Offboarding | Disable account + revoke permissions |
+All user lifecycle operations use prepare/commit/compensate semantics with audit logging:
+
+| Phase | Onboarding | Role Change | Offboarding |
+|-------|------------|-------------|-------------|
+| prepare | Validate IdP credentials, pre-allocate account, check quota | Fetch current permissions, generate change list | Backup data, generate permission revocation list |
+| commit | Create account, join default group, send welcome notification | Update organization info, sync permission changes | Disable account, revoke permissions, export data |
+| compensate | Rollback account creation, send error notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (in emergencies) |
+
+Audit log records: operation type, operator, timestamp, state before/after change, compensation action execution result.
 
 ### Sync Strategy
 
@@ -51,22 +55,22 @@ interface SCIMGroup {
 
 ## Consequences
 
-Positive:
+Benefits:
 
 - SSO improves user experience and security
 - SCIM automates user management
 - Reduces manual operations
 
-Negative:
+Costs:
 
 - IdP integration complexity
 - Sync delays may cause permission issues
 
-## Cross-References
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§48` Enterprise SSO/SCIM Integration Architecture

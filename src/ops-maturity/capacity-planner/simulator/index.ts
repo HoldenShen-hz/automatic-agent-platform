@@ -5,8 +5,10 @@ export interface CapacityScenarioInput {
 }
 
 export function simulateCapacityScenario(input: CapacityScenarioInput): number {
-  const grown = input.baselineUnits * (1 + input.growthPercent / 100);
-  return Number((grown * (1 - input.optimizationPercent / 100)).toFixed(2));
+  const baselineUnits = input.baselineUnits ?? 100;
+  const optimizationPercent = input.optimizationPercent ?? 0;
+  const grown = baselineUnits * (1 + input.growthPercent / 100);
+  return Number((grown * (1 - optimizationPercent / 100)).toFixed(2));
 }
 
 export interface SimulatedScenarioResult {

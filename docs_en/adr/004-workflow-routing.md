@@ -1,17 +1,18 @@
 # ADR-004 Workflow and Routing
 
 ---
+
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components within the OAPEFLIR eight-stage cognitive cycle:
 
 - **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post execution assessment and risk judgment
+- **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and dual-channel output
+- **Execute**: Step execution and Dual-Channel output
 - **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and rollout state machine (ADR-075)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
 
 ---
@@ -21,15 +22,17 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 
 ## Context
 
-The platform needs to simultaneously support simple single tasks, standard workflows, multi-role collaboration, and cross-division compound tasks. If all tasks go through the same heavyweight process, speed will be significantly slowed and costs amplified, while simple scenarios bear unnecessary coordination overhead.
+The platform needs to simultaneously support simple single tasks, standard workflows, multi-role collaboration, and cross-division composite tasks. If all tasks go through the same heavy-weight process, it will significantly slow down performance and increase costs, while also imposing unnecessary coordination overhead on simple scenarios.
 
 ## Decision
 
-Adopt layered routing with multi-path workflows:
+Adopt a five-plane-driven routing with multi-path execution:
 
-- VP Operations is responsible for receiving messages, triage, classification, and division routing.
-- VP Orchestration only intervenes when cross-division tasks appear, handling splitting and dependency management.
-- Within divisions, Lead Agent executes local workflows autonomously.
+- P1 Interface Plane is responsible for receiving messages, triage, and entry normalization.
+- P2 Control Plane is responsible for policy evaluation, routing decisions, and governance constraint injection.
+- P3 Orchestration Plane is responsible for cross-domain decomposition, dependency management, and `PlanGraphBundle` generation.
+- `HarnessRuntime` serves as the sole execution runtime handling P3→P4 handoff.
+- Domain agents / workers only execute local responsibilities within the `NodeRun` boundaries assigned by `HarnessRuntime`.
 
 The system defines four execution paths:
 
@@ -40,103 +43,105 @@ The system defines four execution paths:
 
 ## Task Lifecycle
 
-Typical flow:
+A typical flow is as follows:
 
-1. VP Operations receives messages and filters non-task conversations.
-2. VP Operations performs rule matching, falling back to fast model classification when necessary.
-3. Single-division tasks route directly to the corresponding division.
-4. Cross-division tasks are handed to VP Orchestration for splitting and dependency graph management.
-5. Each division's Lead Agent autonomously executes and returns results.
-6. VP Orchestration aggregates results, returning to the original channel.
+1. P1 receives messages and filters out non-task conversations.
+2. P2 completes rule matching, risk assessment, and routing decisions.
+3. Single-domain tasks directly generate a minimal `PlanGraphBundle`.
+4. Cross-domain tasks are handed to P3 for decomposition, dependency graph management, and graph patch.
+5. `HarnessRuntime` executes `NodeRun / NodeAttempt` and returns `NodeAttemptReceipt`.
+6. P1/P2 consume projected results and return to the original channel.
 
-## Workflow Data Passing
+## Workflow Data Passing (§5.5 deprecates WorkflowState/StepOutput)
 
-In workflow, `input: "{user_stories}"` is not string substitution but runtime binding:
+> Note: §5.5 has deprecated `WorkflowState` and `StepOutput`; please use PlanGraphBundle/NodeAttemptReceipt instead.
 
-- `WorkflowState` saves step outputs and current index.
-- Each step produces structured `StepOutput` upon completion.
-- Downstream steps read upstream results via output keys.
-- Large results enter artifact store; only references are saved in state.
+Workflow data passing (v4.3 canonical):
+
+- `PlanGraphBundle` preserves node outputs and the current execution index.
+- Each node produces a structured `NodeAttemptReceipt` upon completion.
+- Downstream nodes read upstream results via output keys.
+- Large results enter the artifact store, with only references stored in state.
 
 Key requirements:
 
 - Outputs must pass schema validation before writing.
-- Limited retry is allowed when key fields are missing.
-- Partial success should be explicitly recorded; preconditions decide whether to continue.
+- Limited retries are allowed when critical fields are missing.
+- Partial success must be explicitly recorded, leaving the decision to proceed to the precondition.
 
 ## Routing Principles
 
-VP Operations routing rules:
+P2 Control Plane routing rules:
 
-- Rules first; LLM fallback second.
-- Simple tasks preferentially hit `passthrough` or `fast`.
-- Only enter VP Orchestration path when cross-division dependencies are clearly present.
+- Rules take priority; LLM fallback is secondary.
+- Simple tasks should first match `passthrough` or `fast`.
+- Only enter P3 orchestration flow when explicit cross-domain dependencies exist.
 
-VP Orchestration responsibilities:
+P3 Orchestration responsibilities:
 
-- Split compound tasks.
+- Decompose composite tasks.
 - Build dependency graphs.
 - Perform schema compatibility pre-checks.
-- Inject upstream results into downstream context after division completion.
+- After upstream nodes complete, inject results into downstream context via `PlanGraphBundle` / `GraphPatch`.
 
 ## Self-Healing and Escalation
 
-On workflow failure, do not exit directly; handle in this order:
+After workflow failure, do not exit directly; instead, handle in the following order:
 
 - Limited retry attempts.
 - Loop detection to avoid repeatedly executing the same failed action.
-- When needed, fall back to upstream steps or mark partial success.
-- After exceeding threshold, escalate to VP Orchestration or CEO.
+- When necessary, fall back to upstream steps or mark partial success.
+- After exceeding the threshold, escalate to P2 Control Plane for human takeover or higher-level governance actions.
 
 HITL trigger scenarios include:
 
-- Cost approaching or exceeding threshold.
+- Cost approaching or exceeding thresholds.
 - Security-sensitive operations.
 - Ambiguity in the task itself.
-- Self-healing exceeded maximum attempts.
-- Organizational changes or high-risk workflow suggestions.
+- Self-healing exceeding maximum attempts.
+- Organizational changes or high-risk workflow recommendations.
 
-## Relationship Between Contracts and HR
+## Relationship with Contracts and HR
 
-Workflow should not evolve independently of the contract system:
+Workflows should not evolve separately from the contract system:
 
-- Each role should have explicit input/output schema.
-- Preconditions are parent Agent's pre-validation of child Agent.
-- New roles generated by HR Agent must obey the same contracts.
-- Workflow changes from HR are suggestions only; cannot be auto-deployed.
+- Each role should have clear input/output schemas.
+- Preconditions are parent-level Agent's pre-validation of child-level Agents.
+- New roles generated by HR Agents must comply with the same contracts.
+- Workflow changes suggested by HR can only serve as recommendations and cannot be automatically deployed.
 
-## Consequences
+## Results
 
-Advantages:
+Benefits:
 
-- Simple tasks are not slowed by heavyweight orchestration.
-- Complex tasks gain cross-division collaboration capability.
+- Simple tasks are not slowed down by heavy-weight orchestration.
+- Complex tasks can gain cross-division collaboration capabilities.
 - Workflow state can be persisted, naturally supporting recovery and auditing.
 
 Constraints:
 
-- Unified task, step, and event models are needed.
-- Workflow DSL needs strict complexity control, avoiding premature support for excessive branching syntax.
-- Routing, cost, and recovery logic need co-design; cannot be scattered throughout.
+- Requires a unified task, step, and event model.
+- Workflow DSL needs strict complexity control to avoid premature support for excessive branching syntax.
+- Routing, cost, and recovery logic need to be designed collaboratively, not scattered throughout.
 
-## Cross-References
+## Cross References
 
-- [ADR-001 Three-Layer Separation of Authority](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
 - [ADR-002 Division System](./002-division-system.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 
 ## Source Sections
 
-- `§4.1`
-- `§4.1.1`
-- `§4.1.2`
-- `§4.1.3`
-- `§4.2`
-- `§4.3`
-- `§4.4`
-- `§4.5`
-- `§4.6`
+- §4.1
+- §4.1.1
+- §4.1.2
+- §4.1.3
+- §4.2
+- §4.3
+- §4.4
+- §4.5
+- §4.6
 
 ## v4.3 ADR Remediation
 
-- A-21: This ADR originally continued using the v3 agent hierarchy of `VP Operations / VP Orchestration / Division / Lead Agent / CEO`. The root cause was that the Workflow and Routing ADR had long served as an organizational narrative and was not rewritten as the v4.3 five-plane and `HarnessRuntime` became the runtime backbone. Fix: The main text now uses P1/P2/P3 and `HarnessRuntime`-driven routing and execution models.
+- A-21: This ADR originally continued to use the v3 agent hierarchy of `VP Operations / VP Orchestration / Division / Lead Agent / CEO`; the root cause was that the Workflow and Routing ADR had long served as the organizational narrative and was not rewritten alongside the v4.3 five-plane and `HarnessRuntime` becoming the runtime backbone. Fix: The main text now uses the P1/P2/P3 and `HarnessRuntime`-driven routing and execution model.

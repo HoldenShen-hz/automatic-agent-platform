@@ -18,13 +18,19 @@ export interface ResumePlan {
 }
 
 export function canResumeFromPanic(plan: ResumePlan): boolean {
-  if (plan.planId.trim().length === 0 || plan.scope.trim().length === 0 || plan.scopeRef.trim().length === 0) {
+  const planId = plan.planId ?? "";
+  const scope = plan.scope ?? "";
+  const scopeRef = plan.scopeRef ?? "";
+  const compatibilityCheckRef = plan.compatibilityCheckRef ?? "";
+  const createdAt = plan.createdAt ?? "";
+
+  if (!planId.trim() || !scope.trim() || !scopeRef.trim()) {
     return false;
   }
-  if (plan.compatibilityCheckRef.trim().length === 0 || plan.createdAt.trim().length === 0) {
+  if (!compatibilityCheckRef.trim() || !createdAt.trim()) {
     return false;
   }
-  if (!Number.isFinite(Date.parse(plan.createdAt))) {
+  if (!Number.isFinite(Date.parse(createdAt))) {
     return false;
   }
   const rawApprovers = Array.isArray(plan.approvedBy) ? plan.approvedBy : [];

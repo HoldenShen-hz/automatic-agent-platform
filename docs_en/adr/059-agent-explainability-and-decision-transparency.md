@@ -3,18 +3,20 @@
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
-Regulations like the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
+Regulations such as the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
 
 ## Decision
 
-### Decision Tracing
+### Decision Traceability
 
 ```typescript
 interface DecisionRecord {
   decision_id: string;
-  agent_id: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  planGraphId: string;
   context: DecisionContext;
   reasoning: string;
   evidence: Evidence[];
@@ -27,19 +29,19 @@ interface DecisionRecord {
 
 | Level | Description | Audience |
 |-------|-------------|----------|
-### Decision Traceability
+| what | What was done | Operators |
 | why | Why it was done | Analysts |
-| how | How it was done | Developer |
+| how | How it was done | Developers |
 | full | Complete reasoning chain | Auditors |
 
 ### Explanation Generation
 
 | Technique | Description |
 |-----------|-------------|
-| Decision tree extraction | Extract rules from neural networks |
-| Attention visualization | Show key inputs |
-| Counterfactual analysis | "What if..." |
-| Case-based reasoning | Similar decision reference |
+| Decision Tree Extraction | Extract rules from neural networks |
+| Attention Visualization | Show key inputs |
+| Counterfactual Analysis | "What if..." |
+| Case-Based Reasoning | Similar decision references |
 
 ### Audit Logs
 
@@ -47,18 +49,18 @@ interface DecisionRecord {
 - Tamper-proof storage
 - Supports querying and exporting
 
-### Compliance Reports
+### Compliance Reporting
 
 - Automatically generated compliance reports
 - Supports regulatory agency review
-- Regularly published transparency reports
+- Periodically published transparency reports
 
 ## Consequences
 
 Advantages:
 
 - Meets EU AI Act and other regulatory requirements
-- Increases user trust
+- Improves user trust
 - Facilitates problem identification and resolution
 
 Costs:
@@ -66,7 +68,7 @@ Costs:
 - Explanation generation adds latency
 - Increased storage costs
 
-## Cross-References
+## Cross References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
 - [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)

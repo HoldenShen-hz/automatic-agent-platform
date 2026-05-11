@@ -5,18 +5,18 @@
 
 ## Context
 
-The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.), requiring a unified integration framework.
+The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.) and requires a unified integration framework.
 
 ## Decision
 
 ### Integration Patterns
 
-| Pattern | Description | Use Case |
-|---------|-------------|----------|
+| Pattern | Description | Applicable Scenarios |
+|---------|-------------|----------------------|
 | webhook | Event push | High real-time requirements |
-| polling | Polling pull | No webhook on external system |
+| polling | Polling pull | External system has no webhook |
 | api_proxy | API proxy | Requires authentication and transformation |
-| file_transfer | File transfer | Bulk data exchange |
+| file_transfer | File transfer | Batch data exchange |
 
 ### Adapter Framework
 
@@ -37,7 +37,7 @@ interface ExternalAdapter {
 |------|-------------|
 | api_key | API Key |
 | oauth2 | OAuth 2.0 |
-| basic_auth | Username/password |
+| basic_auth | Username and password |
 | jwt | JWT Token |
 
 ### Error Handling
@@ -46,15 +46,15 @@ interface ExternalAdapter {
 |----------|-------------|
 | retry | Retry |
 | circuit_break | Circuit breaker |
-| fallback | Degradation |
+| fallback | Fallback |
 | dead_letter | Dead letter queue |
 
 ### Integration Governance
 
 - Connector registration and discovery
 - Authentication credential management
-- Traffic control
-- Audit logs
+- Rate limiting
+- Audit logging
 
 ## Consequences
 

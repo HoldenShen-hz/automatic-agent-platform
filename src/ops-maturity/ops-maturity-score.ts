@@ -5,6 +5,7 @@
  * per §69 requirements.
  */
 
+import { randomUUID } from "node:crypto";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
 
 export type OpsMaturityDimension = "drift" | "compliance" | "cost" | "explainability";
@@ -66,7 +67,7 @@ export class OpsMaturityScoreService {
     const nextAssessmentDueAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     const score: OpsMaturityScore = {
-      scoreId: newId("maturity_score"),
+      scoreId: newId("maturity_score:"),
       ...(input.agentId !== undefined && { agentId: input.agentId }),
       ...(input.domainId !== undefined && { domainId: input.domainId }),
       dimensions,

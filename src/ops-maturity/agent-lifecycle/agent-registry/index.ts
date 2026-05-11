@@ -113,7 +113,7 @@ export function listActiveAgents(agents: readonly AgentDefinition[]): AgentDefin
 export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, readonly AgentLifecycleState[]> = new Map([
   ["draft", ["testing"]],
   ["testing", ["staging", "draft"]],
-  ["staging", ["canary", "testing"]],
+  ["staging", ["canary", "testing", "active"]],
   ["canary", ["active", "staging", "paused"]],
   ["active", ["paused", "deprecated"]],
   ["paused", ["active", "deprecated", "canary"]],

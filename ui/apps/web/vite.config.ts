@@ -24,7 +24,10 @@ export default defineConfig({
             return "query";
           }
           if (id.includes("/packages/features/")) {
-            return "features";
+            const featureName = id.split("/packages/features/")[1]?.split("/")[0];
+            if (featureName != null && featureName.length > 0) {
+              return `feature-${featureName}`;
+            }
           }
           return undefined;
         },

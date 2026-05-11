@@ -5,7 +5,7 @@
 
 ## Context
 
-Compliance audits require substantial evidence materials; manual organization is inefficient and error-prone.
+Compliance audits require large amounts of evidence materials, and manual organization is inefficient and error-prone.
 
 ## Decision
 
@@ -13,10 +13,10 @@ Compliance audits require substantial evidence materials; manual organization is
 
 | Type | Frequency | Audience |
 |------|-----------|----------|
-| Audit log report | Real-time | Auditor |
-| Compliance summary | Monthly | Compliance team |
-| Risk assessment report | Quarterly | Management |
-| Incident report | Event-driven | Regulator |
+| Audit Log Report | Real-time | Auditors |
+| Compliance Summary | Monthly | Compliance Team |
+| Risk Assessment Report | Quarterly | Management |
+| Incident Report | Event-driven | Regulatory Bodies |
 
 ### Evidence Collection
 
@@ -51,11 +51,11 @@ type EvidenceType =
 
 | Content | Description |
 |---------|-------------|
-| Executive summary | Key findings |
-| Evidence inventory | Detailed evidence |
-| Compliance assessment | Article-by-article evaluation |
-| Exception records | Deviations and remediation |
-| Signatures | Responsible party signature |
+| Executive Summary | Key findings |
+| Evidence Inventory | Detailed evidence |
+| Compliance Assessment | Clause-by-clause evaluation |
+| Anomaly Records | Deviations and remediation |
+| Signatures | Responsible party signatures |
 
 ### Compliance Framework Mapping
 
@@ -67,13 +67,13 @@ type EvidenceType =
 
 ## Consequences
 
-Positive:
+Benefits:
 
 - Automation improves efficiency
 - Reduces human error
 - Meets regulatory requirements
 
-Negative:
+Costs:
 
 - Evidence collection adds system overhead
 - Report templates require maintenance
@@ -81,8 +81,13 @@ Negative:
 ## Cross-References
 
 - [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
+- [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
 - [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§66` Compliance Report Auto-Generation Engine
+
+## v4.3 ADR Remediation
+
+- R5-65: This ADR originally referenced non-existent Appendix `§B`/`§G`, which have been removed. The compliance framework mapping content is retained, but reference paths have been corrected to point to actually existing documents.

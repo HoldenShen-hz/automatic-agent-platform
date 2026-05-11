@@ -124,3 +124,24 @@ test("StreamBridge reuses streamId for multiple frames", () => {
   const frame2 = bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "status_changed", payload: {} });
   assert.equal(frame2.sequence, frame1.sequence + 1);
 });
+
+test("StreamBridge tracks transport state per stream", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task-1", "updates");
+
+  assert.equal(bridge.getTransportState(streamId), "connected");
+  bridge.setTransportState(streamId, "reconnecting");
+  assert.equal(bridge.getTransportState(streamId), "reconnecting");
+  bridge.setTransportState(streamId, "failed");
+  assert.equal(bridge.getTransportState(streamId), "failed");
+});
+
+test("StreamBridge clears transport state when stream closes", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task-1", "updates");
+
+  bridge.setTransportState(streamId, "reconnecting");
+  bridge.closeStream(streamId);
+
+  assert.equal(bridge.getTransportState(streamId), "connected");
+});

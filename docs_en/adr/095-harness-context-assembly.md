@@ -7,10 +7,10 @@
 - **Observe**: Collect task/domain/shared context sources
 - **Assess**: Evaluate token budget and sensitive information
 - **Plan**: Assemble context block and snapshot granularity
-- **Execute**: Provide context input for Harness step
-- **Feedback**: Record context missing and compression results
-- **Learn**: Identify most valuable context sources
-- **Improve**: Optimize compression and namespace strategy
+- **Execute**: Provide context input for Harness node execution
+- **Feedback**: Record context gaps and compression results
+- **Learn**: Identify the most valuable context sources
+- **Improve**: Optimize compression and namespace strategies
 - **Release**: Incorporate context quality into runtime acceptance
 
 ---
@@ -18,16 +18,16 @@
 - Status: Accepted
 - Decision Date: 2026-04-23
 
-## Background
+## Context
 
-Without a unified assembler, Harness will repeatedly concatenate across different call paths, cannot be audited, and cannot compress or replay.
+Without a unified assembler, Harness would repeatedly concatenate context across different call paths, making it impossible to audit, compress, or replay.
 
-## Decisions
+## Decision
 
-- `ContextAssembler` serves as Harness's authoritative context assembly entry point
-- Must support task / domain / shared source set
-- Each loop generates `ContextSnapshot`
+- `ContextAssembler` serves as the authoritative context assembly entry point for Harness
+- Must support task / domain / shared source sets
+- Each loop iteration generates a `ContextSnapshot`
 
 ## Consequences
 
-- Context assembly becomes a testable, recoverable, governable formal capability
+- Context assembly becomes a testable, recoverable, and governable formal capability

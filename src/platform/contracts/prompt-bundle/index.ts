@@ -101,8 +101,8 @@ export interface TrafficTargeting {
 
 export interface PromptBundleRegistrationInput {
   name: string;
-  /** §16.2: Incrementing integer version for deterministic ordering */
-  version: number;
+  /** §16.2: Incrementing integer version for deterministic ordering, or semver string for backward compat */
+  version: number | string;
   /** Display version in semver format (for human readability only) */
   displayVersion: string;
   domain: string;
@@ -145,13 +145,14 @@ export interface CreatePromptBundleInput extends PromptBundleRegistrationInput {
 
 export function createPromptBundle(input: CreatePromptBundleInput): PromptBundle {
   validatePromptBundleRegistrationInput(input);
+  const normalizedVersion = normalizeVersion(input.version);
 
   const createdAt = input.createdAt ?? nowIso();
   const metadata = normalizeMetadata(input.metadata);
   const bundle: PromptBundle = {
     bundleId: input.bundleId ?? newId("promptbundle"),
     name: input.name,
-    version: input.version,
+    version: normalizedVersion,
     displayVersion: input.displayVersion,
     domain: input.domain,
     taskType: input.taskType,
@@ -171,7 +172,7 @@ export function createPromptBundle(input: CreatePromptBundleInput): PromptBundle
 
 export function validatePromptBundleRegistrationInput(input: PromptBundleRegistrationInput): PromptBundleRegistrationInput {
   assertNonEmpty(input.name, "prompt_bundle.invalid_name", "Bundle name must be non-empty.");
-  assertPositiveIntegerVersion(input.version, "prompt_bundle.invalid_version");
+  // Note: version validation is done in normalizeVersion() within createPromptBundle()
   assertNonEmpty(input.displayVersion, "prompt_bundle.invalid_display_version", "Bundle displayVersion must be non-empty.");
   assertNonEmpty(input.domain, "prompt_bundle.invalid_domain", "Bundle domain must be non-empty.");
   assertNonEmpty(input.taskType, "prompt_bundle.invalid_task_type", "Bundle taskType must be non-empty.");
@@ -300,8 +301,39 @@ function assertNonEmpty(value: string, code: string, message: string): void {
   }
 }
 
-function assertPositiveIntegerVersion(value: number, code: string): void {
-  if (!Number.isInteger(value) || value <= 0) {
+/**
+ * Normalizes version to a positive integer.
+ * Accepts semver strings (v1.0, v1.0.0, 1.0, 1.0.0) and converts them to integer representation.
+ * Also accepts direct integer values.
+ */
+function normalizeVersion(version: number | string): number {
+  if (typeof version === "number") {
+    if (!Number.isInteger(version) || version <= 0) {
+      throw new ValidationError("prompt_bundle.invalid_version", "Prompt bundle version must be a positive integer.");
+    }
+    return version;
+  }
+  // Handle string version (semver format)
+  const semverMatch = version.match(/^v?(\d+)\.(\d+)(?:\.(\d+))?$/);
+  if (semverMatch) {
+    const major = parseInt(semverMatch[1]!, 10);
+    const minor = parseInt(semverMatch[2]!, 10);
+    const patch = semverMatch[3] !== undefined ? parseInt(semverMatch[3]!, 10) : 0;
+    // Combine major.minor.patch into a single integer (e.g., v1.2.3 -> 123)
+    return major * 100 + minor * 10 + patch;
+  }
+  // Fallback: try direct numeric conversion
+  const parsed = parseInt(version, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new ValidationError("prompt_bundle.invalid_version", `Prompt bundle version must be a positive integer, got: ${version}`);
+  }
+  return parsed;
+}
+
+function assertPositiveIntegerVersion(value: number | string, code: string): void {
+  // Normalize string version to number before validation
+  const normalized = normalizeVersion(value);
+  if (!Number.isInteger(normalized) || normalized <= 0) {
     throw new ValidationError(code, "Prompt bundle version must be a positive integer.");
   }
 }

@@ -13,25 +13,77 @@ export interface TelemetryExporter {
   export(events: readonly TelemetryEvent[]): Promise<void>;
 }
 
-export class TelemetrySink {
-  private readonly events: TelemetryEvent[] = [];
+export interface TelemetrySinkOptions {
+  readonly consentChecker?: () => boolean;
+  readonly maxBufferSize?: number;
+  readonly flushIntervalMs?: number;
+  readonly maxRetryAttempts?: number;
+}
 
-  public constructor(private readonly exporters: readonly TelemetryExporter[] = []) {}
+export interface DeadLetterTelemetryEvent {
+  readonly event: TelemetryEvent;
+  readonly reason: string;
+  readonly failedAt: string;
+}
+
+interface BufferedTelemetryEvent {
+  readonly event: TelemetryEvent;
+  readonly pendingExporters: Set<number>;
+  attempts: number;
+  lastError: string | null;
+}
+
+export class TelemetrySink {
+  private readonly events: BufferedTelemetryEvent[] = [];
+  private readonly deadLetters: DeadLetterTelemetryEvent[] = [];
+  private readonly consentChecker: () => boolean;
+  private readonly maxBufferSize: number;
+  private readonly maxRetryAttempts: number;
+  private readonly flushTimer: ReturnType<typeof setInterval> | null;
+  private flushPromise: Promise<void> | null = null;
+  private disposed = false;
+
+  public constructor(
+    private readonly exporters: readonly TelemetryExporter[] = [],
+    options: TelemetrySinkOptions = {},
+  ) {
+    this.consentChecker = options.consentChecker ?? (() => true);
+    this.maxBufferSize = Math.max(1, options.maxBufferSize ?? 100);
+    this.maxRetryAttempts = Math.max(0, options.maxRetryAttempts ?? 3);
+    this.flushTimer = options.flushIntervalMs == null
+      ? null
+      : setInterval(() => {
+        void this.flush().catch(() => undefined);
+      }, options.flushIntervalMs);
+  }
 
   public record(name: string, attributes: Readonly<Record<string, unknown>> = {}): void {
-    const event = {
-      name,
-      attributes,
-      recordedAt: new Date().toISOString(),
-    };
-    this.events.push(event);
-    void Promise.all(this.exporters.map(async (exporter) => {
-      await exporter.export([event]);
-    }));
+    if (this.disposed || !this.consentChecker()) {
+      return;
+    }
+
+    this.events.push({
+      event: {
+        name,
+        attributes,
+        recordedAt: new Date().toISOString(),
+      },
+      pendingExporters: new Set(this.exporters.map((_exporter, index) => index)),
+      attempts: 0,
+      lastError: null,
+    });
+
+    if (this.events.length >= this.maxBufferSize) {
+      void this.flush().catch(() => undefined);
+    }
   }
 
   public list(): readonly TelemetryEvent[] {
-    return this.events;
+    return this.events.map((entry) => entry.event);
+  }
+
+  public listDeadLetters(): readonly DeadLetterTelemetryEvent[] {
+    return [...this.deadLetters];
   }
 
   public scoped(scope: TelemetryScope) {
@@ -44,6 +96,81 @@ export class TelemetrySink {
       },
     };
   }
+
+  public async flush(): Promise<void> {
+    if (this.flushPromise != null) {
+      return this.flushPromise;
+    }
+    this.flushPromise = this.flushInternal().finally(() => {
+      this.flushPromise = null;
+    });
+    return this.flushPromise;
+  }
+
+  public dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    if (this.flushTimer != null) {
+      clearInterval(this.flushTimer);
+    }
+    void this.flush().catch(() => undefined);
+  }
+
+  private async flushInternal(): Promise<void> {
+    if (this.events.length === 0 || this.exporters.length === 0) {
+      return;
+    }
+
+    while (this.events.length > 0) {
+      const batch = this.events.splice(0, this.events.length);
+      const survivors = await this.deliverBatch(batch);
+      if (survivors.length > 0) {
+        this.events.unshift(...survivors);
+        break;
+      }
+    }
+  }
+
+  private async deliverBatch(batch: BufferedTelemetryEvent[]): Promise<BufferedTelemetryEvent[]> {
+    for (const [exporterIndex, exporter] of this.exporters.entries()) {
+      const pendingEntries = batch.filter((entry) => entry.pendingExporters.has(exporterIndex));
+      if (pendingEntries.length === 0) {
+        continue;
+      }
+      try {
+        await exporter.export(pendingEntries.map((entry) => entry.event));
+        for (const entry of pendingEntries) {
+          entry.pendingExporters.delete(exporterIndex);
+          entry.lastError = null;
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        for (const entry of pendingEntries) {
+          entry.attempts += 1;
+          entry.lastError = reason;
+        }
+      }
+    }
+
+    const survivors: BufferedTelemetryEvent[] = [];
+    for (const entry of batch) {
+      if (entry.pendingExporters.size === 0) {
+        continue;
+      }
+      if (entry.attempts > this.maxRetryAttempts) {
+        this.deadLetters.push({
+          event: entry.event,
+          reason: entry.lastError ?? "telemetry.export_failed",
+          failedAt: new Date().toISOString(),
+        });
+        continue;
+      }
+      survivors.push(entry);
+    }
+    return survivors;
+  }
 }
 
 export class InMemoryTelemetryExporter implements TelemetryExporter {
@@ -54,7 +181,7 @@ export class InMemoryTelemetryExporter implements TelemetryExporter {
   }
 
   public list(): readonly TelemetryEvent[] {
-    return this.exported;
+    return [...this.exported];
   }
 }
 
@@ -63,7 +190,11 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
     private readonly endpoint: string,
     private readonly fetchImplementation: typeof fetch = globalThis.fetch.bind(globalThis),
     private readonly headers: Readonly<Record<string, string>> = {},
-  ) {}
+  ) {
+    if ((this.headers.authorization ?? "").length === 0) {
+      throw new Error("telemetry.authorization_required:OTLP exports require authorization");
+    }
+  }
 
   public async export(events: readonly TelemetryEvent[]): Promise<void> {
     if (events.length === 0) {
@@ -76,16 +207,29 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
         ...this.headers,
       },
       body: JSON.stringify({
-        resource: { "service.name": "automatic-agent-platform-ui" },
-        scopeMetrics: [
+        resourceLogs: [
           {
-            scope: { name: "ui-telemetry" },
-            metrics: [],
-            logs: events.map((event) => ({
-              body: event.name,
-              timeUnixNano: Date.parse(event.recordedAt) * 1_000_000,
-              attributes: event.attributes,
-            })),
+            resource: {
+              attributes: [
+                {
+                  key: "service.name",
+                  value: { stringValue: "automatic-agent-platform-ui" },
+                },
+              ],
+            },
+            scopeLogs: [
+              {
+                scope: { name: "ui-telemetry" },
+                logRecords: events.map((event) => ({
+                  body: { stringValue: event.name },
+                  timeUnixNano: String(Date.parse(event.recordedAt) * 1_000_000),
+                  attributes: Object.entries(event.attributes).map(([key, value]) => ({
+                    key,
+                    value: serializeAttributeValue(value),
+                  })),
+                })),
+              },
+            ],
           },
         ],
       }),
@@ -97,190 +241,123 @@ export function createTelemetrySink(exporters: readonly TelemetryExporter[] = []
   return new TelemetrySink(exporters);
 }
 
-// ---------------------------------------------------------------------------
-// Core Web Vitals / RUM instrumentation
-// ---------------------------------------------------------------------------
-
-/**
- * Measure a function's execution time and record it as a telemetry span.
- */
 export function measureDuration(name: string, fn: () => void | Promise<void>): void | Promise<void> {
-  const start = performance.now();
+  performance.mark(`${name}:start`);
   const result = fn();
   if (result instanceof Promise) {
     return result.finally(() => {
-      const duration = performance.now() - start;
-      void duration; // placeholder for future metric recording
+      performance.mark(`${name}:end`);
+      performance.measure(name, `${name}:start`, `${name}:end`);
     });
   }
-  const duration = performance.now() - start;
-  void duration; // placeholder for future metric recording
+  performance.mark(`${name}:end`);
+  performance.measure(name, `${name}:start`, `${name}:end`);
 }
 
-/**
- * Record a Core Web Vital metric.
- * These are emitted as telemetry events so they flow through the same exporter pipeline.
- */
 export type VitalName = "LCP" | "FID" | "CLS" | "INP" | "TTFB" | "FCP";
 
 export interface VitalRecord {
   name: VitalName;
-  value: number;          // milliseconds for all except CLS (unitless)
+  value: number;
   rating: "good" | "needs-improvement" | "poor";
   navigationEntry?: PerformanceEntry;
 }
 
-function ratingForLCP(value: number): VitalRecord["rating"] {
-  return value <= 2500 ? "good" : value <= 4000 ? "needs-improvement" : "poor";
-}
-function ratingForFID(value: number): VitalRecord["rating"] {
-  return value <= 100 ? "good" : value <= 300 ? "needs-improvement" : "poor";
-}
-function ratingForCLS(value: number): VitalRecord["rating"] {
-  return value <= 0.1 ? "good" : value <= 0.25 ? "needs-improvement" : "poor";
-}
-function ratingForINP(value: number): VitalRecord["rating"] {
-  return value <= 200 ? "good" : value <= 500 ? "needs-improvement" : "poor";
-}
-function ratingForTTFB(value: number): VitalRecord["rating"] {
-  return value <= 800 ? "good" : value <= 1800 ? "needs-improvement" : "poor";
-}
-function ratingForFCP(value: number): VitalRecord["rating"] {
-  return value <= 1800 ? "good" : value <= 3000 ? "needs-improvement" : "poor";
-}
-
 function vitalRating(name: VitalName, value: number): VitalRecord["rating"] {
   switch (name) {
-    case "LCP": return ratingForLCP(value);
-    case "FID": return ratingForFID(value);
-    case "CLS": return ratingForCLS(value);
-    case "INP": return ratingForINP(value);
-    case "TTFB": return ratingForTTFB(value);
-    case "FCP": return ratingForFCP(value);
+    case "LCP":
+      return value <= 2500 ? "good" : value <= 4000 ? "needs-improvement" : "poor";
+    case "FID":
+      return value <= 100 ? "good" : value <= 300 ? "needs-improvement" : "poor";
+    case "CLS":
+      return value <= 0.1 ? "good" : value <= 0.25 ? "needs-improvement" : "poor";
+    case "INP":
+      return value <= 200 ? "good" : value <= 500 ? "needs-improvement" : "poor";
+    case "TTFB":
+      return value <= 800 ? "good" : value <= 1800 ? "needs-improvement" : "poor";
+    case "FCP":
+      return value <= 1800 ? "good" : value <= 3000 ? "needs-improvement" : "poor";
   }
 }
 
-/**
- * Observe Web Vitals for the current document and report them via a TelemetrySink.
- *
- * Uses the native PerformanceObserver API where available, with fallbacks
- * for older browsers.  Each observed metric is emitted as a `webvitals.<name>`
- * telemetry event containing value, rating, and navigation entry attributes.
- */
-export function observeWebVitals(sink: TelemetrySink): () => void {
-  const dispose: (() => void)[] = [];
+export function startWebVitalsCollection(sink: TelemetrySink): () => void {
+  const dispose: Array<() => void> = [];
 
-  // LCP
-  if ("PerformanceObserver" in globalThis) {
-    try {
-      const obs = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          const record: VitalRecord = {
-            name: "LCP",
-            value: entry.startTime,
-            rating: vitalRating("LCP", entry.startTime),
-            navigationEntry: entry as PerformanceEntry,
-          };
-          sink.record("webvitals.LCP", {
-            value_ms: record.value,
-            rating: record.rating,
-            element: (entry as { element?: string }).element ?? "unknown",
-          });
-        }
+  observePerformanceType("paint", dispose, (list) => {
+    for (const entry of list.getEntries()) {
+      if (entry.name === "first-contentful-paint") {
+        sink.record("web_vitals.FCP", {
+          value_ms: entry.startTime,
+          rating: vitalRating("FCP", entry.startTime),
+        });
+      }
+    }
+  });
+
+  observePerformanceType("largest-contentful-paint", dispose, (list) => {
+    for (const entry of list.getEntries()) {
+      sink.record("web_vitals.LCP", {
+        value_ms: entry.startTime,
+        rating: vitalRating("LCP", entry.startTime),
       });
-      obs.observe({ type: "largest-contentful-paint", buffered: true });
-      dispose.push(() => obs.disconnect());
-    } catch { /* non-critical */ }
-  }
+    }
+  });
 
-  // CLS
-  try {
-    const clsObs = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        const e = entry as unknown as { hadRecentInput?: boolean; value?: number };
-        if (e.hadRecentInput) return;
-        const value = e.value ?? 0;
-        const record: VitalRecord = { name: "CLS", value, rating: vitalRating("CLS", value) };
-        sink.record("webvitals.CLS", {
-          value: record.value,
-          rating: record.rating,
-        });
+  observePerformanceType("layout-shift", dispose, (list) => {
+    for (const entry of list.getEntries()) {
+      const layoutShift = entry as PerformanceEntry & { hadRecentInput?: boolean; value?: number };
+      if (layoutShift.hadRecentInput) {
+        continue;
       }
-    });
-    clsObs.observe({ type: "layout-shift", buffered: true });
-    dispose.push(() => clsObs.disconnect());
-  } catch { /* non-critical */ }
-
-  // INP (Interaction to Next Paint)
-  try {
-    const inpObs = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        const value = entry.duration;
-        const record: VitalRecord = { name: "INP", value, rating: vitalRating("INP", value) };
-        sink.record("webvitals.INP", {
-          value_ms: record.value,
-          rating: record.rating,
-          event_type: entry.name,
-        });
-      }
-    });
-    inpObs.observe({ type: "event", buffered: true, options: { durationThreshold: 16 } as PerformanceObserverInit });
-    dispose.push(() => inpObs.disconnect());
-  } catch { /* non-critical */ }
-
-  // FID (Fallback for browsers without INP)
-  try {
-    const fidObs = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        const value = entry.processingStart - entry.startTime;
-        const record: VitalRecord = { name: "FID", value, rating: vitalRating("FID", value) };
-        sink.record("webvitals.FID", {
-          value_ms: record.value,
-          rating: record.rating,
-        });
-      }
-    });
-    fidObs.observe({ type: "first-input", buffered: true });
-    dispose.push(() => fidObs.disconnect());
-  } catch { /* non-critical */ }
-
-  // FCP
-  try {
-    const fcpObs = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (entry.name === "first-contentful-paint") {
-          const record: VitalRecord = { name: "FCP", value: entry.startTime, rating: vitalRating("FCP", entry.startTime) };
-          sink.record("webvitals.FCP", {
-            value_ms: record.value,
-            rating: record.rating,
-          });
-        }
-      }
-    });
-    fcpObs.observe({ type: "paint", buffered: true });
-    dispose.push(() => fcpObs.disconnect());
-  } catch { /* non-critical */ }
-
-  // TTFB
-  if ("PerformanceNavigationTiming" in globalThis) {
-    try {
-      const ttfbObs = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === "navigation") {
-            const nav = entry as PerformanceNavigationTiming;
-            const value = nav.responseStart - nav.requestStart;
-            const record: VitalRecord = { name: "TTFB", value, rating: vitalRating("TTFB", value) };
-            sink.record("webvitals.TTFB", {
-              value_ms: record.value,
-              rating: record.rating,
-            });
-          }
-        }
+      const value = layoutShift.value ?? 0;
+      sink.record("web_vitals.CLS", {
+        value,
+        rating: vitalRating("CLS", value),
       });
-      ttfbObs.observe({ type: "navigation", buffered: true });
-      dispose.push(() => ttfbObs.disconnect());
-    } catch { /* non-critical */ }
-  }
+    }
+  });
 
-  return () => dispose.forEach((fn) => fn());
+  observePerformanceType("event", dispose, (list) => {
+    for (const entry of list.getEntries()) {
+      sink.record("web_vitals.INP", {
+        value_ms: entry.duration,
+        rating: vitalRating("INP", entry.duration),
+      });
+    }
+  });
+
+  return () => {
+    for (const callback of dispose) {
+      callback();
+    }
+  };
+}
+
+export const observeWebVitals = startWebVitalsCollection;
+
+function observePerformanceType(
+  type: string,
+  dispose: Array<() => void>,
+  callback: (list: PerformanceObserverEntryList) => void,
+): void {
+  if (typeof PerformanceObserver === "undefined") {
+    return;
+  }
+  try {
+    const observer = new PerformanceObserver(callback);
+    observer.observe({ type, buffered: true } as PerformanceObserverInit);
+    dispose.push(() => observer.disconnect());
+  } catch {
+    return;
+  }
+}
+
+function serializeAttributeValue(value: unknown): Record<string, unknown> {
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? { intValue: value } : { doubleValue: value };
+  }
+  if (typeof value === "boolean") {
+    return { boolValue: value };
+  }
+  return { stringValue: String(value) };
 }

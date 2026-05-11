@@ -11,14 +11,14 @@ The platform needs to continuously learn and improve from user feedback, forming
 
 ### Feedback Types
 
-| Type | Source | Processing |
-|------|--------|------------|
+| Type | Source | Processing Method |
+|------|--------|-------------------|
 | explicit | User ratings/reviews | Manual review |
 | implicit | Usage behavior analysis | Automatic learning |
 | corrective | User corrections | Pattern extraction |
 | failure | Execution failures | Root cause analysis |
 
-### Feedback Processing Pipeline
+### Feedback Processing Flow
 
 ```
 Feedback Collection → Preprocessing → Classification → Pattern Recognition → Learning Object Generation → Improvement Candidate Evaluation → Rollout
@@ -44,26 +44,34 @@ interface LearningObject {
 
 ### Improvement Pipeline
 
+```
+LearnHub → ImproveHub → P2 Release Governance Gate → Six-Level Release
+     ↓           ↓                ↓                  ↓
+ LearningObject  Improvement   Gate Review         Rollout
+                 Candidate    (Must Pass)
+```
+
 - LearnHub generates LearningObject
 - ImproveHub evaluates ImprovementCandidate
-- Release six-tier rollout
+- P2 Release Governance gate reviews (must pass to enter Release)
+- Release six-tier rollout (alpha/beta/stable/ga/lts/archived)
 
 ## Consequences
 
-Advantages:
+Pros:
 
 - Closed-loop improvement mechanism
 - Data-driven optimization
 - User participation enhances experience
 
-Costs:
+Cons:
 
 - Feedback processing requires resources
 - Pattern recognition accuracy depends on data volume
 
-## Cross-References
+## Cross References
 
-- [ADR-079 Feedback Hub and Seven Signal Types Preprocessing](./079-feedback-hub-signals.md)
+- [ADR-079 Feedback Hub and Seven Signal Preprocessing](./079-feedback-hub-signals.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
 ## Source Section

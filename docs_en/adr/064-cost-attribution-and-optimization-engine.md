@@ -5,7 +5,7 @@
 
 ## Context
 
-LLM costs are a major component of OPEX, requiring precise cost attribution and optimization guidance.
+LLM cost is a major component of OPEX and requires precise cost attribution and optimization guidance.
 
 ## Decision
 
@@ -34,7 +34,7 @@ interface CostDimension {
 
 | Type | Description |
 |------|-------------|
-| llm_token | LLM token consumption |
+| llm_token | LLM Token consumption |
 | compute | Compute resources |
 | storage | Storage resources |
 | network | Network bandwidth |
@@ -43,9 +43,9 @@ interface CostDimension {
 ### Optimization Recommendations
 
 | Recommendation Type | Description | Expected Savings |
-|---------------------|-------------|------------------|
-| prompt_compression | Reduce token consumption | 20-40% |
-| model_downgrade | Use cheaper model | 30-60% |
+|----------|------|----------|
+| prompt_compression | Reduce Token consumption | 20-40% |
+| model_downgrade | Use cheaper models | 30-60% |
 | cache_reuse | Cache similar requests | 50-80% |
 | batch_processing | Batch request merging | 20-30% |
 
@@ -65,17 +65,17 @@ interface CostDimension {
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Precise attribution guides optimization
 - Budget control prevents overruns
-- Reports facilitate management decisions
+- Reports facilitate management decision-making
 
-Negative:
+Trade-offs:
 
 - Metering adds overhead
 - Optimization recommendations
 
 ## v4.3 ADR Remediation
 
-- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions. Root cause: the cost engine ADR followed the linear workflow granularity and did not transition with v4.3 execution truth objects to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.
+- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions. The root cause was that the cost engine ADR inherited linear workflow granularity and did not transition with the v4.3 execution truth object to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines administrator console, on-duty entry points, and manual fallback takeover capabilities.
+This contract defines administrator console, on-call entry point, and human fallback takeover capabilities.
 
 Related documents:
 
@@ -12,9 +12,9 @@ Related documents:
 
 ## 2. Objectives
 
-- Enable production on-duty personnel to understand, take over, and mitigate damage.
-- When task failures occur, enable more than just "retry" but also manual repair of the execution chain.
-- Isolate administrator capabilities from ordinary user capabilities.
+- Enable production on-call personnel to understand, takeover, and mitigate issues.
+- Allow tasks to have human repair of execution chain instead of just "retry" upon failure.
+- Isolate administrator capabilities from regular user capabilities.
 
 ## 3. Console Minimum Modules
 
@@ -31,10 +31,10 @@ Related documents:
 
 ## 4. Human Takeover Minimum Actions
 
-- Take over task
+- Takeover task
 - Modify next step input
-- Skip a step
-- Retry a step
+- Skip a specific `NodeRun`
+- Retry a specific `NodeAttempt`
 - Switch model
 - Switch worker
 - Manually supplement artifact
@@ -53,12 +53,17 @@ Related documents:
 ## 6. Security Boundaries
 
 - Human takeover must write audit logs.
-- High-risk takeover actions must be re-reviewed by the Policy Engine.
+- High-risk takeover actions must pass through Policy Engine again.
 - Regular administrators must not have break-glass permissions by default.
-- Takeover actions must carry tenant / workspace / execution scope and must not use global vague operations.
-- Actions such as manually supplementing artifacts, switching workers, and forcefully ending tasks must preserve before/after state difference evidence.
+- Takeover actions must carry tenant / workspace / harness run / node run scope, and cannot use global fuzzy operations as substitutes.
+- Actions such as manually supplementing artifacts, switching workers, and forcibly ending tasks must retain before/after state difference evidence.
+- Any takeover action that changes runtime state must go through `RuntimeStateMachine.transition(command)` with budget reservation check, and must not directly modify state fields.
 
-## 7. UI Goals
+## v4.3 Contract Remediation
+
+- T-70: Originally this document described human takeover actions as direct operations on "a step / an execution". The root cause was that the on-call console contract reused old step/execution operational semantics without connecting to runtime authority and budget gate. Fix: The main text now anchors takeover to `HarnessRun / NodeRun / NodeAttempt`, and mandates that state migration and budget reservation go through the formal control chain.
+
+## 7. UI Objectives
 
 Administrators should be able to see:
 
@@ -67,9 +72,9 @@ Administrators should be able to see:
 - Recent events
 - Current model, prompt, and policy versions
 - Current OAPEFLIR stage / loop iteration / timeline
-- Current alerts and constraint reasons
-- Current tenant / workspace ownership and capability / entitlement constraints
+- Current alerts and restriction reasons
+- Current tenant / workspace affiliation and capability / entitlement restrictions
 
 ## 8. Closure Conclusion
 
-Industrial-grade systems must assume "automation will fail" by default and provide humans with a safe, auditable, and closable takeover entry point.
+Industrial-grade systems must default to considering "automation will fail", and provide humans with a safe, auditable, and closable takeover entry point.

@@ -44,9 +44,9 @@ export function shouldPromoteCanary(
 ): boolean {
   return (
     progress.rolloutPercent >= criteria.minRolloutPercent &&
-    progress.successRate >= criteria.minSuccessRate &&
-    progress.errorRate <= criteria.maxErrorRate &&
-    progress.latencyP50Ms <= criteria.maxLatencyP50Ms
+    (progress.successRate ?? 0) >= criteria.minSuccessRate &&
+    (progress.errorRate ?? 0) <= criteria.maxErrorRate &&
+    (progress.latencyP50Ms ?? Infinity) <= criteria.maxLatencyP50Ms
   );
 }
 
@@ -75,6 +75,7 @@ export function shouldRollbackCanary(progress: CanaryProgress): boolean {
 export interface TrafficSplitConfig {
   readonly canaryPercent: number;
   readonly stablePercent: number;
+  readonly weight: number;
 }
 
 /**
@@ -84,5 +85,6 @@ export function calculateTrafficSplit(canaryStage: CanaryStage): TrafficSplitCon
   return {
     canaryPercent: canaryStage,
     stablePercent: 100 - canaryStage,
+    weight: canaryStage,
   };
 }

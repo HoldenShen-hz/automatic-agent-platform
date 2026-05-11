@@ -19,6 +19,9 @@
 
 import { randomUUID } from "node:crypto";
 
+// Re-export randomUUID for consumers who need direct UUID generation
+export { randomUUID };
+
 /**
  * Generates a unique identifier with a semantic prefix.
  *
