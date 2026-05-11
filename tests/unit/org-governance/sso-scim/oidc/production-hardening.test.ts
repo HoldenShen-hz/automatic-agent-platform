@@ -244,12 +244,13 @@ test("Sessions can be revoked", async () => {
 test("State store works correctly with production hardening", () => {
   const store = new InMemoryOidcStateStore();
 
-  store.saveState("state-1", "nonce-1", "https://callback.example.com");
+  store.saveState("state-1", "nonce-1", "https://callback.example.com", "verifier-123");
 
   const retrieved = store.getState("state-1");
   assert.ok(retrieved);
   assert.equal(retrieved?.nonce, "nonce-1");
   assert.equal(retrieved?.redirectUri, "https://callback.example.com");
+  assert.equal(retrieved?.codeVerifier, "verifier-123");
 
   // State should be deleted after use
   store.deleteState("state-1");

@@ -261,7 +261,7 @@ test("InMemoryOidcStateStore returns null for expired state", () => {
 test("InMemoryOidcStateStore deletes state", () => {
   const store = new InMemoryOidcStateStore();
 
-  store.saveState("state-to-delete", "nonce", "uri");
+  store.saveState("state-to-delete", "nonce", "uri", "verifier");
   store.deleteState("state-to-delete");
 
   const result = store.getState("state-to-delete");

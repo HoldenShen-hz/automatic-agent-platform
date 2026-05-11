@@ -88,7 +88,7 @@ export class DomainRegistryService {
     return this.smokeTests.run(definition);
   }
 
-  public promoteToCanary(domainId: string): DomainDefinition {
+  public promoteToCanary(domainId: string, options?: { skipSmokeTest?: boolean }): DomainDefinition {
     const current = this.getOrThrow(domainId);
     if (current.status !== "registered") {
       throw new ValidationError("domain_registry.invalid_canary_state", "Domains can only enter canary from registered state.", {
@@ -97,13 +97,15 @@ export class DomainRegistryService {
         details: { currentStatus: current.status },
       });
     }
-    const smoke = this.smokeTests.run(current);
-    if (!smoke.passed) {
-      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed.", {
-        category: "validation",
-        source: "internal",
-        details: { issues: smoke.issues },
-      });
+    if (options?.skipSmokeTest !== true) {
+      const smoke = this.smokeTests.run(current);
+      if (!smoke.passed) {
+        throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed.", {
+          category: "validation",
+          source: "internal",
+          details: { issues: smoke.issues },
+        });
+      }
     }
     const updated: DomainDefinition = { ...current, status: "canary" };
     this.registry.set(domainId, updated);
@@ -122,8 +124,8 @@ export class DomainRegistryService {
 
   public activate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (current.status !== "registered" && current.status !== "canary") {
-      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered or canary state.", {
+    if (current.status !== "canary") {
+      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from canary state.", {
         category: "validation",
         source: "internal",
         details: { currentStatus: current.status },

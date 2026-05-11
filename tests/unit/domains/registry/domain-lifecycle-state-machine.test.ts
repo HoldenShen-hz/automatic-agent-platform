@@ -46,19 +46,20 @@ function minimalDomain(
   };
 }
 
-test("register normalizes draft and canary into registered", () => {
+test("register normalizes draft into registered but preserves canary", () => {
   const service = new DomainRegistryService();
 
   const draft = service.register(minimalDomain("draft-domain", "draft"));
   const canary = service.register(minimalDomain("canary-domain", "canary"));
 
   assert.equal(draft.status, "registered");
-  assert.equal(canary.status, "registered");
+  assert.equal(canary.status, "canary"); // canary is preserved, not normalized to registered
 });
 
-test("activate transitions registered domain to active", () => {
+test("activate transitions canary domain to active", () => {
   const service = new DomainRegistryService();
   service.register(minimalDomain("activate-me", "registered"));
+  service.promoteToCanary("activate-me");
 
   const result = service.activate("activate-me");
 
@@ -94,11 +95,11 @@ test("invalid transitions throw validation errors", () => {
   service.register(minimalDomain("invalid-deprecated", "deprecated"));
   service.register(minimalDomain("invalid-canary", "canary"));
 
-  assert.throws(() => service.activate("invalid-active"), /activate from registered or canary state/i);
+  assert.throws(() => service.activate("invalid-active"), /canary state/i);
   assert.throws(() => service.updating("invalid-registered"), /enter updating from active state/i);
   assert.throws(() => service.completeUpdate("invalid-active"), /complete update from updating state/i);
   assert.throws(() => service.archive("invalid-active"), /archive from deprecated state/i);
-  assert.throws(() => service.activate("invalid-deprecated"), /activate from registered or canary state/i);
+  assert.throws(() => service.activate("invalid-deprecated"), /canary state/i);
   assert.throws(() => service.promoteToCanary("invalid-active"), /enter canary from registered state/i);
   assert.throws(() => service.promoteToCanary("invalid-canary"), /enter canary from registered state/i);
 });
@@ -128,7 +129,7 @@ test("completeUpdate fails when smoke validation detects circular dependencies",
         ],
       },
     ],
-  }));
+  }), { skipSmokeTest: true });
 
   assert.throws(() => service.completeUpdate("circular"), /smoke test failed during update completion/i);
 });

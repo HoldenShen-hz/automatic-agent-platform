@@ -247,7 +247,8 @@ test("deprecate changes domain status", () => {
 test("activate emits domain:activated event on success", () => {
   const { events, publisher } = mockEventPublisher();
   const service = new DomainRegistryService({ eventPublisher: publisher });
-  service.register(minimalDomain("activate_me", "testing"));
+  service.register(minimalDomain("activate_me", "registered"));
+  service.promoteToCanary("activate_me");
   const result = service.activate("activate_me");
   assert.equal(result.status, "active");
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
@@ -256,6 +257,7 @@ test("activate emits domain:activated event on success", () => {
 test("activate throws when smoke test fails", () => {
   const service = new DomainRegistryService();
   service.register(domainWithCircularDeps(), { skipSmokeTest: true });
+  service.promoteToCanary("cycle_test", { skipSmokeTest: true });
   assert.throws(() => {
     service.activate("cycle_test");
   }, /smoke_test_failed|Domain smoke test failed/);

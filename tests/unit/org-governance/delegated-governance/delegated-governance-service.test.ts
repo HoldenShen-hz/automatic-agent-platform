@@ -268,3 +268,166 @@ test("DelegatedGovernanceService.validateInheritanceRule delete returns true whe
 
   assert.equal(result.allowed, true);
 });
+
+test("intersectPermissions returns only permissions present in both arrays", () => {
+  const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
+
+  const result = intersectPermissions(
+    ["manage_domains", "manage_packs", "manage_budgets"],
+    ["manage_packs", "manage_knowledge"],
+  );
+
+  assert.equal(result.length, 1);
+  assert.ok(result.includes("manage_packs"));
+});
+
+test("intersectPermissions returns empty when granted is empty", () => {
+  const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
+
+  const result = intersectPermissions([], ["manage_packs"]);
+
+  assert.equal(result.length, 0);
+});
+
+test("intersectPermissions returns empty when available is empty", () => {
+  const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
+
+  const result = intersectPermissions(["manage_packs"], []);
+
+  assert.equal(result.length, 0);
+});
+
+test("DelegatedGovernanceService.resolve respects grantor permission intersection", () => {
+  const delegations: GovernanceDelegation[] = [
+    {
+      delegationId: "del_1",
+      grantorId: "grantor_1",
+      granteeId: "grantee_1",
+      orgNodeIds: ["org_a"],
+      domainIds: [],
+      permissions: ["manage_domains", "manage_packs", "manage_budgets"],
+      guardrails: [],
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      revocable: true,
+      status: "active",
+    },
+  ];
+
+  const service = new DelegatedGovernanceService(delegations);
+
+  // Grantee has manage_domains in delegation, but grantor only has manage_packs
+  // So manage_domains should be rejected
+  const result = service.resolve(
+    "grantee_1",
+    {
+      orgNodeId: "org_a",
+      capability: "manage_domains",
+      permission: "manage_domains",
+    },
+    undefined, // now
+    ["manage_packs", "manage_knowledge"], // grantorPermissions - no manage_domains
+  );
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.delegationId, "del_1");
+  assert.ok(result.reasonCodes.includes("delegated_governance.permission_exceeds_grantor_authority"));
+});
+
+test("DelegatedGovernanceService.resolve allows permission in intersection", () => {
+  const delegations: GovernanceDelegation[] = [
+    {
+      delegationId: "del_1",
+      grantorId: "grantor_1",
+      granteeId: "grantee_1",
+      orgNodeIds: ["org_a"],
+      domainIds: [],
+      permissions: ["manage_domains", "manage_packs"],
+      guardrails: [],
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      revocable: true,
+      status: "active",
+    },
+  ];
+
+  const service = new DelegatedGovernanceService(delegations);
+
+  // Both delegation and grantor have manage_packs
+  const result = service.resolve(
+    "grantee_1",
+    {
+      orgNodeId: "org_a",
+      capability: "manage_packs",
+      permission: "manage_packs",
+    },
+    undefined,
+    ["manage_packs", "manage_knowledge"], // grantor has manage_packs
+  );
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.delegationId, "del_1");
+  assert.ok(result.reasonCodes.includes("delegated_governance.scope_granted"));
+});
+
+test("DelegatedGovernanceService.resolve without grantorPermissions bypasses intersection check", () => {
+  const delegations: GovernanceDelegation[] = [
+    {
+      delegationId: "del_1",
+      grantorId: "grantor_1",
+      granteeId: "grantee_1",
+      orgNodeIds: ["org_a"],
+      domainIds: [],
+      permissions: ["manage_domains", "manage_packs"],
+      guardrails: [],
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      revocable: true,
+      status: "active",
+    },
+  ];
+
+  const service = new DelegatedGovernanceService(delegations);
+
+  // No grantorPermissions passed, so no intersection check
+  const result = service.resolve("grantee_1", {
+    orgNodeId: "org_a",
+    capability: "manage_domains",
+    permission: "manage_domains",
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.delegationId, "del_1");
+});
+
+test("DelegatedGovernanceService.resolve grantee cannot exceed grantor when grantor has fewer permissions", () => {
+  const delegations: GovernanceDelegation[] = [
+    {
+      delegationId: "del_1",
+      grantorId: "grantor_1",
+      granteeId: "grantee_1",
+      orgNodeIds: ["org_a"],
+      domainIds: [],
+      permissions: ["manage_domains", "manage_packs", "manage_budgets", "manage_knowledge"],
+      guardrails: [],
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      revocable: true,
+      status: "active",
+    },
+  ];
+
+  const service = new DelegatedGovernanceService(delegations);
+
+  // Grantor only has manage_packs and manage_budgets
+  // Grantee attempts manage_knowledge which is in delegation but NOT in grantor's permissions
+  const result = service.resolve(
+    "grantee_1",
+    {
+      orgNodeId: "org_a",
+      capability: "manage_knowledge",
+      permission: "manage_knowledge",
+    },
+    undefined,
+    ["manage_packs", "manage_budgets"], // grantor permissions - no manage_knowledge
+  );
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.reasonCodes.includes("delegated_governance.permission_exceeds_grantor_authority"));
+});

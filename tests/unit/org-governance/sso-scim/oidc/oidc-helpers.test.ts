@@ -126,8 +126,8 @@ test("InMemoryOidcStateStore deletes state", () => {
 test("InMemoryOidcStateStore handles multiple states", () => {
   const store = new InMemoryOidcStateStore();
 
-  store.saveState("state_1", "nonce_1", "https://example1.com");
-  store.saveState("state_2", "nonce_2", "https://example2.com");
+  store.saveState("state_1", "nonce_1", "https://example1.com", "verifier1");
+  store.saveState("state_2", "nonce_2", "https://example2.com", "verifier2");
 
   const result1 = store.getState("state_1");
   const result2 = store.getState("state_2");
@@ -136,4 +136,6 @@ test("InMemoryOidcStateStore handles multiple states", () => {
   assert.ok(result2 != null);
   assert.equal(result1.nonce, "nonce_1");
   assert.equal(result2.nonce, "nonce_2");
+  assert.equal(result1.codeVerifier, "verifier1");
+  assert.equal(result2.codeVerifier, "verifier2");
 });

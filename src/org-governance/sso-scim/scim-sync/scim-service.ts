@@ -858,29 +858,40 @@ export class ScimProvisionService {
 
   private applyFilter<T extends ScimUser | ScimGroup>(items: T[], filter: string): T[] {
     // Simple filter parsing: "userName eq \"john\""
-    const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
-    if (!match) return items;
+    const filterMatch = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
+    if (!filterMatch) return items;
 
-    const [, attribute, op, rawValue] = match;
-    const filterValue = String(rawValue ?? "").toLowerCase();
+    const attr: string = filterMatch[1] ?? "";
+    const op: string = filterMatch[2] ?? "";
+    const rawVal: string = filterMatch[3] ?? "";
+    const filterValue = rawVal;
 
     return items.filter((item) => {
-      const itemValue = resolveFilterValue(item, attribute);
-      // If attribute doesn't exist on this item type, don't match
+      // Inline attribute resolution to satisfy TypeScript's strict null checks
+      let itemValue: string | null;
+      if (attr === "userName") {
+        itemValue = "userName" in item ? item.userName : null;
+      } else if (attr === "displayName") {
+        itemValue = item.displayName;
+      } else if (attr === "id") {
+        itemValue = item.id;
+      } else {
+        itemValue = null;
+      }
+
       if (itemValue === undefined || itemValue === null) {
         return false;
       }
 
-      const itemValueStr = itemValue as string;
       switch (op) {
         case "eq":
-          return itemValueStr.toLowerCase() === filterValue.toLowerCase();
+          return itemValue.toLowerCase() === filterValue.toLowerCase();
         case "ne":
-          return itemValueStr.toLowerCase() !== filterValue.toLowerCase();
+          return itemValue.toLowerCase() !== filterValue.toLowerCase();
         case "co":
-          return itemValueStr.toLowerCase().includes(filterValue.toLowerCase());
+          return itemValue.toLowerCase().includes(filterValue.toLowerCase());
         case "sw":
-          return itemValueStr.toLowerCase().startsWith(filterValue.toLowerCase());
+          return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
         default:
           return true;
       }

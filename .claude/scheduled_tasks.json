@@ -5,11 +5,11 @@
       "cron": "*/30 * * * *",
       "prompt": "30m 解决这些问题，从后往前处理，每次起8个agent，也包括测试",
       "createdAt": 1778513416566,
+      "lastFiredAt": 1778533901925,
       "recurring": true,
       "createdBySessionId": "96120c5e-4771-4298-a87b-985e89c053b3",
       "createdByPid": 77658,
-      "createdByProcStart": "Mon May 11 13:35:54 2026",
-      "lastFiredAt": 1778515902399
+      "createdByProcStart": "Mon May 11 13:35:54 2026"
     }
   ]
 }
