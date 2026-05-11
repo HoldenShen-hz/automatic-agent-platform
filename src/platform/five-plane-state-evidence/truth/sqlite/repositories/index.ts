@@ -44,3 +44,4 @@ export {
   QuotaRepository,
   TenantRepository,
 } from "./tenant-repository.js";
+export { BudgetRepository } from "./budget-repository.js";

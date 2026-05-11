@@ -165,9 +165,9 @@ export class BudgetAllocator {
   private readonly watermarkConfig: WatermarkAlertConfig;
   private readonly crossRunPriorityConfig: CrossRunPriorityConfig;
   private readonly sweeperConfig: ReservationSweeperConfig;
-  private readonly settlementPersistence?: BudgetSettlementPersistence;
-  private readonly releasePersistence?: BudgetReleasePersistence;
-  private readonly atomicRepository?: BudgetAtomicRepository;
+  private readonly settlementPersistence: BudgetSettlementPersistence | undefined;
+  private readonly releasePersistence: BudgetReleasePersistence | undefined;
+  private readonly atomicRepository: BudgetAtomicRepository | undefined;
   private activeReservations = new Map<string, BudgetReservation>();
 
   public constructor(options: {
@@ -503,14 +503,17 @@ export class BudgetAllocator {
    * R11-12: CAS atomic release for BudgetLedger
    * Adds expectedVersion parameter to enable SQL-level Compare-and-Swap atomicity
    * for concurrent release operations to prevent balance inconsistency.
+   *
+   * When atomicRepository is provided, uses SQL-level CAS for true atomicity.
+   * Otherwise falls back to in-memory CAS with version check.
    */
-  public release(input: {
+  public async release(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
     readonly expectedVersion: number;
     readonly reasonCode?: string;
     readonly context: BudgetAllocatorContext;
-  }): BudgetReleaseResult {
+  }): Promise<BudgetReleaseResult> {
     // R11-12: CAS version check for atomic release - prevents concurrent modifications
     if (input.ledger.version !== input.expectedVersion) {
       throw new ValidationError(
@@ -524,6 +527,45 @@ export class BudgetAllocator {
       actualAmount: 0,
       settlementKind: "release_unused",
     });
+
+    // R11-12: Use SQL-level atomic CAS if repository is available
+    if (this.atomicRepository) {
+      const result = await this.atomicRepository.releaseAtomically(
+        input.ledger,
+        input.reservation,
+        input.expectedVersion,
+        settlement,
+      );
+      if (!result.success) {
+        throw new ValidationError(
+          "budget_release.sql_cas_failed",
+          "budget_release.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
+        );
+      }
+      // R11-07: Remove from active reservations after release
+      this.activeReservations.delete(input.reservation.budgetReservationId);
+      const reservation = this.stateMachine.transition({
+        commandId: newId("cmd"),
+        entityType: "BudgetReservation",
+        entityId: input.reservation.budgetReservationId,
+        aggregateType: "BudgetReservation",
+        aggregate: input.reservation,
+        fromStatus: input.reservation.status,
+        toStatus: "released",
+        principal: input.context.principal,
+        tenantId: input.context.tenantId,
+        traceId: input.context.traceId,
+        reasonCode: input.reasonCode ?? "budget.released_without_execution",
+        emittedBy: input.context.emittedBy,
+        auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
+      });
+      return {
+        reservation,
+        settlement,
+        ledger: result.ledger!,
+      };
+    }
+
     // R11-13 FIX: Persist release record atomically with ledger update.
     // This ensures release records survive crashes.
     if (this.releasePersistence) {

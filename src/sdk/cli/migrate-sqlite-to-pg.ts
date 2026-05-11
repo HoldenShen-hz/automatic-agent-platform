@@ -64,13 +64,21 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
 
 const VALID_TABLES = new Set(TABLES);
 
+export function validateTableName(table: string): void {
+  if (!VALID_TABLES.has(table as (typeof TABLES)[number])) {
+    throw new Error(`Invalid table name: ${table}`);
+  }
+}
+
+export function redactDsnCredentials(dsn: string): string {
+  return dsn.replace(/\/\/([^@/]+)@/u, "//****:****@");
+}
+
 export function planSqliteToPgMigration(sqlite: SqliteDatabase): Array<{ table: string; rowCount: number }> {
   return TABLES.map((table) => {
     try {
       // R31-32 FIX: Validate table name against allowlist to prevent SQL injection
-      if (!VALID_TABLES.has(table)) {
-        throw new Error(`Invalid table name: ${table}`);
-      }
+      validateTableName(table);
       const row = sqlite.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count?: number } | undefined;
       return { table, rowCount: row?.count ?? 0 };
     } catch (error) {
@@ -95,6 +103,7 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
     await pg.migrate();
     const migrated: Array<{ table: string; migrated: number }> = [];
     for (const { table, rowCount } of plan) {
+      validateTableName(table);
       if (rowCount === 0) {
         migrated.push({ table, migrated: 0 });
         continue;
@@ -127,7 +136,7 @@ async function main(): Promise<void> {
   const options = parseMigrateSqliteToPgArgs(process.argv.slice(2));
   const result = await migrateSqliteToPg(options);
   // R31-33 FIX: Mask PG DSN in output to prevent credential leakage
-  const maskedDsn = options.pgDsn.replace(/\/\/[^@]+@/, "//****:****@");
+  const maskedDsn = redactDsnCredentials(options.pgDsn);
   process.stdout.write(`${JSON.stringify({
     sqlite: basename(options.sqlitePath),
     pgDsn: maskedDsn,

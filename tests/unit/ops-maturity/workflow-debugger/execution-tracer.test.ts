@@ -199,16 +199,26 @@ test.describe("ExecutionTracer", () => {
       assert.equal(result, null);
     });
 
+    test("removes trace from activeTraces on stop", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+
+      assert.equal(tracer.getActiveTraceCount(), 1);
+      const stopped = tracer.stopTrace(trace.traceId);
+      assert.ok(stopped !== null);
+      assert.equal(tracer.getActiveTraceCount(), 0);
+      assert.equal(tracer.getTrace(trace.traceId), null);
+    });
+
     test("clears events from active storage after stop", () => {
       const tracer = new ExecutionTracer();
       const trace = tracer.startTrace("wf-1", "exec-1");
       tracer.recordEvent(trace.traceId, "step-1", "enter");
 
-      tracer.stopTrace(trace.traceId);
-
-      const updated = tracer.getTrace(trace.traceId);
-      assert.ok(updated !== null);
-      assert.equal(updated.events.length, 1);
+      const stopped = tracer.stopTrace(trace.traceId);
+      assert.ok(stopped !== null);
+      // stopped trace should have events captured
+      assert.equal(stopped.events.length, 1);
     });
   });
 
@@ -231,6 +241,17 @@ test.describe("ExecutionTracer", () => {
       const result = tracer.abortTrace("unknown");
       assert.equal(result, null);
     });
+
+    test("removes trace from activeTraces on abort", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+
+      assert.equal(tracer.getActiveTraceCount(), 1);
+      const aborted = tracer.abortTrace(trace.traceId);
+      assert.ok(aborted !== null);
+      assert.equal(tracer.getActiveTraceCount(), 0);
+      assert.equal(tracer.getTrace(trace.traceId), null);
+    });
   });
 
   test.describe("getTrace", () => {
@@ -249,6 +270,47 @@ test.describe("ExecutionTracer", () => {
     test("returns null for unknown trace", () => {
       const tracer = new ExecutionTracer();
       const result = tracer.getTrace("unknown");
+      assert.equal(result, null);
+    });
+
+    test("getTrace returns null for stopped trace (trace removed from activeTraces)", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      tracer.recordEvent(trace.traceId, "step-1", "enter");
+
+      const stopped = tracer.stopTrace(trace.traceId);
+      assert.ok(stopped !== null);
+
+      // After stop, trace is removed from activeTraces to prevent memory leak
+      const result = tracer.getTrace(trace.traceId);
+      assert.equal(result, null);
+    });
+
+    test("getTrace returns null for aborted trace (trace removed from activeTraces)", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      tracer.recordEvent(trace.traceId, "step-1", "enter");
+
+      const aborted = tracer.abortTrace(trace.traceId);
+      assert.ok(aborted !== null);
+
+      // After abort, trace is removed from activeTraces to prevent memory leak
+      const result = tracer.getTrace(trace.traceId);
+      assert.equal(result, null);
+    });
+
+    test("returns null when events exist without trace data", () => {
+      const tracer = new ExecutionTracer();
+      // Manually simulate the impossible case where events exist but trace doesn't
+      // This cannot happen through normal API but we test the defensive behavior
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      const traceId = trace.traceId;
+
+      // Directly clear the trace but keep events (simulating bug condition)
+      tracer.reset();
+
+      // Even if events somehow remained, getTrace should return null
+      const result = tracer.getTrace(traceId);
       assert.equal(result, null);
     });
   });

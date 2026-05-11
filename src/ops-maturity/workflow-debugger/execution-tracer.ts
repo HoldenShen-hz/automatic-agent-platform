@@ -162,7 +162,7 @@ export class ExecutionTracer {
       totalDurationMs,
     };
 
-    this.activeTraces.set(traceId, updated);
+    this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
 
@@ -183,7 +183,7 @@ export class ExecutionTracer {
       totalDurationMs: null,
     };
 
-    this.activeTraces.set(traceId, updated);
+    this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
 
@@ -199,15 +199,7 @@ export class ExecutionTracer {
       };
     }
 
-    // Check completed/aborted traces - return with current events
-    const events = this.activeEvents.get(traceId);
-    if (events) {
-      return {
-        ...trace!,
-        events: [...events],
-      };
-    }
-
+    // Cannot reconstruct trace without stored trace data - return null
     return null;
   }
 

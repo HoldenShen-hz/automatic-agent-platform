@@ -3,6 +3,7 @@
 export { AsyncApprovalRepository } from "./approval-repository.js";
 export { AsyncArtifactRepository } from "./artifact-repository.js";
 export { AsyncBillingRepository } from "./billing-repository.js";
+export { AsyncBudgetRepository } from "./budget-repository.js";
 export { AsyncCostManagementRepository } from "./cost-management-repository.js";
 export { AsyncDelegationRepository } from "./delegation-repository.js";
 export { AsyncDispatchRepository } from "./dispatch-repository.js";

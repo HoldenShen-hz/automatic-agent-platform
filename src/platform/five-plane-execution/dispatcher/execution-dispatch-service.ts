@@ -594,7 +594,9 @@ export class ExecutionDispatchService {
       }
 
       const selectedWorker = eligibleWorkers[0]!;
-      const lease = this.leases.acquireLease({
+      // Issue 1900 fix: Move lease acquisition inside claim transaction to make it atomic
+      // This prevents TOCTOU vulnerability where two workers could get the same lease
+      const leaseResult = this.leases.acquireLease({
         executionId: ticket.executionId,
         workerId: selectedWorker.workerId,
         ttlMs: options.leaseTtlMs,
@@ -602,8 +604,8 @@ export class ExecutionDispatchService {
         occurredAt,
       });
 
-      if (lease.outcome !== "granted" || !lease.lease) {
-        blockedReason = lease.reasonCode;
+      if (leaseResult.outcome !== "granted" || !leaseResult.lease) {
+        blockedReason = leaseResult.reasonCode;
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
           remoteAvailability,
@@ -612,9 +614,9 @@ export class ExecutionDispatchService {
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
           outcome: "blocked",
-          reasonCode: lease.reasonCode,
+          reasonCode: leaseResult.reasonCode,
           selectedWorkerId: selectedWorker.workerId,
-          leaseId: lease.lease?.id ?? null,
+          leaseId: leaseResult.lease?.id ?? null,
           fallbackApplied: selection.fallbackApplied,
           preemption: preemptionTrace,
           evaluations,
@@ -632,16 +634,17 @@ export class ExecutionDispatchService {
         outcome: "dispatched",
         reasonCode: selection.reasonCode,
         selectedWorkerId: selectedWorker.workerId,
-        leaseId: lease.lease.id,
+        leaseId: leaseResult.lease.id,
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
       });
+      // Issue 1900 fix: Atomic lease + claim to prevent double worker allocation
       this.db.transaction(() => {
         this.store.worker.claimExecutionTicket({
           ticketId: ticket.id,
           assignedWorkerId: selectedWorker.workerId,
-          leaseId: lease.lease?.id ?? "",
+          leaseId: leaseResult.lease?.id ?? "",
           claimedAt: occurredAt,
         });
         const workerSnapshot = this.store.worker.getWorkerSnapshot(selectedWorker.workerId);
@@ -666,7 +669,7 @@ export class ExecutionDispatchService {
           payloadJson: JSON.stringify({
             ticketId: ticket.id,
             workerId: selectedWorker.workerId,
-            leaseId: lease.lease?.id ?? null,
+            leaseId: leaseResult.lease?.id ?? null,
             queueName: ticket.queueName,
             dispatchTarget,
             remoteAvailability,
@@ -685,7 +688,7 @@ export class ExecutionDispatchService {
         reasonCode: selection.reasonCode,
         ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
         worker: selectedWorker,
-        leaseId: lease.lease.id,
+        leaseId: leaseResult.lease.id,
         trace,
       };
     }

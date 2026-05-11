@@ -17,6 +17,13 @@ import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
 
+function normalizeMessageLimit(limit: number): number {
+  if (!Number.isFinite(limit) || !Number.isInteger(limit) || limit <= 0) {
+    throw new Error("session_repository.invalid_limit");
+  }
+  return limit;
+}
+
 export class AsyncSessionRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
@@ -110,13 +117,30 @@ export class AsyncSessionRepository {
   }
 
   public async listMessagesBySession(sessionId: string, limit?: number): Promise<MessageRecord[]> {
-    const limitClause = limit ? ` LIMIT ${limit}` : "";
-    const sql = `SELECT
+    if (limit == null) {
+      return asyncQueryAll<MessageRecord>(
+        this.conn,
+        `SELECT
+          id, session_id AS "sessionId", direction, message_type AS "messageType",
+          content, parts_json AS "partsJson", attachments_json AS "attachmentsJson",
+          created_at AS "createdAt"
+         FROM messages WHERE session_id = $1 ORDER BY created_at ASC`,
+        sessionId,
+      );
+    }
+
+    const normalizedLimit = normalizeMessageLimit(limit);
+    return asyncQueryAll<MessageRecord>(
+      this.conn,
+      `SELECT
         id, session_id AS "sessionId", direction, message_type AS "messageType",
         content, parts_json AS "partsJson", attachments_json AS "attachmentsJson",
         created_at AS "createdAt"
-       FROM messages WHERE session_id = $1 ORDER BY created_at ASC${limitClause}`;
-    return asyncQueryAll<MessageRecord>(this.conn, sql, sessionId);
+       FROM messages WHERE session_id = $1 ORDER BY created_at ASC
+       LIMIT $2`,
+      sessionId,
+      normalizedLimit,
+    );
   }
 
   public async insertSessionSummary(summary: SessionSummaryRecord): Promise<void> {

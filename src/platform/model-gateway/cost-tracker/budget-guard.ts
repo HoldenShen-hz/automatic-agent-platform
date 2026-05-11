@@ -385,7 +385,7 @@ export class BudgetGuard {
       };
     }
 
-    const settledLedger = this.sessionManager.settle(sessionId, actualAmount);
+    const settledLedger = await this.sessionManager.settle(sessionId, actualAmount);
 
     const updatedSession: AtomicBudgetSession = {
       ...session,
@@ -760,9 +760,9 @@ export class BudgetExecutionSessionManager {
     return updated;
   }
 
-  public settle(sessionId: string, actualAmount: number): BudgetLedger {
+  public async settle(sessionId: string, actualAmount: number): Promise<BudgetLedger> {
     const session = this.getRequiredSession(sessionId);
-    const settled = this.allocator.settle({
+    const settled = await this.allocator.settle({
       ledger: session.ledger,
       reservation: session.reservation,
       actualAmount,

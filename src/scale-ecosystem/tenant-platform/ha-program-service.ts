@@ -181,11 +181,11 @@ export class HaProgramService {
     ];
 
     // Determine overall status based on component readiness
-    const overallStatus = components.every((component) => component.ready)
-      ? "pass"
-      : components.some((component) => component.componentId === "coordinator" || component.componentId === "postgres")
-        ? "fail"
-        : "warning";
+    const allReady = components.every((component) => component.ready);
+    const hasCriticalNotReady = components.some(
+      (component) => (component.componentId === "coordinator" || component.componentId === "postgres") && !component.ready,
+    );
+    const overallStatus = allReady ? "pass" : hasCriticalNotReady ? "fail" : "warning";
 
     return {
       reportId: newId("ha_program"),

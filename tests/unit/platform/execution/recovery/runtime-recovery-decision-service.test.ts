@@ -350,7 +350,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_d
   assert.equal(failureUpdated, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
+test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", async () => {
   const db = createMockDb();
   let deadLetterInserted = false;
   const candidate = createMockCandidate({

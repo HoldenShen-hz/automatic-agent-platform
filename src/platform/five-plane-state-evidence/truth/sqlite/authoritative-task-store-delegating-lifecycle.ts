@@ -155,6 +155,19 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
     return this.delegateLegacy("insertCostEvent", "billing", "insertCostEvent", ...args);
   }
 
+  // R4-28 (INV-COST-001): WAL methods for atomic cost tracking
+  public insertCostEventWAL(...args: Parameters<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["insertCostEventWAL"]>): ReturnType<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["insertCostEventWAL"]> {
+    return this.delegateRepo("billing", "insertCostEventWAL", ...args);
+  }
+
+  public commitCostEventWAL(...args: Parameters<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["commitCostEventWAL"]>): ReturnType<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["commitCostEventWAL"]> {
+    return this.delegateRepo("billing", "commitCostEventWAL", ...args);
+  }
+
+  public cleanupPendingCostEventWAL(...args: Parameters<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["cleanupPendingCostEventWAL"]>): ReturnType<import("../repositories/authoritative-task-store-repositories.js").AuthoritativeTaskStoreRepositories["billing"]["cleanupPendingCostEventWAL"]> {
+    return this.delegateRepo("billing", "cleanupPendingCostEventWAL", ...args);
+  }
+
   public override listCostEventsByTask(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listCostEventsByTask"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listCostEventsByTask"]> {
     return this.delegateLegacy("listCostEventsByTask", "billing", "listCostEventsByTask", ...args);
   }

@@ -85,6 +85,30 @@ CREATE INDEX IF NOT EXISTS idx_cost_events_task_id ON cost_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_cost_events_budget_scope ON cost_events(budget_scope);
 CREATE INDEX IF NOT EXISTS idx_cost_events_created_at ON cost_events(created_at);
 
+-- R4-28 (INV-COST-001): Write-ahead log for cost events to prevent loss on crash
+CREATE TABLE IF NOT EXISTS cost_event_wal (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  session_id TEXT NULL,
+  execution_id TEXT NULL,
+  agent_id TEXT NULL,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cost_usd REAL NOT NULL DEFAULT 0,
+  budget_scope TEXT NOT NULL DEFAULT 'task_execution',
+  provider_request_id TEXT NULL,
+  pricing_version TEXT NULL,
+  created_at TEXT NOT NULL,
+  wal_status TEXT NOT NULL DEFAULT 'pending',
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_cost_event_wal_task_id ON cost_event_wal(task_id);
+CREATE INDEX IF NOT EXISTS idx_cost_event_wal_status ON cost_event_wal(wal_status);
+CREATE INDEX IF NOT EXISTS idx_cost_event_wal_created_at ON cost_event_wal(created_at);
+
 CREATE TABLE IF NOT EXISTS executions (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL,

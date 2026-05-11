@@ -207,7 +207,7 @@ function buildStartupConsistencyReport(
   );
 
   const status: StartupReportStatus = findings.some((finding) => finding.severity === "p0")
-    ? "fail_closed"
+    ? "fail_closed_UNIQUE_MARKER_ABC123"
     : findings.length > 0
       ? "repairable"
       : "pass";
@@ -290,7 +290,6 @@ export class StartupConsistencyChecker {
   }
 
   public run(options: StartupConsistencyOptions = {}): StartupConsistencyReport {
-    console.log("RUN_METHOD: START, _trafficBlocked =", this._trafficBlocked);
     const checkedAt = options.now ?? new Date().toISOString();
     const staleExecutionAfterMs = options.staleExecutionAfterMs ?? 5 * 60 * 1000;
     const pendingAckOlderThanMs = options.pendingAckOlderThanMs ?? 2 * 60 * 1000;
@@ -514,14 +513,9 @@ export class StartupConsistencyChecker {
     const report = buildStartupConsistencyReport(checkedAt, findings);
 
     // Enforce fail_closed: block traffic when P0 findings are detected
-    console.log("AT_END_OF_RUN: report.status =", report.status, "type =", typeof report.status, "_trafficBlocked before =", this._trafficBlocked);
-    console.log("AT_END_OF_RUN: status string repr =", JSON.stringify(report.status));
-    const statusIsFailClosed = report.status === "fail_closed";
-    console.log("AT_END_OF_RUN: statusIsFailClosed =", statusIsFailClosed);
-    if (statusIsFailClosed) {
-      (this as any).setTrafficBlockedTrue = true;
+    if (report.status === "fail_closed") {
       this._trafficBlocked = true;
-      console.log("AT_END_OF_RUN: just set _trafficBlocked = true, new value =", this._trafficBlocked);
+      this.options.onTrafficBlocked?.();
     }
 
     return report;
