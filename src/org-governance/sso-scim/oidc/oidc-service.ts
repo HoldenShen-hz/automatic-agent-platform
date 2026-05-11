@@ -326,9 +326,10 @@ export class OidcIdentityService {
       refreshToken: session.refreshToken,
     }) ?? this.simulateRefreshResponse(session.refreshToken);
 
-    // Update session with new tokens
+    // Update session with new tokens - §48 Token Rotation: rotate refresh token
     session.accessToken = newTokens.accessToken;
     session.idToken = newTokens.idToken;
+    session.refreshToken = newTokens.refreshToken;
     session.expiresAt = newTokens.expiresAt;
     session.lastActivityAt = nowIso();
 
@@ -545,7 +546,7 @@ export class OidcIdentityService {
     return {
       accessToken: `at_${newId("access")}`,
       idToken: `id_${newId("id")}`,
-      refreshToken,
+      refreshToken: `rt_${newId("refresh")}`, // §48 Token Rotation: issue new refresh token
       expiresIn,
       tokenType: "Bearer",
       expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),

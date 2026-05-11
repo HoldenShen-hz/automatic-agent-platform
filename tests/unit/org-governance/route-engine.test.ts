@@ -273,6 +273,58 @@ test("resolveAmountRoute prefers nodes within request orgNodeId or its parent", 
   assert.equal(result?.orgNodeId, "team-inside");
 });
 
+test("resolveAmountRoute handles amount exactly equal to threshold (boundary)", () => {
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountUsd: 5000, targetNodeTypes: ["department"] },
+  ];
+
+  const request: ApprovalRouteRequest = {
+    requesterId: "user-1",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 5000, // Exactly at threshold
+  };
+
+  const result = resolveAmountRoute(SAMPLE_NODES, request, rules);
+  assert.ok(result != null, "Amount exactly at threshold should be handled");
+  assert.equal(result?.nodeType, "department");
+});
+
+test("resolveAmountRoute amount above threshold falls to next rule", () => {
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountUsd: 5000, targetNodeTypes: ["department"] },
+    { maxAmountUsd: 10000, targetNodeTypes: ["division"] },
+  ];
+
+  const request: ApprovalRouteRequest = {
+    requesterId: "user-1",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 7500, // Above first threshold, below second
+  };
+
+  const result = resolveAmountRoute(SAMPLE_NODES, request, rules);
+  assert.ok(result != null);
+  assert.equal(result?.nodeType, "division");
+});
+
+test("resolveAmountRoute amount exactly at last rule threshold is handled", () => {
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountUsd: 5000, targetNodeTypes: ["department"] },
+  ];
+
+  const request: ApprovalRouteRequest = {
+    requesterId: "user-1",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 5000, // Exactly at threshold - should match, not fall through
+  };
+
+  const result = resolveAmountRoute(SAMPLE_NODES, request, rules);
+  assert.ok(result != null, "Amount exactly at threshold should match rule");
+  assert.equal(result?.nodeType, "department");
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // applySodPolicy Tests
 // ─────────────────────────────────────────────────────────────────────────────

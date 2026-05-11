@@ -96,6 +96,53 @@ test("resolveCompliancePolicyForNode returns multiple policies from single node"
 
   const result = resolveCompliancePolicyForNode(nodes, "root", policiesByNodeId);
 
-  assert.strictEqual(result.ruleA, 1);
-  assert.strictEqual(result.ruleB, 2);
+  assert.strictEqual(result.policy.ruleA, 1);
+  assert.strictEqual(result.policy.ruleB, 2);
+});
+
+test("resolveCompliancePolicyForNode returns denyByDefault=false when policies exist in lineage", () => {
+  const nodes: readonly OrgNode[] = [
+    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "dept", nodeType: "department", displayName: "Engineering", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+  ];
+
+  const policiesByNodeId = {
+    root: [{ policyId: "root_policy", rules: { level: "company" } }],
+  };
+
+  const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
+
+  assert.strictEqual(result.denyByDefault, false);
+  assert.strictEqual(result.policy.level, "company");
+});
+
+test("resolveCompliancePolicyForNode returns denyByDefault=true when no policies exist in lineage", () => {
+  const nodes: readonly OrgNode[] = [
+    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+  ];
+
+  const policiesByNodeId = {};
+
+  const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
+
+  assert.strictEqual(result.denyByDefault, true);
+  assert.deepStrictEqual(result.policy, {});
+});
+
+test("resolveCompliancePolicyForNode returns denyByDefault=true for node with empty policy array", () => {
+  const nodes: readonly OrgNode[] = [
+    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+  ];
+
+  const policiesByNodeId = {
+    root: [],
+    dept: [],
+  };
+
+  const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
+
+  assert.strictEqual(result.denyByDefault, true);
+  assert.deepStrictEqual(result.policy, {});
 });

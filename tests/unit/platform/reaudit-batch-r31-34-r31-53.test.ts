@@ -227,7 +227,6 @@ test("R31-53: model-call provider feeds unified-chat usage back into budget sett
   const calls: string[] = [];
   const originalReserve = budgetGuard.atomicReserve.bind(budgetGuard);
   const originalExecute = budgetGuard.atomicExecute.bind(budgetGuard);
-  const originalSettle = budgetGuard.atomicSettle.bind(budgetGuard);
 
   budgetGuard.atomicReserve = (...args: unknown[]) => {
     calls.push("reserve");
@@ -237,9 +236,13 @@ test("R31-53: model-call provider feeds unified-chat usage back into budget sett
     calls.push("execute");
     return originalExecute(...args);
   };
-  budgetGuard.atomicSettle = (...args: unknown[]) => {
+  budgetGuard.atomicSettle = async () => {
     calls.push("settle");
-    return originalSettle(...args);
+    return {
+      session: { sessionId: "budget-session-1" },
+      success: true,
+      reasonCode: "budget.settled",
+    };
   };
 
   const providerStub = {

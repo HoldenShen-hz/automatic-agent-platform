@@ -511,7 +511,7 @@ export class BudgetAllocator {
 
     // Apply accounting amounts on top of RSM-updated ledger
     return {
-      reservation: reservationResult.aggregate,
+      reservation: reservationResult,
       settlement,
       ledger: {
         ...ledgerResult.aggregate,

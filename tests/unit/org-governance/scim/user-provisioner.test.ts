@@ -102,7 +102,7 @@ test("UserProvisioner retrieves user by ID", () => {
   const service = new ScimProvisionService();
   const created = service.createUser(createTestUser(), "tenant-1");
 
-  const retrieved = service.getUser(created.id);
+  const retrieved = service.getUser(created.id, "tenant-1");
 
   assert.ok(retrieved);
   assert.equal(retrieved!.id, created.id);
@@ -112,7 +112,7 @@ test("UserProvisioner retrieves user by ID", () => {
 test("UserProvisioner returns null for non-existent user ID", () => {
   const service = new ScimProvisionService();
 
-  const retrieved = service.getUser("non-existent-id");
+  const retrieved = service.getUser("non-existent-id", "tenant-1");
 
   assert.equal(retrieved, null);
 });
@@ -121,7 +121,7 @@ test("UserProvisioner retrieves user by username", () => {
   const service = new ScimProvisionService();
   service.createUser(createTestUser({ userName: "john.doe" }), "tenant-1");
 
-  const retrieved = service.getUserByUsername("john.doe");
+  const retrieved = service.getUserByUsername("john.doe", "tenant-1");
 
   assert.ok(retrieved);
   assert.equal(retrieved!.userName, "john.doe");
@@ -131,7 +131,7 @@ test("UserProvisioner retrieves user by username case-insensitively", () => {
   const service = new ScimProvisionService();
   service.createUser(createTestUser({ userName: "JohnDoe" }), "tenant-1");
 
-  const retrieved = service.getUserByUsername("johndoe");
+  const retrieved = service.getUserByUsername("johndoe", "tenant-1");
 
   assert.ok(retrieved);
   assert.equal(retrieved!.userName, "JohnDoe");
@@ -140,7 +140,7 @@ test("UserProvisioner retrieves user by username case-insensitively", () => {
 test("UserProvisioner returns null for non-existent username", () => {
   const service = new ScimProvisionService();
 
-  const retrieved = service.getUserByUsername("non-existent");
+  const retrieved = service.getUserByUsername("non-existent", "tenant-1");
 
   assert.equal(retrieved, null);
 });
@@ -149,7 +149,7 @@ test("UserProvisioner retrieves user by email", () => {
   const service = new ScimProvisionService();
   service.createUser(createTestUser({ emails: [{ value: "john@example.com", primary: true }] }), "tenant-1");
 
-  const retrieved = service.getUserByEmail("john@example.com");
+  const retrieved = service.getUserByEmail("john@example.com", "tenant-1");
 
   assert.ok(retrieved);
   assert.equal(retrieved!.emails[0]!.value, "john@example.com");
@@ -159,7 +159,7 @@ test("UserProvisioner retrieves user by email case-insensitively", () => {
   const service = new ScimProvisionService();
   service.createUser(createTestUser({ emails: [{ value: "John@Example.COM", primary: true }] }), "tenant-1");
 
-  const retrieved = service.getUserByEmail("john@example.com");
+  const retrieved = service.getUserByEmail("john@example.com", "tenant-1");
 
   assert.ok(retrieved);
   assert.equal(retrieved!.emails[0]!.value, "John@Example.COM");
@@ -194,8 +194,8 @@ test("UserProvisioner updates user username and re-indexes", () => {
 
   service.updateUser(created.id, { userName: "newname" }, "tenant-1");
 
-  assert.equal(service.getUserByUsername("oldname"), null);
-  assert.ok(service.getUserByUsername("newname"));
+  assert.equal(service.getUserByUsername("oldname", "tenant-1"), null);
+  assert.ok(service.getUserByUsername("newname", "tenant-1"));
 });
 
 test("UserProvisioner records user_updated event", () => {

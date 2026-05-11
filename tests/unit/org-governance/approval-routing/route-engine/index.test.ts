@@ -94,6 +94,29 @@ test("AmountBasedRoutingStrategy uses threshold rules", () => {
   assert.equal(selected?.nodeType, "team");
 });
 
+test("AmountBasedRoutingStrategy handles exact threshold boundary correctly", () => {
+  // Issue #1978: Amount exactly equal to threshold must be handled, not fall through
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountCny: 1000, targetNodeTypes: ["team"] },
+    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
+  ];
+  const strategy = new AmountBasedRoutingStrategy(rules);
+  const nodes = [
+    { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
+    { orgNodeId: "n2", nodeType: "department" as const, active: true, ownerUserIds: ["owner2"] },
+  ];
+  // Exact boundary: amount equals 1000 (the team threshold)
+  const request = ApprovalRouteRequestSchema.parse({
+    requesterId: "user-1",
+    orgNodeId: "n1",
+    riskLevel: "low",
+    amount: { value: 1000, currency: "CNY" },
+  });
+  const selected = strategy.selectNode(nodes, request);
+  assert.ok(selected != null, "Amount exactly equal to threshold should match the rule");
+  assert.equal(selected?.nodeType, "team");
+});
+
 test("resolveAmountRoute returns company node when no rules match", () => {
   const rules: readonly AmountThresholdRule[] = [
     { maxAmountCny: 100, targetNodeTypes: ["team"] },

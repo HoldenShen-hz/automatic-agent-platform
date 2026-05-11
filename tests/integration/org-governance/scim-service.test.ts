@@ -34,9 +34,12 @@ test("integration: SCIM users are isolated by tenantId", () => {
   // Users should have different IDs
   assert.notEqual(userA.id, userB.id, "users from different tenants should have different IDs");
 
-  // Both users should be retrievable
-  assert.ok(service.getUser(userA.id) !== null, "userA should be retrievable");
-  assert.ok(service.getUser(userB.id) !== null, "userB should be retrievable");
+  // Both users should be retrievable by their own tenant
+  assert.ok(service.getUser(userA.id, "tenant-a") !== null, "userA should be retrievable by tenant-a");
+  assert.ok(service.getUser(userB.id, "tenant-b") !== null, "userB should be retrievable by tenant-b");
+  // Cross-tenant access should be blocked
+  assert.equal(service.getUser(userA.id, "tenant-b"), null, "userA should NOT be retrievable by tenant-b");
+  assert.equal(service.getUser(userB.id, "tenant-a"), null, "userB should NOT be retrievable by tenant-a");
 });
 
 test("integration: SCIM getProvisionEvents filters by tenantId", () => {
@@ -106,11 +109,14 @@ test("integration: SCIM deleteUser removes user but does not affect other tenant
   const deletedA = service.deleteUser(userA.id, "tenant-a");
   assert.equal(deletedA, true, "userA should be deleted");
 
-  // User A should not be retrievable
-  assert.equal(service.getUser(userA.id), null, "userA should not be found after delete");
+  // User A should not be retrievable by tenant-a
+  assert.equal(service.getUser(userA.id, "tenant-a"), null, "userA should not be found after delete");
 
-  // User B should still be retrievable
-  assert.ok(service.getUser(userB.id) !== null, "userB should still be found");
+  // User B should still be retrievable by tenant-b
+  assert.ok(service.getUser(userB.id, "tenant-b") !== null, "userB should still be found");
+  // Cross-tenant access should be blocked
+  assert.equal(service.getUser(userA.id, "tenant-b"), null, "userA should not be accessible by tenant-b");
+  assert.equal(service.getUser(userB.id, "tenant-a"), null, "userB should not be accessible by tenant-a");
 });
 
 test("integration: SCIM disableUser only affects the specified tenant", () => {
@@ -161,9 +167,13 @@ test("integration: SCIM groups are isolated by tenant", () => {
   // Groups should have different IDs
   assert.notEqual(groupA.id, groupB.id, "groups with same name in different tenants should have different IDs");
 
-  // Both should be retrievable
-  assert.ok(service.getGroup(groupA.id) !== null, "groupA should be retrievable");
-  assert.ok(service.getGroup(groupB.id) !== null, "groupB should be retrievable");
+  // Both should be retrievable by their own tenant
+  assert.ok(service.getGroup(groupA.id, "tenant-a") !== null, "groupA should be retrievable by tenant-a");
+  assert.ok(service.getGroup(groupB.id, "tenant-b") !== null, "groupB should be retrievable by tenant-b");
+  // Cross-tenant access should be blocked
+  assert.equal(service.getGroup(groupA.id, "tenant-b"), null, "groupA should NOT be retrievable by tenant-b");
+  assert.equal(service.getGroup(groupB.id, "tenant-a"), null, "groupB should NOT be retrievable by tenant-a");
+});
 });
 
 // ============================================================================
@@ -425,8 +435,8 @@ test("integration: SCIM bulk operations create users", () => {
   assert.equal(result.Operations[1]!.status, "201", "second operation should return 201");
 
   // Verify users were created
-  assert.ok(service.getUserByUsername("bulkuser1") !== null, "bulkuser1 should exist");
-  assert.ok(service.getUserByUsername("bulkuser2") !== null, "bulkuser2 should exist");
+  assert.ok(service.getUserByUsername("bulkuser1", "tenant-bulk") !== null, "bulkuser1 should exist");
+  assert.ok(service.getUserByUsername("bulkuser2", "tenant-bulk") !== null, "bulkuser2 should exist");
 });
 
 test("integration: SCIM bulk operations with bulkId references", () => {
@@ -568,11 +578,11 @@ test("integration: SCIM getUserByUsername and getUserByEmail", () => {
     groups: [],
   }, "tenant-lookup");
 
-  const byUsername = service.getUserByUsername("lookupuser");
+  const byUsername = service.getUserByUsername("lookupuser", "tenant-lookup");
   assert.ok(byUsername !== null, "should find user by username");
   assert.equal(byUsername!.userName, "lookupuser", "username should match");
 
-  const byEmail = service.getUserByEmail("lookup@example.com");
+  const byEmail = service.getUserByEmail("lookup@example.com", "tenant-lookup");
   assert.ok(byEmail !== null, "should find user by email");
   assert.equal(byEmail!.userName, "lookupuser", "username should match");
 });
@@ -580,13 +590,13 @@ test("integration: SCIM getUserByUsername and getUserByEmail", () => {
 test("integration: SCIM getUserByUsername returns null for non-existent user", () => {
   const service = createScimProvisionService();
 
-  const result = service.getUserByUsername("nonexistent");
+  const result = service.getUserByUsername("nonexistent", "tenant-test");
   assert.equal(result, null, "should return null for non-existent user");
 });
 
 test("integration: SCIM getUserByEmail returns null for non-existent email", () => {
   const service = createScimProvisionService();
 
-  const result = service.getUserByEmail("nonexistent@example.com");
+  const result = service.getUserByEmail("nonexistent@example.com", "tenant-test");
   assert.equal(result, null, "should return null for non-existent email");
 });

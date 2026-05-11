@@ -114,3 +114,70 @@ test("KnowledgeShareGrantSchema rejects missing required fields", () => {
     });
   });
 });
+
+test("evaluateKnowledgeShare denies expired grant via date comparison", () => {
+  const boundary: KnowledgeBoundary = {
+    boundaryId: "kb_1",
+    ownerOrgNodeId: "org_owner",
+    namespaceIds: [],
+  };
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_expired",
+      boundaryId: "kb_1",
+      requesterOrgNodeId: "org_requester",
+      purpose: "research",
+      expiresAt: "2020-01-01T00:00:00.000Z", // expired in 2020
+    },
+  ];
+
+  const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
+
+  assert.strictEqual(result.allowed, false);
+  assert.strictEqual(result.reason, "no_matching_grant_or_not_allowed");
+});
+
+test("evaluateKnowledgeShare allows valid non-expired grant via date comparison", () => {
+  const boundary: KnowledgeBoundary = {
+    boundaryId: "kb_1",
+    ownerOrgNodeId: "org_owner",
+    namespaceIds: [],
+  };
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_valid",
+      boundaryId: "kb_1",
+      requesterOrgNodeId: "org_requester",
+      purpose: "research",
+      expiresAt: "2030-01-01T00:00:00.000Z", // expires in 2030
+    },
+  ];
+
+  const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
+
+  assert.strictEqual(result.allowed, true);
+  assert.strictEqual(result.reason, "active_grant");
+  assert.strictEqual(result.matchedGrantId, "grant_valid");
+});
+
+test("evaluateKnowledgeShare allows grant when expiresAt is null/undefined", () => {
+  const boundary: KnowledgeBoundary = {
+    boundaryId: "kb_1",
+    ownerOrgNodeId: "org_owner",
+    namespaceIds: [],
+  };
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_no_expiry",
+      boundaryId: "kb_1",
+      requesterOrgNodeId: "org_requester",
+      purpose: "research",
+      expiresAt: "", // empty string - falsy, should be treated as no expiry
+    },
+  ];
+
+  const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
+
+  assert.strictEqual(result.allowed, true);
+  assert.strictEqual(result.reason, "active_grant");
+});

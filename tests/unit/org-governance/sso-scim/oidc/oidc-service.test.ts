@@ -144,6 +144,24 @@ test("OidcIdentityService refreshes access token", async () => {
   assert.notEqual(newTokens!.accessToken, tokens!.accessToken);
 });
 
+test("OidcIdentityService refreshes access token and rotates refresh token", async () => {
+  const service = new OidcIdentityService(createOidcConfig());
+  const { state } = service.initiateFlow("https://app.example.com/callback");
+  const tokens = await service.exchangeCodeForTokens("auth-code", state);
+  const userInfo = await service.fetchUserInfo(tokens!.accessToken);
+  const session = service.createSession(tokens!, userInfo!);
+
+  // Verify initial refresh token exists
+  assert.ok(tokens!.refreshToken, "initial tokens should have refresh token");
+
+  const newTokens = await service.refreshAccessToken(session.sessionId);
+
+  assert.ok(newTokens, "refresh should return new tokens");
+  assert.notEqual(newTokens!.accessToken, tokens!.accessToken, "access token should be rotated");
+  assert.ok(newTokens!.refreshToken, "new tokens should have refresh token");
+  assert.notEqual(newTokens!.refreshToken, tokens!.refreshToken, "refresh token should be rotated");
+});
+
 test("OidcIdentityService returns null for refresh without refresh token", async () => {
   const service = new OidcIdentityService(createOidcConfig());
   const { state } = service.initiateFlow("https://app.example.com/callback");

@@ -518,7 +518,7 @@ export class BudgetGuard {
     const executeResult = this.atomicExecute(reserveResult.session.sessionId);
     if (!executeResult.success) {
       // Release reserved budget on failure
-      this.atomicRelease(reserveResult.session.sessionId);
+      await this.atomicRelease(reserveResult.session.sessionId);
       return {
         success: false,
         ledger: executeResult.session.ledger,
@@ -535,7 +535,7 @@ export class BudgetGuard {
       actualCost = request.spend.nextEstimatedCostUsd;
     } catch (err) {
       // Release on execution failure
-      this.atomicRelease(reserveResult.session.sessionId);
+      await this.atomicRelease(reserveResult.session.sessionId);
       return {
         success: false,
         ledger: reserveResult.session.ledger,
@@ -545,7 +545,7 @@ export class BudgetGuard {
     }
 
     // Phase 4: Settle with actual cost
-    const settleResult = this.atomicSettle(reserveResult.session.sessionId, actualCost);
+    const settleResult = await this.atomicSettle(reserveResult.session.sessionId, actualCost);
     if (settleResult.success) {
       return {
         success: true,

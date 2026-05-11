@@ -178,7 +178,7 @@ export class ModelCallProviderService {
     const budgetSessionId = reserveResult.session.sessionId;
     const executeBudgetResult = this.budgetGuard.atomicExecute(budgetSessionId);
     if (!executeBudgetResult.success) {
-      this.budgetGuard.atomicRelease(budgetSessionId);
+      await this.budgetGuard.atomicRelease(budgetSessionId);
       throw new ProviderError("model_call.budget_execute_failed", `Budget execution failed for LLM call: ${executeBudgetResult.reasonCode}`, {
         retryable: false,
       });
@@ -225,7 +225,7 @@ export class ModelCallProviderService {
         });
       }
 
-      const settleResult = this.budgetGuard.atomicSettle(
+      const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
         this.estimateActualLlmCallCost(result, request.model) ?? estimatedCostUsd,
       );
@@ -238,7 +238,7 @@ export class ModelCallProviderService {
       return result;
     } catch (error) {
       if (!budgetSettled) {
-        this.budgetGuard.atomicRelease(budgetSessionId);
+        await this.budgetGuard.atomicRelease(budgetSessionId);
       }
       throw error;
     } finally {
@@ -300,7 +300,7 @@ export class ModelCallProviderService {
     const budgetSessionId = reserveResult.session.sessionId;
     const executeBudgetResult = this.budgetGuard.atomicExecute(budgetSessionId);
     if (!executeBudgetResult.success) {
-      this.budgetGuard.atomicRelease(budgetSessionId);
+      await this.budgetGuard.atomicRelease(budgetSessionId);
       throw new ProviderError("model_call.budget_execute_failed", `Budget execution failed for LLM call: ${executeBudgetResult.reasonCode}`, {
         retryable: false,
       });
@@ -338,7 +338,7 @@ export class ModelCallProviderService {
         }
       }
 
-      const settleResult = this.budgetGuard.atomicSettle(
+      const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
         this.estimateActualLlmCallCost(latestChunk, request.model) ?? estimatedCostUsd,
       );
@@ -350,7 +350,7 @@ export class ModelCallProviderService {
       budgetSettled = true;
     } catch (error) {
       if (!budgetSettled) {
-        this.budgetGuard.atomicRelease(budgetSessionId);
+        await this.budgetGuard.atomicRelease(budgetSessionId);
       }
       throw error;
     } finally {

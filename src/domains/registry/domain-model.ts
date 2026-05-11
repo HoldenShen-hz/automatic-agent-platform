@@ -3,7 +3,6 @@ import { DomainExecutionProfileSchema } from "../domain-specs.js";
 
 const DOMAIN_STATUS_ALIASES = {
   testing: "validated",
-  canary: "registered",
 } as const;
 
 const DOMAIN_PLUGIN_TYPE_ALIASES = {
@@ -111,7 +110,7 @@ export const DomainDefinitionSchema = z.object({
     (value) => typeof value === "string"
       ? DOMAIN_STATUS_ALIASES[value as keyof typeof DOMAIN_STATUS_ALIASES] ?? value
       : value,
-    z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]),
+    z.enum(["draft", "validated", "registered", "canary", "active", "updating", "deprecated", "archived"]),
   ).default("draft"),
   executionProfile: DomainExecutionProfileSchema.default({}),
   externalAdapters: z.array(z.string()).default([]),
@@ -130,13 +129,22 @@ export type PluginBinding = Omit<PluginBindingParsed, "pluginType"> & {
 };
 type DomainDefinitionParsed = z.infer<typeof DomainDefinitionSchema>;
 export type DomainDefinition = Omit<DomainDefinitionParsed, "status" | "pluginBindings" | "executionProfile"> & {
-  status: DomainDefinitionParsed["status"] | "testing" | "canary";
+  status: DomainDefinitionParsed["status"];
   pluginBindings: PluginBinding[];
   executionProfile?: DomainDefinitionParsed["executionProfile"];
 };
 export type DomainDefinitionExtended = DomainDefinition;
 
 // R8-27 FIX: DomainManifest type for domain metadata
+export const ResourceQuotaSchema = z.object({
+  cpuLimit: z.number().positive().optional(),
+  cpuLimitUnit: z.string().default("cores"),
+  memoryLimit: z.number().positive().optional(),
+  memoryLimitUnit: z.string().default("MB"),
+  concurrencyLimit: z.number().int().positive().optional(),
+  timeoutMs: z.number().int().positive().optional(),
+});
+
 export const DomainManifestSchema = z.object({
   domainId: z.string().min(1),
   name: z.string().min(1),
@@ -151,6 +159,8 @@ export const DomainManifestSchema = z.object({
   publicSdkSurface: z.string().min(1),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
   tags: z.array(z.string()).default([]),
+  resourceQuotas: ResourceQuotaSchema.default({}),
 });
 
 export type DomainManifest = z.infer<typeof DomainManifestSchema>;
+export type ResourceQuota = z.infer<typeof ResourceQuotaSchema>;

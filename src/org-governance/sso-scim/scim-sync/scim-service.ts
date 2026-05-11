@@ -178,35 +178,52 @@ export class ScimProvisionService {
   }
 
   /**
-   * Gets a user by ID.
+   * Gets a user by ID, scoped to a tenant.
    *
    * @param userId - User ID
+   * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUser(userId: string): ScimUser | null {
-    return this.users.get(userId) ?? null;
+  public getUser(userId: string, tenantId: string): ScimUser | null {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    // Tenant isolation: only return users belonging to the calling tenant
+    if (user.tenantId !== tenantId) return null;
+    return user;
   }
 
   /**
-   * Gets a user by username.
+   * Gets a user by username, scoped to a tenant.
    *
    * @param userName - Username
+   * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUserByUsername(userName: string): ScimUser | null {
+  public getUserByUsername(userName: string, tenantId: string): ScimUser | null {
     const userId = this.userByUsername.get(userName.toLowerCase());
-    return userId ? this.users.get(userId) ?? null : null;
+    if (!userId) return null;
+    const user = this.users.get(userId);
+    if (!user) return null;
+    // Tenant isolation: only return users belonging to the calling tenant
+    if (user.tenantId !== tenantId) return null;
+    return user;
   }
 
   /**
-   * Gets a user by email.
+   * Gets a user by email, scoped to a tenant.
    *
    * @param email - Email address
+   * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUserByEmail(email: string): ScimUser | null {
+  public getUserByEmail(email: string, tenantId: string): ScimUser | null {
     const userId = this.userByEmail.get(email.toLowerCase());
-    return userId ? this.users.get(userId) ?? null : null;
+    if (!userId) return null;
+    const user = this.users.get(userId);
+    if (!user) return null;
+    // Tenant isolation: only return users belonging to the calling tenant
+    if (user.tenantId !== tenantId) return null;
+    return user;
   }
 
   /**
@@ -220,6 +237,8 @@ export class ScimProvisionService {
   public updateUser(userId: string, updates: Partial<Omit<ScimUser, "id" | "meta">>, tenantId: string): ScimUser | null {
     const existing = this.users.get(userId);
     if (!existing) return null;
+    // Tenant isolation: only allow updates to users belonging to the calling tenant
+    if (existing.tenantId !== tenantId) return null;
 
     const updatedUser: ScimUser = {
       ...existing,
@@ -274,6 +293,8 @@ export class ScimProvisionService {
   public deleteUser(userId: string, tenantId: string): boolean {
     const existing = this.users.get(userId);
     if (!existing) return false;
+    // Tenant isolation: only allow deletion of users belonging to the calling tenant
+    if (existing.tenantId !== tenantId) return false;
 
     this.users.delete(userId);
     this.userByUsername.delete(existing.userName.toLowerCase());
@@ -285,7 +306,7 @@ export class ScimProvisionService {
     // Remove from all groups
     for (const group of this.groups.values()) {
       if (group.members.some((m) => m.value === userId)) {
-        this.removeMemberFromGroup(group.id, userId);
+        this.removeMemberFromGroup(group.id, userId, tenantId);
       }
     }
 
@@ -361,24 +382,35 @@ export class ScimProvisionService {
   }
 
   /**
-   * Gets a group by ID.
+   * Gets a group by ID, scoped to a tenant.
    *
    * @param groupId - Group ID
+   * @param tenantId - Tenant ID for isolation
    * @returns Group or null
    */
-  public getGroup(groupId: string): ScimGroup | null {
-    return this.groups.get(groupId) ?? null;
+  public getGroup(groupId: string, tenantId: string): ScimGroup | null {
+    const group = this.groups.get(groupId);
+    if (!group) return null;
+    // Tenant isolation: only return groups belonging to the calling tenant
+    if (group.tenantId !== tenantId) return null;
+    return group;
   }
 
   /**
-   * Gets a group by name.
+   * Gets a group by name, scoped to a tenant.
    *
    * @param displayName - Group display name
+   * @param tenantId - Tenant ID for isolation
    * @returns Group or null
    */
-  public getGroupByName(displayName: string): ScimGroup | null {
+  public getGroupByName(displayName: string, tenantId: string): ScimGroup | null {
     const groupId = this.groupByName.get(displayName.toLowerCase());
-    return groupId ? this.groups.get(groupId) ?? null : null;
+    if (!groupId) return null;
+    const group = this.groups.get(groupId);
+    if (!group) return null;
+    // Tenant isolation: only return groups belonging to the calling tenant
+    if (group.tenantId !== tenantId) return null;
+    return group;
   }
 
   /**
@@ -392,6 +424,8 @@ export class ScimProvisionService {
   public updateGroup(groupId: string, updates: Partial<Pick<ScimGroup, "displayName" | "members">>, tenantId: string): ScimGroup | null {
     const existing = this.groups.get(groupId);
     if (!existing) return null;
+    // Tenant isolation: only allow updates to groups belonging to the calling tenant
+    if (existing.tenantId !== tenantId) return null;
 
     const updatedGroup: ScimGroup = {
       ...existing,
@@ -426,6 +460,8 @@ export class ScimProvisionService {
   public deleteGroup(groupId: string, tenantId: string): boolean {
     const existing = this.groups.get(groupId);
     if (!existing) return false;
+    // Tenant isolation: only allow deletion of groups belonging to the calling tenant
+    if (existing.tenantId !== tenantId) return false;
 
     this.groups.delete(groupId);
     this.groupByName.delete(existing.displayName.toLowerCase());
@@ -489,6 +525,8 @@ export class ScimProvisionService {
     const user = this.users.get(userId);
 
     if (!group || !user) return null;
+    // Tenant isolation: only allow adding members to groups belonging to the calling tenant
+    if (group.tenantId !== tenantId) return null;
 
     if (group.members.some((m) => m.value === userId)) {
       return group; // Already a member
@@ -503,14 +541,17 @@ export class ScimProvisionService {
    *
    * @param groupId - Group ID
    * @param userId - User ID to remove
+   * @param tenantId - Tenant ID for isolation
    * @returns Updated group or null
    */
-  public removeMemberFromGroup(groupId: string, userId: string): ScimGroup | null {
+  public removeMemberFromGroup(groupId: string, userId: string, tenantId: string): ScimGroup | null {
     const group = this.groups.get(groupId);
     if (!group) return null;
+    // Tenant isolation: only allow removing members from groups belonging to the calling tenant
+    if (group.tenantId !== tenantId) return null;
 
     const newMembers = group.members.filter((m) => m.value !== userId);
-    return this.updateGroup(groupId, { members: newMembers }, this.resolveGroupTenantId(group));
+    return this.updateGroup(groupId, { members: newMembers }, tenantId);
   }
 
   /**
@@ -524,6 +565,8 @@ export class ScimProvisionService {
   public patchGroup(groupId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimGroup | null {
     const group = this.groups.get(groupId);
     if (!group) return null;
+    // Tenant isolation: only allow patching groups belonging to the calling tenant
+    if (group.tenantId !== tenantId) return null;
 
     let updatedMembers = [...group.members];
 

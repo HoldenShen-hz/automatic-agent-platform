@@ -382,11 +382,14 @@ export class DurableEventBus {
     const eventRecord = this.db.transaction(() =>
       {
         this.ensureReferencedTask(input.taskId ?? null);
+        // R12-05 FIX: Also ensure execution exists within the same transaction
+        // to satisfy FK constraint on execution_id column
+        const validExecutionId = this.ensureReferencedExecution(input.executionId ?? null, input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
           sessionId: input.sessionId ?? null,
-          executionId: input.executionId ?? null,
+          executionId: validExecutionId,
           eventType: input.eventType,
           eventTier: schema.tier,
           payloadJson: JSON.stringify(validatedPayload),
@@ -466,11 +469,13 @@ export class DurableEventBus {
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
         this.ensureReferencedTask(input.taskId ?? null);
+        // R12-05 FIX: Also ensure execution exists within same transaction
+        const validExecutionId = this.ensureReferencedExecution(input.executionId ?? null, input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
           sessionId: input.sessionId ?? null,
-          executionId: input.executionId ?? null,
+          executionId: validExecutionId,
           eventType: input.eventType,
           eventTier: schema.tier,
           payloadJson: JSON.stringify(validatedPayloads[index]),
@@ -492,8 +497,10 @@ export class DurableEventBus {
       }),
     );
 
-    // R12-05 FIX: scheduleFanOut only for tier-1 events (tier_2/3 already dispatched atomically)
-    if (eventRecords.some((record) => record.eventTier === "tier_1")) {
+    // R12-05 FIX: scheduleFanOut to trigger async delivery of all events
+    // tier-1 events use polling-based delivery; tier_2/3 events are dispatched
+    // atomically but still need scheduleFanOut to trigger processPartitionQueue
+    if (eventRecords.length > 0) {
       this.scheduleFanOut();
     }
 
@@ -1088,6 +1095,30 @@ export class DurableEventBus {
       updatedAt: createdAt,
       completedAt: null,
     });
+  }
+
+  /**
+   * R12-05 FIX: Ensures the referenced execution exists within the transaction.
+   * If executionId is provided but doesn't exist, logs a warning and returns null
+   * so that event append + truth co-write remain atomic (FK constraint satisfied).
+   * Returns the valid executionId to use, or null if the execution doesn't exist
+   * (in which case the event will be written with execution_id = NULL).
+   */
+  private ensureReferencedExecution(executionId: string | null, taskId: string | null): string | null {
+    if (executionId == null) {
+      return null;
+    }
+    if (this.store.execution.getExecution(executionId) != null) {
+      return executionId;
+    }
+    // R12-05 FIX: Execution doesn't exist - log warning and return null
+    // so caller will set execution_id = NULL on the event (preserving atomicity)
+    eventBusLogger.warn("event_bus.execution_not_found_for_event", {
+      executionId,
+      taskId,
+      message: "Referenced execution not found, event will be written with execution_id = NULL",
+    });
+    return null;
   }
 
   private registerActiveConsumer(consumerId: string): void {

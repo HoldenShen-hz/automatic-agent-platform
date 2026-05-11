@@ -225,3 +225,81 @@ test("TimeTravelDebugService requires MFA and prod permission for prod replay se
     /time_travel_debug\.mfa_required/,
   );
 });
+
+test("TimeTravelDebugService replayStep sets fromEventIndex less than toEventIndex", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  const state = service.replayStep(session.sessionId);
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 0);
+  assert.equal(state.cursor.toEventIndex, 1);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});
+
+test("TimeTravelDebugService replayStep cursor advances with each step", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+
+  const state1 = service.replayStep(session.sessionId);
+  assert.ok(state1 !== null);
+  assert.equal(state1.cursor.fromEventIndex, 0);
+  assert.equal(state1.cursor.toEventIndex, 1);
+
+  const state2 = service.replayStep(session.sessionId);
+  assert.ok(state2 !== null);
+  assert.equal(state2.cursor.fromEventIndex, 1);
+  assert.equal(state2.cursor.toEventIndex, 2);
+
+  const state3 = service.replayStep(session.sessionId);
+  assert.ok(state3 !== null);
+  assert.equal(state3.cursor.fromEventIndex, 2);
+  assert.equal(state3.cursor.toEventIndex, 3);
+});
+
+test("TimeTravelDebugService replayToCursor sets correct cursor bounds", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+
+  const state = service.replayToCursor(session.sessionId, 2);
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 0);
+  assert.equal(state.cursor.toEventIndex, 2);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});
+
+test("TimeTravelDebugService jumpToStep sets cursor with from < to", () => {
+  const service = new TimeTravelDebugService();
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: {} },
+    { stepId: "step-3", timestamp: "2026-04-20T00:02:00.000Z", variables: {} },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+
+  const state = service.jumpToStep(session.sessionId, "step-2");
+
+  assert.ok(state !== null);
+  assert.equal(state.cursor.fromEventIndex, 0);
+  assert.equal(state.cursor.toEventIndex, 2);
+  assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
+});

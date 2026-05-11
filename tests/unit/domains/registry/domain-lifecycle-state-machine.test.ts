@@ -92,12 +92,26 @@ test("invalid transitions throw validation errors", () => {
   service.register(minimalDomain("invalid-active", "active"));
   service.register(minimalDomain("invalid-registered", "registered"));
   service.register(minimalDomain("invalid-deprecated", "deprecated"));
+  service.register(minimalDomain("invalid-canary", "canary"));
 
-  assert.throws(() => service.activate("invalid-active"), /activate from registered state/i);
+  assert.throws(() => service.activate("invalid-active"), /activate from registered or canary state/i);
   assert.throws(() => service.updating("invalid-registered"), /enter updating from active state/i);
   assert.throws(() => service.completeUpdate("invalid-active"), /complete update from updating state/i);
   assert.throws(() => service.archive("invalid-active"), /archive from deprecated state/i);
-  assert.throws(() => service.activate("invalid-deprecated"), /activate from registered state/i);
+  assert.throws(() => service.activate("invalid-deprecated"), /activate from registered or canary state/i);
+  assert.throws(() => service.promoteToCanary("invalid-active"), /enter canary from registered state/i);
+  assert.throws(() => service.promoteToCanary("invalid-canary"), /enter canary from registered state/i);
+});
+
+test("canary state flow: registered -> canary -> active", () => {
+  const service = new DomainRegistryService();
+  service.register(minimalDomain("canary-flow", "registered"));
+
+  const canary = service.promoteToCanary("canary-flow");
+  assert.equal(canary.status, "canary");
+
+  const active = service.activate("canary-flow");
+  assert.equal(active.status, "active");
 });
 
 test("completeUpdate fails when smoke validation detects circular dependencies", () => {

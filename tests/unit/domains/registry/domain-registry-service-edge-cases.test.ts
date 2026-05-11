@@ -701,6 +701,91 @@ test("archive throws ValidationError for unknown domain", () => {
   );
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Archived State Transition Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("archive marks domain as archived from deprecated state", () => {
+  const service = new DomainRegistryService();
+  service.register(createTestDomain({ domainId: "archived-test-domain", status: "deprecated" }));
+
+  const archived = service.archive("archived-test-domain");
+
+  assert.equal(archived.status, "archived");
+});
+
+test("archive throws ValidationError when domain is not deprecated", () => {
+  const service = new DomainRegistryService();
+  service.register(createTestDomain({ domainId: "active-test-domain", status: "active" }));
+
+  assert.throws(
+    () => service.archive("active-test-domain"),
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_archive_state",
+  );
+});
+
+test("archive throws ValidationError for registered domain", () => {
+  const service = new DomainRegistryService();
+  service.register(createTestDomain({ domainId: "registered-test-domain", status: "registered" }));
+
+  assert.throws(
+    () => service.archive("registered-test-domain"),
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_archive_state",
+  );
+});
+
+test("archive publishes domain:archived event", () => {
+  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+  const service = new DomainRegistryService({
+    eventPublisher: {
+      publish(input) {
+        events.push(input as { eventType: string; payload: Record<string, unknown> });
+      },
+    },
+  });
+  service.register(createTestDomain({ domainId: "event-archived-domain", status: "deprecated" }));
+
+  service.archive("event-archived-domain");
+
+  assert.ok(events.some((e) => e.eventType === "domain:archived"));
+  const event = events.find((e) => e.eventType === "domain:archived")!;
+  assert.equal(event.payload.domainId, "event-archived-domain");
+  assert.equal(event.payload.status, "archived");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deprecated State Transition Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("deprecate publishes domain:deprecated event", () => {
+  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+  const service = new DomainRegistryService({
+    eventPublisher: {
+      publish(input) {
+        events.push(input as { eventType: string; payload: Record<string, unknown> });
+      },
+    },
+  });
+  service.register(createTestDomain({ status: "active" }));
+
+  service.deprecate("test-domain");
+
+  assert.ok(events.some((e) => e.eventType === "domain:deprecated"));
+  const event = events.find((e) => e.eventType === "domain:deprecated")!;
+  assert.equal(event.payload.domainId, "test-domain");
+  assert.equal(event.payload.status, "deprecated");
+});
+
+test("deprecate throws ValidationError when domain is not active", () => {
+  const service = new DomainRegistryService();
+  service.register(createTestDomain({ status: "registered" }));
+
+  assert.throws(
+    () => service.deprecate("test-domain"),
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_deprecate_state",
+  );
+});
+
 test("validate throws ValidationError for unknown domain", () => {
   const service = new DomainRegistryService();
 

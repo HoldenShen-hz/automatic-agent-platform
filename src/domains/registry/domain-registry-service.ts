@@ -88,10 +88,42 @@ export class DomainRegistryService {
     return this.smokeTests.run(definition);
   }
 
-  public activate(domainId: string, allowLegacyCanary = false): DomainDefinition {
+  public promoteToCanary(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (current.status !== "registered" && !(allowLegacyCanary && current.status === "updating")) {
-      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
+    if (current.status !== "registered") {
+      throw new ValidationError("domain_registry.invalid_canary_state", "Domains can only enter canary from registered state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const smoke = this.smokeTests.run(current);
+    if (!smoke.passed) {
+      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed.", {
+        category: "validation",
+        source: "internal",
+        details: { issues: smoke.issues },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "canary" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      eventType: "domain:canary",
+      payload: {
+        domainId,
+        status: "canary",
+        capabilityCount: updated.pluginBindings.length,
+        pluginCount: updated.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
+  public activate(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "registered" && current.status !== "canary") {
+      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered or canary state.", {
         category: "validation",
         source: "internal",
         details: { currentStatus: current.status },
@@ -187,6 +219,16 @@ export class DomainRegistryService {
     }
     const updated: DomainDefinition = { ...current, status: "deprecated" };
     this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      eventType: "domain:deprecated",
+      payload: {
+        domainId,
+        status: "deprecated",
+        capabilityCount: updated.pluginBindings.length,
+        pluginCount: updated.pluginBindings.length,
+        occurredAt: nowIso(),
+      },
+    });
     return updated;
   }
 

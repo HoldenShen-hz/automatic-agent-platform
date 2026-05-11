@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
-import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
+import { createBudgetLedger, type PlatformFactEvent } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
+import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
 
 test("BudgetAllocator reserves against hard cap and settles reservation with ledger accounting", () => {
   const allocator = new BudgetAllocator();
@@ -107,4 +108,95 @@ test("BudgetAllocator can release a reservation when execution never starts", ()
   assert.equal(released.reservation.aggregate.status, "released");
   assert.equal(released.ledger.reservedAmount, 0);
   assert.equal(released.ledger.releasedAmount, 25);
+});
+
+test("BudgetAllocator.settle emits fact events for both reservation and ledger via RSM", () => {
+  const emittedEvents: PlatformFactEvent[] = [];
+  const stateMachine = new RuntimeStateMachine({
+    persistEvent: (event) => emittedEvents.push(event),
+  });
+  const allocator = new BudgetAllocator({ stateMachine });
+
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 100,
+    version: 0,
+  });
+
+  const reserved = allocator.reserve({
+    ledger,
+    amount: 50,
+    resourceKind: "tool",
+    expiresAt: "2026-04-27T01:00:00.000Z",
+    expectedVersion: 0,
+  });
+
+  const settled = allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 50,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "budget-allocator",
+      principal: "test-principal",
+    },
+  });
+
+  // R11-07 FIX: settle() now emits fact events through RSM for both reservation and ledger
+  const reservationEvents = emittedEvents.filter(
+    (e) => e.aggregateType === "BudgetReservation" && e.aggregateId === reserved.reservation.budgetReservationId,
+  );
+  const ledgerEvents = emittedEvents.filter(
+    (e) => e.aggregateType === "BudgetLedger" && e.aggregateId === ledger.budgetLedgerId,
+  );
+
+  assert.ok(reservationEvents.length >= 1, "Should emit at least one reservation fact event");
+  assert.ok(ledgerEvents.length >= 1, "Should emit at least one ledger fact event");
+  assert.equal(settled.reservation.event.eventType, "platform.budget_reservation.status_changed");
+});
+
+test("BudgetAllocator.settle ledger goes through RSM with proper version tracking", () => {
+  const stateMachine = new RuntimeStateMachine({
+    persistEvent: () => {}, // intentionally no-op
+  });
+  const allocator = new BudgetAllocator({ stateMachine });
+
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 100,
+    version: 5,
+  });
+
+  const reserved = allocator.reserve({
+    ledger,
+    amount: 30,
+    resourceKind: "tool",
+    expiresAt: "2026-04-27T01:00:00.000Z",
+    expectedVersion: ledger.version,
+  });
+
+  // Attempt settle with wrong version should fail via RSM CAS
+  assert.throws(
+    () =>
+      allocator.settle({
+        ledger: reserved.ledger,
+        reservation: reserved.reservation,
+        actualAmount: 30,
+        expectedVersion: 99, // Wrong version
+        context: {
+          tenantId: "tenant-1",
+          traceId: "trace-1",
+          emittedBy: "budget-allocator",
+          principal: "test-principal",
+        },
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.version_cas_failed",
+  );
 });

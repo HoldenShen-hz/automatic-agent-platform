@@ -334,6 +334,28 @@ test("ApprovalRoutingService.planChain with delegations applies delegation to ch
   assert.ok(allApprovers.includes("backup-lead") || allApprovers.includes("platform-lead"));
 });
 
+test("ApprovalRoutingService.route generates collision-free audit recordIds", () => {
+  const service = new ApprovalRoutingService({
+    orgNodes: [COMPANY_NODE, DEPT_NODE, TEAM_NODE],
+  });
+
+  // Generate multiple audit records for same requester+node combination
+  const recordIds = new Set<string>();
+  const baseRequest = { requesterId: "user-1", orgNodeId: "team-platform", riskLevel: "medium" as const };
+
+  for (let i = 0; i < 100; i++) {
+    const result = service.route(
+      baseRequest,
+      "2026-04-20T00:00:00.000Z",
+      "2026-04-20T00:00:00.000Z",
+    );
+    recordIds.add(result.auditRecord.recordId);
+  }
+
+  // All 100 recordIds should be unique (collision-free)
+  assert.equal(recordIds.size, 100, "Expected all 100 recordIds to be unique");
+});
+
 test("ApprovalRoutingService.route builds correct audit record structure", () => {
   const service = new ApprovalRoutingService({
     orgNodes: [COMPANY_NODE, DEPT_NODE, TEAM_NODE],

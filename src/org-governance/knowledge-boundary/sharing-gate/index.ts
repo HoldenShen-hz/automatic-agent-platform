@@ -37,7 +37,7 @@ export function evaluateKnowledgeShare(
   const matchedGrant = grants.find((item) =>
     item.boundaryId === boundary.boundaryId
     && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
-    && (item.expiresAt == null || item.expiresAt >= nowIso));
+    && (!item.expiresAt || new Date(item.expiresAt) >= new Date(nowIso)));
   if (matchedGrant) {
     return {
       allowed: true,
