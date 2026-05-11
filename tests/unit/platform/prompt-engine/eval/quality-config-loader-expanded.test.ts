@@ -68,21 +68,19 @@ test("loadQualityConfig returns default when file not found", () => {
   assert.equal(config.qualityGate.enforcement, "blocking");
 });
 
-test("loadQualityConfig returns default when file has invalid JSON", () => {
+test("loadQualityConfig throws when file has invalid JSON", () => {
   const dir = createTempConfigDir();
   try {
     const configPath = join(dir, "invalid.json");
     writeFileSync(configPath, "{ invalid json }", "utf-8");
 
-    const config = loadQualityConfig(configPath);
-
-    assert.equal(config.qualityGate.defaultPassThreshold, 0.8);
+    assert.throws(() => loadQualityConfig(configPath), SyntaxError);
   } finally {
     cleanup(dir);
   }
 });
 
-test("loadQualityConfig returns default when required fields missing", () => {
+test("loadQualityConfig throws when required fields are missing", () => {
   const dir = createTempConfigDir();
   try {
     const configPath = join(dir, "partial.json");
@@ -92,15 +90,13 @@ test("loadQualityConfig returns default when required fields missing", () => {
       },
     }), "utf-8");
 
-    const config = loadQualityConfig(configPath);
-
-    assert.equal(config.qualityGate.defaultPassThreshold, 0.8);
+    assert.throws(() => loadQualityConfig(configPath), /criticalPassThreshold/);
   } finally {
     cleanup(dir);
   }
 });
 
-test("loadQualityConfig returns default when thresholds out of range", () => {
+test("loadQualityConfig throws when thresholds are out of range", () => {
   const dir = createTempConfigDir();
   try {
     const configPath = join(dir, "oob.json");
@@ -128,9 +124,7 @@ test("loadQualityConfig returns default when thresholds out of range", () => {
       },
     }), "utf-8");
 
-    const config = loadQualityConfig(configPath);
-
-    assert.equal(config.qualityGate.defaultPassThreshold, 0.8);
+    assert.throws(() => loadQualityConfig(configPath), /defaultPassThreshold/);
   } finally {
     cleanup(dir);
   }
@@ -234,8 +228,7 @@ test("loadQualityConfig rejects invalid enforcement value", () => {
       },
     }), "utf-8");
 
-    const config = loadQualityConfig(configPath);
-    assert.equal(config.qualityGate.enforcement, "blocking");
+    assert.throws(() => loadQualityConfig(configPath), /enforcement/);
   } finally {
     cleanup(dir);
   }

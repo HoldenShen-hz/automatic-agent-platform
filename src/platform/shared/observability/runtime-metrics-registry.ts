@@ -34,6 +34,10 @@ function buildSeriesKey(name: string, labels: Record<string, string>): string {
   return `${name}|${entries.map(([key, value]) => `${key}=${value}`).join("|")}`;
 }
 
+function normalizeMetricStage(stage: string): string {
+  return stage.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
+}
+
 export class RuntimeMetricsRegistry {
   private readonly counters = new Map<string, CounterSeries>();
   private readonly gauges = new Map<string, GaugeSeries>();
@@ -106,17 +110,25 @@ export class RuntimeMetricsRegistry {
   }
 
   public recordOapeflirStage(stage: string, result: string, durationMs: number): void {
+    const canonicalStage = normalizeMetricStage(stage);
     this.observeHistogram("oapeflir_loop_duration_ms", { stage }, durationMs);
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
+    this.observeHistogram(`oapeflir_${canonicalStage}_duration_ms`, {}, durationMs);
+    this.incrementCounter(`oapeflir_${canonicalStage}_outcome_total`, { result }, 1);
   }
 
   public recordOapeflirStageEntry(stage: string): void {
+    const canonicalStage = normalizeMetricStage(stage);
     this.incrementCounter("oapeflir_stage_entry_total", { stage }, 1);
+    this.incrementCounter(`oapeflir_${canonicalStage}_entry_total`, {}, 1);
   }
 
   public recordOapeflirStageExit(stage: string, result: string, durationSeconds: number): void {
+    const canonicalStage = normalizeMetricStage(stage);
     this.observeHistogram("stage_duration_seconds", { stage }, durationSeconds);
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
+    this.observeHistogram(`oapeflir_${canonicalStage}_duration_seconds`, {}, durationSeconds);
+    this.incrementCounter(`oapeflir_${canonicalStage}_outcome_total`, { result }, 1);
   }
 
   public recordLlmLatency(

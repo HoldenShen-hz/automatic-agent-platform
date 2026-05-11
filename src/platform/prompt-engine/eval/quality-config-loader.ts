@@ -36,6 +36,30 @@ const QualityGateConfigSchema = z.object({
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/quality/default.json");
 
+const DEFAULT_QUALITY_CONFIG: QualityGateConfig = {
+  qualityGate: {
+    defaultPassThreshold: 0.8,
+    criticalPassThreshold: 0.95,
+    enforcement: "blocking",
+  },
+  qualityScoreWeights: {
+    successSignal: 0.4,
+    completionOutcome: 0.3,
+    failureSignal: 0.2,
+    partialSignal: 0.1,
+  },
+  actionThresholds: {
+    completeMinScore: 0.7,
+    approvalRequiredScore: 0.5,
+    retryMaxFailures: 3,
+  },
+  evidence: {
+    enabled: true,
+    artifactKind: "quality_report",
+    retentionDays: 30,
+  },
+};
+
 export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): QualityGateConfig {
   try {
     const raw = readFileSync(configPath, "utf-8");
@@ -68,30 +92,16 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
       },
     };
   } catch (err) {
-    console.error("Failed to load quality config, using defaults:", err);
-    // Return default config if file doesn't exist or validation fails
-    return {
-      qualityGate: {
-        defaultPassThreshold: 0.8,
-        criticalPassThreshold: 0.95,
-        enforcement: "blocking" as const,
-      },
-      qualityScoreWeights: {
-        successSignal: 0.4,
-        completionOutcome: 0.3,
-        failureSignal: 0.2,
-        partialSignal: 0.1,
-      },
-      actionThresholds: {
-        completeMinScore: 0.7,
-        approvalRequiredScore: 0.5,
-        retryMaxFailures: 3,
-      },
-      evidence: {
-        enabled: true,
-        artifactKind: "quality_report",
-        retentionDays: 30,
-      },
-    };
+    if (isMissingConfigError(err)) {
+      return DEFAULT_QUALITY_CONFIG;
+    }
+    throw err;
   }
+}
+
+function isMissingConfigError(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === "object"
+    && error !== null
+    && "code" in error
+    && (error as NodeJS.ErrnoException).code === "ENOENT";
 }

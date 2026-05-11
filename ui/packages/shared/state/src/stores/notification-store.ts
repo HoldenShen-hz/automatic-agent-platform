@@ -14,6 +14,7 @@ export interface Notification {
 
 export interface NotificationStoreState {
   readonly notifications: readonly Notification[];
+  readonly notificationLookup: Readonly<Record<string, Notification>>;
   readonly unreadCount: number;
   addNotification(notification: Omit<Notification, "id" | "createdAt" | "read">): void;
   markRead(id: string): void;
@@ -32,6 +33,7 @@ export function createNotificationStore() {
       "aa-notification-store",
       (set) => ({
         notifications: [],
+        notificationLookup: {},
         unreadCount: 0,
         addNotification(notification) {
           const newNotification: Notification = {
@@ -42,16 +44,24 @@ export function createNotificationStore() {
           };
           set((draft) => {
             draft.notifications = [newNotification, ...draft.notifications];
+            draft.notificationLookup = {
+              ...draft.notificationLookup,
+              [newNotification.id]: newNotification,
+            };
             draft.unreadCount += 1;
           });
         },
         markRead(id) {
           set((draft) => {
-            const notification = draft.notifications.find((entry) => entry.id === id);
+            const notification = draft.notificationLookup[id];
             if (notification == null || notification.read) {
               return;
             }
             notification.read = true;
+            draft.notificationLookup = {
+              ...draft.notificationLookup,
+              [id]: notification,
+            };
             draft.unreadCount = Math.max(0, draft.unreadCount - 1);
           });
         },
@@ -60,13 +70,19 @@ export function createNotificationStore() {
             for (const notification of draft.notifications) {
               notification.read = true;
             }
+            draft.notificationLookup = Object.fromEntries(
+              draft.notifications.map((notification) => [notification.id, notification]),
+            );
             draft.unreadCount = 0;
           });
         },
         dismissNotification(id) {
           set((draft) => {
-            const notification = draft.notifications.find((entry) => entry.id === id);
+            const notification = draft.notificationLookup[id];
             draft.notifications = draft.notifications.filter((entry) => entry.id !== id);
+            const nextLookup = { ...draft.notificationLookup };
+            delete nextLookup[id];
+            draft.notificationLookup = nextLookup;
             if (notification != null && !notification.read) {
               draft.unreadCount = Math.max(0, draft.unreadCount - 1);
             }
@@ -75,6 +91,7 @@ export function createNotificationStore() {
         clearAll() {
           set((draft) => {
             draft.notifications = [];
+            draft.notificationLookup = {};
             draft.unreadCount = 0;
           });
         },

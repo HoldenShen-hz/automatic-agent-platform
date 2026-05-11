@@ -13,13 +13,19 @@ export interface SyncStoreState {
   readonly pendingMutations: number;
   readonly lastFlushedAt: string | null;
   readonly strategy: "server_wins" | "local_wins";
-  readonly syncStatus: "idle" | "queued" | "syncing";
+  readonly syncStatus: "idle" | "queued" | "syncing" | "error";
+  readonly online: boolean;
   readonly conflicts: readonly SyncConflict[];
+  readonly conflictLookup: Readonly<Record<string, SyncConflict>>;
+  readonly lastError: string | null;
   setPendingMutations(count: number): void;
   markFlushed(flushedAt: string): void;
   setStrategy(strategy: "server_wins" | "local_wins"): void;
+  setOnline(online: boolean): void;
   addConflict(conflict: SyncConflict): void;
   resolveConflict(conflictId: string, resolution: "local" | "server" | "merge"): void;
+  markSyncError(message: string): void;
+  clearSyncError(): void;
   retrySync(): void;
 }
 
@@ -32,7 +38,10 @@ export function createSyncStore() {
         lastFlushedAt: null,
         strategy: "server_wins",
         syncStatus: "idle",
+        online: true,
         conflicts: [],
+        conflictLookup: {},
+        lastError: null,
         setPendingMutations(pendingMutations) {
           set((draft) => {
             draft.pendingMutations = pendingMutations;
@@ -44,6 +53,7 @@ export function createSyncStore() {
             draft.pendingMutations = 0;
             draft.lastFlushedAt = lastFlushedAt;
             draft.syncStatus = "idle";
+            draft.lastError = null;
           });
         },
         setStrategy(strategy) {
@@ -51,15 +61,30 @@ export function createSyncStore() {
             draft.strategy = strategy;
           });
         },
+        setOnline(online) {
+          set((draft) => {
+            draft.online = online;
+            if (!online) {
+              draft.syncStatus = draft.pendingMutations > 0 ? "queued" : draft.syncStatus;
+            }
+          });
+        },
         addConflict(conflict) {
           set((draft) => {
             draft.conflicts = [...draft.conflicts, conflict];
+            draft.conflictLookup = {
+              ...draft.conflictLookup,
+              [conflict.id]: conflict,
+            };
             draft.syncStatus = "queued";
           });
         },
         resolveConflict(conflictId, resolution) {
           set((draft) => {
             draft.conflicts = draft.conflicts.filter((conflict) => conflict.id !== conflictId);
+            const nextLookup = { ...draft.conflictLookup };
+            delete nextLookup[conflictId];
+            draft.conflictLookup = nextLookup;
             if (resolution === "local") {
               draft.strategy = "local_wins";
             }
@@ -68,8 +93,23 @@ export function createSyncStore() {
             }
           });
         },
+        markSyncError(lastError) {
+          set((draft) => {
+            draft.lastError = lastError;
+            draft.syncStatus = "error";
+          });
+        },
+        clearSyncError() {
+          set((draft) => {
+            draft.lastError = null;
+            if (draft.syncStatus === "error") {
+              draft.syncStatus = draft.pendingMutations > 0 ? "queued" : "idle";
+            }
+          });
+        },
         retrySync() {
           set((draft) => {
+            draft.lastError = null;
             draft.syncStatus = "syncing";
           });
         },

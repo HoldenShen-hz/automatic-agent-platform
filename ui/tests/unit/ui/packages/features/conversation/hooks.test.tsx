@@ -64,12 +64,17 @@ vi.mock("@aa/shared-nl-client", () => ({
   },
 }));
 
-import { useConversationVm } from "../../../../../../packages/features/conversation/src/hooks";
+import {
+  conversationVmQueryClient,
+  conversationVmQueryKey,
+  useConversationVm,
+} from "../../../../../../packages/features/conversation/src/hooks";
 
 describe("useConversationVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    conversationVmQueryClient.clear();
   });
 
   it("sends prompts directly and restores persisted history across remounts", async () => {
@@ -94,5 +99,9 @@ describe("useConversationVm", () => {
 
     const remounted = renderHook(() => useConversationVm());
     expect(remounted.result.current.messages.length).toBe(2);
+    expect(conversationVmQueryClient.getQueryData(conversationVmQueryKey)).toMatchObject({
+      status: "waiting_clarification",
+      isStreaming: false,
+    });
   });
 });

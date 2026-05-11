@@ -10,6 +10,8 @@ import test from "node:test";
 import { WorkerRegistryService } from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-registry-service.js";
 import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import * as handshakeSupport from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-handshake-support.js";
+import * as writebackSupport from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/execution-worker-writeback-support.js";
 
 // ---------------------------------------------------------------------------
 // R27-07 + R27-08: assignDeploymentSlot should not mutate zod objects
@@ -66,6 +68,28 @@ test("R27-04: WorkerRegistryService handles corrupt runningExecutionsJson withou
   assert.equal(view.workerId, "worker-corrupt");
 });
 
+test("R27-05: handshake and writeback share the same canonical worker support helpers", () => {
+  assert.equal(handshakeSupport.parseJsonArray, writebackSupport.parseJsonArray);
+  assert.equal(handshakeSupport.toWorkerStatus, writebackSupport.toWorkerStatus);
+  assert.equal(handshakeSupport.buildAgentExecutionRecord, writebackSupport.buildAgentExecutionRecord);
+  assert.equal(handshakeSupport.persistRemoteLogs, writebackSupport.persistRemoteLogs);
+});
+
+test("R27-06: WorkerRegistryService ignores malformed legacy worker hooks instead of calling through unsafe casts", () => {
+  const store = {
+    worker: {
+      getWorkerSnapshot: () => null,
+      listWorkerSnapshots: () => [],
+      getWorker: "not-a-function",
+      listWorkers: "not-a-function",
+    },
+  } as unknown as AuthoritativeTaskStore;
+  const service = new WorkerRegistryService(store);
+
+  assert.equal(service.getWorker("worker-unsafe"), null);
+  assert.deepEqual(service.listWorkers(), []);
+});
+
 // ---------------------------------------------------------------------------
 // R27-07 tests
 // ---------------------------------------------------------------------------
@@ -97,7 +121,7 @@ test("R27-07: assignDeploymentSlot does not mutate original version objects", ()
 // R27-08 tests
 // ---------------------------------------------------------------------------
 
-test("R27-08: assignDeploymentSlot evicts opposite slot (blue evicts green)", () => {
+test("R27-08: assignDeploymentSlot preserves the opposite slot for blue-green dual activation", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({
     agentId: "agent-bg1",
@@ -127,7 +151,7 @@ test("R27-08: assignDeploymentSlot evicts opposite slot (blue evicts green)", ()
   const v1After = versions.find((v) => v.versionId === v1.versionId);
   const v2After = versions.find((v) => v.versionId === v2.versionId);
 
-  assert.equal(v1After?.deploymentSlot, null, "v1 green should be evicted");
+  assert.equal(v1After?.deploymentSlot, "green", "green slot should remain active");
   assert.equal(v2After?.deploymentSlot, "blue", "v2 should hold blue");
 });
 

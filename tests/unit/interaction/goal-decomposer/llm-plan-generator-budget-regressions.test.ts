@@ -60,3 +60,45 @@ test("UnifiedChatPlanGenerator propagates the goal budget proportionally to chil
   assert.equal(result.tasks[0]!.constraintEnvelope.budgetLimitUsd, 10);
   assert.equal(result.tasks[1]!.constraintEnvelope.budgetLimitUsd, 30);
 });
+
+test("R23-11: UnifiedChatPlanGenerator propagates risk, approval, and capability constraints", async () => {
+  const provider = createMockProvider(JSON.stringify({
+    tasks: [
+      { domainId: "engineering", description: "Task 1", expectedOutputs: ["artifact"], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 1 },
+      { domainId: "finance", description: "Task 2", expectedOutputs: ["approval"], delegationMode: "supervised", estimatedDuration: "2h", estimatedCostUsd: 3 },
+    ],
+    dependencyGraph: [],
+  }));
+  const generator = new UnifiedChatPlanGenerator({ provider });
+
+  const result = await generator.generate(createTestGoal({
+    description: "执行生产发布并控制 budget $40",
+    constraints: ["总预算 $40", "必须审批跨域支出", "必须在生产环境部署"],
+    priority: "high",
+  }));
+
+  assert.equal(result.tasks[0]!.constraintEnvelope.riskTolerance, "medium");
+  assert.equal(result.tasks[0]!.constraintEnvelope.requiresApproval, true);
+  assert.deepEqual(result.tasks[0]!.constraintEnvelope.requiredCapabilities, ["engineering"]);
+  assert.deepEqual(result.tasks[1]!.constraintEnvelope.requiredCapabilities, ["finance"]);
+  assert.equal(result.tasks[1]!.constraintEnvelope.requiresApproval, true);
+});
+
+test("R23-11: UnifiedChatPlanGenerator rejects cyclic dependency graphs", async () => {
+  const provider = createMockProvider(JSON.stringify({
+    tasks: [
+      { domainId: "engineering", description: "Task 1", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 1 },
+      { domainId: "engineering", description: "Task 2", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 1 },
+    ],
+    dependencyGraph: [
+      { fromTask: "1", toTask: "2", type: "blocks" },
+      { fromTask: "2", toTask: "1", type: "blocks" },
+    ],
+  }));
+  const generator = new UnifiedChatPlanGenerator({ provider });
+
+  await assert.rejects(
+    () => generator.generate(createTestGoal()),
+    /goal_decomposer\.invalid_llm_plan_cycle_detected/,
+  );
+});

@@ -78,6 +78,38 @@ test("ProactiveAgentService disables trigger after repeated failures", async () 
   assert.ok(decision.reasonCodes.includes("proactive_agent.trigger_disabled"));
 });
 
+test("R23-05: ProactiveAgentService blocks firing below semi_auto autonomy", async () => {
+  const service = new ProactiveAgentService({ initialAutonomyLevel: "suggestion" });
+  await service.registerTrigger(makeTrigger({
+    action: { actionType: "create_task", template: {}, requireConfirmation: false },
+  }));
+
+  const decision = service.evaluate("trigger_daily_report", {
+    kind: "schedule",
+    now: "2026-04-19T01:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.autonomy_level_insufficient"));
+  assert.equal(decision.queuedSuggestionId, null);
+});
+
+test("R23-05: ProactiveAgentService allows firing once autonomy reaches semi_auto", async () => {
+  const service = new ProactiveAgentService({ initialAutonomyLevel: "suggestion" });
+  await service.registerTrigger(makeTrigger({
+    action: { actionType: "create_task", template: {}, requireConfirmation: false },
+  }));
+
+  service.setAutonomyLevel("semi_auto");
+  const decision = service.evaluate("trigger_daily_report", {
+    kind: "schedule",
+    now: "2026-04-19T01:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "auto_execute");
+});
+
 // §41 Additional tests for comprehensive coverage
 
 test("ProactiveAgentService listTriggers returns all registered triggers", async () => {

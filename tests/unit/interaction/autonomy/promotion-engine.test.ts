@@ -107,7 +107,7 @@ test("assessPromotion does not promote supervised below 200 executions", () => {
   assert.equal(result.shouldPromote, false);
 });
 
-test("assessPromotion blocks semi_auto to full_auto without governance override even at 99% with 500+ executions", () => {
+test("assessPromotion requires platform_team approval for semi_auto to full_auto at 99% with 500+ executions", () => {
   const score = makeScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
@@ -116,8 +116,10 @@ test("assessPromotion blocks semi_auto to full_auto without governance override 
     incidents: 0,
   });
   const result = assessPromotion(score);
-  assert.equal(result.shouldPromote, false);
-  assert.equal(result.targetLevel, "semi_auto");
+  assert.equal(result.shouldPromote, true);
+  assert.equal(result.targetLevel, "full_auto");
+  assert.equal(result.approvalRequired, true);
+  assert.equal(result.approvalRole, "platform_team");
   assert.ok(result.reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });
 

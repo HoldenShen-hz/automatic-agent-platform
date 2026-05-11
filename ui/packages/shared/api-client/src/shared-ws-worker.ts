@@ -4,6 +4,7 @@ interface WorkerSocketEvent {
   readonly channel: string;
   readonly type: string;
   readonly payload: unknown;
+  readonly eventId?: string;
 }
 
 type WorkerCommand =
@@ -32,6 +33,9 @@ const baseReconnectDelayMs = 1000;
 const maxReconnectDelayMs = 30000;
 const heartbeatIntervalMs = 15000;
 const heartbeatTimeoutMs = 5000;
+const replayBufferByChannel = new Map<string, WorkerSocketEvent[]>();
+const lastEventIdByChannel = new Map<string, string>();
+let lastEventId: string | null = null;
 
 function broadcast(message: WorkerOutboundMessage): void {
   for (const port of ports) {
@@ -92,9 +96,19 @@ function connectSocket(url: string, token: string): void {
     socket.onopen = () => {
       reconnectAttempt = 0;
       setStatus("connected");
-      socket?.send(JSON.stringify({ action: "auth", token }));
+      socket?.send(JSON.stringify({
+        action: "auth",
+        token,
+        ...(lastEventId == null ? {} : { lastEventId }),
+      }));
       for (const channel of subscribedChannels) {
-        socket?.send(JSON.stringify({ action: "subscribe", channel }));
+        socket?.send(JSON.stringify({
+          action: "subscribe",
+          channel,
+          ...(lastEventIdByChannel.get(channel) == null
+            ? {}
+            : { lastEventId: lastEventIdByChannel.get(channel) }),
+        }));
       }
       startHeartbeat();
     };
@@ -104,6 +118,7 @@ function connectSocket(url: string, token: string): void {
         clearHeartbeatDeadline();
         return;
       }
+      rememberEvent(data);
       broadcast({ type: "event", event: data });
     };
     socket.onclose = () => {
@@ -152,6 +167,21 @@ function disconnectSocket(): void {
   setStatus("disconnected");
 }
 
+function rememberEvent(event: WorkerSocketEvent): void {
+  const payload = event.payload != null && typeof event.payload === "object"
+    ? event.payload as Record<string, unknown>
+    : null;
+  const resolvedEventId = event.eventId
+    ?? (typeof payload?.eventId === "string" ? payload.eventId : null)
+    ?? (typeof payload?.id === "string" ? payload.id : null);
+  if (resolvedEventId != null) {
+    lastEventId = resolvedEventId;
+    lastEventIdByChannel.set(event.channel, resolvedEventId);
+  }
+  const nextBuffer = [...(replayBufferByChannel.get(event.channel) ?? []), event].slice(-25);
+  replayBufferByChannel.set(event.channel, nextBuffer);
+}
+
 self.onconnect = (connectionEvent) => {
   const port = connectionEvent.ports[0];
   if (port == null) {
@@ -179,11 +209,21 @@ self.onconnect = (connectionEvent) => {
     if (message.action === "subscribe") {
       subscribedChannels.add(message.channel);
       if (socket != null && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ action: "subscribe", channel: message.channel }));
+        socket.send(JSON.stringify({
+          action: "subscribe",
+          channel: message.channel,
+          ...(lastEventIdByChannel.get(message.channel) == null
+            ? {}
+            : { lastEventId: lastEventIdByChannel.get(message.channel) }),
+        }));
+      }
+      for (const replayEvent of replayBufferByChannel.get(message.channel) ?? []) {
+        port.postMessage({ type: "event", event: replayEvent } satisfies WorkerOutboundMessage);
       }
       return;
     }
     if (message.action === "publish") {
+      rememberEvent(message.event);
       broadcast({ type: "event", event: message.event });
       return;
     }

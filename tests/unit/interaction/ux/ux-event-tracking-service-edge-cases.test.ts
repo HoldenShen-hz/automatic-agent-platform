@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { UxEventTrackingService } from "../../../../src/interaction/ux/ux-event-tracking-service.js";
@@ -217,6 +218,15 @@ test("UxEventTrackingService getABTestAssignment returns correct assignment", ()
   assert.ok(result !== null);
   assert.equal(result!.testId, "correct_test");
   assert.equal(result!.variantId, "treatment");
+});
+
+test("R23-15: UX event tracking surface does not expose test-only many_events event type", () => {
+  const source = readFileSync(
+    new URL("../../../../src/interaction/ux/ux-event-tracking-service.ts", import.meta.url),
+    "utf-8",
+  );
+
+  assert.doesNotMatch(source, /test:many_events/);
 });
 
 test("UxEventTrackingService recordConversion does nothing for unknown user", () => {

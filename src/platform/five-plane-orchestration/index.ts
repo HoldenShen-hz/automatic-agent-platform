@@ -10,5 +10,4 @@ export * from "./harness/index.js";
 export * from "./orchestration-plane-bootstrap.js";
 export * from "./orchestration-plane-baseline.js";
 export { HitlApprovalOrchestrationService } from "./hitl/hitl-approval-orchestration-service.js";
-export { OapeflirLoopService } from "./oapeflir/oapeflir-loop-service.js";
 export { TaskDecompositionService } from "./planner/task-decomposition-service.js";

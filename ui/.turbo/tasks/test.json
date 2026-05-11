@@ -1,0 +1,13 @@
+{
+  "task": "test",
+  "command": [
+    "vitest",
+    "run",
+    "tests/shared/reaudit-batch-r26-45-54.test.tsx",
+    "tests/shared/auth-sync-state.test.ts",
+    "tests/shared/reaudit-batch-r26-56-61-65.test.ts",
+    "tests/shared/web-runtime-auth-regression.test.ts"
+  ],
+  "startedAt": "2026-05-11T07:12:13.178Z",
+  "completedAt": "2026-05-11T07:12:14.060Z"
+}

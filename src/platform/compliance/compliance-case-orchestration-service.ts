@@ -2,6 +2,7 @@ import type { DataClassificationService } from "../control-plane/iam/data-classi
 import type { ClassificationResult, HandlingDecision, PiiAnnotation } from "../control-plane/iam/data-classification-service.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
 import type { ComplianceGovernanceService, ComplianceEvaluationResult } from "../../org-governance/compliance-engine/compliance-governance-service.js";
+import { buildGovernanceAuditRecord } from "../../org-governance/compliance-engine/audit-enforcer/index.js";
 import type { ResidencyCheckResult, ResidencyPolicy } from "./data-residency/index.js";
 import { DataResidencyPolicyService } from "./data-residency/index.js";
 import type { FieldProtectionResult, FieldProtectionRule } from "./encryption/index.js";
@@ -284,9 +285,9 @@ export class ComplianceCaseOrchestrationService {
     action: string;
     requiredPolicyKeys?: readonly string[] | undefined;
     occurredAt: string;
-  }): ComplianceEvaluationResult | null {
+  }): ComplianceEvaluationResult {
     if (this.governance == null) {
-      return null;
+      return this.buildDeniedGovernanceResult(input, "governance_evaluator_unconfigured");
     }
     try {
       return this.governance.evaluate({
@@ -295,9 +296,9 @@ export class ComplianceCaseOrchestrationService {
         action: input.action,
         occurredAt: input.occurredAt,
         ...(input.requiredPolicyKeys == null ? {} : { requiredPolicyKeys: input.requiredPolicyKeys }),
-      }) ?? null;
+      }) ?? this.buildDeniedGovernanceResult(input, "governance_evaluation_returned_null");
     } catch {
-      return null;
+      return this.buildDeniedGovernanceResult(input, "governance_evaluation_failed");
     }
   }
 
@@ -324,5 +325,35 @@ export class ComplianceCaseOrchestrationService {
       return "requires_redaction";
     }
     return "approved";
+  }
+
+  private buildDeniedGovernanceResult(input: {
+    actorId: string;
+    orgNodeId: string;
+    action: string;
+    requiredPolicyKeys?: readonly string[] | undefined;
+    occurredAt: string;
+  }, reasonCode: string): ComplianceEvaluationResult {
+    const missingKeys = [
+      reasonCode,
+      ...(input.requiredPolicyKeys ?? []).filter((key) => key !== reasonCode),
+    ];
+    return {
+      orgNodeId: input.orgNodeId,
+      effectivePolicy: {},
+      allowed: false,
+      missingKeys,
+      applicableFrameworks: [],
+      missingControls: [],
+      auditRecord: buildGovernanceAuditRecord({
+        recordId: newId("governance_audit"),
+        action: input.action,
+        actorId: input.actorId,
+        orgNodeId: input.orgNodeId,
+        allowed: false,
+        reasonCodes: [reasonCode],
+        occurredAt: input.occurredAt,
+      }),
+    };
   }
 }

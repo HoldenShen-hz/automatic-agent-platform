@@ -20,6 +20,8 @@ export interface DomainDescriptorInput {
   readonly evalFramework: DomainEvalFramework;
   readonly promptLibrary: DomainPromptLibrary;
   readonly recipes: readonly DomainRecipe[];
+  readonly interactionPolicy?: string;
+  readonly governancePolicy?: string;
   readonly interactionRules?: readonly DomainInteractionRule[];
   readonly defaultToolBundleIds: readonly string[];
   readonly defaultWorkflowIds: readonly string[];
@@ -35,6 +37,8 @@ export interface DomainDescriptorReview {
   readonly promptIds: readonly string[];
   readonly promptStageCoverage: readonly string[];
   readonly recipeIds: readonly string[];
+  readonly interactionPolicy: string;
+  readonly governancePolicy: string;
   readonly defaultKnowledgeNamespaces: readonly string[];
   readonly crossDomainModes: Readonly<Record<string, DomainInteractionRule["mode"]>>;
   readonly reviewRequiredTaskTypes: readonly string[];
@@ -59,6 +63,8 @@ export class DomainDescriptorOrchestrationService {
     const promptIds = input.promptLibrary.prompts.map((item) => item.promptId);
     const promptStageCoverage = [...new Set(input.promptLibrary.prompts.map((item) => item.stage))];
     const recipeIds = input.recipes.map((item) => item.recipeId);
+    const interactionPolicy = input.interactionPolicy?.trim() || "platform_default";
+    const governancePolicy = input.governancePolicy?.trim() || "platform_default";
     const defaultKnowledgeNamespaces = resolveKnowledgeNamespaces(input.knowledgeSchema);
     const crossDomainModes = Object.fromEntries(
       (input.interactionRules ?? []).map((rule) => [`${rule.sourceDomainId}->${rule.targetDomainId}`, rule.mode]),
@@ -94,6 +100,8 @@ export class DomainDescriptorOrchestrationService {
       promptIds,
       promptStageCoverage,
       recipeIds,
+      interactionPolicy,
+      governancePolicy,
       defaultKnowledgeNamespaces,
       crossDomainModes,
       reviewRequiredTaskTypes,

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the registry, renderer, version, rollout, and evaluation side boundaries for `src/platform/prompt-engine/`.
+This contract defines the registry, renderer, version, rollout, and evaluation boundaries for `src/platform/prompt-engine/`.
 
 Related documents:
 
@@ -38,9 +38,9 @@ interface PromptRegistry {
 
 Rules:
 
-- `promptId + version` together form a stable primary key.
+- `promptId + version` forms a stable primary key.
 - Any change to `fixedPrefix`, `domainBlock`, or `variableTemplate` must go through a new version or explicit rollout.
-- Versions with `reviewStatus !== approved` must not enter the production `stable` route.
+- Versions with `reviewStatus !== approved` must not enter production `stable` routing.
 
 ## 4. Renderer SPI
 
@@ -83,12 +83,12 @@ interface PromptReleaseDecision {
 
 Rules:
 
-- Prompt rollout must be accompanied by evaluation evidence or an explicit exemption reason.
-- Domain-specific prompts must align with the compatible version of the `domain descriptor`.
-- Rollback must reference the last stable version, not a temporary string patch.
+- Prompt rollout must include evaluation evidence or an explicit exemption reason.
+- Domain-specific prompts must align with compatible versions of the `domain descriptor`.
+- Rollback must reference the previous stable version, not a temporary string patch.
 
 ## 6. Testing Requirements
 
-- unit: prompt registration, version resolution, render output, and hash stability.
-- integration: prompt rollout drives cache invalidation, eval evidence, and domain compatibility checks.
-- contract: registry / renderer / rollout output object fields are stable and do not drift based on the calling endpoint.
+- Unit: prompt registration, version resolution, render output, and hash stability.
+- Integration: prompt rollout drives cache invalidation, eval evidence, and domain compatibility checks.
+- Contract: registry / renderer / rollout output object fields are stable and do not drift based on the caller.

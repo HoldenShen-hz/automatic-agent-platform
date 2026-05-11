@@ -60,11 +60,12 @@ export class MetricAggregator {
     // Expand buffer if needed (double capacity)
     if (this.count >= this.buffer.length) {
       const newBuffer = new Array<MetricSample | undefined>(this.buffer.length * 2);
+      const oldestIndex = this.getOldestIndex();
       for (let i = 0; i < this.count; i++) {
-        newBuffer[i] = this.buffer[(this.head + i) % this.buffer.length];
+        newBuffer[i] = this.buffer[(oldestIndex + i) % this.buffer.length];
       }
       this.buffer = newBuffer;
-      this.head = 0;
+      this.head = this.count;
     }
 
     this.buffer[this.head] = { timestamp: now, metrics };
@@ -119,7 +120,7 @@ export class MetricAggregator {
     const costPerAgent = new Map<string, number>();
 
     for (let i = 0; i < this.count; i++) {
-      const idx = (this.head + i) % this.buffer.length;
+      const idx = (this.getOldestIndex() + i) % this.buffer.length;
       const sample = this.buffer[idx];
       if (!sample) continue;
       switch (sample.metrics.type) {
@@ -186,7 +187,7 @@ export class MetricAggregator {
       oldestSampleMs = Infinity;
       newestSampleMs = -Infinity;
       for (let i = 0; i < this.count; i++) {
-        const sample = this.buffer[(this.head + i) % this.buffer.length];
+        const sample = this.buffer[(this.getOldestIndex() + i) % this.buffer.length];
         if (sample) {
           if (sample.timestamp < oldestSampleMs) oldestSampleMs = sample.timestamp;
           if (sample.timestamp > newestSampleMs) newestSampleMs = sample.timestamp;
@@ -282,10 +283,15 @@ export class MetricAggregator {
 
   private evictStale(cutoff: number): void {
     while (this.count > 0) {
-      const oldest = this.buffer[this.head];
+      const oldestIndex = this.getOldestIndex();
+      const oldest = this.buffer[oldestIndex];
       if (oldest && oldest.timestamp >= cutoff) break;
-      this.head = (this.head + 1) % this.buffer.length;
+      this.buffer[oldestIndex] = undefined;
       this.count--;
     }
+  }
+
+  private getOldestIndex(): number {
+    return (this.head - this.count + this.buffer.length) % this.buffer.length;
   }
 }

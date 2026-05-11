@@ -1,11 +1,12 @@
 import type { MobileScreenDescriptor } from "../components";
 
 export const mobileNavigationBaseline = [
-  { tab: "home", title: "Dashboard" },
-  { tab: "tasks", title: "Tasks" },
-  { tab: "approvals", title: "Approvals" },
   { tab: "dashboard", title: "Dashboard" },
-  { tab: "more", title: "More" },
+  { tab: "tasks", title: "Tasks" },
+  { tab: "workflow-cockpit", title: "Workflow Cockpit" },
+  { tab: "approvals", title: "Approvals" },
+  { tab: "conversation", title: "Conversation" },
+  { tab: "settings", title: "Settings" },
 ] as const;
 
 export function buildMobileRouteMap(screens: readonly MobileScreenDescriptor[]) {

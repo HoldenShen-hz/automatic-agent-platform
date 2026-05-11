@@ -43,6 +43,7 @@ import type {
 import { nowIso } from "../../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { toWorkerSchedulingStatus } from "./worker-scheduling-status.js";
+import { parseJsonArray } from "./execution-worker-writeback-support.js";
 
 /**
  * Input data for recording a worker's heartbeat.
@@ -230,19 +231,6 @@ export interface VerifyRemoteWorkerRegistrationInput {
   registrationVerifiedAt?: string;
   registrationChallengeId: string;
   occurredAt?: string;
-}
-
-/**
- * Parses a JSON string as an array, converting all items to strings.
- * Returns empty array if parsing fails or result is not an array.
- */
-function parseJsonArray(value: string): string[] {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
-  } catch {
-    return [];
-  }
 }
 
 /**
@@ -626,18 +614,7 @@ export class WorkerRegistryService {
     }
 
     const snapshot = this.store.worker.listWorkerSnapshots().find((item) => item.workerId === workerId);
-    if (snapshot) {
-      return this.toView(snapshot);
-    }
-
-    const legacyWorker = (this.store.worker as { getWorker?: (workerId: string) => RegisteredWorkerView | null }).getWorker?.(workerId);
-    if (legacyWorker) {
-      return this.toRegisteredView(legacyWorker);
-    }
-
-    const legacyWorkers = (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? [];
-    const fallbackWorker = legacyWorkers.find((worker) => worker.workerId === workerId);
-    return fallbackWorker ? this.toRegisteredView(fallbackWorker) : null;
+    return snapshot ? this.toView(snapshot) : null;
   }
 
   /**
@@ -646,13 +623,7 @@ export class WorkerRegistryService {
    */
   public listWorkers(): RegisteredWorkerView[] {
     const snapshots = this.store.worker.listWorkerSnapshots();
-    if (snapshots.length > 0) {
-      return snapshots.map((record) => this.toView(record));
-    }
-
-    return (
-      (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? []
-    ).map((worker: RegisteredWorkerView) => this.toRegisteredView(worker));
+    return snapshots.map((record) => this.toView(record));
   }
 
   /**

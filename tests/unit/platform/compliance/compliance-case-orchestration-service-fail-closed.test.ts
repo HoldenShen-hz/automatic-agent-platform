@@ -95,3 +95,39 @@ test("missing governance evaluator blocks erasure planning as fail-closed", () =
   assert.equal(result.governance?.allowed, false);
   assert.ok(result.blockingReasons.includes("governance_missing:governance_evaluator_unconfigured"));
 });
+
+test("governance evaluation exceptions fail closed for transfer planning", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: {
+      evaluate() {
+        throw new Error("boom");
+      },
+    } as unknown as ComplianceGovernanceService,
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "risk_lead",
+    orgNodeId: "dept_risk",
+    action: "artifact.export",
+    tenantId: "tenant-risk",
+    sourceRegion: "cn-shanghai",
+    targetRegion: "cn-beijing",
+    policy: {
+      tenantId: "tenant-risk",
+      allowedRegions: ["cn-beijing"],
+      restrictedClassifications: ["confidential", "restricted"],
+      allowRedactedTransfer: true,
+    },
+    content: "public content",
+    artifactRef: "artifact:source-boom",
+    exportRef: "artifact:export-boom",
+    record: { summary: "Quarterly statement" },
+    encryptionRules: [],
+    keyRef: "kms://tenant-risk/key-boom",
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.governance?.allowed, false);
+  assert.ok(result.reasons.includes("governance_missing:governance_evaluation_failed"));
+});

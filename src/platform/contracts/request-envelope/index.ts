@@ -49,7 +49,7 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
     envelopeId: input.envelopeId ?? newId("envelope"),
     requestId: input.requestId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,
-    tenantId: input.tenantId,
+    tenantId: normalizeNullable(input.tenantId),
     principal: input.principal,
     traceId: input.traceId,
     idempotencyKey: input.idempotencyKey,
@@ -58,10 +58,21 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
     sessionId: normalizeNullable(input.sessionId),
     mode: input.mode,
     body: input.body,
+    sourcePlane: normalizeOptionalPlane(input.sourcePlane),
+    targetPlane: normalizeOptionalPlane(input.targetPlane),
+    directives: input.directives ?? [],
     createdAt: input.createdAt ?? nowIso(),
   };
 }
 
 function normalizeNullable(value: string | null | undefined): string | null {
   return value == null || value.trim().length === 0 ? null : value;
+}
+
+function normalizeOptionalPlane(value: string | undefined): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized.length === 0 ? undefined : normalized;
 }

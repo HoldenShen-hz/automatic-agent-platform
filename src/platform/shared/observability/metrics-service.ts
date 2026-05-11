@@ -26,6 +26,31 @@ export interface RuntimeMetricsSummary {
     firstTaskCreatedAt: string | null;
     lastTaskUpdatedAt: string | null;
   };
+  harnessRunMetrics: {
+    total: number;
+    completedCount: number;
+    failedCount: number;
+    abortedCount: number;
+    activeCount: number;
+    successRate: number;
+  };
+  nodeRunMetrics: {
+    total: number;
+    readyCount: number;
+    runningCount: number;
+    succeededCount: number;
+    failedCount: number;
+    retryCount: number;
+    blockedCount: number;
+  };
+  attemptMetrics: {
+    total: number;
+    activeCount: number;
+    retryAttemptCount: number;
+    recoveryAttemptCount: number;
+    averageDurationMs: number | null;
+    p95DurationMs: number | null;
+  };
   taskMetrics: {
     total: number;
     terminalCount: number;
@@ -87,6 +112,50 @@ export interface RuntimeMetricsSummary {
     pendingTier1AckCount: number;
     failedTier1AckCount: number;
   };
+  oapeflirViewMetrics: {
+    loopCount: number;
+    completedLoopCount: number;
+    failedLoopCount: number;
+    averageLoopDurationMs: number | null;
+    convergenceRate: number;
+  };
+  stageViewMetrics: {
+    observe: StageViewMetric;
+    assess: StageViewMetric;
+    plan: StageViewMetric;
+    execute: StageViewMetric;
+    feedback: StageViewMetric;
+    learn: StageViewMetric;
+    improve: StageViewMetric;
+    release: StageViewMetric;
+  };
+  feedbackMetrics: {
+    receivedCount: number;
+    classifiedCount: number;
+    consumedCount: number;
+    positiveCount: number;
+    negativeCount: number;
+    correctionCount: number;
+  };
+  learningMetrics: {
+    objectCreatedCount: number;
+    validatedCount: number;
+    promotedCount: number;
+    rejectedCount: number;
+  };
+  improvementMetrics: {
+    candidateProposedCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    guardrailBlockedCount: number;
+  };
+  releaseMetrics: {
+    startedCount: number;
+    advancedCount: number;
+    completedCount: number;
+    rolledBackCount: number;
+    currentLevel: string | null;
+  };
   runtimeMetrics: {
     status: HealthStatusReport["status"];
     degradationMode: HealthStatusReport["degradationMode"];
@@ -100,6 +169,13 @@ export interface RuntimeMetricsSummary {
     workerHealth: HealthStatusReport["workerHealth"];
     findings: string[];
   };
+}
+
+export interface StageViewMetric {
+  count: number;
+  averageDurationMs: number | null;
+  failureCount: number;
+  timeoutCount: number;
 }
 
 /**
@@ -261,6 +337,91 @@ export class MetricsService {
     const stepRows = this.db.connection
       .prepare(`SELECT duration_ms AS durationMs, token_cost AS tokenCost FROM workflow_step_outputs ORDER BY duration_ms ASC`)
       .all() as Array<{ durationMs: number; tokenCost: number }>;
+    const feedbackCounts = this.selectRowOrDefault<{
+      receivedCount: number;
+      classifiedCount: number;
+      consumedCount: number;
+      positiveCount: number;
+      negativeCount: number;
+      correctionCount: number;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN event_type LIKE 'feedback:%' THEN 1 ELSE 0 END), 0) AS receivedCount,
+         COALESCE(SUM(CASE WHEN event_type IN ('feedback:classified', 'feedback:signal_preprocessed') THEN 1 ELSE 0 END), 0) AS classifiedCount,
+         COALESCE(SUM(CASE WHEN event_type IN ('feedback:consumed', 'feedback:signal_consumed') THEN 1 ELSE 0 END), 0) AS consumedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'feedback:%positive%' THEN 1 ELSE 0 END), 0) AS positiveCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'feedback:%negative%' THEN 1 ELSE 0 END), 0) AS negativeCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'feedback:%correction%' THEN 1 ELSE 0 END), 0) AS correctionCount
+       FROM events`,
+      {
+        receivedCount: 0,
+        classifiedCount: 0,
+        consumedCount: 0,
+        positiveCount: 0,
+        negativeCount: 0,
+        correctionCount: 0,
+      },
+    );
+    const learningCounts = this.selectRowOrDefault<{
+      objectCreatedCount: number;
+      validatedCount: number;
+      promotedCount: number;
+      rejectedCount: number;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN event_type IN ('learning:artifact_created', 'learning:object_created') THEN 1 ELSE 0 END), 0) AS objectCreatedCount,
+         COALESCE(SUM(CASE WHEN event_type IN ('learning:validated', 'learning:object_validated') THEN 1 ELSE 0 END), 0) AS validatedCount,
+         COALESCE(SUM(CASE WHEN event_type IN ('learning:object_promoted', 'learning:promoted') THEN 1 ELSE 0 END), 0) AS promotedCount,
+         COALESCE(SUM(CASE WHEN event_type IN ('learning:rejected', 'learning:quarantined') THEN 1 ELSE 0 END), 0) AS rejectedCount
+       FROM events`,
+      {
+        objectCreatedCount: 0,
+        validatedCount: 0,
+        promotedCount: 0,
+        rejectedCount: 0,
+      },
+    );
+    const improvementCounts = this.selectRowOrDefault<{
+      candidateProposedCount: number;
+      acceptedCount: number;
+      rejectedCount: number;
+      guardrailBlockedCount: number;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN event_type LIKE 'improvement:%proposed%' THEN 1 ELSE 0 END), 0) AS candidateProposedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'improvement:%accepted%' THEN 1 ELSE 0 END), 0) AS acceptedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'improvement:%rejected%' THEN 1 ELSE 0 END), 0) AS rejectedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'improvement:%guardrail_blocked%' THEN 1 ELSE 0 END), 0) AS guardrailBlockedCount
+       FROM events`,
+      {
+        candidateProposedCount: 0,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        guardrailBlockedCount: 0,
+      },
+    );
+    const releaseCounts = this.selectRowOrDefault<{
+      startedCount: number;
+      advancedCount: number;
+      completedCount: number;
+      rolledBackCount: number;
+      currentLevel: string | null;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN event_type LIKE 'release:%started%' THEN 1 ELSE 0 END), 0) AS startedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'release:%advanced%' THEN 1 ELSE 0 END), 0) AS advancedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'release:%completed%' THEN 1 ELSE 0 END), 0) AS completedCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'release:%rollback%' THEN 1 ELSE 0 END), 0) AS rolledBackCount,
+         NULL AS currentLevel
+       FROM events`,
+      {
+        startedCount: 0,
+        advancedCount: 0,
+        completedCount: 0,
+        rolledBackCount: 0,
+        currentLevel: null,
+      },
+    );
 
     // Get current health status
     const health = this.healthService.getReport();
@@ -275,6 +436,31 @@ export class MetricsService {
       window: {
         firstTaskCreatedAt: taskWindow.firstTaskCreatedAt,
         lastTaskUpdatedAt: taskWindow.lastTaskUpdatedAt,
+      },
+      harnessRunMetrics: {
+        total: taskCounts.total,
+        completedCount: taskCounts.successCount,
+        failedCount: taskCounts.failedCount,
+        abortedCount: taskCounts.cancelledCount,
+        activeCount: taskCounts.activeCount,
+        successRate: ratio(taskCounts.successCount, taskCounts.terminalCount),
+      },
+      nodeRunMetrics: {
+        total: executionCounts.total,
+        readyCount: executionCounts.activeCount,
+        runningCount: executionCounts.activeCount,
+        succeededCount: taskCounts.successCount,
+        failedCount: taskCounts.failedCount,
+        retryCount: executionCounts.retryAttemptCount,
+        blockedCount: 0,
+      },
+      attemptMetrics: {
+        total: stepRows.length,
+        activeCount: executionCounts.activeCount,
+        retryAttemptCount: executionCounts.retryAttemptCount,
+        recoveryAttemptCount: recoveryCounts.decisionCount,
+        averageDurationMs: average(durations),
+        p95DurationMs: percentile(durations, 0.95),
       },
       taskMetrics: {
         total: taskCounts.total,
@@ -337,6 +523,18 @@ export class MetricsService {
         pendingTier1AckCount: ackCounts.pendingTier1AckCount,
         failedTier1AckCount: ackCounts.failedTier1AckCount,
       },
+      oapeflirViewMetrics: {
+        loopCount: workflowCounts.total,
+        completedLoopCount: workflowCounts.completedCount,
+        failedLoopCount: workflowCounts.failedCount,
+        averageLoopDurationMs: average(durations),
+        convergenceRate: ratio(workflowCounts.completedCount, workflowCounts.total),
+      },
+      stageViewMetrics: buildDefaultStageViewMetrics(stepRows.length, average(durations), taskCounts.failedCount),
+      feedbackMetrics: feedbackCounts,
+      learningMetrics: learningCounts,
+      improvementMetrics: improvementCounts,
+      releaseMetrics: releaseCounts,
       runtimeMetrics: {
         status: health.status,
         degradationMode: health.degradationMode,
@@ -372,6 +570,38 @@ export class MetricsService {
 
     return normalized as T;
   }
+
+  private selectRowOrDefault<T extends Record<string, unknown>>(sql: string, fallback: T): T {
+    try {
+      const row = this.selectRow<T>(sql);
+      return { ...fallback, ...row };
+    } catch {
+      return fallback;
+    }
+  }
+}
+
+function buildDefaultStageViewMetrics(
+  totalCount: number,
+  averageDurationMs: number | null,
+  failureCount: number,
+): RuntimeMetricsSummary["stageViewMetrics"] {
+  const base: StageViewMetric = {
+    count: totalCount,
+    averageDurationMs,
+    failureCount,
+    timeoutCount: 0,
+  };
+  return {
+    observe: base,
+    assess: base,
+    plan: base,
+    execute: base,
+    feedback: { ...base, count: 0, failureCount: 0 },
+    learn: { ...base, count: 0, failureCount: 0 },
+    improve: { ...base, count: 0, failureCount: 0 },
+    release: { ...base, count: 0, failureCount: 0 },
+  };
 }
 
 /**

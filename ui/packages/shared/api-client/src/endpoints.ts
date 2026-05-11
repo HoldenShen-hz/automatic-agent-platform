@@ -28,13 +28,139 @@ import type {
 } from "@aa/shared-types";
 import type { RESTClient } from "./rest-client";
 
-export interface EndpointDefinition {
+export interface ListQueryParams {
+  readonly page?: number;
+  readonly pageSize?: number;
+  readonly sort?: string;
+  readonly filter?: string;
+}
+
+export interface EndpointDefinition<
+  TResponse = unknown,
+  TRequestBody = never,
+  TPathParams = never,
+  TQueryParams = never,
+> {
   readonly id: string;
   readonly path: string;
   readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly apiLayer: "A" | "B" | "C";
   readonly planned: boolean;
+  readonly __responseType?: TResponse;
+  readonly __requestBodyType?: TRequestBody;
+  readonly __pathParamsType?: TPathParams;
+  readonly __queryParamsType?: TQueryParams;
 }
+
+export type EndpointResponse<TEndpoint extends EndpointDefinition> =
+  TEndpoint extends EndpointDefinition<infer TResponse, never, never, never>
+    ? TResponse
+    : TEndpoint extends EndpointDefinition<infer TResponse, infer _TRequestBody, infer _TPathParams, infer _TQueryParams>
+      ? TResponse
+      : never;
+
+export type EndpointRequestBody<TEndpoint extends EndpointDefinition> =
+  TEndpoint extends EndpointDefinition<infer _TResponse, infer TRequestBody, infer _TPathParams, infer _TQueryParams>
+    ? TRequestBody
+    : never;
+
+export type EndpointPathParams<TEndpoint extends EndpointDefinition> =
+  TEndpoint extends EndpointDefinition<infer _TResponse, infer _TRequestBody, infer TPathParams, infer _TQueryParams>
+    ? TPathParams
+    : never;
+
+export type EndpointQueryParams<TEndpoint extends EndpointDefinition> =
+  TEndpoint extends EndpointDefinition<infer _TResponse, infer _TRequestBody, infer _TPathParams, infer TQueryParams>
+    ? TQueryParams
+    : never;
+
+type MutationAck<TBody = unknown> = { ok: true; body?: TBody };
+type TaskPathParams = { taskId: string };
+type WorkflowPathParams = { workflowId: string };
+type WorkflowRunStepPathParams = { workflowRunId: string };
+type ApprovalPathParams = { approvalId: string };
+type PackVersionPathParams = { packId: string };
+type CompliancePolicyPathParams = { policyId: string };
+type ComplianceExceptionPathParams = { exceptionId: string };
+type UserPathParams = { userId: string };
+type CompliancePolicySummary = { id: string; name: string; severity: string };
+type AuditLogEntry = {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  resource: string;
+  outcome: string;
+  metadata?: Record<string, unknown>;
+};
+type ComplianceExceptionResponse = { id: string };
+type ContractVersionResponse = { contractVersion: string; minServerVersion?: string };
+
+type EndpointCatalogDefinition = {
+  dashboardSnapshot: EndpointDefinition<DashboardSnapshotDTO>;
+  tasks: EndpointDefinition<readonly TaskDTO[], never, never, ListQueryParams>;
+  tasksCreate: EndpointDefinition<MutationAck<Partial<TaskDTO>>, Partial<TaskDTO>>;
+  tasksUpdate: EndpointDefinition<MutationAck<Partial<TaskDTO>>, Partial<TaskDTO>, TaskPathParams>;
+  tasksDelete: EndpointDefinition<MutationAck, never, TaskPathParams>;
+  workflows: EndpointDefinition<readonly WorkflowDTO[], never, never, ListQueryParams>;
+  workflowsCreate: EndpointDefinition<MutationAck<Partial<WorkflowDTO>>, Partial<WorkflowDTO>>;
+  workflowsPause: EndpointDefinition<MutationAck<{ action: "pause" }>, { action: "pause" }, WorkflowPathParams>;
+  workflowsResume: EndpointDefinition<
+    MutationAck<{ action: "resume"; mode: "normal" | "replan" | "supervised" | "abort" }>,
+    { action: "resume"; mode: "normal" | "replan" | "supervised" | "abort" },
+    WorkflowPathParams
+  >;
+  workflowsRecover: EndpointDefinition<MutationAck<{ action: "recover" }>, { action: "recover" }, WorkflowPathParams>;
+  workflowsRelease: EndpointDefinition<MutationAck<{ action: "release" }>, { action: "release" }, WorkflowPathParams>;
+  workflowsPublish: EndpointDefinition<MutationAck<{ action: "publish" }>, { action: "publish" }, WorkflowPathParams>;
+  workflowsDelete: EndpointDefinition<MutationAck, never, WorkflowPathParams>;
+  workflowRunSteps: EndpointDefinition<readonly WorkflowRunStepDTO[], never, WorkflowRunStepPathParams>;
+  approvals: EndpointDefinition<readonly ApprovalDTO[], never, never, ListQueryParams>;
+  approvalsApprove: EndpointDefinition<MutationAck<{ decision: "approved" }>, { decision: "approved" }, ApprovalPathParams>;
+  approvalsReject: EndpointDefinition<MutationAck<{ decision: "rejected" }>, { decision: "rejected" }, ApprovalPathParams>;
+  approvalsDelegate: EndpointDefinition<MutationAck<{ delegateTo: string }>, { delegateTo: string }, ApprovalPathParams>;
+  approvalsRequestContext: EndpointDefinition<
+    MutationAck<{ action: "request_more_context" }>,
+    { action: "request_more_context" },
+    ApprovalPathParams
+  >;
+  approvalsEdit: EndpointDefinition<MutationAck<Record<string, unknown>>, Record<string, unknown>, ApprovalPathParams>;
+  approvalsEscalate: EndpointDefinition<MutationAck<{ reason: string }>, { reason: string }, ApprovalPathParams>;
+  approvalsDefer: EndpointDefinition<MutationAck<{ until: string }>, { until: string }, ApprovalPathParams>;
+  approvalsTextInput: EndpointDefinition<MutationAck<{ input: string }>, { input: string }, ApprovalPathParams>;
+  incidents: EndpointDefinition<readonly IncidentDTO[], never, never, ListQueryParams>;
+  workers: EndpointDefinition<readonly WorkerDTO[], never, never, ListQueryParams>;
+  queues: EndpointDefinition<readonly QueueDTO[], never, never, ListQueryParams>;
+  agents: EndpointDefinition<readonly AgentDTO[], never, never, ListQueryParams>;
+  analytics: EndpointDefinition<readonly AnalyticsMetricDTO[], never, never, ListQueryParams>;
+  costs: EndpointDefinition<readonly CostReportDTO[], never, never, ListQueryParams>;
+  marketplace: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
+  knowledge: EndpointDefinition<readonly KnowledgeItemDTO[], never, never, ListQueryParams>;
+  packs: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
+  packVersions: EndpointDefinition<readonly PackVersionDTO[], never, PackVersionPathParams>;
+  plugins: EndpointDefinition<readonly PluginDTO[], never, never, ListQueryParams>;
+  prompts: EndpointDefinition<readonly PromptDTO[], never, never, ListQueryParams>;
+  explanations: EndpointDefinition<readonly ExplanationDTO[], never, never, ListQueryParams>;
+  roles: EndpointDefinition<readonly RoleDTO[], never, never, ListQueryParams>;
+  compliancePolicies: EndpointDefinition<readonly CompliancePolicySummary[]>;
+  compliancePoliciesUpdate: EndpointDefinition<MutationAck<Record<string, unknown>>, Record<string, unknown>, CompliancePolicyPathParams>;
+  auditLogs: EndpointDefinition<readonly AuditLogEntry[]>;
+  complianceExceptions: EndpointDefinition<ComplianceExceptionResponse, { reason: string; policyId: string }>;
+  complianceExceptionsApprove: EndpointDefinition<MutationAck<{ action: "approve" }>, { action: "approve" }, ComplianceExceptionPathParams>;
+  complianceExceptionsReject: EndpointDefinition<MutationAck<{ rationale: string }>, { rationale: string }, ComplianceExceptionPathParams>;
+  featureFlags: EndpointDefinition<readonly FeatureFlagDTO[], never, never, ListQueryParams>;
+  models: EndpointDefinition<readonly ModelConfigDTO[], never, never, ListQueryParams>;
+  domainConfigs: EndpointDefinition<readonly DomainConfigDTO[], never, never, ListQueryParams>;
+  tenants: EndpointDefinition<readonly TenantDTO[], never, never, ListQueryParams>;
+  users: EndpointDefinition<readonly UserDTO[], never, never, ListQueryParams>;
+  usersCreate: EndpointDefinition<MutationAck<Partial<UserDTO>>, Partial<UserDTO>>;
+  usersUpdate: EndpointDefinition<MutationAck<Partial<UserDTO>>, Partial<UserDTO>, UserPathParams>;
+  systemConfig: EndpointDefinition<SystemConfigDTO>;
+  webhooks: EndpointDefinition<readonly WebhookDTO[]>;
+  preferences: EndpointDefinition<UserPreferenceDTO>;
+  workflowBuilder: EndpointDefinition<readonly WorkflowDTO[]>;
+  contractVersion: EndpointDefinition<ContractVersionResponse>;
+};
 
 export const endpointCatalog = {
   dashboardSnapshot: { id: "dashboard.snapshot", path: "/dashboard/snapshot", method: "GET", apiLayer: "C", planned: false },
@@ -92,14 +218,7 @@ export const endpointCatalog = {
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
   contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
-} satisfies Record<string, EndpointDefinition>;
-
-export interface ListQueryParams {
-  readonly page?: number;
-  readonly pageSize?: number;
-  readonly sort?: string;
-  readonly filter?: string;
-}
+} satisfies EndpointCatalogDefinition;
 
 function buildQueryString(params: ListQueryParams): string {
   const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null);

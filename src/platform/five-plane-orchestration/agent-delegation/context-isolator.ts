@@ -140,11 +140,11 @@ export class ContextIsolator {
       base.constraints.maxTokens ?? Infinity,
       override.constraints.maxTokens ?? Infinity,
     );
-    const mergedAllowedDomains = this.mergeDomainLists(
+    const mergedAllowedDomains = this.mergeAllowedDomains(
       base.constraints.allowedDomains,
       override.constraints.allowedDomains,
     );
-    const mergedDeniedDomains = this.mergeDomainLists(
+    const mergedDeniedDomains = this.mergeDeniedDomains(
       base.constraints.deniedDomains,
       override.constraints.deniedDomains,
     );
@@ -225,9 +225,13 @@ export class ContextIsolator {
         // R26-03 fix: Child only gets explicitly required permissions
         // Empty required = no permissions granted (no fallback to parent - avoids privilege elevation)
         return {
-          resources: requiredPermissions.resources,
-          actions: requiredPermissions.actions,
-          constraints: requiredPermissions.constraints,
+          resources: requiredPermissions.resources.length > 0
+            ? this.intersectLists(parentPermissions.resources, requiredPermissions.resources)
+            : [],
+          actions: requiredPermissions.actions.length > 0
+            ? this.intersectLists(parentPermissions.actions, requiredPermissions.actions)
+            : [],
+          constraints: this.mergeConstraints(parentPermissions.constraints, requiredPermissions.constraints),
         };
 
       case IsolationLevel.SANDBOXED:
@@ -269,11 +273,11 @@ export class ContextIsolator {
       parent.maxTokens ?? Infinity,
       child.maxTokens ?? Infinity,
     );
-    const mergedAllowedDomains = this.mergeDomainLists(
+    const mergedAllowedDomains = this.mergeAllowedDomains(
       parent.allowedDomains,
       child.allowedDomains,
     );
-    const mergedDeniedDomains = this.mergeDomainLists(
+    const mergedDeniedDomains = this.mergeDeniedDomains(
       parent.deniedDomains,
       child.deniedDomains,
     );
@@ -286,7 +290,16 @@ export class ContextIsolator {
     };
   }
 
-  private mergeDomainLists(
+  private mergeAllowedDomains(
+    parent: readonly string[] | undefined,
+    child: readonly string[] | undefined,
+  ): readonly string[] | undefined {
+    if (!child || child.length === 0) return parent;
+    if (!parent || parent.length === 0) return child;
+    return parent.filter((domain) => child.includes(domain));
+  }
+
+  private mergeDeniedDomains(
     parent: readonly string[] | undefined,
     child: readonly string[] | undefined,
   ): readonly string[] | undefined {

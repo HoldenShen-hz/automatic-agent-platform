@@ -80,7 +80,7 @@ test("AgentVersionManager.assignDeploymentSlot assigns to green slot", () => {
   assert.equal(active!.versionId, version.versionId);
 });
 
-test("AgentVersionManager.assignDeploymentSlot blue revokes existing green", () => {
+test("AgentVersionManager.assignDeploymentSlot blue preserves existing green", () => {
   const manager = new AgentVersionManager();
   const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
   const v2 = manager.registerVersion(makeVersion({ version: "2.0.0" }));
@@ -89,10 +89,10 @@ test("AgentVersionManager.assignDeploymentSlot blue revokes existing green", () 
   manager.assignDeploymentSlot("agent_test", v2.versionId, "blue");
 
   const green = manager.getActiveSlot("agent_test", "green");
-  assert.equal(green, null);
+  assert.equal(green?.versionId, v1.versionId);
 });
 
-test("AgentVersionManager.assignDeploymentSlot green revokes existing blue", () => {
+test("AgentVersionManager.assignDeploymentSlot green preserves existing blue", () => {
   const manager = new AgentVersionManager();
   const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
   const v2 = manager.registerVersion(makeVersion({ version: "2.0.0" }));
@@ -101,7 +101,7 @@ test("AgentVersionManager.assignDeploymentSlot green revokes existing blue", () 
   manager.assignDeploymentSlot("agent_test", v2.versionId, "green");
 
   const blue = manager.getActiveSlot("agent_test", "blue");
-  assert.equal(blue, null);
+  assert.equal(blue?.versionId, v1.versionId);
 });
 
 test("AgentVersionManager.getActiveSlot returns null for empty slot", () => {

@@ -84,6 +84,18 @@ export function buildMemoryConsolidationSummary(
     .map((record) => record.qualityScore)
     .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
 
+  const factEntries = ordered.flatMap((record) => {
+    const content = parseStructuredMemoryContent(record.contentJson);
+    const provenance = buildFactProvenanceFromRecord(record, "memory.consolidation_source");
+    return content.facts.map((fact) => ({
+      record,
+      fact,
+      provenance,
+    }));
+  });
+  const retainedFacts = factEntries.slice(0, 12);
+  const droppedFacts = factEntries.slice(12);
+
   const summaryText = [
     `Consolidated ${ordered.length} memories into ${targetLayer}.`,
     `Window: ${ordered[0]?.createdAt ?? "unknown"} -> ${ordered.at(-1)?.createdAt ?? "unknown"}.`,
@@ -102,10 +114,7 @@ export function buildMemoryConsolidationSummary(
       `Window ${ordered[0]?.createdAt ?? "unknown"} -> ${ordered.at(-1)?.createdAt ?? "unknown"}`,
       `Classifications: ${classifications.join(", ") || "unknown"}`,
     ],
-    facts: ordered.flatMap((record) => {
-      const content = parseStructuredMemoryContent(record.contentJson);
-      const provenance = buildFactProvenanceFromRecord(record, "memory.consolidation_source");
-      return content.facts.map((fact) => ({
+    facts: retainedFacts.map(({ fact, provenance }) => ({
         content: fact.content,
         category: fact.category,
         confidence: fact.confidence,
@@ -118,8 +127,7 @@ export function buildMemoryConsolidationSummary(
           executionId: fact.provenance.executionId ?? provenance.executionId,
           observedAt: fact.provenance.observedAt ?? provenance.observedAt,
         },
-      }));
-    }).slice(0, 12),
+      })),
   };
 
   // R24-29/R24-32 FIX: Build loss report documenting dropped content
@@ -132,6 +140,11 @@ export function buildMemoryConsolidationSummary(
         memoryId: record.id,
         snippetPreview: snippet.length > 50 ? snippet.slice(0, 50) + "..." : snippet,
         reason: "exceeded_max_snippets_limit:8",
+      })),
+      ...droppedFacts.map(({ record, fact }) => ({
+        memoryId: record.id,
+        snippetPreview: fact.content.length > 50 ? fact.content.slice(0, 50) + "..." : fact.content,
+        reason: "exceeded_max_facts_limit:12",
       })),
     ],
     truncationTimestamp: new Date().toISOString(),

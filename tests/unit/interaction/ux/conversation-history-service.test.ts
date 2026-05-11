@@ -122,6 +122,45 @@ test("ConversationHistoryService isAvailable returns false without memory servic
   assert.equal(service.isAvailable(), false);
 });
 
+test("R23-16: ConversationHistoryService listUserSessions enforces tenant filtering at query and result layers", async () => {
+  let capturedTenantId: string | null = null;
+  const memoryService = {
+    recall: async (input: { tenantId?: string; scopes?: readonly string[] }) => {
+      capturedTenantId = input.tenantId ?? null;
+      return [
+        {
+          contentJson: JSON.stringify({
+            sessionId: "conv_tenant_a",
+            tenantId: "tenant_a",
+            userId: "user_1",
+            turns: [],
+            createdAt: "2026-05-01T00:00:00.000Z",
+            updatedAt: "2026-05-02T00:00:00.000Z",
+            status: "active",
+          }),
+        },
+        {
+          contentJson: JSON.stringify({
+            sessionId: "conv_tenant_b",
+            tenantId: "tenant_b",
+            userId: "user_1",
+            turns: [],
+            createdAt: "2026-05-01T00:00:00.000Z",
+            updatedAt: "2026-05-03T00:00:00.000Z",
+            status: "active",
+          }),
+        },
+      ];
+    },
+  };
+  const service = new ConversationHistoryService(memoryService as never);
+
+  const sessions = await service.listUserSessions("user_1", "tenant_a", 10);
+
+  assert.equal(capturedTenantId, "tenant_a");
+  assert.deepEqual(sessions.map((session) => session.sessionId), ["conv_tenant_a"]);
+});
+
 test("ConversationHistoryService records timestamp on turn", async () => {
   const service = new ConversationHistoryService();
 

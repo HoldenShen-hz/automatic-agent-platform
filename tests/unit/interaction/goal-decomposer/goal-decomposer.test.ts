@@ -80,6 +80,28 @@ test("GoalDecompositionService does not set maxDepthReached when depth is below 
   assert.equal(result.depthUsed, 1);
 });
 
+test("R23-04: GoalDecompositionService rejects cyclic dependency graphs instead of only warning", async () => {
+  const service = new GoalDecompositionService();
+  const mutableService = service as unknown as {
+    buildDependencies: (tasks: readonly PlannedTask[]) => TaskDependency[];
+  };
+  const originalBuildDependencies = mutableService.buildDependencies;
+
+  mutableService.buildDependencies = (tasks: readonly PlannedTask[]) => [
+    { fromTask: tasks[0]!.taskId, toTask: tasks[1]!.taskId, type: "blocks" },
+    { fromTask: tasks[1]!.taskId, toTask: tasks[0]!.taskId, type: "blocks" },
+  ];
+
+  try {
+    await assert.rejects(
+      () => service.decompose(createTestGoal()),
+      /goal_decomposer\.cycle_detected/,
+    );
+  } finally {
+    mutableService.buildDependencies = originalBuildDependencies;
+  }
+});
+
 // R5-28: Capability validation - tests for requiredCapabilities propagation
 test("GoalDecompositionService extracts analytics capability from dashboard/report constraints", async () => {
   const service = new GoalDecompositionService();

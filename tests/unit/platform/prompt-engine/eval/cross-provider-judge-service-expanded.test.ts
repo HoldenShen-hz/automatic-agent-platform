@@ -36,7 +36,7 @@ function createHarness(): CrossProviderJudgeService {
     version: "1.0.0",
     stage: "assess",
     createdBy: "quality",
-    cases: generateStandardCases(25, "multi-judge-"),
+    cases: generateStandardCases(50, "multi-judge-"),
   });
   judgeService.activateDataset("dataset-multi-judge");
   judgeService.registerJudge({

@@ -56,6 +56,8 @@ test("assessPromotion promotes suggestion to supervised when thresholds met", ()
   assert.equal(result.shouldPromote, true);
   assert.equal(result.currentLevel, "suggestion");
   assert.equal(result.targetLevel, "supervised");
+  assert.equal(result.approvalRequired, true);
+  assert.equal(result.approvalRole, "domain_owner");
   assert.ok(result.reasonCodes.includes("autonomy.meets_supervised_threshold"));
 });
 
@@ -71,10 +73,12 @@ test("assessPromotion promotes supervised to semi_auto when thresholds met", () 
   assert.equal(result.shouldPromote, true);
   assert.equal(result.currentLevel, "supervised");
   assert.equal(result.targetLevel, "semi_auto");
+  assert.equal(result.approvalRequired, true);
+  assert.equal(result.approvalRole, "domain_owner");
   assert.ok(result.reasonCodes.includes("autonomy.meets_semi_auto_threshold"));
 });
 
-test("assessPromotion blocks automatic full_auto promotion even when thresholds are met", () => {
+test("assessPromotion requires platform_team approval for semi_auto to full_auto promotion", () => {
   const score = makeScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
@@ -83,9 +87,11 @@ test("assessPromotion blocks automatic full_auto promotion even when thresholds 
     incidents: 0,
   });
   const result = assessPromotion(score);
-  assert.equal(result.shouldPromote, false);
+  assert.equal(result.shouldPromote, true);
   assert.equal(result.currentLevel, "semi_auto");
-  assert.equal(result.targetLevel, "semi_auto");
+  assert.equal(result.targetLevel, "full_auto");
+  assert.equal(result.approvalRequired, true);
+  assert.equal(result.approvalRole, "platform_team");
   assert.ok(result.reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });
 

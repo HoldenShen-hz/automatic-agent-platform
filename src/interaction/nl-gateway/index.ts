@@ -35,6 +35,7 @@ import {
   createRequestEnvelopeFromConfirmedTask,
   createTaskDraft as createCanonicalTaskDraft,
   type ConfirmedTaskSpec,
+  type JsonValue,
   type RequestEnvelope as CanonicalRequestEnvelope,
   type TaskDraft as CanonicalTaskDraft,
 } from "../../platform/contracts/executable-contracts/index.js";

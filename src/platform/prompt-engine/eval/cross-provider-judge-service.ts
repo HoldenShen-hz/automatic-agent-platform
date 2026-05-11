@@ -146,11 +146,12 @@ function selectByStrategy(
   switch (strategy) {
     case "cheapest":
       return [...judges].sort((a, b) => a.maxCostUsd - b.maxCostUsd)[0] ?? null;
+    case "fastest":
+      return [...judges].sort((a, b) => estimateLatencyRank(a) - estimateLatencyRank(b) || a.maxCostUsd - b.maxCostUsd)[0] ?? null;
     case "most_capable":
       return [...judges].sort((a, b) => b.capabilities.length - a.capabilities.length)[0] ?? null;
     case "provider_diverse":
       return selectProviderDiverse(judges);
-    case "fastest":
     default:
       return judges[0] ?? null;
   }
@@ -178,6 +179,26 @@ function selectProviderDiverse(judges: JudgeProfileRecord[]): JudgeProfileRecord
   }
 
   return representatives.sort((a, b) => a.maxCostUsd - b.maxCostUsd)[0] ?? null;
+}
+
+function estimateLatencyRank(judge: JudgeProfileRecord): number {
+  const modelId = judge.modelId.toLowerCase();
+  let rank = 100;
+
+  if (/(haiku|mini|flash|turbo|instant|fast)/.test(modelId)) {
+    rank -= 35;
+  }
+  if (/(sonnet|pro|large|max|reasoning|opus|thinking)/.test(modelId)) {
+    rank += 30;
+  }
+  if (judge.capabilities.length > 2) {
+    rank += 5;
+  }
+  if (judge.providerFamily.toLowerCase() === "anthropic" && modelId.includes("haiku")) {
+    rank -= 10;
+  }
+
+  return rank;
 }
 
 function buildConsensusResult(

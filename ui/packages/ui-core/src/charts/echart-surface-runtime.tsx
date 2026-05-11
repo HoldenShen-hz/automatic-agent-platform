@@ -3,17 +3,100 @@ import { init, use } from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { designTokens } from "../design-tokens";
+import { designTokens, type CoreDesignTokens } from "../design-tokens";
 
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 export interface EChartSurfaceRuntimeProps {
   readonly title: string;
   readonly values: readonly number[];
+  readonly theme?: CoreDesignTokens;
 }
 
-export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProps): ReactElement {
+function withAlpha(hexColor: string, alpha: number): string {
+  const normalized = hexColor.replace("#", "");
+  const shorthand = normalized.length === 3
+    ? normalized.split("").map((segment) => `${segment}${segment}`).join("")
+    : normalized;
+
+  if (shorthand.length !== 6) {
+    return hexColor;
+  }
+
+  const red = Number.parseInt(shorthand.slice(0, 2), 16);
+  const green = Number.parseInt(shorthand.slice(2, 4), 16);
+  const blue = Number.parseInt(shorthand.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function buildChartOption(title: string, values: readonly number[], theme: CoreDesignTokens) {
+  return {
+    aria: {
+      enabled: true,
+      decal: { show: true },
+      description: `${title}: ${values.join(", ")}`,
+    },
+    backgroundColor: "transparent",
+    animationDuration: 220,
+    grid: {
+      top: 18,
+      left: 24,
+      right: 24,
+      bottom: 44,
+    },
+    xAxis: {
+      type: "category",
+      data: values.map((_, index) => `${index + 1}`),
+      axisLine: { lineStyle: { color: theme.color.border } },
+    },
+    yAxis: {
+      type: "value",
+      axisLine: { lineStyle: { color: theme.color.border } },
+      splitLine: { lineStyle: { color: withAlpha(theme.color.border, 0.3) } },
+    },
+    dataZoom: [
+      {
+        type: "inside",
+        filterMode: "none",
+      },
+      {
+        type: "slider",
+        height: 20,
+        bottom: 10,
+        borderColor: theme.color.border,
+        fillerColor: withAlpha(theme.color.accent, 0.18),
+        backgroundColor: withAlpha(theme.color.surfaceElevated, 0.9),
+        handleStyle: {
+          color: theme.color.accent,
+          borderColor: theme.color.border,
+        },
+      },
+    ],
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        data: values,
+        lineStyle: { color: theme.color.accent, width: 3 },
+        areaStyle: { color: withAlpha(theme.color.accent, 0.18) },
+        itemStyle: { color: theme.color.accent },
+        emphasis: { focus: "series" },
+        decal: {
+          symbol: "rect",
+          dashArrayX: [1, 0],
+          dashArrayY: [2, 2],
+        },
+      },
+    ],
+    tooltip: { trigger: "axis" },
+  };
+}
+
+export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EChartSurfaceRuntimeProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<ReturnType<typeof init> | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const previousValuesRef = useRef<readonly number[]>([]);
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
 
   useEffect(() => {
@@ -24,50 +107,58 @@ export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProp
     }
 
     const chart = init(container);
-    chart.setOption({
-      backgroundColor: "transparent",
-      animationDuration: 220,
-      xAxis: {
-        type: "category",
-        data: values.map((_, index) => `${index + 1}`),
-        axisLine: { lineStyle: { color: designTokens.color.border } },
-      },
-      yAxis: {
-        type: "value",
-        axisLine: { lineStyle: { color: designTokens.color.border } },
-        splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } },
-      },
-      series: [
-        {
-          type: "line",
-          smooth: true,
-          data: values,
-          lineStyle: { color: designTokens.color.accent, width: 3 },
-          areaStyle: { color: "rgba(34,197,94,0.18)" },
-        },
-      ],
-      tooltip: { trigger: "axis" },
-    });
-
     const resize = () => chart.resize();
+    const resizeObserver = typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => chart.resize())
+      : null;
+    resizeObserver?.observe(container);
     container.ownerDocument.defaultView?.addEventListener("resize", resize);
-    return () => {
+    chartRef.current = chart;
+    cleanupRef.current = () => {
+      resizeObserver?.disconnect();
       container.ownerDocument.defaultView?.removeEventListener("resize", resize);
+    };
+
+    return () => {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      chartRef.current = null;
       chart.dispose();
     };
-  }, [values]);
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (chart == null) {
+      return;
+    }
+
+    const previousValues = previousValuesRef.current;
+    const isAppendOnly = previousValues.length > 0
+      && values.length > previousValues.length
+      && previousValues.every((value, index) => values[index] === value);
+
+    chart.setOption(buildChartOption(title, values, theme));
+    if (isAppendOnly) {
+      chart.appendData({
+        seriesIndex: 0,
+        data: values.slice(previousValues.length),
+      });
+    }
+    previousValuesRef.current = [...values];
+  }, [theme, title, values]);
 
   return (
     <div>
-      <div style={{ color: designTokens.color.subtle, marginBottom: 8 }}>{title}</div>
+      <div style={{ color: theme.color.subtle, marginBottom: 8 }}>{title}</div>
       <div
         aria-label={fallbackLabel}
         ref={containerRef}
         style={{
           height: 220,
-          border: `1px solid ${designTokens.color.border}`,
-          borderRadius: designTokens.radius.md,
-          background: designTokens.color.surfaceElevated,
+          border: `1px solid ${theme.color.border}`,
+          borderRadius: theme.radius.md,
+          background: theme.color.surfaceElevated,
         }}
       />
     </div>

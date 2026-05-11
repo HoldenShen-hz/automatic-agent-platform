@@ -12,24 +12,77 @@ export interface StructuredHealthScore {
   readonly findings: number;
 }
 
+const HEALTH_STATUS_SCORES: Record<DashboardSystemSituation["healthStatus"], number> = {
+  ok: 100,
+  degraded: 72,
+  overloaded: 44,
+  unhealthy: 18,
+};
+
+const PROVIDER_STATUS_MULTIPLIER: Record<NonNullable<DashboardSystemSituation["providerHealth"]>["status"], number> = {
+  healthy: 1,
+  degraded: 0.72,
+  failed: 0.25,
+};
+
 export function buildStructuredHealthScore(system: DashboardSystemSituation): StructuredHealthScore {
-  const base = system.healthStatus === "ok" ? 100 : system.healthStatus === "degraded" ? 80 : system.healthStatus === "overloaded" ? 60 : 30;
-  const backlogPenalty = Math.min(30, system.queueBacklog.size);
-  const findingPenalty = Math.min(20, system.findings.length * 5);
-  const overall = Math.max(0, base - backlogPenalty - findingPenalty);
+  const queueDepth = resolveQueueDepth(system);
+  const degradedQueue = resolveQueueDegraded(system);
+  const healthComponent = HEALTH_STATUS_SCORES[system.healthStatus];
+  const providerStatus = system.providerHealth?.status ?? "healthy";
+  const providerSuccessRate = system.providerHealth?.successRate ?? 1;
+  const providerComponent = Math.round(100 * PROVIDER_STATUS_MULTIPLIER[providerStatus] * providerSuccessRate);
+  const queuePenalty = Math.min(70, queueDepth * 4 + (degradedQueue ? 18 : 0));
+  const queueComponent = Math.max(0, 100 - queuePenalty);
+  const findingsPenalty = Math.min(75, system.findings.length * 12);
+  const findingsComponent = Math.max(0, 100 - findingsPenalty);
+  const overall = Math.max(
+    0,
+    Math.round(
+      healthComponent * 0.4
+      + providerComponent * 0.25
+      + queueComponent * 0.2
+      + findingsComponent * 0.15,
+    ),
+  );
+
+  const p50LatencyMs = Math.max(20, 25 + queueDepth * 12 + (degradedQueue ? 35 : 0));
+  const p99LatencyMs = Math.max(p50LatencyMs, 90 + queueDepth * 45 + (degradedQueue ? 140 : 0));
+  const activeWorkers = Math.max(1, Math.ceil(queueDepth / (degradedQueue ? 6 : 4)));
+  const budgetUtilizationPercent = Math.min(100, Math.round((100 - queueComponent) * 0.5 + (100 - findingsComponent) * 0.5));
+
   return {
     overall,
-    uptime: system.healthStatus === "ok" ? 100 : system.healthStatus === "degraded" ? 99.5 : 99.0,
-    errorRate: Math.min(100, (findingPenalty / 100) * 100),
-    p50LatencyMs: system.queueBacklog.size * 10,
-    p99LatencyMs: system.queueBacklog.size * 50,
-    queueDepth: system.queueBacklog.size,
-    activeWorkers: system.healthStatus === "ok" ? system.queueBacklog.size * 2 : Math.max(1, system.queueBacklog.size),
-    budgetUtilizationPercent: Math.min(100, (findingPenalty + backlogPenalty) * 2),
+    uptime: Number((95 + healthComponent * 0.05).toFixed(2)),
+    errorRate: Number((Math.max(0, 1 - providerSuccessRate) * 100 + system.findings.length * 2).toFixed(2)),
+    p50LatencyMs,
+    p99LatencyMs,
+    queueDepth,
+    activeWorkers,
+    budgetUtilizationPercent,
     findings: system.findings.length,
   };
 }
 
 export function scoreSystemHealth(system: DashboardSystemSituation): number {
   return buildStructuredHealthScore(system).overall;
+}
+
+function resolveQueueDepth(system: DashboardSystemSituation): number {
+  if (typeof system.queueDepth === "number") {
+    return system.queueDepth;
+  }
+  const queueBacklog = system.queueBacklog as { size?: number } | ReadonlySet<string>;
+  if ("size" in queueBacklog && typeof queueBacklog.size === "number") {
+    return queueBacklog.size;
+  }
+  return 0;
+}
+
+function resolveQueueDegraded(system: DashboardSystemSituation): boolean {
+  if (typeof system.degraded === "boolean") {
+    return system.degraded;
+  }
+  const queueBacklog = system.queueBacklog as { degraded?: boolean };
+  return queueBacklog.degraded ?? false;
 }

@@ -28,7 +28,7 @@ test("ModelGatewayFallbackService returns no candidate when candidates array is 
 
   assert.equal(decision.selectedProfileName, null);
   assert.equal(decision.reasonCode, "fallback.no_candidate_available");
-  assert.deepEqual(decision.attemptedProfiles, []);
+  assert.deepEqual(decision.attemptedProfiles, ["primary"]);
 });
 
 test("ModelGatewayFallbackService returns no candidate when primary is the only candidate", () => {
@@ -122,7 +122,7 @@ test("ModelGatewayFallbackService returns no candidate when all exceed maxInputC
   assert.equal(decision.reasonCode, "fallback.no_candidate_available");
 });
 
-test("ModelGatewayFallbackService includes all profiles in attemptedProfiles", () => {
+test("ModelGatewayFallbackService attemptedProfiles tracks the selected fallback chain only", () => {
   const service = new ModelGatewayFallbackService();
   const candidates: ModelFallbackCandidate[] = [
     { profileName: "primary", provider: "openai", tier: "reasoning", healthy: false, inputCostPer1kUsd: 1.2 },
@@ -134,7 +134,8 @@ test("ModelGatewayFallbackService includes all profiles in attemptedProfiles", (
     candidates,
   });
 
-  assert.deepEqual(decision.attemptedProfiles, ["primary", "fallback-a", "fallback-b"]);
+  assert.deepEqual(decision.attemptedProfiles, ["primary", "fallback-a"]);
+  assert.deepEqual(decision.fallbackChain, ["primary", "fallback-a", "fallback-b"]);
 });
 
 test("ModelGatewayFallbackService sets degradedFromProfileName to primary", () => {
@@ -202,6 +203,21 @@ test("ModelGatewayFallbackService sorts by input cost ascending", () => {
   });
 
   assert.equal(decision.selectedProfileName, "fallback-a");
+});
+
+test("ModelGatewayFallbackService prefers primary-tier-compatible fallback over a cheaper incompatible tier", () => {
+  const service = new ModelGatewayFallbackService();
+  const decision = service.selectFallback({
+    primaryProfileName: "primary",
+    candidates: [
+      { profileName: "primary", provider: "openai", tier: "balanced", healthy: false, inputCostPer1kUsd: 1.2 },
+      { profileName: "fast-cheap", provider: "openai", tier: "fast", healthy: true, inputCostPer1kUsd: 0.2 },
+      { profileName: "balanced-safe", provider: "anthropic", tier: "balanced", healthy: true, inputCostPer1kUsd: 0.3 },
+    ],
+  });
+
+  assert.equal(decision.selectedProfileName, "balanced-safe");
+  assert.deepEqual(decision.attemptedProfiles, ["primary", "balanced-safe"]);
 });
 
 test("ModelGatewayFallbackService reasonCode is no_candidate when nothing eligible", () => {

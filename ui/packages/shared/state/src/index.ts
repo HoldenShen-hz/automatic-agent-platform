@@ -73,6 +73,7 @@ const fallbackAuthStore = createAuthStore();
 const fallbackUiStore = createUiStore();
 const fallbackRealtimeStore = createRealtimeStore();
 const fallbackSyncStore = createSyncStore();
+const identity = <T,>(state: T): T => state;
 
 export function UiRuntimeProvider(
   { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
@@ -88,10 +89,12 @@ export function UiRuntimeProvider(
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
   useEffect(() => {
-    const params = new URLSearchParams("access_token=ui-runtime-access&refresh_token=ui-runtime-refresh&locale=zh-CN");
+    const params = typeof window === "undefined"
+      ? new URLSearchParams("locale=zh-CN")
+      : new URLSearchParams(window.location.search);
     const identity = authService.resolveIdentity(params);
-    authService.handleSsoCallback(params);
     authStore.getState().setAuthenticated(authService.isAuthenticated());
+    authStore.getState().setDisplayName(identity.displayName);
     authStore.getState().setLocale(identity.locale);
     uiStore.getState().setActiveRoute("/mission-control/dashboard");
     uiStore.getState().setActiveFeature("dashboard");
@@ -183,19 +186,37 @@ export function useWsClient(): WSClient {
   return useContext(WsClientContext) ?? new InMemoryWSClient();
 }
 
-export function useAuthState(): AuthStoreState {
+export function useAuthStoreApi() {
   const store = useContext(AuthStoreContext) ?? fallbackAuthStore;
-  return useStore(store, (state) => state);
+  return store;
 }
 
-export function useUiState(): UiStoreState {
+export function useUiStoreApi() {
   const store = useContext(UiStoreContext) ?? fallbackUiStore;
-  return useStore(store, (state) => state);
+  return store;
 }
 
-export function useSyncState(): SyncStoreState {
+export function useSyncStoreApi() {
   const store = useContext(SyncStoreContext) ?? fallbackSyncStore;
-  return useStore(store, (state) => state);
+  return store;
+}
+
+export function useAuthState<TSelected = AuthStoreState>(
+  selector: (state: AuthStoreState) => TSelected = identity as (state: AuthStoreState) => TSelected,
+): TSelected {
+  return useStore(useAuthStoreApi(), selector);
+}
+
+export function useUiState<TSelected = UiStoreState>(
+  selector: (state: UiStoreState) => TSelected = identity as (state: UiStoreState) => TSelected,
+): TSelected {
+  return useStore(useUiStoreApi(), selector);
+}
+
+export function useSyncState<TSelected = SyncStoreState>(
+  selector: (state: SyncStoreState) => TSelected = identity as (state: SyncStoreState) => TSelected,
+): TSelected {
+  return useStore(useSyncStoreApi(), selector);
 }
 
 export function useSystemStatus(): SystemStatusVM {

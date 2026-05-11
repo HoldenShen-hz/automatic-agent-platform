@@ -83,8 +83,11 @@ export class HierarchicalPromptRegistryService {
     // R23-48 fix: Normalize to domain-level storage for backward compatibility
     const effectiveDomain = domain ?? input.domain ?? packId;
     const timestamp = nowIso();
+    // Ensure displayVersion is provided (may come from input.version semver formatting)
+    const displayVersion = input.displayVersion ?? `v${input.version}`;
     const bundle = createPromptBundle({
       ...input,
+      displayVersion,
       bundleId: this.buildBundleId(input, level, effectiveDomain),
       domain: effectiveDomain ?? input.domain,
       packId: packId ?? input.packId,

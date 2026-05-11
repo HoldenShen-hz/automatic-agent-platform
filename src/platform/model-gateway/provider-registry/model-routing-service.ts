@@ -47,17 +47,42 @@ export type ModelRouteClass = "default" | "classification" | "writing" | "coding
  * Higher risk prefers more capable models.
  */
 export type ModelRouteRiskLevel = "low" | "medium" | "high" | "critical";
+export type ModelRoutePurpose = "plan" | "execute" | "evaluate" | "summarize" | "chat";
+export type ModelRoutingStrategy =
+  | "cost_optimized"
+  | "latency_optimized"
+  | "quality_optimized"
+  | "compliance_constrained"
+  | "hybrid";
+export type RouteFailureCode =
+  | "route.no_candidate"
+  | "route.policy_denied"
+  | "route.cost_guard"
+  | "route.provider_cooldown"
+  | "route.capability_mismatch";
 
 /**
  * Request for model routing decision
  */
 export interface ModelRouteRequest {
+  requestId?: string;
+  harnessRunId?: string;
+  nodeRunId?: string | null;
+  attemptId?: string | null;
+  taskId?: string | null;
+  sessionId?: string | null;
+  tenantId?: string | null;
+  purpose?: ModelRoutePurpose;
+  routingStrategy?: ModelRoutingStrategy;
   // Type of work (affects tier preference order)
   routeClass?: ModelRouteClass;
   // Risk level (higher risk prefers more capable models)
   riskLevel?: ModelRouteRiskLevel;
   // Required capabilities (e.g., "vision", "function_calling")
   requiredCapabilities?: readonly string[];
+  preferredModel?: string | null;
+  maxLatencyMs?: number | null;
+  maxCostUsd?: number | null;
   // Explicitly requested profile (bypasses normal selection)
   preferredProfileName?: string | null;
   // Must-use profile (throws if unavailable)
@@ -157,6 +182,12 @@ export interface ModelRouteTrace {
 export interface ModelRouteDecision {
   profileName: string;
   profile: ModelProfileMetadata;
+  providerId: string;
+  modelId: string;
+  authProfileId: string;
+  fallbackChain: string[];
+  stickySession: boolean;
+  decisionReason: string[];
   trace: ModelRouteTrace;
   // New fallback lease issued (if any)
   fallbackLease: ModelRouteFallbackLease | null;
@@ -219,6 +250,112 @@ function normalizeOptionalName(value: string | null | undefined): string | null 
 // Normalizes turn ID using the same logic as optional names
 function normalizeTurnId(value: string | null | undefined): string | null {
   return normalizeOptionalName(value);
+}
+
+function normalizeRouteClassFromCanonicalRequest(request: ModelRouteRequest): ModelRouteClass {
+  if (request.routeClass != null) {
+    return normalizeRouteClass(request.routeClass);
+  }
+  switch (request.purpose) {
+    case "plan":
+    case "evaluate":
+      return "reasoning";
+    case "summarize":
+      return "writing";
+    case "execute":
+      return request.requiredCapabilities?.includes("coding") ? "coding" : "default";
+    case "chat":
+    default:
+      return "default";
+  }
+}
+
+function normalizeRiskLevelFromCanonicalRequest(request: ModelRouteRequest): ModelRouteRiskLevel {
+  if (request.riskLevel != null) {
+    return normalizeRiskLevel(request.riskLevel);
+  }
+  switch (request.routingStrategy) {
+    case "compliance_constrained":
+      return "critical";
+    case "quality_optimized":
+      return "high";
+    case "latency_optimized":
+      return "low";
+    case "cost_optimized":
+      return "low";
+    case "hybrid":
+    default:
+      return "medium";
+  }
+}
+
+function resolvePreferredProfileName(request: ModelRouteRequest): string | null {
+  return normalizeOptionalName(request.preferredProfileName ?? request.preferredModel);
+}
+
+function resolveMaxInputPer1kUsd(request: ModelRouteRequest): number | null {
+  if (typeof request.maxInputPer1kUsd === "number") {
+    return request.maxInputPer1kUsd;
+  }
+  if (typeof request.maxCostUsd === "number") {
+    return request.maxCostUsd;
+  }
+  return null;
+}
+
+function resolveRoutingReasons(
+  reason: ModelRouteTrace["routeReason"],
+  candidate: EligibleProfile,
+  request: ModelRouteRequest,
+): string[] {
+  const reasons = [
+    reason,
+    `provider:${candidate.profile.provider}`,
+    `tier:${candidate.profile.tier}`,
+  ];
+  if (request.routingStrategy != null) {
+    reasons.push(`routing_strategy:${request.routingStrategy}`);
+  }
+  if (request.purpose != null) {
+    reasons.push(`purpose:${request.purpose}`);
+  }
+  if (request.maxLatencyMs != null) {
+    reasons.push(`latency_guard:${request.maxLatencyMs}`);
+  }
+  if (request.maxCostUsd != null || request.maxInputPer1kUsd != null) {
+    reasons.push(`cost_guard:${request.maxCostUsd ?? request.maxInputPer1kUsd}`);
+  }
+  return reasons;
+}
+
+function resolveAuthProfileId(
+  registry: ModelMetadataRegistry,
+  providerId: string,
+): string {
+  const authMethod = registry.providers[providerId]?.authMethods[0] ?? "default";
+  return `${providerId}:${authMethod}`;
+}
+
+export function classifyModelRoutingFailure(error: unknown): RouteFailureCode | null {
+  if (!(error instanceof AppError)) {
+    return null;
+  }
+  if (error.code.includes("capability")) {
+    return "route.capability_mismatch";
+  }
+  if (error.code.includes("governance") || error.code.includes("policy")) {
+    return "route.policy_denied";
+  }
+  if (error.code.includes("cost_cap")) {
+    return "route.cost_guard";
+  }
+  if (error.code.includes("provider_health") || error.code.includes("cooldown")) {
+    return "route.provider_cooldown";
+  }
+  if (error.code.startsWith("model_route.")) {
+    return "route.no_candidate";
+  }
+  return null;
 }
 
 /**
@@ -421,11 +558,11 @@ export class ModelRoutingService {
    * 6. Issue new fallback lease if primary becomes unavailable
    */
   public route(request: ModelRouteRequest = {}): ModelRouteDecision {
-    const routeClass = normalizeRouteClass(request.routeClass);
-    const riskLevel = normalizeRiskLevel(request.riskLevel);
+    const routeClass = normalizeRouteClassFromCanonicalRequest(request);
+    const riskLevel = normalizeRiskLevelFromCanonicalRequest(request);
     const requiredCapabilities = normalizeRequiredCapabilities(request.requiredCapabilities);
     const targetTierOrder = buildTargetTierOrder(routeClass, riskLevel);
-    const turnId = normalizeTurnId(request.turnId);
+    const turnId = normalizeTurnId(request.turnId ?? request.requestId ?? request.sessionId);
     const fallbackLease = normalizeFallbackLease(request.fallbackLease);
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
     const dataResidency = normalizeOptionalName(request.data_residency);
@@ -433,11 +570,11 @@ export class ModelRoutingService {
     const piiOutputPossible = request.pii_output_possible === true;
     const modelTrainingOptOut = request.model_training_opt_out === true;
     const judgeIndependence = request.judge_independence === true;
-    const latencySloTargetMs = resolveLatencySloTargetMs(routeClass, riskLevel, request.latency_slo_target_ms);
+    const latencySloTargetMs = resolveLatencySloTargetMs(routeClass, riskLevel, request.maxLatencyMs ?? request.latency_slo_target_ms);
     const pinnedProfileName = normalizeOptionalName(request.pinnedProfileName);
-    const preferredProfileName = normalizeOptionalName(request.preferredProfileName);
+    const preferredProfileName = resolvePreferredProfileName(request);
     const stickyProfileName = normalizeOptionalName(request.stickyProfileName);
-    const maxInputPer1kUsd = request.maxInputPer1kUsd ?? null;
+    const maxInputPer1kUsd = resolveMaxInputPer1kUsd(request);
     const filteredOut: string[] = [];
 
     const getGovernanceStatus = (
@@ -555,6 +692,12 @@ export class ModelRoutingService {
       const decision: ModelRouteDecision = {
         profileName: candidate.profileName,
         profile: candidate.profile,
+        providerId: candidate.profile.provider,
+        modelId: candidate.profile.modelId,
+        authProfileId: resolveAuthProfileId(this.registry, candidate.profile.provider),
+        fallbackChain: fallback == null ? [candidate.profileName] : [fallback.primaryProfileName, fallback.fallbackProfileName],
+        stickySession: request.sessionId != null || stickyProfileName != null,
+        decisionReason: resolveRoutingReasons(reason, candidate, request),
         trace: buildTrace(
           candidate.profileName,
           candidate.profile.provider,

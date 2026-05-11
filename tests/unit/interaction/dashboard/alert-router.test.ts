@@ -52,7 +52,7 @@ test("sortAttentionQueue sorts by priority order critical > high > normal > low"
   assert.equal(sorted[3]?.priority, "low");
 });
 
-test("sortAttentionQueue sorts by createdAt within same priority", () => {
+test("sortAttentionQueue sorts newest items first within the same priority", () => {
   const items: AttentionItem[] = [
     {
       itemType: "incident",
@@ -85,9 +85,9 @@ test("sortAttentionQueue sorts by createdAt within same priority", () => {
 
   const sorted = sortAttentionQueue(items);
 
-  assert.equal(sorted[0]?.title, "First Created");
+  assert.equal(sorted[0]?.title, "Third Created");
   assert.equal(sorted[1]?.title, "Second Created");
-  assert.equal(sorted[2]?.title, "Third Created");
+  assert.equal(sorted[2]?.title, "First Created");
 });
 
 test("sortAttentionQueue does not mutate original array", () => {

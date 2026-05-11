@@ -1,6 +1,9 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { scoreSystemHealth } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
+import {
+  buildStructuredHealthScore,
+  scoreSystemHealth,
+} from "../../../../../src/interaction/dashboard/health-scorer/index.js";
 import type { SystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
 
 function mockSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
@@ -16,193 +19,68 @@ function mockSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSi
   };
 }
 
-test("scoreSystemHealth returns 100 for ok healthStatus", () => {
-  const system = mockSystemSituation({ healthStatus: "ok" });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 100);
-});
-
-test("scoreSystemHealth returns 80 for degraded healthStatus", () => {
-  const system = mockSystemSituation({ healthStatus: "degraded" });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 80);
-});
-
-test("scoreSystemHealth returns 60 for overloaded healthStatus", () => {
-  const system = mockSystemSituation({ healthStatus: "overloaded" });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 60);
-});
-
-test("scoreSystemHealth returns 30 for unhealthy healthStatus", () => {
-  const system = mockSystemSituation({ healthStatus: "unhealthy" });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 30);
-});
-
-test("scoreSystemHealth applies backlog penalty up to 30", () => {
-  const systemOk = mockSystemSituation({ healthStatus: "ok", queueBacklog: { size: 10, degraded: false } });
-
-  const score = scoreSystemHealth(systemOk);
-
-  assert.ok(score < 100);
-  assert.strictEqual(score, 90);
-});
-
-test("scoreSystemHealth caps backlog penalty at 30", () => {
-  const system = mockSystemSituation({ healthStatus: "ok", queueBacklog: { size: 100, degraded: false } });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 70);
-});
-
-test("scoreSystemHealth applies findings penalty up to 20", () => {
-  const system = mockSystemSituation({ healthStatus: "ok", findings: ["finding-1", "finding-2", "finding-3"] });
-
-  const score = scoreSystemHealth(system);
-
-  assert.ok(score < 100);
-  assert.strictEqual(score, 85);
-});
-
-test("scoreSystemHealth caps findings penalty at 20", () => {
-  const system = mockSystemSituation({ healthStatus: "ok", findings: Array.from({ length: 10 }, (_, i) => `finding-${i}`) });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 80);
-});
-
-test("scoreSystemHealth combines both penalties", () => {
-  const system = mockSystemSituation({
+test("scoreSystemHealth uses composite weighting rather than raw status only", () => {
+  const pristine = mockSystemSituation({ healthStatus: "ok" });
+  const stressed = mockSystemSituation({
     healthStatus: "ok",
-    queueBacklog: { size: 5, degraded: false },
-    findings: ["finding-1", "finding-2"],
+    providerHealth: { status: "degraded", successRate: 0.7, recentCalls: 25 },
+    queueBacklog: { size: 8, degraded: true },
+    findings: ["finding-1", "finding-2", "finding-3"],
   });
 
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 85);
+  assert.equal(scoreSystemHealth(pristine), 100);
+  assert.equal(scoreSystemHealth(stressed), 72);
 });
 
-test("scoreSystemHealth returns 0 at minimum", () => {
-  const system = mockSystemSituation({
-    healthStatus: "unhealthy",
-    queueBacklog: { size: 100, degraded: true },
-    findings: Array.from({ length: 10 }, (_, i) => `finding-${i}`),
-  });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 0);
-});
-
-test("scoreSystemHealth handles empty findings", () => {
-  const system = mockSystemSituation({ healthStatus: "degraded", findings: [] });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 80);
-});
-
-test("scoreSystemHealth handles zero backlog", () => {
-  const system = mockSystemSituation({ healthStatus: "ok", queueBacklog: { size: 0, degraded: false } });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 100);
-});
-
-test("scoreSystemHealth with ok status and no penalties returns 100", () => {
-  const system = mockSystemSituation({
-    healthStatus: "ok",
-    queueBacklog: { size: 0, degraded: false },
-    findings: [],
-  });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 100);
-});
-
-test("scoreSystemHealth degraded with zero findings and backlog", () => {
-  const system = mockSystemSituation({
+test("scoreSystemHealth penalizes provider failures more than backlog alone", () => {
+  const backlogOnly = mockSystemSituation({
     healthStatus: "degraded",
-    queueBacklog: { size: 0, degraded: false },
-    findings: [],
+    queueBacklog: { size: 5, degraded: false },
+  });
+  const providerFailure = mockSystemSituation({
+    healthStatus: "degraded",
+    providerHealth: { status: "failed", successRate: 0.1, recentCalls: 12 },
+    queueBacklog: { size: 5, degraded: false },
   });
 
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 80);
+  assert.equal(scoreSystemHealth(backlogOnly), 85);
+  assert.equal(scoreSystemHealth(providerFailure), 61);
 });
 
-test("scoreSystemHealth overloaded with small penalty still returns positive", () => {
-  const system = mockSystemSituation({
+test("buildStructuredHealthScore derives latency and worker counters from queue pressure", () => {
+  const score = buildStructuredHealthScore(mockSystemSituation({
     healthStatus: "overloaded",
-    queueBacklog: { size: 1, degraded: false },
-    findings: [],
-  });
+    queueBacklog: { size: 6, degraded: true },
+    findings: ["finding-1"],
+  }));
 
-  const score = scoreSystemHealth(system);
-
-  assert.ok(score > 0);
-  assert.strictEqual(score, 59);
+  assert.equal(score.overall, 67);
+  assert.equal(score.queueDepth, 6);
+  assert.equal(score.p50LatencyMs, 132);
+  assert.equal(score.p99LatencyMs, 500);
+  assert.equal(score.activeWorkers, 1);
+  assert.equal(score.budgetUtilizationPercent, 27);
 });
 
-test("scoreSystemHealth unhappy path with max penalties", () => {
-  const system = mockSystemSituation({
+test("buildStructuredHealthScore preserves low error rate for healthy systems", () => {
+  const score = buildStructuredHealthScore(mockSystemSituation({
+    healthStatus: "ok",
+    providerHealth: { status: "healthy", successRate: 0.99, recentCalls: 50 },
+    findings: [],
+  }));
+
+  assert.equal(score.overall, 100);
+  assert.equal(score.errorRate, 1);
+  assert.equal(score.uptime, 100);
+});
+
+test("scoreSystemHealth bottoms out near zero for compounded severe degradation", () => {
+  const score = scoreSystemHealth(mockSystemSituation({
     healthStatus: "unhealthy",
-    queueBacklog: { size: 50, degraded: true },
-    findings: ["a", "b", "c", "d", "e"],
-  });
+    providerHealth: { status: "failed", successRate: 0, recentCalls: 100 },
+    queueBacklog: { size: 100, degraded: true },
+    findings: Array.from({ length: 10 }, (_, index) => `finding-${index}`),
+  }));
 
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 0);
-});
-
-test("scoreSystemHealth single finding penalty calculation", () => {
-  const system = mockSystemSituation({
-    healthStatus: "ok",
-    queueBacklog: { size: 0, degraded: false },
-    findings: ["single-finding"],
-  });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 95);
-});
-
-test("scoreSystemHealth two findings penalty calculation", () => {
-  const system = mockSystemSituation({
-    healthStatus: "ok",
-    queueBacklog: { size: 0, degraded: false },
-    findings: ["finding-1", "finding-2"],
-  });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 90);
-});
-
-test("scoreSystemHealth backlog of exactly 3 applies 15 point penalty", () => {
-  const system = mockSystemSituation({
-    healthStatus: "ok",
-    queueBacklog: { size: 3, degraded: false },
-    findings: [],
-  });
-
-  const score = scoreSystemHealth(system);
-
-  assert.strictEqual(score, 97);
+  assert.equal(score, 17);
 });

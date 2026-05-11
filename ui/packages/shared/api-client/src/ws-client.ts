@@ -4,6 +4,7 @@ export interface WSEventEnvelope {
   readonly channel: string;
   readonly type: string;
   readonly payload: unknown;
+  readonly eventId?: string;
 }
 
 export type EventHandler = (event: WSEventEnvelope) => void;
@@ -30,6 +31,7 @@ export type SharedWorkerFactory = () => SharedWorkerLike;
 export interface BrowserWSClientOptions {
   readonly heartbeatIntervalMs?: number;
   readonly heartbeatTimeoutMs?: number;
+  readonly replayBufferSize?: number;
 }
 
 type WorkerMessage =
@@ -98,6 +100,9 @@ export class BrowserWSClient implements WSClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private heartbeatDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly replayBufferByChannel = new Map<string, WSEventEnvelope[]>();
+  private readonly lastEventIdByChannel = new Map<string, string>();
+  private lastEventId: string | null = null;
   private currentUrl: string | null = null;
   private currentToken: string | null = null;
 
@@ -132,8 +137,15 @@ export class BrowserWSClient implements WSClient {
     this.handlers.set(channel, channelHandlers);
     this.subscribedChannels.add(channel);
     if (this.socket != null && this.socket.readyState === this.getOpenState()) {
-      this.socket.send(JSON.stringify({ action: "subscribe", channel }));
+      this.socket.send(JSON.stringify({
+        action: "subscribe",
+        channel,
+        ...(this.lastEventIdByChannel.get(channel) == null
+          ? {}
+          : { lastEventId: this.lastEventIdByChannel.get(channel) }),
+      }));
     }
+    this.replayBufferedEvents(channel, handler);
     const fallbackUnsubscribe = this.fallbackClient?.subscribe(channel, handler);
     return () => {
       channelHandlers.delete(handler);
@@ -156,6 +168,7 @@ export class BrowserWSClient implements WSClient {
   }
 
   public publish(event: WSEventEnvelope): void {
+    this.rememberEvent(event);
     for (const handler of this.handlers.get(event.channel) ?? []) {
       handler(event);
     }
@@ -176,9 +189,19 @@ export class BrowserWSClient implements WSClient {
       socket.onopen = () => {
         this.reconnectAttempts = 0;
         this.setStatus("connected");
-        socket.send(JSON.stringify({ action: "auth", token }));
+        socket.send(JSON.stringify({
+          action: "auth",
+          token,
+          ...(this.lastEventId == null ? {} : { lastEventId: this.lastEventId }),
+        }));
         for (const channel of this.subscribedChannels) {
-          socket.send(JSON.stringify({ action: "subscribe", channel }));
+          socket.send(JSON.stringify({
+            action: "subscribe",
+            channel,
+            ...(this.lastEventIdByChannel.get(channel) == null
+              ? {}
+              : { lastEventId: this.lastEventIdByChannel.get(channel) }),
+          }));
         }
         this.startHeartbeat();
       };
@@ -275,6 +298,39 @@ export class BrowserWSClient implements WSClient {
     return typeof WebSocket !== "undefined" ? WebSocket.OPEN : 1;
   }
 
+  private replayBufferedEvents(channel: string, handler: EventHandler): void {
+    for (const event of this.replayBufferByChannel.get(channel) ?? []) {
+      queueMicrotask(() => {
+        handler(event);
+      });
+    }
+  }
+
+  private rememberEvent(event: WSEventEnvelope): void {
+    const eventId = this.resolveEventId(event);
+    if (eventId != null) {
+      this.lastEventId = eventId;
+      this.lastEventIdByChannel.set(event.channel, eventId);
+    }
+    const replayBufferSize = this.options.replayBufferSize ?? 25;
+    const nextBuffer = [...(this.replayBufferByChannel.get(event.channel) ?? []), event].slice(-replayBufferSize);
+    this.replayBufferByChannel.set(event.channel, nextBuffer);
+  }
+
+  private resolveEventId(event: WSEventEnvelope): string | null {
+    if (typeof event.eventId === "string" && event.eventId.length > 0) {
+      return event.eventId;
+    }
+    if (event.payload != null && typeof event.payload === "object") {
+      const payload = event.payload as Record<string, unknown>;
+      const candidate = payload.eventId ?? payload.id;
+      if (typeof candidate === "string" && candidate.length > 0) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
   private setStatus(status: WSStatus): void {
     this.status = status;
     for (const handler of this.statusHandlers) {
@@ -287,6 +343,7 @@ export class SharedWorkerWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
   private readonly port: MessagePort;
+  private readonly replayBufferByChannel = new Map<string, WSEventEnvelope[]>();
 
   public constructor(worker: SharedWorkerLike) {
     this.port = worker.port;
@@ -309,6 +366,11 @@ export class SharedWorkerWSClient implements WSClient {
     this.handlers.set(channel, channelHandlers);
     if (wasEmpty) {
       this.port.postMessage({ action: "subscribe", channel });
+    }
+    for (const event of this.replayBufferByChannel.get(channel) ?? []) {
+      queueMicrotask(() => {
+        handler(event);
+      });
     }
     return () => {
       channelHandlers.delete(handler);
@@ -339,6 +401,8 @@ export class SharedWorkerWSClient implements WSClient {
       }
       return;
     }
+    const nextBuffer = [...(this.replayBufferByChannel.get(message.event.channel) ?? []), message.event].slice(-25);
+    this.replayBufferByChannel.set(message.event.channel, nextBuffer);
     for (const handler of this.handlers.get(message.event.channel) ?? []) {
       handler(message.event);
     }

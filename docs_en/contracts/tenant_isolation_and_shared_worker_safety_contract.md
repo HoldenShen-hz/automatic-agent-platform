@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the security boundaries for shared workers, shared cache, and shared queues in a multi-tenant environment.
+This contract defines the safety boundaries for shared workers, shared cache, and shared queues in a multi-tenant environment.
 
 Related documents:
 
@@ -30,7 +30,7 @@ Related documents:
 ## 2. Objectives
 
 - Prevent cross-tenant data pollution.
-- Prevent context leakage during shared worker reuse.
+- Prevent residual context leakage during shared worker reuse.
 - Clarify the boundary between shared infrastructure and tenant boundary.
 
 ## 3. Key Isolation Planes
@@ -45,43 +45,44 @@ Related documents:
 ## 4. Rules
 
 - Shared workers must rebuild or sanitize tenant-scoped runtime context before each execution.
-- Cache keys must explicitly include tenant / workspace boundaries.
-- Artifact download, debug snapshot, and inspect API must all carry tenant-aware authorization.
-- Workers must not carry the previous tenant's secrets, prompt context, or artifact references into the next task.
-- Worker leases, temporary directories, sandbox, repo cache, and memory snapshots must all carry tenant / workspace scope markers.
-- Any execution with missing, conflicting, or indeterminate tenant scope should fail-closed.
+- Cache keys must explicitly include tenant/workspace boundaries.
+- Artifact download, debug snapshot, and inspect APIs must include tenant-aware authorization.
+- Workers must not carry over secrets, prompt context, or artifact references from the previous tenant into the next task.
+- Worker leases, temporary directories, sandbox, repo cache, and memory snapshots must all include tenant/workspace scope markers.
+- Any execution with missing, conflicting, or unresolvable tenant scope should fail-closed.
 
 ## 5. Shared vs. Dedicated Boundaries
 
-Allowed to share: worker binary, base image, model connection pool, public read-only schema
-
-Not allowed to share: tenant secrets, tenant runtime context, tenant file workspace, tenant-scoped memory
+- Allowed to share: worker binary, base images, model connection pools, public read-only schemas
+- Not allowed to share: tenant secrets, tenant runtime context, tenant file workspace, tenant-scoped memory
 
 Supplementary rules:
 
-- Shared queues can be shared, but queue messages must explicitly carry tenant / workspace ownership.
-- Shared cache hits must not be reused across tenants, even if payloads appear identical.
+- Shared queues can be used, but queue messages must explicitly carry tenant/workspace ownership.
+- Shared cache hits must not be reused across tenants, even if the payload appears identical.
 - Before shared worker recycling or tenant switching, context erasure and secret recovery must be completed.
+- `dedicated_pool` tenants must actually map to tenant-scoped worker pools/resource pools, not merely record `isolationMode` in metadata.
+- `dedicated_pool` scheduling strategy must be `dedicated_pool_only`; shared queues can receive requests, but final execution must not fall back to shared worker pools.
 
-## 5A. Automatic Isolation Triggers
+## 5A. Automatic Isolation Trigger
 
-When shared workers or shared infrastructure show signs of cross-tenant risk, system must automatically enter isolation mode.
+When cross-tenant risk indicators appear in shared workers or shared infrastructure, the system must automatically enter isolation mode.
 
-- Default trigger threshold: failure_rate > 30% within rolling window AND sample_count >= min_sample_size.
-- `min_sample_size` default must not be lower than `20`.
-- After trigger, must automatically execute: stop new scheduling, isolate worker pool, elevate audit level, require human review.
-- If single tenant hot spot fault, isolation scope should be minimized to `tenant / workspace`; if ownership cannot be determined, elevate to shared worker pool level isolation and fail-closed.
-- Before automatically releasing isolation, must see failure rate decline, sample size satisfied, and context erasure and secret recovery checks completed.
+- Default trigger threshold: `failure_rate > 30%` within a rolling window AND `sample_count >= min_sample_size`.
+- `min_sample_size` must not be lower than `20` by default.
+- Upon trigger, the following must be automatically executed: stop new scheduling, isolate worker pools, elevate audit level, require human review.
+- If it is a single-tenant hotspot failure, isolation scope should be minimized to `tenant/workspace`; if ownership cannot be determined, elevate to shared worker pool-level isolation and fail-closed.
+- Before automatically releasing isolation, the following must be verified: failure rate has dropped, sample size is sufficient, and context erasure and secret recovery checks have been completed.
 
-## 6. Closure Conclusion
+## 6. Sealing Conclusion
 
-Multi-tenant security is not complete by just adding a `tenant_id` to tables; the execution state isolation of shared workers must also be formally modeled.
+Multi-tenant security does not end with adding `tenant_id` to tables. The execution state isolation of shared workers must also be formally modeled.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
 
-- T-51: This document originally only had qualitative isolation rules. Root cause: tenant isolation contract emphasized boundary principles, but did not elevate shared worker risk to executable automatic triggers. Fix: This version adds automatic isolation triggers, requiring automatic isolation and fail-closed when failure_rate > 30% AND min_sample_size is reached.
+- T-51: This document originally only had qualitative isolation rules. The root cause was that the tenant isolation contract emphasized boundary principles but did not elevate shared worker risk to an enforceable automatic trigger. Fix: The main text now includes an automatic isolation trigger, requiring automatic isolation and fail-closed when `failure_rate > 30%` and `min_sample_size` is reached.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

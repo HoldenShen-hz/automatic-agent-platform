@@ -25,21 +25,18 @@ import {
 } from "../../../../../src/platform/five-plane-state-evidence/memory/memory-layer-model.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
-/**
- * Stub for createContextTruncationReport since it doesn't exist in source
- */
-function createContextTruncationReport(
-  layer: string,
-  memories: MemoryRecord[],
-  reason: EvictionReason
-): ContextTruncationReport {
+function createContextTruncationReport(memories: MemoryRecord[], reason: EvictionReason): ContextTruncationReport {
   return {
-    layer,
     totalEvicted: memories.length,
-    evictedRecords: memories.map(m => ({ recordId: m.id, scope: m.scope })),
-    evictedSizeBytes: memories.reduce((sum, m) => sum + (m.contentJson?.length ?? 0), 0),
-    reason,
-    timestamp: new Date().toISOString(),
+    retainedMemories: 0,
+    truncationTimestamp: new Date().toISOString(),
+    evictedMemories: memories.map((memory) => ({
+      memoryId: memory.id,
+      scope: memory.scope,
+      reason,
+      qualityScore: memory.qualityScore,
+      importanceScore: memory.importanceScore ?? null,
+    })),
   };
 }
 
@@ -103,10 +100,10 @@ test("mapMemoryScopeToLayer returns evolution for evolution", () => {
   assert.equal(mapMemoryScopeToLayer("evolution"), "evolution");
 });
 
-test("mapMemoryScopeToLayer defaults to project for unknown scopes", () => {
-  assert.equal(mapMemoryScopeToLayer("unknown_scope"), "project");
-  assert.equal(mapMemoryScopeToLayer(""), "project");
-  assert.equal(mapMemoryScopeToLayer("invalid"), "project");
+test("mapMemoryScopeToLayer rejects unknown scopes instead of silently falling back", () => {
+  assert.throws(() => mapMemoryScopeToLayer("unknown_scope"), /memory\.layer_unknown/);
+  assert.throws(() => mapMemoryScopeToLayer(""), /memory\.layer_unknown/);
+  assert.throws(() => mapMemoryScopeToLayer("invalid"), /memory\.layer_unknown/);
 });
 
 test("cloneMemoryWithLayer updates scope to target layer", () => {
@@ -165,23 +162,23 @@ test("DEFAULT_MEMORY_PROMOTION_RULES has increasing thresholds", () => {
 test("DEFAULT_MEMORY_PROMOTION_RULES covers session to agent", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "session" && r.to === "agent");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 3);
-  assert.equal(rule!.minQualityScore, 0.6);
+  assert.equal(rule!.minHitCount, 8);
+  assert.equal(rule!.minQualityScore, 0.55);
   assert.equal(rule!.minImportanceScore, 0.5);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES covers agent to project", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "agent" && r.to === "project");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 8);
-  assert.equal(rule!.minQualityScore, 0.75);
+  assert.equal(rule!.minHitCount, 15);
+  assert.equal(rule!.minQualityScore, 0.7);
   assert.equal(rule!.minImportanceScore, 0.65);
 });
 
 test("DEFAULT_MEMORY_PROMOTION_RULES covers project to user", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "project" && r.to === "user");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 12);
+  assert.equal(rule!.minHitCount, 25);
   assert.equal(rule!.minQualityScore, 0.8);
   assert.equal(rule!.minImportanceScore, 0.75);
 });
@@ -189,7 +186,7 @@ test("DEFAULT_MEMORY_PROMOTION_RULES covers project to user", () => {
 test("DEFAULT_MEMORY_PROMOTION_RULES covers user to evolution", () => {
   const rule = DEFAULT_MEMORY_PROMOTION_RULES.find((r) => r.from === "user" && r.to === "evolution");
   assert.ok(rule !== undefined);
-  assert.equal(rule!.minHitCount, 20);
+  assert.equal(rule!.minHitCount, 40);
   assert.equal(rule!.minQualityScore, 0.9);
   assert.equal(rule!.minImportanceScore, 0.85);
 });
@@ -218,8 +215,8 @@ test("architectureLayerToScope maps meta to evolution", () => {
   assert.equal(architectureLayerToScope("meta"), "evolution");
 });
 
-test("architectureLayerToScope defaults to project for unknown", () => {
-  assert.equal(architectureLayerToScope("unknown"), "project");
+test("architectureLayerToScope rejects unknown architecture layers instead of silently falling back", () => {
+  assert.throws(() => architectureLayerToScope("unknown"), /memory\.layer_unknown/);
 });
 
 test("scopeToArchitectureLayer maps task_runtime to working", () => {
@@ -301,7 +298,7 @@ test("getLayerTtlConfig returns config for user", () => {
   const config = getLayerTtlConfig("user");
   assert.ok(config !== undefined);
   assert.equal(config!.evictionStrategy, "usage");
-  assert.ok(!config!.supportsPromotion);
+  assert.ok(config!.supportsPromotion);
 });
 
 test("getLayerTtlConfig returns config for evolution", () => {
@@ -387,23 +384,21 @@ test("createContextTruncationReport generates valid report", () => {
     createTestMemory({ id: "mem_2", scope: "session" }),
   ];
 
-  const report = createContextTruncationReport("session", memories, "lru_eviction");
+  const report = createContextTruncationReport(memories, "lru_eviction");
 
-  assert.equal(report.layer, "session");
   assert.equal(report.totalEvicted, 2);
-  assert.equal(report.evictedRecords.length, 2);
-  assert.equal(report.reason, "lru_eviction");
-  assert.ok(report.timestamp !== undefined);
-  assert.ok(report.evictedSizeBytes > 0);
+  assert.equal(report.evictedMemories.length, 2);
+  assert.equal(report.evictedMemories[0]?.reason, "lru_eviction");
+  assert.ok(report.truncationTimestamp !== undefined);
 });
 
 test("createContextTruncationReport includes record details", () => {
   const memories = [createTestMemory({ id: "mem_1", scope: "agent" })];
 
-  const report = createContextTruncationReport("agent", memories, "quality_below_threshold");
+  const report = createContextTruncationReport(memories, "quality_below_threshold");
 
-  assert.equal(report.evictedRecords[0].recordId, "mem_1");
-  assert.equal(report.evictedRecords[0].scope, "agent");
+  assert.equal(report.evictedMemories[0]?.memoryId, "mem_1");
+  assert.equal(report.evictedMemories[0]?.scope, "agent");
 });
 
 test("DEFAULT_LAYER_TTL_CONFIGS runtime has LRU eviction", () => {
@@ -414,9 +409,9 @@ test("DEFAULT_LAYER_TTL_CONFIGS runtime has LRU eviction", () => {
   assert.ok(!config!.supportsDemotion);
 });
 
-test("DEFAULT_LAYER_TTL_CONFIGS user does not support promotion", () => {
+test("DEFAULT_LAYER_TTL_CONFIGS user supports promotion and demotion", () => {
   const config = getLayerTtlConfig("user");
   assert.ok(config !== undefined);
-  assert.ok(!config!.supportsPromotion);
+  assert.ok(config!.supportsPromotion);
   assert.ok(config!.supportsDemotion);
 });

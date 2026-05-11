@@ -1,8 +1,8 @@
 import { QueryClient } from "@tanstack/react-query";
 
 export const CACHE_TIER_STALE_TIME = {
-  tasks: 120_000,
-  approvals: 30_000,
+  tasks: 300_000,
+  approvals: 300_000,
   config: 3_600_000,
 } as const;
 

@@ -39,6 +39,10 @@ export const DomainLifecycleStateSchema = z.preprocess(
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
 export const DomainHotPathModeSchema = z.enum(["deterministic_only", "llm_allowed"]);
+export const DomainLatencyTierSchema = z.preprocess(
+  (value) => value === "interactive" ? "near_realtime" : value,
+  z.enum(["realtime", "near_realtime", "batch"]),
+);
 
 export const DomainExecutionProfileSchema = z.object({
   executionMode: z.object({
@@ -52,7 +56,7 @@ export const DomainExecutionProfileSchema = z.object({
     llmInHotPathAllowed: true,
     maxHotPathLatencyMs: 1000,
   }),
-  latencyTier: z.enum(["realtime", "near_realtime", "interactive", "batch"]).default("interactive"),
+  latencyTier: DomainLatencyTierSchema.default("near_realtime"),
   compiledArtifactRef: z.string().trim().min(1).nullable().default(null),
 });
 
@@ -111,6 +115,7 @@ export const DomainInteractionSpecSchema = z.object({
 export type DomainLifecycleState = z.infer<typeof DomainLifecycleStateSchema>;
 export type DomainPlanningMode = z.infer<typeof DomainPlanningModeSchema>;
 export type DomainHotPathMode = z.infer<typeof DomainHotPathModeSchema>;
+export type DomainLatencyTier = z.infer<typeof DomainLatencyTierSchema>;
 export type DomainExecutionProfile = z.infer<typeof DomainExecutionProfileSchema>;
 export type DomainCoreDescriptor = z.infer<typeof DomainCoreDescriptorSchema>;
 export type DomainRiskSpec = z.infer<typeof DomainRiskSpecSchema>;

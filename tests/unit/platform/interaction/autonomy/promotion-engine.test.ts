@@ -60,7 +60,7 @@ test("assessPromotion promotes supervised to semi_auto with sufficient metrics",
   assert.strictEqual(result.targetLevel, "semi_auto");
 });
 
-test("assessPromotion keeps semi_auto at current level until governance override is granted", () => {
+test("assessPromotion marks semi_auto to full_auto as pending platform_team approval", () => {
   const score = mockTrustScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
@@ -69,8 +69,10 @@ test("assessPromotion keeps semi_auto at current level until governance override
     incidents: 0,
   });
   const result = assessPromotion(score);
-  assert.strictEqual(result.shouldPromote, false);
-  assert.strictEqual(result.targetLevel, "semi_auto");
+  assert.strictEqual(result.shouldPromote, true);
+  assert.strictEqual(result.targetLevel, "full_auto");
+  assert.strictEqual(result.approvalRequired, true);
+  assert.strictEqual(result.approvalRole, "platform_team");
   assert.ok(result.reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });
 
@@ -174,7 +176,7 @@ test("assessPromotion success rate exactly at threshold passes", () => {
   assert.ok(rate >= 0.94);
 });
 
-test("assessPromotion semi_auto path still blocks at and above 500 executions without governance override", () => {
+test("assessPromotion semi_auto path only becomes promotable at 500 executions and still requires platform_team approval", () => {
   const belowScore = mockTrustScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 499,
@@ -190,6 +192,7 @@ test("assessPromotion semi_auto path still blocks at and above 500 executions wi
     incidents: 0,
   });
   assert.strictEqual(assessPromotion(belowScore).shouldPromote, false);
-  assert.strictEqual(assessPromotion(aboveScore).shouldPromote, false);
+  assert.strictEqual(assessPromotion(aboveScore).shouldPromote, true);
+  assert.strictEqual(assessPromotion(aboveScore).approvalRole, "platform_team");
   assert.ok(assessPromotion(aboveScore).reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });

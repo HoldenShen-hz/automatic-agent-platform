@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines file lock read/write semantics, lease rules, crash recovery, and boundaries with tool/sandbox.
+This contract defines read/write semantics, lease rules, crash recovery, and boundaries with tools/sandbox for file locks.
 
 Related documents:
 
@@ -29,13 +29,13 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `error_code_registry.md`
 
-## 2. Objectives
+## 2. Goals
 
-Phase 1a/1b minimum requirements:
+Phase 1a / 1b must at minimum achieve:
 
-- Same file will not be simultaneously modified by two write operations.
-- Read/write conflicts are detectable, waitable, and timeoutable.
-- Orphaned locks after crashes can be cleaned up by startup inspection and recovery chain.
+- The same file will not be modified by two write operations simultaneously.
+- Read/write conflicts are detectable, awaitable, and timeoutable.
+- Post-crash residual locks can be cleaned up by startup inspection and recovery chains.
 
 ## 3. Key Objects
 
@@ -43,15 +43,16 @@ Phase 1a/1b minimum requirements:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `lock_scope` | `file` | Fixed to file-level for current phase |
+| `lock_scope` | `file` | Currently fixed to file-level for this stage |
 | `target_path` | `string` | Absolute normalized path |
 | `mode` | `read \| write` | Lock mode |
-| `task_id` | `string` | Task ID |
-| `execution_id` | `string` | Execution ID |
+| `task_id` | `string?` | Legacy task projection ID |
+| `harness_run_id` | `string` | HarnessRun ID |
+| `node_run_id` | `string` | NodeRun ID |
 | `agent_id` | `string` | Agent ID |
 | `ttl_seconds` | `number` | Lease TTL |
 | `wait_timeout_ms` | `number` | Wait time for conflict release |
-| `reentrant_token` | `string?` | Same-execution reentrant identifier |
+| `reentrant_token` | `string?` | Same node run reentrant identifier |
 
 ### 3.2 `FileLockRecord`
 
@@ -59,8 +60,9 @@ Phase 1a/1b minimum requirements:
 - `target_path`
 - `normalized_path`
 - `mode`
-- `holder_task_id`
-- `holder_execution_id`
+- `holder_task_id?`
+- `holder_harness_run_id`
+- `holder_node_run_id`
 - `holder_agent_id`
 - `acquired_at`
 - `expires_at`
@@ -70,22 +72,22 @@ Phase 1a/1b minimum requirements:
 
 | Existing Lock | New Request | Result |
 | --- | --- | --- |
-| `read` | `read` | Shared allowed |
-| `read` | `write` | Block/wait or fail |
-| `write` | `read` | Block/wait or fail |
+| `read` | `read` | Shared access allowed |
+| `read` | `write` | Block and wait or fail |
+| `write` | `read` | Block and wait or fail |
 | `write` | `write` | Exclusive conflict |
 
 Supplementary rules:
 
-- Reentrant requests for the same `execution_id + normalized_path + mode` may reuse existing lock.
-- When same execution already holds `write` lock, requesting `read` lock on same file should directly reuse, not downgrade.
-- "Two different executions but same task" must not bypass exclusive rules.
+- Reentrant requests for the same `node_run_id + normalized_path + mode` may reuse existing locks.
+- When the same node run already holds a `write` lock, requesting a `read` lock for the same file should reuse it directly without downgrading.
+- "Two different node runs but same task" is not allowed to bypass exclusive rules.
 
 ## 5. Lease and Renewal
 
-- Phase 1a default TTL recommendation is `60s`.
-- Active execution must renew via heartbeat or explicit `renewLock(...)`.
-- Lock expiration does not imply automatic safe-write; recovery chain should first confirm holder execution is stale or terminated.
+- Default TTL for Phase 1a is recommended to be `60s`.
+- Active node runs must renew via heartbeat or explicit `renewLock(...)`.
+- After lock expiration, it does not mean the file is automatically safe to write; the recovery chain should first confirm that the holder node run is stale or terminated.
 
 ## 6. Service Entry Points
 
@@ -111,18 +113,18 @@ flowchart TD
     F --> H["Release Or Renew"]
 ```
 
-## 7. Boundaries with Tool and Sandbox
+## 7. Boundary with Tools and Sandbox
 
-- Read-only tools like `read_file / grep / list` may acquire `read` lock on demand by default.
-- Write tools like `write_file / edit / patch` must hold `write` lock first.
-- Tools like `bash` where write set cannot be statically precisely inferred must not masquerade as fine-grained file lock safety; should be guarded by coarser ExecPolicy and approval policy.
-- FileLock does not replace sandbox path whitelist; it only solves same-path concurrency conflicts.
+- Read-only tools like `read_file / grep / list` may acquire `read` locks on demand as needed.
+- Write tools like `write_file / edit / patch` must hold a `write` lock first.
+- Tools like `bash` whose write set cannot be statically and precisely inferred must not masquerade as fine-grained file lock safety; they should be guarded by coarser ExecPolicy and approval policies.
+- FileLock does not replace sandbox path allowlists; it only solves same-path concurrent conflicts.
 
-## 8. Storage and Recovery Boundaries
+## 8. Storage and Recovery Boundary
 
-- Authoritative lock state must be persisted; must not exist only in memory Map.
-- Startup inspection should clean locks where `expires_at < now` and holder execution is inactive.
-- If execution terminates but lock still exists, recovery chain or cleaner should release.
+- Authoritative lock state must be persisted; it must not exist only in an in-memory Map.
+- Startup inspection should clean up locks where `expires_at < now` and holder execution is inactive.
+- If execution terminates but locks remain, they should be released by the recovery chain or cleanup handler.
 
 ## 9. Error Semantics
 
@@ -134,8 +136,8 @@ Recommended stable error codes:
 
 Rules:
 
-- Wait timeout should return conflict-type error, not generic `tool.execution_failed`.
-- When lock record corruption or holder inconsistency is found, should report recovery error and enter inspection handling.
+- Timeout waiting should return a conflict-type error, not a generic `tool.execution_failed`.
+- When lock records are corrupted or holder is inconsistent, report a recovery error and enter inspection handling.
 
 ## 10. Phase Boundaries
 
@@ -146,12 +148,12 @@ Phase 1a explicitly does:
 - TTL + heartbeat renewal
 - Startup reclamation and execution termination reclamation
 
-Currently excluded:
+Currently not doing:
 
 - Directory-level locks
 - Distributed lock service
-- Git worktree-level isolation alternatives
+- Git worktree-level isolation replacement
 
 ## 11. Closure Conclusion
 
-The goal of file locks is not "make all IO automatically safe", but to compress the most dangerous concurrent write conflicts into a clear, auditable, recoverable minimum boundary.
+The goal of file locks is not "make all IO automatically safe," but to compress the most dangerous concurrent write conflicts into a minimal boundary that is clear, auditable, and recoverable.

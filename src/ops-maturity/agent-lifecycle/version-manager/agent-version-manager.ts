@@ -58,6 +58,10 @@ export class AgentVersionManager {
   private readonly versions = new Map<string, AgentVersionDetail[]>();
   private readonly slotAssignments = new Map<string, string>();
 
+  private setVersions(agentId: string, versions: readonly AgentVersionDetail[]): void {
+    this.versions.set(agentId, [...versions]);
+  }
+
   public registerVersion(detail: Omit<AgentVersionDetail, "versionId" | "createdAt">): AgentVersionDetail {
     const version = AgentVersionDetailSchema.parse({
       ...detail,
@@ -66,7 +70,7 @@ export class AgentVersionManager {
     });
 
     const existing = this.versions.get(detail.agentId) ?? [];
-    this.versions.set(detail.agentId, [...existing, version]);
+    this.setVersions(detail.agentId, [...existing, version]);
     if (version.deploymentSlot != null) {
       this.slotAssignments.set(`${version.agentId}:${version.deploymentSlot}` as const, version.versionId);
     }
@@ -78,12 +82,25 @@ export class AgentVersionManager {
     const versions = this.versions.get(agentId);
     if (!versions) return;
 
-    const index = versions.findIndex((v) => v.versionId === versionId);
-    if (index === -1) return;
+    const current = versions.find((version) => version.versionId === versionId);
+    if (!current) return;
 
-    const updated = { ...versions[index], deploymentSlot: slot } as AgentVersionDetail;
-    versions[index] = updated;
+    const previousSlot = current.deploymentSlot;
+    const updatedVersions = versions.map((version) => {
+      if (version.versionId === versionId) {
+        return { ...version, deploymentSlot: slot };
+      }
+      if (version.deploymentSlot === slot) {
+        return { ...version, deploymentSlot: null };
+      }
+      return version;
+    });
 
+    this.setVersions(agentId, updatedVersions);
+
+    if (previousSlot != null && previousSlot !== slot) {
+      this.slotAssignments.delete(`${agentId}:${previousSlot}` as const);
+    }
     this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
   }
 
@@ -103,14 +120,11 @@ export class AgentVersionManager {
     const latestForSlot = newestFirst(allVersions).find((v) => v.deploymentSlot === null && v.stage !== "alpha");
 
     if (latestForSlot) {
-      // Directly assign to target slot without revoking the opposite slot
-      // (blue-green deployment keeps both slots active with different versions)
-      latestForSlot.deploymentSlot = targetSlot;
-      this.slotAssignments.set(`${agentId}:${targetSlot}` as const, latestForSlot.versionId);
+      this.assignDeploymentSlot(agentId, latestForSlot.versionId, targetSlot);
       return this.getActiveSlot(agentId, targetSlot);
     }
 
-    return currentVersion;
+    return this.getActiveSlot(agentId, targetSlot) ?? currentVersion;
   }
 
   public listVersions(agentId: string): AgentVersionDetail[] {
@@ -125,10 +139,16 @@ export class AgentVersionManager {
     const versions = this.versions.get(agentId);
     if (!versions) return false;
 
-    const version = versions.find((v) => v.versionId === versionId);
-    if (!version) return false;
+    const hasVersion = versions.some((version) => version.versionId === versionId);
+    if (!hasVersion) return false;
 
-    version.deprecatedAt = nowIso();
+    this.setVersions(
+      agentId,
+      versions.map((version) =>
+        version.versionId === versionId
+          ? { ...version, deprecatedAt: nowIso() }
+          : version),
+    );
     return true;
   }
 
@@ -136,9 +156,15 @@ export class AgentVersionManager {
     const versions = this.versions.get(agentId);
     if (!versions) return;
 
-    const version = versions.find((v) => v.versionId === versionId);
-    if (!version) return;
+    const hasVersion = versions.some((version) => version.versionId === versionId);
+    if (!hasVersion) return;
 
-    version.metrics = { ...version.metrics, ...metrics };
+    this.setVersions(
+      agentId,
+      versions.map((version) =>
+        version.versionId === versionId
+          ? { ...version, metrics: { ...version.metrics, ...metrics } }
+          : version),
+    );
   }
 }

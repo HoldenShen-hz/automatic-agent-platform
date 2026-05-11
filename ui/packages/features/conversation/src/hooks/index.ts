@@ -1,4 +1,5 @@
 import { ConversationClient, type ConversationMessage, type ConversationStatus } from "@aa/shared-nl-client";
+import { QueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WSClient, WSEventEnvelope } from "@aa/shared-api-client";
 
@@ -43,6 +44,8 @@ interface PersistedConversationState {
 }
 
 const STORAGE_KEY = "aa.conversation.vm";
+export const conversationVmQueryKey = ["conversation", "vm"] as const;
+export const conversationVmQueryClient = new QueryClient();
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -64,6 +67,7 @@ function mapConversationMessages(messages: readonly ConversationMessage[]): read
 }
 
 function persistState(state: PersistedConversationState): void {
+  conversationVmQueryClient.setQueryData(conversationVmQueryKey, state);
   if (typeof sessionStorage === "undefined") {
     return;
   }
@@ -71,6 +75,10 @@ function persistState(state: PersistedConversationState): void {
 }
 
 function loadPersistedState(): PersistedConversationState | null {
+  const cached = conversationVmQueryClient.getQueryData<PersistedConversationState>(conversationVmQueryKey);
+  if (cached != null) {
+    return cached;
+  }
   if (typeof sessionStorage === "undefined") {
     return null;
   }
@@ -173,6 +181,18 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     });
   }, [attachments, client, executionReady, isStreaming, messages, planReady, status]);
 
+  const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
+    const current = conversationVmQueryClient.getQueryData<PersistedConversationState>(conversationVmQueryKey) ?? {
+      messages,
+      attachments,
+      status,
+      planReady,
+      executionReady,
+      isStreaming,
+    };
+    persistState(updater(current));
+  }, [attachments, executionReady, isStreaming, messages, planReady, status]);
+
   useEffect(() => {
     persistState({ messages, attachments, status, planReady, executionReady, isStreaming });
   }, [attachments, executionReady, isStreaming, messages, planReady, status]);
@@ -186,39 +206,53 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       if (payload.delta != null) {
         setMessages((current) => {
           const lastMessage = current[current.length - 1];
+          const timestamp = new Date().toISOString();
           if (lastMessage != null && lastMessage.role === "assistant") {
-            return [
+            const nextMessages = [
               ...current.slice(0, -1),
-              { ...lastMessage, content: `${lastMessage.content}${payload.delta}` },
+              { ...lastMessage, content: `${lastMessage.content}${payload.delta}`, timestamp },
             ];
+            syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages, isStreaming: true }));
+            return nextMessages;
           }
-          return [
+          const nextMessages = [
             ...current,
             {
               id: crypto.randomUUID(),
               role: "assistant",
               content: payload.delta,
-              timestamp: new Date().toISOString(),
+              timestamp,
             },
           ];
+          syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages, isStreaming: true }));
+          return nextMessages;
         });
         setIsStreaming(true);
       } else if (payload.content != null) {
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: payload.role ?? "assistant",
-            content: payload.content,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        setMessages((current) => {
+          const nextMessages = [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              role: payload.role ?? "assistant",
+              content: payload.content,
+              timestamp: new Date().toISOString(),
+            },
+          ];
+          syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages }));
+          return nextMessages;
+        });
       }
       if (payload.status != null) {
         setStatus(payload.status);
         if (payload.status !== "running" && payload.status !== "connected") {
           setIsStreaming(payload.status === "parsing" || payload.status === "building");
         }
+        syncPersistedSnapshot((snapshot) => ({
+          ...snapshot,
+          status: payload.status,
+          isStreaming: payload.status === "parsing" || payload.status === "building",
+        }));
       }
     });
     wsClient.onStatusChange((wsStatus) => {
@@ -226,11 +260,16 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       if (wsStatus !== "connected") {
         setIsStreaming(false);
       }
+      syncPersistedSnapshot((snapshot) => ({
+        ...snapshot,
+        status: wsStatus === "connected" ? "connected" : "disconnected",
+        isStreaming: wsStatus === "connected" ? snapshot.isStreaming : false,
+      }));
     });
     return () => {
       unsubscribeRef.current?.();
     };
-  }, [wsClient]);
+  }, [syncPersistedSnapshot, wsClient]);
 
   const attachFiles = useCallback((files: FileList | readonly File[]) => {
     const normalizedFiles = Array.from(files);

@@ -1110,7 +1110,7 @@ export class HarnessRuntimeService {
 
     // INV-7: HITL pause requires hitlRequest
     if (run.status === "paused" && run.pauseReason === "hitl" && run.hitlRequest == null) {
-      violations.push("INV-7:harness.invariant.waiting_hitl_requires_request");
+      violations.push("INV-7:harness.invariant.awaiting_hitl_requires_request");
     }
 
     // INV-8: Sleep pause requires sleepLease

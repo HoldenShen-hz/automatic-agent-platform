@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines market catalog, installation governance, commercial metadata projection, and deprecation lifecycle for `§55`.
+This contract defines the market catalog, installation governance, commercial metadata projection, and deprecation lifecycle for `§55`.
 
 ## 2. Canonical Objects
 
@@ -11,6 +11,9 @@ This contract defines market catalog, installation governance, commercial metada
 - `CommercialTermsProjection`
 - `CertificationRecord`
 - `ListingDependency`
+- `PluginTrustRoot`
+- `PluginProvenanceAttestation`
+- `RevokedPluginArtifact`
 
 ## 3. `MarketplaceListing` Minimum Fields
 
@@ -40,7 +43,7 @@ This contract defines market catalog, installation governance, commercial metada
 
 ## 4. Revenue Sharing
 
-`CommercialTermsProjection` must declare at minimum:
+`CommercialTermsProjection` must at minimum declare:
 
 - `policy_id`
 - `pricing_model`
@@ -52,31 +55,34 @@ This contract defines market catalog, installation governance, commercial metada
 
 Rules:
 
-- Commercial metadata is only allowed as input for marketplace catalog / invoice / settlement projections.
+- Commercial metadata is only allowed as projection input for marketplace catalog / invoice / settlement.
 - `revenue_share_ref`, `tax_policy_ref`, `refund_policy_ref`, and `settlement_cycle_ref` must not participate in Pack execution authorization, installation security decisions, or runtime sandbox decisions.
 - Marketplace install / activation / deprecation execution and security gates may only consume `trust_level`, `capabilities`, dependency constraints, and certification results.
 
 ## 5. Rules
 
-- Uncertified entries may not enter `active`.
+- Uncertified entries must not enter `active`.
 - Dependencies must be explicitly declared and pass compatibility checks.
 - Deprecated entries must provide migration or alternative suggestions.
-- `sunset` entries may not accept new installations but allow controlled migration or read-only viewing.
-- `removed` entries may not be newly installed, upgraded, or activated.
+- `sunset` entries must not accept new installations, but allow controlled migration or read-only viewing.
+- `removed` entries must not be newly installed, upgraded, or activated.
+- Artifacts from non-internal publishers must find a matching trust root in `PluginTrustRoot`.
+- Artifacts must retain provenance attestation, including at minimum `source_uri / manifest_checksum / sbom_digest / signature_digest`.
+- Artifacts written to `RevokedPluginArtifact` must immediately block new installations and new activations.
+- Install gate must simultaneously verify `signature / sbom / sandbox / egress review`, and provide recommended `required_isolation_mode`.
 
 ## 6. Test Requirements
 
 - unit: listing schema, dependency validation, commercial projection validation
 - integration: install / upgrade / deprecate / sunset / remove lifecycle
-- contract: Entries with revoked certification may not continue new installations
-
+- contract: Entries with revoked certification must not continue new installations
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-36: This document originally listed `RevenueSharePolicy` directly as a canonical marketplace object. Root cause: early market contracts mixed commercial settlement domain and runtime installation/security governance in the same layer, causing settlement fields to appear capable of participating in Pack execution gates. Fix: The main text now demotes this semantics to `CommercialTermsProjection` and explicitly states that revenue sharing / tax / refund / settlement cycle may only serve as commercial projections and must not affect installation security or runtime decisions.
-- T-43: This document originally crammed `draft / submitted / certified / published / deprecated / retired` all into `lifecycle_state`. Root cause: historical copy mixed "review workflow status" and "runtime availability lifecycle" into a single enumeration, without separating review workflow from runtime lifecycle in v4.3. Fix: The main text now adds `review_status` to carry `draft / submitted / certified`, and converges `lifecycle_state` to `active / deprecated / sunset / removed`.
+- T-36: This document originally listed `RevenueSharePolicy` directly as a canonical marketplace object. The root cause was that early market contracts placed commercial settlement domain and runtime installation/security governance at the same layer, causing settlement fields to appear as if they could participate in Pack execution gates. Fix: The main text now demotes this semantics to `CommercialTermsProjection`, and explicitly states that revenue sharing / tax / refund / settlement cycle may only serve as commercial projections and must not affect installation security or runtime decisions.
+- T-43: This document originally crammed `draft / submitted / certified / published / deprecated / retired` all into `lifecycle_state`. The root cause was historical copy that mixed "review workflow status" and "runtime availability lifecycle" into a single enum, failing to separate review workflow from runtime lifecycle in v4.3. Fix: The main text now adds `review_status` to carry `draft / submitted / certified`, and consolidates `lifecycle_state` to `active / deprecated / sunset / removed`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only serve as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

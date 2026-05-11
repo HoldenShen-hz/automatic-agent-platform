@@ -33,12 +33,18 @@ describe("shared state store middleware", () => {
   });
 
   it("exposes tiered query staleTime defaults for tasks, approvals, and config data", () => {
-    expect(createQueryClientFactory().getDefaultOptions().queries?.staleTime).toBe(120_000);
-    expect(createTieredQueryClientFactory("approvals").getDefaultOptions().queries?.staleTime).toBe(30_000);
-    expect(createTieredQueryClientFactory("config").getDefaultOptions().queries?.staleTime).toBe(3_600_000);
+    const defaultQueries = createQueryClientFactory().getDefaultOptions().queries;
+    const approvalQueries = createTieredQueryClientFactory("approvals").getDefaultOptions().queries;
+    const configQueries = createTieredQueryClientFactory("config").getDefaultOptions().queries;
+
+    expect(defaultQueries?.staleTime).toBe(300_000);
+    expect(defaultQueries?.refetchOnWindowFocus).toBe(true);
+    expect(defaultQueries?.refetchOnReconnect).toBe(true);
+    expect(approvalQueries?.staleTime).toBe(300_000);
+    expect(configQueries?.staleTime).toBe(3_600_000);
     expect(CACHE_TIER_STALE_TIME).toMatchObject({
-      tasks: 120_000,
-      approvals: 30_000,
+      tasks: 300_000,
+      approvals: 300_000,
       config: 3_600_000,
     });
   });
@@ -50,11 +56,14 @@ describe("shared state store middleware", () => {
     realtimeStore.getState().subscribe("tasks");
     realtimeStore.getState().subscribe("approvals");
     realtimeStore.getState().setPendingApprovalCount(3);
+    realtimeStore.getState().setIncidentCounts(2, 1);
     realtimeStore.getState().addActiveIncident("incident-1");
     realtimeStore.getState().addActiveIncident("incident-1");
 
     expect(realtimeStore.getState().activeSubscriptions).toEqual(["tasks", "approvals"]);
     expect(realtimeStore.getState().pendingApprovalCount).toBe(3);
+    expect(realtimeStore.getState().incidentCount).toBe(2);
+    expect(realtimeStore.getState().criticalIncidentCount).toBe(1);
     expect(realtimeStore.getState().activeIncidents).toEqual(["incident-1"]);
 
     realtimeStore.getState().unsubscribe("tasks");
@@ -83,6 +92,8 @@ describe("shared state store middleware", () => {
       serverValue: { title: "server" },
       occurredAt: "2026-05-07T00:00:00.000Z",
     });
+    syncStore.getState().setOnline(false);
+    syncStore.getState().markSyncError("timeout");
     syncStore.getState().retrySync();
     syncStore.getState().resolveConflict("conflict-1", "merge");
 
@@ -93,14 +104,20 @@ describe("shared state store middleware", () => {
     uiStore.getState().setActiveFeature("analytics");
     uiStore.getState().toggleSidebar();
     uiStore.getState().setCommandPaletteOpen(true);
+    uiStore.getState().setNlPanelOpen(true);
+    uiStore.getState().setThemeMode("dark");
 
     expect(notificationStore.getState().unreadCount).toBe(0);
     expect(notificationStore.getState().notifications[0]?.read).toBe(true);
     expect(syncStore.getState().syncStatus).toBe("syncing");
+    expect(syncStore.getState().online).toBe(false);
+    expect(syncStore.getState().lastError).toBeNull();
     expect(syncStore.getState().conflicts).toEqual([]);
     expect(themeStore.getState().resolvedThemeName).toBe("high-contrast");
     expect(uiStore.getState().activeFeature).toBe("analytics");
     expect(uiStore.getState().sidebarCollapsed).toBe(true);
     expect(uiStore.getState().commandPaletteOpen).toBe(true);
+    expect(uiStore.getState().nlPanelOpen).toBe(true);
+    expect(uiStore.getState().themeMode).toBe("dark");
   });
 });

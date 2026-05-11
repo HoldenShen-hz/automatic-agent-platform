@@ -357,13 +357,26 @@ export class DefaultRESTClient implements RESTClient {
       }
     }
 
-    let response: RestClientResponse<T> = await this.transport<T>(request);
-    for (const interceptor of [...this.interceptors].reverse()) {
-      if (interceptor.onResponse != null) {
-        response = await interceptor.onResponse(response);
+    const dispatchResponse = async (currentRequest: RestClientRequest): Promise<RestClientResponse<T>> => {
+      let response: RestClientResponse<T> = await this.transport<T>(currentRequest);
+      for (const interceptor of [...this.interceptors].reverse()) {
+        if (interceptor.onResponse != null) {
+          response = await interceptor.onResponse(response);
+        }
       }
+      return response;
+    };
+
+    let dispatch = dispatchResponse;
+    for (const interceptor of [...this.interceptors].reverse()) {
+      if (interceptor.intercept == null) {
+        continue;
+      }
+      const currentDispatch = dispatch;
+      dispatch = (currentRequest: RestClientRequest) => interceptor.intercept!(currentRequest, currentDispatch);
     }
-    return response.data;
+
+    return (await dispatch(request)).data;
   }
 }
 

@@ -98,13 +98,17 @@ describe("ui-core chart regressions", () => {
 
     expect(chartApi.setOption).toHaveBeenCalledTimes(1);
     const option = chartApi.setOption.mock.calls[0]?.[0] as {
+      aria: { enabled: boolean; decal: { show: boolean } };
       dataZoom: readonly unknown[];
       yAxis: { splitLine: { lineStyle: { color: string } } };
-      series: readonly [{ areaStyle: { color: string }; lineStyle: { color: string } }];
+      series: readonly [{ areaStyle: { color: string }; lineStyle: { color: string }; decal: unknown }];
     };
+    expect(option.aria.enabled).toBe(true);
+    expect(option.aria.decal.show).toBe(true);
     expect(option.dataZoom).toHaveLength(2);
     expect(option.series[0]?.lineStyle.color).toBe("#123456");
     expect(option.series[0]?.areaStyle.color).toBe("rgba(18, 52, 86, 0.18)");
+    expect(option.series[0]?.decal).not.toBeNull();
     expect(option.yAxis.splitLine.lineStyle.color).toBe("rgba(52, 86, 120, 0.3)");
     expect(observe).toHaveBeenCalledTimes(1);
     expect(resizeObserver).toHaveBeenCalledTimes(1);

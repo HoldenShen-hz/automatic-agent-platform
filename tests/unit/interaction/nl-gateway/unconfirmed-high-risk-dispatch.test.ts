@@ -1,18 +1,23 @@
 /**
  * R23-01: Unconfirmed high-risk TaskSpec should NOT generate RequestEnvelope
  *
- * §39.6 requires only confirmed state can dispatch.
+ * §39.6 requires pending confirmation states to block dispatch.
  * This test verifies that buildTask() blocks RequestEnvelope generation
- * when confirmationReceipt.state is "pending_user_confirmation" (high-risk pending confirmation).
+ * when confirmationReceipt.state is "pending_user_confirmation" (high-risk pending confirmation),
+ * while low-risk "not_required" requests may proceed directly.
  *
  * Even if confirmationRequired is true and state is "pending_user_confirmation",
- * the RequestEnvelope must remain null until state becomes "confirmed".
+ * the RequestEnvelope must remain null until that confirmation gate is cleared.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NlEntryService } from "../../../../src/interaction/nl-gateway/index.js";
+import {
+  NlEntryService,
+  detectAmbiguity,
+  detectAmbiguityFn,
+} from "../../../../src/interaction/nl-gateway/index.js";
 
 test("R23-01: buildTask keeps requestEnvelope null when confirmationReceipt.state is pending_user_confirmation", async () => {
   // High-risk router: triggers approvalRequired and critical/high risk
@@ -52,8 +57,8 @@ test("R23-01: buildTask keeps requestEnvelope null when confirmationReceipt.stat
   assert.equal(task.confirmationReceipt.required, true);
 });
 
-test("R23-01: buildTask emits requestEnvelope ONLY when confirmationReceipt.state is confirmed", async () => {
-  // Low-risk router: no confirmation required
+test("R23-01: buildTask emits requestEnvelope when confirmation is not required", async () => {
+  // Low-risk router: no confirmation required, so dispatch may proceed directly.
   const lowRiskRouter = {
     route: () => ({
       classification: {
@@ -76,17 +81,11 @@ test("R23-01: buildTask emits requestEnvelope ONLY when confirmationReceipt.stat
 
   // Low-risk does not require confirmation
   assert.equal(task.confirmationRequired, false);
-
-  // For low-risk with no confirmation required, state should be "not_required"
-  // But per §39.6, only "confirmed" can dispatch - so even "not_required" blocks here
-  // The key fix is: we require explicit "confirmed" state for dispatch
   assert.equal(task.confirmationReceipt.state, "not_required");
-
-  // R23-01: After fix, requestEnvelope should only emit when state === "confirmed"
-  // For "not_required" state, requestEnvelope should be null (per the fix)
-  // This ensures consistency: only confirmed tasks dispatch
-  assert.equal(task.requestEnvelope, null,
-    "RequestEnvelope must be null when state is not_required (only confirmed can dispatch)");
+  assert.ok(task.requestEnvelope != null,
+    "Low-risk requests should emit a RequestEnvelope when no confirmation is required");
+  assert.ok(task.confirmedTaskSpec != null);
+  assert.ok(task.canonicalRequestEnvelope != null);
 });
 
 test("R23-01: buildTask blocks dispatch for high-risk tasks even after clarification", async () => {
@@ -120,8 +119,7 @@ test("R23-01: buildTask blocks dispatch for high-risk tasks even after clarifica
     "RequestEnvelope must be null during clarification for high-risk tasks");
 });
 
-test("R23-01: TaskBuildResult.requestEnvelope is null for all unconfirmed states", async () => {
-  // Test that the fix correctly handles all non-confirmed states
+test("R23-01: low-risk not_required state still materializes canonical dispatch artifacts", async () => {
   const router = {
     route: () => ({
       classification: {
@@ -142,15 +140,17 @@ test("R23-01: TaskBuildResult.requestEnvelope is null for all unconfirmed states
     message: "what are the current incidents",
   });
 
-  // state is "not_required" but should still block dispatch per R23-01 fix
-  assert.ok(
-    task.confirmationReceipt.state === "not_required" ||
-    task.confirmationReceipt.state === "pending_user_confirmation",
-    "State should be unconfirmed"
+  assert.equal(task.confirmationReceipt.state, "not_required");
+  assert.ok(task.requestEnvelope != null);
+  assert.ok(task.confirmedTaskSpec != null);
+  assert.ok(task.canonicalRequestEnvelope != null);
+  assert.equal(
+    task.canonicalRequestEnvelope?.confirmedTaskSpecId,
+    task.confirmedTaskSpec?.confirmedTaskSpecId,
   );
+});
 
-  // Per §39.6 fix: only "confirmed" allows dispatch
-  // So for "not_required" (which is not "confirmed"), requestEnvelope must be null
-  assert.equal(task.requestEnvelope, null,
-    "RequestEnvelope must be null for all non-confirmed states per R23-01 fix");
+test("R23-13: nl-gateway barrel exports detectAmbiguity without wildcard shadowing", () => {
+  assert.equal(typeof detectAmbiguity, "function");
+  assert.equal(detectAmbiguityFn, detectAmbiguity);
 });

@@ -4,6 +4,17 @@ import type { AnalyticsMetricDTO } from "@aa/shared-types";
 
 export type ChartType = "bar" | "line" | "pie" | "area" | "heatmap";
 export type KpiLayer = "overview" | "tasks" | "workflows" | "approvals" | "cost" | "agents";
+export type AnalyticsExportFormat = "csv" | "json";
+
+export interface AnalyticsTimeSeriesPoint {
+  readonly timestamp: string;
+  readonly value: number;
+}
+
+export interface AnalyticsBreakdown {
+  readonly dimension: "time" | "domain" | "layer";
+  readonly groups: readonly { label: string; value: number }[];
+}
 
 export interface KpiBreakdown {
   readonly layer: KpiLayer;
@@ -22,6 +33,12 @@ export interface AnalyticsChartConfig {
 export interface AnalyticsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly trendSummary: readonly number[];
+  readonly timeSeriesData: readonly AnalyticsTimeSeriesPoint[];
+  readonly dateRange: {
+    startDate: string;
+    endDate: string;
+  };
+  readonly breakdowns: readonly AnalyticsBreakdown[];
   readonly layerSummaries: readonly {
     layer: KpiLayer;
     label: string;
@@ -35,6 +52,8 @@ export interface AnalyticsVm {
   setLayer(layer: KpiLayer): void;
   setChartType(chartType: ChartType): void;
   setTimeRange(timeRange: AnalyticsChartConfig["timeRange"]): void;
+  setDateRange(startDate: string, endDate: string): void;
+  exportData(format: AnalyticsExportFormat): void;
   getFilteredMetrics(): readonly AnalyticsMetricDTO[];
 }
 
@@ -70,6 +89,14 @@ function getMetricLayer(metric: AnalyticsMetricDTO): KpiLayer {
   return "overview";
 }
 
+function toNumericValue(value: string | number): number {
+  if (typeof value === "number") {
+    return value;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function mapAnalyticsToVm(
   metrics: readonly AnalyticsMetricDTO[],
 ): Pick<AnalyticsVm, "metrics" | "trendSummary" | "layerSummaries"> {
@@ -87,7 +114,7 @@ export function mapAnalyticsToVm(
 
   return {
     metrics: metrics.map((metric) => ({ label: metric.label, value: metric.value })),
-    trendSummary: metrics.map((metric) => metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1),
+    trendSummary: metrics.map((metric) => toNumericValue(metric.value)),
     layerSummaries,
   };
 }
@@ -100,7 +127,7 @@ function computeBreakdowns(metrics: readonly AnalyticsMetricDTO[], layer: KpiLay
   return layerMetrics.map((metric) => ({
     layer: getMetricLayer(metric),
     label: metric.label,
-    value: typeof metric.value === "string" ? parseFloat(String(metric.value)) : (metric.value as number),
+    value: toNumericValue(metric.value),
     trend: metric.trend === "up" ? 3 : metric.trend === "flat" ? 2 : 1,
     changePercent: metric.changePercent ?? 0,
   }));
@@ -116,8 +143,23 @@ export function useAnalyticsVm(): AnalyticsVm {
     layer: "overview",
     timeRange: "7d",
   });
+  const [dateRange, setDateRangeState] = useState({
+    startDate: "2026-05-01",
+    endDate: "2026-05-08",
+  });
 
   const baseVm = useMemo(() => mapAnalyticsToVm(metrics), [metrics]);
+  const availableLayers = useMemo((): readonly KpiLayer[] => {
+    return ["overview", "tasks", "workflows", "approvals", "cost", "agents"];
+  }, []);
+
+  const timeSeriesData = useMemo(() => {
+    const baseTimestamp = Date.UTC(2026, 4, 8);
+    return metrics.map((metric, index) => ({
+      timestamp: new Date(baseTimestamp - (metrics.length - index - 1) * 24 * 60 * 60 * 1000).toISOString(),
+      value: toNumericValue(metric.value),
+    }));
+  }, [metrics]);
 
   const kpiBreakdowns = useMemo(() => {
     if (selectedLayer === "overview") {
@@ -127,9 +169,25 @@ export function useAnalyticsVm(): AnalyticsVm {
     return computeBreakdowns(metrics, selectedLayer);
   }, [metrics, selectedLayer]);
 
-  const availableLayers = useMemo((): readonly KpiLayer[] => {
-    return ["overview", "tasks", "workflows", "approvals", "cost", "agents"];
-  }, []);
+  const breakdowns = useMemo((): readonly AnalyticsBreakdown[] => {
+    const timeGroups = timeSeriesData.map((point) => ({
+      label: point.timestamp.slice(0, 10),
+      value: point.value,
+    }));
+    const groupedByLayer = availableLayers
+      .filter((layer) => layer !== "overview")
+      .map((layer) => ({
+        label: LAYER_LABELS[layer],
+        value: computeBreakdowns(metrics, layer).reduce((sum, item) => sum + item.value, 0),
+      }))
+      .filter((group) => group.value > 0);
+
+    return [
+      { dimension: "time", groups: timeGroups },
+      { dimension: "domain", groups: groupedByLayer },
+      { dimension: "layer", groups: groupedByLayer },
+    ];
+  }, [availableLayers, metrics, timeSeriesData]);
 
   const setLayer = useCallback((layer: KpiLayer) => {
     setSelectedLayer(layer);
@@ -144,6 +202,34 @@ export function useAnalyticsVm(): AnalyticsVm {
     setChartConfig((current) => ({ ...current, timeRange }));
   }, []);
 
+  const setDateRange = useCallback((startDate: string, endDate: string) => {
+    setDateRangeState({ startDate, endDate });
+  }, []);
+
+  const exportData = useCallback((format: AnalyticsExportFormat) => {
+    const payload = format === "json"
+      ? JSON.stringify({ metrics, timeSeriesData, breakdowns, dateRange }, null, 2)
+      : [
+        "label,value,layer,changePercent",
+        ...metrics.map((metric) => [
+          metric.label,
+          toNumericValue(metric.value),
+          getMetricLayer(metric),
+          metric.changePercent ?? 0,
+        ].join(",")),
+      ].join("\n");
+
+    const blob = new Blob([payload], {
+      type: format === "json" ? "application/json" : "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `analytics-${dateRange.startDate}-${dateRange.endDate}.${format}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [breakdowns, dateRange, metrics, timeSeriesData]);
+
   const getFilteredMetrics = useCallback((): readonly AnalyticsMetricDTO[] => {
     if (selectedLayer === "overview") {
       return metrics;
@@ -153,6 +239,9 @@ export function useAnalyticsVm(): AnalyticsVm {
 
   return {
     ...baseVm,
+    timeSeriesData,
+    dateRange,
+    breakdowns,
     kpiBreakdowns,
     selectedLayer,
     chartConfig,
@@ -160,6 +249,8 @@ export function useAnalyticsVm(): AnalyticsVm {
     setLayer,
     setChartType,
     setTimeRange,
+    setDateRange,
+    exportData,
     getFilteredMetrics,
   };
 }
