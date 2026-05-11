@@ -134,6 +134,9 @@ export interface ResolveManagedSecretInput {
   /** Purpose description */
   usagePurpose: string;
 
+  /** Specific version to resolve (defaults to currentVersion) */
+  version?: string | null;
+
   /** Associated task ID */
   taskId?: string | null;
 

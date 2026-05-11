@@ -198,6 +198,9 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract listSecretRotationEventsBySecretRef(...args: RepoMethodArgs<SecretRepository, "listSecretRotationEventsBySecretRef">): RepoMethodResult<SecretRepository, "listSecretRotationEventsBySecretRef">;
   public abstract getSecretLeaseRecord(...args: RepoMethodArgs<SecretRepository, "getSecretLeaseRecord">): RepoMethodResult<SecretRepository, "getSecretLeaseRecord">;
   public abstract listSecretLeasesBySecretRef(...args: RepoMethodArgs<SecretRepository, "listSecretLeasesBySecretRef">): RepoMethodResult<SecretRepository, "listSecretLeasesBySecretRef">;
+  public abstract upsertSecretVersionRecord(...args: RepoMethodArgs<SecretRepository, "upsertSecretVersionRecord">): RepoMethodResult<SecretRepository, "upsertSecretVersionRecord">;
+  public abstract getSecretVersionRecord(...args: RepoMethodArgs<SecretRepository, "getSecretVersionRecord">): RepoMethodResult<SecretRepository, "getSecretVersionRecord">;
+  public abstract listSecretVersionRecordsBySecretRef(...args: RepoMethodArgs<SecretRepository, "listSecretVersionRecordsBySecretRef">): RepoMethodResult<SecretRepository, "listSecretVersionRecordsBySecretRef">;
   public abstract insertEvolutionProposal(...args: RepoMethodArgs<EvolutionRepository, "insertEvolutionProposal">): RepoMethodResult<EvolutionRepository, "insertEvolutionProposal">;
   public abstract updateEvolutionProposal(...args: RepoMethodArgs<EvolutionRepository, "updateEvolutionProposal">): RepoMethodResult<EvolutionRepository, "updateEvolutionProposal">;
   public abstract getEvolutionProposal(...args: RepoMethodArgs<EvolutionRepository, "getEvolutionProposal">): RepoMethodResult<EvolutionRepository, "getEvolutionProposal">;

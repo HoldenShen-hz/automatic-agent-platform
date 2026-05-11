@@ -618,3 +618,186 @@ test("issueSecretLease uses ttlMinutes from rotation policy when not provided", 
     cleanupPath(harness.workspace);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Secret version tracking (Issue 1947 fix verification)
+// ---------------------------------------------------------------------------
+
+test("recordRotationEvent creates version record when rotation is requested", () => {
+  const harness = createHarness("aa-version-req-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    service.registerSecret({
+      secretRef: "secret://system/version/test",
+      displayName: "Version Test Secret",
+      category: "oauth_client_secret",
+      providerKind: "vault",
+      scopeType: "system",
+      scopeRef: "system.version.test",
+      rotationPolicy: { cadenceDays: 14, ttlMinutes: 30, breakGlass: false },
+      currentVersion: "v1",
+    });
+    service.recordRotationEvent({
+      secretRef: "secret://system/version/test",
+      rotationMode: "scheduled",
+      status: "requested",
+      reasonCode: "rotation_window_open",
+      requestedBy: "ops.rotation",
+      previousVersion: "v1",
+      nextVersion: "v2",
+    });
+    const versions = harness.store.listSecretVersionRecordsBySecretRef("secret://system/version/test");
+    // Should have v2 in "rotating" status (created during requested)
+    assert.equal(versions.length, 1);
+    assert.equal(versions[0]?.version, "v2");
+    assert.equal(versions[0]?.status, "rotating");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("recordRotationEvent marks previous version as superseded when rotation completes", () => {
+  const harness = createHarness("aa-version-complete-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    service.registerSecret({
+      secretRef: "secret://system/version/complete",
+      displayName: "Version Complete Secret",
+      category: "oauth_client_secret",
+      providerKind: "vault",
+      scopeType: "system",
+      scopeRef: "system.version.complete",
+      rotationPolicy: { cadenceDays: 14, ttlMinutes: 30, breakGlass: false },
+      currentVersion: "v1",
+    });
+    // Simulate rotation flow: requested -> completed
+    service.recordRotationEvent({
+      secretRef: "secret://system/version/complete",
+      rotationMode: "scheduled",
+      status: "requested",
+      reasonCode: "rotation_window_open",
+      requestedBy: "ops.rotation",
+      previousVersion: "v1",
+      nextVersion: "v2",
+    });
+    service.recordRotationEvent({
+      secretRef: "secret://system/version/complete",
+      rotationMode: "scheduled",
+      status: "completed",
+      reasonCode: "rotation_applied",
+      requestedBy: "ops.rotation",
+      previousVersion: "v1",
+      nextVersion: "v2",
+      occurredAt: "2026-05-10T00:00:00.000Z",
+    });
+    const versions = harness.store.listSecretVersionRecordsBySecretRef("secret://system/version/complete");
+    // Should have v1 superseded and v2 active
+    assert.equal(versions.length, 2);
+    const v1Record = versions.find(v => v.version === "v1");
+    const v2Record = versions.find(v => v.version === "v2");
+    assert.equal(v1Record?.status, "superseded");
+    assert.equal(v2Record?.status, "active");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret can resolve a specific older version that remains accessible", async () => {
+  const harness = createHarness("aa-version-resolve-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store, {
+      providers: {
+        environment: {
+          providerKind: "environment",
+          async describeSecret(secretRef: string) {
+            return new EnvSecretProvider({
+              env: { AA_SECRET_SYSTEM_VERSION_RESOLVE: "current-secret-value" },
+            }).describeSecret(secretRef);
+          },
+          async requireSecret(secretRef: string) {
+            return new EnvSecretProvider({
+              env: { AA_SECRET_SYSTEM_VERSION_RESOLVE: "current-secret-value" },
+            }).requireSecret(secretRef);
+          },
+        },
+      },
+    });
+    service.registerSecret({
+      secretRef: "secret://system/version/resolve",
+      displayName: "Version Resolve Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system.version.resolve",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+      currentVersion: "v2",
+    });
+    // Record initial version
+    harness.store.upsertSecretVersionRecord({
+      secretRef: "secret://system/version/resolve",
+      version: "v1",
+      status: "superseded",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      rotatedAt: "2026-04-01T00:00:00.000Z",
+      metadataJson: null,
+    });
+    // Record new current version
+    harness.store.upsertSecretVersionRecord({
+      secretRef: "secret://system/version/resolve",
+      version: "v2",
+      status: "active",
+      createdAt: "2026-04-01T00:00:00.000Z",
+      rotatedAt: "2026-05-01T00:00:00.000Z",
+      metadataJson: null,
+    });
+    // Verify v1 is still reachable (superseded but not disabled)
+    const v1Record = harness.store.getSecretVersionRecord("secret://system/version/resolve", "v1");
+    assert.equal(v1Record?.status, "superseded");
+    assert.ok(v1Record != null);
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("recordRotationEvent marks failed rotation version as disabled", () => {
+  const harness = createHarness("aa-version-failed-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    service.registerSecret({
+      secretRef: "secret://system/version/failed",
+      displayName: "Version Failed Secret",
+      category: "oauth_client_secret",
+      providerKind: "vault",
+      scopeType: "system",
+      scopeRef: "system.version.failed",
+      rotationPolicy: { cadenceDays: 14, ttlMinutes: 30, breakGlass: false },
+      currentVersion: "v1",
+    });
+    service.recordRotationEvent({
+      secretRef: "secret://system/version/failed",
+      rotationMode: "scheduled",
+      status: "requested",
+      reasonCode: "rotation_window_open",
+      requestedBy: "ops.rotation",
+      previousVersion: "v1",
+      nextVersion: "v2",
+    });
+    service.recordRotationEvent({
+      secretRef: "secret://system/version/failed",
+      rotationMode: "scheduled",
+      status: "failed",
+      reasonCode: "provider_unavailable",
+      requestedBy: "ops.rotation",
+      previousVersion: "v1",
+      nextVersion: "v2",
+    });
+    const v2Record = harness.store.getSecretVersionRecord("secret://system/version/failed", "v2");
+    assert.equal(v2Record?.status, "disabled");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});

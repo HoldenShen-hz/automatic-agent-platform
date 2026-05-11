@@ -33,7 +33,7 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
-import { createPlatformFactEvent, createBudgetReservation, createSideEffectRecord, type SideEffectRecord, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import { createPlatformFactEvent, createSideEffectRecord, type SideEffectRecord, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord } from "../../contracts/index.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -64,6 +64,7 @@ import {
   type LlmModelCallResult,
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../budget-allocator.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -382,32 +383,83 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         harnessRun.fencingToken,
       );
 
-    // R4-25 (INV-BUDGET-001) fix: Create budget reservation BEFORE execution
-    // BudgetAllocator.reserve() must be called to create a proper BudgetReservation
-    // that tracks expected cost before tool/LLM execution
     const budgetLimit = execution.budgetUsdLimit ?? 1;
     if (harnessRun.budgetLedgerId) {
-      const budgetReservation = createBudgetReservation({
-        budgetLedgerId: harnessRun.budgetLedgerId,
-        harnessRunId: harnessRun.harnessRunId,
-        amount: budgetLimit,
-        resourceKind: "token",
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-      });
-      // Persist via raw SQL insert since AuthoritativeTaskStore doesn't have billing sub-store
-      db.connection.prepare(
-          `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).run(
-          budgetReservation.budgetReservationId,
-          budgetReservation.budgetLedgerId,
-          budgetReservation.harnessRunId,
-          budgetReservation.amount,
-          budgetReservation.resourceKind,
-          budgetReservation.status,
-          budgetReservation.expiresAt,
-          budgetReservation.createdAt,
-        );
+      const ledgerRow = db.connection.prepare(
+        `SELECT budget_ledger_id, tenant_id, harness_run_id, currency, hard_cap, reserved_amount, settled_amount, released_amount, status, version
+         FROM budget_ledgers WHERE budget_ledger_id = ?`,
+      ).get(harnessRun.budgetLedgerId) as {
+        budget_ledger_id: string;
+        tenant_id: string;
+        harness_run_id: string;
+        currency: string;
+        hard_cap: number;
+        reserved_amount: number;
+        settled_amount: number;
+        released_amount: number;
+        status: string;
+        version: number;
+      } | undefined;
+      if (ledgerRow) {
+        const budgetAllocator = new BudgetAllocator();
+        const allocatorContext: BudgetAllocatorContext = {
+          tenantId: ledgerRow.tenant_id,
+          traceId,
+          emittedBy: "single-task-happy-path",
+          principal: "single-task-happy-path",
+        };
+        const reserveResult = budgetAllocator.reserve({
+          ledger: {
+            budgetLedgerId: ledgerRow.budget_ledger_id,
+            tenantId: ledgerRow.tenant_id,
+            harnessRunId: ledgerRow.harness_run_id,
+            currency: ledgerRow.currency,
+            hardCap: ledgerRow.hard_cap,
+            reservedAmount: ledgerRow.reserved_amount,
+            settledAmount: ledgerRow.settled_amount,
+            releasedAmount: ledgerRow.released_amount,
+            status: ledgerRow.status as "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing",
+            version: ledgerRow.version,
+          },
+          amount: budgetLimit,
+          resourceKind: "token",
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          expectedVersion: ledgerRow.version,
+          context: allocatorContext,
+        });
+        db.transaction(() => {
+          const updateResult = db.connection.prepare(
+            `UPDATE budget_ledgers
+             SET reserved_amount = ?, status = ?, version = ?
+             WHERE budget_ledger_id = ? AND version = ?`,
+          ).run(
+            reserveResult.ledger.reservedAmount,
+            reserveResult.ledger.status,
+            reserveResult.ledger.version,
+            reserveResult.ledger.budgetLedgerId,
+            ledgerRow.version,
+          );
+          if (updateResult.changes !== 1) {
+            throw new ValidationError(
+              "budget_reservation.sql_cas_failed",
+              "budget_reservation.sql_cas_failed: concurrent reserve detected for budget ledger.",
+            );
+          }
+          db.connection.prepare(
+            `INSERT INTO budget_reservations (budget_reservation_id, budget_ledger_id, harness_run_id, amount, resource_kind, status, expires_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).run(
+            reserveResult.reservation.budgetReservationId,
+            reserveResult.reservation.budgetLedgerId,
+            reserveResult.reservation.harnessRunId,
+            reserveResult.reservation.amount,
+            reserveResult.reservation.resourceKind,
+            reserveResult.reservation.status,
+            reserveResult.reservation.expiresAt,
+            reserveResult.reservation.createdAt,
+          );
+        });
+      }
     }
 
     db.transaction(() => {

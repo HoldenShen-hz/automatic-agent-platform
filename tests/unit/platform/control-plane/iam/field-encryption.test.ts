@@ -17,5 +17,5 @@ test("field encryption accepts raw 32-byte keys", () => {
 });
 
 test("field encryption rejects malformed payload", () => {
-  assert.throws(() => decryptField("abc", "key"), /security\.invalid_encrypted_payload/);
+  assert.throws(() => decryptField("abc", "valid-16-byte-key-!!"), /security\.invalid_encrypted_payload/);
 });

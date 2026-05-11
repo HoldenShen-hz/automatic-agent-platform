@@ -25,15 +25,17 @@ function deriveKeyWithPbkdf2(password: Buffer | string, salt: Buffer): Buffer {
 
 function normalizeKey(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
+  // R10-05: Require minimum key strength of 128 bits (16 bytes) for encryption
+  // Keys shorter than 16 bytes have insufficient entropy and must be rejected
+  if (buffer.length < 16) {
+    throw new ValidationError("security.encryption_key_too_weak", "security.encryption_key_too_weak");
+  }
   if (buffer.length === 32) {
     return buffer;
   }
-  // R10-05: Require minimum key length and use PBKDF2 for key derivation
-  if (buffer.length >= 16) {
-    const salt = randomBytes(SALT_LENGTH);
-    return deriveKeyWithPbkdf2(buffer, salt);
-  }
-  throw new ValidationError("security.encryption_key_required", "security.encryption_key_required");
+  // R10-05: Use PBKDF2 for key derivation from passwords/passphrases
+  const salt = randomBytes(SALT_LENGTH);
+  return deriveKeyWithPbkdf2(buffer, salt);
 }
 
 export function encryptField(plaintext: string, key: Buffer | string): string {

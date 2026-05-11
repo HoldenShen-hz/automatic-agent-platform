@@ -125,3 +125,25 @@ export interface SecretLeaseRecord {
   maskedValue: string | null;
   metadataJson: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Secret version record
+// ---------------------------------------------------------------------------
+
+export type SecretVersionStatus = "active" | "superseded" | "rotating" | "disabled";
+
+/**
+ * Secret version record - tracks individual versions of a secret across rotations.
+ *
+ * Each time a secret is rotated, a new version record is created while old versions
+ * remain accessible. This enables access to historical versions for auditing,
+ * rollback scenarios, and backward compatibility with existing leases.
+ */
+export interface SecretVersionRecord {
+  secretRef: string;
+  version: string;
+  status: SecretVersionStatus;
+  createdAt: Timestamp;
+  rotatedAt: Timestamp | null;
+  metadataJson: string | null;
+}

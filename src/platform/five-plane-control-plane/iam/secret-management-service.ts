@@ -295,6 +295,29 @@ export class SecretManagementService {
       }
       this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
+      // Resolve specific version or fall back to current version
+      const versionToResolve = input.version ?? registry.currentVersion;
+      if (versionToResolve == null) {
+        throw new ProviderError(`secret.no_version:${registry.secretRef}`, `secret.no_version:${registry.secretRef}`, {
+          details: { secretRef: registry.secretRef },
+          retryable: false,
+        });
+      }
+
+      // Verify the requested version exists and is accessible
+      const versionRecord = this.store.secret.getSecretVersionRecord(registry.secretRef, versionToResolve);
+      if (versionRecord == null) {
+        throw new ProviderError(`secret.version_not_found:${registry.secretRef}:${versionToResolve}`, `secret.version_not_found:${registry.secretRef}:${versionToResolve}`, {
+          details: { secretRef: registry.secretRef, version: versionToResolve },
+          retryable: false,
+        });
+      }
+      if (versionRecord.status === "disabled") {
+        throw new PolicyDeniedError(`secret.version_disabled:${registry.secretRef}:${versionToResolve}`, `secret.version_disabled:${registry.secretRef}:${versionToResolve}`, {
+          details: { secretRef: registry.secretRef, version: versionToResolve },
+        });
+      }
+
       const provider = this.providers[registry.providerKind];
       if (provider == null) {
         throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
@@ -327,6 +350,7 @@ export class SecretManagementService {
           lastRotatedAt: registry.lastRotatedAt,
           nextRotationDueAt: registry.nextRotationDueAt,
           auditId: usageAudit.auditId,
+          resolvedVersion: versionToResolve,
         },
         value: value.value,
         registry,

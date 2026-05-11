@@ -34,9 +34,10 @@ test("roleGrantsCapabilities returns true for empty required capabilities", () =
 });
 
 test("evaluateAuthorizationContext rejects when tenant scope is required but missing", () => {
+  // Issue 1941: platform_admin has org:change capability, so we test tenant scope check
   const result = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["human_operator"],
+    roles: ["platform_admin"],
     action: "org_change",
     context: { requiresTenantScope: true },
   });
@@ -48,9 +49,10 @@ test("evaluateAuthorizationContext rejects when tenant scope is required but mis
 });
 
 test("evaluateAuthorizationContext allows when tenant scope is provided", () => {
+  // Issue 1941: platform_admin has org:change capability and org is granted
   const result = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["human_operator"],
+    roles: ["platform_admin"],
     action: "org_change",
     context: { requiresTenantScope: true, tenantId: "tenant-123" },
   });
@@ -240,23 +242,24 @@ test("evaluateAuthorizationContext records manual takeover and allows without ap
   assert.deepEqual(result.matchedRuleRefs, ["context.manual_takeover_active"]);
 });
 
-test("evaluateAuthorizationContext returns default allow for unrestricted actions", () => {
+test("evaluateAuthorizationContext returns default deny for actions without granted capability", () => {
+  // Issue 1941: viewer has no capabilities, so invoke_model is denied even without other context checks
   const result = evaluateAuthorizationContext({
     principalType: "user",
     roles: ["viewer"],
     action: "invoke_model",
   });
 
-  assert.equal(result.allowed, true);
-  assert.equal(result.requiresApproval, false);
-  assert.equal(result.reasonCode, null);
-  assert.deepEqual(result.matchedRuleRefs, ["context.default_allow"]);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_not_granted");
+  assert.deepEqual(result.matchedRuleRefs, ["role.capability_required"]);
 });
 
 test("evaluateAuthorizationContext records manualTakeoverActive for non-production-restricted actions", () => {
+  // Issue 1941: Use human_operator which has model:invoke capability to test manualTakeoverActive override
   const result = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
+    roles: ["human_operator"],
     action: "invoke_model",
     context: { environment: "production", manualTakeoverActive: true },
   });
@@ -368,7 +371,7 @@ test("evaluateAuthorizationContext returns explainSummary for all scenarios", ()
 
   const defaultResult = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
+    roles: ["human_operator"],
     action: "invoke_model",
   });
   assert.ok(defaultResult.explainSummary.length > 0);

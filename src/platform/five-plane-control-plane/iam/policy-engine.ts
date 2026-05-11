@@ -163,7 +163,9 @@ const ACTION_REQUIRED_CAPABILITIES: Record<PolicyAction, readonly string[]> = {
 
 /**
  * Validates that the subject has required roles and capabilities for the action.
- * Throws ValidationError if the subject lacks required permissions.
+ * Uses OR logic: the subject must have at least ONE of the required roles AND
+ * at least ONE of the required capabilities (if any are specified).
+ * Throws ValidationError if the subject lacks all required permissions.
  */
 function validateSubjectPermissions(input: PolicyDecisionRequest): void {
   const requiredRoles = ACTION_REQUIRED_ROLES[input.action] ?? [];
@@ -171,8 +173,10 @@ function validateSubjectPermissions(input: PolicyDecisionRequest): void {
   const subjectRoles = input.subjectRoles ?? [];
   const subjectCapabilities = input.subjectCapabilities ?? [];
 
-  const missingRoles = requiredRoles.filter((role) => !subjectRoles.includes(role));
-  if (missingRoles.length > 0 && requiredRoles.length > 0) {
+  // OR logic: subject must have at least one of the required roles
+  const hasAtLeastOneRole = requiredRoles.some((role) => subjectRoles.includes(role));
+  if (requiredRoles.length > 0 && !hasAtLeastOneRole) {
+    const missingRoles = requiredRoles.filter((role) => !subjectRoles.includes(role));
     throw new ValidationError(
       "policy.subject_missing_roles",
       `Subject lacks required roles for action '${input.action}': [${missingRoles.join(", ")}]`,
@@ -188,8 +192,10 @@ function validateSubjectPermissions(input: PolicyDecisionRequest): void {
     );
   }
 
-  const missingCapabilities = requiredCapabilities.filter((cap) => !subjectCapabilities.includes(cap));
-  if (missingCapabilities.length > 0 && requiredCapabilities.length > 0) {
+  // OR logic: subject must have at least one of the required capabilities
+  const hasAtLeastOneCapability = requiredCapabilities.some((cap) => subjectCapabilities.includes(cap));
+  if (requiredCapabilities.length > 0 && !hasAtLeastOneCapability) {
+    const missingCapabilities = requiredCapabilities.filter((cap) => !subjectCapabilities.includes(cap));
     throw new ValidationError(
       "policy.subject_missing_capabilities",
       `Subject lacks required capabilities for action '${input.action}': [${missingCapabilities.join(", ")}]`,

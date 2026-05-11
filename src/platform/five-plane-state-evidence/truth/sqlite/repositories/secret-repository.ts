@@ -3,6 +3,7 @@ import type {
   SecretRegistryRecord,
   SecretRotationEventRecord,
   SecretUsageAuditRecord,
+  SecretVersionRecord,
 } from "../../../../contracts/types/domain.js";
 import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
@@ -272,6 +273,59 @@ export class SecretRepository {
        FROM secret_leases
        WHERE secret_ref = ?
        ORDER BY issued_at DESC, lease_id DESC`,
+      secretRef,
+    );
+  }
+
+  public upsertSecretVersionRecord(record: SecretVersionRecord): void {
+    execute(
+      this.db.connection,
+      `INSERT INTO secret_versions (
+        secret_ref, version, status, created_at, rotated_at, metadata_json
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(secret_ref, version) DO UPDATE SET
+        status = excluded.status,
+        rotated_at = excluded.rotated_at,
+        metadata_json = excluded.metadata_json`,
+      record.secretRef,
+      record.version,
+      record.status,
+      record.createdAt,
+      record.rotatedAt,
+      record.metadataJson,
+    );
+  }
+
+  public getSecretVersionRecord(secretRef: string, version: string): SecretVersionRecord | null {
+    return queryOne<SecretVersionRecord>(
+      this.db.connection,
+      `SELECT
+         secret_ref AS secretRef,
+         version,
+         status,
+         created_at AS createdAt,
+         rotated_at AS rotatedAt,
+         metadata_json AS metadataJson
+       FROM secret_versions
+       WHERE secret_ref = ? AND version = ?`,
+      secretRef,
+      version,
+    ) ?? null;
+  }
+
+  public listSecretVersionRecordsBySecretRef(secretRef: string): SecretVersionRecord[] {
+    return queryAll<SecretVersionRecord>(
+      this.db.connection,
+      `SELECT
+         secret_ref AS secretRef,
+         version,
+         status,
+         created_at AS createdAt,
+         rotated_at AS rotatedAt,
+         metadata_json AS metadataJson
+       FROM secret_versions
+       WHERE secret_ref = ?
+       ORDER BY created_at DESC, version DESC`,
       secretRef,
     );
   }

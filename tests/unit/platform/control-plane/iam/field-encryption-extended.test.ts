@@ -92,16 +92,32 @@ test("accepts repeating-byte Buffer key", () => {
 test("rejects empty string key", () => {
   assert.throws(
     () => encryptField("secret", ""),
-    /security\.encryption_key_required/,
+    /security\.encryption_key_too_weak/,
   );
 });
 
-test("accepts key shorter than 16 bytes with hashing", () => {
-  // The implementation hashes keys shorter than 32 bytes via SHA256
-  const ciphertext = encryptField("secret", "short");
+test("rejects key shorter than 16 bytes", () => {
+  // Keys must be at least 16 bytes (128 bits) to provide sufficient entropy
+  assert.throws(
+    () => encryptField("secret", "short"),
+    /security\.encryption_key_too_weak/,
+  );
+});
+
+test("rejects 1-byte key", () => {
+  // 1 byte = 8 bits, far below the 128-bit minimum strength requirement
+  assert.throws(
+    () => encryptField("secret", "x"),
+    /security\.encryption_key_too_weak/,
+  );
+});
+
+test("accepts key at minimum 16 bytes", () => {
+  // Exactly 16 bytes should be accepted (minimum strength threshold)
+  const key = Buffer.alloc(16).fill("a");
+  const ciphertext = encryptField("secret", key);
   assert.ok(ciphertext);
-  assert.notEqual(ciphertext, "secret");
-  assert.equal(decryptField(ciphertext, "short"), "secret");
+  assert.equal(decryptField(ciphertext, key), "secret");
 });
 
 test("derives consistent key from same passphrase", () => {

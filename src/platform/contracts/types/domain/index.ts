@@ -169,6 +169,8 @@ export type {
   SecretUsageAuditRecord,
   SecretRotationEventRecord,
   SecretLeaseRecord,
+  SecretVersionRecord,
+  SecretVersionStatus,
 } from "./secret-types.js";
 
 // Re-export billing types
