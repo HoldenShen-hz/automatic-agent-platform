@@ -85,13 +85,48 @@ export type JsonValue =
   | readonly JsonValue[]
   | { readonly [key: string]: JsonValue };
 
-export interface PrincipalRef {
+export type PrincipalType = "human" | "agent" | "system" | "service" | "tool" | "organization";
+
+interface PrincipalRefBase {
   readonly principalId: string;
+  readonly type: PrincipalType;
   readonly tenantId: string;
   readonly roles: readonly string[];
   readonly displayName?: string;
   readonly authorizationLevel?: "viewer" | "operator" | "admin";
 }
+
+export interface HumanPrincipalRef extends PrincipalRefBase {
+  readonly type: "human";
+}
+
+export interface AgentPrincipalRef extends PrincipalRefBase {
+  readonly type: "agent";
+}
+
+export interface SystemPrincipalRef extends PrincipalRefBase {
+  readonly type: "system";
+}
+
+export interface ServicePrincipalRef extends PrincipalRefBase {
+  readonly type: "service";
+}
+
+export interface ToolPrincipalRef extends PrincipalRefBase {
+  readonly type: "tool";
+}
+
+export interface OrganizationPrincipalRef extends PrincipalRefBase {
+  readonly type: "organization";
+}
+
+export type PrincipalRef =
+  | HumanPrincipalRef
+  | AgentPrincipalRef
+  | SystemPrincipalRef
+  | ServicePrincipalRef
+  | ToolPrincipalRef
+  | OrganizationPrincipalRef;
 
 export interface ArtifactRef {
   readonly artifactId: string;
@@ -823,6 +858,7 @@ export interface OapeflirViewEvent<TPayload extends JsonValue = JsonValue> exten
 
 export function createPrincipalRef(input: {
   principalId: string;
+  type?: PrincipalRef["type"];
   tenantId: string;
   roles?: readonly string[];
   displayName?: string;
@@ -832,11 +868,12 @@ export function createPrincipalRef(input: {
   requireNonEmpty(input.tenantId, "principal.tenant_id_required");
   return {
     principalId: input.principalId,
+    type: input.type ?? "human",
     tenantId: input.tenantId,
     roles: input.roles ?? [],
     ...(input.displayName != null ? { displayName: input.displayName } : {}),
     ...(input.authorizationLevel != null ? { authorizationLevel: input.authorizationLevel } : {}),
-  };
+  } as PrincipalRef;
 }
 
 const LEGACY_DOMAIN_BINDING_ALIASES = {

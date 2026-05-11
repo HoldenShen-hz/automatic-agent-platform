@@ -5,29 +5,10 @@
  *
  * ## §10.2 Risk Scoring Algorithm (ADR-026 v4.3 canonical 8-factor model)
  *
- * risk_score = (
- *   impact*4 +
- *   irreversibility*4 +
- *   dataSensitivity*3 +
- *   autonomyModeRisk*2 +
- *   tenantImpact*2 +
- *   blastRadius*2 +
- *   historicalFailureRate*2 +
- *   evidenceConfidence*1
- * ) / 20
- *
- * Factor weights per ADR-026 v4.3:
- *   impact:              weight=4  (1-5 scale)
- *   irreversibility:     weight=4  (1-5 scale)
- *   dataSensitivity:     weight=3  (1-5 scale)
- *   autonomyModeRisk:    weight=2  (1-5 scale)
- *   tenantImpact:        weight=2  (1-5 scale)
- *   blastRadius:         weight=2  (1-5 scale)
- *   historicalFailureRate: weight=2 (0-100% mapped to 1-5)
- *   evidenceConfidence:  weight=1  (high=1, medium=3, low=5)
- *
- * Max possible = 4*5 + 4*5 + 3*5 + 2*5 + 2*5 + 2*5 + 2*5 + 1*5 = 20+20+15+10+10+10+10+5 = 100
- * Normalized to 0-1 by dividing by 20 -> max normalized score = 100/20 = 5 -> normalized = 1.0
+ * The engine implements the canonical 8-factor model, but the exact factor
+ * weights are sourced from `config/risk/default.json` through `RiskConfig`.
+ * Keep documentation aligned with the config loader instead of duplicating a
+ * stale hard-coded formula here.
  *
  * ## §10.3 Risk Level Mapping
  *
@@ -59,12 +40,8 @@ import type {
 } from "./types.js";
 
 /**
- * ADR-026 v4.3: Max possible weighted score = sum of all (weight × max_value)
- * impact: 4×5=20, irreversibility: 4×5=20, dataSensitivity: 3×5=15
- * autonomyModeRisk: 2×5=10, tenantImpact: 2×5=10, blastRadius: 2×5=10
- * historicalFailureRate: 2×5=10, evidenceConfidence: 1×5=5
- * Total max raw = 100 (evidenceConfidence max=5 when low)
- * Normalized to 0-1 by dividing by 100 -> max normalized = 1.0 (critical threshold)
+ * ADR-026 v4.3 canonical config currently normalizes the weighted raw score to
+ * a 0-1 range by dividing by the configured maximum possible score.
  */
 const MAX_POSSIBLE_SCORE = 100;
 

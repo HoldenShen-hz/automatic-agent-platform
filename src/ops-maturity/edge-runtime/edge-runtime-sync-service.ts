@@ -11,6 +11,9 @@ export type EdgeDeploymentMode = "edge_micro" | "edge_standard" | "edge_mobile" 
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
   readonly deviceId?: string;
+  readonly stateful?: boolean;
+  readonly leaseMigrationSupported?: boolean;
+  readonly checkpointRequiredBeforePreempt?: boolean;
   readonly deviceAttestation?: {
     readonly attestedAt: string;
     readonly status: "valid" | "expired" | "revoked";
@@ -55,7 +58,7 @@ export interface SyncEnvelope {
 
 export interface ConflictResolutionDecision {
   readonly envelopeId: string;
-  readonly resolution: "accept_central" | "accept_cloud" | "merge" | "reject";
+  readonly resolution: "accept_edge" | "accept_cloud" | "merge" | "reject";
   readonly rationale: string;
   readonly incidentId?: string;
   /** Present when resolution is "merge" - contains the merged payload data */
@@ -237,8 +240,8 @@ export class EdgeRuntimeSyncService {
           decisions.push(conflictDecision);
           continue;
         }
-        // For accept_central (central wins over edge), reject the edge version
-        // but record the resolution as accept_central to indicate central's version wins
+        // For accept_cloud (cloud wins over edge), reject the edge version
+        // but record the resolution as accept_cloud to indicate cloud's version wins
         rejectedEnvelopeIds.push(envelope.envelopeId);
         decisions.push(conflictDecision);
         continue;
@@ -247,8 +250,8 @@ export class EdgeRuntimeSyncService {
       acceptedEnvelopeIds.push(envelope.envelopeId);
       decisions.push({
         envelopeId: envelope.envelopeId,
-        resolution: "accept_central",
-        rationale: "edge.sync_central_wins_policy:accepted",
+        resolution: "accept_edge",
+        rationale: "edge.sync_edge_payload_accepted",
       });
     }
 
@@ -286,7 +289,7 @@ export class EdgeRuntimeSyncService {
 
   /**
    * R21-16 fix: Resolves sync envelope conflicts with actual merge logic.
-   * Returns accept_central for high-risk conflicts, merge for low-risk data classification,
+   * Returns accept_cloud for high-risk conflicts, merge for low-risk data classification,
    * or reject for critical mismatches. When resolution is "merge", the merged payload is
    * computed by combining the envelope's payload with the cloud payload using a three-way
    * merge strategy based on recordId ordering and payload structure.
@@ -308,13 +311,13 @@ export class EdgeRuntimeSyncService {
       };
     }
 
-    // Central wins policy: when cloud has a different digest, reject the edge version
-    // in favor of the central version. The decision resolution is "accept_central"
-    // to indicate that central's version should be used.
+    // Cloud wins policy: when cloud has a different digest, reject the edge version
+    // in favor of the cloud version. The decision resolution is "accept_cloud"
+    // to indicate that the cloud copy should be used.
     return {
       envelopeId: envelope.envelopeId,
-      resolution: "accept_central",
-      rationale: "edge.sync_central_wins_policy:conflict_resolved",
+      resolution: "accept_cloud",
+      rationale: "edge.sync_cloud_wins_policy:conflict_resolved",
       incidentId,
     };
   }

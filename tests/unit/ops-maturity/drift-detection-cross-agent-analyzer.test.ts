@@ -1,106 +1,83 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   CrossAgentAnalyzerService,
   type CrossAgentMetric,
 } from "../../../src/ops-maturity/drift-detection/cross-agent-analyzer/index.js";
 
-test("CrossAgentAnalyzerService analyze returns insufficient_data for empty metrics", () => {
+test("CrossAgentAnalyzerService returns insufficient data recommendation for empty input", () => {
   const service = new CrossAgentAnalyzerService();
   const result = service.analyze([]);
 
-  assert.strictEqual(result.bestAgentId, null);
-  assert.strictEqual(result.worstAgentId, null);
-  assert.strictEqual(result.divergenceScore, 0);
-  assert.strictEqual(result.recommendation, "insufficient_data");
-  assert.deepStrictEqual(result.alerts, []);
+  assert.equal(result.bestAgentId, null);
+  assert.equal(result.worstAgentId, null);
+  assert.equal(result.divergenceScore, 0);
+  assert.equal(result.recommendation.action, "insufficient_data");
+  assert.deepEqual(result.alerts, []);
 });
 
-test("CrossAgentAnalyzerService analyze builds peer groups by domain", () => {
+test("CrossAgentAnalyzerService does not fabricate a worst agent when a peer group has only one member", () => {
+  const service = new CrossAgentAnalyzerService();
+  const result = service.analyze([
+    {
+      agentId: "agent_solo",
+      domainId: "nlp",
+      successRate: 0.91,
+      averageCostUsd: 1.1,
+      averageLatencyMs: 120,
+    },
+  ]);
+
+  assert.equal(result.bestAgentId, "agent_solo");
+  assert.equal(result.worstAgentId, null);
+  assert.equal(result.divergenceScore, 0);
+  assert.equal(result.recommendation.code, "INSUFFICIENT_PEER_DATA");
+  assert.equal(result.recommendation.action, "insufficient_data");
+  assert.deepEqual(result.alerts, []);
+});
+
+test("CrossAgentAnalyzerService groups agents by domainId and reports the most divergent peer group", () => {
   const service = new CrossAgentAnalyzerService();
   const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_1", domain: "nlp", successRate: 0.9, averageCostUsd: 1.0, averageLatencyMs: 100 },
-    { agentId: "agent_2", domain: "nlp", successRate: 0.85, averageCostUsd: 1.2, averageLatencyMs: 110 },
-    { agentId: "agent_3", domain: "vision", successRate: 0.88, averageCostUsd: 2.0, averageLatencyMs: 200 },
+    { agentId: "agent_best", domainId: "nlp", successRate: 0.95, averageCostUsd: 1.0, averageLatencyMs: 100 },
+    { agentId: "agent_worst", domainId: "nlp", successRate: 0.7, averageCostUsd: 1.6, averageLatencyMs: 240 },
+    { agentId: "agent_vision", domainId: "vision", successRate: 0.88, averageCostUsd: 1.4, averageLatencyMs: 160 },
   ];
 
   const result = service.analyze(metrics);
 
-  // Service identifies best and worst agents by composite score
-  assert.ok(result.bestAgentId !== null);
-  assert.ok(result.worstAgentId !== null);
-  assert.ok(result.divergenceScore >= 0);
+  assert.equal(result.bestAgentId, "agent_best");
+  assert.equal(result.worstAgentId, "agent_worst");
+  assert.notEqual(result.recommendation.action, "insufficient_data");
+  assert.ok(result.peerGroups.some((group) => group.peerGroupId === "nlp"));
+  assert.ok(result.peerGroups.some((group) => group.peerGroupId === "vision"));
 });
 
-test("CrossAgentAnalyzerService analyze identifies best and worst agents", () => {
+test("CrossAgentAnalyzerService emits anti-gaming alerts for anomalous task mix", () => {
   const service = new CrossAgentAnalyzerService();
   const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_best", domain: "nlp", successRate: 0.95, averageCostUsd: 1.0, averageLatencyMs: 100 },
-    { agentId: "agent_worst", domain: "nlp", successRate: 0.7, averageCostUsd: 1.5, averageLatencyMs: 200 },
+    {
+      agentId: "agent_1",
+      domainId: "nlp",
+      successRate: 0.93,
+      averageCostUsd: 1.0,
+      averageLatencyMs: 110,
+      taskKindDistribution: { real: 10, synthetic: 60, keepalive: 30 },
+    },
+    {
+      agentId: "agent_2",
+      domainId: "nlp",
+      successRate: 0.55,
+      averageCostUsd: 1.01,
+      averageLatencyMs: 112,
+      taskKindDistribution: { real: 90, synthetic: 5, keepalive: 5 },
+    },
   ];
 
   const result = service.analyze(metrics);
 
-  assert.strictEqual(result.bestAgentId, "agent_best");
-  assert.strictEqual(result.worstAgentId, "agent_worst");
-  assert.ok(result.divergenceScore > 0);
-});
-
-test("CrossAgentAnalyzerService getDriftAlerts returns alert history", () => {
-  const service = new CrossAgentAnalyzerService();
-  // Trigger an alert by creating high divergence
-  const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_1", domain: "nlp", successRate: 0.95, averageCostUsd: 1.0, averageLatencyMs: 100 },
-    { agentId: "agent_2", domain: "nlp", successRate: 0.5, averageCostUsd: 1.0, averageLatencyMs: 100 },
-  ];
-
-  service.analyze(metrics);
-  const alerts = service.getDriftAlerts();
-
-  assert.ok(alerts.length > 0);
-});
-
-test("CrossAgentAnalyzerService analyze handles single agent", () => {
-  const service = new CrossAgentAnalyzerService();
-  const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_solo", domain: "nlp", successRate: 0.9, averageCostUsd: 1.0, averageLatencyMs: 100 },
-  ];
-
-  const result = service.analyze(metrics);
-
-  // With only one agent, divergenceScore is 0 but best/worst are still the same agent
-  assert.strictEqual(result.bestAgentId, "agent_solo");
-  assert.strictEqual(result.worstAgentId, "agent_solo");
-  assert.strictEqual(result.divergenceScore, 0);
-});
-
-test("CrossAgentAnalyzerService analyze detects anti-gaming pattern", () => {
-  const service = new CrossAgentAnalyzerService();
-  // High variance in success rates with low variance in cost indicates gaming
-  const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_1", domain: "nlp", successRate: 0.99, averageCostUsd: 1.0, averageLatencyMs: 100 },
-    { agentId: "agent_2", domain: "nlp", successRate: 0.5, averageCostUsd: 1.01, averageLatencyMs: 100 },
-    { agentId: "agent_3", domain: "nlp", successRate: 0.95, averageCostUsd: 0.99, averageLatencyMs: 100 },
-  ];
-
-  const result = service.analyze(metrics);
-
-  // Anti-gaming may or may not be detected depending on variance thresholds
-  assert.ok(result.alerts.length >= 0);
-  assert.ok(result.divergenceScore >= 0);
-});
-
-test("CrossAgentAnalyzerService analyze returns consistent recommendation", () => {
-  const service = new CrossAgentAnalyzerService();
-  const metrics: CrossAgentMetric[] = [
-    { agentId: "agent_1", domain: "nlp", successRate: 0.9, averageCostUsd: 1.0, averageLatencyMs: 100 },
-    { agentId: "agent_2", domain: "nlp", successRate: 0.85, averageCostUsd: 1.2, averageLatencyMs: 110 },
-  ];
-
-  const result = service.analyze(metrics);
-
-  // Agents are similar, should recommend they are consistent
-  assert.ok(
-    result.recommendation === "agents_are_consistent" || result.recommendation === "rebalance_or_rollout_review"
-  );
+  assert.ok(result.alerts.length > 0);
+  assert.equal(result.recommendation.action, "anti_gaming_review");
+  assert.equal(result.alerts[0]?.recommendation.action, "anti_gaming_review");
 });

@@ -6,7 +6,7 @@ import {
   type UnifiedRuntimeMode,
 } from "../../../platform/contracts/types/unified-runtime-mode.js";
 
-export const AgentLifecycleStateSchema = z.enum([
+const InternalAgentLifecycleStateSchema = z.enum([
   "draft",
   "testing",
   "staging",
@@ -18,7 +18,55 @@ export const AgentLifecycleStateSchema = z.enum([
   "removed",
 ]);
 
-export type AgentLifecycleState = z.infer<typeof AgentLifecycleStateSchema>;
+export type InternalAgentLifecycleState = z.infer<typeof InternalAgentLifecycleStateSchema>;
+
+export type DocumentedAgentLifecycleState =
+  | "draft"
+  | "testing"
+  | "staging"
+  | "production"
+  | "retired"
+  | "removed";
+
+export type AgentLifecycleState = InternalAgentLifecycleState | DocumentedAgentLifecycleState;
+
+export function normalizeAgentLifecycleState(state: AgentLifecycleState): InternalAgentLifecycleState {
+  switch (state) {
+    case "production":
+      return "active";
+    case "retired":
+      return "archived";
+    default:
+      return state;
+  }
+}
+
+export function toDocumentedAgentLifecycleState(state: AgentLifecycleState): DocumentedAgentLifecycleState {
+  switch (normalizeAgentLifecycleState(state)) {
+    case "active":
+    case "canary":
+    case "paused":
+      return "production";
+    case "deprecated":
+    case "archived":
+      return "retired";
+    default:
+      return normalizeAgentLifecycleState(state);
+  }
+}
+
+export const AgentLifecycleStateSchema = z.string().transform((value, ctx): InternalAgentLifecycleState => {
+  const normalized = normalizeAgentLifecycleState(value as AgentLifecycleState);
+  const parsed = InternalAgentLifecycleStateSchema.safeParse(normalized);
+  if (!parsed.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid agent lifecycle state: ${value}`,
+    });
+    return z.NEVER;
+  }
+  return parsed.data;
+});
 
 function normalizeAgentRuntimeMode(value: string): UnifiedRuntimeMode {
   switch (value) {
@@ -107,10 +155,13 @@ export const AgentDefinitionSchema = z.object({
 export type AgentDefinition = z.infer<typeof AgentDefinitionSchema>;
 
 export function listActiveAgents(agents: readonly AgentDefinition[]): AgentDefinition[] {
-  return agents.filter((item) => item.lifecycleState === "active" || item.lifecycleState === "canary");
+  return agents.filter((item) => {
+    const normalizedState = normalizeAgentLifecycleState(item.lifecycleState);
+    return normalizedState === "active" || normalizedState === "canary";
+  });
 }
 
-export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, readonly AgentLifecycleState[]> = new Map([
+export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<InternalAgentLifecycleState, readonly InternalAgentLifecycleState[]> = new Map([
   ["draft", ["testing"]],
   ["testing", ["staging", "draft"]],
   ["staging", ["canary", "testing", "active"]],
@@ -123,14 +174,17 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
 ]);
 
 export function isValidLifecycleTransition(from: AgentLifecycleState, to: AgentLifecycleState): boolean {
-  const allowed = VALID_LIFECYCLE_TRANSITIONS.get(from);
-  return allowed?.includes(to) ?? false;
+  const normalizedFrom = normalizeAgentLifecycleState(from);
+  const normalizedTo = normalizeAgentLifecycleState(to);
+  const allowed = VALID_LIFECYCLE_TRANSITIONS.get(normalizedFrom);
+  return allowed?.includes(normalizedTo) ?? false;
 }
 
 export function canAutoPromote(state: AgentLifecycleState): boolean {
-  return state === "canary";
+  return normalizeAgentLifecycleState(state) === "canary";
 }
 
 export function isTerminalState(state: AgentLifecycleState): boolean {
-  return state === "archived";
+  const normalizedState = normalizeAgentLifecycleState(state);
+  return normalizedState === "archived" || normalizedState === "removed";
 }

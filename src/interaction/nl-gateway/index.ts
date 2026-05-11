@@ -78,6 +78,9 @@ export interface DetectedIntent {
     | "task_create"
     | "task_query"
     | "task_modify"
+    | "cancel_task"
+    | "create_goal"
+    | "decompress_goal"
     | "status_inquiry"
     | "approval_action"
     | "why";
@@ -117,6 +120,10 @@ export interface RiskPreview {
   readonly reversible: boolean;
   readonly sideEffects: readonly string[];
   readonly approvalNeeded: boolean;
+  readonly overall_risk?: "low" | "medium" | "high" | "critical";
+  readonly risk_factors?: readonly string[];
+  readonly side_effects?: readonly string[];
+  readonly approval_needed?: boolean;
 }
 
 export interface NlRequestPayload {
@@ -424,9 +431,17 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "create":
       return "task_create";
     case "modify":
-    case "cancel":
     case "correction":
       return "task_modify";
+    case "cancel":
+      return "cancel_task";
+    case "goal":
+    case "create_goal":
+      return "create_goal";
+    case "decompose":
+    case "decompress":
+    case "breakdown":
+      return "decompress_goal";
     case "approve":
       return "approval_action";
     case "clarify":
@@ -440,6 +455,14 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     default:
       return "task_query";
   }
+}
+
+function isMediumRiskIntent(intentType: DetectedIntent["intentType"]): boolean {
+  return intentType === "task_modify" || intentType === "cancel_task";
+}
+
+function requiresApprovalIntent(intentType: DetectedIntent["intentType"]): boolean {
+  return intentType === "approval_action";
 }
 
 function deriveUrgency(message: string): DetectedIntent["urgency"] {
@@ -638,7 +661,7 @@ function buildRiskPreview(
   } else if (high) {
     riskFactors.push("请求可能影响线上系统、审批流或成本");
   }
-  if (intentType === "approval_action") {
+  if (requiresApprovalIntent(intentType)) {
     riskFactors.push("请求属于审批类动作，需要审计和责任链");
   }
   if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
@@ -669,11 +692,15 @@ function buildRiskPreview(
   }
 
   return {
-    overallRisk: critical ? "critical" : high ? "high" : intentType === "task_modify" ? "medium" : "low",
+    overallRisk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",
     riskFactors,
     reversible: !irreversible,
     sideEffects,
-    approvalNeeded: critical || high || intentType === "approval_action",
+    approvalNeeded: critical || high || requiresApprovalIntent(intentType),
+    overall_risk: critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low",
+    risk_factors: riskFactors,
+    side_effects: sideEffects,
+    approval_needed: critical || high || requiresApprovalIntent(intentType),
   };
 }
 
@@ -698,7 +725,7 @@ async function buildRiskPreviewWithDryRun(
   } else if (high) {
     riskFactors.push("请求可能影响线上系统、审批流或成本");
   }
-  if (intentType === "approval_action") {
+  if (requiresApprovalIntent(intentType)) {
     riskFactors.push("请求属于审批类动作，需要审计和责任链");
   }
   if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
@@ -736,14 +763,18 @@ async function buildRiskPreviewWithDryRun(
   }
 
   // Use dry-run result if available, otherwise fall back to keyword-based
-  const overallRisk = dryRunAdjustedRisk ?? (critical ? "critical" : high ? "high" : intentType === "task_modify" ? "medium" : "low");
+  const overallRisk = dryRunAdjustedRisk ?? (critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low");
 
   return {
     overallRisk,
     riskFactors,
     reversible: !irreversible,
     sideEffects,
-    approvalNeeded: overallRisk === "critical" || overallRisk === "high" || intentType === "approval_action",
+    approvalNeeded: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
+    overall_risk: overallRisk,
+    risk_factors: riskFactors,
+    side_effects: sideEffects,
+    approval_needed: overallRisk === "critical" || overallRisk === "high" || requiresApprovalIntent(intentType),
   };
 }
 
@@ -762,7 +793,7 @@ function inferRequiredSlots(
   if (/(notify|notification|通知|slack|email|webhook)/i.test(message)) {
     required.add("channel");
   }
-  if (intentType === "approval_action" && /(invoice|payment|发票|付款)/i.test(message)) {
+  if (requiresApprovalIntent(intentType) && /(invoice|payment|发票|付款)/i.test(message)) {
     required.add("date");
   }
   return [...required];
@@ -1100,7 +1131,7 @@ export class NlEntryService implements NlEntryPort {
     } else if (high) {
       riskFactors.push("请求可能影响线上系统、审批流或成本");
     }
-    if (intentType === "approval_action") {
+    if (requiresApprovalIntent(intentType)) {
       riskFactors.push("请求属于审批类动作，需要审计和责任链");
     }
     if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
@@ -1113,8 +1144,8 @@ export class NlEntryService implements NlEntryPort {
       riskFactors.push("可能移除已有数据或配置");
     }
 
-    const riskLevel = critical ? "critical" : high ? "high" : intentType === "task_modify" ? "medium" : "low";
-    const requiresApproval = critical || high || intentType === "approval_action";
+    const riskLevel = critical ? "critical" : high ? "high" : isMediumRiskIntent(intentType) ? "medium" : "low";
+    const requiresApproval = critical || high || requiresApprovalIntent(intentType);
 
     return { riskLevel, riskFactors, requiresApproval };
   }

@@ -249,7 +249,7 @@ test("R27-14: canRetireAgent returns false when revokeAt is in the future", () =
   assert.equal(canRetireAgent(plan, "2025-01-01T00:00:00.000Z"), false);
 });
 
-test("R27-14: canRetireAgent uses lexicographic ISO string comparison", () => {
+test("R27-14: canRetireAgent compares parsed timestamps across boundaries and mixed offsets", () => {
   const plan = {
     agentId: "agent-retire",
     successorAgentId: null,
@@ -261,10 +261,17 @@ test("R27-14: canRetireAgent uses lexicographic ISO string comparison", () => {
   };
   // Before revokeAt
   assert.equal(canRetireAgent(plan, "2025-05-09T00:00:00.000Z"), false);
-  // Just before revokeAt
-  assert.equal(canRetireAgent(plan, "2025-06-01T00:00:00.000Z"), false);
+  // Exactly at revokeAt
+  assert.equal(canRetireAgent(plan, "2025-06-01T00:00:00.000Z"), true);
   // Just after revokeAt
-  assert.equal(canRetireAgent(plan, "2025-06-01T00:00:00.001Z"), false);
+  assert.equal(canRetireAgent(plan, "2025-06-01T00:00:00.001Z"), true);
   // Clearly after
   assert.equal(canRetireAgent(plan, "2025-06-02T00:00:00.000Z"), true);
+
+  const mixedTimezonePlan = {
+    ...plan,
+    revokeAt: "2025-06-01T08:00:00+08:00",
+  };
+  assert.equal(canRetireAgent(mixedTimezonePlan, "2025-05-31T23:59:59.999Z"), false);
+  assert.equal(canRetireAgent(mixedTimezonePlan, "2025-06-01T00:00:00.000Z"), true);
 });

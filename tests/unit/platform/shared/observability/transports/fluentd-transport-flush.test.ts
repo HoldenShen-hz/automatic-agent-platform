@@ -91,3 +91,43 @@ test("FluentdTransport flush resolves immediately when socket is null", async ()
   assert.equal(result, undefined);
   await transport.close();
 });
+
+test("FluentdTransport preserves unwritten buffered entries when a reconnect drain fails mid-stream", async () => {
+  const transport = new FluentdTransport({
+    host: "localhost",
+    port: 60000,
+    tag: "test",
+  });
+
+  const writes: string[] = [];
+  let writeCount = 0;
+  const mockSocket = new EventEmitter() as import("node:net").Socket;
+  mockSocket.writable = true;
+  mockSocket.writableLength = 0;
+  mockSocket.destroyed = false;
+  mockSocket.write = (payload: string) => {
+    writeCount += 1;
+    if (writeCount === 2) {
+      throw new Error("simulated reconnect drain failure");
+    }
+    writes.push(payload);
+    return true;
+  };
+  mockSocket.once = () => mockSocket;
+  mockSocket.end = () => {};
+  mockSocket.destroy = () => {};
+
+  const internal = transport as unknown as {
+    socket: typeof mockSocket;
+    buffer: string[];
+    handleConnected: () => void;
+  };
+  internal.socket = mockSocket;
+  internal.buffer = ["first\n", "second\n", "third\n"];
+
+  internal.handleConnected();
+
+  assert.deepEqual(writes, ["first\n"]);
+  assert.deepEqual(internal.buffer, ["second\n", "third\n"]);
+  await transport.close();
+});

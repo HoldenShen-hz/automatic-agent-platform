@@ -31,11 +31,7 @@ function createFailingMockRequestFactory() {
         return mockReq;
       },
       once: () => mockReq,
-      end: (data?: string) => {
-        // Call callback to indicate request "completed"
-        callback();
-        return mockReq;
-      },
+      end: () => mockReq,
       write: () => mockReq,
       destroy: () => {},
     };
@@ -61,7 +57,7 @@ function createTrackingMockRequestFactory() {
         if (requests.length > 0 && data) {
           requests[requests.length - 1].body = data;
         }
-        callback();
+        callback({ statusCode: 202 });
         return mockReq;
       },
       write: (data: string) => {

@@ -62,15 +62,24 @@ export class FluentdTransport implements LogTransport {
       this.reconnectTimer = null;
     }
     this.reconnectAttempts = 0;
-    for (const buffered of this.buffer) {
+    let drainedCount = 0;
+    while (drainedCount < this.buffer.length) {
+      const activeSocket = this.socket;
+      if (activeSocket == null || activeSocket.destroyed || !activeSocket.writable) {
+        break;
+      }
+      const buffered = this.buffer[drainedCount]!;
       try {
-        this.socket?.write(buffered);
+        activeSocket.write(buffered);
+        drainedCount += 1;
       } catch (err) {
         this.logger.error("fluentd.drain_write_failed", { error: String(err) });
         break;
       }
     }
-    this.buffer = [];
+    if (drainedCount > 0) {
+      this.buffer = this.buffer.slice(drainedCount);
+    }
   }
 
   private handleDisconnected(): void {

@@ -82,7 +82,7 @@ export interface LayerTransitionRecord {
 export const DEFAULT_SIX_LAYER_TRANSITION_RULES: readonly LayerTransitionRule[] = [
   { from: "working", to: "session", minHitCount: 3, minQualityScore: 0.4, minImportanceScore: 0.3, minAgeHours: 0.5 },
   { from: "session", to: "episodic", minHitCount: 8, minQualityScore: 0.55, minImportanceScore: 0.5, minAgeHours: 2 },
-  { from: "episodic", to: "semantic", minHitCount: 15, minQualityScore: 0.7, minImportanceScore: 0.65, minAgeHours: 24 },
+  { from: "episodic", to: "semantic", minHitCount: 10, minQualityScore: 0.8, minImportanceScore: 0.65, minAgeHours: 24 },
   { from: "semantic", to: "procedural", minHitCount: 25, minQualityScore: 0.8, minImportanceScore: 0.75, minAgeHours: 72 },
   { from: "procedural", to: "meta", minHitCount: 40, minQualityScore: 0.9, minImportanceScore: 0.85, minAgeHours: 168 },
 ];

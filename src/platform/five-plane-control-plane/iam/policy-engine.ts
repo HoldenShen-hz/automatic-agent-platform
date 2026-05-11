@@ -33,7 +33,99 @@
 
 import type { ToolRiskLevel } from "../../execution/tool-executor/tool-metadata.js";
 import { BudgetGuard, type BudgetPolicy, type BudgetGuardResult } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
+import { ValidationError } from "../../contracts/errors.js";
+import {
+  normalizeUnifiedRuntimeMode,
+  type DocumentedUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../contracts/types/unified-runtime-mode.js";
+
+export type PolicyAction =
+  | "invoke_model"
+  | "invoke_tool"
+  | "write_file"
+  | "exec_command"
+  | "network_access"
+  | "install_extension"
+  | "org_change"
+  | "dispatch_execution"
+  | "set_isolation_level"
+  | "promote_improvement"
+  | "advance_rollout"
+  | "modify_knowledge_trust"
+  | "promote_memory_layer";
+
+export type PolicyRiskCategory =
+  | "destructive"
+  | "irreversible"
+  | "prod_affecting"
+  | "cost_sensitive"
+  | "org_changing"
+  | "sensitive_data"
+  | "strategy_affecting"
+  | "governance_sensitive";
+
+export type PolicyMode =
+  | UnifiedRuntimeMode
+  | DocumentedUnifiedRuntimeMode
+  | "supervised"
+  | "auto";
+
+export type PolicyStageViewRef =
+  | "observe"
+  | "assess"
+  | "plan"
+  | "execute"
+  | "feedback"
+  | "learn"
+  | "improve"
+  | "release";
+
+export interface PolicyDecisionExplain {
+  decisionId: string;
+  summary: string;
+  factors: readonly string[];
+  policyPaths: readonly string[];
+  traceRefs?: readonly string[];
+  ruleSources?: readonly string[];
+  remediationHint?: string;
+}
+
+export interface PolicyAuditRecord {
+  auditId: string;
+  decisionId: string;
+  policyBundleId: string;
+  policyVersion: string;
+  inputSnapshotRef: string;
+  decisionSnapshotRef: string;
+  evaluatedAt: string;
+  latencyMs: number;
+}
+
+const MUTATING_POLICY_ACTIONS: readonly PolicyAction[] = [
+  "invoke_tool",
+  "write_file",
+  "exec_command",
+  "install_extension",
+  "org_change",
+  "dispatch_execution",
+  "set_isolation_level",
+  "promote_improvement",
+  "advance_rollout",
+  "modify_knowledge_trust",
+  "promote_memory_layer",
+];
+
+function normalizePolicyMode(mode: PolicyMode): UnifiedRuntimeMode {
+  switch (mode) {
+    case "supervised":
+      return "manual_only";
+    case "auto":
+      return "supervised_auto";
+    default:
+      return normalizeUnifiedRuntimeMode(mode as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
+  }
+}
 
 /**
  * Validates PolicyDecisionRequest input fields.
@@ -85,6 +177,9 @@ export interface PolicyDecisionRequest {
 
   /** Optional execution context */
   executionId?: string;
+  harnessRunId?: string;
+  nodeRunId?: string;
+  attemptId?: string;
 
   /** Optional session context */
   sessionId?: string;
@@ -96,29 +191,19 @@ export interface PolicyDecisionRequest {
   subjectId: string;
 
   /** Action being requested */
-  action:
-    | "invoke_model"
-    | "invoke_tool"
-    | "write_file"
-    | "exec_command"
-    | "network_access"
-    | "install_extension"
-    | "org_change";
+  action: PolicyAction;
 
   /** Optional reference to the resource being accessed */
   resourceRef?: string;
 
   /** Risk category of the action */
-  riskCategory:
-    | "destructive"
-    | "irreversible"
-    | "prod_affecting"
-    | "cost_sensitive"
-    | "org_changing"
-    | "sensitive_data";
+  riskCategory: PolicyRiskCategory;
 
   /** Execution mode */
-  mode: "supervised" | "auto" | "full-auto";
+  mode: PolicyMode;
+
+  /** Optional OAPEFLIR stage view context */
+  stageViewRef?: PolicyStageViewRef;
 
   /** Estimated cost in USD */
   estimatedCostUsd?: number;
@@ -153,8 +238,20 @@ export interface PolicyDecisionResult {
   /** Version of the policy that was evaluated */
   evaluatedPolicyVersion: string;
 
+  /** Recommended result cache lifetime */
+  decisionTtlMs: number | null;
+
+  /** Contract-facing rule references matched during evaluation */
+  matchedRuleRefs: string[];
+
   /** Human-readable summary */
   explainSummary: string;
+
+  /** Structured explanation for downstream UIs and audits */
+  explain?: PolicyDecisionExplain;
+
+  /** Canonical audit record snapshot for the evaluation */
+  auditRecord?: PolicyAuditRecord;
 }
 
 /**
@@ -188,6 +285,7 @@ export interface PolicyAuditEvent {
   reasonCode: string;
   killSwitchApplied: boolean;
   estimatedCostUsd: number;
+  matchedRuleRefs: readonly string[];
 }
 
 /**
@@ -217,18 +315,19 @@ export class PolicyEngine {
     if (!auditService) return;
 
     const event: PolicyAuditEvent = {
-      id: `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      timestamp: new Date().toISOString(),
+      id: result.auditRecord?.auditId ?? `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      timestamp: result.auditRecord?.evaluatedAt ?? new Date().toISOString(),
       decisionId: input.decisionId,
       taskId: input.taskId,
       subjectId: input.subjectId,
       action: input.action,
       riskCategory: input.riskCategory,
-      mode: input.mode,
+      mode: normalizePolicyMode(input.mode),
       decision: result.decision,
       reasonCode: result.reasonCode,
       killSwitchApplied: result.killSwitchApplied,
       estimatedCostUsd: input.estimatedCostUsd ?? 0,
+      matchedRuleRefs: result.matchedRuleRefs,
     };
     auditService.recordPolicyDecision(event);
   }
@@ -250,6 +349,12 @@ export class PolicyEngine {
   public evaluate(input: PolicyDecisionRequest): PolicyDecisionResult {
     // V-01: Validate input before processing
     validatePolicyRequest(input);
+    const normalizedMode = normalizePolicyMode(input.mode);
+    const modeConstraints = this.evaluateModeConstraints(normalizedMode, input);
+    if (modeConstraints != null) {
+      this.emitAuditEvent(modeConstraints, input);
+      return modeConstraints;
+    }
 
     // R12-13: §10.1 requires deny-by-default - high-risk actions are always denied
     // regardless of execution mode. full-auto mode does not bypass this requirement.
@@ -259,37 +364,36 @@ export class PolicyEngine {
       input.riskCategory === "prod_affecting";
 
     if (isHighRisk) {
-      const result: PolicyDecisionResult = {
-        decision: "deny",
-        reasonCode: "policy.high_risk_deny_by_default",
-        requiresApproval: false,
-        enforcedConstraints: {},
-        killSwitchApplied: false,
-        auditPayload: {
-          action: input.action,
-          riskCategory: input.riskCategory,
-          estimatedCostUsd: input.estimatedCostUsd ?? 0,
-          mode: input.mode,
-        },
-        evaluatedPolicyVersion: "authoritative.v1",
-        explainSummary: "Action denied: high-risk actions are denied by default per §10.1 policy.",
-      };
+      const result = this.buildDecisionResult(
+        input,
+        normalizedMode,
+        "deny",
+        "policy.high_risk_deny_by_default",
+        false,
+        {},
+        false,
+        ["risk.hard_deny"],
+        "Action denied: high-risk actions are denied by default per §10.1 policy.",
+        ["risk_category", "runtime_mode"],
+      );
       this.emitAuditEvent(result, input);
       return result;
     }
 
     // Step 1: Kill switch check
     if (this.options.killSwitchEnabled) {
-      const result: PolicyDecisionResult = {
-        decision: "deny",
-        reasonCode: "policy.kill_switch_active",
-        requiresApproval: false,
-        enforcedConstraints: {},
-        killSwitchApplied: true,
-        auditPayload: { action: input.action, subjectId: input.subjectId },
-        evaluatedPolicyVersion: "authoritative.v1",
-        explainSummary: "Action denied because kill switch is active.",
-      };
+      const result = this.buildDecisionResult(
+        input,
+        normalizedMode,
+        "deny",
+        "policy.kill_switch_active",
+        false,
+        {},
+        true,
+        ["guard.kill_switch"],
+        "Action denied because kill switch is active.",
+        ["kill_switch"],
+      );
       this.emitAuditEvent(result, input);
       return result;
     }
@@ -297,18 +401,20 @@ export class PolicyEngine {
     // Step 2: Budget check
     const budget = this.evaluateBudget(input);
     if (!budget.allowed) {
-      const result: PolicyDecisionResult = {
-        decision: "deny",
-        reasonCode: budget.reasonCode ?? "budget.denied",
-        requiresApproval: false,
-        enforcedConstraints: {
+      const result = this.buildDecisionResult(
+        input,
+        normalizedMode,
+        "deny",
+        budget.reasonCode ?? "budget.denied",
+        false,
+        {
           remainingBudgetUsd: budget.remainingBudgetUsd,
         },
-        killSwitchApplied: false,
-        auditPayload: { action: input.action, estimatedCostUsd: input.estimatedCostUsd ?? 0 },
-        evaluatedPolicyVersion: "authoritative.v1",
-        explainSummary: "Action denied because task budget would be exceeded.",
-      };
+        false,
+        ["budget.denied"],
+        "Action denied because task budget would be exceeded.",
+        ["budget"],
+      );
       this.emitAuditEvent(result, input);
       return result;
     }
@@ -318,37 +424,100 @@ export class PolicyEngine {
       input.riskCategory === "destructive" ||
       input.riskCategory === "irreversible" ||
       input.riskCategory === "prod_affecting" ||
-      input.riskCategory === "org_changing";
+      input.riskCategory === "org_changing" ||
+      input.riskCategory === "strategy_affecting" ||
+      input.riskCategory === "governance_sensitive";
 
-    // In supervised mode, high-risk or budget-warning actions escalate
-    if (input.mode === "supervised" && (requiresEscalation || budget.requiresApproval)) {
+    // Manual and degraded modes do not auto-execute mutating actions.
+    if (
+      (normalizedMode === "manual_only" || normalizedMode === "incident_mode")
+      && (requiresEscalation || budget.requiresApproval || MUTATING_POLICY_ACTIONS.includes(input.action))
+    ) {
       return this.escalate(input, budget, "policy.supervised_escalation");
     }
 
-    // In auto mode, high-risk actions require approval
-    if (input.mode === "auto" && requiresEscalation) {
+    // Canonical supervised_auto preserves the previous auto-mode escalation semantics.
+    if (normalizedMode === "supervised_auto" && requiresEscalation) {
       return this.escalate(input, budget, "policy.high_risk_requires_approval");
     }
 
     // Default: allow with constraints
-    const result: PolicyDecisionResult = {
-      decision: "allow_with_constraints",
-      reasonCode: budget.requiresApproval ? "policy.allow_under_budget_warning" : "policy.allow",
-      requiresApproval: false,
-      enforcedConstraints: {
+    const result = this.buildDecisionResult(
+      input,
+      normalizedMode,
+      "allow_with_constraints",
+      budget.requiresApproval ? "policy.allow_under_budget_warning" : "policy.allow",
+      false,
+      {
         remainingBudgetUsd: budget.remainingBudgetUsd,
       },
-      killSwitchApplied: false,
-      auditPayload: {
-        action: input.action,
-        riskCategory: input.riskCategory,
-        estimatedCostUsd: input.estimatedCostUsd ?? 0,
-      },
-      evaluatedPolicyVersion: "authoritative.v1",
-      explainSummary: "Action allowed under current mode and budget constraints.",
-    };
+      false,
+      budget.requiresApproval ? ["budget.warning"] : ["default_allow"],
+      "Action allowed under current mode and budget constraints.",
+      ["budget", "runtime_mode"],
+    );
     this.emitAuditEvent(result, input);
     return result;
+  }
+
+  private evaluateModeConstraints(mode: UnifiedRuntimeMode, input: PolicyDecisionRequest): PolicyDecisionResult | null {
+    if (mode === "read_only" && MUTATING_POLICY_ACTIONS.includes(input.action)) {
+      return this.buildDecisionResult(
+        input,
+        mode,
+        "deny",
+        "policy.read_only_mode_denied",
+        false,
+        { mode, sideEffectsAllowed: false },
+        false,
+        ["mode.read_only"],
+        "Action denied because read-only mode blocks mutating actions.",
+        ["runtime_mode", "action"],
+      );
+    }
+    if (mode === "no_write" && ["write_file", "exec_command", "install_extension"].includes(input.action)) {
+      return this.buildDecisionResult(
+        input,
+        mode,
+        "deny",
+        "policy.no_write_mode_denied",
+        false,
+        { mode, writesAllowed: false },
+        false,
+        ["mode.no_write"],
+        "Action denied because no-write mode blocks local mutations.",
+        ["runtime_mode", "action"],
+      );
+    }
+    if (mode === "no_external_call" && (input.action === "network_access" || input.action === "invoke_model")) {
+      return this.buildDecisionResult(
+        input,
+        mode,
+        "deny",
+        "policy.no_external_call_mode_denied",
+        false,
+        { mode, externalCallsAllowed: false },
+        false,
+        ["mode.no_external_call"],
+        "Action denied because no-external-call mode blocks outbound dependencies.",
+        ["runtime_mode", "action"],
+      );
+    }
+    if (mode === "no_rollout" && input.action === "advance_rollout") {
+      return this.buildDecisionResult(
+        input,
+        mode,
+        "deny",
+        "policy.no_rollout_mode_denied",
+        false,
+        { mode, rolloutAllowed: false },
+        false,
+        ["mode.no_rollout"],
+        "Action denied because no-rollout mode blocks rollout changes.",
+        ["runtime_mode", "action"],
+      );
+    }
+    return null;
   }
 
   /**
@@ -370,24 +539,79 @@ export class PolicyEngine {
     budget: BudgetGuardResult,
     reasonCode: string,
   ): PolicyDecisionResult {
-    const result: PolicyDecisionResult = {
-      decision: "escalate_for_approval",
+    const result = this.buildDecisionResult(
+      input,
+      normalizePolicyMode(input.mode),
+      "escalate_for_approval",
       reasonCode,
-      requiresApproval: true,
-      enforcedConstraints: {
+      true,
+      {
         remainingBudgetUsd: budget.remainingBudgetUsd,
       },
-      killSwitchApplied: false,
+      false,
+      ["approval.required"],
+      "Action requires approval under current risk or budget policy.",
+      ["risk_category", "budget", "runtime_mode"],
+      "Reduce risk or re-run under a stricter approved mode.",
+    );
+    this.emitAuditEvent(result, input);
+    return result;
+  }
+
+  private buildDecisionResult(
+    input: PolicyDecisionRequest,
+    normalizedMode: UnifiedRuntimeMode,
+    decision: PolicyDecisionResult["decision"],
+    reasonCode: string,
+    requiresApproval: boolean,
+    enforcedConstraints: Record<string, unknown>,
+    killSwitchApplied: boolean,
+    matchedRuleRefs: string[],
+    explainSummary: string,
+    factors: readonly string[],
+    remediationHint?: string,
+  ): PolicyDecisionResult {
+    const evaluatedAt = new Date().toISOString();
+    const policyVersion = "authoritative.v1";
+    return {
+      decision,
+      reasonCode,
+      requiresApproval,
+      enforcedConstraints,
+      killSwitchApplied,
       auditPayload: {
         action: input.action,
         riskCategory: input.riskCategory,
         estimatedCostUsd: input.estimatedCostUsd ?? 0,
+        mode: normalizedMode,
+        harnessRunId: input.harnessRunId ?? null,
+        nodeRunId: input.nodeRunId ?? null,
+        attemptId: input.attemptId ?? null,
+        stageViewRef: input.stageViewRef ?? null,
       },
-      evaluatedPolicyVersion: "authoritative.v1",
-      explainSummary: "Action requires approval under current risk or budget policy.",
+      evaluatedPolicyVersion: policyVersion,
+      decisionTtlMs: decision === "deny" ? 30_000 : decision === "escalate_for_approval" ? 15_000 : 5_000,
+      matchedRuleRefs,
+      explainSummary,
+      explain: {
+        decisionId: input.decisionId,
+        summary: explainSummary,
+        factors,
+        policyPaths: matchedRuleRefs,
+        ruleSources: matchedRuleRefs,
+        remediationHint,
+      },
+      auditRecord: {
+        auditId: `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        decisionId: input.decisionId,
+        policyBundleId: "policy_engine",
+        policyVersion,
+        inputSnapshotRef: `policy-input:${input.decisionId}`,
+        decisionSnapshotRef: `policy-decision:${input.decisionId}`,
+        evaluatedAt,
+        latencyMs: 0,
+      },
     };
-    this.emitAuditEvent(result, input);
-    return result;
   }
 }
 

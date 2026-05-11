@@ -61,12 +61,22 @@ export interface ApprovalRequest {
   status?: "pending";
   taskId: string;
   executionId?: string | null;
+  harnessRunId?: string;
+  nodeRunId?: string | null;
   sourceAgentId: string;
   reason: string;
   riskLevel: "low" | "medium" | "high" | "critical";
+  stageViewRef?: ApprovalStageViewRef | null;
   options: readonly string[];
   context: Record<string, unknown>;
   timeoutPolicy: "reject" | "approve" | "remain_pending";
+  timeoutAutoAction?: ApprovalTimeoutAutoAction;
+  escalationChain?: readonly ApprovalEscalationHop[];
+  harness_run_id?: string;
+  node_run_id?: string | null;
+  stage_view_ref?: ApprovalStageViewRef | null;
+  timeout_auto_action?: ApprovalTimeoutAutoAction;
+  escalation_chain?: readonly ApprovalEscalationHop[];
   createdAt: string;
   /** Number of approvals required for multi-party approval (N-of-M). Default: 1 */
   requiredApprovals?: number;
@@ -74,6 +84,26 @@ export interface ApprovalRequest {
   approverGroups?: readonly string[];
   /** Current count of approvals received */
   approvalsReceived?: number;
+}
+
+export type ApprovalStageViewRef =
+  | "observe"
+  | "assess"
+  | "plan"
+  | "execute"
+  | "feedback"
+  | "learn"
+  | "improve"
+  | "release";
+
+export type ApprovalTimeoutAutoAction = "reject" | "escalate" | "remain_pending" | "continue_readonly";
+
+export interface ApprovalEscalationHop {
+  level: number;
+  reviewerType: string;
+  reviewerRef: string;
+  timeoutMs: number;
+  onTimeout: ApprovalTimeoutAutoAction;
 }
 
 export interface ApprovalDecision {
@@ -173,6 +203,93 @@ function readCascadeSessionId(request: ApprovalRequest): string | null {
   return typeof sessionId === "string" && sessionId.trim().length > 0 ? sessionId : null;
 }
 
+function readStringContextField(context: Record<string, unknown>, ...keys: readonly string[]): string | null {
+  for (const key of keys) {
+    const value = context[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function isApprovalStageViewRef(value: unknown): value is ApprovalStageViewRef {
+  return value === "observe"
+    || value === "assess"
+    || value === "plan"
+    || value === "execute"
+    || value === "feedback"
+    || value === "learn"
+    || value === "improve"
+    || value === "release";
+}
+
+function readStageViewRef(input: ApprovalRequest): ApprovalStageViewRef | null {
+  const candidate = input.stageViewRef ?? input.stage_view_ref ?? input.context.stageViewRef ?? input.context.stage_view_ref;
+  return isApprovalStageViewRef(candidate) ? candidate : null;
+}
+
+function readEscalationChain(input: ApprovalRequest): readonly ApprovalEscalationHop[] {
+  const candidate = input.escalationChain ?? input.escalation_chain ?? input.context.escalationChain ?? input.context.escalation_chain;
+  if (!Array.isArray(candidate)) {
+    return [];
+  }
+  return candidate.flatMap((hop, index) => {
+    if (typeof hop !== "object" || hop == null) {
+      return [];
+    }
+    const record = hop as Record<string, unknown>;
+    const reviewerType = typeof record.reviewerType === "string"
+      ? record.reviewerType
+      : typeof record.reviewer_type === "string"
+      ? record.reviewer_type
+      : null;
+    const reviewerRef = typeof record.reviewerRef === "string"
+      ? record.reviewerRef
+      : typeof record.reviewer_ref === "string"
+      ? record.reviewer_ref
+      : null;
+    const timeoutMs = typeof record.timeoutMs === "number"
+      ? record.timeoutMs
+      : typeof record.timeout_ms === "number"
+      ? record.timeout_ms
+      : null;
+    const onTimeout = record.onTimeout ?? record.on_timeout;
+    if (
+      reviewerType == null
+      || reviewerRef == null
+      || timeoutMs == null
+      || !Number.isFinite(timeoutMs)
+      || (
+        onTimeout !== "reject"
+        && onTimeout !== "escalate"
+        && onTimeout !== "remain_pending"
+        && onTimeout !== "continue_readonly"
+      )
+    ) {
+      return [];
+    }
+    return [{
+      level: typeof record.level === "number" ? record.level : index + 1,
+      reviewerType,
+      reviewerRef,
+      timeoutMs,
+      onTimeout,
+    }];
+  });
+}
+
+function toTimeoutAutoAction(timeoutPolicy: ApprovalRequest["timeoutPolicy"]): ApprovalTimeoutAutoAction {
+  switch (timeoutPolicy) {
+    case "reject":
+      return "reject";
+    case "approve":
+      return "continue_readonly";
+    case "remain_pending":
+      return "remain_pending";
+  }
+}
+
 /**
  * Service for managing approval requests and decisions.
  *
@@ -215,12 +332,34 @@ export class ApprovalService {
     const contextApproverGroups = Array.isArray(input.context.approverGroups)
       ? input.context.approverGroups.filter((group): group is string => typeof group === "string")
       : [];
+    const harnessRunId =
+      input.harnessRunId
+      ?? input.harness_run_id
+      ?? readStringContextField(input.context, "harnessRunId", "harness_run_id")
+      ?? input.taskId;
+    const nodeRunId =
+      input.nodeRunId
+      ?? input.node_run_id
+      ?? readStringContextField(input.context, "nodeRunId", "node_run_id");
+    const stageViewRef = readStageViewRef(input);
+    const timeoutAutoAction = input.timeoutAutoAction ?? input.timeout_auto_action ?? toTimeoutAutoAction(input.timeoutPolicy);
+    const escalationChain = readEscalationChain(input);
     const approval: ApprovalRequest = {
       approvalId: newId("approval"),
       status: "pending",
       createdAt: nowIso(),
       ...input,
       executionId: input.executionId ?? null,
+      harnessRunId,
+      nodeRunId: nodeRunId ?? null,
+      stageViewRef,
+      timeoutAutoAction,
+      escalationChain,
+      harness_run_id: harnessRunId,
+      node_run_id: nodeRunId ?? null,
+      stage_view_ref: stageViewRef,
+      timeout_auto_action: timeoutAutoAction,
+      escalation_chain: escalationChain,
       approverGroups: input.approverGroups ?? contextApproverGroups,
     };
 

@@ -95,10 +95,9 @@ export class CrossAgentAnalyzerService {
 
     const ranked = primaryGroup.ranked;
     const best = ranked[0]!;
-    const worst = ranked.at(-1)!;
     return {
       bestAgentId: best.agentId,
-      worstAgentId: worst.agentId,
+      worstAgentId: ranked.length > 1 ? ranked.at(-1)?.agentId ?? null : null,
       divergenceScore: primaryGroup.divergenceScore,
       recommendation: primaryGroup.recommendation,
       alerts: [...this.alertHistory],
@@ -114,6 +113,18 @@ export class CrossAgentAnalyzerService {
     readonly alerts: readonly CrossAgentDriftAlert[];
   } {
     const ranked = [...metrics].sort((left, right) => scoreMetric(right, metrics) - scoreMetric(left, metrics));
+    if (ranked.length === 1) {
+      return {
+        peerGroupId,
+        agentIds: ranked.map((metric) => metric.agentId),
+        divergenceScore: 0,
+        antiGamingDetected: false,
+        recommendation: this.buildInsufficientDataRecommendation(ranked),
+        ranked,
+        alerts: [],
+      };
+    }
+
     const best = ranked[0]!;
     const worst = ranked.at(-1)!;
     const divergenceScore = Math.max(0, scoreMetric(best, metrics) - scoreMetric(worst, metrics));
@@ -195,6 +206,16 @@ export class CrossAgentAnalyzerService {
       rationale: `Agents are performing consistently. Divergence score: ${(divergenceScore * 100).toFixed(1)}%. No immediate action required.`,
       priority: "low",
       affectedAgents: agentIds,
+    };
+  }
+
+  private buildInsufficientDataRecommendation(ranked: readonly CrossAgentMetric[]): CrossAgentRecommendation {
+    return {
+      code: "INSUFFICIENT_PEER_DATA",
+      action: "insufficient_data",
+      rationale: "Only one agent is present in this peer group, so divergence analysis requires more peers before ranking a worst performer.",
+      priority: "low",
+      affectedAgents: ranked.map((metric) => metric.agentId),
     };
   }
 

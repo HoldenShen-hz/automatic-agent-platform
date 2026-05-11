@@ -781,7 +781,7 @@ export class ExecutionWorkerHandshakeService {
       completedAt?: string | null;
     },
   ): AgentExecutionRecord {
-    const record = buildAgentExecutionRecord(this.store, execution, occurredAt, updates);
+    const record = buildAgentExecutionRecord(this.store, execution, execution.id, occurredAt, updates);
     this.store.worker.upsertAgentExecutionRecord(record);
     return record;
   }

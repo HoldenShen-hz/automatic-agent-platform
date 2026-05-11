@@ -22,6 +22,14 @@ export type HierarchicalMemoryLayer =
   | "user"
   | "evolution";
 
+export type CanonicalMemoryArchitectureLayer =
+  | "RuntimeCache"
+  | "SessionMemory"
+  | "EpisodicMemory"
+  | "SemanticMemory"
+  | "ProceduralMemory"
+  | "EvolutionMemory";
+
 /**
  * Legacy type alias for backward compatibility.
  * @deprecated Use HierarchicalMemoryLayer instead
@@ -46,7 +54,7 @@ export interface MemoryPromotionCandidate {
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
   { from: "runtime", to: "session", minHitCount: 3, minQualityScore: 0.4, minImportanceScore: 0.3 },
   { from: "session", to: "agent", minHitCount: 8, minQualityScore: 0.55, minImportanceScore: 0.5 },
-  { from: "agent", to: "project", minHitCount: 15, minQualityScore: 0.7, minImportanceScore: 0.65 },
+  { from: "agent", to: "project", minHitCount: 10, minQualityScore: 0.8, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 25, minQualityScore: 0.8, minImportanceScore: 0.75 },
   { from: "user", to: "evolution", minHitCount: 40, minQualityScore: 0.9, minImportanceScore: 0.85 },
 ];
@@ -64,6 +72,8 @@ export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
 export interface LayerTtlConfig {
   /** §29 architecture layer name */
   architectureLayer: string;
+  /** Canonical ADR layer name */
+  canonicalLayerName: CanonicalMemoryArchitectureLayer;
   /** Internal scope (legacy name) */
   scope: HierarchicalMemoryLayer;
   /** Default TTL in milliseconds */
@@ -106,6 +116,7 @@ export type EvictionStrategy =
 export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   {
     architectureLayer: "working",
+    canonicalLayerName: "RuntimeCache",
     scope: "runtime",
     defaultTtlMs: 60_000,        // 1 minute
     maxTtlMs: 300_000,          // 5 minutes
@@ -117,6 +128,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   },
   {
     architectureLayer: "session",
+    canonicalLayerName: "SessionMemory",
     scope: "session",
     defaultTtlMs: 3_600_000,    // 1 hour
     maxTtlMs: 4 * 3_600_000,  // 4 hours
@@ -128,6 +140,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   },
   {
     architectureLayer: "episodic",
+    canonicalLayerName: "EpisodicMemory",
     scope: "agent",
     defaultTtlMs: 7 * 24 * 3_600_000,  // 7 days
     maxTtlMs: 7 * 24 * 3_600_000,      // 7 days
@@ -139,6 +152,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   },
   {
     architectureLayer: "semantic",
+    canonicalLayerName: "SemanticMemory",
     scope: "project",
     defaultTtlMs: 30 * 24 * 3_600_000, // 30 days
     maxTtlMs: 90 * 24 * 3_600_000,    // 90 days
@@ -150,6 +164,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   },
   {
     architectureLayer: "procedural",
+    canonicalLayerName: "ProceduralMemory",
     scope: "user",
     defaultTtlMs: 90 * 24 * 3_600_000, // 90 days
     maxTtlMs: 365 * 24 * 3_600_000,   // 365 days
@@ -161,6 +176,7 @@ export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   },
   {
     architectureLayer: "meta",
+    canonicalLayerName: "EvolutionMemory",
     scope: "evolution",
     defaultTtlMs: 14 * 24 * 3_600_000, // 14 days
     maxTtlMs: 90 * 24 * 3_600_000,    // 90 days
@@ -199,6 +215,23 @@ export function architectureLayerToScope(architectureLayer: string): Hierarchica
   }
 }
 
+export function canonicalMemoryLayerToScope(layer: CanonicalMemoryArchitectureLayer): HierarchicalMemoryLayer {
+  switch (layer) {
+    case "RuntimeCache":
+      return "runtime";
+    case "SessionMemory":
+      return "session";
+    case "EpisodicMemory":
+      return "agent";
+    case "SemanticMemory":
+      return "project";
+    case "ProceduralMemory":
+      return "user";
+    case "EvolutionMemory":
+      return "evolution";
+  }
+}
+
 /**
  * Maps an internal scope to the §29 architecture layer name.
  * @param scope - The internal scope name
@@ -222,6 +255,28 @@ export function scopeToArchitectureLayer(scope: string): string {
       return "meta";
     default:
       return "semantic";
+  }
+}
+
+export function scopeToCanonicalMemoryLayer(scope: string): CanonicalMemoryArchitectureLayer {
+  switch (scope) {
+    case "task_runtime":
+    case "runtime":
+      return "RuntimeCache";
+    case "session":
+      return "SessionMemory";
+    case "agent":
+      return "EpisodicMemory";
+    case "workspace":
+    case "project":
+      return "SemanticMemory";
+    case "user":
+      return "ProceduralMemory";
+    case "experience":
+    case "evolution":
+      return "EvolutionMemory";
+    default:
+      return "SemanticMemory";
   }
 }
 

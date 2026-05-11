@@ -83,4 +83,51 @@ export interface LockData {
   metadata: string | null;
 }
 
+export type LockStatus = "pending" | "held" | "extended" | "released" | "expired" | "reclaimed" | "stolen";
+
+export type LockType = "execution_lease" | "approval_lock" | "file_lock" | "advisory_lock";
+
+export interface LockTransitionCommand {
+  lockId: string;
+  lockType: LockType;
+  resourceKey: string;
+  fromStatus: LockStatus;
+  toStatus: LockStatus;
+  ownerId: string;
+  reasonCode: string;
+  traceId: string;
+  occurredAt: string;
+  fencingToken?: number;
+}
+
+export interface LockTransitionResult {
+  accepted: boolean;
+  command: LockTransitionCommand;
+}
+
+export function transitionLock(command: LockTransitionCommand): LockTransitionResult {
+  if (command.lockId.trim().length === 0) {
+    throw new Error("distributed_lock.lock_id_required");
+  }
+  if (command.resourceKey.trim().length === 0) {
+    throw new Error("distributed_lock.resource_key_required");
+  }
+  if (command.ownerId.trim().length === 0) {
+    throw new Error("distributed_lock.owner_id_required");
+  }
+  if (command.reasonCode.trim().length === 0) {
+    throw new Error("distributed_lock.reason_code_required");
+  }
+  if (command.traceId.trim().length === 0) {
+    throw new Error("distributed_lock.trace_id_required");
+  }
+  if (command.fromStatus === command.toStatus) {
+    throw new Error("distributed_lock.transition_noop");
+  }
+  return {
+    accepted: true,
+    command,
+  };
+}
+
 export type CreateLockAdapter = (kind: "sqlite" | "pg_advisory" | "redis", db?: DatabaseSync) => DistributedLockAdapter;
