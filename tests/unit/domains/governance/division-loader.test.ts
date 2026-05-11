@@ -507,3 +507,149 @@ test("division loader rejects cross-division workflow steps that reference a mis
     cleanupPath(workspace);
   }
 });
+
+test("division loader loads resource_boundaries and fault_domains from division.yaml", () => {
+  const workspace = createTempWorkspace("aa-division-boundaries-");
+  const divisionsRoot = join(workspace, "divisions");
+
+  try {
+    createFile(join(divisionsRoot, "test/schemas/minimal-output.json"), JSON.stringify({
+      type: "object",
+      required: ["summary", "result"],
+      properties: {
+        summary: { type: "string", minLength: 1 },
+        result: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    }));
+    createFile(
+      join(divisionsRoot, "test/division.yaml"),
+      [
+        "id: test",
+        "version: 1",
+        "name: Test Division",
+        "default_workflow: single_agent_minimal",
+        "triggers:",
+        "  - test",
+        "roles:",
+        "  - id: test_executor",
+        "    prompt: roles/test_executor.prompt.md",
+        "    model: balanced",
+        "    tools: [read, bash]",
+        "resource_boundaries:",
+        "  max_concurrent_executions: 5",
+        "  max_queue_depth: 20",
+        "  execution_timeout_ms: 300000",
+        "  max_retry_attempts: 2",
+        "  budget_limit_per_task: 5",
+        "fault_domains:",
+        "  isolation_level: elevated",
+        "  retry_policy: standard",
+        "  fallback_enabled: true",
+        "  blast_radius: department",
+        "  recovery_strategy: resume",
+      ].join("\n"),
+    );
+    createFile(join(divisionsRoot, "test/roles/test_executor.prompt.md"), "# test\n");
+    createFile(
+      join(divisionsRoot, "test/workflows/minimal.yaml"),
+      [
+        "id: single_agent_minimal",
+        "division_id: test",
+        "steps:",
+        "  - step_id: execute",
+        "    role_id: test_executor",
+        "    output_key: result",
+        "    output_schema: schemas/minimal-output.json",
+        "    timeout_ms: 120000",
+        "    max_attempts: 1",
+      ].join("\n"),
+    );
+
+    const registry = new DivisionLoader({
+      divisionsRoot,
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+    }).loadAll();
+
+    const division = registry.divisions.get("test");
+    assert.ok(division, "test division should be loaded");
+
+    // Verify resource_boundaries
+    assert.ok(division.resourceBoundaries, "resource_boundaries should be present");
+    assert.equal(division.resourceBoundaries?.max_concurrent_executions, 5);
+    assert.equal(division.resourceBoundaries?.max_queue_depth, 20);
+    assert.equal(division.resourceBoundaries?.execution_timeout_ms, 300000);
+    assert.equal(division.resourceBoundaries?.max_retry_attempts, 2);
+    assert.equal(division.resourceBoundaries?.budget_limit_per_task, 5);
+
+    // Verify fault_domains
+    assert.ok(division.faultDomains, "fault_domains should be present");
+    assert.equal(division.faultDomains?.isolation_level, "elevated");
+    assert.equal(division.faultDomains?.retry_policy, "standard");
+    assert.equal(division.faultDomains?.fallback_enabled, true);
+    assert.equal(division.faultDomains?.blast_radius, "department");
+    assert.equal(division.faultDomains?.recovery_strategy, "resume");
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("division loader accepts divisions without resource_boundaries or fault_domains", () => {
+  const workspace = createTempWorkspace("aa-division-optional-fields-");
+  const divisionsRoot = join(workspace, "divisions");
+
+  try {
+    createFile(join(divisionsRoot, "minimal/schemas/minimal-output.json"), JSON.stringify({
+      type: "object",
+      required: ["summary", "result"],
+      properties: {
+        summary: { type: "string", minLength: 1 },
+        result: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    }));
+    createFile(
+      join(divisionsRoot, "minimal/division.yaml"),
+      [
+        "id: minimal",
+        "version: 1",
+        "name: Minimal Division",
+        "default_workflow: single_agent_minimal",
+        "triggers:",
+        "  - minimal",
+        "roles:",
+        "  - id: executor",
+        "    prompt: roles/executor.prompt.md",
+        "    model: balanced",
+        "    tools: [read]",
+      ].join("\n"),
+    );
+    createFile(join(divisionsRoot, "minimal/roles/executor.prompt.md"), "# minimal\n");
+    createFile(
+      join(divisionsRoot, "minimal/workflows/minimal.yaml"),
+      [
+        "id: single_agent_minimal",
+        "division_id: minimal",
+        "steps:",
+        "  - step_id: execute",
+        "    role_id: executor",
+        "    output_key: result",
+        "    output_schema: schemas/minimal-output.json",
+        "    timeout_ms: 120000",
+        "    max_attempts: 1",
+      ].join("\n"),
+    );
+
+    const registry = new DivisionLoader({
+      divisionsRoot,
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+    }).loadAll();
+
+    const division = registry.divisions.get("minimal");
+    assert.ok(division, "minimal division should be loaded");
+    assert.equal(division.resourceBoundaries, null, "resource_boundaries should be null when not defined");
+    assert.equal(division.faultDomains, null, "fault_domains should be null when not defined");
+  } finally {
+    cleanupPath(workspace);
+  }
+});

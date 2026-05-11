@@ -462,3 +462,204 @@ test("ScimProvisionService filter ne operator works correctly", () => {
   assert.equal(result.totalResults, 1);
   assert.equal(result.Resources[0]?.userName, "jane.doe");
 });
+
+// ─── Tenant Isolation Tests ─────────────────────────────────────────────────
+
+test("ScimProvisionService getUserByUsername enforces tenant isolation - same username in different tenants", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ userName: "admin" }), "tenant-1");
+  service.createUser(createTestUser({ userName: "admin" }), "tenant-2");
+
+  // Tenant-1 should find their user
+  const user1 = service.getUserByUsername("admin", "tenant-1");
+  assert.ok(user1);
+  assert.equal(user1!.tenantId, "tenant-1");
+
+  // Tenant-2 should find their user
+  const user2 = service.getUserByUsername("admin", "tenant-2");
+  assert.ok(user2);
+  assert.equal(user2!.tenantId, "tenant-2");
+
+  // Tenant-3 should not find any user
+  const user3 = service.getUserByUsername("admin", "tenant-3");
+  assert.equal(user3, null);
+});
+
+test("ScimProvisionService getUserByEmail enforces tenant isolation - same email in different tenants", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ emails: [{ value: "admin@example.com", primary: true }] }), "tenant-1");
+  service.createUser(createTestUser({ emails: [{ value: "admin@example.com", primary: true }] }), "tenant-2");
+
+  // Tenant-1 should find their user
+  const user1 = service.getUserByEmail("admin@example.com", "tenant-1");
+  assert.ok(user1);
+  assert.equal(user1!.tenantId, "tenant-1");
+
+  // Tenant-2 should find their user
+  const user2 = service.getUserByEmail("admin@example.com", "tenant-2");
+  assert.ok(user2);
+  assert.equal(user2!.tenantId, "tenant-2");
+
+  // Tenant-3 should not find any user
+  const user3 = service.getUserByEmail("admin@example.com", "tenant-3");
+  assert.equal(user3, null);
+});
+
+test("ScimProvisionService getGroupByName enforces tenant isolation - same group name in different tenants", () => {
+  const service = new ScimProvisionService();
+  service.createGroup(createTestGroup({ displayName: "Admins" }), "tenant-1");
+  service.createGroup(createTestGroup({ displayName: "Admins" }), "tenant-2");
+
+  // Tenant-1 should find their group
+  const group1 = service.getGroupByName("Admins", "tenant-1");
+  assert.ok(group1);
+  assert.equal(group1!.tenantId, "tenant-1");
+
+  // Tenant-2 should find their group
+  const group2 = service.getGroupByName("Admins", "tenant-2");
+  assert.ok(group2);
+  assert.equal(group2!.tenantId, "tenant-2");
+
+  // Tenant-3 should not find any group
+  const group3 = service.getGroupByName("Admins", "tenant-3");
+  assert.equal(group3, null);
+});
+
+test("ScimProvisionService cross-tenant update is rejected", () => {
+  const service = new ScimProvisionService();
+  const userTenant1 = service.createUser(createTestUser(), "tenant-1");
+
+  // Tenant-2 should not be able to update tenant-1's user
+  const updated = service.updateUser(userTenant1.id, { displayName: "Hacked" }, "tenant-2");
+  assert.equal(updated, null);
+
+  // Tenant-1 should still find their user unchanged
+  const user1 = service.getUser(userTenant1.id, "tenant-1");
+  assert.ok(user1);
+  assert.equal(user1!.displayName, "Test User");
+});
+
+test("ScimProvisionService cross-tenant delete is rejected", () => {
+  const service = new ScimProvisionService();
+  const userTenant1 = service.createUser(createTestUser(), "tenant-1");
+
+  // Tenant-2 should not be able to delete tenant-1's user
+  const deleted = service.deleteUser(userTenant1.id, "tenant-2");
+  assert.equal(deleted, false);
+
+  // Tenant-1 should still find their user
+  const user1 = service.getUser(userTenant1.id, "tenant-1");
+  assert.ok(user1);
+});
+
+test("ScimProvisionService cross-tenant group update is rejected", () => {
+  const service = new ScimProvisionService();
+  const groupTenant1 = service.createGroup(createTestGroup(), "tenant-1");
+
+  // Tenant-2 should not be able to update tenant-1's group
+  const updated = service.updateGroup(groupTenant1.id, { displayName: "Hacked" }, "tenant-2");
+  assert.equal(updated, null);
+
+  // Tenant-1 should still find their group unchanged
+  const group1 = service.getGroup(groupTenant1.id, "tenant-1");
+  assert.ok(group1);
+  assert.equal(group1!.displayName, "Test Group");
+});
+
+test("ScimProvisionService cross-tenant group delete is rejected", () => {
+  const service = new ScimProvisionService();
+  const groupTenant1 = service.createGroup(createTestGroup(), "tenant-1");
+
+  // Tenant-2 should not be able to delete tenant-1's group
+  const deleted = service.deleteGroup(groupTenant1.id, "tenant-2");
+  assert.equal(deleted, false);
+
+  // Tenant-1 should still find their group
+  const group1 = service.getGroup(groupTenant1.id, "tenant-1");
+  assert.ok(group1);
+});
+
+test("ScimProvisionService listUsers returns only tenant's users", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
+  service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
+  service.createUser(createTestUser({ userName: "user3" }), "tenant-2");
+
+  const resultTenant1 = service.listUsers({ tenantId: "tenant-1" });
+  const resultTenant2 = service.listUsers({ tenantId: "tenant-2" });
+
+  assert.equal(resultTenant1.totalResults, 2);
+  assert.equal(resultTenant2.totalResults, 1);
+  assert.ok(resultTenant1.Resources.every((u) => u.tenantId === "tenant-1"));
+  assert.ok(resultTenant2.Resources.every((u) => u.tenantId === "tenant-2"));
+});
+
+test("ScimProvisionService listGroups returns only tenant's groups", () => {
+  const service = new ScimProvisionService();
+  service.createGroup(createTestGroup({ displayName: "Group1" }), "tenant-1");
+  service.createGroup(createTestGroup({ displayName: "Group2" }), "tenant-1");
+  service.createGroup(createTestGroup({ displayName: "Group3" }), "tenant-2");
+
+  const resultTenant1 = service.listGroups({ tenantId: "tenant-1" });
+  const resultTenant2 = service.listGroups({ tenantId: "tenant-2" });
+
+  assert.equal(resultTenant1.totalResults, 2);
+  assert.equal(resultTenant2.totalResults, 1);
+  assert.ok(resultTenant1.Resources.every((g) => g.tenantId === "tenant-1"));
+  assert.ok(resultTenant2.Resources.every((g) => g.tenantId === "tenant-2"));
+});
+
+test("ScimProvisionService addMemberToGroup enforces tenant isolation", () => {
+  const service = new ScimProvisionService();
+  const userTenant1 = service.createUser(createTestUser(), "tenant-1");
+  const userTenant2 = service.createUser(createTestUser({ userName: "user2" }), "tenant-2");
+  const groupTenant1 = service.createGroup(createTestGroup(), "tenant-1");
+
+  // Tenant-2 user should not be able to be added to tenant-1's group
+  const result = service.addMemberToGroup(groupTenant1.id, userTenant2.id, "tenant-2");
+  assert.equal(result, null);
+
+  // Verify group still has no members from tenant-2
+  const group1 = service.getGroup(groupTenant1.id, "tenant-1");
+  assert.equal(group1!.members.length, 0);
+});
+
+test("ScimProvisionService removeMemberFromGroup enforces tenant isolation", () => {
+  const service = new ScimProvisionService();
+  const userTenant1 = service.createUser(createTestUser(), "tenant-1");
+  const groupTenant1 = service.createGroup(createTestGroup(), "tenant-1");
+  service.addMemberToGroup(groupTenant1.id, userTenant1.id, "tenant-1");
+
+  // Tenant-2 should not be able to remove member from tenant-1's group
+  const result = service.removeMemberFromGroup(groupTenant1.id, userTenant1.id, "tenant-2");
+  assert.equal(result, null);
+
+  // Verify member still exists
+  const group1 = service.getGroup(groupTenant1.id, "tenant-1");
+  assert.equal(group1!.members.length, 1);
+});
+
+test("ScimProvisionService patchGroup enforces tenant isolation", () => {
+  const service = new ScimProvisionService();
+  const groupTenant1 = service.createGroup(createTestGroup(), "tenant-1");
+
+  // Tenant-2 should not be able to patch tenant-1's group
+  const result = service.patchGroup(groupTenant1.id, [
+    { op: "replace", path: "displayName", value: "Hacked" },
+  ], "tenant-2");
+  assert.equal(result, null);
+
+  // Verify group displayName unchanged
+  const group1 = service.getGroup(groupTenant1.id, "tenant-1");
+  assert.equal(group1!.displayName, "Test Group");
+});
+
+test("ScimProvisionService cross-tenant addMemberToGroup is rejected when group belongs to different tenant", () => {
+  const service = new ScimProvisionService();
+  const userTenant1 = service.createUser(createTestUser(), "tenant-1");
+  const groupTenant2 = service.createGroup(createTestGroup(), "tenant-2");
+
+  // Tenant-1 user should not be able to be added to tenant-2's group
+  const result = service.addMemberToGroup(groupTenant2.id, userTenant1.id, "tenant-1");
+  assert.equal(result, null);
+});

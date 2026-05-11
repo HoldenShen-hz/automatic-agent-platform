@@ -55,3 +55,17 @@ eval_spec:
     - data_breach
     - misinformation
     - fraud
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 2
+  max_queue_depth: 10
+  execution_timeout_ms: 300000
+  max_retry_attempts: 1
+  budget_limit_per_task: 10
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: restricted
+  retry_policy: conservative
+  fallback_enabled: false
+  blast_radius: company
+  recovery_strategy: manual

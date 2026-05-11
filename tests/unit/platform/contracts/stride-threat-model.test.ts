@@ -115,8 +115,8 @@ test("[ARCH-P0-3] ThreatMatrix has entries for all 6 STRIDE dimensions", () => {
     `Missing STRIDE categories in matrix: ${missingCategories.join(", ")}`,
   );
 
-  // Verify we have exactly 6 entries (one per STRIDE dimension)
-  assert.equal(matrix.entries.length, 6, "ThreatMatrix should have exactly 6 entries, one per STRIDE dimension");
+  // Verify we have at least 6 entries (one per STRIDE dimension, but some categories may have multiple entries)
+  assert.ok(matrix.entries.length >= 6, "ThreatMatrix should have at least 6 entries, one per STRIDE dimension");
 });
 
 test("[ARCH-P0-3] ThreatMatrixRegistry.validate() passes for valid matrix", () => {
@@ -352,4 +352,98 @@ test("[ARCH-P0-3] All STRIDE categories are represented in default matrix", () =
       `Category ${category} should have at least one entry in the default matrix`,
     );
   }
+});
+
+// =============================================================================
+// Issue 2004: TAMPERING (config) and INFO_DISCLOSURE (agent memory) Mitigations
+// =============================================================================
+
+test("[ISSUE-2004] TAMPERING category includes config manipulation mitigations", () => {
+  const matrix = defaultThreatMatrixRegistry.getMatrix();
+  const tamperingEntries = matrix.entries.filter((e) => e.category === "TAMPERING");
+
+  assert.ok(tamperingEntries.length > 0, "TAMPERING category must have at least one entry");
+
+  // Collect all mitigations across TAMPERING entries
+  const allMitigations = tamperingEntries.flatMap((e) => e.mitigations);
+
+  // Check for config-related mitigations (issue 2004)
+  const configRelatedMitigations = [
+    "configuration schema validation at load time",
+    "signed and versioned config artifacts",
+    "configuration change audit logging",
+    "immutable config in production deployments",
+    "runtime config validation against known-good baselines",
+  ];
+
+  for (const configMitigation of configRelatedMitigations) {
+    assert.ok(
+      allMitigations.includes(configMitigation),
+      `TAMPERING should include config mitigation: "${configMitigation}"`,
+    );
+  }
+});
+
+test("[ISSUE-2004] INFORMATION_DISCLOSURE category includes agent memory mitigations", () => {
+  const matrix = defaultThreatMatrixRegistry.getMatrix();
+  const infoDisclosures = matrix.entries.filter((e) => e.category === "INFORMATION_DISCLOSURE");
+
+  assert.ok(infoDisclosures.length > 0, "INFORMATION_DISCLOSURE category must have at least one entry");
+
+  // Collect all mitigations across INFO_DISCLOSURE entries
+  const allMitigations = infoDisclosures.flatMap((e) => e.mitigations);
+
+  // Check for agent memory related mitigations (issue 2004)
+  const agentMemoryMitigations = [
+    "agent memory encryption at rest",
+    "memory isolation by workspace or session",
+    "memory access audit logging",
+    "selective memory erasure on session termination",
+    "memory snapshot access controls",
+  ];
+
+  for (const memoryMitigation of agentMemoryMitigations) {
+    assert.ok(
+      allMitigations.includes(memoryMitigation),
+      `INFORMATION_DISCLOSURE should include agent memory mitigation: "${memoryMitigation}"`,
+    );
+  }
+});
+
+test("[ISSUE-2004] TAMPERING has at least one config-specific threat entry", () => {
+  const matrix = defaultThreatMatrixRegistry.getMatrix();
+  const tamperingEntries = matrix.entries.filter((e) => e.category === "TAMPERING");
+
+  // Verify there's an entry specifically addressing config manipulation
+  const configTamperingEntries = tamperingEntries.filter((e) =>
+    e.title.toLowerCase().includes("config") ||
+    e.mitigations.some((m) => m.includes("config")),
+  );
+
+  assert.ok(
+    configTamperingEntries.length > 0,
+    "TAMPERING category should have at least one config-related threat entry",
+  );
+});
+
+test("[ISSUE-2004] INFORMATION_DISCLOSURE has at least one agent-memory-specific threat entry", () => {
+  const matrix = defaultThreatMatrixRegistry.getMatrix();
+  const infoDisclosures = matrix.entries.filter((e) => e.category === "INFORMATION_DISCLOSURE");
+
+  // Verify there's an entry specifically addressing agent memory exposure
+  const memoryEntries = infoDisclosures.filter((e) =>
+    e.title.toLowerCase().includes("memory") ||
+    e.mitigations.some((m) => m.includes("memory")),
+  );
+
+  assert.ok(
+    memoryEntries.length > 0,
+    "INFORMATION_DISCLOSURE category should have at least one agent-memory-related threat entry",
+  );
+});
+
+test("[ISSUE-2004] ThreatMatrixRegistry validate passes after fix", () => {
+  const validation = defaultThreatMatrixRegistry.validate();
+  assert.ok(validation.valid, "ThreatMatrix should be valid after adding missing mitigations");
+  assert.equal(validation.missingCategories.length, 0, "No categories should be missing");
 });

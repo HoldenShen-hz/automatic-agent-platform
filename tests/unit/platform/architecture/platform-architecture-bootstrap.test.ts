@@ -171,3 +171,110 @@ test("services object is immutable - layers/apps/startupTargets are readonly", a
   assert.ok(Array.isArray(services.apps));
   assert.ok(Array.isArray(services.startupTargets));
 });
+
+test("getPlatformArchitectureServices does not return uninitialized services", async () => {
+  // Use a fresh scoped registry so global state does not affect this test
+  const registry = ServiceRegistry.createScoped();
+
+  // Before getPlatformArchitectureServices, nothing should be initialized
+  registerPlatformArchitectureServices(registry);
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), false);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), false);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
+
+  // After getPlatformArchitectureServices, all services must be initialized
+  const services = getPlatformArchitectureServices(registry);
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), true);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
+
+  // Verify returned data is valid (not undefined/empty)
+  assert.ok(services.layers.length > 0);
+  assert.ok(services.planes.length > 0);
+  assert.ok(services.apps.length > 0);
+  assert.ok(services.startupTargets.length > 0);
+  assert.ok(typeof services.summary === "object");
+
+  await registry.reset();
+});
+
+test("getPlatformArchitectureServices initializes all services on first call", async () => {
+  const registry = ServiceRegistry.createScoped();
+  registerPlatformArchitectureServices(registry);
+
+  // Single call to getPlatformArchitectureServices should initialize everything
+  const services = getPlatformArchitectureServices(registry);
+
+  // Verify all services initialized
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), true);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
+
+  // Verify data integrity
+  assert.equal(services.layers.length, 9);
+  assert.equal(services.planes.length, 6);
+  assert.ok(services.apps.length >= 3);
+  assert.ok(services.startupTargets.length >= 5);
+
+  await registry.reset();
+});
+
+test("getPlatformArchitectureServices does not re-register when called multiple times on same registry", async () => {
+  const registry = ServiceRegistry.createScoped();
+
+  // Track service registrations by counting services before and after
+  const serviceCountBefore = [...registry['services'].keys()].filter(k => k.startsWith("architecture.")).length;
+
+  // First call
+  getPlatformArchitectureServices(registry);
+  const serviceCountAfterFirst = [...registry['services'].keys()].filter(k => k.startsWith("architecture.")).length;
+
+  // Second call
+  getPlatformArchitectureServices(registry);
+  const serviceCountAfterSecond = [...registry['services'].keys()].filter(k => k.startsWith("architecture.")).length;
+
+  // Architecture services should be registered once (5 services)
+  assert.equal(serviceCountAfterFirst, 5, "Should register 5 architecture services");
+  assert.equal(serviceCountAfterSecond, 5, "Should not re-register on second call");
+
+  // Verify services still work after second call
+  const services = getPlatformArchitectureServices(registry);
+  assert.equal(services.layers.length, 9);
+  assert.equal(services.planes.length, 6);
+
+  await registry.reset();
+});
+
+test("getPlatformArchitectureServices skips registration when registry already has architecture services", async () => {
+  const registry = ServiceRegistry.createScoped();
+
+  // Manually register a conflicting service to detect re-registration
+  let registerCallCount = 0;
+  const originalRegister = registry.register.bind(registry);
+  registry.register = function(name: string, registration: any) {
+    if (name.startsWith("architecture.")) {
+      registerCallCount++;
+    }
+    return originalRegister(name, registration);
+  };
+
+  // First call - should register
+  getPlatformArchitectureServices(registry);
+  const countAfterFirst = registerCallCount;
+
+  // Second call - should NOT re-register
+  getPlatformArchitectureServices(registry);
+  const countAfterSecond = registerCallCount;
+
+  // Re-registration should not happen
+  assert.equal(countAfterFirst, 5, "First call should register 5 services");
+  assert.equal(countAfterSecond, 5, "Second call should not re-register");
+
+  await registry.reset();
+});

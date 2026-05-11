@@ -97,6 +97,10 @@ export interface LoadedDivisionDefinition {
   roles: DivisionRoleDefinition[];
   /** All workflows defined in this division */
   workflows: MinimalWorkflowDefinition[];
+  /** Resource boundaries for execution limits */
+  resourceBoundaries: Record<string, unknown> | null;
+  /** Fault domains for fault isolation and recovery configuration */
+  faultDomains: Record<string, unknown> | null;
   /** Absolute filesystem path to the division's root directory */
   rootPath: string;
 }
@@ -352,6 +356,12 @@ export class DivisionLoader {
       orchestrationWorkflowId,
       roles,
       workflows,
+      resourceBoundaries: isPlainObject(divisionConfig.resource_boundaries)
+        ? divisionConfig.resource_boundaries
+        : null,
+      faultDomains: isPlainObject(divisionConfig.fault_domains)
+        ? divisionConfig.fault_domains
+        : null,
       rootPath: divisionRoot,
     };
   }

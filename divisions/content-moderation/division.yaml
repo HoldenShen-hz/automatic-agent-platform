@@ -55,3 +55,17 @@ eval_spec:
     - evasion
     - coordinated_abuse
     - false_reporting
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 3
+  max_queue_depth: 15
+  execution_timeout_ms: 300000
+  max_retry_attempts: 2
+  budget_limit_per_task: 6
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: elevated
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: department
+  recovery_strategy: resume

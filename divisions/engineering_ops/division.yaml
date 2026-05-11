@@ -25,3 +25,17 @@ roles:
     model: reasoning
     tools: [read]
     max_instances: 2
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 4
+  max_queue_depth: 20
+  execution_timeout_ms: 900000
+  max_retry_attempts: 2
+  budget_limit_per_task: 8
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: elevated
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: department
+  recovery_strategy: resume

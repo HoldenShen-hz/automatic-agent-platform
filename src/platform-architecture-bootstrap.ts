@@ -212,7 +212,25 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
-  registerPlatformArchitectureServices(registry);
+  if (!registeredArchitectureCatalogs.has(registry)) {
+    registerPlatformArchitectureServices(registry);
+  }
+
+  // Ensure all services are fully initialized before returning to avoid
+  // returning uninitialized data when get() is called immediately after register().
+  const readinessGates = [
+    "architecture.layer-catalog",
+    "architecture.plane-catalog",
+    "architecture.app-catalog",
+    "architecture.startup-targets",
+    "architecture.bootstrap-summary",
+  ];
+  for (const gate of readinessGates) {
+    if (!registry.isInitialized(gate)) {
+      registry.get(gate);
+    }
+  }
+
   return {
     layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
     planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),

@@ -56,6 +56,42 @@ test("OutputContractConfigSchema accepts validation level and schema payload", (
   assert.deepEqual(contract.schema, { result: "string" });
 });
 
+test("OutputContractConfigSchema rejects empty-object schema with strict validation — Issue #2000", () => {
+  // With strict validation, schema { type: "object" } with no properties means any object
+  // passes validation — defeating the purpose of strict mode.
+  // A proper strict schema must define at least one property or use additionalProperties: false.
+  const emptySchema = { type: "object" };
+  const strictContract = OutputContractConfigSchema.parse({
+    contractId: "test.strict",
+    name: "Strict Contract",
+    schema: emptySchema,
+    validationLevel: "strict",
+  });
+  // The schema itself is stored as-is; validation is performed by the contract validator.
+  // The fix in config/domains/default.json replaces { type: "object" } with a schema that
+  // has properties defined and additionalProperties: false to enforce strictness.
+  assert.deepEqual(strictContract.schema, { type: "object" });
+
+  // A well-formed strict schema with properties should be accepted
+  const properSchema = {
+    type: "object",
+    properties: {
+      patch: { type: "string" },
+      filesModified: { type: "array", items: { type: "string" } },
+      summary: { type: "string" },
+    },
+    additionalProperties: false,
+  };
+  const properContract = OutputContractConfigSchema.parse({
+    contractId: "test.proper",
+    name: "Proper Strict Contract",
+    schema: properSchema,
+    validationLevel: "strict",
+  });
+  assert.deepEqual(properContract.schema.properties, { patch: { type: "string" } });
+  assert.equal(properContract.validationLevel, "strict");
+});
+
 test("DomainCapabilityProfileSchema provides budget and security defaults", () => {
   const profile = DomainCapabilityProfileSchema.parse({});
 

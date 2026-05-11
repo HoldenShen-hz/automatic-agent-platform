@@ -3,11 +3,11 @@ import test from "node:test";
 
 import * as RootModule from "../../src/index.js";
 import type {
-  PlatformRootEntryMode,
+  PlatformStartupTargetKind,
 } from "../../src/index.js";
 
 type RootBootstrapTypeExports = [
-  PlatformRootEntryMode,
+  PlatformStartupTargetKind,
 ];
 void (null as unknown as RootBootstrapTypeExports);
 

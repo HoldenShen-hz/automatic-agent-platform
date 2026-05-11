@@ -41,9 +41,6 @@ export { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
-export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
-
-export type PlatformRootEntryMode = PlatformStartupTargetKind;
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;
@@ -178,7 +175,7 @@ function isDirectExecution(): boolean {
   return import.meta.url === pathToFileURL(resolve(scriptPath)).href;
 }
 
-function resolveRootEntryMode(): PlatformRootEntryMode {
+function resolveRootEntryMode(): PlatformStartupTargetKind {
   const explicit = process.env.AA_PLATFORM_ENTRY_MODE;
   if (
     explicit === "demo" ||

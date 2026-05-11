@@ -7,14 +7,13 @@ import {
   buildPlatformRootDemoSummary,
   buildPlatformRootSummary,
 } from "../../../src/index.js";
-import type { PlatformRootEntryMode } from "../../../src/index.js";
 import type {
   HarnessRun,
   HarnessRunStatus,
   NodeRun,
   PlanGraphBundle,
   PlatformStartupTargetKind,
-} from "../../../src/platform-architecture-types.js";
+} from "../../../src/index.js";
 import type {
   HarnessRun as CanonicalHarnessRun,
   HarnessRunStatus as CanonicalHarnessRunStatus,
@@ -28,13 +27,13 @@ type _HarnessRunReexportMatches = Assert<HarnessRun extends CanonicalHarnessRun 
 type _HarnessRunStatusReexportMatches = Assert<HarnessRunStatus extends CanonicalHarnessRunStatus ? true : false>;
 type _NodeRunReexportMatches = Assert<NodeRun extends CanonicalNodeRun ? true : false>;
 type _PlanGraphBundleReexportMatches = Assert<PlanGraphBundle extends CanonicalPlanGraphBundle ? true : false>;
-type _PlatformRootEntryModeMatches = Assert<PlatformRootEntryMode extends PlatformStartupTargetKind ? true : false>;
+type _PlatformStartupTargetKindMatches = Assert<PlatformStartupTargetKind extends "summary" | "demo" | "api" | "console" | "worker" ? true : false>;
 
 void (true as _HarnessRunReexportMatches);
 void (true as _HarnessRunStatusReexportMatches);
 void (true as _NodeRunReexportMatches);
 void (true as _PlanGraphBundleReexportMatches);
-void (true as _PlatformRootEntryModeMatches);
+void (true as _PlatformStartupTargetKindMatches);
 
 test("root entry re-exports startup builders on the top-level surface", () => {
   assert.equal(typeof buildFivePlaneRuntimeCatalog, "function");

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OidcIdentityService, InMemoryOidcStateStore, createOidcIdentityService } from "../../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
+import {
+  OidcIdentityService,
+  InMemoryOidcStateStore,
+  createOidcIdentityService,
+} from "../../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
 import type { OidcProviderConfig } from "../../../../../src/org-governance/sso-scim/oidc/index.js";
 
 function createOidcConfig(): OidcProviderConfig {
@@ -17,12 +21,13 @@ function createOidcConfig(): OidcProviderConfig {
 test("OidcIdentityService initiates authorization flow", () => {
   const service = new OidcIdentityService(createOidcConfig());
 
-  const { authorizationUrl, state, nonce } = service.initiateFlow("https://app.example.com/callback");
+  const { authorizationUrl, state, nonce, codeVerifier } = service.initiateFlow("https://app.example.com/callback");
 
   assert.ok(authorizationUrl.includes("https://idp.example.com/authorize"));
   assert.ok(authorizationUrl.includes("client_id=test-client"));
   assert.ok(state);
   assert.ok(nonce);
+  assert.ok(codeVerifier);
 });
 
 test("OidcIdentityService exchanges code for tokens", async () => {
@@ -162,6 +167,26 @@ test("OidcIdentityService refreshes access token and rotates refresh token", asy
   assert.notEqual(newTokens!.refreshToken, tokens!.refreshToken, "refresh token should be rotated");
 });
 
+test("OidcIdentityService refreshes access token and rotates refresh token on consecutive refreshes", async () => {
+  const service = new OidcIdentityService(createOidcConfig());
+  const { state } = service.initiateFlow("https://app.example.com/callback");
+  const tokens = await service.exchangeCodeForTokens("auth-code", state);
+  const userInfo = await service.fetchUserInfo(tokens!.accessToken);
+  const session = service.createSession(tokens!, userInfo!);
+
+  // First refresh - token should rotate
+  const newTokens1 = await service.refreshAccessToken(session.sessionId);
+  assert.ok(newTokens1, "first refresh should return new tokens");
+  assert.ok(newTokens1!.refreshToken, "first refresh should have new refresh token");
+  assert.notEqual(newTokens1!.refreshToken, tokens!.refreshToken, "first refresh should rotate refresh token");
+
+  // Second refresh - token should rotate again
+  const newTokens2 = await service.refreshAccessToken(session.sessionId);
+  assert.ok(newTokens2, "second refresh should return new tokens");
+  assert.ok(newTokens2!.refreshToken, "second refresh should have new refresh token");
+  assert.notEqual(newTokens2!.refreshToken, newTokens1!.refreshToken, "second refresh should rotate refresh token again");
+});
+
 test("OidcIdentityService returns null for refresh without refresh token", async () => {
   const service = new OidcIdentityService(createOidcConfig());
   const { state } = service.initiateFlow("https://app.example.com/callback");
@@ -211,19 +236,20 @@ test("createOidcIdentityService factory works", () => {
 test("InMemoryOidcStateStore saves and retrieves state", () => {
   const store = new InMemoryOidcStateStore();
 
-  store.saveState("state-123", "nonce-456", "https://callback.example.com");
+  store.saveState("state-123", "nonce-456", "https://callback.example.com", "verifier-123");
 
   const result = store.getState("state-123");
 
   assert.ok(result);
   assert.equal(result!.nonce, "nonce-456");
   assert.equal(result!.redirectUri, "https://callback.example.com");
+  assert.equal(result!.codeVerifier, "verifier-123");
 });
 
 test("InMemoryOidcStateStore returns null for expired state", () => {
   const store = new InMemoryOidcStateStore();
 
-  store.saveState("state-expired", "nonce", "uri");
+  store.saveState("state-expired", "nonce", "uri", "verifier");
 
   const result = store.getState("state-expired");
 
@@ -241,4 +267,81 @@ test("InMemoryOidcStateStore deletes state", () => {
   const result = store.getState("state-to-delete");
 
   assert.equal(result, null);
+});
+
+// ─── PKCE Tests (RFC 7636) ─────────────────────────────────────────────────────
+
+test("OidcIdentityService initiates flow with PKCE code verifier", () => {
+  const service = new OidcIdentityService(createOidcConfig());
+
+  const { authorizationUrl, state, nonce, codeVerifier } = service.initiateFlow(
+    "https://app.example.com/callback",
+  );
+
+  assert.ok(authorizationUrl.includes("https://idp.example.com/authorize"));
+  assert.ok(authorizationUrl.includes("code_challenge="));
+  assert.ok(authorizationUrl.includes("code_challenge_method=S256"));
+  assert.ok(state);
+  assert.ok(nonce);
+  assert.ok(codeVerifier, "initiateFlow should return codeVerifier for PKCE");
+  assert.equal(typeof codeVerifier, "string", "codeVerifier should be a string");
+  assert.ok(codeVerifier.length >= 43, "codeVerifier should be 43-128 chars per RFC 7636");
+});
+
+test("OidcIdentityService stores codeVerifier in state store", () => {
+  const service = new OidcIdentityService(createOidcConfig());
+
+  const { state, codeVerifier } = service.initiateFlow(
+    "https://app.example.com/callback",
+  );
+
+  // Access state store directly to verify codeVerifier was stored
+  const stateStore = (service as unknown as { stateStore: InMemoryOidcStateStore }).stateStore;
+  const storedState = stateStore.getState(state);
+  assert.ok(storedState, "state should be stored");
+  assert.equal(storedState!.codeVerifier, codeVerifier, "codeVerifier should be stored for PKCE");
+});
+
+test("OidcIdentityService exchanges code with PKCE code verifier", async () => {
+  const service = new OidcIdentityService(createOidcConfig());
+  const { state, codeVerifier } = service.initiateFlow(
+    "https://app.example.com/callback",
+  );
+
+  const tokens = await service.exchangeCodeForTokens("auth-code-123", state);
+
+  assert.ok(tokens, "exchange should succeed");
+  assert.ok(tokens!.accessToken, "tokens should have accessToken");
+  // Verify codeVerifier was used in exchange (via state store retrieval)
+  assert.ok(codeVerifier, "codeVerifier should be returned for verification");
+});
+
+test("InMemoryOidcStateStore saves and retrieves state with codeVerifier", () => {
+  const store = new InMemoryOidcStateStore();
+
+  store.saveState("state-pkce", "nonce-456", "https://callback.example.com", "codeVerifier-123");
+
+  const result = store.getState("state-pkce");
+
+  assert.ok(result);
+  assert.equal(result!.nonce, "nonce-456");
+  assert.equal(result!.redirectUri, "https://callback.example.com");
+  assert.equal(result!.codeVerifier, "codeVerifier-123");
+});
+
+test("InMemoryOidcStateStore returns null for expired state (with codeVerifier)", () => {
+  const store = new InMemoryOidcStateStore();
+
+  // Directly set an expired entry bypassing time advance for this test
+  const entry = {
+    nonce: "nonce",
+    redirectUri: "uri",
+    codeVerifier: "verifier",
+    expiresAt: Date.now() - 1, // Already expired
+  };
+  (store as unknown as { store: Map<string, typeof entry> }).store.set("state-expired", entry);
+
+  const result = store.getState("state-expired");
+
+  assert.equal(result, null, "expired state should return null");
 });

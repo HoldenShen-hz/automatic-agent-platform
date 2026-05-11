@@ -35,5 +35,15 @@
     "maxBodyBytes": 1048576,
     "maxHeaders": 100,
     "maxConcurrentStreams": 50
+  },
+  "tls": {
+    "enabled": true,
+    "minVersion": "TLSv1.2",
+    "cipherSuites": [
+      "ECDHE-RSA-AES256-GCM-SHA384",
+      "ECDHE-RSA-AES128-GCM-SHA256"
+    ],
+    "requestCert": false,
+    "rejectUnauthorized": true
   }
 }

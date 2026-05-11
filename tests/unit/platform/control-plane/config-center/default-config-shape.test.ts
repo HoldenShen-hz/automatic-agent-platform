@@ -22,6 +22,16 @@ test("runtime default config includes configVersion for version tracking", () =>
   assert.equal((runtimeConfig["configDriftReconciler"] as Record<string, unknown>)["interval"], 300000);
 });
 
+test("runtime default config meets complex workflow minimums (issue #2003)", () => {
+  const runtimeConfig = readJson(`${repoRoot}/config/runtime/default.json`);
+  // These minimums are defined in config-impact-analyzer.ts
+  // MIN_RECOMMENDED_MAX_AGENT_ROUNDS = 16, MIN_RECOMMENDED_MAX_TOOL_CALLS = 32
+  const maxAgentRounds = runtimeConfig["maxAgentRounds"] as number;
+  const maxToolCalls = runtimeConfig["maxToolCalls"] as number;
+  assert.ok(maxAgentRounds >= 16, `maxAgentRounds=${maxAgentRounds} must be >= 16 for complex workflows (issue #2003)`);
+  assert.ok(maxToolCalls >= 32, `maxToolCalls=${maxToolCalls} must be >= 32 for complex workflows (issue #2003)`);
+});
+
 test("gateway default config includes rate limit, cors, auth, and request limits", () => {
   const gatewayConfig = readJson(`${repoRoot}/config/gateways/default.json`);
   assert.equal(gatewayConfig["timeout"], 30000);

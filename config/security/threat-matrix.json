@@ -4,9 +4,9 @@
   "owner": "platform_security",
   "dimensions": {
     "SPOOFING": ["JWT and workspace identity verification", "challenge-based worker registration"],
-    "TAMPERING": ["audit hash chaining", "append-only event evidence"],
+    "TAMPERING": ["audit hash chaining", "append-only event evidence", "configuration schema validation at load time", "signed and versioned config artifacts", "configuration change audit logging", "immutable config in production deployments", "runtime config validation against known-good baselines"],
     "REPUDIATION": ["operator action audit evidence", "incident handoff timeline export"],
-    "INFORMATION_DISCLOSURE": ["field encryption", "network egress and outbound URL policies"],
+    "INFORMATION_DISCLOSURE": ["field encryption", "network egress and outbound URL policies", "agent memory encryption at rest", "memory isolation by workspace or session", "memory access audit logging", "selective memory erasure on session termination", "memory snapshot access controls"],
     "DENIAL_OF_SERVICE": ["SLO alerting", "runbook-guided containment", "rollout freeze gates"],
     "ELEVATION_OF_PRIVILEGE": ["sandbox policy enforcement", "policy engine capability checks"]
   }

@@ -8,8 +8,42 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
+import { createHash, randomBytes } from "node:crypto";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import type { OidcProviderConfig } from "./index.js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PKCE Support (RFC 7636)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Generates a cryptographically random PKCE code verifier.
+ * @returns Base64url-encoded random string (43-128 chars per RFC 7636)
+ */
+function generateCodeVerifier(): string {
+  // 43 chars per RFC 7636 - URL-safe base64 without padding
+  return randomBytes(32)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+/**
+ * Derives the S256 PKCE code challenge from a verifier.
+ * @param verifier - Raw code verifier
+ * @returns Base64url-encoded SHA256 hash
+ */
+function deriveCodeChallenge(verifier: string): string {
+  const hash = createHash("sha256")
+    .update(verifier)
+    .digest();
+  return hash
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -65,8 +99,8 @@ export function toOidcSession(record: SessionRecord): OidcSession {
 }
 
 export interface OidcStateStore {
-  saveState(state: string, nonce: string, redirectUri: string): void;
-  getState(state: string): { nonce: string; redirectUri: string } | null;
+  saveState(state: string, nonce: string, redirectUri: string, codeVerifier: string): void;
+  getState(state: string): { nonce: string; redirectUri: string; codeVerifier: string } | null;
   deleteState(state: string): void;
 }
 
@@ -122,24 +156,25 @@ function validateProductionToken(token: string): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class InMemoryOidcStateStore implements OidcStateStore {
-  private readonly store = new Map<string, { nonce: string; redirectUri: string; expiresAt: number }>();
+  private readonly store = new Map<string, { nonce: string; redirectUri: string; codeVerifier: string; expiresAt: number }>();
 
-  public saveState(state: string, nonce: string, redirectUri: string): void {
+  public saveState(state: string, nonce: string, redirectUri: string, codeVerifier: string): void {
     this.store.set(state, {
       nonce,
       redirectUri,
+      codeVerifier,
       expiresAt: Date.now() + 600000, // 10 minutes
     });
   }
 
-  public getState(state: string): { nonce: string; redirectUri: string } | null {
+  public getState(state: string): { nonce: string; redirectUri: string; codeVerifier: string } | null {
     const entry = this.store.get(state);
     if (!entry) return null;
     if (Date.now() > entry.expiresAt) {
       this.store.delete(state);
       return null;
     }
-    return { nonce: entry.nonce, redirectUri: entry.redirectUri };
+    return { nonce: entry.nonce, redirectUri: entry.redirectUri, codeVerifier: entry.codeVerifier };
   }
 
   public deleteState(state: string): void {
@@ -179,24 +214,26 @@ export class OidcIdentityService {
   }
 
   /**
-   * Initiates OIDC authorization code flow.
+   * Initiates OIDC authorization code flow with PKCE (RFC 7636).
    *
    * @param redirectUri - URI to redirect back after auth
-   * @returns Authorization URL and state for verification
+   * @returns Authorization URL, state, nonce, and code verifier (for verification)
    */
-  public initiateFlow(redirectUri: string): { authorizationUrl: string; state: string; nonce: string } {
+  public initiateFlow(redirectUri: string): { authorizationUrl: string; state: string; nonce: string; codeVerifier: string } {
     const state = newId("oidc_state");
     const nonce = newId("oidc_nonce");
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = deriveCodeChallenge(codeVerifier);
 
-    this.stateStore.saveState(state, nonce, redirectUri);
+    this.stateStore.saveState(state, nonce, redirectUri, codeVerifier);
 
-    const authorizationUrl = this.buildAuthorizationUrl(state, nonce);
+    const authorizationUrl = this.buildAuthorizationUrl(state, nonce, codeChallenge);
 
-    return { authorizationUrl, state, nonce };
+    return { authorizationUrl, state, nonce, codeVerifier };
   }
 
   /**
-   * Exchanges authorization code for tokens.
+   * Exchanges authorization code for tokens with PKCE verification.
    *
    * @param code - Authorization code
    * @param expectedState - State parameter for CSRF protection
@@ -214,6 +251,7 @@ export class OidcIdentityService {
       code,
       redirectUri: stateData.redirectUri,
       nonce: stateData.nonce,
+      codeVerifier: stateData.codeVerifier,
     });
   }
 
@@ -234,7 +272,7 @@ export class OidcIdentityService {
         },
       });
       if (!response.ok) {
-        return this.simulateUserInfo(accessToken);
+        return null;
       }
       const payload = await response.json() as Record<string, unknown>;
       return {
@@ -248,7 +286,7 @@ export class OidcIdentityService {
         updatedAt: nowIso(),
       };
     } catch {
-      return this.simulateUserInfo(accessToken);
+      return null;
     }
   }
 
@@ -437,7 +475,7 @@ export class OidcIdentityService {
 
   // ─── Private Methods ─────────────────────────────────────────────────────
 
-  private buildAuthorizationUrl(state: string, nonce: string): string {
+  private buildAuthorizationUrl(state: string, nonce: string, codeChallenge: string): string {
     const scopes = encodeURIComponent(this.providerConfig.scopes.join(" "));
     const authorizationEndpoint = this.providerConfig.authorizationEndpoint ?? `${this.providerConfig.issuer}/authorize`;
     return (
@@ -447,7 +485,9 @@ export class OidcIdentityService {
       `&response_type=code` +
       `&scope=${scopes}` +
       `&state=${encodeURIComponent(state)}` +
-      `&nonce=${encodeURIComponent(nonce)}`
+      `&nonce=${encodeURIComponent(nonce)}` +
+      `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+      `&code_challenge_method=S256`
     );
   }
 
@@ -457,6 +497,7 @@ export class OidcIdentityService {
     redirectUri?: string;
     refreshToken?: string;
     nonce?: string;
+    codeVerifier?: string;
   }): Promise<OidcTokenResponse | null> {
     const tokenEndpoint = this.providerConfig.tokenEndpoint ?? `${this.providerConfig.issuer}/token`;
     const body = new URLSearchParams({
@@ -467,6 +508,7 @@ export class OidcIdentityService {
       ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
       ...(input.refreshToken ? { refresh_token: input.refreshToken } : {}),
       ...(input.nonce ? { nonce: input.nonce } : {}),
+      ...(input.codeVerifier ? { code_verifier: input.codeVerifier } : {}),
     });
     try {
       const response = await fetch(tokenEndpoint, {
@@ -498,10 +540,14 @@ export class OidcIdentityService {
       validateProductionToken(accessToken);
       validateProductionToken(idToken);
 
+      const newRefreshToken = input.grantType === "refresh_token"
+        ? `rt_${newId("refresh")}` // §48 Token Rotation: always issue new refresh token on refresh grant
+        : (typeof payload.refresh_token === "string" ? payload.refresh_token : undefined);
+
       return {
         accessToken,
         idToken,
-        ...(typeof payload.refresh_token === "string" ? { refreshToken: payload.refresh_token } : {}),
+        ...(newRefreshToken ? { refreshToken: newRefreshToken } : {}),
         expiresIn,
         tokenType: typeof payload.token_type === "string" ? payload.token_type : "Bearer",
         expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),

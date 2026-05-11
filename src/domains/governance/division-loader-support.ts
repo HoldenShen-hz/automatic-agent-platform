@@ -50,6 +50,8 @@ export interface RawDivisionConfig {
   orchestration_workflow?: unknown;
   triggers?: unknown;
   roles?: unknown;
+  resource_boundaries?: unknown;
+  fault_domains?: unknown;
 }
 
 export interface RawWorkflowStepConfig {

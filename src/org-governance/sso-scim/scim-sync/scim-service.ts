@@ -165,11 +165,11 @@ export class ScimProvisionService {
     };
 
     this.users.set(id, scimUser);
-    this.userByUsername.set(user.userName.toLowerCase(), id);
+    this.userByUsername.set(`${tenantId}:${user.userName.toLowerCase()}`, id);
 
     const primaryEmail = user.emails.find((e) => e.primary)?.value;
     if (primaryEmail) {
-      this.userByEmail.set(primaryEmail.toLowerCase(), id);
+      this.userByEmail.set(`${tenantId}:${primaryEmail.toLowerCase()}`, id);
     }
 
     this.recordEvent("user_created", id, tenantId);
@@ -200,7 +200,7 @@ export class ScimProvisionService {
    * @returns User or null
    */
   public getUserByUsername(userName: string, tenantId: string): ScimUser | null {
-    const userId = this.userByUsername.get(userName.toLowerCase());
+    const userId = this.userByUsername.get(`${tenantId}:${userName.toLowerCase()}`);
     if (!userId) return null;
     const user = this.users.get(userId);
     if (!user) return null;
@@ -217,7 +217,7 @@ export class ScimProvisionService {
    * @returns User or null
    */
   public getUserByEmail(email: string, tenantId: string): ScimUser | null {
-    const userId = this.userByEmail.get(email.toLowerCase());
+    const userId = this.userByEmail.get(`${tenantId}:${email.toLowerCase()}`);
     if (!userId) return null;
     const user = this.users.get(userId);
     if (!user) return null;
@@ -253,17 +253,17 @@ export class ScimProvisionService {
     this.users.set(userId, updatedUser);
 
     if (updates.userName) {
-      this.userByUsername.delete(existing.userName.toLowerCase());
-      this.userByUsername.set(updates.userName.toLowerCase(), userId);
+      this.userByUsername.delete(`${tenantId}:${existing.userName.toLowerCase()}`);
+      this.userByUsername.set(`${tenantId}:${updates.userName.toLowerCase()}`, userId);
     }
 
     if (updates.emails) {
       for (const email of existing.emails) {
-        this.userByEmail.delete(email.value.toLowerCase());
+        this.userByEmail.delete(`${tenantId}:${email.value.toLowerCase()}`);
       }
       const primaryEmail = updates.emails.find((e) => e.primary)?.value;
       if (primaryEmail) {
-        this.userByEmail.set(primaryEmail.toLowerCase(), userId);
+        this.userByEmail.set(`${tenantId}:${primaryEmail.toLowerCase()}`, userId);
       }
     }
 
@@ -297,10 +297,10 @@ export class ScimProvisionService {
     if (existing.tenantId !== tenantId) return false;
 
     this.users.delete(userId);
-    this.userByUsername.delete(existing.userName.toLowerCase());
+    this.userByUsername.delete(`${tenantId}:${existing.userName.toLowerCase()}`);
 
     for (const email of existing.emails) {
-      this.userByEmail.delete(email.value.toLowerCase());
+      this.userByEmail.delete(`${tenantId}:${email.value.toLowerCase()}`);
     }
 
     // Remove from all groups
@@ -374,7 +374,7 @@ export class ScimProvisionService {
     };
 
     this.groups.set(id, scimGroup);
-    this.groupByName.set(group.displayName.toLowerCase(), id);
+    this.groupByName.set(`${tenantId}:${group.displayName.toLowerCase()}`, id);
 
     this.recordEvent("group_updated", id, tenantId);
 
@@ -404,7 +404,7 @@ export class ScimProvisionService {
    * @returns Group or null
    */
   public getGroupByName(displayName: string, tenantId: string): ScimGroup | null {
-    const groupId = this.groupByName.get(displayName.toLowerCase());
+    const groupId = this.groupByName.get(`${tenantId}:${displayName.toLowerCase()}`);
     if (!groupId) return null;
     const group = this.groups.get(groupId);
     if (!group) return null;
@@ -441,8 +441,8 @@ export class ScimProvisionService {
     this.groups.set(groupId, updatedGroup);
 
     if (updates.displayName) {
-      this.groupByName.delete(existing.displayName.toLowerCase());
-      this.groupByName.set(updates.displayName.toLowerCase(), groupId);
+      this.groupByName.delete(`${tenantId}:${existing.displayName.toLowerCase()}`);
+      this.groupByName.set(`${tenantId}:${updates.displayName.toLowerCase()}`, groupId);
     }
 
     this.recordEvent("group_updated", groupId, tenantId);
@@ -464,7 +464,7 @@ export class ScimProvisionService {
     if (existing.tenantId !== tenantId) return false;
 
     this.groups.delete(groupId);
-    this.groupByName.delete(existing.displayName.toLowerCase());
+    this.groupByName.delete(`${tenantId}:${existing.displayName.toLowerCase()}`);
 
     // Remove group reference from all users
     for (const user of this.users.values()) {
@@ -861,29 +861,26 @@ export class ScimProvisionService {
     const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
     if (!match) return items;
 
-    const [, attribute, op, value] = match;
-    const filterValue = value ?? "";
+    const [, attribute, op, rawValue] = match;
+    const filterValue = String(rawValue ?? "").toLowerCase();
 
     return items.filter((item) => {
       const itemValue = resolveFilterValue(item, attribute);
       // If attribute doesn't exist on this item type, don't match
-      if (itemValue === undefined) {
-        return false;
-      }
-      // null means the attribute exists but has no value — skip it
-      if (itemValue == null) {
+      if (itemValue === undefined || itemValue === null) {
         return false;
       }
 
+      const itemValueStr = itemValue as string;
       switch (op) {
         case "eq":
-          return itemValue.toLowerCase() === filterValue.toLowerCase();
+          return itemValueStr.toLowerCase() === filterValue.toLowerCase();
         case "ne":
-          return itemValue.toLowerCase() !== filterValue.toLowerCase();
+          return itemValueStr.toLowerCase() !== filterValue.toLowerCase();
         case "co":
-          return itemValue.toLowerCase().includes(filterValue.toLowerCase());
+          return itemValueStr.toLowerCase().includes(filterValue.toLowerCase());
         case "sw":
-          return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
+          return itemValueStr.toLowerCase().startsWith(filterValue.toLowerCase());
         default:
           return true;
       }

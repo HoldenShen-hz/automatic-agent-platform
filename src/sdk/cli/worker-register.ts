@@ -36,7 +36,7 @@ function loadRegistrationPolicy(): { challengeTtlMs: number; allowedCapabilities
         : 300_000,
     allowedCapabilities: Array.isArray(registration.allowedCapabilities)
       ? registration.allowedCapabilities.filter((item): item is string => typeof item === "string")
-      : ["bash", "edit", "mcp"],
+      : ["edit", "mcp"],
   };
 }
 

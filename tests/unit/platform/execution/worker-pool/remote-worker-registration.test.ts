@@ -72,12 +72,12 @@ test("RemoteWorkerRegistrationService issueChallenge normalizes capability order
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["edit", "bash", "mcp"],
+    requestedCapabilities: ["edit", "mcp"],
   });
 
   assert.equal(result.issued, true);
   // Should be sorted alphabetically
-  assert.deepEqual(result.allowedCapabilities, ["bash", "edit", "mcp"]);
+  assert.deepEqual(result.allowedCapabilities, ["edit", "mcp"]);
 });
 
 test("RemoteWorkerRegistrationService issueChallenge trims whitespace from capabilities", () => {
@@ -87,11 +87,11 @@ test("RemoteWorkerRegistrationService issueChallenge trims whitespace from capab
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["  bash  ", "edit", "mcp"],
+    requestedCapabilities: ["  edit  ", "mcp"],
   });
 
   assert.equal(result.issued, true);
-  assert.deepEqual(result.allowedCapabilities, ["bash", "edit", "mcp"]);
+  assert.deepEqual(result.allowedCapabilities, ["edit", "mcp"]);
 });
 
 test("RemoteWorkerRegistrationService issueChallenge removes duplicate capabilities", () => {
@@ -101,11 +101,11 @@ test("RemoteWorkerRegistrationService issueChallenge removes duplicate capabilit
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash", "bash", "edit"],
+    requestedCapabilities: ["edit", "edit", "mcp"],
   });
 
   assert.equal(result.issued, true);
-  assert.deepEqual(result.allowedCapabilities, ["bash", "edit"]);
+  assert.deepEqual(result.allowedCapabilities, ["edit", "mcp"]);
 });
 
 test("RemoteWorkerRegistrationService issueChallenge handles empty capabilities list", () => {
@@ -148,7 +148,7 @@ test("RemoteWorkerRegistrationService issueChallenge rejects TTL of zero", () =>
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
     ttlMs: 0,
   });
 
@@ -163,7 +163,7 @@ test("RemoteWorkerRegistrationService issueChallenge rejects negative TTL", () =
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
     ttlMs: -100,
   });
 
@@ -178,7 +178,7 @@ test("RemoteWorkerRegistrationService issueChallenge rejects non-finite TTL", ()
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
     ttlMs: Infinity,
   });
 
@@ -194,7 +194,7 @@ test("RemoteWorkerRegistrationService issueChallenge stores challenge with corre
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash", "edit"],
+    requestedCapabilities: ["edit", "mcp"],
   });
 
   assert.equal(result.issued, true);
@@ -212,7 +212,7 @@ test("RemoteWorkerRegistrationService issueChallenge uses custom TTL when provid
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
     ttlMs: 600000,
   });
 
@@ -237,7 +237,7 @@ test("RemoteWorkerRegistrationService completeRegistration accepts valid challen
 
   const issueResult = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash", "edit"],
+    requestedCapabilities: ["edit", "mcp"],
   });
 
   assert.equal(issueResult.issued, true);
@@ -246,7 +246,7 @@ test("RemoteWorkerRegistrationService completeRegistration accepts valid challen
     workerId: "worker-1",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash", "edit"],
+    capabilities: ["edit", "mcp"],
     maxConcurrency: 4,
   });
 
@@ -263,14 +263,14 @@ test("RemoteWorkerRegistrationService completeRegistration rejects wrong worker 
 
   const issueResult = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   const completeResult = service.completeRegistration({
     workerId: "worker-2", // Different worker
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
 
@@ -290,7 +290,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects expired chall
     id: "expired-challenge",
     workerId: "worker-1",
     challengeTokenHash: hashToken("token"),
-    allowedCapabilitiesJson: '["bash"]',
+    allowedCapabilitiesJson: '["edit"]',
     expiresAt: "2020-01-01T00:00:00.000Z", // Expired
     usedAt: null,
     createdAt: "2020-01-01T00:00:00.000Z",
@@ -301,7 +301,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects expired chall
     workerId: "worker-1",
     challengeId: "expired-challenge",
     challengeToken: "token",
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
 
@@ -318,7 +318,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects already-used 
 
   const issueResult = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   // First use - should succeed
@@ -326,7 +326,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects already-used 
     workerId: "worker-1",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
   assert.equal(firstResult.accepted, true);
@@ -336,7 +336,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects already-used 
     workerId: "worker-1",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
   assert.equal(secondResult.accepted, false);
@@ -352,14 +352,14 @@ test("RemoteWorkerRegistrationService completeRegistration rejects invalid token
 
   const issueResult = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   const completeResult = service.completeRegistration({
     workerId: "worker-1",
     challengeId: issueResult.challengeId!,
     challengeToken: "wrong-token",
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
 
@@ -376,14 +376,14 @@ test("RemoteWorkerRegistrationService completeRegistration rejects non-allowed c
 
   const issueResult = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"], // Only bash allowed
+    requestedCapabilities: ["edit"], // Only edit allowed
   });
 
   const completeResult = service.completeRegistration({
     workerId: "worker-1",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash", "custom-capability"], // custom not in allowed list
+    capabilities: ["edit", "custom-capability"], // custom not in allowed list
     maxConcurrency: 4,
   });
 
@@ -401,7 +401,7 @@ test("RemoteWorkerRegistrationService completeRegistration rejects non-existent 
     workerId: "worker-1",
     challengeId: "non-existent-challenge",
     challengeToken: "token",
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
   });
 
@@ -418,14 +418,14 @@ test("RemoteWorkerRegistrationService completeRegistration sets remote session s
 
   const issueResult = service.issueChallenge({
     workerId: "worker-remote",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   const completeResult = service.completeRegistration({
     workerId: "worker-remote",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 4,
     remoteSessionStatus: "connected",
     sessionConsistencyCheckStatus: "passed",
@@ -446,14 +446,14 @@ test("RemoteWorkerRegistrationService completeRegistration respects custom isola
 
   const issueResult = service.issueChallenge({
     workerId: "worker-hardened",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   const completeResult = service.completeRegistration({
     workerId: "worker-hardened",
     challengeId: issueResult.challengeId!,
     challengeToken: issueResult.challengeToken!,
-    capabilities: ["bash"],
+    capabilities: ["edit"],
     maxConcurrency: 2,
     isolationLevel: "hardened",
   });
@@ -471,7 +471,7 @@ test("RemoteWorkerRegistrationService with custom capabilities accepts custom ca
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store, {
-    allowedCapabilities: ["bash", "edit", "mcp", "custom"],
+    allowedCapabilities: ["edit", "mcp", "custom"],
   });
 
   const result = service.issueChallenge({
@@ -487,7 +487,7 @@ test("RemoteWorkerRegistrationService with custom capabilities rejects unlisted 
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store, {
-    allowedCapabilities: ["bash", "edit", "mcp"],
+    allowedCapabilities: ["edit", "mcp"],
   });
 
   const result = service.issueChallenge({
@@ -512,7 +512,7 @@ test("RemoteWorkerRegistrationService default challenge TTL is 300000ms (5 minut
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash"],
+    requestedCapabilities: ["edit"],
   });
 
   assert.equal(result.issued, true);
@@ -524,16 +524,31 @@ test("RemoteWorkerRegistrationService default challenge TTL is 300000ms (5 minut
   assert.ok(ttl >= 299000 && ttl <= 301000); // 300000 +/- 1000ms
 });
 
-test("RemoteWorkerRegistrationService default allowed capabilities include bash, edit, mcp", () => {
+test("RemoteWorkerRegistrationService default allowed capabilities include edit and mcp (not bash)", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["bash", "edit", "mcp"],
+    requestedCapabilities: ["edit", "mcp"],
   });
 
   assert.equal(result.issued, true);
-  assert.deepEqual(result.allowedCapabilities, ["bash", "edit", "mcp"]);
+  assert.deepEqual(result.allowedCapabilities, ["edit", "mcp"]);
+});
+
+test("RemoteWorkerRegistrationService default allowed capabilities reject bash", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new RemoteWorkerRegistrationService(db, store);
+
+  const result = service.issueChallenge({
+    workerId: "worker-1",
+    requestedCapabilities: ["bash"],
+  });
+
+  assert.equal(result.issued, false);
+  assert.equal(result.reasonCode, "capability_not_allowed");
+  assert.deepEqual(result.rejectedCapabilities, ["bash"]);
 });

@@ -53,6 +53,20 @@ test("LoadedDivisionDefinition structure is correct", () => {
     orchestrationWorkflowId: "wf_orchestrate",
     roles: [],
     workflows: [],
+    resourceBoundaries: {
+      max_concurrent_executions: 5,
+      max_queue_depth: 20,
+      execution_timeout_ms: 300000,
+      max_retry_attempts: 2,
+      budget_limit_per_task: 5,
+    },
+    faultDomains: {
+      isolation_level: "standard",
+      retry_policy: "standard",
+      fallback_enabled: true,
+      blast_radius: "team",
+      recovery_strategy: "resume",
+    },
     rootPath: "/divisions/abc",
   };
 
@@ -61,6 +75,8 @@ test("LoadedDivisionDefinition structure is correct", () => {
   assert.equal(division.priority, 100);
   assert.equal(division.triggers.length, 2);
   assert.equal(division.orchestrationWorkflowId, "wf_orchestrate");
+  assert.ok(division.resourceBoundaries);
+  assert.ok(division.faultDomains);
 });
 
 test("LoadedDivisionDefinition allows null orchestrationWorkflowId", () => {
@@ -75,10 +91,14 @@ test("LoadedDivisionDefinition allows null orchestrationWorkflowId", () => {
     orchestrationWorkflowId: null,
     roles: [],
     workflows: [],
+    resourceBoundaries: null,
+    faultDomains: null,
     rootPath: "/divisions/simple",
   };
 
   assert.equal(division.orchestrationWorkflowId, null);
+  assert.equal(division.resourceBoundaries, null);
+  assert.equal(division.faultDomains, null);
 });
 
 test("LoadedDivisionDefinition allows empty roles and workflows", () => {
@@ -93,6 +113,8 @@ test("LoadedDivisionDefinition allows empty roles and workflows", () => {
     orchestrationWorkflowId: null,
     roles: [],
     workflows: [],
+    resourceBoundaries: null,
+    faultDomains: null,
     rootPath: "/divisions/empty",
   };
 
@@ -113,6 +135,8 @@ test("DivisionRegistry structure is correct", () => {
       orchestrationWorkflowId: null,
       roles: [],
       workflows: [],
+      resourceBoundaries: null,
+      faultDomains: null,
       rootPath: "/div/1",
     }]]),
     workflows: new Map([["wf_1", {

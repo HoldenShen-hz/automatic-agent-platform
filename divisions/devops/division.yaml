@@ -5,6 +5,19 @@ description: CI/CD pipelines, infrastructure automation, deployment, monitoring.
 priority: 45
 default_workflow: devops_single_step
 orchestration_workflow: devops_single_step
+disambiguate:
+  deployment:
+    when:
+      - context: [CI, CD, pipeline, infrastructure, kubernetes, docker, dockerfile]
+        prefer: devops
+      - context: [incident, runbook, health_check, diagnose, sre]
+        prefer: operations
+  monitoring:
+    when:
+      - context: [infrastructure, kubernetes, docker, pipeline, deployment]
+        prefer: devops
+      - context: [incident, runbook, health_check, diagnose, sre]
+        prefer: operations
 triggers:
   - deploy
   - deployment
@@ -29,3 +42,17 @@ roles:
     model: balanced
     tools: [read, bash]
     max_instances: 2
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 3
+  max_queue_depth: 15
+  execution_timeout_ms: 300000
+  max_retry_attempts: 2
+  budget_limit_per_task: 5
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: elevated
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: department
+  recovery_strategy: resume

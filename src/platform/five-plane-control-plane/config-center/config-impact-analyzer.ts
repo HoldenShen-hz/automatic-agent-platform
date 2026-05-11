@@ -531,20 +531,20 @@ export class ConfigImpactAnalyzer {
     }
 
     // Warn about potentially too-low limits for complex workflows
-    const maxAgentRoundsChange = changes.find((c) => c.path === "maxAgentRounds");
-    if (maxAgentRoundsChange?.changeType === "update" && typeof maxAgentRoundsChange.newValue === "number") {
-      if (maxAgentRoundsChange.newValue < MIN_RECOMMENDED_MAX_AGENT_ROUNDS) {
+    const maxAgentRoundsChange = changes.find((c) => c.path === "maxAgentRounds" && c.changeType === "changed");
+    if (maxAgentRoundsChange && typeof maxAgentRoundsChange.afterValue === "number") {
+      if (maxAgentRoundsChange.afterValue < MIN_RECOMMENDED_MAX_AGENT_ROUNDS) {
         warnings.push(
-          `maxAgentRounds=${maxAgentRoundsChange.newValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_AGENT_ROUNDS} for complex workflows — workflows may be silently truncated`,
+          `maxAgentRounds=${maxAgentRoundsChange.afterValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_AGENT_ROUNDS} for complex workflows — workflows may be silently truncated`,
         );
       }
     }
 
-    const maxToolCallsChange = changes.find((c) => c.path === "maxToolCalls");
-    if (maxToolCallsChange?.changeType === "update" && typeof maxToolCallsChange.newValue === "number") {
-      if (maxToolCallsChange.newValue < MIN_RECOMMENDED_MAX_TOOL_CALLS) {
+    const maxToolCallsChange = changes.find((c) => c.path === "maxToolCalls" && c.changeType === "changed");
+    if (maxToolCallsChange && typeof maxToolCallsChange.afterValue === "number") {
+      if (maxToolCallsChange.afterValue < MIN_RECOMMENDED_MAX_TOOL_CALLS) {
         warnings.push(
-          `maxToolCalls=${maxToolCallsChange.newValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_TOOL_CALLS} for complex workflows — workflows may be silently truncated`,
+          `maxToolCalls=${maxToolCallsChange.afterValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_TOOL_CALLS} for complex workflows — workflows may be silently truncated`,
         );
       }
     }

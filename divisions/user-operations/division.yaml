@@ -53,3 +53,17 @@ eval_spec:
   adversarialScenarios:
     - spam_abuse
     - privacy_leak
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 3
+  max_queue_depth: 15
+  execution_timeout_ms: 480000
+  max_retry_attempts: 2
+  budget_limit_per_task: 4
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: standard
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: team
+  recovery_strategy: resume

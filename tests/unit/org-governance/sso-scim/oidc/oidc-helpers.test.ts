@@ -85,13 +85,15 @@ test("InMemoryOidcStateStore saves and retrieves state", () => {
   const state = "test_state_123";
   const nonce = "nonce_abc";
   const redirectUri = "https://app.example.com/callback";
+  const codeVerifier = "test_verifier_456";
 
-  store.saveState(state, nonce, redirectUri);
+  store.saveState(state, nonce, redirectUri, codeVerifier);
   const retrieved = store.getState(state);
 
   assert.ok(retrieved != null);
   assert.equal(retrieved.nonce, nonce);
   assert.equal(retrieved.redirectUri, redirectUri);
+  assert.equal(retrieved.codeVerifier, codeVerifier);
 });
 
 test("InMemoryOidcStateStore returns null for non-existent state", () => {
@@ -113,7 +115,7 @@ test("InMemoryOidcStateStore returns null for expired state", () => {
 
 test("InMemoryOidcStateStore deletes state", () => {
   const store = new InMemoryOidcStateStore();
-  store.saveState("state_to_delete", "nonce", "https://example.com");
+  store.saveState("state_to_delete", "nonce", "https://example.com", "verifier");
 
   store.deleteState("state_to_delete");
 

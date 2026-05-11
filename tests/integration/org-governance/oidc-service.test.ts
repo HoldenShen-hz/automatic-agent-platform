@@ -239,12 +239,12 @@ test("integration: OIDC revokeAllUserSessions removes all user sessions", async 
 });
 
 // ============================================================================
-// OIDC UserInfo Fallback Tests (Issue 1970)
+// OIDC UserInfo Failure Tests (Issue 1970 - No Mock Admin Fallback)
 // ============================================================================
 
-test("integration: OIDC fetchUserInfo falls back to simulation on network error", async () => {
+test("integration: OIDC fetchUserInfo returns null on network error (no mock fallback)", async () => {
   const stateStore = new InMemoryOidcStateStore();
-  // Use invalid endpoint to trigger fallback
+  // Use invalid endpoint to trigger error
   const service = createOidcIdentityService(
     { ...TEST_PROVIDER_CONFIG, userInfoEndpoint: "https://invalid-endpoint.example.com/userinfo" },
     stateStore,
@@ -253,40 +253,39 @@ test("integration: OIDC fetchUserInfo falls back to simulation on network error"
 
   const result = await service.fetchUserInfo("some-access-token");
 
-  assert.ok(result !== null, "should return simulated user info on error");
-  assert.ok(result.sub.length > 0, "sub should be non-empty");
-  // simulateUserInfo generates email from hash of access token, check format
-  assert.ok(result.email?.endsWith("@example.com"), "simulated email should have correct domain");
+  // §48 Fix: fetchUserInfo returns null on failure, NOT mock admin user
+  assert.equal(result, null, "should return null on network error, not mock user");
 });
 
-test("integration: OIDC fetchUserInfo returns simulated data when endpoint returns error", async () => {
-  const stateStore = new InMemoryOidcStateStore();
-  // Create a service that will return error from userInfo endpoint
-  const service = createOidcIdentityService(TEST_PROVIDER_CONFIG, stateStore, {
-    allowMockFallback: true,
-  });
-
-  const result = await service.fetchUserInfo("mock-access-token");
-
-  assert.ok(result !== null, "should return simulated user info");
-  assert.ok(result.sub.length > 0, "sub should be non-empty");
-  assert.ok(result.email !== undefined, "email should be present");
-});
-
-test("integration: OIDC fetchUserInfo returns real data when endpoint succeeds", async () => {
-  // This test would require a mock HTTP server or interception
-  // For integration testing, we verify the structure of what would be returned
+test("integration: OIDC fetchUserInfo returns null when endpoint returns error status", async () => {
   const stateStore = new InMemoryOidcStateStore();
   const service = createOidcIdentityService(TEST_PROVIDER_CONFIG, stateStore, {
     allowMockFallback: true,
   });
 
-  // With allowMockFallback: true and non-production environment, simulation kicks in
+  // Without a mock server, the fetch will fail; verify null is returned
   const result = await service.fetchUserInfo("test-access-token");
 
-  assert.ok(result !== null, "result should not be null");
-  assert.ok(typeof result.sub === "string", "sub should be string");
-  assert.ok(result.groups === undefined || Array.isArray(result.groups), "groups should be array or undefined");
+  // §48 Fix: fetchUserInfo returns null on failure, NOT mock admin user
+  assert.equal(result, null, "should return null when userinfo fetch fails");
+});
+
+test("integration: OIDC fetchUserInfo does NOT return simulated admin user on failure", async () => {
+  const stateStore = new InMemoryOidcStateStore();
+  const service = createOidcIdentityService(
+    { ...TEST_PROVIDER_CONFIG, userInfoEndpoint: "https://nonexistent.example.com/userinfo" },
+    stateStore,
+    { allowMockFallback: true },
+  );
+
+  const result = await service.fetchUserInfo("at_mock_token");
+
+  // §48 Fix: verify the privilege escalation vector is closed
+  // simulateUserInfo used to return groups: ["engineers", "admins"] - this must not happen
+  assert.equal(result, null, "should not return mock admin user");
+  if (result !== null) {
+    assert.ok(!result.groups?.includes("admins"), "should NOT have admin group from mock fallback");
+  }
 });
 
 test("integration: OIDC validateAccessToken returns session for valid token", async () => {

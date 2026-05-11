@@ -54,3 +54,17 @@ eval_spec:
   adversarialScenarios:
     - liability_hiding
     - clause_manipulation
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 2
+  max_queue_depth: 10
+  execution_timeout_ms: 600000
+  max_retry_attempts: 1
+  budget_limit_per_task: 8
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: restricted
+  retry_policy: conservative
+  fallback_enabled: false
+  blast_radius: company
+  recovery_strategy: manual

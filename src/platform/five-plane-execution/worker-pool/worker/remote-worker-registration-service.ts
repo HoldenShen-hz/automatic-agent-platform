@@ -87,7 +87,7 @@ export class RemoteWorkerRegistrationService {
     options: RemoteWorkerRegistrationServiceOptions = {},
   ) {
     this.workers = new WorkerRegistryService(store);
-    this.allowedCapabilities = normalizeCapabilities(options.allowedCapabilities ?? ["bash", "edit", "mcp"]);
+    this.allowedCapabilities = normalizeCapabilities(options.allowedCapabilities ?? ["edit", "mcp"]);
     this.challengeTtlMs = options.challengeTtlMs ?? 300_000;
   }
 
