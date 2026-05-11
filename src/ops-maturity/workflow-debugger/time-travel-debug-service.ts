@@ -203,12 +203,13 @@ export class TimeTravelDebugService {
       if (session.breakpoints.includes(stepId)) {
         this.captureSnapshot(session, event, i);
         session.currentEventIndex = i + 1;
-        return this.buildReplayState(session, session.currentEventIndex, true);
+        return this.buildReplayState(session, currentIndex, session.currentEventIndex, true);
       }
     }
 
+    const prevIndex = session.currentEventIndex;
     session.currentEventIndex = Math.min(toEventIndex, events.length);
-    return this.buildReplayState(session, session.currentEventIndex, false);
+    return this.buildReplayState(session, prevIndex, session.currentEventIndex, false);
   }
 
   public replayStep(sessionId: string): ReplayState | null {
@@ -217,9 +218,10 @@ export class TimeTravelDebugService {
 
     const events = this.eventStore.get(session.executionId) ?? [];
     if (session.currentEventIndex >= events.length) {
-      return this.buildReplayState(session, session.currentEventIndex, false);
+      return this.buildReplayState(session, session.currentEventIndex, session.currentEventIndex, false);
     }
 
+    const prevIndex = session.currentEventIndex;
     const event = events[session.currentEventIndex]!;
     this.assertReplayEventAllowed(session, event);
     const stepId = readEventStepId(event);
@@ -227,10 +229,10 @@ export class TimeTravelDebugService {
 
     const reachedBreakpoint = session.breakpoints.includes(stepId);
     if (reachedBreakpoint) {
-      this.captureSnapshot(session, event, session.currentEventIndex - 1);
+      this.captureSnapshot(session, event, prevIndex);
     }
 
-    return this.buildReplayState(session, session.currentEventIndex, reachedBreakpoint);
+    return this.buildReplayState(session, prevIndex, session.currentEventIndex, reachedBreakpoint);
   }
 
   public jumpToStep(sessionId: string, stepId: string): ReplayState | null {
@@ -242,8 +244,9 @@ export class TimeTravelDebugService {
     if (targetIndex === -1) return null;
     this.assertReplayEventAllowed(session, events[targetIndex]!);
 
+    const prevIndex = session.currentEventIndex;
     session.currentEventIndex = targetIndex + 1;
-    return this.buildReplayState(session, session.currentEventIndex, false);
+    return this.buildReplayState(session, prevIndex, session.currentEventIndex, false);
   }
 
   public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
@@ -310,21 +313,22 @@ export class TimeTravelDebugService {
 
   private buildReplayState(
     session: TimeTravelDebugSession,
-    currentEventIndex: number,
+    fromEventIndex: number,
+    toEventIndex: number,
     reachedBreakpoint: boolean,
   ): ReplayState {
     const events = this.eventStore.get(session.executionId) ?? [];
-    const variables = this.getVariableState(session.sessionId, currentEventIndex);
+    const variables = this.getVariableState(session.sessionId, toEventIndex);
 
     return {
       cursor: {
         taskId: session.taskId,
         executionId: session.executionId,
         harnessRunId: session.executionId,
-        fromEventIndex: session.currentEventIndex,
-        toEventIndex: currentEventIndex,
+        fromEventIndex,
+        toEventIndex,
       },
-      currentEventIndex,
+      currentEventIndex: toEventIndex,
       variables,
       reachedBreakpoint,
     };

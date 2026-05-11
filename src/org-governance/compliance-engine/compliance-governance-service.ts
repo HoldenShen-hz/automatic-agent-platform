@@ -15,7 +15,7 @@ import {
   type ComplianceEvidenceRecord,
 } from "./evidence-collector.js";
 import type { PolicyLayer } from "./inheritance/index.js";
-import { resolveCompliancePolicyForNode } from "./policy-resolver/index.js";
+import { resolveCompliancePolicyForNode, type PolicyResolutionResult } from "./policy-resolver/index.js";
 
 export interface ComplianceEvaluationInput {
   readonly actorId: string;
@@ -191,8 +191,9 @@ export class ComplianceGovernanceService {
         coverageRatio: 0,
       };
     }
-    const effectivePolicy = resolveCompliancePolicyForNode(this.nodes, orgNodeId, this.policiesByNodeId);
-    const coveredControlIds = framework.controlIds.filter((controlId) => controlId in effectivePolicy);
+    const { policy: effectivePolicy, denyByDefault } = resolveCompliancePolicyForNode(this.nodes, orgNodeId, this.policiesByNodeId);
+    const effectivePolicyOrEmpty = denyByDefault ? {} : effectivePolicy;
+    const coveredControlIds = framework.controlIds.filter((controlId) => controlId in effectivePolicyOrEmpty);
     const missingControlIds = framework.controlIds.filter((controlId) => !coveredControlIds.includes(controlId));
     return {
       frameworkId,
@@ -205,23 +206,24 @@ export class ComplianceGovernanceService {
   }
 
   public evaluate(input: ComplianceEvaluationInput): ComplianceEvaluationResult {
-    const effectivePolicy = resolveCompliancePolicyForNode(
+    const { policy: effectivePolicy, denyByDefault } = resolveCompliancePolicyForNode(
       this.nodes,
       input.orgNodeId,
       this.policiesByNodeId,
     );
+    const effectivePolicyOrEmpty = denyByDefault ? {} : effectivePolicy;
     const requiredKeys = input.requiredPolicyKeys ?? [];
-    const missingKeys = requiredKeys.filter((key) => !(key in effectivePolicy));
+    const missingKeys = requiredKeys.filter((key) => !(key in effectivePolicyOrEmpty));
     const applicableFrameworks = this.resolveFrameworks(input.orgNodeId);
     const missingControls = applicableFrameworks.flatMap((framework) =>
-      framework.controlIds.filter((controlId) => !(controlId in effectivePolicy)),
+      framework.controlIds.filter((controlId) => !(controlId in effectivePolicyOrEmpty)),
     );
     const missingFrameworkPolicies = applicableFrameworks.flatMap((framework) =>
       Object.entries(framework.minimumPolicies)
-        .filter(([key, value]) => !matchesFrameworkRequirement(effectivePolicy[key], value))
+        .filter(([key, value]) => !matchesFrameworkRequirement(effectivePolicyOrEmpty[key], value))
         .map(([key]) => key),
     );
-    const allowed = missingKeys.length === 0 && missingControls.length === 0 && missingFrameworkPolicies.length === 0;
+    const allowed = !denyByDefault && missingKeys.length === 0 && missingControls.length === 0 && missingFrameworkPolicies.length === 0;
 
     return {
       orgNodeId: input.orgNodeId,

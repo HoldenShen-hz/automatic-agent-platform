@@ -346,7 +346,7 @@ test("ApprovalRoutingService.route builds correct audit record structure", () =>
   );
 
   assert.ok(result.auditRecord);
-  assert.ok(result.auditRecord.recordId.includes("audit_user-1_team-platform"));
+  assert.ok(result.auditRecord.recordId.includes("approval_route_audit_user-1_team-platform"));
   assert.equal(result.auditRecord.action, "approval.route");
   assert.equal(result.auditRecord.actorId, "user-1");
   assert.equal(result.auditRecord.orgNodeId, "team-platform");

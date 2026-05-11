@@ -461,12 +461,12 @@ test("RuntimeRecoveryDecisionService.decide records decision event", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  await service.decide("exec-1");
+  service.decide("exec-1");
 
   assert.equal(eventInserted, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
+test("RuntimeRecoveryDecisionService.apply records decision and action events", async () => {
   const db = createMockDb();
   const events: string[] = [];
   const candidate = createMockCandidate({
@@ -507,7 +507,7 @@ test("RuntimeRecoveryDecisionService.apply records decision and action events", 
   assert.ok(events.length >= 2);
 });
 
-test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", () => {
+test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -553,7 +553,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", 
   assert.equal(result.decision.action, "cancel");
 });
 
-test("RuntimeRecoveryDecisionService leaves active execution unapplied when no terminal recovery action is inferred", () => {
+test("RuntimeRecoveryDecisionService leaves active execution unapplied when no terminal recovery action is inferred", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -605,7 +605,7 @@ test("RuntimeRecoveryDecisionService.apply throws when candidate not found", asy
   );
 });
 
-test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_error reason using lastErrorMessage", () => {
+test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_error reason using lastErrorMessage", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   let lastErrorCode = "";
@@ -647,7 +647,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
   assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", () => {
+test("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",

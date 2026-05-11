@@ -207,7 +207,7 @@ function buildStartupConsistencyReport(
   );
 
   const status: StartupReportStatus = findings.some((finding) => finding.severity === "p0")
-    ? "fail_closed_UNIQUE_MARKER_ABC123"
+    ? "fail_closed"
     : findings.length > 0
       ? "repairable"
       : "pass";

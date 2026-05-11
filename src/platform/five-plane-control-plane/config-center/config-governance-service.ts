@@ -208,6 +208,11 @@ export class ConfigGovernanceService {
       issues.push("config.prod_destructive_actions_denied");
     }
 
+    // Production safety check: "auto" approval mode bypasses all approval gates and is dangerous in production
+    if (bundle.environment === "prod" && security.approvalMode === "auto") {
+      issues.push("config.prod_approval_auto_denied");
+    }
+
     return issues;
   }
 

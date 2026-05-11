@@ -127,6 +127,85 @@ function normalizePolicyMode(mode: PolicyMode): UnifiedRuntimeMode {
   }
 }
 
+/** Map of actions to required roles for execution */
+const ACTION_REQUIRED_ROLES: Record<PolicyAction, readonly string[]> = {
+  invoke_model: ["model_invoker", "agent"],
+  invoke_tool: ["tool_executor", "agent"],
+  write_file: ["file_writer", "agent"],
+  exec_command: ["command_executor", "agent"],
+  network_access: ["network_access", "agent"],
+  install_extension: ["extension_manager", "admin"],
+  org_change: ["org_admin", "admin"],
+  dispatch_execution: ["execution_dispatcher", "agent"],
+  set_isolation_level: ["isolation_manager", "admin"],
+  promote_improvement: ["promotion_manager", "agent"],
+  advance_rollout: ["rollout_manager", "admin"],
+  modify_knowledge_trust: ["knowledge_manager", "agent"],
+  promote_memory_layer: ["memory_manager", "agent"],
+};
+
+/** Map of actions to required capabilities */
+const ACTION_REQUIRED_CAPABILITIES: Record<PolicyAction, readonly string[]> = {
+  invoke_model: ["model.call"],
+  invoke_tool: ["tool.execute"],
+  write_file: ["file.write"],
+  exec_command: ["command.execute", "command.execute.shell"],
+  network_access: ["network.call"],
+  install_extension: ["extension.install"],
+  org_change: ["org.change"],
+  dispatch_execution: ["execution.dispatch"],
+  set_isolation_level: ["isolation.set"],
+  promote_improvement: ["improvement.promote"],
+  advance_rollout: ["rollout.advance"],
+  modify_knowledge_trust: ["knowledge.trust.modify"],
+  promote_memory_layer: ["memory.layer.promote"],
+};
+
+/**
+ * Validates that the subject has required roles and capabilities for the action.
+ * Throws ValidationError if the subject lacks required permissions.
+ */
+function validateSubjectPermissions(input: PolicyDecisionRequest): void {
+  const requiredRoles = ACTION_REQUIRED_ROLES[input.action] ?? [];
+  const requiredCapabilities = ACTION_REQUIRED_CAPABILITIES[input.action] ?? [];
+  const subjectRoles = input.subjectRoles ?? [];
+  const subjectCapabilities = input.subjectCapabilities ?? [];
+
+  const missingRoles = requiredRoles.filter((role) => !subjectRoles.includes(role));
+  if (missingRoles.length > 0 && requiredRoles.length > 0) {
+    throw new ValidationError(
+      "policy.subject_missing_roles",
+      `Subject lacks required roles for action '${input.action}': [${missingRoles.join(", ")}]`,
+      {
+        details: {
+          subjectId: input.subjectId,
+          subjectType: input.subjectType,
+          action: input.action,
+          missingRoles,
+          requiredRoles,
+        },
+      },
+    );
+  }
+
+  const missingCapabilities = requiredCapabilities.filter((cap) => !subjectCapabilities.includes(cap));
+  if (missingCapabilities.length > 0 && requiredCapabilities.length > 0) {
+    throw new ValidationError(
+      "policy.subject_missing_capabilities",
+      `Subject lacks required capabilities for action '${input.action}': [${missingCapabilities.join(", ")}]`,
+      {
+        details: {
+          subjectId: input.subjectId,
+          subjectType: input.subjectType,
+          action: input.action,
+          missingCapabilities,
+          requiredCapabilities,
+        },
+      },
+    );
+  }
+}
+
 /**
  * Validates PolicyDecisionRequest input fields.
  * V-01: Critical API endpoints must validate input to prevent malformed data.
@@ -189,6 +268,12 @@ export interface PolicyDecisionRequest {
 
   /** ID of the subject making the request */
   subjectId: string;
+
+  /** Roles assigned to the subject */
+  subjectRoles?: readonly string[];
+
+  /** Capabilities the subject possesses */
+  subjectCapabilities?: readonly string[];
 
   /** Action being requested */
   action: PolicyAction;
@@ -349,6 +434,8 @@ export class PolicyEngine {
   public evaluate(input: PolicyDecisionRequest): PolicyDecisionResult {
     // V-01: Validate input before processing
     validatePolicyRequest(input);
+    // V-02: Validate subject has required roles and capabilities for the action
+    validateSubjectPermissions(input);
     const normalizedMode = normalizePolicyMode(input.mode);
     const modeConstraints = this.evaluateModeConstraints(normalizedMode, input);
     if (modeConstraints != null) {

@@ -12,7 +12,7 @@
  * within transactions for stronger isolation.
  */
 
-import type { BudgetLedger, BudgetSettlement, BudgetReservation } from "../../../../contracts/executable-contracts/index.js";
+import type { BudgetLedger, BudgetSettlement, BudgetReservation } from "../../../contracts/executable-contracts/index.js";
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryOne } from "../async-query-helper.js";
 

@@ -483,6 +483,7 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
       return {
         ...(command.aggregate as SideEffectRecord),
         status: command.toStatus as SideEffectStatus,
+        version: (command.aggregate as SideEffectRecord).version + 1,
         updatedAt: occurredAt,
       } as TAggregate;
     case "BudgetLedger":
@@ -495,6 +496,7 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
       return {
         ...(command.aggregate as BudgetReservation),
         status: command.toStatus as BudgetReservation["status"],
+        version: (command.aggregate as BudgetReservation).version + 1,
       } as TAggregate;
     default:
       throw new ValidationError("runtime_state_machine.unknown_aggregate", "Unknown runtime aggregate type.");

@@ -462,7 +462,9 @@ export class BudgetAllocator {
       input.reservation.status === "reserved" &&
       input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
-    const command: RuntimeTransitionCommand<BudgetReservation> = {
+
+    // R11-07 FIX: Transition reservation through RSM for proper event emission and audit trail
+    const reservationCommand: RuntimeTransitionCommand<BudgetReservation> = {
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
       entityId: input.reservation.budgetReservationId,
@@ -481,20 +483,41 @@ export class BudgetAllocator {
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
     };
-    const reservation = this.stateMachine.transition(command);
+    const reservationResult = this.stateMachine.transition(reservationCommand);
+
+    // R11-07 FIX: Transition ledger through RSM for CAS tracking and fact event emission.
+    // This ensures the ledger mutation goes through proper version tracking and emits a fact event.
+    // RSM updates version, but accounting amounts are applied on top of the RSM result.
+    const ledgerCommand: RuntimeTransitionCommand<BudgetLedger> = {
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: input.ledger.budgetLedgerId,
+      aggregateType: "BudgetLedger",
+      aggregate: input.ledger,
+      fromStatus: input.ledger.status,
+      toStatus: input.ledger.status, // Ledger status unchanged on settle, but version increments
+      principal: input.context.principal,
+      tenantId: input.context.tenantId,
+      traceId: input.context.traceId,
+      reasonCode: "budget.settled",
+      emittedBy: input.context.emittedBy,
+      expectedVersion: input.expectedVersion,
+      auditRef: `audit://budget-ledger/${input.ledger.budgetLedgerId}/settle`,
+    };
+    const ledgerResult = this.stateMachine.transition(ledgerCommand);
 
     // R11-07: Remove from active reservations after settle
     this.activeReservations.delete(input.reservation.budgetReservationId);
 
+    // Apply accounting amounts on top of RSM-updated ledger
     return {
-      reservation,
+      reservation: reservationResult.aggregate,
       settlement,
       ledger: {
-        ...input.ledger,
+        ...ledgerResult.aggregate,
         reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
         settledAmount: input.ledger.settledAmount + input.actualAmount,
         releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
-        version: input.ledger.version + 1,
       },
     };
   }

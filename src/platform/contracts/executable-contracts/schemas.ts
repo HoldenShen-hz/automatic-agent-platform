@@ -442,6 +442,8 @@ export const SideEffectRecordSchema = z.object({
   compensationPlan: z.string().optional(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
+  /** Version for CAS optimistic locking */
+  version: z.number().int().nonnegative(),
 });
 
 export const ReconciliationRecordSchema = z.object({
@@ -493,6 +495,8 @@ export const BudgetReservationSchema = z.object({
   status: z.enum(["reserved", "settled", "released", "expired", "rejected"]),
   expiresAt: z.string().min(1),
   createdAt: z.string().min(1),
+  /** Version for CAS optimistic locking */
+  version: z.number().int().nonnegative(),
 });
 
 export const BudgetSettlementSchema = z.object({

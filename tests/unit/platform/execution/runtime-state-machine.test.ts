@@ -424,6 +424,8 @@ test("RuntimeStateMachine transitions SideEffectRecord through reconciliation st
 
   assert.equal(result.aggregate.status, "ambiguous");
   assert.equal(result.event.eventType, "platform.side_effect.status_changed");
+  // Issue 2059: SideEffectRecord version must increment on applyStatus for CAS
+  assert.equal(result.aggregate.version, 1);
 });
 
 test("RuntimeStateMachine transitions budget ledger and reservation with version CAS", () => {
@@ -468,6 +470,8 @@ test("RuntimeStateMachine transitions budget ledger and reservation with version
   assert.equal(ledgerResult.aggregate.status, "soft_cap_reached");
   assert.equal(ledgerResult.aggregate.version, 1);
   assert.equal(reservationResult.aggregate.status, "settled");
+  // Issue 2059: BudgetReservation version must increment on applyStatus for CAS
+  assert.equal(reservationResult.aggregate.version, 1);
   assert.equal(reservationResult.event.eventType, "platform.budget_reservation.status_changed");
 });
 

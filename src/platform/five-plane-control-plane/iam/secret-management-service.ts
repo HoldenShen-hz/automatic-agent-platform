@@ -145,12 +145,130 @@ export class SecretManagementService {
   }
 
   /**
+   * R12-22: Authorization check for secret resolution.
+   * Verifies that the caller's scope matches the secret's access scope.
+   *
+   * @param registry - The secret registry record
+   * @param callerScopeType - Scope type of the caller
+   * @param callerScopeRef - Scope reference of the caller
+   * @throws PolicyDeniedError if authorization check fails
+   */
+  private checkSecretAuthorization(
+    registry: SecretRegistryRecord,
+    callerScopeType: string,
+    callerScopeRef: string,
+  ): void {
+    // System-scoped secrets are accessible only by system-level callers
+    if (registry.scopeType === "system") {
+      if (callerScopeType !== "system") {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          {
+            details: {
+              secretRef: registry.secretRef,
+              secretScopeType: registry.scopeType,
+              callerScopeType,
+            },
+          },
+        );
+      }
+      return;
+    }
+
+    // Tenant-scoped secrets require caller to be in the same tenant
+    if (registry.scopeType === "tenant") {
+      if (callerScopeType !== "tenant" || callerScopeRef !== registry.scopeRef) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          {
+            details: {
+              secretRef: registry.secretRef,
+              secretScopeType: registry.scopeType,
+              secretScopeRef: registry.scopeRef,
+              callerScopeType,
+              callerScopeRef,
+            },
+          },
+        );
+      }
+      return;
+    }
+
+    // Workspace-scoped secrets require caller to be in the same workspace
+    if (registry.scopeType === "workspace") {
+      if (callerScopeType !== "workspace" || callerScopeRef !== registry.scopeRef) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          {
+            details: {
+              secretRef: registry.secretRef,
+              secretScopeType: registry.scopeType,
+              secretScopeRef: registry.scopeRef,
+              callerScopeType,
+              callerScopeRef,
+            },
+          },
+        );
+      }
+      return;
+    }
+
+    // Worker-scoped secrets require exact worker match
+    if (registry.scopeType === "worker") {
+      if (callerScopeType !== "worker" || callerScopeRef !== registry.scopeRef) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          `secret.unauthorized_scope:${registry.secretRef}`,
+          {
+            details: {
+              secretRef: registry.secretRef,
+              secretScopeType: registry.scopeType,
+              secretScopeRef: registry.scopeRef,
+              callerScopeType,
+              callerScopeRef,
+            },
+          },
+        );
+      }
+      return;
+    }
+
+    // Default deny for unknown scope types
+    throw new PolicyDeniedError(
+      `secret.unauthorized_scope:${registry.secretRef}`,
+      `secret.unauthorized_scope:${registry.secretRef}`,
+      {
+        details: {
+          secretRef: registry.secretRef,
+          secretScopeType: registry.scopeType,
+          reason: "unknown_scope_type",
+        },
+      },
+    );
+  }
+
+  /**
+   * R12-22: Authorization check result containing caller scope information.
+   */
+  export interface SecretAuthorizationContext {
+    readonly callerScopeType: string;
+    readonly callerScopeRef: string;
+  }
+
+  /**
    * Resolves a secret and records the usage.
    *
    * @param input - Resolution request
+   * @param authContext - Authorization context with caller's scope (required for R12-22)
    * @returns The secret value with audit record
    */
-  public async resolveSecret(input: ResolveManagedSecretInput): Promise<ManagedSecretResolution> {
+  public async resolveSecret(
+    input: ResolveManagedSecretInput,
+    authContext?: SecretAuthorizationContext,
+  ): Promise<ManagedSecretResolution> {
     // R12-21: Check rate limit before resolving secret
     const callerId = assertNonEmpty(input.requestedBy, "secret.invalid_requested_by");
     if (!this.rateLimiter.check(callerId)) {
@@ -166,6 +284,20 @@ export class SecretManagementService {
           details: { secretRef: registry.secretRef, status: registry.status },
         });
       }
+
+      // R12-22: Enforce scope-based authorization on secret resolution
+      // If no authContext is provided, we deny by default to prevent zero-auth access
+      if (authContext == null) {
+        throw new PolicyDeniedError(
+          `secret.authorization_required:${registry.secretRef}`,
+          `secret.authorization_required:${registry.secretRef}`,
+          {
+            details: { secretRef: registry.secretRef, reason: "auth_context_required" },
+          },
+        );
+      }
+      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
+
       const provider = this.providers[registry.providerKind];
       if (provider == null) {
         throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {

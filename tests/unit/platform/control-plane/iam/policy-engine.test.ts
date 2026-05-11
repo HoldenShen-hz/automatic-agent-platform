@@ -13,6 +13,8 @@ function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDeci
     action: "invoke_tool",
     riskCategory: "sensitive_data",
     mode: "auto",
+    subjectRoles: ["tool_executor", "agent"],
+    subjectCapabilities: ["tool.execute"],
     ...overrides,
   };
 }
@@ -249,4 +251,60 @@ test("PolicyEngine.evaluate handles install_extension as org_changing in supervi
   );
   assert.equal(result.decision, "escalate_for_approval");
   assert.equal(result.requiresApproval, true);
+});
+
+test("PolicyEngine.evaluate throws ValidationError when subject lacks required role", () => {
+  const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
+  assert.throws(
+    () =>
+      engine.evaluate(
+        makeRequest({
+          action: "org_change",
+          subjectRoles: ["user"],
+          subjectCapabilities: [],
+        }),
+      ),
+    (err: any) => err.code === "policy.subject_missing_roles",
+  );
+});
+
+test("PolicyEngine.evaluate throws ValidationError when subject lacks required capability", () => {
+  const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
+  assert.throws(
+    () =>
+      engine.evaluate(
+        makeRequest({
+          action: "exec_command",
+          subjectRoles: ["command_executor", "agent"],
+          subjectCapabilities: [],
+        }),
+      ),
+    (err: any) => err.code === "policy.subject_missing_capabilities",
+  );
+});
+
+test("PolicyEngine.evaluate allows action when subject has required roles and capabilities", () => {
+  const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
+  const result = engine.evaluate(
+    makeRequest({
+      action: "invoke_model",
+      subjectRoles: ["model_invoker", "agent"],
+      subjectCapabilities: ["model.call"],
+      riskCategory: "sensitive_data",
+    }),
+  );
+  assert.equal(result.decision, "allow_with_constraints");
+});
+
+test("PolicyEngine.evaluate allows action without roles/capabilities when none required", () => {
+  const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
+  // invoke_tool has required roles, so this should fail
+  const result = engine.evaluate(
+    makeRequest({
+      action: "write_file",
+      subjectRoles: ["file_writer", "agent"],
+      subjectCapabilities: ["file.write"],
+    }),
+  );
+  assert.equal(result.decision, "allow_with_constraints");
 });

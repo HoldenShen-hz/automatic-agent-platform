@@ -110,7 +110,19 @@ test("PermissionEvaluator checks knowledge:trust:modify permission for service_o
   assert.equal(result, true);
 });
 
-test("PermissionEvaluator evaluates invoke_model action context", () => {
+test("PermissionEvaluator denies viewer invoke_model via evaluateAuthorizationContext", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["viewer"],
+    action: "invoke_model",
+    context: makeMockContext(),
+    mode: "auto",
+  });
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_not_granted");
+});
+
+test("PermissionEvaluator evaluates invoke_model action context for agent", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -122,7 +134,7 @@ test("PermissionEvaluator evaluates invoke_model action context", () => {
   assert.equal(result.requiresApproval, false);
 });
 
-test("PermissionEvaluator evaluates invoke_tool action context", () => {
+test("PermissionEvaluator evaluates invoke_tool action context for agent", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -133,7 +145,7 @@ test("PermissionEvaluator evaluates invoke_tool action context", () => {
   assert.equal(result.allowed, true);
 });
 
-test("PermissionEvaluator evaluates write_file action context", () => {
+test("PermissionEvaluator evaluates write_file action context for agent", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -144,7 +156,7 @@ test("PermissionEvaluator evaluates write_file action context", () => {
   assert.equal(result.allowed, true);
 });
 
-test("PermissionEvaluator evaluates exec_command action in workspace", () => {
+test("PermissionEvaluator evaluates exec_command action in workspace for agent", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -177,7 +189,7 @@ test("PermissionEvaluator evaluates install_extension action for platform_admin"
   assert.equal(result.allowed, true);
 });
 
-test("PermissionEvaluator evaluates org_change action with tenant scope", () => {
+test("PermissionEvaluator evaluates org_change action with tenant scope for platform_admin", () => {
   const result = evaluateAuthorizationContext({
     principalType: "user",
     roles: ["platform_admin"],
@@ -188,7 +200,7 @@ test("PermissionEvaluator evaluates org_change action with tenant scope", () => 
   assert.equal(result.allowed, true);
 });
 
-test("PermissionEvaluator evaluates dispatch_execution action for service", () => {
+test("PermissionEvaluator evaluates dispatch_execution action for service_operator", () => {
   const result = evaluateAuthorizationContext({
     principalType: "service",
     roles: ["service_operator"],

@@ -2,6 +2,34 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DelegatedGovernanceService } from "../../../src/org-governance/delegated-governance/delegated-governance-service.js";
+import { intersectPermissions } from "../../../src/org-governance/delegated-governance/delegated-governance-service.js";
+
+test("intersectPermissions computes permission intersection", () => {
+  const granted = ["manage_budgets", "manage_domains", "view_audit"];
+  const available = ["manage_budgets", "view_audit", "manage_agents"];
+
+  const result = intersectPermissions(granted, available);
+  assert.equal(result.length, 2);
+  assert.ok(result.includes("manage_budgets"));
+  assert.ok(result.includes("view_audit"));
+});
+
+test("intersectPermissions returns empty when granted is empty", () => {
+  const result = intersectPermissions([], ["manage_budgets"]);
+  assert.equal(result.length, 0);
+});
+
+test("intersectPermissions returns empty when available is empty", () => {
+  const result = intersectPermissions(["manage_budgets"], []);
+  assert.equal(result.length, 0);
+});
+
+test("intersectPermissions returns empty when no overlap", () => {
+  const granted = ["manage_budgets", "manage_domains"];
+  const available = ["view_audit", "manage_agents"];
+  const result = intersectPermissions(granted, available);
+  assert.equal(result.length, 0);
+});
 
 test("DelegatedGovernanceService resolves granted scope for active delegations", () => {
   const service = new DelegatedGovernanceService([

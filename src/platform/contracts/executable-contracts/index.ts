@@ -600,6 +600,8 @@ export interface SideEffectRecord {
   readonly compensationPlan?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** Version for CAS optimistic locking */
+  readonly version: number;
 }
 
 export interface ReconciliationRecord {
@@ -653,6 +655,8 @@ export interface BudgetReservation {
   readonly status: "reserved" | "settled" | "released" | "expired" | "rejected";
   readonly expiresAt: string;
   readonly createdAt: string;
+  /** Version for CAS optimistic locking */
+  readonly version: number;
 }
 
 export interface BudgetSettlement {
@@ -1430,6 +1434,7 @@ export function createSideEffectRecord(input: {
   compensationPlan?: string;
   createdAt?: string;
   updatedAt?: string;
+  version?: number;
 }): SideEffectRecord {
   const timestamp = input.createdAt ?? nowIso();
   return {
@@ -1449,6 +1454,7 @@ export function createSideEffectRecord(input: {
     ...(input.compensationPlan != null ? { compensationPlan: input.compensationPlan } : {}),
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
+    version: input.version ?? 0,
   };
 }
 
@@ -1541,6 +1547,7 @@ export function createBudgetReservation(input: {
   nodeRunId?: string;
   status?: BudgetReservation["status"];
   createdAt?: string;
+  version?: number;
 }): BudgetReservation {
   requirePositive(input.amount, "budget_reservation.amount_invalid");
   return {
@@ -1553,6 +1560,7 @@ export function createBudgetReservation(input: {
     status: input.status ?? "reserved",
     expiresAt: input.expiresAt,
     createdAt: input.createdAt ?? nowIso(),
+    version: input.version ?? 0,
   };
 }
 

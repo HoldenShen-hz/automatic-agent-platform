@@ -245,6 +245,24 @@ export function evaluateAuthorizationContext(input: {
   mode?: string;
 }): AuthorizationContextDecision {
   const context = input.context;
+
+  // Issue 1941: Check role-to-capability mapping first.
+  // The role must actually grant the capability for the action, regardless of context.
+  const requiredCapabilities = ACTION_CAPABILITY_MAP[input.action];
+  if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      reasonCode: "policy.capability_not_granted",
+      matchedRuleRefs: ["role.capability_required"],
+      constraints: {
+        requiredCapabilities: [...requiredCapabilities],
+        grantedRoles: [...input.roles],
+      },
+      explainSummary: `Role(s) ${input.roles.join(", ")} do not grant required capability(ies) for action ${input.action}.`,
+    };
+  }
+
   if (context?.requiresTenantScope === true && (context.tenantId == null || context.tenantId.length === 0)) {
     return {
       allowed: false,

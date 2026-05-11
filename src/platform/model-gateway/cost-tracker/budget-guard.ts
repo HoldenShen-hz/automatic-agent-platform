@@ -359,7 +359,7 @@ export class BudgetGuard {
    * Transition session from executing to settled state with actual cost.
    * This finalizes the budget consumption.
    */
-  public atomicSettle(sessionId: string, actualAmount: number): BudgetStateTransitionResult {
+  public async atomicSettle(sessionId: string, actualAmount: number): Promise<BudgetStateTransitionResult> {
     const session = this.atomicSessions.get(sessionId);
     if (!session) {
       return {
@@ -405,7 +405,7 @@ export class BudgetGuard {
   /**
    * Release a reserved session without execution (e.g., task cancelled).
    */
-  public atomicRelease(sessionId: string): BudgetStateTransitionResult {
+  public async atomicRelease(sessionId: string): Promise<BudgetStateTransitionResult> {
     const session = this.atomicSessions.get(sessionId);
     if (!session) {
       return {

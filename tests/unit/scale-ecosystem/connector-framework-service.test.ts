@@ -72,3 +72,37 @@ test("ConnectorFrameworkService forbids unverified prod events and failed health
   assert.equal(result.success, false);
   assert.equal(result.status, "failed");
 });
+
+test("ConnectorFrameworkService evicts bindings older than maxBindingAgeMs", () => {
+  // Use a very short maxBindingAgeMs (1ms) to trigger eviction on next bind
+  const service = new ConnectorFrameworkService(null, 1);
+  service.register(manifest("enabled"));
+
+  // Bind with an old timestamp
+  service.bind("crm_sync", "tenant_old", "dev", "2020-01-01T00:00:00.000Z");
+
+  // Bind with a fresh timestamp — should evict the old one
+  service.bind("crm_sync", "tenant_new", "dev", new Date().toISOString());
+
+  const bindings = service.listBindings({ connectorId: "crm_sync" });
+  assert.equal(bindings.length, 1, "Old binding should be evicted");
+  assert.equal(bindings[0]!.tenantId, "tenant_new");
+});
+
+test("ConnectorFrameworkService retains at most healthRetentionCount health reports per connector", () => {
+  // Use retention count of 3
+  const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 3);
+  service.register(manifest("enabled"));
+
+  for (let i = 0; i < 5; i++) {
+    service.recordHealth({
+      connectorId: "crm_sync",
+      status: "healthy",
+      latencyMs: 100 + i,
+      checkedAt: new Date(Date.now() + i * 1000).toISOString(),
+    });
+  }
+
+  const reports = service["health"].get("crm_sync") ?? [];
+  assert.equal(reports.length, 3, "Health reports should be capped at retention count");
+});

@@ -56,6 +56,10 @@ export class ConnectorFrameworkService {
   private readonly connectorInstances = new Map<string, ConnectorExecutor>();
   private readonly circuitBreakers = new Map<string, CircuitBreaker>();
   private readonly storageDir: string | null;
+  /** Evict bindings older than this (default 30 days in ms). */
+  private readonly maxBindingAgeMs: number;
+  /** Retain at most this many health reports per connector (default 100). */
+  private readonly healthRetentionCount: number;
 
   private static readonly DEFAULT_CIRCUIT_BREAKER_OPTIONS = {
     failureThreshold: 5,
@@ -64,8 +68,14 @@ export class ConnectorFrameworkService {
     resetTimeout: 60000,
   };
 
-  public constructor(storageDir: string | null = null) {
+  public constructor(
+    storageDir: string | null = null,
+    maxBindingAgeMs = 30 * 24 * 60 * 60 * 1000,
+    healthRetentionCount = 100,
+  ) {
     this.storageDir = storageDir;
+    this.maxBindingAgeMs = maxBindingAgeMs;
+    this.healthRetentionCount = healthRetentionCount;
     if (this.storageDir != null) {
       this.load();
     }
@@ -91,14 +101,21 @@ export class ConnectorFrameworkService {
       environment,
       boundAt,
     };
-    this.bindings.set(connectorId, [...(this.bindings.get(connectorId) ?? []), binding]);
+    // Evict bindings older than maxBindingAgeMs
+    const cutoff = Date.now() - this.maxBindingAgeMs;
+    const existing = this.bindings.get(connectorId) ?? [];
+    const filtered = existing.filter((b) => new Date(b.boundAt).getTime() >= cutoff);
+    this.bindings.set(connectorId, [...filtered, binding]);
     this.persist();
     return binding;
   }
 
   public recordHealth(report: ConnectorHealthReport): ConnectorHealthReport {
     this.requireManifest(report.connectorId);
-    this.health.set(report.connectorId, [...(this.health.get(report.connectorId) ?? []), report]);
+    // Keep at most healthRetentionCount newest reports
+    const existing = this.health.get(report.connectorId) ?? [];
+    const updated = [...existing, report].slice(-this.healthRetentionCount);
+    this.health.set(report.connectorId, updated);
     this.persist();
     return report;
   }
