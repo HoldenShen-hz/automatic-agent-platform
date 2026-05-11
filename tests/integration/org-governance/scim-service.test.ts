@@ -174,7 +174,6 @@ test("integration: SCIM groups are isolated by tenant", () => {
   assert.equal(service.getGroup(groupA.id, "tenant-b"), null, "groupA should NOT be retrievable by tenant-b");
   assert.equal(service.getGroup(groupB.id, "tenant-a"), null, "groupB should NOT be retrievable by tenant-a");
 });
-});
 
 // ============================================================================
 // SCIM Filter Tests (Issues 1986, 1984)
@@ -505,7 +504,7 @@ test("integration: SCIM addMemberToGroup and removeMemberFromGroup", () => {
   assert.ok(updatedGroup.members.some((m) => m.value === user.id), "user should be a member");
 
   // Remove member
-  const removedGroup = service.removeMemberFromGroup(group.id, user.id);
+  const removedGroup = service.removeMemberFromGroup(group.id, user.id, "tenant-member");
 
   assert.ok(removedGroup !== null, "removeMemberFromGroup should return updated group");
   assert.ok(!removedGroup.members.some((m) => m.value === user.id), "user should no longer be a member");
@@ -555,11 +554,12 @@ test("integration: SCIM patchGroup with add/replace/remove operations", () => {
   // Both user1 and user2 may be in the group since replace doesn't clear existing
   assert.ok(patched.members.some((m) => m.value === user2.id), "user2 should be in group after replace");
 
-  // Remove all members via patch
+  // Remove all members via patch — bare remove (no filter) is now a no-op for safety
   patched = service.patchGroup(group.id, [{ op: "remove", path: "members" }], "tenant-patch");
 
   assert.ok(patched !== null, "patch remove should succeed");
-  assert.equal(patched.members.length, 0, "all members should be removed");
+  // A bare "remove members" without a filter no longer wipes all members (safety behavior)
+  assert.equal(patched.members.length, 2, "bare remove should NOT clear all members");
 });
 
 // ============================================================================
@@ -599,4 +599,143 @@ test("integration: SCIM getUserByEmail returns null for non-existent email", () 
 
   const result = service.getUserByEmail("nonexistent@example.com", "tenant-test");
   assert.equal(result, null, "should return null for non-existent email");
+});
+
+// ============================================================================
+// SCIM Patch Remove Member Tests (Issue 1984)
+// ============================================================================
+
+test("integration: SCIM patch remove members[value eq] only removes target member", () => {
+  const service = createScimProvisionService();
+
+  const user1 = service.createUser({
+    userName: "targetuser1",
+    name: { formatted: "Target User 1", familyName: "User1", givenName: "Target" },
+    displayName: "Target User 1",
+    emails: [{ value: "target1@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-target");
+
+  const user2 = service.createUser({
+    userName: "targetuser2",
+    name: { formatted: "Target User 2", familyName: "User2", givenName: "Target" },
+    displayName: "Target User 2",
+    emails: [{ value: "target2@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-target");
+
+  const group = service.createGroup({
+    displayName: "Remove Target Group",
+    members: [
+      { value: user1.id, display: user1.displayName },
+      { value: user2.id, display: user2.displayName },
+    ],
+  }, "tenant-remove-target");
+
+  // Verify both members are present
+  assert.equal(group.members.length, 2, "group should have 2 members initially");
+
+  // Remove only user1 via patch with value filter
+  const patched = service.patchGroup(
+    group.id,
+    [{ op: "remove", path: `members[value eq "${user1.id}"]` }],
+    "tenant-remove-target"
+  );
+
+  assert.ok(patched !== null, "patch remove should succeed");
+  assert.equal(patched.members.length, 1, "only target member should be removed");
+  assert.ok(!patched.members.some((m) => m.value === user1.id), "user1 should no longer be a member");
+  assert.ok(patched.members.some((m) => m.value === user2.id), "user2 should still be a member");
+});
+
+test("integration: SCIM patch remove bare members does NOT clear all members", () => {
+  const service = createScimProvisionService();
+
+  const user1 = service.createUser({
+    userName: "bareuser1",
+    name: { formatted: "Bare User 1", familyName: "User1", givenName: "Bare" },
+    displayName: "Bare User 1",
+    emails: [{ value: "bare1@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-bare");
+
+  const user2 = service.createUser({
+    userName: "bareuser2",
+    name: { formatted: "Bare User 2", familyName: "User2", givenName: "Bare" },
+    displayName: "Bare User 2",
+    emails: [{ value: "bare2@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-bare");
+
+  const group = service.createGroup({
+    displayName: "Bare Remove Group",
+    members: [
+      { value: user1.id, display: user1.displayName },
+      { value: user2.id, display: user2.displayName },
+    ],
+  }, "tenant-remove-bare");
+
+  // Verify both members are present
+  assert.equal(group.members.length, 2, "group should have 2 members initially");
+
+  // Remove with bare path (no filter) should NOT clear all members
+  const patched = service.patchGroup(
+    group.id,
+    [{ op: "remove", path: "members" }],
+    "tenant-remove-bare"
+  );
+
+  assert.ok(patched !== null, "patch remove should succeed");
+  assert.equal(patched.members.length, 2, "bare remove should NOT clear all members (safety behavior)");
+  assert.ok(patched.members.some((m) => m.value === user1.id), "user1 should still be a member");
+  assert.ok(patched.members.some((m) => m.value === user2.id), "user2 should still be a member");
+});
+
+test("integration: SCIM patch remove members[display eq] only removes target member by display name", () => {
+  const service = createScimProvisionService();
+
+  const user1 = service.createUser({
+    userName: "dispuser1",
+    name: { formatted: "Display User 1", familyName: "User1", givenName: "Display" },
+    displayName: "Display User 1",
+    emails: [{ value: "disp1@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-display");
+
+  const user2 = service.createUser({
+    userName: "dispuser2",
+    name: { formatted: "Display User 2", familyName: "User2", givenName: "Display" },
+    displayName: "Display User 2",
+    emails: [{ value: "disp2@example.com", primary: true }],
+    active: true,
+    groups: [],
+  }, "tenant-remove-display");
+
+  const group = service.createGroup({
+    displayName: "Display Remove Group",
+    members: [
+      { value: user1.id, display: user1.displayName },
+      { value: user2.id, display: user2.displayName },
+    ],
+  }, "tenant-remove-display");
+
+  // Verify both members are present
+  assert.equal(group.members.length, 2, "group should have 2 members initially");
+
+  // Remove only user1 via patch with display filter
+  const patched = service.patchGroup(
+    group.id,
+    [{ op: "remove", path: `members[display eq "${user1.displayName}"]` }],
+    "tenant-remove-display"
+  );
+
+  assert.ok(patched !== null, "patch remove should succeed");
+  assert.equal(patched.members.length, 1, "only target member should be removed");
+  assert.ok(!patched.members.some((m) => m.value === user1.id), "user1 should no longer be a member");
+  assert.ok(patched.members.some((m) => m.value === user2.id), "user2 should still be a member");
 });

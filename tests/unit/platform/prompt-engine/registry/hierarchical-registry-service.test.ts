@@ -262,7 +262,8 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic normalizes weigh
       undefined,
       `traffic-key-${i}`,
     );
-    if (resolved!.version === "v1.0") counts.v1_0++;
+    // v1.0 normalizes to version 100, v2.0 normalizes to version 200
+    if (resolved!.version === 100) counts.v1_0++;
     else counts.v2_0++;
   }
 
@@ -330,7 +331,8 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles non-100 
       undefined,
       `small-traffic-key-${i}`,
     );
-    if (resolved!.version === "v1.0") counts.v1_0++;
+    // v1.0 normalizes to version 100, v2.0 normalizes to version 200
+    if (resolved!.version === 100) counts.v1_0++;
     else counts.v2_0++;
   }
 

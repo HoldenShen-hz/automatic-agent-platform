@@ -406,3 +406,59 @@ test("createScimProvisionService factory works", () => {
   assert.ok(user);
   assert.ok(user.id);
 });
+
+test("ScimProvisionService filter uses correct attribute name - displayName filter does not match userName", () => {
+  const service = new ScimProvisionService();
+  // Create a user whose userName contains "Engineering" but displayName does not
+  service.createUser(createTestUser({ userName: "engineering.user", displayName: "John Smith" }), "tenant-1");
+  // Create a user whose displayName contains "Engineering"
+  service.createUser(createTestUser({ userName: "jane.doe", displayName: "Engineering Lead" }), "tenant-1");
+
+  const result = service.listUsers({ filter: "displayName co \"Engineering\"" });
+
+  // Should only match the user with displayName "Engineering Lead", not the one with userName "engineering.user"
+  assert.equal(result.totalResults, 1);
+  assert.equal(result.Resources[0]?.userName, "jane.doe");
+});
+
+test("ScimProvisionService filter returns empty for userName on groups", () => {
+  const service = new ScimProvisionService();
+  service.createGroup(createTestGroup({ displayName: "Admin Group" }), "tenant-1");
+
+  // Groups don't have userName attribute, so filter should return no results
+  const result = service.listGroups({ filter: "userName eq \"admin\"" });
+
+  assert.equal(result.totalResults, 0);
+});
+
+test("ScimProvisionService filter returns empty for non-existent attribute on users", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ userName: "john.doe", displayName: "John Doe" }), "tenant-1");
+
+  // "externalId" is not a supported filter attribute for Users, should return no matches
+  const result = service.listUsers({ filter: "externalId eq \"ext-123\"" });
+
+  assert.equal(result.totalResults, 0);
+});
+
+test("ScimProvisionService filter eq operator works correctly", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ userName: "john.doe", displayName: "John Doe" }), "tenant-1");
+  service.createUser(createTestUser({ userName: "jane.doe", displayName: "Jane Doe" }), "tenant-1");
+
+  const result = service.listUsers({ filter: "userName eq \"john.doe\"" });
+
+  assert.equal(result.totalResults, 1);
+  assert.equal(result.Resources[0]?.displayName, "John Doe");
+});
+
+test("ScimProvisionService filter ne operator works correctly", () => {
+  const service = new ScimProvisionService();
+  service.createUser(createTestUser({ userName: "john.doe" }), "tenant-1");
+  service.createUser(createTestUser({ userName: "jane.doe" }), "tenant-1");
+
+  const result = service.listUsers({ filter: "userName ne \"john.doe\"" });
+
+  assert.equal(result.totalResults, 1);
+  assert.equal(result.Resources[0]?.userName, "jane.doe");
+});

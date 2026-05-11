@@ -34,6 +34,18 @@ test("security defaults: approval mode defaults to supervised or stricter", asyn
   }
 });
 
+test("security defaults: sandbox mode enforces least privilege (read_only)", async () => {
+  const securityConfig = await readConfig(join(CONFIG_ROOT, "security/default.json"));
+
+  if (securityConfig.sandboxMode !== undefined) {
+    assert.strictEqual(
+      securityConfig.sandboxMode,
+      "read_only",
+      "Sandbox mode should default to read_only to enforce least privilege"
+    );
+  }
+});
+
 test("security defaults: sandbox mode defaults to restricted", async () => {
   const securityConfig = await readConfig(join(CONFIG_ROOT, "security/default.json"));
 
@@ -72,11 +84,16 @@ test("security defaults: worker registration has secure challenge TTL", async ()
   }
 });
 
-test("security defaults: runtime configuration exists", async () => {
-  const runtimeConfig = await readConfig(join(CONFIG_ROOT, "runtime/default.json"));
+test("security defaults: dev environment must not use auto approval mode (issue #1988)", async () => {
+  // Issue #1988: approvalMode:"auto" bypasses all approval gates - dev must use supervised
+  const devSecurityConfig = await readConfig(join(CONFIG_ROOT, "security/dev.json"));
 
-  assert.ok(
-    Object.keys(runtimeConfig).length >= 0,
-    "Runtime configuration should exist"
-  );
+  // dev.json may not exist in all environments; when it does exist, it must not use 'auto'
+  if (Object.keys(devSecurityConfig).length > 0) {
+    assert.notEqual(
+      devSecurityConfig.approvalMode,
+      "auto",
+      "dev.json approvalMode must not be 'auto' - it bypasses all approval gates"
+    );
+  }
 });

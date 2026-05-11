@@ -586,9 +586,11 @@ export class ScimProvisionService {
         case "remove":
           if (op.path?.includes("members")) {
             const memberPredicate = resolveMemberRemovalPredicate(op.path);
-            updatedMembers = memberPredicate == null
-              ? []
-              : updatedMembers.filter((member) => !memberPredicate(member));
+            // Only remove members if a specific filter was provided; otherwise do nothing
+            // (a bare "remove members" without filter would wipe all members, which is rarely intended)
+            if (memberPredicate != null) {
+              updatedMembers = updatedMembers.filter((member) => !memberPredicate(member));
+            }
           }
           break;
       }
@@ -864,8 +866,13 @@ export class ScimProvisionService {
 
     return items.filter((item) => {
       const itemValue = resolveFilterValue(item, attribute);
+      // If attribute doesn't exist on this item type, don't match
+      if (itemValue === undefined) {
+        return false;
+      }
+      // null means the attribute exists but has no value — skip it
       if (itemValue == null) {
-        return true;
+        return false;
       }
 
       switch (op) {

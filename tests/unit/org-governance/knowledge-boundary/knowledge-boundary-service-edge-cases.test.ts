@@ -295,3 +295,109 @@ test("KnowledgeBoundaryService handles relatedBoundaryIds in decision", () => {
 
   assert.deepStrictEqual(decision.relatedBoundaryIds, ["kb_peer_1", "kb_peer_2"]);
 });
+
+test("KnowledgeBoundaryService requiredGrantBoundaryIds passes when all grants present", () => {
+  const service = new KnowledgeBoundaryService();
+  // Set allowedOrgNodeIds so the boundary is accessible (grants don't grant access to THIS boundary,
+  // they just satisfy requiredGrantBoundaryIds - separate mechanism)
+  const boundary = createBoundary({
+    boundaryId: "kb_grant_check",
+    allowedOrgNodeIds: ["dept_hr"],
+  });
+
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_a",
+      boundaryId: "kb_grant_a",
+      requesterOrgNodeId: "dept_hr",
+      purpose: "access",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+    },
+    {
+      grantId: "grant_b",
+      boundaryId: "kb_grant_b",
+      requesterOrgNodeId: "dept_hr",
+      purpose: "access",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+    },
+  ];
+
+  const decision = service.evaluateDynamicAccess({
+    boundary,
+    requesterId: "user_multi_grant",
+    requesterOrgNodeId: "dept_hr",
+    purpose: "access",
+    grants,
+    dynamicPolicy: {
+      policyId: "iso-multi-grant",
+      // requires grants for kb_grant_a and kb_grant_b - satisfied by the grants above
+      requiredGrantBoundaryIds: ["kb_grant_a", "kb_grant_b"],
+    },
+    occurredAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.ok(!decision.violationCodes?.some(code => code.includes("required_grant_missing")));
+});
+
+test("KnowledgeBoundaryService requiredGrantBoundaryIds fails when one grant missing", () => {
+  const service = new KnowledgeBoundaryService();
+  const boundary = createBoundary({ boundaryId: "kb_grant_partial" });
+
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_only_a",
+      boundaryId: "kb_grant_a",
+      requesterOrgNodeId: "dept_hr",
+      purpose: "access",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+    },
+  ];
+
+  const decision = service.evaluateDynamicAccess({
+    boundary,
+    requesterId: "user_partial_grant",
+    requesterOrgNodeId: "dept_hr",
+    purpose: "access",
+    grants,
+    dynamicPolicy: {
+      policyId: "iso-partial-grant",
+      requiredGrantBoundaryIds: ["kb_grant_a", "kb_grant_b"],
+    },
+    occurredAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.violationCodes?.some(code => code.includes("required_grant_missing")));
+});
+
+test("KnowledgeBoundaryService requiredGrantBoundaryIds fails when grants belong to different org node", () => {
+  const service = new KnowledgeBoundaryService();
+  const boundary = createBoundary({ boundaryId: "kb_grant_wrong_org" });
+
+  const grants: KnowledgeShareGrant[] = [
+    {
+      grantId: "grant_wrong_org",
+      boundaryId: "kb_grant_check",
+      requesterOrgNodeId: "dept_finance", // Different org node
+      purpose: "access",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+    },
+  ];
+
+  const decision = service.evaluateDynamicAccess({
+    boundary,
+    requesterId: "user_wrong_org",
+    requesterOrgNodeId: "dept_hr",
+    purpose: "access",
+    grants,
+    dynamicPolicy: {
+      policyId: "iso-wrong-org",
+      requiredGrantBoundaryIds: ["kb_grant_check"],
+    },
+    occurredAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.violationCodes?.some(code => code.includes("required_grant_missing")));
+});

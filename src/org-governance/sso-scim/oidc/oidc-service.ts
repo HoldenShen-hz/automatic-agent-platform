@@ -423,9 +423,10 @@ export class OidcIdentityService {
    */
   public cleanupExpiredSessions(): number {
     let cleaned = 0;
+    const now = Date.now();
 
     for (const [sessionId, session] of this.sessions.entries()) {
-      if (Date.now() > new Date(session.expiresAt).getTime() + this.config.maxSessionAgeMs) {
+      if (now > new Date(session.expiresAt).getTime()) {
         this.revokeSession(sessionId);
         cleaned++;
       }
