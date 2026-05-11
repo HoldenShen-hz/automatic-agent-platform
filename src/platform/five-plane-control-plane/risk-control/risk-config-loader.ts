@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PolicyDeniedError } from "../../contracts/errors.js";
-import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../iam/sandbox-policy.js";
+import { checkSandboxPath, type SandboxPolicy } from "../iam/sandbox-policy.js";
 import type { RiskConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");

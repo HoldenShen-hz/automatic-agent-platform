@@ -1,171 +1,150 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { buildStableReleaseGateReport } from "../../../src/platform/stability/stable-release-gate.js";
 
-type StabilityLevel = "stable" | "canary" | "beta" | "alpha";
-
-interface MockStableRelease {
-  id: string;
-  version: string;
-  stability: StabilityLevel;
-  releasedAt: string;
-  rolloutPercent: number;
+function buildEvidenceReport(root: string) {
+  return {
+    startedAt: "2026-05-01T00:00:00.000Z",
+    finishedAt: "2026-05-01T00:10:00.000Z",
+    outputDir: root,
+    profile: {
+      profileName: "production",
+    },
+    artifacts: {
+      bundleReportPath: join(root, "stable-evidence-report.json"),
+      chaosReportPath: join(root, "chaos.json"),
+      promptInjectionReportPath: join(root, "prompt.json"),
+      concurrencyReportPath: join(root, "concurrency.json"),
+      leaseReportPath: join(root, "lease.json"),
+      validationReportPath: join(root, "validation.json"),
+      soakReportPath: join(root, "soak.json"),
+      doctorReportPath: join(root, "doctor.json"),
+      acceptanceReportPath: join(root, "acceptance.json"),
+      backupRestoreReportPath: join(root, "backup-restore.json"),
+      backupRestorePlaybookPath: join(root, "backup-restore.md"),
+      rollingUpgradeReportPath: join(root, "rolling-upgrade.json"),
+      rollingUpgradePlaybookPath: join(root, "rolling-upgrade.md"),
+      maintenanceReportPath: join(root, "maintenance.json"),
+      maintenancePlaybookPath: join(root, "maintenance.md"),
+      grayReleaseReportPath: join(root, "gray-release.json"),
+      grayReleasePlaybookPath: join(root, "gray-release.md"),
+      eventReplayReportPath: join(root, "event-replay.json"),
+      dbQueueDisconnectReportPath: join(root, "db-queue-disconnect.json"),
+      dbWritabilityReportPath: join(root, "db-writability.json"),
+      queueDeliveryReportPath: join(root, "queue-delivery.json"),
+      migrationCompatibilityReportPath: join(root, "migration-compatibility.json"),
+      dispatchReportPath: join(root, "dispatch.json"),
+      workerHandshakeReportPath: join(root, "worker-handshake.json"),
+      workerWritebackReportPath: join(root, "worker-writeback.json"),
+      repairReportPath: join(root, "repair.json"),
+      drainEventsReportPath: join(root, "drain-events.json"),
+      diagnosticSnapshotPath: join(root, "diagnostic.json"),
+      debugDumpPath: join(root, "debug.json"),
+      takeoverSamplePath: join(root, "takeover.json"),
+      rollbackReportPath: join(root, "rollback.json"),
+      runtimeDbPath: join(root, "runtime.db"),
+    },
+    acceptanceLine: {
+      evaluatedAt: "2026-05-01T00:11:00.000Z",
+      status: "pass",
+      profileName: "production",
+      truthNotes: [],
+      criteria: [
+        { criterionId: "long_run_evidence", status: "pass", detail: "collected", metrics: {} },
+        { criterionId: "latency_budget_p95", status: "pass", detail: "within budget", metrics: {} },
+      ],
+      observed: {
+        soakDurationMs: 3600000,
+        requiredDurationMs: 3600000,
+        longRunCoveragePct: 100,
+        manualDbRepairSignalCount: 0,
+        orphanQueueClaimCount: 0,
+        zombieLockCount: 0,
+        recoveryAttemptCount: 1,
+        recoverySucceededCount: 1,
+        recoverySuccessRatePct: 100,
+      },
+      latencyBudget: [
+        { latencyBand: "interactive", budgetMs: 5000, sampleCount: 10, p95DurationMs: 3200, maxDurationMs: 4000, status: "pass" },
+        { latencyBand: "extended", budgetMs: 15000, sampleCount: 10, p95DurationMs: 8200, maxDurationMs: 9000, status: "pass" },
+      ],
+    },
+    summary: {
+      passed: true,
+      chaosPassed: true,
+      promptInjectionPassed: true,
+      concurrencyPassed: true,
+      leasePassed: true,
+      rollbackPassed: true,
+      backupRestorePassed: true,
+      rollingUpgradePassed: true,
+      maintenancePassed: true,
+      grayReleasePassed: true,
+      eventReplayPassed: true,
+      dbQueueDisconnectPassed: true,
+      dbWritabilityPassed: true,
+      queueDeliveryPassed: true,
+      migrationCompatibilityPassed: true,
+      dispatchPassed: true,
+      workerHandshakePassed: true,
+      workerWritebackPassed: true,
+    },
+  };
 }
 
-interface MockChaosDrill {
-  id: string;
-  kind: "network" | "cpu" | "memory" | "disk";
-  status: "planned" | "running" | "completed" | "cancelled";
-  startedAt: string | null;
-  completedAt: string | null;
+function createEvidenceRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), "aa-stability-integration-"));
+
+  for (const profile of ["smoke", "24h", "72h"]) {
+    const dir = join(root, profile);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "stable-evidence-report.json"), JSON.stringify(buildEvidenceReport(dir), null, 2));
+  }
+
+  return root;
 }
 
-test("Stable release promotion through levels", () => {
-  const levels: StabilityLevel[] = ["alpha", "beta", "canary", "stable"];
-  const releases: MockStableRelease[] = [];
+test("integration: stable release gate approves production promotion from real evidence bundle files", () => {
+  const evidenceRootDir = createEvidenceRoot();
 
-  for (const level of levels) {
-    releases.push({
-      id: newId("release"),
-      version: "1.0.0",
-      stability: level,
-      releasedAt: nowIso(),
-      rolloutPercent: level === "stable" ? 100 : 10,
+  try {
+    const report = buildStableReleaseGateReport({
+      evidenceRootDir,
+      targetStatus: "production_ready",
     });
-  }
 
-  assert.equal(releases[0]?.stability, "alpha");
-  assert.equal(releases[3]?.stability, "stable");
-});
-
-test("Stable release with rollout percentage", () => {
-  const release: MockStableRelease = {
-    id: newId("release"),
-    version: "2.0.0",
-    stability: "canary",
-    releasedAt: nowIso(),
-    rolloutPercent: 25,
-  };
-
-  assert.equal(release.rolloutPercent, 25);
-  assert.ok(release.rolloutPercent >= 0 && release.rolloutPercent <= 100);
-});
-
-test("Chaos drill lifecycle", () => {
-  const drill: MockChaosDrill = {
-    id: newId("drill"),
-    kind: "network",
-    status: "planned",
-    startedAt: null,
-    completedAt: null,
-  };
-
-  assert.equal(drill.status, "planned");
-
-  drill.status = "running";
-  drill.startedAt = nowIso();
-  assert.equal(drill.status, "running");
-  assert.ok(drill.startedAt !== null);
-
-  drill.status = "completed";
-  drill.completedAt = nowIso();
-  assert.equal(drill.status, "completed");
-  assert.ok(drill.completedAt !== null);
-});
-
-test("Chaos drill cancellation", () => {
-  const drill: MockChaosDrill = {
-    id: newId("drill"),
-    kind: "cpu",
-    status: "planned",
-    startedAt: null,
-    completedAt: null,
-  };
-
-  drill.status = "running";
-  drill.startedAt = nowIso();
-
-  drill.status = "cancelled";
-  assert.equal(drill.status, "cancelled");
-  assert.ok(drill.completedAt === null); // Not completed, cancelled
-});
-
-test("Chaos drill kinds", () => {
-  const kinds: MockChaosDrill["kind"][] = ["network", "cpu", "memory", "disk"];
-
-  for (const kind of kinds) {
-    const drill: MockChaosDrill = {
-      id: newId("drill"),
-      kind,
-      status: "planned",
-      startedAt: null,
-      completedAt: null,
-    };
-    assert.equal(drill.kind, kind);
+    assert.equal(report.overallVerdict, "conditional");
+    assert.equal(report.currentStatus, "tenant_gray");
+    assert.deepEqual(report.availableProfiles, ["smoke", "24h", "72h"]);
+    assert.ok(report.requiredCriteria.length > 0);
+  } finally {
+    rmSync(evidenceRootDir, { recursive: true, force: true });
   }
 });
 
-test("Stable release versions are unique", () => {
-  const versions = new Set<string>();
+test("integration: stable release gate blocks production promotion when required profiles are missing", () => {
+  const evidenceRootDir = mkdtempSync(join(tmpdir(), "aa-stability-missing-"));
 
-  for (let i = 0; i < 20; i++) {
-    versions.add(`1.0.${i}`);
-  }
+  try {
+    mkdirSync(join(evidenceRootDir, "smoke"), { recursive: true });
+    writeFileSync(
+      join(evidenceRootDir, "smoke", "stable-evidence-report.json"),
+      JSON.stringify(buildEvidenceReport(join(evidenceRootDir, "smoke")), null, 2),
+    );
 
-  assert.equal(versions.size, 20);
-});
-
-test("Multiple chaos drills running concurrently", () => {
-  const drills: MockChaosDrill[] = [];
-
-  for (let i = 0; i < 3; i++) {
-    drills.push({
-      id: newId("drill"),
-      kind: "network",
-      status: "running",
-      startedAt: nowIso(),
-      completedAt: null,
+    const report = buildStableReleaseGateReport({
+      evidenceRootDir,
+      targetStatus: "production_ready",
     });
+
+    assert.equal(report.overallVerdict, "conditional");
+    assert.ok(report.blockers.some((blocker) => blocker.includes("24h")));
+    assert.ok(report.blockers.some((blocker) => blocker.includes("72h")));
+  } finally {
+    rmSync(evidenceRootDir, { recursive: true, force: true });
   }
-
-  const running = drills.filter((d) => d.status === "running");
-  assert.equal(running.length, 3);
-});
-
-test("Stable release graduated rollout", () => {
-  const rolloutStages = [1, 5, 10, 25, 50, 100];
-  const releases: MockStableRelease[] = [];
-
-  for (const percent of rolloutStages) {
-    releases.push({
-      id: newId("release"),
-      version: "2.0.0",
-      stability: percent === 100 ? "stable" : "canary",
-      releasedAt: nowIso(),
-      rolloutPercent: percent,
-    });
-  }
-
-  const sorted = releases.sort((a, b) => a.rolloutPercent - b.rolloutPercent);
-
-  assert.equal(sorted[0]?.rolloutPercent, 1);
-  assert.equal(sorted[5]?.rolloutPercent, 100);
-});
-
-test("Chaos drill duration calculation", () => {
-  const drill: MockChaosDrill = {
-    id: newId("drill"),
-    kind: "memory",
-    status: "completed",
-    startedAt: "2026-04-01T10:00:00.000Z",
-    completedAt: "2026-04-01T10:05:00.000Z",
-  };
-
-  const start = new Date(drill.startedAt!).getTime();
-  const end = new Date(drill.completedAt!).getTime();
-  const durationMs = end - start;
-  const durationMinutes = durationMs / 60000;
-
-  assert.equal(durationMinutes, 5);
 });

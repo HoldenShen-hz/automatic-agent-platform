@@ -83,6 +83,7 @@ export interface RegionReplicationConfig {
   readonly sourceRegionId: string;
   readonly targetRegionId: string;
   readonly batchSize: number;
+  readonly maxQueueDepth?: number;
   readonly replicationIntervalMs: number;
   readonly enabled: boolean;
   readonly retryPolicy: {
@@ -113,6 +114,17 @@ export class CdcLagBreachError extends Error {
   ) {
     super(`CDC_LAG_BREACH:${sourceRegionId}->${targetRegionId} lag=${lagMs}ms exceeds RPO=${lagSloMs}ms`);
     this.name = "CdcLagBreachError";
+  }
+}
+
+export class CdcQueueBackpressureError extends Error {
+  constructor(
+    public readonly replicationKey: string,
+    public readonly queueDepth: number,
+    public readonly maxQueueDepth: number,
+  ) {
+    super(`CDC_QUEUE_BACKPRESSURE:${replicationKey} depth=${queueDepth} max=${maxQueueDepth}`);
+    this.name = "CdcQueueBackpressureError";
   }
 }
 
@@ -232,6 +244,7 @@ export class CDCReplicationService {
     };
 
     this.checkpoints.set(key, checkpoint);
+    this.removeBatchFromQueue(key, batch.batchId);
   }
 
   /**
@@ -244,6 +257,7 @@ export class CDCReplicationService {
     error: string,
   ): void {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    this.removeBatchFromQueue(key, batch.batchId);
     cdcLogger.error(`CDC replication failed for ${key}: ${error}`, {
       data: { sourceRegionId, targetRegionId, batchId: batch.batchId },
     });
@@ -301,6 +315,11 @@ export class CDCReplicationService {
       return totalSourceEvents;
     }
     return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
+  }
+
+  public getQueueDepth(sourceRegionId: string, targetRegionId: string): number {
+    const key = this.getConfigKey(sourceRegionId, targetRegionId);
+    return this.replicationQueues.get(key)?.length ?? 0;
   }
 
   /**
@@ -391,8 +410,25 @@ export class CDCReplicationService {
    */
   private enqueueBatch(key: string, batch: CDCReplicationBatch): void {
     const queue = this.replicationQueues.get(key) ?? [];
+    const maxQueueDepth = this.configs.get(key)?.maxQueueDepth ?? 100;
+    if (queue.length >= maxQueueDepth) {
+      throw new CdcQueueBackpressureError(key, queue.length, maxQueueDepth);
+    }
     queue.push(batch);
     this.replicationQueues.set(key, queue);
+  }
+
+  private removeBatchFromQueue(key: string, batchId: string): void {
+    const queue = this.replicationQueues.get(key);
+    if (queue == null) {
+      return;
+    }
+    const nextQueue = queue.filter((batch) => batch.batchId !== batchId);
+    if (nextQueue.length === 0) {
+      this.replicationQueues.delete(key);
+      return;
+    }
+    this.replicationQueues.set(key, nextQueue);
   }
 
   /**

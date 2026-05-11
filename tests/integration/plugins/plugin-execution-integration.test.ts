@@ -135,7 +135,7 @@ test("plugin execution integration: github adapter authenticates and executes", 
 
   // Authenticate
   await registry.invokeAdapterAuthenticate("plugin.shared.github_adapter", {
-    credentials: { token: "ghp_test_token_12345" },
+    credentials: { token: "github_test_token_12345" },
   });
 
   // Execute action

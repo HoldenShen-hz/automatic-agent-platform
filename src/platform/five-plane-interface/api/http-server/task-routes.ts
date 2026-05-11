@@ -80,7 +80,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           ? Math.min(INTERNAL_TASK_LIMIT, readLimit(ctx.request, DEFAULT_TASK_LIMIT))
           : readLimit(ctx.request, DEFAULT_TASK_LIMIT);
         const tasks = deps.inspectService.queryTaskInspectSummaries({
-          limit,
+          fetchAll: true,
           ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
         });
         const page = paginateByCursor(tasks, limit, readCursor(ctx.request));

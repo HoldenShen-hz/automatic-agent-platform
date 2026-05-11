@@ -18,23 +18,17 @@ test("acquireFence returns fence with correct fencingToken format", () => {
   assert.equal(fence.mode, "exclusive");
   assert.ok(fence.fenceToken.includes("exec1"));
   assert.ok(fence.fenceToken.includes("node1"));
-  assert.ok(fence.fenceToken.includes("-"));
+  assert.ok(fence.fenceToken.includes("::"));
   assert.ok(fence.fenceToken.includes(String(service.tokenCounter)));
 });
 
-test("acquireFence generates sequential fencingTokens per execution", () => {
+test("acquireFence blocks same-node re-acquisition for the same execution", () => {
   const service = createService("node1");
 
   const fence1 = service.acquireFence("exec1", "exclusive");
   assert.ok(fence1 !== null);
-  const token1 = fence1.fenceToken;
-
   const fence2 = service.acquireFence("exec1", "exclusive");
-  assert.ok(fence2 !== null);
-  const token2 = fence2.fenceToken;
-
-  // Tokens should be different (different counter values)
-  assert.notEqual(token1, token2);
+  assert.equal(fence2, null);
 });
 
 test("acquireFence generates different tokens for different executions", () => {
@@ -53,13 +47,13 @@ test("generateFencingToken increments tokenCounter monotonically", () => {
   assert.equal(service.tokenCounter, 0);
 
   const token1 = service.generateFencingToken("exec1", "nodeX");
-  assert.ok(token1.includes("-nodeX-1-"));
+  assert.ok(token1.includes("::nodeX::1::"));
 
   const token2 = service.generateFencingToken("exec2", "nodeX");
-  assert.ok(token2.includes("-nodeX-2-"));
+  assert.ok(token2.includes("::nodeX::2::"));
 
   const token3 = service.generateFencingToken("exec3", "nodeX");
-  assert.ok(token3.includes("-nodeX-3-"));
+  assert.ok(token3.includes("::nodeX::3::"));
 });
 
 test("validateFencingToken returns valid:true for matching owner", () => {
@@ -261,6 +255,17 @@ test("acquireFence with shared mode allows multiple holders", () => {
   assert.notEqual(fence1.fenceToken, fence2.fenceToken);
   assert.equal(fence1.mode, "shared");
   assert.equal(fence2.mode, "shared");
+});
+
+test("exclusive fence is blocked when another node already holds a shared fence", () => {
+  const service1 = createService("node1");
+  const service2 = createService("node2");
+
+  const sharedFence = service1.acquireFence("exec1", "shared");
+  assert.ok(sharedFence !== null);
+
+  const exclusiveFence = service2.acquireFence("exec1", "exclusive");
+  assert.equal(exclusiveFence, null);
 });
 
 test("exclusive fence blocks shared fence acquisition", () => {

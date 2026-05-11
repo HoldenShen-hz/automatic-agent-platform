@@ -240,7 +240,7 @@ test("replication status becomes partial when some targets fail", () => {
   assert.ok(["pending", "replicating", "partial", "completed", "failed"].includes(result.status));
 });
 
-test("multiple replicates to same target region accumulate", () => {
+test("multiple replicates to same target region accumulate", async () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -248,6 +248,7 @@ test("multiple replicates to same target region accumulate", () => {
 
   service.replicate("task.created" as TypedEventType, { taskId: "task-1" });
   service.replicate("task.updated" as TypedEventType, { taskId: "task-2" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   const events = publisher.getPublishedEvents();
   assert.ok(events.length >= 2);
@@ -261,7 +262,7 @@ test("getTargetRegions returns empty array initially", () => {
   assert.equal(targets.length, 0);
 });
 
-test("replicate event with different payload types", () => {
+test("replicate event with different payload types", async () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -269,6 +270,7 @@ test("replicate event with different payload types", () => {
 
   service.replicate("task.created" as TypedEventType, { taskId: "test", priority: "high" });
   service.replicate("agent.delegated" as TypedEventType, { agentId: "agent-1", targetId: "agent-2" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   const events = publisher.getPublishedEvents();
   assert.equal(events.length, 2);
@@ -288,4 +290,32 @@ test("metrics replicationRatePerSecond is 0 when no completed events", () => {
 
   const metrics = service.getMetrics();
   assert.equal(metrics.replicationRatePerSecond, 0);
+});
+
+test("replication retries asynchronous publish failures instead of dropping the plan", async () => {
+  let attempt = 0;
+  const publisher = {
+    publish() {
+      attempt += 1;
+      if (attempt === 1) {
+        return Promise.reject(new Error("temporary publish failure"));
+      }
+      return Promise.resolve();
+    },
+  } as unknown as TypedEventPublisher;
+  const service = new CrossRegionEventReplicationService(publisher, "region-a", {
+    maxRetries: 2,
+    baseRetryDelayMs: 0,
+    maxRetryDelayMs: 0,
+  });
+
+  service.registerTargetRegion(createTargetRegion({ regionId: "region-b" }));
+  const eventId = service.replicate("task.created" as TypedEventType, { taskId: "retry-me" });
+
+  await new Promise((resolve) => setTimeout(resolve, 25));
+
+  const status = service.getReplicationStatus(eventId);
+  assert.equal(attempt, 2);
+  assert.equal(status?.status, "completed");
+  assert.equal(status?.targets[0]?.retryCount, 1);
 });

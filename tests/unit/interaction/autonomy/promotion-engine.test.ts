@@ -145,7 +145,7 @@ test("assessPromotion returns not_met reason when thresholds not met", () => {
   });
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
+  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
 });
 
 test("assessPromotion handles zero executions", () => {

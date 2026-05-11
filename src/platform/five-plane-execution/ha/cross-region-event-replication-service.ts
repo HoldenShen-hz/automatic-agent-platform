@@ -92,6 +92,7 @@ export class CrossRegionEventReplicationService {
   private readonly pendingEvents = new Map<string, ReplicatedEvent[]>();
   private readonly replicationQueue: ReplicationPlan[] = [];
   private readonly targetRegions = new Map<string, ReplicationTarget>();
+  private processingQueue: Promise<void> | null = null;
 
   constructor(
     private readonly publisher: TypedEventPublisher,
@@ -175,7 +176,7 @@ export class CrossRegionEventReplicationService {
     };
 
     this.replicationQueue.push(plan);
-    void this.processReplicationQueue();
+    this.ensureQueueProcessing();
 
     return eventId;
   }
@@ -262,7 +263,7 @@ export class CrossRegionEventReplicationService {
    * Manually triggers replication for pending events.
    */
   public triggerReplication(): void {
-    this.processReplicationQueue();
+    this.ensureQueueProcessing();
   }
 
   /**
@@ -293,10 +294,35 @@ export class CrossRegionEventReplicationService {
 
   // ─── Private Methods ─────────────────────────────────────────────────────
 
+  private ensureQueueProcessing(): void {
+    if (this.processingQueue !== null) {
+      return;
+    }
+
+    this.processingQueue = this.processReplicationQueue()
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        for (const plan of this.replicationQueue.splice(0)) {
+          this.markPlanFailed(plan, message);
+        }
+      })
+      .finally(() => {
+        this.processingQueue = null;
+        if (this.replicationQueue.length > 0) {
+          this.ensureQueueProcessing();
+        }
+      });
+  }
+
   private async processReplicationQueue(): Promise<void> {
     while (this.replicationQueue.length > 0) {
       const plan = this.replicationQueue.shift()!;
-      await this.executePlan(plan);
+      try {
+        await this.executePlan(plan);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.markPlanFailed(plan, message);
+      }
     }
   }
 
@@ -339,10 +365,10 @@ export class CrossRegionEventReplicationService {
     try {
       // In a real implementation, this would send to a cross-region message queue
       // or use a dedicated replication transport. Here we just publish via the event bus.
-      this.publisher.publish({
+      await Promise.resolve(this.publisher.publish({
         eventType: event.eventType as TypedEventType,
         payload: event.payload as TypedEventPayloadMap[TypedEventType],
-      });
+      }));
 
       event.completedAt = nowIso();
       event.status = "completed";
@@ -362,10 +388,29 @@ export class CrossRegionEventReplicationService {
         }
         // Re-queue with backoff delay
         setTimeout(() => {
-          void this.processReplicationQueue();
+          this.ensureQueueProcessing();
         }, this.calculateBackoff(event.retryCount));
       }
     }
+  }
+
+  private markPlanFailed(plan: ReplicationPlan, message: string): void {
+    const events = this.pendingEvents.get(plan.eventId);
+    if (events) {
+      for (const event of events) {
+        if (event.status === "completed") {
+          continue;
+        }
+        event.status = "failed";
+        event.lastError = message;
+        event.completedAt = event.completedAt ?? nowIso();
+        event.retryCount = Math.max(event.retryCount, this.config.maxRetries);
+      }
+      plan.completedTargets = events.filter((event) => event.status === "completed").length;
+      plan.failedTargets = events.filter((event) => event.status === "failed").length;
+    }
+
+    plan.status = "failed";
   }
 
   private calculateBackoff(retryCount: number): number {

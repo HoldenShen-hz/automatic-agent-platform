@@ -132,13 +132,14 @@ test("DEFAULT_SIX_LAYER_TRANSITION_RULES has 5 rules for 5 transitions", () => {
   assert.equal(DEFAULT_SIX_LAYER_TRANSITION_RULES.length, 5);
 });
 
-test("DEFAULT_SIX_LAYER_TRANSITION_RULES has increasing thresholds", () => {
+test("DEFAULT_SIX_LAYER_TRANSITION_RULES has monotonic promotion thresholds", () => {
   for (let i = 1; i < DEFAULT_SIX_LAYER_TRANSITION_RULES.length; i++) {
     const prev = DEFAULT_SIX_LAYER_TRANSITION_RULES[i - 1]!;
     const curr = DEFAULT_SIX_LAYER_TRANSITION_RULES[i]!;
     assert.ok(curr.minHitCount > prev.minHitCount);
-    assert.ok(curr.minQualityScore > prev.minQualityScore);
+    assert.ok(curr.minQualityScore >= prev.minQualityScore);
     assert.ok(curr.minImportanceScore > prev.minImportanceScore);
+    assert.ok(curr.minAgeHours > prev.minAgeHours);
   }
 });
 

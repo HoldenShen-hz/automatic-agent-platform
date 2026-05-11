@@ -266,20 +266,22 @@ export class AsyncPromptRepository {
   }
 
   public async setCurrentVersion(bundleId: string, versionId: string): Promise<number> {
-    await this.conn.execute("BEGIN");
+    await asyncExecute(this.conn, "BEGIN");
     try {
-      await this.conn.execute(
+      await asyncExecute(
+        this.conn,
         `UPDATE prompt_versions SET is_current = false WHERE bundle_id = $1`,
         bundleId,
       );
-      const result = await this.conn.execute(
+      const result = await asyncExecute(
+        this.conn,
         `UPDATE prompt_versions SET is_current = true WHERE version_id = $1`,
         versionId,
       );
-      await this.conn.execute("COMMIT");
+      await asyncExecute(this.conn, "COMMIT");
       return result;
     } catch (error) {
-      await this.conn.execute("ROLLBACK");
+      await asyncExecute(this.conn, "ROLLBACK");
       throw error;
     }
   }

@@ -28,7 +28,15 @@ function safeReadJson<T>(path: string): T | null {
   if (!existsSync(path)) {
     return null;
   }
-  return JSON.parse(readFileSync(path, "utf8")) as T;
+  const raw = readFileSync(path, "utf8").trim();
+  if (raw.length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
 }
 
 export type DelegationAuditEventType =

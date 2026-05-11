@@ -51,7 +51,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
     };
   }
 
-  if (score.incidents > 0 || (score.failedExecutions > 2 && rate < 0.96)) {
+  if (score.incidents > 0 || (score.failedExecutions >= 2 && rate < 0.96)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

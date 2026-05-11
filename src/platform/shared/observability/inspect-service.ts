@@ -197,10 +197,9 @@ export class InspectService {
   }
 
   public queryTaskInspectSummaries(query: TaskInspectQuery = {}): TaskInspectSummary[] {
-    const limit = normalizeLimit(query.limit, 25);
-    // R14-18: Pass limit and tenantId to listTasks to avoid over-fetching all tasks into memory
-    return this.store
-      .listTasks(limit, query.tenantId)
+    const limit = query.fetchAll ? undefined : normalizeLimit(query.limit, 25);
+    const tasks = this.store.listTasks(limit, query.tenantId);
+    const summaries = tasks
       .map((task) => this.buildTaskInspectSummary(task))
       .filter((summary) => {
         if (query.taskStatus && summary.taskStatus !== query.taskStatus) {
@@ -219,8 +218,11 @@ export class InspectService {
           return query.hasPendingApproval ? summary.pendingApprovalCount > 0 : summary.pendingApprovalCount === 0;
         }
         return true;
-      })
-      .slice(0, limit);
+      });
+    if (limit === undefined) {
+      return summaries;
+    }
+    return summaries.slice(0, limit);
   }
 
   public queryWorkflowInspectSummaries(query: WorkflowInspectQuery = {}): WorkflowInspectSummary[] {

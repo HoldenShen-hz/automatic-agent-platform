@@ -108,7 +108,7 @@ export class HarnessLoopController {
   }
 
   public getGuardViolation(now = Date.now()): string | null {
-    return this.checkIterationLimit() ?? this.checkReplanLimit() ?? this.checkCostLimit() ?? this.checkDurationLimit() ?? null;
+    return this.checkIterationLimit(now) ?? this.checkReplanLimit(now) ?? this.checkCostLimit(now) ?? this.checkDurationLimit(now) ?? null;
   }
 
   /** R5-4: Check if iteration limit has been reached */
@@ -119,10 +119,10 @@ export class HarnessLoopController {
     return null;
   }
 
-  /** R30-24: Check if replan limit has been reached. Uses > to allow maxReplans+1 replans before blocking. */
+  /** R30-24: Check if replan limit has been reached. */
   public checkReplanLimit(now = Date.now()): string | null {
-    if (this.state.replanCount > this.guards.maxReplans) {
-      return "harness.guard.max_replans_exceeded";
+    if (this.state.replanCount >= this.guards.maxReplans) {
+      return "harness.guard.max_replans_reached";
     }
     return null;
   }

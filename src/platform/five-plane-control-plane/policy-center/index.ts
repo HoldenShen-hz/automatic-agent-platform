@@ -1,7 +1,8 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
-  mapPolicyModeToUnifiedRuntimeMode,
+  normalizeUnifiedRuntimeMode,
+  type DocumentedUnifiedRuntimeMode,
   type UnifiedRuntimeMode,
 } from "../../contracts/types/unified-runtime-mode.js";
 
@@ -33,6 +34,8 @@ export type PolicyRiskCategory =
   | "governance_sensitive";
 
 export type PolicyMode =
+  | UnifiedRuntimeMode
+  | DocumentedUnifiedRuntimeMode
   | "auto"
   | "full-auto"
   | "read-only"
@@ -162,7 +165,7 @@ export class PolicyCenterService {
   }
 
   public static toUnifiedRuntimeMode(mode: PolicyMode): UnifiedRuntimeMode {
-    return mapPolicyModeToUnifiedRuntimeMode(mode);
+    return normalizePolicyCenterMode(mode);
   }
 
   private isActionAllowedByRole(input: PolicyDecisionRequest): boolean {
@@ -249,11 +252,12 @@ export class PolicyCenterService {
     matchedRuleRefs: string[];
     explainSummary: string;
   } {
-    switch (input.mode) {
-      case "read-only":
+    const normalizedMode = normalizePolicyCenterMode(input.mode);
+    switch (normalizedMode) {
+      case "read_only":
         if (MUTATING_ACTIONS.includes(input.action)) {
           return {
-            constraints: { mode: input.mode, sideEffectsAllowed: false },
+            constraints: { mode: normalizedMode, sideEffectsAllowed: false },
             denyReason: "policy.read_only_mode_denied",
             requiresApproval: false,
             matchedRuleRefs: ["mode.read_only"],
@@ -261,15 +265,74 @@ export class PolicyCenterService {
           };
         }
         return {
-          constraints: { mode: input.mode, sideEffectsAllowed: false },
+          constraints: { mode: normalizedMode, sideEffectsAllowed: false },
           denyReason: null,
           requiresApproval: false,
           matchedRuleRefs: ["mode.read_only"],
           explainSummary: "Read-only mode allows only non-mutating actions.",
         };
-      case "incident-mode":
+      case "no_write":
+        if (input.action === "write_file" || input.action === "exec_command" || input.action === "install_extension") {
+          return {
+            constraints: { mode: normalizedMode, writesAllowed: false },
+            denyReason: "policy.no_write_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.no_write"],
+            explainSummary: "No-write mode blocks local mutations.",
+          };
+        }
         return {
-          constraints: { mode: input.mode, changeFreeze: true, evidenceLevel: "full" },
+          constraints: { mode: normalizedMode, writesAllowed: false },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.no_write"],
+          explainSummary: "No-write mode allows read-only and coordination actions.",
+        };
+      case "no_external_call":
+        if (input.action === "network_access" || input.action === "invoke_model") {
+          return {
+            constraints: { mode: normalizedMode, externalCallsAllowed: false },
+            denyReason: "policy.no_external_call_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.no_external_call"],
+            explainSummary: "No-external-call mode blocks outbound dependencies.",
+          };
+        }
+        return {
+          constraints: { mode: normalizedMode, externalCallsAllowed: false },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.no_external_call"],
+          explainSummary: "No-external-call mode allows local execution only.",
+        };
+      case "no_rollout":
+        if (input.action === "advance_rollout") {
+          return {
+            constraints: { mode: normalizedMode, rolloutAllowed: false },
+            denyReason: "policy.no_rollout_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.no_rollout"],
+            explainSummary: "No-rollout mode blocks rollout changes.",
+          };
+        }
+        return {
+          constraints: { mode: normalizedMode, rolloutAllowed: false },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.no_rollout"],
+          explainSummary: "No-rollout mode keeps release changes gated.",
+        };
+      case "manual_only":
+        return {
+          constraints: { mode: normalizedMode, humanExecutionRequired: true },
+          denyReason: null,
+          requiresApproval: MUTATING_ACTIONS.includes(input.action),
+          matchedRuleRefs: ["mode.manual_only"],
+          explainSummary: "Manual-only mode routes mutating work through human approval.",
+        };
+      case "incident_mode":
+        return {
+          constraints: { mode: normalizedMode, changeFreeze: true, evidenceLevel: "full" },
           denyReason: null,
           requiresApproval: input.riskCategory !== "cost_sensitive",
           matchedRuleRefs: ["mode.incident"],
@@ -287,10 +350,11 @@ export class PolicyCenterService {
   }
 
   private mustEscalate(input: PolicyDecisionRequest, constraintRequiresApproval: boolean): boolean {
-    if (input.mode === "incident-mode") {
+    const normalizedMode = normalizePolicyCenterMode(input.mode);
+    if (normalizedMode === "incident_mode") {
       return constraintRequiresApproval;
     }
-    if (input.mode === "full-auto" && !["governance_sensitive", "prod_affecting", "org_changing"].includes(input.riskCategory)) {
+    if (normalizedMode === "full_auto" && !["governance_sensitive", "prod_affecting", "org_changing"].includes(input.riskCategory)) {
       return constraintRequiresApproval;
     }
     return constraintRequiresApproval || this.options.approvalRequiredRiskCategories.includes(input.riskCategory);
@@ -355,7 +419,8 @@ function buildAuditPayload(input: PolicyDecisionRequest): Record<string, unknown
     action: input.action,
     resourceRef: input.resourceRef ?? null,
     riskCategory: input.riskCategory,
-    mode: input.mode,
+    mode: normalizePolicyCenterMode(input.mode),
+    requestedMode: input.mode,
     stage: input.stage,
     estimatedCostUsd: input.estimatedCostUsd ?? 0,
     evaluatedAt: nowIso(),
@@ -377,5 +442,20 @@ function parseHost(resourceRef: string | null | undefined): string | null {
     return new URL(resourceRef).host;
   } catch {
     return resourceRef;
+  }
+}
+
+function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {
+  switch (mode) {
+    case "auto":
+      return "supervised_auto";
+    case "full-auto":
+      return "full_auto";
+    case "read-only":
+      return "read_only";
+    case "incident-mode":
+      return "incident_mode";
+    default:
+      return normalizeUnifiedRuntimeMode(mode as UnifiedRuntimeMode | DocumentedUnifiedRuntimeMode);
   }
 }

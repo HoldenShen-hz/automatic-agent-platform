@@ -49,6 +49,7 @@ export const ScimGroupSchema = {
 
 export interface ScimUser {
   readonly id: string;
+  readonly tenantId?: string;
   readonly userName: string;
   readonly name: {
     readonly formatted: string;
@@ -71,6 +72,7 @@ export interface ScimUser {
 
 export interface ScimGroup {
   readonly id: string;
+  readonly tenantId?: string;
   readonly displayName: string;
   readonly members: readonly { value: string; display: string }[];
   readonly meta: {
@@ -122,7 +124,7 @@ export interface ScimBulkResponse {
 
 export interface ScimProvisionEvent {
   readonly eventId: string;
-  readonly action: "user_created" | "user_updated" | "user_disabled" | "user_deleted" | "group_updated";
+  readonly action: "user_created" | "user_updated" | "user_disabled" | "user_deleted" | "group_updated" | "group_deleted";
   readonly subjectId: string;
   readonly occurredAt: string;
   readonly tenantId: string;
@@ -154,6 +156,7 @@ export class ScimProvisionService {
     const scimUser: ScimUser = {
       ...user,
       id,
+      tenantId,
       meta: {
         resourceType: "User",
         created: now,
@@ -298,13 +301,15 @@ export class ScimProvisionService {
    * @returns Paginated user list
    */
   public listUsers(options: {
+    tenantId?: string;
     filter?: string;
     startIndex?: number;
     count?: number;
   }): ScimListResponse<ScimUser> {
     const { startIndex = 1, count = 100 } = options;
 
-    let users = Array.from(this.users.values());
+    let users = Array.from(this.users.values())
+      .filter((user) => options.tenantId == null || user.tenantId === options.tenantId);
 
     // Apply filter if provided (simple filter parsing)
     if (options.filter) {
@@ -337,6 +342,7 @@ export class ScimProvisionService {
 
     const scimGroup: ScimGroup = {
       id,
+      tenantId,
       displayName: group.displayName,
       members: group.members ?? [],
       meta: {
@@ -391,6 +397,7 @@ export class ScimProvisionService {
       ...existing,
       ...updates,
       id: existing.id,
+      tenantId: existing.tenantId ?? tenantId,
       meta: {
         ...existing.meta,
         lastModified: nowIso(),
@@ -431,6 +438,8 @@ export class ScimProvisionService {
       }
     }
 
+    this.recordEvent("group_deleted", groupId, existing.tenantId ?? tenantId);
+
     return true;
   }
 
@@ -441,13 +450,15 @@ export class ScimProvisionService {
    * @returns Paginated group list
    */
   public listGroups(options: {
+    tenantId?: string;
     filter?: string;
     startIndex?: number;
     count?: number;
   }): ScimListResponse<ScimGroup> {
     const { startIndex = 1, count = 100 } = options;
 
-    let groups = Array.from(this.groups.values());
+    let groups = Array.from(this.groups.values())
+      .filter((group) => options.tenantId == null || group.tenantId === options.tenantId);
 
     if (options.filter) {
       groups = this.applyFilter(groups, options.filter);
@@ -499,7 +510,7 @@ export class ScimProvisionService {
     if (!group) return null;
 
     const newMembers = group.members.filter((m) => m.value !== userId);
-    return this.updateGroup(groupId, { members: newMembers }, "");
+    return this.updateGroup(groupId, { members: newMembers }, this.resolveGroupTenantId(group));
   }
 
   /**
@@ -531,7 +542,10 @@ export class ScimProvisionService {
           break;
         case "remove":
           if (op.path?.includes("members")) {
-            updatedMembers = [];
+            const memberPredicate = resolveMemberRemovalPredicate(op.path);
+            updatedMembers = memberPredicate == null
+              ? []
+              : updatedMembers.filter((member) => !memberPredicate(member));
           }
           break;
       }
@@ -784,22 +798,30 @@ export class ScimProvisionService {
     });
   }
 
+  private resolveGroupTenantId(group: ScimGroup): string {
+    if (group.tenantId != null && group.tenantId !== "") {
+      return group.tenantId;
+    }
+    for (const member of group.members) {
+      const userTenantId = this.users.get(member.value)?.tenantId;
+      if (userTenantId != null && userTenantId !== "") {
+        return userTenantId;
+      }
+    }
+    return "tenant:unknown";
+  }
+
   private applyFilter<T extends ScimUser | ScimGroup>(items: T[], filter: string): T[] {
     // Simple filter parsing: "userName eq \"john\""
     const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
     if (!match) return items;
 
-    const [, , op, value] = match;
+    const [, attribute, op, value] = match;
     const filterValue = value ?? "";
 
     return items.filter((item) => {
-      let itemValue: string;
-
-      if ("userName" in item) {
-        itemValue = item.userName;
-      } else if ("displayName" in item) {
-        itemValue = item.displayName;
-      } else {
+      const itemValue = resolveFilterValue(item, attribute);
+      if (itemValue == null) {
         return true;
       }
 
@@ -816,6 +838,35 @@ export class ScimProvisionService {
           return true;
       }
     });
+  }
+}
+
+function resolveMemberRemovalPredicate(
+  path: string,
+): ((member: { value: string; display: string }) => boolean) | null {
+  const valueMatch = path.match(/members\[value\s+eq\s+"([^"]+)"\]/i);
+  if (valueMatch?.[1] != null) {
+    const expectedValue = valueMatch[1].toLowerCase();
+    return (member) => member.value.toLowerCase() === expectedValue;
+  }
+  const displayMatch = path.match(/members\[display\s+eq\s+"([^"]+)"\]/i);
+  if (displayMatch?.[1] != null) {
+    const expectedDisplay = displayMatch[1].toLowerCase();
+    return (member) => member.display.toLowerCase() === expectedDisplay;
+  }
+  return null;
+}
+
+function resolveFilterValue(item: ScimUser | ScimGroup, attribute: string): string | null {
+  switch (attribute) {
+    case "userName":
+      return "userName" in item ? item.userName : null;
+    case "displayName":
+      return item.displayName;
+    case "id":
+      return item.id;
+    default:
+      return null;
   }
 }
 

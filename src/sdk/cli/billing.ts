@@ -44,6 +44,14 @@ import {
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 
+function requireNonEmptyValue(value: string | null | undefined, code: string): string {
+  const normalized = value?.trim();
+  if (normalized == null || normalized.length === 0) {
+    throw new ValidationError(code, code);
+  }
+  return normalized;
+}
+
 /**
  * Creates a payment gateway instance based on CLI environment configuration.
  *
@@ -111,7 +119,7 @@ async function main(): Promise<void> {
       case "create_account":
         return billing.createAccount({
           ...(envConfig.accountId ? { accountId: envConfig.accountId } : {}),
-          ownerId: envConfig.ownerId ?? "",
+          ownerId: requireNonEmptyValue(envConfig.ownerId, "billing.missing_owner_id"),
           workspaceId: envConfig.workspaceId,
           planId: envConfig.planId ?? "",
           status: envConfig.accountStatus,

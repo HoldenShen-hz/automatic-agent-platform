@@ -8,6 +8,7 @@ function createMockRecoveryService() {
     listBlockedRunsAwaitingApproval: () => [],
     listRecoverableExecutingRuns: () => [],
     listStaleRuns: () => [],
+    applyRecoveryDecision: async () => undefined,
   };
 }
 
@@ -85,10 +86,14 @@ test("ExecutionRecoveryWorker runRecoveryCycle handles empty candidates", async 
 });
 
 test("ExecutionRecoveryWorker runRecoveryCycle handles candidates", async () => {
+  const appliedExecutionIds: string[] = [];
   const mockRecoveryService = {
     listBlockedRunsAwaitingApproval: () => [{ runId: "blocked-1" }],
-    listRecoverableExecutingRuns: () => [{ runId: "active-1", suggestedAction: "resume_same_worker" }],
+    listRecoverableExecutingRuns: () => [{ executionId: "active-1", suggestedAction: "resume_same_worker" }],
     listStaleRuns: () => [{ runId: "stale-1" }],
+    applyRecoveryDecision: async (executionId: string) => {
+      appliedExecutionIds.push(executionId);
+    },
   };
 
   const worker = new ExecutionRecoveryWorker({
@@ -99,6 +104,7 @@ test("ExecutionRecoveryWorker runRecoveryCycle handles candidates", async () => 
 
   assert.equal(report.itemsProcessed, 3);
   assert.equal(report.itemsRecovered, 1); // Only 1 actionable
+  assert.deepEqual(appliedExecutionIds, ["active-1"]);
 });
 
 test("ExecutionRecoveryWorker runRecoveryCycle handles service errors", async () => {
@@ -106,6 +112,7 @@ test("ExecutionRecoveryWorker runRecoveryCycle handles service errors", async ()
     listBlockedRunsAwaitingApproval: () => { throw new Error("Service error"); },
     listRecoverableExecutingRuns: () => [],
     listStaleRuns: () => [],
+    applyRecoveryDecision: async () => undefined,
   };
 
   const worker = new ExecutionRecoveryWorker({

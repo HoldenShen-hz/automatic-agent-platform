@@ -8,8 +8,21 @@
  */
 
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
+import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
 
-export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
+export interface LivestreamAdapterPluginOptions {
+  policy?: NetworkEgressPolicyService;
+}
+
+let credentialFingerprint: string | null = null;
+
+export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOptions = {}): ExternalAdapterPlugin {
+  const policy = options.policy ?? new NetworkEgressPolicyService({
+    mode: "enforce",
+    allowedDomains: ["api.twitch.tv", "www.googleapis.com"],
+  });
+
   return {
     pluginId: "plugin.livestream.obs_adapter",
     spiType: "adapter",
@@ -21,12 +34,13 @@ export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
     async healthCheck(): Promise<boolean> {
       // Verify OBS WebSocket connectivity and plugin readiness
       // In production this would ping the OBS WebSocket server or streaming platform API
-      // For now, check if obsToken was provided via environment or config
       const obsToken = process.env["OBS_WS_TOKEN"] ?? process.env["OBS_TOKEN"];
-      return typeof obsToken === "string" && obsToken.trim().length > 0;
+      return typeof obsToken === "string"
+        && obsToken.trim().length > 0
+        && policy.evaluate("https://api.twitch.tv").allowed;
     },
     async shutdown() {
-      return undefined;
+      credentialFingerprint = null;
     },
     async authenticate(credentials: Record<string, unknown>): Promise<void> {
       // OBS WebSocket token validation
@@ -38,8 +52,18 @@ export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
       if (!/^[A-Za-z0-9+/=]{16,}$/.test(token.trim())) {
         throw new Error("OBS authentication token format is invalid");
       }
+      credentialFingerprint = `obs_${token.trim().slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
+      if (credentialFingerprint === null) {
+        throw new Error("livestream_adapter.not_authenticated");
+      }
+
+      const allowed = policy.evaluate("https://api.twitch.tv").allowed;
+      if (!allowed) {
+        throw new PolicyDeniedError("egress.denied" as ErrorCode, "Livestream adapter: egress denied");
+      }
+
       const { streamId } = params as { streamId?: string };
 
       // In production this would call OBS WebSocket API or streaming platform API

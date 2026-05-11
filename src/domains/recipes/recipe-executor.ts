@@ -124,9 +124,6 @@ export class RecipeExecutor {
   }
 
   private workflowExists(workflowId: string): boolean {
-    if (this.workflowRegistry == null) {
-      return !/^nonexistent/i.test(workflowId);
-    }
-    return this.workflowRegistry.get(workflowId) != null;
+    return this.workflowRegistry?.get(workflowId) != null;
   }
 }

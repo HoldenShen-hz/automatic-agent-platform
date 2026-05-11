@@ -35,13 +35,25 @@ test("smoke: default configuration loads without exceptions", async () => {
 
   // Verify safe defaults
   assert.ok(
-    config.maxConcurrentTasks >= 1,
-    "maxConcurrentTasks should be at least 1",
+    config.maxConcurrentTasks >= 2,
+    "maxConcurrentTasks should provide a concurrent execution baseline",
   );
   assert.ok(
     config.defaultTaskTimeoutMs > 0,
     "defaultTaskTimeoutMs should be positive",
   );
+});
+
+test("smoke: gateway SSE defaults include resource exhaustion guards", async () => {
+  const configPath = resolve(process.cwd(), "config/gateways/default.json");
+
+  const fs = await import("node:fs/promises");
+  const configContent = await fs.readFile(configPath, "utf-8");
+  const config = JSON.parse(configContent);
+
+  assert.equal(config.sseEnabled, true);
+  assert.ok(config.sseMaxConnections > 0, "sseMaxConnections should be positive");
+  assert.ok(config.sseIdleTimeoutMs > 0, "sseIdleTimeoutMs should be positive");
 });
 
 test("smoke: division directories exist", async () => {

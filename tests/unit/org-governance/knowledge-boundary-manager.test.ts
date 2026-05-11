@@ -30,7 +30,7 @@ test("canAccessKnowledgeBoundary returns true for allowed org node", () => {
   assert.strictEqual(canAccessKnowledgeBoundary(boundary, "org_3"), true);
 });
 
-test("canAccessKnowledgeBoundary returns false for unauthorized org", () => {
+test("canAccessKnowledgeBoundary returns false for unauthorized org on non-public boundary", () => {
   const boundary: KnowledgeBoundary = {
     boundaryId: "kb_1",
     ownerOrgNodeId: "org_1",
@@ -39,6 +39,18 @@ test("canAccessKnowledgeBoundary returns false for unauthorized org", () => {
   };
 
   assert.strictEqual(canAccessKnowledgeBoundary(boundary, "org_999"), false);
+});
+
+test("canAccessKnowledgeBoundary returns true for public boundary", () => {
+  const boundary: KnowledgeBoundary = {
+    boundaryId: "kb_public",
+    ownerOrgNodeId: "org_1",
+    namespaceIds: [],
+    defaultVisibility: "public",
+    allowedOrgNodeIds: [],
+  };
+
+  assert.strictEqual(canAccessKnowledgeBoundary(boundary, "org_999"), true);
 });
 
 test("resolveKnowledgeAccessPolicy returns strict for private default", () => {

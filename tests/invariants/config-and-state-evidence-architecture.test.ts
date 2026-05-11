@@ -37,11 +37,11 @@ test("risk config defines the architecture risk categories", () => {
   ]);
 });
 
-test("runtime config keeps safe defaults while concurrency quotas live in dedicated quota models", () => {
+test("runtime config keeps a concurrent default while workflow quotas live in dedicated quota models", () => {
   const config = JSON.parse(readFileSync("config/runtime/default.json", "utf8"));
 
   assert.equal("maxConcurrentRuns" in config, false);
-  assert.equal(config.maxConcurrentTasks, 1);
+  assert.equal(config.maxConcurrentTasks, 4);
 
   const rule = DomainInteractionRuleSchema.parse({
     sourceDomainId: "finance",

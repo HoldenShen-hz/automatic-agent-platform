@@ -1,185 +1,135 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { PlanBuilder } from "../../../src/platform/five-plane-orchestration/planner/plan-builder.js";
+import { PlanStrategySelector } from "../../../src/platform/five-plane-orchestration/planner/plan-strategy-selector.js";
 
-interface MockWorkflowPlan {
-  id: string;
-  taskId: string;
-  steps: string[];
-  currentStepIndex: number;
-  status: "planning" | "ready" | "executing" | "completed" | "failed";
-  createdAt: string;
-}
+test("integration: PlanStrategySelector escalates multi-division critical workflows to reflexive strategy", () => {
+  const selector = new PlanStrategySelector();
 
-interface MockAgentTeam {
-  id: string;
-  name: string;
-  memberIds: string[];
-  leaderId: string;
-  status: "forming" | "active" | "disbanded";
-}
+  const strategy = selector.select({
+    observation: {
+      objective: "Repair the cross-division deployment pipeline",
+      environmentContext: {
+        availableTools: ["read", "apply_patch"],
+      },
+    } as never,
+    assessment: {
+      complexity: "complex",
+      risk: "critical",
+      resourceAllocation: {
+        maxTokens: 12000,
+        timeoutMs: 60000,
+      },
+    } as never,
+    workflow: {
+      executionSteps: [
+        { stepId: "step-1", divisionId: "engineering" },
+        { stepId: "step-2", divisionId: "operations" },
+      ],
+    } as never,
+  });
 
-interface MockIntakeRequest {
-  id: string;
-  kind: string;
-  priority: "low" | "normal" | "high" | "urgent";
-  status: "received" | "routed" | "processing" | "completed";
-  submittedAt: string;
-}
-
-test("Workflow plan creation", () => {
-  const plan: MockWorkflowPlan = {
-    id: newId("wplan"),
-    taskId: newId("task"),
-    steps: ["validate", "execute", "finalize"],
-    currentStepIndex: 0,
-    status: "planning",
-    createdAt: nowIso(),
-  };
-
-  assert.ok(plan.id.startsWith("wplan_"));
-  assert.equal(plan.steps.length, 3);
-  assert.equal(plan.currentStepIndex, 0);
+  assert.equal(strategy, "reflexive");
 });
 
-test("Workflow plan step progression", () => {
-  const plan: MockWorkflowPlan = {
-    id: newId("wplan"),
-    taskId: newId("task"),
-    steps: ["validate", "execute", "finalize"],
-    currentStepIndex: 0,
-    status: "executing",
-    createdAt: nowIso(),
-  };
+test("integration: PlanBuilder rejects cyclic execution graphs instead of silently materializing a plan", () => {
+  const builder = new PlanBuilder();
 
-  plan.currentStepIndex++;
-  assert.equal(plan.currentStepIndex, 1);
-
-  plan.currentStepIndex++;
-  assert.equal(plan.currentStepIndex, 2);
-
-  plan.status = "completed";
-  assert.equal(plan.status, "completed");
-});
-
-test("Workflow plan with many steps", () => {
-  const stepNames = ["analyze", "plan", "validate", "execute", "verify", "report"];
-  const plan: MockWorkflowPlan = {
-    id: newId("wplan"),
-    taskId: newId("task"),
-    steps: stepNames,
-    currentStepIndex: 0,
-    status: "planning",
-    createdAt: nowIso(),
-  };
-
-  assert.equal(plan.steps.length, 6);
-  assert.equal(plan.steps[0], "analyze");
-  assert.equal(plan.steps[5], "report");
-});
-
-test("Agent team formation", () => {
-  const team: MockAgentTeam = {
-    id: newId("team"),
-    name: "Data Processing Team",
-    memberIds: [newId("agent"), newId("agent"), newId("agent")],
-    leaderId: newId("agent"),
-    status: "forming",
-  };
-
-  assert.equal(team.memberIds.length, 3);
-  assert.ok(team.leaderId !== "");
-  assert.equal(team.status, "forming");
-});
-
-test("Agent team activation", () => {
-  const team: MockAgentTeam = {
-    id: newId("team"),
-    name: "Analysis Team",
-    memberIds: [newId("agent"), newId("agent")],
-    leaderId: newId("agent"),
-    status: "forming",
-  };
-
-  team.status = "active";
-
-  assert.equal(team.status, "active");
-});
-
-test("Agent team disbanding", () => {
-  const team: MockAgentTeam = {
-    id: newId("team"),
-    name: "Temp Team",
-    memberIds: [newId("agent")],
-    leaderId: newId("agent"),
-    status: "active",
-  };
-
-  team.status = "disbanded";
-
-  assert.equal(team.status, "disbanded");
-});
-
-test("Intake request routing", () => {
-  const request: MockIntakeRequest = {
-    id: newId("intake"),
-    kind: "data_processing",
-    priority: "normal",
-    status: "received",
-    submittedAt: nowIso(),
-  };
-
-  request.status = "routed";
-  assert.equal(request.status, "routed");
-
-  request.status = "processing";
-  assert.equal(request.status, "processing");
-});
-
-test("Intake request priority levels", () => {
-  const priorities: MockIntakeRequest["priority"][] = ["low", "normal", "high", "urgent"];
-  const requests: MockIntakeRequest[] = [];
-
-  for (const priority of priorities) {
-    requests.push({
-      id: newId("intake"),
-      kind: "test",
-      priority,
-      status: "received",
-      submittedAt: nowIso(),
+  assert.throws(() => {
+    builder.build({
+      observation: {
+        objective: "Coordinate a cyclic rollout plan",
+      } as never,
+      assessment: {
+        complexity: "complex",
+        risk: "medium",
+      resourceAllocation: {
+          maxTokens: 6000,
+          timeoutMs: 45000,
+        },
+      } as never,
+      workflow: {
+        executionSteps: [
+          {
+            stepId: "step-1",
+            divisionId: "engineering",
+            roleId: "owner",
+            dependsOnStepIds: ["step-2"],
+            inputKeys: [],
+            maxAttempts: 1,
+            timeoutMs: 1000,
+            outputKey: "prepared",
+          },
+          {
+            stepId: "step-2",
+            divisionId: "operations",
+            roleId: "operator",
+            dependsOnStepIds: ["step-1"],
+            inputKeys: [],
+            maxAttempts: 1,
+            timeoutMs: 1000,
+            outputKey: "deployed",
+          },
+        ],
+      } as never,
     });
-  }
-
-  assert.equal(requests[0]?.priority, "low");
-  assert.equal(requests[3]?.priority, "urgent");
+  }, /INVALID_DAG|DAG validation failed/);
 });
 
-test("Intake request urgent priority", () => {
-  const request: MockIntakeRequest = {
-    id: newId("intake"),
-    kind: "system_alert",
-    priority: "urgent",
-    status: "received",
-    submittedAt: nowIso(),
-  };
+test("integration: PlanBuilder produces a normalized execution order for a valid DAG", () => {
+  const builder = new PlanBuilder();
 
-  assert.equal(request.priority, "urgent");
-});
+  const bundle = builder.build({
+    observation: {
+      objective: "Prepare, validate, and deploy release assets",
+    } as never,
+    assessment: {
+      complexity: "moderate",
+      risk: "medium",
+      resourceAllocation: {
+        maxTokens: 6000,
+        timeoutMs: 45000,
+      },
+    } as never,
+    workflow: {
+      executionSteps: [
+        {
+          stepId: "step-1",
+          divisionId: "engineering",
+          roleId: "owner",
+          dependsOnStepIds: [],
+          inputKeys: [],
+          maxAttempts: 1,
+          timeoutMs: 1000,
+          outputKey: "prepared",
+        },
+        {
+          stepId: "step-2",
+          divisionId: "engineering",
+          roleId: "reviewer",
+          dependsOnStepIds: ["step-1"],
+          inputKeys: ["prepared"],
+          maxAttempts: 1,
+          timeoutMs: 1000,
+          outputKey: "validated",
+        },
+        {
+          stepId: "step-3",
+          divisionId: "operations",
+          roleId: "operator",
+          dependsOnStepIds: ["step-2"],
+          inputKeys: ["validated"],
+          maxAttempts: 1,
+          timeoutMs: 1000,
+          outputKey: "deployed",
+        },
+      ],
+    } as never,
+  });
 
-test("Workflow plan failure handling", () => {
-  const plan: MockWorkflowPlan = {
-    id: newId("wplan"),
-    taskId: newId("task"),
-    steps: ["validate", "execute", "finalize"],
-    currentStepIndex: 1,
-    status: "executing",
-    createdAt: nowIso(),
-  };
-
-  plan.status = "failed";
-  plan.currentStepIndex = -1;
-
-  assert.equal(plan.status, "failed");
-  assert.equal(plan.currentStepIndex, -1);
+  assert.deepEqual(bundle.graph.entryNodeIds, ["step-1"]);
+  assert.deepEqual(bundle.graph.terminalNodeIds, ["step-3"]);
+  assert.equal(bundle.graph.nodes.length, 3);
+  assert.equal(bundle.validationReport.valid, true);
 });

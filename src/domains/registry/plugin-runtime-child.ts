@@ -4,12 +4,13 @@ import { format } from "node:util";
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type { RegisteredPlugin } from "./plugin-spi.js";
 import type { PluginRuntimeChildMessage, PluginRuntimeRequest } from "./plugin-runtime-protocol.js";
+import { parsePluginRuntimeChildMessage } from "./plugin-runtime-protocol.js";
 
 const require = createRequire(import.meta.url);
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
-let stdoutBuffer = "";
+let stdinBuffer = "";
 
 installRuntimeGuards();
 installStdioProtocolConsoleRedirection();
@@ -120,14 +121,14 @@ process.on("message", (message: unknown) => {
 
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk: string) => {
-  stdoutBuffer += chunk;
+  stdinBuffer += chunk;
   while (true) {
-    const newlineIndex = stdoutBuffer.indexOf("\n");
+    const newlineIndex = stdinBuffer.indexOf("\n");
     if (newlineIndex === -1) {
       break;
     }
-    const line = stdoutBuffer.slice(0, newlineIndex).trim();
-    stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+    const line = stdinBuffer.slice(0, newlineIndex).trim();
+    stdinBuffer = stdinBuffer.slice(newlineIndex + 1);
     if (line.length === 0) {
       continue;
     }
@@ -162,16 +163,19 @@ function sendRuntimeMessage(message: unknown): void {
 }
 
 function handleRuntimeMessage(message: unknown): void {
-  const payload = message as PluginRuntimeChildMessage;
+  let payload: PluginRuntimeChildMessage;
+  try {
+    payload = parsePluginRuntimeChildMessage(message);
+  } catch (error) {
+    process.stderr.write(`plugin-runtime-child protocol violation: ${error instanceof Error ? error.message : String(error)}\n`);
+    return;
+  }
   if (payload?.type === "shutdown") {
     process.disconnect?.();
     setImmediate(() => process.exit(0));
     return;
   }
   const request = payload as PluginRuntimeRequest;
-  if (request?.type !== "request") {
-    return;
-  }
   void handleRequest(request)
     .then((result) => {
       sendRuntimeMessage({

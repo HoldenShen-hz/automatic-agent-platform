@@ -1,6 +1,6 @@
 import { ConversationClient, type ConversationMessage, type ConversationStatus } from "@aa/shared-nl-client";
 import { QueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WSClient, WSEventEnvelope } from "@aa/shared-api-client";
 
 export interface Message {
@@ -46,6 +46,17 @@ interface PersistedConversationState {
 const STORAGE_KEY = "aa.conversation.vm";
 export const conversationVmQueryKey = ["conversation", "vm"] as const;
 export const conversationVmQueryClient = new QueryClient();
+
+type ConversationClientSnapshot = {
+  messages?: readonly ConversationMessage[];
+  status?: ConversationVm["status"];
+  planReady?: boolean;
+  executionReady?: boolean;
+  isStreaming?: boolean;
+};
+
+const conversationClientListeners = new Set<(snapshot: ConversationClientSnapshot) => void>();
+let sharedConversationClient: ConversationClient | null = null;
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -93,6 +104,42 @@ function loadPersistedState(): PersistedConversationState | null {
   }
 }
 
+function createConversationClient(persisted: PersistedConversationState | null): ConversationClient {
+  return new ConversationClient({
+    initialMessages: persisted?.messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+    })),
+    onStateChange: (snapshot: ConversationClientSnapshot) => {
+      for (const listener of conversationClientListeners) {
+        listener(snapshot);
+      }
+    },
+  } as never);
+}
+
+function getSharedConversationClient(persisted: PersistedConversationState | null): ConversationClient {
+  if (sharedConversationClient == null) {
+    sharedConversationClient = createConversationClient(persisted);
+  }
+  return sharedConversationClient;
+}
+
+function subscribeConversationClient(listener: (snapshot: ConversationClientSnapshot) => void): () => void {
+  conversationClientListeners.add(listener);
+  return () => {
+    conversationClientListeners.delete(listener);
+  };
+}
+
+function disposeSharedConversationClient(): void {
+  if (sharedConversationClient != null && typeof (sharedConversationClient as { dispose?: () => void; }).dispose === "function") {
+    (sharedConversationClient as { dispose: () => void; }).dispose();
+  }
+  sharedConversationClient = null;
+}
+
 export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const persisted = loadPersistedState();
   const [messages, setMessages] = useState<readonly Message[]>(persisted?.messages ?? []);
@@ -103,37 +150,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const [executionReady, setExecutionReady] = useState(persisted?.executionReady ?? false);
   const [isStreaming, setIsStreaming] = useState(persisted?.isStreaming ?? false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-
-  const client = useMemo(() => new ConversationClient({
-    initialMessages: persisted?.messages.map((message) => ({
-      id: message.id,
-      role: message.role,
-      content: message.content,
-    })),
-    onStateChange: (snapshot: {
-      messages?: readonly ConversationMessage[];
-      status?: ConversationVm["status"];
-      planReady?: boolean;
-      executionReady?: boolean;
-      isStreaming?: boolean;
-    }) => {
-      if (snapshot.messages != null) {
-        setMessages(mapConversationMessages(snapshot.messages));
-      }
-      if (snapshot.status != null) {
-        setStatus(snapshot.status);
-      }
-      if (snapshot.planReady != null) {
-        setPlanReady(snapshot.planReady);
-      }
-      if (snapshot.executionReady != null) {
-        setExecutionReady(snapshot.executionReady);
-      }
-      if (snapshot.isStreaming != null) {
-        setIsStreaming(snapshot.isStreaming);
-      }
-    },
-  } as never), []);
+  const client = getSharedConversationClient(persisted);
 
   const syncFromClient = useCallback((overrides?: Partial<PersistedConversationState>) => {
     const snapshot = typeof (client as { getSnapshot?: () => {
@@ -180,6 +197,28 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       isStreaming: overrides?.isStreaming ?? nextIsStreaming,
     });
   }, [attachments, client, executionReady, isStreaming, messages, planReady, status]);
+
+  useEffect(() => {
+    const unsubscribeClient = subscribeConversationClient((snapshot) => {
+      if (snapshot.messages != null) {
+        setMessages(mapConversationMessages(snapshot.messages));
+      }
+      if (snapshot.status != null) {
+        setStatus(snapshot.status);
+      }
+      if (snapshot.planReady != null) {
+        setPlanReady(snapshot.planReady);
+      }
+      if (snapshot.executionReady != null) {
+        setExecutionReady(snapshot.executionReady);
+      }
+      if (snapshot.isStreaming != null) {
+        setIsStreaming(snapshot.isStreaming);
+      }
+    });
+    syncFromClient();
+    return unsubscribeClient;
+  }, [syncFromClient]);
 
   const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
     const current = conversationVmQueryClient.getQueryData<PersistedConversationState>(conversationVmQueryKey) ?? {
@@ -346,11 +385,9 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
 
   const disconnect = useCallback(() => {
     unsubscribeRef.current?.();
-    if (typeof (client as { dispose?: () => void; }).dispose === "function") {
-      (client as { dispose: () => void; }).dispose();
-    }
+    disposeSharedConversationClient();
     wsClient?.disconnect();
-  }, [client, wsClient]);
+  }, [wsClient]);
 
   return {
     messages,

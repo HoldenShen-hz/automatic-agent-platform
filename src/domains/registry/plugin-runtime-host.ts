@@ -18,6 +18,7 @@ import type {
   PluginRuntimeRequest,
   PluginRuntimeResponse,
 } from "./plugin-runtime-protocol.js";
+import { parsePluginRuntimeMessage } from "./plugin-runtime-protocol.js";
 
 export interface PluginRuntimeReadyMetadata {
   pid: number;
@@ -151,30 +152,37 @@ abstract class BasePluginRuntimeHost {
     });
   }
 
-  protected handleMessage(message: PluginRuntimeMessage): void {
-    if (message.type === "ready") {
-      this.resolveReady?.(message.pid);
+  protected handleMessage(message: unknown): void {
+    let parsedMessage: PluginRuntimeMessage;
+    try {
+      parsedMessage = parsePluginRuntimeMessage(message);
+    } catch (error) {
+      this.handleExit(`Plugin runtime protocol violation: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    if (parsedMessage.type === "ready") {
+      this.resolveReady?.(parsedMessage.pid);
       this.resolveReady = null;
       this.rejectReady = null;
       this.onReady?.({
-        pid: message.pid,
+        pid: parsedMessage.pid,
         sandboxRoot: this.sandboxRoot,
       });
       return;
     }
-    if (message.type !== "response") {
+    if (parsedMessage.type !== "response") {
       return;
     }
-    const pending = this.pending.get(message.requestId);
+    const pending = this.pending.get(parsedMessage.requestId);
     if (!pending) {
       return;
     }
-    this.pending.delete(message.requestId);
-    if (message.ok) {
-      pending.resolve(message.result);
+    this.pending.delete(parsedMessage.requestId);
+    if (parsedMessage.ok) {
+      pending.resolve(parsedMessage.result);
       return;
     }
-    pending.reject(this.buildError(message));
+    pending.reject(this.buildError(parsedMessage));
   }
 
   protected handleExit(message: string): void {
@@ -252,7 +260,7 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
     });
     this.attachChild(child, process.execPath, [this.childModulePath]);
     child.on("message", (message: unknown) => {
-      this.handleMessage(message as PluginRuntimeMessage);
+      this.handleMessage(message);
     });
   }
 
@@ -382,7 +390,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
         continue;
       }
       try {
-        this.handleMessage(JSON.parse(line) as PluginRuntimeMessage);
+        this.handleMessage(JSON.parse(line));
       } catch {
         this.stderrBuffer = `${this.stderrBuffer}\nnon-protocol-stdout:${line}`.trim().slice(-4096);
       }

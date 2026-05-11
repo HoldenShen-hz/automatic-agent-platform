@@ -128,16 +128,17 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
     }];
   }
 
-  // Fallback: infer from message length and complexity
-  // R29-28 FIX: Only classify as task_create if message is sufficiently detailed
-  // Short messages are more likely to be queries
-  if (normalized.length > 12 && normalized.length <= 20) {
-    return [{ intentType: "task_create", confidence: 0.72 }];
+  const questionPatterns = /[?？]|^(?:what|why|how|when|where|who|which|is|are|can|could|would|should)\b|(?:是否|有没有|怎么|怎样|什么|为何|为啥|多少|哪个|哪一个)/i;
+  if (questionPatterns.test(message)) {
+    return [{ intentType: "task_query", confidence: 0.64 }];
   }
-  if (normalized.length > 20) {
-    return [{ intentType: "task_create", confidence: 0.75 }];
+
+  const requestPatterns = /(?:请|请你|帮我|麻烦|需要|想要|安排|执行|修复|排查|处理|run|fix|investigate|deploy|restart|rollback)/i;
+  if (requestPatterns.test(message) || (normalized.length > 20 && entityCount >= 4)) {
+    return [{ intentType: "task_create", confidence: normalized.length > 20 ? 0.68 : 0.65 }];
   }
-  return [{ intentType: "task_query", confidence: 0.60 }];
+
+  return [{ intentType: "task_query", confidence: normalized.length > 12 ? 0.62 : 0.60 }];
 }
 
 export interface ModelIntentParserPort {

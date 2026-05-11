@@ -9,10 +9,20 @@ export interface ChineseWallPolicy {
   readonly residualScanRequired?: boolean;
 }
 
+export interface ChineseWallConstraint {
+  readonly constraintId: string;
+  readonly policyId: string;
+  readonly requesterOrgNodeId: string;
+  readonly targetOrgNodeId: string;
+  readonly blockedGroupId: string | null;
+  readonly reasonCodes: readonly string[];
+}
+
 export interface ChineseWallDecision {
   readonly allowed: boolean;
   readonly blockedGroupId: string | null;
   readonly reasonCodes: readonly string[];
+  readonly constraint: ChineseWallConstraint | null;
 }
 
 export function evaluateChineseWallPolicy(
@@ -34,6 +44,9 @@ export function evaluateChineseWallPolicy(
           allowed: false,
           blockedGroupId: "reset_requires_compliance_officer",
           reasonCodes: ["knowledge_boundary.chinese_wall_reset_requires_compliance_officer"],
+          constraint: buildChineseWallConstraint(policy, requesterOrgNodeId, targetOrgNodeId, "reset_requires_compliance_officer", [
+            "knowledge_boundary.chinese_wall_reset_requires_compliance_officer",
+          ]),
         };
       }
       if (policy.coolDownUntil != null && Date.parse(nowIso) < Date.parse(policy.coolDownUntil)) {
@@ -41,6 +54,9 @@ export function evaluateChineseWallPolicy(
           allowed: false,
           blockedGroupId: "cool_down_active",
           reasonCodes: ["knowledge_boundary.chinese_wall_cool_down_active"],
+          constraint: buildChineseWallConstraint(policy, requesterOrgNodeId, targetOrgNodeId, "cool_down_active", [
+            "knowledge_boundary.chinese_wall_cool_down_active",
+          ]),
         };
       }
       if (policy.residualScanRequired && resetContext?.residualScanCompleted !== true) {
@@ -48,12 +64,16 @@ export function evaluateChineseWallPolicy(
           allowed: false,
           blockedGroupId: "residual_scan_required",
           reasonCodes: ["knowledge_boundary.chinese_wall_residual_scan_required"],
+          constraint: buildChineseWallConstraint(policy, requesterOrgNodeId, targetOrgNodeId, "residual_scan_required", [
+            "knowledge_boundary.chinese_wall_residual_scan_required",
+          ]),
         };
       }
       return {
         allowed: true,
         blockedGroupId: null,
         reasonCodes: ["knowledge_boundary.chinese_wall_expired_and_reset"],
+        constraint: null,
       };
     }
   }
@@ -63,6 +83,10 @@ export function evaluateChineseWallPolicy(
       allowed: false,
       blockedGroupId: "blocked_org_node",
       reasonCodes: ["knowledge_boundary.chinese_wall_blocked", "knowledge_boundary.blocked_org_node"],
+      constraint: buildChineseWallConstraint(policy, requesterOrgNodeId, targetOrgNodeId, "blocked_org_node", [
+        "knowledge_boundary.chinese_wall_blocked",
+        "knowledge_boundary.blocked_org_node",
+      ]),
     };
   }
 
@@ -72,6 +96,10 @@ export function evaluateChineseWallPolicy(
         allowed: false,
         blockedGroupId: groupId,
         reasonCodes: ["knowledge_boundary.chinese_wall_blocked", `knowledge_boundary.conflict_group:${groupId}`],
+        constraint: buildChineseWallConstraint(policy, requesterOrgNodeId, targetOrgNodeId, groupId, [
+          "knowledge_boundary.chinese_wall_blocked",
+          `knowledge_boundary.conflict_group:${groupId}`,
+        ]),
       };
     }
   }
@@ -79,5 +107,23 @@ export function evaluateChineseWallPolicy(
     allowed: true,
     blockedGroupId: null,
     reasonCodes: ["knowledge_boundary.chinese_wall_clear"],
+    constraint: null,
+  };
+}
+
+function buildChineseWallConstraint(
+  policy: ChineseWallPolicy,
+  requesterOrgNodeId: string,
+  targetOrgNodeId: string,
+  blockedGroupId: string | null,
+  reasonCodes: readonly string[],
+): ChineseWallConstraint {
+  return {
+    constraintId: `${policy.policyId}:${requesterOrgNodeId}:${targetOrgNodeId}:${blockedGroupId ?? "clear"}`,
+    policyId: policy.policyId,
+    requesterOrgNodeId,
+    targetOrgNodeId,
+    blockedGroupId,
+    reasonCodes,
   };
 }

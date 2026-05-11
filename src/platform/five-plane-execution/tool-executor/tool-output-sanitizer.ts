@@ -15,9 +15,10 @@
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
-// Matches ANSI escape sequences: \u001b[ followed by digits and semicolons, ending with m
+// Matches ANSI/VT100 escape sequences including CSI cursor controls, OSC titles,
+// and single-character ESC sequences.
 // eslint-disable-next-line no-control-regex
-const ANSI_REGEX = /\u001b\[[0-9;]*m/g;
+const ANSI_REGEX = /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001B]*(?:\u0007|\u001B\\)|[@-Z\\-_])/g;
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const toolOutputSanitizerLogger = new StructuredLogger({ retentionLimit: 100 });

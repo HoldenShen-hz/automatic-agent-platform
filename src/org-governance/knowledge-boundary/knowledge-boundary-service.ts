@@ -82,12 +82,13 @@ export class KnowledgeBoundaryService {
   }): KnowledgeAccessDecision {
     const occurredAt = input.occurredAt ?? nowIso();
     const chineseWallDecision = input.chineseWallPolicy == null
-      ? { allowed: true, reasonCodes: ["knowledge_boundary.no_chinese_wall"] }
+      ? { allowed: true, reasonCodes: ["knowledge_boundary.no_chinese_wall"], blockedGroupId: null, constraint: null }
       : evaluateChineseWallPolicy(input.chineseWallPolicy, input.requesterOrgNodeId, input.boundary.ownerOrgNodeId);
     const dynamicPolicyReasons: string[] = [];
     const dynamicPolicyAllowed = this.evaluateDynamicPolicy(
       input.dynamicPolicy,
       input.requesterId,
+      input.requesterOrgNodeId,
       input.purpose,
       input.grants,
       input.boundary.boundaryId,
@@ -158,6 +159,7 @@ export class KnowledgeBoundaryService {
   private evaluateDynamicPolicy(
     policy: DynamicKnowledgeIsolationPolicy | undefined,
     requesterId: string,
+    requesterOrgNodeId: string,
     purpose: string,
     grants: readonly KnowledgeShareGrant[],
     boundaryId: string,
@@ -175,7 +177,11 @@ export class KnowledgeBoundaryService {
       return false;
     }
     if (policy.requiredGrantBoundaryIds != null && policy.requiredGrantBoundaryIds.length > 0) {
-      const grantedBoundaryIds = new Set(grants.filter((grant) => grant.boundaryId === boundaryId).map((grant) => grant.boundaryId));
+      const grantedBoundaryIds = new Set(
+        grants
+          .filter((grant) => grant.requesterOrgNodeId === requesterOrgNodeId)
+          .map((grant) => grant.boundaryId),
+      );
       const missingRequiredGrant = policy.requiredGrantBoundaryIds.some((grantBoundaryId) => !grantedBoundaryIds.has(grantBoundaryId));
       if (missingRequiredGrant) {
         reasonCodes.push(`knowledge_boundary.required_grant_missing:${policy.policyId}`);

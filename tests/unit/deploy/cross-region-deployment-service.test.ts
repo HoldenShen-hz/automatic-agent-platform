@@ -624,6 +624,54 @@ test("CrossRegionDeploymentService records health history", () => {
   }
 });
 
+test("CrossRegionDeploymentService marks remaining failover steps skipped after a failure", () => {
+  const harness = createHarness("aa-cross-region-failover-skip-");
+  try {
+    const service = new CrossRegionDeploymentService(harness.db);
+
+    service.registerRegion({
+      regionId: "skip-source",
+      name: "Source",
+      endpoint: "https://skip-source.example.com",
+      status: "active",
+      priority: 1,
+      weight: 100,
+      latencyMs: 50,
+      healthScore: 95,
+      maxConcurrency: 1000,
+      currentLoad: 100,
+      metadata: null,
+    });
+
+    service.registerRegion({
+      regionId: "skip-target",
+      name: "Target",
+      endpoint: "https://skip-target.example.com",
+      status: "active",
+      priority: 2,
+      weight: 80,
+      latencyMs: 80,
+      healthScore: 90,
+      maxConcurrency: 800,
+      currentLoad: 20,
+      metadata: null,
+    });
+
+    const plan = service.initiateFailover("skip-source", "manual", "skip-target");
+    assert.ok(plan, "Should create failover plan");
+
+    const updated = service.completeFailoverStep(plan!.planId, "drain_traffic", false, "drain failed");
+    assert.equal(updated, true);
+
+    const storedPlan = service.getFailoverPlan(plan!.planId);
+    assert.equal(storedPlan?.status, "failed");
+    assert.equal(storedPlan?.steps[0]?.status, "failed");
+    assert.ok(storedPlan?.steps.slice(1).every((step) => step.status === "skipped"));
+  } finally {
+    cleanupPath(harness.workspace);
+  }
+});
+
 test("CrossRegionDeploymentService getEffectiveWeights filters expired", () => {
   const harness = createHarness("aa-cross-region-weights-");
   try {

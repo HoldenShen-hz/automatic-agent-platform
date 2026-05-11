@@ -59,7 +59,7 @@ test("OrgChartRoutingStrategy selects active node", () => {
   assert.equal(selected?.orgNodeId, "n1");
 });
 
-test("OrgChartRoutingStrategy returns first node when no match", () => {
+test("OrgChartRoutingStrategy returns null when no matching org node exists", () => {
   const strategy = new OrgChartRoutingStrategy();
   const nodes = [
     { orgNodeId: "n1", nodeType: "team" as const, active: true, ownerUserIds: ["owner1"] },
@@ -70,8 +70,7 @@ test("OrgChartRoutingStrategy returns first node when no match", () => {
     riskLevel: "low",
   });
   const selected = strategy.selectNode(nodes, request);
-  assert.ok(selected != null);
-  assert.equal(selected?.orgNodeId, "n1");
+  assert.equal(selected, null);
 });
 
 test("AmountBasedRoutingStrategy uses threshold rules", () => {

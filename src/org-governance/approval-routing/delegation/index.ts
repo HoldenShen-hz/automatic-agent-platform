@@ -21,16 +21,23 @@ export function resolveDelegatedApprover(
   orgNodeId: string,
   nowIso: string,
 ): string {
-  const match = delegations.find((item) =>
-    item.active
-    && item.approverId === approverId
-    && item.startsAt <= nowIso
-    && item.expiresAt >= nowIso
-    && (item.scopeNodeIds.length === 0 || item.scopeNodeIds.includes(orgNodeId))
-    && (
-      item.delegationType !== "peer_cover"
-      || (item.coiReviewStatus === "passed"
-        && !item.conflictOfInterestApproverIds.includes(item.delegateApproverId))
-    ));
+  const nowMs = Date.parse(nowIso);
+  const match = delegations.find((item) => {
+    const startsAtMs = Date.parse(item.startsAt);
+    const expiresAtMs = Date.parse(item.expiresAt);
+    return item.active
+      && item.approverId === approverId
+      && Number.isFinite(nowMs)
+      && Number.isFinite(startsAtMs)
+      && Number.isFinite(expiresAtMs)
+      && startsAtMs <= nowMs
+      && expiresAtMs >= nowMs
+      && (item.scopeNodeIds.length === 0 || item.scopeNodeIds.includes(orgNodeId))
+      && (
+        item.delegationType !== "peer_cover"
+        || (item.coiReviewStatus === "passed"
+          && !item.conflictOfInterestApproverIds.includes(item.delegateApproverId))
+      );
+  });
   return match?.delegateApproverId ?? approverId;
 }

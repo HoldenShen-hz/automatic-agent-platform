@@ -74,13 +74,13 @@ export class DelegatedGovernanceService {
 
     // Platform team guardrails apply to all roles - collect all applicable guardrails
     const allGuardrails: Guardrail[] = [];
+    const applicableOrgNodeIds = new Set([ctx.orgNodeId, ...(ctx.orgLineageNodeIds ?? [])]);
     for (const delegation of this.delegations) {
       if (delegation.status !== "active") continue;
-      if (delegation.grantorId !== "platform_team") continue;
 
       const orgNodeIds = delegation.orgNodeIds ?? [];
       const domainIds = delegation.domainIds ?? [];
-      const orgMatch = orgNodeIds.length === 0 || orgNodeIds.includes(ctx.orgNodeId);
+      const orgMatch = orgNodeIds.length === 0 || orgNodeIds.some((orgNodeId) => applicableOrgNodeIds.has(orgNodeId));
       const domainMatch = domainIds.length === 0 || (ctx.domainId != null && domainIds.includes(ctx.domainId));
 
       if (orgMatch && domainMatch) {
@@ -93,7 +93,11 @@ export class DelegatedGovernanceService {
     const reasons: string[] = [];
 
     for (const guardrail of allGuardrails) {
-      if (attemptedValue === undefined) continue;
+      if (attemptedValue === undefined) {
+        violatedGuardrails.push(guardrail.guardrailId);
+        reasons.push(`Guardrail ${guardrail.guardrailId} requires an attempted value`);
+        continue;
+      }
 
       const result = evaluateGuardrail(guardrail, attemptedValue);
       if (!result.allowed) {
@@ -188,6 +192,9 @@ export class DelegatedGovernanceService {
 
       case "delete":
         // Only the role that set it can delete (must check grantorId)
+        if (childIndex > parentIndex) {
+          return { allowed: false, reason: "Cannot delete parent role constraints" };
+        }
         return { allowed: true, reason: "Delete subject to ownership check" };
 
       default:

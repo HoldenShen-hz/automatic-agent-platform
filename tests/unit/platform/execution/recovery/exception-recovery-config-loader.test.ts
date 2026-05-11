@@ -340,6 +340,31 @@ test("loadExceptionRecoveryConfig loads from custom path", () => {
   }
 });
 
+test("loadExceptionRecoveryConfig caches custom and default paths independently", () => {
+  clearExceptionRecoveryConfigCache();
+
+  const tmpDir = mkdtempSync(resolve(tmpdir(), "exception-recovery-cache-test-"));
+  const customConfigPath = resolve(tmpDir, "custom-exception-recovery.json");
+
+  const customConfig = {
+    ...loadExceptionRecoveryConfig(),
+    heartbeatTimeoutMs: 12345,
+  };
+  writeFileSync(customConfigPath, JSON.stringify(customConfig), "utf-8");
+
+  try {
+    const loadedCustom = loadExceptionRecoveryConfig(customConfigPath);
+    const loadedDefault = loadExceptionRecoveryConfig();
+
+    assert.equal(loadedCustom.heartbeatTimeoutMs, 12345);
+    assert.notEqual(loadedDefault.heartbeatTimeoutMs, 12345);
+    assert.notEqual(loadedCustom, loadedDefault);
+  } finally {
+    clearExceptionRecoveryConfigCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("provider_error has correct defaults", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();

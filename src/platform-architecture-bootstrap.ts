@@ -45,6 +45,8 @@ export interface PlatformArchitectureServices {
   summary: PlatformArchitectureBootstrapSummary;
 }
 
+const registeredArchitectureCatalogs = new WeakSet<ServiceRegistry>();
+
 export const PLATFORM_LAYER_MANIFESTS: readonly PlatformLayerManifest[] = Object.freeze([
   {
     layerId: "platform",
@@ -179,22 +181,25 @@ export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectur
 }
 
 export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
-  registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
-    init: () => PLATFORM_LAYER_MANIFESTS,
-  });
-  registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
-    init: () => PLATFORM_PLANE_MANIFESTS,
-  });
-  registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
-    init: () => Object.freeze([...listPlatformApps()]),
-  });
-  registry.register<readonly PlatformStartupTarget[]>("architecture.startup-targets", {
-    init: () => Object.freeze([...buildPlatformStartupTargets()]),
-  });
-  registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
-    init: () => buildPlatformArchitectureBootstrapSummary(),
-    dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
-  });
+  if (!registeredArchitectureCatalogs.has(registry)) {
+    registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
+      init: () => PLATFORM_LAYER_MANIFESTS,
+    });
+    registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
+      init: () => PLATFORM_PLANE_MANIFESTS,
+    });
+    registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
+      init: () => Object.freeze([...listPlatformApps()]),
+    });
+    registry.register<readonly PlatformStartupTarget[]>("architecture.startup-targets", {
+      init: () => Object.freeze([...buildPlatformStartupTargets()]),
+    });
+    registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
+      init: () => buildPlatformArchitectureBootstrapSummary(),
+      dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
+    });
+    registeredArchitectureCatalogs.add(registry);
+  }
 
   // Keep registration lazy: callers that only want wiring should not force eager initialization.
   const layers = PLATFORM_LAYER_MANIFESTS;

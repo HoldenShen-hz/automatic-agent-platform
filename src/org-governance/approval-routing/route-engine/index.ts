@@ -81,6 +81,9 @@ export interface ApprovalRouteDecision {
 
 export type ApprovalRouteRequest = z.infer<typeof ApprovalRouteRequestSchema>;
 
+const DEFAULT_USD_TO_CNY_RATE = 7.2;
+const DEFAULT_FX_SNAPSHOT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
 export interface AmountThresholdRule {
   readonly maxAmountCny?: number;
   readonly maxAmountUsd?: number;
@@ -98,7 +101,6 @@ export class OrgChartRoutingStrategy implements RoutingStrategy {
   public selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null {
     return nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
       ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
-      ?? nodes[0]
       ?? null;
   }
 }
@@ -119,8 +121,10 @@ export function resolveAmountRoute(
   rules: readonly AmountThresholdRule[],
   fxSnapshot: ApprovalFxSnapshot | null = null,
 ): OrgNode | null {
-  const normalizedAmount = normalizeApprovalAmount(request);
-  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item, fxSnapshot)) ?? null;
+  const normalizedRequest = ApprovalRouteRequestSchema.parse(request);
+  const normalizedAmount = normalizeApprovalAmount(normalizedRequest);
+  const thresholdFxSnapshot = fxSnapshot ?? normalizedAmount.fxSnapshot;
+  const matchedRule = rules.find((item) => normalizedAmount.amountCny <= normalizeThresholdCny(item, thresholdFxSnapshot)) ?? null;
   if (!matchedRule) {
     return nodes.find((item) => item.nodeType === "company") ?? null;
   }
@@ -128,7 +132,7 @@ export function resolveAmountRoute(
   return nodes.find((item) =>
     matchedRule.targetNodeTypes.includes(item.nodeType)
     && item.active
-    && (item.orgNodeId === request.orgNodeId || item.parentOrgNodeId === request.orgNodeId),
+    && (item.orgNodeId === normalizedRequest.orgNodeId || item.parentOrgNodeId === normalizedRequest.orgNodeId),
   ) ?? nodes.find((item) => matchedRule.targetNodeTypes.includes(item.nodeType) && item.active) ?? null;
 }
 
@@ -281,46 +285,53 @@ export function resolveApprovalRoute(
   amountRules: readonly AmountThresholdRule[] = [],
   routingMode: ApprovalRoutingMode = "linear",
 ): ApprovalRouteDecision {
+  const normalizedRequest = ApprovalRouteRequestSchema.parse(request);
+  const requestedNode = nodes.find((item) => item.orgNodeId === normalizedRequest.orgNodeId) ?? null;
+  if (requestedNode == null) {
+    throw new Error(`approval_route.org_node_not_found:${normalizedRequest.orgNodeId}`);
+  }
   const strategies: RoutingStrategy[] = amountRules.length > 0
     ? [new AmountBasedRoutingStrategy(amountRules), new OrgChartRoutingStrategy()]
     : [new OrgChartRoutingStrategy()];
-  const strategy = strategies.find((item) => item.selectNode(nodes, request) != null) ?? strategies[0] ?? new OrgChartRoutingStrategy();
-  const matched = strategy.selectNode(nodes, request)
-    ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
-    ?? nodes[0];
+  const strategy = strategies.find((item) => item.selectNode(nodes, normalizedRequest) != null) ?? strategies[0] ?? new OrgChartRoutingStrategy();
+  const matched = strategy.selectNode(nodes, normalizedRequest)
+    ?? requestedNode;
   const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
 
   // R9-33: Use mode-aware resolution for parallel/countersign support
-  const resolved = resolveApprovalRouteWithMode(nodes, request, delegationMap, routingMode);
+  const resolved = resolveApprovalRouteWithMode(nodes, normalizedRequest, delegationMap, routingMode);
   const approverChain = resolved.linearizedChain;
-  const amount = normalizeApprovalAmount(request);
+  if (approverChain.length === 0) {
+    throw new Error(`approval_route.empty_approver_chain:${matched?.orgNodeId ?? normalizedRequest.orgNodeId}`);
+  }
+  const amount = normalizeApprovalAmount(normalizedRequest);
   const matchedBoundary = matched?.legalEntityBoundary ?? null;
-  const requesterBoundary = nodes.find((item) => item.orgNodeId === request.orgNodeId)?.legalEntityBoundary ?? null;
+  const requesterBoundary = requestedNode.legalEntityBoundary ?? null;
   const legalEntityApprovalRoles = requiresLegalEntityApproval(requesterBoundary, matchedBoundary)
     ? getLegalEntityApprovalRoles(requesterBoundary, matchedBoundary)
     : [];
   const routeSnapshot: ApprovalRouteSnapshot = {
-    snapshotId: `approval_route_snapshot:${request.requesterId}:${matched?.orgNodeId ?? request.orgNodeId}:${strategy.strategyId}`,
+    snapshotId: `approval_route_snapshot:${normalizedRequest.requesterId}:${matched?.orgNodeId ?? normalizedRequest.orgNodeId}:${strategy.strategyId}`,
     createdAt: amount.fxSnapshot?.capturedAt ?? "1970-01-01T00:00:00.000Z",
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // R5-35: 24h default expiry
-    orgVersion: request.orgVersion,
-    policyVersion: request.policyVersion,
-    requesterId: request.requesterId,
-    matchedOrgNodeId: matched?.orgNodeId ?? request.orgNodeId,
+    orgVersion: normalizedRequest.orgVersion,
+    policyVersion: normalizedRequest.policyVersion,
+    requesterId: normalizedRequest.requesterId,
+    matchedOrgNodeId: matched?.orgNodeId ?? normalizedRequest.orgNodeId,
     routingStrategy: strategy.strategyId,
     approverIds: approverChain,
     amount,
-    evidenceRefs: request.evidenceRefs,
+    evidenceRefs: normalizedRequest.evidenceRefs,
     sodSnapshot: {
-      requesterManagerIds: request.requesterManagerIds ?? [],
+      requesterManagerIds: normalizedRequest.requesterManagerIds ?? [],
       blockedApproverIds: delegatedChain.filter((approverId) => !approverChain.includes(approverId)),
-      budgetOwnerId: request.budgetOwnerId ?? null,
-      executionOwnerId: request.executionOwnerId ?? request.requesterId,
+      budgetOwnerId: normalizedRequest.budgetOwnerId ?? null,
+      executionOwnerId: normalizedRequest.executionOwnerId ?? normalizedRequest.requesterId,
     },
     coiSnapshot: {
-      conflictedApproverIds: request.conflictedApproverIds ?? [],
-      blockedApproverIds: (request.conflictedApproverIds ?? []).filter((approverId) => delegatedChain.includes(approverId)),
+      conflictedApproverIds: normalizedRequest.conflictedApproverIds ?? [],
+      blockedApproverIds: (normalizedRequest.conflictedApproverIds ?? []).filter((approverId) => delegatedChain.includes(approverId)),
     },
     legalEntityApprovalRoles,
     // R9-33: Include routing mode in snapshot
@@ -328,7 +339,7 @@ export function resolveApprovalRoute(
     routeGraph: resolved.routeGraph,
   };
   return {
-    matchedOrgNodeId: matched?.orgNodeId ?? request.orgNodeId,
+    matchedOrgNodeId: matched?.orgNodeId ?? normalizedRequest.orgNodeId,
     approverChain,
     delegated: delegatedChain.some((item, index) => item !== ownerChain[index]),
     routingStrategy: strategy.strategyId,
@@ -378,10 +389,6 @@ export function revalidateApprovalRoute(
   };
 }
 
-// R9-34: Configurable default FX rate for USD->CNY conversion
-// This can be overridden via RouteEngineOptions.defaultFxRateUsdToCny
-const DEFAULT_USD_TO_CNY_RATE = 7.2;
-
 /**
  * R9-34: Route engine configuration options
  */
@@ -395,7 +402,7 @@ export interface RouteEngineOptions {
 function normalizeThresholdCny(
   rule: AmountThresholdRule,
   fxSnapshot: ApprovalFxSnapshot | null = null,
-  defaultFxRate: number = DEFAULT_USD_TO_CNY_RATE,
+  defaultFxRate: number = getDefaultFxRateUsdToCny(),
 ): number {
   if (rule.maxAmountCny != null) {
     return rule.maxAmountCny;
@@ -410,7 +417,7 @@ function normalizeThresholdCny(
 
 function normalizeApprovalAmount(
   request: ApprovalRouteRequest,
-  defaultFxRate: number = DEFAULT_USD_TO_CNY_RATE,
+  defaultFxRate: number = getDefaultFxRateUsdToCny(),
 ): ApprovalAmountSnapshot {
   if (request.amount != null) {
     const currency = request.amount.currency.toUpperCase();
@@ -425,20 +432,22 @@ function normalizeApprovalAmount(
     if (request.amount.fxRateSnapshot == null) {
       throw new Error(`approval_route.fx_snapshot_required:${currency}`);
     }
+    const validatedSnapshot = validateFxSnapshot(request.amount.fxRateSnapshot);
     return {
       originalValue: request.amount.value,
       originalCurrency: currency,
-      amountCny: request.amount.value * request.amount.fxRateSnapshot.rate,
+      amountCny: request.amount.value * validatedSnapshot.rate,
       fxSnapshot: {
-        baseCurrency: request.amount.fxRateSnapshot.baseCurrency.toUpperCase(),
+        baseCurrency: validatedSnapshot.baseCurrency,
         quoteCurrency: "CNY",
-        rate: request.amount.fxRateSnapshot.rate,
-        source: request.amount.fxRateSnapshot.source,
-        capturedAt: request.amount.fxRateSnapshot.capturedAt,
+        rate: validatedSnapshot.rate,
+        source: validatedSnapshot.source,
+        capturedAt: validatedSnapshot.capturedAt,
       },
     };
   }
   const legacyAmountUsd = request.amountUsd ?? 0;
+  const provider = getFxRateProvider();
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
@@ -447,8 +456,55 @@ function normalizeApprovalAmount(
       baseCurrency: "USD",
       quoteCurrency: "CNY",
       rate: defaultFxRate,
-      source: "legacy_amount_usd_default",
+      source: provider.source,
       capturedAt: "1970-01-01T00:00:00.000Z",
+    },
+  };
+}
+
+function validateFxSnapshot(
+  snapshot: ApprovalFxSnapshot,
+  now: number = Date.now(),
+  maxAgeMs: number = DEFAULT_FX_SNAPSHOT_MAX_AGE_MS,
+): ApprovalFxSnapshot {
+  const capturedAtMs = Date.parse(snapshot.capturedAt);
+  if (!Number.isFinite(capturedAtMs)) {
+    throw new Error(`approval_route.fx_snapshot_invalid_captured_at:${snapshot.capturedAt}`);
+  }
+  if (now - capturedAtMs > maxAgeMs) {
+    throw new Error(`approval_route.fx_snapshot_stale:${snapshot.baseCurrency.toUpperCase()}`);
+  }
+  return {
+    baseCurrency: snapshot.baseCurrency.toUpperCase(),
+    quoteCurrency: "CNY",
+    rate: snapshot.rate,
+    source: snapshot.source,
+    capturedAt: snapshot.capturedAt,
+  };
+}
+
+function getDefaultFxRateUsdToCny(env: NodeJS.ProcessEnv = process.env): number {
+  const configured = env["APPROVAL_ROUTE_USD_CNY_RATE"]?.trim();
+  if (!configured) {
+    return DEFAULT_USD_TO_CNY_RATE;
+  }
+  const parsed = Number.parseFloat(configured);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_USD_TO_CNY_RATE;
+}
+
+export interface FxRateProvider {
+  readonly source: string;
+  getRate(baseCurrency: string, quoteCurrency: string): Promise<number>;
+}
+
+export function getFxRateProvider(env: NodeJS.ProcessEnv = process.env): FxRateProvider {
+  return {
+    source: env["APPROVAL_ROUTE_FX_RATE_SOURCE"]?.trim() || "legacy_amount_usd_default",
+    async getRate(baseCurrency: string, quoteCurrency: string): Promise<number> {
+      if (baseCurrency.toUpperCase() !== "USD" || quoteCurrency.toUpperCase() !== "CNY") {
+        throw new Error(`approval_route.fx_pair_unsupported:${baseCurrency}_${quoteCurrency}`);
+      }
+      return getDefaultFxRateUsdToCny(env);
     },
   };
 }

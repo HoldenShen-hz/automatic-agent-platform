@@ -21,6 +21,7 @@
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadOrphanCleanupCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
 import { OrphanCleanupService } from "../../platform/execution/execution-engine/orphan-cleanup-service.js";
 
 /**
@@ -32,6 +33,12 @@ import { OrphanCleanupService } from "../../platform/execution/execution-engine/
  */
 function main(): void {
   const envConfig = loadOrphanCleanupCliEnv();
+  if (envConfig.action === "repair" && !envConfig.confirmRepair) {
+    throw new ValidationError(
+      "orphan_cleanup.repair_requires_confirmation",
+      "orphan_cleanup.repair_requires_confirmation",
+    );
+  }
   const output = withCliStorage((storage) => {
     const cleanup = new OrphanCleanupService(storage.sql, storage.store);
     return envConfig.action === "repair"

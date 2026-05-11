@@ -264,6 +264,15 @@ export function getLayerPriority(layer: SixLayerMemoryType): number {
 export class LayerTransitionService {
   public constructor(private readonly rules: readonly LayerTransitionRule[] = DEFAULT_SIX_LAYER_TRANSITION_RULES) {}
 
+  private resolveLayerAgeAnchor(memory: MemoryRecord): Date {
+    const createdAt = new Date(memory.createdAt);
+    const lastAccessedAt = memory.lastAccessedAt == null ? null : new Date(memory.lastAccessedAt);
+    if (lastAccessedAt != null && Number.isFinite(lastAccessedAt.getTime()) && lastAccessedAt > createdAt) {
+      return lastAccessedAt;
+    }
+    return createdAt;
+  }
+
   /**
    * Evaluates whether a memory can transition to the next layer
    */
@@ -310,9 +319,12 @@ export class LayerTransitionService {
     }
 
     // Check age threshold
-    const createdAt = new Date(memory.createdAt);
     const evaluated = new Date(evaluatedAt);
-    const ageHours = (evaluated.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+    // Fail closed on recent mutations/accesses: when we do not track an explicit
+    // "entered current layer at" timestamp, the newest observable timestamp is the
+    // safest proxy for time-in-current-layer.
+    const layerAgeAnchor = this.resolveLayerAgeAnchor(memory);
+    const ageHours = (evaluated.getTime() - layerAgeAnchor.getTime()) / (1000 * 60 * 60);
     if (ageHours < rule.minAgeHours) {
       blockers.push(`age ${ageHours.toFixed(2)}h < ${rule.minAgeHours}h`);
     }

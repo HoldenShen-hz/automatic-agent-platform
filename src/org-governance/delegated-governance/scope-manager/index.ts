@@ -16,6 +16,7 @@ export interface GovernanceOperationContext {
   readonly actorId?: string;
   readonly actorRole: "platform_team" | "division_admin" | "department_admin" | "team_lead";
   readonly orgNodeId: string;
+  readonly orgLineageNodeIds?: readonly string[];
   readonly domainId?: string;
 }
 

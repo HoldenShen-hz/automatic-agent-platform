@@ -677,7 +677,9 @@ export class AutoStopLossService {
         triggerReason,
         ...(context !== undefined ? { context } : {}),
       });
-      // Note: do NOT recordEvent or set lastExecutionTime here - those fire only after human approval
+      // Persist the pending event immediately so approvals can be listed and resolved later.
+      // Do not update cooldown or hourly execution counters until human approval succeeds.
+      this.recordEvent(event);
       return event;
     }
 
@@ -786,12 +788,16 @@ export class AutoStopLossService {
 
     // Update rate limit counters (reset hourly via hour key)
     if (playbookId) {
-      const hourKey = this.getHourKey();
-      this.pruneExecutionCounts(hourKey);
-      const countKey = `${playbookId}_${hourKey}`;
-      const currentCount = this.executionCounts.get(countKey) ?? 0;
-      this.executionCounts.set(countKey, currentCount + 1);
+      this.incrementExecutionCount(playbookId);
     }
+  }
+
+  private incrementExecutionCount(playbookId: string): void {
+    const hourKey = this.getHourKey();
+    this.pruneExecutionCounts(hourKey);
+    const countKey = `${playbookId}_${hourKey}`;
+    const currentCount = this.executionCounts.get(countKey) ?? 0;
+    this.executionCounts.set(countKey, currentCount + 1);
   }
 
   private pruneExecutionCounts(currentHourKey: string): void {
@@ -857,7 +863,7 @@ export class AutoStopLossService {
       } else {
         delete event.errorMessage;
       }
-      this.recordEvent(event, pendingExecution.playbook.id);
+      this.incrementExecutionCount(pendingExecution.playbook.id);
       this.lastExecutionTime.set(pendingExecution.playbook.id, this.now().getTime());
       this.pendingApprovals.delete(eventId);
       return true;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useTasksQuery, useTaskDetailQuery } from "@aa/shared-state";
+import { useMutation, useTasksQuery } from "@aa/shared-state";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 import { createRESTClient } from "@aa/shared-api-client";
 
@@ -57,17 +57,23 @@ export function useTaskCockpitVm(): TaskCockpitVm {
   const baseVm = useMemo(() => mapTasksToVm(tasks), [tasks]);
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
 
-  function updateSelected(transform: (task: TaskDTO) => TaskDTO, title: string, description: string): void {
+  function updateSelected(transform: (task: TaskDTO) => TaskDTO, title: string, description: string): (() => void) | undefined {
     if (selectedTask == null) {
-      return;
+      return undefined;
     }
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
     setTasks((current) => current.map((task) => task.id === selectedTask.id ? transform(task) : task));
     setTimelineItems((current) => [{ title, description }, ...current]);
+    return () => {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+    };
   }
 
   const claimTask = useCallback(async (operator: string) => {
     if (selectedTask == null) return;
-    updateSelected(
+    const rollback = updateSelected(
       (task) => ({ ...task, owner: operator, status: "running" }),
       `Takeover · ${selectedTask.title}`,
       `${operator} claimed the task and resumed ownership.`,
@@ -77,16 +83,19 @@ export function useTaskCockpitVm(): TaskCockpitVm {
         { taskId: selectedTask.id, body: { owner: operator, status: "running" } },
         {
           onSuccess: () => resolve(),
-          onError: (err) => reject(err),
+          onError: (err) => {
+            rollback?.();
+            reject(err);
+          },
         },
       );
     });
-  }, [selectedTask, updateTaskMutate]);
+  }, [selectedTask, tasks, timelineItems, updateTaskMutate]);
 
   const resumeTask = useCallback(async (mode: "normal" | "supervised") => {
     if (selectedTask == null) return;
     const step = mode === "supervised" ? "supervised-resume" : "resume";
-    updateSelected(
+    const rollback = updateSelected(
       (task) => ({ ...task, status: "running", currentStep: step }),
       `Resume · ${selectedTask.title}`,
       `${mode} mode resume was requested through HITL.`,
@@ -96,16 +105,19 @@ export function useTaskCockpitVm(): TaskCockpitVm {
         { taskId: selectedTask.id, body: { status: "running", currentStep: step } },
         {
           onSuccess: () => resolve(),
-          onError: (err) => reject(err),
+          onError: (err) => {
+            rollback?.();
+            reject(err);
+          },
         },
       );
     });
-  }, [selectedTask, updateTaskMutate]);
+  }, [selectedTask, tasks, timelineItems, updateTaskMutate]);
 
   const escalateTask = useCallback(async (target: string) => {
     if (selectedTask == null) return;
     const step = `escalated:${target}`;
-    updateSelected(
+    const rollback = updateSelected(
       (task) => ({ ...task, status: "blocked", currentStep: step }),
       `Escalated · ${selectedTask.title}`,
       `Task was escalated to ${target} for review.`,
@@ -115,11 +127,14 @@ export function useTaskCockpitVm(): TaskCockpitVm {
         { taskId: selectedTask.id, body: { status: "blocked", currentStep: step } },
         {
           onSuccess: () => resolve(),
-          onError: (err) => reject(err),
+          onError: (err) => {
+            rollback?.();
+            reject(err);
+          },
         },
       );
     });
-  }, [selectedTask, updateTaskMutate]);
+  }, [selectedTask, tasks, timelineItems, updateTaskMutate]);
 
   const fetchTaskDrillDown = useCallback(async (taskId: string) => {
     try {

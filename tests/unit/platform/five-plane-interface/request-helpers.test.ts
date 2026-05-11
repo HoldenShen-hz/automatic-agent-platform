@@ -26,16 +26,16 @@ test("matchRoute parses path with multiple segments", () => {
   const request = makeRequest({ url: "/api/v1/tasks" });
   const result = matchRoute(request);
   assert.ok(result != null);
-  assert.equal(result.pathname, "/api/v1/tasks");
-  assert.deepEqual(result.segments, ["api", "v1", "tasks"]);
+  assert.equal(result.pathname, "/v1/tasks");
+  assert.deepEqual(result.segments, ["v1", "tasks"]);
 });
 
 test("matchRoute parses path with task ID", () => {
   const request = makeRequest({ url: "/api/v1/tasks/task_abc123" });
   const result = matchRoute(request);
   assert.ok(result != null);
-  assert.equal(result.pathname, "/api/v1/tasks/task_abc123");
-  assert.deepEqual(result.segments, ["api", "v1", "tasks", "task_abc123"]);
+  assert.equal(result.pathname, "/v1/tasks/task_abc123");
+  assert.deepEqual(result.segments, ["v1", "tasks", "task_abc123"]);
 });
 
 test("matchRoute parses root path", () => {
@@ -50,8 +50,8 @@ test("matchRoute parses path with query string", () => {
   const request = makeRequest({ url: "/api/v1/tasks?limit=10&cursor=abc" });
   const result = matchRoute(request);
   assert.ok(result != null);
-  assert.equal(result.pathname, "/api/v1/tasks");
-  assert.deepEqual(result.segments, ["api", "v1", "tasks"]);
+  assert.equal(result.pathname, "/v1/tasks");
+  assert.deepEqual(result.segments, ["v1", "tasks"]);
 });
 
 test("matchRoute returns null for unsupported methods", () => {
@@ -65,21 +65,21 @@ test("matchRoute returns null for unsupported methods", () => {
   assert.ok(matchRoute(requestOPTIONS) != null, "OPTIONS should return route");
 
   const requestDELETE = makeRequest({ method: "DELETE", url: "/api/v1/tasks" });
-  assert.equal(matchRoute(requestDELETE), null, "DELETE should return null");
+  assert.ok(matchRoute(requestDELETE) != null, "DELETE should return route");
 
   const requestPATCH = makeRequest({ method: "PATCH", url: "/api/v1/tasks" });
-  assert.equal(matchRoute(requestPATCH), null, "PATCH should return null");
+  assert.ok(matchRoute(requestPATCH) != null, "PATCH should return route");
 
   const requestPUT = makeRequest({ method: "PUT", url: "/api/v1/tasks" });
-  assert.equal(matchRoute(requestPUT), null, "PUT should return null");
+  assert.ok(matchRoute(requestPUT) != null, "PUT should return route");
 });
 
 test("matchRoute handles path without leading slash", () => {
   const request = makeRequest({ url: "api/v1/tasks" });
   const result = matchRoute(request);
   assert.ok(result != null);
-  assert.equal(result.pathname, "/api/v1/tasks");
-  assert.deepEqual(result.segments, ["api", "v1", "tasks"]);
+  assert.equal(result.pathname, "/v1/tasks");
+  assert.deepEqual(result.segments, ["v1", "tasks"]);
 });
 
 test("normalizeHeaders lowercases header names", () => {
@@ -149,7 +149,7 @@ test("matchRoute normalizes URL with trailing slash", () => {
   const request = makeRequest({ url: "/api/v1/tasks/" });
   const result = matchRoute(request);
   assert.ok(result != null);
-  assert.equal(result.pathname, "/api/v1/tasks/");
+  assert.equal(result.pathname, "/v1/tasks/");
   // Trailing empty segment is filtered out
-  assert.deepEqual(result.segments, ["api", "v1", "tasks"]);
+  assert.deepEqual(result.segments, ["v1", "tasks"]);
 });

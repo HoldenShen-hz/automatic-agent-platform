@@ -62,6 +62,22 @@ export interface ExecutionResourceUsage {
   recordedAt: string;
 }
 
+export interface ExecutionOutcomeSample {
+  executionId: string;
+  tenantId: string;
+  succeeded: boolean;
+  occurredAt: string;
+  failureCode?: string | null;
+}
+
+export interface TenantAutoIsolationDecision {
+  tenantId: string;
+  triggered: boolean;
+  failureRate: number;
+  sampleCount: number;
+  reasonCode: string;
+}
+
 // ── DDL ────────────────────────────────────────────────────────────────
 
 export const TENANT_ISOLATION_DDL = `
@@ -101,6 +117,16 @@ CREATE TABLE IF NOT EXISTS execution_resource_usage (
 );
 CREATE INDEX IF NOT EXISTS idx_resource_usage_tenant ON execution_resource_usage(tenant_id, recorded_at);
 
+CREATE TABLE IF NOT EXISTS execution_outcome_samples (
+  id TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  succeeded INTEGER NOT NULL,
+  failure_code TEXT NULL,
+  occurred_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_execution_outcome_samples_tenant ON execution_outcome_samples(tenant_id, occurred_at);
+
 CREATE TABLE IF NOT EXISTS noisy_neighbor_signals (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
@@ -121,6 +147,9 @@ export interface TenantExecutionIsolationOptions {
   noisyNeighborThreshold?: number; // Score 0-100
   quotaWarningPercent?: number;
   quotaCriticalPercent?: number;
+  failureRateThreshold?: number;
+  minSampleSize?: number;
+  failureWindowSeconds?: number;
 }
 
 /**
@@ -132,6 +161,9 @@ export class TenantExecutionIsolationService {
   private readonly noisyNeighborThreshold: number;
   private readonly quotaWarningPercent: number;
   private readonly quotaCriticalPercent: number;
+  private readonly failureRateThreshold: number;
+  private readonly minSampleSize: number;
+  private readonly failureWindowSeconds: number;
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -140,6 +172,9 @@ export class TenantExecutionIsolationService {
     this.noisyNeighborThreshold = options?.noisyNeighborThreshold ?? 80;
     this.quotaWarningPercent = options?.quotaWarningPercent ?? 70;
     this.quotaCriticalPercent = options?.quotaCriticalPercent ?? 90;
+    this.failureRateThreshold = options?.failureRateThreshold ?? 0.30;
+    this.minSampleSize = options?.minSampleSize ?? 20;
+    this.failureWindowSeconds = options?.failureWindowSeconds ?? 300;
   }
 
   // ── Quota Management ────────────────────────────────────────────────
@@ -171,24 +206,32 @@ export class TenantExecutionIsolationService {
    * Retrieves a specific quota for a tenant.
    */
   getQuota(tenantId: string, quotaKind: QuotaKind): TenantQuota | null {
-    const row = this.db.connection
-      .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? AND quota_kind = ?`)
-      .get(tenantId, quotaKind) as RawRow | undefined;
-    return row ? this.mapQuota(row) : null;
+    try {
+      const row = this.db.connection
+        .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? AND quota_kind = ?`)
+        .get(tenantId, quotaKind) as RawRow | undefined;
+      return row ? this.mapQuota(row) : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Lists all quotas, optionally filtered by tenant.
    */
   listQuotas(tenantId?: string): TenantQuota[] {
-    if (tenantId) {
+    try {
+      if (tenantId) {
+        return (this.db.connection
+          .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? ORDER BY quota_kind`)
+          .all(tenantId) as RawRow[]).map((r) => this.mapQuota(r));
+      }
       return (this.db.connection
-        .prepare(`SELECT * FROM tenant_quotas WHERE tenant_id = ? ORDER BY quota_kind`)
-        .all(tenantId) as RawRow[]).map((r) => this.mapQuota(r));
+        .prepare(`SELECT * FROM tenant_quotas ORDER BY tenant_id, quota_kind`)
+        .all() as RawRow[]).map((r) => this.mapQuota(r));
+    } catch {
+      return [];
     }
-    return (this.db.connection
-      .prepare(`SELECT * FROM tenant_quotas ORDER BY tenant_id, quota_kind`)
-      .all() as RawRow[]).map((r) => this.mapQuota(r));
   }
 
   /**
@@ -228,6 +271,22 @@ export class TenantExecutionIsolationService {
         usage.recordedAt,
       );
     }
+  }
+
+  recordExecutionOutcome(sample: ExecutionOutcomeSample): void {
+    this.db.connection
+      .prepare(
+        `INSERT INTO execution_outcome_samples (id, execution_id, tenant_id, succeeded, failure_code, occurred_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        newId("outcome"),
+        sample.executionId,
+        sample.tenantId,
+        sample.succeeded ? 1 : 0,
+        sample.failureCode ?? null,
+        sample.occurredAt,
+      );
   }
 
   /**
@@ -322,6 +381,11 @@ export class TenantExecutionIsolationService {
         if (usage.status === "exceeded") overallStatus = "quota_exceeded";
         else if (overallStatus !== "quota_exceeded" && usage.status === "critical") overallStatus = "active";
       }
+    }
+
+    const autoIsolationDecision = this.evaluateAutomaticIsolationTrigger(tenantId);
+    if (autoIsolationDecision.triggered) {
+      overallStatus = "noisy_neighbor_detected";
     }
 
     // Check noisy neighbor signals from the last 5 minutes
@@ -434,6 +498,46 @@ export class TenantExecutionIsolationService {
       .all(cutoff) as Array<RawRow & { id: string; tenant_id: string; signal_type: string; severity: string; metadata: string | null }>);
   }
 
+  evaluateAutomaticIsolationTrigger(tenantId: string): TenantAutoIsolationDecision {
+    const cutoff = new Date(Date.now() - this.failureWindowSeconds * 1000).toISOString();
+    const row = this.db.connection
+      .prepare(
+        `SELECT COUNT(*) as sample_count, SUM(CASE WHEN succeeded = 0 THEN 1 ELSE 0 END) as failure_count
+         FROM execution_outcome_samples
+         WHERE tenant_id = ? AND occurred_at >= ?`,
+      )
+      .get(tenantId, cutoff) as RawRow | undefined;
+
+    const sampleCount = Number(row?.sample_count ?? 0);
+    const failureCount = Number(row?.failure_count ?? 0);
+    const failureRate = sampleCount === 0 ? 0 : failureCount / sampleCount;
+    const triggered = sampleCount >= this.minSampleSize && failureRate > this.failureRateThreshold;
+
+    if (triggered && !this.hasActiveIsolationSignal(tenantId, cutoff)) {
+      this.recordNoisyNeighborSignal(
+        tenantId,
+        "automatic_isolation_trigger",
+        "critical",
+        {
+          failureRate,
+          sampleCount,
+          threshold: this.failureRateThreshold,
+          minSampleSize: this.minSampleSize,
+        },
+      );
+    }
+
+    return {
+      tenantId,
+      triggered,
+      failureRate: Math.round(failureRate * 10_000) / 10_000,
+      sampleCount,
+      reasonCode: triggered
+        ? "tenant_isolation.auto_triggered_failure_rate"
+        : "tenant_isolation.within_failure_threshold",
+    };
+  }
+
   // ── Cleanup ────────────────────────────────────────────────────────
 
   /**
@@ -482,5 +586,16 @@ export class TenantExecutionIsolationService {
       createdAt: String(row.created_at ?? ""),
       updatedAt: String(row.updated_at ?? ""),
     };
+  }
+
+  private hasActiveIsolationSignal(tenantId: string, cutoff: string): boolean {
+    const row = this.db.connection
+      .prepare(
+        `SELECT COUNT(*) as cnt
+         FROM noisy_neighbor_signals
+         WHERE tenant_id = ? AND signal_type = 'automatic_isolation_trigger' AND resolved_at IS NULL AND detected_at >= ?`,
+      )
+      .get(tenantId, cutoff) as RawRow | undefined;
+    return Number(row?.cnt ?? 0) > 0;
   }
 }

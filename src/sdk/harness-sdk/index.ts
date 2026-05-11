@@ -138,6 +138,15 @@ function normalizeDependencyType(dependencyType: unknown): PlanEdge["dependencyT
   return "hard";
 }
 
+function isIso8601Timestamp(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/.test(trimmed)
+    && !Number.isNaN(Date.parse(trimmed));
+}
+
 function normalizePlanNode(node: PlanNode, index: number): PlanNode {
   const candidate = node as unknown as Record<string, unknown>;
   return {
@@ -500,6 +509,13 @@ export class HarnessSdk {
   }
 
   public sleep(runOrId: HarnessRun | string, reason: string, resumeAt: string): HarnessRun {
+    if (!isIso8601Timestamp(resumeAt)) {
+      throw new HarnessSdkError(
+        "harness_sdk.invalid_resume_at",
+        "HarnessSdk.sleep requires resumeAt to be an ISO-8601 timestamp.",
+        { resumeAt },
+      );
+    }
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {

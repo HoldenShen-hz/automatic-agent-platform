@@ -1,106 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { loadConfiguredDivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
+import { IntakeRouter } from "../../../../src/platform/five-plane-orchestration/routing/intake-router.js";
 
-interface MockDivision {
-  id: string;
-  name: string;
-  kind: "engineering" | "ops" | "product" | "hr";
-  parentId: string | null;
-  createdAt: string;
-}
+test("division registry loads the real overlapping routing definitions", () => {
+  const registry = loadConfiguredDivisionRegistry();
 
-test("Division creation with required fields", () => {
-  const division: MockDivision = {
-    id: newId("div"),
-    name: "Engineering",
-    kind: "engineering",
-    parentId: null,
-    createdAt: nowIso(),
-  };
-
-  assert.ok(division.id.startsWith("div_"));
-  assert.equal(division.name, "Engineering");
-  assert.equal(division.kind, "engineering");
-  assert.equal(division.parentId, null);
+  assert.ok(registry.divisions.has("engineering_ops"));
+  assert.ok(registry.divisions.has("support"));
+  assert.ok(registry.divisions.has("operations"));
+  assert.ok(registry.divisions.has("devops"));
 });
 
-test("Division hierarchy with parent", () => {
-  const parent: MockDivision = {
-    id: newId("div"),
-    name: "Engineering",
-    kind: "engineering",
-    parentId: null,
-    createdAt: nowIso(),
-  };
+test("intake router deterministically prefers engineering_ops over support for overlapping fix triggers", () => {
+  const router = new IntakeRouter({
+    divisionRegistry: loadConfiguredDivisionRegistry(),
+  });
 
-  const child: MockDivision = {
-    id: newId("div"),
-    name: "Frontend",
-    kind: "engineering",
-    parentId: parent.id,
-    createdAt: nowIso(),
-  };
+  const decision = router.route({
+    request: "Fix the production issue that is blocking checkout for users.",
+  });
 
-  assert.equal(child.parentId, parent.id);
+  assert.equal(decision.divisionId, "engineering_ops");
+  assert.ok(decision.routeTrace.some((item) => item.includes("engineering_ops:fix")));
+  assert.ok(decision.routeTrace.some((item) => item.includes("support:issue") || item.includes("support:fix")));
 });
 
-test("Division kinds are valid", () => {
-  const kinds: MockDivision["kind"][] = ["engineering", "ops", "product", "hr"];
+test("intake router deterministically prefers devops over operations for overlapping deployment triggers", () => {
+  const router = new IntakeRouter({
+    divisionRegistry: loadConfiguredDivisionRegistry(),
+  });
 
-  for (const kind of kinds) {
-    const division: MockDivision = {
-      id: newId("div"),
-      name: kind,
-      kind,
-      parentId: null,
-      createdAt: nowIso(),
-    };
-    assert.equal(division.kind, kind);
-  }
-});
+  const decision = router.route({
+    request: "Prepare the deployment checklist for tonight's release.",
+  });
 
-test("Multiple divisions in same hierarchy", () => {
-  const parentId = newId("div");
-  const children: MockDivision[] = [];
-
-  for (let i = 0; i < 5; i++) {
-    children.push({
-      id: newId("div"),
-      name: `Team ${i}`,
-      kind: "engineering",
-      parentId,
-      createdAt: nowIso(),
-    });
-  }
-
-  const sameParent = children.filter((d) => d.parentId === parentId);
-  assert.equal(sameParent.length, 5);
-});
-
-test("Division root divisions have no parent", () => {
-  const roots: MockDivision[] = [];
-  const children: MockDivision[] = [];
-
-  for (let i = 0; i < 3; i++) {
-    const root: MockDivision = {
-      id: newId("div"),
-      name: `Root ${i}`,
-      kind: "engineering",
-      parentId: null,
-      createdAt: nowIso(),
-    };
-    roots.push(root);
-    children.push({
-      id: newId("div"),
-      name: `Child ${i}`,
-      kind: "engineering",
-      parentId: root.id,
-      createdAt: nowIso(),
-    });
-  }
-
-  assert.equal(roots.filter((r) => r.parentId === null).length, 3);
-  assert.equal(children.filter((c) => c.parentId !== null).length, 3);
+  assert.equal(decision.divisionId, "devops");
+  assert.ok(decision.routeTrace.some((item) => item.includes("devops:deployment")));
+  assert.ok(decision.routeTrace.some((item) => item.includes("operations:deployment")));
 });

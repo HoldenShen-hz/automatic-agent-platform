@@ -54,15 +54,17 @@ test("SdkVersionHandshakeService.evaluate returns upgrade required for outdated 
 });
 
 test("SdkVersionHandshakeService.evaluate checks platform min version compatibility", () => {
-  const service = new SdkVersionHandshakeService(makePolicy());
+  const service = new SdkVersionHandshakeService(makePolicy({
+    platformMinimumVersion: "2026.06.01",
+  }));
   const request = makeRequest({
     "x-sdk-version": "1.5.0",
-    "x-platform-min-version": "2026.05.01", // Higher than platform version
+    "x-platform-min-version": "2026.05.01",
   });
 
   const decision = service.evaluate(request);
   assert.equal(decision.accepted, false);
-  assert.equal(decision.reasonCode, "sdk.platform_incompatible");
+  assert.equal(decision.reasonCode, "sdk.upgrade_required");
 });
 
 test("SdkVersionHandshakeService.evaluate adds warning for contract version mismatch", () => {

@@ -476,7 +476,10 @@ test("DelegationManagerService depth validation allows depth 3 and rejects depth
   });
 
   // Second delegation - depth 2 (allowed)
-  const handle2 = await service.delegate(parentDepth1, createDelegationSpec({ targetPackId: "pack-child-2" }));
+  const handle2 = await service.delegate(parentDepth1, createDelegationSpec({
+    targetAgentId: "child-agent-2",
+    targetPackId: "pack-child-2",
+  }));
   assert.equal(handle2.depth, 2);
 
   // Create parent at depth 2
@@ -487,7 +490,10 @@ test("DelegationManagerService depth validation allows depth 3 and rejects depth
   });
 
   // Third delegation - depth 3 (allowed)
-  const handle3 = await service.delegate(parentDepth2, createDelegationSpec({ targetPackId: "pack-child-3" }));
+  const handle3 = await service.delegate(parentDepth2, createDelegationSpec({
+    targetAgentId: "child-agent-3",
+    targetPackId: "pack-child-3",
+  }));
   assert.equal(handle3.depth, 3);
 
   // Fourth delegation - depth 4 (rejected)
@@ -496,7 +502,10 @@ test("DelegationManagerService depth validation allows depth 3 and rejects depth
     agentId: handle3.childAgentId,
   });
   await assert.rejects(
-    async () => service.delegate(parentDepth3, spec),
+    async () => service.delegate(parentDepth3, createDelegationSpec({
+      targetAgentId: "child-agent-4",
+      targetPackId: "pack-child-4",
+    })),
     DelegationDepthExceededError,
   );
 });

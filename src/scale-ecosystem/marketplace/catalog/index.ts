@@ -264,9 +264,9 @@ export function validateListingDependencies(
       versionMismatches.push(`${dependency.listingId}: need ${dependency.versionRange}, got ${targetVersion}`);
     }
 
-    const supportedTypes = entry.compatibility?.supportedArtifactTypes ?? [];
-    const targetArtifactType = target.artifactType ?? "pack";
-    if (supportedTypes.length > 0 && !supportedTypes.includes(targetArtifactType)) {
+    const supportedTypes = target.compatibility?.supportedArtifactTypes ?? [];
+    const requesterArtifactType = entry.artifactType ?? "pack";
+    if (supportedTypes.length > 0 && !supportedTypes.includes(requesterArtifactType)) {
       incompatibilities.push(`artifact_type:${dependency.listingId}`);
     }
   }

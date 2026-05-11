@@ -658,6 +658,7 @@ export class HttpApiServer {
       ...createBillingRoutes({
         billingService: this.options.billingService ?? null,
         webhookSecret: this.options.webhookSecret ?? null,
+        authService: this.options.authService ?? null,
       }),
       ...createDivisionRoutes({
         divisionRegistry: this.divisionRegistry,

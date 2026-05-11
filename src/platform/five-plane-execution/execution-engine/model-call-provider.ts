@@ -20,7 +20,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { CallGovernance, type DistributedRateLimiterLike } from "./call-governance.js";
 import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
 import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
-import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetGuard, type BudgetPolicy, type BudgetReservationRequest } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { nowIso } from "../../contracts/types/ids.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
@@ -46,6 +46,7 @@ export interface LlmModelCallRequest {
   system?: string;
   temperature?: number;
   maxTokens: number;
+  harnessRunId?: string;
   traceId?: string;
   tenantId?: string | null;
   costTag?: string;
@@ -168,13 +169,17 @@ export class ModelCallProviderService {
 
     // R4-25 (INV-BUDGET-001): Reserve budget before LLM call
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
-    const budgetEvaluation = this.budgetGuard.evaluateTaskSpend({
-      policy,
-      currentTaskCostUsd: 0,
-      nextEstimatedCostUsd: estimatedCostUsd,
-    });
-    if (!budgetEvaluation.allowed) {
-      throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${budgetEvaluation.reasonCode}`, {
+    const reserveResult = this.budgetGuard.atomicReserve(this.buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    if (!reserveResult.success) {
+      throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
+        retryable: false,
+      });
+    }
+    const budgetSessionId = reserveResult.session.sessionId;
+    const executeBudgetResult = this.budgetGuard.atomicExecute(budgetSessionId);
+    if (!executeBudgetResult.success) {
+      this.budgetGuard.atomicRelease(budgetSessionId);
+      throw new ProviderError("model_call.budget_execute_failed", `Budget execution failed for LLM call: ${executeBudgetResult.reasonCode}`, {
         retryable: false,
       });
     }
@@ -207,6 +212,7 @@ export class ModelCallProviderService {
       req.temperature = request.temperature;
     }
 
+    let budgetSettled = false;
     try {
       const startTime = Date.now();
       const result = await this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
@@ -219,7 +225,22 @@ export class ModelCallProviderService {
         });
       }
 
+      const settleResult = this.budgetGuard.atomicSettle(
+        budgetSessionId,
+        this.estimateActualLlmCallCost(result, request.model) ?? estimatedCostUsd,
+      );
+      if (!settleResult.success) {
+        throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {
+          retryable: false,
+        });
+      }
+      budgetSettled = true;
       return result;
+    } catch (error) {
+      if (!budgetSettled) {
+        this.budgetGuard.atomicRelease(budgetSessionId);
+      }
+      throw error;
     } finally {
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
@@ -269,6 +290,22 @@ export class ModelCallProviderService {
 
     const governanceKey = buildModelGovernanceKey(request.model);
     const startTime = Date.now();
+    const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
+    const reserveResult = this.budgetGuard.atomicReserve(this.buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    if (!reserveResult.success) {
+      throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
+        retryable: false,
+      });
+    }
+    const budgetSessionId = reserveResult.session.sessionId;
+    const executeBudgetResult = this.budgetGuard.atomicExecute(budgetSessionId);
+    if (!executeBudgetResult.success) {
+      this.budgetGuard.atomicRelease(budgetSessionId);
+      throw new ProviderError("model_call.budget_execute_failed", `Budget execution failed for LLM call: ${executeBudgetResult.reasonCode}`, {
+        retryable: false,
+      });
+    }
+    let latestChunk: LlmModelCallResult | null = null;
 
     const executeStreaming = async (): Promise<void> => {
       await this.unifiedProvider.createStreamingChatCompletion(
@@ -284,21 +321,38 @@ export class ModelCallProviderService {
               });
             }
           }
-          onChunk(this.normalizeResult(chunk), false);
+          latestChunk = this.normalizeResult(chunk);
+          onChunk(latestChunk, false);
         },
       );
     };
 
+    let budgetSettled = false;
     try {
       if (this.callGovernance == null) {
         await executeStreaming();
-        return;
+      } else {
+        const result = await this.callGovernance.execute(governanceKey, executeStreaming);
+        if (!result.success) {
+          throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+        }
       }
 
-      const result = await this.callGovernance.execute(governanceKey, executeStreaming);
-      if (!result.success) {
-        throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+      const settleResult = this.budgetGuard.atomicSettle(
+        budgetSessionId,
+        this.estimateActualLlmCallCost(latestChunk, request.model) ?? estimatedCostUsd,
+      );
+      if (!settleResult.success) {
+        throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {
+          retryable: false,
+        });
       }
+      budgetSettled = true;
+    } catch (error) {
+      if (!budgetSettled) {
+        this.budgetGuard.atomicRelease(budgetSessionId);
+      }
+      throw error;
     } finally {
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
@@ -394,6 +448,26 @@ export class ModelCallProviderService {
     };
   }
 
+  private buildBudgetReservationRequest(
+    request: LlmModelCallRequest,
+    policy: BudgetPolicy,
+    estimatedCostUsd: number,
+  ): BudgetReservationRequest {
+    return {
+      policy,
+      spend: {
+        currentTaskCostUsd: 0,
+        nextEstimatedCostUsd: estimatedCostUsd,
+        currentDailyCostUsd: 0,
+        currentMonthlyCostUsd: 0,
+      },
+      tenantId: request.tenantId ?? "system",
+      harnessRunId: request.harnessRunId?.trim() || request.traceId?.trim() || `harness_run:llm:${Date.now()}`,
+      traceId: request.traceId?.trim() || `trace:${nowIso()}`,
+      emittedBy: "model_call_provider",
+    };
+  }
+
   private estimateLlmCallCost(maxTokens: number, model: string): number {
     // Estimate cost based on model and token count
     const costPerThousandTokens: Record<string, number> = {
@@ -409,6 +483,17 @@ export class ModelCallProviderService {
     };
     const rate = costPerThousandTokens[model] ?? 0.001;
     return (maxTokens / 1000) * rate;
+  }
+
+  private estimateActualLlmCallCost(result: LlmModelCallResult | null, model: string): number | null {
+    if (result == null) {
+      return null;
+    }
+    return this.estimateCostFromUsage(result.usage.promptTokens, result.usage.completionTokens, model);
+  }
+
+  private estimateCostFromUsage(promptTokens: number, completionTokens: number, model: string): number {
+    return this.estimateLlmCallCost(Math.max(0, promptTokens) + Math.max(0, completionTokens), model);
   }
 
   private toGovernanceError(

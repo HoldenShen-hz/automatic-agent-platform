@@ -211,10 +211,10 @@ test("FencingTokenService generates token with correct format", () => {
 
   const token = service.generateFencingToken("exec123", "node1");
 
-  const parts = token.split("-");
+  const parts = token.split("::");
   assert.equal(parts.length, 4);
-  assert.equal(parts[0], "exec123");
-  assert.equal(parts[1], "node1");
+  assert.equal(decodeURIComponent(parts[0] ?? ""), "exec123");
+  assert.equal(decodeURIComponent(parts[1] ?? ""), "node1");
 });
 
 test("FencingTokenService.validateFencingToken succeeds for correct owner", () => {
@@ -278,43 +278,38 @@ test("FencingTokenService.acquireFence acquires shared fence", () => {
   assert.equal(fence?.mode, "shared");
 });
 
-test("FencingTokenService.acquireFence allows shared fence re-acquisition", () => {
+test("FencingTokenService.acquireFence blocks same-node shared fence re-acquisition", () => {
   const service = new FencingTokenService("node1");
 
   const fence1 = service.acquireFence("exec1", "shared");
   const fence2 = service.acquireFence("exec1", "shared");
 
   assert.ok(fence1 !== null);
-  assert.ok(fence2 !== null);
-  assert.notEqual(fence1?.fenceToken, fence2?.fenceToken);
+  assert.equal(fence2, null);
 });
 
 test("FencingTokenService.acquireFence blocks exclusive when already held by different node", () => {
-  // Note: This test uses separate instances with independent in-memory stores.
-  // Cross-instance coordination requires shared storage backend (not in scope for unit tests).
-  // This test verifies that within a single instance, exclusive fence blocks other acquisitions.
-  const service = new FencingTokenService("node1");
+  const service1 = new FencingTokenService("node1");
+  const service2 = new FencingTokenService("node2");
+  service1.clearAllFences();
 
-  // Acquire first exclusive fence
-  const fence1 = service.acquireFence("exec1", "exclusive");
+  const fence1 = service1.acquireFence("exec1", "exclusive");
   assert.ok(fence1 !== null);
-  assert.ok(service.isFenceHeld("exec1"));
+  assert.ok(service1.isFenceHeld("exec1"));
 
-  // Same node can re-acquire exclusive fence (allows re-entry)
-  const fence2 = service.acquireFence("exec1", "exclusive");
-  assert.ok(fence2 !== null);
-  assert.notEqual(fence1?.fenceToken, fence2?.fenceToken);
+  const fence2 = service2.acquireFence("exec1", "exclusive");
+  assert.equal(fence2, null);
 });
 
-test("FencingTokenService.acquireFence allows same node to re-acquire exclusive", () => {
+test("FencingTokenService.acquireFence blocks same node from re-acquiring exclusive", () => {
   const service = new FencingTokenService("node1");
+  service.clearAllFences();
 
   const fence1 = service.acquireFence("exec1", "exclusive");
   const fence2 = service.acquireFence("exec1", "exclusive");
 
   assert.ok(fence1 !== null);
-  assert.ok(fence2 !== null);
-  assert.notEqual(fence1?.fenceToken, fence2?.fenceToken);
+  assert.equal(fence2, null);
 });
 
 test("FencingTokenService.releaseFence releases fence", () => {
@@ -381,20 +376,27 @@ test("FencingTokenService.clearAllFences clears all fences", () => {
 });
 
 test("FencingTokenService exclusive fence blocks shared fence from different node", () => {
-  // Note: This test uses separate instances with independent in-memory stores.
-  // Cross-instance coordination requires shared storage backend (not in scope for unit tests).
-  // Within a single instance, same node can re-acquire fences (re-entry allowed).
-  // The blocking logic only prevents DIFFERENT nodes from acquiring when exclusive fence exists.
-  const service = new FencingTokenService("node1");
+  const service1 = new FencingTokenService("node1");
+  const service2 = new FencingTokenService("node2");
+  service1.clearAllFences();
 
-  // Acquire exclusive fence
-  const fence1 = service.acquireFence("exec1", "exclusive");
+  const fence1 = service1.acquireFence("exec1", "exclusive");
   assert.ok(fence1 !== null);
 
-  // Same node can acquire shared fence (re-entry allowed for same node)
-  const fence2 = service.acquireFence("exec1", "shared");
-  assert.ok(fence2 !== null);
-  assert.equal(fence2?.mode, "shared");
+  const fence2 = service2.acquireFence("exec1", "shared");
+  assert.equal(fence2, null);
+});
+
+test("FencingTokenService shares a monotonic counter across service instances", () => {
+  const service1 = new FencingTokenService("node1");
+  service1.clearAllFences();
+  const service2 = new FencingTokenService("node2");
+
+  const token1 = service1.generateFencingToken("exec1", "node1");
+  const token2 = service2.generateFencingToken("exec2", "node2");
+
+  assert.ok(token1.endsWith("::1::" + token1.split("::").at(-1)));
+  assert.ok(token2.endsWith("::2::" + token2.split("::").at(-1)));
 });
 
 test("FencingTokenService getActiveFenceCount returns correct count", () => {

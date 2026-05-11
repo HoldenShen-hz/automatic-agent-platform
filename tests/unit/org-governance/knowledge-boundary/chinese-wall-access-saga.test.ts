@@ -25,15 +25,15 @@ test("ChineseWallAccessSaga executes release compensation when grant commit fail
   const calls: string[] = [];
   const saga = new ChineseWallAccessSaga({
     prepareGrant: () => calls.push("prepare_grant"),
-    commitRelease: () => calls.push("commit_release"),
+    compensateGrant: () => calls.push("compensate_grant"),
   });
 
   const receipt = saga.execute("access-2", [
     { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: false },
+    { stepId: "prepare", action: "commit_grant", succeeded: false },
   ]);
 
   assert.equal(receipt.status, "rolled_back");
-  assert.deepEqual(receipt.compensatedActions, ["commit_release"]);
-  assert.deepEqual(calls, ["prepare_grant", "commit_release"]);
+  assert.deepEqual(receipt.compensatedActions, ["prepare_grant"]);
+  assert.deepEqual(calls, ["prepare_grant", "compensate_grant"]);
 });

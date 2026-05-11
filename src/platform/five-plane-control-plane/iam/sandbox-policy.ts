@@ -38,6 +38,7 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
+const DEFAULT_DENIED_ROOTS = ["/etc", "/proc", "/sys"] as const;
 
 /**
  * Sandbox operating mode determining what operations are permitted.
@@ -596,7 +597,7 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     policyId: "workspace_write",
     mode: "workspace_write",
     allowedRoots: [workspaceRoot],
-    deniedRoots: [],
+    deniedRoots: [...DEFAULT_DENIED_ROOTS],
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",

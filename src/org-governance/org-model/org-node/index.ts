@@ -11,7 +11,46 @@ import { z } from "zod";
  * Legacy payloads may still use orgNodeId/nodeType/displayName naming, which is
  * normalized into the canonical nodeId/type/name fields by OrgNodeSchema.
  */
-export const OrgNodeTypeSchema = z.enum(["company", "division", "department", "team"]);
+const InternalOrgNodeTypeSchema = z.enum(["company", "division", "department", "team", "seat"]);
+
+export type InternalOrgNodeType = z.infer<typeof InternalOrgNodeTypeSchema>;
+export type DocumentedOrgNodeType = "enterprise" | "business_unit" | "department" | "team" | "seat";
+export type OrgNodeType = InternalOrgNodeType | DocumentedOrgNodeType;
+
+export function normalizeOrgNodeType(nodeType: OrgNodeType): InternalOrgNodeType {
+  switch (nodeType) {
+    case "enterprise":
+      return "company";
+    case "business_unit":
+      return "division";
+    default:
+      return nodeType;
+  }
+}
+
+export function toDocumentedOrgNodeType(nodeType: OrgNodeType): DocumentedOrgNodeType {
+  switch (normalizeOrgNodeType(nodeType)) {
+    case "company":
+      return "enterprise";
+    case "division":
+      return "business_unit";
+    default:
+      return normalizeOrgNodeType(nodeType);
+  }
+}
+
+export const OrgNodeTypeSchema = z.string().transform((value, ctx): InternalOrgNodeType => {
+  const normalized = normalizeOrgNodeType(value as OrgNodeType);
+  const parsed = InternalOrgNodeTypeSchema.safeParse(normalized);
+  if (!parsed.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid org node type: ${value}`,
+    });
+    return z.NEVER;
+  }
+  return parsed.data;
+});
 
 export const LegalEntityBoundarySchema = z.object({
   boundaryId: z.string().min(1),
@@ -26,8 +65,8 @@ export const LegalEntityBoundarySchema = z.object({
 const LegacyOrgNodeInputSchema = z.object({
   nodeId: z.string().min(1).optional(),
   orgNodeId: z.string().min(1).optional(),
-  type: OrgNodeTypeSchema.optional(),
-  nodeType: OrgNodeTypeSchema.optional(),
+  type: z.string().optional(),
+  nodeType: z.string().optional(),
   name: z.string().min(1).optional(),
   displayName: z.string().min(1).optional(),
   parentNodeId: z.string().min(1).nullable().optional(),
@@ -36,6 +75,9 @@ const LegacyOrgNodeInputSchema = z.object({
   active: z.boolean().default(true),
   costCenter: z.string().default(""),
   metadata: z.record(z.string()).default({}),
+  effectivePolicies: z.record(z.unknown()).default({}),
+  effective_policies: z.record(z.unknown()).optional(),
+  status: z.enum(["active", "inactive", "suspended", "archived"]).optional(),
   legalEntityBoundary: LegalEntityBoundarySchema.optional(),
 });
 
@@ -63,9 +105,11 @@ export const OrgNodeSchema = LegacyOrgNodeInputSchema.superRefine((input, ctx) =
   }
 }).transform((input) => {
   const nodeId = input.nodeId ?? input.orgNodeId!;
-  const type = input.type ?? input.nodeType!;
+  const type = normalizeOrgNodeType((input.type ?? input.nodeType!) as OrgNodeType);
   const name = input.name ?? input.displayName!;
   const parentNodeId = input.parentNodeId ?? input.parentOrgNodeId ?? null;
+  const effectivePolicies = input.effectivePolicies ?? input.effective_policies ?? {};
+  const status = input.status ?? (input.active ? "active" : "inactive");
   return {
     nodeId,
     type,
@@ -73,34 +117,69 @@ export const OrgNodeSchema = LegacyOrgNodeInputSchema.superRefine((input, ctx) =
     parentNodeId,
     orgNodeId: nodeId,
     nodeType: type,
+    canonicalNodeType: toDocumentedOrgNodeType(type),
     displayName: name,
     parentOrgNodeId: parentNodeId,
     ownerUserIds: input.ownerUserIds,
     active: input.active,
     costCenter: input.costCenter,
     metadata: input.metadata,
+    effectivePolicies,
+    effective_policies: effectivePolicies,
+    status,
     legalEntityBoundary: input.legalEntityBoundary ?? null,
   };
 });
 
-export type OrgNodeType = z.infer<typeof OrgNodeTypeSchema>;
 export type LegalEntityBoundary = z.infer<typeof LegalEntityBoundarySchema>;
 export interface OrgNode {
   readonly orgNodeId: string;
-  readonly nodeType: OrgNodeType;
+  readonly nodeType: InternalOrgNodeType;
   readonly displayName: string;
   readonly parentOrgNodeId: string | null;
   readonly ownerUserIds: readonly string[];
   readonly active: boolean;
   readonly costCenter: string;
   readonly metadata: Readonly<Record<string, string>>;
+  readonly effectivePolicies: Readonly<Record<string, unknown>>;
+  readonly effective_policies?: Readonly<Record<string, unknown>>;
+  readonly status: "active" | "inactive" | "suspended" | "archived";
   readonly legalEntityBoundary?: LegalEntityBoundary | null;
   readonly nodeId?: string;
-  readonly type?: OrgNodeType;
+  readonly type?: InternalOrgNodeType;
   readonly name?: string;
   readonly parentNodeId?: string | null;
+  readonly canonicalNodeType?: DocumentedOrgNodeType;
 }
 export type NormalizedOrgNode = z.output<typeof OrgNodeSchema>;
+
+export interface ApprovalLimitRule {
+  readonly ruleId: string;
+  readonly riskLevel: "low" | "medium" | "high" | "critical";
+  readonly maxAmountUsd: number;
+  readonly approverRoles: readonly string[];
+}
+
+export interface ApprovalLimitMatrix {
+  readonly matrixId: string;
+  readonly orgNodeId: string;
+  readonly rules: readonly ApprovalLimitRule[];
+}
+
+export interface CompliancePolicyBinding {
+  readonly bindingId: string;
+  readonly orgNodeId: string;
+  readonly policyRef: string;
+  readonly enforcementMode: "inherit" | "override" | "restrict_only";
+}
+
+export interface OrgHierarchySnapshot {
+  readonly snapshotId: string;
+  readonly capturedAt: string;
+  readonly nodes: readonly OrgNode[];
+  readonly approvalLimitMatrices: readonly ApprovalLimitMatrix[];
+  readonly compliancePolicyBindings: readonly CompliancePolicyBinding[];
+}
 
 export interface OrgPrincipalAssignment {
   readonly principalId: string;
@@ -175,7 +254,7 @@ export type OrgChangeEvent =
   | { type: "org_restructure"; affectedNodeIds: readonly string[] };
 
 export function isLeafOrgNode(node: OrgNode): boolean {
-  return node.nodeType === "team";
+  return node.nodeType === "team" || node.nodeType === "seat";
 }
 
 /**
@@ -183,18 +262,21 @@ export function isLeafOrgNode(node: OrgNode): boolean {
  * Maps to architecture doc §46.2
  */
 export function getPlatformMapping(nodeType: OrgNodeType): string {
-  const mappings: Record<OrgNodeType, string> = {
+  const normalizedNodeType = normalizeOrgNodeType(nodeType);
+  const mappings: Record<InternalOrgNodeType, string> = {
     company: "platform",
     division: "tenant_group",
     department: "tenant",
     team: "domain/pack_group",
+    seat: "principal/seat",
   };
-  return mappings[nodeType];
+  return mappings[normalizedNodeType];
 }
 
 /**
  * Validates that intermediate layers are properly optional.
- * The 4-level hierarchy allows division and department to be skipped.
+ * The hierarchy allows business_unit and department to be skipped, with seat nodes
+ * optionally extending teams into a fifth level.
  */
 export function validateHierarchyDepth(nodes: readonly OrgNode[]): { valid: boolean; depth: number } {
   if (nodes.length === 0) {
@@ -213,7 +295,7 @@ export function validateHierarchyDepth(nodes: readonly OrgNode[]): { valid: bool
   };
 
   const depth = getMaxDepth(root.orgNodeId);
-  return { valid: depth <= 4, depth };
+  return { valid: depth <= 5, depth };
 }
 
 /**

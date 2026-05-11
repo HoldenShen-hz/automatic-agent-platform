@@ -48,17 +48,26 @@ interface EvidenceCollectorSnapshot {
   readonly schedules: EvidenceCollectionSchedule[];
 }
 
+function firstNonBlank(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") {
+      return value;
+    }
+  }
+  return null;
+}
+
 function normalizeEvidenceInput(
   input: ComplianceEvidenceCollectInput,
 ): Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt" | "previousHash" | "chainHash"> {
-  const source = input.source
-    ?? input.sourceSystem
-    ?? input.collectedBy
-    ?? "unknown";
-  const artifactRef = input.artifactRef
-    ?? input.content
-    ?? input.evidenceType
-    ?? "unspecified";
+  const source = firstNonBlank(input.source, input.sourceSystem, input.collectedBy);
+  if (source == null) {
+    throw new Error("compliance_evidence.source_required");
+  }
+  const artifactRef = firstNonBlank(input.artifactRef, input.content, input.evidenceType);
+  if (artifactRef == null) {
+    throw new Error("compliance_evidence.artifact_ref_required");
+  }
   return {
     ...input,
     source,

@@ -66,7 +66,7 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["ls", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
   // find: optional path arg at [0]
   ["find", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
-  // grep/rg: pattern first, then optional file path at the end (-1)
+  // grep/rg: pattern first, then one or more file paths after it
   ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
   ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
   // sort/uniq/cut: first arg is file path
@@ -344,7 +344,7 @@ export class CommandSafetyClassifier {
     // Extract path arguments based on policy's pathArgPositions
     const policies = this.options.policies ?? createDefaultCommandPolicies();
     const policy = policies.get(normalizedCommand);
-    const policyPathArgs = this.extractPolicyPathArgs(args, policy?.pathArgPositions);
+    const policyPathArgs = this.extractPolicyPathArgs(normalizedCommand, args, policy?.pathArgPositions);
     const policyWritePathArgs = this.extractPolicyPathArgs(args, policy?.writePathArgPositions);
     const signatureAssessment = validateCommandSignature(normalizedCommand, args, baseAssessment.riskLevel);
 
@@ -363,9 +363,20 @@ export class CommandSafetyClassifier {
    * Extracts file path arguments based on the policy's pathArgPositions specification.
    * Supports both positive (from start) and negative (from end) indices.
    */
-  private extractPolicyPathArgs(args: readonly string[], pathArgPositions?: readonly number[]): readonly string[] {
+  private extractPolicyPathArgs(
+    commandOrArgs: string | readonly string[],
+    argsOrPositions?: readonly string[] | readonly number[],
+    maybePositions?: readonly number[],
+  ): readonly string[] {
+    const command = Array.isArray(commandOrArgs) ? null : commandOrArgs;
+    const args = Array.isArray(commandOrArgs) ? commandOrArgs : (argsOrPositions as readonly string[] | undefined) ?? [];
+    const pathArgPositions = Array.isArray(commandOrArgs) ? (argsOrPositions as readonly number[] | undefined) : maybePositions;
     if (!pathArgPositions || pathArgPositions.length === 0) {
       return [];
+    }
+
+    if (command === "grep" || command === "rg") {
+      return this.extractGrepLikePathArgs(args);
     }
 
     const extracted: string[] = [];
@@ -380,6 +391,44 @@ export class CommandSafetyClassifier {
         }
       }
     }
+    return extracted;
+  }
+
+  private extractGrepLikePathArgs(args: readonly string[]): readonly string[] {
+    const extracted: string[] = [];
+    let patternSeen = false;
+    let forcePositional = false;
+    let skipNextAsPathOptionValue = false;
+
+    for (const arg of args) {
+      if (skipNextAsPathOptionValue) {
+        skipNextAsPathOptionValue = false;
+        if (arg.length > 0 && !arg.startsWith("-")) {
+          extracted.push(arg);
+        }
+        continue;
+      }
+
+      if (!forcePositional && arg === "--") {
+        forcePositional = true;
+        continue;
+      }
+
+      if (!forcePositional && arg.startsWith("-")) {
+        if (arg === "-f" || arg === "--file" || arg === "-g" || arg === "--glob") {
+          skipNextAsPathOptionValue = true;
+        }
+        continue;
+      }
+
+      if (!patternSeen) {
+        patternSeen = true;
+        continue;
+      }
+
+      extracted.push(arg);
+    }
+
     return extracted;
   }
 

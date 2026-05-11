@@ -181,6 +181,25 @@ export class EscalationService {
       };
     }
 
+    const slaDecision = this.evaluateSlaPressure(input);
+    if (slaDecision !== null) {
+      if (slaDecision.decision === "takeover") {
+        this.routeToHitlTakeover(input);
+      }
+      const approvalRequest = slaDecision.decision === "approval"
+        ? this.createApprovalRequest(input)
+        : null;
+      return {
+        decision: slaDecision.decision,
+        reasonCode: slaDecision.reasonCode,
+        requiresOperatorAction: true,
+        blocksExecution: true,
+        workflowState: slaDecision.decision === "takeover" ? "paused_for_takeover" : "pending_approval",
+        ...(approvalRequest == null ? {} : { approvalRequestId: approvalRequest.approvalRequestId }),
+        operatorNotificationId: this.notifyOperator(input, slaDecision.decision),
+      };
+    }
+
     // High risk or critical (non-production) = human takeover
     if (input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute")) {
       this.routeToHitlTakeover(input);
@@ -216,6 +235,40 @@ export class EscalationService {
       blocksExecution: false,
       workflowState: null,
     };
+  }
+
+  private evaluateSlaPressure(
+    input: EscalationRequest,
+  ): Pick<EscalationDecision, "decision" | "reasonCode"> | null {
+    const nowMs = Date.now();
+    const timeoutMs = input.timeoutMs;
+    const timeoutExpired = timeoutMs != null && timeoutMs <= 0;
+    const timeoutImminent = timeoutMs != null && timeoutMs > 0 && timeoutMs <= 60_000;
+
+    const deadlineMs = input.slaDeadline == null ? null : Date.parse(input.slaDeadline);
+    const hasValidDeadline = deadlineMs != null && Number.isFinite(deadlineMs);
+    const deadlineExceeded = hasValidDeadline && deadlineMs <= nowMs;
+    const deadlineImminent = hasValidDeadline && deadlineMs > nowMs && deadlineMs - nowMs <= 60_000;
+
+    if (timeoutExpired || deadlineExceeded) {
+      return {
+        decision: "takeover",
+        reasonCode: timeoutExpired
+          ? "escalation.timeout_elapsed_takeover_required"
+          : "escalation.sla_deadline_exceeded_takeover_required",
+      };
+    }
+
+    if (timeoutImminent || deadlineImminent) {
+      return {
+        decision: "approval",
+        reasonCode: timeoutImminent
+          ? "escalation.timeout_imminent_approval_required"
+          : "escalation.sla_deadline_imminent_approval_required",
+      };
+    }
+
+    return null;
   }
 
   /**

@@ -3,8 +3,16 @@ export interface GovernanceDelegationRevocationRequest {
   readonly requestedAtMs: number;
   readonly derivedResourceIds: readonly string[];
   readonly derivedDelegationIds?: readonly string[];
-  /** Cascade scope: max depth for cascade operations (1 = immediate delegates only, 2+ = transitive) */
-  readonly cascadeScope?: number;
+  /** Cascade scope: max depth for cascade operations or explicit sub-scope toggles. */
+  readonly cascadeScope?: number | GovernanceDelegationCascadeScope;
+}
+
+export interface GovernanceDelegationCascadeScope {
+  readonly pendingApprovals?: boolean;
+  readonly activeSessions?: boolean;
+  readonly secretLeases?: boolean;
+  readonly workerLeases?: boolean;
+  readonly scheduledTriggers?: boolean;
 }
 
 export interface GovernanceDelegationRevocationSagaContext {
@@ -14,6 +22,11 @@ export interface GovernanceDelegationRevocationSagaContext {
 
 export interface GovernanceDelegationRevocationSagaHandlers {
   readonly freezeResource?: (resourceId: string, context: GovernanceDelegationRevocationSagaContext) => void;
+  readonly revokePendingApprovals?: (context: GovernanceDelegationRevocationSagaContext) => void;
+  readonly revokeActiveSessions?: (context: GovernanceDelegationRevocationSagaContext) => void;
+  readonly revokeSecretLeases?: (context: GovernanceDelegationRevocationSagaContext) => void;
+  readonly revokeWorkerLeases?: (context: GovernanceDelegationRevocationSagaContext) => void;
+  readonly revokeScheduledTriggers?: (context: GovernanceDelegationRevocationSagaContext) => void;
   readonly revokeDerivedDelegation?: (delegationId: string, context: GovernanceDelegationRevocationSagaContext) => void;
   readonly compensateResource?: (resourceId: string, context: GovernanceDelegationRevocationSagaContext) => void;
   readonly audit?: (receipt: GovernanceDelegationRevocationReceipt, context: GovernanceDelegationRevocationSagaContext) => void;
@@ -60,7 +73,8 @@ export class GovernanceDelegationRevocationSaga {
     });
     // Cascade depth tracking: each level of derived delegation revoked increments depth
     let cascadeDepthApplied = 0;
-    const maxCascadeScope = request.cascadeScope ?? 1;
+    const cascadeScope = resolveCascadeScope(request.cascadeScope);
+    const maxCascadeScope = typeof request.cascadeScope === "number" ? request.cascadeScope : 1;
 
     let currentStage: "prepare" | "commit" = "prepare";
     try {
@@ -69,6 +83,27 @@ export class GovernanceDelegationRevocationSaga {
         frozenResourceIds.push(resourceId);
         executionLog.push({ stage: "prepare", subjectId: resourceId, outcome: "completed" });
       }
+
+      const prepareCascadeSteps: readonly Array<{
+        enabled: boolean;
+        subjectId: string;
+        handler: ((context: GovernanceDelegationRevocationSagaContext) => void) | undefined;
+      }> = [
+        { enabled: cascadeScope.pendingApprovals, subjectId: "pendingApprovals", handler: this.handlers.revokePendingApprovals },
+        { enabled: cascadeScope.activeSessions, subjectId: "activeSessions", handler: this.handlers.revokeActiveSessions },
+        { enabled: cascadeScope.secretLeases, subjectId: "secretLeases", handler: this.handlers.revokeSecretLeases },
+        { enabled: cascadeScope.workerLeases, subjectId: "workerLeases", handler: this.handlers.revokeWorkerLeases },
+        { enabled: cascadeScope.scheduledTriggers, subjectId: "scheduledTriggers", handler: this.handlers.revokeScheduledTriggers },
+      ];
+
+      for (const step of prepareCascadeSteps) {
+        if (!step.enabled) {
+          continue;
+        }
+        step.handler?.(context());
+        executionLog.push({ stage: "prepare", subjectId: step.subjectId, outcome: "completed" });
+      }
+
       if (maxCascadeScope >= 1) {
         currentStage = "commit";
         for (const delegationId of request.derivedDelegationIds ?? []) {
@@ -101,7 +136,7 @@ export class GovernanceDelegationRevocationSaga {
       frozenResourceIds,
       revokedDerivedDelegationIds,
       revokeWithinSlo: elapsed <= 60_000,
-      cascadeWithinSlo: elapsed <= 300_000 && cascadeDepthApplied <= maxCascadeScope,
+      cascadeWithinSlo: failedStage == null && elapsed <= 300_000 && cascadeDepthApplied <= maxCascadeScope,
       cascadeDepthApplied,
       cascadeScopeRequested: maxCascadeScope,
       completedAtMs,
@@ -119,4 +154,25 @@ export class GovernanceDelegationRevocationSaga {
       executionLog,
     };
   }
+}
+
+function resolveCascadeScope(
+  scope: GovernanceDelegationRevocationRequest["cascadeScope"],
+): Required<GovernanceDelegationCascadeScope> {
+  if (typeof scope === "number") {
+    return {
+      pendingApprovals: scope >= 1,
+      activeSessions: scope >= 1,
+      secretLeases: scope >= 1,
+      workerLeases: scope >= 1,
+      scheduledTriggers: scope >= 1,
+    };
+  }
+  return {
+    pendingApprovals: scope?.pendingApprovals ?? true,
+    activeSessions: scope?.activeSessions ?? true,
+    secretLeases: scope?.secretLeases ?? true,
+    workerLeases: scope?.workerLeases ?? true,
+    scheduledTriggers: scope?.scheduledTriggers ?? true,
+  };
 }

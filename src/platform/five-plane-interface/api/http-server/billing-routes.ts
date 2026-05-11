@@ -14,6 +14,8 @@ import { parseBillingReconcilePayload } from "./schemas.js";
 import { buildJsonResponse } from "./utils.js";
 import type { BillingService } from "../../../../scale-ecosystem/billing/billing-service.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { ApiAuthService } from "../api-auth-service.js";
+import { authenticateOptionalPrincipal } from "./request-helpers.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -30,6 +32,7 @@ class ApiError extends AppError {
 export interface BillingRouteDeps {
   billingService: BillingService | null;
   webhookSecret: string | null;
+  authService?: ApiAuthService | null;
 }
 
 function handleReconcileWebhook(ctx: import("./types.js").RouteContext, deps: BillingRouteDeps) {
@@ -39,23 +42,13 @@ function handleReconcileWebhook(ctx: import("./types.js").RouteContext, deps: Bi
   }
   const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
 
-  const hasAuthCredential =
-    (typeof ctx.request.headers.authorization === "string" && ctx.request.headers.authorization.trim().length > 0)
-    || (typeof ctx.request.headers["x-api-key"] === "string" && ctx.request.headers["x-api-key"]!.trim().length > 0);
-
+  const authenticatedPrincipal = authenticateOptionalPrincipal(ctx.request, deps.authService ?? null);
   const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
   const expected = deps.webhookSecret;
   if (typeof expected !== "string" || expected.length === 0) {
     throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
   }
-  // R29-24 FIX: Webhook signature is always required unless the caller presents valid auth credentials.
-  // If auth credentials are present, verify them first. If valid, skip signature check.
-  // If no auth credentials or auth is invalid, the webhook signature MUST be verified.
-  if (hasAuthCredential) {
-    // Auth credential present - could be API key or Bearer token
-    // Webhook signature check is waived in this case (signature serves as webhook auth, not request auth)
-  } else {
-    // No auth credential - webhook signature is required
+  if (authenticatedPrincipal == null) {
     if (typeof signature !== "string" || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }

@@ -92,6 +92,7 @@ export class ApiKeyService {
     }
 
     if (record.expiresAt && new Date(record.expiresAt) < new Date()) {
+      record.status = "expired";
       return { valid: false, keyId: record.keyId, ownerId: null, scopes: [], reason: "key_expired" };
     }
 

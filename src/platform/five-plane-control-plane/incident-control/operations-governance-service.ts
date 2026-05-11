@@ -61,7 +61,9 @@ export interface RunbookDefinition {
     | "cost_spike_containment"
     | "database_lock_contention"
     | "stale_lease_repair"
-    | "secret_rotation_failure";
+    | "secret_rotation_failure"
+    | "oapeflir_loop_stalled"
+    | "rollout_blocked_or_rollback";
   title: string;
   severity: RunbookSeverity;
   summary: string;
@@ -134,7 +136,7 @@ export interface OperationsGovernanceExportResult {
  * Each runbook includes severity, owner role, documentation references,
  * and recommended mitigation commands.
  */
-const RUNBOOKS: readonly RunbookDefinition[] = [
+export const OPERATIONS_RUNBOOK_CATALOG: readonly RunbookDefinition[] = [
   {
     runbookId: "worker_mass_disconnect",
     title: "Worker Mass Disconnect",
@@ -230,6 +232,30 @@ const RUNBOOKS: readonly RunbookDefinition[] = [
       "docs_zh/contracts/enterprise_secret_management_contract.md",
     ],
     commands: ["npm run doctor", "npm run model-routing"],
+  },
+  {
+    runbookId: "oapeflir_loop_stalled",
+    title: "OAPEFLIR Loop Stalled",
+    severity: "P1",
+    summary: "Recover a stalled observe-assess-plan-execute-feedback-learn-improve-release loop without bypassing governance gates.",
+    ownerRole: "ops_control_plane_oncall",
+    documentRefs: [
+      "docs_zh/contracts/slo_alerting_and_runbook_contract.md",
+      "docs_zh/contracts/oapeflir_loop_contract.md",
+    ],
+    commands: ["npm run inspect", "npm run dispatch-execution", "npm run doctor"],
+  },
+  {
+    runbookId: "rollout_blocked_or_rollback",
+    title: "Rollout Blocked Or Rollback",
+    severity: "P0",
+    summary: "Triage rollout freezes, blocked advances, and rollback requirements while preserving release audit lineage.",
+    ownerRole: "release_manager_oncall",
+    documentRefs: [
+      "docs_zh/contracts/slo_alerting_and_runbook_contract.md",
+      "docs_zh/contracts/release_pipeline_contract.md",
+    ],
+    commands: ["npm run inspect", "npm run doctor", "npm run dispatch-reconcile:stable"],
   },
 ] as const;
 
@@ -480,12 +506,12 @@ export class OperationsGovernanceService {
         overallStatus: failingSloCount > 0 ? "fail" : warningSloCount > 0 ? "warning" : "pass",
         failingSloCount,
         warningSloCount,
-        runbookCount: RUNBOOKS.length,
+        runbookCount: OPERATIONS_RUNBOOK_CATALOG.length,
         oncallReady: ONCALL_POLICY.contacts.length >= 2,
         incidentConsoleReady: incident != null,
       },
       slos,
-      runbooks: [...RUNBOOKS],
+      runbooks: [...OPERATIONS_RUNBOOK_CATALOG],
       oncallPolicy: ONCALL_POLICY,
       metrics,
       doctor: {
@@ -680,7 +706,7 @@ export class OperationsGovernanceService {
     const severity = mapIncidentSeverity(timeline.summary.highestSeverity);
     const recommendedRunbooks = this.recommendRunbooks(timeline);
     const recommendedCommands = dedupe(
-      recommendedRunbooks.flatMap((runbookId) => RUNBOOKS.find((item) => item.runbookId === runbookId)?.commands ?? []),
+      recommendedRunbooks.flatMap((runbookId) => OPERATIONS_RUNBOOK_CATALOG.find((item) => item.runbookId === runbookId)?.commands ?? []),
     );
 
     return {

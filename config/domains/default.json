@@ -93,7 +93,7 @@
           "maxTokensPerTask": 12000,
           "maxCostPerTask": 10
         },
-        "securityLevel": "standard"
+        "securityLevel": "elevated"
       },
       "status": "active",
       "externalAdapters": ["github"],

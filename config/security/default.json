@@ -4,6 +4,13 @@
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
     "challengeTtlMs": 300000,
-    "allowedCapabilities": ["bash", "edit", "mcp"]
+    "allowedCapabilities": ["bash", "edit", "mcp"],
+    "mcpPolicy": {
+      "allowNetworkEgress": false,
+      "allowedDomains": [],
+      "maxRequestsPerMinute": 60,
+      "sandboxMode": "workspace_write",
+      "allowedTransports": ["stdio"]
+    }
   }
 }

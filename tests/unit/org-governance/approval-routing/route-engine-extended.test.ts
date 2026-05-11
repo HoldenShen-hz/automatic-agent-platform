@@ -122,7 +122,7 @@ test("OrgChartRoutingStrategy.selectNode returns first active match", () => {
   assert.equal(result?.orgNodeId, "dept-1");
 });
 
-test("OrgChartRoutingStrategy.selectNode falls back to first node when orgNodeId not found", () => {
+test("OrgChartRoutingStrategy.selectNode returns null when orgNodeId not found", () => {
   const strategy = new OrgChartRoutingStrategy();
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", active: true }),
@@ -137,7 +137,7 @@ test("OrgChartRoutingStrategy.selectNode falls back to first node when orgNodeId
 
   const result = strategy.selectNode(nodes, request);
 
-  assert.equal(result?.orgNodeId, "dept-1");
+  assert.equal(result, null);
 });
 
 test("OrgChartRoutingStrategy.selectNode returns null for empty nodes array", () => {

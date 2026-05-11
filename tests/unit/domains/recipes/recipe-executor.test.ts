@@ -14,6 +14,7 @@ import test from "node:test";
 
 import { DomainRecipeSchema } from "../../../../src/domains/recipes/index.js";
 import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
+import { WorkflowRegistry } from "../../../../src/domains/registry/workflow-registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -49,6 +50,20 @@ interface ExecutionContext {
   input: string;
 }
 
+async function createExecutor(workflowIds: readonly string[]) {
+  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+  const workflowRegistry = new WorkflowRegistry();
+  workflowRegistry.registerAll(
+    workflowIds.map((workflowId) => ({
+      workflowId,
+      name: `Workflow ${workflowId}`,
+      triggerConditions: {},
+      steps: [],
+    })),
+  );
+  return new RecipeExecutor(workflowRegistry);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Construction & Basic Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,14 +76,13 @@ test("RecipeExecutor is constructed without errors", async () => {
 });
 
 test("RecipeExecutor.execute runs a recipe and returns execution result", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_exec",
     domainId: "coding",
     defaultWorkflowId: "wf_coding",
     defaultToolBundleIds: ["repo_tools", "build_tools"],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_123",
@@ -88,14 +102,13 @@ test("RecipeExecutor.execute runs a recipe and returns execution result", async 
 });
 
 test("RecipeExecutor.execute includes all tool bundle ids from recipe", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_tools",
     domainId: "coding",
     defaultWorkflowId: "wf_tools",
     defaultToolBundleIds: ["bundle_a", "bundle_b", "bundle_c"],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_tools",
@@ -114,14 +127,13 @@ test("RecipeExecutor.execute includes all tool bundle ids from recipe", async ()
 });
 
 test("RecipeExecutor.execute with empty tool bundle ids", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_no_tools",
     domainId: "data",
     defaultWorkflowId: "wf_data",
     defaultToolBundleIds: [],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_no_tools",
@@ -142,13 +154,12 @@ test("RecipeExecutor.execute with empty tool bundle ids", async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("RecipeExecutor.execute passes execution context correctly", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_context",
     domainId: "coding",
     defaultWorkflowId: "wf_context",
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_context",
@@ -165,13 +176,12 @@ test("RecipeExecutor.execute passes execution context correctly", async () => {
 });
 
 test("RecipeExecutor.execute uses recipe's defaultWorkflowId", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_workflow",
     domainId: "coding",
     defaultWorkflowId: "my_custom_workflow",
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_workflow",
@@ -244,14 +254,13 @@ test("RecipeExecutor.execute returns failure when recipe is invalid", async () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("RecipeExecutor.execute returns result with all required fields", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_result",
     domainId: "coding",
     defaultWorkflowId: "wf_result",
     defaultToolBundleIds: ["tools"],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_result",
@@ -271,14 +280,13 @@ test("RecipeExecutor.execute returns result with all required fields", async () 
 });
 
 test("RecipeExecutor.execute output contains execution artifacts", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_output",
     domainId: "coding",
     defaultWorkflowId: "wf_output",
     defaultToolBundleIds: [],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_output",
@@ -299,13 +307,12 @@ test("RecipeExecutor.execute output contains execution artifacts", async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("RecipeExecutor.execute can run same recipe multiple times", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_reuse",
     domainId: "coding",
     defaultWorkflowId: "wf_reuse",
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context1: ExecutionContext = {
     executionId: "exec_reuse_1",
@@ -332,13 +339,12 @@ test("RecipeExecutor.execute can run same recipe multiple times", async () => {
 });
 
 test("RecipeExecutor.execute handles concurrent executions", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_concurrent",
     domainId: "coding",
     defaultWorkflowId: "wf_concurrent",
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const contexts = Array.from({ length: 5 }, (_, i) => ({
     executionId: `exec_concurrent_${i}`,
@@ -362,8 +368,6 @@ test("RecipeExecutor.execute handles concurrent executions", async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("RecipeExecutor.execute preserves recipe metadata in result", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_meta",
     domainId: "coding",
@@ -371,6 +375,7 @@ test("RecipeExecutor.execute preserves recipe metadata in result", async () => {
     description: "A recipe for coding tasks",
     defaultWorkflowId: "wf_meta",
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_meta",
@@ -387,14 +392,13 @@ test("RecipeExecutor.execute preserves recipe metadata in result", async () => {
 });
 
 test("RecipeExecutor returns ExecutionResult type with correct structure", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
   const recipe = makeRecipe({
     recipeId: "recipe_type",
     domainId: "data",
     defaultWorkflowId: "wf_type",
     defaultToolBundleIds: ["bundle_type"],
   });
+  const executor = await createExecutor([recipe.defaultWorkflowId]);
 
   const context: ExecutionContext = {
     executionId: "exec_type",

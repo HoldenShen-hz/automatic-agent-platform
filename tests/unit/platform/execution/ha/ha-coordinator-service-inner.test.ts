@@ -592,6 +592,17 @@ test("HaCoordinatorService - authorizeAction denies follower for leader_only act
   assert.equal(auth.reasonCode, "not_current_leader");
 });
 
+test("HaCoordinatorService - authorizeAction denies leader_only action when no active lease exists", () => {
+  const service = createService();
+
+  service.registerNode("node-1", "us-east-1");
+
+  const auth = service.authorizeAction("node-1", "test_action", "leader_only");
+
+  assert.equal(auth.authorized, false);
+  assert.equal(auth.reasonCode, "no_active_leader");
+});
+
 test("HaCoordinatorService - authorizeAction allows any node for any authority", () => {
   const service = createService();
 
@@ -702,6 +713,20 @@ test("HaCoordinatorService - triggerFailover with forceNodeId promotes that node
 
   assert.equal(decision.outcome, "leader_changed");
   assert.equal(decision.newLeaderNodeId, "node-2");
+});
+
+test("HaCoordinatorService - triggerFailover records the fencing token issued during acquisition", () => {
+  const service = createService();
+
+  service.registerNode("node-1", "us-east-1");
+  service.registerNode("node-2", "us-east-1");
+  const original = service.acquireLeadership({ nodeId: "node-1" });
+
+  const decision = service.triggerFailover("heartbeat_missing", "node-2");
+  const history = service.getFailoverHistory();
+
+  assert.ok(decision.fencingToken > original.fencingToken);
+  assert.equal(history[0]?.fencingToken, decision.fencingToken);
 });
 
 test("HaCoordinatorService - getFailoverHistory returns decisions", () => {

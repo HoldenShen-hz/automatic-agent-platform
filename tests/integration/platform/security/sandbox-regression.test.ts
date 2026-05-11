@@ -16,9 +16,50 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import {
+  checkSandboxPath,
+  createWorkspaceWritePolicy,
+} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
 import { CommandExecutor } from "../../../../src/platform/execution/tool-executor/command-executor.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
+
+test("workspace-write sandbox explicitly denies sensitive system roots", async () => {
+  const workspace = createTempWorkspace("aa-sandbox-denied-roots-");
+
+  try {
+    const policy = createWorkspaceWritePolicy(workspace);
+    assert.deepEqual(policy.deniedRoots, ["/etc", "/proc", "/sys"]);
+
+    for (const deniedPath of ["/etc/hosts", "/proc/self/status", "/sys/kernel"]) {
+      const check = checkSandboxPath(policy, deniedPath);
+      assert.equal(check.allowed, false);
+      assert.equal(check.reasonCode, "sandbox.path_in_denied_root");
+    }
+
+    const executor = new CommandExecutor();
+    const result = await executor.execute({
+      callId: "sandbox-call-denied-root",
+      taskId: "sandbox-task-denied-root",
+      agentId: "agent-denied-root",
+      traceId: "trace-denied-root",
+      toolName: "command_exec",
+      timeoutMs: 1000,
+      sandboxPolicy: policy,
+      command: "cat",
+      args: ["/etc/hosts"],
+      cwd: workspace,
+    });
+
+    assert.equal(result.status, "blocked");
+    assert.ok(
+      result.error?.code === "sandbox.command_arg_path_denied" ||
+      result.error?.code === "tool.path_scope_command_arg_denied",
+      `Expected denied-root block code but got ${result.error?.code}`,
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
+});
 
 test("sandbox rejects symlink traversal via relative path", async () => {
   // Create a symlink from workspace to an outside directory,

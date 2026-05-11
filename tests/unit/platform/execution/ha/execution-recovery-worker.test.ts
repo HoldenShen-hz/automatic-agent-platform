@@ -9,6 +9,7 @@ test("ExecutionRecoveryWorker.getWorkerId returns default worker id", () => {
       listRecoverableExecutingRuns: () => [],
       listStaleRuns: () => [],
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
   });
 
@@ -21,6 +22,7 @@ test("ExecutionRecoveryWorker.getWorkerId returns custom worker id", () => {
       listRecoverableExecutingRuns: () => [],
       listStaleRuns: () => [],
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
     workerId: "custom-recovery-worker",
   });
@@ -34,6 +36,7 @@ test("ExecutionRecoveryWorker.getRecoveryCadence returns configured cadence", ()
       listRecoverableExecutingRuns: () => [],
       listStaleRuns: () => [],
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
     cadence: {
       intervalMs: 30_000,
@@ -49,18 +52,22 @@ test("ExecutionRecoveryWorker.getRecoveryCadence returns configured cadence", ()
 });
 
 test("ExecutionRecoveryWorker.runRecoveryCycle processes all candidate types", async () => {
+  const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: (startedAt: string) => [
-        { suggestedAction: "resume_same_worker" },
-        { suggestedAction: "retry_new_ticket" },
+        { executionId: "exec-active-1", suggestedAction: "resume_same_worker" },
+        { executionId: "exec-active-2", suggestedAction: "retry_new_ticket" },
       ],
       listStaleRuns: (staleBefore: string) => [
-        { suggestedAction: "requeue_execution" },
+        { executionId: "exec-stale-1", suggestedAction: "escalate_takeover" },
       ],
       listBlockedRunsAwaitingApproval: () => [
-        { suggestedAction: "require_approval" },
+        { executionId: "exec-blocked-1", suggestedAction: "none" },
       ],
+      applyRecoveryDecision: async (executionId: string) => {
+        appliedExecutionIds.push(executionId);
+      },
     },
     now: () => "2026-04-14T10:00:00.000Z",
   });
@@ -74,6 +81,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle processes all candidate types", a
   assert.equal(report.metadata.activeCandidateCount, 2);
   assert.equal(report.metadata.staleCandidateCount, 1);
   assert.equal(report.metadata.blockedCandidateCount, 1);
+  assert.deepEqual(appliedExecutionIds, ["exec-active-1", "exec-active-2"]);
 });
 
 test("ExecutionRecoveryWorker.runRecoveryCycle with no candidates", async () => {
@@ -82,6 +90,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle with no candidates", async () => 
       listRecoverableExecutingRuns: () => [],
       listStaleRuns: () => [],
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
     now: () => "2026-04-14T10:00:00.000Z",
   });
@@ -106,6 +115,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle handles errors gracefully", async
       listBlockedRunsAwaitingApproval: () => {
         throw new Error("Database connection failed");
       },
+      applyRecoveryDecision: async () => undefined,
     },
     now: () => "2026-04-14T10:00:00.000Z",
   });
@@ -125,6 +135,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correc
       listRecoverableExecutingRuns: (startedAt: string) => [],
       listStaleRuns: (staleBefore: string) => [],
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
     staleThresholdMs: 60000, // 1 minute
     now: () => "2026-04-14T10:00:00.000Z",
@@ -150,6 +161,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold", asy
         return [];
       },
       listBlockedRunsAwaitingApproval: () => [],
+      applyRecoveryDecision: async () => undefined,
     },
     staleThresholdMs: 5 * 60 * 1000, // 5 minutes
     now: () => "2026-04-14T10:00:00.000Z",
@@ -160,20 +172,24 @@ test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold", asy
 });
 
 test("ExecutionRecoveryWorker.runRecoveryCycle counts actionable items correctly", async () => {
+  const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: (startedAt: string) => [
-        { suggestedAction: "resume_same_worker" },
-        { suggestedAction: "retry_new_ticket" },
-        { suggestedAction: "escalate_takeover" }, // not actionable
+        { executionId: "exec-1", suggestedAction: "resume_same_worker" },
+        { executionId: "exec-2", suggestedAction: "retry_new_ticket" },
+        { executionId: "exec-3", suggestedAction: "escalate_takeover" }, // not actionable
       ],
       listStaleRuns: (staleBefore: string) => [
-        { suggestedAction: "resume_same_worker" }, // actionable
-        { suggestedAction: "require_approval" }, // not actionable
+        { executionId: "exec-1", suggestedAction: "resume_same_worker" }, // deduped actionable
+        { executionId: "exec-4", suggestedAction: "none" }, // not actionable
       ],
       listBlockedRunsAwaitingApproval: () => [
-        { suggestedAction: "require_approval" }, // not actionable
+        { executionId: "exec-5", suggestedAction: "none" }, // not actionable
       ],
+      applyRecoveryDecision: async (executionId: string) => {
+        appliedExecutionIds.push(executionId);
+      },
     },
     now: () => "2026-04-14T10:00:00.000Z",
   });
@@ -184,4 +200,23 @@ test("ExecutionRecoveryWorker.runRecoveryCycle counts actionable items correctly
   assert.equal(report.itemsProcessed, 6);
   // Items recovered: only resume_same_worker and retry_new_ticket = 2
   assert.equal(report.itemsRecovered, 2);
+  assert.deepEqual(appliedExecutionIds, ["exec-1", "exec-2"]);
+});
+
+test("ExecutionRecoveryWorker.runRecoveryCycle reports missing applier for actionable candidates", async () => {
+  const worker = new ExecutionRecoveryWorker({
+    recoveryService: {
+      listRecoverableExecutingRuns: () => [
+        { executionId: "exec-actionable", suggestedAction: "resume_same_worker" },
+      ],
+      listStaleRuns: () => [],
+      listBlockedRunsAwaitingApproval: () => [],
+    },
+    now: () => "2026-04-14T10:00:00.000Z",
+  });
+
+  const report = await worker.runRecoveryCycle();
+
+  assert.equal(report.itemsRecovered, 0);
+  assert.equal(report.errors[0]?.code, "execution_recovery.applier_unavailable");
 });

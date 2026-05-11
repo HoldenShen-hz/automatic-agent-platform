@@ -1,14 +1,21 @@
 import {
   buildRecoveryCadence,
   type RecoveryCadence,
+  type RecoveryError,
   type RecoveryReport,
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { RuntimeRecoveryService } from "../recovery/runtime-recovery-service-root.js";
+import type {
+  RecoverySuggestedAction,
+  RuntimeRecoveryCandidate,
+  RuntimeRecoveryService,
+} from "../recovery/runtime-recovery-service-root.js";
 
 export interface ExecutionRecoveryWorkerOptions {
-  readonly recoveryService: Pick<RuntimeRecoveryService, "listBlockedRunsAwaitingApproval" | "listRecoverableExecutingRuns" | "listStaleRuns">;
+  readonly recoveryService: Pick<RuntimeRecoveryService, "listBlockedRunsAwaitingApproval" | "listRecoverableExecutingRuns" | "listStaleRuns"> & {
+    readonly applyRecoveryDecision?: (executionId: string, decidedBy?: string) => Promise<unknown>;
+  };
   readonly workerId?: string;
   readonly cadence?: Partial<RecoveryCadence> & Pick<RecoveryCadence, "intervalMs">;
   readonly staleThresholdMs?: number;
@@ -44,14 +51,17 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
     const startedMs = Date.now();
     const tenantId = this.options.tenantId;
     const staleBefore = new Date(Date.parse(startedAt) - this.staleThresholdMs).toISOString();
+    const errors: RecoveryError[] = [];
 
     try {
       const activeCandidates = this.options.recoveryService.listRecoverableExecutingRuns(startedAt, tenantId);
       const staleCandidates = this.options.recoveryService.listStaleRuns(staleBefore, tenantId);
       const blockedCandidates = this.options.recoveryService.listBlockedRunsAwaitingApproval(tenantId);
-      const actionableCount = activeCandidates.filter((candidate) =>
-        candidate.suggestedAction === "resume_same_worker" || candidate.suggestedAction === "retry_new_ticket"
-      ).length;
+      const actionableCandidates = dedupeCandidatesByExecutionId([
+        ...activeCandidates.filter(isAutomaticallyRecoverableCandidate),
+        ...staleCandidates.filter(isAutomaticallyRecoverableCandidate),
+      ]);
+      const recoveredCount = await this.applyRecoveryActions(actionableCandidates, errors);
 
       return {
         workerId: this.getWorkerId(),
@@ -60,12 +70,13 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
         completedAt: this.now(),
         durationMs: Date.now() - startedMs,
         itemsProcessed: activeCandidates.length + staleCandidates.length + blockedCandidates.length,
-        itemsRecovered: actionableCount,
-        errors: [],
+        itemsRecovered: recoveredCount,
+        errors,
         metadata: {
           activeCandidateCount: activeCandidates.length,
           staleCandidateCount: staleCandidates.length,
           blockedCandidateCount: blockedCandidates.length,
+          actionableCandidateCount: actionableCandidates.length,
           staleBefore,
         },
       };
@@ -85,4 +96,53 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
       };
     }
   }
+
+  private async applyRecoveryActions(
+    candidates: readonly RuntimeRecoveryCandidate[],
+    errors: RecoveryError[],
+  ): Promise<number> {
+    const applyRecoveryDecision = this.options.recoveryService.applyRecoveryDecision;
+    if (candidates.length === 0) {
+      return 0;
+    }
+    if (typeof applyRecoveryDecision !== "function") {
+      errors.push({
+        code: "execution_recovery.applier_unavailable",
+        message: "Recovery worker cannot apply automated recovery actions without an applyRecoveryDecision handler.",
+      });
+      return 0;
+    }
+
+    let recoveredCount = 0;
+    for (const candidate of candidates) {
+      try {
+        await applyRecoveryDecision(candidate.executionId, this.getWorkerId());
+        recoveredCount += 1;
+      } catch (error) {
+        errors.push({
+          code: "execution_recovery.apply_failed",
+          message: error instanceof Error ? error.message : String(error),
+          targetId: candidate.executionId,
+        });
+      }
+    }
+
+    return recoveredCount;
+  }
+}
+
+function isAutomaticallyRecoverableAction(action: RecoverySuggestedAction): action is "resume_same_worker" | "retry_new_ticket" {
+  return action === "resume_same_worker" || action === "retry_new_ticket";
+}
+
+function isAutomaticallyRecoverableCandidate(candidate: RuntimeRecoveryCandidate): boolean {
+  return isAutomaticallyRecoverableAction(candidate.suggestedAction);
+}
+
+function dedupeCandidatesByExecutionId(candidates: readonly RuntimeRecoveryCandidate[]): RuntimeRecoveryCandidate[] {
+  const deduped = new Map<string, RuntimeRecoveryCandidate>();
+  for (const candidate of candidates) {
+    deduped.set(candidate.executionId, candidate);
+  }
+  return [...deduped.values()];
 }

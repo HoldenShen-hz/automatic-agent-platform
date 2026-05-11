@@ -7,15 +7,19 @@ import { ReplayWorker } from "../../../../../src/platform/execution/ha/replay-wo
 import { WorkflowRepairWorker } from "../../../../../src/platform/execution/ha/workflow-repair-worker.js";
 
 test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates", async () => {
+  const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [
-        { suggestedAction: "resume_same_worker" },
-        { suggestedAction: "retry_new_ticket" },
-        { suggestedAction: "escalate_takeover" },
+        { executionId: "exec-1", suggestedAction: "resume_same_worker" },
+        { executionId: "exec-2", suggestedAction: "retry_new_ticket" },
+        { executionId: "exec-3", suggestedAction: "escalate_takeover" },
       ],
-      listStaleRuns: () => [{}, {}],
+      listStaleRuns: () => [{ executionId: "exec-1", suggestedAction: "resume_same_worker" }, {}],
       listBlockedRunsAwaitingApproval: () => [{}],
+      applyRecoveryDecision: async (executionId: string) => {
+        appliedExecutionIds.push(executionId);
+      },
     } as never,
     now: () => "2026-04-25T00:00:00.000Z",
     staleThresholdMs: 60_000,
@@ -25,6 +29,7 @@ test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates",
   assert.equal(report.workerType, "execution_recovery");
   assert.equal(report.itemsProcessed, 6);
   assert.equal(report.itemsRecovered, 2);
+  assert.deepEqual(appliedExecutionIds, ["exec-1", "exec-2"]);
 });
 
 test("WorkflowRepairWorker applies startup repairs through repair service", async () => {
@@ -78,6 +83,7 @@ test("ReplayWorker builds replay reports for known tasks", async () => {
   });
 
   const report = await worker.runRecoveryCycle();
-  assert.equal(report.itemsProcessed, 2);
-  assert.equal(report.itemsRecovered, 1);
+  assert.equal(report.itemsProcessed, 0);
+  assert.equal(report.itemsRecovered, 0);
+  assert.equal(report.errors[0]?.code, "replay.real_side_effect_blocked");
 });

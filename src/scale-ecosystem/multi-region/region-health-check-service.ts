@@ -184,7 +184,7 @@ export class RegionHealthCheckService {
 
       const healthResult: RegionHealthCheckResult = {
         regionId,
-        status: this.determineStatus(result.metrics, latencyMs),
+        status: this.determineStatus(result.metrics, latencyMs, config.thresholds.maxLatencyMs),
         checkedAt: nowIso(),
         latencyMs,
         metrics: result.metrics,
@@ -428,7 +428,11 @@ export class RegionHealthCheckService {
   /**
    * Determine overall status from metrics
    */
-  private determineStatus(metrics: HealthCheckMetric[], latencyMs: number): RegionHealthStatus {
+  private determineStatus(
+    metrics: HealthCheckMetric[],
+    latencyMs: number,
+    maxLatencyMs: number,
+  ): RegionHealthStatus {
     if (metrics.length === 0) {
       return "unhealthy";
     }
@@ -438,10 +442,7 @@ export class RegionHealthCheckService {
       return "degraded";
     }
 
-    const regionId = [...this.healthResults.entries()]
-      .find(([, result]) => result.metrics === metrics)?.[0];
-    const config = regionId == null ? null : this.configs.get(regionId);
-    if (config && latencyMs > config.thresholds.maxLatencyMs) {
+    if (latencyMs > maxLatencyMs) {
       return "degraded";
     }
 

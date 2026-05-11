@@ -103,13 +103,15 @@ export class PromptVersionManager {
     const parsed2 = this.parseVersion(strV2);
 
     if (parsed1.major !== parsed2.major) {
-      return parsed1.major - parsed2.major;
+      return parsed1.major < parsed2.major ? -1 : 1;
     }
     if (parsed1.minor !== parsed2.minor) {
-      return parsed1.minor - parsed2.minor;
+      return parsed1.minor < parsed2.minor ? -1 : 1;
     }
-    if (parsed1.patch !== undefined && parsed2.patch !== undefined) {
-      return parsed1.patch - parsed2.patch;
+    const patch1 = parsed1.patch ?? 0;
+    const patch2 = parsed2.patch ?? 0;
+    if (patch1 !== patch2) {
+      return patch1 < patch2 ? -1 : 1;
     }
     return 0;
   }

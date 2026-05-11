@@ -125,7 +125,7 @@ export class ConversationHistoryService {
 
     // Persist to memory store if available and not restricted
     // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && options.memoryLayer !== "layer_3" && !session.isRestricted) {
+    if (this.memoryService && !session.isRestricted) {
       await this.persistSession(updatedSession, options);
     }
 
@@ -146,7 +146,7 @@ export class ConversationHistoryService {
     };
 
     // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && options.memoryLayer !== "layer_3" && !session.isRestricted) {
+    if (this.memoryService && !session.isRestricted) {
       await this.persistSession(completedSession, options);
     }
 
@@ -167,7 +167,7 @@ export class ConversationHistoryService {
     };
 
     // R5-31: Restricted/regulated dialog data must not be written to long-term memory
-    if (this.memoryService && options.memoryLayer !== "layer_3" && !session.isRestricted) {
+    if (this.memoryService && !session.isRestricted) {
       await this.persistSession(abandonedSession, options);
     }
 

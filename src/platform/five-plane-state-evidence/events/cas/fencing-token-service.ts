@@ -69,9 +69,13 @@ export interface FenceRepository {
 export class FencingTokenService {
   // Active fences are process-wide so multiple service instances can enforce exclusivity.
   private static readonly activeFences = new Map<string, FenceInfo>();
+  private static readonly FENCING_TOKEN_SEPARATOR = "::";
+  private static globalTokenCounter = 0;
 
-  // Fencing token counter for monotonically increasing tokens
-  private tokenCounter = 0;
+  // Exposed as a getter for test visibility; the authoritative counter is process-wide.
+  public get tokenCounter(): number {
+    return FencingTokenService.globalTokenCounter;
+  }
 
   // Node ID for this instance
   private readonly nodeId: string;
@@ -83,16 +87,21 @@ export class FencingTokenService {
   /**
    * Generates a unique fencing token for an execution.
    *
-   * Format: {executionId}-{nodeId}-{counter}-{timestamp}
+   * Format: {encodedExecutionId}::{encodedNodeId}::{counter}::{timestamp}
    *
    * @param executionId - The execution ID this token is for
    * @param nodeId - The node ID generating the token
    * @returns A unique fencing token string
    */
   public generateFencingToken(executionId: string, nodeId: string): string {
-    this.tokenCounter++;
+    FencingTokenService.globalTokenCounter += 1;
     const timestamp = Date.now();
-    return `${executionId}-${nodeId}-${this.tokenCounter}-${timestamp}`;
+    return [
+      encodeURIComponent(executionId),
+      encodeURIComponent(nodeId),
+      String(FencingTokenService.globalTokenCounter),
+      String(timestamp),
+    ].join(FencingTokenService.FENCING_TOKEN_SEPARATOR);
   }
 
   /**
@@ -110,17 +119,40 @@ export class FencingTokenService {
       };
     }
 
-    const parts = token.split("-");
-    if (parts.length < 4) {
+    const parts = token.split(FencingTokenService.FENCING_TOKEN_SEPARATOR);
+    if (parts.length !== 4) {
       return {
         valid: false,
         reason: "Token format invalid",
       };
     }
 
-    // Token format: {executionId}-{nodeId}-{counter}-{timestamp}
-    const tokenNodeId = parts[1];
-    const executionIdPart = parts[0];
+    const [encodedExecutionId, encodedNodeId, counterPart, timestampPart] = parts;
+    if (
+      !encodedExecutionId
+      || !encodedNodeId
+      || !counterPart
+      || !timestampPart
+      || !/^\d+$/.test(counterPart)
+      || !/^\d+$/.test(timestampPart)
+    ) {
+      return {
+        valid: false,
+        reason: "Token format invalid",
+      };
+    }
+
+    let tokenNodeId: string;
+    let executionIdPart: string;
+    try {
+      tokenNodeId = decodeURIComponent(encodedNodeId);
+      executionIdPart = decodeURIComponent(encodedExecutionId);
+    } catch {
+      return {
+        valid: false,
+        reason: "Token format invalid",
+      };
+    }
 
     if (!tokenNodeId || !executionIdPart) {
       return {
@@ -185,7 +217,10 @@ export class FencingTokenService {
       expiresAt: null,
     };
 
-    FencingTokenService.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
+    FencingTokenService.activeFences.set(
+      `${executionId}${FencingTokenService.FENCING_TOKEN_SEPARATOR}${this.nodeId}`,
+      fenceInfo,
+    );
     return fenceInfo;
   }
 
@@ -251,6 +286,7 @@ export class FencingTokenService {
    */
   public clearAllFences(): void {
     FencingTokenService.activeFences.clear();
+    FencingTokenService.globalTokenCounter = 0;
   }
 
   /**

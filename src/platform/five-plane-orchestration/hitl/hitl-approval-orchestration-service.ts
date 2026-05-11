@@ -33,6 +33,9 @@ export interface ApprovalFeedbackLink {
   readonly refId: string | null;
   readonly feedbackSignalId: string | null;
   readonly decisionEffect: ApprovalDecisionEffect;
+  readonly loop_iteration?: number | null;
+  readonly ref_id?: string | null;
+  readonly feedback_signal_id?: string | null;
 }
 
 export interface ApprovalPacketOption {
@@ -184,6 +187,9 @@ export class HitlApprovalOrchestrationService {
       refId: request.refId ?? null,
       feedbackSignalId: null,
       decisionEffect: "continue",
+      loop_iteration: request.loopIteration ?? null,
+      ref_id: request.refId ?? null,
+      feedback_signal_id: null,
     };
     const packet: ApprovalPacket = {
       approvalId: approval.approvalId,
@@ -215,11 +221,13 @@ export class HitlApprovalOrchestrationService {
       throw new Error(`hitl_approval.feedback_link_not_found:${decision.approvalId}`);
     }
     this.approvalService.applyDecision(decision);
+    const feedbackSignalId = existingLink.feedbackSignalId
+      ?? (decision.decisionType === "expired" ? null : newId("feedback_signal"));
     const updatedLink: ApprovalFeedbackLink = {
       ...existingLink,
-      feedbackSignalId: existingLink.feedbackSignalId
-        ?? (decision.decisionType === "expired" ? null : newId("feedback_signal")),
+      feedbackSignalId,
       decisionEffect: defaultEffectForDecision(decision),
+      feedback_signal_id: feedbackSignalId,
     };
     this.feedbackLinks.set(decision.approvalId, updatedLink);
     return {

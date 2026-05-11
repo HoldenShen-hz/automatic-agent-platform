@@ -1,6 +1,8 @@
 {
   "defaultGateway": "cli",
   "sseEnabled": true,
+  "sseMaxConnections": 200,
+  "sseIdleTimeoutMs": 120000,
   "timeout": 30000,
   "circuitBreaker": {
     "enabled": true,

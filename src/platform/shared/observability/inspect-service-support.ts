@@ -149,6 +149,7 @@ export function findActiveExecutionId(executions: Array<{ id: string; status: st
 
 export interface TaskInspectQuery {
   limit?: number;
+  fetchAll?: boolean;
   tenantId?: string | null;
   taskStatus?: TaskRecord["status"];
   workflowStatus?: WorkflowStateRecord["status"];

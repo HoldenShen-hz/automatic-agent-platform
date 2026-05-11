@@ -1,6 +1,32 @@
 export type CoordinatorNodeStatus = "active" | "draining" | "offline";
 export type LeaderActionAuthority = "leader_only" | "follower_allowed" | "any";
 
+export type LeaderCoordinatorAction =
+  | "dispatch_execution"
+  | "renew_leader_lease"
+  | "trigger_failover"
+  | "write_authoritative_state"
+  | "observe_cluster";
+
+export type FollowerCoordinatorAction =
+  | "observe_cluster"
+  | "ack_replication"
+  | "stream_health";
+
+export interface LeaderCoordinatorMetadata {
+  role: "leader";
+  allowedActions: readonly LeaderCoordinatorAction[];
+  authoritativeWritesEnabled: true;
+}
+
+export interface FollowerCoordinatorMetadata {
+  role: "follower";
+  allowedActions: readonly FollowerCoordinatorAction[];
+  authoritativeWritesEnabled: false;
+}
+
+export type CoordinatorNodeMetadata = LeaderCoordinatorMetadata | FollowerCoordinatorMetadata;
+
 export interface CoordinatorNode {
   nodeId: string;
   region: string;
@@ -8,7 +34,17 @@ export interface CoordinatorNode {
   isLeader: boolean;
   leadershipEpoch: number;
   lastHeartbeatAt: string;
-  metadata: Record<string, unknown> | null;
+  metadata: CoordinatorNodeMetadata | null;
+}
+
+export function canCoordinatorPerformLeaderAction(
+  node: CoordinatorNode,
+  action: LeaderCoordinatorAction,
+): boolean {
+  if (!node.isLeader) {
+    return false;
+  }
+  return node.metadata?.role === "leader" && node.metadata.allowedActions.includes(action);
 }
 
 export interface LeaderLease {

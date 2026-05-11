@@ -33,6 +33,16 @@ export class SdkVersionHandshakeService {
 
     // R5-53: Validate platform minimum version compatibility
     // R5-53 fix: Reject handshake if platform_min_version is below minimum, not just warn
+    if (platformMinVersion != null && !this.isStrictSemver(platformMinVersion)) {
+      return {
+        accepted: false,
+        statusCode: 426,
+        reasonCode: "sdk.upgrade_required",
+        responseHeaders: this.buildHeaders("upgrade_required"),
+        warnings: [`compatibility_error:platform_min_invalid=${platformMinVersion}`, ...warnings],
+      };
+    }
+
     if (platformMinVersion != null && this.policy.platformMinimumVersion != null) {
       if (this.compareSemver(platformMinVersion, this.policy.platformMinimumVersion) < 0) {
         return {
@@ -48,7 +58,7 @@ export class SdkVersionHandshakeService {
       }
     }
 
-    if (sdkVersion == null || this.compareSemver(sdkVersion, this.policy.minimumSdkVersion) < 0) {
+    if (sdkVersion == null || !this.isStrictSemver(sdkVersion) || this.compareSemver(sdkVersion, this.policy.minimumSdkVersion) < 0) {
       return {
         accepted: false,
         statusCode: 426,
@@ -103,5 +113,9 @@ export class SdkVersionHandshakeService {
 
   private parse(version: string): readonly number[] {
     return version.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+  }
+
+  private isStrictSemver(version: string): boolean {
+    return /^\d+(?:\.\d+){0,2}$/.test(version.trim());
   }
 }

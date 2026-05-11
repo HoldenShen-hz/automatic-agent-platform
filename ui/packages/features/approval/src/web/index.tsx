@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useId, useState, type ReactElement } from "react";
 import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout } from "@aa/ui-core";
 import { useApprovalCenterVm } from "../hooks";
 
@@ -6,6 +6,8 @@ export function ApprovalWebView(): ReactElement {
   const vm = useApprovalCenterVm();
   const [delegateTarget, setDelegateTarget] = useState("domain-admin");
   const selectedApproval = vm.selectedApproval;
+  const delegateInputId = useId();
+  const approvalActionDescriptionId = useId();
 
   return (
     <FeatureScaffold title="Approval Center" summary="审批队列、委派与恢复动作闭环" status="Implemented/Contracted">
@@ -32,6 +34,9 @@ export function ApprovalWebView(): ReactElement {
         )}
         center={selectedApproval == null ? <p>No approval selected</p> : (
           <div style={{ display: "grid", gap: 16 }}>
+            <p id={approvalActionDescriptionId} style={{ margin: 0 }}>
+              Approve or reject the selected approval request based on the policy summary and current risk context.
+            </p>
             <KeyValueTable
               rows={[
                 { key: "Task", value: selectedApproval.taskId },
@@ -44,11 +49,17 @@ export function ApprovalWebView(): ReactElement {
               ]}
             />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={vm.approve} type="button">Approve</button>
-              <button onClick={vm.reject} type="button">Reject</button>
+              <button aria-describedby={approvalActionDescriptionId} onClick={vm.approve} type="button">Approve</button>
+              <button aria-describedby={approvalActionDescriptionId} onClick={vm.reject} type="button">Reject</button>
               <button onClick={() => { void vm.requestMoreContext(); }} type="button">Request Context</button>
-              <input onChange={(event) => setDelegateTarget(event.target.value)} value={delegateTarget} />
+              <input
+                aria-label="Delegate target"
+                id={delegateInputId}
+                onChange={(event) => setDelegateTarget(event.target.value)}
+                value={delegateTarget}
+              />
               <button
+                aria-describedby={delegateInputId}
                 onClick={() => {
                   void vm.delegate(delegateTarget);
                 }}

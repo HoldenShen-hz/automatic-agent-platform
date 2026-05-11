@@ -26,6 +26,7 @@ export interface EventOpsCliEnvConfig {
 export interface OrphanCleanupCliEnvConfig {
   action: "scan" | "repair";
   occurredAt: string | null;
+  confirmRepair: boolean;
 }
 
 export interface ReplayRecoveryCliEnvConfig {
@@ -113,6 +114,7 @@ export function loadOrphanCleanupCliEnv(env: NodeJS.ProcessEnv = process.env): O
   return {
     action,
     occurredAt: readTrimmedEnv(env, "AA_OCCURRED_AT"),
+    confirmRepair: readTrimmedEnv(env, "AA_ORPHAN_CLEANUP_CONFIRM") === "yes",
   };
 }
 

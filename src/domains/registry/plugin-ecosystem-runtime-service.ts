@@ -131,7 +131,7 @@ export class PluginEcosystemRuntimeService {
     }
     return {
       activationId: newId("ecosystem_activation"),
-      plan: this.buildPlan(input),
+      plan,
       activatedPluginIds,
       connectorBindings,
     };

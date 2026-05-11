@@ -113,24 +113,23 @@ test("ApprovalRoutingService includes audit record with correct structure", () =
     "2026-04-20T00:00:00.000Z",
   );
   assert.ok(result.auditRecord);
-  assert.equal(result.auditRecord.recordId.includes("audit_user-1_dept-1"), true);
+  assert.ok(result.auditRecord.recordId.length > 0);
   assert.equal(result.auditRecord.action, "approval.route");
   assert.equal(result.auditRecord.actorId, "user-1");
   assert.deepStrictEqual(result.auditRecord.reasonCodes, ["approval.direct_route", "approval.routing.org_chart"]);
 });
 
-test("ApprovalRoutingService routes to first matching org node when request orgNodeId not found", () => {
+test("ApprovalRoutingService throws when request orgNodeId not found", () => {
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "dept-2", ownerUserIds: ["vp"] }),
   ];
   const service = new ApprovalRoutingService({ orgNodes: nodes });
-  const result = service.route(
+  assert.throws(() => service.route(
     { requesterId: "user-1", orgNodeId: "nonexistent", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
     "2026-04-20T00:00:00.000Z",
-  );
-  assert.equal(result.matchedOrgNodeId, "dept-1");
+  ), /approval_route\.org_node_not_found/);
 });
 
 test("ApprovalRoutingService applies delegation when approver is delegated", () => {

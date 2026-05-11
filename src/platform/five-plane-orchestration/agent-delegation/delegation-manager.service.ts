@@ -13,7 +13,6 @@
 
 import { nowIso, newId } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { normalizeSandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 import {
   TopologyValidator,
   createTopologyValidator,
@@ -47,6 +46,7 @@ import {
   DelegationAuditService,
   delegationAuditService,
 } from "./delegation-audit-service.js";
+import { ContextIsolator, createContextIsolator } from "./context-isolator.js";
 
 // Extended options interface that includes service dependencies
 interface DelegationManagerOptions extends DelegationOptions {
@@ -89,6 +89,7 @@ export class DelegationManagerService {
   private readonly callDepthBudget: CallDepthBudget;
   private readonly governanceService: DelegationGovernanceService;
   private readonly auditService: DelegationAuditService;
+  private readonly contextIsolator: ContextIsolator;
   private readonly defaultTimeout: number;
   // R9-06: Cache maps populated from repository - repository is the authoritative store
   // These are caches only, populated on init from repository and kept in sync
@@ -117,6 +118,7 @@ export class DelegationManagerService {
     this.callDepthBudget = new CallDepthBudget();
     this.governanceService = options.governanceService ?? defaultDelegationGovernanceService;
     this.auditService = options.auditService ?? delegationAuditService;
+    this.contextIsolator = createContextIsolator();
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
 
     // R9-06: Repository is the authoritative store when provided
@@ -358,16 +360,12 @@ export class DelegationManagerService {
     await this.validateTopology(parent, spec);
 
     // Step 2: Permission narrowing
-    const narrowedPermissions = this.narrowPermissions(
-      parent.permissions,
-      spec.requiredPermissions,
-    );
-
-    // Step 3: Create isolated child context
-    this.createIsolatedContext(parent, narrowedPermissions, spec);
+    const isolated = this.contextIsolator.isolate(parent, spec);
+    const narrowedPermissions = isolated.narrowedPermissions;
+    const childContext = isolated.context;
 
     // Step 4: Create delegation record (await persistence)
-    const delegationResult = await this.createDelegationRecord(parent, spec, narrowedPermissions);
+    const delegationResult = await this.createDelegationRecord(parent, childContext, spec, narrowedPermissions);
 
     // Step 5: Update delegation chain
     const rootAgentId = this.resolveRootAgentId(parent);
@@ -467,7 +465,7 @@ export class DelegationManagerService {
         parentPermissions: delegation.permissions,
         parentRiskMode: 100,
         parentConstraints: delegation.permissions.constraints as unknown as Record<string, unknown>,
-        parentBudgetRemaining: Number.MAX_SAFE_INTEGER,
+        parentBudgetRemaining: this.resolveParentBudgetRemaining(delegation.permissions),
         // Completion reports are validated against the platform delegation depth budget,
         // not against the child delegation's current depth as an exact ceiling.
         globalCallDepth: DEFAULT_MAX_DEPTH,
@@ -956,39 +954,6 @@ export class DelegationManagerService {
     return [...recordsById.values()];
   }
 
-  private narrowPermissions(
-    parentPermissions: PermissionSet,
-    requiredPermissions: PermissionSet,
-  ): PermissionSet {
-    // R9-07 fix: Always intersect child and parent permissions - child should never
-    // receive more permissions than parent holds. This is true intersection logic.
-    const allowedResources = parentPermissions.resources.filter((resource) =>
-      requiredPermissions.resources.includes(resource),
-    );
-    return {
-      resources: allowedResources,
-      actions: this.intersectActions(parentPermissions.actions, requiredPermissions.actions),
-      constraints: {
-        ...parentPermissions.constraints,
-        ...requiredPermissions.constraints,
-        // Take more restrictive values
-        maxDurationMs: Math.min(
-          parentPermissions.constraints.maxDurationMs ?? Infinity,
-          requiredPermissions.constraints.maxDurationMs ?? Infinity,
-        ),
-        maxTokens: Math.min(
-          parentPermissions.constraints.maxTokens ?? Infinity,
-          requiredPermissions.constraints.maxTokens ?? Infinity,
-        ),
-      },
-    };
-  }
-
-  private intersectActions(parentActions: readonly string[], childActions: readonly string[]): string[] {
-    // R9-07 fix: Always intersect - child should never get more actions than parent
-    return parentActions.filter((action) => childActions.includes(action));
-  }
-
   private buildAcpCapabilityIntersection(permissions: PermissionSet): string[] {
     const intersection = [...permissions.actions, ...permissions.resources].filter(
       (value, index, array) => array.indexOf(value) === index,
@@ -996,26 +961,9 @@ export class DelegationManagerService {
     return intersection.length > 0 ? intersection : ["delegation"];
   }
 
-  private createIsolatedContext(
-    parent: AgentContext,
-    permissions: PermissionSet,
-    spec: DelegationSpec,
-  ): AgentContext {
-    return {
-      agentId: spec.targetAgentId,
-      agentType: spec.targetAgentType,
-      packId: spec.targetPackId,
-      delegationDepth: parent.delegationDepth + 1,
-      activeDelegations: [], // New context starts with no active delegations
-      permissions,
-      sandboxTier: normalizeSandboxMode(parent.sandboxTier),
-      correlationId: `${parent.correlationId}:${newId("dlg")}`,
-      tenantId: parent.tenantId,
-    };
-  }
-
   private async createDelegationRecord(
     parent: AgentContext,
+    childContext: AgentContext,
     spec: DelegationSpec,
     permissions: PermissionSet,
   ): Promise<DelegationResult> {
@@ -1033,16 +981,16 @@ export class DelegationManagerService {
     const delegation: DelegationResult = {
       delegationId,
       parentAgentId: parent.agentId,
-      childAgentId: spec.targetAgentId,
+      childAgentId: childContext.agentId,
       depth: parent.delegationDepth + 1,
       permissions,
       grantedPermissions: permissions,
       createdAt: now,
       expiresAt,
-      correlationId: parent.correlationId,
+      correlationId: childContext.correlationId,
       ...(spec.requiresApproval ? { requiresApproval: true } : {}),
       status: spec.requiresApproval ? "pending_approval" : "pending",
-      summary: `Delegated ${spec.targetAgentType} work from ${parent.agentId} to ${spec.targetAgentId}`,
+      summary: `Delegated ${childContext.agentType} work from ${parent.agentId} to ${childContext.agentId}`,
       artifact_refs: [],
       trust_level: Math.max(0, Number((1 - Math.min(parent.delegationDepth + 1, DEFAULT_MAX_DEPTH) / (DEFAULT_MAX_DEPTH + 1)).toFixed(2))),
       taint_labels: permissions.constraints.allowedDomains ?? [],
@@ -1160,6 +1108,14 @@ export class DelegationManagerService {
   private resolveRootAgentId(parent: AgentContext): string {
     const parentDelegationId = parent.activeDelegations.at(-1);
     return parentDelegationId ? this.delegationRootStore.get(parentDelegationId) ?? parent.agentId : parent.agentId;
+  }
+
+  private resolveParentBudgetRemaining(permissions: PermissionSet): number {
+    const candidates = [
+      permissions.constraints.maxTokens,
+      permissions.constraints.maxDurationMs,
+    ].filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+    return candidates.length > 0 ? Math.min(...candidates) : 1000;
   }
 
   private updateDelegationChain(rootAgentId: string, parent: AgentContext, spec: DelegationSpec, delegation: DelegationResult): void {

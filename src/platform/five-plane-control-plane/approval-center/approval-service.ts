@@ -290,6 +290,12 @@ function toTimeoutAutoAction(timeoutPolicy: ApprovalRequest["timeoutPolicy"]): A
   }
 }
 
+function deriveDefaultHarnessRunId(input: Pick<ApprovalRequest, "taskId" | "executionId">): string {
+  return input.executionId != null && input.executionId.trim().length > 0
+    ? `harness_run:${input.executionId}`
+    : `harness_run:task:${input.taskId}`;
+}
+
 /**
  * Service for managing approval requests and decisions.
  *
@@ -336,7 +342,7 @@ export class ApprovalService {
       input.harnessRunId
       ?? input.harness_run_id
       ?? readStringContextField(input.context, "harnessRunId", "harness_run_id")
-      ?? input.taskId;
+      ?? deriveDefaultHarnessRunId(input);
     const nodeRunId =
       input.nodeRunId
       ?? input.node_run_id

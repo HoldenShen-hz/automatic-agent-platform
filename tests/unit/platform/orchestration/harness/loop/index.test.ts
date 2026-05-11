@@ -27,14 +27,14 @@ test("HarnessLoopController constructor computes maxIterations from budget.maxSt
   assert.equal(guards.maxIterations, 10, "maxIterations should be floor(30/3) = 10");
 });
 
-test("HarnessLoopController constructor allows zero iterations for very small maxSteps", () => {
+test("HarnessLoopController constructor keeps at least one iteration for very small maxSteps", () => {
   const pack1 = createMockConstraintPack({ maxSteps: 1 });
   const controller1 = new HarnessLoopController(pack1);
-  assert.equal(controller1.getGuards().maxIterations, 0, "maxIterations should be floor(1/3) = 0");
+  assert.equal(controller1.getGuards().maxIterations, 1, "single-step workflows should still allow one iteration");
 
   const pack2 = createMockConstraintPack({ maxSteps: 0 });
   const controller2 = new HarnessLoopController(pack2);
-  assert.equal(controller2.getGuards().maxIterations, 0, "maxIterations should remain 0 when maxSteps is 0");
+  assert.equal(controller2.getGuards().maxIterations, 1, "zero-step envelopes should still fail closed with one iteration slot");
 });
 
 test("HarnessLoopController constructor applies overrides", () => {
@@ -163,11 +163,7 @@ test("HarnessLoopController getGuardViolation returns max_replans_reached", () =
   assert.equal(controller.getGuardViolation(), null, "replanCount=2, maxReplans=3, not violated");
 
   controller.recordReplan();
-  // replanCount=3, maxReplans=3, still not > so not violated
-  assert.equal(controller.getGuardViolation(), null);
-
-  controller.recordReplan();
-  // replanCount=4 > maxReplans=3, violated
+  // replanCount=3, maxReplans=3, should fail closed at the boundary
   assert.equal(controller.getGuardViolation(), "harness.guard.max_replans_reached");
 });
 

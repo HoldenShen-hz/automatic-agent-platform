@@ -358,7 +358,7 @@ export class AsyncMarketplaceListingRepository {
        ORDER BY downloaded_at DESC
        LIMIT $2`,
       listingId,
-      limit,
+      sanitizedLimit,
     );
   }
 

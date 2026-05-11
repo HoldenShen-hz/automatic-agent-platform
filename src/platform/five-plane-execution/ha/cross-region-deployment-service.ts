@@ -544,6 +544,19 @@ export class CrossRegionDeploymentService {
     step.completedAt = now;
     step.errorMessage = errorMessage ?? null;
 
+    if (!success) {
+      for (const pendingStep of steps) {
+        if (pendingStep.stepId === step.stepId) {
+          continue;
+        }
+        if (pendingStep.status === "pending" || pendingStep.status === "in_progress") {
+          pendingStep.status = "skipped";
+          pendingStep.completedAt = now;
+          pendingStep.errorMessage = errorMessage ?? "Skipped after failover step failure";
+        }
+      }
+    }
+
     // Check if all steps are done
     const allDone = steps.every((s) => s.status === "completed" || s.status === "skipped");
     const anyFailed = steps.some((s) => s.status === "failed");
