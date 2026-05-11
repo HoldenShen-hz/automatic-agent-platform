@@ -152,7 +152,7 @@ test("CrmAdapter uses default apiBaseUrl for hubspot", async () => {
   const adapter = createCrmAdapterPlugin({ policy: createMockPolicy() });
   await adapter.authenticate({ token: "hubspot_secret_abc12345" });
 
-  const result = await adapter.execute("get_contacts", {});
+  const result = await adapter.execute("contacts", {});
 
   const data = result as any;
   assert.equal(data.ok, true);

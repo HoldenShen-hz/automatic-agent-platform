@@ -138,7 +138,7 @@ export class RuntimeRecoveryDecisionService {
     };
 
     // Record the decision for audit trail
-    this.recordDecision(decision);
+    this.recordDecision(decision, execution);
     return decision;
   }
 
@@ -196,7 +196,9 @@ export class RuntimeRecoveryDecisionService {
       };
 
       // Always record the decision first for audit
-      this.recordDecision(decision);
+      // Pass execution directly to avoid TOCTOU - we use the execution already read
+      // inside the transaction rather than re-reading in recordDecision
+      this.recordDecision(decision, execution);
 
       // Handle move to dead letter action
       if (decision.action === "move_dead_letter") {
@@ -253,9 +255,11 @@ export class RuntimeRecoveryDecisionService {
    * and replay.
    *
    * @param decision - The decision record to persist
+   * @param execution - Optional execution record to use for traceId (avoids TOCTOU if passed)
    */
-  private recordDecision(decision: RecoveryDecisionRecord): void {
-    const execution = this.store.dispatch.getExecution(decision.executionId);
+  private recordDecision(decision: RecoveryDecisionRecord, execution?: ExecutionRecord): void {
+    // Use passed execution to avoid TOCTOU, only fall back to store read if not provided
+    const executionRecord = execution ?? this.store.dispatch.getExecution(decision.executionId);
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: decision.taskId,
@@ -269,7 +273,7 @@ export class RuntimeRecoveryDecisionService {
         decidedAt: decision.decidedAt,
         decidedBy: decision.decidedBy,
       }),
-      traceId: execution?.traceId ?? null,
+      traceId: executionRecord?.traceId ?? null,
       createdAt: decision.decidedAt,
     });
   }

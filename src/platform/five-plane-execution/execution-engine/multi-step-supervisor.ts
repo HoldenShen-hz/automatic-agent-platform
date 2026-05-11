@@ -616,6 +616,30 @@ export async function executeStepLoop(
       stepOutputs.push(stepOutput);
       workflowLastErrorCode = null;
 
+      // R4-28 (INV-COST-001): Write-ahead logging for cost events - persist BEFORE execution
+      // to prevent cost record loss on crash. The cost event is recorded with "pending" status
+      // before execution begins. On success, the event is marked as "committed" inside the
+      // transaction. On crash recovery, uncommitted cost events can be detected and cleaned up.
+      const costEventId = newId("cost");
+      const costEventWAL: CostEventRecord = {
+        id: costEventId,
+        taskId,
+        sessionId,
+        executionId,
+        agentId: step.agentId,
+        provider: "minimax",
+        model: "MiniMax-M2.7",
+        inputTokens: 30 + index * 10,
+        outputTokens: 12 + index * 5,
+        costUsd: 0.001 + index * 0.0005,
+        budgetScope: "task_execution",
+        providerRequestId: null,
+        pricingVersion: null,
+        createdAt: nowIso(),
+      };
+      // Pre-write cost event to WAL table before execution to ensure it's not lost on crash
+      deps.store.billing.insertCostEventWAL(costEventWAL, "pending");
+
       maybeInjectWorkflowCrash(input.crashInjection, {
         point: "before_commit",
         taskId,
@@ -630,23 +654,8 @@ export async function executeStepLoop(
         deps.store.artifact.insertArtifact(artifact.record);
         deps.store.workflow.insertStepOutput(stepOutput);
 
-        const costEvent: CostEventRecord = {
-          id: newId("cost"),
-          taskId,
-          sessionId,
-          executionId,
-          agentId: step.agentId,
-          provider: "minimax",
-          model: "MiniMax-M2.7",
-          inputTokens: 30 + index * 10,
-          outputTokens: 12 + index * 5,
-          costUsd: 0.001 + index * 0.0005,
-          budgetScope: "task_execution",
-          providerRequestId: null,
-          pricingVersion: null,
-          createdAt: nowIso(),
-        };
-        deps.store.billing.insertCostEvent(costEvent);
+        // R4-28: Mark WAL cost event as committed now that execution succeeded
+        deps.store.billing.commitCostEventWAL(costEventId);
 
         const assistantResponseMessage: MessageRecord = {
           id: newId("msg"),

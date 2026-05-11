@@ -278,20 +278,32 @@ function evaluatePolicyGuard(input: {
   return { allowed: false, reasonCode: "policy.denied.unknown_risk_class", proofRef: null };
 }
 
+export interface TrafficController {
+  canAcceptTraffic(): boolean;
+}
+
 export class IntakeAdmissionService {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly admittedByIdempotencyKey = new Map<string, HarnessAdmissionResult>();
   private readonly clarificationRepository: ClarificationSessionRepository;
+  private readonly trafficController: TrafficController | null;
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
     readonly clarificationRepository?: ClarificationSessionRepository;
+    readonly trafficController?: TrafficController;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
     this.clarificationRepository = options.clarificationRepository ?? new InMemoryClarificationSessionRepository();
+    this.trafficController = options.trafficController ?? null;
   }
 
   public admit(input: RawTaskInput): HarnessAdmissionResult {
+    // Refuse admission when system is in fail_closed state (traffic blocked)
+    if (this.trafficController != null && !this.trafficController.canAcceptTraffic()) {
+      throw new Error("admission.blocked: System is in fail_closed state, traffic admission is blocked");
+    }
+
     const existing = this.admittedByIdempotencyKey.get(input.idempotencyKey);
     if (existing != null) {
       return existing;

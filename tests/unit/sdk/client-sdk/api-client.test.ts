@@ -720,3 +720,265 @@ test("RetryableApiClient does NOT retry on 4xx client errors", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+// ============================================================================
+// R2011: Typed Error Tests - HTTP errors are thrown as typed AppError subclasses
+// ============================================================================
+
+test("R2011: RetryableApiClient throws AuthError on 401 response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "invalid-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.get("/test"),
+      (err: unknown) => {
+        // R2011 FIX: Should throw AuthError with correct code and status
+        if (err && typeof err === "object" && "code" in err && "statusCode" in err) {
+          return err.code === "client_sdk.auth_failed" && err.statusCode === 401;
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: RetryableApiClient throws NetworkError on 500 response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.get("/test"),
+      (err: unknown) => {
+        // R2011 FIX: Should throw NetworkError with retryable=true for 5xx
+        if (err && typeof err === "object" && "code" in err) {
+          return err.code === "client_sdk.network_error";
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: RetryableApiClient throws BusinessError on 400 response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Bad request" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.post("/test", { invalid: true }),
+      (err: unknown) => {
+        // R2011 FIX: Should throw BusinessError with status 400
+        if (err && typeof err === "object" && "code" in err && "statusCode" in err) {
+          return err.code === "client_sdk.business_error" && err.statusCode === 400;
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: RetryableApiClient throws AuthError on 403 response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "forbidden-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.get("/test"),
+      (err: unknown) => {
+        // R2011 FIX: Should throw AuthError for 403
+        if (err && typeof err === "object" && "code" in err && "statusCode" in err) {
+          return err.code === "client_sdk.auth_failed" && err.statusCode === 403;
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: RetryableApiClient throws NetworkError on 502 response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Bad gateway" }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.get("/test"),
+      (err: unknown) => {
+        // R2011 FIX: Should throw NetworkError with status 502
+        if (err && typeof err === "object" && "code" in err && "statusCode" in err) {
+          return err.code === "client_sdk.network_error" && err.statusCode === 502;
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: Typed error contains message from HTTP response", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ error: "Custom error message", code: "custom_code" }), {
+      status: 422,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      client.post("/test", { data: "test" }),
+      (err: unknown) => {
+        // R2011 FIX: Error message should include status and response text
+        if (err instanceof Error) {
+          return err.message.includes("422") && err.message.includes("Custom error message");
+        }
+        return false;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: Network error is retryable for idempotent GET requests", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  // Use minimal backoff for fast test
+  const client = new RetryableApiClient(config, {
+    maxRetries: 2,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount < 3) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ success: boolean }>("/test");
+    // Should have retried twice then succeeded
+    assert.equal(result.data.success, true);
+    assert.equal(attemptCount, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("R2011: POST request on 5xx is NOT retried (non-idempotent)", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    // Should throw and not retry POST request
+    await assert.rejects(client.post("/test", { data: "test" }));
+    assert.equal(attemptCount, 1); // No retries on non-idempotent
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

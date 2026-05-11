@@ -262,7 +262,7 @@ test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
   assert.equal(decision.action, "cancel");
 });
 
-test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
+test("RuntimeRecoveryDecisionService.apply handles cancel action", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   let eventInserted = false;
@@ -307,7 +307,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   assert.equal(eventInserted, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", () => {
+test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   const candidate = createMockCandidate({

@@ -6,8 +6,8 @@
   "defaultStepTimeoutMs": 120000,
   "apiDefaultTimeoutMs": 5000,
   "apiMaxTimeoutMs": 30000,
-  "maxAgentRounds": 6,
-  "maxToolCalls": 8,
+  "maxAgentRounds": 32,
+  "maxToolCalls": 64,
   "retryMax": 3,
   "circuitBreaker": {
     "enabled": true,

@@ -94,11 +94,80 @@ const DEFAULT_SWEEPER_CONFIG: ReservationSweeperConfig = {
   maxExpiryAgeMs: 300000,           // 5 minutes
 };
 
+export interface BudgetSettlementPersistence {
+  /**
+   * Persists a budget settlement record to durable storage.
+   * Must be called within the same transaction as the ledger update.
+   */
+  persistSettlement(settlement: BudgetSettlement): void;
+}
+
+export interface BudgetReleasePersistence {
+  /**
+   * Persists a budget release record to durable storage.
+   * Must be called within the same transaction as the ledger update.
+   */
+  persistRelease(settlement: BudgetSettlement): void;
+}
+
+/**
+ * R11-12: SQL-level atomic budget repository interface.
+ * Provides database-backed atomic CAS operations for concurrent settle/release.
+ */
+export interface BudgetAtomicRepository {
+  /**
+   * Atomically settle a reservation and update the ledger using SQL CAS.
+   * Returns updated ledger on success, or null if version mismatch (concurrent modification).
+   *
+   * @param ledger - Current ledger state
+   * @param reservation - Reservation being settled
+   * @param actualAmount - Actual amount consumed
+   * @param expectedVersion - Expected ledger version for CAS
+   * @param settlement - Settlement record to insert
+   */
+  settleAtomically(
+    ledger: BudgetLedger,
+    reservation: BudgetReservation,
+    actualAmount: number,
+    expectedVersion: number,
+    settlement: BudgetSettlement,
+  ): Promise<{ success: boolean; ledger?: BudgetLedger; rowsAffected: number }>;
+
+  /**
+   * Atomically release a reservation and update the ledger using SQL CAS.
+   * Returns updated ledger on success, or null if version mismatch (concurrent modification).
+   *
+   * @param ledger - Current ledger state
+   * @param reservation - Reservation being released
+   * @param expectedVersion - Expected ledger version for CAS
+   * @param settlement - Release settlement record to insert
+   */
+  releaseAtomically(
+    ledger: BudgetLedger,
+    reservation: BudgetReservation,
+    expectedVersion: number,
+    settlement: BudgetSettlement,
+  ): Promise<{ success: boolean; ledger?: BudgetLedger; rowsAffected: number }>;
+}
+
+export interface BudgetAllocatorDeps {
+  readonly settlementPersistence?: BudgetSettlementPersistence;
+  readonly releasePersistence?: BudgetReleasePersistence;
+  /**
+   * R11-12: Optional SQL repository for atomic CAS operations.
+   * When provided, settle/release will use SQL-level atomicity instead of in-memory CAS.
+   */
+  readonly atomicRepository?: BudgetAtomicRepository;
+}
+
 export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly watermarkConfig: WatermarkAlertConfig;
   private readonly crossRunPriorityConfig: CrossRunPriorityConfig;
   private readonly sweeperConfig: ReservationSweeperConfig;
+  private readonly settlementPersistence?: BudgetSettlementPersistence;
+  private readonly releasePersistence?: BudgetReleasePersistence;
+  private readonly atomicRepository?: BudgetAtomicRepository;
   private activeReservations = new Map<string, BudgetReservation>();
 
   public constructor(options: {
@@ -106,11 +175,15 @@ export class BudgetAllocator {
     readonly watermarkConfig?: Partial<WatermarkAlertConfig>;
     readonly crossRunPriorityConfig?: Partial<CrossRunPriorityConfig>;
     readonly sweeperConfig?: Partial<ReservationSweeperConfig>;
+    readonly deps?: BudgetAllocatorDeps;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
     this.watermarkConfig = { ...DEFAULT_WATERMARK_CONFIG, ...options.watermarkConfig };
     this.crossRunPriorityConfig = { ...DEFAULT_CROSS_RUN_PRIORITY, ...options.crossRunPriorityConfig };
     this.sweeperConfig = { ...DEFAULT_SWEEPER_CONFIG, ...options.sweeperConfig };
+    this.settlementPersistence = options.deps?.settlementPersistence;
+    this.releasePersistence = options.deps?.releasePersistence;
+    this.atomicRepository = options.deps?.atomicRepository;
   }
 
   /**
@@ -303,15 +376,18 @@ export class BudgetAllocator {
    * R11-12: CAS atomic settle for BudgetLedger
    * Adds expectedVersion parameter to enable SQL-level Compare-and-Swap atomicity
    * for concurrent settle operations to prevent balance inconsistency.
+   *
+   * When atomicRepository is provided, uses SQL-level CAS for true atomicity.
+   * Otherwise falls back to in-memory CAS with version check.
    */
-  public settle(input: {
+  public async settle(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
     readonly actualAmount: number;
     readonly expectedVersion: number;
     readonly evidenceRefs?: readonly ArtifactRef[];
     readonly context: BudgetAllocatorContext;
-  }): BudgetSettlementResult {
+  }): Promise<BudgetSettlementResult> {
     // R11-12: CAS version check for atomic settle - prevents concurrent modifications
     if (input.ledger.version !== input.expectedVersion) {
       throw new ValidationError(
@@ -326,6 +402,62 @@ export class BudgetAllocator {
       settlementKind: "final",
       evidenceRefs: input.evidenceRefs ?? [],
     });
+
+    // R11-12: Use SQL-level atomic CAS if repository is available
+    if (this.atomicRepository) {
+      const result = await this.atomicRepository.settleAtomically(
+        input.ledger,
+        input.reservation,
+        input.actualAmount,
+        input.expectedVersion,
+        settlement,
+      );
+      if (!result.success) {
+        throw new ValidationError(
+          "budget_settlement.sql_cas_failed",
+          "budget_settlement.sql_cas_failed: SQL-level CAS failed, concurrent modification detected.",
+        );
+      }
+      // R11-07: Remove from active reservations after settle
+      this.activeReservations.delete(input.reservation.budgetReservationId);
+      const hardCapSatisfied =
+        input.reservation.status === "reserved" &&
+        input.actualAmount <= input.reservation.amount &&
+        input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
+      const command: RuntimeTransitionCommand<BudgetReservation> = {
+        commandId: newId("cmd"),
+        entityType: "BudgetReservation",
+        entityId: input.reservation.budgetReservationId,
+        aggregateType: "BudgetReservation",
+        aggregate: input.reservation,
+        fromStatus: input.reservation.status,
+        toStatus: "settled",
+        principal: input.context.principal,
+        tenantId: input.context.tenantId,
+        traceId: input.context.traceId,
+        reasonCode: "budget.settled",
+        emittedBy: input.context.emittedBy,
+        budgetPrecondition: {
+          reservationId: input.reservation.budgetReservationId,
+          hardCapSatisfied,
+        },
+        auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
+      };
+      const reservation = this.stateMachine.transition(command);
+      return {
+        reservation,
+        settlement,
+        ledger: result.ledger!,
+      };
+    }
+
+    // R11-13 FIX: Persist settlement record atomically with ledger update.
+    // This ensures cost records survive crashes - the settlement is written
+    // in the same transaction that updates the ledger, so neither can be
+    // lost without the other also being lost.
+    if (this.settlementPersistence) {
+      this.settlementPersistence.persistSettlement(settlement);
+    }
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
       input.actualAmount <= input.reservation.amount &&
@@ -392,6 +524,11 @@ export class BudgetAllocator {
       actualAmount: 0,
       settlementKind: "release_unused",
     });
+    // R11-13 FIX: Persist release record atomically with ledger update.
+    // This ensures release records survive crashes.
+    if (this.releasePersistence) {
+      this.releasePersistence.persistRelease(settlement);
+    }
     const reservation = this.stateMachine.transition({
       commandId: newId("cmd"),
       entityType: "BudgetReservation",

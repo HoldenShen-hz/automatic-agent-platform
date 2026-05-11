@@ -5,7 +5,7 @@
  * R8-19 FIX: ContractEnvelope wrapper for inter-plane messages.
  */
 
-import { ValidationError, NetworkError, AuthError, BusinessError } from "../../platform/contracts/errors.js";
+import { ValidationError, NetworkError, AuthError, BusinessError, AppError } from "../../platform/contracts/errors.js";
 import {
   type ContractEnvelope,
   createContractEnvelope,
@@ -462,6 +462,41 @@ export class RetryableApiClient {
     });
   }
 
+  /**
+   * R2011 FIX: Convert ApiError to typed AppError for proper error classification.
+   * HTTP errors are now thrown as typed exceptions (AuthError, NetworkError, BusinessError)
+   * instead of being silently swallowed or returned as plain ApiError.
+   */
+  private wrapApiError(error: ApiError): AppError {
+    switch (error.category) {
+      case ApiErrorCategory.AUTH:
+        return new AuthError("client_sdk.auth_failed", error.message, {
+          statusCode: error.statusCode ?? 401,
+          retryable: false,
+        });
+      case ApiErrorCategory.NETWORK:
+        return new NetworkError("client_sdk.network_error", error.message, {
+          statusCode: error.statusCode ?? 503,
+          retryable: error.isRetryable,
+        });
+      case ApiErrorCategory.BUSINESS:
+        return new BusinessError("client_sdk.business_error", error.message, {
+          statusCode: error.statusCode ?? 400,
+          retryable: false,
+        });
+      case ApiErrorCategory.CONTRACT:
+        return new ValidationError("client_sdk.contract_violation", error.message, {
+          statusCode: error.statusCode ?? 400,
+          retryable: false,
+        });
+      default:
+        return new NetworkError("client_sdk.unknown_error", error.message, {
+          statusCode: error.statusCode ?? 500,
+          retryable: false,
+        });
+    }
+  }
+
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {
     const url = buildApiUrl(this.config, request);
     const headers = buildAuthHeaders(this.config);
@@ -508,12 +543,14 @@ export class RetryableApiClient {
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         const category = classifyApiError(response.status, errorText);
-        throw new ApiError(
+        const apiError = new ApiError(
           `API request failed with status ${response.status}: ${errorText}`,
           category,
           response.status,
           response.status >= 500 && isIdempotent,
         );
+        // R2011 FIX: Throw typed AppError instead of plain ApiError
+        throw this.wrapApiError(apiError);
       }
 
       const data = await response.json() as T;
@@ -528,6 +565,10 @@ export class RetryableApiClient {
         headers: responseHeaders,
       };
     } catch (error) {
+      // R2011 FIX: Convert caught ApiError to typed AppError before re-throwing
+      if (error instanceof ApiError) {
+        throw this.wrapApiError(error);
+      }
       // R15-03 FIX: Network errors should also be retried only for idempotent methods
       if (isIdempotent && attempt < this.retryConfig.maxRetries && error instanceof Error) {
         // Check if it's a network error (not an HTTP status error that we already threw above)

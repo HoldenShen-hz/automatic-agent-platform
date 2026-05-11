@@ -139,6 +139,13 @@ const PERFORMANCE_SENSITIVE_KEYS = [
 ];
 
 /**
+ * Minimum recommended values for complex workflow execution.
+ * Below these thresholds, complex workflows may be silently truncated.
+ */
+const MIN_RECOMMENDED_MAX_AGENT_ROUNDS = 16;
+const MIN_RECOMMENDED_MAX_TOOL_CALLS = 32;
+
+/**
  * Availability-sensitive configuration keys.
  */
 const AVAILABILITY_SENSITIVE_KEYS = [
@@ -521,6 +528,25 @@ export class ConfigImpactAnalyzer {
     // Warn about high blast radius
     if (components.length > 10) {
       warnings.push(`Large number of components affected (${components.length}) - consider conservative rollout`);
+    }
+
+    // Warn about potentially too-low limits for complex workflows
+    const maxAgentRoundsChange = changes.find((c) => c.path === "maxAgentRounds");
+    if (maxAgentRoundsChange?.changeType === "update" && typeof maxAgentRoundsChange.newValue === "number") {
+      if (maxAgentRoundsChange.newValue < MIN_RECOMMENDED_MAX_AGENT_ROUNDS) {
+        warnings.push(
+          `maxAgentRounds=${maxAgentRoundsChange.newValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_AGENT_ROUNDS} for complex workflows — workflows may be silently truncated`,
+        );
+      }
+    }
+
+    const maxToolCallsChange = changes.find((c) => c.path === "maxToolCalls");
+    if (maxToolCallsChange?.changeType === "update" && typeof maxToolCallsChange.newValue === "number") {
+      if (maxToolCallsChange.newValue < MIN_RECOMMENDED_MAX_TOOL_CALLS) {
+        warnings.push(
+          `maxToolCalls=${maxToolCallsChange.newValue} is below recommended minimum ${MIN_RECOMMENDED_MAX_TOOL_CALLS} for complex workflows — workflows may be silently truncated`,
+        );
+      }
     }
 
     return warnings;

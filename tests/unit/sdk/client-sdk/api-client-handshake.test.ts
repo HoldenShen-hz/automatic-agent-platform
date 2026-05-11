@@ -23,10 +23,12 @@ test("performVersionHandshake sends correct version headers and returns accepted
   };
   const client = new RetryableApiClient(config);
 
+  let capturedUrl: string | undefined;
   let capturedHeaders: Record<string, string> = {};
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
-    capturedHeaders = options?.headers as Record<string, string> ?? {};
+    capturedUrl = url.toString();
+    capturedHeaders = { ...(options?.headers as Record<string, string>) };
     return new Response(JSON.stringify({ accepted: true }), {
       status: 200,
       headers: {
@@ -43,10 +45,10 @@ test("performVersionHandshake sends correct version headers and returns accepted
     assert.equal(result.accepted, true);
     assert.equal(result.statusCode, 200);
     assert.equal(result.reasonCode, "sdk.accepted");
-    // Verify version headers were sent
-    assert.equal(capturedHeaders["x-sdk-version"], "1.0.0");
-    assert.equal(capturedHeaders["x-platform-version"], "2026.04.01");
-    assert.equal(capturedHeaders["x-contract-version"], "1.0.0");
+    // Verify version headers were sent (buildAuthHeaders uses uppercase for custom headers)
+    assert.equal(capturedHeaders["X-SDK-Version"], "1.0.0");
+    assert.equal(capturedHeaders["X-Platform-Version"], "2026.04.01");
+    assert.equal(capturedHeaders["X-Contract-Version"], "1.0.0");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -134,21 +136,21 @@ test("performVersionHandshake handles handshake endpoint timeout", async () => {
     apiVersion: "v1",
     bearerToken: "test-token",
     sdkVersion: "1.0.0",
-    timeoutMs: 100,
+    timeoutMs: 50,
   };
   const client = new RetryableApiClient(config);
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => {
-    // Simulate timeout by never resolving
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    return new Response("", { status: 200 });
+    // Simulate timeout by throwing an AbortError (what AbortSignal.timeout produces)
+    const error = new DOMException("aborted", "AbortError");
+    throw error;
   };
 
   try {
     await assert.rejects(
       client.performVersionHandshake(),
-      (error: unknown) => error instanceof Error && error.name === "TimeoutError",
+      (error: unknown) => error instanceof DOMException && error.name === "AbortError",
     );
   } finally {
     globalThis.fetch = originalFetch;

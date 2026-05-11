@@ -1,7 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash, createSign } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 
-import { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
+import {
+  definePlugin,
+  defineTool,
+  defineAdapter,
+  defineRetriever,
+  defineEvaluator,
+  validatePluginDefinition,
+  registerPluginSigningVerificationKey,
+  verifyPluginSignature,
+  enforcePluginSignature,
+} from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
 test("definePlugin throws when pluginId is missing", () => {
   assert.throws(
@@ -355,23 +367,11 @@ test("verifyPluginSignature returns false for unsigned plugin", () => {
     }],
   });
 
-  // verifyPluginSignature is not called at definePlugin time (enforcement is at load)
-  // so we can create unsigned plugins; verification just returns false
-  const { verifyPluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
+  // verifyPluginSignature returns false for unsigned plugins
   assert.equal(verifyPluginSignature(plugin), false);
 });
 
 test("verifyPluginSignature returns false when keyId is not registered", () => {
-  const { createHash, createSign } = require("node:crypto");
-  const { generateKeyPairSync } = require("node:crypto");
-  const { registerPluginSigningVerificationKey, verifyPluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
-
-  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: "spki", format: "pem" },
-    privateKeyEncoding: { type: "pkcs8", format: "pem" },
-  });
-
   const plugin = definePlugin({
     pluginId: "test-pack.signed-tool",
     name: "Signed Tool",
@@ -394,7 +394,6 @@ test("verifyPluginSignature returns false when keyId is not registered", () => {
 });
 
 test("enforcePluginSignature throws for unsigned plugin", () => {
-  const { enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
   const plugin = definePlugin({
     pluginId: "test-pack.unsigned",
     name: "Unsigned",
@@ -415,9 +414,6 @@ test("enforcePluginSignature throws for unsigned plugin", () => {
 });
 
 test("enforcePluginSignature throws when signing keyId is not registered", () => {
-  const { registerPluginSigningVerificationKey, enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
-  const { generateKeyPairSync } = require("node:crypto");
-
   const { publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
@@ -456,9 +452,6 @@ test("enforcePluginSignature throws when signing keyId is not registered", () =>
 });
 
 test("enforcePluginSignature throws for invalid signature", () => {
-  const { registerPluginSigningVerificationKey, enforcePluginSignature } = require("../../../../src/sdk/plugin-sdk/plugin-definition.js");
-  const { generateKeyPairSync } = require("node:crypto");
-
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
     modulusLength: 2048,
     publicKeyEncoding: { type: "spki", format: "pem" },
@@ -491,6 +484,6 @@ test("enforcePluginSignature throws for invalid signature", () => {
 
   assert.throws(
     () => enforcePluginSignature(plugin),
-    /invalid signature/,
+    /signature verification failed/i,
   );
 });

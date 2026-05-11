@@ -850,32 +850,30 @@ test("StartupConsistencyChecker canAcceptTraffic returns true when no p0 finding
 test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings detected", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
-  const checker = createChecker(db, store);
 
-  // Log the checker instance to see if it's consistent
-  console.log("Checker instance ID:", (checker as any)._id ?? "no-id");
-  console.log("Checker dispatchReconciliation:", (checker as any).dispatchReconciliation !== undefined);
+  const checker = new StartupConsistencyChecker(
+    db as AuthoritativeSqlDatabase,
+    store as AuthoritativeTaskStore,
+    {}
+  );
+
+  // Get the instance ID to verify it's the same instance
+  const instanceKey = Symbol.for("test.checker");
+  (checker as any)[instanceKey] = true;
 
   // First check traffic is not blocked before run
-  console.log("Before run - canAcceptTraffic:", checker.canAcceptTraffic());
+  assert.equal(checker._trafficBlocked, false);
+  assert.equal(checker.canAcceptTraffic(), true);
 
-  // Generate p0 finding
+  // Generate p0 finding by calling run
   const report = checker.run();
-  console.log("Report status:", report.status, "Findings:", report.findings.length);
 
-  // Check if the method being called is the one we modified
-  // Let's call canAcceptTraffic right after run to see immediate state
-  const canAccept1 = checker.canAcceptTraffic();
-  console.log("Immediately after run - canAcceptTraffic:", canAccept1);
-
-  // Access private state for debugging - useReflect to get true private field
-  const state = Object.getOwnPropertyDescriptor(checker, 'trafficBlocked')?.value;
-  console.log("Internal trafficBlocked (direct prop):", state);
-  const state2 = (checker as any).trafficBlocked;
-  console.log("Internal trafficBlocked (any):", state2);
+  // Verify we're still on the same instance
+  assert.equal((checker as any)[instanceKey], true, "Checker instance changed!");
 
   assert.equal(report.status, "fail_closed");
-  assert.equal(canAccept1, false);
+  assert.equal(checker._trafficBlocked, true);
+  assert.equal(checker.canAcceptTraffic(), false);
 });
 
 test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 findings", () => {

@@ -341,3 +341,55 @@ test("ThreatMatrixRegistry getMatrix returns correct structure", () => {
   assert.ok(matrix.owner);
   assert.ok(Array.isArray(matrix.entries));
 });
+
+// ============================================================================
+// Issue 2004: TAMPERING (config) and INFO_DISCLOSURE (agent memory) tests
+// ============================================================================
+
+test("ThreatMatrixRegistry includes TAMPERING entry for config manipulation", () => {
+  const registry = new ThreatMatrixRegistry();
+  const tamperingThreats = registry.listByCategory("TAMPERING");
+
+  assert.ok(tamperingThreats.length >= 2, "Should have at least 2 TAMPERING entries");
+  const configTampering = tamperingThreats.find((t) => t.threatId === "tm_tampering_config_manipulation");
+  assert.ok(configTampering, "Should have tm_tampering_config_manipulation entry");
+  assert.ok(configTampering.mitigations.length >= 3, "Config tampering should have multiple mitigations");
+  assert.ok(configTampering.mitigations.includes("configuration schema validation at load time"));
+  assert.ok(configTampering.mitigations.includes("signed and versioned config artifacts"));
+});
+
+test("ThreatMatrixRegistry includes INFO_DISCLOSURE entry for agent memory exposure", () => {
+  const registry = new ThreatMatrixRegistry();
+  const infoDisclThreats = registry.listByCategory("INFORMATION_DISCLOSURE");
+
+  assert.ok(infoDisclThreats.length >= 2, "Should have at least 2 INFORMATION_DISCLOSURE entries");
+  const memoryExposure = infoDisclThreats.find((t) => t.threatId === "tm_information_disclosure_agent_memory");
+  assert.ok(memoryExposure, "Should have tm_information_disclosure_agent_memory entry");
+  assert.ok(memoryExposure.mitigations.length >= 3, "Agent memory exposure should have multiple mitigations");
+  assert.ok(memoryExposure.mitigations.includes("agent memory encryption at rest"));
+  assert.ok(memoryExposure.mitigations.includes("memory isolation by workspace or session"));
+});
+
+test("TAMPERING config manipulation entry has required fields", () => {
+  const registry = new ThreatMatrixRegistry();
+  const tamperingThreats = registry.listByCategory("TAMPERING");
+  const configTampering = tamperingThreats.find((t) => t.threatId === "tm_tampering_config_manipulation");
+
+  assert.ok(configTampering);
+  assert.ok(configTampering.title.includes("Configuration manipulation"));
+  assert.ok(configTampering.scenario);
+  assert.ok(configTampering.implementationRefs.length > 0);
+  assert.ok(["low", "medium", "high"].includes(configTampering.residualRisk));
+});
+
+test("INFO_DISCLOSURE agent memory entry has required fields", () => {
+  const registry = new ThreatMatrixRegistry();
+  const infoDisclThreats = registry.listByCategory("INFORMATION_DISCLOSURE");
+  const memoryExposure = infoDisclThreats.find((t) => t.threatId === "tm_information_disclosure_agent_memory");
+
+  assert.ok(memoryExposure);
+  assert.ok(memoryExposure.title.includes("Agent memory exposure"));
+  assert.ok(memoryExposure.scenario);
+  assert.ok(memoryExposure.implementationRefs.length > 0);
+  assert.ok(["low", "medium", "high"].includes(memoryExposure.residualRisk));
+});

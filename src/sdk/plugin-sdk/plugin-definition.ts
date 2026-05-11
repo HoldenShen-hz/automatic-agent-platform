@@ -4,7 +4,7 @@
  * Implements §22.4 Plugin lifecycle: definePlugin() for plugin definition.
  */
 
-import { createHash, createVerify } from "node:crypto";
+import { createVerify } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
@@ -56,7 +56,7 @@ function nodeAlgorithm(algorithm: string): string {
  * Computes the deterministic content hash for a plugin definition.
  * Used as the signed payload for signature verification.
  */
-function pluginDefinitionDigest(definition: PluginDefinition): string {
+function pluginDefinitionPayload(definition: PluginDefinition): string {
   const payload = {
     pluginId: definition.pluginId,
     name: definition.name,
@@ -68,7 +68,7 @@ function pluginDefinitionDigest(definition: PluginDefinition): string {
     spiTypes: definition.spiTypes,
     domainIds: definition.domainIds,
   };
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+  return JSON.stringify(payload);
 }
 
 /**
@@ -86,9 +86,9 @@ export function verifyPluginSignature(definition: PluginDefinition): boolean {
     return false;
   }
   try {
-    const digest = pluginDefinitionDigest(definition);
+    const payload = pluginDefinitionPayload(definition);
     const verify = createVerify(nodeAlgorithm(definition.signing.algorithm));
-    verify.update(digest);
+    verify.update(payload);
     return verify.verify(key.publicKeyPem, definition.signing.signature, "base64");
   } catch {
     return false;

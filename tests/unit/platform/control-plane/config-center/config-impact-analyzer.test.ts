@@ -289,6 +289,56 @@ test("ConfigImpactAnalyzer.analyzeImpact sets correct layerMap for changed keys"
   assert.ok(result.impactedComponents.length > 0);
 });
 
+test("ConfigImpactAnalyzer.analyzeImpact generates warning when maxAgentRounds is too low for complex workflows", () => {
+  const analyzer = new ConfigImpactAnalyzer();
+  const oldConfig = { maxAgentRounds: 32 };
+  const newConfig = { maxAgentRounds: 6 };
+
+  const result = analyzer.analyzeImpact("runtime.settings", "platform", oldConfig, newConfig);
+
+  assert.ok(
+    result.warnings.some((w) => w.includes("maxAgentRounds") && w.includes("below recommended minimum")),
+    `Expected warning about maxAgentRounds being too low, got: ${result.warnings.join("; ")}`,
+  );
+});
+
+test("ConfigImpactAnalyzer.analyzeImpact generates warning when maxToolCalls is too low for complex workflows", () => {
+  const analyzer = new ConfigImpactAnalyzer();
+  const oldConfig = { maxToolCalls: 64 };
+  const newConfig = { maxToolCalls: 8 };
+
+  const result = analyzer.analyzeImpact("runtime.settings", "platform", oldConfig, newConfig);
+
+  assert.ok(
+    result.warnings.some((w) => w.includes("maxToolCalls") && w.includes("below recommended minimum")),
+    `Expected warning about maxToolCalls being too low, got: ${result.warnings.join("; ")}`,
+  );
+});
+
+test("ConfigImpactAnalyzer.analyzeImpact does not warn when maxAgentRounds is at or above recommended minimum", () => {
+  const analyzer = new ConfigImpactAnalyzer();
+  const oldConfig = { maxAgentRounds: 16 };
+  const newConfig = { maxAgentRounds: 32 };
+
+  const result = analyzer.analyzeImpact("runtime.settings", "platform", oldConfig, newConfig);
+
+  assert.ok(
+    !result.warnings.some((w) => w.includes("maxAgentRounds") && w.includes("below recommended minimum")),
+  );
+});
+
+test("ConfigImpactAnalyzer.analyzeImpact does not warn when maxToolCalls is at or above recommended minimum", () => {
+  const analyzer = new ConfigImpactAnalyzer();
+  const oldConfig = { maxToolCalls: 32 };
+  const newConfig = { maxToolCalls: 64 };
+
+  const result = analyzer.analyzeImpact("runtime.settings", "platform", oldConfig, newConfig);
+
+  assert.ok(
+    !result.warnings.some((w) => w.includes("maxToolCalls") && w.includes("below recommended minimum")),
+  );
+});
+
 test("ConfigImpactAnalyzer calculates risk score based on severity and categories", () => {
   const analyzer = new ConfigImpactAnalyzer();
   const oldConfig = { sandboxMode: "permissive" };

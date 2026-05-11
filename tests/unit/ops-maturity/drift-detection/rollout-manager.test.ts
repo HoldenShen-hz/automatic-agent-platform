@@ -389,11 +389,11 @@ test("PersistentRolloutManager.rollback performs actual rollback action", async 
   const repo = new RolloutRepository({ connection: db, filePath: path } as never);
 
   const rollbackCalls: Array<{ proposalId: string; reason: string }> = [];
+  const manager = new PersistentRolloutManager(repo);
   manager.setRollbackHandlerFactory(() => async (proposalId: string, reason: string) => {
     rollbackCalls.push({ proposalId, reason });
   });
 
-  const manager = new PersistentRolloutManager(repo);
   const proposal = createProposal("prop_rollback");
   await manager.start(proposal, "canary", 5);
 
@@ -417,9 +417,9 @@ test("PersistentRolloutManager.rollback persists state after action", async () =
   applyRolloutSchema(db);
   const repo = new RolloutRepository({ connection: db, filePath: path } as never);
 
+  const manager = new PersistentRolloutManager(repo);
   manager.setRollbackHandlerFactory(() => async () => { /* no-op handler */ });
 
-  const manager = new PersistentRolloutManager(repo);
   const proposal = createProposal("prop_rollback_persist");
   await manager.start(proposal, "canary", 5);
 

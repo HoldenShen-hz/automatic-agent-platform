@@ -264,7 +264,7 @@ function buildExpiredFileLockFinding(lock: FileLockRecord): ConsistencyFinding {
 
 export class StartupConsistencyChecker {
   private readonly dispatchReconciliation: ExecutionDispatchReconciliationService;
-  private trafficBlocked = false;
+  private _trafficBlocked = false;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -279,21 +279,18 @@ export class StartupConsistencyChecker {
    * When fail_closed status is detected, returns false and triggers onTrafficBlocked callback.
    */
   public canAcceptTraffic(): boolean {
-    console.log("DEBUG canAcceptTraffic: trafficBlocked =", this.trafficBlocked);
-    if (this.trafficBlocked) {
-      return false;
-    }
-    return true;
+    return !this._trafficBlocked;
   }
 
   /**
    * Resets the traffic blocked state. Used after issues are resolved.
    */
   public resetTrafficBlocked(): void {
-    this.trafficBlocked = false;
+    this._trafficBlocked = false;
   }
 
   public run(options: StartupConsistencyOptions = {}): StartupConsistencyReport {
+    console.log("RUN_METHOD: START, _trafficBlocked =", this._trafficBlocked);
     const checkedAt = options.now ?? new Date().toISOString();
     const staleExecutionAfterMs = options.staleExecutionAfterMs ?? 5 * 60 * 1000;
     const pendingAckOlderThanMs = options.pendingAckOlderThanMs ?? 2 * 60 * 1000;
@@ -516,12 +513,15 @@ export class StartupConsistencyChecker {
 
     const report = buildStartupConsistencyReport(checkedAt, findings);
 
-    console.log("DEBUG: report.status =", report.status);
     // Enforce fail_closed: block traffic when P0 findings are detected
-    if (report.status === "fail_closed") {
-      console.log("DEBUG: Setting trafficBlocked = true");
-      this.trafficBlocked = true;
-      this.options.onTrafficBlocked?.();
+    console.log("AT_END_OF_RUN: report.status =", report.status, "type =", typeof report.status, "_trafficBlocked before =", this._trafficBlocked);
+    console.log("AT_END_OF_RUN: status string repr =", JSON.stringify(report.status));
+    const statusIsFailClosed = report.status === "fail_closed";
+    console.log("AT_END_OF_RUN: statusIsFailClosed =", statusIsFailClosed);
+    if (statusIsFailClosed) {
+      (this as any).setTrafficBlockedTrue = true;
+      this._trafficBlocked = true;
+      console.log("AT_END_OF_RUN: just set _trafficBlocked = true, new value =", this._trafficBlocked);
     }
 
     return report;

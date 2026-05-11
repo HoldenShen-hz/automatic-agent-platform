@@ -101,6 +101,73 @@ export class BillingRepository {
       );
   }
 
+  /**
+   * R4-28 (INV-COST-001): Write-ahead log for cost events to prevent loss on crash.
+   *
+   * Inserts a cost event into the WAL table before execution with "pending" status.
+   * On success, the event is committed via commitCostEventWAL(). On crash recovery,
+   * pending WAL entries can be detected and cleaned up.
+   */
+  public insertCostEventWAL(costEvent: CostEventRecord, status: "pending" | "committed"): void {
+    this.conn
+      .prepare(
+        `INSERT INTO cost_event_wal (
+          id, task_id, session_id, execution_id, agent_id, provider, model,
+          input_tokens, output_tokens, cost_usd, budget_scope,
+          provider_request_id, pricing_version, created_at, wal_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        costEvent.id,
+        costEvent.taskId,
+        costEvent.sessionId,
+        costEvent.executionId,
+        costEvent.agentId,
+        costEvent.provider,
+        costEvent.model,
+        costEvent.inputTokens,
+        costEvent.outputTokens,
+        costEvent.costUsd,
+        costEvent.budgetScope,
+        costEvent.providerRequestId,
+        costEvent.pricingVersion,
+        costEvent.createdAt,
+        status,
+      );
+  }
+
+  /**
+   * R4-28: Mark a WAL cost event as committed after successful execution.
+   */
+  public commitCostEventWAL(costEventId: string): void {
+    this.conn
+      .prepare(`UPDATE cost_event_wal SET wal_status = 'committed' WHERE id = ?`)
+      .run(costEventId);
+    // Also insert into the main cost_events table for query compatibility
+    this.conn
+      .prepare(
+        `INSERT INTO cost_events (id, task_id, session_id, execution_id, agent_id, provider, model,
+          input_tokens, output_tokens, cost_usd, budget_scope,
+          provider_request_id, pricing_version, created_at)
+         SELECT id, task_id, session_id, execution_id, agent_id, provider, model,
+                input_tokens, output_tokens, cost_usd, budget_scope,
+                provider_request_id, pricing_version, created_at
+         FROM cost_event_wal WHERE id = ?`,
+      )
+      .run(costEventId);
+  }
+
+  /**
+   * R4-28: Cleanup orphaned pending WAL entries on startup/recovery.
+   * Returns the count of cleaned up entries.
+   */
+  public cleanupPendingCostEventWAL(): number {
+    const result = this.conn
+      .prepare(`DELETE FROM cost_event_wal WHERE wal_status = 'pending'`)
+      .run();
+    return result.changes;
+  }
+
   public listCostEventsByTask(taskId: string, tenantId?: string | null): CostEventRecord[] {
     const scopedTenantId = resolveTenantScope(tenantId);
     if (scopedTenantId !== undefined) {
@@ -789,5 +856,35 @@ export class BillingRepository {
        WHERE tenant_id = ? AND status = 'queued'
        ORDER BY created_at ASC${limit ? ` LIMIT ${limit}` : ""}`;
     return queryAll(this.conn, sql, tenantId);
+  }
+
+  /**
+   * R11-13 FIX: Insert a budget settlement record for durable crash-safe cost tracking.
+   *
+   * Budget settlements must be persisted atomically with ledger updates to ensure
+   * cost records are not lost if a crash occurs mid-execution.
+   *
+   * @param settlement - The budget settlement record to persist
+   */
+  public insertBudgetSettlement(settlement: {
+    budgetSettlementId: string;
+    budgetReservationId: string;
+    actualAmount: number;
+    settlementKind: string;
+    createdAt: string;
+  }): void {
+    this.conn
+      .prepare(
+        `INSERT INTO budget_settlements (
+          budget_settlement_id, budget_reservation_id, actual_amount, settlement_kind, created_at
+        ) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        settlement.budgetSettlementId,
+        settlement.budgetReservationId,
+        settlement.actualAmount,
+        settlement.settlementKind,
+        settlement.createdAt,
+      );
   }
 }
