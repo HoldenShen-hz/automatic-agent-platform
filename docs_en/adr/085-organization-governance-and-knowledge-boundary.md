@@ -4,16 +4,16 @@
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
-- **Observe**: Organization structure, identity, knowledge boundary, and compliance signal collection
+- **Observe**: Organizational structure, identity, knowledge boundary, and compliance signal collection
 - **Assess**: Approval chain, knowledge sharing, governance delegation, and compliance matching
-- **Plan**: Organization routing, inheritance / override, controlled sharing strategy
+- **Plan**: Organizational routing, inheritance/override, controlled sharing policy
 - **Execute**: SSO, SCIM, approval routing, knowledge isolation, governance console
-- **Feedback**: Approval timeout, access denial, sharing retrospective
-- **Learn**: Organization governance rules and boundary strategy optimization
+- **Feedback**: Approval timeout, access denial, sharing review
+- **Learn**: Organizational governance rules and boundary policy optimization
 - **Improve**: Department-level compliance and governance configuration continuous evolution
-- **Release**: Organization governance changes phased release
+- **Release**: Organization governance change staged release
 
 ---
 
@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-v2.7 `§46-§51` introduces the organization governance layer. The current repository already has:
+v2.7 `§46-§51` introduces the organizational governance layer. The current repository already has:
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`
@@ -30,9 +30,9 @@ v2.7 `§46-§51` introduces the organization governance layer. The current repos
 - `src/org-governance/knowledge-boundary`
 - `src/org-governance/delegated-governance`
 
-However, most of these directories are still empty barrel files, lacking unified decisions.
+However, most directories are still empty shell barrels lacking unified decisions.
 
-## Decisions
+## Decision
 
 ### 1. Organization nodes are the common root object for governance, approval, knowledge, and compliance
 
@@ -46,14 +46,14 @@ The organization model must support at minimum:
 
 ### 2. Approval, compliance, and knowledge boundaries all follow "inheritance first, explicit override"
 
-Default rules are inherited from the parent node;
+Default rules are inherited from parent nodes;
 child nodes can only override within authorized scope.
 
-### 3. SSO / SCIM is only responsible for identity synchronization, not directly granting business permissions
+### 3. SSO / SCIM is responsible only for identity synchronization, not directly granting business permissions
 
 Identity access and governance authorization are separated to prevent directory systems from directly bypassing permissions.
 
-### 4. Knowledge sharing must explicitly declare boundaries and audits
+### 4. Knowledge sharing must explicitly declare boundaries and audit
 
 Cross-department knowledge access must include:
 
@@ -68,5 +68,5 @@ Governance delegation is not a permanent transfer, but a controlled authorizatio
 
 ## Consequences
 
-- The organization governance layer will become the unified upper boundary for `tenant / division / policy / knowledge`
-- Subsequent implementation will prioritize adding contracts and state machine tests for organization model, approval routing, and knowledge boundary
+- The organizational governance layer will become the unified upper boundary for `tenant / division / policy / knowledge`
+- Subsequent implementation prioritizes supplementing contracts and state machine tests for organization model, approval routing, and knowledge boundary

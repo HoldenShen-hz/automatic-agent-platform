@@ -5,11 +5,13 @@
 
 ## Context
 
-When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
+Multi-business-line concurrent runtime can lead to resource competition, requiring a fair and effective resource allocation mechanism.
 
 ## Decision
 
 ### Resource Pool Model
+
+ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation to uniformly manage resource allocation and budget billing. Together, these three constitute the atomic unit of resource allocation:
 
 ```typescript
 interface ResourcePool {
@@ -24,6 +26,7 @@ interface ResourceAllocation {
   reserved: number;
   used: number;
   priority: number;
+  budgetLedgerEntry: string;  // References BudgetLedger record
 }
 ```
 
@@ -37,10 +40,10 @@ interface ResourceAllocation {
 | api_quota | API call quota |
 | llm_token | LLM Token quota |
 
-### Scheduling Policies
+### Scheduling Strategies
 
-| Policy | Description |
-|--------|-------------|
+| Strategy | Description |
+|----------|-------------|
 | priority | Priority first |
 | fair_share | Fair sharing |
 | fifo | First in, first out |
@@ -48,25 +51,25 @@ interface ResourceAllocation {
 
 ### Resource Quotas
 
-- Platform-level quotas
-- Tenant-level quotas
-- Business domain-level quotas
+- Platform-level quota
+- Tenant-level quota
+- Business domain-level quota
 - Dynamic adjustment
 
 ## Consequences
 
 Advantages:
 
-- Fair resource allocation prevents starvation
-- Priority mechanism ensures critical business needs
+- Fair resource allocation prevents resource starvation
+- Priority mechanism ensures critical business needs are met
 - Dynamic adjustment adapts to load changes
 
-Costs:
+Tradeoffs:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead
 
-## Cross-References
+## Cross References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)

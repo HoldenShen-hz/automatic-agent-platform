@@ -5,7 +5,7 @@
 
 ## Context
 
-Approval requests need to be dynamically routed to the correct approver based on organizational structure, rather than hardcoded approval chains.
+Approval requests need to be dynamically routed to the correct approvers based on organizational structure, rather than using hardcoded approval chains.
 
 ## Decision
 
@@ -27,43 +27,45 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 
 | Type | Description |
 |------|-------------|
-| single | Single person approval |
+| single | Single approver |
 | multi_party | Multi-party countersignature |
 | delegated | Delegated approval |
 | sequential_chain | Sequential approval chain |
 
-### ApprovalTimeout Strategy
+### ApprovalTimeout Strategies
 
 | Strategy | Description |
 |----------|-------------|
 | warn | Warning before timeout |
 | escalate | Escalate after timeout |
-| auto_action | Auto-execute preset action after timeout |
+| break_glass | Triggers break-glass flow, requiring dual approval to proceed |
+
+Note: The `auto_action` strategy has been removed. After timeout, the break-glass + dual approval flow must be followed; automated execution of preset actions is prohibited.
 
 ### Routing Rules Engine
 
 - Dynamic routing based on organizational hierarchy, roles, and risk levels
 - Supports approval delegation
-- Supports approval expedited processing
+- Supports approval escalation
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Dynamic routing adapts to organizational changes
 - Multi-type approval flows support complex scenarios
 - Automated timeout handling
 
-Negative:
+Cons:
 
 - Rules engine complexity
 - Routing performance impact
 
-## Cross-References
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
-## Source Sections
+## Source Section
 
 - `§47` Organization Approval Routing

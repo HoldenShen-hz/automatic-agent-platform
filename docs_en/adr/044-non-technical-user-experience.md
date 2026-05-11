@@ -5,7 +5,7 @@
 
 ## Context
 
-Non-technical users (business operators, operations personnel) need simplified interaction methods without requiring understanding of underlying APIs and technical details.
+Non-technical users (business operators, operations staff) need simplified interaction patterns without requiring understanding of underlying APIs and technical details.
 
 ## Decision
 
@@ -13,10 +13,10 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 | Role | Description | Interface |
 |------|-------------|-----------|
-| business_operator | Business operator | Simplified interface |
-| team_lead | Team lead | Management view |
-| executive | Executive | Report view |
-| admin | Administrator | Full-featured interface |
+| business_operator | Business Operator | Simplified Interface |
+| team_lead | Team Lead | Management View |
+| executive | Executive | Report View |
+| admin | Administrator | Full-Feature Interface |
 
 ### Simplified Interaction Patterns
 
@@ -29,36 +29,36 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 - Push notifications
 - Email notifications
-- In-app messages
+- In-system messaging
 - Real-time status updates
 
 ### Auxiliary Features
 
 | Feature | Description |
 |---------|-------------|
-| Task Templates | Predefined templates for common tasks |
-| Quick Actions | One-click execution for common operations |
-| History | Operable history traceable |
+| Task Templates | Pre-defined templates for common tasks |
+| Quick Actions | One-click execution for frequent operations |
+| History | Traceable operation history |
 | Export Reports | Data export support |
 
 ## Consequences
 
-Positive:
+Benefits:
 
 - Lower barrier to entry for non-technical users
 - Templating improves efficiency
-- Real-time feedback enhances experience
+- Real-time feedback enhances user experience
 
-Negative:
+Tradeoffs:
 
-- Multi-role interfaces increase complexity
+- Multi-role interface increases complexity
 - Template maintenance requires ongoing investment
 
-## Cross-References
+## Cross References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)
 
-## Source Sections
+## Source Section
 
 - `§44` Non-Technical User Experience Architecture

@@ -1,82 +1,30 @@
-# ADR-018 Rollout Eleven-State Machine and Six-Stage Release
-
----
-
-## OAPEFLIR Association
-
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
-
-- **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post-execution assessment and risk judgment
-- **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and dual-channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
-- **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
-- **Release**: Six-level controlled release and automatic rollback
-
----
+# ADR-018 Rollout Eleven-State Machine and Six-Phase Release
 
 - Status: Superseded by ADR-075
 - Decision Date: 2026-04-17
-- Superseded by: ADR-075 (2026-04-17) redefined the six-level release state machine with incompatible Level and state set compared to ADR-018
+- Current Authority: ADR-075 "Six-Level Controlled Release and Rollout State Machine"
 
-## Context
+> Historical record only. Do not implement from this document.
 
-§9 defines five release levels (L0-L5) and 11-state RolloutStatus state machine. Current `rollout-state-machine.ts` only implements 3 states (off → suggest → shadow) and cannot support progressive release (canary → staged → stable) and automatic rollback.
+## Background
 
-## Decision
+ADR-018 once proposed a `RolloutStatus` eleven-state and six-level release model to describe the complete lifecycle from proposal state to progressive rollout to rollback.
 
-### Eleven-State RolloutStatus Enum
+As the controlled release chain, state machine boundaries, and rollback thresholds have converged to ADR-075, the state set, traffic classification, thresholds, and transition steps in this document are no longer the authoritative source for the current implementation.
 
-```
-draft
-  ↓ (guardrail pass)
-pending_approval
-  ↓           ↓ (rejected)
-shadow        rejected
-  ↓ (24h)
-canary_5      ← 5% traffic
-  ↓ (metrics gate: error_rate < 0.5%, p99 < 2x baseline)
-partial_25    ← 25% traffic
-  ↓
-partial_50    ← 50% traffic
-  ↓
-partial_75    ← 75% traffic
-  ↓
-stable        ← 100% traffic, considered adopted
-  ↓
-rolled_back   ← automatic or manual rollback
-  ↓
-paused        ← paused, can be resumed
-```
+## Conclusion
 
-### Five-Level Release
+- ADR-018 is retained as a historical record only, to explain why a more granular rollout state split was explored.
+- Any new implementation, tests, operational rules, threshold configuration, or state transitions must reference ADR-075 as the authority.
+- For the current release chain, refer directly to [ADR-075](./075-controlled-rollout-release.md).
 
-| Level | Name | Traffic | Applicable Scenario |
-|-------|------|---------|---------------------|
-| L0 | off | 0% | Disabled |
-| L1 | suggest | 0% | Suggestion only, no automatic execution |
-| L2 | shadow | 0% | Shadow mode, does not affect production |
-| L3 | canary | 1-10% | Small traffic verification |
-| L4 | staged | 25-75% | Gray release |
-| L5 | stable | 100% | Full release |
+## Reason for Retention
 
-### Automatic Rollback Rules
+- Historical audit and review documents still reference ADR-018 number.
+- Some old discussion records and design branches used ADR-018 as background material, and need to be preserved for traceability.
 
-When any of the following conditions are met, automatic trigger `rolled_back`:
+## Migration Guide
 
-- `failureRate > 5%` (5-minute window)
-- `p99Latency > 2x baseline`
-
-### Current Implementation Status
-
-- `src/core/improvement/rollout/rollout-state-machine.ts`: 3/11 states, needs expansion.
-- `src/core/improvement/auto-rollback-service.ts`: To be created.
-- `src/core/improvement/canary-traffic-router.ts`: To be created.
-
-## Consequences
-
-- Rollout state machine expansion is core work of Sprint 2 (GAP-V2-07).
-- Complete 11-state + automatic rollback enables production-grade progressive release capability.
-- RolloutRecord must persist all state transition history for audit and RCA.
+- If you are looking for rollout state definitions, go to ADR-075.
+- If you are looking for automatic rollback, canary release, stage gates, or stable-state admission, go to ADR-075.
+- If you are fixing ADR-018 references in old documents, change "implementation authority" to ADR-075, and keep ADR-018 as a historical background reference.

@@ -2,106 +2,106 @@
 
 - Status: Partially Superseded by ADR-075
 - Decision Date: 2026-04-02
-- Partially superseded: ADR-075's six-level release model has replaced the description of "Release only allowing off/suggest/shadow three tiers"
+- Partially Supersedes: ADR-075's six-level release model has replaced the description that "Release only allows three tiers: off/suggest/shadow"
 
-## Context
+## Background
 
-Static prompts, static models, and static policies gradually become invalid as task distributions change. The platform aims to form a closed loop of "execute, evaluate, optimize, rollback," but the system must not become uncontrollable due to self-modification.
+Static prompts, static models, and static policies gradually become ineffective as task distributions change. The platform aims to form a closed loop of "Execute, Evaluate, Optimize, Rollback," but the system must remain controllable and not become unpredictable through self-modification.
 
 ## Decision
 
-Drive evolution via OAPEFLIR secondary chain `Feedback → Learn → Improve → Release`, with deterministic guardrails controlling entry to production:
+The evolution is driven by the OAPEFLIR side chain `Feedback → Learn → Improve → Release`, with deterministic guardrails controlling entry to production:
 
-- Supervisor/observability continues to manage lifecycle, real-time monitoring, health checks, and metric collection.
-- Feedback Hub normalizes execution signals into structured `FeedbackSignal`.
-- Learn Hub only allows evidence-backed learning objects into subsequent stages, explicitly maintaining `promotionStatus`.
-- Improve Hub only receives `validated/promoted` LearningObjects.
-- Release currently allows only `off / suggest / shadow` three tiers in phase1-4; canary/staged not directly opened.
-- Any change must be rollbackable, auditable, canary-deployable, and pausable.
+- Supervisor / observability continues to be responsible for lifecycle management, real-time monitoring, health checks, and metric collection.
+- Feedback Hub is responsible for normalizing execution signals into structured `FeedbackSignal`.
+- Learn Hub only allows evidence-backed learning objects to enter subsequent stages, and explicitly maintains `promotionStatus`.
+- Improve Hub only accepts `validated/promoted` LearningObjects.
+- Release, in the current phase 1-4, only allows three tiers: `off / suggest / shadow`, and does not directly expose canary/staged.
+- Any change must be roll-backable, auditable, gradual, and pausable.
 
 ## Supervisor Role
 
-Supervisor is not just a monitor; it also bears governance responsibilities:
+The Supervisor is not just a monitor; it also carries governance responsibilities:
 
 - Manages Agent lifecycle.
-- Tracks heartbeat, context usage, tool calls, and resource usage.
+- Tracks heartbeats, context usage, tool invocations, and resource consumption.
 - Evaluates success rate, cost, latency, and quality signals.
-- Restarts, pauses, escalates, or terminates anomalous Agents when necessary.
+- When necessary, restarts, pauses, upgrades, or terminates anomalous Agents.
 
 ## Evolution Dimensions
 
-Eight dimensions can be summarized as:
+The 8 dimensions can be summarized as:
 
 1. Prompt optimization.
 2. Compute budget adaptation.
-3. Tool call optimization and Skill accumulation.
+3. Tool call optimization and Skill precipitation.
 4. Capability profiling and reflection memory.
 5. Pre-check failure analysis.
-6. Reflexion/Self-Refine/experience replay.
-7. Reasoning strategy adaptive selection.
+6. Reflexion / Self-Refine / experience replay.
+7. Adaptive reasoning strategy selection.
 8. Multi-Agent collaboration optimization and evaluation function evolution.
 
 ## MVP Scope
 
-Current phase1-4 actual MVP closure is:
+The actual MVP scope for current phase 1-4 is limited to:
 
-- Feedback: Deduplication, correlation, recovery path identification.
-- Learn: Only supports `failure_pattern`, `user_correction`, `recovery_playbook` three learning object types.
+- Feedback: Deduplication, correlation, and recovery path identification.
+- Learn: Only supports three types of learning objects: `failure_pattern`, `user_correction`, `recovery_playbook`.
 - Improve: Only allows evidence-backed and validated LearningObjects into candidates.
 - Release: Only supports `off / suggest / shadow`.
 
-Other heavier evolution capabilities, such as multi-stage canary, auto-rollback, more learning types, continue to be deferred.
+Other more intensive evolution capabilities, such as multi-stage canary, auto-rollback, and more learning types, continue to be deferred.
 
 ## Security Principles
 
-Evolution must obey several iron rules:
+Evolution must adhere to several iron rules:
 
-- No demotion: New strategy must prove no worse than current before going online.
-- Reversible: Every change needs a snapshot and rollback point.
-- Controllable: Must be pausable with one click.
-- Auditable: All changes write to evolution log.
-- Canary-deployable: First verify on small traffic, then gradually scale.
-- No privilege escalation: Model can only propose LearningObject/Candidate; cannot directly advance `promotionStatus`, `candidate.status`, or `rollout.status`.
+- No degradation: New strategies must prove they are no worse than the current state before going online.
+- Reversible: Every change must have snapshots and rollback points.
+- Controllable: Must be one-click pausable.
+- Auditable: All changes are written to the evolution log.
+- Gradual: First validate on small traffic, then gradually scale up.
+- No privilege escalation: Models can only propose LearningObjects / Candidates, and cannot directly advance `promotionStatus`, `candidate.status`, or `rollout.status`.
 
-## Alerting and Observability
+## Alerts and Observability
 
-Supervisor/observability should alert or notify on these events:
+Supervisor / observability should raise alerts or notifications for the following events:
 
 - Context approaching threshold.
 - Agent suspected of being stuck.
-- Agent abnormally terminated.
-- Evolution event success or rollback.
+- Agent terminated abnormally.
+- Evolution event succeeded or rolled back.
 - Cost alert.
-- OAPEFLIR phase timeline anomaly.
-- Learn validation failure or rollout guardrail block.
+- OAPEFLIR stage timeline anomaly.
+- Learn validation failure or rollout guardrail blocked.
 
-## Consequences
+## Results
 
 Advantages:
 
-- Platform can iterate based on real execution data, not just manual experience tuning.
-- Optimization process incorporated into unified governance and audit.
-- Evolution changes from "mysterious parameter tuning" to a constrained engineering process.
-- Boundary between main chain and secondary chain is clearer; reduces risk of "secret self-modification in execution logic."
+- The platform can iterate based on real runtime data, rather than relying solely on manual experience-based tuning.
+- Brings the optimization process under unified governance and auditing.
+- Transforms evolution from "mysterious parameter tuning" into a constrained engineering process.
+- Clarifies the boundary between main chain and side chain, reducing the risk of "stealthy self-modification within execution logic."
 
 Costs:
 
 - Metric quality directly determines optimization quality.
-- Without offline backtesting, canary, and rollback, evolution becomes a new instability source.
-- Premature introduction of all 8 dimensions significantly increases system complexity.
+- Without offline backtesting, gradual rollout, and rollback, evolution becomes a new source of instability.
+- Introducing all 8 dimensions prematurely will significantly increase system complexity.
 
 ## Current Implementation Alignment
 
-As of current phase1-4 delivery, aligned parts include:
+As of current phase 1-4 delivery, the aligned components include:
 
 - `FeedbackCollector` + `SignalPreprocessor` have formed structured learning input.
 - `LearningObjectValidator` has made evidence and `promotionStatus` a hard boundary.
-- `PolicyRolloutService` + `GuardrailEvaluator` have pulled rollout approval from model suggestion back to system code.
-- `OapeflirLoopService` has persisted phase timeline perspective, facilitating audit of main/secondary chain closure.
+- `PolicyRolloutService` + `GuardrailEvaluator` have pulled rollout approval back from model suggestions to system code.
+- `OapeflirLoopService` has persisted the stage timeline perspective, facilitating auditing of main chain / side chain closed loop.
 
-## Cross-References
+## Cross References
 
-- [ADR-003 Six-Layer Memory and KV Cache Fixed Prefix](./003-memory-seven-layers.md)
+- [ADR-003 Six-Layer Memory and KV Cache Fixed Prefix](./003-memory-six-layers.md)
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 

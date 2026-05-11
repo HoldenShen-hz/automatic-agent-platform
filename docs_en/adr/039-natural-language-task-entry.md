@@ -29,16 +29,20 @@ interface DetectedIntent {
 }
 ```
 
-### 6 intent_types
+### 6 intent_types (§6.3 reconciliation)
+
+> Note: `cancel_task` was removed in §6.3. Please use `abort_task` (abort in-progress task), `pause_task` (pause task), or `panic_kill` (emergency termination) instead.
 
 | Type | Description |
 |------|-------------|
 | create_task | Create task |
 | query_status | Query status |
 | modify_task | Modify task |
-| cancel_task | Cancel task |
+| abort_task | Abort in-progress task (replacement for removed cancel_task) |
+| pause_task | Pause task |
 | create_goal | Create goal |
 | decompress_goal | Decompress goal |
+| panic_kill | Emergency termination (highest level, for safety-critical scenarios) |
 
 ### RiskPreview
 
@@ -73,19 +77,11 @@ interface RiskPreview {
 ## Consequences
 
 Positive:
+
 - NL entry lowers usage barrier
 - Ambiguity detection improves accuracy
 - Multi-language support expands scope
 
 Negative:
+
 - NLU model requires training and maintenance
-- Ambiguity detection may not be 100% accurate
-
-## Cross-References
-
-- [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)
-- [ADR-082 Natural Language Entry and Goal Decomposition](./082-natural-language-entry-and-goal-decomposition.md)
-
-## Source Sections
-
-- `§39` Natural Language Task Entry

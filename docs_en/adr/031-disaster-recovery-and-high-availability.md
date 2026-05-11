@@ -46,10 +46,6 @@ Negative:
 - Backup storage costs
 - Drills consume production resources
 
-Trade-offs:
-- Reliability vs. cost
-- Compliance vs. complexity
-
 ## Cross-References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)

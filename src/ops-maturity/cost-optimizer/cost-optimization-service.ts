@@ -134,7 +134,7 @@ export class CostOptimizationService {
   }
 
   public listRecords(): CostAttributionRecord[] {
-    return [...this.records];
+    return this.records.map((record) => ({ ...record }));
   }
 
   private riskLevelForSubject(

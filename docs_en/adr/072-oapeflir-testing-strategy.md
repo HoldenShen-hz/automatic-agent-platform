@@ -6,7 +6,7 @@
 
 ## Context
 
-The OAPEFLIR eight-stage architecture introduces 7 core modules (agent-loop/planning/feedback/learning/improvement/knowledge/domain-registry), totaling approximately 130 files and 15,774 lines of code. These modules are currently marked as Unverified and require a complete testing strategy to ensure production readiness.
+The OAPEFLIR eight-stage architecture adds 7 core modules (agent-loop/planning/feedback/learning/improvement/knowledge/domain-registry), totaling approximately 130 files and 15,774 lines of code. These modules are currently marked as Unverified, requiring a complete testing strategy to ensure production readiness.
 
 ## Decision
 
@@ -15,10 +15,10 @@ The OAPEFLIR eight-stage architecture introduces 7 core modules (agent-loop/plan
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Golden / E2E Tests                        │
-│   (tests/golden/oapeflir-happy-path.test.ts etc)           │
+│   (tests/golden/oapeflir-happy-path.test.ts etc.)          │
 ├─────────────────────────────────────────────────────────────┤
 │                   Integration Tests                          │
-│   (tests/integration/oapeflir-loop-integration.test.ts etc)  │
+│   (tests/integration/oapeflir-loop-integration.test.ts etc)│
 ├─────────────────────────────────────────────────────────────┤
 │                    Unit Tests                                │
 │   (tests/unit/{module}/*.test.ts)                           │
@@ -30,16 +30,16 @@ The OAPEFLIR eight-stage architecture introduces 7 core modules (agent-loop/plan
 
 ### 2. New Module Test Matrix
 
-| Module | Unit Tests | Integration Tests | Golden | Security | Estimated Cases |
-|------|---------|---------|--------|------|---------|
+| Module | Unit Tests | Integration Tests | Golden | Security | Est. Test Cases |
+|--------|-----------|------------------|--------|----------|-----------------|
 | `agent-loop/` | run() loop integrity, assess, handoff | 8-stage integration | O→A→P→E→F happy path | handoff info leakage | ~120 |
 | `planning/` | plan-builder, DAG validator, replanning, strategy selector | plan→execute integration | linear plan happy path | — | ~80 |
-| `feedback/` | signal-preprocessor (dedup/correlate/filter), collector, event-consumer | feedback→learning delivery | — | — | ~60 |
-| `learning/` | 4 detectors, learning-object-validator, experience-distillation | learn→improve delivery | failure pattern golden | — | ~80 |
+| `feedback/` | signal-preprocessor (dedup/correlation/filter), collector, event-consumer | feedback→learning propagation | — | — | ~60 |
+| `learning/` | 4 detectors, learning-object-validator, experience-distillation | learn→improve propagation | failure pattern golden | — | ~80 |
 | `improvement/` | rollout-state-machine, rollout-scheduler, auto-rollback, guardrail | full rollout flow | canary→stable golden | autonomy boundary | ~100 |
-| `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | ingest→retrieve E2E | retrieval accuracy golden | source pollution | ~150 |
+| `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | ingestion→retrieval E2E | retrieval accuracy golden | source pollution | ~150 |
 | `domain-registry/` | plugin-spi-registry, plugin-runtime-host, domain-registry-service | plugin load→execute | — | config injection | ~100 |
-| `plugins/` | github-adapter, basic-planner, coding-retriever | plugin register→invoke | — | — | ~40 |
+| `plugins/` | github-adapter, basic-planner, coding-retriever | plugin registration→invoke | — | — | ~40 |
 | **Total** | | | | | **~730** |
 
 ### 3. E2E Test Design (5 Core Tests)
@@ -47,9 +47,9 @@ The OAPEFLIR eight-stage architecture introduces 7 core modules (agent-loop/plan
 #### Test 1: Happy Path
 ```
 Input: "modify foo.ts bar function"
-Verify: Full chain O→A→P→E→F→L→I(shadow)
+Verify: O→A→P→E→F→L→I(shadow) full chain
 Verify: Each stage DTO passes Zod validation
-Verify: No stage skipped
+Verify: `oapeflir.view.*` stage views are continuous and do not replace runtime truth
 Verify: <60s E2E latency
 ```
 
@@ -60,18 +60,18 @@ Verify: Execute failure → Feedback → Learn produces FailurePattern
 Verify: FailurePattern has evidence links
 ```
 
-#### Test 3: Replan Trigger
+#### Test 3: Replan Triggered
 ```
-Input: Tool failure mid-execution
+Input: tool_failure mid-execution
 Verify: ReplanningService generates version N+1
-Verify: New Plan continues from failed step
+Verify: New `GraphPatch` continues from failed `NodeRun`
 ```
 
 #### Test 4: Canary Upgrade Flow
 ```
 Input: Existing LearningObject → ImprovementCandidate
 Verify: shadow → canary_5 → partial_25 → stable complete flow
-Verify: Automatic rollback when metrics are not met
+Verify: Auto-rollback when metrics do not meet threshold
 ```
 
 #### Test 5: Multi-Agent Handoff
@@ -79,13 +79,17 @@ Verify: Automatic rollback when metrics are not met
 Input: Task requiring 2 Agent collaboration
 Verify: HandoffBuilder serialization/deserialization round-trip
 Verify: Token budget < 1000
-Verify: FactLayer has no sensitive info leakage
+Verify: No sensitive info leakage in FactLayer
 ```
 
-### 4. Performance Baseline Targets
+### 4. Performance Benchmark Targets
+
+## v4.3 ADR Remediation
+
+- A-66: This ADR originally described OAPEFLIR testing as an "executable main chain where no stage is skipped" and used "continue after failed step" to describe replan. The root cause was that the test strategy ADR mixed cognitive stage views with runtime execution graphs. Fix: The main text now limits OAPEFLIR to view continuity verification, and anchors recovery/replanning at `GraphPatch / NodeRun`.
 
 | Module | Operation | P99 Target | Test File |
-|------|------|---------|---------|
+|--------|-----------|------------|-----------|
 | Feedback | signal-preprocessor.preprocess() | <10ms | tests/performance/feedback-perf.test.ts |
 | Knowledge | knowledge-query-service.query() (Quick) | <100ms | tests/performance/knowledge-perf.test.ts |
 | Knowledge | knowledge-retrieval.retrieve() (Standard) | <500ms | tests/performance/knowledge-perf.test.ts |
@@ -97,41 +101,41 @@ Verify: FactLayer has no sensitive info leakage
 ### 5. Security Test Coverage
 
 | Test Type | Coverage |
-|---------|---------|
+|-----------|----------|
 | Handoff info leakage | FactLayer does not leak sensitive data |
-| Autonomy boundary | Unauthorized operations blocked by guardrail |
-| Domain config injection | Malicious configuration rejected by PluginConfigValidator |
+| Autonomy boundary | Unauthorized operations intercepted by guardrail |
+| Domain config injection | Malicious config rejected by PluginConfigValidator |
 | Source pollution | Knowledge ingestion does not introduce pollution |
 | Tool call injection | CommandExecutor prevents shell injection |
 
 ### 6. Chaos Testing (Stable Release Gate)
 
-| Scenario | Injected Failure | Expected Recovery |
-|------|---------|---------|
-| Agent node down | kill -9 simulates node failure | Lease reallocated, task migrated |
-| Database connection lost | network partition | Event persisted, local buffer |
-| Replanning storm | 10 consecutive tool_failures | Backoff strategy triggered, task terminated |
-| Memory exhaustion | Allocation exceeds limit | OOM caught, resources released |
+| Scenario | Failure Injection | Expected Recovery |
+|----------|------------------|------------------|
+| Agent node crash | kill -9 simulates node failure | Lease reassigned, task migration |
+| Database connection loss | network partition | Event persistence, local buffering |
+| Replanning storm | 10 consecutive tool_failures | Backoff strategy triggered, task termination |
+| Memory overflow | Allocation exceeds limit | OOM captured, resource release |
 
 ## Alternatives
 
 ### Option A: Unit Tests Only
 
-Pros: Quick coverage of core logic.
-Cons: No E2E verification, cannot find inter-stage integration issues.
+Pros: Fast coverage of core logic.
+Cons: No E2E verification, cannot detect cross-stage integration issues.
 
-### Option B: Complete Test Pyramid (Chosen)
+### Option B: Full Test Pyramid (Selected)
 
 Pros: Unit/integration/golden/security/chaos layered, comprehensive coverage.
-Cons: High workload (~730 test cases + performance baselines).
+Cons: High effort (~730 test cases + performance benchmarks).
 
 ## Consequences
 
-- New `tests/unit/{module}/` directory structure.
-- New `tests/integration/` integration test files.
-- New `tests/golden/` golden path tests.
-- New `tests/performance/` performance baseline tests.
-- New `tests/security/` security regression tests.
+- New `tests/unit/{module}/` directory structure added.
+- New `tests/integration/` integration test files added.
+- New `tests/golden/` golden path tests added.
+- New `tests/performance/` performance benchmark tests added.
+- New `tests/security/` security regression tests added.
 - `npm test` must pass all as production readiness gate.
 
 ## Cross References
@@ -144,5 +148,5 @@ Cons: High workload (~730 test cases + performance baselines).
 
 - `§G1` Test Coverage Solution
 - `§G3` E2E Test Design
-- `§G4` Performance Baseline Testing
+- `§G4` Performance Benchmark Testing
 - `§6.1` Industrial-Grade Standards
