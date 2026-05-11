@@ -6,6 +6,7 @@ import {
   type IntakeRouteInput,
   type IntakeIntent,
   type IntakeContinuation,
+  type SkillTaxonomy,
 } from "../../../../../src/platform/orchestration/routing/intake-router.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../../../src/domains/governance/division-loader.js";
 
@@ -422,4 +423,308 @@ test("IntakeRouter.route matchedRules contains all matched intent keywords", () 
   }));
 
   assert.ok(result.classification.matchedRules.length > 0);
+});
+
+// ============ Skill Taxonomy Tests ============
+
+test("IntakeRouter.classifySkill categorizes coding skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Code",
+    request: "implement a new function to process data",
+  }));
+
+  assert.equal(result.category, "coding");
+  assert.ok(result.confidence > 0.5);
+  assert.ok(result.matchedSkills.length > 0);
+});
+
+test("IntakeRouter.classifySkill categorizes data skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Query",
+    request: "run a database query to get analytics report",
+  }));
+
+  assert.equal(result.category, "data");
+});
+
+test("IntakeRouter.classifySkill categorizes analysis skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Analyze",
+    request: "analyze the trend and research the pattern",
+  }));
+
+  assert.equal(result.category, "analysis");
+});
+
+test("IntakeRouter.classifySkill categorizes infrastructure skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Deploy",
+    request: "deploy to kubernetes cluster",
+  }));
+
+  assert.equal(result.category, "infrastructure");
+});
+
+test("IntakeRouter.classifySkill categorizes security skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Security",
+    request: "check for vulnerability and fix auth permission",
+  }));
+
+  assert.equal(result.category, "security");
+});
+
+test("IntakeRouter.classifySkill categorizes automation skills", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Workflow",
+    request: "automate the pipeline and schedule the trigger",
+  }));
+
+  assert.equal(result.category, "automation");
+});
+
+test("IntakeRouter.classifySkill defaults to general for unknown inputs", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "Misc",
+    request: "do something random",
+  }));
+
+  assert.equal(result.category, "general");
+});
+
+test("IntakeRouter.classifySkill handles empty input gracefully", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "",
+    request: "",
+  }));
+
+  assert.equal(result.category, "general");
+  assert.ok(result.matchedSkills.length === 0);
+});
+
+test("IntakeRouter.classifySkill uses custom taxonomy when provided", () => {
+  const customTaxonomy: SkillTaxonomy = {
+    entries: [
+      {
+        category: "custom_category",
+        keywords: ["custom", "special", "unique"],
+        weight: 0.95,
+      },
+    ],
+    defaultCategory: "general",
+  };
+  const router = new IntakeRouter({ skillTaxonomy: customTaxonomy });
+  const result = router.classifySkill(createRouteInput({
+    title: "Special",
+    request: "use the custom special unique keyword",
+  }));
+
+  assert.equal(result.category, "custom_category");
+  assert.ok(result.matchedSkills.includes("custom"));
+  assert.ok(result.matchedSkills.includes("special"));
+  assert.ok(result.matchedSkills.includes("unique"));
+});
+
+// ============ Load Balancing Tests ============
+
+test("IntakeRouter with round-robin cycles through candidates", () => {
+  const division1 = createMockDivision({
+    id: "division1",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const division2 = createMockDivision({
+    id: "division2",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([division1, division2]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "round-robin",
+  });
+
+  // First request
+  const result1 = router.route(createRouteInput({ title: "Task", request: "do work" }));
+  // Second request
+  const result2 = router.route(createRouteInput({ title: "Task", request: "do more work" }));
+
+  // Should cycle through divisions
+  assert.notEqual(result1.divisionId, result2.divisionId);
+});
+
+test("IntakeRouter with least-load selects highest priority candidate", () => {
+  const lowPriority = createMockDivision({
+    id: "low_priority",
+    priority: 5,
+    triggers: ["task"],
+  });
+  const highPriority = createMockDivision({
+    id: "high_priority",
+    priority: 20,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([lowPriority, highPriority]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "least-load",
+  });
+
+  const result = router.route(createRouteInput({ title: "Task", request: "do work" }));
+
+  assert.equal(result.divisionId, "high_priority");
+});
+
+test("IntakeRouter with weighted balances by priority", () => {
+  const lowPriority = createMockDivision({
+    id: "low_priority",
+    priority: 1,
+    triggers: ["task"],
+  });
+  const highPriority = createMockDivision({
+    id: "high_priority",
+    priority: 9,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([lowPriority, highPriority]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "weighted",
+  });
+
+  // Run multiple times to observe weighted distribution
+  const results = new Map<string, number>();
+  for (let i = 0; i < 100; i++) {
+    const result = router.route(createRouteInput({ title: "Task", request: "do work" }));
+    const count = results.get(result.divisionId) ?? 0;
+    results.set(result.divisionId, count + 1);
+  }
+
+  // high_priority should get roughly 9x more requests than low_priority
+  const highCount = results.get("high_priority") ?? 0;
+  const lowCount = results.get("low_priority") ?? 0;
+  assert.ok(highCount > lowCount, "weighted should favor higher priority");
+  assert.ok(highCount > 50, "high_priority should get majority of requests");
+});
+
+test("IntakeRouter with random selects randomly", () => {
+  const div1 = createMockDivision({
+    id: "div1",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const div2 = createMockDivision({
+    id: "div2",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([div1, div2]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "random",
+  });
+
+  // With random selection, we should see both divisions selected over many runs
+  let seenBoth = false;
+  const firstResult = router.route(createRouteInput({ title: "Task", request: "do work" }));
+  for (let i = 0; i < 20; i++) {
+    const result = router.route(createRouteInput({ title: "Task", request: "do more work" }));
+    if (result.divisionId !== firstResult.divisionId) {
+      seenBoth = true;
+      break;
+    }
+  }
+  assert.ok(seenBoth, "random should eventually select different divisions");
+});
+
+test("IntakeRouter loadBalancing defaults to round-robin", () => {
+  const router = new IntakeRouter();
+  assert.equal(router["loadBalancing"], "round-robin");
+});
+
+test("IntakeRouter uses single candidate when only one matches", () => {
+  const onlyDivision = createMockDivision({
+    id: "only_division",
+    priority: 10,
+    triggers: ["unique_trigger"],
+  });
+  const registry = createMockRegistry([onlyDivision]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "round-robin",
+  });
+
+  const result = router.route(createRouteInput({
+    title: "Task",
+    request: "handle unique_trigger request",
+  }));
+
+  assert.equal(result.divisionId, "only_division");
+});
+
+test("IntakeRouter round-robin trace includes load balancing info", () => {
+  const div1 = createMockDivision({
+    id: "div1",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const div2 = createMockDivision({
+    id: "div2",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([div1, div2]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "round-robin",
+  });
+
+  const result = router.route(createRouteInput({ title: "Task", request: "do work" }));
+
+  assert.ok(result.routeTrace.some((t) => t.startsWith("lb_round_robin:") || t.startsWith("matched_divisions:")));
+});
+
+test("IntakeRouter skill taxonomy categorizes Chinese keywords", () => {
+  const router = new IntakeRouter();
+  const result = router.classifySkill(createRouteInput({
+    title: "编码",
+    request: "编程实现一个函数",
+  }));
+
+  assert.equal(result.category, "coding");
+  assert.ok(result.matchedSkills.length > 0);
+});
+
+test("IntakeRouter skill taxonomy confidence reflects match quality", () => {
+  const router = new IntakeRouter();
+  const singleMatch = router.classifySkill(createRouteInput({
+    title: "Task",
+    request: "code something", // only "code" matches
+  }));
+  const multiMatch = router.classifySkill(createRouteInput({
+    title: "Task",
+    request: "implement code function develop", // multiple matches
+  }));
+
+  assert.ok(multiMatch.confidence > singleMatch.confidence,
+    "more keyword matches should yield higher confidence");
+});
+
+test("IntakeRouter routeTrace includes skill taxonomy result", () => {
+  const router = new IntakeRouter();
+  const result = router.route(createRouteInput({
+    title: "Code",
+    request: "implement a function to process data",
+  }));
+
+  // Route trace should include matched keywords from taxonomy
+  assert.ok(result.routeTrace.some((t) => t.includes("code") || t.includes("implement")));
 });

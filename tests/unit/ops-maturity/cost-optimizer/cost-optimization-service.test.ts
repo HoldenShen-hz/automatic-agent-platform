@@ -298,3 +298,150 @@ test("CostOptimizationService.simulate handles unknown subject with zero cost", 
   assert.equal(results[0]!.simulatedCostUsd, 0);
   assert.equal(results[0]!.deltaUsd, 0);
 });
+
+test("CostOptimizationService.recordCost accepts all 7 dimension fields per §64.1", () => {
+  const service = new CostOptimizationService();
+  const record = service.recordCost({
+    harness_run_id: "harness-123",
+    node_run_id: "node-456",
+    subjectType: "workflow",
+    subjectId: "wf-7dim",
+    costType: "llm",
+    amountUsd: 45.5,
+    llmCostUsd: 30,
+    toolCostUsd: 8,
+    computeCostUsd: 4,
+    storageCostUsd: 2,
+    egressCostUsd: 1,
+    humanReviewCostUsd: 0.5,
+    qualityRisk: "low",
+    decisionRef: "dec-7dim",
+    modelRef: "claude-3-7",
+    capturedAt: "2026-05-11T00:00:00.000Z",
+  });
+  assert.equal(record.amountUsd, 45.5);
+  assert.equal(record.llmCostUsd, 30);
+  assert.equal(record.toolCostUsd, 8);
+  assert.equal(record.computeCostUsd, 4);
+  assert.equal(record.storageCostUsd, 2);
+  assert.equal(record.egressCostUsd, 1);
+  assert.equal(record.humanReviewCostUsd, 0.5);
+  assert.deepEqual(service.listRecords(), [record]);
+});
+
+test("CostOptimizationService.aggregate correctly sums 7-dimension breakdown per subject", () => {
+  const service = new CostOptimizationService();
+  // Record with all 7 dimensions populated
+  service.recordCost({
+    subjectType: "agent",
+    subjectId: "agent-7dim",
+    costType: "llm",
+    llmCostUsd: 50,
+    toolCostUsd: 20,
+    computeCostUsd: 10,
+    storageCostUsd: 5,
+    egressCostUsd: 3,
+    humanReviewCostUsd: 2,
+    amountUsd: 90, // total of above
+    decisionRef: "dec-7dim-1",
+    capturedAt: "2026-05-11T00:00:00.000Z",
+  });
+  // Second record for same subject with different dimensions
+  service.recordCost({
+    subjectType: "agent",
+    subjectId: "agent-7dim",
+    costType: "compute",
+    llmCostUsd: 25,
+    toolCostUsd: 10,
+    computeCostUsd: 5,
+    storageCostUsd: 2.5,
+    egressCostUsd: 1.5,
+    humanReviewCostUsd: 1,
+    amountUsd: 45, // total of above
+    decisionRef: "dec-7dim-2",
+    capturedAt: "2026-05-11T00:01:00.000Z",
+  });
+
+  const result = service.aggregate("agent");
+  // Both records have amountUsd, so sum = 90 + 45 = 135
+  assert.equal(result["agent-7dim"], 135);
+});
+
+test("CostOptimizationService.aggregate falls back to 7-dimension sum when amountUsd absent", () => {
+  const service = new CostOptimizationService();
+  // Record with individual dimensions but no amountUsd
+  service.recordCost({
+    subjectType: "task",
+    subjectId: "task-dim-only",
+    costType: "llm",
+    llmCostUsd: 15,
+    toolCostUsd: 5,
+    computeCostUsd: 3,
+    storageCostUsd: 1,
+    egressCostUsd: 1,
+    humanReviewCostUsd: 0.5,
+    // amountUsd intentionally omitted
+    decisionRef: "dec-dim-only",
+    capturedAt: "2026-05-11T00:00:00.000Z",
+  });
+
+  const result = service.aggregate("task");
+  // Sum of 7 dimensions: 15+5+3+1+1+0.5 = 25.5
+  assert.equal(result["task-dim-only"], 25.5);
+});
+
+test("CostOptimizationService aggregates multiple subjects each with 7-dimension records", () => {
+  const service = new CostOptimizationService();
+  service.recordCost({
+    subjectType: "workflow",
+    subjectId: "wf-A",
+    costType: "llm",
+    llmCostUsd: 100,
+    toolCostUsd: 50,
+    computeCostUsd: 25,
+    storageCostUsd: 10,
+    egressCostUsd: 5,
+    humanReviewCostUsd: 10,
+    amountUsd: 200,
+    decisionRef: "dec-wf-A",
+    capturedAt: "2026-05-11T00:00:00.000Z",
+  });
+  service.recordCost({
+    subjectType: "workflow",
+    subjectId: "wf-B",
+    costType: "tool",
+    llmCostUsd: 80,
+    toolCostUsd: 40,
+    computeCostUsd: 20,
+    storageCostUsd: 8,
+    egressCostUsd: 4,
+    humanReviewCostUsd: 8,
+    amountUsd: 160,
+    decisionRef: "dec-wf-B",
+    capturedAt: "2026-05-11T00:01:00.000Z",
+  });
+  service.recordCost({
+    subjectType: "agent",
+    subjectId: "agent-X",
+    costType: "compute",
+    llmCostUsd: 60,
+    toolCostUsd: 30,
+    computeCostUsd: 15,
+    storageCostUsd: 6,
+    egressCostUsd: 3,
+    humanReviewCostUsd: 6,
+    amountUsd: 120,
+    decisionRef: "dec-agent-X",
+    capturedAt: "2026-05-11T00:02:00.000Z",
+  });
+
+  const all = service.aggregate();
+  assert.equal(all["wf-A"], 200);
+  assert.equal(all["wf-B"], 160);
+  assert.equal(all["agent-X"], 120);
+
+  const workflowsOnly = service.aggregate("workflow");
+  assert.equal(workflowsOnly["wf-A"], 200);
+  assert.equal(workflowsOnly["wf-B"], 160);
+  assert.strictEqual(workflowsOnly["agent-X"], undefined);
+});

@@ -111,6 +111,11 @@ export interface StartupConsistencyCheckerOptions {
   toolMetadataValidator?: (metadataItems: ReturnType<typeof listBuiltinToolExecutionMetadata>) => ToolContractViolation[];
   configValidator?: () => StartupConfigValidationResult;
   providerReadinessProbe?: (configValidation: StartupConfigValidationResult | null) => ProviderReadinessResult[];
+  /**
+   * Optional callback invoked when canAcceptTraffic() returns false.
+   * Implementations should stop accepting new requests/traffic.
+   */
+  onTrafficBlocked?: () => void;
 }
 
 function minusMs(isoTimestamp: string, deltaMs: number): string {
@@ -489,7 +494,15 @@ export class StartupConsistencyChecker {
       }
     }
 
-    return buildStartupConsistencyReport(checkedAt, findings);
+    const report = buildStartupConsistencyReport(checkedAt, findings);
+
+    // Enforce fail_closed: block traffic when P0 findings are detected
+    if (report.status === "fail_closed") {
+      this.trafficBlocked = true;
+      this.options.onTrafficBlocked?.();
+    }
+
+    return report;
   }
 }
 

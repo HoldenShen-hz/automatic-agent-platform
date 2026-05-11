@@ -14,6 +14,7 @@ import {
   type RuntimeTransitionCommand,
 } from "./runtime-state-machine.js";
 import { newId } from "../contracts/types/ids.js";
+import { ValidationError } from "../contracts/errors.js";
 
 export interface BudgetAllocatorContext {
   readonly tenantId: string;
@@ -298,13 +299,27 @@ export class BudgetAllocator {
     return [...this.activeReservations.values()];
   }
 
+  /**
+   * R11-12: CAS atomic settle for BudgetLedger
+   * Adds expectedVersion parameter to enable SQL-level Compare-and-Swap atomicity
+   * for concurrent settle operations to prevent balance inconsistency.
+   */
   public settle(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
     readonly actualAmount: number;
+    readonly expectedVersion: number;
     readonly evidenceRefs?: readonly ArtifactRef[];
     readonly context: BudgetAllocatorContext;
   }): BudgetSettlementResult {
+    // R11-12: CAS version check for atomic settle - prevents concurrent modifications
+    if (input.ledger.version !== input.expectedVersion) {
+      throw new ValidationError(
+        "budget_settlement.version_cas_failed",
+        "budget_settlement.version_cas_failed: Concurrent settle detected, ledger version mismatch.",
+      );
+    }
+
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: input.actualAmount,
@@ -352,12 +367,26 @@ export class BudgetAllocator {
     };
   }
 
+  /**
+   * R11-12: CAS atomic release for BudgetLedger
+   * Adds expectedVersion parameter to enable SQL-level Compare-and-Swap atomicity
+   * for concurrent release operations to prevent balance inconsistency.
+   */
   public release(input: {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
+    readonly expectedVersion: number;
     readonly reasonCode?: string;
     readonly context: BudgetAllocatorContext;
   }): BudgetReleaseResult {
+    // R11-12: CAS version check for atomic release - prevents concurrent modifications
+    if (input.ledger.version !== input.expectedVersion) {
+      throw new ValidationError(
+        "budget_release.version_cas_failed",
+        "budget_release.version_cas_failed: Concurrent release detected, ledger version mismatch.",
+      );
+    }
+
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: 0,

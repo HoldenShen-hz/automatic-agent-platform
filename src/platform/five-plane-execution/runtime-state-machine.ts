@@ -82,6 +82,12 @@ export interface RuntimeTransitionResult<TAggregate extends RuntimeStateAggregat
   readonly event: PlatformFactEvent;
 }
 
+/**
+ * Callback type for persisting events produced by RuntimeStateMachine.
+ * Implementations must durably write the event (e.g., to event store, outbox, or journal).
+ */
+export type EventPersistenceCallback = (event: PlatformFactEvent) => void;
+
 type TransitionTable<TStatus extends string> = Record<TStatus, readonly TStatus[]>;
 
 const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
@@ -170,6 +176,12 @@ const BUDGET_RESERVATION_TRANSITIONS: TransitionTable<BudgetReservation["status"
 };
 
 export class RuntimeStateMachine {
+  private readonly persistEvent: EventPersistenceCallback | null;
+
+  public constructor(options: { persistEvent?: EventPersistenceCallback } = {}) {
+    this.persistEvent = options.persistEvent ?? null;
+  }
+
   public transition<TAggregate extends RuntimeStateAggregate>(
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
@@ -207,6 +219,17 @@ export class RuntimeStateMachine {
       } as unknown as JsonValue,
       occurredAt,
     });
+
+    // R23-03 FIX: Persist event immediately - callers must not forget.
+    // If no callback was provided, the machine was constructed without persistence
+    // capability, which is a programming error. We throw to enforce the contract.
+    if (this.persistEvent == null) {
+      throw new ValidationError(
+        "runtime_state_machine.persistence_required",
+        "RuntimeStateMachine requires an event persistence callback. Construct with { persistEvent: callback }.",
+      );
+    }
+    this.persistEvent(event);
 
     return { aggregate, event };
   }

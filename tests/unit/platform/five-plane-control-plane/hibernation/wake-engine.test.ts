@@ -28,9 +28,8 @@ import type { ArtifactRef } from "../../../../../src/platform/contracts/executab
 function createMockArtifactRef(): ArtifactRef {
   return {
     artifactId: "art-123",
-    artifactVersion: 1,
-    storagePath: "/artifacts/test",
-    contentHash: "abc123",
+    uri: "/artifacts/test",
+    hash: "abc123",
   };
 }
 
@@ -359,8 +358,8 @@ test("checkResumeCompatibility() returns not compatible when contractVersion dif
   assert.equal(result.compatible, false);
   assert.equal(result.differences.length, 1);
   assert.equal(result.differences[0].field, "contractVersion");
-  assert.equal(result.differences[0].before, "v4.3");
-  assert.equal(result.differences[0].after, "v4.4");
+  assert.equal(result.differences[0].beforeValue, "v4.3");
+  assert.equal(result.differences[0].afterValue, "v4.4");
 });
 
 test("checkResumeCompatibility() returns timedOut when timeout exceeded", () => {
@@ -421,8 +420,8 @@ test("checkResumeCompatibility() detects multiple version differences", () => {
 test("generateResumeDiffReport() recommends replan for critical changes", () => {
   const engine = createTestEngine();
   const differences = [
-    { field: "contractVersion", before: "v4.3", after: "v4.4" },
-    { field: "runtimeVersion", before: "1.0.0", after: "1.0.0" },
+    { field: "contractVersion", beforeValue: "v4.3", afterValue: "v4.4" },
+    { field: "runtimeVersion", beforeValue: "1.0.0", afterValue: "1.0.0" },
   ];
 
   const report = engine.generateResumeDiffReport("run-123", differences);
@@ -436,10 +435,10 @@ test("generateResumeDiffReport() recommends migrate for many non-critical change
   const engine = createTestEngine();
   // Use 4 actual differences (before !== after) with no critical fields changed
   const differences = [
-    { field: "graphHash", before: "abc", after: "def" },
-    { field: "artifactLockHash", before: "123", after: "456" },
-    { field: "anotherField", before: "old", after: "new" },
-    { field: "yetAnotherField", before: "a", after: "b" },
+    { field: "graphHash", beforeValue: "abc", afterValue: "def" },
+    { field: "artifactLockHash", beforeValue: "123", afterValue: "456" },
+    { field: "anotherField", beforeValue: "old", afterValue: "new" },
+    { field: "yetAnotherField", beforeValue: "a", afterValue: "b" },
   ];
 
   const report = engine.generateResumeDiffReport("run-123", differences);
@@ -449,7 +448,7 @@ test("generateResumeDiffReport() recommends migrate for many non-critical change
 
 test("generateResumeDiffReport() recommends supervised_resume for no differences", () => {
   const engine = createTestEngine();
-  const differences: readonly { field: string; before: string; after: string }[] = [];
+  const differences: readonly { field: string; beforeValue: string; afterValue: string }[] = [];
 
   const report = engine.generateResumeDiffReport("run-123", differences);
 
@@ -543,7 +542,7 @@ test("shouldRequireSupervision() returns true when not compatible", () => {
   const compatibilityResult = {
     compatible: false,
     timedOut: false,
-    differences: [{ field: "contractVersion", before: "v4.3", after: "v4.4" }],
+    differences: [{ field: "contractVersion", beforeValue: "v4.3", afterValue: "v4.4" }],
     checkedAt: new Date().toISOString(),
   };
 

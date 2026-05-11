@@ -9,6 +9,7 @@ const electronIndexHtmlPath = resolve(repoRoot, "ui/apps/electron-win/index.html
 const electronRendererPath = resolve(repoRoot, "ui/apps/electron-win/src/renderer.js");
 const tauriMacosConfigPath = resolve(repoRoot, "ui/apps/tauri-macos/src-tauri/tauri.conf.json");
 const tauriLinuxConfigPath = resolve(repoRoot, "ui/apps/tauri-linux/src-tauri/tauri.conf.json");
+const webViteConfigPath = resolve(repoRoot, "ui/apps/web/vite.config.ts");
 
 function readJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
@@ -48,5 +49,17 @@ describe("desktop shell security configs", () => {
     expect(security.dangerousDisableAssetCspModification).toBe(false);
     expect(((plugins.updater as Record<string, unknown>).endpoints as string[])[0]).toContain("updates.automatic-agent.example");
     expect((plugins.notification as Record<string, unknown>).all).toBe(true);
+  });
+
+  it("R12-29 CSP does not contain unsafe-inline for styles", () => {
+    const webViteSource = readFileSync(webViteConfigPath, "utf8");
+    const electronHtml = readFileSync(electronIndexHtmlPath, "utf8");
+    const tauriMacosCsp = (readJson(tauriMacosConfigPath).security as Record<string, string>).csp;
+    const tauriLinuxCsp = (readJson(tauriLinuxConfigPath).security as Record<string, string>).csp;
+
+    expect(webViteSource).not.toContain("unsafe-inline");
+    expect(electronHtml).not.toContain("unsafe-inline");
+    expect(tauriMacosCsp).not.toContain("unsafe-inline");
+    expect(tauriLinuxCsp).not.toContain("unsafe-inline");
   });
 });

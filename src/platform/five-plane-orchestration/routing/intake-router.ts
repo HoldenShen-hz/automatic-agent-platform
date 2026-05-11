@@ -300,6 +300,147 @@ export interface IntakeRouteInput {
 export interface IntakeRouterOptions {
   /** The division registry to use for routing (defaults to global registry) */
   divisionRegistry?: DivisionRegistry | null;
+  /** Load balancing strategy for selecting among equally-matched divisions */
+  loadBalancing?: LoadBalancingStrategy;
+  /** Skill taxonomy for categorizing capabilities (defaults to built-in taxonomy) */
+  skillTaxonomy?: SkillTaxonomy;
+}
+
+/**
+ * Load balancing strategies for distributing requests across divisions.
+ */
+export type LoadBalancingStrategy =
+  | "round-robin"    // Cycle through candidates in order
+  | "least-load"     // Select candidate with lowest active request count
+  | "weighted"       // Weight by division priority (higher priority = more load)
+  | "random";        // Random selection among candidates
+
+/**
+ * Skill category types for taxonomy-based routing.
+ */
+export type SkillCategory =
+  | "coding"
+  | "data"
+  | "analysis"
+  | "communication"
+  | "automation"
+  | "review"
+  | "infrastructure"
+  | "security"
+  | "general";
+
+/**
+ * Skill taxonomy entry mapping keywords to skill categories.
+ */
+export interface SkillTaxonomyEntry {
+  category: SkillCategory;
+  keywords: readonly string[];
+  weight: number; // 0.0 - 1.0, higher = more specialized
+}
+
+/**
+ * Skill taxonomy for categorizing requests based on capability keywords.
+ */
+export interface SkillTaxonomy {
+  entries: readonly SkillTaxonomyEntry[];
+  /** Fallback category for uncategorized skills */
+  defaultCategory: SkillCategory;
+}
+
+/**
+ * Result of skill taxonomy classification for a request.
+ */
+export interface SkillTaxonomyResult {
+  category: SkillCategory;
+  confidence: number;
+  matchedSkills: readonly string[];
+}
+
+/** Built-in skill taxonomy with common capability categories */
+const BUILT_IN_SKILL_TAXONOMY: SkillTaxonomy = {
+  entries: [
+    {
+      category: "coding",
+      keywords: [
+        "code", "programming", "implement", "develop", "function", "class",
+        "module", "api", "debug", "refactor", "write", "script", "algorithm",
+        "编码", "编程", "开发", "实现", "代码", "函数", "模块",
+      ],
+      weight: 0.9,
+    },
+    {
+      category: "data",
+      keywords: [
+        "data", "database", "query", "sql", "table", "record", "schema",
+        "analytics", "metrics", "report", "dashboard", "数据", "数据库",
+        "查询", "分析", "报表", "统计",
+      ],
+      weight: 0.85,
+    },
+    {
+      category: "analysis",
+      keywords: [
+        "analyze", "analysis", "review", "evaluate", "assess", "compare",
+        "research", "investigate", "insight", "pattern", "trend", "分析",
+        "研究", "评审", "评估", "比较", "调查", "洞察",
+      ],
+      weight: 0.8,
+    },
+    {
+      category: "communication",
+      keywords: [
+        "write", "email", "message", "notify", "summarize", "document",
+        "draft", "compose", "communicate", "传达", "写作", "写", "邮件",
+        "通知", "文档", "草稿",
+      ],
+      weight: 0.75,
+    },
+    {
+      category: "automation",
+      keywords: [
+        "automate", "workflow", "pipeline", "schedule", "trigger", "batch",
+        "integration", "connect", "webhook", "自动化", "工作流", "流水线",
+        "调度", "触发", "集成", "连接",
+      ],
+      weight: 0.85,
+    },
+    {
+      category: "review",
+      keywords: [
+        "review", "approve", "check", "validate", "verify", "audit",
+        "inspect", "test", "quality", "评审", "审批", "检查", "验证",
+        "审计", "测试", "质量",
+      ],
+      weight: 0.8,
+    },
+    {
+      category: "infrastructure",
+      keywords: [
+        "deploy", "infrastructure", "server", "container", "kubernetes",
+        "cloud", "network", "config", "infrastructure", "部署", "基础设施",
+        "服务器", "容器", "云", "网络", "配置",
+      ],
+      weight: 0.85,
+    },
+    {
+      category: "security",
+      keywords: [
+        "security", "auth", "permission", "access", "encrypt", "secure",
+        "vulnerability", "threat", "安全", "认证", "授权", "权限", "加密",
+        "漏洞", "威胁",
+      ],
+      weight: 0.9,
+    },
+  ],
+  defaultCategory: "general",
+} as const;
+
+/**
+ * Result of load-balanced selection among division candidates.
+ */
+interface LoadBalancedSelection<T> {
+  selected: T;
+  position: number;
 }
 
 /**
@@ -321,17 +462,24 @@ function normalize(text: string | null | undefined): string {
  */
 export class IntakeRouter {
   private readonly divisionRegistry: DivisionRegistry | null;
+  private readonly skillTaxonomy: SkillTaxonomy;
+  private readonly loadBalancing: LoadBalancingStrategy;
+  private readonly roundRobinCounters: Map<string, number>;
 
   /**
    * Creates a new intake router instance.
    *
-   * @param options - Configuration options including an optional division registry
+   * @param options - Configuration options including an optional division registry,
+   *                 skill taxonomy, and load balancing strategy
    */
   public constructor(options: IntakeRouterOptions = {}) {
     this.divisionRegistry =
       options.divisionRegistry === undefined
         ? getDefaultDivisionRegistry()
         : options.divisionRegistry;
+    this.skillTaxonomy = options.skillTaxonomy ?? BUILT_IN_SKILL_TAXONOMY;
+    this.loadBalancing = options.loadBalancing ?? "round-robin";
+    this.roundRobinCounters = new Map();
   }
 
   /**
@@ -543,7 +691,173 @@ export class IntakeRouter {
     routeTrace.push(
       `matched_divisions:${candidates.map((candidate) => `${candidate.division.id}:${candidate.matchedTrigger}`).join(",")}`,
     );
-    return candidates[0]?.division ?? null;
+
+    // Apply load balancing to select among candidates
+    return this.applyLoadBalancing(candidates, routeTrace);
+  }
+
+  /**
+   * Applies load balancing to select among competing division candidates.
+   */
+  private applyLoadBalancing(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition | null {
+    if (candidates.length === 0) {
+      return null;
+    }
+    if (candidates.length === 1) {
+      return candidates[0]?.division ?? null;
+    }
+
+    switch (this.loadBalancing) {
+      case "round-robin":
+        return this.roundRobinSelect(candidates, routeTrace);
+      case "least-load":
+        return this.leastLoadSelect(candidates, routeTrace);
+      case "weighted":
+        return this.weightedSelect(candidates, routeTrace);
+      case "random":
+        return this.randomSelect(candidates, routeTrace);
+      default:
+        // Default to first candidate (highest priority)
+        return candidates[0]?.division ?? null;
+    }
+  }
+
+  /**
+   * Round-robin selection cycles through candidates in order.
+   * Uses a counter per division prefix to distribute load.
+   */
+  private roundRobinSelect<T>(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition {
+    // Group candidates by their primary skill category for round-robin tracking
+    const skillCategory = this.categorizeForLoadBalancing(candidates[0]!.division);
+    const counterKey = `rr_${skillCategory}`;
+    const currentCount = this.roundRobinCounters.get(counterKey) ?? 0;
+    const selectedIndex = currentCount % candidates.length;
+
+    this.roundRobinCounters.set(counterKey, currentCount + 1);
+    routeTrace.push(`lb_round_robin:index=${selectedIndex}/${candidates.length}`);
+
+    return candidates[selectedIndex]!.division;
+  }
+
+  /**
+   * Least-load selection prefers candidates with higher priority (assuming
+   * higher priority divisions have more capacity). In a real implementation,
+   * this would query actual load metrics.
+   */
+  private leastLoadSelect(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition {
+    // Sort by priority (descending) - higher priority = lower load assumed
+    const sorted = [...candidates].sort((a, b) => b.division.priority - a.division.priority);
+    routeTrace.push(`lb_least_load:selected=${sorted[0]!.division.id}`);
+    return sorted[0]!.division;
+  }
+
+  /**
+   * Weighted selection distributes requests proportionally based on division priority.
+   * Higher priority divisions receive proportionally more requests.
+   */
+  private weightedSelect(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition {
+    const totalWeight = candidates.reduce((sum, c) => sum + c.division.priority, 0);
+
+    if (totalWeight === 0) {
+      // Equal weights if all priorities are zero
+      const index = Math.floor(Math.random() * candidates.length);
+      routeTrace.push(`lb_weighted:random_index=${index}`);
+      return candidates[index]!.division;
+    }
+
+    // Weighted random selection
+    let random = Math.random() * totalWeight;
+    for (const candidate of candidates) {
+      random -= candidate.division.priority;
+      if (random <= 0) {
+        routeTrace.push(`lb_weighted:selected=${candidate.division.id}`);
+        return candidate.division;
+      }
+    }
+
+    // Fallback to first
+    routeTrace.push(`lb_weighted:fallback=${candidates[0]!.division.id}`);
+    return candidates[0]!.division;
+  }
+
+  /**
+   * Purely random selection among candidates.
+   */
+  private randomSelect(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition {
+    const index = Math.floor(Math.random() * candidates.length);
+    routeTrace.push(`lb_random:index=${index}`);
+    return candidates[index]!.division;
+  }
+
+  /**
+   * Categorizes a division for load balancing tracking purposes.
+   */
+  private categorizeForLoadBalancing(division: LoadedDivisionDefinition): string {
+    // Use the division's first role tool as a category hint if available
+    if (division.roles.length > 0 && division.roles[0]!.tools.length > 0) {
+      return `skill_${division.roles[0]!.tools[0]}`;
+    }
+    return `division_${division.id}`;
+  }
+
+  /**
+   * Classifies the input using skill taxonomy to determine the primary skill category.
+   * This can be used downstream for routing to divisions with matching capabilities.
+   */
+  public classifySkill(input: IntakeRouteInput): SkillTaxonomyResult {
+    const normalized = [normalize(input.title), normalize(input.request)]
+      .filter((segment) => segment.length > 0)
+      .join(" ");
+
+    const matchedEntries: Array<{ entry: SkillTaxonomyEntry; matchedKeywords: string[] }> = [];
+
+    for (const entry of this.skillTaxonomy.entries) {
+      const matchedKeywords = entry.keywords.filter((keyword) =>
+        normalized.includes(keyword.toLowerCase()),
+      );
+      if (matchedKeywords.length > 0) {
+        matchedEntries.push({ entry, matchedKeywords });
+      }
+    }
+
+    if (matchedEntries.length === 0) {
+      return {
+        category: this.skillTaxonomy.defaultCategory,
+        confidence: 0.3,
+        matchedSkills: [],
+      };
+    }
+
+    // Sort by weight * matched count to find best match
+    matchedEntries.sort((a, b) => {
+      const scoreA = a.entry.weight * a.matchedKeywords.length;
+      const scoreB = b.entry.weight * b.matchedKeywords.length;
+      return scoreB - scoreA;
+    });
+
+    const best = matchedEntries[0]!;
+    const confidence = Math.min(0.95, best.entry.weight * (0.5 + best.matchedKeywords.length * 0.1));
+
+    return {
+      category: best.entry.category,
+      confidence,
+      matchedSkills: best.matchedKeywords,
+    };
   }
 }
 

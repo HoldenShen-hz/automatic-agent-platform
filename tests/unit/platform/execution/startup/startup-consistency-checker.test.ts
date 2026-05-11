@@ -834,3 +834,89 @@ test("StartupConsistencyChecker exports correct types", () => {
   ];
   assert.equal(actionTypes.length, 8);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests: Traffic Blocking (fail_closed enforcement)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("StartupConsistencyChecker canAcceptTraffic returns true when no p0 findings", () => {
+  const db = createMockDb();
+  const store = createMockTaskStore();
+  const checker = createChecker(db, store);
+
+  assert.equal(checker.canAcceptTraffic(), true);
+});
+
+test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings detected", () => {
+  const db = createMockDb(["Critical error"]);
+  const store = createMockTaskStore();
+  const checker = createChecker(db, store);
+
+  // Generate p0 finding
+  checker.run();
+
+  assert.equal(checker.canAcceptTraffic(), false);
+});
+
+test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 findings", () => {
+  const db = createMockDb();
+  const store = createMockTaskStore({
+    lock: {
+      listExpiredFileLocks: () => [{ id: "lock-1", resourcePath: "/tmp/test.lock" }],
+    },
+  });
+  const checker = createChecker(db, store);
+
+  checker.run();
+
+  // P1 findings should not block traffic
+  assert.equal(checker.canAcceptTraffic(), true);
+});
+
+test("StartupConsistencyChecker resetTrafficBlocked re-enables traffic", () => {
+  const db = createMockDb(["Critical error"]);
+  const store = createMockTaskStore();
+  const checker = createChecker(db, store);
+
+  // Generate p0 finding
+  checker.run();
+  assert.equal(checker.canAcceptTraffic(), false);
+
+  // Reset
+  checker.resetTrafficBlocked();
+  assert.equal(checker.canAcceptTraffic(), true);
+});
+
+test("StartupConsistencyChecker onTrafficBlocked callback is invoked when fail_closed triggered", () => {
+  const db = createMockDb(["Critical error"]);
+  const store = createMockTaskStore();
+  let callbackInvoked = false;
+
+  const checker = new StartupConsistencyChecker(
+    db as AuthoritativeSqlDatabase,
+    store as AuthoritativeTaskStore,
+    {
+      onTrafficBlocked: () => {
+        callbackInvoked = true;
+      },
+    },
+  );
+
+  checker.run();
+
+  assert.equal(callbackInvoked, true);
+});
+
+test("StartupConsistencyChecker canAcceptTraffic persists blocked state across multiple run calls", () => {
+  const db = createMockDb(["Critical error"]);
+  const store = createMockTaskStore();
+  const checker = createChecker(db, store);
+
+  // First run triggers fail_closed
+  checker.run();
+  assert.equal(checker.canAcceptTraffic(), false);
+
+  // Subsequent runs should still block traffic
+  checker.run();
+  assert.equal(checker.canAcceptTraffic(), false);
+});

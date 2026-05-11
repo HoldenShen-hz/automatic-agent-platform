@@ -158,40 +158,43 @@ export class RuntimeRecoveryDecisionService {
    * @throws Error if execution or candidate not found
    */
   public async apply(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): Promise<RecoveryDecisionApplyResult> {
-    const execution = this.store.dispatch.getExecution(executionId);
-    if (!execution) {
-      throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
-        details: { executionId },
-        executionId,
-      });
-    }
-
-    // Find the recovery candidate for this execution
-    const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-    const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
-    if (!candidate) {
-      throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
-        details: { executionId },
-        executionId,
-      });
-    }
-
-    // Build the decision record
-    const decision: RecoveryDecisionRecord = {
-      decisionId: newId("rdec"),
-      executionId,
-      taskId: execution.taskId,
-      reason: candidate.reason,
-      action: candidate.suggestedAction,
-      decidedAt: nowIso(),
-      decidedBy,
-    };
-
     let deadLetter: DeadLetterRecord | null = null;
     let applied = false;
+    let decision: RecoveryDecisionRecord | null = null;
 
-    // Execute the action within a transaction
-    this.db.transaction(() => {
+    // Execute the action within a transaction to avoid TOCTOU
+    // All data reads (execution, recovery view) must happen inside transaction
+    await this.db.transaction(async () => {
+      // Re-read execution inside transaction to ensure consistency
+      const execution = this.store.dispatch.getExecution(executionId);
+      if (!execution) {
+        throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
+          details: { executionId },
+          executionId,
+        });
+      }
+
+      // Build recovery view and find candidate inside transaction
+      const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
+      const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
+      if (!candidate) {
+        throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
+          details: { executionId },
+          executionId,
+        });
+      }
+
+      // Build the decision record
+      decision = {
+        decisionId: newId("rdec"),
+        executionId,
+        taskId: execution.taskId,
+        reason: candidate.reason,
+        action: candidate.suggestedAction,
+        decidedAt: nowIso(),
+        decidedBy,
+      };
+
       // Always record the decision first for audit
       this.recordDecision(decision);
 
@@ -236,8 +239,9 @@ export class RuntimeRecoveryDecisionService {
       }
     });
 
+    // decision must be set if we got here without throwing
     return {
-      decision,
+      decision: decision!,
       deadLetter,
       applied,
     };

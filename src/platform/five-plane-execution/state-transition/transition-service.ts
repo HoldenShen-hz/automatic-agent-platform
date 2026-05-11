@@ -284,14 +284,18 @@ export class TaskTransitionService {
  * step index and any accumulated outputs from previous steps.
  */
 export class WorkflowTransitionService {
-  public constructor(private readonly repository: RuntimeLifecycleRepository) {}
+  public constructor(
+    private readonly db: AuthoritativeSqlDatabase,
+    private readonly repository: RuntimeLifecycleRepository,
+  ) {}
 
   /**
-   * Transitions workflow status.
-   * Note: Does not wrap in a transaction as workflows are updated independently.
+   * Transitions workflow status atomically within a database transaction.
    */
   public transition(command: WorkflowStatusTransitionCommand): void {
-    this.apply(command);
+    this.db.transaction(() => {
+      this.apply(command);
+    });
   }
 
   /**
@@ -722,7 +726,7 @@ export class TransitionService {
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
   ) {
     this.tasks = new TaskTransitionService(db, repository);
-    this.workflows = new WorkflowTransitionService(repository);
+    this.workflows = new WorkflowTransitionService(db, repository);
     this.sessions = new SessionTransitionService(repository);
     this.executions = new ExecutionTransitionService(repository);
     this.approvals = new ApprovalTransitionService(repository);

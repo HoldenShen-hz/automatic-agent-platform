@@ -60,7 +60,7 @@ test("INV-REPLAY-001: ReplayWorker rejects policies that would allow real side e
   );
 });
 
-test("INV-REPLAY-001: Reexecution replay contract still allows side effects at guard level", () => {
+test("INV-REPLAY-001: Reexecution replay blocks real side effects to prevent duplicate external changes", () => {
   const guard = new ReplayBoundaryGuard();
 
   const operations: readonly ReplayOperation[] = [
@@ -68,6 +68,26 @@ test("INV-REPLAY-001: Reexecution replay contract still allows side effects at g
       operationId: "op-web-fetch",
       resourceKind: "tool",
       hasRealSideEffect: true, // Web fetch creates real network side effect
+      tombstoneReplay: false,
+    },
+  ];
+
+  const decision = guard.evaluate("reexecution_replay", operations);
+
+  // Reexecution replay must block real side effects to prevent duplicate external changes
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "replay.real_side_effect_blocked");
+  assert.deepEqual(decision.blockedOperationIds, ["op-web-fetch"]);
+});
+
+test("INV-REPLAY-001: Reexecution replay allows non-side-effect operations", () => {
+  const guard = new ReplayBoundaryGuard();
+
+  const operations: readonly ReplayOperation[] = [
+    {
+      operationId: "op-read-only",
+      resourceKind: "llm",
+      hasRealSideEffect: false,
       tombstoneReplay: false,
     },
   ];

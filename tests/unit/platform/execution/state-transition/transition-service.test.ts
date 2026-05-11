@@ -582,9 +582,10 @@ test("TaskTransitionService - event payload contains correct transition details"
 // ---------------------------------------------------------------------------
 
 test("WorkflowTransitionService - successful status transition", () => {
+  const db = createMockDatabase();
   const repository = createMockRepository("queued", "running");
 
-  const service = new WorkflowTransitionService(repository);
+  const service = new WorkflowTransitionService(db, repository);
 
   service.transition({
     entityKind: "workflow",
@@ -602,9 +603,10 @@ test("WorkflowTransitionService - successful status transition", () => {
 });
 
 test("WorkflowTransitionService - CAS failure when status mismatch", () => {
+  const db = createMockDatabase();
   const repository = createMockRepository("queued", "completed"); // workflow already in terminal state
 
-  const service = new WorkflowTransitionService(repository);
+  const service = new WorkflowTransitionService(db, repository);
 
   assert.throws(
     () =>
@@ -622,9 +624,10 @@ test("WorkflowTransitionService - CAS failure when status mismatch", () => {
 });
 
 test("WorkflowTransitionService - workflow not found throws error", () => {
+  const db = createMockDatabase();
   const repository = createMockRepository("queued"); // No workflow state initialized
 
-  const service = new WorkflowTransitionService(repository);
+  const service = new WorkflowTransitionService(db, repository);
 
   assert.throws(
     () =>
@@ -642,9 +645,10 @@ test("WorkflowTransitionService - workflow not found throws error", () => {
 });
 
 test("WorkflowTransitionService - invalid transition throws error", () => {
+  const db = createMockDatabase();
   const repository = createMockRepository("queued", "completed");
 
-  const service = new WorkflowTransitionService(repository);
+  const service = new WorkflowTransitionService(db, repository);
 
   assert.throws(
     () =>
@@ -662,10 +666,11 @@ test("WorkflowTransitionService - invalid transition throws error", () => {
 });
 
 test("WorkflowTransitionService - updates step index on transition", () => {
+  const db = createMockDatabase();
   const repository = createMockRepository("queued", "running");
   repository.mockState.workflowStates.set("task-1", { status: "running", currentStepIndex: 0, updatedAt: new Date().toISOString() });
 
-  const service = new WorkflowTransitionService(repository);
+  const service = new WorkflowTransitionService(db, repository);
 
   service.transition({
     entityKind: "workflow",
@@ -678,6 +683,26 @@ test("WorkflowTransitionService - updates step index on transition", () => {
   });
 
   assert.equal(repository.mockState.workflowStates.get("task-1")?.currentStepIndex, 1);
+});
+
+test("WorkflowTransitionService - wraps in database transaction for atomicity", () => {
+  const db = createMockDatabase();
+  const repository = createMockRepository("queued", "running");
+
+  const service = new WorkflowTransitionService(db, repository);
+
+  service.transition({
+    entityKind: "workflow",
+    entityId: "task-1",
+    fromStatus: "running",
+    toStatus: "paused",
+    currentStepIndex: 0,
+    outputsJson: "{}",
+    ...makeContext(),
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.equal((db as any).transactionCalls?.length ?? (db as any).transactionCalls?.size ?? 0, 1);
 });
 
 // ---------------------------------------------------------------------------

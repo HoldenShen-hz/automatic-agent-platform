@@ -446,9 +446,20 @@ export type HarnessRun = CanonicalHarnessRun;
  * HarnessRunRuntimeState - internal runtime state for Harness execution.
  * Per §5.5, steps are semantic projections - use nodeRunIds for canonical execution references.
  * This type is NOT exported from the public API - only for internal harness implementation.
+ *
+ * R6-13 FIX: Unified to canonical pattern. Only harnessRunId is used as the authoritative
+ * identifier; runId was a legacy duplicate that created confusion with the canonical
+ * HarnessRun interface (which uses harnessRunId). The runId field is retained for backward
+ * compatibility but is semantically identical to harnessRunId and must not be used as a
+ * separate identifier in new code.
  */
 export interface HarnessRunRuntimeState {
   readonly harnessRunId: string;
+  /**
+   * @deprecated R6-13 FIX: Use harnessRunId instead. This field is a legacy duplicate that
+   * exists only for backward compatibility with older internal code. The harness runtime
+   * always sets runId = harnessRunId, so there is no separate identity.
+   */
   readonly runId: string;
   readonly tenantId: string;
   readonly leaseId?: string;
