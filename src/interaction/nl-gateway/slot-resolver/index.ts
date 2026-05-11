@@ -28,14 +28,14 @@ export function resolveRequiredSlots(
   entities: readonly ExtractedEntity[],
   requiredEntityTypes: readonly string[],
 ): { readonly missing: string[]; readonly resolved: Record<string, unknown> } {
-  const resolved: Record<string, unknown> = {};
+  const resolved: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const entity of entities) {
     if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
   return {
-    missing: requiredEntityTypes.filter((item) => !(item in resolved)),
+    missing: requiredEntityTypes.filter((item) => !Object.prototype.hasOwnProperty.call(resolved, item)),
     resolved,
   };
 }
@@ -54,9 +54,10 @@ export function buildSlotClarificationState(
   options: SlotResolutionOptions = {},
 ): SlotClarificationState {
   const maxRounds = options.maxRounds ?? 3;
-  const resolved: Record<string, unknown> = {
-    ...(options.previousResolved ?? {}),
-  };
+  const resolved: Record<string, unknown> = Object.assign(
+    Object.create(null) as Record<string, unknown>,
+    options.previousResolved ?? {},
+  );
 
   // First pass: resolve from provided entities
   for (const entity of entities) {
@@ -105,16 +106,19 @@ export function refineSlotResolution(
   }
 
   // Merge new entities with previously resolved
-  const resolved: Record<string, unknown> = {
-    ...currentState.resolved,
-  };
+  const resolved: Record<string, unknown> = Object.assign(
+    Object.create(null) as Record<string, unknown>,
+    currentState.resolved,
+  );
   for (const entity of newEntities) {
-    if (!(entity.entityType in resolved)) {
+    if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
 
-  const missing = [...new Set(currentState.missing.filter((slot) => !(slot in resolved)))];
+  const missing = [
+    ...new Set(currentState.missing.filter((slot) => !Object.prototype.hasOwnProperty.call(resolved, slot))),
+  ];
 
   return {
     missing,
