@@ -106,3 +106,59 @@ test("ConnectorFrameworkService retains at most healthRetentionCount health repo
   const reports = service["health"].get("crm_sync") ?? [];
   assert.equal(reports.length, 3, "Health reports should be capped at retention count");
 });
+
+test("ConnectorFrameworkService evicts LRU connector's bindings when maxBindings is exceeded", () => {
+  // maxBindings=4. We add 4 bindings (reaching capacity), then add 1 more which triggers eviction.
+  // Eviction removes 1 binding from the LRU head (crm_sync with 3 bindings, so it loses 1, not all).
+  // crm_sync: 3 → 2, erp_sync: 1 → 1, jira_sync: 1 → 1. Total: 4.
+  const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 100, 4);
+  service.register(manifest("enabled"));
+  service.register({ ...manifest("enabled"), connectorId: "erp_sync" });
+  service.register({ ...manifest("enabled"), connectorId: "jira_sync" });
+
+  service.bind("crm_sync", "tenant_A1", "dev");
+  service.bind("crm_sync", "tenant_A2", "dev");
+  service.bind("crm_sync", "tenant_A3", "dev");
+  service.bind("erp_sync", "tenant_B1", "dev");
+  // At capacity: crm_sync(3) + erp_sync(1) = 4, LRU: [crm_sync, erp_sync]
+
+  // Adding jira_sync's 1st binding: total=5, excess=1, eviction targets LRU head (crm_sync)
+  service.bind("jira_sync", "tenant_C1", "dev");
+
+  const allBindings = service.listBindings();
+  const connectorIds = new Set(allBindings.map((b) => b.connectorId));
+
+  // All three connectors remain (partial eviction from crm_sync, not full)
+  assert.ok(connectorIds.has("crm_sync"), "crm_sync should remain (partial eviction only)");
+  assert.ok(connectorIds.has("erp_sync"), "erp_sync should remain");
+  assert.ok(connectorIds.has("jira_sync"), "jira_sync should remain");
+  assert.equal(allBindings.length, 4, "Total bindings should be 4 after partial eviction");
+  assert.equal(allBindings.filter((b) => b.connectorId === "crm_sync").length, 2, "crm_sync should have 2 bindings after eviction");
+});
+
+test("ConnectorFrameworkService evicts LRU health entry when maxHealthConnectors is exceeded", () => {
+  // Use maxHealthConnectors = 3 to force eviction after 3 connectors report health
+  const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 100, 10_000, 3);
+  service.register(manifest("enabled"));
+  service.register({ ...manifest("enabled"), connectorId: "erp_sync" });
+  service.register({ ...manifest("enabled"), connectorId: "jira_sync" });
+  service.register({ ...manifest("enabled"), connectorId: "slack_sync" });
+
+  service.recordHealth({ connectorId: "crm_sync", status: "healthy", latencyMs: 100, checkedAt: new Date().toISOString() });
+  // LRU: crm_sync
+
+  service.recordHealth({ connectorId: "erp_sync", status: "healthy", latencyMs: 100, checkedAt: new Date().toISOString() });
+  // LRU: erp_sync, crm_sync
+
+  service.recordHealth({ connectorId: "jira_sync", status: "healthy", latencyMs: 100, checkedAt: new Date().toISOString() });
+  // LRU: jira_sync, erp_sync, crm_sync (all 3 slots used)
+
+  service.recordHealth({ connectorId: "slack_sync", status: "healthy", latencyMs: 100, checkedAt: new Date().toISOString() });
+  // LRU: slack_sync, jira_sync, erp_sync, crm_sync — crm_sync should be evicted
+
+  assert.ok(service["health"].has("slack_sync"), "slack_sync should have health entry");
+  assert.ok(service["health"].has("jira_sync"), "jira_sync should have health entry");
+  assert.ok(service["health"].has("erp_sync"), "erp_sync should have health entry");
+  assert.ok(!service["health"].has("crm_sync"), "LRU entry (crm_sync) should be evicted");
+  assert.equal(service["health"].size, 3, "Health map should have exactly 3 entries");
+});

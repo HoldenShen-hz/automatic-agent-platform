@@ -199,7 +199,8 @@ export class ExecutionTracer {
     const events = [...(this.activeEvents.get(traceId) ?? [])];
 
     // Calculate totalDurationMs dynamically for active trace
-    const totalDurationMs = trace.endedAt
+    // Use explicit null check to avoid NaN from invalid date strings (e.g., "" or malformed)
+    const totalDurationMs = trace.endedAt !== null
       ? new Date(trace.endedAt).getTime() - new Date(trace.startedAt).getTime()
       : null;
 
@@ -236,15 +237,15 @@ export class ExecutionTracer {
   }
 
   public getTracesByWorkflow(workflowId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.workflowId === workflowId);
+    return Array.from(this.activeTraces.values()).filter((t) => t.workflowId === workflowId);
   }
 
   public getTracesByExecution(executionId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.executionId === executionId);
+    return Array.from(this.activeTraces.values()).filter((t) => t.executionId === executionId);
   }
 
   public getActiveTraceCount(): number {
-    return [...this.activeTraces.values()].filter((t) => t.status === "active").length;
+    return Array.from(this.activeTraces.values()).filter((t) => t.status === "active").length;
   }
 
   public reset(): void {

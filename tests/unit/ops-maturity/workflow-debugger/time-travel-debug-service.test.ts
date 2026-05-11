@@ -426,3 +426,86 @@ test("TimeTravelDebugService replayToCursor cursor reflects actual range advance
   assert.equal(state.cursor.toEventIndex, 2);
   assert.ok(state.cursor.fromEventIndex < state.cursor.toEventIndex);
 });
+
+test("TimeTravelDebugService evictOldestSessionIfNeeded does not leak eventStore when multiple sessions share executionId", () => {
+  // Set maxSessions to 2, create 2 sessions with the same executionId, then create a 3rd
+  // The oldest session should be evicted but eventStore should be retained because
+  // the remaining session still references the same executionId
+  const service = new TimeTravelDebugService({ maxSessions: 2 });
+
+  // Load events for execution "exec-shared"
+  service.loadEventStore("exec-shared", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: { x: { value: 1 } } },
+    { stepId: "step-2", timestamp: "2026-04-20T00:01:00.000Z", variables: { x: { value: 2 } } },
+  ]);
+
+  // Create first session with exec-shared
+  const session1 = service.createSession("task-1", "exec-shared");
+  // Create second session with the SAME executionId
+  const session2 = service.createSession("task-2", "exec-shared");
+
+  // Create a third session - this triggers eviction of oldest session (session1)
+  const session3 = service.createSession("task-3", "exec-3");
+
+  // session1 is evicted. eventStore for "exec-shared" must NOT be deleted because
+  // session2 still references it. Verify by replaying on session2.
+  const state = service.replayStep(session2.sessionId);
+  assert.ok(state !== null, "session2 should still be able to replay - eventStore must not be leaked");
+  assert.equal(state.currentEventIndex, 1);
+});
+
+test("TimeTravelDebugService evictOldestSessionIfNeeded cleans up eventStore when no sessions reference it", () => {
+  // Set maxSessions to 2, create 2 sessions with DIFFERENT executionIds, then create a 3rd
+  // The oldest session should be evicted AND its eventStore should be deleted since
+  // no other session references that executionId
+  const service = new TimeTravelDebugService({ maxSessions: 2 });
+
+  // Load events for two different executionIds
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+  ]);
+  service.loadEventStore("exec-2", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {} },
+  ]);
+
+  // Create sessions for each executionId
+  const session1 = service.createSession("task-1", "exec-1");
+  const session2 = service.createSession("task-2", "exec-2");
+
+  // Create a third session - this triggers eviction of oldest session (session1)
+  const session3 = service.createSession("task-3", "exec-3");
+
+  // session1 (exec-1) is evicted and no other session references exec-1
+  // Verify session3 works correctly
+  const state3 = service.replayStep(session3.sessionId);
+  assert.ok(state3 !== null);
+
+  // Verify session2 still works (exec-2 eventStore should not be leaked)
+  const state2 = service.replayStep(session2.sessionId);
+  assert.ok(state2 !== null, "session2 should still work - its eventStore must not be leaked");
+});
+
+test("TimeTravelDebugService evictOldestSessionIfNeeded cleans up snapshots on eviction", () => {
+  const service = new TimeTravelDebugService({ maxSessions: 2 });
+
+  service.loadEventStore("exec-1", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {}, stackTrace: "trace1" },
+  ]);
+  service.loadEventStore("exec-2", [
+    { stepId: "step-1", timestamp: "2026-04-20T00:00:00.000Z", variables: {}, stackTrace: "trace2" },
+  ]);
+
+  const session1 = service.createSession("task-1", "exec-1");
+  const session2 = service.createSession("task-2", "exec-2");
+
+  // Set breakpoint and capture snapshot on session1
+  service.setBreakpoints(session1.sessionId, ["step-1"]);
+  service.replayToCursor(session1.sessionId, 10);
+
+  // Evict by creating another session
+  const session3 = service.createSession("task-3", "exec-3");
+
+  // session1's snapshots should be cleaned up
+  const snapshot = service.getSnapshot(session1.sessionId, "step-1");
+  assert.equal(snapshot, null, "snapshot for evicted session should be null");
+});

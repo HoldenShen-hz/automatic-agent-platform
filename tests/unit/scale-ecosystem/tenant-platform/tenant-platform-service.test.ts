@@ -831,9 +831,9 @@ test("TenantPlatformService.createOrganization accepts defaultTenantId that belo
   assert.equal(org.defaultTenantId, "tenant_same_org");
 });
 
-test("TenantPlatformService.createOrganization accepts defaultTenantId even when tenant has null organizationId", () => {
+test("TenantPlatformService.createOrganization rejects defaultTenantId when tenant has null organizationId (unassigned tenant cannot be claimed)", () => {
   const store = createMockStore();
-  // Create tenant with null organizationId (legacy/migration scenario)
+  // Create tenant with null organizationId (unassigned/legacy tenant)
   store.organization.upsertTenantRecord({
     tenantId: "tenant_no_org",
     organizationId: null,
@@ -850,12 +850,13 @@ test("TenantPlatformService.createOrganization accepts defaultTenantId even when
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
 
-  // Should succeed because tenant.organizationId is null (unassigned)
-  const org = service.createOrganization({
-    organizationId: "org_new",
-    displayName: "New Org Claiming Unassigned Tenant",
-    defaultTenantId: "tenant_no_org",
-  });
-
-  assert.equal(org.defaultTenantId, "tenant_no_org");
+  // Should FAIL because an unassigned tenant (null orgId) cannot be claimed as default
+  // The tenant must first be assigned to the organization via createTenant
+  assert.throws(() => {
+    service.createOrganization({
+      organizationId: "org_new",
+      displayName: "New Org Claiming Unassigned Tenant",
+      defaultTenantId: "tenant_no_org",
+    });
+  }, /tenant.default_tenant_mismatch/);
 });

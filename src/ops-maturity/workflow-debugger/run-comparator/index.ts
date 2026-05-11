@@ -50,15 +50,40 @@ export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonl
 }
 
 export function buildRunComparison(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): RunComparisonDiff[] {
-  const rightByStep = new Map(right.map((item) => [item.stepId, item]));
-  return left.map((item) => {
-    const other = rightByStep.get(item.stepId);
-    return {
-      stepId: item.stepId ?? "",
-      leftStatus: item.status,
-      rightStatus: other?.status ?? "missing",
-      latencyDeltaMs: item.latencyMs != null && other?.latencyMs != null ? other.latencyMs - item.latencyMs : null,
-      outputChanged: item.outputHash != null && other?.outputHash != null ? item.outputHash !== other.outputHash : false,
-    };
-  });
+  // Build lookup for right side using composite key (nodeRunId preferred over stepId)
+  const rightByStep = new Map(right.map((item) => [item.nodeRunId ?? item.stepId ?? "", item]));
+
+  // Collect all unique stepIds (by composite key) from both sides
+  const allStepIds = new Set<string>();
+  for (const item of left) {
+    const key = item.nodeRunId ?? item.stepId ?? "";
+    if (key) allStepIds.add(key);
+  }
+  for (const item of right) {
+    const key = item.nodeRunId ?? item.stepId ?? "";
+    if (key) allStepIds.add(key);
+  }
+
+  const diffs: RunComparisonDiff[] = [];
+
+  for (const stepId of allStepIds) {
+    const leftItem = left.find((item) => (item.nodeRunId ?? item.stepId ?? "") === stepId);
+    const rightItem = rightByStep.get(stepId);
+
+    diffs.push({
+      stepId: stepId ?? "",
+      leftStatus: leftItem?.status ?? "missing",
+      rightStatus: rightItem?.status ?? "missing",
+      latencyDeltaMs:
+        leftItem?.latencyMs != null && rightItem?.latencyMs != null
+          ? rightItem.latencyMs - leftItem.latencyMs
+          : null,
+      outputChanged:
+        leftItem?.outputHash != null && rightItem?.outputHash != null
+          ? leftItem.outputHash !== rightItem.outputHash
+          : false,
+    });
+  }
+
+  return diffs;
 }

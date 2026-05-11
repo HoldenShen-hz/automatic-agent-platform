@@ -60,6 +60,14 @@ export class ConnectorFrameworkService {
   private readonly maxBindingAgeMs: number;
   /** Retain at most this many health reports per connector (default 100). */
   private readonly healthRetentionCount: number;
+  /** Maximum number of connector bindings to retain total (LRU eviction). */
+  private readonly maxBindings: number;
+  /** Maximum number of connectors with health reports (LRU eviction). */
+  private readonly maxHealthConnectors: number;
+  /** LRU tracking for bindings map entries (connectorId -> true when accessed). */
+  private readonly bindingsLRU = new Set<string>();
+  /** LRU tracking for health map entries. */
+  private readonly healthLRU = new Set<string>();
 
   private static readonly DEFAULT_CIRCUIT_BREAKER_OPTIONS = {
     failureThreshold: 5,
@@ -72,10 +80,14 @@ export class ConnectorFrameworkService {
     storageDir: string | null = null,
     maxBindingAgeMs = 30 * 24 * 60 * 60 * 1000,
     healthRetentionCount = 100,
+    maxBindings = 10_000,
+    maxHealthConnectors = 1_000,
   ) {
     this.storageDir = storageDir;
     this.maxBindingAgeMs = maxBindingAgeMs;
     this.healthRetentionCount = healthRetentionCount;
+    this.maxBindings = maxBindings;
+    this.maxHealthConnectors = maxHealthConnectors;
     if (this.storageDir != null) {
       this.load();
     }
@@ -105,9 +117,61 @@ export class ConnectorFrameworkService {
     const cutoff = Date.now() - this.maxBindingAgeMs;
     const existing = this.bindings.get(connectorId) ?? [];
     const filtered = existing.filter((b) => new Date(b.boundAt).getTime() >= cutoff);
-    this.bindings.set(connectorId, [...filtered, binding]);
+    const updated = [...filtered, binding];
+
+    this.bindings.set(connectorId, updated);
+
+    // Evict LRU connectors' bindings until under capacity
+    let totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
+    while (totalBindings > this.maxBindings) {
+      const excess = totalBindings - this.maxBindings;
+      this.evictLRUBindings(excess);
+      // Recalculate after eviction
+      totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
+      // Safety guard: if no progress, break to avoid infinite loop
+      if (totalBindings > this.maxBindings) {
+        const prevTotal = totalBindings;
+        this.evictLRUBindings(prevTotal - this.maxBindings);
+        totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
+        if (totalBindings >= prevTotal) break;
+      }
+    }
+
+    // Mark this connectorId as most recently used
+    this.bindingsLRU.delete(connectorId);
+    this.bindingsLRU.add(connectorId);
     this.persist();
     return binding;
+  }
+
+  /**
+   * Evict the least-recently-used connector's bindings until the given number of
+   * bindings have been removed. Iterates LRU set from oldest (first) to newest (last).
+   * Removes entire connector entries at once when possible.
+   */
+  private evictLRUBindings(count: number): void {
+    let removed = 0;
+    for (const connectorId of Array.from(this.bindingsLRU)) {
+      if (removed >= count) break;
+      const bindings = this.bindings.get(connectorId);
+      if (bindings != null && bindings.length > 0) {
+        // If removing all bindings would not overshoot, remove all
+        // Otherwise, just remove enough from this connector to meet the count
+        if (bindings.length <= count - removed) {
+          // Remove all bindings for this connector
+          this.bindings.delete(connectorId);
+          this.bindingsLRU.delete(connectorId);
+          removed += bindings.length;
+        } else {
+          // Partial removal: remove only what we need from this connector
+          const toRemove = count - removed;
+          this.bindings.set(connectorId, bindings.slice(toRemove));
+          removed += toRemove;
+          // Note: we do NOT update bindingsLRU here since partial removal doesn't change LRU order
+          // (the connector remains at its current position in LRU order)
+        }
+      }
+    }
   }
 
   public recordHealth(report: ConnectorHealthReport): ConnectorHealthReport {
@@ -115,9 +179,29 @@ export class ConnectorFrameworkService {
     // Keep at most healthRetentionCount newest reports
     const existing = this.health.get(report.connectorId) ?? [];
     const updated = [...existing, report].slice(-this.healthRetentionCount);
+
+    // Evict LRU health entries if at capacity
+    if (!this.health.has(report.connectorId) && this.health.size >= this.maxHealthConnectors) {
+      this.evictLRUHealth();
+    }
+
     this.health.set(report.connectorId, updated);
+    // Mark this connectorId as most recently used
+    this.healthLRU.delete(report.connectorId);
+    this.healthLRU.add(report.connectorId);
     this.persist();
     return report;
+  }
+
+  /**
+   * Evict the least-recently-used health entry (oldest in LRU set).
+   */
+  private evictLRUHealth(): void {
+    const oldest = this.healthLRU.values().next().value;
+    if (oldest != null) {
+      this.health.delete(oldest);
+      this.healthLRU.delete(oldest);
+    }
   }
 
   public registerConnectorInstance(connectorId: string, instance: ConnectorExecutor): void {
@@ -221,8 +305,8 @@ export class ConnectorFrameworkService {
   }
 
   public listEnabled(): RegisteredConnectorManifest[] {
-    const enabledIds = new Set(listEnabledConnectors([...this.manifests.values()]).map((item) => item.connectorId));
-    return [...this.manifests.values()].filter((item) => enabledIds.has(item.connectorId));
+    const enabledIds = new Set(listEnabledConnectors(Array.from(this.manifests.values())).map((item) => item.connectorId));
+    return Array.from(this.manifests.values()).filter((item) => enabledIds.has(item.connectorId));
   }
 
   public getManifest(connectorId: string): RegisteredConnectorManifest | null {
@@ -234,7 +318,7 @@ export class ConnectorFrameworkService {
     tenantId?: string;
     environment?: ConnectorBinding["environment"];
   } = {}): ConnectorBinding[] {
-    const allBindings = [...this.bindings.values()].flatMap((items) => items);
+    const allBindings = Array.from(this.bindings.values()).flatMap((items) => items);
     return allBindings.filter((binding) => {
       if (options.connectorId != null && binding.connectorId !== options.connectorId) {
         return false;
@@ -373,20 +457,20 @@ export class ConnectorFrameworkService {
     const path = this.manifestsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify([...this.manifests.entries()]), "utf-8");
+    writeFileSync(path, JSON.stringify(Array.from(this.manifests.entries())), "utf-8");
   }
 
   private persistBindings(): void {
     const path = this.bindingsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify([...this.bindings.entries()]), "utf-8");
+    writeFileSync(path, JSON.stringify(Array.from(this.bindings.entries())), "utf-8");
   }
 
   private persistHealth(): void {
     const path = this.healthPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify([...this.health.entries()]), "utf-8");
+    writeFileSync(path, JSON.stringify(Array.from(this.health.entries())), "utf-8");
   }
 }

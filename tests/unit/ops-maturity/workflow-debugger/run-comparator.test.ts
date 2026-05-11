@@ -63,13 +63,14 @@ test("run-comparator: buildRunComparison includes right-only steps", () => {
     { nodeRunId: "step-2", status: "failed" },
   ];
 
-  // buildRunComparison only includes steps from the left side.
-  // Right-only steps are not included in the comparison array.
+  // buildRunComparison includes all steps from both left and right
   const comparisons = buildRunComparison(left, right);
 
   const step2Comparison = comparisons.find((c) => c.nodeRunId === "step-2");
-  // buildRunComparison only maps left steps; step-2 is right-only so not in comparisons
-  assert.ok(step2Comparison === undefined, "Right-only steps are not included in buildRunComparison");
+  // Right-only steps ARE included in buildRunComparison output (issue #1922 fix)
+  assert.ok(step2Comparison !== undefined, "Right-only steps should be included in buildRunComparison");
+  assert.equal(step2Comparison?.rightStatus, "failed");
+  assert.equal(step2Comparison?.leftStatus, "missing");
 });
 
 test("run-comparator: buildRunComparison statusChanged for right-only steps", () => {
@@ -84,8 +85,10 @@ test("run-comparator: buildRunComparison statusChanged for right-only steps", ()
   const comparisons = buildRunComparison(left, right);
 
   const step2Comparison = comparisons.find((c) => c.nodeRunId === "step-2");
-  // Right-only steps are not included in buildRunComparison output
-  assert.ok(step2Comparison === undefined);
+  // Right-only steps ARE included in buildRunComparison output (issue #1922 fix)
+  assert.ok(step2Comparison !== undefined, "Right-only steps should be included in buildRunComparison");
+  assert.equal(step2Comparison?.rightStatus, "failed");
+  assert.equal(step2Comparison?.leftStatus, "missing");
 });
 
 test("run-comparator: compareWorkflowRuns no diffs for identical runs", () => {
@@ -130,10 +133,10 @@ test("run-comparator: compareWorkflowRuns detects decision changes", () => {
 
 test("run-comparator: buildRunComparison cost delta", () => {
   const left: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", cost: 10 },
+    { stepId: "step-1", status: "success", cost: 10 },
   ];
   const right: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", cost: 15 },
+    { stepId: "step-1", status: "success", cost: 15 },
   ];
 
   const comparisons = buildRunComparison(left, right);
@@ -142,10 +145,10 @@ test("run-comparator: buildRunComparison cost delta", () => {
 
 test("run-comparator: buildRunComparison duration delta", () => {
   const left: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", durationMs: 100 },
+    { stepId: "step-1", status: "success", durationMs: 100 },
   ];
   const right: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", durationMs: 150 },
+    { stepId: "step-1", status: "success", durationMs: 150 },
   ];
 
   const comparisons = buildRunComparison(left, right);
@@ -154,10 +157,10 @@ test("run-comparator: buildRunComparison duration delta", () => {
 
 test("run-comparator: buildRunComparison output hash change", () => {
   const left: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", outputHash: "abc" },
+    { stepId: "step-1", status: "success", outputHash: "abc" },
   ];
   const right: RunSnapshot[] = [
-    { nodeRunId: "step-1", status: "success", outputHash: "def" },
+    { stepId: "step-1", status: "success", outputHash: "def" },
   ];
 
   const comparisons = buildRunComparison(left, right);

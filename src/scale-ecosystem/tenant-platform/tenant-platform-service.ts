@@ -690,7 +690,7 @@ export class TenantPlatformService {
       // Must be checked AFTER creating organization record so we have the actual org ID
       if (input.defaultTenantId) {
         const tenant = this.requireTenant(input.defaultTenantId);
-        if (tenant.organizationId !== null && tenant.organizationId !== organization.organizationId) {
+        if (tenant.organizationId !== organization.organizationId) {
           throw new TenantBoundaryError("tenant.default_tenant_mismatch", "tenant.default_tenant_mismatch", {
             details: {
               defaultTenantId: input.defaultTenantId,

@@ -158,7 +158,6 @@ export class TimeTravelDebugService {
     sandboxPolicy: ReplaySandboxPolicy = defaultReplaySandboxPolicy(),
   ): TimeTravelDebugSession {
     this.assertReplayAccess(accessContext);
-    this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
@@ -173,6 +172,7 @@ export class TimeTravelDebugService {
       endedAt: null,
     };
     this.sessions.set(session.sessionId, session);
+    this.evictOldestSessionIfNeeded();
     return session;
   }
 
