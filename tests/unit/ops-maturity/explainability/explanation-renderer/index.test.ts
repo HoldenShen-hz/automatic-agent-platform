@@ -87,6 +87,66 @@ test("buildDecisionTree calculates maxDepth", () => {
   assert.ok(tree.maxDepth >= 0);
 });
 
+test("buildDecisionTree calculates maxDepth for chained causal links", () => {
+  // A -> B -> C chain should give maxDepth of at least 2
+  const causalLinks: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A to B" },
+    { source: "B", target: "C", rationale: "B to C" },
+  ];
+
+  const tree = buildDecisionTree("Root", causalLinks, [], []);
+
+  // Depth: root(0) -> A(1) -> B(2) -> C(3), so maxDepth should be 3
+  assert.equal(tree.maxDepth, 3, "Chained causal links should produce depth 3");
+});
+
+test("buildDecisionTree calculates maxDepth for single causal link", () => {
+  const causalLinks: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A to B" },
+  ];
+
+  const tree = buildDecisionTree("Root", causalLinks, [], []);
+
+  // Depth: root(0) -> A(1) -> B(2), so maxDepth should be 2
+  assert.equal(tree.maxDepth, 2, "Single causal link should produce depth 2");
+});
+
+test("buildDecisionTree calculates maxDepth for root with evidence children", () => {
+  const tree = buildDecisionTree("Root", [], ["Evidence 1", "Evidence 2"], []);
+
+  // Depth: root(0) -> evidence(1), so maxDepth should be 1
+  assert.equal(tree.maxDepth, 1, "Evidence children should produce depth 1");
+});
+
+test("buildDecisionTree calculates maxDepth for root with factor children", () => {
+  const tree = buildDecisionTree("Root", [], [], ["Factor 1", "Factor 2"]);
+
+  // Depth: root(0) -> factor(1), so maxDepth should be 1
+  assert.equal(tree.maxDepth, 1, "Factor children should produce depth 1");
+});
+
+test("buildDecisionTree calculates maxDepth for root with no children", () => {
+  const tree = buildDecisionTree("Root", [], [], []);
+
+  // Root only, depth should be 0
+  assert.equal(tree.maxDepth, 0, "Root with no children should have depth 0");
+});
+
+test("buildDecisionTree calculates maxDepth for complex graph", () => {
+  // Create a more complex graph: root -> A -> B and root -> C -> D
+  const causalLinks: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A to B" },
+    { source: "C", target: "D", rationale: "C to D" },
+  ];
+
+  const tree = buildDecisionTree("Root", causalLinks, ["E1"], ["F1"]);
+
+  // Depth: root(0) -> A(1) -> B(2), root(0) -> C(1) -> D(2),
+  //        root(0) -> evidence(1), root(0) -> factor(1)
+  // max depth should be 2
+  assert.equal(tree.maxDepth, 2, "Complex graph should have max depth 2");
+});
+
 test("renderStructuredExplanation returns JSON string", () => {
   const causalLinks: CausalLink[] = [
     { source: "Start", target: "End", rationale: "goes to" },

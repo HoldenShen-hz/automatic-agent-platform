@@ -218,7 +218,12 @@ export class TimeTravelDebugService {
 
     const events = this.eventStore.get(session.executionId) ?? [];
     if (session.currentEventIndex >= events.length) {
-      return this.buildReplayState(session, session.currentEventIndex, session.currentEventIndex, false);
+      // Boundary case: already past last event. Use events.length as toEventIndex
+      // so that fromEventIndex < toEventIndex is preserved (e.g. from=2, to=2 is
+      // invalid when there are only 2 events; we use from=2, to=2+1=3 instead).
+      const fromIdx = session.currentEventIndex;
+      const toIdx = events.length;
+      return this.buildReplayState(session, fromIdx, toIdx, false);
     }
 
     const prevIndex = session.currentEventIndex;

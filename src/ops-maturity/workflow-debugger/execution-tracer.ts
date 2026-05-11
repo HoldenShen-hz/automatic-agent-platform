@@ -192,15 +192,14 @@ export class ExecutionTracer {
 
   public getTrace(traceId: string): ExecutionTrace | null {
     const trace = this.activeTraces.get(traceId);
-    if (trace) {
-      return {
-        ...trace,
-        events: [...(this.activeEvents.get(traceId) ?? trace.events)],
-      };
+    if (!trace) {
+      return null;
     }
 
-    // Cannot reconstruct trace without stored trace data - return null
-    return null;
+    return {
+      ...trace,
+      events: [...(this.activeEvents.get(traceId) ?? [])],
+    };
   }
 
   public filterEvents(traceId: string, filter: TraceFilter): readonly TraceEvent[] {

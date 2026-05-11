@@ -426,3 +426,113 @@ test("ConnectorFrameworkService recordHealth throws for unknown connector", () =
     /connector_framework.connector_not_found/,
   );
 });
+
+test("ConnectorFrameworkService bind evicts bindings older than maxBindingAgeMs", () => {
+  // Use a 7-day max age for the test
+  const service = new ConnectorFrameworkService(null, 7 * 24 * 60 * 60 * 1000, 100);
+  const manifest: ConnectorManifest = {
+    connectorId: "test-connector",
+    provider: "TestProvider",
+    capabilities: [],
+    lifecycleState: "enabled",
+  };
+  service.register(manifest);
+
+  // Bind with a date 10 days in the past
+  const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+  service.bind("test-connector", "tenant-old", "dev", oldDate);
+
+  // Bind with current date
+  service.bind("test-connector", "tenant-new", "dev");
+
+  const bindings = service.listBindings({ connectorId: "test-connector" });
+  // Only the new binding should remain
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0]!.tenantId, "tenant-new");
+});
+
+test("ConnectorFrameworkService bind respects maxBindingAgeMs on every bind call", () => {
+  // 7-day max age
+  const service = new ConnectorFrameworkService(null, 7 * 24 * 60 * 60 * 1000, 100);
+  const manifest: ConnectorManifest = {
+    connectorId: "test-connector",
+    provider: "TestProvider",
+    capabilities: [],
+    lifecycleState: "enabled",
+  };
+  service.register(manifest);
+
+  // Add a binding from 8 days ago (should be evicted)
+  const oldDate = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  service.bind("test-connector", "tenant-old", "dev", oldDate);
+
+  // Add a binding from 6 days ago (should be kept)
+  const recentDate = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+  service.bind("test-connector", "tenant-recent", "dev", recentDate);
+
+  // Add a binding now
+  service.bind("test-connector", "tenant-new", "dev");
+
+  const bindings = service.listBindings({ connectorId: "test-connector" });
+  // The 8-day old binding should be gone; 6-day old and new remain
+  assert.equal(bindings.length, 2);
+  const tenantIds = bindings.map((b) => b.tenantId);
+  assert.ok(tenantIds.includes("tenant-recent"));
+  assert.ok(tenantIds.includes("tenant-new"));
+  assert.ok(!tenantIds.includes("tenant-old"));
+});
+
+test("ConnectorFrameworkService health eviction respects healthRetentionCount", () => {
+  const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 5);
+  const manifest: ConnectorManifest = {
+    connectorId: "test-connector",
+    provider: "TestProvider",
+    capabilities: [],
+    lifecycleState: "enabled",
+  };
+  service.register(manifest);
+
+  // Record 10 health reports (retention is 5)
+  for (let i = 0; i < 10; i++) {
+    service.recordHealth({
+      connectorId: "test-connector",
+      status: "healthy",
+      latencyMs: 50 + i,
+      checkedAt: new Date(Date.now() + i * 1000).toISOString(),
+    });
+  }
+
+  // Only the last 5 reports should be retained
+  const reports = service["health"].get("test-connector") ?? [];
+  assert.equal(reports.length, 5);
+});
+
+test("ConnectorFrameworkService loadBindings applies eviction to persisted data", async () => {
+  const { mkdirSync, rmSync } = await import("node:fs");
+  const path = `/tmp/connector-framework-test-${Date.now()}`;
+  mkdirSync(path, { recursive: true });
+  try {
+    const service1 = new ConnectorFrameworkService(path, 7 * 24 * 60 * 60 * 1000, 100);
+    const manifest: ConnectorManifest = {
+      connectorId: "test-connector",
+      provider: "TestProvider",
+      capabilities: [],
+      lifecycleState: "enabled",
+    };
+    service1.register(manifest);
+
+    // Add an old binding (10 days ago) and a new binding
+    const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    service1.bind("test-connector", "tenant-old", "dev", oldDate);
+    service1.bind("test-connector", "tenant-new", "dev");
+
+    // Simulate loading from persisted state
+    const service2 = new ConnectorFrameworkService(path, 7 * 24 * 60 * 60 * 1000, 100);
+    const bindings = service2.listBindings({ connectorId: "test-connector" });
+    // Only the new binding should survive load + eviction
+    assert.equal(bindings.length, 1);
+    assert.equal(bindings[0]!.tenantId, "tenant-new");
+  } finally {
+    rmSync(path, { recursive: true, force: true });
+  }
+});

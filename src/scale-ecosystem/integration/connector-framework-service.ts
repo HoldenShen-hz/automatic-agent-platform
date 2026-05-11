@@ -342,8 +342,13 @@ export class ConnectorFrameworkService {
     try {
       const raw = readFileSync(path, "utf-8");
       const entries = JSON.parse(raw) as Array<[string, ConnectorBinding[]]>;
+      const cutoff = Date.now() - this.maxBindingAgeMs;
       for (const [connectorId, bindings] of entries) {
-        this.bindings.set(connectorId, bindings);
+        // Apply age-based eviction on load to prevent unbounded growth from persisted data
+        const filtered = bindings.filter((b) => new Date(b.boundAt).getTime() >= cutoff);
+        if (filtered.length > 0) {
+          this.bindings.set(connectorId, filtered);
+        }
       }
     } catch {
       // Ignore corrupt file — start empty

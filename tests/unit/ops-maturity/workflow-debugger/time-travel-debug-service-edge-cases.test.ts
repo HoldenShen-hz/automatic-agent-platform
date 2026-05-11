@@ -320,6 +320,78 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       const vars = service.getVariableState(session.sessionId, 0);
       assert.ok(vars.every((v) => v.scope === "step"));
     });
+
+    test("same-name variables across events are deduplicated - latest value wins", () => {
+      const service = createService();
+      service.loadEventStore("e", [
+        { stepId: "s1", timestamp: "t", variables: { count: { value: 1 } }, scope: "step" },
+        { stepId: "s2", timestamp: "t", variables: { count: { value: 2 } }, scope: "step" },
+        { stepId: "s3", timestamp: "t", variables: { count: { value: 3 } }, scope: "step" },
+      ]);
+      const session = service.createSession("t", "e");
+
+      // At event 0 - only first value
+      const vars0 = service.getVariableState(session.sessionId, 0);
+      assert.equal(vars0.length, 1);
+      assert.equal(vars0[0]!.value, 1);
+
+      // At event 1 - second value overwrites first
+      const vars1 = service.getVariableState(session.sessionId, 1);
+      assert.equal(vars1.length, 1);
+      assert.equal(vars1[0]!.value, 2);
+
+      // At event 2 - third value overwrites first and second
+      const vars2 = service.getVariableState(session.sessionId, 2);
+      assert.equal(vars2.length, 1);
+      assert.equal(vars2[0]!.value, 3);
+    });
+
+    test("same-name variables at same event index appear only once", () => {
+      const service = createService();
+      // Using Object.create to simulate duplicate keys (plain objects deduplicate in JS)
+      const varsObj = Object.create(null);
+      (varsObj as any).x = 1;
+      (varsObj as any).x = 2;
+      (varsObj as any).x = 3;
+      service.loadEventStore("e", [
+        { stepId: "s1", timestamp: "t", variables: varsObj, scope: "step" },
+      ]);
+      const session = service.createSession("t", "e");
+
+      const vars = service.getVariableState(session.sessionId, 0);
+      // Object.entries deduplicates keys, so x appears once with last value
+      assert.ok(vars.some((v) => v.name === "x"));
+    });
+
+    test("different variable names across events are all retained", () => {
+      const service = createService();
+      service.loadEventStore("e", [
+        { stepId: "s1", timestamp: "t", variables: { a: { value: 1 } }, scope: "step" },
+        { stepId: "s2", timestamp: "t", variables: { b: { value: 2 } }, scope: "step" },
+        { stepId: "s3", timestamp: "t", variables: { c: { value: 3 } }, scope: "step" },
+      ]);
+      const session = service.createSession("t", "e");
+
+      const vars = service.getVariableState(session.sessionId, 2);
+      assert.equal(vars.length, 3);
+      assert.ok(vars.some((v) => v.name === "a" && v.value === 1));
+      assert.ok(vars.some((v) => v.name === "b" && v.value === 2));
+      assert.ok(vars.some((v) => v.name === "c" && v.value === 3));
+    });
+
+    test("deduplication preserves type from latest event for same-name variable", () => {
+      const service = createService();
+      service.loadEventStore("e", [
+        { stepId: "s1", timestamp: "t", variables: { val: { value: 1 } }, scope: "step" },
+        { stepId: "s2", timestamp: "t", variables: { val: { value: "hello" } }, scope: "step" },
+      ]);
+      const session = service.createSession("t", "e");
+
+      const vars = service.getVariableState(session.sessionId, 1);
+      assert.equal(vars.length, 1);
+      assert.equal(vars[0]!.value, "hello");
+      assert.equal(vars[0]!.type, "string");
+    });
   });
 
   describe("endSession", () => {

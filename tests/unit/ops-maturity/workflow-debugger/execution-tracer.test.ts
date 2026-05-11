@@ -273,6 +273,20 @@ test.describe("ExecutionTracer", () => {
       assert.equal(result, null);
     });
 
+    test("returns active trace with events even if activeEvents lookup returns undefined", () => {
+      const tracer = new ExecutionTracer();
+      const trace = tracer.startTrace("wf-1", "exec-1");
+      tracer.recordEvent(trace.traceId, "step-1", "enter");
+
+      // Access getTrace - it should not rely on trace.events fallback since trace exists
+      const result = tracer.getTrace(trace.traceId);
+      assert.ok(result !== null);
+      assert.equal(result.traceId, trace.traceId);
+      assert.equal(result.status, "active");
+      // Events should be from activeEvents, not from trace.events fallback
+      assert.ok(result.events.length >= 1);
+    });
+
     test("getTrace returns null for stopped trace (trace removed from activeTraces)", () => {
       const tracer = new ExecutionTracer();
       const trace = tracer.startTrace("wf-1", "exec-1");

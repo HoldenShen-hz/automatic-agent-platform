@@ -51,25 +51,39 @@ export function buildDecisionTree(
   };
   nodeMap.set("root", rootNode);
 
-  // Build nodes for causal links
+  // Build nodes for causal links and wire up parent-child relationships
+  // so the tree structure reflects actual causal dependencies
   for (const link of causalLinks) {
-    const sourceNode: DecisionTreeNode = {
-      nodeId: `source-${link.source}`,
-      type: "factor",
-      label: link.source,
-      children: [],
-    };
-    const targetNode: DecisionTreeNode = {
-      nodeId: `target-${link.target}`,
-      type: "outcome",
-      label: link.target,
-      children: [],
-    };
-    if (!nodeMap.has(sourceNode.nodeId)) {
-      nodeMap.set(sourceNode.nodeId, sourceNode);
+    const sourceId = `source-${link.source}`;
+    const targetId = `target-${link.target}`;
+
+    let sourceNode = nodeMap.get(sourceId);
+    let targetNode = nodeMap.get(targetId);
+
+    if (!sourceNode) {
+      sourceNode = {
+        nodeId: sourceId,
+        type: "factor",
+        label: link.source,
+        children: [],
+      };
+      nodeMap.set(sourceId, sourceNode);
     }
-    if (!nodeMap.has(targetNode.nodeId)) {
-      nodeMap.set(targetNode.nodeId, targetNode);
+
+    if (!targetNode) {
+      targetNode = {
+        nodeId: targetId,
+        type: "outcome",
+        label: link.target,
+        children: [],
+      };
+      nodeMap.set(targetId, targetNode);
+    }
+
+    // Wire up parent-child relationship so depth calculation works
+    if (!sourceNode.children) sourceNode.children = [];
+    if (!sourceNode.children.some((c) => c.nodeId === targetId)) {
+      sourceNode.children.push(targetNode);
     }
   }
 
@@ -78,9 +92,12 @@ export function buildDecisionTree(
     const evidenceNode: DecisionTreeNode = {
       nodeId: `evidence-${i}`,
       type: "evidence",
-      label: evidenceLabels[i]!,
+      label: evidenceLabels[i] as string,
+      children: [],
     };
     nodeMap.set(evidenceNode.nodeId, evidenceNode);
+    // Evidence nodes are children of the root
+    rootNode.children!.push(evidenceNode);
   }
 
   // Add decision factor nodes
@@ -88,28 +105,31 @@ export function buildDecisionTree(
     const factorNode: DecisionTreeNode = {
       nodeId: `factor-${i}`,
       type: "factor",
-      label: decisionFactors[i]!,
+      label: decisionFactors[i] as string,
+      children: [],
     };
     nodeMap.set(factorNode.nodeId, factorNode);
+    // Factor nodes are children of the root
+    rootNode.children!.push(factorNode);
   }
 
   // Calculate max depth by traversing the tree recursively
-  let maxDepth = 0;
   const calculateDepth = (nodeId: string, depth: number): number => {
     const node = nodeMap.get(nodeId);
-    if (!node) return depth;
-
-    maxDepth = Math.max(maxDepth, depth);
-
-    if (node.children) {
-      for (const child of node.children) {
-        calculateDepth(child.nodeId, depth + 1);
+    if (!node || !node.children || node.children.length === 0) {
+      return depth;
+    }
+    let maxChildDepth = depth;
+    for (const child of node.children) {
+      const childDepth = calculateDepth(child.nodeId, depth + 1);
+      if (childDepth > maxChildDepth) {
+        maxChildDepth = childDepth;
       }
     }
-
-    return depth;
+    return maxChildDepth;
   };
-  calculateDepth("root", 0);
+
+  const maxDepth = calculateDepth("root", 0);
 
   return {
     format: "decision_tree",
