@@ -141,3 +141,24 @@ test("A/B test uses evaluator-provided actual outputs instead of hardcoded place
   assert.equal(result.treatmentAvgScore > result.controlAvgScore, true);
   assert.equal(typeof result.pValue, "number");
 });
+
+test("handles malformed suite cases JSON gracefully", async () => {
+  const db = createInMemoryDb();
+  const service = new LlmEvalService(db as never);
+
+  // Directly insert a suite with malformed JSON cases
+  db.connection.prepare("INSERT INTO eval_suites (id, name, kind, description, cases, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+    "malformed-suite",
+    "Malformed Cases Test",
+    "smoke",
+    "Suite with invalid JSON in cases field",
+    "{ invalid json",
+    new Date().toISOString(),
+    new Date().toISOString(),
+  );
+
+  // startRun should not throw even with malformed cases
+  const run = service.startRun("malformed-suite", "model-x", "v1", "test");
+  assert.equal(run.totalCases, 0);
+  assert.equal(run.status, "running");
+});

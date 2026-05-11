@@ -93,7 +93,7 @@ export class ApprovalRoutingService {
       escalationRuleId: escalation.escalationRuleId,
       slaBreachNotificationTargetIds: escalation.slaBreachNotificationTargetIds,
       auditRecord: buildGovernanceAuditRecord({
-        recordId: `approval_route_audit_${request.requesterId}_${base.matchedOrgNodeId}_${randomUUID()}`,
+        recordId: `approval_route_audit_${request.requesterId}_${base.matchedOrgNodeId}_${Date.now()}_${randomUUID()}`,
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,

@@ -680,15 +680,24 @@ export function createStableEvidenceSigner(): StableEvidenceSigner {
 /**
  * Resolves a stable evidence profile by name, with optional overrides.
  * Merges the base profile with any provided overrides.
+ *
+ * SECURITY: The `name` field is always sourced from the base profile and cannot
+ * be replaced via overrides. This prevents runtime injection attacks where
+ * malicious overrides could replace the profile name to bypass validation.
  */
 export function resolveStableEvidenceProfile(
   profileName: StableEvidenceProfileName = "smoke",
   overrides: StableEvidenceBundleOptions["profileOverrides"] = {},
 ): StableEvidenceProfile {
   const base = STABLE_EVIDENCE_PROFILES[profileName];
+  // Explicitly extract name from base to prevent override injection.
+  // Spread order: rest first, then overrides (which can override anything except name),
+  // then name LAST to ensure it always comes from base and cannot be overridden.
+  const { name, ...rest } = base;
   return {
-    ...base,
+    ...rest,
     ...overrides,
+    name,
   };
 }
 

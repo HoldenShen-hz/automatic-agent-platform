@@ -218,16 +218,32 @@ function buildConsensusResult(
   const holdCount = results.filter((r) => r.report.gateDecision === "hold").length;
   const rollbackCount = results.filter((r) => r.report.gateDecision === "rollback").length;
 
-  const agreementScore = Number((promoteCount / results.length).toFixed(2));
-
   let consensusDecision: "promote" | "hold" | "rollback";
-  if (agreementScore >= threshold) {
+  if (promoteCount > rollbackCount && promoteCount >= holdCount) {
     consensusDecision = "promote";
-  } else if (promoteCount + holdCount > rollbackCount) {
-    consensusDecision = "hold";
-  } else {
+  } else if (rollbackCount > promoteCount && rollbackCount >= holdCount) {
     consensusDecision = "rollback";
+  } else if (promoteCount === rollbackCount && rollbackCount === holdCount) {
+    consensusDecision = "hold";
+  } else if (promoteCount > rollbackCount && promoteCount === holdCount) {
+    consensusDecision = "hold";
+  } else if (rollbackCount > promoteCount && rollbackCount === holdCount) {
+    consensusDecision = "hold";
+  } else if (rollbackCount > promoteCount) {
+    consensusDecision = "rollback";
+  } else if (promoteCount > rollbackCount) {
+    consensusDecision = "promote";
+  } else {
+    consensusDecision = "hold";
   }
+
+  const majorityCount =
+    consensusDecision === "promote"
+      ? promoteCount
+      : consensusDecision === "rollback"
+        ? rollbackCount
+        : holdCount;
+  const agreementScore = Number((majorityCount / results.length).toFixed(2));
 
   const allBlockingFindings = results.flatMap((r) => r.report.blockingFindings);
 

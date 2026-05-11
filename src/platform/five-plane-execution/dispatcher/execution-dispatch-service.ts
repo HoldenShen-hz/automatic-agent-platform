@@ -17,7 +17,7 @@ import { createNoOpHealthReportProvider } from "../../contracts/types/health.js"
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
-import { ExecutionLeaseService } from "../lease/execution-lease-service.js";
+import { ExecutionLeaseService, type ExecutionLeaseDecision } from "../lease/execution-lease-service.js";
 import { ExecutionPriorityPreemptionService } from "./execution-priority-preemption-service.js";
 import {
   computeEffectiveActiveLeaseCount,
@@ -594,9 +594,11 @@ export class ExecutionDispatchService {
       }
 
       const selectedWorker = eligibleWorkers[0]!;
-      let leaseResult:
-        | ReturnType<ExecutionLeaseService["acquireLease"]>
-        | null = null;
+      let leaseResult: ExecutionLeaseDecision = {
+        outcome: "blocked",
+        reasonCode: "lease_grant_failed",
+        lease: null,
+      };
       // Issue 1900 fix: Keep lease acquisition and claim in the same transaction boundary.
       this.db.transaction(() => {
         leaseResult = this.leases.acquireLeaseWithinTransaction({
@@ -652,8 +654,10 @@ export class ExecutionDispatchService {
         });
       });
 
-      if (leaseResult?.outcome !== "granted" || !leaseResult.lease) {
-        blockedReason = leaseResult.reasonCode;
+      const resolvedLeaseResult = leaseResult;
+      const grantedLease = resolvedLeaseResult.lease;
+      if (resolvedLeaseResult.outcome !== "granted" || grantedLease == null) {
+        blockedReason = resolvedLeaseResult.reasonCode ?? "lease_grant_failed";
         lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
           remoteAvailability,
@@ -662,9 +666,9 @@ export class ExecutionDispatchService {
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
           outcome: "blocked",
-          reasonCode: leaseResult.reasonCode,
+          reasonCode: resolvedLeaseResult.reasonCode ?? "lease_grant_failed",
           selectedWorkerId: selectedWorker.workerId,
-          leaseId: leaseResult?.lease?.id ?? null,
+          leaseId: grantedLease?.id ?? null,
           fallbackApplied: selection.fallbackApplied,
           preemption: preemptionTrace,
           evaluations,
@@ -682,7 +686,7 @@ export class ExecutionDispatchService {
         outcome: "dispatched",
         reasonCode: selection.reasonCode,
         selectedWorkerId: selectedWorker.workerId,
-        leaseId: leaseResult.lease.id,
+        leaseId: grantedLease.id,
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
@@ -693,7 +697,7 @@ export class ExecutionDispatchService {
         reasonCode: selection.reasonCode,
         ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
         worker: selectedWorker,
-        leaseId: leaseResult.lease.id,
+        leaseId: grantedLease.id,
         trace,
       };
     }

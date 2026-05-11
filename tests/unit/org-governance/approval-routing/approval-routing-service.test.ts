@@ -493,3 +493,52 @@ test("ApprovalRoutingService builds parallel and conditional chain plans", () =>
   assert.equal(conditionalPlan.steps.length, 3);
   assert.deepStrictEqual(conditionalPlan.steps[2]?.approverIds, ["legal-reviewer"]);
 });
+
+test("ApprovalRoutingService generates unique audit recordIds for same requester+node", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+
+  const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+  const result2 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+  const result3 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+
+  // All recordIds must be unique - timestamp + random UUID prevent collisions
+  assert.notStrictEqual(result1.auditRecord.recordId, result2.auditRecord.recordId);
+  assert.notStrictEqual(result2.auditRecord.recordId, result3.auditRecord.recordId);
+  assert.notStrictEqual(result1.auditRecord.recordId, result3.auditRecord.recordId);
+});
+
+test("ApprovalRoutingService audit recordId contains timestamp component", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+
+  const before = Date.now();
+  const result = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+  const after = Date.now();
+
+  // recordId should contain a timestamp-like numeric segment
+  const recordId = result.auditRecord.recordId;
+  const idParts = recordId.split("_");
+  // Format: approval_route_audit_{requesterId}_{orgNodeId}_{timestamp}_{uuid}
+  // timestamp should be a number >= before and <= after
+  const timestampPart = parseInt(idParts[5], 10);
+  assert.ok(timestampPart >= before && timestampPart <= after, `Timestamp ${timestampPart} should be between ${before} and ${after}`);
+});
+
+test("ApprovalRoutingService audit recordId contains random component for entropy", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const request = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
+
+  const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+  const result2 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
+
+  // Last segment after timestamp should be a UUID (random)
+  const idParts1 = result1.auditRecord.recordId.split("_");
+  const idParts2 = result2.auditRecord.recordId.split("_");
+
+  // UUID parts should differ between calls
+  assert.notStrictEqual(idParts1[idParts1.length - 1], idParts2[idParts2.length - 1]);
+});

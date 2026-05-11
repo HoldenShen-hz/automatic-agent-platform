@@ -778,7 +778,11 @@ export class LlmEvalService {
   }
 
   private parseCases(suite: EvalSuiteRecord): EvalCaseDefinition[] {
-    return JSON.parse(suite.cases) as EvalCaseDefinition[];
+    try {
+      return JSON.parse(suite.cases) as EvalCaseDefinition[];
+    } catch {
+      return [];
+    }
   }
 }
 

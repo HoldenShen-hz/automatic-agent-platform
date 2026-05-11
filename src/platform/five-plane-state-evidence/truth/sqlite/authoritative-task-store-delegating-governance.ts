@@ -47,6 +47,18 @@ export abstract class AuthoritativeTaskStoreDelegatingGovernance extends Authori
     return this.delegateLegacy("listSecretLeasesBySecretRef", "secret", "listSecretLeasesBySecretRef", ...args);
   }
 
+  public override upsertSecretVersionRecord(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["upsertSecretVersionRecord"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["upsertSecretVersionRecord"]> {
+    return this.delegateLegacy("upsertSecretVersionRecord", "secret", "upsertSecretVersionRecord", ...args);
+  }
+
+  public override getSecretVersionRecord(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["getSecretVersionRecord"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["getSecretVersionRecord"]> {
+    return this.delegateLegacy("getSecretVersionRecord", "secret", "getSecretVersionRecord", ...args);
+  }
+
+  public override listSecretVersionRecordsBySecretRef(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listSecretVersionRecordsBySecretRef"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listSecretVersionRecordsBySecretRef"]> {
+    return this.delegateLegacy("listSecretVersionRecordsBySecretRef", "secret", "listSecretVersionRecordsBySecretRef", ...args);
+  }
+
   public override insertEvolutionProposal(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["insertEvolutionProposal"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["insertEvolutionProposal"]> {
     return this.delegateLegacy("insertEvolutionProposal", "evolution", "insertEvolutionProposal", ...args);
   }

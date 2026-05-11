@@ -280,7 +280,8 @@ export class HierarchicalPromptRegistryService {
     const effectiveTrafficKey = runVersion != null
       ? `${trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`}:rv=${runVersion}`
       : (trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
-    const slot = this.computeTrafficSlot(effectiveTrafficKey);
+    // Normalize slot to [0, totalWeight) for fair weight-based allocation
+    const slot = this.computeTrafficSlot(effectiveTrafficKey) % totalWeight;
     let cursor = 0;
     for (const bundle of eligible) {
       cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);

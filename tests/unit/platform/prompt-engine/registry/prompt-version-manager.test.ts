@@ -4,8 +4,40 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PromptVersionManager } from "../../../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
+import { PromptVersionManager, type VersionLineage } from "../../../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
 import type { PromptBundle } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
+
+function createTestBundle(name: string, version: number | string, displayVersion: string): PromptBundle {
+  return {
+    bundleId: `bundle_${name}_${version}`,
+    name,
+    version,
+    displayVersion,
+    domain: "test-domain",
+    taskType: "classification",
+    packId: "test-pack",
+    systemPrompt: { content: `System prompt for ${name}`, templateVariables: [], channel: "system" },
+    userPrompt: undefined,
+    fewShotExamples: [],
+    constraints: { maxTokens: 4096, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test-tool", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test-eval", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test-domain", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test-model", profileVersion: 1 }],
+    },
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      lifecycleStatus: "active",
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 test("PromptVersionManager.parseVersion accepts v{major}.{minor} format", () => {
   const manager = new PromptVersionManager();
@@ -102,4 +134,34 @@ test("PromptVersionManager.isValidVersionFormat validates correctly", () => {
   assert.equal(manager.isValidVersionFormat("1.0.0"), true);
   assert.equal(manager.isValidVersionFormat("invalid"), false);
   assert.equal(manager.isValidVersionFormat(""), false);
+});
+
+// Issue #1964: Verify VersionLineage interface is properly declared (not duplicated)
+// The interface should be exported once and usable for type checking
+test("VersionLineage interface is exported and usable", () => {
+  // Type-level test: VersionLineage should have current, optional previous, optional next
+  const lineage: VersionLineage = { current: "v1.0" };
+  assert.equal(lineage.current, "v1.0");
+  assert.equal(lineage.previous, undefined);
+  assert.equal(lineage.next, undefined);
+});
+
+test("VersionLineage interface allows optional fields to be set", () => {
+  const lineage: VersionLineage = { current: "v2.0", previous: "v1.0", next: "v3.0" };
+  assert.equal(lineage.current, "v2.0");
+  assert.equal(lineage.previous, "v1.0");
+  assert.equal(lineage.next, "v3.0");
+});
+
+test("PromptVersionManager.getVersionLineage returns correct lineage for middle version", () => {
+  const manager = new PromptVersionManager();
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v1.0", "v1.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v2.0", "v2.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test-bundle", "v3.0", "v3.0"));
+
+  const lineage = manager.getVersionLineage("lineage-test-bundle", "v2.0");
+
+  assert.equal(lineage.current, "v2.0");
+  assert.equal(lineage.previous, "v1.0");
+  assert.equal(lineage.next, "v3.0");
 });

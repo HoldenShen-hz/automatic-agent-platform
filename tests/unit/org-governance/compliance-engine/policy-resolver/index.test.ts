@@ -21,14 +21,29 @@ function createMockOrgNode(id: string, parentId: string | null): OrgNode {
   };
 }
 
-test("resolveCompliancePolicyForNode returns empty object for unknown node", () => {
+test("resolveCompliancePolicyForNode returns denyByDefault=true for unknown node", () => {
   const nodes: OrgNode[] = [
     createMockOrgNode("node1", null),
   ];
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "unknown_node", policies);
-  assert.deepEqual(result, {});
+  assert.deepEqual(result.policy, {});
+  assert.equal(result.denyByDefault, true);
+});
+
+test("resolveCompliancePolicyForNode returns denyByDefault=true for node with no policy in lineage", () => {
+  const nodes: OrgNode[] = [
+    createMockOrgNode("company", null),
+    createMockOrgNode("team", "company"),
+  ];
+  const policies: Record<string, PolicyLayer[]> = {
+    // neither node has a policy
+  };
+
+  const result = resolveCompliancePolicyForNode(nodes, "team", policies);
+  assert.deepEqual(result.policy, {});
+  assert.equal(result.denyByDefault, true);
 });
 
 test("resolveCompliancePolicyForNode returns policy for single node without parent", () => {
@@ -40,7 +55,8 @@ test("resolveCompliancePolicyForNode returns policy for single node without pare
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "company", policies);
-  assert.deepEqual(result, { accessLevel: "admin" });
+  assert.deepEqual(result.policy, { accessLevel: "admin" });
+  assert.equal(result.denyByDefault, false);
 });
 
 test("resolveCompliancePolicyForNode merges policies from lineage", () => {
@@ -57,7 +73,8 @@ test("resolveCompliancePolicyForNode merges policies from lineage", () => {
 
   const result = resolveCompliancePolicyForNode(nodes, "department", policies);
   // inheritPolicyLayers merges in order, so last one wins
-  assert.equal(result["level"], "department_level");
+  assert.equal(result.policy["level"], "department_level");
+  assert.equal(result.denyByDefault, false);
 });
 
 test("resolveCompliancePolicyForNode uses fallback when node has no policy", () => {
@@ -71,7 +88,8 @@ test("resolveCompliancePolicyForNode uses fallback when node has no policy", () 
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "team", policies);
-  assert.deepEqual(result, { inherited: "yes" });
+  assert.deepEqual(result.policy, { inherited: "yes" });
+  assert.equal(result.denyByDefault, false);
 });
 
 test("resolveCompliancePolicyForNode handles missing parent gracefully", () => {
@@ -83,7 +101,8 @@ test("resolveCompliancePolicyForNode handles missing parent gracefully", () => {
   };
 
   const result = resolveCompliancePolicyForNode(nodes, "child", policies);
-  assert.deepEqual(result, { value: 42 });
+  assert.deepEqual(result.policy, { value: 42 });
+  assert.equal(result.denyByDefault, false);
 });
 
 test("resolveCompliancePolicyForNode handles empty nodes array", () => {
@@ -91,5 +110,6 @@ test("resolveCompliancePolicyForNode handles empty nodes array", () => {
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "any_node", policies);
-  assert.deepEqual(result, {});
+  assert.deepEqual(result.policy, {});
+  assert.equal(result.denyByDefault, true);
 });

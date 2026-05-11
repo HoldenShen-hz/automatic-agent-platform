@@ -291,9 +291,6 @@ export class ExecutionDispatchReconciliationService {
       tenantId: ticket.tenantId,
       priority: ticket.priority,
       queueName: ticket.queueName,
-      dispatchTarget: ticket.dispatchTarget,
-      requiredIsolationLevel: ticket.requiredIsolationLevel,
-      requiredRepoVersion: ticket.requiredRepoVersion,
       requiredCapabilitiesJson: ticket.requiredCapabilitiesJson,
       dispatchAfter: ticket.dispatchAfter,
       attempt: ticket.attempt,
@@ -305,6 +302,14 @@ export class ExecutionDispatchReconciliationService {
       invalidatedAt: null,
       createdAt: occurredAt,
       updatedAt: occurredAt,
+      ...(ticket.dispatchTarget !== undefined ? { dispatchTarget: ticket.dispatchTarget ?? null } : {}),
+      ...(ticket.requiredIsolationLevel !== undefined ? { requiredIsolationLevel: ticket.requiredIsolationLevel ?? null } : {}),
+      ...(ticket.requiredRepoVersion !== undefined ? { requiredRepoVersion: ticket.requiredRepoVersion ?? null } : {}),
+      ...(ticket.riskClass !== undefined ? { riskClass: ticket.riskClass ?? null } : {}),
+      ...(ticket.requiredSandboxType !== undefined ? { requiredSandboxType: ticket.requiredSandboxType ?? null } : {}),
+      ...(ticket.tenantQuotaRef !== undefined ? { tenantQuotaRef: ticket.tenantQuotaRef ?? null } : {}),
+      ...(ticket.criticalPathRank !== undefined ? { criticalPathRank: ticket.criticalPathRank ?? null } : {}),
+      ...(ticket.schedulerSeed !== undefined ? { schedulerSeed: ticket.schedulerSeed ?? null } : {}),
     };
     this.store.worker.insertExecutionTicket(replacement);
     return replacement;

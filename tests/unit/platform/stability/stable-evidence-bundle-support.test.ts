@@ -80,6 +80,34 @@ describe("stable-evidence-bundle-support", () => {
       assert.equal(profile.soakIntervalMs, 1000);
     });
 
+    test("name field cannot be overridden (security fix for issue 1968)", () => {
+      // Issue 1968: TS Omit doesn't prevent JS runtime name field replacement
+      // Verify that name is always sourced from base profile, not overrides
+      const profile = resolveStableEvidenceProfile("smoke", {
+        // Intentionally try to override name - this MUST be ignored
+        name: "24h" as StableEvidenceProfileName,
+        validationIterations: 99,
+      });
+      assert.equal(profile.name, "smoke", "name must remain 'smoke' from base profile");
+      assert.equal(profile.validationIterations, 99, "other fields should still be overridable");
+    });
+
+    test("name field cannot be overridden for 24h profile", () => {
+      const profile = resolveStableEvidenceProfile("24h", {
+        name: "smoke" as StableEvidenceProfileName,
+      });
+      assert.equal(profile.name, "24h", "name must remain '24h' from base profile");
+    });
+
+    test("name field cannot be overridden for 72h profile", () => {
+      const profile = resolveStableEvidenceProfile("72h", {
+        name: "smoke" as StableEvidenceProfileName,
+        soakDurationMs: 999,
+      });
+      assert.equal(profile.name, "72h", "name must remain '72h' from base profile");
+      assert.equal(profile.soakDurationMs, 999, "legitimate overrides should still work");
+    });
+
     test("partial overrides only affect specified fields", () => {
       const profile = resolveStableEvidenceProfile("24h", {
         soakIterationsPerCycle: 5,

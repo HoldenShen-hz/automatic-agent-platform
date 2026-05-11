@@ -22,6 +22,12 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: {
       owner: "test-owner",
       deprecated: false,
@@ -96,6 +102,12 @@ test("HierarchicalPromptRegistryService.registerBundle throws for missing system
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: {
       owner: "test-owner",
       deprecated: false,
@@ -167,6 +179,12 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted 
   registry.registerBundle(createTestBundle("traffic-bundle", "v1.0"), "global");
   registry.registerBundle({
     ...createTestBundle("traffic-bundle", "v2.0"),
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: {
       owner: "test-owner",
       deprecated: false,
@@ -185,4 +203,139 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted 
 
   assert.ok(resolved !== null);
   assert.equal(resolved!.version, "v1.0");
+});
+
+// Issue 1966 fix: Verify traffic slot weights are normalized for fair allocation
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic normalizes weights for fair allocation", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  // Bundle A with weight 30, Bundle B with weight 70 (total = 100)
+  registry.registerBundle({
+    ...createTestBundle("fairness-bundle", "v1.0"),
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 30,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+  registry.registerBundle({
+    ...createTestBundle("fairness-bundle", "v2.0"),
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 70,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+
+  // Run 100 times with different traffic keys to get statistical distribution
+  const counts = { v1_0: 0, v2_0: 0 };
+  for (let i = 0; i < 100; i++) {
+    const resolved = registry.resolveBundleForTraffic(
+      "fairness-bundle",
+      "classification",
+      undefined,
+      undefined,
+      `traffic-key-${i}`,
+    );
+    if (resolved!.version === "v1.0") counts.v1_0++;
+    else counts.v2_0++;
+  }
+
+  // Before fix: slot = hash % 100 gives wrong distribution when totalWeight != 100
+  // After fix: slot = hash % totalWeight properly normalizes
+  // Allow ±15% tolerance for statistical variance
+  assert.ok(counts.v1_0 >= 15 && counts.v1_0 <= 45, `v1.0 count ${counts.v1_0} not in expected range [15, 45]`);
+  assert.ok(counts.v2_0 >= 55 && counts.v2_0 <= 85, `v2.0 count ${counts.v2_0} not in expected range [55, 85]`);
+});
+
+// Issue 1966 fix: Verify normalization works when total weight is not 100
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles non-100 total weights", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  // Bundle A with weight 1, Bundle B with weight 2 (total = 3)
+  registry.registerBundle({
+    ...createTestBundle("small-weights", "v1.0"),
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 1,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+  registry.registerBundle({
+    ...createTestBundle("small-weights", "v2.0"),
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 2,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+
+  // Run 300 times with different traffic keys
+  const counts = { v1_0: 0, v2_0: 0 };
+  for (let i = 0; i < 300; i++) {
+    const resolved = registry.resolveBundleForTraffic(
+      "small-weights",
+      "classification",
+      undefined,
+      undefined,
+      `small-traffic-key-${i}`,
+    );
+    if (resolved!.version === "v1.0") counts.v1_0++;
+    else counts.v2_0++;
+  }
+
+  // With proper normalization: v1.0 should get ~33%, v2.0 should get ~67%
+  // Without normalization (hash % 100): bias toward lower slot values
+  assert.ok(counts.v1_0 >= 70 && counts.v1_0 <= 130, `v1.0 count ${counts.v1_0} not in expected range [70, 130]`);
+  assert.ok(counts.v2_0 >= 170 && counts.v2_0 <= 230, `v2.0 count ${counts.v2_0} not in expected range [170, 230]`);
 });
