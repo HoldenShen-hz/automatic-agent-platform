@@ -35,10 +35,10 @@ type ListingCategory =
 
 ### Publishing Process
 
-1. Developer creates Pack
+1. Developer builds Pack
 2. Local testing (coverage >= 80%)
 3. Submit for review
-4. Certification evaluation (Prompt Injection check)
+4. Certification evaluation (Prompt Injection checks, code signature verification, SBOM review, vulnerability scanning)
 5. List on marketplace
 
 ### Pricing Models
@@ -54,7 +54,7 @@ type ListingCategory =
 
 - User ratings (1-5 stars)
 - Download rankings
-- Trending charts
+- Trending list
 - Editor's picks
 
 ## Consequences

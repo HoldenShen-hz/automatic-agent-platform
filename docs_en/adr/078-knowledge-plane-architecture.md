@@ -6,9 +6,11 @@
 
 ## Context
 
-The learning results produced by OAPEFLIR Learn Hub need to be persistently stored and retrievable by subsequent tasks. The Knowledge Plane provides unified knowledge ingestion, indexing, retrieval, and governance capabilities, supporting three retrieval methods: BM25 keyword indexing, semantic vector indexing, and AST structure indexing.
+Learning outcomes produced by the OAPEFLIR Learn Hub need persistent storage and retrieval for subsequent tasks. The Knowledge Plane is a sub-domain within the P5 State&Evidence plane, providing unified knowledge ingestion, indexing, retrieval, and governance capabilities. It supports three retrieval methods: BM25 keyword indexing, semantic vector indexing, and AST structure indexing.
 
-The existing `knowledge/` module (23 files) has implemented a complete pipeline. This ADR formally establishes the Knowledge Plane's governance architecture and trust model.
+> Note: The Knowledge Plane is a sub-domain of P5 State&Evidence, not an independent architectural plane. All Knowledge operations ultimately link back to P5's truth/events system.
+
+The existing `knowledge/` module (23 files) already implements a complete pipeline. This ADR formally establishes the governance architecture and trust model for the Knowledge Plane.
 
 ## Decision
 
@@ -17,16 +19,16 @@ The existing `knowledge/` module (23 files) has implemented a complete pipeline.
 ```
 Intake → Extraction → Archive → Index → Query
    ↓         ↓           ↓         ↓       ↓
- Raw Doc  Semantic   Cold     3 Index   3-Tier
-          Extraction Storage           Query
+ Raw Doc  Semantic   Cold      Three    Three
+         Extraction Storage    Index Types Query Levels
 ```
 
 | Stage | Component | Responsibility |
-|------|------|------|
-| Intake | `KnowledgeIngestionPipeline` | Receives raw documents, format validation |
+|-------|-----------|----------------|
+| Intake | `KnowledgeIngestionPipeline` | Receives raw documents, performs format validation |
 | Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
 | Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
-| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index types maintained |
+| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Maintains three index types |
 | Query | `KnowledgeQueryService` | Quick/Standard/Deep three-tier query |
 
 ### 2. Core Interfaces
@@ -55,7 +57,7 @@ interface KnowledgeDocument {
 interface KnowledgeChunk {
   chunkId: string;
   content: string;
-  embedding?: number[];      // vector representation
+  embedding?: number[];      // Vector representation
   metadata: Record<string, unknown>;
 }
 
@@ -69,30 +71,30 @@ interface RetrievalHit {
 }
 ```
 
-### 3. 3 Index Strategies
+### 3. Three Index Strategies
 
 | Index | Use Case | Implementation |
-|------|---------|------|
+|-------|----------|----------------|
 | `KeywordIndexer` (BM25) | Exact keyword matching | `keyword-index.ts` |
 | `SemanticVectorStore` | Semantic similarity retrieval | `semantic-vector-store.ts` |
 | `ASTIndexer` | Code structure retrieval | `ast-index.ts` |
 
-### 4. 3 Query Levels
+### 4. Three Query Levels
 
 | Level | Response Time Target | Retrieval Scope |
-|------|------------|---------|
+|-------|---------------------|-----------------|
 | `quick` | <100ms P99 | Keyword index only |
 | `standard` | <500ms P99 | Keyword + semantic vector hybrid |
 | `deep` | <2000ms | All indexes + cross-namespace |
 
-### 5. 4-Level Trust Model
+### 5. Four-Tier Trust Model
 
 | Trust Level | Source | Usage |
-|---------|------|------|
+|-------------|--------|-------|
 | `verified` | Human-reviewed content | Production decisions |
-| `reviewed` | Validated by LearningObjectValidator | Improvement candidate |
-| `inferred` | System-inferred | Suggestions/reference |
-| `untrusted` | Unverified source | Display only |
+| `reviewed` | Validated by LearningObjectValidator | Improvement candidates |
+| `inferred` | System-inferred | Suggestions/references |
+| `untrusted` | Unverified sources | Display only |
 
 ### 6. KnowledgeNamespace Governance
 
@@ -114,7 +116,7 @@ interface RetentionPolicy {
 
 ### 7. Learn→Knowledge Integration
 
-LearningObject is injected into the Knowledge Plane via `KnowledgePromotionService`:
+LearningObjects are injected into the knowledge plane via `KnowledgePromotionService`:
 
 ```
 FailurePatternMiner.mine()
@@ -127,7 +129,7 @@ FailurePatternMiner.mine()
             namespace: "system/learned-patterns",
             trustLevel: "reviewed"
           })
-    → Subsequent Observe stage can retrieve learned patterns
+    → Subsequent Observe phase can retrieve learned patterns
 ```
 
 ### 8. Citation Builder
@@ -149,19 +151,19 @@ interface Citation {
 Pros: Optimal vector retrieval performance.
 Cons: Adds external dependency, violates §L R1-NO-EXTERNAL-RUNTIME.
 
-### Option B: Local SQLite + Vector Extension (Chosen)
+### Option B: Local SQLite + Vector Extension (Selected)
 
-Pros: No external dependencies, conforms to SQLite-first principle.
+Pros: No external dependencies, aligns with SQLite-first principle.
 Cons: Vector retrieval performance lower than dedicated vector databases.
 
 ## Consequences
 
-- `knowledge-plane-service.ts` as the Knowledge Plane entry point.
+- `knowledge-plane-service.ts` serves as the Knowledge Plane entry point.
 - `knowledge-ingestion-pipeline.ts` handles document ingestion.
 - `knowledge-query-service.ts` (374 lines) provides three-tier query.
 - `knowledge-promotion-service.ts` implements Learn→Knowledge integration.
 - `governance/namespace-policy.ts` manages namespace governance.
-- `governance/source-trust-policy.ts` implements 4-level trust model.
+- `governance/source-trust-policy.ts` implements the four-tier trust model.
 - New event: `learning:knowledge_promoted` (Tier 2)
 
 ## Cross References
@@ -177,4 +179,4 @@ Cons: Vector retrieval performance lower than dedicated vector databases.
 - `§10.2` KIP 5-Stage Pipeline
 - `§C.1-C.7` Governance Layer Design
 - `§8.7` Learn→Knowledge Integration
-- `§L.9` R4-EVIDENCE constraint
+- `§L.9` R4-EVIDENCE Constraints

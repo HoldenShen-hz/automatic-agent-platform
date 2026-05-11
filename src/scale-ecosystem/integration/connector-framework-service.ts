@@ -3,6 +3,10 @@ import { dirname, join } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { CircuitBreaker } from "../../platform/stability/circuit-breaker.js";
+import { GitHubConnector } from "./connectors/github-connector.js";
+import { JiraConnector } from "./connectors/jira-connector.js";
+import { ServiceNowConnector } from "./connectors/servicenow-connector.js";
+import { SlackConnector } from "./connectors/slack-connector.js";
 import {
   ConnectorManifestSchema,
   listEnabledConnectors,
@@ -30,6 +34,9 @@ export interface ConnectorBinding {
 }
 
 export type RegisteredConnectorManifest = NormalizedConnectorManifest;
+type ConnectorExecutor = {
+  execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> | ConnectorExecutionResult;
+};
 
 /**
  * R20-51 FIX: manifests and bindings are stored in in-memory Maps.
@@ -46,7 +53,7 @@ export class ConnectorFrameworkService {
   private readonly manifests = new Map<string, RegisteredConnectorManifest>();
   private readonly bindings = new Map<string, ConnectorBinding[]>();
   private readonly health = new Map<string, ConnectorHealthReport[]>();
-  private readonly connectorInstances = new Map<string, { execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> }>();
+  private readonly connectorInstances = new Map<string, ConnectorExecutor>();
   private readonly circuitBreakers = new Map<string, CircuitBreaker>();
   private readonly storageDir: string | null;
 
@@ -67,6 +74,7 @@ export class ConnectorFrameworkService {
   public register(manifest: ConnectorManifest): RegisteredConnectorManifest {
     const parsed = ConnectorManifestSchema.parse(manifest) as RegisteredConnectorManifest;
     this.manifests.set(parsed.connectorId, parsed);
+    this.registerBuiltInConnectorInstance(parsed);
     this.persist();
     return parsed;
   }
@@ -95,7 +103,7 @@ export class ConnectorFrameworkService {
     return report;
   }
 
-  public registerConnectorInstance(connectorId: string, instance: { execute(request: ConnectorExecutionRequest): Promise<ConnectorExecutionResult> }): void {
+  public registerConnectorInstance(connectorId: string, instance: ConnectorExecutor): void {
     this.connectorInstances.set(connectorId, instance);
     if (!this.circuitBreakers.has(connectorId)) {
       this.circuitBreakers.set(connectorId, new CircuitBreaker(ConnectorFrameworkService.DEFAULT_CIRCUIT_BREAKER_OPTIONS));
@@ -179,7 +187,7 @@ export class ConnectorFrameworkService {
     const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
     let result: ConnectorExecutionResult;
     if (connectorInstance != null && circuitBreaker != null) {
-      result = await circuitBreaker.execute(() => connectorInstance.execute(normalizedRequest));
+      result = await circuitBreaker.execute(() => Promise.resolve(connectorInstance.execute(normalizedRequest)));
     } else {
       result = {
         connectorId: normalizedRequest.connectorId,
@@ -232,6 +240,45 @@ export class ConnectorFrameworkService {
     return manifest;
   }
 
+  private registerBuiltInConnectorInstance(manifest: RegisteredConnectorManifest): void {
+    if (this.connectorInstances.has(manifest.connectorId)) {
+      return;
+    }
+    const instance = this.createBuiltInConnectorInstance(manifest);
+    if (instance != null) {
+      this.registerConnectorInstance(manifest.connectorId, instance);
+    }
+  }
+
+  /**
+   * R20-50 FIX: known first-party connectors are auto-wired to their concrete
+   * connector implementations instead of falling back to generic stub results.
+   */
+  private createBuiltInConnectorInstance(manifest: RegisteredConnectorManifest): ConnectorExecutor | null {
+    switch (manifest.provider.trim().toLowerCase()) {
+      case "github": {
+        const connector = new GitHubConnector();
+        return { execute: async (request) => connector.execute(request) };
+      }
+      case "slack": {
+        const connector = new SlackConnector();
+        return { execute: async (request) => connector.execute(request) };
+      }
+      case "jira": {
+        const connector = new JiraConnector();
+        return { execute: async (request) => connector.execute(request) };
+      }
+      case "servicenow":
+      case "service-now":
+      case "service_now": {
+        const connector = new ServiceNowConnector();
+        return { execute: async (request) => connector.execute(request) };
+      }
+      default:
+        return null;
+    }
+  }
+
   private load(): void {
     this.loadManifests();
     this.loadBindings();
@@ -265,6 +312,7 @@ export class ConnectorFrameworkService {
       const entries = JSON.parse(raw) as Array<[string, RegisteredConnectorManifest]>;
       for (const [id, manifest] of entries) {
         this.manifests.set(id, manifest);
+        this.registerBuiltInConnectorInstance(manifest);
       }
     } catch {
       // Ignore corrupt file — start empty

@@ -5,7 +5,7 @@
 
 ## Context
 
-Code directory structure needs to correspond to the five-plane architecture, facilitating developers in locating and understanding code.
+The code directory structure must align with the five-plane architecture to facilitate developers in locating and understanding code.
 
 ## Decision
 
@@ -14,11 +14,11 @@ Code directory structure needs to correspond to the five-plane architecture, fac
 ```
 src/
   platform/       # Five-plane runtime core
-  domains/        # Domain descriptors, onboarding, registry
+  domains/        # Domain descriptors, onboarding, governance
   interaction/    # NL entry, goal decomposition, dashboard
   org-governance/ # Organization hierarchy, approval routing, SSO
-  scale-ecosystem/# Multi-region, marketplace, integration
-  ops-maturity/   # Explainability, emergency brake, drift detection
+  scale-ecosystem/# Multi-region, marketplace, integrations
+  ops-maturity/   # Explainability, emergency stop, drift detection
   plugins/        # Plugin SDK
   sdk/            # Developer toolchain
   apps/           # Application examples
@@ -40,27 +40,25 @@ platform/
 
 - `core/` Compatibility layer (do not add new canonical runtime logic here)
 - `benchmarks/` Performance testing
-- `testing/` Test utilities
+- `testing/` Testing utilities
 
 ## Consequences
 
-Positive:
-- Directory structure maps clearly to architecture
-- Facilitates code location for developers
+Benefits:
+
+- Clear mapping between directory structure and architecture
+- Easier for developers to locate code
 - Supports large-scale team parallel development
 
-Negative:
-- Refactoring existing code requires significant cost
-- Need to keep synchronized with documentation
+Costs:
 
-Trade-offs:
-- Structure vs. flexibility
-- Consistency vs. effort
+- Refactoring existing code requires significant effort
+- Must keep in sync with documentation
 
-## Cross-References
+## Cross References
 
-- [ADR-001 Three-Layer Separation of Authority](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
 
-## Source Sections
+## Source Section
 
-- `§35` Recommended Code Directory Structure
+- `35` Recommended Code Directory
