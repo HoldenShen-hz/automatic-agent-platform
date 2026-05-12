@@ -15,7 +15,7 @@ test("evaluateKnowledgeShare returns true for owner org node", () => {
 
   const result = evaluateKnowledgeShare(boundary, "dept_finance", [], "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, true);
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("evaluateKnowledgeShare returns true for allowed org node", () => {
@@ -29,7 +29,7 @@ test("evaluateKnowledgeShare returns true for allowed org node", () => {
 
   const result = evaluateKnowledgeShare(boundary, "dept_audit", [], "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, true);
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("evaluateKnowledgeShare returns false for unauthorized org node without grant", () => {
@@ -43,7 +43,7 @@ test("evaluateKnowledgeShare returns false for unauthorized org node without gra
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", [], "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, null);
 });
 
 test("evaluateKnowledgeShare returns true when valid grant exists", () => {
@@ -65,7 +65,7 @@ test("evaluateKnowledgeShare returns true when valid grant exists", () => {
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, true);
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("evaluateKnowledgeShare returns false when grant is expired", () => {
@@ -87,7 +87,7 @@ test("evaluateKnowledgeShare returns false when grant is expired", () => {
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, null);
 });
 
 test("evaluateKnowledgeShare returns false when grant boundaryId does not match", () => {
@@ -109,7 +109,7 @@ test("evaluateKnowledgeShare returns false when grant boundaryId does not match"
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, null);
 });
 
 test("evaluateKnowledgeShare returns false when grant requesterOrgNodeId does not match", () => {
@@ -131,7 +131,7 @@ test("evaluateKnowledgeShare returns false when grant requesterOrgNodeId does no
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, null);
 });
 
 test("KnowledgeShareGrantSchema validates correct grant", () => {

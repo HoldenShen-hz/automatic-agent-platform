@@ -1,6 +1,7 @@
 import { compareWorkflowRuns, type RunSnapshot } from "./run-comparator/index.js";
 import { isBreakpointHit } from "./breakpoint-manager/index.js";
 import { renderWorkflowTimeline } from "./timeline-renderer/index.js";
+export { WebSocketDebugStreamService } from "./debug-stream-service.js";
 
 export interface DebugBreakpointDefinition {
   readonly breakpointId: string;
@@ -225,16 +226,19 @@ export class WorkflowDebuggerService {
 
   private buildRunSnapshot(frame: WorkflowTraceFrame): RunSnapshot {
     const stepId = this.getFrameNodeRunId(frame);
-    if (frame.nodeRunId) {
-      return {
-        stepId,
-        nodeRunId: frame.nodeRunId,
-        status: frame.status,
-      };
-    }
-    return {
+    const snapshot = {
       stepId,
       status: frame.status,
+      ...(frame.decision !== undefined ? { decision: frame.decision } : {}),
+      ...(frame.costUsd !== undefined ? { cost: frame.costUsd } : {}),
+      ...(frame.durationMs !== undefined ? { durationMs: frame.durationMs } : {}),
     };
+    if (frame.nodeRunId) {
+      return {
+        ...snapshot,
+        nodeRunId: frame.nodeRunId,
+      };
+    }
+    return snapshot;
   }
 }

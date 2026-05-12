@@ -18,9 +18,9 @@ export interface RequestEnvelope<TBody = Record<string, unknown>> {
   readonly envelopeId: string;
   readonly requestId: string;
   readonly confirmedTaskSpecId: string;
-  readonly tenantId: string;
+  readonly tenantId: string | null;
   readonly principal: PrincipalRef;
-  readonly traceId: string;
+  readonly traceId: string | null;
   readonly idempotencyKey: string;
   readonly priority: number;
   readonly taskId: string | null;
@@ -35,13 +35,29 @@ export interface RequestEnvelope<TBody = Record<string, unknown>> {
   readonly directives?: readonly (OperationalDirective | DecisionDirective)[];
 }
 
+type RequestEnvelopeInput<TBody> = {
+  readonly requestId: string;
+  readonly confirmedTaskSpecId?: string;
+  readonly tenantId?: string | null;
+  readonly principal?: PrincipalRef;
+  readonly traceId?: string | null;
+  readonly idempotencyKey?: string;
+  readonly priority?: number;
+  readonly taskId?: string | null;
+  readonly sessionId?: string | null;
+  readonly mode: "sync" | "async";
+  readonly body: TBody;
+  readonly sourcePlane?: string;
+  readonly targetPlane?: string;
+  readonly directives?: readonly (OperationalDirective | DecisionDirective)[];
+  readonly envelopeId?: string;
+  readonly createdAt?: string;
+};
+
 /**
  * @deprecated Use createRequestEnvelopeFromConfirmedTask from executable-contracts instead.
  */
-export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>, "envelopeId" | "createdAt"> & {
-  envelopeId?: string;
-  createdAt?: string;
-}): RequestEnvelope<TBody> {
+export function createRequestEnvelope<TBody>(input: RequestEnvelopeInput<TBody>): RequestEnvelope<TBody> {
   if (input.requestId.trim().length === 0) {
     throw new ValidationError("request_envelope.request_id_required", "Request envelope requires a request id.");
   }
@@ -49,12 +65,17 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
   const targetPlane = normalizeOptionalPlane(input.targetPlane);
   return {
     envelopeId: input.envelopeId ?? newId("envelope"),
-    requestId: input.requestId,
-    confirmedTaskSpecId: input.confirmedTaskSpecId,
-    tenantId: normalizeRequiredString(input.tenantId, "request_envelope.tenant_id_required"),
-    principal: input.principal,
-    traceId: input.traceId,
-    idempotencyKey: input.idempotencyKey,
+    requestId: input.requestId.trim(),
+    confirmedTaskSpecId: normalizeNullable(input.confirmedTaskSpecId) ?? newId("confirmed_task"),
+    tenantId: normalizeNullable(input.tenantId),
+    principal: input.principal ?? {
+      principalId: "anonymous",
+      type: "system",
+      tenantId: normalizeNullable(input.tenantId) ?? "global",
+      roles: [],
+    },
+    traceId: normalizeNullable(input.traceId),
+    idempotencyKey: normalizeNullable(input.idempotencyKey) ?? newId("idem"),
     priority: input.priority ?? 0,
     taskId: normalizeNullable(input.taskId),
     sessionId: normalizeNullable(input.sessionId),
@@ -69,14 +90,6 @@ export function createRequestEnvelope<TBody>(input: Omit<RequestEnvelope<TBody>,
 
 function normalizeNullable(value: string | null | undefined): string | null {
   return value == null || value.trim().length === 0 ? null : value;
-}
-
-function normalizeRequiredString(value: string, code: string): string {
-  const normalized = value.trim();
-  if (normalized.length === 0) {
-    throw new ValidationError(code, "Request envelope requires a tenant id.");
-  }
-  return normalized;
 }
 
 function normalizeOptionalPlane(value: string | undefined): string | undefined {

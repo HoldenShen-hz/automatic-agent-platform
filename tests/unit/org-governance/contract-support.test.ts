@@ -143,7 +143,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
     fieldAllowlist: [],
   };
   assert.equal(canAccessKnowledgeBoundary(boundary, "team_1"), true);
-  assert.equal(
+  assert.deepEqual(
     evaluateKnowledgeShare(boundary, "team_2", [
       {
         grantId: "grant_1",
@@ -153,7 +153,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
         expiresAt: "2026-04-21T00:00:00.000Z",
       },
     ], "2026-04-20T00:00:00.000Z"),
-    true,
+    { mode: "summary" },
   );
 
   assert.deepEqual(validateOrgHierarchy(orgNodes), []);

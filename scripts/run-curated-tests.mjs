@@ -4,7 +4,7 @@ import { join, relative, resolve } from "node:path";
 
 const distRoot = resolve(process.cwd(), "dist");
 const distTestsRoot = join(distRoot, "tests");
-const defaultConcurrency = readPositiveInteger("AA_CURATED_TEST_CONCURRENCY", 1);
+const defaultConcurrency = readPositiveInteger("AA_CURATED_TEST_CONCURRENCY", 12);
 const testMaxOldSpaceSizeMb = readOptionalPositiveInteger("AA_TEST_MAX_OLD_SPACE_MB", 1536);
 
 const EXCLUDED_PREFIXES = [

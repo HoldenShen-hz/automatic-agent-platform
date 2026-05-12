@@ -16,6 +16,46 @@
  */
 
 import { newId, nowIso } from "./ids.js";
+export { createControlDirective } from "../control-directive/index.js";
+export { createExecutionPlan } from "../execution-plan/index.js";
+export { createExecutionReceipt } from "../execution-receipt/index.js";
+export { createProjectionUpdate } from "../projection-update/index.js";
+export { createStateCommand } from "../state-command/index.js";
+export type { ControlDirective, ControlDirectiveKind as ControlDirectiveType } from "../control-directive/index.js";
+export type { ExecutionReceipt } from "../execution-receipt/index.js";
+export type { ProjectionUpdate } from "../projection-update/index.js";
+export type { StateCommand } from "../state-command/index.js";
+export type RequestEnvelope<TPayload = unknown> = RequestEnvelopeLegacy<TPayload>;
+export type StateCommandType = "update_truth" | "append_event" | "write_checkpoint" | "store_artifact";
+export interface SideEffectExpectation {
+  readonly category: "filesystem" | "network" | "database" | "queue" | "other";
+  readonly description: string;
+  readonly required: boolean;
+}
+export interface SideEffectRecord {
+  readonly effectId: string;
+  readonly category: SideEffectExpectation["category"];
+  readonly description: string;
+  readonly status: "pending" | "completed" | "failed" | "cancelled";
+  readonly createdAt: string;
+}
+export interface ExecutionPlanBudget {
+  readonly maxSteps: number;
+  readonly maxDurationMs: number;
+  readonly maxCost: number;
+}
+export interface ExecutionPlan {
+  readonly taskId: string;
+  readonly tenantId: string;
+  readonly version: number;
+  readonly steps: readonly unknown[];
+  readonly budget?: ExecutionPlanBudget;
+}
+export interface ExecutionReceiptErrorDetail {
+  readonly code: string;
+  readonly message: string;
+  readonly retryable?: boolean;
+}
 
 // =============================================================================
 // Platform-Level Contract Types

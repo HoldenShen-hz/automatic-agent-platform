@@ -1,4 +1,4 @@
-import { UnimplementedError, ValidationError } from "../errors.js";
+import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { EventAppendCommand, AuditAppendCommand, ArtifactWriteCommand, EventReplayBehavior } from "../executable-contracts/index.js";
 
@@ -108,24 +108,87 @@ function normalizeAction(type: LegacyStateCommandType): StateCommandAction {
   }
 }
 
-// =============================================================================
-// Legacy Factory - Fail-Fast Enforcement (R16-79)
-// =============================================================================
-
-/**
- * @deprecated StateCommand from state-command/ is a legacy contract.
- * Use canonical contracts from executable-contracts instead.
- * This factory always throws - retained for backward compatibility only.
- * @throws {UnimplementedError} Always throws with code "DEPRECATED_STATE_COMMAND"
- */
 export function createStateCommand<TPayload>(
-  _input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
+  input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
 ): StateCommand<TPayload> {
-  // R16-79: StateCommand is deprecated - throw UnimplementedError
-  throw new UnimplementedError(
-    "DEPRECATED_STATE_COMMAND",
-    "createStateCommand is no longer supported. StateCommand is deprecated. Use canonical contracts from executable-contracts instead.",
+  if (isCompatibilityInput(input)) {
+    const entityId = requireNonEmpty(
+      input.aggregateId,
+      "state_command.aggregate_id_required",
+      "State command requires a non-empty aggregateId.",
+    );
+    const type = input.type;
+    const action = normalizeAction(type);
+    return {
+      commandId: input.commandId ?? newId("statecmd"),
+      ...(input.traceId != null ? { traceId: input.traceId } : {}),
+      ...(input.principal != null ? { principal: input.principal } : {}),
+      ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
+      ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
+      ...(input.event != null ? { event: input.event } : {}),
+      entityKind: input.aggregateType ?? "aggregate",
+      entityId,
+      action,
+      ...(type != null ? { type } : {}),
+      ...(entityId != null ? { aggregateId: entityId } : {}),
+      expectedVersion: input.expectedVersion ?? null,
+      ...(input.expectedStatus !== undefined ? { expectedStatus: input.expectedStatus ?? null } : {}),
+      payload: clonePayload(input.payload),
+      emittedBy: input.emittedBy ?? input.principal.actorId ?? input.principal.principalId ?? "system",
+      createdAt: input.createdAt ?? nowIso(),
+    };
+  }
+
+  const entityKind = requireNonEmpty(
+    input.entityKind,
+    "state_command.entity_kind_required",
+    "State command requires a non-empty entityKind.",
   );
+  const entityId = requireNonEmpty(
+    input.entityId,
+    "state_command.entity_id_required",
+    "State command requires a non-empty entityId.",
+  );
+  const emittedBy = requireNonEmpty(
+    input.emittedBy,
+    "state_command.emitted_by_required",
+    "State command requires a non-empty emittedBy.",
+  );
+  if (input.action === "transition") {
+    const nextStatus = (input.payload as { nextStatus?: string } | null | undefined)?.nextStatus;
+    if (typeof nextStatus !== "string" || nextStatus.trim().length === 0) {
+      throw new ValidationError(
+        "state_command.transition_next_status_required",
+        "Transition state commands require payload.nextStatus.",
+      );
+    }
+  }
+  return {
+    commandId: input.commandId ?? newId("statecmd"),
+    ...(input.traceId != null ? { traceId: input.traceId } : {}),
+    ...(input.principal != null ? { principal: input.principal } : {}),
+    ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
+    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
+    ...(input.event != null ? { event: input.event } : {}),
+    entityKind,
+    entityId,
+    action: input.action,
+    expectedVersion: input.expectedVersion ?? null,
+    ...(input.expectedStatus !== undefined ? { expectedStatus: input.expectedStatus ?? null } : {}),
+    payload: clonePayload(input.payload),
+    emittedBy,
+    createdAt: input.createdAt ?? nowIso(),
+  };
+}
+
+function clonePayload<TPayload>(payload: TPayload): TPayload {
+  if (payload == null || typeof payload !== "object") {
+    return payload;
+  }
+  if (Array.isArray(payload)) {
+    return [...payload] as TPayload;
+  }
+  return { ...(payload as Record<string, unknown>) } as TPayload;
 }
 
 // =============================================================================

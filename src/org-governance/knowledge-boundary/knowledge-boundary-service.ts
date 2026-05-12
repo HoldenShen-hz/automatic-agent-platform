@@ -100,7 +100,7 @@ export class KnowledgeBoundaryService {
       && tenantAllowed
       && (
         canAccessKnowledgeBoundary(input.boundary, input.requesterOrgNodeId)
-        || evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt).allowed
+        || evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt) != null
       );
     const log: KnowledgeAccessLogRecord = {
       recordId: `knowledge_access_${input.boundary.boundaryId}_${input.requesterId}_${occurredAt}`,

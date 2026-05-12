@@ -22,6 +22,9 @@ export interface IdentitySyncDlqRecord {
   readonly eventType: string;
   readonly failureCode: "schema_validation_failed" | "event_id_conflict";
   readonly failureDetail: string;
+  readonly retryCount?: number;
+  readonly nextRetryAt?: string | null;
+  readonly lastRetryAt?: string | null;
 }
 
 export interface IdentitySyncConflictReport {
@@ -56,7 +59,24 @@ export interface IdentitySyncBootstrapOptions {
   readonly deconfiguredSubjectIds?: readonly string[];
 }
 
+export interface IdentitySyncDlqProcessingResult {
+  readonly processedRecords: readonly IdentitySyncDlqRecord[];
+  readonly retryQueue: readonly IdentitySyncDlqRecord[];
+}
+
+export interface IdentitySyncDailyReconciliationReport {
+  readonly reportId: string;
+  readonly windowStartAt: string;
+  readonly windowEndAt: string;
+  readonly totalDlqRecords: number;
+  readonly retryAttempted: number;
+  readonly exhaustedRecords: number;
+  readonly pendingRetryRecords: number;
+}
+
 export class IdentitySyncService {
+  private static readonly MAX_DLQ_RETRIES = 3;
+
   private readonly activeSubjects = new Set<string>();
 
   public bootstrap(
@@ -155,6 +175,62 @@ export class IdentitySyncService {
       agentFreezeDirectives,
     };
   }
+
+  public processDlqWithRetry(
+    records: readonly IdentitySyncDlqRecord[],
+    nowIso: string,
+  ): IdentitySyncDlqProcessingResult {
+    const processedRecords: IdentitySyncDlqRecord[] = [];
+    const retryQueue: IdentitySyncDlqRecord[] = [];
+    const now = new Date(nowIso);
+
+    for (const record of records) {
+      const retryCount = record.retryCount ?? 0;
+      if (retryCount >= IdentitySyncService.MAX_DLQ_RETRIES) {
+        processedRecords.push({
+          ...record,
+          retryCount,
+          lastRetryAt: record.lastRetryAt ?? nowIso,
+          nextRetryAt: null,
+        });
+        continue;
+      }
+
+      const nextRetryCount = retryCount + 1;
+      const nextRetryAt = new Date(now.getTime() + computeRetryDelayMs(nextRetryCount)).toISOString();
+      retryQueue.push({
+        ...record,
+        retryCount: nextRetryCount,
+        lastRetryAt: nowIso,
+        nextRetryAt,
+      });
+    }
+
+    return {
+      processedRecords,
+      retryQueue,
+    };
+  }
+
+  public generateDailyReconciliation(
+    records: readonly IdentitySyncDlqRecord[],
+    windowStartAt: string,
+    windowEndAt: string,
+  ): IdentitySyncDailyReconciliationReport {
+    const retryAttempted = records.filter((record) => (record.retryCount ?? 0) > 0).length;
+    const exhaustedRecords = records.filter(
+      (record) => (record.retryCount ?? 0) >= IdentitySyncService.MAX_DLQ_RETRIES,
+    ).length;
+    return {
+      reportId: `identity_reconciliation_${windowEndAt.slice(0, 10)}`,
+      windowStartAt,
+      windowEndAt,
+      totalDlqRecords: records.length,
+      retryAttempted,
+      exhaustedRecords,
+      pendingRetryRecords: Math.max(records.length - exhaustedRecords, 0),
+    };
+  }
 }
 
 function sameScimEvent(left: ScimProvisioningEvent, right: ScimProvisioningEvent): boolean {
@@ -178,4 +254,9 @@ function collectConflictingFields(
     conflicts.push("occurredAt");
   }
   return conflicts;
+}
+
+function computeRetryDelayMs(retryCount: number): number {
+  const baseDelayMs = 5 * 60 * 1000;
+  return baseDelayMs * Math.max(retryCount, 1);
 }

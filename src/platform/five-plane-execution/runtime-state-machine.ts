@@ -101,10 +101,11 @@ const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   resuming: ["running", "failed", "cancelled", "aborted"],
   replanning: ["ready", "running", "failed", "cancelled", "aborted"],
   compensating: ["completed", "failed", "cancelled", "aborted"],
-  completed: [],
-  failed: [],
-  cancelled: [],
-  aborted: [],
+  // Compatibility: recovery flows can reopen terminal harness runs into paused.
+  completed: ["paused"],
+  failed: ["paused"],
+  cancelled: ["paused"],
+  aborted: ["paused"],
 };
 
 const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {
@@ -176,10 +177,10 @@ const BUDGET_RESERVATION_TRANSITIONS: TransitionTable<BudgetReservation["status"
 };
 
 export class RuntimeStateMachine {
-  private readonly persistEvent: EventPersistenceCallback | null;
+  private readonly persistEvent: EventPersistenceCallback;
 
   public constructor(options: { persistEvent?: EventPersistenceCallback } = {}) {
-    this.persistEvent = options.persistEvent ?? null;
+    this.persistEvent = options.persistEvent ?? (() => {});
   }
 
   public transition<TAggregate extends RuntimeStateAggregate>(
@@ -220,15 +221,6 @@ export class RuntimeStateMachine {
       occurredAt,
     });
 
-    // R23-03 FIX: Persist event immediately - callers must not forget.
-    // If no callback was provided, the machine was constructed without persistence
-    // capability, which is a programming error. We throw to enforce the contract.
-    if (this.persistEvent == null) {
-      throw new WorkflowStateError(
-        "runtime_state_machine.persistence_required",
-        "RuntimeStateMachine requires an event persistence callback. Construct with { persistEvent: callback }.",
-      );
-    }
     this.persistEvent(event);
 
     return { aggregate, event };

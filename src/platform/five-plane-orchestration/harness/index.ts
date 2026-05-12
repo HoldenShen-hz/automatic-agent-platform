@@ -1897,8 +1897,8 @@ export class HarnessRuntimeService {
       emittedBy: "harness-runtime-service",
       auditRef: `audit://harness-runs/${run.harnessRunId ?? run.runId}/${reasonCode}`,
     };
-    transitionParams.leaseId = run.leaseId ?? `lease:${run.harnessRunId ?? run.runId}`;
-    transitionParams.fencingToken = run.fencingToken ?? `fence:${run.harnessRunId ?? run.runId}:1`;
+    transitionParams.leaseId = baseAggregate.leaseId;
+    transitionParams.fencingToken = baseAggregate.fencingToken;
     if (toStatus === "admitted") {
       transitionParams.runVersionLockId = run.versionLockId ?? `${run.runId}:version_lock`;
       transitionParams.policyGuard = {

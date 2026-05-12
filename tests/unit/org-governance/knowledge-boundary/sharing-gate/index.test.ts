@@ -42,7 +42,7 @@ test("evaluateKnowledgeShare returns true when requester is owner", () => {
     isExternal: false,
   };
   const result = evaluateKnowledgeShare(boundary, "node_owner", [], "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, true);
+  assert.equal(result?.mode, "summary");
 });
 
 test("evaluateKnowledgeShare returns true when requester is in allowed list", () => {
@@ -53,7 +53,7 @@ test("evaluateKnowledgeShare returns true when requester is in allowed list", ()
     isExternal: false,
   };
   const result = evaluateKnowledgeShare(boundary, "node_allowed_1", [], "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, true);
+  assert.equal(result?.mode, "summary");
 });
 
 test("evaluateKnowledgeShare returns false when requester is not authorized", () => {
@@ -64,7 +64,7 @@ test("evaluateKnowledgeShare returns false when requester is not authorized", ()
     isExternal: false,
   };
   const result = evaluateKnowledgeShare(boundary, "node_unauthorized", [], "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
+  assert.equal(result, null);
 });
 
 test("evaluateKnowledgeShare returns true when grant has no expiry (undefined)", () => {
@@ -83,8 +83,8 @@ test("evaluateKnowledgeShare returns true when grant has no expiry (undefined)",
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, true);
-  assert.equal(result.matchedGrantId, "grant_1");
+  assert.equal(result?.mode, "summary");
+  assert.equal(result?.matchedGrantId, "grant_1");
 });
 
 test("evaluateKnowledgeShare returns true when grant has null expiry", () => {
@@ -104,8 +104,8 @@ test("evaluateKnowledgeShare returns true when grant has null expiry", () => {
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, true);
-  assert.equal(result.matchedGrantId, "grant_1");
+  assert.equal(result?.mode, "summary");
+  assert.equal(result?.matchedGrantId, "grant_1");
 });
 
 test("evaluateKnowledgeShare returns false when grant has invalid date string for expiresAt", () => {
@@ -125,8 +125,7 @@ test("evaluateKnowledgeShare returns false when grant has invalid date string fo
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
-  assert.equal(result.matchedGrantId, null);
+  assert.equal(result, null);
 });
 
 test("evaluateKnowledgeShare returns true when grant is valid and not expired", () => {
@@ -146,7 +145,7 @@ test("evaluateKnowledgeShare returns true when grant is valid and not expired", 
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, true);
+  assert.equal(result?.mode, "summary");
 });
 
 test("evaluateKnowledgeShare returns false when grant is expired", () => {
@@ -166,7 +165,7 @@ test("evaluateKnowledgeShare returns false when grant is expired", () => {
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
+  assert.equal(result, null);
 });
 
 test("evaluateKnowledgeShare returns false when grant is for different boundary", () => {
@@ -186,7 +185,7 @@ test("evaluateKnowledgeShare returns false when grant is for different boundary"
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
+  assert.equal(result, null);
 });
 
 test("evaluateKnowledgeShare returns false when grant is for different requester", () => {
@@ -206,7 +205,7 @@ test("evaluateKnowledgeShare returns false when grant is for different requester
     },
   ];
   const result = evaluateKnowledgeShare(boundary, "node_requester", grants, "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
+  assert.equal(result, null);
 });
 
 test("evaluateKnowledgeShare returns false when grants array is empty", () => {
@@ -217,5 +216,5 @@ test("evaluateKnowledgeShare returns false when grants array is empty", () => {
     isExternal: false,
   };
   const result = evaluateKnowledgeShare(boundary, "node_unauthorized", [], "2026-04-14T12:00:00.000Z");
-  assert.equal(result.allowed, false);
+  assert.equal(result, null);
 });

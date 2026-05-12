@@ -49,7 +49,7 @@ const PRESET_DEFINITIONS = {
 };
 
 function readRecommendedRegularConcurrency() {
-  return 1;
+  return 12;
 }
 
 function readConcurrency(envName, fallback) {

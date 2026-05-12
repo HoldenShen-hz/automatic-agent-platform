@@ -386,51 +386,8 @@ function computeMeanStdDev(values: number[]): { mean: number; stdDev: number } {
 }
 
 function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): number {
-  // Statistical composite scoring with changepoint detection and significance testing.
-  // Replaces hardcoded linear formula that lacked statistical rigor.
-  const costValues = metrics.map((m) => m.averageCostUsd);
-  const latencyValues = metrics.map((m) => m.averageLatencyMs);
-  const successRateValues = metrics.map((m) => m.successRate);
-
-  // Check for structural changepoints in each dimension
-  const costHasChangepoint = hasChangepoint(costValues);
-  const latencyHasChangepoint = hasChangepoint(latencyValues);
-  const successRateHasChangepoint = hasChangepoint(successRateValues);
-  const hasSignificantBreak = costHasChangepoint || latencyHasChangepoint || successRateHasChangepoint;
-
-  // Use bootstrapped confidence intervals for significance testing
-  const pValueThreshold = 0.05;
-  const costSignificant = isSignificantlyDifferent(metric.averageCostUsd, costValues, pValueThreshold);
-  const latencySignificant = isSignificantlyDifferent(metric.averageLatencyMs, latencyValues, pValueThreshold);
-  const successRateSignificant = isSignificantlyDifferent(metric.successRate, successRateValues, pValueThreshold);
-
-  // If no statistical significance detected, return 0 to avoid false positives
-  if (!costSignificant && !latencySignificant && !successRateSignificant) {
-    return 0;
-  }
-
-  // Compute z-scores with statistical weighting
-  const { mean: costMean, stdDev: costStdDev } = computeMeanStdDev(costValues);
-  const { mean: latencyMean, stdDev: latencyStdDev } = computeMeanStdDev(latencyValues);
-  const { mean: successRateMean, stdDev: successRateStdDev } = computeMeanStdDev(successRateValues);
-
-  const costZScore = costStdDev > 0 ? (metric.averageCostUsd - costMean) / costStdDev : 0;
-  const latencyZScore = latencyStdDev > 0 ? (metric.averageLatencyMs - latencyMean) / latencyStdDev : 0;
-  const successRateZScore = successRateStdDev > 0 ? (metric.successRate - successRateMean) / successRateStdDev : 0;
-
-  // Apply statistical weights: only count z-score contributions that pass significance test
-  // Higher successRate is beneficial (positive z-score), lower cost/latency is beneficial (negative z-score).
-  // Use 1/(1+|z|) weighting to downweight outliers and emphasize statistically significant differences.
-  const costWeight = costSignificant ? 1 / (1 + Math.abs(costZScore)) : 0;
-  const latencyWeight = latencySignificant ? 1 / (1 + Math.abs(latencyZScore)) : 0;
-  const successRateWeight = successRateSignificant ? 1 / (1 + Math.abs(successRateZScore)) : 0;
-
-  const totalWeight = costWeight + latencyWeight + successRateWeight;
-  if (totalWeight === 0) return 0;
-
-  // Composite score: normalize contributions by total statistical weight
-  const rawScore = successRateZScore - costZScore * costWeight - latencyZScore * latencyWeight;
-  return rawScore / Math.sqrt(costWeight * costWeight + latencyWeight * latencyWeight + successRateWeight * successRateWeight);
+  void metrics;
+  return metric.successRate - (metric.averageCostUsd * 0.1) - (metric.averageLatencyMs / 10_000);
 }
 
 /**

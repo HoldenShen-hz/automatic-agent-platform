@@ -180,9 +180,11 @@ export function createControlDirective(input: {
   metadata?: Record<string, unknown>;
   createdAt?: string;
 }): never {
-  // Fail-fast: legacy ControlDirective contract is forbidden
+  requireNonEmpty(input.targetRef, "control_directive.target_ref_required");
+  requireNonEmpty(input.reasonCode, "control_directive.reason_code_required");
+  requireNonEmpty(input.issuedBy, "control_directive.issued_by_required");
   throw new ValidationError(
-    "platform_contracts.legacy_control_directive_forbidden",
+    "control_directive.legacy_contract_forbidden",
     `ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead. ` +
     `See: https://docs.example.com/platform/contracts#control-directive-migration`,
     { userMessage: "Legacy ControlDirective contract is forbidden. Use OperationalDirective or DecisionDirective." },

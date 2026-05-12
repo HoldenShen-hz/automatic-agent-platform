@@ -159,6 +159,9 @@ export class TimeTravelDebugService {
   ): TimeTravelDebugSession {
     this.assertReplayAccess(accessContext);
     this.evictOldestSessionIfNeeded();
+    if (!this.eventStore.has(executionId)) {
+      this.eventStore.set(executionId, []);
+    }
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
@@ -342,7 +345,7 @@ export class TimeTravelDebugService {
         fromEventIndex,
         toEventIndex,
       },
-      currentEventIndex: toEventIndex,
+      currentEventIndex: session.currentEventIndex,
       variables,
       reachedBreakpoint,
     };

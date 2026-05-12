@@ -133,8 +133,7 @@ test("evaluateKnowledgeShare denies expired grant via date comparison", () => {
 
   const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result.allowed, false);
-  assert.strictEqual(result.reason, "no_matching_grant_or_not_allowed");
+  assert.strictEqual(result, null);
 });
 
 test("evaluateKnowledgeShare allows valid non-expired grant via date comparison", () => {
@@ -155,9 +154,8 @@ test("evaluateKnowledgeShare allows valid non-expired grant via date comparison"
 
   const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result.allowed, true);
-  assert.strictEqual(result.reason, "active_grant");
-  assert.strictEqual(result.matchedGrantId, "grant_valid");
+  assert.deepStrictEqual(result, { mode: "summary" });
+  assert.strictEqual(result?.matchedGrantId, "grant_valid");
 });
 
 test("evaluateKnowledgeShare allows grant when expiresAt is null/undefined", () => {
@@ -178,6 +176,5 @@ test("evaluateKnowledgeShare allows grant when expiresAt is null/undefined", () 
 
   const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.strictEqual(result.allowed, true);
-  assert.strictEqual(result.reason, "active_grant");
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
