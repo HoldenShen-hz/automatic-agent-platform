@@ -386,6 +386,43 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
 // ---------------------------------------------------------------------------
 
 export class MockExecuteBridge implements ExecuteBridge {
+  private resolvePlanId(plan: Plan | Record<string, unknown>): string {
+    const planId = plan.planId;
+    if (typeof planId === "string" && planId.length > 0) {
+      return planId;
+    }
+    const bundleId = plan.planGraphBundleId;
+    if (typeof bundleId === "string" && bundleId.length > 0) {
+      return bundleId;
+    }
+    return newId("mock_plan");
+  }
+
+  private resolvePlanSteps(plan: Plan | Record<string, unknown>): PlanStep[] {
+    if (Array.isArray(plan.steps)) {
+      return plan.steps as PlanStep[];
+    }
+    const graph = plan.graph as { nodes?: unknown[] } | undefined;
+    const nodes = Array.isArray(graph?.nodes) ? graph.nodes : [];
+    return nodes.map((node, index) => {
+      const candidate = node as Record<string, unknown>;
+      return {
+        stepId: typeof candidate.nodeId === "string" ? candidate.nodeId : `step_${index + 1}`,
+        action: typeof candidate.nodeType === "string" ? candidate.nodeType : "execute",
+        title: typeof candidate.nodeType === "string" ? candidate.nodeType : "execute",
+        inputs: {},
+        outputs: [],
+        dependencies: [],
+        status: "pending",
+        timeout: typeof candidate.timeoutMs === "number" ? candidate.timeoutMs : 30000,
+        retryPolicy: {
+          maxRetries: 0,
+          backoffMs: 0,
+        },
+      } satisfies PlanStep;
+    });
+  }
+
   async executeStep(step: PlanStep, _context: ExecutionContext): Promise<StepResult> {
     return {
       stepId: step.stepId,
@@ -402,7 +439,9 @@ export class MockExecuteBridge implements ExecuteBridge {
   }
 
   async executePlan(plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
-    const results = plan.steps.map((step, index) => ({
+    const planId = this.resolvePlanId(plan as unknown as Record<string, unknown>);
+    const steps = this.resolvePlanSteps(plan as unknown as Record<string, unknown>);
+    const results = steps.map((step, index) => ({
       stepId: step.stepId,
       status: "succeeded" as const,
       durationMs: 100 + index * 50,
@@ -416,7 +455,7 @@ export class MockExecuteBridge implements ExecuteBridge {
     }));
 
     return {
-      planId: plan.planId,
+      planId,
       results,
       totalDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
       totalTokenCost: results.reduce((s, r) => s + r.tokenCost, 0),
@@ -470,7 +509,9 @@ export class MockExecuteBridge implements ExecuteBridge {
   }
 
   async executeChildRun(plan: Plan, _context: ExecutionContext, _parentRunId: string): Promise<ExecutionResult> {
-    const results = plan.steps.map((step, index) => ({
+    const planId = this.resolvePlanId(plan as unknown as Record<string, unknown>);
+    const steps = this.resolvePlanSteps(plan as unknown as Record<string, unknown>);
+    const results = steps.map((step, index) => ({
       stepId: step.stepId,
       status: "succeeded" as const,
       durationMs: 100 + index * 50,
@@ -484,7 +525,7 @@ export class MockExecuteBridge implements ExecuteBridge {
     }));
 
     return {
-      planId: plan.planId,
+      planId,
       results,
       totalDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
       totalTokenCost: results.reduce((s, r) => s + r.tokenCost, 0),

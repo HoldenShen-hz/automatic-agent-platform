@@ -320,6 +320,15 @@ export class OapeflirLoopService {
       let loopReplanDecision: ReplanningDecision;
       let loopGraphPatch: GraphPatch | null = null;
       let loopEvaluationReport: EvaluationReport;
+      const constraintPack = input.constraintPack ?? {
+        policyIds: [],
+        approvalMode: "none" as const,
+        autonomyMode: "full_auto" as const,
+        tool_policy: { allowedTools: [] as const },
+        sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: 300000 },
+        approvalRequirement: { requiredForRiskClass: [] as const, approverRoles: [] as const, escalationTimeoutMs: 60000 },
+      };
+      const loopController = new HarnessLoopController(constraintPack, {}, { startedAt: Date.now() });
 
       // R5-1: Build PlanGraphBundle directly from PlanBuilder (canonical output per §13.7)
       // R5-9: Enable graph normalization and risk propagation per §13.9
@@ -440,6 +449,8 @@ export class OapeflirLoopService {
           loopQualityGate.reasonCodes.join(","),
         );
         loopReplanDecision = this.replanning.decide(loopPlan, loopFeedback, loopReplanTrigger);
+        const iterationCost = loopStepOutputs.reduce((sum, output) => sum + output.systemTelemetry.tokensUsed, 0);
+        loopController.recordIteration(iterationCost);
 
         // R5-12: Build GraphPatch if replan is needed
         loopGraphPatch = loopReplanDecision.shouldReplan ? this.buildGraphPatch(loopPlan, loopPlan.version + 1) : null;
@@ -448,6 +459,10 @@ export class OapeflirLoopService {
         // such as approval/block must return to the caller instead of spinning back
         // into a fresh plan cycle with the same feedback.
         if (!loopReplanDecision.shouldReplan) {
+          break;
+        }
+        loopController.recordReplan();
+        if (loopController.getGuardViolation() !== null) {
           break;
         }
 
@@ -739,28 +754,14 @@ export class OapeflirLoopService {
 
       // R5-4: Integrate HarnessLoopController for loop control decisions
       const harnessDecision = await this.runStage<HarnessDecision | null>("harness_decide", async () => {
-        // R5-4: Use the input ConstraintPack (not a default) so loop limits are respected
-        const constraintPack = input.constraintPack ?? {
-          policyIds: [],
-          approvalMode: "none" as const,
-          autonomyMode: "full_auto" as const,
-          tool_policy: { allowedTools: [] as const },
-          sandboxRequirement: { sandboxMode: "none" as const, timeoutMs: 300000 },
-          approvalRequirement: { requiredForRiskClass: [] as const, approverRoles: [] as const, escalationTimeoutMs: 60000 },
-        };
-        const controller = new HarnessLoopController(constraintPack, {}, { startedAt: Date.now() });
-
         // R5-4: Evaluate loop progress using controller with accurate remaining iterations
-        const loopProgress = controller.evaluateProgress(
+        const loopProgress = loopController.evaluateProgress(
           loopReplanDecision.shouldReplan ? "replan" : "accept",
           constraintPack.budgetEnvelope ? constraintPack.budgetEnvelope.maxSteps > 0 : true,
         );
 
         // R5-4: Check all loop guards and abort if any limit is breached
-        const iterationViolation = controller.checkIterationLimit();
-        const costViolation = controller.checkCostLimit();
-        const durationViolation = controller.checkDurationLimit();
-        const guardViolation = iterationViolation ?? costViolation ?? durationViolation;
+        const guardViolation = loopController.getGuardViolation();
 
         if (guardViolation !== null) {
           return {
