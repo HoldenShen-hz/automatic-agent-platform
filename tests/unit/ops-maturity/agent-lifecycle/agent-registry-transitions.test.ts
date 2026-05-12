@@ -93,7 +93,7 @@ test("VALID_LIFECYCLE_TRANSITIONS: testing transitions", () => {
 
 test("VALID_LIFECYCLE_TRANSITIONS: staging transitions", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS.get("staging");
-  assert.deepEqual(transitions, ["canary", "testing"]);
+  assert.deepEqual(transitions, ["canary", "testing", "active"]);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS: canary transitions", () => {
@@ -118,7 +118,7 @@ test("VALID_LIFECYCLE_TRANSITIONS: deprecated transitions", () => {
 
 test("VALID_LIFECYCLE_TRANSITIONS: archived transitions", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS.get("archived");
-  assert.deepEqual(transitions, ["removed"]);
+  assert.deepEqual(transitions, ["removed", "paused"]);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS: removed has no transitions", () => {
@@ -153,9 +153,9 @@ test("canAutoPromote: returns true only for canary state", () => {
   assert.equal(canAutoPromote("draft"), false);
 });
 
-test("isTerminalState: returns true for archived but not removed (removed is sink)", () => {
+test("isTerminalState: returns true for archived and removed end-of-life states", () => {
   assert.equal(isTerminalState("archived"), true);
-  assert.equal(isTerminalState("removed"), false, "removed is a sink state, not a terminal state");
+  assert.equal(isTerminalState("removed"), true);
   assert.equal(isTerminalState("deprecated"), false);
   assert.equal(isTerminalState("active"), false);
 });

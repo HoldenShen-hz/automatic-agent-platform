@@ -280,7 +280,7 @@ test("NlEntryService.buildTask returns non-null requestEnvelope only when confir
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "show current deployment status for staging",
+    message: "list engineering incidents for staging on 2026-05-12",
   });
 
   // Only after confirmation (per R5-15/R9-32) should requestEnvelope be populated
@@ -372,7 +372,7 @@ test("NlEntryService.buildTask derives correct conversationState", async () => {
   const lowRiskTask = await lowRiskService.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "show current deployment status for staging",
+    message: "list engineering incidents for staging on 2026-05-12",
   });
 
   assert.equal(lowRiskTask.conversationState, "Executing");
@@ -398,7 +398,7 @@ test("NlEntryService.buildTask derives correct conversationState", async () => {
     message: "delete all production data",
   });
 
-  assert.equal(highRiskTask.conversationState, "Confirming");
+  assert.equal(highRiskTask.conversationState, "Clarifying");
 });
 
 test("NlEntryService.buildTask includes cost estimate in result", async () => {
@@ -519,7 +519,7 @@ test("NlEntryService.buildTask populates requestEnvelope metadata correctly", as
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "list active deployments for staging",
+    message: "list engineering incidents for staging on 2026-05-12",
   });
 
   assert.ok(task.requestEnvelope !== null);
@@ -534,7 +534,7 @@ test("NlEntryService.buildTask populates requestEnvelope payload correctly", asy
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "show current deployment status for staging",
+    message: "list engineering incidents for staging on 2026-05-12",
   });
 
   assert.ok(task.requestEnvelope !== null);
@@ -560,10 +560,10 @@ test("NlEntryService.buildTask generates human-readable summary", async () => {
   assert.ok(task.humanSummary.includes("$"));
 });
 
-test("NlEntryService.getClarificationThreshold returns configured value", async () => {
+test("NlEntryService.getClarificationThreshold honors the minimum safety floor", async () => {
   const service = new NlEntryService({ clarificationThreshold: 0.75 });
 
-  assert.equal(service.getClarificationThreshold(), 0.75);
+  assert.equal(service.getClarificationThreshold(), 0.8);
 });
 
 test("NlEntryService.shouldRequestClarification returns true when confidence below threshold", async () => {

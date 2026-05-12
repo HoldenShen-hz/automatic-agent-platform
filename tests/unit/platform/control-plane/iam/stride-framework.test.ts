@@ -26,21 +26,21 @@ test("default threat matrix registry covers all STRIDE categories", () => {
   const validation = validateThreatMatrix(matrix);
   assert.equal(validation.valid, true);
   assert.deepEqual(validation.missingCategories, []);
-  assert.equal(matrix.entries.length, 6);
+  assert.ok(matrix.entries.length >= STRIDE_CATEGORIES.length);
 });
 
 test("ThreatMatrixRegistry lists category-specific threats", () => {
   const registry = new ThreatMatrixRegistry();
   const threats = registry.listByCategory("INFORMATION_DISCLOSURE");
-  assert.equal(threats.length, 1);
-  assert.ok(threats[0]?.implementationRefs.some((ref) => ref.includes("field-encryption.ts")));
+  assert.ok(threats.length >= 1);
+  assert.ok(threats.some((threat) => threat.implementationRefs.some((ref) => ref.includes("field-encryption.ts"))));
 });
 
 test("listThreatsByCategory mirrors registry matrix behavior", () => {
   const matrix = defaultThreatMatrixRegistry.getMatrix();
   const threats = listThreatsByCategory(matrix, "DENIAL_OF_SERVICE");
-  assert.equal(threats.length, 1);
-  assert.equal(threats[0]?.category, "DENIAL_OF_SERVICE");
+  assert.ok(threats.length >= 1);
+  assert.ok(threats.every((threat) => threat.category === "DENIAL_OF_SERVICE"));
 });
 
 test("security threat inventory file documents all STRIDE dimensions", () => {

@@ -326,11 +326,15 @@ test("buildTask confirmation workflow for typical request", async () => {
 
 test("buildTask sets requestEnvelope null when confirmation required", async () => {
   const service = new NlEntryService({
-    intakeRouter: createMockIntakeRouter({ confidence: 0.5 }) as any,
+    intakeRouter: createMockIntakeRouter({
+      intent: "modify",
+      confidence: 0.98,
+    }) as any,
   });
 
-  const result = await service.buildTask(createTestRequest());
+  const result = await service.buildTask(createTestRequest({ message: "delete all production data" }));
 
+  assert.equal(result.confirmationRequired, true);
   assert.equal(result.requestEnvelope, null);
 });
 
@@ -381,10 +385,13 @@ test("buildTask exceeds max clarification rounds", async () => {
 
 test("buildTask clarificationSession created when confirmation required", async () => {
   const service = new NlEntryService({
-    intakeRouter: createMockIntakeRouter({ confidence: 0.5 }) as any,
+    intakeRouter: createMockIntakeRouter({
+      intent: "modify",
+      confidence: 0.98,
+    }) as any,
   });
 
-  const result = await service.buildTask(createTestRequest());
+  const result = await service.buildTask(createTestRequest({ message: "delete all production data" }));
 
   assert.ok(result.clarificationSession);
   assert.ok(result.clarificationSession?.sessionId);

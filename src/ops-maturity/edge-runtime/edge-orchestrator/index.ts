@@ -3,6 +3,10 @@ import type { PlanGraph } from "../../../platform/contracts/executable-contracts
 export interface EdgePlanGraphBundle {
   // R6-22 FIX: Use PlanGraph structure instead of linear orderedTaskIds for proper graph semantics
   readonly planGraph: PlanGraph;
+  /** @deprecated compatibility alias; use planGraph */
+  readonly planGraphBundle?: Readonly<{ readonly graph: PlanGraph }>;
+  /** @deprecated compatibility alias; use planGraph.nodes/input ordering */
+  readonly orderedTaskIds?: readonly string[];
   readonly syncRequired: boolean;
   readonly priority: "low" | "normal" | "high";
 }
@@ -16,9 +20,9 @@ export function buildEdgeExecutionPlan(
 ): EdgePlanGraphBundle {
   // Build a proper PlanGraph structure with sequential edges
   const nodes = taskIds.map((taskId, idx) => ({
-    nodeId: `edge_node_${idx}`,
+    nodeId: `edge_node_${taskId}`,
     nodeType: "tool" as const,
-    inputRefs: idx === 0 ? [`task:${taskId}`] : [`edge_node_${idx - 1}`],
+    inputRefs: idx === 0 ? [`task:${taskId}`] : [`edge_node_${taskIds[idx - 1]}`],
     outputSchemaRef: `schema:edge.${taskId}`,
     riskClass: "medium" as const,
     budgetIntent: { amount: 1000, currency: "credits", resourceKinds: ["compute"] as const },
@@ -29,8 +33,8 @@ export function buildEdgeExecutionPlan(
 
   const edges = taskIds.slice(1).map((_, idx) => ({
     edgeId: `edge_edge_${idx}`,
-    fromNodeId: `edge_node_${idx}`,
-    toNodeId: `edge_node_${idx + 1}`,
+    fromNodeId: `edge_node_${taskIds[idx]}`,
+    toNodeId: `edge_node_${taskIds[idx + 1]}`,
     condition: { type: "always" as const },
     dependencyType: "hard" as const,
   }));
@@ -39,14 +43,16 @@ export function buildEdgeExecutionPlan(
     graphId: `edge_graph_${taskIds.join(":")}`,
     nodes,
     edges,
-    entryNodeIds: taskIds.length > 0 ? [`edge_node_0`] : [],
-    terminalNodeIds: taskIds.length > 0 ? [`edge_node_${taskIds.length - 1}`] : [],
+    entryNodeIds: taskIds.length > 0 ? [`edge_node_${taskIds[0]}`] : [],
+    terminalNodeIds: taskIds.length > 0 ? [`edge_node_${taskIds[taskIds.length - 1]}`] : [],
     joinStrategy: "first_success",
     graphHash: `edge_hash_${taskIds.join(":")}`,
   };
 
   return {
     planGraph,
+    planGraphBundle: { graph: planGraph },
+    orderedTaskIds: [...taskIds],
     syncRequired: true,
     priority,
   };

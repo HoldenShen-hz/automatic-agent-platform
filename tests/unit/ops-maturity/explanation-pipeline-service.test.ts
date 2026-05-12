@@ -25,7 +25,9 @@ test("ExplanationPipelineService preserves facts across depths and redacts unaut
 
   const brief = service.generate(request, "L1");
   const standard = service.generate(request, "L2");
-  const audit = service.generate(request, "L3");
+  const audit = service.generate(request, "L3", {
+    forensicBudgetReservationId: "budget:l3:redaction",
+  });
 
   assert.equal(brief.rationale.summary, standard.rationale.summary);
   assert.equal(standard.rationale.summary, audit.rationale.summary);

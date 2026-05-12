@@ -76,17 +76,22 @@ test("ModelBindingComponentSchema parses fallback chain", () => {
 
 test("TrustProfileComponentSchema applies defaults", () => {
   const result = TrustProfileComponentSchema.parse({});
-  assert.equal(result.initialLevel, "suggestion");
+  assert.equal(result.initialLevel, "no_write");
   assert.equal(result.scoringConfig.successWeight, 0.4);
   assert.equal(result.scoringConfig.latencyWeight, 0.3);
   assert.equal(result.scoringConfig.errorWeight, 0.3);
 });
 
 test("TrustProfileComponentSchema accepts all autonomy levels", () => {
-  const levels = ["suggestion", "supervised", "semi_auto", "full_auto"] as const;
-  for (const level of levels) {
+  const levels = [
+    ["suggestion", "no_write"],
+    ["supervised", "manual_only"],
+    ["semi_auto", "supervised_auto"],
+    ["full_auto", "full_auto"],
+  ] as const;
+  for (const [level, expected] of levels) {
     const result = TrustProfileComponentSchema.parse({ initialLevel: level });
-    assert.equal(result.initialLevel, level);
+    assert.equal(result.initialLevel, expected);
   }
 });
 
@@ -110,7 +115,7 @@ test("TriggerPolicySchema accepts all trigger types", () => {
 
 test("AutonomyConfigSchema applies defaults", () => {
   const result = AutonomyConfigSchema.parse({});
-  assert.equal(result.maxAutomationLevel, "supervised");
+  assert.equal(result.maxAutomationLevel, "manual_only");
   assert.equal(result.requireHumanApprovalForHighRisk, true);
   assert.equal(result.maxRetriesBeforeApproval, 3);
 });
@@ -147,9 +152,9 @@ test("AgentComponentsSchema parses complete components", () => {
   assert.equal(result.pack.packId, "pack-1");
   assert.equal(result.promptBundle.bundleId, "bundle-1");
   assert.equal(result.modelBinding.model, "gpt-4");
-  assert.equal(result.trustProfile.initialLevel, "supervised");
+  assert.equal(result.trustProfile.initialLevel, "manual_only");
   assert.equal(result.triggerSet.length, 1);
-  assert.equal(result.autonomyConfig.maxAutomationLevel, "semi_auto");
+  assert.equal(result.autonomyConfig.maxAutomationLevel, "supervised_auto");
 });
 
 test("AgentComponentsSchema applies defaults for triggerSet when not provided", () => {
@@ -162,7 +167,7 @@ test("AgentComponentsSchema applies defaults for triggerSet when not provided", 
   };
   const result = AgentComponentsSchema.parse(components);
   assert.deepStrictEqual(result.triggerSet, []);
-  assert.equal(result.autonomyConfig.maxAutomationLevel, "supervised");
+  assert.equal(result.autonomyConfig.maxAutomationLevel, "manual_only");
 });
 
 // ---------------------------------------------------------------------------

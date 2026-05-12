@@ -121,11 +121,12 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(simulateCostOptimization(100, 20), 80);
 
   assert.equal(buildOfflineExecutionRecord("edge_1", "task_1", "2026-04-20T00:00:00.000Z").syncRequired, true);
-  assert.deepEqual(buildEdgeExecutionPlan(["a", "b"]), {
-    orderedTaskIds: ["a", "b"],
-    syncRequired: true,
-    priority: "normal",
-  });
+  const edgePlan = buildEdgeExecutionPlan(["a", "b"]);
+  assert.deepEqual(edgePlan.orderedTaskIds, ["a", "b"]);
+  assert.equal(edgePlan.syncRequired, true);
+  assert.equal(edgePlan.priority, "normal");
+  assert.deepEqual(edgePlan.planGraph.entryNodeIds, ["edge_node_a"]);
+  assert.deepEqual(edgePlan.planGraph.nodes.map((node) => node.nodeId), ["edge_node_a", "edge_node_b"]);
   assert.equal(
     selectEdgeLocalModel([{ modelId: "local-vision", modalities: ["image", "text"] }], "image")?.modelId,
     "local-vision",

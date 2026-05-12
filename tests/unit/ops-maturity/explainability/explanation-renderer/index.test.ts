@@ -53,11 +53,12 @@ test("buildDecisionTree includes causal link nodes", () => {
 
   const tree = buildDecisionTree("Process", causalLinks, [], []);
 
-  const sourceNodes = tree.allNodes.filter((n) => n.nodeId.startsWith("source-"));
-  const targetNodes = tree.allNodes.filter((n) => n.nodeId.startsWith("target-"));
+  const causalNodes = tree.allNodes.filter((n) => n.nodeId.startsWith("causal-"));
 
-  assert.ok(sourceNodes.length >= 2);
-  assert.ok(targetNodes.length >= 2);
+  assert.ok(causalNodes.length >= 3);
+  assert.ok(causalNodes.some((node) => node.label === "Input"));
+  assert.ok(causalNodes.some((node) => node.label === "Processing"));
+  assert.ok(causalNodes.some((node) => node.label === "Output"));
 });
 
 test("buildDecisionTree includes evidence nodes", () => {

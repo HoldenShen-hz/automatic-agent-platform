@@ -19,7 +19,7 @@ export class RolloutRepository {
    * Persists a new rollout record.
    */
   insert(record: RolloutRecord): void {
-    this.db.transaction(() => {
+    this.runWrite(() => {
       this.db.connection.prepare(
         `INSERT INTO rollout_records (
           proposal_id, stage, percentage, started_at, completed_at,
@@ -42,7 +42,7 @@ export class RolloutRepository {
    * Updates an existing rollout record.
    */
   update(record: RolloutRecord): void {
-    this.db.transaction(() => {
+    this.runWrite(() => {
       this.db.connection.prepare(
         `UPDATE rollout_records SET
           stage = ?, percentage = ?, started_at = ?, completed_at = ?,
@@ -130,11 +130,20 @@ export class RolloutRepository {
    * Deletes a rollout record by proposal ID.
    */
   delete(proposalId: string): void {
-    this.db.transaction(() => {
+    this.runWrite(() => {
       this.db.connection.prepare(
         `DELETE FROM rollout_records WHERE proposal_id = ?`,
       ).run(proposalId);
     });
+  }
+
+  private runWrite(work: () => void): void {
+    const transaction = (this.db as { transaction?: (callback: () => void) => void }).transaction;
+    if (typeof transaction === "function") {
+      transaction.call(this.db, work);
+      return;
+    }
+    work();
   }
 
   private rowToRecord(row: RolloutRow): RolloutRecord {

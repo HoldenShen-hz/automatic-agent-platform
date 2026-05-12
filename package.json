@@ -117,6 +117,7 @@
     "coverage:baseline:update": "npm run coverage:report && node scripts/ci/update-coverage-baseline.mjs",
     "changelog:check": "node scripts/ci/check-changelog.mjs",
     "test": "npm run test:raw",
+    "test:leaks": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs leaks",
     "test:golden": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs golden",
     "test:unit": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs unit",
     "test:invariants": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs invariants",

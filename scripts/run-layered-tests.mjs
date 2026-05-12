@@ -4,10 +4,18 @@ import { join, relative, resolve } from "node:path";
 
 const workspaceRoot = process.cwd();
 const testsRoot = resolve(workspaceRoot, "tests");
-const regularConcurrency = readConcurrency("AA_TEST_CONCURRENCY", 12);
+const defaultRegularConcurrency = readRecommendedRegularConcurrency();
+const regularConcurrency = readConcurrency("AA_TEST_CONCURRENCY", defaultRegularConcurrency);
+const heavyweightConcurrency = readConcurrency("AA_HEAVY_TEST_CONCURRENCY", Math.max(1, Math.min(2, regularConcurrency)));
 const performanceConcurrency = readConcurrency("AA_PERF_TEST_CONCURRENCY", 1);
+const leakConcurrency = readConcurrency("AA_LEAK_TEST_CONCURRENCY", 1);
+const testMaxOldSpaceSizeMb = readOptionalPositiveInteger("AA_TEST_MAX_OLD_SPACE_MB", 1536);
 
 const LAYER_DEFINITIONS = {
+  leaks: {
+    prefixes: ["tests/leaks/"],
+    concurrency: leakConcurrency,
+  },
   unit: {
     prefixes: ["tests/unit/"],
     concurrency: regularConcurrency,
@@ -18,7 +26,7 @@ const LAYER_DEFINITIONS = {
   },
   integration: {
     prefixes: ["tests/integration/"],
-    concurrency: regularConcurrency,
+    concurrency: heavyweightConcurrency,
   },
   golden: {
     prefixes: ["tests/golden/"],
@@ -26,7 +34,7 @@ const LAYER_DEFINITIONS = {
   },
   e2e: {
     prefixes: ["tests/e2e/"],
-    concurrency: regularConcurrency,
+    concurrency: heavyweightConcurrency,
   },
   performance: {
     prefixes: ["tests/performance/"],
@@ -35,10 +43,14 @@ const LAYER_DEFINITIONS = {
 };
 
 const PRESET_DEFINITIONS = {
-  smoke: ["unit", "invariants"],
-  dev: ["unit", "invariants", "golden"],
-  full: ["unit", "invariants", "integration", "golden", "e2e", "performance"],
+  smoke: ["leaks", "unit", "invariants"],
+  dev: ["leaks", "unit", "invariants", "golden"],
+  full: ["leaks", "unit", "invariants", "integration", "golden", "e2e", "performance"],
 };
+
+function readRecommendedRegularConcurrency() {
+  return 1;
+}
 
 function readConcurrency(envName, fallback) {
   const raw = process.env[envName];
@@ -49,6 +61,22 @@ function readConcurrency(envName, fallback) {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${envName} must be a positive integer, received: ${raw}`);
+  }
+  return parsed;
+}
+
+function readOptionalPositiveInteger(envName, fallback) {
+  const raw = process.env[envName];
+  if (raw == null || raw.trim().length === 0) {
+    return fallback;
+  }
+  if (raw === "0") {
+    return null;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${envName} must be a positive integer or 0, received: ${raw}`);
   }
   return parsed;
 }
@@ -123,6 +151,30 @@ function selectFilesForLayer(allTestFiles, layerName) {
     .map((relativePath) => resolve(workspaceRoot, relativePath));
 }
 
+function hasExecArg(args, prefix) {
+  return args.some((arg) => arg === prefix || arg.startsWith(`${prefix}=`));
+}
+
+function buildNodeArgsForLayer(layerName, extraNodeArgs) {
+  const nodeArgs = [...process.execArgv];
+
+  if (layerName === "leaks" && !hasExecArg(nodeArgs, "--expose-gc")) {
+    nodeArgs.push("--expose-gc");
+  }
+  if (testMaxOldSpaceSizeMb != null && !hasExecArg(nodeArgs, "--max-old-space-size")) {
+    nodeArgs.push(`--max-old-space-size=${testMaxOldSpaceSizeMb}`);
+  }
+
+  return [
+    ...nodeArgs,
+    "--import",
+    "tsx",
+    "--test",
+    `--test-concurrency=${LAYER_DEFINITIONS[layerName].concurrency}`,
+    ...extraNodeArgs,
+  ];
+}
+
 function runLayer(layerName, files, extraNodeArgs) {
   if (files.length === 0) {
     console.log(`[test-layer] ${layerName}: no test files matched, skipping`);
@@ -130,12 +182,13 @@ function runLayer(layerName, files, extraNodeArgs) {
   }
 
   const { concurrency } = LAYER_DEFINITIONS[layerName];
-  console.log(`[test-layer] ${layerName}: ${files.length} files, concurrency=${concurrency}`);
+  const heapLabel = testMaxOldSpaceSizeMb == null ? "disabled" : `${testMaxOldSpaceSizeMb}MB`;
+  console.log(`[test-layer] ${layerName}: ${files.length} files, concurrency=${concurrency}, max-old-space-size=${heapLabel}`);
 
   return new Promise((resolvePromise) => {
     const child = spawn(
       process.execPath,
-      ["--import", "tsx", "--test", `--test-concurrency=${concurrency}`, ...extraNodeArgs, ...files],
+      [...buildNodeArgsForLayer(layerName, extraNodeArgs), ...files],
       {
         cwd: process.cwd(),
         env: process.env,

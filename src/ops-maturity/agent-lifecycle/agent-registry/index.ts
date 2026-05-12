@@ -74,6 +74,17 @@ export const AgentLifecycleStateSchema = z.string().transform((value, ctx): Inte
   return parsed.data;
 });
 
+const ALLOWED_UNIFIED_RUNTIME_MODES = new Set<UnifiedRuntimeMode>([
+  "full_auto",
+  "supervised_auto",
+  "read_only",
+  "no_write",
+  "no_external_call",
+  "no_rollout",
+  "manual_only",
+  "incident_mode",
+]);
+
 function normalizeAgentRuntimeMode(value: string): UnifiedRuntimeMode {
   switch (value) {
     case "suggestion":
@@ -86,7 +97,17 @@ function normalizeAgentRuntimeMode(value: string): UnifiedRuntimeMode {
   }
 }
 
-const AgentRuntimeModeSchema = z.string().transform((value) => normalizeAgentRuntimeMode(value));
+const AgentRuntimeModeSchema = z.string().transform((value, ctx) => {
+  const normalized = normalizeAgentRuntimeMode(value);
+  if (!ALLOWED_UNIFIED_RUNTIME_MODES.has(normalized)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid runtime mode: ${value}`,
+    });
+    return z.NEVER;
+  }
+  return normalized;
+});
 
 export const PackComponentSchema = z.object({
   packId: z.string().min(1),

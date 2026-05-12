@@ -247,6 +247,7 @@ export class DashboardAggregationService implements DashboardPort {
     const tasks = this.options.taskSource.list(limit);
     const system = this.options.systemSource.build();
     const attentionQueue = this.buildAttentionQueue(tasks, system);
+    const queueDepth = resolveDashboardQueueDepth(system);
     const recentCompletions = tasks.filter((item) => item.taskStatus === "done").slice(0, 5);
     const summary: DailySummary = {
       tasksCompleted: recentCompletions.length,
@@ -256,7 +257,7 @@ export class DashboardAggregationService implements DashboardPort {
       agentUptimePercent: system.healthStatus === "ok" ? 99 : system.healthStatus === "degraded" ? 95 : 85,
       highlights: [
         `${recentCompletions.length} tasks completed`,
-        `${system.queueBacklog.size} tasks currently queued`,
+        `${queueDepth} tasks currently queued`,
       ],
       concerns: attentionQueue.map((item) => item.title).slice(0, 3),
       nlSummaryMetadata: {
@@ -308,6 +309,8 @@ export class DashboardAggregationService implements DashboardPort {
     const tasks = this.options.taskSource.list(limit);
     const system = this.options.systemSource.build();
     const incidents = this.buildAttentionQueue(tasks, system).filter((item) => item.itemType === "incident");
+    const queueDepth = resolveDashboardQueueDepth(system);
+    const degradedQueue = resolveDashboardQueueDegraded(system) || system.healthStatus !== "ok";
     return {
       infrastructureHealth: [
         {
@@ -326,8 +329,8 @@ export class DashboardAggregationService implements DashboardPort {
       queueMetrics: [
         {
           queueName: "default",
-          depth: system.queueBacklog.size,
-          avgWaitMs: system.degraded ? 2000 : 250,
+          depth: queueDepth,
+          avgWaitMs: degradedQueue ? 2000 : 250,
           dlqCount: 0,
         },
       ],
@@ -449,4 +452,22 @@ export class DashboardAggregationService implements DashboardPort {
       };
     });
   }
+}
+
+function resolveDashboardQueueDepth(system: DashboardSystemSituation): number {
+  if (typeof system.queueDepth === "number") {
+    return system.queueDepth;
+  }
+  return typeof system.queueBacklog.size === "number"
+    ? system.queueBacklog.size
+    : 0;
+}
+
+function resolveDashboardQueueDegraded(system: DashboardSystemSituation): boolean {
+  if (typeof system.degraded === "boolean") {
+    return system.degraded;
+  }
+  return "degraded" in system.queueBacklog
+    ? (system.queueBacklog as { degraded?: boolean }).degraded ?? false
+    : false;
 }

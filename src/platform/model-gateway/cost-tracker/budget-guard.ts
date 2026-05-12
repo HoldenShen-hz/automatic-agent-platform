@@ -569,7 +569,7 @@ export class BudgetGuard {
     const projected = input.currentTaskCostUsd + input.nextEstimatedCostUsd;
     const remaining = Math.max(0, input.policy.maxTaskCostUsd - projected);
 
-    if (projected >= input.policy.maxTaskCostUsd) {
+    if (projected > input.policy.maxTaskCostUsd) {
       return {
         allowed: false,
         requiresApproval: false,

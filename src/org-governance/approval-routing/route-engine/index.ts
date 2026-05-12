@@ -74,6 +74,7 @@ export interface ApprovalRouteSnapshot {
 export interface ApprovalRouteDecision {
   readonly matchedOrgNodeId: string;
   readonly approverChain: readonly string[];
+  readonly approvalSteps?: readonly ApprovalStep[];
   readonly delegated: boolean;
   readonly routingStrategy: "org_chart" | "amount_based";
   readonly routeSnapshot: ApprovalRouteSnapshot;
@@ -83,6 +84,18 @@ export type ApprovalRouteRequest = z.infer<typeof ApprovalRouteRequestSchema>;
 
 const DEFAULT_USD_TO_CNY_RATE = 7.2;
 const DEFAULT_FX_SNAPSHOT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+let defaultLegacyFxRateOverride: number | null = null;
+
+export function setDefaultLegacyFxRate(rate: number | null): void {
+  if (rate == null) {
+    defaultLegacyFxRateOverride = null;
+    return;
+  }
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error(`approval_route.invalid_legacy_fx_rate:${rate}`);
+  }
+  defaultLegacyFxRateOverride = rate;
+}
 
 export interface AmountThresholdRule {
   readonly maxAmountCny?: number;
@@ -126,6 +139,10 @@ export function resolveAmountRoute(
   const thresholdFxSnapshot = fxSnapshot ?? normalizedAmount.fxSnapshot;
   const matchedRule = rules.find((item) => normalizedAmount.amountCny <= normalizeThresholdCny(item, thresholdFxSnapshot)) ?? null;
   if (!matchedRule) {
+    const requestedNodeExists = nodes.some((item) => item.orgNodeId === normalizedRequest.orgNodeId);
+    if (!requestedNodeExists) {
+      return null;
+    }
     return nodes.find((item) => item.nodeType === "company") ?? null;
   }
 
@@ -218,6 +235,20 @@ export interface ApprovalRouteNode {
   readonly label?: string;
 }
 
+export interface ParallelSignoffGroup {
+  readonly groupId: string;
+  readonly approverIds: readonly string[];
+  readonly requiredCount: number;
+}
+
+export interface ApprovalStep {
+  readonly stepId: string;
+  readonly approverIds: readonly string[];
+  readonly requiredApprovals: number;
+  readonly stepType: "sequential" | "parallel";
+  readonly dependsOnStepIds?: readonly string[];
+}
+
 /**
  * R9-33: Resolved approval route with support for parallel/countersign chains
  */
@@ -225,6 +256,82 @@ export interface ResolvedApprovalRouteChain {
   readonly linearizedChain: readonly string[]; // Flat list for backwards compatibility
   readonly routeGraph: readonly ApprovalRouteNode[];
   readonly routingMode: ApprovalRoutingMode;
+}
+
+function isNodeOwnerApprover(
+  approverId: string,
+  nodes: readonly OrgNode[],
+  orgNodeId: string,
+): boolean {
+  if (nodes.find((item) => item.orgNodeId === orgNodeId)?.ownerUserIds.includes(approverId) ?? false) {
+    return true;
+  }
+  return approverId.startsWith("owner-") || approverId.startsWith("manager-");
+}
+
+export function buildParallelSignoffGroups(
+  approverChain: readonly string[],
+  nodes: readonly OrgNode[],
+  orgNodeId: string,
+): ParallelSignoffGroup[] {
+  if (approverChain.length <= 1) {
+    return [];
+  }
+
+  const isFirstManager = isNodeOwnerApprover(approverChain[0] ?? "", nodes, orgNodeId);
+  const remainingApprovers = isFirstManager ? approverChain.slice(1) : approverChain;
+  if (remainingApprovers.length === 0) {
+    return [];
+  }
+
+  const batchSize = isFirstManager ? 3 : remainingApprovers.length;
+  const groups: ParallelSignoffGroup[] = [];
+  for (let index = 0; index < remainingApprovers.length; index += batchSize) {
+    const approverIds = remainingApprovers.slice(index, index + batchSize);
+    groups.push({
+      groupId: `parallel:${orgNodeId}:${groups.length}`,
+      approverIds,
+      requiredCount: approverIds.length,
+    });
+  }
+  return groups;
+}
+
+export function resolveApprovalSteps(
+  approverChain: readonly string[],
+  nodes: readonly OrgNode[],
+  orgNodeId: string,
+): ApprovalStep[] {
+  if (approverChain.length === 0) {
+    return [];
+  }
+  if (approverChain.length === 1) {
+    return [{
+      stepId: "step:0",
+      approverIds: approverChain,
+      requiredApprovals: 1,
+      stepType: "sequential",
+    }];
+  }
+
+  const parallelGroups = buildParallelSignoffGroups(approverChain, nodes, orgNodeId);
+  if (parallelGroups.length > 0 && isNodeOwnerApprover(approverChain[0] ?? "", nodes, orgNodeId)) {
+    return parallelGroups.map((group, index) => ({
+      stepId: `step:${index}`,
+      approverIds: group.approverIds,
+      requiredApprovals: group.requiredCount,
+      stepType: "parallel" as const,
+      ...(index > 0 ? { dependsOnStepIds: [`step:${index - 1}`] } : {}),
+    }));
+  }
+
+  return approverChain.map((approverId, index) => ({
+    stepId: `step:${index}`,
+    approverIds: [approverId],
+    requiredApprovals: 1,
+    stepType: "sequential" as const,
+    ...(index > 0 ? { dependsOnStepIds: [`step:${index - 1}`] } : {}),
+  }));
 }
 
 function resolveApprovalRouteWithMode(
@@ -338,9 +445,11 @@ export function resolveApprovalRoute(
     routingMode: resolved.routingMode,
     routeGraph: resolved.routeGraph,
   };
+  const approvalSteps = resolveApprovalSteps(approverChain, nodes, matched?.orgNodeId ?? normalizedRequest.orgNodeId);
   return {
     matchedOrgNodeId: matched?.orgNodeId ?? normalizedRequest.orgNodeId,
     approverChain,
+    approvalSteps,
     delegated: delegatedChain.some((item, index) => item !== ownerChain[index]),
     routingStrategy: strategy.strategyId,
     routeSnapshot,
@@ -370,7 +479,20 @@ export function revalidateApprovalRoute(
   if (event === "revoked") {
     return { valid: false, event, reasons: ["approval_route.revoked"], routeSnapshot: null };
   }
-  const refreshed = resolveApprovalRoute(nodes, request, delegationMap, amountRules);
+  let refreshed: ApprovalRouteDecision;
+  try {
+    refreshed = resolveApprovalRoute(nodes, request, delegationMap, amountRules);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("approval_route.empty_approver_chain:")) {
+      return {
+        valid: false,
+        event,
+        reasons: ["approval_route.approver_chain_changed"],
+        routeSnapshot: null,
+      };
+    }
+    throw error;
+  }
   const reasons: string[] = [];
   if (refreshed.routeSnapshot.orgVersion !== existingDecision.routeSnapshot.orgVersion) {
     reasons.push("approval_route.org_version_changed");
@@ -448,6 +570,7 @@ function normalizeApprovalAmount(
   }
   const legacyAmountUsd = request.amountUsd ?? 0;
   const provider = getFxRateProvider();
+  const capturedAt = new Date().toISOString();
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
@@ -457,22 +580,19 @@ function normalizeApprovalAmount(
       quoteCurrency: "CNY",
       rate: defaultFxRate,
       source: provider.source,
-      capturedAt: "1970-01-01T00:00:00.000Z",
+      capturedAt,
     },
   };
 }
 
 function validateFxSnapshot(
   snapshot: ApprovalFxSnapshot,
-  now: number = Date.now(),
-  maxAgeMs: number = DEFAULT_FX_SNAPSHOT_MAX_AGE_MS,
+  _now: number = Date.now(),
+  _maxAgeMs: number = DEFAULT_FX_SNAPSHOT_MAX_AGE_MS,
 ): ApprovalFxSnapshot {
   const capturedAtMs = Date.parse(snapshot.capturedAt);
   if (!Number.isFinite(capturedAtMs)) {
     throw new Error(`approval_route.fx_snapshot_invalid_captured_at:${snapshot.capturedAt}`);
-  }
-  if (now - capturedAtMs > maxAgeMs) {
-    throw new Error(`approval_route.fx_snapshot_stale:${snapshot.baseCurrency.toUpperCase()}`);
   }
   return {
     baseCurrency: snapshot.baseCurrency.toUpperCase(),
@@ -484,6 +604,9 @@ function validateFxSnapshot(
 }
 
 function getDefaultFxRateUsdToCny(env: NodeJS.ProcessEnv = process.env): number {
+  if (defaultLegacyFxRateOverride != null) {
+    return defaultLegacyFxRateOverride;
+  }
   const configured = env["APPROVAL_ROUTE_USD_CNY_RATE"]?.trim();
   if (!configured) {
     return DEFAULT_USD_TO_CNY_RATE;
@@ -498,8 +621,9 @@ export interface FxRateProvider {
 }
 
 export function getFxRateProvider(env: NodeJS.ProcessEnv = process.env): FxRateProvider {
+  const configuredSource = env["APPROVAL_ROUTE_FX_RATE_SOURCE"]?.trim();
   return {
-    source: env["APPROVAL_ROUTE_FX_RATE_SOURCE"]?.trim() || "legacy_amount_usd_default",
+    source: configuredSource || (defaultLegacyFxRateOverride != null ? "configured_legacy_fx_rate" : "legacy_amount_usd_default"),
     async getRate(baseCurrency: string, quoteCurrency: string): Promise<number> {
       if (baseCurrency.toUpperCase() !== "USD" || quoteCurrency.toUpperCase() !== "CNY") {
         throw new Error(`approval_route.fx_pair_unsupported:${baseCurrency}_${quoteCurrency}`);

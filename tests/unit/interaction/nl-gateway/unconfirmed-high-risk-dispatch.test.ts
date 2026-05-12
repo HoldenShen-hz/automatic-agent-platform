@@ -137,7 +137,7 @@ test("R23-01: low-risk not_required state still materializes canonical dispatch 
   const task = await service.buildTask({
     tenantId: "tenant-r23-01-unconfirmed",
     userId: "user-r23-01-unconfirmed",
-    message: "what are the current incidents",
+    message: "what are the current incidents for staging on 2026-05-12",
   });
 
   assert.equal(task.confirmationReceipt.state, "not_required");

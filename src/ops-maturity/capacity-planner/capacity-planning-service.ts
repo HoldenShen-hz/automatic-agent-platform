@@ -111,7 +111,7 @@ export class CapacityPlanningService {
     return scenarios.map((scenario) => ({
       ...scenario,
       projectedUnits: this.simulator.simulate(scenario).projectedUnits,
-    })).sort((left, right) => right.projectedUnits - left.projectedUnits);
+    })).sort((left, right) => left.projectedUnits - right.projectedUnits);
   }
 
   public buildRecommendation(

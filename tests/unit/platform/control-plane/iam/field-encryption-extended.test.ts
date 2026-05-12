@@ -34,11 +34,13 @@ test("decryptField round-trips encrypted data", () => {
 test("encryptField produces non-base64-plaintext output", () => {
   const key = PASSPHRASE;
   const ciphertext = encryptField("data", key);
+  const parts = ciphertext.split(":");
 
   // The ciphertext should be base64 encoded, not the plaintext
   assert.notEqual(ciphertext, "data");
-  // Should be valid base64
-  assert.ok(Buffer.from(ciphertext, "base64").toString("base64") === ciphertext);
+  assert.equal(parts[0], "fe1");
+  assert.ok(parts[1]!.length > 0);
+  assert.ok(Buffer.from(parts[2]!, "base64").length > 0);
 });
 
 test("different encryptions of same plaintext produce different ciphertext", () => {

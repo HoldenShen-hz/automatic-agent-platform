@@ -93,7 +93,7 @@ test("AgentLifecycleService.bindTask: succeeds for active agent with version", (
   assert.equal(result.agentId, "agent-1");
   assert.equal(result.taskId, "task-123");
   assert.equal(result.versionId, "v1.0.0");
-  assert.ok(result.bindingId.startsWith("agent_binding_"));
+  assert.ok(result.bindingId.startsWith("agent_binding:"));
   assert.ok(result.boundAt.length > 0);
 });
 

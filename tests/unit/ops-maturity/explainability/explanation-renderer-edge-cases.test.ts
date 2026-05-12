@@ -35,10 +35,9 @@ describe("ExplanationRenderer - Edge Cases", () => {
       const tree = buildDecisionTree("Test", links, [], []);
 
       const nodeIds = tree.allNodes.map((n) => n.nodeId);
-      assert.ok(nodeIds.includes("source-input_ok"));
-      assert.ok(nodeIds.includes("target-process_start"));
-      assert.ok(nodeIds.includes("source-process_start"));
-      assert.ok(nodeIds.includes("target-done"));
+      assert.ok(nodeIds.includes("causal-input_ok"));
+      assert.ok(nodeIds.includes("causal-process_start"));
+      assert.ok(nodeIds.includes("causal-done"));
     });
 
     test("duplicate causal link sources do not create duplicate nodes", () => {
@@ -48,7 +47,7 @@ describe("ExplanationRenderer - Edge Cases", () => {
       ];
       const tree = buildDecisionTree("Test", links, [], []);
 
-      const sourceNodes = tree.allNodes.filter((n) => n.nodeId === "source-same_node");
+      const sourceNodes = tree.allNodes.filter((n) => n.nodeId === "causal-same_node");
       assert.equal(sourceNodes.length, 1);
     });
 

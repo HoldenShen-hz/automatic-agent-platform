@@ -97,6 +97,7 @@ export class AgentVersionManager {
         v.versionId === versionId ? { ...v, deploymentSlot: slot } : v,
       );
       this.setVersions(agentId, updatedVersions);
+      this.slotAssignments.delete(`${agentId}:${oppositeSlot}` as const);
       this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
       return;
     }
@@ -131,7 +132,10 @@ export class AgentVersionManager {
     );
 
     this.setVersions(agentId, updatedVersions);
-    this.slotAssignments.delete(`${agentId}:${slot}` as const);
+    const slotKey = `${agentId}:${slot}` as const;
+    if (this.slotAssignments.get(slotKey) === versionId) {
+      this.slotAssignments.delete(slotKey);
+    }
   }
 
   /**

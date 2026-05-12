@@ -439,11 +439,15 @@ function scoreMetric(metric: CrossAgentMetric, metrics: CrossAgentMetric[]): num
  */
 function isSignificantlyDifferent(value: number, peerValues: number[], alpha = 0.05): boolean {
   if (peerValues.length < 3) {
-    // Fall back to z-test for small samples
     const { mean, stdDev } = computeMeanStdDev(peerValues);
-    if (stdDev === 0) return false;
-    const zScore = Math.abs(value - mean) / stdDev;
-    return zScore > 1.96; // ~95% CI
+    if (stdDev > 0) {
+      const zScore = Math.abs(value - mean) / stdDev;
+      if (zScore > 1.25) {
+        return true;
+      }
+    }
+    const denominator = Math.max(Math.abs(mean), 1e-9);
+    return Math.abs(value - mean) / denominator >= 0.2;
   }
   const iterations = 100;
   const bootstrapMeans: number[] = [];

@@ -230,7 +230,12 @@ test("mapToolRiskToPolicyCategory maps low/other to sensitive_data", () => {
 
 test("PolicyEngine.evaluate includes auditPayload with action and riskCategory", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
-  const result = engine.evaluate(makeRequest({ action: "exec_command", riskCategory: "destructive" }));
+  const result = engine.evaluate(makeRequest({
+    action: "exec_command",
+    riskCategory: "destructive",
+    subjectRoles: ["command_executor", "agent"],
+    subjectCapabilities: ["command.execute"],
+  }));
   assert.equal(result.auditPayload.action, "exec_command");
   assert.equal(result.auditPayload.riskCategory, "destructive");
 });
@@ -238,7 +243,13 @@ test("PolicyEngine.evaluate includes auditPayload with action and riskCategory",
 test("PolicyEngine.evaluate handles exec_command as high-risk action in supervised mode", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   const result = engine.evaluate(
-    makeRequest({ mode: "supervised", action: "exec_command", riskCategory: "destructive" }),
+    makeRequest({
+      mode: "supervised",
+      action: "exec_command",
+      riskCategory: "destructive",
+      subjectRoles: ["command_executor", "agent"],
+      subjectCapabilities: ["command.execute"],
+    }),
   );
   assert.equal(result.decision, "escalate_for_approval");
   assert.equal(result.requiresApproval, true);
@@ -247,7 +258,13 @@ test("PolicyEngine.evaluate handles exec_command as high-risk action in supervis
 test("PolicyEngine.evaluate handles install_extension as org_changing in supervised mode", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   const result = engine.evaluate(
-    makeRequest({ mode: "supervised", action: "install_extension", riskCategory: "org_changing" }),
+    makeRequest({
+      mode: "supervised",
+      action: "install_extension",
+      riskCategory: "org_changing",
+      subjectRoles: ["extension_manager", "admin"],
+      subjectCapabilities: ["extension.install"],
+    }),
   );
   assert.equal(result.decision, "escalate_for_approval");
   assert.equal(result.requiresApproval, true);

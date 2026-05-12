@@ -46,7 +46,7 @@ function createMockProposal(overrides: Partial<ImprovementProposal> = {}): Impro
     rationale: "Testing",
     risk: "low",
     evidenceIds: ["ev_1"],
-    status: "proposed",
+    status: "draft",
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -490,15 +490,15 @@ test("InMemoryEvolutionRegistry listReflections filters by taskType", async () =
 
 test("InMemoryEvolutionRegistry getStatistics calculates correct aggregates", async () => {
   const registry = new InMemoryEvolutionRegistry();
-  await registry.saveProposal(createMockProposal({ id: "p1", status: "canary" }));
+  await registry.saveProposal(createMockProposal({ id: "p1", status: "reviewed" }));
   await registry.saveProposal(createMockProposal({ id: "p2", status: "rejected" }));
-  await registry.saveProposal(createMockProposal({ id: "p3", status: "proposed" }));
+  await registry.saveProposal(createMockProposal({ id: "p3", status: "draft" }));
   await registry.saveEvaluation(createMockEvaluationReport("p1"));
 
   const stats = await registry.getStatistics();
 
   assert.equal(stats.totalProposals, 3);
-  assert.equal(stats.activeCount, 1); // canary is counted as active
+  assert.equal(stats.activeCount, 1);
   assert.equal(stats.rejectedCount, 1);
   assert.ok("averageSuccessLift" in stats);
 });

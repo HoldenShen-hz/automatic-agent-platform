@@ -116,7 +116,9 @@ test("ExplanationPipelineService caches L1 and L2 but not L3 (audit)", () => {
 
   const l1 = service.generate(request, "L1");
   const l2 = service.generate(request, "L2");
-  const l3 = service.generate(request, "L3");
+  const l3 = service.generate(request, "L3", {
+    forensicBudgetReservationId: "budget:l3:cache",
+  });
 
   // L1 and L2 should be cached
   assert.ok(service.getCached(l1.cacheKey), "L1 should be cached");

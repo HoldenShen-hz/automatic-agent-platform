@@ -53,6 +53,7 @@ test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async 
   // Track eval calls to simulate the race condition
   let evalCallCount = 0;
   const lockData = {
+    id: "lock_initial_1",
     owner: "original-owner",
     fencingToken: 1,
     ttlMs: 30000,
@@ -101,6 +102,7 @@ test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds",
       return evalCallCount === 1 ? 1 : 0;
     },
     get: async () => JSON.stringify({
+      id: "lock_same_owner_42",
       owner: "same-owner",
       fencingToken: 42,
       ttlMs: 30000,
@@ -137,6 +139,7 @@ test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers", asyn
       return evalCallCount === 1 ? 1 : 0;
     },
     get: async () => JSON.stringify({
+      id: "lock_multi_extend_1",
       owner: "original-owner",
       fencingToken: 1,
       ttlMs: 30000,
@@ -210,6 +213,7 @@ test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", asyn
     get: async () => {
       // Return the last stored owner (simulating what Redis would return)
       return JSON.stringify({
+        id: `lock_contested_${stealCount}`,
         owner: storedOwner,
         fencingToken: stealCount,
         ttlMs: 30000,
@@ -257,6 +261,7 @@ test("[SYS-REL-2.2] runConcurrentInvariant helper for extend race detection", as
       return evalCallCount === 1 ? 1 : 0;
     },
     get: async () => JSON.stringify({
+      id: "lock_invariant_1",
       owner: "original-owner",
       fencingToken: 1,
       ttlMs: 30000,

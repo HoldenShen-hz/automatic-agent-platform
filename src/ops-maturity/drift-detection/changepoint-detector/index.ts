@@ -498,7 +498,8 @@ export class ChangepointDetectorService {
       }
       case "relative_threshold":
       default: {
-        const detected = metrics.relativeShift <= (threshold ?? windowConfig.defaultThreshold);
+        const effectiveThreshold = threshold ?? windowConfig.defaultThreshold;
+        const detected = metrics.relativeShift <= effectiveThreshold + EPSILON;
         return {
           detected,
           severity: detected

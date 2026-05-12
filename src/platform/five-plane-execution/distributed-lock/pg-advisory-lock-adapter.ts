@@ -29,13 +29,18 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   }
 
   private lockKeyToAdvisoryKey(lockKey: string): bigint {
-    let hash = 0;
-    for (let i = 0; i < lockKey.length; i += 1) {
-      const char = lockKey.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash &= hash;
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(lockKey);
+    let hash = 0xcbf29ce484222325n;
+    const prime = 0x100000001b3n;
+    const maxSigned63Bit = 0x7FFFFFFFFFFFFFFFn;
+
+    for (const byte of bytes) {
+      hash ^= BigInt(byte);
+      hash = (hash * prime) & maxSigned63Bit;
     }
-    return (BigInt(Math.abs(hash)) + BigInt(2 ** 31)) % BigInt(2 ** 63);
+
+    return hash === 0n ? 1n : hash;
   }
 
   private ensureConnected(): void {

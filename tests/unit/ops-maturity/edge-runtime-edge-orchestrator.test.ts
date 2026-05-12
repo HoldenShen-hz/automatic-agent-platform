@@ -37,8 +37,8 @@ test("buildEdgeExecutionPlan with custom priority", () => {
 test("buildEdgeExecutionPlan creates nodes with correct inputRefs", () => {
   const bundle = buildEdgeExecutionPlan(["task_1", "task_2"]);
 
-  // First node has no input refs
-  assert.deepStrictEqual(bundle.planGraphBundle.graph.nodes[0]?.inputRefs, []);
+  // First node references the initial task payload
+  assert.deepStrictEqual(bundle.planGraphBundle.graph.nodes[0]?.inputRefs, ["task:task_1"]);
   // Second node references first node
   assert.deepStrictEqual(bundle.planGraphBundle.graph.nodes[1]?.inputRefs, ["edge_node_task_1"]);
 });

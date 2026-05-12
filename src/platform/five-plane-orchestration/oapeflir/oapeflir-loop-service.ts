@@ -838,7 +838,7 @@ export class OapeflirLoopService {
     );
     const observedTask = this.normalizeObservationTask(taskObservation.task, input);
     const assessResult = this.assessment.assess(observedTask, input.constraintPack, input.effectivePolicy);
-    const validatedAssessment = validateUnifiedAssessment(assessResult.assessment).ok
+    const validatedAssessment: UnifiedAssessment = validateUnifiedAssessment(assessResult.assessment).ok
       ? assessResult.assessment
       : {
         taskId: input.taskId,
@@ -947,7 +947,7 @@ export class OapeflirLoopService {
     feedback: FeedbackBatch;
     qualityGate: Pick<PostExecutionQualityGateDecision, "accepted" | "reasonCodes">;
     replanDecision: Pick<ReplanningDecision, "shouldReplan">;
-    evaluationReport: Pick<EvaluationReport, "score" | "confidence"> & Partial<Pick<EvaluationReport, "issues" | "recommendation">>;
+    evaluationReport: Pick<EvaluationReport, "score"> & Partial<Pick<EvaluationReport, "notes">>;
     constraintPack?: ConstraintPack;
     stepOutputs: readonly DualChannelStepOutput[];
   }): DecisionInputBundle {
@@ -968,7 +968,7 @@ export class OapeflirLoopService {
       riskClass: input.planGraphBundle.riskProfile.riskClass,
       evaluator: {
         score: input.evaluationReport.score,
-        reasoning: (input.evaluationReport.issues ?? []).join(",") || input.evaluationReport.recommendation || "oapeflir.evaluation.complete",
+        reasoning: input.evaluationReport.notes ?? "oapeflir.evaluation.complete",
       },
       policy: {
         policyIds: input.constraintPack?.policyIds ?? [],
@@ -981,8 +981,8 @@ export class OapeflirLoopService {
       },
       risk: {
         currentScore: this.mapRiskClassToScore(input.assessment.risk),
-        maxScore: input.constraintPack?.riskPolicy?.maxRiskScore ?? 1,
-        escalationThreshold: input.constraintPack?.riskPolicy?.escalationThreshold ?? 0.7,
+        maxScore: input.constraintPack?.risk_policy?.maxRiskScore ?? 1,
+        escalationThreshold: input.constraintPack?.risk_policy?.escalationThreshold ?? 0.7,
       },
       ...(firstNode == null ? {} : {
         node: {

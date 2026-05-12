@@ -13,7 +13,7 @@ export function sortAttentionQueue(items: readonly AttentionItem[]): AttentionIt
     if (byPriority !== 0) {
       return byPriority;
     }
-    return left.createdAt.localeCompare(right.createdAt);
+    return right.createdAt.localeCompare(left.createdAt);
   });
 }
 

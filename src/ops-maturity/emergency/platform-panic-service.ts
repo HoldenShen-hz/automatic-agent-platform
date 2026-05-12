@@ -77,6 +77,18 @@ export interface PanicResumeReceipt {
   readonly reasonCodes: readonly string[];
 }
 
+export interface PlatformResumeDirective {
+  readonly directiveId: string;
+  readonly relatedPanicDirectiveId: string;
+  readonly scope: string;
+  readonly issuedBy?: string;
+  readonly issuedAt: string;
+  readonly approvedBy?: readonly string[];
+  readonly rollbackExecuted: boolean;
+  readonly validationResults?: readonly string[];
+  readonly allowlistRestored: boolean;
+}
+
 /**
  * R23-66: PanicDrillRecord - Record of a panic drill execution for audit and compliance
  */
@@ -140,12 +152,9 @@ function normalizeRequiredApprovers(
   request: Pick<PanicActivationRequest, "requiredApprovers" | "issuedBy">,
 ): readonly string[] {
   const provided = request.requiredApprovers;
-  // If requiredApprovers is not provided, use issuedBy as the only approver
-  // If provided but less than 2 unique approvers, it will fail the minimum check
   const approvers = Array.isArray(provided) && provided.length > 0 ? provided : [request.issuedBy];
   const normalized = [...new Set(approvers.map((item) => item.trim()).filter((item) => item.length > 0))];
-  // Only enforce minimum if requiredApprovers was explicitly provided
-  if (Array.isArray(provided) && provided.length > 0 && normalized.length < 2) {
+  if (normalized.length < 2) {
     throw new Error("panic.required_approvers_minimum_not_met");
   }
   return normalized;
@@ -154,6 +163,7 @@ function normalizeRequiredApprovers(
 export class PlatformPanicService {
   private readonly activations = new Map<string, PlatformPanicActivation>();
   private readonly resumeReceipts = new Map<string, PanicResumeReceipt>();
+  private readonly resumeDirectives = new Map<string, PlatformResumeDirective>();
   private readonly drills = new Map<string, PanicDrillRecord>();
 
   public activate(request: PanicActivationRequest): PlatformPanicActivation {
@@ -216,6 +226,7 @@ export class PlatformPanicService {
     };
     this.activations.set(request.scope, activation);
     this.resumeReceipts.delete(request.scope);
+    this.resumeDirectives.delete(request.scope);
     return activation;
   }
 
@@ -293,11 +304,23 @@ export class PlatformPanicService {
       reasonCodes: ["panic.resumed_explicitly"],
     };
     this.resumeReceipts.set(scope, receipt);
+    this.resumeDirectives.set(scope, {
+      directiveId: newId("panic_resume"),
+      relatedPanicDirectiveId: activation.directive.directiveId,
+      scope: activation.directive.scope,
+      issuedAt: resumedAt,
+      rollbackExecuted: true,
+      allowlistRestored: true,
+    });
     return receipt;
   }
 
   public getResumeReceipt(scope: string): PanicResumeReceipt | null {
     return this.resumeReceipts.get(scope) ?? null;
+  }
+
+  public getResumeDirective(scope: string): PlatformResumeDirective | null {
+    return this.resumeDirectives.get(scope) ?? null;
   }
 
   public startDrill(request: PanicDrillRequest): PanicDrillRecord {

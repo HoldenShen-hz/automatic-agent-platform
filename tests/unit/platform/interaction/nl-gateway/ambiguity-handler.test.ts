@@ -2,17 +2,18 @@ import test from "node:test";
 import { strict as assert } from "node:assert/strict";
 import { detectAmbiguity } from "../../../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
 
-test("detectAmbiguity returns true for short messages under 6 characters", () => {
-  assert.strictEqual(detectAmbiguity("Hi", 0.9, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("Ok", 0.9, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("Yes", 0.9, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("No", 0.9, 1, 1), true);
+test("detectAmbiguity keeps short messages non-ambiguous when confidence is high and entities are present", () => {
+  assert.strictEqual(detectAmbiguity("Hi", 0.9, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Ok", 0.9, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Yes", 0.9, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("No", 0.9, 1, 1), false);
 });
 
-test("detectAmbiguity returns true for low confidence below 0.7", () => {
-  assert.strictEqual(detectAmbiguity("Please perform the task", 0.5, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("Run something", 0.6, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("Execute this", 0.69, 1, 1), true);
+test("detectAmbiguity does not use low confidence alone for long messages", () => {
+  assert.strictEqual(detectAmbiguity("Please perform the task", 0.5, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Run something", 0.6, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Execute this", 0.69, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Short", 0.69, 1, 1), true);
 });
 
 test("detectAmbiguity returns true when extractedEntityCount < requiredEntityCount", () => {
@@ -36,8 +37,9 @@ test("detectAmbiguity treats confidence of exactly 0.7 as not ambiguous", () => 
   assert.strictEqual(detectAmbiguity("Sufficiently long message", 0.7, 1, 1), false);
 });
 
-test("detectAmbiguity treats exactly 0.69 as ambiguous", () => {
-  assert.strictEqual(detectAmbiguity("Sufficiently long message", 0.69, 1, 1), true);
+test("detectAmbiguity only treats 0.69 as ambiguous for short messages", () => {
+  assert.strictEqual(detectAmbiguity("Sufficiently long message", 0.69, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Short", 0.69, 1, 1), true);
 });
 
 test("detectAmbiguity treats confidence of 0.7 and above as not low", () => {
@@ -45,8 +47,8 @@ test("detectAmbiguity treats confidence of 0.7 and above as not low", () => {
 });
 
 test("detectAmbiguity trims whitespace before length check", () => {
-  assert.strictEqual(detectAmbiguity("      ", 0.9, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("   Hi   ", 0.9, 1, 1), true);
+  assert.strictEqual(detectAmbiguity("      ", 0.9, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("   Hi   ", 0.9, 1, 1), false);
 });
 
 test("detectAmbiguity with exact entity count matches required", () => {
@@ -63,17 +65,17 @@ test("detectAmbiguity returns false for long message with high confidence and su
 
 test("detectAmbiguity handles very long messages with low confidence", () => {
   const longMessage = "This is a very long message that contains many words and should be considered for ambiguity detection";
-  assert.strictEqual(detectAmbiguity(longMessage, 0.5, 1, 1), true);
+  assert.strictEqual(detectAmbiguity(longMessage, 0.5, 1, 1), false);
 });
 
 test("detectAmbiguity handles zero requiredEntityCount", () => {
-  assert.strictEqual(detectAmbiguity("Short", 0.9, 0, 0), true);
+  assert.strictEqual(detectAmbiguity("Short", 0.9, 0, 0), false);
   assert.strictEqual(detectAmbiguity("A sufficiently long message here", 0.9, 0, 0), false);
 });
 
 test("detectAmbiguity with high confidence but short message", () => {
-  assert.strictEqual(detectAmbiguity("Ab", 0.95, 1, 1), true);
-  assert.strictEqual(detectAmbiguity("Short", 0.95, 1, 1), true);
+  assert.strictEqual(detectAmbiguity("Ab", 0.95, 1, 1), false);
+  assert.strictEqual(detectAmbiguity("Short", 0.95, 1, 1), false);
 });
 
 test("detectAmbiguity with all required entities extracted", () => {
@@ -81,7 +83,7 @@ test("detectAmbiguity with all required entities extracted", () => {
 });
 
 test("detectAmbiguity edge case at message length boundary", () => {
-  assert.strictEqual(detectAmbiguity("12345", 0.9, 1, 1), true);
+  assert.strictEqual(detectAmbiguity("12345", 0.9, 1, 1), false);
   assert.strictEqual(detectAmbiguity("123456", 0.9, 1, 1), false);
 });
 
@@ -90,7 +92,7 @@ test("detectAmbiguity handles high confidence but missing entities", () => {
 });
 
 test("detectAmbiguity with maximum confidence value", () => {
-  assert.strictEqual(detectAmbiguity("Short", 1.0, 1, 1), true);
+  assert.strictEqual(detectAmbiguity("Short", 1.0, 1, 1), false);
   assert.strictEqual(detectAmbiguity("Sufficiently long message", 1.0, 1, 1), false);
 });
 

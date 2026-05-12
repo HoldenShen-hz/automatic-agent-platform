@@ -383,12 +383,34 @@ test("RedisLockAdapter uses custom connectTimeoutMs from config", () => {
 test("RedisLockAdapter acquireAsync throws on connection error", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
-  // Force an error by making the redis client throw
-  const redis = (adapter as unknown as { redis: { status: string; connect: () => Promise<void>; set: () => Promise<never> } }).redis;
-  Object.defineProperty(redis, "status", { value: "ready", writable: true });
-  redis.connect = async () => {};
-  redis.set = async () => {
-    throw new Error("Connection reset by peer");
+  (adapter as unknown as {
+    redis: {
+      status: string;
+      connect: () => Promise<void>;
+      set: () => Promise<never>;
+      get: () => Promise<null>;
+      del: () => Promise<number>;
+      eval: () => Promise<number>;
+      scan: () => Promise<[string, string[]]>;
+      mget: () => Promise<Array<string | null>>;
+      quit: () => Promise<void>;
+      disconnect: () => void;
+      on: () => void;
+    };
+  }).redis = {
+    status: "ready",
+    connect: async () => {},
+    set: async () => {
+      throw new Error("Connection reset by peer");
+    },
+    get: async () => null,
+    del: async () => 1,
+    eval: async () => 1,
+    scan: async () => ["0", []],
+    mget: async () => [],
+    quit: async () => {},
+    disconnect: () => {},
+    on: () => {},
   };
 
   await assert.rejects(

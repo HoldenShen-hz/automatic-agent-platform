@@ -17,14 +17,22 @@ import {
 describe("EdgeRuntimeSyncService", () => {
   const defaultProfile: EdgeRuntimeProfile = {
     edgeNodeId: "node-001",
+    deviceId: "device-001",
+    deviceAttestation: {
+      attestedAt: "2026-04-26T07:55:00Z",
+      status: "valid",
+    },
     capabilities: ["offline-execution", "local-model"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 24,
+    offlineMaxDuration: 60_000,
+    keyLease: "lease-node-001",
     allowedModels: ["model-a", "model-b"],
     syncPolicy: {
       allowRestrictedDataUpload: false,
       requireOrdering: false,
     },
+    riskLevel: "low",
   };
 
   const defaultModels: { modelId: string; modalities: readonly string[]; maxTokens: number }[] = [
@@ -126,16 +134,17 @@ describe("EdgeRuntimeSyncService", () => {
 
     test("uses provided createdAt timestamp", () => {
       const service = new EdgeRuntimeSyncService();
+      const createdAt = new Date().toISOString();
       const request: OfflineExecutionRequest = {
         edgeNodeId: "node-001",
         taskId: "task-005",
         modality: "text",
-        createdAt: "2026-04-26T08:00:00Z",
+        createdAt,
       };
 
       const receipt = service.executeOffline(defaultProfile, defaultModels, request);
 
-      assert.ok(receipt.record.createdAt);
+      assert.equal(receipt.record.createdAt, createdAt);
     });
   });
 

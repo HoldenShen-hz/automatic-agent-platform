@@ -141,6 +141,115 @@ export interface ComplianceAuditorAccessView {
   readonly evidenceMap: Readonly<Record<string, readonly string[]>>;
 }
 
+export type ComplianceFramework =
+  | "SOC2"
+  | "HIPAA"
+  | "ISO27001"
+  | "GDPR"
+  | "PCI-DSS"
+  | "NIST"
+  | "OTHER";
+
+export interface AuditorAccessConfig {
+  readonly auditorId: string;
+  readonly permittedFrameworks: readonly ComplianceFramework[];
+  readonly canAccessPII: boolean;
+  readonly canAccessRawEvidence: boolean;
+  readonly canInitiateRemediation: boolean;
+  readonly redactedFields: readonly string[];
+}
+
+export const FRAMEWORK_SCHEDULING: Record<
+  ComplianceFramework,
+  {
+    readonly framework: ComplianceFramework;
+    readonly reportingFrequencyDays: number;
+    readonly monthly: boolean;
+    readonly quarterly: boolean;
+  }
+> = {
+  SOC2: { framework: "SOC2", reportingFrequencyDays: 90, monthly: false, quarterly: true },
+  HIPAA: { framework: "HIPAA", reportingFrequencyDays: 30, monthly: true, quarterly: false },
+  ISO27001: { framework: "ISO27001", reportingFrequencyDays: 365, monthly: false, quarterly: false },
+  GDPR: { framework: "GDPR", reportingFrequencyDays: 30, monthly: true, quarterly: false },
+  "PCI-DSS": { framework: "PCI-DSS", reportingFrequencyDays: 90, monthly: false, quarterly: true },
+  NIST: { framework: "NIST", reportingFrequencyDays: 90, monthly: false, quarterly: true },
+  OTHER: { framework: "OTHER", reportingFrequencyDays: 90, monthly: false, quarterly: true },
+};
+
+export class PIIRedactionService {
+  public redactPII(input: string): string {
+    return input
+      .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[SSN-REDACTED]")
+      .replace(/\b\d{16}\b/g, "[CARD-REDACTED]")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL-REDACTED]")
+      .replace(/\b(?:\+?\d{1,2}\s*)?(?:\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "[PHONE-REDACTED]")
+      .replace(/\b\d+\s+[A-Za-z0-9.\- ]+\s(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr)\b/g, "[ADDRESS-REDACTED]");
+  }
+
+  public redactEvidence<T extends Record<string, unknown>>(evidence: T): T {
+    return Object.fromEntries(
+      Object.entries(evidence).map(([key, value]) => [
+        key,
+        typeof value === "string" ? this.redactPII(value) : value,
+      ]),
+    ) as T;
+  }
+}
+
+export class AuditorAccessControlService {
+  private readonly auditors = new Map<string, AuditorAccessConfig>();
+  private readonly piiRedaction = new PIIRedactionService();
+
+  public registerAuditor(config: AuditorAccessConfig): void {
+    this.auditors.set(config.auditorId, config);
+  }
+
+  public getAuditorConfig(auditorId: string): AuditorAccessConfig | null {
+    return this.auditors.get(auditorId) ?? null;
+  }
+
+  public canAccessFramework(auditorId: string, framework: ComplianceFramework): boolean {
+    const config = this.auditors.get(auditorId);
+    return config?.permittedFrameworks.includes(framework) ?? false;
+  }
+
+  public getNextScheduledDate(framework: ComplianceFramework, fromDate = nowIso()): string {
+    const schedule = FRAMEWORK_SCHEDULING[framework] ?? FRAMEWORK_SCHEDULING.OTHER;
+    const dueAt = new Date(fromDate);
+    dueAt.setUTCDate(dueAt.getUTCDate() + schedule.reportingFrequencyDays);
+    return dueAt.toISOString();
+  }
+
+  public redactForAuditor<T extends Record<string, unknown>>(
+    auditorId: string,
+    content: T,
+    framework: ComplianceFramework,
+  ): Partial<T> {
+    const config = this.auditors.get(auditorId);
+    if (!config) {
+      return {};
+    }
+    if (!config.permittedFrameworks.includes(framework)) {
+      throw new Error(`compliance.access_denied:${auditorId}:${framework}`);
+    }
+    const output = { ...content } as Record<string, unknown>;
+    for (const field of config.redactedFields) {
+      if (field in output) {
+        output[field] = "[REDACTED]";
+      }
+    }
+    if (!config.canAccessPII) {
+      for (const [key, value] of Object.entries(output)) {
+        if (typeof value === "string") {
+          output[key] = this.piiRedaction.redactPII(value);
+        }
+      }
+    }
+    return output as Partial<T>;
+  }
+}
+
 export class GapAnalyzerService {
   public analyze(
     controls: readonly string[],

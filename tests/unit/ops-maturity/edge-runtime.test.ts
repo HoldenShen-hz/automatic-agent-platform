@@ -16,6 +16,7 @@ test("edge: execute offline with valid low risk profile", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-001",
     deviceId: "device-abc",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["vision", "text"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 72,
@@ -49,6 +50,7 @@ test("edge: execute offline selects model by modality and priority", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-002",
     deviceId: "device-def",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["vision", "text"],
     connectivityMode: "intermittent",
     maxLocalRetentionHours: 48,
@@ -78,6 +80,7 @@ test("edge: execute offline returns null model when no match", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-003",
     deviceId: "device-ghi",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 24,
@@ -106,6 +109,7 @@ test("edge: execute offline throws for high risk", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-high-risk",
     deviceId: "device-high",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 24,
@@ -152,6 +156,7 @@ test("edge: build sync envelope creates valid envelope", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-env",
     deviceId: "device-env",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
@@ -177,6 +182,7 @@ test("edge: build sync envelope with custom parameters", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-custom",
     deviceId: "device-custom",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 48,
@@ -200,6 +206,7 @@ test("edge: sync accepts valid envelopes", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-sync",
     deviceId: "device-sync",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
@@ -222,6 +229,7 @@ test("edge: sync rejects restricted data when policy disallows", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-restricted",
     deviceId: "device-restricted",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
@@ -240,11 +248,12 @@ test("edge: sync rejects restricted data when policy disallows", () => {
   assert.ok(receipt.decisions[0]?.rationale.includes("restricted_data_denied"));
 });
 
-test("edge: sync rejects mismatched payload digest (central wins)", () => {
+test("edge: sync merges mismatched payload digest for low-risk payloads", () => {
   const service = new EdgeRuntimeSyncService();
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-conflict",
     deviceId: "device-conflict",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
@@ -261,9 +270,10 @@ test("edge: sync rejects mismatched payload digest (central wins)", () => {
 
   const receipt = service.sync(profile, [envelope], cloudDigests);
 
-  assert.strictEqual(receipt.rejectedEnvelopeIds.length, 1);
-  assert.strictEqual(receipt.decisions[0]?.resolution, "accept_central");
+  assert.strictEqual(receipt.acceptedEnvelopeIds.length, 1);
+  assert.strictEqual(receipt.decisions[0]?.resolution, "merge");
   assert.ok(receipt.decisions[0]?.incidentId != null);
+  assert.ok(receipt.decisions[0]?.mergedPayload != null);
 });
 
 test("edge: sync respects ordering policy", () => {
@@ -271,6 +281,7 @@ test("edge: sync respects ordering policy", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-ordered",
     deviceId: "device-ordered",
+    deviceAttestation: { attestedAt: "2026-04-29T00:00:00Z", status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,

@@ -165,7 +165,7 @@ test("ChangepointDetectorService uses downgrade/throttle actions for medium drif
   assert.deepEqual(plan?.fallbackActions, ["throttle", "require_review"]);
 });
 
-test("ChangepointDetectorService detectAll evaluates canonical 1h/7d/30d/90d windows", () => {
+test("ChangepointDetectorService detectAll evaluates the default 1h/6h/24h/7d windows", () => {
   const service = new ChangepointDetectorService({ samplesPerHour: 0.05, minSampleSize: 20 });
   const samples = Array.from({ length: 120 }, (_, index) => ({
     observedAt: new Date(Date.UTC(2026, 0, 1, index)).toISOString(),
@@ -181,7 +181,7 @@ test("ChangepointDetectorService detectAll evaluates canonical 1h/7d/30d/90d win
 
   const results = service.detectAll(samples);
 
-  assert.deepEqual(results.map((result) => result.windowType), ["1h", "7d", "30d", "90d"]);
+  assert.deepEqual(results.map((result) => result.windowType), ["1h", "6h", "24h", "7d"]);
   assert.ok(results.every((result) => typeof result.algorithmScore === "number"));
   assert.ok(results.every((result) => "success_rate_drop" in result.evaluatedDimensions));
 });

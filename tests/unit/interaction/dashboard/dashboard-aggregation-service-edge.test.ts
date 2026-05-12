@@ -391,7 +391,7 @@ test("buildOperatorDashboard successRate7d is between 0 and 1", () => {
 // Edge Cases for attention queue ordering
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("buildOperatorDashboard attentionQueue sorted by createdAt ascending", () => {
+test("buildOperatorDashboard attentionQueue keeps newest items first within the same priority", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
@@ -405,8 +405,8 @@ test("buildOperatorDashboard attentionQueue sorted by createdAt ascending", () =
 
   const dashboard = service.buildOperatorDashboard();
 
-  // System health incident should be at the end (most recent createdAt)
-  const systemIncident = dashboard.attentionQueue[dashboard.attentionQueue.length - 1];
+  // Failed task and platform incident share high priority; the newer platform incident should sort first.
+  const systemIncident = dashboard.attentionQueue[0];
   assert.ok(systemIncident!.title.includes("Platform health degraded"));
 });
 

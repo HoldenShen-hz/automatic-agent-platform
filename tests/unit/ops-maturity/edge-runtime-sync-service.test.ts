@@ -5,10 +5,18 @@ import { EdgeRuntimeSyncService } from "../../../src/ops-maturity/edge-runtime/e
 
 const profile = {
   edgeNodeId: "edge_factory_1",
+  deviceId: "device_factory_1",
   capabilities: ["vision", "sync"],
   connectivityMode: "offline" as const,
   maxLocalRetentionHours: 24,
+  offlineMaxDuration: 60 * 60 * 1000,
+  keyLease: "lease_edge_factory_1",
+  deviceAttestation: {
+    attestedAt: "2026-04-20T00:00:00.000Z",
+    status: "valid" as const,
+  },
   allowedModels: ["local-vision"],
+  riskLevel: "low" as const,
   syncPolicy: {
     allowRestrictedDataUpload: false,
     requireOrdering: true,
@@ -17,6 +25,7 @@ const profile = {
 
 test("EdgeRuntimeSyncService executes offline with an allowed local model and explicit sync envelope", () => {
   const service = new EdgeRuntimeSyncService();
+  const createdAt = new Date().toISOString();
   const execution = service.executeOffline(
     profile,
     [{ modelId: "local-vision", modalities: ["image", "text"] }],
@@ -24,13 +33,13 @@ test("EdgeRuntimeSyncService executes offline with an allowed local model and ex
       edgeNodeId: "edge_factory_1",
       taskId: "task_vision_1",
       modality: "image",
-      createdAt: "2026-04-20T00:00:00.000Z",
+      createdAt,
     },
   );
 
   assert.equal(execution.record.syncRequired, true);
   assert.equal(execution.selectedModelId, "local-vision");
-  assert.deepEqual(execution.executionPlan, ["task_vision_1"]);
+  assert.deepEqual(execution.executionPlan, ["edge_node_task_vision_1"]);
 
   const envelope = service.buildSyncEnvelope(
     profile,

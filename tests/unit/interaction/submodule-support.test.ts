@@ -33,7 +33,7 @@ test("interaction support modules provide deterministic helper behavior", () => 
       incidents: 0,
       lastIncidentAgeDays: 50,
     }).targetLevel,
-    "semi_auto",
+    "supervised",
   );
   assert.equal(mapTrustLevel(calculateTrustScore({
     capabilityId: "deploy",
@@ -68,6 +68,8 @@ test("interaction support modules provide deterministic helper behavior", () => 
     done: 1,
     inProgress: 1,
     failed: 1,
+    pending: 0,
+    cancelled: 0,
   });
 
   assert.deepEqual(

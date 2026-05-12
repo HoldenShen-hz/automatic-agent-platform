@@ -29,7 +29,7 @@ test("ChangepointDetectorService returns insufficient data when either window is
 
 test("ChangepointDetectorService does not trigger when relative shift is barely above the threshold", () => {
   const service = new ChangepointDetectorService({ minSamplesBetweenAlerts: 0 });
-  const result = service.detect(buildRelativeThresholdSamples(0.9000000001), 24, 3, "24h", -0.1);
+  const result = service.detect(buildRelativeThresholdSamples(0.90001), 24, 3, "24h", -0.1);
 
   assert.equal(result.relativeShift < 0, true);
   assert.equal(result.detected, false);

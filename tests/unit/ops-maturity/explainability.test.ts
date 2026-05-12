@@ -70,7 +70,9 @@ test("ExplanationPipelineService generate creates L3 audit explanation with caus
     evidence: [],
     riskNotes: ["edge_case_unclear"],
     causalLinks,
-  }, "L3");
+  }, "L3", {
+    forensicBudgetReservationId: "budget:l3:audit-chain",
+  });
 
   assert.equal(bundle.depth, "L3");
   assert.match(bundle.rendered, /causal=/);

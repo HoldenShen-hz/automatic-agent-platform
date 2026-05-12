@@ -183,7 +183,7 @@ test("Zero-downtime blue-green: both slots active during transition, then old re
   assert.equal(green?.versionId, v2.versionId); // green still active
 });
 
-test("Zero-downtime: switch back to blue after green promotion", () => {
+test("Zero-downtime: switch back to blue migrates the promoted version off green", () => {
   const manager = new AgentVersionManager();
 
   const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
@@ -192,13 +192,14 @@ test("Zero-downtime: switch back to blue after green promotion", () => {
   const v2 = manager.registerVersion(makeVersion({ version: "2.0.0", stage: "canary" }));
   manager.blueGreenSwitch("agent_bg", "green");
 
-  // Now switch back: promote v2 to blue, revoke v2 from green (since v2 moved)
+  // Now switch back: promote v2 to blue; moving the same version clears its prior green slot.
   manager.blueGreenSwitch("agent_bg", "blue");
   manager.revokeSlot("agent_bg", v1.versionId); // revoke v1 from blue
 
-  // v2 is still in green since we only revoked v1 from blue
+  const blue = manager.getActiveSlot("agent_bg", "blue");
   const green = manager.getActiveSlot("agent_bg", "green");
-  assert.equal(green?.versionId, v2.versionId);
+  assert.equal(blue?.versionId, v2.versionId);
+  assert.equal(green, null);
 });
 
 // ---------------------------------------------------------------------------

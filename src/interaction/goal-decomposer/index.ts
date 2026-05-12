@@ -145,7 +145,7 @@ export interface GoalHarnessRouting {
     readonly planGraphBundleId: string;
     readonly validationReport: { readonly valid: boolean };
     readonly graph: {
-      readonly nodes: readonly Array<{ readonly nodeId: string }>;
+      readonly nodes: ReadonlyArray<{ readonly nodeId: string }>;
       readonly edges: readonly TaskDependency[];
     };
   };

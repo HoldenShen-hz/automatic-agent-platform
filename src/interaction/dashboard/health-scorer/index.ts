@@ -25,10 +25,16 @@ const PROVIDER_STATUS_MULTIPLIER: Record<NonNullable<DashboardSystemSituation["p
   failed: 0.25,
 };
 
+function normalizeHealthStatus(
+  status: DashboardSystemSituation["healthStatus"] | "critical",
+): DashboardSystemSituation["healthStatus"] {
+  return status === "critical" ? "unhealthy" : status;
+}
+
 export function buildStructuredHealthScore(system: DashboardSystemSituation): StructuredHealthScore {
   const queueDepth = resolveQueueDepth(system);
   const degradedQueue = resolveQueueDegraded(system);
-  const healthComponent = HEALTH_STATUS_SCORES[system.healthStatus];
+  const healthComponent = HEALTH_STATUS_SCORES[normalizeHealthStatus(system.healthStatus)];
   const providerStatus = system.providerHealth?.status ?? "healthy";
   const providerSuccessRate = system.providerHealth?.successRate ?? 1;
   const providerComponent = Math.round(100 * PROVIDER_STATUS_MULTIPLIER[providerStatus] * providerSuccessRate);
@@ -65,12 +71,13 @@ export function buildStructuredHealthScore(system: DashboardSystemSituation): St
 }
 
 export function scoreSystemHealth(system: DashboardSystemSituation): number {
+  const normalizedHealthStatus = normalizeHealthStatus(system.healthStatus);
   const baseScore = {
     ok: 100,
     degraded: 80,
     overloaded: 60,
     unhealthy: 30,
-  }[system.healthStatus];
+  }[normalizedHealthStatus];
   const backlogPenalty = Math.min(30, resolveQueueDepth(system));
   const findingPenalty = Math.min(20, system.findings.length * 5);
   return Math.max(0, baseScore - backlogPenalty - findingPenalty);

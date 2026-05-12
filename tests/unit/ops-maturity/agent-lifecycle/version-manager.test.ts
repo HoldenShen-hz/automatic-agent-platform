@@ -252,7 +252,7 @@ test("getStableVersions returns empty for unknown agent", () => {
 // assignDeploymentSlot
 // ---------------------------------------------------------------------------
 
-test("assignDeploymentSlot assigns slot and evicts prior occupant (blue -> green)", () => {
+test("assignDeploymentSlot keeps the existing blue slot occupant when another version is promoted to green", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({
     agentId: "agent-d",
@@ -283,10 +283,10 @@ test("assignDeploymentSlot assigns slot and evicts prior occupant (blue -> green
   const greenV2 = versions.find((v) => v.versionId === v2.versionId);
 
   assert.equal(greenV2?.deploymentSlot, "green");
-  assert.equal(blueV1?.deploymentSlot, null); // evicted when green was assigned
+  assert.equal(blueV1?.deploymentSlot, "blue");
 });
 
-test("assignDeploymentSlot assigns green and evicts blue", () => {
+test("assignDeploymentSlot allows blue and green to coexist on different versions", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({
     agentId: "agent-g",
@@ -317,7 +317,7 @@ test("assignDeploymentSlot assigns green and evicts blue", () => {
   const blueV1 = versions.find((v) => v.versionId === v1.versionId);
 
   assert.equal(greenV2?.deploymentSlot, "green");
-  assert.equal(blueV1?.deploymentSlot, null); // evicted
+  assert.equal(blueV1?.deploymentSlot, "blue");
 });
 
 test("assignDeploymentSlot ignores unknown agent", () => {

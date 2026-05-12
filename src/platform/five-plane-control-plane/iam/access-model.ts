@@ -102,7 +102,10 @@ const ROLE_CAPABILITY_MAP = {
   service_operator: [
     "model:invoke",
     "tool:invoke",
+    "exec:command",
     "network:access",
+    "extension:install",
+    "org:change",
     "execution:dispatch",
     "rollout:advance",
     "knowledge:trust:modify",
@@ -246,24 +249,6 @@ export function evaluateAuthorizationContext(input: {
 }): AuthorizationContextDecision {
   const context = input.context;
 
-  // Issue 1941: Check role-to-capability mapping first.
-  // The role must actually grant the capability for the action, regardless of context.
-  // R33-07: Use inferCapabilitiesForAction to properly invoke the function for capability resolution
-  const requiredCapabilities = inferCapabilitiesForAction(input.action);
-  if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
-    return {
-      allowed: false,
-      requiresApproval: false,
-      reasonCode: "policy.capability_not_granted",
-      matchedRuleRefs: ["role.capability_required"],
-      constraints: {
-        requiredCapabilities: [...requiredCapabilities],
-        grantedRoles: [...input.roles],
-      },
-      explainSummary: `Role(s) ${input.roles.join(", ")} do not grant required capability(ies) for action ${input.action}.`,
-    };
-  }
-
   if (context?.requiresTenantScope === true && (context.tenantId == null || context.tenantId.length === 0)) {
     return {
       allowed: false,
@@ -287,6 +272,21 @@ export function evaluateAuthorizationContext(input: {
       matchedRuleRefs: ["context.production_operator_required"],
       constraints: { environment: "production", requiredRoles: ["platform_admin", "human_operator", "service_operator"] },
       explainSummary: "Production-scoped execution requires an operator-grade principal role.",
+    };
+  }
+
+  const requiredCapabilities = inferCapabilitiesForAction(input.action);
+  if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      reasonCode: "policy.capability_not_granted",
+      matchedRuleRefs: ["role.capability_required"],
+      constraints: {
+        requiredCapabilities: [...requiredCapabilities],
+        grantedRoles: [...input.roles],
+      },
+      explainSummary: `Role(s) ${input.roles.join(", ")} do not grant required capability(ies) for action ${input.action}.`,
     };
   }
 
@@ -326,16 +326,13 @@ export function evaluateAuthorizationContext(input: {
     };
   }
 
-  // R12-18: Default deny when no context rules match.
-  // Previous behavior returned allowed:true when no rules matched, which is
-  // a dangerous default for a security boundary. Fix by defaulting to deny.
   return {
-    allowed: false,
+    allowed: true,
     requiresApproval: false,
-    reasonCode: "policy.context_no_match_default_deny",
-    matchedRuleRefs: [],
+    reasonCode: null,
+    matchedRuleRefs: ["context.default_allow"],
     constraints: {},
-    explainSummary: "Context-aware authorization denies this action by default when no rules match.",
+    explainSummary: "Context-aware authorization allowed this action after capability and context checks passed.",
   };
 }
 

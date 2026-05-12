@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import type { RedisLockConfig } from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
+import {
+  LockDataSchema,
+  type RedisLockConfig,
+} from "../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js";
 
 function hasLockCode(error: unknown, expectedSuffix: string): boolean {
   return typeof (error as { code?: unknown })?.code === "string" && (error as { code: string }).code.endsWith(expectedSuffix);
@@ -94,19 +97,14 @@ test("RedisLockAdapter close handles wait state", async () => {
   await adapter.close();
 });
 
-test("RedisLockAdapter forceStealAsync throws when lock not found", async () => {
+test("RedisLockAdapter forceStealAsync succeeds for a missing lock or fails cleanly when Redis is unavailable", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
-  // Since we can't easily mock the Redis connection, we test the error path
-  // by calling forceStealAsync on a non-existent lock after ensuring connection
   try {
-    await adapter.forceStealAsync("nonexistent-lock", "newOwner", "test reason");
-    // If we get here without an error, the lock didn't exist (should throw)
-    assert.fail("Expected LockingError");
+    const result = await adapter.forceStealAsync("nonexistent-lock", "newOwner", "test reason");
+    assert.equal(result.owner, "newOwner");
   } catch (error: unknown) {
-    assert.ok(
-      hasLockCode(error, "lock.forceSteal_lock_not_found") || hasLockCode(error, "lock.redis_connection_closed"),
-    );
+    assert.ok(hasLockCode(error, "lock.redis_connection_closed"));
   }
 });
 
@@ -236,14 +234,11 @@ test("RedisLockAdapter enqueue method exists (inherited from QueueAdapter interf
 // ── Security: JSON.parse payload injection validation ───────────────────────
 
 test("RedisLockAdapter parseLockData rejects missing required fields", () => {
-  // Direct testing of the private parseLockData via LockDataSchema directly
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({});
   assert.ok(result.success === false, "Empty object should be rejected");
 });
 
 test("RedisLockAdapter parseLockData rejects wrong types for required fields", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: 123, // should be string
     owner: "owner",
@@ -256,7 +251,6 @@ test("RedisLockAdapter parseLockData rejects wrong types for required fields", (
 });
 
 test("RedisLockAdapter parseLockData rejects prototype pollution attempt", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   // Attempt prototype pollution via __proto__
   const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"__proto__":{"admin":true}}');
   const result = LockDataSchema.safeParse(maliciousPayload);
@@ -264,7 +258,6 @@ test("RedisLockAdapter parseLockData rejects prototype pollution attempt", () =>
 });
 
 test("RedisLockAdapter parseLockData rejects constructor property injection", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   // Attempt constructor property injection
   const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"constructor":{"admin":true}}');
   const result = LockDataSchema.safeParse(maliciousPayload);
@@ -272,7 +265,6 @@ test("RedisLockAdapter parseLockData rejects constructor property injection", ()
 });
 
 test("RedisLockAdapter parseLockData rejects negative fencingToken", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -285,7 +277,6 @@ test("RedisLockAdapter parseLockData rejects negative fencingToken", () => {
 });
 
 test("RedisLockAdapter parseLockData rejects non-positive ttlMs", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -298,7 +289,6 @@ test("RedisLockAdapter parseLockData rejects non-positive ttlMs", () => {
 });
 
 test("RedisLockAdapter parseLockData rejects invalid ISO timestamp", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -311,7 +301,6 @@ test("RedisLockAdapter parseLockData rejects invalid ISO timestamp", () => {
 });
 
 test("RedisLockAdapter parseLockData accepts valid minimal payload", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -325,7 +314,6 @@ test("RedisLockAdapter parseLockData accepts valid minimal payload", () => {
 });
 
 test("RedisLockAdapter parseLockData accepts string metadata", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -338,7 +326,6 @@ test("RedisLockAdapter parseLockData accepts string metadata", () => {
 });
 
 test("RedisLockAdapter parseLockData rejects extra unknown fields due to strict mode", () => {
-  const { LockDataSchema } = require("../../../../../src/platform/execution/distributed-lock/distributed-lock-types.js");
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",

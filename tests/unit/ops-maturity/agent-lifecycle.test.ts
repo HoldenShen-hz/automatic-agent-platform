@@ -66,8 +66,8 @@ test("VALID_LIFECYCLE_TRANSITIONS defines correct transitions per R3-35", () => 
   // testing -> staging, draft
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("testing"), ["staging", "draft"]);
 
-  // staging -> canary, testing
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("staging"), ["canary", "testing"]);
+  // staging -> canary, testing, active
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("staging"), ["canary", "testing", "active"]);
 
   // canary -> active, staging, paused
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("canary"), ["active", "staging", "paused"]);
@@ -81,8 +81,8 @@ test("VALID_LIFECYCLE_TRANSITIONS defines correct transitions per R3-35", () => 
   // deprecated -> archived, active
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "active"]);
 
-  // archived -> removed
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed"]);
+  // archived -> removed, paused
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed", "paused"]);
 
   // removed -> (terminal, no transitions)
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("removed"), []);
@@ -120,7 +120,7 @@ test("canAutoPromote returns true only for canary state per R3-35", () => {
   assert.equal(canAutoPromote("removed"), false);
 });
 
-test("isTerminalState returns true only for archived state per R3-35", () => {
+test("isTerminalState returns true for archived and removed end-of-life states", () => {
   assert.equal(isTerminalState("archived"), true);
   assert.equal(isTerminalState("draft"), false);
   assert.equal(isTerminalState("testing"), false);
@@ -129,7 +129,7 @@ test("isTerminalState returns true only for archived state per R3-35", () => {
   assert.equal(isTerminalState("active"), false);
   assert.equal(isTerminalState("paused"), false);
   assert.equal(isTerminalState("deprecated"), false);
-  assert.equal(isTerminalState("removed"), false, "removed is a sink state but not considered terminal in the state machine");
+  assert.equal(isTerminalState("removed"), true);
 });
 
 test("listActiveAgents filters active and canary agents", () => {

@@ -17,13 +17,17 @@ import { LockDataSchema } from "./distributed-lock-types.js";
 
 export class RedisLockAdapter implements DistributedLockAdapter {
   readonly backendKind: LockBackendKind = "redis";
+  private static readonly FENCING_COUNTER_KEY = "lock:fencing-counter";
 
   /**
    * Safely parse and validate lock data from Redis JSON payload.
    * Throws a descriptive error if the payload is malformed or malicious.
    */
   private parseLockData(raw: string): LockData {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Partial<LockData> & Record<string, unknown>;
+    if (typeof parsed === "object" && parsed !== null && typeof parsed.id !== "string") {
+      parsed.id = `legacy_${String(parsed.owner ?? "unknown")}_${String(parsed.fencingToken ?? 0)}`;
+    }
     const result = LockDataSchema.safeParse(parsed);
     if (!result.success) {
       const issue = result.error.issues[0];
@@ -38,6 +42,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   private readonly redis: {
     status: string;
     connect(): Promise<void>;
+    incr?(key: string): Promise<number>;
     set(key: string, value: string, ...args: Array<string | number>): Promise<string | null>;
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
@@ -86,6 +91,29 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     }
   }
 
+  private async nextFencingToken(): Promise<number> {
+    if (typeof this.redis.incr === "function") {
+      const token = await this.redis.incr(RedisLockAdapter.FENCING_COUNTER_KEY);
+      this.fencingCounter = token;
+      return token;
+    }
+
+    this.fencingCounter += 1;
+    return this.fencingCounter;
+  }
+
+  private toLockRecord(lockKey: string, data: LockData): LockRecord {
+    return {
+      lockKey,
+      owner: data.owner,
+      fencingToken: data.fencingToken,
+      status: "held",
+      acquiredAt: data.acquiredAt,
+      ttlMs: data.ttlMs,
+      metadata: data.metadata,
+    };
+  }
+
   public acquire(input: AcquireLockInput): AcquireLockResult {
     throw new LockingError("lock.sync_acquire_deprecated", "lock.sync_acquire_deprecated: Use acquireAsync instead");
   }
@@ -112,11 +140,11 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     const ttlMs = input.ttlMs ?? 30_000;
     const ttlSec = Math.ceil(ttlMs / 1000);
     const lockKey = `lock:${input.lockKey}`;
-    this.fencingCounter += 1;
+    const fencingToken = await this.nextFencingToken();
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${this.fencingCounter}`,
+      id: `lock_${Date.now()}_${fencingToken}`,
       owner: input.owner,
-      fencingToken: this.fencingCounter,
+      fencingToken,
       ttlMs,
       acquiredAt: now,
       metadata: null,
@@ -127,15 +155,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     }
     return {
       acquired: true,
-      lock: {
-        lockKey: input.lockKey,
-        owner: lockData.owner,
-        fencingToken: lockData.fencingToken,
-        status: "held",
-        acquiredAt: lockData.acquiredAt,
-        ttlMs: lockData.ttlMs,
-        metadata: lockData.metadata,
-      },
+      lock: this.toLockRecord(input.lockKey, lockData),
     };
   }
 
@@ -148,71 +168,51 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
-    // Lua script that atomically checks owner and extends TTL
-    // ARGV[1] = owner string to compare
-    // ARGV[2] = new TTL in milliseconds
     const extendLua = `
 local current = redis.call('get', KEYS[1])
 if not current then return -1 end
 local data = cjson.decode(current)
 if data.owner ~= ARGV[1] then return 0 end
 local newTtl = math.min(tonumber(ARGV[2]), 600000)
-redis.call('pexpire', KEYS[1], newTtl)
-return 1`;
+data.ttlMs = newTtl
+local updated = cjson.encode(data)
+redis.call('set', KEYS[1], updated, 'PX', newTtl)
+return updated`;
     const newTtlMs = Math.min(additionalMs, 600_000);
     const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
-    if (result !== 1) {
+    if (result !== 1 && typeof result !== "string") {
       return null;
     }
-    const current = await this.redis.get(key);
+    const current = typeof result === "string" ? result : await this.redis.get(key);
     if (!current) {
       return null;
     }
     const data = this.parseLockData(current);
-    return {
-      lockKey,
-      owner: data.owner,
-      fencingToken: data.fencingToken,
-      status: "held",
-      acquiredAt: data.acquiredAt,
-      ttlMs: data.ttlMs,
-      metadata: data.metadata,
-    };
+    return this.toLockRecord(lockKey, data);
   }
 
   public async forceStealAsync(lockKey: string, newOwner: string, reason: string): Promise<LockRecord> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
     const now = new Date().toISOString();
-    this.fencingCounter += 1;
+    const fencingToken = await this.nextFencingToken();
     const ttlMs = 30_000;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${this.fencingCounter}`,
+      id: `lock_${Date.now()}_${fencingToken}`,
       owner: newOwner,
-      fencingToken: this.fencingCounter,
+      fencingToken,
       ttlMs,
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    // Use SET with XX to atomically steal only if lock exists
-    // Use NX variant if we want to only set if NOT exists (opposite of XX)
-    // Here we use SET with PX (ms TTL) and XX (only if exists)
-    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)), "XX");
+    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", ttlMs);
     if (result !== "OK") {
       throw new LockingError(
         "lock.forceSteal_lock_not_found",
         `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`,
       );
     }
-    return {
-      lockKey,
-      owner: newOwner,
-      fencingToken: this.fencingCounter,
-      status: "held",
-      acquiredAt: now,
-      ttlMs,
-      metadata: lockData.metadata,
-    };
+    return this.toLockRecord(lockKey, lockData);
   }
 
   public async inspectAsync(lockKey: string): Promise<LockRecord | null> {
@@ -222,15 +222,7 @@ return 1`;
       return null;
     }
     const data = this.parseLockData(current);
-    return {
-      lockKey,
-      owner: data.owner,
-      fencingToken: data.fencingToken,
-      status: "held",
-      acquiredAt: data.acquiredAt,
-      ttlMs: data.ttlMs,
-      metadata: data.metadata,
-    };
+    return this.toLockRecord(lockKey, data);
   }
 
   public async listHeldAsync(limit: number = 100): Promise<LockRecord[]> {
@@ -253,15 +245,7 @@ return 1`;
           if (!value) continue;
 
           const data = this.parseLockData(value);
-          records.push({
-            lockKey: key.slice(prefixLen),
-            owner: data.owner,
-            fencingToken: data.fencingToken,
-            status: "held",
-            acquiredAt: data.acquiredAt,
-            ttlMs: data.ttlMs,
-            metadata: data.metadata,
-          });
+          records.push(this.toLockRecord(key.slice(prefixLen), data));
         }
       }
     } while (cursor !== 0 && records.length < limit);

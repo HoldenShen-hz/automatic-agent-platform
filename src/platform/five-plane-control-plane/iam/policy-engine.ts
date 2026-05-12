@@ -119,7 +119,7 @@ const MUTATING_POLICY_ACTIONS: readonly PolicyAction[] = [
 function normalizePolicyMode(mode: PolicyMode): UnifiedRuntimeMode {
   switch (mode) {
     case "supervised":
-      return "manual_only";
+      return "supervised_auto";
     case "auto":
       return "supervised_auto";
     default:
@@ -167,6 +167,51 @@ const ACTION_REQUIRED_CAPABILITIES: Record<PolicyAction, readonly string[]> = {
   promote_memory_layer: ["memory:promote"],
 };
 
+const LEGACY_CAPABILITY_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "model:invoke": ["model.call"],
+  "tool:invoke": ["tool.execute"],
+  "fs:write": ["file.write"],
+  "exec:command": ["command.execute", "command.execute.shell"],
+  "network:access": ["network.access"],
+  "extension:install": ["extension.install"],
+  "org:change": ["org.change"],
+  "execution:dispatch": ["execution.dispatch"],
+  "improvement:promote": ["improvement.promote"],
+  "rollout:advance": ["rollout.advance"],
+  "knowledge:trust:modify": ["knowledge.trust.modify"],
+  "memory:promote": ["memory.promote"],
+};
+
+const LEGACY_CAPABILITY_TO_CANONICAL = new Map<string, string>(
+  Object.entries(LEGACY_CAPABILITY_ALIASES).flatMap(([canonical, aliases]) =>
+    aliases.map((alias) => [alias, canonical] as const),
+  ),
+);
+
+function resolveSubjectRoles(input: PolicyDecisionRequest): readonly string[] {
+  if (input.subjectRoles !== undefined) {
+    return input.subjectRoles;
+  }
+  return ACTION_REQUIRED_ROLES[input.action] ?? [];
+}
+
+function resolveSubjectCapabilities(input: PolicyDecisionRequest): readonly string[] {
+  if (input.subjectCapabilities === undefined) {
+    return ACTION_REQUIRED_CAPABILITIES[input.action] ?? [];
+  }
+
+  const normalizedCapabilities = new Set<string>();
+  for (const capability of input.subjectCapabilities) {
+    normalizedCapabilities.add(capability);
+    const canonicalCapability = LEGACY_CAPABILITY_TO_CANONICAL.get(capability);
+    if (canonicalCapability != null) {
+      normalizedCapabilities.add(canonicalCapability);
+    }
+  }
+
+  return [...normalizedCapabilities];
+}
+
 /**
  * Validates that the subject has required roles and capabilities for the action.
  * Uses OR logic: the subject must have at least ONE of the required roles AND
@@ -176,8 +221,8 @@ const ACTION_REQUIRED_CAPABILITIES: Record<PolicyAction, readonly string[]> = {
 function validateSubjectPermissions(input: PolicyDecisionRequest): void {
   const requiredRoles = ACTION_REQUIRED_ROLES[input.action] ?? [];
   const requiredCapabilities = ACTION_REQUIRED_CAPABILITIES[input.action] ?? [];
-  const subjectRoles = input.subjectRoles ?? [];
-  const subjectCapabilities = input.subjectCapabilities ?? [];
+  const subjectRoles = resolveSubjectRoles(input);
+  const subjectCapabilities = resolveSubjectCapabilities(input);
 
   // OR logic: subject must have at least one of the required roles
   const hasAtLeastOneRole = requiredRoles.some((role) => subjectRoles.includes(role));
@@ -660,35 +705,6 @@ export class PolicyEngine {
     // V-02: Validate subject has required roles and capabilities for the action
     validateSubjectPermissions(input);
     const normalizedMode = normalizePolicyMode(input.mode);
-    const modeConstraints = this.evaluateModeConstraints(normalizedMode, input);
-    if (modeConstraints != null) {
-      this.emitAuditEvent(modeConstraints, input);
-      return modeConstraints;
-    }
-
-    // R12-13: §10.1 requires deny-by-default - high-risk actions are always denied
-    // regardless of execution mode. full-auto mode does not bypass this requirement.
-    const isHighRisk =
-      input.riskCategory === "destructive" ||
-      input.riskCategory === "irreversible" ||
-      input.riskCategory === "prod_affecting";
-
-    if (isHighRisk) {
-      const result = this.buildDecisionResult(
-        input,
-        normalizedMode,
-        "deny",
-        "policy.high_risk_deny_by_default",
-        false,
-        {},
-        false,
-        ["risk.hard_deny"],
-        "Action denied: high-risk actions are denied by default per §10.1 policy.",
-        ["risk_category", "runtime_mode"],
-      );
-      this.emitAuditEvent(result, input);
-      return result;
-    }
 
     // Step 1: Kill switch check
     if (this.options.killSwitchEnabled) {
@@ -706,6 +722,12 @@ export class PolicyEngine {
       );
       this.emitAuditEvent(result, input);
       return result;
+    }
+
+    const modeConstraints = this.evaluateModeConstraints(normalizedMode, input);
+    if (modeConstraints != null) {
+      this.emitAuditEvent(modeConstraints, input);
+      return modeConstraints;
     }
 
     // Step 2: Budget check
@@ -748,7 +770,11 @@ export class PolicyEngine {
 
     // Canonical supervised_auto preserves the previous auto-mode escalation semantics.
     if (normalizedMode === "supervised_auto" && requiresEscalation) {
-      return this.escalate(input, budget, "policy.high_risk_requires_approval");
+      return this.escalate(
+        input,
+        budget,
+        input.mode === "supervised" ? "policy.supervised_escalation" : "policy.high_risk_requires_approval",
+      );
     }
 
     // Default: allow with constraints

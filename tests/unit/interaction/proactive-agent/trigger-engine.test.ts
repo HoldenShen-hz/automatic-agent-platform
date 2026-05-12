@@ -16,9 +16,9 @@ test("resolveTriggerActionMode returns silent_record for critical risk without c
   assert.equal(mode, "silent_record");
 });
 
-test("resolveTriggerActionMode returns auto_execute for low/medium risk and suggest for high risk without confirmation", () => {
+test("resolveTriggerActionMode returns auto_execute only for low risk without confirmation", () => {
   assert.equal(resolveTriggerActionMode(false, "low"), "auto_execute");
-  assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
+  assert.equal(resolveTriggerActionMode(false, "medium"), "suggest");
   assert.equal(resolveTriggerActionMode(false, "high"), "suggest");
 });
 

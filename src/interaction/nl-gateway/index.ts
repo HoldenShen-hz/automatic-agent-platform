@@ -1035,6 +1035,9 @@ export class NlEntryService implements NlEntryPort {
    * Get the configured conversation window size for a given task type
    */
   public getConversationWindowSize(taskType?: string): number {
+    if (taskType == null) {
+      return this.conversationWindowSize;
+    }
     return getConversationWindowSize(this.nlConfig, taskType);
   }
 
@@ -1088,7 +1091,11 @@ export class NlEntryService implements NlEntryPort {
           minimumConfidence: this.clarificationThreshold,
         });
     const parserIntent = parsedIntentTokens[0];
-    const resolvedIntentType = parserIntent != null && parserIntent.confidence >= route.classification.confidence
+    const resolvedIntentType = parserIntent != null
+      && (
+        parserIntent.intentType === "why"
+        || parserIntent.confidence >= route.classification.confidence
+      )
       ? parserIntent.intentType
       : mapIntentType(route.classification.intent);
     const resolvedConfidence = Math.max(route.classification.confidence, parserIntent?.confidence ?? 0);

@@ -62,17 +62,17 @@ export function detectAmbiguity(
 ): boolean {
   const normalized = message.trim();
   const isShortMessage = normalized.length < 6;
-  const isLowConfidence = confidence < 0.7;
+  const missingRequiredEntities = extractedEntityCount < requiredEntityCount;
+
+  if (missingRequiredEntities) {
+    return true;
+  }
 
   if (isShortMessage) {
-    return true;
+    return confidence < 0.7;
   }
 
-  if (isLowConfidence) {
-    return true;
-  }
-
-  return extractedEntityCount < requiredEntityCount;
+  return false;
 }
 
 /**

@@ -266,7 +266,7 @@ test("recordSteadyStateResult marks experiment completed when all hypotheses pas
   assert.ok(retrieved!.completedAt != null);
 });
 
-test("recordSteadyStateResult marks experiment violated when any hypothesis fails", () => {
+test("recordSteadyStateResult initiates rollback when any hypothesis fails", () => {
   const scheduler = createScheduler();
   const hypotheses = [
     makeHypothesis({ name: "h1" }),
@@ -279,7 +279,7 @@ test("recordSteadyStateResult marks experiment violated when any hypothesis fail
   scheduler.recordSteadyStateResult(experiment.experimentId, "h2", 0.05, false, "h2 violated");
 
   const retrieved = scheduler.getExperiment(experiment.experimentId);
-  assert.equal(retrieved!.status, "violated");
+  assert.equal(retrieved!.status, "rollback");
   assert.ok(retrieved!.completedAt != null);
 });
 

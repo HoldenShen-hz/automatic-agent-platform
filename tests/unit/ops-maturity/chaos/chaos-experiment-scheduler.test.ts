@@ -93,6 +93,7 @@ test("ChaosExperimentScheduler.recordSteadyStateResult updates experiment result
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 
@@ -118,6 +119,7 @@ test("ChaosExperimentScheduler.recordSteadyStateResult marks completed when all 
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 
@@ -142,6 +144,7 @@ test("ChaosExperimentScheduler.recordSteadyStateResult marks violated when any f
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 
@@ -398,6 +401,7 @@ test("ChaosExperimentScheduler handles multiple steady state hypotheses with mix
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 

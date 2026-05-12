@@ -37,8 +37,8 @@ function createScheduler(): ChaosExperimentScheduler {
 function makeTarget(overrides: Partial<ExperimentTarget> = {}): ExperimentTarget {
   return {
     targetKind: "service",
-    targetId: "service-prod-001",
-    labels: { region: "us-east-1", env: "production", tier: "critical" },
+    targetId: "service-staging-001",
+    labels: { region: "us-east-1", env: "staging", tier: "critical" },
     ...overrides,
   };
 }
@@ -72,6 +72,10 @@ function makeExperimentInput(overrides: Partial<ExperimentScheduleInput> = {}): 
     steadyStateHypotheses: [makeHypothesis()],
     scheduledAt: "2026-04-25T10:00:00.000Z",
     maxDurationMs: 60000,
+    boundaryControl: {
+      blockedTargets: [],
+      autoRollbackOnViolation: false,
+    },
     ...overrides,
   };
 }
@@ -252,7 +256,7 @@ test("GameDay complete lifecycle: schedule -> start -> run -> complete", () => {
       {
         name: "Database Latency Test",
         description: "Inject latency into primary database",
-        target: { targetKind: "database", targetId: "db-primary", labels: { region: "us-east-1" } },
+        target: { targetKind: "database", targetId: "db-replica", labels: { region: "us-east-1" } },
         fault: { faultType: "latency", intensity: 0.3, durationMs: 60000, parameters: {} },
         steadyStateHypotheses: [
           { name: "query_latency", metricName: "query_latency_ms", tolerance: 100, operator: "lt" },
@@ -260,6 +264,7 @@ test("GameDay complete lifecycle: schedule -> start -> run -> complete", () => {
         ],
         scheduledAt: "2026-04-25T14:00:00.000Z",
         maxDurationMs: 120000,
+        boundaryControl: { blockedTargets: [], autoRollbackOnViolation: false },
       },
       {
         name: "Service Error Rate Test",
@@ -272,6 +277,7 @@ test("GameDay complete lifecycle: schedule -> start -> run -> complete", () => {
         ],
         scheduledAt: "2026-04-25T14:05:00.000Z",
         maxDurationMs: 120000,
+        boundaryControl: { blockedTargets: [], autoRollbackOnViolation: false },
       },
     ],
   };
@@ -729,8 +735,8 @@ test("GameDay experiments results are independently tracked", () => {
     name: "Multi-Exp GameDay",
     scheduledAt: "2026-04-25T14:00:00.000Z",
     experiments: [
-      { name: "Exp1", description: "d", target: { targetKind: "service", targetId: "s1", labels: {} }, fault: { faultType: "latency", intensity: 1, durationMs: 5000, parameters: {} }, steadyStateHypotheses: [{ name: "h1", metricName: "m", tolerance: 1, operator: "lt" }], scheduledAt: "2026-04-25T14:00:00.000Z", maxDurationMs: 60000 },
-      { name: "Exp2", description: "d", target: { targetKind: "service", targetId: "s2", labels: {} }, fault: { faultType: "error", intensity: 1, durationMs: 5000, parameters: {} }, steadyStateHypotheses: [{ name: "h2", metricName: "m", tolerance: 1, operator: "lt" }], scheduledAt: "2026-04-25T14:00:00.000Z", maxDurationMs: 60000 },
+      { name: "Exp1", description: "d", target: { targetKind: "service", targetId: "s1", labels: {} }, fault: { faultType: "latency", intensity: 1, durationMs: 5000, parameters: {} }, steadyStateHypotheses: [{ name: "h1", metricName: "m", tolerance: 1, operator: "lt" }], scheduledAt: "2026-04-25T14:00:00.000Z", maxDurationMs: 60000, boundaryControl: { autoRollbackOnViolation: false } },
+      { name: "Exp2", description: "d", target: { targetKind: "service", targetId: "s2", labels: {} }, fault: { faultType: "error", intensity: 1, durationMs: 5000, parameters: {} }, steadyStateHypotheses: [{ name: "h2", metricName: "m", tolerance: 1, operator: "lt" }], scheduledAt: "2026-04-25T14:00:00.000Z", maxDurationMs: 60000, boundaryControl: { autoRollbackOnViolation: false } },
     ],
   };
 

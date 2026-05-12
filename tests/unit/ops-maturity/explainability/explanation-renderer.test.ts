@@ -91,8 +91,8 @@ test("buildDecisionTree with causal links creates source and target nodes", () =
   const tree = buildDecisionTree("Test", links, [], []);
 
   const nodeIds = tree.allNodes.map((n) => n.nodeId);
-  assert.ok(nodeIds.includes("source-input_valid"));
-  assert.ok(nodeIds.includes("target-processing"));
+  assert.ok(nodeIds.includes("causal-input_valid"));
+  assert.ok(nodeIds.includes("causal-processing"));
 });
 
 test("buildDecisionTree with evidence labels creates evidence nodes", () => {
@@ -158,7 +158,7 @@ test("buildDecisionTree duplicate causal link sources do not create duplicate no
   ];
   const tree = buildDecisionTree("Test", links, [], []);
 
-  const sourceNodes = tree.allNodes.filter((n) => n.nodeId === "source-same_node");
+  const sourceNodes = tree.allNodes.filter((n) => n.nodeId === "causal-same_node");
   assert.equal(sourceNodes.length, 1);
 });
 
@@ -170,10 +170,9 @@ test("buildDecisionTree multiple causal links create all source and target nodes
   const tree = buildDecisionTree("Test", links, [], []);
 
   const nodeIds = tree.allNodes.map((n) => n.nodeId);
-  assert.ok(nodeIds.includes("source-A"));
-  assert.ok(nodeIds.includes("target-B"));
-  assert.ok(nodeIds.includes("source-B"));
-  assert.ok(nodeIds.includes("target-C"));
+  assert.ok(nodeIds.includes("causal-A"));
+  assert.ok(nodeIds.includes("causal-B"));
+  assert.ok(nodeIds.includes("causal-C"));
 });
 
 test("buildDecisionTree allNodes contains root node", () => {
@@ -230,8 +229,8 @@ test("renderStructuredExplanation includes causal link information", () => {
   const result = renderStructuredExplanation("execute", "Transform", links, [], []);
   const parsed = JSON.parse(result) as ParsedDecisionTree;
 
-  const sourceNode = parsed.allNodes.find((n) => n.nodeId === "source-input");
-  const targetNode = parsed.allNodes.find((n) => n.nodeId === "target-output");
+  const sourceNode = parsed.allNodes.find((n) => n.nodeId === "causal-input");
+  const targetNode = parsed.allNodes.find((n) => n.nodeId === "causal-output");
   assert.ok(sourceNode);
   assert.ok(targetNode);
 });
@@ -371,7 +370,7 @@ test("renderForAudience includes causal links in technical output", () => {
   const parsed = JSON.parse(result) as ParsedDecisionTree;
 
   const nodeIds = parsed.allNodes.map((n) => n.nodeId);
-  assert.ok(nodeIds.includes("source-input_valid"));
+  assert.ok(nodeIds.includes("causal-input_valid"));
 });
 
 test("renderForAudience includes decision factors in audit output", () => {
@@ -590,14 +589,13 @@ test("buildDecisionTree maxDepth accounts for evidence and factor children", () 
 });
 
 test("buildDecisionTree maxDepth with multiple causal links", () => {
-  // The renderer roots each source node directly under root and each target under its source.
-  // With A -> B and B -> C, the deepest traversable path is still depth 2.
+  // With A -> B and B -> C, B is both a target and the next source, so the deepest path is 3.
   const links: CausalLink[] = [
     { source: "A", target: "B", rationale: "A to B" },
     { source: "B", target: "C", rationale: "B to C" },
   ];
   const tree = buildDecisionTree("Root", links, [], []);
-  assert.equal(tree.maxDepth, 2);
+  assert.equal(tree.maxDepth, 3);
 });
 
 test("buildDecisionTree maxDepth with multiple branches", () => {

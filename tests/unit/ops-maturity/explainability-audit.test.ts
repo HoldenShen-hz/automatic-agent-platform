@@ -155,7 +155,7 @@ test("explainability: generate L3 with forensic budget", () => {
   };
 
   const bundle = service.generate(request, "L3", {
-    forensicExplanationBudget: 1000,
+    forensicBudgetReservationId: "budget:l3:forensic",
   });
 
   assert.strictEqual(bundle.depth, "L3");
@@ -175,7 +175,9 @@ test("explainability: L3 audience is audit", () => {
     riskNotes: [],
   };
 
-  const bundle = service.generate(request, "L3");
+  const bundle = service.generate(request, "L3", {
+    forensicBudgetReservationId: "budget:l3:audience",
+  });
 
   const trail = service.getAuditTrail(bundle.rationale.rationaleId);
   const genEntry = trail.find((e) => e.accessType === "generate");

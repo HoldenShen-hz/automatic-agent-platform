@@ -134,7 +134,7 @@ test("isTerminalState returns true only for archived state", () => {
 test("VALID_LIFECYCLE_TRANSITIONS has correct structure", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, 9);
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("draft"), ["testing"]);
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed"]);
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed", "paused"]);
 });
 
 test("AgentComponentsSchema accepts valid components", () => {
@@ -160,6 +160,6 @@ test("AgentComponentsSchema applies defaults", () => {
     autonomyConfig: {},
   };
   const result = AgentComponentsSchema.parse(minimal);
-  assert.equal(result.trustProfile.initialLevel, "suggestion");
-  assert.deepEqual(result.autonomyConfig.maxAutomationLevel, "supervised");
+  assert.equal(result.trustProfile.initialLevel, "no_write");
+  assert.deepEqual(result.autonomyConfig.maxAutomationLevel, "manual_only");
 });

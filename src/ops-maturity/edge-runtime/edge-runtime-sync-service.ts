@@ -226,7 +226,6 @@ export class EdgeRuntimeSyncService {
 
       const cloudDigest = cloudPayloadDigests[envelope.recordId];
       if (cloudDigest != null && cloudDigest !== envelope.payloadDigest) {
-        // R21-16 fix: Implement actual conflict resolution with merge logic for non-critical digests
         const cloudPayload = cloudPayloads?.[envelope.recordId];
         const conflictDecision = this.resolveConflict(envelope, cloudDigest, cloudPayload);
         if (conflictDecision.resolution === "reject") {
@@ -240,8 +239,7 @@ export class EdgeRuntimeSyncService {
           decisions.push(conflictDecision);
           continue;
         }
-        // For accept_cloud (cloud wins over edge), reject the edge version
-        // but record the resolution as accept_cloud to indicate cloud's version wins
+        // Cloud-wins resolutions reject the edge copy while preserving the decision rationale.
         rejectedEnvelopeIds.push(envelope.envelopeId);
         decisions.push(conflictDecision);
         continue;
@@ -289,7 +287,7 @@ export class EdgeRuntimeSyncService {
 
   /**
    * R21-16 fix: Resolves sync envelope conflicts with actual merge logic.
-   * Returns accept_cloud for high-risk conflicts, merge for low-risk data classification,
+   * Returns merge for low-risk conflicts and reject for high-risk or restricted payloads.
    * or reject for critical mismatches. When resolution is "merge", the merged payload is
    * computed by combining the envelope's payload with the cloud payload using a three-way
    * merge strategy based on recordId ordering and payload structure.
@@ -311,14 +309,19 @@ export class EdgeRuntimeSyncService {
       };
     }
 
-    // Cloud wins policy: when cloud has a different digest, reject the edge version
-    // in favor of the cloud version. The decision resolution is "accept_cloud"
-    // to indicate that the cloud copy should be used.
+    const mergedPayload = this.performThreeWayMerge(
+      envelope.recordId,
+      envelope.payloadDigest,
+      cloudDigest,
+      cloudPayload,
+    );
+
     return {
       envelopeId: envelope.envelopeId,
-      resolution: "accept_cloud",
-      rationale: "edge.sync_cloud_wins_policy:conflict_resolved",
+      resolution: "merge",
+      rationale: "edge.sync_conflict_merged",
       incidentId,
+      mergedPayload,
     };
   }
 

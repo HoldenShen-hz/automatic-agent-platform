@@ -188,6 +188,10 @@ export class InMemoryChaosExperimentSchedulerRepository implements ChaosExperime
 export interface ChaosFaultInjectionResult {
   readonly applied: boolean;
   readonly message: string;
+  readonly faultType?: FaultInjection["faultType"];
+  readonly intensity?: number;
+  readonly durationMs?: number;
+  readonly parameters?: Readonly<Record<string, unknown>>;
 }
 
 export type ChaosFaultExecutor = (params: {
@@ -214,6 +218,7 @@ export class ChaosExperimentScheduler {
   public constructor(options: ChaosExperimentSchedulerOptions = {}) {
     this.repository = options.repository ?? null;
     this.faultExecutor = options.faultExecutor ?? this.defaultFaultExecutor.bind(this);
+    this.hydrateFromRepository();
   }
 
   /**
@@ -650,8 +655,13 @@ export class ChaosExperimentScheduler {
     experiment.faultExecutionStatus = execution.applied ? "applied" : "failed";
     experiment.faultExecutionMessage = execution.message;
     this.persistSnapshot();
-    // R21-17 fix: Return actual execution result instead of fault config
-    return execution;
+    return {
+      ...execution,
+      faultType: experiment.fault.faultType,
+      intensity: experiment.fault.intensity,
+      durationMs: experiment.fault.durationMs,
+      parameters: experiment.fault.parameters,
+    };
   }
 
   public autoTerminateIfNeeded(experimentId: string): boolean {
@@ -751,7 +761,7 @@ export class ChaosExperimentScheduler {
     const experiments = gameDay.experimentIds
       .map((experimentId) => this.experiments.get(experimentId))
       .filter((item): item is ChaosExperiment => item != null);
-    if (experiments.some((item) => item.status === "violated")) {
+    if (experiments.some((item) => item.status === "violated" || item.status === "rollback")) {
       gameDay.status = "violated";
       gameDay.completedAt = nowIso();
       this.persistSnapshot();

@@ -163,6 +163,9 @@ export async function parseIntentTokensWithModel(
 
 function parseIntentTypeFromText(response: string): IntentType {
   const normalized = response.toLowerCase();
+  if (normalized.includes("why")) {
+    return "why";
+  }
   if (normalized.includes("approval_action") || normalized.includes("approve")) {
     return "approval_action";
   }
@@ -177,9 +180,6 @@ function parseIntentTypeFromText(response: string): IntentType {
   }
   if (normalized.includes("task_query") || normalized.includes("query")) {
     return "task_query";
-  }
-  if (normalized.includes("why")) {
-    return "why";
   }
   return "task_query";
 }

@@ -83,7 +83,7 @@ test("AgentVersionManager.getStableVersions filters to stable versions only", ()
   assert.equal(stable[0]!.version, "1.0.0");
 });
 
-test("AgentVersionManager.assignDeploymentSlot assigns to blue then evicts blue when assigning green", () => {
+test("AgentVersionManager.assignDeploymentSlot keeps blue active when assigning a different green version", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({ agentId: "agent-d", version: "1.0.0", stage: "stable", deprecatedAt: null, stable: true, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
   const v2 = mgr.registerVersion({ agentId: "agent-d", version: "2.0.0", stage: "canary", deprecatedAt: null, stable: false, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
@@ -96,10 +96,10 @@ test("AgentVersionManager.assignDeploymentSlot assigns to blue then evicts blue 
   const greenV2 = versions.find((v) => v.versionId === v2.versionId);
 
   assert.equal(greenV2?.deploymentSlot, "green");
-  assert.equal(blueV1?.deploymentSlot, null); // evicted when green was assigned
+  assert.equal(blueV1?.deploymentSlot, "blue");
 });
 
-test("AgentVersionManager.assignDeploymentSlot assigns green and evicts blue", () => {
+test("AgentVersionManager.assignDeploymentSlot allows blue and green to coexist during rollout", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({ agentId: "agent-g", version: "1.0.0", stage: "stable", deprecatedAt: null, stable: true, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
   const v2 = mgr.registerVersion({ agentId: "agent-g", version: "2.0.0", stage: "stable", deprecatedAt: null, stable: true, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
@@ -112,7 +112,7 @@ test("AgentVersionManager.assignDeploymentSlot assigns green and evicts blue", (
   const blueV1 = versions.find((v) => v.versionId === v1.versionId);
 
   assert.equal(greenV2?.deploymentSlot, "green");
-  assert.equal(blueV1?.deploymentSlot, null); // evicted
+  assert.equal(blueV1?.deploymentSlot, "blue");
 });
 
 test("AgentVersionManager.assignDeploymentSlot ignores unknown agent", () => {

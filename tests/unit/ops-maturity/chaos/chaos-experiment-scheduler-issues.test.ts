@@ -61,6 +61,7 @@ test("ChaosExperimentScheduler: recordSteadyStateResult deduplicates by hypothes
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 
@@ -95,7 +96,7 @@ test("ChaosExperimentScheduler: autoTerminateIfNeeded marks experiment as cancel
   assert.equal(terminated, true);
 
   const retrieved = scheduler.getExperiment(experiment.experimentId);
-  assert.equal(retrieved!.status, "cancelled");
+  assert.equal(retrieved!.status, "rollback");
 });
 
 test("ChaosExperimentScheduler source uses steadyStateCache field", async () => {
@@ -120,6 +121,7 @@ test("ChaosExperimentScheduler: recordSteadyStateResult marks violated on hypoth
     steadyStateHypotheses: hypotheses,
     scheduledAt: "2026-04-20T00:00:00.000Z",
     maxDurationMs: 5000,
+    boundaryControl: { autoRollbackOnViolation: false },
   });
   scheduler.startExperiment(experiment.experimentId);
 
