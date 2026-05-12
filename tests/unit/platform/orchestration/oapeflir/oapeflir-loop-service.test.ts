@@ -354,9 +354,73 @@ test("OapeflirLoopService preserves successful quality gate when only success fe
     ],
   });
 
-  assert.equal(result.outcome.nextAction, "complete");
+  assert.equal(result.evaluationReport.verdict, "accept");
   assert.equal(result.qualityGate.accepted, true);
   assert.equal(result.replanDecision.shouldReplan, false);
+});
+
+test("OapeflirLoopService terminates partial feedback without replanning", async () => {
+  runtimeMetricsRegistry.reset();
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+  });
+
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const result = await Promise.race([
+      service.run({
+        taskId: "task_partial_feedback_exit",
+        objective: "Exit on partial feedback without entering a replan loop",
+        workflow: {
+          workflow: { workflowId: "wf_partial_feedback_exit", divisionId: "coding", steps: [] },
+          executionSteps: [
+            {
+              stepId: "step_partial",
+              divisionId: "coding",
+              roleId: "writer",
+              inputKeys: [],
+              agentId: "agent_writer",
+              outputKey: "result",
+              outputSchemaPath: null,
+              dependsOnStepIds: [],
+              dependencyTypes: {},
+              timeoutMs: 1000,
+              maxAttempts: 1,
+            },
+          ],
+          planReason: "workflow.single_step_execution",
+          dependencyEdges: [],
+        },
+        feedbackSignals: [
+          {
+            signalId: "signal_partial",
+            taskId: "task_partial_feedback_exit",
+            source: "validation",
+            category: "partial",
+            severity: "warning",
+            payload: {
+              summary: "Output is only partially complete.",
+              reasonCode: "validation.partial_completion",
+            },
+            stepOutputRefs: ["step_partial"],
+            timestamp: Date.now(),
+          },
+        ],
+      }),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("partial feedback loop did not terminate")), 500);
+      }),
+    ]);
+
+    assert.equal(result.evaluationReport.verdict, "approve");
+    assert.equal(result.qualityGate.accepted, false);
+    assert.equal(result.qualityGate.releaseStage, "approval");
+    assert.equal(result.replanDecision.shouldReplan, false);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
 });
 
 test("OapeflirLoopService.buildSerializedHandoff creates handoff from loop result", async () => {

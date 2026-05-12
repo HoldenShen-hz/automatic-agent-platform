@@ -298,7 +298,7 @@ test("PostExecutionQualityGate decides repair when nextAction is retry", () => {
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "repair");
-  assert.deepEqual(decision.reasonCodes, ["quality.repair_required"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.repair_required", "quality.retry_required"]);
 });
 
 test("PostExecutionQualityGate decides repair when nextAction is replan", () => {
@@ -325,7 +325,7 @@ test("PostExecutionQualityGate decides repair when nextAction is replan", () => 
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "repair");
-  assert.deepEqual(decision.reasonCodes, ["quality.repair_required"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.repair_required", "quality.replan_required"]);
 });
 
 test("PostExecutionQualityGate decides blocked as fallback", () => {
@@ -352,7 +352,7 @@ test("PostExecutionQualityGate decides blocked as fallback", () => {
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "blocked");
-  assert.deepEqual(decision.reasonCodes, ["quality.blocked"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.blocked", "quality.escalate"]);
 });
 
 test("PostExecutionQualityGate does not accept when passed is true but nextAction is not complete", () => {

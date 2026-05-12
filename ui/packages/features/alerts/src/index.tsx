@@ -9,7 +9,7 @@ const alertsFeature = createFeatureModule({
   title: featureCopy.title,
   group: "Mission Control",
   path: "/mission-control/alerts",
-  permission: "authenticated",
+  permission: "platform_sre",
   status: "Implemented/Internal",
   summary: featureCopy.summary,
   render: AlertsWebView,

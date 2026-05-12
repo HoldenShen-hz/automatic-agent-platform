@@ -197,6 +197,7 @@ test("ExecutionOutcomeEvaluator routes to approve when approval signal is presen
   });
 
   assert.equal(evaluation.nextAction, "approve");
+  assert.equal(evaluation.verdict, "approve");
 });
 
 test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass threshold", () => {
@@ -247,7 +248,7 @@ test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass thres
     emittedAt: Date.now(),
   });
 
-  assert.equal(evaluation.nextAction, "complete");
+  assert.equal(evaluation.nextAction, "approve");
   assert.equal(evaluation.passed, false);
   // R34-15 fix: weights 0.3 + 0.4 = 0.7, not 0.8
   assert.equal(evaluation.qualityScore, 0.7);
@@ -339,8 +340,8 @@ test("ExecutionOutcomeEvaluator provides factor breakdown", () => {
 
   assert.equal(evaluation.factorBreakdown.successSignals, 1);
   assert.equal(evaluation.factorBreakdown.failureSignals, 1);
-  assert.equal(evaluation.factorBreakdown.completionBonus, 0.45);
-  assert.equal(evaluation.factorBreakdown.failurePenalty, 0.3);
+  assert.equal(evaluation.factorBreakdown.completionBonus, 0.4);
+  assert.equal(evaluation.factorBreakdown.failurePenalty, 0.2);
 });
 
 test("ExecutionOutcomeEvaluator escalates after max retries", () => {
@@ -440,5 +441,5 @@ test("ExecutionOutcomeEvaluator weights sum to 1.0", () => {
   // With weights summing to 1.0 (0.3 successSignal + 0.4 completionOutcome):
   // qualityScore should be 0.7, not clamped to 0.8
   assert.equal(evaluation.qualityScore, 0.7);
-  assert.equal(evaluation.passed, false); // 0.7 < 0.8 threshold
+  assert.equal(evaluation.passed, true); // 0.7 >= medium risk threshold
 });

@@ -152,9 +152,10 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
   };
 }
 
-export function createCsrfInterceptor(token: string | null = readCsrfToken()): RestClientInterceptor {
+export function createCsrfInterceptor(): RestClientInterceptor {
   return {
     onRequest(request) {
+      const token = readCsrfToken();
       if (request.method !== "GET" && token != null) {
         request.headers.set("x-csrf-token", token);
       }

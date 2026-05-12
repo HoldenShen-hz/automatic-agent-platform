@@ -7,5 +7,15 @@
   "scripts": {
     "dev": "electron .",
     "smoke": "node ./src/index.ts"
+  },
+  "devDependencies": {
+    "electron": "^35.3.0",
+    "electron-updater": "^6.6.2"
+  },
+  "build": {
+    "win": {
+      "verifyUpdateCodeSignature": true,
+      "signAndEditExecutable": true
+    }
   }
 }

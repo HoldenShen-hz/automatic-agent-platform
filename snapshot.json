@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-09T17:00:43.926Z",
+  "generatedAt": "2026-05-12T12:48:24.265Z",
   "namespaces": [
     {
       "namespaceId": "ns-test-001",
@@ -13,7 +13,7 @@
         "refreshStrategy": "manual",
         "refreshIntervalHours": null
       },
-      "trustLevel": "verified",
+      "trustLevel": "authoritative",
       "maxDocuments": 100,
       "maxTotalSizeBytes": 1048576
     }

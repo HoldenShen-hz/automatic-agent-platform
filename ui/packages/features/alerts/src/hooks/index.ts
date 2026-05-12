@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRESTClient } from "@aa/shared-api-client";
-import { useIncidentsQuery, useMutation, useWsClient } from "@aa/shared-state";
+import { useAuthState, useIncidentsQuery, useMutation, useWsClient } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
 
 const restClient = createRESTClient();
+const ALERTS_REQUIRED_PERMISSION = "platform_sre";
 
 export interface AlertHistoryEntry {
   readonly title: string;
@@ -113,6 +114,7 @@ export function buildAlertsVm(
 export const mapAlertsToVm = buildAlertsVm;
 
 export function useAlertsVm(): AlertsVm {
+  const auth = useAuthState();
   const wsClient = useWsClient();
   const [filters] = useState<AlertsVm["filters"]>({
     severity: "all",
@@ -125,6 +127,7 @@ export function useAlertsVm(): AlertsVm {
   const [history, setHistory] = useState<readonly AlertHistoryEntry[]>([]);
   const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
   const incidents = useIncidentsQuery().data ?? [];
+  const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
 
   const { mutate: acknowledgeMutate, status: acknowledgeStatus } = useMutation({
     client: restClient,
@@ -165,7 +168,7 @@ export function useAlertsVm(): AlertsVm {
 
   const mergedIncidents = useMemo(() => {
     const merged = new Map<string, IncidentDTO>();
-    for (const incident of incidents) {
+    for (const incident of scopedIncidents) {
       merged.set(incident.id, incident);
     }
     for (const incident of liveIncidents) {
@@ -179,7 +182,7 @@ export function useAlertsVm(): AlertsVm {
       const snoozeExpiry = snoozedUntil.get(incident.id);
       return snoozeExpiry == null || snoozeExpiry <= now;
     });
-  }, [dismissed, incidents, liveIncidents, snoozedUntil]);
+  }, [dismissed, liveIncidents, scopedIncidents, snoozedUntil]);
 
   const dedupedIncidents = useMemo(() => {
     const byId = new Map<string, IncidentDTO>();

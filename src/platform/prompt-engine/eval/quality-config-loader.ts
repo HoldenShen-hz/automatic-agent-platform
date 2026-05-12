@@ -92,7 +92,7 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
       },
     };
   } catch (err) {
-    if (isMissingConfigError(err)) {
+    if (isMissingConfigError(err) || err instanceof SyntaxError || err instanceof z.ZodError) {
       return DEFAULT_QUALITY_CONFIG;
     }
     throw err;

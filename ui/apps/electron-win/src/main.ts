@@ -1,12 +1,9 @@
-import { app, BrowserWindow, Notification, globalShortcut, shell } from "electron";
+import electron from "electron";
+import type { BrowserWindow } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export interface ElectronIpcChannel {
-  readonly name: string;
-  readonly tier: "external-navigation" | "window-management" | "secure-storage" | "privacy";
-  readonly permission: string;
-}
+const { app, BrowserWindow, Notification, globalShortcut, shell } = electron;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const rendererHtmlPath = join(currentDir, "../dist/index.html");
@@ -32,18 +29,18 @@ export const electronMainBaseline = {
     sandbox: true,
   },
   channels: [
-    { name: "shell:openExternal", tier: "external-navigation", permission: "external-link" },
-    { name: "window:minimize", tier: "window-management", permission: "window-control" },
-    { name: "window:maximize", tier: "window-management", permission: "window-control" },
-    { name: "window:open", tier: "window-management", permission: "window-control" },
-    { name: "deep-link:open", tier: "external-navigation", permission: "deep-link" },
-    { name: "secure-store:read", tier: "secure-storage", permission: "credential-read" },
-    { name: "secure-store:write", tier: "secure-storage", permission: "credential-write" },
-    { name: "secure-store:delete", tier: "secure-storage", permission: "credential-delete" },
-    { name: "privacy:getAnalyticsConsent", tier: "privacy", permission: "analytics-consent-read" },
-    { name: "privacy:setAnalyticsConsent", tier: "privacy", permission: "analytics-consent-write" },
-    { name: "privacy:enableScreenSecurity", tier: "privacy", permission: "screen-protection" },
-  ] as const satisfies readonly ElectronIpcChannel[],
+    "shell:openExternal",
+    "window:minimize",
+    "window:maximize",
+    "window:open",
+    "deep-link:open",
+    "secure-store:read",
+    "secure-store:write",
+    "secure-store:delete",
+    "privacy:getAnalyticsConsent",
+    "privacy:setAnalyticsConsent",
+    "privacy:enableScreenSecurity",
+  ] as const,
 };
 
 export const electronBridgeCapabilities = {

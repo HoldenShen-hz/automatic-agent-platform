@@ -23,7 +23,7 @@ export class PostExecutionQualityGate {
         reasonCodes: ["quality.accepted"],
       };
     }
-    if ("nextAction" in evaluation && evaluation.nextAction === "approve") {
+    if (verdict === "approve" || ("nextAction" in evaluation && evaluation.nextAction === "approve")) {
       return {
         accepted: false,
         releaseStage: "approval",
@@ -62,11 +62,12 @@ export class PostExecutionQualityGate {
     switch (nextAction) {
       case "complete":
         return "accept";
+      case "approve":
+        return "approve";
       case "replan":
         return "replan";
       case "retry":
         return "retry";
-      case "approve":
       case "escalate":
         return "escalate";
     }

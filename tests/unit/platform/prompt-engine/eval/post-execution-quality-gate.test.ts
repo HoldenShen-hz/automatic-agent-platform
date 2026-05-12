@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
-import type { ExecutionOutcomeEvaluation } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
+import type { EvaluationReport, ExecutionOutcomeEvaluation } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 
 test("PostExecutionQualityGate decides released when complete and passed", () => {
   const gate = new PostExecutionQualityGate();
@@ -58,6 +58,51 @@ test("PostExecutionQualityGate decides approval when nextAction is approve", () 
   assert.deepEqual(decision.reasonCodes, ["quality.approval_required"]);
 });
 
+test("PostExecutionQualityGate decides approval for canonical approve verdict", () => {
+  const gate = new PostExecutionQualityGate();
+  const evaluation: EvaluationReport = {
+    verdict: "approve",
+    score: 0.65,
+    evidenceRefs: ["approval_required"],
+    notes: "approval required",
+    dimensions: {
+      qualityScore: 0.65,
+      constraintCompliance: {
+        compliant: true,
+        violatedConstraints: [],
+        severity: "info",
+      },
+      budgetAdherence: {
+        adherent: true,
+        plannedBudget: 100,
+        actualCost: 40,
+        variancePercent: -60,
+        severity: "info",
+      },
+      riskEvaluation: {
+        withinRiskBudget: true,
+        riskLevel: "unchanged",
+        currentRiskScore: 0.2,
+        baselineRiskScore: 0.2,
+        severity: "info",
+      },
+      timingSlo: {
+        withinSlo: true,
+        plannedDurationMs: 1000,
+        actualDurationMs: 250,
+        variancePercent: -75,
+        severity: "info",
+      },
+    },
+  };
+
+  const decision = gate.decide(evaluation);
+
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.releaseStage, "approval");
+  assert.deepEqual(decision.reasonCodes, ["quality.approval_required"]);
+});
+
 test("PostExecutionQualityGate decides repair when nextAction is retry", () => {
   const gate = new PostExecutionQualityGate();
   const evaluation: ExecutionOutcomeEvaluation = {
@@ -82,7 +127,7 @@ test("PostExecutionQualityGate decides repair when nextAction is retry", () => {
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "repair");
-  assert.deepEqual(decision.reasonCodes, ["quality.repair_required"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.repair_required", "quality.retry_required"]);
 });
 
 test("PostExecutionQualityGate decides repair when nextAction is replan", () => {
@@ -109,7 +154,7 @@ test("PostExecutionQualityGate decides repair when nextAction is replan", () => 
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "repair");
-  assert.deepEqual(decision.reasonCodes, ["quality.repair_required"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.repair_required", "quality.replan_required"]);
 });
 
 test("PostExecutionQualityGate decides blocked for unknown nextAction", () => {
@@ -136,7 +181,7 @@ test("PostExecutionQualityGate decides blocked for unknown nextAction", () => {
 
   assert.equal(decision.accepted, false);
   assert.equal(decision.releaseStage, "blocked");
-  assert.deepEqual(decision.reasonCodes, ["quality.blocked"]);
+  assert.deepEqual(decision.reasonCodes, ["quality.blocked", "quality.escalate"]);
 });
 
 test("PostExecutionQualityGate handles evaluation with passed false and complete action", () => {

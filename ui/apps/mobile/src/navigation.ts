@@ -35,7 +35,7 @@ const tabRoutes = [
   { id: "tasks", title: "Tasks", path: "/mission-control/tasks", requiresAuth: true },
   { id: "workflow-cockpit", title: "Workflow Cockpit", path: "/mission-control/workflows/:id", requiresAuth: true },
   { id: "approvals", title: "Approvals", path: "/mission-control/approvals", requiresAuth: true },
-  { id: "conversation", title: "Conversation", path: "/extended/conversation", requiresAuth: true },
+  { id: "conversation", title: "Conversation", path: "/mission-control/conversation", requiresAuth: true },
   { id: "settings", title: "Settings", path: "/shared/settings", requiresAuth: true },
 ] satisfies readonly MobileScreenDefinition[];
 

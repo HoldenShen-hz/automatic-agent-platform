@@ -15,7 +15,7 @@ export interface DesktopShellManifest {
 export const tauriLinuxManifest: DesktopShellManifest = Object.freeze({
   platform: "linux",
   runtime: "tauri",
-  supportsBackgroundAgent: false,
+  supportsBackgroundAgent: true,
   supportsNotifications: true,
   supportsSystemTray: true,
   supportsWaylandXdg: true,

@@ -8,4 +8,5 @@ tauri = { version = "2", features = [] }
 tauri-plugin-notification = "2"
 tauri-plugin-os = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-secure-storage = "2"
 tauri-plugin-updater = "2"

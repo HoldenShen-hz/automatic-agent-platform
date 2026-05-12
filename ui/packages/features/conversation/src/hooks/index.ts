@@ -353,8 +353,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     syncFromClient({ planReady: true, executionReady: true, isStreaming: false, status: "confirming" });
   }, [client, syncFromClient]);
 
-  const requestClarification = useCallback(() => {
-    const content = "预算上限和投放时区还不清楚，请确认。";
+  const requestClarification = useCallback((content = "预算上限和投放时区还不清楚，请确认。") => {
     wsClient?.publish({
       channel: "conversation",
       type: "clarification",
@@ -365,6 +364,11 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   }, [client, syncFromClient, wsClient]);
 
   const executePlan = useCallback(async () => {
+    // Local in-memory simulation bypasses the intake pipeline and must stay disabled offline.
+    if (wsClient == null) {
+      requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
+      return;
+    }
     if (!executionReady) {
       requestClarification();
       return;

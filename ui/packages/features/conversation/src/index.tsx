@@ -7,8 +7,8 @@ const featureCopy = translateFeatureCopy("conversation");
 const conversationFeature = createFeatureModule({
   id: "conversation",
   title: featureCopy.title,
-  group: "Extended",
-  path: "/extended/conversation",
+  group: "Mission Control",
+  path: "/mission-control/conversation",
   permission: "authenticated",
   status: "Implemented/Internal",
   summary: featureCopy.summary,

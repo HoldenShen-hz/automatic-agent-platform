@@ -1,14 +1,16 @@
 const ALLOWED_COMMANDS: &[&str] = &["status", "health", "version"];
-const ALLOWED_DEEP_LINK_SCHEMES: &[&str] = &["aa://", "https://", "http://"];
-
 fn is_command_allowed(command: &str) -> bool {
     ALLOWED_COMMANDS.contains(&command)
 }
 
 fn is_allowed_deep_link(url: &str) -> bool {
-    ALLOWED_DEEP_LINK_SCHEMES
-        .iter()
-        .any(|scheme| url.starts_with(scheme))
+    url::Url::parse(url)
+        .ok()
+        .and_then(|parsed| Some(parsed.scheme().to_string()))
+        .map(|scheme| {
+            scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https")
+        })
+        .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -19,7 +21,7 @@ fn healthcheck() -> &'static str {
 #[tauri::command]
 fn open_deep_link(url: String) -> Result<String, String> {
     if !is_allowed_deep_link(&url) {
-        return Err(format!("Deep link scheme not allowed: {}", url));
+        return Err("rejected:invalid_scheme".to_string());
     }
     Ok(format!("opened:{url}"))
 }

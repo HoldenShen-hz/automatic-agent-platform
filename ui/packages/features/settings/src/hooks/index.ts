@@ -2,15 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useDomainConfigsQuery,
   useFeatureFlagsQuery,
-  useMutation,
   useModelsQuery,
   usePreferencesQuery,
   useRolesQuery,
   useTenantsQuery,
   useWebhooksQuery,
 } from "@aa/shared-state";
-import type { UserPreferenceDTO } from "@aa/shared-types";
-import { createRESTClient } from "@aa/shared-api-client";
+import { createRESTClient, updatePreferences } from "@aa/shared-api-client";
 import { getSharedTranslationService, translateMessage } from "@aa/shared-i18n";
 
 const restClient = createRESTClient();
@@ -49,12 +47,6 @@ export function useSettingsVm(): SettingsVm {
   const preferenceTheme = preferences?.theme;
   const preferenceLocale = preferences?.locale;
 
-  const { mutate: savePreferencesMutate, status: saveStatus } = useMutation({
-    client: restClient,
-    method: "PUT",
-    path: "/preferences",
-  });
-
   useEffect(() => {
     if (preferences != null) {
       setDraftTheme(preferences.theme);
@@ -72,29 +64,23 @@ export function useSettingsVm(): SettingsVm {
 
   const save = useCallback(async () => {
     setSaveState("saving");
-    return new Promise<void>((resolve, reject) => {
-      savePreferencesMutate(
-        { locale: draftLocale, theme: draftTheme } as unknown as UserPreferenceDTO,
+    const client = restClient;
+    const etag = (preferences as { etag?: string }).etag;
+    try {
+      await updatePreferences(client, { theme: draftTheme, locale: draftLocale }, etag);
+      setSaveState("saved");
+      setActivityItems((current) => [
         {
-          onSuccess: () => {
-            setSaveState("saved");
-            setActivityItems((current) => [
-              {
-                title: "Configuration saved",
-                description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
-              },
-              ...current,
-            ]);
-            resolve();
-          },
-          onError: (err) => {
-            setSaveState("error");
-            reject(err);
-          },
+          title: "Configuration saved",
+          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
         },
-      );
-    });
-  }, [draftLocale, draftTheme, savePreferencesMutate]);
+        ...current,
+      ]);
+    } catch (err) {
+      setSaveState("error");
+      throw err;
+    }
+  }, [draftLocale, draftTheme, preferences]);
 
   return {
     loading: preferences == null,
@@ -135,7 +121,7 @@ export function useSettingsVm(): SettingsVm {
     draftTheme,
     draftLocale,
     saveState,
-    pendingOperations: saveStatus === "pending" ? 1 : 0,
+    pendingOperations: saveState === "saving" ? 1 : 0,
     activityItems,
     localeOptions: translationService.listSupportedLocales().map((item) => ({
       value: item.locale,

@@ -76,7 +76,14 @@ const fallbackSyncStore = createSyncStore();
 const identity = <T,>(state: T): T => state;
 
 export function UiRuntimeProvider(
-  { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
+  {
+    children,
+    client,
+    queryClient,
+    wsClient,
+    wsUrl,
+    wsToken,
+  }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient; wsUrl?: string; wsToken?: string }>,
 ): ReactElement {
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
@@ -127,22 +134,24 @@ export function UiRuntimeProvider(
       realtimeStore.getState().setWsStatus(status);
     });
 
-    router.connect("ws://local/ui", "demo-token");
-    router.subscribe("global");
-    router.subscribe("dashboard");
-    router.subscribe("approvals");
-    router.subscribe("incidents");
-    router.subscribe("agents");
-    resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
-    resolvedWsClient.useSseFallback();
-    realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
-    realtimeStore.getState().setSyncStatus("queued");
+    if (wsUrl != null && wsToken != null && wsToken.length > 0) {
+      router.connect(wsUrl, wsToken);
+      router.subscribe("global");
+      router.subscribe("dashboard");
+      router.subscribe("approvals");
+      router.subscribe("incidents");
+      router.subscribe("agents");
+    } else {
+      resolvedWsClient.useSseFallback();
+      realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
+      realtimeStore.getState().setSyncStatus("queued");
+    }
 
     return () => {
       disposeStatus();
       router.disconnect();
     };
-  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore]);
+  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore, wsToken, wsUrl]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },

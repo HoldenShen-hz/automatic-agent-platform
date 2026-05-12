@@ -1,19 +1,23 @@
 import {
-  BrowserWSClient,
   DefaultRESTClient,
   HttpTransport,
-  InMemoryWSClient,
+  type RESTClient,
+} from "../../../packages/shared/api-client/src/rest-client.js";
+import {
   createAuthInterceptor,
   createCsrfInterceptor,
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
-  type RESTClient,
+} from "../../../packages/shared/api-client/src/interceptors.js";
+import {
+  BrowserWSClient,
+  InMemoryWSClient,
   type WSClient,
-} from "@aa/shared-api-client";
-import { createPersistentOfflineQueue } from "@aa/shared-sync";
-import { TokenManager } from "@aa/shared-auth";
+} from "../../../packages/shared/api-client/src/ws-client.js";
+import { createPersistentOfflineQueue } from "../../../packages/shared/sync/src/offline-queue.js";
+import { TokenManager } from "../../../packages/shared/auth/src/token-manager.js";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;

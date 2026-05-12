@@ -80,9 +80,19 @@ export class MockTransport {
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
     const payload = this.resolve(request.path, request.body);
     return {
-      status: 200,
+      status: this.resolveStatus(request.method),
       data: payload as T,
     };
+  }
+
+  private resolveStatus(method: RestClientRequest["method"]): number {
+    if (method === "POST") {
+      return 201;
+    }
+    if (method === "DELETE") {
+      return 204;
+    }
+    return 200;
   }
 
   private resolve(path: string, body?: unknown):

@@ -73,6 +73,11 @@ export class TelemetrySink {
       lastError: null,
     });
 
+    if (this.exporters.length === 0 && this.events.length >= this.maxBufferSize) {
+      this.events.splice(0, this.events.length - 1);
+      return;
+    }
+
     if (this.events.length >= this.maxBufferSize) {
       void this.flush().catch(() => undefined);
     }

@@ -31,6 +31,11 @@ const costCenter = lazy(() => import("@aa/feature-cost-center"));
 const marketplace = lazy(() => import("@aa/feature-marketplace"));
 const analytics = lazy(() => import("@aa/feature-analytics"));
 
+export const missionControlFeatureContracts = [
+  { id: "alerts", path: "/mission-control/alerts", permission: "platform_sre" },
+  { id: "conversation", group: "Mission Control", path: "/mission-control/conversation" },
+] as const;
+
 export const featureRegistry = [
   dashboard,
   taskCockpit,

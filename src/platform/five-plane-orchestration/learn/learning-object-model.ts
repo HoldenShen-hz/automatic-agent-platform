@@ -80,7 +80,7 @@ export const LearningObjectSchema = z.object({
   sourceSignalIds: z.array(z.string()).default([]),
   recommendation: z.string().min(1).optional(),
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
-  promotionStatus: LearningObjectPromotionStatusSchema.optional(),
+  promotionStatus: LearningObjectPromotionStatusSchema.default("quarantine"),
   status: z.enum(["created", "validating", "validated", "rejected", "promoted"]).optional(),
   createdAt: z.union([z.string(), z.number().int().nonnegative()]),
   validatedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
@@ -155,7 +155,7 @@ export function parseLearningObject(input: unknown): LearningObject {
   const promotionStatus = parsed.promotionStatus ?? (
     parsed.status != null
       ? promotionStatusFromStatus(parsed.status)
-      : "untrusted"
+      : "quarantine"
   );
   const status = parsed.status ?? statusFromPromotionStatus(promotionStatus);
 

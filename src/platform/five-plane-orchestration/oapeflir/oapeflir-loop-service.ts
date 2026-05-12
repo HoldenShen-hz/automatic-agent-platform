@@ -444,8 +444,10 @@ export class OapeflirLoopService {
         // R5-12: Build GraphPatch if replan is needed
         loopGraphPatch = loopReplanDecision.shouldReplan ? this.buildGraphPatch(loopPlan, loopPlan.version + 1) : null;
 
-        // R5-2: Exit loop if no replan needed and quality gate passed
-        if (!loopReplanDecision.shouldReplan && loopQualityGate.accepted) {
+        // Exit whenever replanning is not warranted. Non-accepted terminal outcomes
+        // such as approval/block must return to the caller instead of spinning back
+        // into a fresh plan cycle with the same feedback.
+        if (!loopReplanDecision.shouldReplan) {
           break;
         }
 
@@ -945,7 +947,7 @@ export class OapeflirLoopService {
     planGraphBundle: PlanGraphBundle;
     assessment: Pick<UnifiedAssessment, "risk"> | { risk: UnifiedAssessment["risk"] };
     feedback: FeedbackBatch;
-    qualityGate: Pick<PostExecutionQualityGateDecision, "accepted" | "reasonCodes">;
+    qualityGate: Pick<PostExecutionQualityGateDecision, "accepted" | "reasonCodes" | "releaseStage">;
     replanDecision: Pick<ReplanningDecision, "shouldReplan">;
     evaluationReport: Pick<EvaluationReport, "score"> & Partial<Pick<EvaluationReport, "notes">>;
     constraintPack?: ConstraintPack;
@@ -962,9 +964,14 @@ export class OapeflirLoopService {
       ? 0
       : Math.max(0, budgetEnvelope.maxDurationMs - input.stepOutputs.reduce((sum, output) => sum + output.systemTelemetry.durationMs, 0));
     const firstNode = input.planGraphBundle.graph.nodes[0];
+    const decisionKind = input.replanDecision.shouldReplan
+      ? "replan"
+      : input.qualityGate.accepted || input.qualityGate.releaseStage === "approval"
+        ? "approve"
+        : "retry";
     const bundle = createDecisionInputBundle({
       harnessRunId: input.harnessRunId,
-      decisionKind: input.replanDecision.shouldReplan ? "replan" : input.qualityGate.accepted ? "approve" : "retry",
+      decisionKind,
       riskClass: input.planGraphBundle.riskProfile.riskClass,
       evaluator: {
         score: input.evaluationReport.score,

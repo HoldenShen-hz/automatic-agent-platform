@@ -24,7 +24,7 @@ import type { RiskFactors } from "../../five-plane-control-plane/risk-control/ty
  * Replaces ExecutionOutcomeEvaluation as the direct output of the evaluate() method.
  */
 export interface EvaluationReport {
-  verdict: "accept" | "replan" | "retry" | "escalate";
+  verdict: "accept" | "approve" | "replan" | "retry" | "escalate";
   score: number;
   evidenceRefs: readonly string[];
   notes?: string;
@@ -152,11 +152,12 @@ function mapNextActionToVerdict(nextAction: ExecutionOutcomeEvaluation["nextActi
   switch (nextAction) {
     case "complete":
       return passed ? "accept" : "replan";
+    case "approve":
+      return "approve";
     case "replan":
       return "replan";
     case "retry":
       return "retry";
-    case "approve":
     case "escalate":
       return "escalate";
   }

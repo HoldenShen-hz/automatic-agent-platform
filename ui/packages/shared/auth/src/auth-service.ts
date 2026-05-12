@@ -33,9 +33,10 @@ export class AuthService {
     };
   }
 
-  public handleSsoCallback(params: URLSearchParams): AuthSession {
-    const accessToken = params.get("access_token") ?? "mock-access-token";
-    const refreshToken = params.get("refresh_token") ?? "mock-refresh-token";
-    return this.login(accessToken, refreshToken);
+  public async handleSsoCallback(params: URLSearchParams): Promise<AuthSession> {
+    if (params.has("access_token") || params.has("refresh_token")) {
+      throw new Error("auth.redirecting");
+    }
+    throw new Error("auth.redirecting");
   }
 }

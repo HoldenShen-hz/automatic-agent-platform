@@ -115,7 +115,7 @@ export class WebSocketBridge {
   }
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
-    const params = this.extractConnectionParams(req.headers["sec-websocket-protocol"]);
+    const params = this.extractConnectionParams(req);
 
     if (!params.token) {
       ws.close(4001, "Missing token");
@@ -367,7 +367,8 @@ export class WebSocketBridge {
     }
   }
 
-  private extractConnectionParams(protocolHeader: string | string[] | undefined): { token: string | null; taskId: string | null; lastEventId: string | null } {
+  private extractConnectionParams(req: IncomingMessage): { token: string | null; taskId: string | null; lastEventId: string | null } {
+    const protocolHeader = req.headers["sec-websocket-protocol"];
     const header = Array.isArray(protocolHeader) ? protocolHeader.join(",") : protocolHeader ?? "";
     const parts = header.split(",").map((p) => p.trim());
     const token = parts[0] ?? "";
@@ -384,6 +385,17 @@ export class WebSocketBridge {
       if (key === "taskId") result.taskId = value;
       if (key === "lastEventId") result.lastEventId = value;
     }
+
+    // Resume parameters remain supported in the URL query string for client reconnects,
+    // but auth token must still come from Sec-WebSocket-Protocol rather than the URL.
+    if (req.url != null) {
+      const url = new URL(req.url, "http://127.0.0.1");
+      result.taskId ??= url.searchParams.get("taskId");
+      result.lastEventId ??=
+        url.searchParams.get("last_event_id") ??
+        url.searchParams.get("lastEventId");
+    }
+
     return result;
   }
 
