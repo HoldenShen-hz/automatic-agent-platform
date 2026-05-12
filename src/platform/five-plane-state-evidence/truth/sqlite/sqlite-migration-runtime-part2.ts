@@ -79,6 +79,21 @@ CREATE INDEX IF NOT EXISTS idx_secret_rotation_events_secret_occurred_at
   ON secret_rotation_events(secret_ref, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_secret_rotation_events_status_occurred_at
   ON secret_rotation_events(status, occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS secret_versions (
+  secret_ref TEXT NOT NULL,
+  version TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  rotated_at TEXT NULL,
+  metadata_json TEXT NULL,
+  PRIMARY KEY (secret_ref, version),
+  FOREIGN KEY(secret_ref) REFERENCES secret_registry(secret_ref) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_secret_versions_secret_created_at
+  ON secret_versions(secret_ref, created_at DESC, version DESC);
+CREATE INDEX IF NOT EXISTS idx_secret_versions_status_rotated_at
+  ON secret_versions(status, rotated_at DESC);
 `;
 const TIER1_AUDIT_EVENT_INTEGRITY_SQL = `
 CREATE TABLE IF NOT EXISTS event_integrity_records (

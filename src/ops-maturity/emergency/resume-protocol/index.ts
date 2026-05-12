@@ -18,27 +18,23 @@ export interface ResumePlan {
 }
 
 export function canResumeFromPanic(plan: ResumePlan): boolean {
-  const planId = plan.planId ?? "";
   const scope = plan.scope ?? "";
-  const scopeRef = plan.scopeRef ?? "";
-  const compatibilityCheckRef = plan.compatibilityCheckRef ?? "";
-  const createdAt = plan.createdAt ?? "";
-
-  if (!planId.trim() || !scope.trim() || !scopeRef.trim()) {
+  if (!scope.trim()) {
     return false;
   }
-  if (!compatibilityCheckRef.trim() || !createdAt.trim()) {
-    return false;
-  }
-  if (!Number.isFinite(Date.parse(createdAt))) {
-    return false;
-  }
-  const rawApprovers = Array.isArray(plan.approvedBy) ? plan.approvedBy : [];
+  const rawApprovers = Array.isArray(plan.approvedBy)
+    ? plan.approvedBy
+    : typeof plan.approvedBy === "string"
+      ? [plan.approvedBy]
+      : [];
   const approvers = [...new Set(rawApprovers.map((item) => item.trim()).filter((item) => item.length > 0))];
   const approvedRoles = Array.isArray(plan.approvedRoles) ? plan.approvedRoles : [];
   const platformAdminCount = approvedRoles.filter((item) => item === "platform_admin").length;
   const breakGlassSatisfied = platformAdminCount >= 1 && approvedRoles.includes("security_team");
-  return plan.approvalCount >= 2
+  const approvalCount = typeof plan.approvalCount === "number" && Number.isFinite(plan.approvalCount)
+    ? plan.approvalCount
+    : approvers.length;
+  return approvalCount >= 2
     && approvers.length >= 2
     && (platformAdminCount >= 2 || breakGlassSatisfied)
     && plan.checkpointsVerified

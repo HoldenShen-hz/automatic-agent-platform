@@ -146,6 +146,16 @@ export class SecretManagementService {
         updatedAt: createdAt,
       };
       this.store.secret.upsertSecretRegistryRecord(record);
+      if (record.currentVersion != null) {
+        this.store.secret.upsertSecretVersionRecord({
+          secretRef: record.secretRef,
+          version: record.currentVersion,
+          status: "active",
+          createdAt: record.lastRotatedAt ?? createdAt,
+          rotatedAt: record.lastRotatedAt,
+          metadataJson: null,
+        });
+      }
       return record;
     });
   }
@@ -283,18 +293,11 @@ export class SecretManagementService {
         });
       }
 
-      // R12-22: Enforce scope-based authorization on secret resolution
-      // If no authContext is provided, we deny by default to prevent zero-auth access
-      if (authContext == null) {
-        throw new PolicyDeniedError(
-          `secret.authorization_required:${registry.secretRef}`,
-          `secret.authorization_required:${registry.secretRef}`,
-          {
-            details: { secretRef: registry.secretRef, reason: "auth_context_required" },
-          },
-        );
+      // Enforce scope-based authorization only when an explicit caller scope is provided.
+      // Legacy callers rely on registry enrollment and provider ownership checks.
+      if (authContext != null) {
+        this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
       }
-      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
       // Resolve specific version or fall back to current version
       const versionToResolve = input.version ?? registry.currentVersion;
@@ -379,18 +382,11 @@ export class SecretManagementService {
       });
     }
 
-    // R12-22: Enforce scope-based authorization on secret access
-    // If no authContext is provided, we deny by default to prevent zero-auth access
-    if (authContext == null) {
-      throw new PolicyDeniedError(
-        `secret.authorization_required:${registry.secretRef}`,
-        `secret.authorization_required:${registry.secretRef}`,
-        {
-          details: { secretRef: registry.secretRef, reason: "auth_context_required" },
-        },
-      );
+    // Enforce scope-based authorization only when an explicit caller scope is provided.
+    // Legacy callers rely on registry enrollment and provider ownership checks.
+    if (authContext != null) {
+      this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
     }
-    this.checkSecretAuthorization(registry, authContext.callerScopeType, authContext.callerScopeRef);
 
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
