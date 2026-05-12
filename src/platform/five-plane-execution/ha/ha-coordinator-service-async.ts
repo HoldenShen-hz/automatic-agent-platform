@@ -13,7 +13,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { HaRepository } from "./ha-repository.js";
-import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, HaCoordinatorServiceOptions, LeaderActionAuthority, LeaderActionAuthorization, LeaderLease, LeadershipAcquisitionInput, LeadershipEpoch, LeadershipQueryResult, LeadershipRenewalInput } from "./types.js";
+import type { CoordinatorNode, CoordinatorNodeMetadata, CoordinatorNodeStatus, FailoverDecision, HaCoordinatorServiceOptions, LeaderActionAuthority, LeaderActionAuthorization, LeaderLease, LeadershipAcquisitionInput, LeadershipEpoch, LeadershipQueryResult, LeadershipRenewalInput } from "./types.js";
 import { DEFAULT_LEASE_TTL_MS, EPOCH_FENCING_TOKEN_START, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "./types.js";
 
 export { DEFAULT_LEASE_TTL_MS, EPOCH_FENCING_TOKEN_START, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS };
@@ -68,7 +68,7 @@ export class HaCoordinatorServiceAsync {
       isLeader: existing?.isLeader ?? false,
       leadershipEpoch: existing?.leadershipEpoch ?? 0,
       lastHeartbeatAt: now,
-      metadata: metadata ?? null,
+      metadata: metadata !== undefined ? (metadata as unknown) as CoordinatorNodeMetadata : null,
     };
 
     await this.repo.upsertNode(node);

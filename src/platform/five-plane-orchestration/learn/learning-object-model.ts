@@ -65,7 +65,7 @@ const LearningObjectContentSchema = z.object({
   recommendation: z.string().min(1),
 });
 
-const RawLearningObjectSchema = z.object({
+export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1).optional(),
   objectId: z.string().min(1).optional(),
   learningType: z.enum(PHASE_1_LEARNING_TYPES).optional(),
@@ -134,7 +134,7 @@ export function normalizeLearningType(
 }
 
 export function parseLearningObject(input: unknown): LearningObject {
-  const parsed = RawLearningObjectSchema.parse(input);
+  const parsed = LearningObjectSchema.parse(input);
   const objectId = parsed.objectId ?? parsed.learningObjectId;
   if (objectId == null) {
     throw new Error("learning.object_id_required");

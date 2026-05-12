@@ -37,17 +37,28 @@ function makeRolloutRecord(): RolloutRecord {
 }
 
 function makeLearningObject(): LearningObject {
+  const learningType: LearningObject["learningType"] = "failure_pattern";
   return {
     learningObjectId: "lo-r23-45",
-    learningType: "failure_pattern",
+    objectId: "lo-r23-45",
+    learningType,
+    kind: learningType,
     title: "Repeated failure",
     summary: "Regression in rollout",
+    content: {
+      title: "Repeated failure",
+      summary: "Regression in rollout",
+      evidenceRefs: ["evidence-r23-45"],
+      sourceSignalIds: ["signal-r23-45"],
+      recommendation: "Tighten policy",
+    },
     confidence: 0.9,
     evidenceRefs: ["evidence-r23-45"],
     sourceSignalIds: ["signal-r23-45"],
     recommendation: "Tighten policy",
     validatedBy: "evidence",
     promotionStatus: "validated",
+    status: "validated",
     createdAt: "2026-05-01T00:00:00.000Z",
   };
 }

@@ -22,17 +22,28 @@ import type { LearningObject } from "../../../../../src/platform/five-plane-orch
 import { LearningObjectSchema, type LearningObject as LearningObjectType } from "../../../../../src/platform/five-plane-orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObjectType> = {}): LearningObjectType {
+  const learningType: LearningObjectType["learningType"] = "failure_pattern";
   const base: LearningObjectType = {
     learningObjectId: newId("lo"),
-    learningType: "failure_pattern",
+    objectId: newId("lo"),
+    learningType,
+    kind: learningType,
     title: "Test Learning Object",
     summary: "Test summary",
+    content: {
+      title: "Test Learning Object",
+      summary: "Test summary",
+      evidenceRefs: ["evidence://learning-object"],
+      sourceSignalIds: ["signal://learning-object"],
+      recommendation: "approve",
+    },
     confidence: 0.8,
     evidenceRefs: ["evidence://learning-object"],
     sourceSignalIds: ["signal://learning-object"],
     recommendation: "approve",
     validatedBy: "none",
     promotionStatus: "untrusted",
+    status: "created",
     createdAt: new Date().toISOString(),
   };
   return { ...base, ...overrides };

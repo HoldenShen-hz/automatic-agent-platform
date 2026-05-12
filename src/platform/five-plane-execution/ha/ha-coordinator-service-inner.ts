@@ -27,6 +27,7 @@ import {
   MAX_LEASE_TTL_MS,
   MIN_LEASE_TTL_MS,
   type CoordinatorNode,
+  type CoordinatorNodeMetadata,
   type CoordinatorNodeStatus,
   type FailoverDecision,
   type HaCoordinatorServiceOptions,
@@ -91,7 +92,7 @@ export class HaCoordinatorService {
         isLeader: existing?.isLeader ?? false,
         leadershipEpoch: existing?.leadershipEpoch ?? 0,
         lastHeartbeatAt: now,
-        metadata: metadata ?? null,
+        metadata: metadata !== undefined ? (metadata as unknown) as CoordinatorNodeMetadata : null,
       };
 
       this.db.connection

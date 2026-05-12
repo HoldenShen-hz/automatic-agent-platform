@@ -224,13 +224,13 @@ function isApprovalStageViewRef(value: unknown): value is ApprovalStageViewRef {
     || value === "release";
 }
 
-function readStageViewRef(input: ApprovalRequest): ApprovalStageViewRef | null {
-  const candidate = input.stageViewRef ?? input.stage_view_ref ?? input.context.stageViewRef ?? input.context.stage_view_ref;
+function readStageViewRef(input: Partial<ApprovalRequest>): ApprovalStageViewRef | null | undefined {
+  const candidate = input.stageViewRef ?? input.stage_view_ref ?? input.context?.stageViewRef ?? input.context?.stage_view_ref;
   return isApprovalStageViewRef(candidate) ? candidate : null;
 }
 
-function readEscalationChain(input: ApprovalRequest): readonly ApprovalEscalationHop[] {
-  const candidate = input.escalationChain ?? input.escalation_chain ?? input.context.escalationChain ?? input.context.escalation_chain;
+function readEscalationChain(input: Partial<ApprovalRequest>): readonly ApprovalEscalationHop[] {
+  const candidate = input.escalationChain ?? input.escalation_chain ?? input.context?.escalationChain ?? input.context?.escalation_chain;
   if (!Array.isArray(candidate)) {
     return [];
   }
@@ -358,12 +358,12 @@ export class ApprovalService {
       executionId: input.executionId ?? null,
       harnessRunId,
       nodeRunId: nodeRunId ?? null,
-      stageViewRef,
+      ...(stageViewRef !== undefined && { stageViewRef }),
       timeoutAutoAction,
       escalationChain,
       harness_run_id: harnessRunId,
       node_run_id: nodeRunId ?? null,
-      stage_view_ref: stageViewRef,
+      ...(stageViewRef !== undefined && { stage_view_ref: stageViewRef }),
       timeout_auto_action: timeoutAutoAction,
       escalation_chain: escalationChain,
       approverGroups: input.approverGroups ?? contextApproverGroups,

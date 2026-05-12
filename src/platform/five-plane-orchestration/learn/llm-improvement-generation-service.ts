@@ -132,35 +132,62 @@ Return a JSON array of LearningObjects, one per signal.`;
   }
 
   private mapParsedToLearningObject(item: Record<string, unknown>, signal: LearningSignal): LearningObject {
+    const learningType = (item.learningType as LearningObject["learningType"]) ?? signal.learningType;
+    const title = (item.title as string) ?? `Improvement: ${signal.valueSummary.slice(0, 40)}`;
+    const summary = (item.summary as string) ?? signal.valueSummary;
+    const recommendation = (item.recommendation as string) ?? this.templateRecommendation(signal);
     return {
       learningObjectId: newId("learning"),
-      learningType: (item.learningType as LearningObject["learningType"]) ?? signal.learningType,
-      title: (item.title as string) ?? `Improvement: ${signal.valueSummary.slice(0, 40)}`,
-      summary: (item.summary as string) ?? signal.valueSummary,
+      objectId: newId("learning"),
+      learningType,
+      kind: learningType,
+      title,
+      summary,
+      content: {
+        title,
+        summary,
+        evidenceRefs: Array.isArray(item.evidenceRefs) ? item.evidenceRefs as string[] : signal.evidenceRefs,
+        sourceSignalIds: Array.isArray(item.sourceSignalIds) ? item.sourceSignalIds as string[] : signal.sourceSignalIds,
+        recommendation,
+      },
       confidence: typeof item.confidence === "number" ? Math.min(1, Math.max(0, item.confidence)) : signal.confidence,
       evidenceRefs: Array.isArray(item.evidenceRefs) ? item.evidenceRefs as string[] : signal.evidenceRefs,
       sourceSignalIds: Array.isArray(item.sourceSignalIds) ? item.sourceSignalIds as string[] : signal.sourceSignalIds,
-      recommendation: (item.recommendation as string) ?? this.templateRecommendation(signal),
+      recommendation,
       validatedBy: "none",
       promotionStatus: "quarantine",
+      status: "rejected",
       createdAt: String(Date.now()),
     };
   }
 
   private fallbackTemplateGeneration(signals: readonly LearningSignal[]): LearningObject[] {
-    return signals.map((signal) => ({
-      learningObjectId: newId("learning"),
-      learningType: normalizeLearningType(signal.learningType),
-      title: `${signal.learningType.replace("_", " ")}: ${signal.valueSummary.slice(0, 40)}`,
-      summary: signal.valueSummary,
-      confidence: signal.confidence,
-      evidenceRefs: signal.evidenceRefs,
-      sourceSignalIds: signal.sourceSignalIds,
-      recommendation: this.templateRecommendation(signal),
-      validatedBy: "none",
-      promotionStatus: "quarantine",
-      createdAt: String(signal.generatedAt),
-    }));
+    return signals.map((signal) => {
+      const learningType = normalizeLearningType(signal.learningType);
+      return {
+        learningObjectId: newId("learning"),
+        objectId: newId("learning"),
+        learningType,
+        kind: learningType,
+        title: `${signal.learningType.replace("_", " ")}: ${signal.valueSummary.slice(0, 40)}`,
+        summary: signal.valueSummary,
+        content: {
+          title: `${signal.learningType.replace("_", " ")}: ${signal.valueSummary.slice(0, 40)}`,
+          summary: signal.valueSummary,
+          evidenceRefs: signal.evidenceRefs,
+          sourceSignalIds: signal.sourceSignalIds,
+          recommendation: this.templateRecommendation(signal),
+        },
+        confidence: signal.confidence,
+        evidenceRefs: signal.evidenceRefs,
+        sourceSignalIds: signal.sourceSignalIds,
+        recommendation: this.templateRecommendation(signal),
+        validatedBy: "none",
+        promotionStatus: "quarantine",
+        status: "rejected",
+        createdAt: String(signal.generatedAt),
+      };
+    });
   }
 
   private templateRecommendation(signal: LearningSignal): string {

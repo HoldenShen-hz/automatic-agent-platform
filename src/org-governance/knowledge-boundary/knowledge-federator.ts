@@ -131,7 +131,7 @@ export class KnowledgeFederator {
       });
 
     return {
-      matchedSources,
+      matchedSources: [...matchedSources],
       redactedFields: [...redactedFields],
       deniedBoundaries: [...deniedBoundaries],
       auditRef: `federated_search:${request.harnessRunId}:${request.nodeRunId ?? "root"}`,
@@ -157,10 +157,10 @@ export class KnowledgeFederator {
         allowedBoundaries: query.boundaryIds ?? boundaries.map((boundary) => boundary.boundaryId),
         purpose: "legacy_search",
         maxSources: Number.MAX_SAFE_INTEGER,
-        transform: query.transform,
+        ...(query.transform != null && { transform: query.transform }),
       },
       policy,
-    ).matchedSources;
+    ).matchedSources as FederatedKnowledgeResult[];
   }
 }
 

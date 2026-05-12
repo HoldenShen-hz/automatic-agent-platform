@@ -4,19 +4,32 @@ import { normalizeLearningType, type LearningObject } from "./learning-object-mo
 
 export class ExperienceDistillationService {
   public distill(signals: readonly LearningSignal[]): LearningObject[] {
-    return signals.map((signal) => ({
-      learningObjectId: newId("learning"),
-      learningType: normalizeLearningType(signal.learningType),
-      title: `Distilled ${signal.learningType}`,
-      summary: signal.valueSummary,
-      confidence: signal.confidence,
-      evidenceRefs: signal.evidenceRefs,
-      sourceSignalIds: signal.sourceSignalIds,
-      recommendation: this.buildRecommendation(signal.learningType),
-      validatedBy: "none",
-      promotionStatus: "quarantine",
-      createdAt: String(signal.generatedAt),
-    }));
+    return signals.map((signal) => {
+      const learningType = normalizeLearningType(signal.learningType);
+      return {
+        learningObjectId: newId("learning"),
+        objectId: newId("learning"),
+        learningType,
+        kind: learningType,
+        title: `Distilled ${signal.learningType}`,
+        summary: signal.valueSummary,
+        content: {
+          title: `Distilled ${signal.learningType}`,
+          summary: signal.valueSummary,
+          evidenceRefs: signal.evidenceRefs,
+          sourceSignalIds: signal.sourceSignalIds,
+          recommendation: this.buildRecommendation(signal.learningType),
+        },
+        confidence: signal.confidence,
+        evidenceRefs: signal.evidenceRefs,
+        sourceSignalIds: signal.sourceSignalIds,
+        recommendation: this.buildRecommendation(signal.learningType),
+        validatedBy: "none",
+        promotionStatus: "quarantine",
+        status: "rejected",
+        createdAt: String(signal.generatedAt),
+      };
+    });
   }
 
   private buildRecommendation(learningType: LearningSignal["learningType"]): string {

@@ -808,6 +808,52 @@ export class IntakeRouter {
   }
 
   /**
+   * Capacity-aware selection distributes requests based on actual available capacity.
+   * Capacity is calculated as the sum of maxInstances across all roles in a division.
+   * Divisions with higher capacity (more concurrent instances) receive proportionally more requests.
+   */
+  private capacityAwareSelect(
+    candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+    routeTrace: string[],
+  ): LoadedDivisionDefinition {
+    // Calculate total capacity as sum of maxInstances across all roles
+    // null maxInstances means unlimited, treat as very high number
+    const getCapacity = (division: LoadedDivisionDefinition): number => {
+      return division.roles.reduce((sum, role) => {
+        if (role.maxInstances == null) {
+          // Unlimited capacity - use a large number
+          return sum + 1000;
+        }
+        return sum + role.maxInstances;
+      }, 0);
+    };
+
+    const capacities = candidates.map((c) => getCapacity(c.division));
+    const totalCapacity = capacities.reduce((sum, cap) => sum + cap, 0);
+
+    if (totalCapacity === 0) {
+      // All capacities are zero or null - fall back to priority-based selection
+      const sorted = [...candidates].sort((a, b) => b.division.priority - a.division.priority);
+      routeTrace.push(`lb_capacity_aware:fallback_priority=${sorted[0]!.division.id}`);
+      return sorted[0]!.division;
+    }
+
+    // Weighted random selection based on capacity
+    let random = Math.random() * totalCapacity;
+    for (let i = 0; i < candidates.length; i++) {
+      random -= capacities[i]!;
+      if (random <= 0) {
+        routeTrace.push(`lb_capacity_aware:selected=${candidates[i]!.division.id}:capacity=${capacities[i]}`);
+        return candidates[i]!.division;
+      }
+    }
+
+    // Fallback to first candidate
+    routeTrace.push(`lb_capacity_aware:fallback=${candidates[0]!.division.id}`);
+    return candidates[0]!.division;
+  }
+
+  /**
    * Categorizes a division for load balancing tracking purposes.
    */
   private categorizeForLoadBalancing(division: LoadedDivisionDefinition): string {

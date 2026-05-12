@@ -116,15 +116,25 @@ export class EvolutionIntegrationService {
 
     return {
       learningObjectId: `evo_${proposal.id}`,
+      objectId: `evo_${proposal.id}`,
       learningType,
+      kind: learningType,
       title: proposal.title,
       summary: proposal.description,
+      content: {
+        title: proposal.title,
+        summary: proposal.description,
+        evidenceRefs: proposal.evidenceIds,
+        sourceSignalIds: [`proposal:${proposal.id}`],
+        recommendation: proposal.rationale,
+      },
       confidence: 0.7, // Proposals have baseline confidence
       evidenceRefs: proposal.evidenceIds,
       sourceSignalIds: [`proposal:${proposal.id}`],
       recommendation: proposal.rationale,
       validatedBy: 'shadow_execution',
       promotionStatus: 'validated',
+      status: 'validated',
       createdAt: now,
     };
   }

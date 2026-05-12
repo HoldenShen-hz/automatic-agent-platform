@@ -163,12 +163,12 @@ export class DelegationTracker {
     const node: DelegationChainNode = {
       delegationId: delegation.delegationId,
       agentId: delegation.childAgentId,
-      packId: options.packId,
+      ...(options.packId !== undefined && { packId: options.packId }),
       agentType: options.agentType ?? "agent",
       depth: delegation.depth,
       createdAt: delegation.createdAt,
       parentDelegationId: options.parentDelegationId ?? this.findParentDelegationId(rootAgentId, delegation.depth),
-      status: options.status ?? delegation.status,
+      ...(options.status !== undefined && { status: options.status }),
     };
 
     const existingIndex = chain.nodes.findIndex((existingNode) => existingNode.delegationId === delegation.delegationId);

@@ -98,7 +98,7 @@ export class MemoryPromotionEngine {
       const currentLayer = mapMemoryScopeToLayer(memory.scope) as HierarchicalMemoryLayer;
       const demotionCandidate = this.evaluateDemotion(memory, {
         candidateCount: context.candidateCountsByScope?.[currentLayer] ?? countsByScope.get(currentLayer) ?? 1,
-        maxLayerSize: context.maxLayerSizeByScope?.[currentLayer],
+        ...(context.maxLayerSizeByScope?.[currentLayer] !== undefined && { maxLayerSize: context.maxLayerSizeByScope?.[currentLayer] }),
       });
       if (demotionCandidate.targetLayer != null) {
         demoted.push(demotionCandidate);

@@ -53,15 +53,25 @@ export class FailurePatternMiner {
   }): LearningObject {
     return {
       learningObjectId: newId("learning"),
+      objectId: newId("learning"),
       learningType: "failure_pattern",
+      kind: "failure_pattern",
       title: pattern.title,
       summary: pattern.summary,
+      content: {
+        title: pattern.title,
+        summary: pattern.summary,
+        evidenceRefs: pattern.evidenceRefs,
+        sourceSignalIds: pattern.sourceSignalIds,
+        recommendation: pattern.recommendation,
+      },
       confidence: 0.8,
       evidenceRefs: pattern.evidenceRefs,
       sourceSignalIds: pattern.sourceSignalIds,
       recommendation: pattern.recommendation,
       validatedBy: "none",
       promotionStatus: "quarantine",
+      status: "rejected",
       createdAt: String(pattern.detectedAt),
     };
   }
@@ -69,15 +79,25 @@ export class FailurePatternMiner {
   private genericFailure(signal: LearningSignal): LearningObject {
     return {
       learningObjectId: newId("learning"),
+      objectId: newId("learning"),
       learningType: "failure_pattern",
+      kind: "failure_pattern",
       title: `Failure pattern: ${signal.valueSummary.slice(0, 40)}`,
       summary: signal.valueSummary,
+      content: {
+        title: `Failure pattern: ${signal.valueSummary.slice(0, 40)}`,
+        summary: signal.valueSummary,
+        evidenceRefs: signal.evidenceRefs,
+        sourceSignalIds: signal.sourceSignalIds,
+        recommendation: "Prefer replanning with narrower scope and stronger validation.",
+      },
       confidence: signal.confidence,
       evidenceRefs: signal.evidenceRefs,
       sourceSignalIds: signal.sourceSignalIds,
       recommendation: "Prefer replanning with narrower scope and stronger validation.",
       validatedBy: "none",
       promotionStatus: "quarantine",
+      status: "rejected",
       createdAt: String(signal.generatedAt),
     };
   }

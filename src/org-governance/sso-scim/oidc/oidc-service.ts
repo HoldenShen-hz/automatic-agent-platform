@@ -359,7 +359,7 @@ export class OidcIdentityService {
       createdAt: nowIso(),
       lastActivityAt: nowIso(),
       providerId: this.providerConfig.providerId,
-      refreshTokenFamily,
+      ...(refreshTokenFamily !== undefined && { refreshTokenFamily }),
     };
 
     this.sessions.set(sessionId, record);

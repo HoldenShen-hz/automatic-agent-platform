@@ -909,7 +909,7 @@ export class PolicyEngine {
         factors,
         policyPaths: matchedRuleRefs,
         ruleSources: matchedRuleRefs,
-        remediationHint,
+        ...(remediationHint !== undefined && { remediationHint }),
       },
       auditRecord: {
         auditId: `audit_policy_${Date.now()}_${Math.random().toString(36).slice(2)}`,

@@ -84,7 +84,7 @@ export class GovernanceDelegationRevocationSaga {
         executionLog.push({ stage: "prepare", subjectId: resourceId, outcome: "completed" });
       }
 
-      const prepareCascadeSteps: readonly Array<{
+      const prepareCascadeSteps: ReadonlyArray<{
         enabled: boolean;
         subjectId: string;
         handler: ((context: GovernanceDelegationRevocationSagaContext) => void) | undefined;

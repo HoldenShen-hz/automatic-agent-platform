@@ -1,5 +1,6 @@
 import type {
   CoordinatorNode,
+  CoordinatorNodeMetadata,
   CoordinatorNodeStatus,
   FailoverDecision,
   LeaderLease,
@@ -15,7 +16,7 @@ export function mapNode(row: RawRow): CoordinatorNode {
     isLeader: Boolean(row.is_leader),
     leadershipEpoch: Number(row.leadership_epoch),
     lastHeartbeatAt: String(row.last_heartbeat_at),
-    metadata: row.metadata ? (JSON.parse(row.metadata as string) as Record<string, unknown>) : null,
+    metadata: row.metadata ? (JSON.parse(row.metadata as string) as unknown) as CoordinatorNodeMetadata : null,
   };
 }
 
