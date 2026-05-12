@@ -22,5 +22,8 @@ export function resolveCompliancePolicyForNode(
   const orderedLayers = lineage.flatMap((item) => policiesByNodeId[item.orgNodeId] ?? []);
   const policy = inheritPolicyLayers(orderedLayers);
   const denyByDefault = orderedLayers.length === 0;
-  return { policy, denyByDefault };
+  // When deny-by-default, merge a sentinel into the policy so callers cannot
+  // treat an empty-merged result as "allowed".
+  const finalPolicy = denyByDefault ? { _denyByDefault: true, ...policy } : policy;
+  return { policy: finalPolicy, denyByDefault };
 }

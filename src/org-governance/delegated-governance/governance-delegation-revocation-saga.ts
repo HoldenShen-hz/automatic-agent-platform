@@ -136,7 +136,7 @@ export class GovernanceDelegationRevocationSaga {
       frozenResourceIds,
       revokedDerivedDelegationIds,
       revokeWithinSlo: elapsed <= 60_000,
-      cascadeWithinSlo: failedStage == null && elapsed <= 300_000 && cascadeDepthApplied > 0 && cascadeDepthApplied <= maxCascadeScope,
+      cascadeWithinSlo: failedStage == null && elapsed <= 300_000 && (maxCascadeScope === 0 || (cascadeDepthApplied > 0 && cascadeDepthApplied <= maxCascadeScope)),
       cascadeDepthApplied,
       cascadeScopeRequested: maxCascadeScope,
       completedAtMs,

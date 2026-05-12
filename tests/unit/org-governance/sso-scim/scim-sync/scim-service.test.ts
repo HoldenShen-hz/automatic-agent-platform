@@ -242,18 +242,39 @@ test("ScimProvisionService patch group adds members", () => {
   assert.equal(updated!.members.length, 2);
 });
 
-test("ScimProvisionService patch group removes members", () => {
+test("ScimProvisionService patch group removes target members with filter", () => {
   const service = new ScimProvisionService();
-  const user = service.createUser(createTestUser(), "tenant-1");
+  const user1 = service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
+  const user2 = service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
   const group = service.createGroup(createTestGroup(), "tenant-1");
-  service.addMemberToGroup(group.id, user.id, "tenant-1");
+  service.addMemberToGroup(group.id, user1.id, "tenant-1");
+  service.addMemberToGroup(group.id, user2.id, "tenant-1");
 
+  // Remove only user1 using targeted filter - should NOT clear all members
+  const updated = service.patchGroup(group.id, [
+    { op: "remove", path: `members[value eq "${user1.id}"]` },
+  ], "tenant-1");
+
+  assert.ok(updated);
+  assert.equal(updated!.members.length, 1);
+  assert.equal(updated!.members[0].value, user2.id);
+});
+
+test("ScimProvisionService patch group bare remove does NOT clear all members", () => {
+  const service = new ScimProvisionService();
+  const user1 = service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
+  const user2 = service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
+  const group = service.createGroup(createTestGroup(), "tenant-1");
+  service.addMemberToGroup(group.id, user1.id, "tenant-1");
+  service.addMemberToGroup(group.id, user2.id, "tenant-1");
+
+  // Bare remove without filter should NOT remove any members
   const updated = service.patchGroup(group.id, [
     { op: "remove", path: "members" },
   ], "tenant-1");
 
   assert.ok(updated);
-  assert.equal(updated!.members.length, 0);
+  assert.equal(updated!.members.length, 2);
 });
 
 test("ScimProvisionService lists groups", () => {

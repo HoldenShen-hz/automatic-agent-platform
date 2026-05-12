@@ -381,12 +381,12 @@ function createJudgeService(): EvalDatasetJudgeService {
   return judgeService;
 }
 
-test("BUG #1965: agreementScore is 0 when all judges agree on rollback", () => {
+test("BUG #1965 FIXED: agreementScore reflects true consensus for rollback decisions", () => {
   const judgeService = createJudgeService();
   const crossProviderService = new CrossProviderJudgeService(judgeService);
 
-  // BUG: When all judges agree on rollback, agreementScore should reflect that
-  // But agreementScore only counts promote ratio, so it will be 0
+  // FIXED: agreementScore now reflects consensus regardless of decision type
+  // When all judges agree on rollback, agreementScore = 1.0
 
   const result = crossProviderService.evaluateWithPipeline({
     evaluation: {
@@ -407,14 +407,10 @@ test("BUG #1965: agreementScore is 0 when all judges agree on rollback", () => {
     },
   });
 
-  // BUG #1965: agreementScore = promoteCount / total
-  // With 0 promote votes out of 2 results, agreementScore = 0
-  // This happens even though judges reached consensus on rollback
-  assert.equal(
-    result.agreementScore,
-    0,
-    "BUG #1965: agreementScore is 0 despite judges reaching consensus"
-  );
+  // Bug was: agreementScore = 0 despite full consensus on rollback
+  // Fixed: agreementScore = 1.0 when all judges agree (full consensus)
+  assert.equal(result.consensusDecision, "rollback");
+  assert.equal(result.agreementScore, 1.0);
 });
 
 test("BUG #1965: agreementScore does not reflect true consensus for hold decisions", () => {

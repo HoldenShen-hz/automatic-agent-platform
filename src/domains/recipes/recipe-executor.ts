@@ -1,5 +1,6 @@
 import { DomainRecipeSchema, type DomainRecipe } from "./index.js";
 import type { WorkflowRegistry } from "../registry/workflow-registry.js";
+import { getWorkflowDefinition } from "../../platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 
 export interface RecipeExecutionContext {
   executionId: string;

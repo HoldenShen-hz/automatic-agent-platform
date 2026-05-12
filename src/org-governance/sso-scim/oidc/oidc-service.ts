@@ -343,6 +343,12 @@ export class OidcIdentityService {
     const sessionId = newId("oidc_session");
     const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
 
+    // §48 Token Rotation: create a new family for this refresh token lineage
+    const refreshTokenFamily = tokens.refreshToken ? newId("rt_family") : undefined;
+    if (tokens.refreshToken) {
+      this.refreshTokenFamilies.set(refreshTokenFamily!, tokens.refreshToken);
+    }
+
     const record: SessionRecord = {
       sessionId,
       userId: userInfo.sub,
@@ -353,6 +359,7 @@ export class OidcIdentityService {
       createdAt: nowIso(),
       lastActivityAt: nowIso(),
       providerId: this.providerConfig.providerId,
+      refreshTokenFamily,
     };
 
     this.sessions.set(sessionId, record);
@@ -377,12 +384,35 @@ export class OidcIdentityService {
       return null;
     }
 
+    // §48 Token Rotation: detect reuse attack - if token already rotated, this is a replay
+    const family = session.refreshTokenFamily;
+    if (family) {
+      const currentValidToken = this.refreshTokenFamilies.get(family);
+      if (currentValidToken !== session.refreshToken) {
+        // Token reuse detected - possible attack, revoke entire session
+        this.revokeSession(sessionId);
+        return null;
+      }
+    }
+
     const newTokens = await this.exchangeTokens({
       grantType: "refresh_token",
       refreshToken: session.refreshToken,
     }) ?? this.simulateRefreshResponse(session.refreshToken);
 
-    // Update session with new tokens - §48 Token Rotation: rotate refresh token
+    // §48 Token Rotation: invalidate old refresh token and register new one
+    if (newTokens.refreshToken) {
+      // Invalidate the old token
+      if (family) {
+        this.refreshTokenFamilies.delete(family);
+      }
+      // Register new refresh token in the family
+      const newFamily = family ?? newId("rt_family");
+      this.refreshTokenFamilies.set(newFamily, newTokens.refreshToken);
+      session.refreshTokenFamily = newFamily;
+    }
+
+    // Update session with new tokens
     session.accessToken = newTokens.accessToken;
     session.idToken = newTokens.idToken;
     session.refreshToken = newTokens.refreshToken;

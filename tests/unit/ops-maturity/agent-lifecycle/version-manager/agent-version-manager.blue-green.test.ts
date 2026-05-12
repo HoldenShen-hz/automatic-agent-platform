@@ -215,6 +215,26 @@ test("assignDeploymentSlot to empty slot works correctly", () => {
   assert.equal(blue?.versionId, v1.versionId);
 });
 
+// ---------------------------------------------------------------------------
+// Mutual exclusion: a single version cannot occupy both slots simultaneously
+// ---------------------------------------------------------------------------
+
+test("assignDeploymentSlot to opposite slot evicts version from previous slot (mutual exclusion)", () => {
+  const manager = new AgentVersionManager();
+  const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
+
+  // First assign to blue
+  manager.assignDeploymentSlot("agent_bg", v1.versionId, "blue");
+  assert.equal(manager.getActiveSlot("agent_bg", "blue")?.versionId, v1.versionId);
+  assert.equal(manager.getActiveSlot("agent_bg", "green"), null);
+
+  // Now move v1 to green - should evict from blue (mutual exclusion)
+  manager.assignDeploymentSlot("agent_bg", v1.versionId, "green");
+
+  assert.equal(manager.getActiveSlot("agent_bg", "blue"), null);
+  assert.equal(manager.getActiveSlot("agent_bg", "green")?.versionId, v1.versionId);
+});
+
 test("revokeSlot clears slotAssignments correctly", () => {
   const manager = new AgentVersionManager();
   const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));

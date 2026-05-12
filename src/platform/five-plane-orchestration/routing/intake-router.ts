@@ -718,6 +718,8 @@ export class IntakeRouter {
         return this.leastLoadSelect(candidates, routeTrace);
       case "weighted":
         return this.weightedSelect(candidates, routeTrace);
+      case "capacity-aware":
+        return this.capacityAwareSelect(candidates, routeTrace);
       case "random":
         return this.randomSelect(candidates, routeTrace);
       default:

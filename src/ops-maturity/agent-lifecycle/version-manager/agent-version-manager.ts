@@ -88,6 +88,19 @@ export class AgentVersionManager {
     // Check if this version is already in the target slot - no-op if already assigned
     if (current.deploymentSlot === slot) return;
 
+    // Blue-green mutual exclusion: a version can only occupy one slot at a time.
+    // If this version is in the opposite slot, revoke it first before assigning to new slot.
+    const oppositeSlot = slot === "blue" ? "green" : "blue";
+    if (current.deploymentSlot === oppositeSlot) {
+      // Evict from opposite slot to maintain mutual exclusion
+      const updatedVersions = versions.map((v) =>
+        v.versionId === versionId ? { ...v, deploymentSlot: slot } : v,
+      );
+      this.setVersions(agentId, updatedVersions);
+      this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
+      return;
+    }
+
     // For blue-green zero-downtime: allow both slots to be active during transition.
     // Do NOT evict the existing occupant - both slots can be active simultaneously.
     const updatedVersions = versions.map((version) => {
