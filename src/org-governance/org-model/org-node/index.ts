@@ -49,7 +49,7 @@ export const OrgNodeTypeSchema = z.string().transform((value, ctx): InternalOrgN
   if (!parsed.success) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Invalid org node type: ${value}`,
+      message: `Invalid enum value. Expected 'company' | 'division' | 'department' | 'team' | 'seat', received '${value}'`,
     });
     return z.NEVER;
   }
@@ -299,7 +299,7 @@ export function validateHierarchyDepth(nodes: readonly OrgNode[]): { valid: bool
   };
 
   const depth = getMaxDepth(root.orgNodeId);
-  return { valid: depth <= 5, depth };
+  return { valid: depth <= 4, depth };
 }
 
 /**

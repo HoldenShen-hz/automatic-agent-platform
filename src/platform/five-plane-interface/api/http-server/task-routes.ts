@@ -69,10 +69,10 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   const INTERNAL_TASK_LIMIT = 200;
 
   return [
-    // ── api/v1/tasks (§6 canonical API prefix) ────────────────────────────────
+    // ── v1 task read routes (also reached via /api/v1/* through matchRoute normalization) ──
     {
       method: "GET",
-      pathname: "/api/v1/tasks",
+      pathname: "/v1/tasks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         // R29-37: For internal/tenant users, use higher limit within bounds
@@ -94,7 +94,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/api/v1/workflows",
+      pathname: "/v1/workflows",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = principal.tenantId != null
@@ -119,11 +119,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 4) {
+        if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[3], "Task route");
+        const taskId = validateTaskId(segments[2], "Task route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -139,16 +139,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "api"
-          || segments[1] !== "v1"
-          || segments[2] !== "tasks"
-          || segments.length !== 5
-          || segments[4] !== "events"
+          segments[0] !== "v1"
+          || segments[1] !== "tasks"
+          || segments.length !== 4
+          || segments[3] !== "events"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[3], "Task events route");
+        const taskId = validateTaskId(segments[2], "Task events route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -164,16 +163,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "api"
-          || segments[1] !== "v1"
-          || segments[2] !== "tasks"
-          || segments.length !== 5
-          || segments[4] !== "inspect"
+          segments[0] !== "v1"
+          || segments[1] !== "tasks"
+          || segments.length !== 4
+          || segments[3] !== "inspect"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[3], "Task inspect route");
+        const taskId = validateTaskId(segments[2], "Task inspect route");
         const inspect = deps.inspectService.getTaskInspectView(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -188,11 +186,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "workflows" || segments.length !== 4) {
+        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments.length !== 3) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[3], "Workflow route");
+        const taskId = validateTaskId(segments[2], "Workflow route");
         const cockpit = deps.missionControlService.getWorkflowCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,

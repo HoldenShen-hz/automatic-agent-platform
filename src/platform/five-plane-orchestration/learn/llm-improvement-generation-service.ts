@@ -1,6 +1,6 @@
 import { newId } from "../../contracts/types/ids.js";
 import type { LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { normalizeLearningType, type LearningObject } from "./learning-object-model.js";
+import type { LearningObject } from "./learning-object-model.js";
 import {
   createUnifiedChatProvider,
   type UnifiedChatProvider,
@@ -86,7 +86,7 @@ Learning types:
 - recovery_playbook: A recovery action was taken; recommend making recovery automatic
 
 Output format: Return a JSON array of LearningObjects. Each object must have:
-{"learningObjectId": "placeholder", "learningType": "...", "title": "...", "summary": "...", "confidence": 0.0-1.0, "evidenceRefs": [], "sourceSignalIds": [], "recommendation": "...", "validatedBy": "none", "promotionStatus": "quarantine", "createdAt": current_timestamp}
+{"learningObjectId": "placeholder", "learningType": "...", "title": "...", "summary": "...", "confidence": 0.0-1.0, "evidenceRefs": [], "sourceSignalIds": [], "recommendation": "...", "validatedBy": "none", "promotionStatus": "draft", "createdAt": current_timestamp}
 
 Generate one LearningObject per signal. Be specific and actionable in recommendations.`;
   }
@@ -155,15 +155,15 @@ Return a JSON array of LearningObjects, one per signal.`;
       sourceSignalIds: Array.isArray(item.sourceSignalIds) ? item.sourceSignalIds as string[] : signal.sourceSignalIds,
       recommendation,
       validatedBy: "none",
-      promotionStatus: "quarantine",
-      status: "rejected",
+      promotionStatus: "draft",
+      status: "created",
       createdAt: String(Date.now()),
     };
   }
 
   private fallbackTemplateGeneration(signals: readonly LearningSignal[]): LearningObject[] {
     return signals.map((signal) => {
-      const learningType = normalizeLearningType(signal.learningType);
+      const learningType = signal.learningType;
       return {
         learningObjectId: newId("learning"),
         objectId: newId("learning"),
@@ -183,8 +183,8 @@ Return a JSON array of LearningObjects, one per signal.`;
         sourceSignalIds: signal.sourceSignalIds,
         recommendation: this.templateRecommendation(signal),
         validatedBy: "none",
-        promotionStatus: "quarantine",
-        status: "rejected",
+        promotionStatus: "draft",
+        status: "created",
         createdAt: String(signal.generatedAt),
       };
     });

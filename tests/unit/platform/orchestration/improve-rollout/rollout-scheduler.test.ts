@@ -28,10 +28,10 @@ function makeRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
   return {
     recordId: "record-1",
     candidateId: "candidate-1",
-    level: "shadow",
-    previousLevel: "suggest",
+    level: "L1_evaluate",
+    previousLevel: "L0_off",
     strategyVersionId: "sv-1",
-    status: "shadow",
+    status: "evaluation_enabled",
     transitionedAt: Date.now(),
     guardrailReasonCodes: [],
     evidence: [],
@@ -58,9 +58,9 @@ function makeScheduledRollout(overrides: Partial<ScheduledRollout> = {}): Schedu
   };
 }
 
-test("RolloutScheduler.advance returns wait action when no further progression", async () => {
+test("RolloutScheduler.advance returns wait when no further progression exists", async () => {
   const scheduler = new RolloutScheduler();
-  const rollout = makeScheduledRollout({ record: makeRecord({ status: "stable" }) });
+  const rollout = makeScheduledRollout({ record: makeRecord({ status: "released", level: "L5_full" }) });
 
   const decision = await scheduler.advance(rollout);
 
@@ -69,13 +69,13 @@ test("RolloutScheduler.advance returns wait action when no further progression",
   assert.ok(decision.reasonCodes.includes("rollout.no_further_progression"));
 });
 
-test("RolloutScheduler.advance returns wait action when stage dwell not met", async () => {
+test("RolloutScheduler.advance returns wait when stage dwell not met", async () => {
   const scheduler = new RolloutScheduler({
     now: () => 1000,
-    minimumStageDwellMs: { shadow: 5000 },
+    minimumStageDwellMs: { evaluation_enabled: 5000 },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: 100 }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: 100 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -85,14 +85,14 @@ test("RolloutScheduler.advance returns wait action when stage dwell not met", as
   assert.ok(decision.reasonCodes.includes("rollout.stage_dwell_required"));
 });
 
-test("RolloutScheduler.advance returns blocked action when metrics gate fails without rollback", async () => {
+test("RolloutScheduler.advance returns blocked when metrics gate fails without rollback", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: {
       readMetrics: () => makeMetrics({ failureRate: 0.10 }),
     },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: Date.now() - 10000 }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() - 10000 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -101,14 +101,14 @@ test("RolloutScheduler.advance returns blocked action when metrics gate fails wi
   assert.equal(decision.nextStatus, "canary_5");
 });
 
-test("RolloutScheduler.advance returns rollback action when metrics gate triggers rollback", async () => {
+test("RolloutScheduler.advance returns rollback when metrics gate triggers rollback", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: {
       readMetrics: () => makeMetrics({ failureRate: 0.50 }),
     },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "canary_5", transitionedAt: Date.now() - 10000 }),
+    record: makeRecord({ status: "canary_5", level: "L2_canary", transitionedAt: Date.now() - 10000 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -117,14 +117,14 @@ test("RolloutScheduler.advance returns rollback action when metrics gate trigger
   assert.equal(decision.nextStatus, "rolled_back");
 });
 
-test("RolloutScheduler.advance returns promote action when gate passes", async () => {
+test("RolloutScheduler.advance returns promote when gate passes", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: {
       readMetrics: () => makeMetrics({ failureRate: 0.01 }),
     },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: Date.now() - 10000 }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() - 10000 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -133,13 +133,13 @@ test("RolloutScheduler.advance returns promote action when gate passes", async (
   assert.equal(decision.nextStatus, "canary_5");
 });
 
-test("RolloutScheduler.advance handles null metricsProvider", async () => {
+test("RolloutScheduler.advance handles missing metrics provider", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: null,
-    minimumStageDwellMs: { shadow: 0 },
+    minimumStageDwellMs: { evaluation_enabled: 0 },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: Date.now() }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -149,40 +149,34 @@ test("RolloutScheduler.advance handles null metricsProvider", async () => {
   assert.ok(decision.reasonCodes.includes("rollout.metrics_required"));
 });
 
-test("RolloutScheduler.advance handles paused status has no further progression", async () => {
+test("RolloutScheduler.advance handles paused and rejected terminal statuses", async () => {
   const scheduler = new RolloutScheduler();
-  const rollout = makeScheduledRollout({
+
+  const pausedDecision = await scheduler.advance({
+    candidate: makeCandidate(),
     record: makeRecord({ status: "paused" }),
   });
+  assert.equal(pausedDecision.action, "wait");
+  assert.equal(pausedDecision.nextStatus, null);
 
-  const decision = await scheduler.advance(rollout);
-
-  assert.equal(decision.action, "wait");
-  assert.equal(decision.nextStatus, null);
-});
-
-test("RolloutScheduler.advance handles rejected status has no further progression", async () => {
-  const scheduler = new RolloutScheduler();
-  const rollout = makeScheduledRollout({
+  const rejectedDecision = await scheduler.advance({
+    candidate: makeCandidate(),
     record: makeRecord({ status: "rejected" }),
   });
-
-  const decision = await scheduler.advance(rollout);
-
-  assert.equal(decision.action, "wait");
-  assert.equal(decision.nextStatus, null);
+  assert.equal(rejectedDecision.action, "wait");
+  assert.equal(rejectedDecision.nextStatus, null);
 });
 
 test("RolloutScheduler uses custom minimum stage dwell times", async () => {
   const scheduler = new RolloutScheduler({
     now: () => 5000,
     minimumStageDwellMs: {
-      shadow: 10000,
+      evaluation_enabled: 10000,
       canary_5: 5000,
     },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: 4000 }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: 4000 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -191,15 +185,15 @@ test("RolloutScheduler uses custom minimum stage dwell times", async () => {
   assert.ok(decision.reasonCodes.includes("rollout.stage_dwell_required"));
 });
 
-test("RolloutScheduler handles partial null from metricsProvider", async () => {
+test("RolloutScheduler handles null metrics from provider", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: {
       readMetrics: () => null,
     },
-    minimumStageDwellMs: { shadow: 0 },
+    minimumStageDwellMs: { evaluation_enabled: 0 },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: Date.now() }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -212,10 +206,10 @@ test("RolloutScheduler records metrics in decision", async () => {
   const metrics = makeMetrics({ failureRate: 0.01 });
   const scheduler = new RolloutScheduler({
     metricsProvider: { readMetrics: () => metrics },
-    minimumStageDwellMs: { shadow: 0 },
+    minimumStageDwellMs: { evaluation_enabled: 0 },
   });
   const rollout = makeScheduledRollout({
-    record: makeRecord({ status: "shadow", transitionedAt: Date.now() - 10000 }),
+    record: makeRecord({ status: "evaluation_enabled", transitionedAt: Date.now() - 10000 }),
   });
 
   const decision = await scheduler.advance(rollout);
@@ -226,19 +220,18 @@ test("RolloutScheduler records metrics in decision", async () => {
 test("RolloutScheduler.advanceMany processes multiple rollouts", async () => {
   const scheduler = new RolloutScheduler({
     metricsProvider: null,
-    minimumStageDwellMs: { shadow: 0 },
+    minimumStageDwellMs: { evaluation_enabled: 0 },
   });
   const rollouts: ScheduledRollout[] = [
-    makeScheduledRollout({ record: makeRecord({ status: "shadow", recordId: "r1" }) }),
-    makeScheduledRollout({ record: makeRecord({ status: "shadow", recordId: "r2" }) }),
-    makeScheduledRollout({ record: makeRecord({ status: "stable", recordId: "r3" }) }),
+    makeScheduledRollout({ record: makeRecord({ status: "evaluation_enabled", recordId: "r1" }) }),
+    makeScheduledRollout({ record: makeRecord({ status: "evaluation_enabled", recordId: "r2" }) }),
+    makeScheduledRollout({ record: makeRecord({ status: "released", level: "L5_full", recordId: "r3" }) }),
   ];
 
   const decisions = await scheduler.advanceMany(rollouts);
 
   assert.equal(decisions.length, 3);
-  // First two should be blocked (shadow needs metrics), third should be wait (stable has no progression)
-  assert.ok(decisions[2]!.action === "wait");
+  assert.equal(decisions[2]!.action, "wait");
 });
 
 test("RolloutScheduler.advanceMany handles empty array", async () => {

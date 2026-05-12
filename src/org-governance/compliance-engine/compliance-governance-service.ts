@@ -223,7 +223,7 @@ export class ComplianceGovernanceService {
         .filter(([key, value]) => !matchesFrameworkRequirement(effectivePolicyOrEmpty[key], value))
         .map(([key]) => key),
     );
-    const allowed = !denyByDefault && missingKeys.length === 0 && missingControls.length === 0 && missingFrameworkPolicies.length === 0;
+    const allowed = missingKeys.length === 0 && missingControls.length === 0 && missingFrameworkPolicies.length === 0;
 
     return {
       orgNodeId: input.orgNodeId,

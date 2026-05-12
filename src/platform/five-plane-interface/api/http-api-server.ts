@@ -275,6 +275,9 @@ export class HttpApiServer {
   public async inject(options: InjectRequestOptions): Promise<InjectResponse> {
     const startedAt = Date.now();
     const headers = normalizeHeaders(options.headers);
+    if ((options.body ?? null) !== null && headers["content-type"] == null) {
+      headers["content-type"] = "application/json";
+    }
     const method = options.method ?? "GET";
     const response = this.decoratePayload(
       method === "OPTIONS"

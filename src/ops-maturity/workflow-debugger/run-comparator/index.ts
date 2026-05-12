@@ -76,10 +76,8 @@ export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonl
     if (leftItem.cost !== rightItem.cost && (leftItem.cost != null || rightItem.cost != null)) {
       diffs.push(`step:${stepId}:cost:${leftItem.cost ?? "missing"}->${rightItem.cost ?? "missing"}`);
     }
-    const leftDuration = leftItem.durationMs ?? leftItem.latencyMs;
-    const rightDuration = rightItem.durationMs ?? rightItem.latencyMs;
-    if (leftDuration !== rightDuration && (leftDuration != null || rightDuration != null)) {
-      diffs.push(`step:${stepId}:duration:${leftDuration ?? "missing"}->${rightDuration ?? "missing"}`);
+    if (leftItem.durationMs !== rightItem.durationMs && (leftItem.durationMs != null || rightItem.durationMs != null)) {
+      diffs.push(`step:${stepId}:duration:${leftItem.durationMs ?? "missing"}->${rightItem.durationMs ?? "missing"}`);
     }
   }
 

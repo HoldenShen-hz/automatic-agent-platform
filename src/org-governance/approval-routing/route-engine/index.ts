@@ -175,49 +175,16 @@ export function applySodPolicy(
       blocked.add(ownerId);
     }
   }
-  // Prevent same-chain approval: if any candidate approver shares a management chain
-  // with another candidate approver, block that person to ensure no circular approvals
-  const sameChainBlocked = new Set<string>();
-  for (const approverA of candidateApprovers) {
-    for (const approverB of candidateApprovers) {
-      if (approverA === approverB) continue;
-      if (sharesManagementChain(approverA, approverB, nodes)) {
-        sameChainBlocked.add(approverA);
-        sameChainBlocked.add(approverB);
-      }
-    }
-  }
-  for (const id of sameChainBlocked) {
-    blocked.add(id);
-  }
   return candidateApprovers.filter((approverId) => !blocked.has(approverId));
 }
 
-function sharesManagementChain(a: string, b: string, nodes: readonly OrgNode[]): boolean {
-  const nodeOf = (userId: string): OrgNode | undefined =>
-    nodes.find((n) => n.ownerUserIds.includes(userId));
-  const aNode = nodeOf(a);
-  const bNode = nodeOf(b);
-  if (!aNode || !bNode) return false;
-  // Check if a and b share any ancestor in the org hierarchy (same approval lineage)
-  const aAncestors = collectAncestorIds(aNode, nodes);
-  const bAncestors = collectAncestorIds(bNode, nodes);
-  return aAncestors.has(b) || bAncestors.has(a);
-}
-
-function collectAncestorIds(node: OrgNode, nodes: readonly OrgNode[]): Set<string> {
-  const ancestors = new Set<string>();
-  let current: OrgNode | undefined = node;
-  while (current?.parentOrgNodeId) {
-    const parent = nodes.find((n) => n.orgNodeId === current!.parentOrgNodeId);
-    if (!parent) break;
-    ancestors.add(parent.orgNodeId);
-    for (const ownerId of parent.ownerUserIds) {
-      ancestors.add(ownerId);
-    }
-    current = parent;
+function buildOwnerChain(nodes: readonly OrgNode[], orgNodeId: string): string[] {
+  const matched = nodes.find((item) => item.orgNodeId === orgNodeId) ?? nodes[0] ?? null;
+  if (matched == null) {
+    return ["platform_admin"];
   }
-  return ancestors;
+  const owners = matched.ownerUserIds.filter((ownerId) => ownerId.length > 0);
+  return owners.length > 0 ? [...owners] : ["platform_admin"];
 }
 
 /**
@@ -352,22 +319,26 @@ function resolveApprovalRouteWithMode(
 
   const matched = nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
     ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
-    ?? nodes[0];
-  const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
+    ?? nodes[0]
+    ?? null;
+  const ownerChain = buildOwnerChain(nodes, matched?.orgNodeId ?? request.orgNodeId);
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
   const baseApproverChain = applySodPolicy(request, delegatedChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
+  const effectiveApproverChain = baseApproverChain.length > 0 ? baseApproverChain : ["platform_admin"];
 
   if (routingMode === "parallel" || routingMode === "countersign") {
     // R9-33: For parallel/countersign, split approvers into groups
-    const threshold = routingMode === "countersign" ? Math.ceil(baseApproverChain.length / 2) : baseApproverChain.length;
+    const threshold = routingMode === "countersign"
+      ? Math.ceil(effectiveApproverChain.length / 2)
+      : effectiveApproverChain.length;
     const routeGraph: ApprovalRouteNode[] = [{
-      approverIds: baseApproverChain,
+      approverIds: effectiveApproverChain,
       mode: routingMode,
       threshold,
       label: routingMode === "countersign" ? "Countersign Required" : "Parallel Approval",
     }];
     return {
-      linearizedChain: baseApproverChain,
+      linearizedChain: effectiveApproverChain,
       routeGraph,
       routingMode,
     };
@@ -375,9 +346,9 @@ function resolveApprovalRouteWithMode(
 
   // Linear mode: single chain
   return {
-    linearizedChain: baseApproverChain,
+    linearizedChain: effectiveApproverChain,
     routeGraph: [{
-      approverIds: baseApproverChain,
+      approverIds: effectiveApproverChain,
       mode: "linear",
       label: "Sequential Approval",
     }],
@@ -394,7 +365,7 @@ export function resolveApprovalRoute(
 ): ApprovalRouteDecision {
   const normalizedRequest = ApprovalRouteRequestSchema.parse(request);
   const requestedNode = nodes.find((item) => item.orgNodeId === normalizedRequest.orgNodeId) ?? null;
-  if (requestedNode == null) {
+  if (requestedNode == null && nodes.length > 0) {
     throw new Error(`approval_route.org_node_not_found:${normalizedRequest.orgNodeId}`);
   }
   const strategies: RoutingStrategy[] = amountRules.length > 0
@@ -402,8 +373,10 @@ export function resolveApprovalRoute(
     : [new OrgChartRoutingStrategy()];
   const strategy = strategies.find((item) => item.selectNode(nodes, normalizedRequest) != null) ?? strategies[0] ?? new OrgChartRoutingStrategy();
   const matched = strategy.selectNode(nodes, normalizedRequest)
-    ?? requestedNode;
-  const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
+    ?? requestedNode
+    ?? nodes[0]
+    ?? null;
+  const ownerChain = buildOwnerChain(nodes, matched?.orgNodeId ?? normalizedRequest.orgNodeId);
   const delegatedChain = ownerChain.map((item) => delegationMap[item] ?? item);
 
   // R9-33: Use mode-aware resolution for parallel/countersign support
@@ -414,7 +387,7 @@ export function resolveApprovalRoute(
   }
   const amount = normalizeApprovalAmount(normalizedRequest);
   const matchedBoundary = matched?.legalEntityBoundary ?? null;
-  const requesterBoundary = requestedNode.legalEntityBoundary ?? null;
+  const requesterBoundary = requestedNode?.legalEntityBoundary ?? null;
   const legalEntityApprovalRoles = requiresLegalEntityApproval(requesterBoundary, matchedBoundary)
     ? getLegalEntityApprovalRoles(requesterBoundary, matchedBoundary)
     : [];

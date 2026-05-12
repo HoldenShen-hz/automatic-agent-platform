@@ -79,13 +79,13 @@ test("ExperienceDistillationService.distill sets validatedBy to none", () => {
   assert.equal(objects[0]!.validatedBy, "none");
 });
 
-test("ExperienceDistillationService.distill sets promotionStatus to draft", () => {
+test("ExperienceDistillationService.distill sets promotionStatus to quarantine", () => {
   const service = new ExperienceDistillationService();
   const signal = makeSignal();
 
   const objects = service.distill([signal]);
 
-  assert.equal(objects[0]!.promotionStatus, "draft");
+  assert.equal(objects[0]!.promotionStatus, "quarantine");
 });
 
 test("ExperienceDistillationService.distill uses current Date.now() for createdAt", () => {
@@ -114,7 +114,7 @@ test("ExperienceDistillationService.distill gives non-recovery_playbook generic 
 
   const objects = service.distill([signal]);
 
-  assert.ok(objects[0]!.recommendation.includes("reusable planning guidance"));
+  assert.ok(objects[0]!.recommendation.includes("future task execution"));
 });
 
 test("ExperienceDistillationService.distill processes multiple signals", () => {
@@ -173,7 +173,12 @@ test("ExperienceDistillationService.distill handles different learningTypes corr
 
   assert.equal(objects.length, 5);
   objects.forEach((obj, i) => {
-    assert.equal(obj.learningType, signals[i]!.learningType);
+    const expectedType = signals[i]!.learningType === "model_retraining"
+      ? "user_correction"
+      : signals[i]!.learningType === "dataset_gap"
+        ? "failure_pattern"
+        : signals[i]!.learningType;
+    assert.equal(obj.learningType, expectedType);
     assert.equal(obj.title, `Distilled ${signals[i]!.learningType}`);
   });
 });
@@ -196,7 +201,7 @@ test("ExperienceDistillationService.distill preserves all fields from signal", (
 
   const objects = service.distill([signal]);
 
-  assert.equal(objects[0]!.learningType, "model_retraining");
+  assert.equal(objects[0]!.learningType, "user_correction");
   assert.equal(objects[0]!.summary, "Model underperformed on edge cases");
   assert.equal(objects[0]!.confidence, 0.75);
   assert.deepEqual(objects[0]!.evidenceRefs, ["ref-a", "ref-b"]);

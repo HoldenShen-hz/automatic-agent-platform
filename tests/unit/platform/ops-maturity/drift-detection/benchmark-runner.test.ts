@@ -3,8 +3,7 @@ import { strict as assert } from "node:assert/strict";
 import {
   SimpleBenchmarkRunner,
   type BenchmarkCase,
-  type EvaluationReport,
-  type BenchmarkResult,
+  type ProposalExecutor,
 } from "../../../../../src/ops-maturity/drift-detection/benchmark-runner.js";
 import type { ImprovementProposal } from "../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
 
@@ -18,11 +17,27 @@ const mockProposal = (overrides: Partial<ImprovementProposal> = {}): Improvement
   rationale: "Testing",
   risk: "low",
   evidenceIds: ["evidence-1"],
-  status: "proposed",
+  status: "draft",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,
 });
+
+function createExecutor(
+  results: Map<string, { success: boolean; costUsd: number; latencyMs: number; violations: string[] }>,
+): ProposalExecutor {
+  return {
+    async execute(_proposal, input) {
+      const testCaseId = String(input.testCaseId);
+      return results.get(testCaseId) ?? {
+        success: true,
+        costUsd: 0.01,
+        latencyMs: 100,
+        violations: [],
+      };
+    },
+  };
+}
 
 test("SimpleBenchmarkRunner evaluates proposal with no benchmark cases", async () => {
   const runner = new SimpleBenchmarkRunner([]);
@@ -32,26 +47,32 @@ test("SimpleBenchmarkRunner evaluates proposal with no benchmark cases", async (
 
   assert.strictEqual(report.proposalId, "prop-1");
   assert.strictEqual(report.benchmarkCases, 0);
+  assert.strictEqual(report.successRateBefore, 0);
   assert.strictEqual(report.successRateAfter, 0);
-  assert.strictEqual(report.regressionRate, 0.6);
-  assert.strictEqual(report.decision, "reject");
+  assert.strictEqual(report.regressionRate, 0);
+  assert.strictEqual(report.decision, "needs_revision");
 });
 
-test("SimpleBenchmarkRunner evaluates proposal with benchmark cases", async () => {
+test("SimpleBenchmarkRunner evaluates proposal with benchmark cases and locked baselines", async () => {
   const cases: BenchmarkCase[] = [
-    { id: "case-1", taskType: "tool_operation", input: {} },
-    { id: "case-2", taskType: "tool_operation", input: {} },
+    { id: "case-1", taskType: "tool_operation", input: { testCaseId: "case-1" } },
+    { id: "case-2", taskType: "tool_operation", input: { testCaseId: "case-2" } },
   ];
 
   const runner = new SimpleBenchmarkRunner(cases);
-  const proposal = mockProposal({ kind: "tool_routing_rule", target: "type_validation" });
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: true, costUsd: 0.02, latencyMs: 120, violations: [] }],
+    ["case-2", { success: true, costUsd: 0.03, latencyMs: 150, violations: [] }],
+  ])));
+  runner.setBaseline("case-1", { successRate: 0.9, avgCost: 0.02, avgLatencyMs: 100, sampleCount: 20 });
+  runner.setBaseline("case-2", { successRate: 0.95, avgCost: 0.03, avgLatencyMs: 140, sampleCount: 30 });
 
-  const report = await runner.evaluate(proposal);
+  const report = await runner.evaluate(mockProposal({ kind: "tool_routing_rule", target: "type_validation" }));
 
   assert.strictEqual(report.proposalId, "prop-1");
   assert.strictEqual(report.benchmarkCases, 2);
-  assert.strictEqual(report.successRateBefore, 0.6);
-  assert.ok(typeof report.successRateAfter === "number");
+  assert.ok(report.successRateBefore > 0);
+  assert.strictEqual(report.successRateAfter, 1);
   assert.ok(typeof report.regressionRate === "number");
 });
 
@@ -66,36 +87,36 @@ test("SimpleBenchmarkRunner adds benchmark case dynamically", () => {
 
 test("SimpleBenchmarkRunner runBenchmarks returns results for relevant cases", async () => {
   const cases: BenchmarkCase[] = [
-    { id: "case-tool", taskType: "tool_operation", input: {} },
-    { id: "case-skill", taskType: "skill_task", input: {} },
+    { id: "case-tool", taskType: "tool_operation", input: { testCaseId: "case-tool" } },
+    { id: "case-skill", taskType: "skill_task", input: { testCaseId: "case-skill" } },
   ];
 
   const runner = new SimpleBenchmarkRunner(cases);
-  const proposal = mockProposal({ kind: "tool_routing_rule", target: "type_validation" });
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-tool", { success: true, costUsd: 0.02, latencyMs: 110, violations: [] }],
+    ["case-skill", { success: true, costUsd: 0.04, latencyMs: 180, violations: [] }],
+  ])));
 
-  const results = await runner.runBenchmarks(proposal);
+  const results = await runner.runBenchmarks(mockProposal({ kind: "tool_routing_rule", target: "type_validation" }));
 
-  assert.ok(Array.isArray(results));
-  assert.ok(results.length >= 0);
+  assert.deepEqual(results.map((result) => result.testCaseId), ["case-tool"]);
 });
 
 test("SimpleBenchmarkRunner includes violations for failed benchmarks", async () => {
   const cases: BenchmarkCase[] = [
-    { id: "case-1", taskType: "tool_operation", input: {} },
+    { id: "case-1", taskType: "tool_operation", input: { testCaseId: "case-1" } },
   ];
 
   const runner = new SimpleBenchmarkRunner(cases);
-  const proposal = mockProposal({ kind: "tool_routing_rule", target: "type_validation" });
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: false, costUsd: 0.05, latencyMs: 300, violations: ["security_violation"] }],
+  ])));
 
-  const results = await runner.runBenchmarks(proposal);
+  const results = await runner.runBenchmarks(mockProposal({ kind: "tool_routing_rule", target: "type_validation" }));
 
-  for (const result of results) {
-    assert.ok(typeof result.testCaseId === "string");
-    assert.ok(typeof result.success === "boolean");
-    assert.ok(typeof result.costUsd === "number");
-    assert.ok(typeof result.latencyMs === "number");
-    assert.ok(Array.isArray(result.violations));
-  }
+  assert.strictEqual(results.length, 1);
+  assert.deepEqual(results[0]!.violations, ["security_violation"]);
+  assert.strictEqual(results[0]!.success, false);
 });
 
 test("SimpleBenchmarkRunner returns evaluation report with correct structure", async () => {
@@ -117,49 +138,63 @@ test("SimpleBenchmarkRunner returns evaluation report with correct structure", a
 });
 
 test("SimpleBenchmarkRunner decision is reject when regression rate > 0.05", async () => {
-  const cases: BenchmarkCase[] = [];
-  const runner = new SimpleBenchmarkRunner(cases);
-  const proposal = mockProposal();
+  const runner = new SimpleBenchmarkRunner([
+    { id: "case-1", taskType: "tool_operation", input: { testCaseId: "case-1" } },
+  ]);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: false, costUsd: 0.05, latencyMs: 300, violations: [] }],
+  ])));
+  runner.setBaseline("case-1", { successRate: 1, avgCost: 0.01, avgLatencyMs: 100, sampleCount: 10 });
 
-  const report = await runner.evaluate(proposal);
+  const report = await runner.evaluate(mockProposal());
 
-  assert.ok(report.regressionRate > 0.05 || report.decision !== "reject");
+  assert.ok(report.regressionRate > 0.05);
+  assert.strictEqual(report.decision, "reject");
 });
 
-test("SimpleBenchmarkRunner decision is needs_revision when safety violations > 0", async () => {
-  const cases: BenchmarkCase[] = [];
-  const runner = new SimpleBenchmarkRunner(cases);
-  const proposal = mockProposal();
+test("SimpleBenchmarkRunner decision is needs_revision when safety violations exist without large regression", async () => {
+  const runner = new SimpleBenchmarkRunner([
+    { id: "case-1", taskType: "tool_operation", input: { testCaseId: "case-1" } },
+  ]);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: true, costUsd: 0.02, latencyMs: 100, violations: ["policy_warning"] }],
+  ])));
+  runner.setBaseline("case-1", { successRate: 1, avgCost: 0.01, avgLatencyMs: 90, sampleCount: 10 });
 
-  const report = await runner.evaluate(proposal);
+  const report = await runner.evaluate(mockProposal());
 
-  if (report.safetyViolations > 0) {
-    assert.ok(report.decision === "needs_revision" || report.decision === "reject");
-  }
+  assert.strictEqual(report.safetyViolations, 1);
+  assert.strictEqual(report.decision, "needs_revision");
 });
 
 test("SimpleBenchmarkRunner evaluates workflow proposals with workflow target", async () => {
   const runner = new SimpleBenchmarkRunner([
-    { id: "case-1", taskType: "workflow_task", input: {} },
+    { id: "case-1", taskType: "workflow_task", input: { testCaseId: "case-1" } },
   ]);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: true, costUsd: 0.03, latencyMs: 140, violations: [] }],
+  ])));
+  runner.setBaseline("case-1", { successRate: 0.9, avgCost: 0.02, avgLatencyMs: 120, sampleCount: 10 });
 
-  const proposal = mockProposal({ kind: "workflow_template", target: "complex_workflow" });
-
-  const report = await runner.evaluate(proposal);
+  const report = await runner.evaluate(mockProposal({ kind: "workflow_template", target: "complex_workflow" }));
 
   assert.strictEqual(report.proposalId, "prop-1");
+  assert.strictEqual(report.benchmarkCases, 1);
 });
 
 test("SimpleBenchmarkRunner evaluates skill proposals with skill target", async () => {
   const runner = new SimpleBenchmarkRunner([
-    { id: "case-1", taskType: "skill_task", input: {} },
+    { id: "case-1", taskType: "skill_task", input: { testCaseId: "case-1" } },
   ]);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case-1", { success: true, costUsd: 0.03, latencyMs: 140, violations: [] }],
+  ])));
+  runner.setBaseline("case-1", { successRate: 0.9, avgCost: 0.02, avgLatencyMs: 120, sampleCount: 10 });
 
-  const proposal = mockProposal({ kind: "skill_doc", target: "testing_guidelines" });
-
-  const report = await runner.evaluate(proposal);
+  const report = await runner.evaluate(mockProposal({ kind: "skill_doc", target: "testing_guidelines" }));
 
   assert.strictEqual(report.proposalId, "prop-1");
+  assert.strictEqual(report.benchmarkCases, 1);
 });
 
 test("SimpleBenchmarkRunner handles all proposal kinds without crashing", async () => {
@@ -181,17 +216,22 @@ test("SimpleBenchmarkRunner handles all proposal kinds without crashing", async 
 
 test("SimpleBenchmarkRunner runBenchmarks respects isRelevantCase logic", async () => {
   const cases: BenchmarkCase[] = [
-    { id: "tool-case", taskType: "tool_operation", input: {} },
-    { id: "skill-case", taskType: "skill_task", input: {} },
-    { id: "workflow-case", taskType: "workflow_task", input: {} },
+    { id: "tool-case", taskType: "tool_operation", input: { testCaseId: "tool-case" } },
+    { id: "skill-case", taskType: "skill_task", input: { testCaseId: "skill-case" } },
+    { id: "workflow-case", taskType: "workflow_task", input: { testCaseId: "workflow-case" } },
   ];
 
   const runner = new SimpleBenchmarkRunner(cases);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["tool-case", { success: true, costUsd: 0.01, latencyMs: 90, violations: [] }],
+    ["skill-case", { success: true, costUsd: 0.02, latencyMs: 120, violations: [] }],
+    ["workflow-case", { success: true, costUsd: 0.03, latencyMs: 140, violations: [] }],
+  ])));
   const toolProposal = mockProposal({ kind: "tool_routing_rule", target: "type_validation" });
 
   const results = await runner.runBenchmarks(toolProposal);
 
-  assert.ok(results.length >= 0);
+  assert.deepEqual(results.map((result) => result.testCaseId), ["tool-case"]);
 });
 
 test("BenchmarkCase with critical flag is included", () => {
@@ -203,7 +243,6 @@ test("BenchmarkCase with critical flag is included", () => {
   };
 
   const runner = new SimpleBenchmarkRunner([criticalCase]);
-  const proposal = mockProposal({ kind: "tool_routing_rule" });
 
   assert.ok(typeof runner);
 });

@@ -30,6 +30,7 @@ import {
   GovernanceDelegationSchema,
   type GovernanceDelegation,
   type GovernancePermission,
+  type GovernanceDelegationLevel,
 } from "./delegation-registry/index.js";
 import {
   type GovernanceOperationType,
@@ -67,9 +68,31 @@ export const CreateDelegationRequestSchema = z.object({
   permissions: z.array(z.string()).default([]),
   expiresAt: z.string().min(1),
   revocable: z.boolean().default(true),
+  level: z.enum(["view", "operate", "admin", "super_admin"]).default("view"),
+  delegatable: z.boolean().default(false),
 });
 export type CreateDelegationRequest = z.infer<typeof CreateDelegationRequestSchema>;
 export type CreateDelegationRequestInput = z.input<typeof CreateDelegationRequestSchema>;
+
+type GovernanceActorContext =
+  | string
+  | {
+    readonly actorId: string;
+    readonly role?: "platform_team" | "division_admin" | "department_admin" | "team_lead";
+  };
+
+function normalizeActorContext(actor: GovernanceActorContext): {
+  actorId: string;
+  role: "platform_team" | "division_admin" | "department_admin" | "team_lead" | null;
+} {
+  if (typeof actor === "string") {
+    return { actorId: actor, role: null };
+  }
+  return {
+    actorId: actor.actorId,
+    role: actor.role ?? null,
+  };
+}
 
 /**
  * Console audit log entry
@@ -123,8 +146,8 @@ export class SelfServiceGovernanceConsole {
       delegationId: newId("del"),
       grantorId: request.grantorId,
       granteeId: request.granteeId,
-      level: "view",
-      delegatable: false,
+      level: request.level as GovernanceDelegationLevel,
+      delegatable: request.delegatable,
       orgNodeIds: request.orgNodeIds,
       domainIds: request.domainIds,
       derivedDelegationIds: [],
@@ -145,7 +168,7 @@ export class SelfServiceGovernanceConsole {
    */
   public revokeDelegation(
     delegationId: string,
-    actorId: string,
+    actor: GovernanceActorContext,
   ): { success: boolean; error?: string } {
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
@@ -153,6 +176,10 @@ export class SelfServiceGovernanceConsole {
     }
     if (!delegation.revocable) {
       return { success: false, error: "delegation_not_revocable" };
+    }
+    const { actorId, role } = normalizeActorContext(actor);
+    if (actorId !== delegation.grantorId && role !== "platform_team") {
+      return { success: false, error: "permission_denied" };
     }
 
     const revoked: GovernanceDelegation = {
@@ -167,7 +194,14 @@ export class SelfServiceGovernanceConsole {
   /**
    * Gets a delegation by ID.
    */
-  public getDelegation(delegationId: string): GovernanceDelegation | null {
+  public getDelegation(_delegationId: string, _actor?: GovernanceActorContext): GovernanceDelegation | null {
+    return this.delegationStore.get(_delegationId);
+  }
+
+  /**
+   * Legacy overload kept for compatibility with earlier tests/callers.
+   */
+  public getDelegationLegacy(delegationId: string): GovernanceDelegation | null {
     return this.delegationStore.get(delegationId);
   }
 

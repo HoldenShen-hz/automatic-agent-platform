@@ -22,6 +22,15 @@ export function canResumeFromPanic(plan: ResumePlan): boolean {
   if (!scope.trim()) {
     return false;
   }
+  const canonicalFields = ["planId", "scopeRef", "compatibilityCheckRef", "createdAt"] as const;
+  for (const field of canonicalFields) {
+    if (field in plan) {
+      const value = plan[field];
+      if (typeof value !== "string" || !value.trim()) {
+        return false;
+      }
+    }
+  }
   const rawApprovers = Array.isArray(plan.approvedBy)
     ? plan.approvedBy
     : typeof plan.approvedBy === "string"

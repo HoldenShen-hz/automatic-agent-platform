@@ -1,7 +1,10 @@
+export type OrgGovernancePhase = "identity" | "approval" | "budget" | "domain" | "agent";
+
 export interface OrgGovernanceSagaStep {
   readonly stepId: string;
   readonly targetOrgNodeId: string;
   readonly action: "prepare" | "commit" | "compensate" | "audit";
+  readonly phase?: OrgGovernancePhase;
   /** Required capabilities for this step to execute */
   readonly requiredCapabilities?: readonly string[];
 }
@@ -29,6 +32,7 @@ export interface OrgGovernanceSagaResult {
   readonly executionLog: readonly {
     stepId: string;
     action: OrgGovernanceSagaStep["action"];
+    phase: OrgGovernancePhase;
     targetOrgNodeId: string;
     outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
   }[];
@@ -45,12 +49,23 @@ export interface OrgGovernanceSagaReceipt {
   readonly executionLog: readonly {
     stepId: string;
     action: OrgGovernanceSagaStep["action"];
+    phase: OrgGovernancePhase;
     targetOrgNodeId: string;
     outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
   }[];
   /** Commit sequence version - monotonically increasing per-org, enforced ordering */
   readonly commitSequenceVersion: number;
 }
+
+export interface OrgGovernanceSagaExtendedReceipt extends OrgGovernanceSagaReceipt {
+  readonly phaseCommitOrder: readonly OrgGovernancePhase[];
+  readonly preparedByPhase: Record<OrgGovernancePhase, string[]>;
+  readonly committedByPhase: Record<OrgGovernancePhase, string[]>;
+  readonly compensatedByPhase: Record<OrgGovernancePhase, string[]>;
+  readonly failedPhase: OrgGovernancePhase | null;
+}
+
+const PHASE_ORDER: readonly OrgGovernancePhase[] = ["identity", "approval", "budget", "domain", "agent"];
 
 /**
  * R9-31: OrgNodeWithCapabilities - org node with capability information for governance validation
@@ -185,7 +200,52 @@ export class OrgGovernanceSaga {
     return groups;
   }
 
+  private resolvePhase(step: Pick<OrgGovernanceSagaStep, "phase"> | undefined): OrgGovernancePhase {
+    return step?.phase ?? "domain";
+  }
+
+  private sortSteps(steps: readonly OrgGovernanceSagaStep[], action: OrgGovernanceSagaStep["action"]): OrgGovernanceSagaStep[] {
+    return steps
+      .filter((candidate) => candidate.action === action)
+      .sort((left, right) => {
+        const phaseDelta = PHASE_ORDER.indexOf(this.resolvePhase(left)) - PHASE_ORDER.indexOf(this.resolvePhase(right));
+        if (phaseDelta !== 0) {
+          return phaseDelta;
+        }
+        return left.stepId.localeCompare(right.stepId);
+      });
+  }
+
+  private validateHandlers(steps: readonly OrgGovernanceSagaStep[]): void {
+    if (steps.some((step) => step.action === "prepare") && this.handlers.prepare == null) {
+      throw new Error("missing_prepare_handler");
+    }
+    if (steps.some((step) => step.action === "commit") && this.handlers.commit == null) {
+      throw new Error("missing_commit_handler");
+    }
+    if (
+      (steps.some((step) => step.action === "compensate") || steps.some((step) => step.action === "commit"))
+      && this.handlers.compensate == null
+    ) {
+      throw new Error("missing_compensate_handler");
+    }
+    if (steps.some((step) => step.action === "audit") && this.handlers.audit == null) {
+      throw new Error("missing_audit_handler");
+    }
+  }
+
+  private buildPhaseBuckets(): Record<OrgGovernancePhase, string[]> {
+    return {
+      identity: [],
+      approval: [],
+      budget: [],
+      domain: [],
+      agent: [],
+    };
+  }
+
   public execute(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaReceipt {
+    this.validateHandlers(steps);
     const preparedNodeIds: string[] = [];
     const committedNodeIds: string[] = [];
     const compensatedNodeIds: string[] = [];
@@ -195,10 +255,7 @@ export class OrgGovernanceSaga {
     const commitSequenceVersion = this.nextCommitSequenceVersion++;
     const context = (): OrgGovernanceSagaHandlerContext => ({ sagaId, failedStepId });
 
-    // R9-31: Group steps by org node for proper org-hierarchy-aware processing
-    const stepsByNode = this.groupStepsByOrgNode(steps);
-
-    for (const step of steps.filter((candidate) => candidate.action === "prepare")) {
+    for (const step of this.sortSteps(steps, "prepare")) {
       // R9-31: Validate capabilities before executing step
       const capabilityCheck = this.validateStepCapabilities(step);
       if (!capabilityCheck.valid) {
@@ -206,6 +263,7 @@ export class OrgGovernanceSaga {
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
+          phase: this.resolvePhase(step),
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "failed",
         });
@@ -218,6 +276,7 @@ export class OrgGovernanceSaga {
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
+          phase: this.resolvePhase(step),
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "prepared",
         });
@@ -226,6 +285,7 @@ export class OrgGovernanceSaga {
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
+          phase: this.resolvePhase(step),
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "failed",
         });
@@ -235,12 +295,13 @@ export class OrgGovernanceSaga {
 
     const preparedSet = new Set(preparedNodeIds);
     if (failedStepId == null) {
-      for (const step of steps.filter((candidate) => candidate.action === "commit")) {
+      for (const step of this.sortSteps(steps, "commit")) {
         if (!preparedSet.has(step.targetOrgNodeId)) {
           failedStepId = step.stepId;
           executionLog.push({
             stepId: step.stepId,
             action: step.action,
+            phase: this.resolvePhase(step),
             targetOrgNodeId: step.targetOrgNodeId,
             outcome: "skipped",
           });
@@ -252,6 +313,7 @@ export class OrgGovernanceSaga {
           executionLog.push({
             stepId: step.stepId,
             action: step.action,
+            phase: this.resolvePhase(step),
             targetOrgNodeId: step.targetOrgNodeId,
             outcome: "committed",
           });
@@ -260,6 +322,7 @@ export class OrgGovernanceSaga {
           executionLog.push({
             stepId: step.stepId,
             action: step.action,
+            phase: this.resolvePhase(step),
             targetOrgNodeId: step.targetOrgNodeId,
             outcome: "failed",
           });
@@ -269,44 +332,59 @@ export class OrgGovernanceSaga {
     }
 
     if (failedStepId != null) {
-      const compensationSteps = steps.filter((candidate) => candidate.action === "compensate");
+      const compensationSteps = this.sortSteps(steps, "compensate");
       const compensationNodes = [...new Set([...committedNodeIds, ...preparedNodeIds])].reverse();
       for (const nodeId of compensationNodes) {
+        const phase = steps.find((candidate) => candidate.targetOrgNodeId === nodeId)?.phase;
         const compensationStep =
           compensationSteps.find((candidate) => candidate.targetOrgNodeId === nodeId)
           ?? {
             stepId: `${failedStepId}:compensate:${nodeId}`,
             action: "compensate" as const,
             targetOrgNodeId: nodeId,
+            ...(phase !== undefined ? { phase } : {}),
           };
-        this.handlers.compensate?.(compensationStep, context());
-        compensatedNodeIds.push(nodeId);
-        executionLog.push({
-          stepId: compensationStep.stepId,
-          action: compensationStep.action,
-          targetOrgNodeId: compensationStep.targetOrgNodeId,
-          outcome: "compensated",
-        });
+        try {
+          this.handlers.compensate?.(compensationStep, context());
+          compensatedNodeIds.push(nodeId);
+          executionLog.push({
+            stepId: compensationStep.stepId,
+            action: compensationStep.action,
+            phase: this.resolvePhase(compensationStep),
+            targetOrgNodeId: compensationStep.targetOrgNodeId,
+            outcome: "compensated",
+          });
+        } catch {
+          executionLog.push({
+            stepId: compensationStep.stepId,
+            action: compensationStep.action,
+            phase: this.resolvePhase(compensationStep),
+            targetOrgNodeId: compensationStep.targetOrgNodeId,
+            outcome: "failed",
+          });
+        }
       }
     } else {
-      for (const step of steps.filter((candidate) => candidate.action === "compensate")) {
+      for (const step of this.sortSteps(steps, "compensate")) {
         this.handlers.compensate?.(step, context());
         compensatedNodeIds.push(step.targetOrgNodeId);
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
+          phase: this.resolvePhase(step),
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "compensated",
         });
       }
     }
 
-    for (const step of steps.filter((candidate) => candidate.action === "audit")) {
+    for (const step of this.sortSteps(steps, "audit")) {
       this.handlers.audit?.(step, context());
       auditStepIds.push(step.stepId);
       executionLog.push({
         stepId: step.stepId,
         action: step.action,
+        phase: this.resolvePhase(step),
         targetOrgNodeId: step.targetOrgNodeId,
         outcome: "audited",
       });
@@ -322,6 +400,46 @@ export class OrgGovernanceSaga {
       failedStepId,
       executionLog,
       commitSequenceVersion,
+    };
+  }
+
+  public executeWithReceipt(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaExtendedReceipt {
+    const receipt = this.execute(sagaId, steps);
+    const phaseByNodeId = new Map<string, OrgGovernancePhase>();
+    const phaseByStepId = new Map<string, OrgGovernancePhase>();
+    for (const step of steps) {
+      const phase = this.resolvePhase(step);
+      phaseByNodeId.set(step.targetOrgNodeId, phase);
+      phaseByStepId.set(step.stepId, phase);
+    }
+
+    const preparedByPhase = this.buildPhaseBuckets();
+    const committedByPhase = this.buildPhaseBuckets();
+    const compensatedByPhase = this.buildPhaseBuckets();
+
+    for (const nodeId of receipt.preparedNodeIds) {
+      preparedByPhase[phaseByNodeId.get(nodeId) ?? "domain"].push(nodeId);
+    }
+    for (const nodeId of receipt.committedNodeIds) {
+      committedByPhase[phaseByNodeId.get(nodeId) ?? "domain"].push(nodeId);
+    }
+    for (const nodeId of receipt.compensatedNodeIds) {
+      compensatedByPhase[phaseByNodeId.get(nodeId) ?? "domain"].push(nodeId);
+    }
+
+    const failedPhase = receipt.failedStepId != null ? (phaseByStepId.get(receipt.failedStepId) ?? "domain") : null;
+
+    return {
+      ...receipt,
+      executionLog: receipt.executionLog.map((entry) => ({
+        ...entry,
+        phase: phaseByStepId.get(entry.stepId) ?? phaseByNodeId.get(entry.targetOrgNodeId) ?? entry.phase ?? "domain",
+      })),
+      phaseCommitOrder: [...PHASE_ORDER],
+      preparedByPhase,
+      committedByPhase,
+      compensatedByPhase,
+      failedPhase,
     };
   }
 }

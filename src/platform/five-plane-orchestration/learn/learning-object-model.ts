@@ -4,6 +4,8 @@ export const PHASE_1_LEARNING_TYPES = [
   "failure_pattern",
   "user_correction",
   "recovery_playbook",
+  "model_retraining",
+  "dataset_gap",
 ] as const;
 
 export type Phase1LearningType = typeof PHASE_1_LEARNING_TYPES[number];
@@ -46,15 +48,15 @@ export interface LearningObject {
   readonly validatedBy: "none" | "evidence" | "human_review" | "shadow_execution";
   readonly promotionStatus: LearningObjectPromotionStatus;
   readonly status: LearningObjectStatus;
-  readonly createdAt: string;
-  readonly validatedAt?: string;
-  readonly promotedAt?: string;
+  readonly createdAt: string | number;
+  readonly validatedAt?: string | number;
+  readonly promotedAt?: string | number;
 }
 
 export function normalizeLearningObjectPromotionStatus(
   promotionStatus: LearningObjectPromotionStatus,
-): Exclude<LearningObjectPromotionStatus, "quarantine"> {
-  return promotionStatus === "quarantine" ? "quarantined" : promotionStatus;
+): LearningObjectPromotionStatus {
+  return promotionStatus;
 }
 
 const LearningObjectContentSchema = z.object({
@@ -80,9 +82,9 @@ export const LearningObjectSchema = z.object({
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
   promotionStatus: LearningObjectPromotionStatusSchema.optional(),
   status: z.enum(["created", "validating", "validated", "rejected", "promoted"]).optional(),
-  createdAt: z.string(),
-  validatedAt: z.string().optional(),
-  promotedAt: z.string().optional(),
+  createdAt: z.union([z.string(), z.number().int().nonnegative()]),
+  validatedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
+  promotedAt: z.union([z.string(), z.number().int().nonnegative()]).optional(),
 });
 
 function statusFromPromotionStatus(promotionStatus: LearningObjectPromotionStatus): LearningObjectStatus {
@@ -119,7 +121,7 @@ function promotionStatusFromStatus(status: LearningObjectStatus): LearningObject
 }
 
 export function normalizeLearningType(
-  learningType: Phase1LearningType | "model_retraining" | "dataset_gap",
+  learningType: Phase1LearningType,
 ): Phase1LearningType {
   switch (learningType) {
     case "failure_pattern":

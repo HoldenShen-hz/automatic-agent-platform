@@ -183,7 +183,7 @@ export class PlatformPanicService {
       requiredApprovers: normalizeRequiredApprovers(request),
       severity: (request.severity as "full" | "partial") ?? "full",
       reconfirmationAfterSeconds: 300,
-      rollbackStrategy: "manual",
+      rollbackStrategy: request.rollbackStrategy ?? "manual",
       ...(request.scopeRef != null ? { scopeRef: request.scopeRef } : {}),
       ...(request.expiresAt != null ? { expiresAt: request.expiresAt } : {}),
       ...(request.allowList != null ? { allowList: request.allowList } : {}),

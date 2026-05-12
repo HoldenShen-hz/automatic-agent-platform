@@ -34,7 +34,8 @@ const PII_PATTERNS = [
 ];
 
 const SECRET_KEYWORDS = [
-  "password", "passwd", "secret", "token", "api_key", "apikey",
+  "password", "passwd", "secret", "api_key", "apikey",
+  "api key", "access token",
   "auth", "credential", "private_key", "access_token", "bearer",
 ];
 
@@ -108,6 +109,10 @@ function minimumConfidenceFor(type: LearningObject["learningType"]): number {
       return 0.9;
     case "recovery_playbook":
       return 0.7;
+    case "model_retraining":
+      return 0.8;
+    case "dataset_gap":
+      return 0.8;
   }
 }
 
@@ -127,15 +132,17 @@ export class LearningObjectValidator {
     };
 
     // R13-02: PII scan
-    const piiResult = scanForPiiAndSecrets(candidate.summary + " " + candidate.recommendation);
+    const piiResult = scanForPiiAndSecrets(
+      `${candidate.title} ${candidate.summary} ${candidate.recommendation}`,
+    );
     if (piiResult.containsPii) {
       return {
         valid: false,
-        reasonCode: "learning.pii_detected",
+        reasonCode: "learning.pii_secret_detected",
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantined",
+          promotionStatus: learningObject.promotionStatus,
         },
         warnings: [`PII detected: ${piiResult.piiTypes.join(", ")}`],
       };
@@ -145,11 +152,11 @@ export class LearningObjectValidator {
     if (piiResult.containsSecrets) {
       return {
         valid: false,
-        reasonCode: "learning.secret_detected",
+        reasonCode: "learning.pii_secret_detected",
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantined",
+          promotionStatus: learningObject.promotionStatus,
         },
         warnings: [`Secrets detected: ${piiResult.secretTypes.join(", ")}`],
       };
@@ -164,7 +171,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantined",
+          promotionStatus: learningObject.promotionStatus,
         },
         warnings: ["Object failed diversity check - possible contamination or duplication"],
       };
@@ -178,7 +185,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantined",
+          promotionStatus: learningObject.promotionStatus,
         },
       };
     }
@@ -191,7 +198,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...candidate,
           validatedBy: "none",
-          promotionStatus: "quarantined",
+          promotionStatus: learningObject.promotionStatus,
         },
       };
     }
@@ -205,6 +212,7 @@ export class LearningObjectValidator {
         promotionStatus: candidate.promotionStatus === "draft"
           || candidate.promotionStatus === "untrusted"
           || candidate.promotionStatus === "validating"
+          || candidate.promotionStatus === "quarantine"
           || candidate.promotionStatus === "quarantined"
           ? "validated"
           : candidate.promotionStatus,
@@ -214,12 +222,19 @@ export class LearningObjectValidator {
   }
 
   public validateMany(inputs: readonly LearningObject[]): LearningObject[] {
-    // Update known objects before validation
-    this.knownObjects = [...inputs];
-    // R13-01 fix: Return all objects (including quarantined), not just valid ones.
-    // Quarantine status must be preserved through validateMany per §29.4.
-    return inputs
-      .map((input) => this.validate(input))
-      .map((result) => result.learningObject);
+    const priorKnownObjects = [...this.knownObjects];
+    const validObjects: LearningObject[] = [];
+
+    this.knownObjects = priorKnownObjects;
+    for (const input of inputs) {
+      const result = this.validate(input);
+      if (!result.valid) {
+        continue;
+      }
+      validObjects.push(result.learningObject);
+    }
+
+    this.knownObjects = [...priorKnownObjects, ...validObjects];
+    return validObjects;
   }
 }

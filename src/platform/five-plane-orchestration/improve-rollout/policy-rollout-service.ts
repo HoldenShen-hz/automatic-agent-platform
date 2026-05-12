@@ -1,4 +1,5 @@
-import type { RolloutRecord, RolloutStatus } from "../oapeflir/types/rollout-record.js";
+import type { RolloutLevel, RolloutRecord, RolloutStatus } from "../oapeflir/types/rollout-record.js";
+import { normalizeRolloutLevel } from "../oapeflir/types/rollout-record.js";
 import { AutoRollbackService, type RolloutMetrics } from "./auto-rollback-service.js";
 import { GuardrailEvaluator } from "./guardrail-evaluator.js";
 import type { ImprovementCandidate } from "./improvement-candidate-registry.js";
@@ -55,7 +56,7 @@ export class PolicyRolloutService {
         reasonCodes: guardrailDecision.reasonCodes,
       };
     }
-    if (candidate.status !== "approved" && strategyVersion.releaseLevel !== "L0_off") {
+    if (candidate.status !== "approved" && normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off") {
       return {
         allowed: false,
         releaseLevel: "L0_off",
@@ -76,7 +77,7 @@ export class PolicyRolloutService {
     if (!decision.allowed) {
       return null;
     }
-    return this.stateMachine.transition(candidate, decision.releaseLevel, {
+    return this.stateMachine.transition(candidate, normalizeRolloutLevel(decision.releaseLevel), {
       approvedBy,
       strategyVersionId: strategyVersion.strategyVersionId,
       guardrailReasonCodes: decision.reasonCodes,
@@ -183,7 +184,7 @@ export class PolicyRolloutService {
   }
 }
 
-function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
+function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
   switch (status) {
     case "candidate_created":
     case "under_review":

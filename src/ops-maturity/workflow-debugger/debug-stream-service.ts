@@ -2,6 +2,7 @@ import { nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface DebugStreamMessage {
   readonly type: "breakpoint_hit" | "frame_update" | "comparison_ready";
+  readonly eventType?: "breakpoint_hit" | "frame_update" | "comparison_ready";
   readonly planGraphId: string;
   readonly timestamp: string;
   readonly payload: Record<string, unknown>;
@@ -85,6 +86,7 @@ export class WebSocketDebugStreamService {
   ): void {
     this.broadcast(workflowId, {
       type: "breakpoint_hit",
+      eventType: "breakpoint_hit",
       planGraphId,
       timestamp: payload.timestamp,
       payload,
@@ -94,6 +96,7 @@ export class WebSocketDebugStreamService {
   public publish(event: DebugStreamEvent): void {
     this.broadcast(event.workflowId, {
       type: event.eventType,
+      eventType: event.eventType,
       planGraphId: event.workflowId,
       timestamp: event.emittedAt,
       payload: event.payload,

@@ -32,7 +32,7 @@ test("SimpleProposalEngine creates proposal with correct structure", async () =>
   assert.strictEqual(proposal.kind, "tool_routing_rule");
   assert.strictEqual(proposal.target, "test_target");
   assert.strictEqual(proposal.risk, "low");
-  assert.strictEqual(proposal.status, "proposed");
+  assert.strictEqual(proposal.status, "draft");
   assert.ok(proposal.id.startsWith("prop_"));
 });
 
@@ -117,7 +117,7 @@ test("SimpleProposalEngine.requiresManualApproval returns true for manual-only k
   assert.strictEqual(engine.requiresManualApproval("threshold_tuning"), true);
 });
 
-test("SimpleProposalEngine.submitForApproval updates proposal status to testing", async () => {
+test("SimpleProposalEngine.submitForApproval updates proposal status to reviewed", async () => {
   const engine = new SimpleProposalEngine();
   const proposal = await engine.create({
     title: "Test",
@@ -135,7 +135,7 @@ test("SimpleProposalEngine.submitForApproval updates proposal status to testing"
   assert.ok(active.some((p: ImprovementProposal) => p.id === proposal.id));
 });
 
-test("SimpleProposalEngine.listPending returns only proposed proposals", async () => {
+test("SimpleProposalEngine.listPending returns only draft proposals", async () => {
   const engine = new SimpleProposalEngine();
 
   await engine.create({
@@ -150,10 +150,10 @@ test("SimpleProposalEngine.listPending returns only proposed proposals", async (
 
   const pending = await engine.listPending();
 
-  assert.ok(pending.every((p: ImprovementProposal) => p.status === "proposed"));
+  assert.ok(pending.every((p: ImprovementProposal) => p.status === "draft"));
 });
 
-test("SimpleProposalEngine.listActive returns proposals in testing, canary, or active status", async () => {
+test("SimpleProposalEngine.listActive returns proposals in reviewed, staged, or stable status", async () => {
   const engine = new SimpleProposalEngine();
   const proposal = await engine.create({
     title: "Test",
@@ -169,7 +169,7 @@ test("SimpleProposalEngine.listActive returns proposals in testing, canary, or a
 
   const active = await engine.listActive();
 
-  assert.ok(active.some((p: ImprovementProposal) => p.status === "testing"));
+  assert.ok(active.some((p: ImprovementProposal) => p.status === "reviewed"));
 });
 
 test("SimpleProposalEngine.proposeFromReflection returns multiple proposals for complex reflection", async () => {
@@ -273,6 +273,6 @@ test("SimpleProposalEngine submits to approval updates updatedAt", async () => {
 
   const updated = (await engine.listActive()).find((p: ImprovementProposal) => p.id === proposal.id);
   assert.ok(updated);
-  assert.equal(updated?.status, "testing");
+  assert.equal(updated?.status, "reviewed");
   assert.ok((updated?.updatedAt ?? "") >= originalUpdatedAt);
 });

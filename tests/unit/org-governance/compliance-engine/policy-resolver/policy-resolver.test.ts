@@ -387,7 +387,9 @@ describe("resolveCompliancePolicyForNode", () => {
 
     const result = resolveCompliancePolicyForNode(nodes, "non-existent", policiesByNodeId);
 
-    assert.deepStrictEqual(result, { _denyByDefault: true });
+    assert.deepStrictEqual(result, {});
+    assert.strictEqual(result.denyByDefault, true);
+    assert.deepStrictEqual(result.policy, {});
   });
 
   it("should build lineage from root to leaf", () => {

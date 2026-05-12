@@ -364,6 +364,12 @@ export class PlanGraphHarnessRuntime {
                   : "tool",
       status: input.receiptStatus ?? "succeeded",
       duration: 0,
+      evidenceRefs: [
+        {
+          artifactId: `${node.nodeId}-receipt-evidence`,
+          uri: `memory://plan-nodes/${node.nodeId}/receipt-evidence`,
+        },
+      ],
       errorDetail: input.receiptStatus === "failed" || input.receiptStatus === "blocked"
         ? `runtime.${input.receiptStatus}`
         : "",

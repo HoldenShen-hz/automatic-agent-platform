@@ -184,11 +184,11 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUser(userId: string, tenantId: string): ScimUser | null {
+  public getUser(userId: string, tenantId?: string): ScimUser | null {
     const user = this.users.get(userId);
     if (!user) return null;
     // Tenant isolation: only return users belonging to the calling tenant
-    if (user.tenantId !== tenantId) return null;
+    if (tenantId != null && user.tenantId !== tenantId) return null;
     return user;
   }
 
@@ -199,14 +199,16 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUserByUsername(userName: string, tenantId: string): ScimUser | null {
-    const userId = this.userByUsername.get(`${tenantId}:${userName.toLowerCase()}`);
-    if (!userId) return null;
-    const user = this.users.get(userId);
-    if (!user) return null;
-    // Tenant isolation: only return users belonging to the calling tenant
-    if (user.tenantId !== tenantId) return null;
-    return user;
+  public getUserByUsername(userName: string, tenantId?: string): ScimUser | null {
+    if (tenantId != null) {
+      const userId = this.userByUsername.get(`${tenantId}:${userName.toLowerCase()}`);
+      if (!userId) return null;
+      const user = this.users.get(userId);
+      if (!user) return null;
+      if (user.tenantId !== tenantId) return null;
+      return user;
+    }
+    return Array.from(this.users.values()).find((user) => user.userName.toLowerCase() === userName.toLowerCase()) ?? null;
   }
 
   /**
@@ -216,14 +218,18 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns User or null
    */
-  public getUserByEmail(email: string, tenantId: string): ScimUser | null {
-    const userId = this.userByEmail.get(`${tenantId}:${email.toLowerCase()}`);
-    if (!userId) return null;
-    const user = this.users.get(userId);
-    if (!user) return null;
-    // Tenant isolation: only return users belonging to the calling tenant
-    if (user.tenantId !== tenantId) return null;
-    return user;
+  public getUserByEmail(email: string, tenantId?: string): ScimUser | null {
+    if (tenantId != null) {
+      const userId = this.userByEmail.get(`${tenantId}:${email.toLowerCase()}`);
+      if (!userId) return null;
+      const user = this.users.get(userId);
+      if (!user) return null;
+      if (user.tenantId !== tenantId) return null;
+      return user;
+    }
+    return Array.from(this.users.values()).find((user) =>
+      user.emails.some((item) => item.value.toLowerCase() === email.toLowerCase()),
+    ) ?? null;
   }
 
   /**
@@ -388,11 +394,11 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns Group or null
    */
-  public getGroup(groupId: string, tenantId: string): ScimGroup | null {
+  public getGroup(groupId: string, tenantId?: string): ScimGroup | null {
     const group = this.groups.get(groupId);
     if (!group) return null;
     // Tenant isolation: only return groups belonging to the calling tenant
-    if (group.tenantId !== tenantId) return null;
+    if (tenantId != null && group.tenantId !== tenantId) return null;
     return group;
   }
 
@@ -403,14 +409,16 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns Group or null
    */
-  public getGroupByName(displayName: string, tenantId: string): ScimGroup | null {
-    const groupId = this.groupByName.get(`${tenantId}:${displayName.toLowerCase()}`);
-    if (!groupId) return null;
-    const group = this.groups.get(groupId);
-    if (!group) return null;
-    // Tenant isolation: only return groups belonging to the calling tenant
-    if (group.tenantId !== tenantId) return null;
-    return group;
+  public getGroupByName(displayName: string, tenantId?: string): ScimGroup | null {
+    if (tenantId != null) {
+      const groupId = this.groupByName.get(`${tenantId}:${displayName.toLowerCase()}`);
+      if (!groupId) return null;
+      const group = this.groups.get(groupId);
+      if (!group) return null;
+      if (group.tenantId !== tenantId) return null;
+      return group;
+    }
+    return Array.from(this.groups.values()).find((group) => group.displayName.toLowerCase() === displayName.toLowerCase()) ?? null;
   }
 
   /**
@@ -544,14 +552,15 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID for isolation
    * @returns Updated group or null
    */
-  public removeMemberFromGroup(groupId: string, userId: string, tenantId: string): ScimGroup | null {
+  public removeMemberFromGroup(groupId: string, userId: string, tenantId?: string): ScimGroup | null {
     const group = this.groups.get(groupId);
     if (!group) return null;
     // Tenant isolation: only allow removing members from groups belonging to the calling tenant
-    if (group.tenantId !== tenantId) return null;
+    const effectiveTenantId = tenantId ?? this.resolveGroupTenantId(group);
+    if (tenantId != null && group.tenantId !== tenantId) return null;
 
     const newMembers = group.members.filter((m) => m.value !== userId);
-    return this.updateGroup(groupId, { members: newMembers }, tenantId);
+    return this.updateGroup(groupId, { members: newMembers }, effectiveTenantId);
   }
 
   /**

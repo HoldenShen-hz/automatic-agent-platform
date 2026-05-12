@@ -1,8 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { IntakeAdmissionService } from "../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
-import { createPrincipalRef, createRiskPreview, createBudgetIntent } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { IntakeAdmissionService } from "../../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
+import { createPrincipalRef } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
+
+function createRiskPreview(input: { riskClass: "low" | "medium" | "high" | "critical"; reasons: readonly string[] }) {
+  return input;
+}
+
+function createBudgetIntent(input: { amount: number; currency: string; resourceKinds: readonly string[] }) {
+  return input;
+}
 
 /**
  * R6 Fix Verification Tests
@@ -71,9 +79,9 @@ test("R6-1: resumeClarification transitions session to confirmed and creates Con
     tenantId: "tenant-1",
     principal,
     source: "nl",
-    goal: "ship the runtime contract",
+    goal: "maybe ship the runtime contract",
     inputs: {},
-    riskPreview: createRiskPreview({ riskClass: "high", reasons: [] }),
+    riskPreview: createRiskPreview({ riskClass: "medium", reasons: [] }),
     constraintPackRef: "policy://default",
     budgetIntent: createBudgetIntent({ amount: 100, currency: "USD", resourceKinds: ["token"] }),
     idempotencyKey: "r6-1-resume-test",

@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export type HitlMode = "inspect" | "patch" | "override" | "takeover" | "resume" | "edit" | "delegate" | "escalate";
-export type HitlRequestStatus = "pending_approval" | "approved" | "rejected" | "paused" | "completed";
+export type HitlRequestStatus = "pending" | "pending_approval" | "approved" | "rejected" | "paused" | "completed";
 
 export interface HitlRequest {
   readonly requestId: string;
@@ -147,7 +147,7 @@ export class HitlRuntime {
       evidenceRefs: [...input.evidenceRefs],
       requestedAt,
       expiresAt: input.expiresAt ?? this.computeExpiryIso(requestedAt),
-      status: "pending_approval",
+      status: "pending",
       resolvedAt: null,
       resolvedBy: null,
     };
@@ -248,7 +248,7 @@ export class HitlRuntime {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
     // R23-34/R3-2 fix: Add idempotency protection - reject double-resolution of already-resolved requests
-    if (request.status !== "pending_approval") {
+    if (request.status !== "pending" && request.status !== "pending_approval") {
       throw new Error(`harness.hitl.request_already_resolved:${requestId}:${request.status}`);
     }
     const resolved: HitlRequest = {
@@ -262,7 +262,7 @@ export class HitlRuntime {
     const action: HitlMode = resolution === "approved" ? "resume" : "override";
     const rationale = `hitl_resolution:${resolution}`;
     const record = this.createResponsibilityRecord(resolved, actorId, action, rationale);
-    return { request: resolved, record };
+    return { ...resolved, request: resolved, record };
   }
 
   public edit(
@@ -350,7 +350,7 @@ export class HitlRuntime {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
     // Only pending_approval or approved requests can be paused
-    if (request.status !== "pending_approval" && request.status !== "approved") {
+    if (request.status !== "pending" && request.status !== "pending_approval" && request.status !== "approved") {
       throw new Error(`harness.hitl.cannot_pause_from_status:${requestId}:${request.status}`);
     }
     const beforeRef = `pause:before:${requestId}:${nowIso()}`;
@@ -416,7 +416,7 @@ export class HitlRuntime {
   private expirePendingRequestIfNeeded(request: HitlRequest): HitlRequest {
     const normalized = this.normalizeRequest(request);
     if (
-      normalized.status !== "pending_approval"
+      (normalized.status !== "pending" && normalized.status !== "pending_approval")
       || normalized.expiresAt == null
       || Date.parse(normalized.expiresAt) > Date.now()
     ) {

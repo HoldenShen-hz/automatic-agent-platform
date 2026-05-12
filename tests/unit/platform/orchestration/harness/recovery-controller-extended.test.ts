@@ -234,8 +234,8 @@ test("RecoveryController.handleFailure with worker_crash sets correct retry reas
   const run = createRun();
   const result = controller.handleFailure(run, "worker_crash");
 
-  assert.equal(result.status, "running");
-  assert.equal(result.pauseReason, null);
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,8 +369,8 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
   const result = controller.handleFailure(freshRun, "worker_crash");
 
   // Should restore from checkpoint
-  assert.equal(result.status, "running");
-  assert.equal(result.pauseReason, null);
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 test("RecoveryController.handleFailure persists recovering run to durable service", () => {

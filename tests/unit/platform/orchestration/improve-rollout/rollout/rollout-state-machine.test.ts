@@ -3,7 +3,6 @@ import test from "node:test";
 
 import { RolloutStateMachine } from "../../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
 import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { RolloutLevel, RolloutRecord } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {
@@ -14,77 +13,77 @@ function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): Imp
     changeScope: "task_template",
     description: "Test candidate",
     expectedBenefit: "Test benefit",
-    status: "proposed",
+    status: "approved",
     createdAt: Date.now(),
     ...overrides,
   } as ImprovementCandidate;
 }
 
-test("RolloutStateMachine.transition creates valid rollout record", () => {
+test("RolloutStateMachine.transition creates an evaluation rollout record", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "shadow");
+  const record = machine.transition(candidate, "L1_evaluate");
 
-  assert.ok(record.recordId.startsWith("rollout_"), "recordId should start with rollout_");
+  assert.ok(record.recordId.startsWith("rollout_"));
   assert.equal(record.candidateId, "ic_123");
-  assert.equal(record.level, "shadow");
-  assert.equal(record.status, "shadow");
+  assert.equal(record.level, "L1_evaluate");
+  assert.equal(record.status, "evaluation_enabled");
 });
 
-test("RolloutStateMachine.transition with explicit status", () => {
+test("RolloutStateMachine.transition supports explicit target status", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "canary_5", {
-    currentStatus: "shadow",
+  const record = machine.transition(candidate, "L2_canary", {
+    currentStatus: "evaluation_enabled",
     targetStatus: "canary_5",
   });
 
-  assert.equal(record.level, "canary_5");
+  assert.equal(record.level, "L2_canary");
   assert.equal(record.status, "canary_5");
 });
 
-test("RolloutStateMachine.transition captures previous level", () => {
+test("RolloutStateMachine.transition infers previous rollout level", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "partial_25", {
+  const record = machine.transition(candidate, "L3_partial", {
     currentStatus: "canary_5",
   });
 
-  assert.equal(record.level, "partial_25");
-  assert.equal(record.previousLevel, "canary_5");
+  assert.equal(record.level, "L3_partial");
+  assert.equal(record.previousLevel, "L2_canary");
 });
 
-test("RolloutStateMachine.transition invalid transition throws", () => {
+test("RolloutStateMachine.transition rejects invalid direct jump", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createMockCandidate({ status: "draft" });
+  const candidate = createMockCandidate();
 
   assert.throws(
-    () => machine.transition(candidate, "stable", { targetStatus: "stable" }),
+    () => machine.transition(candidate, "L4_stable"),
     /Invalid rollout transition/,
   );
 });
 
-test("RolloutStateMachine.transition draft allows pending_approval", () => {
+test("RolloutStateMachine.transition allows candidate_created to reject", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createMockCandidate({ status: "proposed" });
+  const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "suggest", {
-    currentStatus: "draft",
-    targetStatus: "pending_approval",
+  const record = machine.transition(candidate, "L0_off", {
+    currentStatus: "candidate_created",
+    targetStatus: "rejected",
   });
 
-  assert.equal(record.status, "pending_approval");
-  assert.equal(record.level, "suggest");
+  assert.equal(record.status, "rejected");
+  assert.equal(record.level, "L0_off");
 });
 
 test("RolloutStateMachine.transition records approvedBy", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "shadow", {
+  const record = machine.transition(candidate, "L1_evaluate", {
     approvedBy: "admin-user",
   });
 
@@ -95,7 +94,7 @@ test("RolloutStateMachine.transition records strategyVersionId", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "shadow", {
+  const record = machine.transition(candidate, "L1_evaluate", {
     strategyVersionId: "strategy_v2",
   });
 
@@ -106,60 +105,34 @@ test("RolloutStateMachine.transition records guardrailReasonCodes", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "shadow", {
+  const record = machine.transition(candidate, "L1_evaluate", {
     guardrailReasonCodes: ["code_1", "code_2"],
   });
 
   assert.deepEqual(record.guardrailReasonCodes, ["code_1", "code_2"]);
 });
 
-test("RolloutStateMachine.transition infers currentStatus from candidate status", () => {
+test("RolloutStateMachine.transition infers currentStatus from approved candidate", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate({ status: "approved" });
 
-  const record = machine.transition(candidate, "shadow");
+  const record = machine.transition(candidate, "L1_evaluate");
 
-  assert.equal(record.status, "shadow");
-  // previousLevel should be "suggest" (inferred from pending_approval)
-  assert.equal(record.previousLevel, "suggest");
+  assert.equal(record.status, "evaluation_enabled");
+  assert.equal(record.previousLevel, "L0_off");
 });
 
-test("RolloutStateMachine.transition with shadow_running candidate", () => {
+test("RolloutStateMachine.transition blocks rejected and rolled_back terminals", () => {
   const machine = new RolloutStateMachine();
-  const candidate = createMockCandidate({ status: "shadow_running" });
+  const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "canary_5");
-
-  assert.equal(record.status, "canary_5");
-  assert.equal(record.level, "canary_5");
-});
-
-test("RolloutStateMachine.transition with rejected candidate", () => {
-  const machine = new RolloutStateMachine();
-  const candidate = createMockCandidate({ status: "rejected" });
-
-  // rejected status only allows "rejected" as target, so we must target "rejected"
-  const record = machine.transition(candidate, "off", {
+  assert.throws(() => machine.transition(candidate, "L1_evaluate", {
     currentStatus: "rejected",
-    targetStatus: "rejected",
-  });
+  }), /Invalid rollout transition/);
 
-  assert.equal(record.status, "rejected");
-  assert.equal(record.level, "off");
-});
-
-test("RolloutStateMachine.transition with rolled_back candidate", () => {
-  const machine = new RolloutStateMachine();
-  const candidate = createMockCandidate({ status: "rolled_back" });
-
-  // rolled_back status only allows "rolled_back" as target
-  const record = machine.transition(candidate, "off", {
+  assert.throws(() => machine.transition(candidate, "L1_evaluate", {
     currentStatus: "rolled_back",
-    targetStatus: "rolled_back",
-  });
-
-  assert.equal(record.status, "rolled_back");
-  assert.equal(record.level, "off");
+  }), /Invalid rollout transition/);
 });
 
 test("RolloutStateMachine.transition preserves candidate evidence", () => {
@@ -168,21 +141,20 @@ test("RolloutStateMachine.transition preserves candidate evidence", () => {
     sourceSignalRefs: ["signal_a", "signal_b", "signal_c"],
   });
 
-  const record = machine.transition(candidate, "shadow");
+  const record = machine.transition(candidate, "L1_evaluate");
 
   assert.deepEqual(record.evidence, ["signal_a", "signal_b", "signal_c"]);
 });
 
-test("RolloutStateMachine.transition from partial_25 to partial_50", () => {
+test("RolloutStateMachine.transition promotes stable_75 to stable_100", () => {
   const machine = new RolloutStateMachine();
   const candidate = createMockCandidate();
 
-  const record = machine.transition(candidate, "partial_50", {
-    currentStatus: "partial_25",
-    targetStatus: "partial_50",
+  const record = machine.transition(candidate, "L5_full", {
+    currentStatus: "stable_75",
   });
 
-  assert.equal(record.level, "partial_50");
-  assert.equal(record.status, "partial_50");
-  assert.equal(record.previousLevel, "partial_25");
+  assert.equal(record.level, "L5_full");
+  assert.equal(record.status, "stable_100");
+  assert.equal(record.previousLevel, "L4_stable");
 });

@@ -24,6 +24,11 @@ export interface ToolbeltAssemblyRequest {
   }>;
   /** Reliability scores per tool */
   readonly reliabilityScores?: Readonly<Record<string, number>>;
+  readonly sandboxRequirement?: Readonly<{
+    readonly sandboxMode: string;
+    readonly timeoutMs?: number;
+    readonly allowedHosts?: readonly string[];
+  }>;
 }
 
 export interface HarnessToolbelt {
@@ -32,6 +37,15 @@ export interface HarnessToolbelt {
   readonly blockedTools: readonly string[];
   readonly requiredEvidence: readonly string[];
   readonly assemblyTrace?: readonly string[];
+  readonly sandboxLayer?: Readonly<{
+    readonly defaultLayer: string;
+    readonly bindings: readonly Readonly<{
+      readonly toolName: string;
+      readonly sandboxMode: string;
+      readonly timeoutMs?: number;
+      readonly allowedHosts?: readonly string[];
+    }>[];
+  }>;
 }
 
 export class ToolbeltAssembler {
@@ -130,12 +144,25 @@ export class ToolbeltAssembler {
       }
     }
 
+    const sandboxLayer = request.sandboxRequirement == null
+      ? undefined
+      : {
+          defaultLayer: request.sandboxRequirement.sandboxMode,
+          bindings: grantedTools.map((toolName) => ({
+            toolName,
+            sandboxMode: request.sandboxRequirement!.sandboxMode,
+            ...(request.sandboxRequirement!.timeoutMs !== undefined ? { timeoutMs: request.sandboxRequirement!.timeoutMs } : {}),
+            ...(request.sandboxRequirement!.allowedHosts !== undefined ? { allowedHosts: [...request.sandboxRequirement!.allowedHosts] } : {}),
+          })),
+        };
+
     return {
       allowedTools: [...request.allowedTools],
       grantedTools,
       blockedTools,
       requiredEvidence: [...request.requiredEvidence],
       assemblyTrace,
+      ...(sandboxLayer !== undefined ? { sandboxLayer } : {}),
     };
   }
 }

@@ -152,33 +152,30 @@ test("ReplayWorker.runRecoveryCycle respects isolated_sandbox mode", async () =>
   assert.equal(report.metadata?.replaySandboxId, "sandbox-123");
 });
 
-test("ReplayWorker.runRecoveryCycle blocks real side effects in trace_only mode", async () => {
-  const worker = new ReplayWorker({
-    replayService: createMockReplayService(),
-    listTaskIds: () => ["task-1"],
-    cadence: { intervalMs: 300_000 },
-    replayPolicy: { mode: "trace_only", allowRealSideEffects: true }, // Should be blocked
-  });
-
-  const report = await worker.runRecoveryCycle();
-
-  assert.equal(report.itemsProcessed, 0);
-  assert.ok(report.errors.length > 0);
-  assert.ok(report.errors[0].code.includes("real_side_effect"));
+test("ReplayWorker.runRecoveryCycle blocks real side effects in trace_only mode", () => {
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService(),
+        listTaskIds: () => ["task-1"],
+        cadence: { intervalMs: 300_000 },
+        replayPolicy: { mode: "trace_only", allowRealSideEffects: true },
+      }),
+    /real side effects/i,
+  );
 });
 
-test("ReplayWorker.runRecoveryCycle requires sandboxId for isolated_sandbox mode", async () => {
-  const worker = new ReplayWorker({
-    replayService: createMockReplayService(),
-    listTaskIds: () => ["task-1"],
-    cadence: { intervalMs: 300_000 },
-    replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
-  });
-
-  const report = await worker.runRecoveryCycle();
-
-  assert.equal(report.itemsProcessed, 0);
-  assert.ok(report.errors.length > 0);
+test("ReplayWorker.runRecoveryCycle requires sandboxId for isolated_sandbox mode", () => {
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService(),
+        listTaskIds: () => ["task-1"],
+        cadence: { intervalMs: 300_000 },
+        replayPolicy: { mode: "isolated_sandbox", sandboxId: "", allowRealSideEffects: false },
+      }),
+    /sandboxId/i,
+  );
 });
 
 test("ReplayWorker rejects replay policy with allowRealSideEffects true", () => {

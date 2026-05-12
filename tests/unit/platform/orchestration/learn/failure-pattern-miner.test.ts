@@ -213,7 +213,7 @@ test("FailurePatternMiner assigns confidence 0.8 to detected patterns", () => {
   assert.equal(results[0]!.confidence, 0.8);
 });
 
-test("FailurePatternMiner sets promotionStatus to draft", () => {
+test("FailurePatternMiner sets promotionStatus to quarantine", () => {
   const signal = makeSignal({
     learningSignalId: "sig-draft-1",
     taskId: "task-draft",
@@ -222,7 +222,7 @@ test("FailurePatternMiner sets promotionStatus to draft", () => {
   });
 
   const results = new FailurePatternMiner().mine([signal]);
-  assert.equal(results[0]!.promotionStatus, "draft");
+  assert.equal(results[0]!.promotionStatus, "quarantine");
 });
 
 test("FailurePatternMiner handles signals with stepId in evidence", () => {

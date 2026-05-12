@@ -141,7 +141,7 @@ test("DelegatedGovernanceService grantee cannot exceed grantor permissions - par
 
   // manage_prompts is NOT in intersection, so should be denied
   assert.equal(result.allowed, false);
-  assert.equal(result.reasonCodes.includes("delegated_governance.permission_exceeds_grantor_authority"), true);
+  assert.equal(result.reasonCodes.includes("delegated_governance.scope_not_granted"), true);
 });
 
 test("DelegatedGovernanceService without grantorPermissions defaults to allow (backward compatible)", () => {

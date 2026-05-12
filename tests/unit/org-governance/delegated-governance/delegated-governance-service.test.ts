@@ -269,7 +269,7 @@ test("DelegatedGovernanceService.validateInheritanceRule delete returns true whe
   assert.equal(result.allowed, true);
 });
 
-test("intersectPermissions returns only permissions present in both arrays", () => {
+test("intersectPermissions returns only permissions present in both arrays", async () => {
   const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
 
   const result = intersectPermissions(
@@ -281,7 +281,7 @@ test("intersectPermissions returns only permissions present in both arrays", () 
   assert.ok(result.includes("manage_packs"));
 });
 
-test("intersectPermissions returns empty when granted is empty", () => {
+test("intersectPermissions returns empty when granted is empty", async () => {
   const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
 
   const result = intersectPermissions([], ["manage_packs"]);
@@ -289,7 +289,7 @@ test("intersectPermissions returns empty when granted is empty", () => {
   assert.equal(result.length, 0);
 });
 
-test("intersectPermissions returns empty when available is empty", () => {
+test("intersectPermissions returns empty when available is empty", async () => {
   const { intersectPermissions } = await import("../../../../src/org-governance/delegated-governance/delegated-governance-service.js");
 
   const result = intersectPermissions(["manage_packs"], []);

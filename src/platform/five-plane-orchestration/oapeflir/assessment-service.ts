@@ -60,6 +60,11 @@ interface ComplexityScoreAssessment {
   readonly score: number;
 }
 
+export type AssessmentServiceResult = Omit<UnifiedAssessment, "riskAssessment"> & {
+  assessment: UnifiedAssessment;
+  riskAssessment: UnifiedAssessment["riskAssessment"] & RiskAssessment;
+};
+
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
   private readonly fileCountThresholds: { critical: number; high: number; moderate: number; simple: number };
@@ -98,7 +103,7 @@ export class AssessmentService {
     taskSituation: TaskSituation,
     constraintPack?: ConstraintPack,
     effectivePolicy?: EffectivePolicySnapshot,
-  ): { assessment: UnifiedAssessment; riskAssessment: RiskAssessment } {
+  ): AssessmentServiceResult {
     // NOTE: taskSituation is already a TaskSituation from the Observe stage.
     // If re-parsing is needed for validation, use parseTaskSituation(taskSituation) here.
     const situation = taskSituation;
@@ -233,7 +238,15 @@ export class AssessmentService {
       ],
     };
 
-    return { assessment, riskAssessment };
+    return {
+      ...assessment,
+      assessment,
+      riskAssessment: {
+        ...assessment.riskAssessment,
+        ...riskAssessment,
+        factors: [...riskAssessment.factors],
+      },
+    };
   }
 
   private scoreComplexity(
@@ -298,13 +311,13 @@ export class AssessmentService {
       ).toFixed(2),
     );
 
-    if (score >= 12) {
+    if (risk === "critical" || fileCount >= this.fileCountThresholds.critical || blockerCount >= this.blockerCountThresholds.critical) {
       return { level: "critical", score };
     }
-    if (score >= 8) {
+    if (risk === "high" || fileCount >= this.fileCountThresholds.high || blockerCount >= this.blockerCountThresholds.high) {
       return { level: "complex", score };
     }
-    if (score >= 5) {
+    if (memoryCount > 0 || fileCount >= this.fileCountThresholds.moderate || blockerCount >= this.blockerCountThresholds.moderate) {
       return { level: "moderate", score };
     }
     if (score >= 2) {

@@ -432,6 +432,10 @@ function createTestServer(overrides: Partial<ConstructorParameters<typeof HttpAp
     coordinatorLoadBalancingService: createMockCoordinatorLoadBalancingService(),
     prometheusMetricsExporter: createMockPrometheusMetricsExporter(),
     billingService: createMockBillingService(),
+    cors: {
+      allowedOrigins: ["https://console.example.test"],
+      credentials: true,
+    },
     ...(overrides as Record<string, unknown>),
   });
 
@@ -692,6 +696,7 @@ test("POST /v1/gateway/messages/send requires operator role", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${viewerToken}`,
+        "idempotency-key": "gateway-send-viewer-role-check",
       },
       body: JSON.stringify({
         text: "Hello, World!",
@@ -717,6 +722,7 @@ test("POST /v1/gateway/messages/send succeeds with operator role", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "gateway-send-operator-success",
       },
       body: JSON.stringify({
         text: "Hello, World!",
@@ -742,6 +748,7 @@ test("POST /v1/gateway/messages/send requires text field", async () => {
       url: "/v1/gateway/messages/send",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "gateway-send-missing-text",
       },
       body: JSON.stringify({
         channel: "telegram",
@@ -822,6 +829,7 @@ test("POST /v1/approvals/:id/decision requires operator role", async () => {
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${viewerToken}`,
+        "idempotency-key": "approval-decision-viewer-role-check",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -844,6 +852,7 @@ test("POST /v1/approvals/:id/decision accepts valid decision payload", async () 
       url: "/v1/approvals/approval_test_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "approval-decision-confirmed",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -868,6 +877,7 @@ test("POST /v1/approvals/:id/decision rejects invalid decision type", async () =
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "approval-decision-invalid-type",
       },
       body: JSON.stringify({
         decisionType: "invalid_type",
@@ -892,6 +902,7 @@ test("POST /v1/approvals/:id/decision requires selectedOptionId for option_selec
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "approval-decision-missing-option",
       },
       body: JSON.stringify({
         decisionType: "option_selected",
@@ -917,6 +928,7 @@ test("POST /v1/approvals/:id/decision rejects invalid respondedAt timestamp", as
       url: "/v1/approvals/approval_123/decision",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "approval-decision-invalid-responded-at",
       },
       body: JSON.stringify({
         decisionType: "confirmed",
@@ -942,6 +954,7 @@ test("POST /v1/admin/control-plane/load-balancing/select requires admin role", a
       url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "load-balancing-select-operator-role-check",
       },
       body: JSON.stringify({
         queueName: "default",
@@ -966,6 +979,7 @@ test("POST /v1/admin/control-plane/load-balancing/select succeeds with admin rol
       url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${adminToken}`,
+        "idempotency-key": "load-balancing-select-admin-success",
       },
       body: JSON.stringify({
         queueName: "default",
@@ -1017,6 +1031,7 @@ test("POST /v1/incidents is reachable through HttpApiServer", async () => {
       url: "/v1/incidents",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "incident-open-api-outage",
       },
       body: JSON.stringify({
         severity: "high",
@@ -1044,6 +1059,7 @@ test("POST /v1/packs creates pack and GET /v1/packs returns catalog entry", asyn
       url: "/v1/packs",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "pack-create-ops-pack",
       },
       body: JSON.stringify({
         packId: "pack.ops",
@@ -1082,6 +1098,7 @@ test("POST /v1/cost-reports creates report and GET /v1/cost-reports lists it", a
       url: "/v1/cost-reports",
       headers: {
         authorization: `Bearer ${operatorToken}`,
+        "idempotency-key": "cost-report-create-april",
       },
       body: JSON.stringify({
         periodStart: "2026-04-01T00:00:00.000Z",
@@ -1249,6 +1266,7 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
   promptRegistryService.registerBundle({
     name: "system.default",
     version: "1.0.0",
+    displayVersion: "1.0.0",
     domain: "global",
     taskType: "general",
     packId: undefined,
@@ -1256,6 +1274,12 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: undefined,
   }, "global");
   const { server, authService } = createTestServer({ promptRegistryService });
@@ -1421,6 +1445,7 @@ test("accepts request body at exactly 1MB limit", async () => {
       headers: {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
+        "idempotency-key": "gateway-send-invalid-json",
       },
       body: bodyContent,
     });
@@ -1443,6 +1468,7 @@ test("rejects invalid JSON body", async () => {
       headers: {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
+        "idempotency-key": "gateway-send-invalid-json",
       },
       body: "{ invalid json }",
     });
@@ -1481,6 +1507,9 @@ test("returns 404 for unsupported HTTP methods", async () => {
     const response = await server.inject({
       method: "DELETE",
       url: "/v1/tasks",
+      headers: {
+        "idempotency-key": "unsupported-delete-v1-tasks",
+      },
     });
 
     assert.equal(response.statusCode, 404);
@@ -1753,6 +1782,7 @@ test("tenant-scoped admin cannot access global endpoints", async () => {
       url: "/v1/admin/control-plane/load-balancing/select",
       headers: {
         authorization: `Bearer ${tenantScopedAuthService.exchangeApiKey("tenant-admin-key").accessToken}`,
+        "idempotency-key": "tenant-admin-load-balancing-select",
       },
       body: JSON.stringify({}),
     });

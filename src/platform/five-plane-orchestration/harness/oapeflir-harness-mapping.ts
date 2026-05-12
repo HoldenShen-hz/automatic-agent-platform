@@ -21,12 +21,7 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
     return "feedback";
   }
   if (role === "hitl_operator") {
-    // R31-14 FIX: HITL is a cross-cutting gate mechanism per §45, not tied to any single phase.
-    // The "feedback" phase is the closest semantic match since HITL primarily operates
-    // at approval gates between stages (observe→assess, assess→plan, plan→execute, etc.).
-    // However, HITL is fundamentally cross-cutting - it can介入介入 any stage boundary.
-    // We map it to "feedback" but acknowledge its cross-cutting nature in the comment.
-    return "feedback";
+    return "assess";
   }
   if (role === "loop_controller") {
     return "improve";

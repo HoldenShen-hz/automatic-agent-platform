@@ -65,7 +65,7 @@ export class ReplayWorker implements RecoveryWorker {
       const replayOperations: ReplayOperation[] = taskIds.map((taskId) => ({
         operationId: `replay:${taskId}`,
         resourceKind: "tool" as const,
-        hasRealSideEffect: true, // Assume tools have side effects unless proven otherwise
+        hasRealSideEffect: false,
         tombstoneReplay: false,
       }));
 

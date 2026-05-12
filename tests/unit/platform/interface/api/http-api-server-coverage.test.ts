@@ -3,6 +3,7 @@ import test from "node:test";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "node:http";
+import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
 import type { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
 import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
@@ -120,13 +121,31 @@ class NoOpApiDelegationService implements ApiDelegationService {
   }
 }
 
+function createMockPrometheusMetricsExporter() {
+  return {
+    export: () => "# HELP http_requests_total Total HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total 1",
+    recordHttpRequest: () => {},
+  };
+}
+
 function createMinimalServer(): HttpApiServer {
+  const authService = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-api-key", actorId: "operator_1", roles: ["viewer", "operator"] }],
+    jwtSecret: "test-jwt-secret",
+    tokenTtlMs: 60 * 60 * 1000,
+  });
+
   return new HttpApiServer({
     approvalService: new NoOpApprovalService(),
     inspectService: new NoOpInspectService(),
     missionControlService: new NoOpMissionControlService(),
     billingService: new NoOpBillingService(),
     coordinatorLoadBalancingService: new NoOpApiDelegationService(),
+    authService,
+    cors: {
+      allowedOrigins: ["https://console.example.test"],
+    },
+    prometheusMetricsExporter: createMockPrometheusMetricsExporter() as never,
   });
 }
 
@@ -224,7 +243,7 @@ test("HttpApiServer inject handles request body larger than limit", async () => 
   await server.start();
 
   try {
-    const largeBody = JSON.stringify({ data: "x".repeat(1_000_000) });
+    const largeBody = JSON.stringify({ data: "x".repeat(1_100_000) });
     const response = await server.inject({
       url: "/v1/tasks",
       method: "POST",
@@ -294,8 +313,9 @@ test("HttpApiServer inject handles POST with JSON body", async () => {
     });
 
     assert.equal(response.statusCode, 200);
-    const data = response.json();
-    assert.ok("accessToken" in data || "error" in data);
+    const payload = response.json<{ requestId: string; data: { accessToken: string; tokenType: string } }>();
+    assert.equal(payload.data.tokenType, "Bearer");
+    assert.ok(payload.data.accessToken.length > 0);
   } finally {
     await server.stop();
   }
@@ -379,7 +399,7 @@ test("HttpApiServer inject records Prometheus metrics", async () => {
 
     assert.equal(response.statusCode, 200);
     const text = response.text();
-    assert.ok(text.includes("http_requests_total") || text.includes("process_"));
+    assert.ok(text.includes("http_requests_total"));
   } finally {
     await server.stop();
   }

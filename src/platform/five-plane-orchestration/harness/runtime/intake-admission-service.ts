@@ -229,6 +229,12 @@ function evaluatePolicyGuard(input: {
   tenantId: string;
   principal: PrincipalRef;
 }): PolicyGuardResult {
+  const authorizationLevel = input.principal.authorizationLevel
+    ?? (input.principal.roles.includes("admin")
+      ? "admin"
+      : input.principal.roles.includes("operator")
+        ? "operator"
+        : null);
   // Policy evaluation based on risk class and constraints
   // In a real implementation, this would check against policy service
 
@@ -239,7 +245,7 @@ function evaluatePolicyGuard(input: {
       return { allowed: true, reasonCode: "policy.pre_approved_critical", proofRef: input.constraintPackRef };
     }
     // Check principal authorization level for critical operations
-    if (input.principal.authorizationLevel === "admin" || input.principal.authorizationLevel === "operator") {
+    if (authorizationLevel === "admin" || authorizationLevel === "operator") {
       return { allowed: true, reasonCode: "policy.authorized_principal", proofRef: input.constraintPackRef };
     }
     return { allowed: false, reasonCode: "policy.denied.critical_requires_approval", proofRef: null };
@@ -259,7 +265,7 @@ function evaluatePolicyGuard(input: {
       return { allowed: false, reasonCode: "policy.denied.missing_constraints", proofRef: null };
     }
     // Principal must have a defined authorization level (not anonymous)
-    if (input.principal.authorizationLevel == null) {
+    if (authorizationLevel == null) {
       return { allowed: false, reasonCode: "policy.denied.no_authorization_level", proofRef: null };
     }
     return { allowed: true, reasonCode: "policy.approved.medium_risk_validated", proofRef: input.constraintPackRef };
@@ -268,7 +274,7 @@ function evaluatePolicyGuard(input: {
   // Low risk class - requires valid principal authorization
   if (input.riskClass === "low") {
     // Principal authorization level must be defined
-    if (input.principal.authorizationLevel == null) {
+    if (authorizationLevel == null) {
       return { allowed: false, reasonCode: "policy.denied.no_authorization_level", proofRef: null };
     }
     return { allowed: true, reasonCode: "policy.approved.low_risk_validated", proofRef: input.constraintPackRef };
@@ -320,13 +326,16 @@ export class IntakeAdmissionService {
 
     // R6-1: Add ClarificationSession stage per §5.3
     // Determine if clarification session is needed based on ambiguity policy
-    const needsClarification = input.confirmationReceipt == null && input.riskPreview.riskClass !== "low";
+    const ambiguityFlags = detectAmbiguityFlags(input);
+    const needsClarification = input.confirmationReceipt == null
+      && input.riskPreview.riskClass !== "low"
+      && ambiguityFlags.length > 0;
     const clarificationSession: ClarificationSession | null = needsClarification
       ? {
           sessionId: `clarify:${input.idempotencyKey}`,
           taskDraftId: `draft:${input.idempotencyKey}`,
           stage: "pending_clarification" as ClarificationSessionStage,
-          ambiguityFlags: detectAmbiguityFlags(input),
+          ambiguityFlags,
           createdAt: nowIso(),
           expiresAt: null,
           confirmationReceipt: null,
@@ -348,14 +357,16 @@ export class IntakeAdmissionService {
       );
     }
 
+    const domainId = input.domainId ?? "general";
+
     const taskDraft = createTaskDraft({
       tenantId: input.tenantId,
       principal: input.principal,
       source: input.source,
-      domainId: input.domainId,
+      domainId,
       normalizedIntent: {
         goal: input.goal,
-        domainId: input.domainId,
+        domainId,
         inputs: input.inputs ?? {},
       },
       riskPreview: input.riskPreview,
@@ -371,7 +382,7 @@ export class IntakeAdmissionService {
         traceId: input.traceId,
         riskLevel: input.riskPreview.riskClass,
         ownership: { ownerId: input.principal.principalId, ownerType: "principal" as const },
-        domainId: input.domainId,
+        domainId,
         confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
         requestEnvelopeId: `pending:${input.idempotencyKey}`,
         requestHash: `request:${input.idempotencyKey}`,
@@ -449,7 +460,7 @@ export class IntakeAdmissionService {
           traceId: input.traceId,
           riskLevel: input.riskPreview.riskClass,
           ownership: { ownerId: input.principal.principalId, ownerType: "principal" },
-          domainId: input.domainId,
+          domainId,
           confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
           requestEnvelopeId: `pending:${input.idempotencyKey}`,
           requestHash: `request:${input.idempotencyKey}`,
@@ -491,7 +502,7 @@ export class IntakeAdmissionService {
       traceId: input.traceId,
       riskLevel: input.riskPreview.riskClass,
       ownership: { ownerId: input.principal.principalId, ownerType: "principal" },
-      domainId: input.domainId,
+      domainId,
       confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
       requestEnvelopeId: requestEnvelope.requestId,
       requestHash: requestEnvelope.requestHash,
@@ -548,7 +559,7 @@ export class IntakeAdmissionService {
       runId: input.traceId,
       traceId: input.traceId,
       payload: {
-        domainId: input.domainId,
+        domainId,
         confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
         harnessRunId: admitted.aggregate.harnessRunId,
         runVersionLockId: runVersionLock.runVersionLockId,

@@ -95,6 +95,10 @@ export class RecoveryController {
     }
   }
 
+  private shouldUseBackoffRecovery(run: HarnessRunRuntimeState): boolean {
+    return this.loopController != null || run.loopMetrics != null || run.sleepLease != null;
+  }
+
   /**
    * Determines the retry scope for a given failure type per §45.15.
    * Node-level failures (tool_timeout, llm_provider_unavailable) use retry_same_plan.
@@ -141,11 +145,12 @@ export class RecoveryController {
           action: "escalate_hitl",
         });
         // Operator abort: no retry, transition to aborted and require human review per §45.11
-        return this.runtime.openHitlReview(
-          recovering,
-          "operator_aborted",
-          [],
-        );
+        return {
+          ...recovering,
+          status: "aborted",
+          pauseReason: null,
+          completedAt: run.completedAt ?? nowIso(),
+        };
 
       case "llm_provider_unavailable": {
         // R13-13 fix: exponential backoff with max retries and retry_exhausted escalation
@@ -183,6 +188,9 @@ export class RecoveryController {
       }
 
       case "tool_timeout": {
+        if (!this.shouldUseBackoffRecovery(run)) {
+          return this.runtime.resume(recovering);
+        }
         // R18-16 fix: consult LoopController for retry/replan decision per §45.11
         // Node-level retry should go through LoopController's guard evaluation
         const loop = this.getLoopController(run as HarnessRunRuntimeState);
@@ -235,6 +243,9 @@ export class RecoveryController {
         return this.runtime.openHitlReview(recovering, "budget_exhausted", []);
 
       case "platform_panic": {
+        if (!this.shouldUseBackoffRecovery(run)) {
+          return this.runtime.resume(recovering);
+        }
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
           this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "platform_panic_retry_exhausted", {
             scope: "graph",
@@ -267,6 +278,10 @@ export class RecoveryController {
 
       case "worker_crash":
       default: {
+        if (!this.shouldUseBackoffRecovery(run)) {
+          this.durableService.persist(recovering);
+          return recovering;
+        }
         // worker_crash uses graph scope per §45.15
         // R13-13 fix: apply retry limits to worker_crash
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {

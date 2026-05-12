@@ -1,7 +1,7 @@
 import type { ImprovementCandidate } from "./improvement-candidate-registry.js";
 import type { RolloutMetrics } from "./auto-rollback-service.js";
-import type { StrategyVersion } from "./strategy-versioning.js";
-import type { RolloutLevel } from "../oapeflir/types/rollout-record.js";
+import type { StrategyReleaseLevel, StrategyVersion } from "./strategy-versioning.js";
+import { normalizeRolloutLevel, type RolloutLevel } from "../oapeflir/types/rollout-record.js";
 
 export interface GuardrailEvaluation {
   allowed: boolean;
@@ -46,7 +46,7 @@ export class GuardrailEvaluator {
     if (strategyVersion.sourceLearningObjectIds.length === 0) {
       reasonCodes.push("improvement.guardrail_unlinked_strategy");
     }
-    if (strategyVersion.releaseLevel !== "L0_off" && candidate.status !== "approved") {
+    if (normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off" && candidate.status !== "approved") {
       reasonCodes.push("improvement.guardrail_requires_approval");
     }
     for (const guardrail of candidate.guardrails) {
@@ -102,8 +102,8 @@ export class GuardrailEvaluator {
   }
 }
 
-function rolloutLevelRank(level: RolloutLevel): number {
-  switch (level) {
+function rolloutLevelRank(level: RolloutLevel | StrategyReleaseLevel): number {
+  switch (normalizeRolloutLevel(level)) {
     case "L0_off":
       return 0;
     case "L1_evaluate":

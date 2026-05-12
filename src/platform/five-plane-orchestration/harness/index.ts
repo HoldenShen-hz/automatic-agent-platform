@@ -1045,7 +1045,7 @@ export class HarnessRuntimeService {
     }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
-      : this.transitionRunStatus(run, "cancelled", "harness.hitl_rejected");
+      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
     return {
       ...nextRun,
       pauseReason: resolution === "approved" ? null : run.pauseReason,
@@ -1897,8 +1897,12 @@ export class HarnessRuntimeService {
       emittedBy: "harness-runtime-service",
       auditRef: `audit://harness-runs/${run.harnessRunId ?? run.runId}/${reasonCode}`,
     };
-    transitionParams.leaseId = baseAggregate.leaseId;
-    transitionParams.fencingToken = baseAggregate.fencingToken;
+    if (baseAggregate.leaseId !== undefined) {
+      transitionParams.leaseId = baseAggregate.leaseId;
+    }
+    if (baseAggregate.fencingToken !== undefined) {
+      transitionParams.fencingToken = baseAggregate.fencingToken;
+    }
     if (toStatus === "admitted") {
       transitionParams.runVersionLockId = run.versionLockId ?? `${run.runId}:version_lock`;
       transitionParams.policyGuard = {
@@ -1912,14 +1916,17 @@ export class HarnessRuntimeService {
     }
     const transitioned = this.stateMachine.transition(transitionParams as unknown as RuntimeTransitionCommand<HarnessRun>);
 
+    const nextLeaseId = transitioned.aggregate.leaseId ?? transitionParams.leaseId ?? run.leaseId;
+    const nextFencingToken = transitioned.aggregate.fencingToken ?? transitionParams.fencingToken ?? run.fencingToken;
+
     return {
       ...run,
       status: transitioned.aggregate.status,
       currentSeq: transitioned.aggregate.currentSeq,
       updatedAt: transitioned.aggregate.updatedAt,
       completedAt: transitioned.aggregate.terminalAt ?? run.completedAt,
-      leaseId: transitioned.aggregate.leaseId ?? transitionParams.leaseId ?? run.leaseId,
-      fencingToken: transitioned.aggregate.fencingToken ?? transitionParams.fencingToken ?? run.fencingToken,
+      ...(nextLeaseId !== undefined ? { leaseId: nextLeaseId } : {}),
+      ...(nextFencingToken !== undefined ? { fencingToken: nextFencingToken } : {}),
     };
   }
 

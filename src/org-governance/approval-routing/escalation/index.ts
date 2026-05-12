@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const ApprovalEscalationRuleSchema = z.object({
   ruleId: z.string().min(1),
-  triggerAfterMinutes: z.number().int().nonnegative(),
+  triggerAfterMinutes: z.number().int().positive(),
   escalateToApproverId: z.string().min(1),
   appliesToRiskLevels: z.array(z.enum(["low", "medium", "high", "critical"])).default(["high", "critical"]),
   maxEscalationDepth: z.number().int().positive().default(1),
