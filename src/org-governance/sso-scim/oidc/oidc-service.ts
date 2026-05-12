@@ -196,6 +196,8 @@ interface SessionRecord {
   createdAt: string;
   lastActivityAt: string;
   providerId: string;
+  /** §48 Token Rotation: identifies the refresh token family for reuse detection */
+  refreshTokenFamily?: string;
 }
 
 export class OidcIdentityService {
@@ -203,6 +205,8 @@ export class OidcIdentityService {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly userSessions = new Map<string, Set<string>>();
   private readonly stateStore: OidcStateStore;
+  /** §48 Token Rotation: tracks which refresh token families are still valid */
+  private readonly refreshTokenFamilies = new Map<string, string>(); // familyId -> currentValidToken
 
   constructor(
     private readonly providerConfig: OidcProviderConfig,
@@ -259,7 +263,8 @@ export class OidcIdentityService {
    * Fetches user info from the IdP.
    *
    * @param accessToken - Valid access token
-   * @returns User info or null if fetch fails
+   * @returns User info
+   * @throws Error if fetch fails and allowMockFallback is false
    */
   public async fetchUserInfo(accessToken: string): Promise<OidcUserInfo | null> {
     const userInfoEndpoint = this.providerConfig.userInfoEndpoint ?? `${this.providerConfig.issuer}/userinfo`;
@@ -272,6 +277,15 @@ export class OidcIdentityService {
         },
       });
       if (!response.ok) {
+        // §48 Production Hardening: userinfo failure should propagate as error
+        // instead of silently falling back to mock admin user
+        if (!this.config.allowMockFallback) {
+          throw new Error(
+            `oidc.userinfo_fetch_failed:${response.status} ` +
+            `§48 Production Hardening: UserInfo endpoint returned ${response.status}. ` +
+            `Mock fallback is disabled. Configure valid OIDC provider credentials or enable allowMockFallback for testing.`,
+          );
+        }
         return null;
       }
       const payload = await response.json() as Record<string, unknown>;
@@ -285,7 +299,11 @@ export class OidcIdentityService {
         ...(Array.isArray(payload.groups) ? { groups: payload.groups.filter((item): item is string => typeof item === "string") } : {}),
         updatedAt: nowIso(),
       };
-    } catch {
+    } catch (err) {
+      // §48: If mock fallback is disabled, propagate error
+      if (!this.config.allowMockFallback) {
+        throw err;
+      }
       return null;
     }
   }

@@ -18,9 +18,9 @@ export interface ReplayBoundaryDecision {
 
 export class ReplayBoundaryGuard {
   public evaluate(mode: ReplayMode, operations: readonly ReplayOperation[]): ReplayBoundaryDecision {
-    // trace_replay blocks real side effects; reexecution_replay and projection_replay allow them
+    // trace_replay and reexecution_replay block real side effects; projection_replay allows them
     const realSideEffectIds = operations
-      .filter((operation) => mode === "trace_replay" && operation.hasRealSideEffect)
+      .filter((operation) => (mode === "trace_replay" || mode === "reexecution_replay") && operation.hasRealSideEffect)
       .map((operation) => operation.operationId);
     if (realSideEffectIds.length > 0) {
       return {

@@ -38,9 +38,10 @@ function createDefaultConfig(): QualityGateConfig {
       enforcement: "blocking",
     },
     qualityScoreWeights: {
-      successSignal: 0.35,
-      completionOutcome: 0.45,
-      failureSignal: 0.3,
+      // R34-15 fix: weights must sum to 1.0 (was 1.2) to preserve resolution
+      successSignal: 0.3,
+      completionOutcome: 0.4,
+      failureSignal: 0.2,
       partialSignal: 0.1,
     },
     actionThresholds: {
@@ -206,9 +207,10 @@ test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass thres
       enforcement: "blocking",
     },
     qualityScoreWeights: {
-      successSignal: 0.35,
-      completionOutcome: 0.45,
-      failureSignal: 0.3,
+      // R34-15 fix: weights must sum to 1.0 (was 1.2) to preserve resolution
+      successSignal: 0.3,
+      completionOutcome: 0.4,
+      failureSignal: 0.2,
       partialSignal: 0.1,
     },
     actionThresholds: {
@@ -247,7 +249,8 @@ test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass thres
 
   assert.equal(evaluation.nextAction, "complete");
   assert.equal(evaluation.passed, false);
-  assert.equal(evaluation.qualityScore, 0.8);
+  // R34-15 fix: weights 0.3 + 0.4 = 0.7, not 0.8
+  assert.equal(evaluation.qualityScore, 0.7);
 });
 
 test("ExecutionOutcomeEvaluator uses configurable weights", () => {
@@ -408,4 +411,34 @@ test("ExecutionOutcomeEvaluator escalates after max retries", () => {
   });
 
   assert.equal(evaluation.nextAction, "escalate");
+});
+
+// R34-15: Verify quality score weights sum to 1.0 to preserve resolution
+test("ExecutionOutcomeEvaluator weights sum to 1.0", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_weight_test",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "completed",
+    signals: [
+      {
+        signalId: "sig_w1",
+        source: "execution",
+        taskId: "task_1",
+        category: "success",
+        severity: "info",
+        payload: { summary: "ok" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  // With weights summing to 1.0 (0.3 successSignal + 0.4 completionOutcome):
+  // qualityScore should be 0.7, not clamped to 0.8
+  assert.equal(evaluation.qualityScore, 0.7);
+  assert.equal(evaluation.passed, false); // 0.7 < 0.8 threshold
 });

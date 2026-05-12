@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
 import type { RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
 
 export interface DistributedLockAdapter {

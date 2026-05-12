@@ -376,3 +376,50 @@ test("evaluateAuthorizationContext returns explainSummary for all scenarios", ()
   });
   assert.ok(defaultResult.explainSummary.length > 0);
 });
+
+/**
+ * R33-02: verify viewer cannot authorize exec_command.
+ * The viewer role has no capabilities (empty array), so it cannot grant
+ * exec:command which is required for exec_command action.
+ */
+test("R33-02: viewer cannot authorize exec_command", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["viewer"],
+    action: "exec_command",
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_not_granted");
+  assert.deepEqual(result.matchedRuleRefs, ["role.capability_required"]);
+  assert.ok(result.explainSummary.includes("viewer") && result.explainSummary.includes("exec_command"));
+});
+
+/**
+ * R33-02: verify that roles with exec:command capability CAN authorize exec_command.
+ */
+test("R33-02: roles with exec:command capability can authorize exec_command", () => {
+  // human_operator has exec:command in its capabilities
+  const humanOpResult = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["human_operator"],
+    action: "exec_command",
+  });
+  assert.equal(humanOpResult.allowed, true);
+
+  // agent_runtime has exec:command in its capabilities
+  const agentResult = evaluateAuthorizationContext({
+    principalType: "agent",
+    roles: ["agent_runtime"],
+    action: "exec_command",
+  });
+  assert.equal(agentResult.allowed, true);
+
+  // worker_runtime has exec:command in its capabilities
+  const workerResult = evaluateAuthorizationContext({
+    principalType: "worker",
+    roles: ["worker_runtime"],
+    action: "exec_command",
+  });
+  assert.equal(workerResult.allowed, true);
+});

@@ -235,6 +235,75 @@ test("DomainRegistryService filterAllowedTools returns empty for unknown domain"
   assert.deepEqual(filtered, []);
 });
 
+test("DomainRegistryService archive marks deprecated domain as archived", () => {
+  const events: string[] = [];
+  const service = new DomainRegistryService({
+    eventPublisher: {
+      publish(input) {
+        events.push(input.eventType);
+      },
+    },
+  });
+  service.register({
+    domainId: "archived_domain",
+    name: "Archived",
+    description: "Will be archived",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [],
+  });
+
+  const deprecated = service.deprecate("archived_domain");
+  assert.equal(deprecated.status, "deprecated");
+
+  const archived = service.archive("archived_domain");
+  assert.equal(archived.status, "archived");
+  assert.ok(events.includes("domain:archived"));
+});
+
+test("DomainRegistryService archive throws when domain is not deprecated", () => {
+  const service = new DomainRegistryService();
+  service.register({
+    domainId: "active_domain",
+    name: "Active",
+    description: "Not deprecated",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "active",
+    externalAdapters: [],
+    pluginBindings: [],
+  });
+
+  assert.throws(
+    () => service.archive("active_domain"),
+    { message: /deprecated/ },
+  );
+});
+
 test("DomainRegistryService getPluginBindings filters by pluginType", () => {
   const service = new DomainRegistryService({
     installedPluginIds: ["p1", "p2", "p3", "p4"],

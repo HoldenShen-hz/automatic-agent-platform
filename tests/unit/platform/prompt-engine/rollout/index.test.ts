@@ -318,3 +318,120 @@ test("PromptRolloutService createRollout stores rollout in internal map", () => 
   assert.ok(retrieved);
   assert.equal(retrieved?.rolloutId, record.rolloutId);
 });
+
+// R34-04 fix: Test all six rollout modes (off, suggest, shadow, canary, staged, full)
+test("PromptRolloutService evaluateGuardrail supports all six rollout modes", () => {
+  const rollout = new PromptRolloutService();
+
+  // off mode - should be blocked
+  const offDecision = rollout.evaluateGuardrail({
+    mode: "off",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(offDecision.allowed, false);
+  assert.equal(offDecision.nextStatus, "blocked");
+
+  // suggest mode - should be allowed, canary_5
+  const suggestDecision = rollout.evaluateGuardrail({
+    mode: "suggest",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(suggestDecision.allowed, true);
+  assert.equal(suggestDecision.nextStatus, "canary_5");
+
+  // shadow mode - should be allowed, canary_5
+  const shadowDecision = rollout.evaluateGuardrail({
+    mode: "shadow",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(shadowDecision.allowed, true);
+  assert.equal(shadowDecision.nextStatus, "canary_5");
+
+  // canary mode - should be allowed, canary_5
+  const canaryDecision = rollout.evaluateGuardrail({
+    mode: "canary",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(canaryDecision.allowed, true);
+  assert.equal(canaryDecision.nextStatus, "canary_5");
+
+  // staged mode - should be allowed, canary_20
+  const stagedDecision = rollout.evaluateGuardrail({
+    mode: "staged",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(stagedDecision.allowed, true);
+  assert.equal(stagedDecision.nextStatus, "canary_20");
+
+  // full mode - should be allowed, stable
+  const fullDecision = rollout.evaluateGuardrail({
+    mode: "full",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(fullDecision.allowed, true);
+  assert.equal(fullDecision.nextStatus, "stable");
+});
+
+// R34-04 fix: Test backward compatibility with L0-L5 mode names
+test("PromptRolloutService evaluateGuardrail supports L0-L5 mode aliases", () => {
+  const rollout = new PromptRolloutService();
+
+  // L0_off
+  const l0Decision = rollout.evaluateGuardrail({
+    mode: "L0_off",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l0Decision.allowed, false);
+
+  // L1_suggest
+  const l1Decision = rollout.evaluateGuardrail({
+    mode: "L1_suggest",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l1Decision.allowed, true);
+  assert.equal(l1Decision.nextStatus, "canary_5");
+
+  // L2_shadow
+  const l2Decision = rollout.evaluateGuardrail({
+    mode: "L2_shadow",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l2Decision.allowed, true);
+  assert.equal(l2Decision.nextStatus, "canary_5");
+
+  // L3_canary
+  const l3Decision = rollout.evaluateGuardrail({
+    mode: "L3_canary",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l3Decision.allowed, true);
+  assert.equal(l3Decision.nextStatus, "canary_5");
+
+  // L4_partial -> staged
+  const l4Decision = rollout.evaluateGuardrail({
+    mode: "L4_partial",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l4Decision.allowed, true);
+  assert.equal(l4Decision.nextStatus, "canary_20");
+
+  // L5_stable -> full
+  const l5Decision = rollout.evaluateGuardrail({
+    mode: "L5_stable",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+  assert.equal(l5Decision.allowed, true);
+  assert.equal(l5Decision.nextStatus, "stable");
+});

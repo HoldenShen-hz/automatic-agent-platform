@@ -614,3 +614,28 @@ test("VaultHttpSecretProvider.requireSecret with nested secret path and default 
     globalThis.fetch = originalFetch;
   }
 });
+
+// R33-12: VaultHttpSecretProvider rejects path traversal in secret references
+test("VaultHttpSecretProvider.requireSecret rejects secret ref with path traversal", async () => {
+  const provider = createProvider(createMockEnv({
+    AA_VAULT_ADDR: "https://vault.internal:8200",
+    AA_VAULT_TOKEN: "test-token",
+  }));
+
+  await assert.rejects(
+    () => provider.requireSecret("secret://myapp/../../../etc/passwd"),
+    /vault\.path_traversal/,
+  );
+});
+
+test("VaultHttpSecretProvider.requireSecret rejects secret ref with encoded path traversal", async () => {
+  const provider = createProvider(createMockEnv({
+    AA_VAULT_ADDR: "https://vault.internal:8200",
+    AA_VAULT_TOKEN: "test-token",
+  }));
+
+  await assert.rejects(
+    () => provider.requireSecret("secret://..\\..\\..\\etc\\passwd"),
+    /vault\.path_traversal/,
+  );
+});

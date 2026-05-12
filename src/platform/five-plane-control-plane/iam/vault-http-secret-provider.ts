@@ -219,8 +219,17 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
    *
    * @param secretRef - The secret reference
    * @returns Vault KV v2 path
+   * @throws ValidationError if path contains path traversal
    */
   private extractSecretPath(secretRef: string): string {
+    // R33-12: Validate secretRef does not contain path traversal before extracting path
+    if (secretRef.includes("..")) {
+      throw new ValidationError(`vault.path_traversal:${secretRef}`, `vault.path_traversal:${secretRef}`, {
+        source: "provider",
+        details: { secretRef, reason: "path_traversal_detected" },
+      });
+    }
+
     const parts = secretRef.replace(/^secret:\/\//, "").split("/");
     if (parts.length === 0) {
       throw new ValidationError(`vault.invalid_ref:${secretRef}`, `vault.invalid_ref:${secretRef}`, {

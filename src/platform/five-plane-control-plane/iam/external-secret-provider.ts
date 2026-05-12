@@ -162,7 +162,7 @@ function verifySecurePath(filePath: string, code: string): void {
 
   // Check for symlinks in the path that could escape boundaries
   // This detects if any parent directory is a symlink
-  const pathSegments = resolvedPath.split(sep).filter(Boolean);
+  const pathSegments = (resolvedPath.split(sep).filter(Boolean) as string[]);
   let current = "";
   for (let i = 0; i < pathSegments.length - 1; i++) {
     current = resolve(current, pathSegments[i]);
@@ -178,7 +178,7 @@ function verifySecurePath(filePath: string, code: string): void {
       // lstatSync fails if path doesn't exist yet (for newly created paths)
       // In this case we can't verify, but we already resolved the path
       const errorCode = (error as NodeJS.ErrnoException).code;
-      if (errorCode !== "ENOENT") {
+      if (errorCode && errorCode !== "ENOENT") {
         throw error;
       }
     }

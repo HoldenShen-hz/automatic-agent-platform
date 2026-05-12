@@ -280,12 +280,16 @@ export class HierarchicalPromptRegistryService {
     const effectiveTrafficKey = runVersion != null
       ? `${trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`}:rv=${runVersion}`
       : (trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
-    // Normalize slot to [0, totalWeight) for fair weight-based allocation
-    const slot = this.computeTrafficSlot(effectiveTrafficKey) % totalWeight;
-    let cursor = 0;
+    // R34-12 fix: Normalize slot to [0, totalWeight) using proportional scaling
+    // This ensures fair distribution even when weights don't sum to 100.
+    // Former code: slot = hash % totalWeight (caused unfair wrapping when weights < 100)
+    const rawSlot = this.computeTrafficSlot(effectiveTrafficKey);
+    const slot = totalWeight > 0 ? Math.floor((rawSlot * totalWeight) / 100) : 0;
+    let normalizedCursor = 0;
     for (const bundle of eligible) {
-      cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);
-      if (slot < cursor) {
+      const weight = Math.max(0, bundle.metadata.trafficAllocation.weight);
+      normalizedCursor += weight / totalWeight;
+      if (slot / totalWeight < normalizedCursor) {
         return bundle;
       }
     }

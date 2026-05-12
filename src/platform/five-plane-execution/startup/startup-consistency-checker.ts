@@ -395,7 +395,11 @@ export class StartupConsistencyChecker {
     }
 
     if (findings.some((finding) => finding.severity === "p0")) {
-      return buildStartupConsistencyReport(checkedAt, findings);
+      const report = buildStartupConsistencyReport(checkedAt, findings);
+      // Enforce fail_closed: block traffic when P0 findings are detected
+      this._trafficBlocked = true;
+      this.options.onTrafficBlocked?.();
+      return report;
     }
 
     findings.push(

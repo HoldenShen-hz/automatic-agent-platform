@@ -61,3 +61,32 @@ test("platform architecture bootstrap filters app manifests by kind", () => {
   assert.equal(listPlatformAppsByKind("console").length, 1);
   assert.equal(listPlatformAppsByKind("worker").length, 1);
 });
+
+test("getPlatformArchitectureServices is idempotent - returns same object references on repeated calls", async () => {
+  const registry = ServiceRegistry.createScoped();
+  try {
+    const first = getPlatformArchitectureServices(registry);
+    const second = getPlatformArchitectureServices(registry);
+    // Must return identical references, not new objects
+    assert.strictEqual(first.layers, second.layers, "layers should be the same reference");
+    assert.strictEqual(first.planes, second.planes, "planes should be the same reference");
+    assert.strictEqual(first.apps, second.apps, "apps should be the same reference");
+    assert.strictEqual(first.startupTargets, second.startupTargets, "startupTargets should be the same reference");
+    assert.strictEqual(first.summary, second.summary, "summary should be the same reference");
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("getPlatformArchitectureServices does not re-register services on the same registry", async () => {
+  const registry = ServiceRegistry.createScoped();
+  try {
+    const first = getPlatformArchitectureServices(registry);
+    // Re-registering the same service name should not throw; but calling
+    // getPlatformArchitectureServices again must not cause duplicate work.
+    const second = getPlatformArchitectureServices(registry);
+    assert.strictEqual(first, second, "repeated calls should return identical services object");
+  } finally {
+    await registry.reset();
+  }
+});

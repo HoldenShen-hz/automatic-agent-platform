@@ -144,21 +144,27 @@ const ACTION_REQUIRED_ROLES: Record<PolicyAction, readonly string[]> = {
   promote_memory_layer: ["memory_manager", "agent"],
 };
 
-/** Map of actions to required capabilities */
+/**
+ * Map of actions to required capabilities.
+ * Uses platform capability naming (colon notation) to align with PlatformCapability
+ * type in access-model.ts (e.g., "exec:command" not "command.execute").
+ * This ensures evaluate() properly validates subject capabilities against
+ * the platform's role→capability model.
+ */
 const ACTION_REQUIRED_CAPABILITIES: Record<PolicyAction, readonly string[]> = {
-  invoke_model: ["model.call"],
-  invoke_tool: ["tool.execute"],
-  write_file: ["file.write"],
-  exec_command: ["command.execute", "command.execute.shell"],
-  network_access: ["network.call"],
-  install_extension: ["extension.install"],
-  org_change: ["org.change"],
-  dispatch_execution: ["execution.dispatch"],
-  set_isolation_level: ["isolation.set"],
-  promote_improvement: ["improvement.promote"],
-  advance_rollout: ["rollout.advance"],
-  modify_knowledge_trust: ["knowledge.trust.modify"],
-  promote_memory_layer: ["memory.layer.promote"],
+  invoke_model: ["model:invoke"],
+  invoke_tool: ["tool:invoke"],
+  write_file: ["fs:write"],
+  exec_command: ["exec:command"],
+  network_access: ["network:access"],
+  install_extension: ["extension:install"],
+  org_change: ["org:change"],
+  dispatch_execution: ["execution:dispatch"],
+  set_isolation_level: ["execution:dispatch"],
+  promote_improvement: ["improvement:promote"],
+  advance_rollout: ["rollout:advance"],
+  modify_knowledge_trust: ["knowledge:trust:modify"],
+  promote_memory_layer: ["memory:promote"],
 };
 
 /**
@@ -357,6 +363,12 @@ export interface PolicyEngineOptions {
 
   /** R12-17: Optional audit service to emit policy evaluation events */
   auditService?: PolicyAuditService;
+
+  /** R33-09: Optional handler called when policy staleness is detected */
+  cacheInvalidationHandler?: PolicyCacheInvalidationHandler;
+
+  /** R33-09: TTL for cached policy decisions in milliseconds (default: 5000) */
+  decisionCacheTtlMs?: number;
 }
 
 /**
@@ -388,14 +400,211 @@ export interface PolicyAuditService {
 }
 
 /**
+ * R33-09: Handler called when policy staleness is detected or invalidate() is called.
+ * Allows external systems (e.g., policy administration service) to be notified
+ * when the policy engine detects a potential policy change.
+ */
+export interface PolicyCacheInvalidationHandler {
+  (reason: string): void;
+}
+
+/**
+ * R33-09: Computed fingerprint of the budget policy for change detection.
+ * Captures all fields that affect evaluation decisions.
+ */
+interface PolicyFingerprint {
+  maxTaskCostUsd: number;
+  maxDailyCostUsd: number;
+  maxMonthlyCostUsd: number;
+  warnAtRatio: number;
+  mode: BudgetPolicy["mode"];
+  maxPlatformCostUsd: number | undefined;
+  maxPackCostUsd: number | undefined;
+  maxStepCostUsd: number | undefined;
+  stageBudgets: readonly { stage: string; maxCostUsd: number; warnAtRatio?: number; approvalThresholdUsd?: number }[] | undefined;
+  costEstimationTemplates: readonly { templateId: string; description: string; confidence: string; multiplier: number }[] | undefined;
+}
+
+/**
+ * R33-09: TTL-based cache entry with metadata for policy evaluation results.
+ */
+interface PolicyCacheEntry<T> {
+  readonly value: T;
+  readonly cachedAt: number;
+  readonly ttlMs: number;
+  readonly policyFingerprint: string;
+}
+
+/**
  * Policy Engine
  *
  * Evaluates actions against security and budget policies.
+ *
+ * R33-09: Implements fingerprint-based policy change detection with TTL-based
+ * decision caching. When policy changes are detected (via fingerprint mismatch),
+ * the cache is invalidated and the new policy is used for evaluation.
  */
 export class PolicyEngine {
   private readonly budgetGuard = new BudgetGuard();
 
-  public constructor(private readonly options: PolicyEngineOptions) {}
+  /** R33-09: Cached fingerprint of the last known policy state */
+  private _currentFingerprint: string = "";
+
+  /** R33-09: Decision cache keyed by a composite of decisionId + action + fingerprint */
+  private readonly decisionCache = new Map<string, PolicyCacheEntry<PolicyDecisionResult>>();
+
+  /** R33-09: TTL for cached decisions (default 5000ms) */
+  private readonly decisionCacheTtlMs: number;
+
+  public constructor(private readonly options: PolicyEngineOptions) {
+    this.decisionCacheTtlMs = options.decisionCacheTtlMs ?? 5_000;
+    // Initialize fingerprint on construction
+    this._currentFingerprint = this.computeFingerprint(options.budgetPolicy);
+  }
+
+  /**
+   * R33-09: Returns whether the policy is considered stale (policy has changed
+   * since last evaluation). Compares current policy fingerprint against the
+   * stored fingerprint to detect external mutations.
+   */
+  public isPolicyStale(): boolean {
+    const currentFingerprint = this.computeFingerprint(this.options.budgetPolicy);
+    return currentFingerprint !== this._currentFingerprint;
+  }
+
+  /**
+   * R33-09: Invalidates the cached policy state and signals that the policy
+   * has been updated. After calling this method, `isPolicyStale()` returns false
+   * until the next external policy change is detected.
+   *
+   * @param reason - Human-readable reason for the invalidation (logged/emitted)
+   */
+  public invalidate(reason: string): void {
+    // Sync fingerprint to current policy state
+    this._currentFingerprint = this.computeFingerprint(this.options.budgetPolicy);
+    // Clear decision cache since policy has changed
+    this.decisionCache.clear();
+    // Notify external handler if configured
+    this.options.cacheInvalidationHandler?.(reason);
+  }
+
+  /**
+   * R33-09: Computes a fingerprint hash of the budget policy for change detection.
+   * All fields that affect evaluation decisions are included in the fingerprint.
+   */
+  private computeFingerprint(policy: BudgetPolicy): string {
+    const stageBudgetsHash = policy.stageBudgets
+      ? JSON.stringify(policy.stageBudgets.map((sb) => ({
+          stage: sb.stage,
+          maxCostUsd: sb.maxCostUsd,
+          warnAtRatio: sb.warnAtRatio,
+          approvalThresholdUsd: sb.approvalThresholdUsd,
+        })))
+      : "undefined";
+    const costTemplatesHash = policy.costEstimationTemplates
+      ? JSON.stringify(policy.costEstimationTemplates.map((ct) => ({
+          templateId: ct.templateId,
+          description: ct.description,
+          confidence: ct.confidence,
+          multiplier: ct.multiplier,
+        })))
+      : "undefined";
+
+    const fingerprint: PolicyFingerprint = {
+      maxTaskCostUsd: policy.maxTaskCostUsd,
+      maxDailyCostUsd: policy.maxDailyCostUsd,
+      maxMonthlyCostUsd: policy.maxMonthlyCostUsd,
+      warnAtRatio: policy.warnAtRatio,
+      mode: policy.mode,
+      maxPlatformCostUsd: policy.maxPlatformCostUsd,
+      maxPackCostUsd: policy.maxPackCostUsd,
+      maxStepCostUsd: policy.maxStepCostUsd,
+      stageBudgets: policy.stageBudgets,
+      costEstimationTemplates: policy.costEstimationTemplates,
+    };
+
+    // Use a combination of stringified values for fingerprint
+    const fpStr = [
+      fingerprint.maxTaskCostUsd,
+      fingerprint.maxDailyCostUsd,
+      fingerprint.maxMonthlyCostUsd,
+      fingerprint.warnAtRatio,
+      fingerprint.mode,
+      fingerprint.maxPlatformCostUsd ?? "undefined",
+      fingerprint.maxPackCostUsd ?? "undefined",
+      fingerprint.maxStepCostUsd ?? "undefined",
+      stageBudgetsHash,
+      costTemplatesHash,
+    ].join("|");
+
+    // Simple hash function for fingerprint (not cryptographic)
+    let hash = 0;
+    for (let i = 0; i < fpStr.length; i++) {
+      const char = fpStr.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString(36);
+  }
+
+  /**
+   * R33-09: Gets a cached policy decision if available and not expired.
+   * Returns null if no cached decision exists or if the cache entry is stale
+   * (policy changed or TTL expired).
+   */
+  private getCachedDecision(request: PolicyDecisionRequest): PolicyDecisionResult | null {
+    const cacheKey = this.buildCacheKey(request);
+    const entry = this.decisionCache.get(cacheKey);
+
+    if (!entry) return null;
+
+    // Check TTL expiration
+    const age = Date.now() - entry.cachedAt;
+    if (age > entry.ttlMs) {
+      this.decisionCache.delete(cacheKey);
+      return null;
+    }
+
+    // Check if policy changed since this was cached
+    const currentFingerprint = this.computeFingerprint(this.options.budgetPolicy);
+    if (entry.policyFingerprint !== currentFingerprint) {
+      this.decisionCache.delete(cacheKey);
+      return null;
+    }
+
+    return entry.value;
+  }
+
+  /**
+   * R33-09: Caches a policy decision result with TTL and policy fingerprint.
+   */
+  private cacheDecision(request: PolicyDecisionRequest, result: PolicyDecisionResult): void {
+    const cacheKey = this.buildCacheKey(request);
+    const fingerprint = this.computeFingerprint(this.options.budgetPolicy);
+
+    this.decisionCache.set(cacheKey, {
+      value: result,
+      cachedAt: Date.now(),
+      ttlMs: this.decisionCacheTtlMs,
+      policyFingerprint: fingerprint,
+    });
+  }
+
+  /**
+   * R33-09: Builds a cache key from request parameters.
+   * Only includes policy-relevant fields, not temporal ones like decisionId.
+   */
+  private buildCacheKey(request: PolicyDecisionRequest): string {
+    return [
+      request.taskId,
+      request.subjectId,
+      request.action,
+      request.riskCategory,
+      request.mode,
+      request.estimatedCostUsd ?? 0,
+      request.metadata?.currentTaskCostUsd ?? 0,
+    ].join("|");
+  }
 
   /**
    * R12-17: Emits an audit event for a policy decision.
@@ -438,6 +647,14 @@ export class PolicyEngine {
    * @returns The policy decision result
    */
   public evaluate(input: PolicyDecisionRequest): PolicyDecisionResult {
+    // R33-09: Check if policy has changed since last evaluation
+    if (this.isPolicyStale()) {
+      // Update fingerprint to acknowledge the change (auto-sync on evaluate)
+      this._currentFingerprint = this.computeFingerprint(this.options.budgetPolicy);
+      // Clear any cached decisions since policy changed
+      this.decisionCache.clear();
+    }
+
     // V-01: Validate input before processing
     validatePolicyRequest(input);
     // V-02: Validate subject has required roles and capabilities for the action

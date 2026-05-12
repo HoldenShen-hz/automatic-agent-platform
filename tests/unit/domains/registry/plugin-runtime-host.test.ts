@@ -5,8 +5,10 @@ import {
   ForkedPluginRuntimeHost,
   buildContainerizedPluginRuntimeLaunchSpec,
   buildPluginRuntimeExecArgv,
+  buildPluginRuntimeSandboxRoot,
 } from "../../../../src/domains/registry/plugin-runtime-host.js";
 import type { PluginLifecycleContext, PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 function createSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
@@ -157,4 +159,99 @@ test("ForkedPluginRuntimeHost surfaces child runtime errors for unsupported acti
   } finally {
     await host.stop();
   }
+});
+
+test("buildPluginRuntimeSandboxRoot sanitizes pluginId to prevent path traversal", () => {
+  const maliciousPluginId = "../../../etc/passwd";
+  const sanitized = buildPluginRuntimeSandboxRoot(maliciousPluginId);
+  assert.ok(!sanitized.includes(".."), "sanitized path should not contain '..'");
+  assert.ok(sanitized.endsWith("-etc-passwd"), `sanitized path should end with sanitized name, got: ${sanitized}`);
+});
+
+test("buildPluginRuntimeSandboxRoot rejects pluginId with path traversal sequences", () => {
+  assert.throws(
+    () => buildPluginRuntimeSandboxRoot("plugin/../../../etc"),
+    /invalid_plugin_id/i,
+  );
+});
+
+test("buildContainerizedPluginRuntimeLaunchSpec rejects malicious pluginId with shell metacharacters", () => {
+  const maliciousPluginId = '"; cat /etc/passwd; echo "';
+  assert.throws(
+    () =>
+      buildContainerizedPluginRuntimeLaunchSpec({
+        pluginId: maliciousPluginId,
+        childModulePath: "/workspace/dist/plugin-runtime-child.js",
+        workspaceRoot: "/workspace",
+        sandboxRoot: "/workspace/data/plugin-runtime-sandboxes",
+        runtimeImage: "ghcr.io/example/plugin-runtime:latest",
+        env: {
+          AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON: JSON.stringify([
+            "docker",
+            "run",
+            "--rm",
+            "{pluginId}",
+          ]),
+        },
+      }),
+    /invalid_plugin_id/i,
+  );
+});
+
+test("buildContainerizedPluginRuntimeLaunchSpec rejects pluginId with null bytes", () => {
+  const maliciousPluginId = "plugin\x00malicious";
+  assert.throws(
+    () =>
+      buildContainerizedPluginRuntimeLaunchSpec({
+        pluginId: maliciousPluginId,
+        childModulePath: "/workspace/dist/plugin-runtime-child.js",
+        workspaceRoot: "/workspace",
+        sandboxRoot: "/workspace/data/plugin-runtime-sandboxes",
+        runtimeImage: "ghcr.io/example/plugin-runtime:latest",
+        env: {
+          AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON: JSON.stringify([
+            "docker",
+            "run",
+            "--rm",
+            "{pluginId}",
+          ]),
+        },
+      }),
+    /invalid_plugin_id/i,
+  );
+});
+
+test("buildContainerizedPluginRuntimeLaunchSpec renders container launcher placeholders", () => {
+  const spec = buildContainerizedPluginRuntimeLaunchSpec({
+    pluginId: "plugin.demo",
+    childModulePath: "/workspace/dist/plugin-runtime-child.js",
+    workspaceRoot: "/workspace",
+    sandboxRoot: "/workspace/data/plugin-runtime-sandboxes/plugin-demo",
+    runtimeImage: "ghcr.io/example/plugin-runtime:latest",
+    env: {
+      AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON: JSON.stringify([
+        "docker",
+        "run",
+        "--rm",
+        "--network=none",
+        "-v",
+        "{sandboxRoot}:{sandboxRoot}",
+        "{runtimeImage}",
+        "{node}",
+        "{childModulePath}",
+      ]),
+    },
+  });
+
+  assert.equal(spec.command, "docker");
+  assert.deepEqual(spec.args, [
+    "run",
+    "--rm",
+    "--network=none",
+    "-v",
+    "/workspace/data/plugin-runtime-sandboxes/plugin-demo:/workspace/data/plugin-runtime-sandboxes/plugin-demo",
+    "ghcr.io/example/plugin-runtime:latest",
+    process.execPath,
+    "/workspace/dist/plugin-runtime-child.js",
+  ]);
 });

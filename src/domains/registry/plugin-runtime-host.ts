@@ -57,6 +57,7 @@ abstract class BasePluginRuntimeHost {
   private stopping = false;
 
   protected constructor(options: PluginRuntimeHostOptions, sandboxRoot: string | null) {
+    validatePluginId(options.pluginId);
     this.pluginId = options.pluginId;
     this.isolation = options.isolation;
     this.sandboxPolicy = options.sandboxPolicy;
@@ -431,10 +432,38 @@ function sanitizePluginIdForPath(pluginId: string): string {
   return pluginId.replace(/[^a-z0-9._-]+/gi, "-").replace(/-+/g, "-");
 }
 
+function validatePluginId(pluginId: string): void {
+  if (!/^[a-zA-Z0-9._-]+$/.test(pluginId)) {
+    throw new ValidationError(
+      "plugin_spi.invalid_plugin_id",
+      "plugin_spi.invalid_plugin_id",
+      {
+        retryable: false,
+        details: {
+          pluginId,
+        },
+      },
+    );
+  }
+  if (pluginId.includes("..")) {
+    throw new ValidationError(
+      "plugin_spi.invalid_plugin_id",
+      "plugin_spi.invalid_plugin_id",
+      {
+        retryable: false,
+        details: {
+          pluginId,
+        },
+      },
+    );
+  }
+}
+
 export function buildPluginRuntimeSandboxRoot(
   pluginId: string,
   baseDir: string = join(process.cwd(), "data", "plugin-runtime-sandboxes"),
 ): string {
+  validatePluginId(pluginId);
   return resolve(baseDir, sanitizePluginIdForPath(pluginId));
 }
 
@@ -632,6 +661,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
     );
   }
 
+  validatePluginId(options.pluginId);
   const rendered = template.map((value) => renderContainerizedToken(value, options));
   if (rendered.length === 0 || rendered[0]!.trim().length === 0) {
     throw new ValidationError(

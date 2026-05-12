@@ -11,7 +11,7 @@ function seedRequiredConfigLayers(configRoot: string): void {
   createFile(join(configRoot, "gateways/default.json"), JSON.stringify({ defaultGateway: "cli", sseEnabled: true }));
   createFile(join(configRoot, "providers/default.json"), JSON.stringify({ defaultProvider: "openai", defaultModelProfile: "reasoning-medium" }));
   createFile(join(configRoot, "runtime/default.json"), JSON.stringify({ maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 }));
-  createFile(join(configRoot, "security/default.json"), JSON.stringify({ approvalMode: "supervised", sandboxMode: "workspace_write", allowDestructiveActions: false }));
+  createFile(join(configRoot, "security/default.json"), JSON.stringify({ approvalMode: "supervised", sandboxMode: "read_only", allowDestructiveActions: false }));
   createFile(join(configRoot, "workflows/default.json"), JSON.stringify({ defaultWorkflowId: "single_agent_minimal", allowCrossDivisionDag: false }));
 }
 

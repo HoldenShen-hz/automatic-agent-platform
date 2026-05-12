@@ -313,6 +313,7 @@ export type LoadBalancingStrategy =
   | "round-robin"    // Cycle through candidates in order
   | "least-load"     // Select candidate with lowest active request count
   | "weighted"       // Weight by division priority (higher priority = more load)
+  | "capacity-aware" // Weight by actual available capacity (maxInstances from roles)
   | "random";        // Random selection among candidates
 
 /**

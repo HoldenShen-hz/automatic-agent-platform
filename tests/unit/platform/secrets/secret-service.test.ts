@@ -283,12 +283,15 @@ test("resolveSecret returns secret value with audit record for active secret", a
       scopeRef: "system.active",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
     });
-    const resolution = await service.resolveSecret({
-      secretRef: "secret://system/active",
-      requestedBy: "test.user",
-      grantedTo: "test.worker",
-      usagePurpose: "test_resolution",
-    });
+    const resolution = await service.resolveSecret(
+      {
+        secretRef: "secret://system/active",
+        requestedBy: "test.user",
+        grantedTo: "test.worker",
+        usagePurpose: "test_resolution",
+      },
+      { callerScopeType: "system", callerScopeRef: "system" },
+    );
     assert.equal(resolution.value, "active-secret-value");
     assert.equal(resolution.usageAudit.requestedBy, "test.user");
     assert.equal(resolution.usageAudit.grantedTo, "test.worker");
@@ -314,15 +317,218 @@ test("resolveSecret records usage in audit trail", async () => {
       scopeRef: "system.audit",
       rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
     });
-    await service.resolveSecret({
-      secretRef: "secret://system/audit",
-      requestedBy: "auditor",
-      grantedTo: "audit-worker",
-      usagePurpose: "audit_check",
-    });
+    await service.resolveSecret(
+      {
+        secretRef: "secret://system/audit",
+        requestedBy: "auditor",
+        grantedTo: "audit-worker",
+        usagePurpose: "audit_check",
+      },
+      { callerScopeType: "system", callerScopeRef: "system" },
+    );
     const summary = service.buildAuditSummary("secret://system/audit");
     assert.equal(summary.usageAudits.length, 1);
     assert.equal(summary.usageAudits[0]?.requestedBy, "auditor");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret rejects caller with wrong scope type", async () => {
+  const harness = createHarness("aa-svc-resolve-wrong-scope-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_TENANT_WRONG_SCOPE: "tenant-secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://tenant/wrong-scope",
+      displayName: "Tenant Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant-123",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    // Caller with "system" scope cannot access "tenant" scoped secret
+    await assert.rejects(
+      async () =>
+        service.resolveSecret(
+          {
+            secretRef: "secret://tenant/wrong-scope",
+            requestedBy: "test.user",
+            grantedTo: "test.worker",
+            usagePurpose: "test",
+          },
+          { callerScopeType: "system", callerScopeRef: "system" },
+        ),
+      (e: any) => e.code === "secret.unauthorized_scope:secret://tenant/wrong-scope",
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret rejects caller with wrong scope reference", async () => {
+  const harness = createHarness("aa-svc-resolve-wrong-ref-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_TENANT_DIFFERENT_REF: "tenant-secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://tenant/different-ref",
+      displayName: "Tenant Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant-123",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    // Caller from different tenant cannot access this tenant's secret
+    await assert.rejects(
+      async () =>
+        service.resolveSecret(
+          {
+            secretRef: "secret://tenant/different-ref",
+            requestedBy: "test.user",
+            grantedTo: "test.worker",
+            usagePurpose: "test",
+          },
+          { callerScopeType: "tenant", callerScopeRef: "tenant-456" },
+        ),
+      (e: any) => e.code === "secret.unauthorized_scope:secret://tenant/different-ref",
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret allows caller with matching tenant scope", async () => {
+  const harness = createHarness("aa-svc-resolve-correct-tenant-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_TENANT_MATCH: "tenant-secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://tenant/match",
+      displayName: "Tenant Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant-123",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    // Caller from same tenant can access
+    const resolution = await service.resolveSecret(
+      {
+        secretRef: "secret://tenant/match",
+        requestedBy: "test.user",
+        grantedTo: "test.worker",
+        usagePurpose: "test",
+      },
+      { callerScopeType: "tenant", callerScopeRef: "tenant-123" },
+    );
+    assert.equal(resolution.value, "tenant-secret-value");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret allows caller with matching workspace scope", async () => {
+  const harness = createHarness("aa-svc-resolve-correct-workspace-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_WORKSPACE_MATCH: "workspace-secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://workspace/match",
+      displayName: "Workspace Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "workspace",
+      scopeRef: "workspace-abc",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    // Caller from same workspace can access
+    const resolution = await service.resolveSecret(
+      {
+        secretRef: "secret://workspace/match",
+        requestedBy: "test.user",
+        grantedTo: "test.worker",
+        usagePurpose: "test",
+      },
+      { callerScopeType: "workspace", callerScopeRef: "workspace-abc" },
+    );
+    assert.equal(resolution.value, "workspace-secret-value");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret denies when no auth context provided", async () => {
+  const harness = createHarness("aa-svc-resolve-no-auth-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_SYSTEM_NO_AUTH: "secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://system/no-auth",
+      displayName: "System Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    await assert.rejects(
+      async () =>
+        service.resolveSecret({
+          secretRef: "secret://system/no-auth",
+          requestedBy: "test.user",
+          grantedTo: "test.worker",
+          usagePurpose: "test",
+        }),
+      (e: any) => e.code === "secret.authorization_required:secret://system/no-auth",
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("resolveSecret rejects cross-workspace access", async () => {
+  const harness = createHarness("aa-svc-resolve-cross-workspace-");
+  try {
+    const service = createService(harness, {
+      AA_SECRET_WORKSPACE_CROSS: "workspace-secret-value",
+    });
+    service.registerSecret({
+      secretRef: "secret://workspace/cross",
+      displayName: "Workspace Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "workspace",
+      scopeRef: "workspace-abc",
+      rotationPolicy: { cadenceDays: 90, ttlMinutes: 60, breakGlass: false },
+    });
+    // Caller from different workspace cannot access
+    await assert.rejects(
+      async () =>
+        service.resolveSecret(
+          {
+            secretRef: "secret://workspace/cross",
+            requestedBy: "test.user",
+            grantedTo: "test.worker",
+            usagePurpose: "test",
+          },
+          { callerScopeType: "workspace", callerScopeRef: "workspace-xyz" },
+        ),
+      (e: any) => e.code === "secret.unauthorized_scope:secret://workspace/cross",
+    );
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

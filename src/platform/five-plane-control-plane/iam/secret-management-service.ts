@@ -17,6 +17,7 @@ import type {
   SecretRegistryRecord,
   SecretRotationEventRecord,
   SecretUsageAuditRecord,
+  SecretVersionRecord,
 } from "../../contracts/types/domain.js";
 import {
   EnvironmentBackedManagedSecretProvider,
@@ -447,6 +448,14 @@ export class SecretManagementService {
 
   /**
    * Records a secret rotation event.
+   *
+   * Rotation state machine:
+   * - requested:     Creates new version record as "rotating", marks old current version
+   *                 as "superseded" if a new version was specified
+   * - completed:    Marks new version as "active", old version as "superseded"
+   * - failed:       Marks new version as "disabled", old version stays "active"
+   *
+   * Old versions remain accessible until new version is confirmed active.
    */
   public recordRotationEvent(input: RecordSecretRotationInput): SecretRotationEventRecord {
     return this.db.transaction(() => {
@@ -469,6 +478,32 @@ export class SecretManagementService {
 
       // Update registry status based on event
       if (event.status === "requested") {
+        // Mark old current version as superseded when new rotation begins
+        if (registry.currentVersion != null) {
+          const oldVersionRecord: SecretVersionRecord = {
+            secretRef: registry.secretRef,
+            version: registry.currentVersion,
+            status: "superseded",
+            createdAt: registry.lastRotatedAt ?? registry.createdAt,
+            rotatedAt: occurredAt,
+            metadataJson: toJson({ supersededBy: input.nextVersion ?? event.eventId }),
+          };
+          this.store.secret.upsertSecretVersionRecord(oldVersionRecord);
+        }
+
+        // Create new version record as "rotating" if nextVersion specified
+        if (input.nextVersion?.trim()) {
+          const newVersionRecord: SecretVersionRecord = {
+            secretRef: registry.secretRef,
+            version: input.nextVersion.trim()!,
+            status: "rotating",
+            createdAt: occurredAt,
+            rotatedAt: null,
+            metadataJson: toJson({ rotationEventId: event.eventId }),
+          };
+          this.store.secret.upsertSecretVersionRecord(newVersionRecord);
+        }
+
         this.store.secret.upsertSecretRegistryRecord({
           ...registry,
           status: "rotating",
@@ -476,12 +511,59 @@ export class SecretManagementService {
         });
       } else if (event.status === "completed") {
         const policy = JSON.parse(registry.rotationPolicyJson) as SecretRotationPolicy;
+
+        // Mark the new version as active
+        if (event.nextVersion?.trim()) {
+          const completedVersionRecord: SecretVersionRecord = {
+            secretRef: registry.secretRef,
+            version: event.nextVersion.trim()!,
+            status: "active",
+            createdAt: occurredAt,
+            rotatedAt: occurredAt,
+            metadataJson: null,
+          };
+          this.store.secret.upsertSecretVersionRecord(completedVersionRecord);
+        }
+
+        // Ensure old version is marked superseded
+        if (registry.currentVersion != null && registry.currentVersion !== event.nextVersion?.trim()) {
+          const oldVersionRecord: SecretVersionRecord = {
+            secretRef: registry.secretRef,
+            version: registry.currentVersion,
+            status: "superseded",
+            createdAt: registry.lastRotatedAt ?? registry.createdAt,
+            rotatedAt: occurredAt,
+            metadataJson: toJson({ supersededBy: event.nextVersion ?? event.eventId }),
+          };
+          this.store.secret.upsertSecretVersionRecord(oldVersionRecord);
+        }
+
         this.store.secret.upsertSecretRegistryRecord({
           ...registry,
           status: "active",
           currentVersion: event.nextVersion ?? registry.currentVersion,
           lastRotatedAt: occurredAt,
           nextRotationDueAt: computeNextRotationDueAt(occurredAt, normalizeRotationPolicy(policy)),
+          updatedAt: occurredAt,
+        });
+      } else if (event.status === "failed") {
+        // Mark new version as disabled on failure, old version stays active
+        if (event.nextVersion?.trim()) {
+          const failedVersionRecord: SecretVersionRecord = {
+            secretRef: registry.secretRef,
+            version: event.nextVersion.trim()!,
+            status: "disabled",
+            createdAt: occurredAt,
+            rotatedAt: null,
+            metadataJson: toJson({ failedBy: event.eventId, reasonCode: event.reasonCode }),
+          };
+          this.store.secret.upsertSecretVersionRecord(failedVersionRecord);
+        }
+
+        // Revert registry status to active on failure
+        this.store.secret.upsertSecretRegistryRecord({
+          ...registry,
+          status: "active",
           updatedAt: occurredAt,
         });
       }

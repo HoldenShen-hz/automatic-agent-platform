@@ -87,9 +87,9 @@ export class DelegatedGovernanceService {
       };
     }
 
-    // If grantor's permissions are provided, compute intersection to prevent
-    // grantee from gaining permissions beyond what grantor actually has
-    if (grantorPermissions != null && grantorPermissions.length > 0) {
+    // If grantor's permissions are provided (even if empty), compute intersection to prevent
+    // grantee from gaining permissions beyond what grantor actually has.
+    if (grantorPermissions != null) {
       const grantedPerms = matched.permissions ?? [];
       const effectivePerms = intersectPermissions(grantedPerms, grantorPermissions);
 

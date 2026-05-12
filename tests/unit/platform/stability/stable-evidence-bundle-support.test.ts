@@ -80,28 +80,37 @@ describe("stable-evidence-bundle-support", () => {
       assert.equal(profile.soakIntervalMs, 1000);
     });
 
-    test("name field cannot be overridden (security fix for issue 1968)", () => {
-      // Issue 1968: TS Omit doesn't prevent JS runtime name field replacement
-      // Verify that name is always sourced from base profile, not overrides
-      const profile = resolveStableEvidenceProfile("smoke", {
-        // Intentionally try to override name - this MUST be ignored
-        name: "24h" as StableEvidenceProfileName,
-        validationIterations: 99,
-      });
-      assert.equal(profile.name, "smoke", "name must remain 'smoke' from base profile");
-      assert.equal(profile.validationIterations, 99, "other fields should still be overridable");
+    test("name field cannot be overridden throws error (R34-14)", () => {
+      // Issue R34-14: TS Omit doesn't prevent JS runtime name field replacement
+      // R34-14 fix: Explicit runtime validation throws error when name override attempted
+      assert.throws(() => {
+        resolveStableEvidenceProfile("smoke", {
+          // Intentionally try to override name - this MUST throw
+          name: "24h" as StableEvidenceProfileName,
+          validationIterations: 99,
+        });
+      }, /Security: profileOverrides.name cannot be changed at runtime/);
     });
 
-    test("name field cannot be overridden for 24h profile", () => {
-      const profile = resolveStableEvidenceProfile("24h", {
-        name: "smoke" as StableEvidenceProfileName,
-      });
-      assert.equal(profile.name, "24h", "name must remain '24h' from base profile");
+    test("name field cannot be overridden for 24h profile throws error", () => {
+      assert.throws(() => {
+        resolveStableEvidenceProfile("24h", {
+          name: "smoke" as StableEvidenceProfileName,
+        });
+      }, /Security: profileOverrides.name cannot be changed at runtime/);
     });
 
-    test("name field cannot be overridden for 72h profile", () => {
+    test("name field cannot be overridden for 72h profile throws error", () => {
+      assert.throws(() => {
+        resolveStableEvidenceProfile("72h", {
+          name: "smoke" as StableEvidenceProfileName,
+          soakDurationMs: 999,
+        });
+      }, /Security: profileOverrides.name cannot be changed at runtime/);
+    });
+
+    test("legitimate overrides still work when no name override attempted", () => {
       const profile = resolveStableEvidenceProfile("72h", {
-        name: "smoke" as StableEvidenceProfileName,
         soakDurationMs: 999,
       });
       assert.equal(profile.name, "72h", "name must remain '72h' from base profile");

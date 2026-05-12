@@ -110,23 +110,26 @@ test("buildPlatformArchitectureBootstrapSummary generatedAt is ISO format", asyn
   assert.ok(summary.generatedAt.includes("T"));
 });
 
-test("registerPlatformArchitectureServices registers services without forcing eager initialization", async () => {
+test("registerPlatformArchitectureServices eagerly initializes all services for safe get-after-register pattern", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
+  // After registerPlatformArchitectureServices, all services must be initialized
+  // to ensure get() called immediately after register() returns valid data
   const services = registerPlatformArchitectureServices(registry);
 
+  assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.app-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.startup-targets"), true);
+  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
+
+  // Verify returned data is valid (not undefined/empty)
   assert.ok(Array.isArray(services.layers));
   assert.ok(Array.isArray(services.planes));
   assert.ok(Array.isArray(services.apps));
   assert.ok(Array.isArray(services.startupTargets));
   assert.ok(typeof services.summary === "object");
-
-  assert.equal(registry.isInitialized("architecture.layer-catalog"), false);
-  assert.equal(registry.isInitialized("architecture.plane-catalog"), false);
-  assert.equal(registry.isInitialized("architecture.app-catalog"), false);
-  assert.equal(registry.isInitialized("architecture.startup-targets"), false);
-  assert.equal(registry.isInitialized("architecture.bootstrap-summary"), false);
 });
 
 test("getPlatformArchitectureServices returns same services object", async () => {

@@ -684,21 +684,52 @@ export function createStableEvidenceSigner(): StableEvidenceSigner {
  * SECURITY: The `name` field is always sourced from the base profile and cannot
  * be replaced via overrides. This prevents runtime injection attacks where
  * malicious overrides could replace the profile name to bypass validation.
+ *
+ * Runtime validation ensures name cannot be overridden even via prototype
+ * pollution or property manipulation attacks.
  */
 export function resolveStableEvidenceProfile(
   profileName: StableEvidenceProfileName = "smoke",
   overrides: StableEvidenceBundleOptions["profileOverrides"] = {},
 ): StableEvidenceProfile {
   const base = STABLE_EVIDENCE_PROFILES[profileName];
+
+  // R34-14: Explicit runtime validation - reject any override attempting to set name.
+  // This is a defense-in-depth measure since TS Omit only works at compile time.
+  if (overrides && typeof overrides === "object" && "name" in overrides) {
+    throw new Error(
+      `Security: profileOverrides.name cannot be changed at runtime. ` +
+      `Attempted to override 'name' field on profile '${profileName}'. ` +
+      `The name field is always sourced from the base profile.`,
+    );
+  }
+
+  // Defensive: explicitly delete name from overrides in case prototype pollution
+  // or property manipulation bypasses the above check
+  const safeOverrides = { ...overrides };
+  delete (safeOverrides as Record<string, unknown>).name;
+
   // Explicitly extract name from base to prevent override injection.
-  // Spread order: rest first, then overrides (which can override anything except name),
+  // Spread order: rest first, then safeOverrides (which cannot affect name),
   // then name LAST to ensure it always comes from base and cannot be overridden.
   const { name, ...rest } = base;
-  return {
+
+  const result: StableEvidenceProfile = {
     ...rest,
-    ...overrides,
+    ...safeOverrides,
     name,
   };
+
+  // R34-14: Freeze the name property to prevent further mutation via
+  // Object.defineProperty or direct assignment attempts
+  Object.defineProperty(result, "name", {
+    value: name,
+    writable: false,
+    enumerable: true,
+    configurable: false,
+  });
+
+  return result;
 }
 
 /**

@@ -201,14 +201,28 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
     registeredArchitectureCatalogs.add(registry);
   }
 
-  // Keep registration lazy: callers that only want wiring should not force eager initialization.
-  const layers = PLATFORM_LAYER_MANIFESTS;
-  const planes = PLATFORM_PLANE_MANIFESTS;
-  const apps = Object.freeze([...listPlatformApps()]);
-  const startupTargets = Object.freeze([...buildPlatformStartupTargets()]);
-  const summary = buildPlatformArchitectureBootstrapSummary();
+  // Ensure all services are fully initialized before returning to avoid
+  // returning uninitialized data when get() is called immediately after register().
+  const readinessGates = [
+    "architecture.layer-catalog",
+    "architecture.plane-catalog",
+    "architecture.app-catalog",
+    "architecture.startup-targets",
+    "architecture.bootstrap-summary",
+  ];
+  for (const gate of readinessGates) {
+    if (!registry.isInitialized(gate)) {
+      registry.get(gate);
+    }
+  }
 
-  return { layers, planes, apps, startupTargets, summary };
+  return {
+    layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
+    planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
+    apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
+    startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
+    summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
+  };
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
@@ -231,6 +245,9 @@ export function getPlatformArchitectureServices(registry: ServiceRegistry = Serv
     }
   }
 
+  // Return services from the registry to ensure idempotent results.
+  // All services are frozen/immutable at registration time, so fetching
+  // from the registry prevents returning new object instances on repeated calls.
   return {
     layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
     planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),

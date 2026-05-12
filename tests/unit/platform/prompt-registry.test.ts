@@ -735,6 +735,122 @@ test("HierarchicalPromptRegistryService constructor with custom config", () => {
   assert.equal(bundle.constraints.temperature, 0.5);
 });
 
+// =============================================================================
+// R34-12: Traffic Slot Normalization Tests
+// =============================================================================
+
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic normalizes weights for fair distribution", () => {
+  const service = new HierarchicalPromptRegistryService({ enableTrafficSplit: true });
+  // Register two bundles with weights that sum to 60 (not 100)
+  const bundle1Input = createValidBundleInput({ name: "bundle-1", version: "v1.0.0" });
+  bundle1Input.metadata = {
+    owner: "test",
+    deprecated: false,
+    tags: [],
+    compatibilityTags: [],
+    trafficAllocation: { weight: 20, startTime: undefined, endTime: undefined, targeting: undefined },
+    lifecycleStatus: "active",
+  };
+  const bundle1 = service.registerBundle(bundle1Input, "global");
+
+  const bundle2Input = createValidBundleInput({ name: "bundle-2", version: "v1.0.0" });
+  bundle2Input.metadata = {
+    owner: "test",
+    deprecated: false,
+    tags: [],
+    compatibilityTags: [],
+    trafficAllocation: { weight: 40, startTime: undefined, endTime: undefined, targeting: undefined },
+    lifecycleStatus: "active",
+  };
+  const bundle2 = service.registerBundle(bundle2Input, "global");
+
+  // Simulate many traffic keys to verify fair distribution
+  const bucket1: string[] = [];
+  const bucket2: string[] = [];
+
+  for (let i = 0; i < 1000; i++) {
+    const result = service.resolveBundleForTraffic("bundle-1", "task", undefined, undefined, `key-${i}`);
+    if (result) {
+      if (result.name === "bundle-1") {
+        bucket1.push(`key-${i}`);
+      } else {
+        bucket2.push(`key-${i}`);
+      }
+    }
+  }
+
+  // With weights 20 and 40 (ratio 1:2), we expect ~33% to bundle-1 and ~67% to bundle-2
+  // Allow reasonable variance but ensure neither gets zero traffic
+  const ratio = bucket1.length / (bucket1.length + bucket2.length);
+  assert.ok(bucket1.length > 0, "bundle-1 should receive some traffic");
+  assert.ok(bucket2.length > 0, "bundle-2 should receive some traffic");
+  assert.ok(ratio > 0.15 && ratio < 0.5, `Traffic ratio ${ratio} should be between 0.15 and 0.5 for weights 20:40`);
+});
+
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic handles weights summing to less than 100", () => {
+  const service = new HierarchicalPromptRegistryService({ enableTrafficSplit: true });
+  // Register bundle with weight 50 (sum is 50, not 100)
+  const bundleInput = createValidBundleInput({ name: "small-bundle", version: "v1.0.0" });
+  bundleInput.metadata = {
+    owner: "test",
+    deprecated: false,
+    tags: [],
+    compatibilityTags: [],
+    trafficAllocation: { weight: 50, startTime: undefined, endTime: undefined, targeting: undefined },
+    lifecycleStatus: "active",
+  };
+  service.registerBundle(bundleInput, "global");
+
+  // Should return the bundle (default fallback when only one candidate)
+  const bundle = service.resolveBundleForTraffic("small-bundle", "task", undefined, undefined, "test-key");
+  assert.ok(bundle !== null);
+  assert.equal(bundle!.name, "small-bundle");
+});
+
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes fairly with three bundles", () => {
+  const service = new HierarchicalPromptRegistryService({ enableTrafficSplit: true });
+  // Register three bundles with weights 10, 30, 60 (sum = 100)
+  const weights = [10, 30, 60];
+  const bundleNames = ["low-bundle", "med-bundle", "high-bundle"];
+
+  for (let i = 0; i < 3; i++) {
+    const input = createValidBundleInput({ name: bundleNames[i]!, version: "v1.0.0" });
+    input.metadata = {
+      owner: "test",
+      deprecated: false,
+      tags: [],
+      compatibilityTags: [],
+      trafficAllocation: { weight: weights[i]!, startTime: undefined, endTime: undefined, targeting: undefined },
+      lifecycleStatus: "active",
+    };
+    service.registerBundle(input, "global");
+  }
+
+  const buckets: string[][] = [[], [], []];
+  for (let i = 0; i < 3000; i++) {
+    const result = service.resolveBundleForTraffic("low-bundle", "task", undefined, undefined, `key-${i}`);
+    if (result) {
+      const idx = bundleNames.indexOf(result.name);
+      if (idx >= 0) buckets[idx]!.push(`key-${i}`);
+    }
+  }
+
+  // Verify all bundles get traffic and ratios are approximately correct
+  for (let i = 0; i < 3; i++) {
+    assert.ok(buckets[i]!.length > 0, `${bundleNames[i]} should receive some traffic`);
+  }
+
+  const total = buckets.reduce((sum, b) => sum + b.length, 0);
+  for (let i = 0; i < 3; i++) {
+    const ratio = buckets[i]!.length / total;
+    const expected = weights[i]! / 100;
+    assert.ok(
+      Math.abs(ratio - expected) < 0.15,
+      `${bundleNames[i]} traffic ratio ${ratio.toFixed(3)} should be close to expected ${expected}`,
+    );
+  }
+});
+
 test("HierarchicalPromptRegistryService.listBundles with pack filter", () => {
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(createValidBundleInput({ name: "pack-bundle" }), "pack", undefined, "my-pack");

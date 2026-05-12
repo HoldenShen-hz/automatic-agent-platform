@@ -248,7 +248,8 @@ export function evaluateAuthorizationContext(input: {
 
   // Issue 1941: Check role-to-capability mapping first.
   // The role must actually grant the capability for the action, regardless of context.
-  const requiredCapabilities = ACTION_CAPABILITY_MAP[input.action];
+  // R33-07: Use inferCapabilitiesForAction to properly invoke the function for capability resolution
+  const requiredCapabilities = inferCapabilitiesForAction(input.action);
   if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
     return {
       allowed: false,

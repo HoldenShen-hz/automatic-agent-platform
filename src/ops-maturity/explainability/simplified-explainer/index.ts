@@ -226,9 +226,11 @@ function calculateConfidence(factors: readonly string[], causalLinks: readonly C
 /**
  * Pre-compiled regex patterns for jargon replacement.
  * Cached at module load time for performance - patterns are compiled once and reused.
+ * Note: "i" flag only (case-insensitive, no global) to avoid lastIndex state issues
+ * in repeated calls. Replace loop uses test() + manual replacement instead.
  */
 const JARGON_PATTERNS: Map<string, RegExp> = new Map(
-  Object.entries(JARGON_MAP).map(([jargon]) => [jargon, new RegExp(jargon, "gi")]),
+  Object.entries(JARGON_MAP).map(([jargon]) => [jargon, new RegExp(jargon, "i")]),
 );
 
 /**
@@ -243,13 +245,19 @@ const MULTI_SPACE_PATTERN = /\s+/g;
 
 /**
  * Replaces technical jargon with simple language.
+ * Uses pre-compiled regex patterns from JARGON_PATTERNS Map.
+ * Each pattern is tested and replaced in a loop to handle multiple occurrences.
  */
 function simplifyText(text: string): string {
   let simplified = text;
 
   for (const [jargon, simple] of Object.entries(JARGON_MAP)) {
     const pattern = JARGON_PATTERNS.get(jargon)!;
-    simplified = simplified.replace(pattern, simple);
+    // Use while loop with test() to replace all occurrences
+    // (replace() with non-global regex only replaces first match)
+    while (pattern.test(simplified)) {
+      simplified = simplified.replace(pattern, simple);
+    }
   }
 
   // Remove excessive technical detail markers

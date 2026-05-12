@@ -194,11 +194,12 @@ export class ConnectorFrameworkService {
   }
 
   /**
-   * Evict the least-recently-used health entry (oldest in LRU set).
+   * Evict the least-recently-used health entries until under capacity.
    */
   private evictLRUHealth(): void {
-    const oldest = this.healthLRU.values().next().value;
-    if (oldest != null) {
+    while (this.health.size >= this.maxHealthConnectors) {
+      const oldest = this.healthLRU.values().next().value;
+      if (oldest == null) break;
       this.health.delete(oldest);
       this.healthLRU.delete(oldest);
     }

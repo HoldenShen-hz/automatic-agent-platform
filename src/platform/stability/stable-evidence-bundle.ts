@@ -32,6 +32,8 @@ import {
   resolveStableEvidenceProfile,
   seedTakeoverEvidenceScenario,
   writeJson,
+  writeSignedJson,
+  createStableEvidenceSigner,
   type StableEvidenceBundleOptions,
   type StableEvidenceBundleReport,
   type StableEvidenceRepairReport,
@@ -132,6 +134,9 @@ export async function createStableEvidenceBundle(
 
   const profile = resolveStableEvidenceProfile(options.profileName, options.profileOverrides);
   const startedAt = new Date().toISOString();
+
+  // R12-16: Create evidence signer for tamper-evident bundles
+  const signer = createStableEvidenceSigner();
 
   // Define all artifact paths
   const artifacts = {
