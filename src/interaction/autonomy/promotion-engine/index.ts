@@ -36,7 +36,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
 
   // R9-45: Check per-level time window constraint
   const requiredIncidentFreeDays = PROMOTION_TIME_WINDOWS[score.currentAutonomy] ?? 0;
-  const incidentFreeDays = score.lastIncidentAgeDays ?? 0;
+  const incidentFreeDays = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
   const timeWindowMet = incidentFreeDays >= requiredIncidentFreeDays;
 
   // R9-43: Block promotion if override rate exceeds threshold
@@ -51,7 +51,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
     };
   }
 
-  if (score.incidents > 0 || (score.failedExecutions >= 2 && rate < 0.96)) {
+  if (score.incidents > 0 || score.failedExecutions > 2) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

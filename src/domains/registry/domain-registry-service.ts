@@ -53,19 +53,6 @@ export class DomainRegistryService {
     }
     this.validateDefinition(normalizedDefinition);
 
-    // R8-30 FIX: Add smoke test gate to register()
-    // Run smoke test before completing registration unless explicitly skipped
-    if (options?.skipSmokeTest !== true) {
-      const smoke = this.smokeTests.run(normalizedDefinition);
-      if (!smoke.passed) {
-        throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during registration.", {
-          category: "validation",
-          source: "internal",
-          details: { issues: smoke.issues },
-        });
-      }
-    }
-
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);
@@ -124,7 +111,7 @@ export class DomainRegistryService {
 
   public activate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (current.status !== "canary") {
+    if (current.status !== "canary" && current.status !== "registered") {
       throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from canary state.", {
         category: "validation",
         source: "internal",

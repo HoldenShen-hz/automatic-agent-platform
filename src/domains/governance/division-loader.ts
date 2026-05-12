@@ -513,6 +513,8 @@ export class DivisionLoader {
       orchestration_workflow: parsed.orchestration_workflow,
       triggers: parsed.triggers,
       roles: parsed.roles,
+      resource_boundaries: parsed.resource_boundaries,
+      fault_domains: parsed.fault_domains,
     };
   }
 

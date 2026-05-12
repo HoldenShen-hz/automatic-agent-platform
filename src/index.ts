@@ -41,6 +41,7 @@ export { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;

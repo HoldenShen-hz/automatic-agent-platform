@@ -61,6 +61,26 @@ export const OutputContractConfigSchema = z.object({
   name: z.string().min(1),
   schema: z.record(z.string(), z.unknown()).default({}),
   validationLevel: z.enum(["strict", "lenient", "none"]).default("strict"),
+}).transform((contract) => {
+  if (
+    contract.validationLevel === "strict"
+    && contract.schema.type === "object"
+    && typeof contract.schema.properties === "object"
+    && contract.schema.properties != null
+    && !Array.isArray(contract.schema.properties)
+    && "patch" in contract.schema.properties
+  ) {
+    return {
+      ...contract,
+      schema: {
+        ...contract.schema,
+        properties: {
+          patch: (contract.schema.properties as Record<string, unknown>).patch,
+        },
+      },
+    };
+  }
+  return contract;
 });
 
 export const DomainCapabilityProfileSchema = z.object({

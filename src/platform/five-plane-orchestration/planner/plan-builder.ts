@@ -20,6 +20,7 @@ export interface PlanBuilderInput {
   observation: TaskSituation;
   assessment: UnifiedAssessment;
   workflow: PlannedWorkflow;
+  harnessRunId?: string;
   version?: number;
   parentVersion?: number;
   graphPatch?: import("../../contracts/executable-contracts/index.js").GraphPatch;
@@ -95,7 +96,7 @@ export class PlanBuilder {
       return {
         nodeId: step.stepId,
         nodeType: this.inferNodeType(step.action),
-        inputRefs: inputKeysArray,
+        inputRefs: step.dependencies.length > 0 ? [...step.dependencies] : [...inputKeysArray],
         outputSchemaRef: `output://${step.stepId}`,
         riskClass: input.assessment.risk,
         budgetIntent: {
@@ -107,7 +108,7 @@ export class PlanBuilder {
           mayCommitExternalEffect: hasSideEffects,
           reversible: false,
         },
-        retryPolicyRef: `retry://${step.stepId}`,
+        retryPolicyRef: `retry:plan.step.${step.stepId}`,
         timeoutMs: step.timeout,
       };
     });
@@ -144,7 +145,7 @@ export class PlanBuilder {
       .update(JSON.stringify({ nodes, edges }))
       .digest("hex");
 
-    const harnessRunId = newId("hr");
+    const harnessRunId = input.harnessRunId ?? newId("hr");
     const planGraphBundleId = newId("pgb");
 
     // Create graph object directly (PlanGraph is an interface)
@@ -169,7 +170,7 @@ export class PlanBuilder {
       graphVersion: 1,
       graph,
       schedulerPolicy: {
-        policyId: newId("sp"),
+        policyId: "scheduler:oapeflir.deterministic_fifo",
         strategy: "deterministic_fifo",
       },
       budgetPlanRef: `budget://${planGraphBundleId}`,
@@ -180,6 +181,10 @@ export class PlanBuilder {
       artifactRefs: [],
       createdAt: nowIso(),
     });
+  }
+
+  public buildGraphBundle(input: PlanBuilderInput, options: BuildPlanOptions = {}): PlanGraphBundle {
+    return this.build(input, options);
   }
 
   /**

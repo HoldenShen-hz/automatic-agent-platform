@@ -589,7 +589,7 @@ test("activate publishes domain:activated event", () => {
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 });
 
-test("deprecate does not publish event (no explicit deprecate event)", () => {
+test("deprecate publishes domain:deprecated event", () => {
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   const service = new DomainRegistryService({
     eventPublisher: {
@@ -602,8 +602,7 @@ test("deprecate does not publish event (no explicit deprecate event)", () => {
 
   service.deprecate("test-domain");
 
-  // No event should be published for deprecate
-  assert.ok(!events.some((e) => e.eventType === "domain:deprecated"));
+  assert.ok(events.some((e) => e.eventType === "domain:deprecated"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

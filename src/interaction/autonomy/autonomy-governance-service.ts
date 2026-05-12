@@ -83,7 +83,7 @@ export class AutonomyGovernanceService {
       recommendedLevel,
       trustScore,
       trustLevel,
-      promoted: promotion.shouldPromote && !promotion.approvalRequired
+      promoted: promotion.shouldPromote
         && (
           compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
           || recommendedLevel === nextAutonomyLevel(score.currentAutonomy)

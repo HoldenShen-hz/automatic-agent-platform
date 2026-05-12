@@ -167,6 +167,9 @@ export class PluginSpiRegistry {
       if (spiType != null && !record.manifest.spiTypes.includes(spiType)) {
         return false;
       }
+      if (domainId.trim().length === 0) {
+        return true;
+      }
       return record.manifest.domainIds.length === 0 || record.manifest.domainIds.includes(domainId);
     });
   }
@@ -529,7 +532,10 @@ export class PluginSpiRegistry {
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
-        promise.finally(() => clearTimeout(timer));
+        void promise.then(
+          () => clearTimeout(timer),
+          () => clearTimeout(timer),
+        );
       });
       try {
         return await Promise.race([promise, timeoutPromise]);

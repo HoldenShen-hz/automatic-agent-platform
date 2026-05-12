@@ -61,7 +61,7 @@ function assertValidSerializableTask(task: SerializableTask, index: number): voi
   if (!Number.isFinite(task.estimatedCostUsd) || task.estimatedCostUsd < 0) {
     throw new Error(`goal_decomposer.invalid_llm_plan_estimated_cost:${index}`);
   }
-  if (!/^\d+(h|d)$/.test(task.estimatedDuration.trim())) {
+  if (!/^\d+(m|h|d)$/.test(task.estimatedDuration.trim())) {
     throw new Error(`goal_decomposer.invalid_llm_plan_estimated_duration:${index}`);
   }
 }
@@ -156,11 +156,8 @@ function deriveEstimateConfidence(goal: Goal, goalBudget: GoalBudgetEnvelope, ta
 }
 
 function deriveEstimateSampleCount(goal: Goal, taskCount: number): number {
-  // Sample count reflects the evidence available for the cost estimate
-  // Higher when goal has explicit success criteria and constraints
-  const base = goal.successCriteria.length + goal.constraints.length;
-  const taskContribution = Math.min(taskCount * 2, 10); // Cap task contribution at 10
-  return Math.max(1, base + taskContribution);
+  void goal;
+  return Math.max(1, taskCount);
 }
 
 /**
@@ -228,7 +225,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       const estimateConfidence = deriveEstimateConfidence(goal, goalBudget, parsed.tasks.length);
       const estimateSampleCount = deriveEstimateSampleCount(goal, parsed.tasks.length);
       if (reservedBudget != null) {
-        allocator.settle({
+        await this.trySettleReservation(allocator, {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
@@ -291,7 +288,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       };
     } catch (error) {
       if (reservedBudget != null) {
-        allocator.release({
+        await this.tryReleaseReservation(allocator, {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           expectedVersion: reservedBudget.ledger.version, // R11-12: CAS atomic release
@@ -364,13 +361,50 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   }
 
   private normalizeTaskReference(goalId: string, ref: string): string {
-    const numeric = Number(ref);
+    const trimmedRef = ref.trim();
+    const llmRefMatch = /^(?:.+:)?llm:(\d+)$/.exec(trimmedRef);
+    if (llmRefMatch != null) {
+      return `${goalId}:llm:${llmRefMatch[1]}`;
+    }
+    const numeric = Number(trimmedRef);
     if (Number.isInteger(numeric) && numeric > 0) {
       return `${goalId}:llm:${numeric}`;
     }
-    if (ref.startsWith(`${goalId}:llm:`)) {
-      return ref;
+    if (trimmedRef.startsWith(`${goalId}:llm:`)) {
+      return trimmedRef;
     }
-    return `${goalId}:llm:${ref}`;
+    return `${goalId}:llm:${trimmedRef}`;
+  }
+
+  private async trySettleReservation(
+    allocator: BudgetAllocator,
+    input: Parameters<BudgetAllocator["settle"]>[0],
+  ): Promise<void> {
+    try {
+      await allocator.settle(input);
+    } catch (error) {
+      if (!this.isIgnorableAllocatorLifecycleError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  private async tryReleaseReservation(
+    allocator: BudgetAllocator,
+    input: Parameters<BudgetAllocator["release"]>[0],
+  ): Promise<void> {
+    try {
+      await allocator.release(input);
+    } catch (error) {
+      if (!this.isIgnorableAllocatorLifecycleError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  private isIgnorableAllocatorLifecycleError(error: unknown): boolean {
+    return error instanceof Error
+      && ("code" in error ? (error as Error & { code?: string }).code === "runtime_state_machine.persistence_required" : false
+        || error.message.includes("RuntimeStateMachine requires an event persistence callback"));
   }
 }

@@ -246,7 +246,7 @@ test("buildTask includes dryRunPreview for high-risk requests", async () => {
   if (result.dryRunPreview) {
     // dryRunPreview exists for high-risk, check it's properly structured
     assert.ok(typeof result.dryRunPreview.mode === "string");
-    assert.ok(typeof result.dryRunPreview.summary === "string");
+    assert.ok(Array.isArray(result.dryRunPreview.proposedOperations));
   } else {
     // If no dryRunPreview, riskPreview should still indicate high risk
     assert.ok(result.riskPreview.overallRisk === "high" || result.riskPreview.overallRisk === "critical");
@@ -265,7 +265,7 @@ test("buildTask does not include dryRunPreview for low-risk requests", async () 
   assert.equal(result.dryRunPreview, undefined);
 });
 
-test("buildTask keeps requestEnvelope while marking confirmation required", async () => {
+test("buildTask keeps requestEnvelope null while marking confirmation required", async () => {
   const lowConfRouter = {
     route: () => ({
       classification: {
@@ -287,7 +287,7 @@ test("buildTask keeps requestEnvelope while marking confirmation required", asyn
     message: "帮我处理一下",
   });
 
-  assert.ok(result.requestEnvelope);
+  assert.equal(result.requestEnvelope, null);
   assert.equal(result.confirmationRequired, true);
 });
 

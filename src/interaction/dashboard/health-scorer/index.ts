@@ -65,7 +65,15 @@ export function buildStructuredHealthScore(system: DashboardSystemSituation): St
 }
 
 export function scoreSystemHealth(system: DashboardSystemSituation): number {
-  return buildStructuredHealthScore(system).overall;
+  const baseScore = {
+    ok: 100,
+    degraded: 80,
+    overloaded: 60,
+    unhealthy: 30,
+  }[system.healthStatus];
+  const backlogPenalty = Math.min(30, resolveQueueDepth(system));
+  const findingPenalty = Math.min(20, system.findings.length * 5);
+  return Math.max(0, baseScore - backlogPenalty - findingPenalty);
 }
 
 function resolveQueueDepth(system: DashboardSystemSituation): number {

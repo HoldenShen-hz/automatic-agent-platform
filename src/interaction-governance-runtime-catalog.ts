@@ -27,6 +27,12 @@ export function buildInteractionGovernanceRuntimeCatalog(): InteractionGovernanc
 export function registerInteractionGovernanceRuntimeCatalog(
   registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): InteractionGovernanceRuntimeCatalog {
+  try {
+    return registry.get<InteractionGovernanceRuntimeCatalog>(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID);
+  } catch {
+    // Register lazily on first access.
+  }
+
   const interaction = registerInteractionBootstrap(registry).catalog;
   const governance = registerGovernanceBootstrap(registry).catalog;
 

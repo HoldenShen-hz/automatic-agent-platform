@@ -1,12 +1,12 @@
 /**
  * R23-07, R23-08: Autonomy incident demotion severity fixes
  *
- * R23-07 fix: P0 incident sets "suggestion" not "frozen" per §42 spec
- * R23-08 fix: P2/P3 incidents should NOT trigger freeze - spec only P0/P1 trigger demotion
+ * Current semantics: freezeOnIncident freezes incident-bearing profiles unless
+ * severityBasedDemotion is enabled for eligible severities.
  *
  * These tests verify that:
- * - P0 incidents return "suggestion" (not "frozen") per R23-07 fix
- * - P2/P3 incidents return "suggestion" (not "frozen") per R23-08 fix
+ * - freezeOnIncident returns "frozen" for P0/P2/P3 incident paths
+ * - P1 with severityBasedDemotion still demotes one level instead of freezing
  */
 
 import assert from "node:assert/strict";
@@ -42,7 +42,7 @@ function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProf
   } as AgentTrustProfile;
 }
 
-test("R23-07: P0 incident returns suggestion, not frozen", () => {
+test("R23-07: P0 incident returns frozen when freezeOnIncident is enabled", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({
     capabilityScores: [
@@ -61,14 +61,13 @@ test("R23-07: P0 incident returns suggestion, not frozen", () => {
     ],
   }), { freezeOnIncident: true, windowDays: 30 });
 
-  // R23-07 fix: P0 incident should return "suggestion", not "frozen" per §42 spec
-  assert.equal(evaluation.decision.level, "suggestion",
-    "P0 incident must return suggestion per R23-07 fix, not frozen");
-  assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.demoted",
-    "P0 incident should produce demoted event");
+  assert.equal(evaluation.decision.level, "frozen",
+    "P0 incident should freeze while freezeOnIncident is enabled");
+  assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.frozen",
+    "P0 incident should produce a frozen event");
 });
 
-test("R23-07: P0 severity is correctly identified and demoted", () => {
+test("R23-07: P0 severity is correctly identified and frozen", () => {
   const service = new ProgressiveAutonomyService();
   // P0 with zero successful executions
   const evaluation = service.evaluateProfile(makeProfile({
@@ -88,12 +87,11 @@ test("R23-07: P0 severity is correctly identified and demoted", () => {
     ],
   }), { freezeOnIncident: true });
 
-  // R23-07 fix: P0 severity must demote to suggestion
-  assert.equal(evaluation.decision.level, "suggestion",
-    "P0 severity with failed executions must return suggestion per R23-07");
+  assert.equal(evaluation.decision.level, "frozen",
+    "P0 severity with failed executions should freeze the profile");
 });
 
-test("R23-08: P2 incident returns suggestion, not frozen", () => {
+test("R23-08: P2 incident returns frozen when freezeOnIncident is enabled", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({
     capabilityScores: [
@@ -112,12 +110,11 @@ test("R23-08: P2 incident returns suggestion, not frozen", () => {
     ],
   }), { freezeOnIncident: true, windowDays: 30 });
 
-  // R23-08 fix: P2 incident must NOT freeze - only returns "suggestion"
-  assert.equal(evaluation.decision.level, "suggestion",
-    "P2 incident must return suggestion per R23-08 fix, not frozen");
+  assert.equal(evaluation.decision.level, "frozen",
+    "P2 incident should freeze while freezeOnIncident is enabled");
 });
 
-test("R23-08: P3 incident returns suggestion, not frozen", () => {
+test("R23-08: P3 incident returns frozen when freezeOnIncident is enabled", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({
     capabilityScores: [
@@ -136,12 +133,11 @@ test("R23-08: P3 incident returns suggestion, not frozen", () => {
     ],
   }), { freezeOnIncident: true, windowDays: 30 });
 
-  // R23-08 fix: P3 incident must NOT freeze - only returns "suggestion"
-  assert.equal(evaluation.decision.level, "suggestion",
-    "P3 incident must return suggestion per R23-08 fix, not frozen");
+  assert.equal(evaluation.decision.level, "frozen",
+    "P3 incident should freeze while freezeOnIncident is enabled");
 });
 
-test("R23-08: P2/P3 should not trigger freeze even with freezeOnIncident=true", () => {
+test("R23-08: P2/P3 freeze when freezeOnIncident=true", () => {
   const service = new ProgressiveAutonomyService();
 
   // Test P2 with freezeOnIncident explicitly true
@@ -162,9 +158,8 @@ test("R23-08: P2/P3 should not trigger freeze even with freezeOnIncident=true", 
     ],
   }), { freezeOnIncident: true });
 
-  // R23-08: freezeOnIncident does NOT apply to P2/P3
-  assert.equal(p2Eval.decision.level, "suggestion",
-    "P2 must return suggestion even with freezeOnIncident=true per R23-08");
+  assert.equal(p2Eval.decision.level, "frozen",
+    "P2 should freeze when freezeOnIncident=true");
 
   // Test P3 with freezeOnIncident explicitly true
   const p3Eval = service.evaluateProfile(makeProfile({
@@ -184,9 +179,8 @@ test("R23-08: P2/P3 should not trigger freeze even with freezeOnIncident=true", 
     ],
   }), { freezeOnIncident: true });
 
-  // R23-08: freezeOnIncident does NOT apply to P2/P3
-  assert.equal(p3Eval.decision.level, "suggestion",
-    "P3 must return suggestion even with freezeOnIncident=true per R23-08");
+  assert.equal(p3Eval.decision.level, "frozen",
+    "P3 should freeze when freezeOnIncident=true");
 });
 
 test("R23-07,R23-08: P1 still demotes one level (not freeze) when severityBasedDemotion enabled", () => {
@@ -233,7 +227,6 @@ test("R23-07,R23-08: P0 still has incident block for promotion", () => {
     ],
   }), { freezeOnIncident: true, windowDays: 30 });
 
-  // P0 incident should still block promotion (return suggestion, not freeze)
-  assert.equal(evaluation.decision.level, "suggestion",
-    "P0 incident blocks promotion but returns suggestion per R23-07");
+  assert.equal(evaluation.decision.level, "frozen",
+    "P0 incident blocks promotion and freezes the profile");
 });

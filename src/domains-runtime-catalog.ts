@@ -15,6 +15,8 @@ export interface DomainsRuntimeCatalog {
   readonly ring3: readonly DomainBaseline[];
 }
 
+const catalogInstances = new WeakMap<ServiceRegistry, DomainsRuntimeCatalog>();
+
 export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
   const bootstrap = registerDomainsBootstrap();
   const ringMap = new Map(bootstrap.rings.map((ring) => [ring.ringId, ring.baselines]));
@@ -28,6 +30,10 @@ export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
 export function registerDomainsRuntimeCatalog(
   registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsRuntimeCatalog {
+  const existing = catalogInstances.get(registry);
+  if (existing != null) {
+    return existing;
+  }
   const bootstrap = registerDomainsBootstrap(registry);
   const ringMap = new Map(bootstrap.rings.map((ring) => [ring.ringId, ring.baselines]));
 
@@ -40,5 +46,7 @@ export function registerDomainsRuntimeCatalog(
     dependsOn: [DOMAINS_BOOTSTRAP_SERVICE_ID, ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS)],
   });
 
-  return registry.get<DomainsRuntimeCatalog>(DOMAINS_RUNTIME_CATALOG_SERVICE_ID);
+  const catalog = registry.get<DomainsRuntimeCatalog>(DOMAINS_RUNTIME_CATALOG_SERVICE_ID);
+  catalogInstances.set(registry, catalog);
+  return catalog;
 }

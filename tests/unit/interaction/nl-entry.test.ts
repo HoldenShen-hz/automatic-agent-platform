@@ -80,9 +80,10 @@ test("NlEntryService.buildTask creates request envelope with cost estimate", asy
     message: "帮我查询一下当前的任务队列状态",
   });
 
-  assert.equal(result.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.payload.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.metadata.confirmationRequired, "true");
+  assert.equal(result.confirmationRequired, false);
+  assert.ok(result.requestEnvelope != null);
+  assert.equal(result.requestEnvelope?.payload.confirmationRequired, false);
+  assert.equal(result.requestEnvelope?.metadata.confirmationRequired, "false");
   assert.equal(result.costEstimate.estimatedCostUsd, 0.1);
   assert.ok(result.humanSummary.length > 0);
 });
@@ -101,7 +102,7 @@ test("NlEntryService.buildTask marks critical-risk requests for confirmation", a
 
   assert.equal(result.riskPreview.overallRisk, "critical");
   assert.equal(result.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.payload.confirmationRequired, true);
+  assert.equal(result.requestEnvelope, null);
 });
 
 test("NlEntryService.buildTask marks high-risk deploy requests for confirmation", async () => {

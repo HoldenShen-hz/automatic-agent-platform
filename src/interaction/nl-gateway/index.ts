@@ -578,7 +578,24 @@ function estimateSlotConfidence(entities: readonly ExtractedEntity[], message: s
   if (entities.length === 1) {
     return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.78 : 0.88;
   }
+  if (/(status|query|list|查看|查询|状态|队列|任务|create|make|generate|创建|新建|生成|工单)/i.test(message)) {
+    return 0.86;
+  }
   return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.52 : 0.72;
+}
+
+function buildConversationMemoryScope(tenantId: string, userId: string): string {
+  return `nl_gateway.conversation:${tenantId}:${userId}`;
+}
+
+function collectResolvedSlotsFromTurns(turns: readonly ConversationTurn[]): Readonly<Record<string, unknown>> {
+  const resolved: Record<string, unknown> = {};
+  for (const turn of turns) {
+    for (const entity of turn.detectedIntent.entities) {
+      resolved[entity.entityType] = entity.normalized;
+    }
+  }
+  return resolved;
 }
 
 function buildClarificationQuestions(message: string, confidence: number, divisionId: string, entities: readonly ExtractedEntity[]): string[] {
@@ -990,7 +1007,9 @@ export class NlEntryService implements NlEntryPort {
   private readonly conversationWindowSize: number;
   private readonly nlConfig: NlGatewayConfig;
   private readonly intentParser: IntentParserPort | null;
+  private readonly memoryService: MemoryServicePort | null;
   private readonly dryRunExecutor: DryRunExecutorPort | null;
+  private readonly conversationContextManager: ConversationContextManager;
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
   private readonly clarificationRounds = new Map<string, number>();
@@ -1007,7 +1026,9 @@ export class NlEntryService implements NlEntryPort {
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
     this.intentParser = options.intentParser ?? null;
+    this.memoryService = options.memoryService ?? null;
     this.dryRunExecutor = options.dryRunExecutor ?? null;
+    this.conversationContextManager = new ConversationContextManager(this.nlConfig);
   }
 
   /**
@@ -1045,23 +1066,28 @@ export class NlEntryService implements NlEntryPort {
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
     const locale = this.resolveLocale(request);
-    const route = await Promise.resolve(this.intakeRouter.route({
+    const priorConversationContext = this.getPriorConversationContext(request);
+    const securityFindings = detectPromptInjection(request.message);
+    const blockedByPolicy = securityFindings.some((item) => item.blocked);
+    const route = await Promise.resolve((this.intakeRouter as any).route({
       title: deriveTitle(request.message),
       request: request.message,
+      priorConversationContext,
     }));
     const entities = extractEntities(request.message);
-    const parsedIntentTokens = await parseIntentTokensWithModel(request.message, {
-      locale,
-      // @ts-ignore - parser type mismatch: IntentParserPort vs ModelIntentParserPort
-      parser: this.intentParser?.parseWithLlm == null
-        ? null
-        : {
-            parseWithLlm: (input) => this.intentParser!.parseWithLlm!(input),
-          },
-      minimumConfidence: this.clarificationThreshold,
-    });
+    const parsedIntentTokens = blockedByPolicy
+      ? []
+      : await parseIntentTokensWithModel(request.message, {
+          locale,
+          // @ts-ignore - parser type mismatch: IntentParserPort vs ModelIntentParserPort
+          parser: this.intentParser?.parseWithLlm == null
+            ? null
+            : {
+                parseWithLlm: (input) => this.intentParser!.parseWithLlm!(input),
+              },
+          minimumConfidence: this.clarificationThreshold,
+        });
     const parserIntent = parsedIntentTokens[0];
-    const securityFindings = detectPromptInjection(request.message);
     const resolvedIntentType = parserIntent != null && parserIntent.confidence >= route.classification.confidence
       ? parserIntent.intentType
       : mapIntentType(route.classification.intent);
@@ -1077,13 +1103,17 @@ export class NlEntryService implements NlEntryPort {
     // This stage runs AFTER intent parsing and is independent of intent confidence
     const riskClassification = this.classifyRisk(request.message, detectedIntent.intentType);
 
+    const requiredSlots = inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId);
     const slotResolution = buildSlotClarificationState(
       entities,
-      inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId),
+      requiredSlots,
+      {
+        previousResolved: collectResolvedSlotsFromTurns(priorConversationContext?.turns ?? []),
+      },
     );
     const context = {
       ...this.contextEnricher.enrich(request.message, route.divisionId, entities),
-      requiredSlots: slotResolution.missing.length === 0 ? [] : inferRequiredSlots(request.message, detectedIntent.intentType, route.workflowId),
+      requiredSlots,
       missingSlots: slotResolution.missing,
       resolvedSlots: slotResolution.resolved,
     };
@@ -1097,7 +1127,6 @@ export class NlEntryService implements NlEntryPort {
       ...slotResolution.questions,
     ])];
     const slotConfidence = estimateSlotConfidence(entities, request.message);
-    const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const requiresClarification =
       blockedByPolicy
       || resolvedConfidence < this.clarificationThreshold
@@ -1138,7 +1167,7 @@ export class NlEntryService implements NlEntryPort {
       context,
       securityFindings,
       blockedByPolicy,
-      priorConversationTurns: [],
+      priorConversationTurns: priorConversationContext?.turns ?? [],
       // R5-16: Include risk classification result
       riskClassification,
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
@@ -1355,7 +1384,7 @@ export class NlEntryService implements NlEntryPort {
         }
       : null;
 
-    return {
+    const result = {
       // @ts-ignore - createRequestEnvelope returns RequestEnvelopeLegacy which is incompatible with RequestEnvelope
       requestEnvelope: shouldEmitEnvelope
         ? createRequestEnvelope<NlRequestPayload>({
@@ -1403,6 +1432,9 @@ export class NlEntryService implements NlEntryPort {
       canonicalRequestEnvelope,
       ...(dryRunPreview == null ? {} : { dryRunPreview }),
     };
+
+    this.persistConversationTurn(request, primaryIntent);
+    return result;
   }
 
   private resolveLocale(request: Pick<NlEntryRequest, "locale" | "preferredLocale" | "acceptLanguage" | "message">): string {
@@ -1436,6 +1468,74 @@ export class NlEntryService implements NlEntryPort {
       }
     }
     return this.localeConfig.defaultLocale;
+  }
+
+  private getPriorConversationContext(request: NlEntryRequest): ConversationContext | undefined {
+    const localContext = this.conversationContextManager.getContext(request.tenantId, request.userId);
+    const turns = localContext.turns.length > 0
+      ? localContext.turns
+      : this.rehydrateConversationTurns(request);
+    if (turns.length === 0) {
+      return undefined;
+    }
+    const lastIntent = turns[turns.length - 1]?.detectedIntent;
+    return {
+      tenantId: request.tenantId,
+      userId: request.userId,
+      turnCount: turns.length,
+      maxTurns: this.conversationWindowSize,
+      turns,
+      ...(lastIntent == null ? {} : { lastIntent }),
+    };
+  }
+
+  private rehydrateConversationTurns(request: NlEntryRequest): readonly ConversationTurn[] {
+    if (this.memoryService == null) {
+      return [];
+    }
+    const memories = this.memoryService.findMemories({
+      scope: buildConversationMemoryScope(request.tenantId, request.userId),
+    });
+    const turns: ConversationTurn[] = [];
+    for (const memory of memories) {
+      try {
+        const parsed = JSON.parse(memory.content) as Partial<ConversationTurn>;
+        if (
+          typeof parsed.message === "string"
+          && parsed.detectedIntent != null
+          && typeof parsed.timestamp === "string"
+        ) {
+          turns.push({
+            turnNumber: turns.length + 1,
+            message: parsed.message,
+            detectedIntent: parsed.detectedIntent as DetectedIntent,
+            timestamp: parsed.timestamp,
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+    return turns.slice(-this.conversationWindowSize);
+  }
+
+  private persistConversationTurn(request: NlEntryRequest, intent: DetectedIntent): void {
+    const context = this.conversationContextManager.addTurn(
+      request.tenantId,
+      request.userId,
+      request.message,
+      intent,
+      intent.intentType,
+    );
+    const latestTurn = context.turns[context.turns.length - 1];
+    if (latestTurn == null || this.memoryService == null) {
+      return;
+    }
+    this.memoryService.remember({
+      scope: buildConversationMemoryScope(request.tenantId, request.userId),
+      content: JSON.stringify(latestTurn),
+      classification: "nl_gateway.conversation_turn",
+    });
   }
 }
 

@@ -1,6 +1,14 @@
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import type { ConstraintPack, HarnessDecision } from "../harness/index.js";
-import { createPlanGraphBundle, createGraphPatch, type GraphPatch, type PlanGraphBundle, type JsonValue } from "../../contracts/executable-contracts/index.js";
+import {
+  createDecisionInputBundle,
+  createPlanGraphBundle,
+  createGraphPatch,
+  type DecisionInputBundle,
+  type GraphPatch,
+  type JsonValue,
+  type PlanGraphBundle,
+} from "../../contracts/executable-contracts/index.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
   DualChannelStepOutput,
@@ -13,7 +21,7 @@ import type {
 import { ObservationAggregator, type UnifiedObservation } from "../../shared/observability/observation-aggregator.js";
 import { SystemSituationBuilder } from "../../shared/observability/system-situation-builder.js";
 import { AssessmentService, type EffectivePolicySnapshot, type RiskAssessment } from "./assessment-service.js";
-import { PlanBuilder, type BuildPlanOptions } from "../planner/plan-builder.js";
+import { PlanBuilder, type BuildPlanOptions, type PlanBuilderInput } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
 import type { FeedbackBatch, LearningSignal } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import {
@@ -60,6 +68,7 @@ import { nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
 import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
 import { ValidationError } from "../../contracts/errors.js";
+import type { ControlPlaneDirectiveSink } from "../../five-plane-control-plane/control-plane-directive-sink.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -93,9 +102,31 @@ export interface OapeflirLoopResult {
   harnessDecision: HarnessDecision | null;
 }
 
+type OapeflirPlanBuilder = Pick<PlanBuilder, "build"> & Partial<{
+  buildGraphBundle: (input: PlanBuilderInput, options?: BuildPlanOptions) => PlanGraphBundle;
+}>;
+
 export interface OapeflirLoopServiceOptions {
   /** Execute bridge for the OAPEFLIR execute phase. */
   executeBridge?: ExecuteBridge;
+  /** Optional task situation builder for observation stage injection. */
+  situationBuilder?: TaskSituationBuilder;
+  /** Optional observation aggregator for deterministic tests and DI. */
+  observationAggregator?: ObservationAggregator;
+  /** Optional assessment service for policy/risk overrides in tests. */
+  assessmentService?: AssessmentService;
+  /** Optional plan builder for deterministic graph bundle generation. */
+  planBuilder?: OapeflirPlanBuilder;
+  /** Optional feedback collector for feedback-stage overrides in tests. */
+  feedbackCollector?: FeedbackCollector;
+  /** Optional strategy learning service override for tests. */
+  learningService?: StrategyLearningService;
+  /** Optional knowledge promotion service override for tests. */
+  knowledgePromotionService?: KnowledgePromotionService;
+  /** Optional autonomy boundary override for tests. */
+  autonomyBoundary?: AutonomyBoundaryPolicy;
+  /** Optional directive sink for downstream control-plane integration. */
+  directiveSink?: ControlPlaneDirectiveSink | null;
   /** Path to the SQLite database (required for RuntimeExecuteBridge). */
   dbPath?: string;
   /** Event publisher for emitting OAPEFLIR lifecycle events. */
@@ -103,28 +134,38 @@ export interface OapeflirLoopServiceOptions {
 }
 
 export class OapeflirLoopService {
-  private readonly situationBuilder = new TaskSituationBuilder();
+  private readonly situationBuilder: TaskSituationBuilder;
   private readonly systemSituationBuilder = new SystemSituationBuilder();
-  private readonly observationAggregator = new ObservationAggregator();
-  private readonly assessment = new AssessmentService();
-  private readonly planBuilder = new PlanBuilder();
-  private readonly feedbackCollector = new FeedbackCollector();
+  private readonly observationAggregator: ObservationAggregator;
+  private readonly assessment: AssessmentService;
+  private readonly planBuilder: OapeflirPlanBuilder;
+  private readonly feedbackCollector: FeedbackCollector;
   private readonly outcomeEvaluator = new ExecutionOutcomeEvaluator();
   private readonly qualityGate = new PostExecutionQualityGate();
   private readonly replanning = new ReplanningService();
-  private readonly learning = new StrategyLearningService();
+  private readonly learning: StrategyLearningService;
   private readonly knowledgePromotion: KnowledgePromotionService;
-  private readonly autonomyBoundary = new AutonomyBoundaryPolicy();
+  private readonly autonomyBoundary: AutonomyBoundaryPolicy;
   private readonly candidateRegistry = new ImprovementCandidateRegistry();
   private readonly rollout = new PolicyRolloutService();
   private readonly executeBridge: ExecuteBridge;
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
   // R19-06 fix: Store eventPublisher for emitting state change events per §14.3
   private readonly eventPublisher: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | undefined;
+  /** Optional control-plane sink reserved for directive emission integrations. */
+  private readonly directiveSink: ControlPlaneDirectiveSink | null;
   // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
   private readonly dbPath: string | undefined;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
+    this.situationBuilder = options.situationBuilder ?? new TaskSituationBuilder();
+    this.observationAggregator = options.observationAggregator ?? new ObservationAggregator();
+    this.assessment = options.assessmentService ?? new AssessmentService();
+    this.planBuilder = options.planBuilder ?? new PlanBuilder();
+    this.feedbackCollector = options.feedbackCollector ?? new FeedbackCollector();
+    this.learning = options.learningService ?? new StrategyLearningService();
+    this.autonomyBoundary = options.autonomyBoundary ?? new AutonomyBoundaryPolicy();
+    this.directiveSink = options.directiveSink ?? null;
     if (options.executeBridge) {
       this.executeBridge = options.executeBridge;
     } else if (options.dbPath) {
@@ -133,7 +174,7 @@ export class OapeflirLoopService {
       this.executeBridge = new MockExecuteBridge();
     }
     // G7: Wire eventPublisher to KnowledgePromotionService for learning:knowledge_promoted events
-    this.knowledgePromotion = new KnowledgePromotionService({
+    this.knowledgePromotion = options.knowledgePromotionService ?? new KnowledgePromotionService({
       eventPublisher: options.eventPublisher ?? null,
     });
     // R19-06 fix: Store eventPublisher for stage event emission
@@ -176,12 +217,12 @@ export class OapeflirLoopService {
         });
         const systemObservation = this.systemSituationBuilder.build();
         return this.observationAggregator.aggregate(
-        taskSituation,
-        systemObservation,
-        this.observationAggregator.createEmptyEventFlowSituation(),
-        this.observationAggregator.createEmptyGoalDecompositionSituation(),
-        this.observationAggregator.createEmptyMemorySituation(),
-      );
+          taskSituation,
+          systemObservation,
+          this.createEmptyEventFlowSituation(),
+          this.createEmptyGoalDecompositionSituation(),
+          this.createEmptyMemorySituation(),
+        );
       }, {
         taskId: input.taskId,
         workflowStepCount: input.workflow.executionSteps.length,
@@ -282,7 +323,7 @@ export class OapeflirLoopService {
 
       // R5-1: Build PlanGraphBundle directly from PlanBuilder (canonical output per §13.7)
       // R5-9: Enable graph normalization and risk propagation per §13.9
-      loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.build({
+      loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.buildPlanGraphBundleForInput({
         observation: observedTask,
         assessment: validatedAssessment,
         workflow: input.workflow,
@@ -427,7 +468,7 @@ export class OapeflirLoopService {
         if (loopGraphPatch) {
           planBuildOptions.graphPatch = loopGraphPatch;
         }
-        loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.build({
+        loopPlanGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.buildPlanGraphBundleForInput({
           observation: observedTask,
           assessment: validatedAssessment,
           workflow: input.workflow,
@@ -774,6 +815,117 @@ export class OapeflirLoopService {
     return this.executeBridge.toDualChannelStepOutputs(executionResult);
   }
 
+  public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLoopResult & {
+    normalizationReport: { normalizedNodes: number; normalizedEdges: number };
+    validationReport: { valid: boolean; findings: Array<{ code: string; message: string }> };
+    riskPropagation: { riskScore: number; criticalPathNodes: string[]; findings: string[] } | null;
+    worstPath: { pathLength: number; estimatedDurationMs: number; budgetEstimate: number; riskClass: string } | null;
+  }> {
+    const taskSituation: TaskSituation = this.situationBuilder.build({
+      taskId: input.taskId,
+      objective: input.objective,
+      currentPhase: "planning",
+      blockers: input.blockerSummaries ?? [],
+      fileRefs: input.fileRefs ?? [],
+      metrics: { workflowSteps: input.workflow.executionSteps.length },
+    });
+    const taskObservation = this.observationAggregator.aggregate(
+      taskSituation,
+      this.systemSituationBuilder.build(),
+      this.createEmptyEventFlowSituation(),
+      this.createEmptyGoalDecompositionSituation(),
+      this.createEmptyMemorySituation(),
+    );
+    const observedTask = this.normalizeObservationTask(taskObservation.task, input);
+    const assessResult = this.assessment.assess(observedTask, input.constraintPack, input.effectivePolicy);
+    const validatedAssessment = validateUnifiedAssessment(assessResult.assessment).ok
+      ? assessResult.assessment
+      : {
+        taskId: input.taskId,
+        timestamp: Date.now(),
+        situationRef: `assessment:${input.taskId}:fallback`,
+        phase: "pre-execution",
+        complexity: "moderate",
+        risk: "medium",
+        riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
+        routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
+        resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
+        approvalPolicy: { required: false, level: "none" },
+        executionMode: "auto",
+        suggestedActions: [],
+      };
+    const planGraphBundle = this.buildPlanGraphBundleForInput({
+      observation: observedTask,
+      assessment: validatedAssessment,
+      workflow: input.workflow,
+    }, { normalizeGraph: true, propagateRisk: true });
+    const plan = this.toLegacyPlan(planGraphBundle, input.taskId);
+    const executionContext = this.buildExecutionContext(input, planGraphBundle, plan, validatedAssessment);
+    const stepOutputs = input.stepOutputs ?? await this.executeViaBridge(plan, executionContext);
+    const feedbackSignals = input.feedbackSignals ?? this.buildFeedbackSignals(input.taskId, stepOutputs);
+    const feedback = this.feedbackCollector.collect({
+      taskId: input.taskId,
+      planId: plan.planId,
+      signals: feedbackSignals,
+    });
+    const evaluationReport = this.outcomeEvaluator.evaluate(planGraphBundle, feedback);
+    const qualityGate = this.qualityGate.decide(evaluationReport);
+    const replanTrigger = this.replanning.createTrigger(
+      input.taskId,
+      qualityGate.accepted ? "planning.no_replan_required" : "planning.quality_gate_replan",
+      "feedback",
+      qualityGate.reasonCodes.join(","),
+    );
+    const replanDecision = this.replanning.decide(plan, feedback, replanTrigger);
+    const graphPatch = replanDecision.shouldReplan ? this.buildGraphPatch(plan, plan.version + 1) : null;
+    const learningSignals = this.feedbackCollector.toLearningSignals(feedback);
+    const learningObjects = await this.learning.learn(learningSignals);
+    if (learningObjects.length > 0) {
+      await this.knowledgePromotion.promote(learningObjects, input.taskId);
+    }
+    const validationReport = planGraphBundle.validationReport;
+    return {
+      assessment: validatedAssessment,
+      plan,
+      planGraphBundle,
+      stepOutputs,
+      feedback,
+      learningSignals,
+      learningObjects,
+      rolloutRecord: null,
+      timeline: [],
+      evaluationReport,
+      qualityGate,
+      replanDecision,
+      graphPatch,
+      harnessDecision: null,
+      observation: {
+        ...taskObservation,
+        task: observedTask,
+      },
+      normalizationReport: {
+        normalizedNodes: validationReport.normalizedNodeIds?.length ?? planGraphBundle.graph.nodes.length,
+        normalizedEdges: planGraphBundle.graph.edges.length,
+      },
+      validationReport: {
+        valid: validationReport.valid,
+        findings: validationReport.findings.map((message, index) => ({
+          code: `validation.issue.${index}`,
+          message,
+        })),
+      },
+      riskPropagation: this.buildRiskPropagationSummary(planGraphBundle),
+      worstPath: validationReport.worstPath == null
+        ? null
+        : {
+          pathLength: validationReport.worstPath.pathNodeIds.length,
+          estimatedDurationMs: validationReport.worstPath.timeoutMs,
+          budgetEstimate: validationReport.worstPath.estimatedBudgetAmount,
+          riskClass: validationReport.worstPath.riskClass,
+        },
+    };
+  }
+
   private buildExecutionContext(
     input: OapeflirLoopInput,
     planGraphBundle: PlanGraphBundle,
@@ -784,6 +936,76 @@ export class OapeflirLoopService {
       taskId: input.taskId,
       tokenBudget: assessment.resourceAllocation.maxTokens,
       budgetLedgerId: `${planGraphBundle.budgetPlanRef ?? `budget:${input.taskId}`}:execute:v${plan.version}`,
+    };
+  }
+
+  private buildDecisionInputBundle(input: {
+    taskId: string;
+    harnessRunId: string;
+    planGraphBundle: PlanGraphBundle;
+    assessment: Pick<UnifiedAssessment, "risk"> | { risk: UnifiedAssessment["risk"] };
+    feedback: FeedbackBatch;
+    qualityGate: Pick<PostExecutionQualityGateDecision, "accepted" | "reasonCodes">;
+    replanDecision: Pick<ReplanningDecision, "shouldReplan">;
+    evaluationReport: Pick<EvaluationReport, "score" | "confidence"> & Partial<Pick<EvaluationReport, "issues" | "recommendation">>;
+    constraintPack?: ConstraintPack;
+    stepOutputs: readonly DualChannelStepOutput[];
+  }): DecisionInputBundle {
+    const budgetEnvelope = input.constraintPack?.budgetEnvelope;
+    const remainingSteps = budgetEnvelope == null
+      ? 0
+      : Math.max(0, budgetEnvelope.maxSteps - input.stepOutputs.length);
+    const remainingCost = budgetEnvelope == null
+      ? 0
+      : Math.max(0, budgetEnvelope.maxCost - input.stepOutputs.reduce((sum, output) => sum + output.systemTelemetry.tokensUsed, 0));
+    const remainingDurationMs = budgetEnvelope == null
+      ? 0
+      : Math.max(0, budgetEnvelope.maxDurationMs - input.stepOutputs.reduce((sum, output) => sum + output.systemTelemetry.durationMs, 0));
+    const firstNode = input.planGraphBundle.graph.nodes[0];
+    const bundle = createDecisionInputBundle({
+      harnessRunId: input.harnessRunId,
+      decisionKind: input.replanDecision.shouldReplan ? "replan" : input.qualityGate.accepted ? "approve" : "retry",
+      riskClass: input.planGraphBundle.riskProfile.riskClass,
+      evaluator: {
+        score: input.evaluationReport.score,
+        reasoning: (input.evaluationReport.issues ?? []).join(",") || input.evaluationReport.recommendation || "oapeflir.evaluation.complete",
+      },
+      policy: {
+        policyIds: input.constraintPack?.policyIds ?? [],
+        constraintPackRef: `constraint-pack:${input.taskId}`,
+      },
+      budget: {
+        remainingSteps,
+        remainingCost,
+        remainingDurationMs,
+      },
+      risk: {
+        currentScore: this.mapRiskClassToScore(input.assessment.risk),
+        maxScore: input.constraintPack?.riskPolicy?.maxRiskScore ?? 1,
+        escalationThreshold: input.constraintPack?.riskPolicy?.escalationThreshold ?? 0.7,
+      },
+      ...(firstNode == null ? {} : {
+        node: {
+          nodeId: firstNode.nodeId,
+          nodeType: firstNode.nodeType,
+          status: input.stepOutputs.every((output) => output.systemTelemetry.validationPassed) ? "succeeded" : "failed",
+        },
+      }),
+      ...(firstNode == null ? {} : {
+        sideEffect: {
+          mayCommit: firstNode.sideEffectProfile.mayCommitExternalEffect,
+          reversible: firstNode.sideEffectProfile.reversible,
+        },
+      }),
+      hitl: {
+        pending: false,
+        requestId: null,
+      },
+      guardrail: null,
+    });
+    return {
+      ...bundle,
+      bundleId: bundle.decisionInputBundleId,
     };
   }
 
@@ -1036,6 +1258,80 @@ export class OapeflirLoopService {
     const objectiveSignal = input.objective.trim().length > 0 ? 0.68 : 0.65;
     const contextSignal = Math.min((input.fileRefs?.length ?? 0) * 0.03 + (input.blockerSummaries?.length ?? 0) * 0.02, 0.12);
     return Number(Math.min(0.8, objectiveSignal + contextSignal).toFixed(2));
+  }
+
+  private buildPlanGraphBundleForInput(input: PlanBuilderInput, options: BuildPlanOptions): PlanGraphBundle {
+    if ("buildGraphBundle" in this.planBuilder && typeof this.planBuilder.buildGraphBundle === "function") {
+      return this.planBuilder.buildGraphBundle(input, options);
+    }
+    return this.planBuilder.build(input, options);
+  }
+
+  private createEmptyEventFlowSituation() {
+    if ("createEmptyEventFlowSituation" in this.observationAggregator
+      && typeof this.observationAggregator.createEmptyEventFlowSituation === "function") {
+      return this.observationAggregator.createEmptyEventFlowSituation();
+    }
+    return new ObservationAggregator().createEmptyEventFlowSituation();
+  }
+
+  private createEmptyGoalDecompositionSituation() {
+    if ("createEmptyGoalDecompositionSituation" in this.observationAggregator
+      && typeof this.observationAggregator.createEmptyGoalDecompositionSituation === "function") {
+      return this.observationAggregator.createEmptyGoalDecompositionSituation();
+    }
+    return new ObservationAggregator().createEmptyGoalDecompositionSituation();
+  }
+
+  private createEmptyMemorySituation() {
+    if ("createEmptyMemorySituation" in this.observationAggregator
+      && typeof this.observationAggregator.createEmptyMemorySituation === "function") {
+      return this.observationAggregator.createEmptyMemorySituation();
+    }
+    return new ObservationAggregator().createEmptyMemorySituation();
+  }
+
+  private normalizeObservationTask(observationTask: TaskSituation, input: OapeflirLoopInput): TaskSituation {
+    return {
+      ...observationTask,
+      blockers: observationTask.blockers ?? [],
+      relevantMemory: observationTask.relevantMemory ?? [],
+      fileRefs: observationTask.fileRefs ?? input.fileRefs ?? [],
+      metrics: observationTask.metrics ?? {},
+    };
+  }
+
+  private buildRiskPropagationSummary(planGraphBundle: PlanGraphBundle): {
+    riskScore: number;
+    criticalPathNodes: string[];
+    findings: string[];
+  } | null {
+    const validationReport = planGraphBundle.validationReport;
+    const worstPath = validationReport.worstPath;
+    const riskFindings = validationReport.riskPropagation;
+    if (worstPath == null && (riskFindings == null || riskFindings.length === 0)) {
+      return null;
+    }
+    return {
+      riskScore: this.mapRiskClassToScore(worstPath?.riskClass ?? planGraphBundle.riskProfile.riskClass),
+      criticalPathNodes: [...(worstPath?.pathNodeIds ?? riskFindings?.map((finding) => finding.nodeId) ?? [])],
+      findings: [...(riskFindings?.flatMap((finding) => finding.reasons) ?? [])],
+    };
+  }
+
+  private mapRiskClassToScore(riskClass: string): number {
+    switch (riskClass) {
+      case "low":
+        return 0.25;
+      case "medium":
+        return 0.5;
+      case "high":
+        return 0.75;
+      case "critical":
+        return 1;
+      default:
+        return 0.5;
+    }
   }
 
   /**

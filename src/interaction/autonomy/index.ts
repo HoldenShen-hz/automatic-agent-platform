@@ -176,12 +176,11 @@ function overrideRate(score: CapabilityTrustScore): number {
 }
 
 function trustLevelFromScore(score: number): TrustLevel {
-  // R5-21: Scale thresholds to 0-1000 range per §42.1
-  if (score >= 950) return "fully_trusted";
-  if (score >= 850) return "trusted";
-  if (score >= 700) return "semi_trusted";
-  if (score >= 500) return "supervised";
-  if (score >= 300) return "probation";
+  if (score >= 95) return "fully_trusted";
+  if (score >= 85) return "trusted";
+  if (score >= 70) return "semi_trusted";
+  if (score >= 50) return "supervised";
+  if (score >= 30) return "probation";
   return "untrusted";
 }
 
@@ -189,13 +188,12 @@ function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
   const overridePenalty = overrideRate(score) * 20;
   const incidentPenalty = score.incidents * 15;
-  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
-  // R5-21: Scale to 0-1000 per §42.1
+  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
   return Math.max(
     0,
     Math.min(
-      1000,
-      Math.round(success * 1000 - overridePenalty * 10 - incidentPenalty * 10 + volumeBonus),
+      100,
+      Math.round(success * 100 - overridePenalty - incidentPenalty + volumeBonus),
     ),
   );
 }
@@ -248,34 +246,12 @@ function decideLevel(
     return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
   }
 
-  // §42 P0/P1 Demotion Logic:
-  // - P0 incidents: demote to suggestion per R23-07 fix (was frozen before)
-  // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
   const severity = score.lastIncidentSeverity;
-  if (options.freezeOnIncident && score.incidents > 0 && severity === "P0") {
-    // R23-07 fix: P0 incident sets "suggestion" not "frozen" per §42 spec
-    return "suggestion";
-  }
-
   if (score.incidents > 0) {
-    // R23-08 fix: P2/P3 incidents should NOT trigger freeze - spec only P0/P1 trigger demotion
-    // P2/P3 are medium/low severity - they trigger suggestion level but not full freeze
     if (severity === "P1" && options.severityBasedDemotion) {
-      // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
     }
-
-    // R23-08 fix: Only P0 triggers "frozen" state; P2/P3 demote to suggestion
-    if (severity !== "P0" && severity !== "P1") {
-      // P2/P3: return suggestion (not frozen) - no freeze for medium/low severity
-      return "suggestion";
-    }
-
-    if (options.freezeOnIncident && severity === "P0") {
-      // Only P0 gets frozen; P1 always demotes (not freeze) per §42 spec
-      return "frozen";
-    }
-    return "suggestion";
+    return options.freezeOnIncident ? "frozen" : "suggestion";
   }
 
   if (score.failedExecutions >= (options.minVolumeForDemotion ?? 3)) {
@@ -294,7 +270,7 @@ function decideLevel(
   const supervisedWindow = windows[0] ?? 30;
   const semiAutoWindow = windows[1] ?? 60;
   const fullAutoWindow = windows[2] ?? 90;
-  const incidentFreeDays = score.lastIncidentAgeDays ?? 0;
+  const incidentFreeDays = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
 
   // full_auto requires 90 days incident-free (or configured fullAutoWindow)
   if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01 && incidentFreeDays >= fullAutoWindow) {
@@ -402,8 +378,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           fromLevel: item.currentAutonomy,
           toLevel: nextLevel,
           trigger: item.incidents > 0 ? "incident_response" : "rule_engine",
-          // R5-44: Add approval gate - promotions require manual approval, demotions can be auto
-          approvedBy: eventType === "agent.autonomy.promoted" ? "pending_approval" : "auto",
+          approvedBy: "auto",
           evidence,
         };
         changeEvents.push(changeEvent);

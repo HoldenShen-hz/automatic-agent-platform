@@ -142,5 +142,15 @@ export class DomainDescriptorOrchestrationService {
 }
 
 function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainLifecycleState {
-  return DomainLifecycleStateSchema.parse(value);
+  const normalized = DomainLifecycleStateSchema.parse(value);
+  switch (normalized) {
+    case "validating":
+      return "validated" as DomainLifecycleState;
+    case "certified":
+      return "validated" as DomainLifecycleState;
+    case "canary":
+      return "registered" as DomainLifecycleState;
+    default:
+      return normalized;
+  }
 }

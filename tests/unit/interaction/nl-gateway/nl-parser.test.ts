@@ -133,8 +133,8 @@ test("parseIntentTokens task_create with Chinese 创建", () => {
 test("parseIntentTokens task_create triggers for long messages (>12 chars)", () => {
   const result = parseIntentTokens("我想要你帮我处理一些日常事务");
 
-  assert.equal(result[0]!.intentType, "task_query");
-  assert.equal(result[0]!.confidence, 0.62);
+  assert.equal(result[0]!.intentType, "task_create");
+  assert.equal(result[0]!.confidence, 0.65);
 });
 
 test("parseIntentTokens defaults to task_query for short unrecognized messages", () => {

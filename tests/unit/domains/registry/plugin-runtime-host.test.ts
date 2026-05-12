@@ -161,11 +161,11 @@ test("ForkedPluginRuntimeHost surfaces child runtime errors for unsupported acti
   }
 });
 
-test("buildPluginRuntimeSandboxRoot sanitizes pluginId to prevent path traversal", () => {
-  const maliciousPluginId = "../../../etc/passwd";
-  const sanitized = buildPluginRuntimeSandboxRoot(maliciousPluginId);
-  assert.ok(!sanitized.includes(".."), "sanitized path should not contain '..'");
-  assert.ok(sanitized.endsWith("-etc-passwd"), `sanitized path should end with sanitized name, got: ${sanitized}`);
+test("buildPluginRuntimeSandboxRoot rejects pluginId containing path traversal segments", () => {
+  assert.throws(
+    () => buildPluginRuntimeSandboxRoot("../../../etc/passwd"),
+    /invalid_plugin_id/i,
+  );
 });
 
 test("buildPluginRuntimeSandboxRoot rejects pluginId with path traversal sequences", () => {

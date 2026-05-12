@@ -12,5 +12,5 @@ export function requiresAttorneyReview(taskType: LegalTaskType): boolean {
 }
 
 export function requiresLegalReview(taskType: LegalTaskType): boolean {
-  return requiresAttorneyReview(taskType) || requiresPresetReview(LEGAL_DOMAIN_PRESET, taskType);
+  return requiresPresetReview(LEGAL_DOMAIN_PRESET, taskType);
 }

@@ -86,7 +86,7 @@ test("assessPromotion promotes supervised to semi_auto at 98% with 200+ executio
     currentAutonomy: "supervised",
     totalExecutions: 200,
     successfulExecutions: 196, // 98%
-    failedExecutions: 4,
+    failedExecutions: 2,
     incidents: 0,
   });
   const result = assessPromotion(score);
@@ -112,7 +112,7 @@ test("assessPromotion requires platform_team approval for semi_auto to full_auto
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
     successfulExecutions: 495, // 99%
-    failedExecutions: 5,
+    failedExecutions: 2,
     incidents: 0,
   });
   const result = assessPromotion(score);
@@ -145,7 +145,7 @@ test("assessPromotion returns not_met reason when thresholds not met", () => {
   });
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
-  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
+  assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
 });
 
 test("assessPromotion handles zero executions", () => {

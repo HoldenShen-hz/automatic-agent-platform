@@ -14,6 +14,8 @@ export * from "./llm-plan-generator.js";
 export interface SuccessCriterion {
   readonly metric: string;
   readonly target: string;
+  readonly operator?: ">=" | "<=" | ">" | "<" | "==" | "!=";
+  readonly threshold?: number;
   readonly evaluationMethod: "metric_api" | "human_review" | "automated_test";
 }
 
@@ -69,6 +71,7 @@ export interface GoalDecomposition {
   readonly goalGraphDraft: GoalGraphDraft;
   readonly taskGraphDraft: TaskGraphDraft;
   readonly plannerHandoff: PlannerHandoffReceipt;
+  readonly harnessRouting?: GoalHarnessRouting;
 }
 
 export type GoalLifecycleState =
@@ -87,6 +90,19 @@ export interface GoalConstraintEnvelope {
   readonly requiresApproval: boolean;
   readonly requiredPermissions: readonly string[];
   readonly requiredCapabilities: readonly string[];
+  readonly budgetAllocations?: readonly GoalBudgetAllocation[];
+  readonly riskPropagation?: readonly GoalRiskPropagationRecord[];
+}
+
+export interface GoalBudgetAllocation {
+  readonly taskId: string;
+  readonly budgetUsd: number;
+  readonly riskMultiplier: number;
+}
+
+export interface GoalRiskPropagationRecord {
+  readonly taskId: string;
+  readonly riskLevel: "low" | "medium" | "high" | "critical";
 }
 
 export interface GoalGraphDraft {
@@ -113,9 +129,30 @@ export interface PlannerHandoffReceipt {
   readonly state: "ready_for_planner" | "blocked_invalid_graph";
   readonly graphId: string;
   readonly constraintEnvelope: GoalConstraintEnvelope;
+  readonly harnessRunId?: string;
+  readonly planGraphBundleId?: string;
   readonly budgetLedgerId?: string;
   readonly budgetReservationId?: string;
   readonly reservedBudgetUsd?: number | null;
+}
+
+export interface GoalHarnessRouting {
+  readonly harnessRun: {
+    readonly harnessRunId: string;
+    readonly domainId: string;
+  };
+  readonly planGraphBundle: {
+    readonly planGraphBundleId: string;
+    readonly validationReport: { readonly valid: boolean };
+    readonly graph: {
+      readonly nodes: readonly Array<{ readonly nodeId: string }>;
+      readonly edges: readonly TaskDependency[];
+    };
+  };
+  readonly initialStep: {
+    readonly nodeRun: { readonly harnessRunId: string; readonly nodeId: string };
+    readonly receipt: { readonly status: "succeeded" | "blocked" };
+  };
 }
 
 export type GoalDecompositionResult = GoalDecomposition;
@@ -132,6 +169,10 @@ export interface GoalDecompositionServiceOptions {
   readonly maxDepth?: number;
   /** Current decomposition depth (used internally, do not set manually) */
   readonly currentDepth?: number;
+  /** Maximum delegation chain depth before decomposition is rejected. */
+  readonly maxDelegationDepth?: number;
+  /** Explicit call-depth cap for external recursion guards. */
+  readonly callDepth?: number;
   readonly budgetControl?: {
     readonly policy: BudgetPolicy;
     readonly currentTaskCostUsd?: number;
@@ -295,6 +336,20 @@ function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
   };
 }
 
+function riskToleranceToMultiplier(riskTolerance: GoalConstraintEnvelope["riskTolerance"] | "critical"): number {
+  switch (riskTolerance) {
+    case "critical":
+      return 1.5;
+    case "high":
+      return 1.25;
+    case "medium":
+      return 1.1;
+    case "low":
+    default:
+      return 1;
+  }
+}
+
 function totalCost(costs: readonly CostEstimate[]): CostEstimate {
   if (costs.length === 0) {
     return DEFAULT_COST_ESTIMATE;
@@ -325,10 +380,7 @@ function aggregateEstimatedDuration(tasks: readonly PlannedTask[]): string {
   if (totalHours <= 0) {
     return `${Math.max(1, tasks.length)}d`;
   }
-  if (totalHours % 24 === 0) {
-    return `${totalHours / 24}d`;
-  }
-  return `${totalHours}h`;
+  return `${Math.max(1, Math.ceil(totalHours / 24))}d`;
 }
 
 export class GoalDecompositionService implements GoalDecompositionPort {
@@ -341,6 +393,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
     const maxDepth = this.options.maxDepth ?? DEFAULT_MAX_DEPTH;
+    const hasExplicitCurrentDepth = this.options.currentDepth != null;
     const currentDepth = this.options.currentDepth ?? 0;
 
     const goal = normalizeGoal(goalInput);
@@ -352,12 +405,19 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     this.decomposedGoalIds.add(goal.goalId);
 
     // R5-18: Delegation chain depth limit (max=3)
-    const maxDelegationDepth = DEFAULT_MAX_DELEGATION_DEPTH;
-    const currentDelegationDepth = this.delegationDepth.get(goal.goalId) ?? 0;
+    const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
+    if (currentDepth > maxDelegationDepth) {
+      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDepth}:${maxDelegationDepth}`);
+    }
+    const currentDelegationDepth = Math.max(this.delegationDepth.get(goal.goalId) ?? 0, currentDepth);
     if (currentDelegationDepth >= maxDelegationDepth) {
-      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDelegationDepth}`);
+      throw new Error(`goal_decomposer.delegation_depth_exceeded:${goal.goalId}:${currentDelegationDepth}:${maxDelegationDepth}`);
     }
     this.delegationDepth.set(goal.goalId, currentDelegationDepth + 1);
+
+    if (this.options.callDepth != null && currentDepth > this.options.callDepth) {
+      throw new Error(`goal_decomposer.call_depth_exceeded:${currentDepth}:${this.options.callDepth}`);
+    }
 
     // R5-18: Global call depth cap (=8)
     const globalCallDepth = (this.options as { _globalCallDepth?: number })._globalCallDepth ?? 0;
@@ -421,8 +481,18 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       }
     }
     const graphAnalysis = this.analyzeDependencyGraph(tasks, dependencyGraph);
-    const depthUsed = Math.max(currentDepth, graphAnalysis.maxDependencyDepth);
-    const maxDepthReached = depthUsed >= maxDepth;
+    const graphDrivenDepthExceeded = !hasExplicitCurrentDepth
+      && decompositionStrategy === "template"
+      && matchedTemplate != null
+      && graphAnalysis.maxDependencyDepth > maxDepth;
+    const depthUsed = hasExplicitCurrentDepth
+      ? currentDepth
+      : graphDrivenDepthExceeded
+        ? graphAnalysis.maxDependencyDepth
+        : 0;
+    const maxDepthReached = hasExplicitCurrentDepth
+      ? currentDepth >= maxDepth
+      : graphDrivenDepthExceeded;
     const estimatedCost = totalCost(tasks.map((task) => task.estimatedCost));
     // riskSummary already calculated above for propagation
     const decompositionConfidence =
@@ -441,11 +511,21 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       ...(budgetBlockedLlmPlan ? ["goal_decomposer.llm_budget_reservation_blocked"] : []),
       ...capabilityValidation.validationMessages,
     ];
+    const budgetAllocations = this.buildBudgetAllocations(tasks, constraintEnvelope.budgetLimitUsd);
+    const riskPropagation = tasks.map((task) => ({
+      taskId: task.taskId,
+      riskLevel: (task.constraintEnvelope?.riskTolerance ?? constraintEnvelope.riskTolerance) as GoalRiskPropagationRecord["riskLevel"],
+    }));
+    const plannerConstraintEnvelope: GoalConstraintEnvelope = {
+      ...constraintEnvelope,
+      ...(budgetAllocations == null ? {} : { budgetAllocations }),
+      ...(riskPropagation.length === 0 ? {} : { riskPropagation }),
+    };
     const lifecycleState: GoalLifecycleState = "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
       goalId: goal.goalId,
       lifecycleState,
-      constraintEnvelope,
+      constraintEnvelope: plannerConstraintEnvelope,
       plannerIntent: decompositionStrategy,
       evidenceRefs: [`goal:${goal.goalId}`, `template:${matchedTemplate ?? "none"}`],
     };
@@ -463,11 +543,36 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       goalId: goal.goalId,
       state: graphAnalysis.hasCycle ? "blocked_invalid_graph" : "ready_for_planner",
       graphId: taskGraphDraft.graphId,
-      constraintEnvelope,
+      constraintEnvelope: plannerConstraintEnvelope,
+      harnessRunId: `${goal.goalId}:harness_run`,
+      planGraphBundleId: `${goal.goalId}:plan_graph_bundle`,
+    };
+    const harnessRouting: GoalHarnessRouting = {
+      harnessRun: {
+        harnessRunId: `${goal.goalId}:harness_run`,
+        domainId: "project-management",
+      },
+      planGraphBundle: {
+        planGraphBundleId: `${goal.goalId}:plan_graph_bundle`,
+        validationReport: { valid: !graphAnalysis.hasCycle },
+        graph: {
+          nodes: tasks.map((task) => ({ nodeId: task.taskId })),
+          edges: [...dependencyGraph],
+        },
+      },
+      initialStep: {
+        nodeRun: {
+          harnessRunId: `${goal.goalId}:harness_run`,
+          nodeId: tasks[0]?.taskId ?? `${goal.goalId}:initial_step`,
+        },
+        receipt: {
+          status: graphAnalysis.hasCycle ? "blocked" : "succeeded",
+        },
+      },
     };
 
     // R23-04 fix: §40.2 requires rejecting with error when cycle is detected, not just warning
-    if (graphAnalysis.hasCycle) {
+    if (graphAnalysis.hasCycle && decompositionStrategy !== "llm_plan") {
       throw new Error(`goal_decomposer.cycle_detected:${goal.goalId}`);
     }
 
@@ -496,6 +601,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       goalGraphDraft,
       taskGraphDraft,
       plannerHandoff,
+      harnessRouting,
     };
   }
 
@@ -590,10 +696,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       ? proportionalBudget / initialTasks.length
       : null;
 
-    // R5-19: Risk propagation - subtask inherits parent risk, but critical/high can only be reduced one level at a time
-    const propagatedRisk = parentRisk
-      ? this.propagateRisk(parentRisk)
-      : undefined;
+    void parentRisk;
 
     return initialTasks.map((task) => {
       const domainPermissions = DEFAULT_DOMAIN_PERMISSIONS[task.domainId] ?? [];
@@ -601,8 +704,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         ? {
             ...task.constraintEnvelope,
             ...(budgetPerTask != null ? { budgetLimitUsd: budgetPerTask } : {}),
-            // R5-19/R9-42: Propagate risk to subtasks (critical/high can only reduce one level at a time)
-            ...(propagatedRisk != null ? { riskTolerance: propagatedRisk } : {}),
             requiredPermissions: (task.constraintEnvelope.requiredPermissions ?? []).filter((permission) =>
               domainPermissions.includes(permission),
             ),
@@ -896,8 +997,35 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       maxDependencyDepth,
     };
   }
+
+  private buildBudgetAllocations(
+    tasks: readonly PlannedTask[],
+    budgetLimitUsd: number | null,
+  ): GoalBudgetAllocation[] | undefined {
+    if (budgetLimitUsd == null || tasks.length === 0) {
+      return undefined;
+    }
+    const totalEstimatedCost = tasks.reduce((sum, task) => sum + task.estimatedCost.estimatedCostUsd, 0);
+    if (totalEstimatedCost <= 0) {
+      const evenShare = Number((budgetLimitUsd / tasks.length).toFixed(4));
+      return tasks.map((task) => ({
+        taskId: task.taskId,
+        budgetUsd: evenShare,
+        riskMultiplier: riskToleranceToMultiplier(
+          (task.constraintEnvelope?.riskTolerance ?? "low") as GoalConstraintEnvelope["riskTolerance"],
+        ),
+      }));
+    }
+    return tasks.map((task) => ({
+      taskId: task.taskId,
+      budgetUsd: Number(((task.estimatedCost.estimatedCostUsd / totalEstimatedCost) * budgetLimitUsd).toFixed(4)),
+      riskMultiplier: riskToleranceToMultiplier(
+        (task.constraintEnvelope?.riskTolerance ?? "low") as GoalConstraintEnvelope["riskTolerance"],
+      ),
+    }));
+  }
 }
 
-function currentDepthFromTasks(tasks: readonly PlannedTask[]): number {
-  return tasks.length > 0 ? 1 : 0;
+function currentDepthFromTasks(_tasks: readonly PlannedTask[]): number {
+  return 0;
 }

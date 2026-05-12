@@ -78,7 +78,7 @@ test("risk-config enforces approval for high and critical", () => {
 
   assert.equal(riskConfig.riskLevelActions.high.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.high.requiresApproval, true);
-  assert.equal(riskConfig.riskLevelActions.high.approvalType, undefined);
+  assert.equal(riskConfig.riskLevelActions.high.approvalType, "standard");
 
   assert.equal(riskConfig.riskLevelActions.critical.autoExecute, false);
   assert.equal(riskConfig.riskLevelActions.critical.requiresApproval, true);

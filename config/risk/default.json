@@ -82,6 +82,7 @@
       "autoExecute": true,
       "logLevel": "info",
       "requiresApproval": false,
+      "approvalType": "standard",
       "sideEffect": "normal",
       "evidenceLevel": "basic"
     },
@@ -89,6 +90,7 @@
       "autoExecute": false,
       "logLevel": "warn",
       "requiresApproval": true,
+      "approvalType": "standard",
       "sideEffect": "normal_with_validation",
       "evidenceLevel": "enhanced"
     },
@@ -96,6 +98,7 @@
       "autoExecute": false,
       "logLevel": "error",
       "requiresApproval": true,
+      "approvalType": "standard",
       "sideEffect": "restricted",
       "evidenceLevel": "full"
     },

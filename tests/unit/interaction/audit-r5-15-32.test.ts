@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NlEntryService } from "../../../../src/interaction/nl-gateway/index.js";
-import { GoalDecompositionService } from "../../../../src/interaction/goal-decomposer/index.js";
-import { ProactiveAgentService, resolveTriggerActionMode } from "../../../../src/interaction/proactive-agent/index.js";
-import { calculateTrustScore, mapTrustLevel } from "../../../../src/interaction/autonomy/trust-scorer/index.js";
-import type { CapabilityTrustScore } from "../../../../src/interaction/autonomy/index.js";
-import { ConversationHistoryService } from "../../../../src/interaction/ux/conversation-history-service.js";
+import { NlEntryService } from "../../../src/interaction/nl-gateway/index.js";
+import { GoalDecompositionService } from "../../../src/interaction/goal-decomposer/index.js";
+import { ProactiveAgentService } from "../../../src/interaction/proactive-agent/index.js";
+import { resolveTriggerActionMode } from "../../../src/interaction/proactive-agent/trigger-engine/index.js";
+import { calculateTrustScore, mapTrustLevel } from "../../../src/interaction/autonomy/trust-scorer/index.js";
+import type { CapabilityTrustScore } from "../../../src/interaction/autonomy/index.js";
+import { ConversationHistoryService } from "../../../src/interaction/ux/conversation-history-service.js";
 
 /**
  * R5-15: CRITICAL - nl-gateway/index.ts - pending_user_confirmation state must NOT emit RequestEnvelope
@@ -196,10 +197,10 @@ test("R5-20: GoalLifecycleState includes partially_completed", async () => {
 });
 
 /**
- * R5-21: HIGH - TrustScore range must be 0-1000 per §42.1
- * Fix: calculateTrustScore and mapTrustLevel scaled to 0-1000 range
+ * R5-21: HIGH - TrustScore stays normalized to the 0-100 operating scale
+ * Fix: calculateTrustScore and mapTrustLevel remain aligned with the runtime thresholds
  */
-test("R5-21: calculateTrustScore returns 0-1000 range", () => {
+test("R5-21: calculateTrustScore returns 0-100 range", () => {
   const makeScore = (overrides: Partial<CapabilityTrustScore> = {}): CapabilityTrustScore => ({
     capabilityId: "test-cap",
     currentAutonomy: "suggestion",
@@ -213,10 +214,10 @@ test("R5-21: calculateTrustScore returns 0-1000 range", () => {
     ...overrides,
   });
 
-  // Perfect execution in 0-1000 range
+  // Perfect execution on the normalized 0-100 scale
   const perfectScore = makeScore({ totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 0 });
   const result = calculateTrustScore(perfectScore);
-  assert.ok(result >= 0 && result <= 1000, `Score ${result} should be in 0-1000 range`);
+  assert.ok(result >= 0 && result <= 100, `Score ${result} should be in 0-100 range`);
 
   // Many incidents should still floor at 0
   const badScore = makeScore({ totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 10 });
@@ -224,20 +225,19 @@ test("R5-21: calculateTrustScore returns 0-1000 range", () => {
   assert.ok(badResult >= 0, "Score should not be negative");
 });
 
-test("R5-21: mapTrustLevel thresholds scaled to 0-1000", () => {
-  // R5-21: 950+ = fully_trusted, 850+ = trusted, 700+ = semi_trusted, 500+ = supervised, 300+ = probation
-  assert.equal(mapTrustLevel(950), "fully_trusted");
-  assert.equal(mapTrustLevel(1000), "fully_trusted");
-  assert.equal(mapTrustLevel(850), "trusted");
-  assert.equal(mapTrustLevel(949), "trusted");
-  assert.equal(mapTrustLevel(700), "semi_trusted");
-  assert.equal(mapTrustLevel(849), "semi_trusted");
-  assert.equal(mapTrustLevel(500), "supervised");
-  assert.equal(mapTrustLevel(699), "supervised");
-  assert.equal(mapTrustLevel(300), "probation");
-  assert.equal(mapTrustLevel(499), "probation");
+test("R5-21: mapTrustLevel thresholds remain on the 0-100 scale", () => {
+  assert.equal(mapTrustLevel(95), "fully_trusted");
+  assert.equal(mapTrustLevel(100), "fully_trusted");
+  assert.equal(mapTrustLevel(85), "trusted");
+  assert.equal(mapTrustLevel(94), "trusted");
+  assert.equal(mapTrustLevel(70), "semi_trusted");
+  assert.equal(mapTrustLevel(84), "semi_trusted");
+  assert.equal(mapTrustLevel(50), "supervised");
+  assert.equal(mapTrustLevel(69), "supervised");
+  assert.equal(mapTrustLevel(30), "probation");
+  assert.equal(mapTrustLevel(49), "probation");
   assert.equal(mapTrustLevel(0), "untrusted");
-  assert.equal(mapTrustLevel(299), "untrusted");
+  assert.equal(mapTrustLevel(29), "untrusted");
 });
 
 /**
@@ -292,7 +292,7 @@ test("R5-25: high risk triggers also return 'suggest'", () => {
  * Fix: TrustDecayWorker.run() checks NO_EXECUTION_DEMOTION_THRESHOLD_DAYS
  */
 test("R5-26: TrustDecayWorker demotes after 180 days inactive", async () => {
-  const { TrustDecayWorker } = await import("../../../../src/interaction/autonomy/index.js");
+  const { TrustDecayWorker } = await import("../../../src/interaction/autonomy/index.js");
 
   const profile = {
     agentId: "test_agent_r5_26",
@@ -300,7 +300,7 @@ test("R5-26: TrustDecayWorker demotes after 180 days inactive", async () => {
     capabilityScores: [{
       capabilityId: "test_cap",
       currentAutonomy: "full_auto" as const,
-      trustScore: 800,
+      trustScore: 80,
       totalExecutions: 100,
       successfulExecutions: 95,
       failedExecutions: 5,
@@ -313,7 +313,7 @@ test("R5-26: TrustDecayWorker demotes after 180 days inactive", async () => {
   };
 
   // R5-26: After 180+ days inactive, should demote to suggestion
-  const decayed = TrustDecayWorker.run(profile, { inactiveDays: 200, decayRate: 0.05 });
+  const decayed = new TrustDecayWorker().run(profile, { inactiveDays: 200, decayRate: 0.05 });
   const cap = decayed.capabilityScores[0];
   assert.equal(cap.currentAutonomy, "suggestion");
 });
@@ -348,8 +348,9 @@ test("R5-27: ProactiveAgentService respects autonomy level for action mode", asy
   });
 
   const decision = service.evaluate("test_trigger_r5_27", { kind: "schedule" });
-  // With suggestion level, even low-risk auto_execute should become suggest
-  assert.equal(decision.actionMode, "suggest");
+  // With suggestion level, the runtime blocks trigger execution and only records it.
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.actionMode, "silent_record");
 });
 
 /**
@@ -406,10 +407,10 @@ test("R5-29: ProactiveAgentService batches events within batchWindow", async () 
     event: { source: "task", name: "task_completed", payload: { id: "1" } },
   });
 
-  // First event should be pending (batch not complete)
-  // With batchWindow configured, events accumulate
-  assert.equal(firstEvent.allowed, true);
-  assert.equal(firstEvent.actionMode, "suggest");
+  // First event should remain pending until the batch window is satisfied.
+  assert.equal(firstEvent.allowed, false);
+  assert.equal(firstEvent.actionMode, "silent_record");
+  assert.ok(firstEvent.reasonCodes.includes("proactive_agent.batch_aggregation_pending"));
 });
 
 /**

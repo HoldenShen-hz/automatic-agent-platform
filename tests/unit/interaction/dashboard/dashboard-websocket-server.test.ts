@@ -14,10 +14,14 @@ function createDashboardDelta(overrides: Partial<DashboardDelta> = {}): Dashboar
   };
 }
 
+function registerClient(server: DashboardWebSocketServer, subscriptions: readonly string[]) {
+  return server.registerClient(subscriptions, "principal-test", "tenant-test");
+}
+
 test("DashboardWebSocketServer registers client successfully", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId, ack } = server.registerClient(["dashboard:operator"]);
+  const { clientId, ack } = registerClient(server, ["dashboard:operator"]);
 
   assert.ok(clientId);
   assert.equal(ack.type, "connection_ack");
@@ -27,8 +31,8 @@ test("DashboardWebSocketServer registers client successfully", () => {
 test("DashboardWebSocketServer rejects when max clients reached", () => {
   const server = new DashboardWebSocketServer({ maxClients: 1 });
 
-  server.registerClient(["dashboard:operator"]);
-  const { clientId, ack } = server.registerClient(["dashboard:operator"]);
+  registerClient(server, ["dashboard:operator"]);
+  const { clientId, ack } = registerClient(server, ["dashboard:operator"]);
 
   assert.equal(clientId, "");
   assert.equal(ack.type, "error");
@@ -37,7 +41,7 @@ test("DashboardWebSocketServer rejects when max clients reached", () => {
 test("DashboardWebSocketServer unregisters client", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   server.unregisterClient(clientId);
 
   assert.equal(server.getClientCount(), 0);
@@ -46,7 +50,7 @@ test("DashboardWebSocketServer unregisters client", () => {
 test("DashboardWebSocketServer updates subscriptions", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   const updated = server.updateSubscriptions(clientId, ["dashboard:fleet", "dashboard:platform"]);
 
   assert.equal(updated, true);
@@ -63,7 +67,7 @@ test("DashboardWebSocketServer returns false for unknown client subscription upd
 test("DashboardWebSocketServer isClientConnected returns correct status", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   assert.equal(server.isClientConnected(clientId), true);
 
   server.unregisterClient(clientId);
@@ -73,7 +77,7 @@ test("DashboardWebSocketServer isClientConnected returns correct status", () => 
 test("DashboardWebSocketServer pushes delta to subscribed clients", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["totalTasks", "incidentCount"]);
+  const { clientId } = registerClient(server, ["totalTasks", "incidentCount"]);
   const delta = createDashboardDelta({ affectedMetrics: ["totalTasks"] });
 
   const sentCount = server.pushDelta(delta);
@@ -84,9 +88,9 @@ test("DashboardWebSocketServer pushes delta to subscribed clients", () => {
 test("DashboardWebSocketServer pushes delta to all subscribed dashboards", () => {
   const server = new DashboardWebSocketServer();
 
-  server.registerClient(["totalTasks"]);
-  server.registerClient(["incidentCount"]);
-  server.registerClient(["totalTasks", "incidentCount"]);
+  registerClient(server, ["totalTasks"]);
+  registerClient(server, ["incidentCount"]);
+  registerClient(server, ["totalTasks", "incidentCount"]);
 
   const delta = createDashboardDelta({ affectedMetrics: ["totalTasks", "incidentCount"] });
 
@@ -98,7 +102,7 @@ test("DashboardWebSocketServer pushes delta to all subscribed dashboards", () =>
 test("DashboardWebSocketServer does not push to unsubscribed clients", () => {
   const server = new DashboardWebSocketServer();
 
-  server.registerClient(["totalTasks"]);
+  registerClient(server, ["totalTasks"]);
   const delta = createDashboardDelta({ affectedMetrics: ["incidentCount"] });
 
   const sentCount = server.pushDelta(delta);
@@ -109,7 +113,7 @@ test("DashboardWebSocketServer does not push to unsubscribed clients", () => {
 test("DashboardWebSocketServer wildcard subscription receives all deltas", () => {
   const server = new DashboardWebSocketServer();
 
-  server.registerClient(["*"]);
+  registerClient(server, ["*"]);
   const delta = createDashboardDelta({ affectedMetrics: ["totalTasks", "incidentCount", "systemHealth"] });
 
   const sentCount = server.pushDelta(delta);
@@ -120,7 +124,7 @@ test("DashboardWebSocketServer wildcard subscription receives all deltas", () =>
 test("DashboardWebSocketServer pushes snapshot to specific client", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   const snapshot = { totalTasks: 42 };
 
   const success = server.pushSnapshotToClient(clientId, snapshot);
@@ -131,7 +135,7 @@ test("DashboardWebSocketServer pushes snapshot to specific client", () => {
 test("DashboardWebSocketServer pushSnapshotToClient returns false for disconnected client", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   server.unregisterClient(clientId);
 
   const success = server.pushSnapshotToClient(clientId, { data: "test" });
@@ -142,8 +146,8 @@ test("DashboardWebSocketServer pushSnapshotToClient returns false for disconnect
 test("DashboardWebSocketServer broadcast reaches all connected clients", () => {
   const server = new DashboardWebSocketServer();
 
-  server.registerClient(["dashboard:operator"]);
-  server.registerClient(["dashboard:fleet"]);
+  registerClient(server, ["dashboard:operator"]);
+  registerClient(server, ["dashboard:fleet"]);
 
   const message = {
     type: "dashboard_snapshot" as const,
@@ -160,8 +164,8 @@ test("DashboardWebSocketServer broadcast reaches all connected clients", () => {
 test("DashboardWebSocketServer getConnectedClients returns correct list", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
-  server.registerClient(["dashboard:fleet"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
+  registerClient(server, ["dashboard:fleet"]);
 
   const clients = server.getConnectedClients();
 
@@ -172,7 +176,7 @@ test("DashboardWebSocketServer getConnectedClients returns correct list", () => 
 test("DashboardWebSocketServer handleProjectionDelta processes delta", () => {
   const server = new DashboardWebSocketServer();
 
-  server.registerClient(["totalTasks"]);
+  registerClient(server, ["totalTasks"]);
   const delta = createDashboardDelta({ affectedMetrics: ["totalTasks"] });
 
   const sentCount = server.handleProjectionDelta(delta);
@@ -197,10 +201,10 @@ test("DashboardWebSocketServer getClientCount returns correct count", () => {
 
   assert.equal(server.getClientCount(), 0);
 
-  server.registerClient(["dashboard:operator"]);
+  registerClient(server, ["dashboard:operator"]);
   assert.equal(server.getClientCount(), 1);
 
-  server.registerClient(["dashboard:fleet"]);
+  registerClient(server, ["dashboard:fleet"]);
   assert.equal(server.getClientCount(), 2);
 
   server.unregisterClient(server.getConnectedClients()[0]!.clientId);
@@ -210,7 +214,7 @@ test("DashboardWebSocketServer getClientCount returns correct count", () => {
 test("createDashboardWebSocketServer factory works", () => {
   const server = createDashboardWebSocketServer({ maxClients: 500 });
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
 
   assert.ok(clientId);
   assert.equal(server.getClientCount(), 1);
@@ -219,7 +223,7 @@ test("createDashboardWebSocketServer factory works", () => {
 test("DashboardWebSocketServer subscription update removes from old dashboards", () => {
   const server = new DashboardWebSocketServer();
 
-  const { clientId } = server.registerClient(["dashboard:operator"]);
+  const { clientId } = registerClient(server, ["dashboard:operator"]);
   server.updateSubscriptions(clientId, ["dashboard:fleet"]);
 
   const delta = createDashboardDelta({ affectedMetrics: ["dashboard:operator"] });

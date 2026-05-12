@@ -40,8 +40,8 @@ export const DomainLifecycleStateSchema = z.preprocess(
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
 export const DomainHotPathModeSchema = z.enum(["deterministic_only", "llm_allowed"]);
 export const DomainLatencyTierSchema = z.preprocess(
-  (value) => value === "interactive" ? "near_realtime" : value,
-  z.enum(["realtime", "near_realtime", "batch"]),
+  (value) => value,
+  z.enum(["realtime", "near_realtime", "interactive", "batch"]),
 );
 
 export const DomainExecutionProfileSchema = z.object({
@@ -56,7 +56,7 @@ export const DomainExecutionProfileSchema = z.object({
     llmInHotPathAllowed: true,
     maxHotPathLatencyMs: 1000,
   }),
-  latencyTier: DomainLatencyTierSchema.default("near_realtime"),
+  latencyTier: DomainLatencyTierSchema.default("interactive"),
   compiledArtifactRef: z.string().trim().min(1).nullable().default(null),
 });
 

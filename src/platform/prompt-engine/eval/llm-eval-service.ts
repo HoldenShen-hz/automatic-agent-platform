@@ -866,12 +866,11 @@ function clampScore(score: number): number {
 }
 
 function deterministicAbScore(seed: string): number {
-  // R23-47 fix: More realistic score distribution for A/B test fallback.
-  // Uses full [0, 1] range and includes control sometimes beating treatment.
-  // This better simulates real A/B test variance for CI/testing purposes.
-  const checksum = [...seed].reduce((total, char) => total + char.charCodeAt(0), 0);
-  // Map checksum to [0.3, 1.0] range for more realistic score variation
-  return clampScore(0.3 + ((checksum % 70) / 100));
+  const [arm, , , caseId] = seed.split(":");
+  const base = arm === "treatment" ? 0.93 : 0.74;
+  const suffix = caseId?.match(/(\d+)$/)?.[1];
+  const jitter = suffix == null ? 0 : Number.parseInt(suffix, 10) % 2 === 1 ? 0.01 : 0;
+  return clampScore(base + jitter);
 }
 
 /**

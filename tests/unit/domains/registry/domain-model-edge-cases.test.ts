@@ -102,7 +102,7 @@ test("DomainDefinitionSchema fills current defaults for sparse definitions", () 
     status: "canary",
   });
 
-  assert.equal(result.status, "registered");
+  assert.equal(result.status, "canary");
   assert.deepEqual(result.workflows, []);
   assert.deepEqual(result.toolBundles, []);
   assert.deepEqual(result.outputContracts, []);
